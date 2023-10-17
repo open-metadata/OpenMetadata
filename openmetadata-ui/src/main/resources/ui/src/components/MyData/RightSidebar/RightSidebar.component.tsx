@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isEmpty, isUndefined, uniqBy } from 'lodash';
+import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Layout, Responsive, WidthProvider } from 'react-grid-layout';
 import { SIZE } from '../../../enums/common.enum';
@@ -33,32 +33,19 @@ const ResponsiveGridLayout = WidthProvider(Responsive);
 const RightSidebar = ({
   announcements,
   isAnnouncementLoading,
-  parentLayoutData,
   isEditView = false,
   followedData,
   followedDataCount,
   isLoadingOwnedData,
-  layoutConfigData,
-  updateParentLayout,
   resetLayout = false,
   handleResetLayout,
+  layout,
+  handleLayoutChange,
   handleSaveCurrentPageLayout,
+  draggedItem,
+  parentLayoutData,
+  updateParentLayout,
 }: RightSidebarProps) => {
-  const [layout, setLayout] = useState<Array<WidgetConfig>>([
-    ...(layoutConfigData?.page?.layout ?? []),
-    ...(isEditView
-      ? [
-          {
-            h: 2.3,
-            i: LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER,
-            w: 1,
-            x: 0,
-            y: 100,
-            isDraggable: false,
-          },
-        ]
-      : []),
-  ]);
   const [placeholderWidgetKey, setPlaceholderWidgetKey] = useState<string>(
     LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
   );
@@ -77,7 +64,8 @@ const RightSidebar = ({
   }, []);
 
   const handleRemoveWidget = useCallback((widgetKey: string) => {
-    setLayout(getRemoveWidgetHandler(widgetKey, 2.3, 2.5));
+    handleLayoutChange &&
+      handleLayoutChange(getRemoveWidgetHandler(widgetKey, 2.3, 2.5));
   }, []);
 
   const handleAddWidget = useCallback(
@@ -86,14 +74,15 @@ const RightSidebar = ({
       placeholderWidgetKey: string,
       widgetSize: number
     ) => {
-      setLayout(
-        getAddWidgetHandler(
-          newWidgetData,
-          placeholderWidgetKey,
-          widgetSize,
-          customizePageClassBase.landingPageRightContainerMaxGridSize
-        )
-      );
+      handleLayoutChange &&
+        handleLayoutChange(
+          getAddWidgetHandler(
+            newWidgetData,
+            placeholderWidgetKey,
+            widgetSize,
+            customizePageClassBase.landingPageRightContainerMaxGridSize
+          )
+        );
       setIsWidgetModalOpen(false);
     },
     [layout]
@@ -155,7 +144,7 @@ const RightSidebar = ({
             : true
         )
         .map((widget: WidgetConfig) => (
-          <div data-grid={widget} key={widget.i}>
+          <div data-grid={widget} key={widget.i} unselectable="on">
             {getWidgetFromKey(widget)}
           </div>
         )),
@@ -164,8 +153,8 @@ const RightSidebar = ({
 
   const handleLayoutUpdate = useCallback(
     (updatedLayout: Layout[]) => {
-      if (!isEmpty(layout) && !isEmpty(updatedLayout)) {
-        setLayout(getLayoutUpdateHandler(updatedLayout));
+      if (!isEmpty(layout) && !isEmpty(updatedLayout) && handleLayoutChange) {
+        handleLayoutChange(getLayoutUpdateHandler(updatedLayout));
       }
     },
     [layout]
@@ -179,35 +168,36 @@ const RightSidebar = ({
     [layout]
   );
 
-  useEffect(() => {
-    if (isEditView && !isUndefined(updateParentLayout)) {
+  const handleWidgetDrop = (_: Layout[], item: Layout) => {
+    if (
+      draggedItem &&
+      !layout.some((widget) => widget.i === draggedItem.i) &&
+      updateParentLayout &&
+      handleLayoutChange
+    ) {
+      handleLayoutChange([
+        ...layout,
+        {
+          ...item,
+          i: draggedItem?.i,
+          w: draggedItem?.w,
+          h: draggedItem?.h,
+        },
+      ]);
       updateParentLayout(
-        (parentLayoutData ?? []).map((widget) => {
-          if (widget.i === LandingPageWidgetKeys.RIGHT_PANEL) {
-            return {
-              ...widget,
-              data: {
-                page: {
-                  layout: uniqBy(
-                    layout.filter(
-                      (widget) => !widget.i.endsWith('.EmptyWidgetPlaceholder')
-                    ),
-                    'i'
-                  ),
-                },
-              },
-            };
-          } else {
-            return widget;
-          }
-        })
+        parentLayoutData?.filter((widget) => widget.i !== draggedItem.i) ?? []
       );
     }
-  }, [layout]);
+  };
 
   useEffect(() => {
-    if (resetLayout && handleResetLayout && handleSaveCurrentPageLayout) {
-      setLayout([
+    if (
+      resetLayout &&
+      handleResetLayout &&
+      handleSaveCurrentPageLayout &&
+      handleLayoutChange
+    ) {
+      handleLayoutChange([
         ...customizePageClassBase.rightPanelDefaultLayout,
         ...(isEditView
           ? [
@@ -230,6 +220,7 @@ const RightSidebar = ({
   return (
     <>
       <ResponsiveGridLayout
+        isDroppable
         breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
         cols={{ lg: 1, md: 1, sm: 1, xs: 1, xxs: 1 }}
         containerPadding={[0, customizePageClassBase.landingPageWidgetMargin]}
@@ -240,6 +231,7 @@ const RightSidebar = ({
           customizePageClassBase.landingPageWidgetMargin,
         ]}
         rowHeight={customizePageClassBase.landingPageRowHeight}
+        onDrop={handleWidgetDrop}
         onLayoutChange={handleLayoutUpdate}>
         {widgets}
       </ResponsiveGridLayout>

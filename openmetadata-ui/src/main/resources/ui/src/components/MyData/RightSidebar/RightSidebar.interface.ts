@@ -17,6 +17,7 @@ import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.i
 
 export interface RightSidebarProps {
   isEditView?: boolean;
+  draggedItem?: WidgetConfig;
   resetLayout?: boolean;
   handleResetLayout?: (value: boolean) => void;
   announcements: Thread[];
@@ -24,7 +25,8 @@ export interface RightSidebarProps {
   followedDataCount: number;
   followedData: Array<EntityReference>;
   isLoadingOwnedData: boolean;
-  layoutConfigData?: WidgetConfig['data'];
+  layout: Array<WidgetConfig>;
+  handleLayoutChange?: React.Dispatch<React.SetStateAction<WidgetConfig[]>>;
   parentLayoutData?: Array<WidgetConfig>;
   updateParentLayout?: (newLayout: Array<WidgetConfig>) => void;
   handleSaveCurrentPageLayout?: (value: boolean) => void;

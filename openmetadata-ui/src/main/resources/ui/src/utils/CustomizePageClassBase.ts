@@ -87,7 +87,7 @@ class CustomizePageClassBase {
     },
   ];
 
-  landingPageDefaultLayout: Array<WidgetConfig> = [
+  mainPanelDefaultLayout: Array<WidgetConfig> = [
     {
       h: this.landingPageWidgetDefaultHeights.activityFeed,
       i: LandingPageWidgetKeys.ACTIVITY_FEED,
@@ -95,19 +95,6 @@ class CustomizePageClassBase {
       x: 0,
       y: 0,
       static: false,
-    },
-    {
-      h: this.landingPageWidgetDefaultHeights.rightSidebar,
-      i: LandingPageWidgetKeys.RIGHT_PANEL,
-      w: 1,
-      x: 3,
-      y: 0,
-      data: {
-        page: {
-          layout: this.rightPanelDefaultLayout,
-        },
-      },
-      static: true,
     },
     {
       h: this.landingPageWidgetDefaultHeights.myData,
@@ -135,12 +122,17 @@ class CustomizePageClassBase {
     },
   ];
 
+  landingPageLayout = {
+    mainPanelLayout: this.mainPanelDefaultLayout,
+    rightPanelLayout: this.rightPanelDefaultLayout,
+  };
+
   protected updateRightPanelDefaultLayout(layout: Array<WidgetConfig>) {
     this.rightPanelDefaultLayout = layout;
   }
 
-  protected updateLandingPageDefaultLayout(layout: Array<WidgetConfig>) {
-    this.landingPageDefaultLayout = layout;
+  protected updateMainPanelDefaultLayoutLayout(layout: Array<WidgetConfig>) {
+    this.mainPanelDefaultLayout = layout;
   }
 
   protected updateLandingPageWidgetDefaultHeights(obj: Record<string, number>) {

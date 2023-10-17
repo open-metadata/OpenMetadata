@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Modal, Row, Space, Typography } from 'antd';
+import { Button, Col, Modal, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isNil, uniqBy } from 'lodash';
@@ -50,6 +50,7 @@ import {
 import { getDecodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ActivityFeedProvider from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import PageLayoutV1 from '../../containers/PageLayoutV1';
 import RightSidebar from '../../MyData/RightSidebar/RightSidebar.component';
 import AddWidgetModal from '../AddWidgetModal/AddWidgetModal';
 import EmptyWidgetPlaceholder from '../EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
@@ -69,9 +70,10 @@ function CustomizeMyData({
   const location = useLocation();
   const [resetRightPanelLayout, setResetRightPanelLayout] =
     useState<boolean>(false);
-  const [layout, setLayout] = useState<Array<WidgetConfig>>([
-    ...(initialPageData.data?.page?.layout ??
-      customizePageClassBase.landingPageDefaultLayout),
+  const [draggedItem, setDraggedItem] = useState<WidgetConfig>();
+  const [mainPanelLayout, setMainPanelLayout] = useState<Array<WidgetConfig>>([
+    ...(initialPageData.data?.page?.rightPanelLayout ??
+      customizePageClassBase.landingPageLayout.mainPanelLayout),
     {
       h: 2,
       i: LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER,
@@ -81,6 +83,21 @@ function CustomizeMyData({
       isDraggable: false,
     },
   ]);
+  const [rightPanelLayout, setRightPanelLayout] = useState<Array<WidgetConfig>>(
+    [
+      ...(initialPageData.data?.page?.rightPanelLayout ??
+        customizePageClassBase.landingPageLayout.rightPanelLayout),
+      {
+        h: 2.3,
+        i: LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER,
+        w: 1,
+        x: 0,
+        y: 100,
+        isDraggable: false,
+      },
+    ]
+  );
+
   const [placeholderWidgetKey, setPlaceholderWidgetKey] = useState<string>(
     LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
   );
@@ -113,20 +130,20 @@ function CustomizeMyData({
   }, []);
 
   const handleLayoutChange = useCallback((newLayout: Array<WidgetConfig>) => {
-    setLayout(newLayout);
+    setMainPanelLayout(newLayout);
   }, []);
 
   const handleRemoveWidget = useCallback((widgetKey: string) => {
-    setLayout(getRemoveWidgetHandler(widgetKey, 3, 3.5));
+    setMainPanelLayout(getRemoveWidgetHandler(widgetKey, 3, 3.5));
   }, []);
 
-  const handleAddWidget = useCallback(
+  const handleMainPanelAddWidget = useCallback(
     (
       newWidgetData: Document,
       placeholderWidgetKey: string,
       widgetSize: number
     ) => {
-      setLayout(
+      setMainPanelLayout(
         getAddWidgetHandler(
           newWidgetData,
           placeholderWidgetKey,
@@ -136,16 +153,16 @@ function CustomizeMyData({
       );
       setIsWidgetModalOpen(false);
     },
-    [layout]
+    []
   );
 
   const handleLayoutUpdate = useCallback(
     (updatedLayout: Layout[]) => {
-      if (!isEmpty(layout) && !isEmpty(updatedLayout)) {
-        setLayout(getLayoutUpdateHandler(updatedLayout));
+      if (!isEmpty(mainPanelLayout) && !isEmpty(updatedLayout)) {
+        setMainPanelLayout(getLayoutUpdateHandler(updatedLayout));
       }
     },
-    [layout]
+    [mainPanelLayout]
   );
 
   const handleOpenResetModal = useCallback(() => {
@@ -202,26 +219,6 @@ function CustomizeMyData({
           />
         );
       }
-      if (widgetConfig.i.startsWith(LandingPageWidgetKeys.RIGHT_PANEL)) {
-        return (
-          <div className="h-full border-left p-l-md">
-            <RightSidebar
-              isEditView
-              announcements={announcements}
-              followedData={followedData ?? []}
-              followedDataCount={followedDataCount}
-              handleResetLayout={handleResetRightPanelLayout}
-              handleSaveCurrentPageLayout={handleSaveCurrentPageLayout}
-              isAnnouncementLoading={isAnnouncementLoading}
-              isLoadingOwnedData={isLoadingOwnedData}
-              layoutConfigData={widgetConfig.data}
-              parentLayoutData={layout}
-              resetLayout={resetRightPanelLayout}
-              updateParentLayout={handleLayoutChange}
-            />
-          </div>
-        );
-      }
 
       const Widget = customizePageClassBase.getWidgetsFromKey(widgetConfig.i);
 
@@ -244,7 +241,6 @@ function CustomizeMyData({
       followedData,
       followedDataCount,
       isLoadingOwnedData,
-      layout,
       handleLayoutChange,
       isAnnouncementLoading,
       announcements,
@@ -256,25 +252,29 @@ function CustomizeMyData({
 
   const addedWidgetsList = useMemo(
     () =>
-      layout
+      mainPanelLayout
         .filter((widget) => widget.i.startsWith('KnowledgePanel'))
         .map((widget) => widget.i),
-    [layout]
+    [mainPanelLayout]
   );
 
   const widgets = useMemo(
     () =>
-      layout.map((widget) => (
+      mainPanelLayout.map((widget) => (
         <div
+          draggable
           className={classNames({
             'mt--1': widget.i === LandingPageWidgetKeys.RIGHT_PANEL,
           })}
           data-grid={widget}
-          key={widget.i}>
+          id={widget.i}
+          key={widget.i}
+          unselectable="on"
+          onDragStart={(e) => e.dataTransfer.setData('text/plain', '')}>
           {getWidgetFromKey(widget)}
         </div>
       )),
-    [layout, getWidgetFromKey]
+    [mainPanelLayout, getWidgetFromKey]
   );
 
   const fetchAnnouncements = useCallback(async () => {
@@ -301,7 +301,7 @@ function CustomizeMyData({
         page: {
           ...initialPageData.data.page,
           layout: uniqBy(
-            layout.filter(
+            mainPanelLayout.filter(
               (widget) => !widget.i.endsWith('.EmptyWidgetPlaceholder')
             ),
             'i'
@@ -309,7 +309,7 @@ function CustomizeMyData({
         },
       },
     });
-  }, [layout]);
+  }, [mainPanelLayout]);
 
   const handleCancel = useCallback(() => {
     history.push(
@@ -320,9 +320,19 @@ function CustomizeMyData({
     );
   }, []);
 
+  const handleDragStart = useCallback((_: Layout[], item: Layout) => {
+    if (item.i.startsWith('KnowledgePanel')) {
+      setDraggedItem(item);
+    }
+  }, []);
+
+  // const handleDragStop = useCallback((_: Layout[], item: Layout) => {
+  //   console.log('here stopped');
+  // }, []);
+
   const handleReset = useCallback(() => {
-    setLayout([
-      ...customizePageClassBase.landingPageDefaultLayout,
+    setMainPanelLayout([
+      ...customizePageClassBase.landingPageLayout.mainPanelLayout,
       {
         h: 2,
         i: LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER,
@@ -347,83 +357,105 @@ function CustomizeMyData({
   }, [AppState.userDetails, AppState.users, isAuthDisabled]);
 
   return (
-    <Row>
-      <Col
-        className="bg-white d-flex justify-between border-bottom p-sm"
-        span={24}>
-        <div className="d-flex gap-2 items-center">
-          <Typography.Title className="m-0" level={5}>
-            <Transi18next
-              i18nKey="message.customize-landing-page-header"
-              renderElement={
-                <Link
-                  style={{ color: '#1890ff', fontSize: '16px' }}
-                  to={getPersonaDetailsPath(decodedPersonaFQN)}
+    <ActivityFeedProvider>
+      <PageLayoutV1
+        header={
+          <Col
+            className="bg-white d-flex justify-between border-bottom p-sm"
+            span={24}>
+            <div className="d-flex gap-2 items-center">
+              <Typography.Title className="m-0" level={5}>
+                <Transi18next
+                  i18nKey="message.customize-landing-page-header"
+                  renderElement={
+                    <Link
+                      style={{ color: '#1890ff', fontSize: '16px' }}
+                      to={getPersonaDetailsPath(decodedPersonaFQN)}
+                    />
+                  }
+                  values={{
+                    persona: decodedPersonaFQN,
+                  }}
                 />
-              }
-              values={{
-                persona: decodedPersonaFQN,
-              }}
-            />
-          </Typography.Title>
-        </div>
-        <Space>
-          <Button size="small" onClick={handleCancel}>
-            {t('label.cancel')}
-          </Button>
-          <Button size="small" onClick={handleOpenResetModal}>
-            {t('label.reset')}
-          </Button>
-          <Button size="small" type="primary" onClick={onSaveLayout}>
-            {t('label.save')}
-          </Button>
-        </Space>
-      </Col>
-      <Col span={24}>
-        <ActivityFeedProvider>
-          <ResponsiveGridLayout
-            autoSize
-            breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-            className="grid-container"
-            cols={{ lg: 4, md: 4, sm: 4, xs: 4, xxs: 4 }}
-            draggableHandle=".drag-widget-icon"
-            isResizable={false}
-            margin={[
-              customizePageClassBase.landingPageWidgetMargin,
-              customizePageClassBase.landingPageWidgetMargin,
-            ]}
-            rowHeight={customizePageClassBase.landingPageRowHeight}
-            style={{
-              backgroundImage: `url(${gridBgImg})`,
-            }}
-            onLayoutChange={handleLayoutUpdate}>
-            {widgets}
-          </ResponsiveGridLayout>
-          {isWidgetModalOpen && (
-            <AddWidgetModal
-              addedWidgetsList={addedWidgetsList}
-              handleAddWidget={handleAddWidget}
-              handleCloseAddWidgetModal={handleCloseAddWidgetModal}
-              maxGridSizeSupport={customizePageClassBase.landingPageMaxGridSize}
-              open={isWidgetModalOpen}
-              placeholderWidgetKey={placeholderWidgetKey}
-            />
-          )}
-          {isResetModalOpen && (
-            <Modal
-              centered
-              cancelText={t('label.no')}
-              okText={t('label.yes')}
-              open={isResetModalOpen}
-              title={t('label.reset-default-layout')}
-              onCancel={handleCloseResetModal}
-              onOk={handleReset}>
-              {t('message.reset-layout-confirmation')}
-            </Modal>
-          )}
-        </ActivityFeedProvider>
-      </Col>
-    </Row>
+              </Typography.Title>
+            </div>
+            <Space>
+              <Button size="small" onClick={handleCancel}>
+                {t('label.cancel')}
+              </Button>
+              <Button size="small" onClick={handleOpenResetModal}>
+                {t('label.reset')}
+              </Button>
+              <Button size="small" type="primary" onClick={onSaveLayout}>
+                {t('label.save')}
+              </Button>
+            </Space>
+          </Col>
+        }
+        pageTitle=""
+        rightPanel={
+          <RightSidebar
+            isEditView
+            announcements={announcements}
+            draggedItem={draggedItem}
+            followedData={followedData ?? []}
+            followedDataCount={followedDataCount}
+            handleLayoutChange={setRightPanelLayout}
+            handleSaveCurrentPageLayout={handleSaveCurrentPageLayout}
+            isAnnouncementLoading={isAnnouncementLoading}
+            isLoadingOwnedData={isLoadingOwnedData}
+            layout={rightPanelLayout}
+            parentLayoutData={mainPanelLayout}
+            resetLayout={resetRightPanelLayout}
+            updateParentLayout={handleLayoutChange}
+          />
+        }
+        rightPanelWidth={350}>
+        <ResponsiveGridLayout
+          autoSize
+          isDroppable
+          breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
+          className="grid-container"
+          cols={{ lg: 3, md: 3, sm: 3, xs: 3, xxs: 3 }}
+          draggableHandle=".drag-widget-icon"
+          isResizable={false}
+          margin={[
+            customizePageClassBase.landingPageWidgetMargin,
+            customizePageClassBase.landingPageWidgetMargin,
+          ]}
+          // onDragStop={handleDragStop}
+          rowHeight={customizePageClassBase.landingPageRowHeight}
+          style={{
+            backgroundImage: `url(${gridBgImg})`,
+          }}
+          onDragStart={handleDragStart}
+          onLayoutChange={handleLayoutUpdate}>
+          {widgets}
+        </ResponsiveGridLayout>
+      </PageLayoutV1>
+      {isWidgetModalOpen && (
+        <AddWidgetModal
+          addedWidgetsList={addedWidgetsList}
+          handleAddWidget={handleMainPanelAddWidget}
+          handleCloseAddWidgetModal={handleCloseAddWidgetModal}
+          maxGridSizeSupport={customizePageClassBase.landingPageMaxGridSize}
+          open={isWidgetModalOpen}
+          placeholderWidgetKey={placeholderWidgetKey}
+        />
+      )}
+      {isResetModalOpen && (
+        <Modal
+          centered
+          cancelText={t('label.no')}
+          okText={t('label.yes')}
+          open={isResetModalOpen}
+          title={t('label.reset-default-layout')}
+          onCancel={handleCloseResetModal}
+          onOk={handleReset}>
+          {t('message.reset-layout-confirmation')}
+        </Modal>
+      )}
+    </ActivityFeedProvider>
   );
 }
 

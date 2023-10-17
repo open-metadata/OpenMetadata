@@ -20,12 +20,16 @@ import {
   round,
   uniqueId,
 } from 'lodash';
+import React from 'react';
 import { Layout } from 'react-grid-layout';
+import EmptyWidgetPlaceholder from '../components/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
 import {
   LandingPageWidgetKeys,
   WidgetWidths,
 } from '../enums/CustomizablePage.enum';
 import { Document } from '../generated/entity/docStore/document';
+import { Thread } from '../generated/entity/feed/thread';
+import { EntityReference } from '../generated/entity/type';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import customizePageClassBase from './CustomizePageClassBase';
 
@@ -215,4 +219,54 @@ export const getFinalLandingPage = (
       },
     },
   };
+};
+
+export const getWidgetFromKey = ({
+  widgetConfig,
+  handleOpenAddWidgetModal,
+  handlePlaceholderWidgetKey,
+  handleRemoveWidget,
+  announcements,
+  followedDataCount,
+  followedData,
+  isLoadingOwnedData,
+}: {
+  widgetConfig: WidgetConfig;
+  handleOpenAddWidgetModal: () => void;
+  handlePlaceholderWidgetKey: (key: string) => void;
+  handleRemoveWidget: (key: string) => void;
+  announcements: Thread[];
+  followedData?: EntityReference[];
+  followedDataCount: number;
+  isLoadingOwnedData: boolean;
+}) => {
+  if (widgetConfig.i.endsWith('.EmptyWidgetPlaceholder')) {
+    return (
+      <EmptyWidgetPlaceholder
+        handleOpenAddWidgetModal={handleOpenAddWidgetModal}
+        handlePlaceholderWidgetKey={handlePlaceholderWidgetKey}
+        handleRemoveWidget={handleRemoveWidget}
+        isEditable={widgetConfig.isDraggable}
+        widgetKey={widgetConfig.i}
+      />
+    );
+  }
+  if (widgetConfig.i.startsWith(LandingPageWidgetKeys.RIGHT_PANEL)) {
+    return <div className="h-full border-left p-l-md" />;
+  }
+
+  const Widget = customizePageClassBase.getWidgetsFromKey(widgetConfig.i);
+
+  return (
+    <Widget
+      isEditView
+      announcements={announcements}
+      followedData={followedData ?? []}
+      followedDataCount={followedDataCount}
+      handleRemoveWidget={handleRemoveWidget}
+      isLoadingOwnedData={isLoadingOwnedData}
+      selectedGridSize={widgetConfig.w}
+      widgetKey={widgetConfig.i}
+    />
+  );
 };

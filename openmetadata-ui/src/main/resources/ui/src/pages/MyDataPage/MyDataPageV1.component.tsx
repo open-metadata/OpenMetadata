@@ -57,6 +57,9 @@ const MyDataPageV1 = () => {
   const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(true);
   const [layout, setLayout] = useState<Array<WidgetConfig>>([]);
+  const [rightPanelLayout, setRightPanelLayout] = useState<Array<WidgetConfig>>(
+    []
+  );
   const isMounted = useRef(false);
   const [showWelcomeScreen, setShowWelcomeScreen] = useState(false);
   const [isAnnouncementLoading, setIsAnnouncementLoading] =
@@ -80,12 +83,19 @@ const MyDataPageV1 = () => {
       if (!isEmpty(selectedPersona)) {
         const pageFQN = `${EntityType.PERSONA}.${selectedPersona.fullyQualifiedName}.${EntityType.PAGE}.${PageType.LandingPage}`;
         const pageData = await getDocumentByFQN(pageFQN);
-        setLayout(pageData.data.page.layout);
+        setLayout(pageData.data.page.mainPanelLayout);
+        setRightPanelLayout(pageData.data.page.rightPanelLayout);
       } else {
-        setLayout(customizePageClassBase.landingPageDefaultLayout);
+        setLayout(customizePageClassBase.landingPageLayout.mainPanelLayout);
+        setRightPanelLayout(
+          customizePageClassBase.landingPageLayout.rightPanelLayout
+        );
       }
     } catch {
-      setLayout(customizePageClassBase.landingPageDefaultLayout);
+      setLayout(customizePageClassBase.landingPageLayout.mainPanelLayout);
+      setRightPanelLayout(
+        customizePageClassBase.landingPageLayout.rightPanelLayout
+      );
     } finally {
       setIsLoading(false);
     }
@@ -162,7 +172,7 @@ const MyDataPageV1 = () => {
               followedDataCount={followedDataCount}
               isAnnouncementLoading={isAnnouncementLoading}
               isLoadingOwnedData={isLoadingOwnedData}
-              layoutConfigData={widgetConfig.data}
+              layout={rightPanelLayout}
               parentLayoutData={layout}
             />
           </div>
