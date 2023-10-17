@@ -1,10 +1,11 @@
 {
   "name": "DataInsightsReportApplication",
   "fullyQualifiedName": "DataInsightsReportApplication",
-  "displayName": "DataInsights Report Application",
+  "displayName": "Data Insights Report",
   "description": "Open-metadata Data Insights Report Application sends a data insight report.",
   "features": "Data Insights Application. Send Email Reports.",
   "appType": "internal",
+  "appScreenshots": ["DataInsightsReportPic1.png"],
   "developer": "Collate Inc.",
   "developerUrl": "https://www.getcollate.io",
   "privacyPolicyUrl": "https://www.getcollate.io",
