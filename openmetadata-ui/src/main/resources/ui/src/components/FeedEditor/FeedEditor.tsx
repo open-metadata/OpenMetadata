@@ -101,10 +101,15 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
           renderLoading: () => `${t('label.loading')}...`,
           renderItem: (item: Record<string, any>) => {
             if (!item.type) {
-              return `<div class="d-flex gap-2"> 
+              const userResult = `<div class="d-flex gap-2"> 
                 ${item.avatarEle}
                 <span class="d-flex items-center truncate w-56">${item.name}</span>
               </div>`;
+
+              const userWrapper = document.createElement('div');
+              userWrapper.innerHTML = userResult;
+
+              return userWrapper;
             }
 
             const breadcrumbsData = item.breadcrumbs
@@ -127,7 +132,7 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
               ? `<span class="text-grey-muted text-xs">${item.type}</span>`
               : '';
 
-            return `<div class="d-flex items-center gap-2">
+            const result = `<div class="d-flex items-center gap-2">
               <div class="flex-center mention-icon-image">${icon}</div>
               <div>
                 ${breadcrumbEle}
@@ -137,6 +142,11 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
                 </div>
               </div>
             </div>`;
+
+            const wrapper = document.createElement('div');
+            wrapper.innerHTML = result;
+
+            return wrapper;
           },
         },
         markdownOptions: {},

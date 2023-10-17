@@ -1917,6 +1917,7 @@ export const mockSearchData = {
 };
 
 export const MOCK_EXPLORE_PAGE_COUNT = {
+  [SearchIndex.DATA_PRODUCT]: 0,
   [SearchIndex.TABLE]: mockSearchData.hits.total.value,
   [SearchIndex.TOPIC]: 0,
   [SearchIndex.DASHBOARD]: 0,

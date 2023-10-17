@@ -109,3 +109,23 @@ export const getUserNames = (
 
   return getOwner(hasPermission, getEntityName(entity.owner), entity.owner);
 };
+
+export const getQueryFilterToIncludeDomain = (fqn: string) => ({
+  query: {
+    bool: {
+      must: [
+        {
+          bool: {
+            must: [
+              {
+                term: {
+                  'domain.fullyQualifiedName': fqn,
+                },
+              },
+            ],
+          },
+        },
+      ],
+    },
+  },
+});

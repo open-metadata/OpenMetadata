@@ -67,6 +67,7 @@ const props = {
   tabItems: MOCK_EXPLORE_TAB_ITEMS,
   activeTabKey: SearchIndex.TABLE,
   tabCounts: {
+    data_product_search_index: 0,
     table_search_index: 20,
     topic_search_index: 10,
     dashboard_search_index: 14,

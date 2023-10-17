@@ -101,7 +101,8 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
 
       if (
         source.entityType !== EntityType.GLOSSARY_TERM &&
-        source.entityType !== EntityType.TAG
+        source.entityType !== EntityType.TAG &&
+        source.entityType !== EntityType.DATA_PRODUCT
       ) {
         _otherDetails.push({
           key: 'Tier',

@@ -25,6 +25,7 @@ import { ChangeDescription } from '../../../generated/entity/type';
 import { searchData } from '../../../rest/miscAPI';
 import { getCountBadge, getFeedCounts } from '../../../utils/CommonUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
+import { getQueryFilterToExcludeTerm } from '../../../utils/GlossaryUtils';
 import { getGlossaryTermsVersionsPath } from '../../../utils/RouterUtils';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
@@ -321,6 +322,9 @@ const GlossaryTermsV1 = ({
         <AssetSelectionModal
           entityFqn={glossaryTerm.fullyQualifiedName}
           open={assetModalVisible}
+          queryFilter={getQueryFilterToExcludeTerm(
+            glossaryTerm.fullyQualifiedName
+          )}
           type={AssetsOfEntity.GLOSSARY}
           onCancel={() => setAssetModelVisible(false)}
           onSave={handleAssetSave}

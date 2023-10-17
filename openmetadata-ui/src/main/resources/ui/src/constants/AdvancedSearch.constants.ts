@@ -162,6 +162,17 @@ export const TAG_DROPDOWN_ITEMS = [
   },
 ];
 
+export const DATA_PRODUCT_DROPDOWN_ITEMS = [
+  {
+    label: t('label.domain'),
+    key: 'domain.displayName.keyword',
+  },
+  {
+    label: t('label.owner'),
+    key: 'owner.displayName.keyword',
+  },
+];
+
 export const ALL_DROPDOWN_ITEMS = [
   ...COMMON_DROPDOWN_ITEMS,
   ...TABLE_DROPDOWN_ITEMS,
