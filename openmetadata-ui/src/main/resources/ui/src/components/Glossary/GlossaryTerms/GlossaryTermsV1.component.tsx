@@ -189,30 +189,30 @@ const GlossaryTermsV1 = ({
                 />
               ),
             },
+            {
+              label: (
+                <TabsLabel
+                  id={EntityTabs.CUSTOM_PROPERTIES}
+                  name={t('label.custom-property-plural')}
+                />
+              ),
+              key: EntityTabs.CUSTOM_PROPERTIES,
+              children: (
+                <CustomPropertyTable
+                  entityDetails={isVersionView ? glossaryTerm : undefined}
+                  entityType={EntityType.GLOSSARY_TERM}
+                  handleExtensionUpdate={onExtensionUpdate}
+                  hasEditAccess={
+                    !isVersionView &&
+                    (permissions.EditAll || permissions.EditCustomFields)
+                  }
+                  hasPermission={permissions.ViewAll}
+                  isVersionView={isVersionView}
+                />
+              ),
+            },
           ]
         : []),
-      {
-        label: (
-          <TabsLabel
-            id={EntityTabs.CUSTOM_PROPERTIES}
-            name={t('label.custom-property-plural')}
-          />
-        ),
-        key: EntityTabs.CUSTOM_PROPERTIES,
-        children: (
-          <CustomPropertyTable
-            entityDetails={isVersionView ? glossaryTerm : undefined}
-            entityType={EntityType.GLOSSARY_TERM}
-            handleExtensionUpdate={onExtensionUpdate}
-            hasEditAccess={
-              !isVersionView &&
-              (permissions.EditAll || permissions.EditCustomFields)
-            }
-            hasPermission={permissions.ViewAll}
-            isVersionView={isVersionView}
-          />
-        ),
-      },
     ];
 
     return items;

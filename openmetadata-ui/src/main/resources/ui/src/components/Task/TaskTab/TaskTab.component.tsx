@@ -260,6 +260,10 @@ export const TaskTab = ({
       .then(() => {
         showSuccessToast(t('server.task-closed-successfully'));
         rest.onAfterClose?.();
+
+        if (isTaskGlossaryApproval) {
+          rest.onUpdateEntityDetails?.();
+        }
       })
       .catch((err: AxiosError) => showErrorToast(err));
   };
