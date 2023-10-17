@@ -24,7 +24,6 @@ import React, {
   useState,
 } from 'react';
 import { useHistory } from 'react-router-dom';
-import AppState from '../../AppState';
 import Loader from '../../components/Loader/Loader';
 import { REDIRECT_PATHNAME } from '../../constants/constants';
 import {
@@ -41,6 +40,7 @@ import {
   getOperationPermissions,
   getUIPermission,
 } from '../../utils/PermissionsUtils';
+import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 import {
   EntityPermissionMap,
   PermissionContextType,
@@ -67,6 +67,7 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
   const [permissions, setPermissions] = useState<UIPermission>(
     {} as UIPermission
   );
+  const { currentUser } = useAuthContext();
   const cookieStorage = new CookieStorage();
   const history = useHistory();
   const [loading, setLoading] = useState(false);
@@ -77,11 +78,6 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
   const [resourcesPermission, setResourcesPermission] = useState<UIPermission>(
     {} as UIPermission
   );
-
-  // Update current user details of AppState change
-  const currentUser = useMemo(() => {
-    return AppState.getCurrentUserDetails();
-  }, [AppState.userDetails, AppState.nonSecureUserDetails]);
 
   const redirectToStoredPath = useCallback(() => {
     const urlPathname = cookieStorage.getItem(REDIRECT_PATHNAME);
