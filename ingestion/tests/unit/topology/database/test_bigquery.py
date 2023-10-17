@@ -21,6 +21,7 @@ from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.ingestion.source.database.bigquery.lineage import BigqueryLineageSource
 from metadata.ingestion.source.database.bigquery.metadata import BigquerySource
 
 mock_bq_config = {
@@ -82,3 +83,18 @@ class BigqueryUnitTest(TestCase):
             ),
             EXPECTED_URL,
         )
+
+
+class BigqueryLineageSourceTest(TestCase):
+    @patch("metadata.ingestion.source.database.bigquery.connection.get_connection")
+    @patch("metadata.ingestion.source.database.bigquery.connection.test_connection")
+    @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata")
+    def __init__(self, methodName, get_connection, test_connection, OpenMetadata) -> None:
+        super().__init__(methodName)
+
+        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_bq_config)
+        self.bq_query_parser = BigqueryLineageSource(self.config.source, OpenMetadata())
+
+    def test_get_engine_without_project_id_specified(self):
+        for engine in self.bq_query_parser.get_engine():
+            assert engine is self.bq_query_parser.engine
