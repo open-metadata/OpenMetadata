@@ -26,11 +26,11 @@ const mockProps = {
       name: 'Pipeline 1',
       id: 'test-pipeline-1',
       type: 'pipeline',
+      fullyQualifiedName: 'sample_airflow/presto_etl',
     },
   ],
   onModalCancel: jest.fn(),
   onSave: jest.fn(),
-  onClear: jest.fn(),
   onRemoveEdgeClick: jest.fn(),
   onSearch: jest.fn(),
   onSelect: jest.fn(),
@@ -41,7 +41,7 @@ describe('Test CustomEdge Component', () => {
     render(<AddPipeLineModal {...mockProps} />);
 
     const edgeModal = await screen.findByTestId('add-edge-modal');
-    const fieldSelect = await screen.findByTestId('field-select');
+    const fieldSelect = await screen.findByTestId('field-input');
     const removeEdge = await screen.findByTestId('remove-edge-button');
     const saveButton = await screen.findByTestId('save-button');
 

@@ -95,6 +95,7 @@ const AddPipeLineModal = ({
       })}
       onCancel={onModalCancel}>
       <Input
+        data-testid="field-input"
         placeholder={t('message.search-for-edge')}
         value={edgeSearchValue}
         onChange={(e) => onSearch(e.target.value)}
