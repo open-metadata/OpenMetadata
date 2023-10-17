@@ -40,6 +40,7 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
@@ -47,9 +48,13 @@ import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.AppType;
 import org.openmetadata.schema.entity.app.CreateApp;
 import org.openmetadata.schema.entity.app.ScheduleType;
+import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
+import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.sdk.PipelineServiceClient;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -58,13 +63,20 @@ import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.secrets.SecretsManager;
+import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.ResultList;
 import org.quartz.SchedulerException;
 
@@ -80,6 +92,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
   private PipelineServiceClient pipelineServiceClient;
   static final String FIELDS = "owner";
   private SearchRepository searchRepository;
+
+  private final Authorizer authorizer;
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
@@ -132,6 +146,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
 
   public AppResource(Authorizer authorizer) {
     super(Entity.APPLICATION, authorizer);
+    this.authorizer = authorizer;
   }
 
   public static class AppList extends ResultList<App> {
@@ -504,11 +519,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
     App app = repository.getByName(uriInfo, name, new EntityUtil.Fields(repository.getAllowedFields()));
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
       ApplicationHandler.scheduleApplication(app, repository.getDaoCollection(), searchRepository);
-      if (app.getAppType().equals(AppType.Internal)) {
-        Response.status(Response.Status.OK).entity("App Scheduled to Scheduler successfully.");
-      } else {
-        Response.status(Response.Status.OK).entity("App is External, Use Ingestion for scheduling App pipeline.");
-      }
+      return Response.status(Response.Status.OK).entity("App is Scheduled.").build();
     }
     throw new IllegalArgumentException("App is not of schedule type Scheduled.");
   }
@@ -530,13 +541,50 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the App", schema = @Schema(type = "string")) @PathParam("name") String name) {
-    EntityUtil.Fields fields = getFields(String.format("%s,%s", FIELD_OWNER, "bot"));
+    EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNER));
     App app = repository.getByName(uriInfo, name, fields);
     if (app.getAppType().equals(AppType.Internal)) {
       ApplicationHandler.triggerApplicationOnDemand(app, Entity.getCollectionDAO(), searchRepository);
       return Response.status(Response.Status.OK).entity("Application Triggered").build();
+    } else {
+      if (!app.getPipelines().isEmpty()) {
+        EntityReference pipelineRef = app.getPipelines().get(0);
+        IngestionPipelineRepository ingestionPipelineRepository =
+            (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+
+        IngestionPipeline ingestionPipeline =
+            ingestionPipelineRepository.get(
+                uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNER));
+        ingestionPipeline.setOpenMetadataServerConnection(
+            new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, app.getBot().getName()).build());
+        decryptOrNullify(securityContext, ingestionPipeline, true);
+        ServiceEntityInterface service = Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
+        PipelineServiceClientResponse response = pipelineServiceClient.runPipeline(ingestionPipeline, service);
+        return Response.status(response.getCode()).entity(response).build();
+      }
     }
     throw new BadRequestException("App Type is External. Please use Ingestion Triggers.");
+  }
+
+  private void decryptOrNullify(
+      SecurityContext securityContext, IngestionPipeline ingestionPipeline, boolean forceNotMask) {
+    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+    try {
+      authorizer.authorize(
+          securityContext,
+          new OperationContext(entityType, MetadataOperation.VIEW_ALL),
+          getResourceContextById(ingestionPipeline.getId()));
+    } catch (AuthorizationException e) {
+      ingestionPipeline.getSourceConfig().setConfig(null);
+    }
+    secretsManager.decryptIngestionPipeline(ingestionPipeline);
+    OpenMetadataConnection openMetadataServerConnection =
+        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build();
+    ingestionPipeline.setOpenMetadataServerConnection(
+        secretsManager.encryptOpenMetadataConnection(openMetadataServerConnection, false));
+    if (authorizer.shouldMaskPasswords(securityContext) && !forceNotMask) {
+      EntityMaskerFactory.getEntityMasker().maskIngestionPipeline(ingestionPipeline);
+    }
   }
 
   private App getApplication(

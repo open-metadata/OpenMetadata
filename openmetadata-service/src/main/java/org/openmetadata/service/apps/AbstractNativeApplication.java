@@ -6,16 +6,29 @@ import static org.openmetadata.service.apps.scheduler.AppScheduler.SEARCH_CLIENT
 import static org.openmetadata.service.exception.CatalogExceptionMessage.INVALID_APP_TYPE;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.LIVE_APP_SCHEDULE_ERR;
 
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.AppRuntime;
+import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppType;
+import org.openmetadata.schema.entity.app.ExternalAppIngestionConfig;
 import org.openmetadata.schema.entity.app.ScheduleType;
 import org.openmetadata.schema.entity.app.ScheduledExecutionContext;
+import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.ProviderType;
+import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 
@@ -62,7 +75,60 @@ public class AbstractNativeApplication implements NativeApplication {
   public void initializeExternalApp() {
     if (app.getAppType() == AppType.External && app.getScheduleType().equals(ScheduleType.Scheduled)) {
       // Init Application Code for Some Initialization
-      this.init(app, collectionDAO, searchRepository);
+      List<CollectionDAO.EntityRelationshipRecord> records =
+          collectionDAO
+              .relationshipDAO()
+              .findTo(app.getId(), Entity.APPLICATION, Relationship.CONTAINS.ordinal(), Entity.INGESTION_PIPELINE);
+      if (!records.isEmpty()) {
+        return;
+      }
+
+      try {
+        ExternalAppIngestionConfig ingestionConfig =
+            JsonUtils.convertValue(app.getAppConfiguration(), ExternalAppIngestionConfig.class);
+
+        IngestionPipelineRepository ingestionPipelineRepository =
+            (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+        EntityRepository<?> serviceRepository =
+            Entity.getServiceEntityRepository(ServiceType.fromValue(ingestionConfig.getService().getType()));
+        EntityReference service =
+            serviceRepository
+                .getByName(null, ingestionConfig.getService().getName(), serviceRepository.getFields("id"))
+                .getEntityReference();
+
+        CreateIngestionPipeline createPipelineRequest =
+            new CreateIngestionPipeline()
+                .withName(ingestionConfig.getName())
+                .withDisplayName(ingestionConfig.getDisplayName())
+                .withDescription(ingestionConfig.getDescription())
+                .withPipelineType(ingestionConfig.getPipelineType())
+                .withSourceConfig(ingestionConfig.getSourceConfig())
+                .withAirflowConfig(ingestionConfig.getAirflowConfig())
+                .withService(service);
+
+        // Get Pipeline
+        IngestionPipeline dataInsightPipeline =
+            getIngestionPipeline(createPipelineRequest, String.format("%sBot", app.getName()), "admin")
+                .withProvider(ProviderType.SYSTEM);
+        ingestionPipelineRepository.setFullyQualifiedName(dataInsightPipeline);
+        ingestionPipelineRepository.initializeEntity(dataInsightPipeline);
+
+        // Add Ingestion Pipeline to Application
+        collectionDAO
+            .relationshipDAO()
+            .insert(
+                app.getId(),
+                dataInsightPipeline.getId(),
+                Entity.APPLICATION,
+                Entity.INGESTION_PIPELINE,
+                Relationship.CONTAINS.ordinal());
+
+      } catch (Exception ex) {
+        LOG.error("[IngestionPipelineResource] Failed in Creating Reindex and Insight Pipeline", ex);
+        LOG.error("Failed to initialize DataInsightApp", ex);
+        throw new RuntimeException(ex);
+      }
+
       return;
     }
     throw new IllegalArgumentException(INVALID_APP_TYPE);
@@ -98,5 +164,21 @@ public class AbstractNativeApplication implements NativeApplication {
 
   public static AppRuntime getAppRuntime(App app) {
     return JsonUtils.convertValue(app.getRuntime(), ScheduledExecutionContext.class);
+  }
+
+  private IngestionPipeline getIngestionPipeline(CreateIngestionPipeline create, String botname, String user) {
+    IngestionPipelineRepository ingestionPipelineRepository =
+        (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+    OpenMetadataConnection openMetadataServerConnection =
+        new OpenMetadataConnectionBuilder(ingestionPipelineRepository.getOpenMetadataApplicationConfig(), botname)
+            .build();
+    return ingestionPipelineRepository
+        .copy(new IngestionPipeline(), create, user)
+        .withPipelineType(create.getPipelineType())
+        .withAirflowConfig(create.getAirflowConfig())
+        .withOpenMetadataServerConnection(openMetadataServerConnection)
+        .withSourceConfig(create.getSourceConfig())
+        .withLoggerLevel(create.getLoggerLevel())
+        .withService(create.getService());
   }
 }
