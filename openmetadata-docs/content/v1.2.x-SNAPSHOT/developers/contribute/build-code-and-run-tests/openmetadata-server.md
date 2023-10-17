@@ -24,8 +24,8 @@ docker compose -f docker/development/docker-compose-postgres.yml up postgresql e
   2. Extract the distribution tar.gz file and run the following command
 
 ```shell
-cd open-metadata-<version>/bootstrap
-sh bootstrap_storage.sh drop-create-all
+cd open-metadata-<version>
+sh bootstrap/bootstrap_storage.sh drop-create-all
 ```
 
 - Bootstrap ES with indexes and load sample data into MySQL
