@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { CheckOutlined } from '@ant-design/icons';
-import { Dropdown, Tag, Tooltip, Typography } from 'antd';
+import { Dropdown, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { isEmpty } from 'lodash';
 import React, {
@@ -126,12 +126,6 @@ export const UserProfileIcon = () => {
     };
   }, [currentUser]);
 
-  const readMoreTag = (count: number) => (
-    <Tag>
-      {count} {t('label.more')}
-    </Tag>
-  );
-
   const personaLabelRenderer = useCallback(
     (item: EntityReference) => (
       <span onClick={() => handleSelectedPersonaChange(item)}>
@@ -194,7 +188,7 @@ export const UserProfileIcon = () => {
         children: renderLimitedListMenuItem({
           listItems: roles ?? [],
           labelRenderer: getEntityName,
-          readMoreLabelRenderer: readMoreTag,
+          readMoreLabelRenderer: readMoreTeamRenderer,
           readMoreKey: 'more-roles',
         }),
         label: (
@@ -213,7 +207,7 @@ export const UserProfileIcon = () => {
         children: renderLimitedListMenuItem({
           listItems: inheritedRoles ?? [],
           labelRenderer: getEntityName,
-          readMoreLabelRenderer: readMoreTag,
+          readMoreLabelRenderer: readMoreTeamRenderer,
           readMoreKey: 'more-inherited-roles',
         }),
         label: (
@@ -233,7 +227,7 @@ export const UserProfileIcon = () => {
           listItems: personas ?? [],
           readMoreKey: 'more-persona',
           labelRenderer: personaLabelRenderer,
-          readMoreLabelRenderer: readMoreTag,
+          readMoreLabelRenderer: readMoreTeamRenderer,
         }),
         label: (
           <span className="text-grey-muted text-xs">
