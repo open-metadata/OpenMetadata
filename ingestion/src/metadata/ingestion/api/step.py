@@ -68,13 +68,14 @@ class ReturnStep(Step, ABC):
         """
         try:
             result: Either = self._run(record)
-            if result.left is not None:
-                self.status.failed(result.left)
-                return None
+            if result:
+                if result.left is not None:
+                    self.status.failed(result.left)
+                    return None
 
-            if result.right is not None:
-                self.status.scanned(result.right)
-                return result.right
+                if result.right is not None:
+                    self.status.scanned(result.right)
+                    return result.right
         except WorkflowFatalError as err:
             logger.error(f"Fatal error running step [{self}]: [{err}]")
             raise err

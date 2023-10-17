@@ -75,9 +75,10 @@ def get_query_type(create_query) -> Optional[str]:
         query_type = None
         if create_query.query_type:
             query_type = _get_query_type_from_name(create_query=create_query)
-        else:
+        if query_type is None or create_query.query_type is None:
             query_type = _get_query_type_from_regex(create_query=create_query)
-        return query_type.lower()
+        if query_type:
+            return query_type.lower()
 
     except Exception as exc:
         logger.debug(traceback.format_exc())
