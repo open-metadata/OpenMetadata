@@ -18,13 +18,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - main 
-      - '0.[0-9]+.[0-9]+'
-      - '1.[0-9]+[0-9]+'
-    paths-ignore:
-      - 'openmetadata-docs/**'
-  pull_request_target:
-    types: [labeled, opened, synchronize, reopened]
+      - main
     paths-ignore:
       - 'openmetadata-docs/**'
 
@@ -41,7 +35,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        job: [0]
+        job: [0, 1, 2]
     environment: test
     steps:
       - name: Free Disk Space (Ubuntu)
