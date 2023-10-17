@@ -21,7 +21,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { Responsive, WidthProvider } from 'react-grid-layout';
+import RGL, { WidthProvider } from 'react-grid-layout';
 import { useLocation } from 'react-router-dom';
 import AppState from '../../AppState';
 import ActivityFeedProvider from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
@@ -45,7 +45,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import { WidgetConfig } from '../CustomizablePage/CustomizablePage.interface';
 import './my-data.less';
 
-const ResponsiveGridLayout = WidthProvider(Responsive);
+const ReactGridLayout = WidthProvider(RGL);
 
 const MyDataPageV1 = () => {
   const location = useLocation();
@@ -245,12 +245,10 @@ const MyDataPageV1 = () => {
         {isLoading ? (
           <Loader />
         ) : (
-          <ResponsiveGridLayout
-            autoSize
-            breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
+          <ReactGridLayout
             className="bg-white"
-            cols={{ lg: 4, md: 4, sm: 4, xs: 4, xxs: 4 }}
-            draggableHandle=".drag-widget-icon"
+            cols={4}
+            isDraggable={false}
             isResizable={false}
             margin={[
               customizePageClassBase.landingPageWidgetMargin,
@@ -258,7 +256,7 @@ const MyDataPageV1 = () => {
             ]}
             rowHeight={100}>
             {widgets}
-          </ResponsiveGridLayout>
+          </ReactGridLayout>
         )}
       </ActivityFeedProvider>
     </div>
