@@ -206,7 +206,7 @@ const ExplorePageV1: FunctionComponent = () => {
       if (isNil(tabInfo)) {
         const activeKey = findActiveSearchIndex(searchHitCounts);
 
-        return activeKey ? activeKey : SearchIndex.DATA_PRODUCT;
+        return activeKey ?? SearchIndex.DATA_PRODUCT;
       }
 
       return tabInfo[0] as ExploreSearchIndex;
@@ -313,7 +313,7 @@ const ExplorePageV1: FunctionComponent = () => {
     setIsLoading(true);
     Promise.all([
       searchQuery({
-        query: escapeESReservedCharacters(searchQueryParam),
+        query: `*${escapeESReservedCharacters(searchQueryParam)}*`,
         searchIndex,
         queryFilter: combinedQueryFilter,
         sortField: sortValue,
@@ -343,7 +343,7 @@ const ExplorePageV1: FunctionComponent = () => {
           SearchIndex.SEARCH_INDEX,
         ].map((index) =>
           searchQuery({
-            query: escapeESReservedCharacters(searchQueryParam),
+            query: `*${escapeESReservedCharacters(searchQueryParam)}*`,
             pageNumber: 0,
             pageSize: 0,
             queryFilter: combinedQueryFilter,
