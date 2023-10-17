@@ -15,6 +15,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -51,6 +52,7 @@ import org.openmetadata.schema.entity.app.CreateApp;
 import org.openmetadata.schema.entity.app.ScheduleType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
@@ -267,8 +269,12 @@ public class AppResource extends EntityResource<App, AppRepository> {
         IngestionPipeline ingestionPipeline =
             ingestionPipelineRepository.get(
                 uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNER));
+        PipelineStatus latestPipelineStatus = ingestionPipelineRepository.getLatestPipelineStatus(ingestionPipeline);
         Map<String, String> lastIngestionLogs = pipelineServiceClient.getLastIngestionLogs(ingestionPipeline, after);
-        return Response.ok(lastIngestionLogs, MediaType.APPLICATION_JSON_TYPE).build();
+        Map<String, Object> appRun = new HashMap<>();
+        appRun.put("pipelineStatus", latestPipelineStatus);
+        appRun.put("lastIngestionLogs", lastIngestionLogs);
+        return Response.ok(appRun, MediaType.APPLICATION_JSON_TYPE).build();
       }
     }
     throw new BadRequestException("Failed to Get Logs for the Installation.");
