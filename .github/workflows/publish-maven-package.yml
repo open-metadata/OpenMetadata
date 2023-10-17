@@ -22,6 +22,7 @@ on:
       - "openmetadata-spec/src/main/resources/json/schema/**"
       - "openmetadata-clients/**"
       - "pom.xml"
+      - ".github/workflows/publish-maven-package.yml"
 
   release:
     types:
@@ -84,4 +85,5 @@ jobs:
             --no-transfer-progress \
             --batch-mode \
             -Dgpg.passphrase=${{ secrets.OSSRH_GPG_SECRET_KEY_PASSWORD }} \
+            -pl \!openmetadata-shaded-deps \
             -DskipTests -Prelease clean deploy
