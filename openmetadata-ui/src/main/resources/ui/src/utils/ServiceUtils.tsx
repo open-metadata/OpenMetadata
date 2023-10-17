@@ -88,6 +88,7 @@ import {
   TOPIC_DEFAULT,
   TRINO,
   VERTICA,
+  MSTR,
 } from '../constants/Services.constant';
 import { PROMISE_STATE } from '../enums/common.enum';
 import { EntityType } from '../enums/entity.enum';
@@ -267,6 +268,9 @@ export const serviceTypeLogo = (type: string) => {
 
     case DashboardServiceType.Lightdash:
       return LIGHT_DASH;
+
+    case DashboardServiceType.Mstr:
+      return MSTR;
 
     case PipelineServiceType.Airflow:
       return AIRFLOW;

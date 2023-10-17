@@ -29,6 +29,7 @@ import quicksightConnection from '../jsons/connectionSchemas/connections/dashboa
 import redashConnection from '../jsons/connectionSchemas/connections/dashboard/redashConnection.json';
 import supersetConnection from '../jsons/connectionSchemas/connections/dashboard/supersetConnection.json';
 import tableauConnection from '../jsons/connectionSchemas/connections/dashboard/tableauConnection.json';
+import mstrConnection from '../jsons/connectionSchemas/connections/dashboard/mstrConnection.json';
 
 export const getDashboardURL = (config: DashboardConnection['config']) => {
   return !isUndefined(config) && !isEmpty(config.hostPort)
@@ -100,6 +101,12 @@ export const getDashboardConfig = (type: DashboardServiceType) => {
 
     case DashboardServiceType.Lightdash: {
       schema = lightdashConnection;
+
+      break;
+    }
+
+    case DashboardServiceType.Mstr: {
+      schema = mstrConnection;
 
       break;
     }
