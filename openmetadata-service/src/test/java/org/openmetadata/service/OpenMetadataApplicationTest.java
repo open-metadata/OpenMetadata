@@ -16,15 +16,11 @@ package org.openmetadata.service;
 import static java.lang.String.format;
 import static org.openmetadata.service.util.TablesInitializer.validateAndRunSystemDataMigrations;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import es.org.elasticsearch.client.RestClient;
 import io.dropwizard.jersey.jackson.JacksonFeature;
 import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
-
-import java.io.File;
 import java.util.HashSet;
 import java.util.Set;
 import javax.ws.rs.client.Client;
@@ -118,7 +114,6 @@ public abstract class OpenMetadataApplicationTest {
             .load();
     flyway.clean();
     flyway.migrate();
-
 
     ELASTIC_SEARCH_CONTAINER = new ElasticsearchContainer(elasticSearchContainerImage);
     if (RUN_ELASTIC_SEARCH_TESTCASES) {
