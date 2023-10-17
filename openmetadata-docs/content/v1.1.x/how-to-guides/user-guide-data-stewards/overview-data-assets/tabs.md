@@ -78,6 +78,8 @@ alt="Column Profile of a Table"
 caption="Column Profile of a Table"
 /%}
 
+Check for more detailed information on the [Profiler and Data Quality Tab](/how-to-guides/openmetadata/data-quality-profiler/tab).
+
 ## Lineage Tab
 
 The lineage tab is displayed for all types of data assets. The lineage view displays comprehensive lineage to capture the relation between the data assets. OpenMetadata UI displays end-to-end lineage traceability for the table and column levels. It displays both the upstream and downstream dependencies for each node.
