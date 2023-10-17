@@ -166,6 +166,10 @@ export const TaskTab = ({
       .then(() => {
         showSuccessToast(t('server.task-resolved-successfully'));
         rest.onAfterClose?.();
+
+        if (isTaskGlossaryApproval) {
+          rest.onUpdateEntityDetails?.();
+        }
       })
       .catch((err: AxiosError) => showErrorToast(err));
   };
@@ -271,7 +275,7 @@ export const TaskTab = ({
         <Tooltip
           title={
             !hasApprovalAccess
-              ? t('message.only-reviewers-can-accept-or-reject')
+              ? t('message.only-reviewers-can-approve-or-reject')
               : ''
           }>
           <Button
@@ -285,7 +289,7 @@ export const TaskTab = ({
         <Tooltip
           title={
             !hasApprovalAccess
-              ? t('message.only-reviewers-can-accept-or-reject')
+              ? t('message.only-reviewers-can-approve-or-reject')
               : ''
           }>
           <Button

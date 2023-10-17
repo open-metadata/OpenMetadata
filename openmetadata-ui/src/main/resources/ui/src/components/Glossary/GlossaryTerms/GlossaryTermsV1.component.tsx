@@ -13,7 +13,6 @@
 
 import { Col, Row, Tabs } from 'antd';
 import { t } from 'i18next';
-import { noop } from 'lodash';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { getGlossaryTermDetailsPath } from '../../../constants/constants';
@@ -34,32 +33,14 @@ import { getGlossaryTermsVersionsPath } from '../../../utils/RouterUtils';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { AssetSelectionModal } from '../../Assets/AssetsSelectionModal/AssetSelectionModal';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
-import { EntityDetailsObjectInterface } from '../../Explore/explore.interface';
-import { OperationPermission } from '../../PermissionProvider/PermissionProvider.interface';
 import TabsLabel from '../../TabsLabel/TabsLabel.component';
-import { VotingDataProps } from '../../Voting/voting.interface';
 import { GlossaryTabs } from '../GlossaryDetails/GlossaryDetails.interface';
 import GlossaryHeader from '../GlossaryHeader/GlossaryHeader.component';
 import GlossaryTermTab from '../GlossaryTermTab/GlossaryTermTab.component';
+import { GlossaryTermsV1Props } from './GlossaryTermsV1.interface';
 import AssetsTabs, { AssetsTabRef } from './tabs/AssetsTabs.component';
 import { AssetsOfEntity } from './tabs/AssetsTabs.interface';
 import GlossaryOverviewTab from './tabs/GlossaryOverviewTab.component';
-
-type Props = {
-  isVersionView?: boolean;
-  permissions: OperationPermission;
-  glossaryTerm: GlossaryTerm;
-  childGlossaryTerms: GlossaryTerm[];
-  handleGlossaryTermUpdate: (data: GlossaryTerm) => Promise<void>;
-  handleGlossaryTermDelete: (id: string) => void;
-  refreshGlossaryTerms: () => void;
-  onAssetClick?: (asset?: EntityDetailsObjectInterface) => void;
-  isSummaryPanelOpen: boolean;
-  termsLoading: boolean;
-  onAddGlossaryTerm: (glossaryTerm: GlossaryTerm | undefined) => void;
-  onEditGlossaryTerm: (glossaryTerm: GlossaryTerm) => void;
-  updateVote?: (data: VotingDataProps) => Promise<void>;
-};
 
 const GlossaryTermsV1 = ({
   glossaryTerm,
@@ -74,8 +55,9 @@ const GlossaryTermsV1 = ({
   onAddGlossaryTerm,
   onEditGlossaryTerm,
   updateVote,
+  refreshActiveGlossaryTerm,
   isVersionView,
-}: Props) => {
+}: GlossaryTermsV1Props) => {
   const {
     fqn: glossaryFqn,
     tab,
@@ -203,7 +185,7 @@ const GlossaryTermsV1 = ({
                   entityType={EntityType.GLOSSARY_TERM}
                   fqn={glossaryTerm.fullyQualifiedName ?? ''}
                   onFeedUpdate={getEntityFeedCount}
-                  onUpdateEntityDetails={noop}
+                  onUpdateEntityDetails={refreshActiveGlossaryTerm}
                 />
               ),
             },

@@ -1419,7 +1419,7 @@
     "onboarding-claim-ownership-description": "Les données fonctionnent mieux lorsqu'elles sont possédées. Revoyez les ressources de données que vous possédez et revendiquez la propriété.",
     "onboarding-explore-data-description": "Découvrez les ressources de données populaires dans votre organisation.",
     "onboarding-stay-up-to-date-description": "Suivez les ressources de données que vous utilisez fréquemment pour rester informé à leur sujet.",
-    "only-reviewers-can-accept-or-reject": "Only Reviewers can accept or reject",
+    "only-reviewers-can-approve-or-reject": "Only Reviewers can Approve or Reject",
     "optional-configuration-update-description-dbt": "Configuration optionnelle pour mettre à jour la description à partir de dbt ou non",
     "page-is-not-available": "La page que vous recherchez n'est pas disponible",
     "page-sub-header-for-activity-feed": "Fil d'activité qui vous permet de voir un résumé des événements de modification des données.",

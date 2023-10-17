@@ -1419,7 +1419,7 @@
     "onboarding-claim-ownership-description": "Data works well when it is owned. Take a look at the data assets that you own and claim ownership.",
     "onboarding-explore-data-description": "Look at the popular data assets in your organization.",
     "onboarding-stay-up-to-date-description": "Follow the datasets that you frequently use to stay informed about it.",
-    "only-reviewers-can-accept-or-reject": "Only Reviewers can accept or reject",
+    "only-reviewers-can-approve-or-reject": "Only Reviewers can Approve or Reject",
     "optional-configuration-update-description-dbt": "Optional configuration to update the description from dbt or not",
     "page-is-not-available": "The page you are looking for is not available",
     "page-sub-header-for-activity-feed": "Activity feed that enables you view a summary of data change events.",
