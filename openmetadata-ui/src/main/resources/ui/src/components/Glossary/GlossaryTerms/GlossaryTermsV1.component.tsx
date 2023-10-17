@@ -20,13 +20,16 @@ import { getGlossaryTermDetailsPath } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { myDataSearchIndex } from '../../../constants/Mydata.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
-import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
+import {
+  GlossaryTerm,
+  Status,
+} from '../../../generated/entity/data/glossaryTerm';
 import { ChangeDescription } from '../../../generated/entity/type';
+import { MOCK_GLOSSARY_NO_PERMISSIONS } from '../../../mocks/Glossary.mock';
 import { searchData } from '../../../rest/miscAPI';
 import { getCountBadge, getFeedCounts } from '../../../utils/CommonUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import { getGlossaryTermsVersionsPath } from '../../../utils/RouterUtils';
-import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { AssetSelectionModal } from '../../Assets/AssetsSelectionModal/AssetSelectionModal';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
@@ -83,6 +86,14 @@ const GlossaryTermsV1 = ({
   const [feedCount, setFeedCount] = useState<number>(0);
   const [assetCount, setAssetCount] = useState<number>(0);
 
+  const assetPermissions = useMemo(() => {
+    const glossaryTermStatus = glossaryTerm.status ?? Status.Approved;
+
+    return glossaryTermStatus === Status.Approved
+      ? permissions
+      : MOCK_GLOSSARY_NO_PERMISSIONS;
+  }, [glossaryTerm, permissions]);
+
   const activeTab = useMemo(() => {
     return tab ?? 'overview';
   }, [tab]);
@@ -98,7 +109,7 @@ const GlossaryTermsV1 = ({
   const getEntityFeedCount = () => {
     getFeedCounts(
       EntityType.GLOSSARY_TERM,
-      getEncodedFqn(glossaryTerm.fullyQualifiedName ?? ''),
+      glossaryTerm.fullyQualifiedName ?? '',
       setFeedCount
     );
   };
@@ -169,7 +180,7 @@ const GlossaryTermsV1 = ({
                 <AssetsTabs
                   assetCount={assetCount}
                   isSummaryPanelOpen={isSummaryPanelOpen}
-                  permissions={permissions}
+                  permissions={assetPermissions}
                   ref={assetTabRef}
                   onAddAsset={() => setAssetModelVisible(true)}
                   onAssetClick={onAssetClick}
@@ -231,6 +242,7 @@ const GlossaryTermsV1 = ({
     feedCount,
     isSummaryPanelOpen,
     isVersionView,
+    assetPermissions,
   ]);
 
   const fetchGlossaryTermAssets = async () => {
