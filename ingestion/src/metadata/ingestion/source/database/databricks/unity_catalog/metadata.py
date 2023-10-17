@@ -462,7 +462,7 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
             parsed_string = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
                 column.type_text.lower()
             )
-            parsed_string["name"] = column.name[:64]
+            parsed_string["name"] = column.name[:256]
             parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
             parsed_string["description"] = column.comment
             parsed_column = Column(**parsed_string)
