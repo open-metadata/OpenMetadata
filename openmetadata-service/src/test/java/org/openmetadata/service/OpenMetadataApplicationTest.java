@@ -16,11 +16,15 @@ package org.openmetadata.service;
 import static java.lang.String.format;
 import static org.openmetadata.service.util.TablesInitializer.validateAndRunSystemDataMigrations;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import es.org.elasticsearch.client.RestClient;
 import io.dropwizard.jersey.jackson.JacksonFeature;
 import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
+
+import java.io.File;
 import java.util.HashSet;
 import java.util.Set;
 import javax.ws.rs.client.Client;
@@ -89,6 +93,7 @@ public abstract class OpenMetadataApplicationTest {
     if (CommonUtil.nullOrEmpty(elasticSearchContainerImage)) {
       elasticSearchContainerImage = ELASTIC_SEARCH_CONTAINER_IMAGE;
     }
+    OpenMetadataApplicationConfig config = new OpenMetadataApplicationConfig();
     // The system properties are provided by maven-surefire for testing with mysql and postgres
     LOG.info("Using test container class {} and image {}", jdbcContainerClassName, jdbcContainerImage);
 
@@ -114,6 +119,7 @@ public abstract class OpenMetadataApplicationTest {
     flyway.clean();
     flyway.migrate();
 
+
     ELASTIC_SEARCH_CONTAINER = new ElasticsearchContainer(elasticSearchContainerImage);
     if (RUN_ELASTIC_SEARCH_TESTCASES) {
       ELASTIC_SEARCH_CONTAINER.start();
@@ -131,7 +137,6 @@ public abstract class OpenMetadataApplicationTest {
 
     ConfigOverride[] configOverridesArray = configOverrides.toArray(new ConfigOverride[0]);
     APP = new DropwizardAppExtension<>(OpenMetadataApplication.class, CONFIG_PATH, configOverridesArray);
-
     // Run System Migrations
     jdbi = Jdbi.create(sqlContainer.getJdbcUrl(), sqlContainer.getUsername(), sqlContainer.getPassword());
     jdbi.installPlugin(new SqlObjectPlugin());
@@ -139,7 +144,7 @@ public abstract class OpenMetadataApplicationTest {
         .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(sqlContainer.getDriverClassName()));
     validateAndRunSystemDataMigrations(
         jdbi,
-        APP.getConfiguration(),
+        config,
         ConnectionType.from(sqlContainer.getDriverClassName()),
         nativeMigrationScripsLocation,
         null,
