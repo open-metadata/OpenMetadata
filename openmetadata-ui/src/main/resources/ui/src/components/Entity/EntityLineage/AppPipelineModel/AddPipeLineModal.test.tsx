@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -26,11 +26,11 @@ const mockProps = {
       name: 'Pipeline 1',
       id: 'test-pipeline-1',
       type: 'pipeline',
+      fullyQualifiedName: 'sample_airflow/presto_etl',
     },
   ],
   onModalCancel: jest.fn(),
   onSave: jest.fn(),
-  onClear: jest.fn(),
   onRemoveEdgeClick: jest.fn(),
   onSearch: jest.fn(),
   onSelect: jest.fn(),
@@ -41,7 +41,7 @@ describe('Test CustomEdge Component', () => {
     render(<AddPipeLineModal {...mockProps} />);
 
     const edgeModal = await screen.findByTestId('add-edge-modal');
-    const fieldSelect = await screen.findByTestId('field-select');
+    const fieldSelect = await screen.findByTestId('field-input');
     const removeEdge = await screen.findByTestId('remove-edge-button');
     const saveButton = await screen.findByTestId('save-button');
 
