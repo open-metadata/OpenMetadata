@@ -228,7 +228,9 @@ export const StatusClass = {
   [Status.Deprecated]: StatusType.Warning,
 };
 
-export const StatusFilters = Object.values(Status).map((status) => ({
-  text: status,
-  value: status,
-}));
+export const StatusFilters = Object.values(Status)
+  .filter((status) => status !== Status.Deprecated) // Deprecated not in use for this release
+  .map((status) => ({
+    text: status,
+    value: status,
+  }));

@@ -22,7 +22,6 @@ import { EntityType } from '../../../enums/entity.enum';
 import { ChangeDescription } from '../../../generated/entity/type';
 import { getFeedCounts } from '../../../utils/CommonUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
-import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import DescriptionV1 from '../../common/description/DescriptionV1';
 import TabsLabel from '../../TabsLabel/TabsLabel.component';
@@ -110,7 +109,7 @@ const GlossaryDetails = ({
   const getEntityFeedCount = () => {
     getFeedCounts(
       EntityType.GLOSSARY,
-      getEncodedFqn(glossary.fullyQualifiedName ?? ''),
+      glossary.fullyQualifiedName ?? '',
       setFeedCount
     );
   };

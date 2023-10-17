@@ -45,7 +45,7 @@ export const mockedGlossaryTerms = [
     updatedBy: 'anonymous',
     reviewers: [],
     tags: [],
-    status: 'Draft' as Status,
+    status: Status.Draft,
     deleted: false,
   },
   {
@@ -71,7 +71,7 @@ export const mockedGlossaryTerms = [
     updatedBy: 'anonymous',
     reviewers: [],
     tags: [],
-    status: 'Draft' as Status,
+    status: Status.Approved,
     deleted: false,
   },
 ];
@@ -429,6 +429,13 @@ export const MOCK_PERMISSIONS = {
   ViewSampleData: true,
   ViewTests: true,
   ViewUsage: true,
+} as OperationPermission;
+
+export const MOCK_GLOSSARY_NO_PERMISSIONS = {
+  Create: false,
+  Delete: false,
+  EditAll: false,
+  ViewAll: true,
 } as OperationPermission;
 
 export const MOCKED_GLOSSARY_TERMS = [

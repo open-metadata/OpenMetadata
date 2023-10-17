@@ -250,6 +250,30 @@ export const getGlobalSettingsMenuWithPermission = (
       ],
     },
     {
+      category: i18next.t('label.open-metadata'),
+      key: 'openMetadata',
+      items: [
+        {
+          label: i18next.t('label.customize-landing-page'),
+          isProtected: Boolean(isAdminUser),
+          key: 'openMetadata.customizeLandingPage',
+          icon: <CustomDashboardLogoIcon className="w-4 side-panel-icons" />,
+        },
+        {
+          label: i18next.t('label.email'),
+          isProtected: Boolean(isAdminUser),
+          key: 'openMetadata.email',
+          icon: <EmailSettingsIcon className="w-4 side-panel-icons" />,
+        },
+        {
+          label: i18next.t('label.custom-logo'),
+          isProtected: Boolean(isAdminUser),
+          key: 'openMetadata.customLogo',
+          icon: <CustomLogoIcon className="w-4 side-panel-icons" />,
+        },
+      ],
+    },
+    {
       category: i18next.t('label.custom-attribute-plural'),
       key: 'customAttributes',
       items: [
@@ -318,30 +342,6 @@ export const getGlobalSettingsMenuWithPermission = (
           isProtected: Boolean(isAdminUser),
           key: 'customAttributes.glossaryTerm',
           icon: <GlossaryIcon className="side-panel-icons" />,
-        },
-      ],
-    },
-    {
-      category: i18next.t('label.open-metadata'),
-      key: 'openMetadata',
-      items: [
-        {
-          label: i18next.t('label.customize-landing-page'),
-          isProtected: Boolean(isAdminUser),
-          key: 'openMetadata.customizeLandingPage',
-          icon: <CustomDashboardLogoIcon className="w-4 side-panel-icons" />,
-        },
-        {
-          label: i18next.t('label.email'),
-          isProtected: Boolean(isAdminUser),
-          key: 'openMetadata.email',
-          icon: <EmailSettingsIcon className="w-4 side-panel-icons" />,
-        },
-        {
-          label: i18next.t('label.custom-logo'),
-          isProtected: Boolean(isAdminUser),
-          key: 'openMetadata.customLogo',
-          icon: <CustomLogoIcon className="w-4 side-panel-icons" />,
         },
       ],
     },

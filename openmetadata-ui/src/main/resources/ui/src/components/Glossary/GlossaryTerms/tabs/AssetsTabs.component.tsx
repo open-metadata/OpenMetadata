@@ -446,7 +446,11 @@ const AssetsTabs = forwardRef(
               doc={GLOSSARIES_DOCS}
               heading={t('label.asset')}
               permission={permissions.Create}
-              type={ERROR_PLACEHOLDER_TYPE.CREATE}
+              type={
+                permissions.Create
+                  ? ERROR_PLACEHOLDER_TYPE.CREATE
+                  : ERROR_PLACEHOLDER_TYPE.NO_DATA
+              }
               onClick={onAddAsset}
             />
           )}

@@ -137,6 +137,14 @@ const GlossaryHeader = ({
     }
   };
 
+  const glossaryTermStatus: Status | null = useMemo(() => {
+    if (!isGlossary) {
+      return (selectedData as GlossaryTerm).status ?? Status.Approved;
+    }
+
+    return null;
+  }, [isGlossary, selectedData]);
+
   const editDisplayNamePermission = useMemo(() => {
     return permissions.EditAll || permissions.EditDisplayName;
   }, [permissions]);
@@ -419,25 +427,29 @@ const GlossaryHeader = ({
           {t('label.add-entity', { entity: t('label.term-lowercase') })}
         </Button>
       ) : (
-        <Dropdown
-          className="m-l-xs"
-          menu={{
-            items: addButtonContent,
-          }}
-          placement="bottomRight"
-          trigger={['click']}>
-          <Button type="primary">
-            <Space>
-              {t('label.add')}
-              <DownOutlined />
-            </Space>
-          </Button>
-        </Dropdown>
+        <>
+          {glossaryTermStatus && glossaryTermStatus === Status.Approved && (
+            <Dropdown
+              className="m-l-xs"
+              menu={{
+                items: addButtonContent,
+              }}
+              placement="bottomRight"
+              trigger={['click']}>
+              <Button type="primary">
+                <Space>
+                  {t('label.add')}
+                  <DownOutlined />
+                </Space>
+              </Button>
+            </Dropdown>
+          )}
+        </>
       );
     }
 
     return null;
-  }, [isGlossary, permissions, addButtonContent]);
+  }, [isGlossary, permissions, addButtonContent, glossaryTermStatus]);
 
   /**
    * To create breadcrumb from the fqn
@@ -529,7 +541,7 @@ const GlossaryHeader = ({
                 </Button>
               )}
 
-              {!isVersionView && (
+              {!isVersionView && manageButtonContent.length > 0 && (
                 <Dropdown
                   align={{ targetOffset: [-12, 0] }}
                   className="m-l-xs"
