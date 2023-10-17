@@ -84,4 +84,5 @@ jobs:
             --no-transfer-progress \
             --batch-mode \
             -Dgpg.passphrase=${{ secrets.OSSRH_GPG_SECRET_KEY_PASSWORD }} \
+            -pl \!openmetadata-shaded-deps \
             -DskipTests -Prelease clean deploy
