@@ -269,6 +269,11 @@ export const MOCK_EXPLORE_SEARCH_RESULTS: SearchResponse<ExploreSearchIndex> = {
 
 export const MOCK_EXPLORE_TAB_ITEMS = [
   {
+    key: 'data_product_search_index',
+    label: 'data_product_search_index',
+    count: 0,
+  },
+  {
     key: 'table_search_index',
     label: 'table_search_index',
     count: 60,
