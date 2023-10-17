@@ -229,12 +229,15 @@ const TeamDetailsV1 = ({
    * @param id - user id
    * @param leave - if "Leave Team" action is in progress
    */
-  const deleteUserHandler = (id: string, leave = false) => {
-    const user = [...(currentTeam?.users as Array<UserTeams>)].find(
-      (u) => u.id === id
-    );
-    setDeletingUser({ user, state: true, leave });
-  };
+  const deleteUserHandler = useCallback(
+    (id: string, leave = false) => {
+      const user = [...(currentTeam?.users as Array<UserTeams>)].find(
+        (u) => u.id === id
+      );
+      setDeletingUser({ user, state: true, leave });
+    },
+    [currentTeam, setDeletingUser]
+  );
 
   const fetchErrorPlaceHolder = useCallback(
     ({
@@ -286,7 +289,7 @@ const TeamDetailsV1 = ({
     }
   };
 
-  const joinTeam = () => {
+  const joinTeam = useCallback(() => {
     if (currentUser && currentTeam) {
       const newTeams = cloneDeep(currentUser.teams ?? []);
       newTeams.push({
@@ -304,7 +307,7 @@ const TeamDetailsV1 = ({
 
       handleJoinTeamClick(currentUser.id, options);
     }
-  };
+  }, [currentUser, currentTeam, handleJoinTeamClick]);
 
   const leaveTeam = (): Promise<void> => {
     if (currentUser && currentTeam) {
@@ -870,7 +873,14 @@ const TeamDetailsV1 = ({
         )
       )),
 
-    [currentUser, isAlreadyJoinedTeam, isAuthDisabled, isAdminUser]
+    [
+      currentUser,
+      isAlreadyJoinedTeam,
+      isAuthDisabled,
+      isAdminUser,
+      joinTeam,
+      deleteUserHandler,
+    ]
   );
 
   const teamsCollapseHeader = useMemo(
