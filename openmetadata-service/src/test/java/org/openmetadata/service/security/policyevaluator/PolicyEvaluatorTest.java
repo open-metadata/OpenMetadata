@@ -173,11 +173,13 @@ class PolicyEvaluatorTest {
     return permissions;
   }
 
-  public static void updateAccess(List<Permission> permissions, final MetadataOperation operation, Access access) {
+  public static List<Permission> updateAccess(
+      List<Permission> permissions, final MetadataOperation operation, Access access) {
     permissions.forEach(
         permission -> {
           if (permission.getOperation().equals(operation)) permission.setAccess(access);
         });
+    return permissions;
   }
 
   public static ResourcePermission getResourcePermission(
