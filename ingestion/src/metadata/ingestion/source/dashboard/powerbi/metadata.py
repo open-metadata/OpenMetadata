@@ -11,7 +11,6 @@
 """PowerBI source module"""
 
 import traceback
-import uuid
 from typing import Any, Iterable, List, Optional, Union
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
@@ -348,7 +347,7 @@ class PowerbiSource(DashboardServiceSource):
                     "dataType": ColumnTypeParser.get_column_type(
                         column.dataType if column.dataType else None
                     ),
-                    "name": str(uuid.uuid4()),
+                    "name": column.name,
                     "displayName": column.name,
                 }
                 if column.dataType and column.dataType == DataType.ARRAY.value:
@@ -367,7 +366,7 @@ class PowerbiSource(DashboardServiceSource):
                 parsed_table = {
                     "dataTypeDisplay": "PowerBI Table",
                     "dataType": DataType.TABLE,
-                    "name": str(uuid.uuid4()),
+                    "name": table.name,
                     "displayName": table.name,
                     "description": table.description,
                 }
