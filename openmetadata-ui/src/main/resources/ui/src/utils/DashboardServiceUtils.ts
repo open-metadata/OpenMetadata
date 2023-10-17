@@ -27,8 +27,8 @@ import powerBIConnection from '../jsons/connectionSchemas/connections/dashboard/
 import qliksenseConnection from '../jsons/connectionSchemas/connections/dashboard/qlikSenseConnection.json';
 import quicksightConnection from '../jsons/connectionSchemas/connections/dashboard/quickSightConnection.json';
 import redashConnection from '../jsons/connectionSchemas/connections/dashboard/redashConnection.json';
+import supersetConnection from '../jsons/connectionSchemas/connections/dashboard/supersetConnection.json';
 import tableauConnection from '../jsons/connectionSchemas/connections/dashboard/tableauConnection.json';
-import supersetConnection from './ConnectionSchemas/SupersetConnection.json';
 
 export const getDashboardURL = (config: DashboardConnection['config']) => {
   return !isUndefined(config) && !isEmpty(config.hostPort)
