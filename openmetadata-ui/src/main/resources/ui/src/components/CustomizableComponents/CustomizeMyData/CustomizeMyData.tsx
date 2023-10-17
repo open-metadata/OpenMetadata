@@ -61,6 +61,7 @@ function CustomizeMyData({
   initialPageData,
   onSaveLayout,
   handlePageDataChange,
+  handleSaveCurrentPageLayout,
 }: Readonly<CustomizeMyDataProps>) {
   const { t } = useTranslation();
   const history = useHistory();
@@ -210,6 +211,7 @@ function CustomizeMyData({
               followedData={followedData ?? []}
               followedDataCount={followedDataCount}
               handleResetLayout={handleResetRightPanelLayout}
+              handleSaveCurrentPageLayout={handleSaveCurrentPageLayout}
               isAnnouncementLoading={isAnnouncementLoading}
               isLoadingOwnedData={isLoadingOwnedData}
               layoutConfigData={widgetConfig.data}
@@ -318,11 +320,6 @@ function CustomizeMyData({
     );
   }, []);
 
-  const handleSave = useCallback(async () => {
-    await onSaveLayout();
-    handleCancel();
-  }, [onSaveLayout]);
-
   const handleReset = useCallback(() => {
     setLayout([
       ...customizePageClassBase.landingPageDefaultLayout,
@@ -377,7 +374,7 @@ function CustomizeMyData({
           <Button size="small" onClick={handleOpenResetModal}>
             {t('label.reset')}
           </Button>
-          <Button size="small" type="primary" onClick={handleSave}>
+          <Button size="small" type="primary" onClick={onSaveLayout}>
             {t('label.save')}
           </Button>
         </Space>

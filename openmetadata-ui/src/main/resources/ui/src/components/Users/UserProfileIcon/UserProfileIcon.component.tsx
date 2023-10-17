@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { CheckOutlined } from '@ant-design/icons';
-import { Dropdown, Tag, Typography } from 'antd';
+import { Dropdown, Tag, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { isEmpty } from 'lodash';
 import React, {
@@ -91,6 +91,8 @@ export const UserProfileIcon = () => {
 
   const handleOnImageError = useCallback(() => {
     setIsImgUrlValid(false);
+
+    return false;
   }, []);
 
   const handleSelectedPersonaChange = async (persona: EntityReference) => {
@@ -281,31 +283,33 @@ export const UserProfileIcon = () => {
 
   return (
     <Dropdown
+      data-testid="dropdown-profile"
       menu={{
         items,
         defaultOpenKeys: ['personas', 'roles', 'inheritedRoles', 'teams'],
       }}
       trigger={['click']}>
-      <div className="app-user-icon">
+      <div className="app-user-icon" data-testid="dropdown-profile">
         <div className="d-flex gap-2 w-40 items-center">
           {isImgUrlValid ? (
             <img
               alt="user"
-              className="profile-image circle"
+              className="app-bar-user-avatar"
               referrerPolicy="no-referrer"
               src={profilePicture ?? ''}
-              width={36}
               onError={handleOnImageError}
             />
           ) : (
             <Avatar name={userName} type="circle" width="36" />
           )}
           <div className="d-flex flex-col">
-            <Typography.Text className="usename">
-              {getEntityName(currentUser)}
-            </Typography.Text>
+            <Tooltip title={getEntityName(currentUser)}>
+              <Typography.Text className="username truncate w-max-112">
+                {getEntityName(currentUser)}
+              </Typography.Text>
+            </Tooltip>
             <Typography.Text
-              className="text-grey-muted text-xs"
+              className="text-grey-muted text-xs w-28"
               ellipsis={{ tooltip: true }}>
               {isEmpty(selectedPersona)
                 ? t('label.default')

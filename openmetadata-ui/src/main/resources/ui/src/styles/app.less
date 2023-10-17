@@ -501,7 +501,7 @@ a[href].link-text-grey,
 
 .no-scrollbar {
   scrollbar-width: none;
-  ::-webkit-scrollbar {
+  &::-webkit-scrollbar {
     display: none;
   }
 }
@@ -737,4 +737,11 @@ a[href].link-text-grey,
   background-color: @text-highlighter;
   padding-left: 0.25rem;
   padding-right: 0.25rem;
+}
+
+.app-bar-user-avatar {
+  display: inline-block;
+  height: 36px;
+  width: 36px;
+  border-radius: 50%;
 }
