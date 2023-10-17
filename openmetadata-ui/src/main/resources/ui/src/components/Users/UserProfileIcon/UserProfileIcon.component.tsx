@@ -283,12 +283,13 @@ export const UserProfileIcon = () => {
 
   return (
     <Dropdown
+      data-testid="dropdown-profile"
       menu={{
         items,
         defaultOpenKeys: ['personas', 'roles', 'inheritedRoles', 'teams'],
       }}
       trigger={['click']}>
-      <div className="app-user-icon">
+      <div className="app-user-icon" data-testid="dropdown-profile">
         <div className="d-flex gap-2 w-40 items-center">
           {isImgUrlValid ? (
             <img

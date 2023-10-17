@@ -10,12 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import MonogramSrc, {
+  ReactComponent as Monogram,
+} from '../../assets/svg/logo-monogram.svg';
+import LogoSrc, { ReactComponent as Logo } from '../../assets/svg/logo.svg';
 
-import { Document } from '../../../generated/entity/docStore/document';
+class BrandImageClassBase {
+  public getMonogram() {
+    return { src: MonogramSrc, svg: Monogram };
+  }
 
-export interface CustomizeMyDataProps {
-  initialPageData: Document;
-  onSaveLayout: () => Promise<void>;
-  handlePageDataChange: (newPageData: Document) => void;
-  handleSaveCurrentPageLayout: (value: boolean) => void;
+  public getLogo() {
+    return { src: LogoSrc, svg: Logo };
+  }
 }
+
+const brandImageClassBase = new BrandImageClassBase();
+
+export default brandImageClassBase;
+export { BrandImageClassBase };
