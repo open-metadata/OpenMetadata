@@ -1419,6 +1419,7 @@
     "onboarding-claim-ownership-description": "Данные работают хорошо, когда ими владеют. Взгляните на объекты данных, которыми вы владеете, и заявите о праве собственности.",
     "onboarding-explore-data-description": "Посмотрите на популярные объекты данных в вашей организации.",
     "onboarding-stay-up-to-date-description": "Следите за наборами данных, которые вы часто используете, чтобы быть в курсе.",
+    "only-reviewers-can-approve-or-reject": "Only Reviewers can Approve or Reject",
     "optional-configuration-update-description-dbt": "Необязательная конфигурация для обновления описания из dbt или нет",
     "page-is-not-available": "Страница, которую вы ищете, недоступна",
     "page-sub-header-for-activity-feed": "Лента активности позволяет просматривать сводку событий изменения данных.",

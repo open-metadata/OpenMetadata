@@ -63,6 +63,7 @@ const GlossaryV1 = ({
   isVersionsView,
   onAssetClick,
   isSummaryPanelOpen,
+  refreshActiveGlossaryTerm,
 }: GlossaryV1Props) => {
   const { t } = useTranslation();
   const { action, tab } =
@@ -338,6 +339,7 @@ const GlossaryV1 = ({
             isSummaryPanelOpen={isSummaryPanelOpen}
             isVersionView={isVersionsView}
             permissions={glossaryTermPermission}
+            refreshActiveGlossaryTerm={refreshActiveGlossaryTerm}
             refreshGlossaryTerms={() => loadGlossaryTerms(true)}
             termsLoading={isTermsLoading}
             updateVote={updateVote}
