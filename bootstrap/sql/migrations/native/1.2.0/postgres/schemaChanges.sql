@@ -269,8 +269,6 @@ CREATE TABLE IF NOT EXISTS apps_extension_time_series (
 -- Adding back the PK queries from 1.1.5 to keep the correct VARCHAR length
 -- We don't have an ID, so we'll create a temp SERIAL number and use it for deletion
 ALTER TABLE entity_extension_time_series ADD COLUMN temp SERIAL;
--- We need to bump the session sort buffer if the table is big
-SET work_mem = '1GB';
 WITH CTE AS (
   SELECT temp, ROW_NUMBER() OVER (PARTITION BY entityFQNHash, extension, timestamp ORDER BY entityFQNHash) RN FROM entity_extension_time_series)
 DELETE FROM entity_extension_time_series WHERE temp in (SELECT temp FROM CTE WHERE RN > 1);

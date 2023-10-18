@@ -254,8 +254,6 @@ ALTER TABLE glossary_term_entity MODIFY fqnHash VARCHAR(756) COLLATE ascii_bin;
 
 -- We don't have an ID, so we'll create a temp SERIAL number and use it for deletion
 ALTER TABLE entity_extension_time_series ADD COLUMN temp SERIAL;
--- We need to bump the session sort buffer if the table is big
-SET sort_buffer_size = 1073741824;
 WITH CTE AS (
   SELECT temp, ROW_NUMBER() OVER (PARTITION BY entityFQNHash, extension, timestamp ORDER BY entityFQNHash) RN FROM entity_extension_time_series)
 DELETE FROM entity_extension_time_series WHERE temp in (SELECT temp FROM CTE WHERE RN > 1);
