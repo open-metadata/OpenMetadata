@@ -50,6 +50,7 @@ import {
 import { ServiceCategory } from '../../../enums/service.enum';
 import {
   App,
+  AppType,
   ScheduleTimeline,
 } from '../../../generated/entity/applications/app';
 import {
@@ -231,7 +232,10 @@ const AppDetails = () => {
 
   const tabs = useMemo(() => {
     const tabConfiguration =
-      appData && appData.appConfiguration && jsonSchema
+      appData &&
+      appData.appConfiguration &&
+      appData.appType === AppType.Internal &&
+      jsonSchema
         ? [
             {
               label: (
