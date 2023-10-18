@@ -122,7 +122,7 @@ jobs:
           parallel: false
           working-directory: openmetadata-ui/src/main/resources/ui/
           wait-on: 'http://localhost:8585'
-          group: Tests with database mysql
+          group: cypress-ci-mysql-oss-${{ github.run_id }}-${{github.run_attempt}}
           browser: chrome
         env:
           CYPRESS_BASE_URL: "http://localhost:8585"
