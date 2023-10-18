@@ -245,9 +245,7 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
                 )
             )
 
-    def get_table_owner(
-        self, table_name, schema=None
-    ):  # pylint: disable=unused-argument
+    def get_table_owner(self, table_name, schema=None):
 
         result = self.connection.execute(POSTGRES_TABLE_OWNERS)
         for table in result:
