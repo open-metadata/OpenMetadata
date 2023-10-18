@@ -119,7 +119,7 @@ jobs:
         with:
           install: false
           record: true
-          parallel: false
+          parallel: true
           working-directory: openmetadata-ui/src/main/resources/ui/
           wait-on: 'http://localhost:8585'
           group: cypress-ci-mysql-oss-${{ github.run_id }}-${{github.run_attempt}}
