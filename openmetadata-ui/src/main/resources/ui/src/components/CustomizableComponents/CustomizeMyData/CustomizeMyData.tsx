@@ -16,7 +16,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isNil, uniqBy } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Layout, Responsive, WidthProvider } from 'react-grid-layout';
+import RGL, { Layout, WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
 import AppState from '../../../AppState';
@@ -56,7 +56,7 @@ import AddWidgetModal from '../AddWidgetModal/AddWidgetModal';
 import EmptyWidgetPlaceholder from '../EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
 import { CustomizeMyDataProps } from './CustomizeMyData.interface';
 
-const ResponsiveGridLayout = WidthProvider(Responsive);
+const ReactGridLayout = WidthProvider(RGL);
 
 function CustomizeMyData({
   initialPageData,
@@ -326,10 +326,6 @@ function CustomizeMyData({
     }
   }, []);
 
-  // const handleDragStop = useCallback((_: Layout[], item: Layout) => {
-  //   console.log('here stopped');
-  // }, []);
-
   const handleReset = useCallback(() => {
     setMainPanelLayout([
       ...customizePageClassBase.landingPageLayout.mainPanelLayout,
@@ -392,7 +388,14 @@ function CustomizeMyData({
             </Space>
           </Col>
         }
-        pageTitle=""
+        headerClassName="m-0 p-0"
+        mainContainerClassName="p-t-0"
+        pageContainerStyle={{
+          backgroundImage: `url(${gridBgImg})`,
+        }}
+        pageTitle={t('label.customize-entity', {
+          entity: t('label.landing-page'),
+        })}
         rightPanel={
           <RightSidebar
             isEditView
@@ -411,12 +414,10 @@ function CustomizeMyData({
           />
         }
         rightPanelWidth={350}>
-        <ResponsiveGridLayout
-          autoSize
+        <ReactGridLayout
           isDroppable
-          breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
           className="grid-container"
-          cols={{ lg: 3, md: 3, sm: 3, xs: 3, xxs: 3 }}
+          cols={3}
           draggableHandle=".drag-widget-icon"
           isResizable={false}
           margin={[
@@ -425,13 +426,10 @@ function CustomizeMyData({
           ]}
           // onDragStop={handleDragStop}
           rowHeight={customizePageClassBase.landingPageRowHeight}
-          style={{
-            backgroundImage: `url(${gridBgImg})`,
-          }}
           onDragStart={handleDragStart}
           onLayoutChange={handleLayoutUpdate}>
           {widgets}
-        </ResponsiveGridLayout>
+        </ReactGridLayout>
       </PageLayoutV1>
       {isWidgetModalOpen && (
         <AddWidgetModal

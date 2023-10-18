@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isEmpty } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Layout, Responsive, WidthProvider } from 'react-grid-layout';
+import RGL, { Layout, WidthProvider } from 'react-grid-layout';
 import { SIZE } from '../../../enums/common.enum';
 import { LandingPageWidgetKeys } from '../../../enums/CustomizablePage.enum';
 import { Document } from '../../../generated/entity/docStore/document';
@@ -28,7 +28,7 @@ import EmptyWidgetPlaceholder from '../../CustomizableComponents/EmptyWidgetPlac
 import './right-sidebar.less';
 import { RightSidebarProps } from './RightSidebar.interface';
 
-const ResponsiveGridLayout = WidthProvider(Responsive);
+const ReactGridLayout = WidthProvider(RGL);
 
 const RightSidebar = ({
   announcements,
@@ -64,7 +64,7 @@ const RightSidebar = ({
   }, []);
 
   const handleRemoveWidget = useCallback((widgetKey: string) => {
-    handleLayoutChange &&
+    !isUndefined(handleLayoutChange) &&
       handleLayoutChange(getRemoveWidgetHandler(widgetKey, 2.3, 2.5));
   }, []);
 
@@ -74,7 +74,7 @@ const RightSidebar = ({
       placeholderWidgetKey: string,
       widgetSize: number
     ) => {
-      handleLayoutChange &&
+      !isUndefined(handleLayoutChange) &&
         handleLayoutChange(
           getAddWidgetHandler(
             newWidgetData,
@@ -219,11 +219,13 @@ const RightSidebar = ({
 
   return (
     <>
-      <ResponsiveGridLayout
+      <ReactGridLayout
         isDroppable
-        breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-        cols={{ lg: 1, md: 1, sm: 1, xs: 1, xxs: 1 }}
-        containerPadding={[0, customizePageClassBase.landingPageWidgetMargin]}
+        cols={1}
+        containerPadding={[
+          customizePageClassBase.landingPageWidgetMargin,
+          customizePageClassBase.landingPageWidgetMargin,
+        ]}
         draggableHandle=".drag-widget-icon"
         isResizable={false}
         margin={[
@@ -234,7 +236,7 @@ const RightSidebar = ({
         onDrop={handleWidgetDrop}
         onLayoutChange={handleLayoutUpdate}>
         {widgets}
-      </ResponsiveGridLayout>
+      </ReactGridLayout>
       {isWidgetModalOpen && (
         <AddWidgetModal
           addedWidgetsList={addedWidgetsList}

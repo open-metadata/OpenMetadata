@@ -22,11 +22,13 @@ import React, {
   useState,
 } from 'react';
 import RGL, { WidthProvider } from 'react-grid-layout';
+import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import AppState from '../../AppState';
 import ActivityFeedProvider from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { useApplicationConfigContext } from '../../components/ApplicationConfigProvider/ApplicationConfigProvider';
 import { useAuthContext } from '../../components/authentication/auth-provider/AuthProvider';
+import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import Loader from '../../components/Loader/Loader';
 import RightSidebar from '../../components/MyData/RightSidebar/RightSidebar.component';
 import WelcomeScreen from '../../components/WelcomeScreen/WelcomeScreen.component';
@@ -49,6 +51,7 @@ const ReactGridLayout = WidthProvider(RGL);
 
 const MyDataPageV1 = () => {
   const location = useLocation();
+  const { t } = useTranslation();
   const { isAuthDisabled } = useAuth(location.pathname);
   const { currentUser } = useAuthContext();
   const { selectedPersona } = useApplicationConfigContext();
@@ -163,22 +166,6 @@ const MyDataPageV1 = () => {
 
   const getWidgetFromKey = useCallback(
     (widgetConfig: WidgetConfig) => {
-      if (widgetConfig.i.startsWith(LandingPageWidgetKeys.RIGHT_PANEL)) {
-        return (
-          <div className="h-full border-left p-l-md">
-            <RightSidebar
-              announcements={announcements}
-              followedData={followedData ?? []}
-              followedDataCount={followedDataCount}
-              isAnnouncementLoading={isAnnouncementLoading}
-              isLoadingOwnedData={isLoadingOwnedData}
-              layout={rightPanelLayout}
-              parentLayoutData={layout}
-            />
-          </div>
-        );
-      }
-
       const Widget = customizePageClassBase.getWidgetsFromKey(widgetConfig.i);
 
       return (
@@ -199,6 +186,7 @@ const MyDataPageV1 = () => {
       layout,
       announcements,
       isAnnouncementLoading,
+      rightPanelLayout,
     ]
   );
 
@@ -250,14 +238,27 @@ const MyDataPageV1 = () => {
   }
 
   return (
-    <div className="bg-white h-full">
-      <ActivityFeedProvider>
+    <ActivityFeedProvider>
+      <PageLayoutV1
+        pageTitle={t('label.my-data')}
+        rightPanel={
+          <RightSidebar
+            announcements={announcements}
+            followedData={followedData ?? []}
+            followedDataCount={followedDataCount}
+            isAnnouncementLoading={isAnnouncementLoading}
+            isLoadingOwnedData={isLoadingOwnedData}
+            layout={rightPanelLayout}
+            parentLayoutData={layout}
+          />
+        }
+        rightPanelWidth={350}>
         {isLoading ? (
           <Loader />
         ) : (
           <ReactGridLayout
             className="bg-white"
-            cols={4}
+            cols={3}
             isDraggable={false}
             isResizable={false}
             margin={[
@@ -268,8 +269,8 @@ const MyDataPageV1 = () => {
             {widgets}
           </ReactGridLayout>
         )}
-      </ActivityFeedProvider>
-    </div>
+      </PageLayoutV1>
+    </ActivityFeedProvider>
   );
 };
 
