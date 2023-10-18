@@ -49,6 +49,12 @@
       "default": true,
       "title": "Include Tags"
     },
+    "includeOwners":{
+      "title": "Ingest Owner",
+      "description": "Enabling a flag will replace the current owner with a new owner from the source during metadata ingestion, if the current owner is null. It is recommended to keep the flag enabled to obtain the owner information during the first metadata ingestion.",
+      "type": "boolean",
+      "default": false
+    },
     "includeStoredProcedures": {
       "description": "Optional configuration to toggle the Stored Procedures ingestion.",
       "type": "boolean",
