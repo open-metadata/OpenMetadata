@@ -141,10 +141,7 @@ const MarketPlaceAppDetails = withSuspenseFallback(
 );
 
 const AppInstallPage = withSuspenseFallback(
-  React.lazy(
-    () =>
-      import('../../components/Applications/AppInstall/AppInstall.component')
-  )
+  React.lazy(() => import('../../pages/AppInstall/AppInstall.component'))
 );
 
 const EditConnectionFormPage = withSuspenseFallback(

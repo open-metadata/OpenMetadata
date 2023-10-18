@@ -30,6 +30,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import javax.json.JsonObject;
 import javax.ws.rs.core.Response;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -64,6 +65,8 @@ public class SearchRepository {
   private final List<String> inheritableFields =
       List.of(Entity.FIELD_OWNER, Entity.FIELD_DOMAIN, Entity.FIELD_DISABLED);
 
+  @Getter private final ElasticSearchConfiguration elasticSearchConfiguration;
+
   public final List<String> dataInsightReports =
       List.of(
           "entityReportData",
@@ -76,6 +79,7 @@ public class SearchRepository {
   public static final String ELASTIC_SEARCH_ENTITY_FQN_STREAM = "eventPublisher:ElasticSearch:STREAM";
 
   public SearchRepository(ElasticSearchConfiguration config) {
+    elasticSearchConfiguration = config;
     if (config != null && config.getSearchType() == ElasticSearchConfiguration.SearchType.OPENSEARCH) {
       searchClient = new OpenSearchClient(config);
     } else {

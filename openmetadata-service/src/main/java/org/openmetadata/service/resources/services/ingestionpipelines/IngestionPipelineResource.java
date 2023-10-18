@@ -54,6 +54,7 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
@@ -93,8 +94,6 @@ import org.openmetadata.service.util.ResultList;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "IngestionPipelines")
 public class IngestionPipelineResource extends EntityResource<IngestionPipeline, IngestionPipelineRepository> {
-  private static final String DEFAULT_INSIGHT_PIPELINE = "OpenMetadata_dataInsight";
-  private static final String DEFAULT_REINDEX_PIPELINE = "OpenMetadata_elasticSearchReindex";
   public static final String COLLECTION_PATH = "v1/services/ingestionPipelines/";
   private PipelineServiceClient pipelineServiceClient;
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
@@ -480,13 +479,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       @Parameter(description = "Id of the ingestion pipeline", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Context SecurityContext securityContext) {
-    Fields fields = getFields(FIELD_OWNER);
-    IngestionPipeline ingestionPipeline = repository.get(uriInfo, id, fields);
-    ingestionPipeline.setOpenMetadataServerConnection(
-        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build());
-    decryptOrNullify(securityContext, ingestionPipeline, true);
-    ServiceEntityInterface service = Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
-    return pipelineServiceClient.runPipeline(ingestionPipeline, service);
+    return triggerPipelineInternal(id, uriInfo, securityContext, null);
   }
 
   @POST
@@ -810,6 +803,23 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       createOrUpdate(uriInfo, securityContext, ingestionPipeline);
     }
     return status;
+  }
+
+  public PipelineServiceClientResponse triggerPipelineInternal(
+      UUID id, UriInfo uriInfo, SecurityContext securityContext, String botName) {
+    Fields fields = getFields(FIELD_OWNER);
+    IngestionPipeline ingestionPipeline = repository.get(uriInfo, id, fields);
+    if (CommonUtil.nullOrEmpty(botName)) {
+      // Use Default Ingestion Bot
+      ingestionPipeline.setOpenMetadataServerConnection(
+          new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build());
+    } else {
+      ingestionPipeline.setOpenMetadataServerConnection(
+          new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, botName).build());
+    }
+    decryptOrNullify(securityContext, ingestionPipeline, true);
+    ServiceEntityInterface service = Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
+    return pipelineServiceClient.runPipeline(ingestionPipeline, service);
   }
 
   private void decryptOrNullify(

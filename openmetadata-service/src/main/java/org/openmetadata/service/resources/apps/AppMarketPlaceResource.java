@@ -367,6 +367,7 @@ public class AppMarketPlaceResource extends EntityResource<AppMarketPlaceDefinit
             .withAppConfiguration(create.getAppConfiguration())
             .withPermission(create.getPermission())
             .withAppLogoUrl(create.getAppLogoUrl())
+            .withAppScreenshots(create.getAppScreenshots())
             .withFeatures(create.getFeatures());
 
     // Validate App

@@ -95,16 +95,16 @@ const MarketPlacePage = () => {
     <PageLayoutV1
       className="p-0 marketplace-page"
       pageTitle={t('label.market-place')}>
-      <Row gutter={[16, 16]}>
-        <Col span={24}>
-          <div className="marketplace-header d-flex items-center justify-between">
+      <Row className="marketplace-header" justify="center">
+        <Col span={18}>
+          <div className="d-flex items-center justify-between h-full">
             <PageHeader data={PAGE_HEADERS.APPLICATION} />
             <HeadingIcon />
           </div>
         </Col>
       </Row>
       <Row className="m-t-lg" justify="center">
-        <Col span={20}>
+        <Col span={18}>
           <div className="d-flex flex-wrap gap-3">
             {applicationData?.map((item) => (
               <ApplicationCard
@@ -121,7 +121,7 @@ const MarketPlacePage = () => {
             ))}
           </div>
         </Col>
-        <Col span={20}>
+        <Col span={18}>
           {showPagination(paging) && (
             <NextPrevious
               currentPage={currentPage}

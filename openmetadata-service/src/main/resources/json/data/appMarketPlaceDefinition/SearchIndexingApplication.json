@@ -5,6 +5,7 @@
   "description": "Open-metadata connects with Elastic/Open Search to provide search feature for Data Assets. This application provides additional features related to ES/OS.",
   "features": "Sync Open-metadata and Elastic Search and Recreate Indexes.",
   "appType": "internal",
+  "appScreenshots": ["SearchIndexPic1.png"],
   "developer": "Collate Inc.",
   "developerUrl": "https://www.getcollate.io",
   "privacyPolicyUrl": "https://www.getcollate.io",

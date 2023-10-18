@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.UUID;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
+import lombok.Getter;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.json.JSONObject;
 import org.openmetadata.schema.EntityInterface;
@@ -34,6 +35,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.sdk.PipelineServiceClient;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
@@ -53,7 +55,9 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   private static final String RUN_ID_EXTENSION_KEY = "runId";
   private PipelineServiceClient pipelineServiceClient;
 
-  public IngestionPipelineRepository() {
+  @Getter private final OpenMetadataApplicationConfig openMetadataApplicationConfig;
+
+  public IngestionPipelineRepository(OpenMetadataApplicationConfig config) {
     super(
         IngestionPipelineResource.COLLECTION_PATH,
         Entity.INGESTION_PIPELINE,
@@ -61,6 +65,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         Entity.getCollectionDAO().ingestionPipelineDAO(),
         PATCH_FIELDS,
         UPDATE_FIELDS);
+
+    this.openMetadataApplicationConfig = config;
   }
 
   @Override

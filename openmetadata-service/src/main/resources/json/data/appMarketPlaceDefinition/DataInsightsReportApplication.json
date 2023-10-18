@@ -1,0 +1,23 @@
+{
+  "name": "DataInsightsReportApplication",
+  "fullyQualifiedName": "DataInsightsReportApplication",
+  "displayName": "Data Insights Report",
+  "description": "Open-metadata Data Insights Report Application sends a data insight report.",
+  "features": "Data Insights Application. Send Email Reports.",
+  "appType": "internal",
+  "appScreenshots": ["DataInsightsReportPic1.png"],
+  "developer": "Collate Inc.",
+  "developerUrl": "https://www.getcollate.io",
+  "privacyPolicyUrl": "https://www.getcollate.io",
+  "supportEmail": "support@getcollate.io",
+  "scheduleType": "Scheduled",
+  "permission": "All",
+  "className": "org.openmetadata.service.apps.bundles.insights.DataInsightsReportApp",
+  "runtime": {
+    "enabled": "true"
+  },
+  "appConfiguration": {
+    "sendToAdmins": true,
+    "sendToTeams": true
+  }
+}

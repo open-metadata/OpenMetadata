@@ -324,7 +324,9 @@ public class AirflowRESTClient extends PipelineServiceClient {
 
   @Override
   public PipelineServiceClientResponse validateAppRegistration(AppMarketPlaceDefinition appMarketPlaceDefinition) {
-    return sendPost(APP_VALIDATE, appMarketPlaceDefinition);
+    return new PipelineServiceClientResponse().withCode(200).withReason("Success").withPlatform(this.getPlatform());
+    // TODO: Currently only internal apps are available, external apps will need this validation
+    // return sendPost(APP_VALIDATE, appMarketPlaceDefinition);
   }
 
   private PipelineServiceClientResponse sendPost(String endpoint, Object request) {
