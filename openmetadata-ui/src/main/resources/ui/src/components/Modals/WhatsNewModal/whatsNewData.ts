@@ -1030,8 +1030,8 @@ export const WHATS_NEW = [
 - We will continue to add new Applications in upcoming releases.
       `,
       Lineage: `- Performance improvements made for lineage based on the new release of SQLfluff.
-- Added support for UPDATE ... FROM Snowflake queries
-- Added column-level lineage support for SELECT * queries`,
+- Added support for **UPDATE ... FROM** Snowflake queries
+- Added column-level lineage support for **SELECT * queries**`,
       Connectors: `- Greenplum connector is now supported.
 - Couchbase connector is now supported.`,
       'Knowledge Center ([Exclusively for Collate](https://www.getcollate.io/))': `- Backend APIs support creating, editing, and listing knowledge articles (with external links).
