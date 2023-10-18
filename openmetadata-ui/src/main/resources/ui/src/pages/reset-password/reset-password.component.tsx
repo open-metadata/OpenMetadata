@@ -97,7 +97,7 @@ const ResetPassword = () => {
           style={{ maxWidth: '450px' }}>
           <Row gutter={[16, 24]}>
             <Col className="text-center" span={24}>
-              <BrandImage className="m-auto" height="auto" width={152} />
+              <BrandImage className="m-auto" height="auto" width={200} />
             </Col>
 
             <Col className="mt-12 text-center" span={24}>

@@ -118,7 +118,7 @@ import Loader from '../../Loader/Loader';
 import { useTourProvider } from '../../TourProvider/TourProvider';
 import EdgeInfoDrawer from '../EntityInfoDrawer/EdgeInfoDrawer.component';
 import EntityInfoDrawer from '../EntityInfoDrawer/EntityInfoDrawer.component';
-import AddPipeLineModal from './AddPipeLineModal';
+import AddPipeLineModal from './AppPipelineModel/AddPipeLineModal';
 import CustomControlsComponent from './CustomControls.component';
 import './entity-lineage.style.less';
 import {
@@ -398,6 +398,13 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     }
   };
 
+  const handleModalCancel = () => {
+    setSelectedEdgeId(undefined);
+    setShowAddEdgeModal(false);
+    setSelectedEdge({} as SelectedEdge);
+    setEdgeOptions([]);
+  };
+
   /**
    *
    * @param data selected edge
@@ -440,6 +447,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
 
       resetSelectedData();
       setConfirmDelete(false);
+      handleModalCancel();
     }
   };
 
@@ -999,18 +1007,6 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     setSelectedEdgeId(value);
   };
 
-  const handleModalCancel = () => {
-    setSelectedEdgeId(undefined);
-    setShowAddEdgeModal(false);
-    setSelectedEdge({} as SelectedEdge);
-    setEdgeOptions([]);
-  };
-
-  const onEdgeSelectionClear = () => {
-    setSelectedEdgeId(undefined);
-    setEdgeSearchValue('');
-  };
-
   const handleModalSave = () => {
     if (selectedEdge.data && updatedLineageData) {
       setStatus('waiting');
@@ -1031,7 +1027,8 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
         selectedEdgeValue,
         selectedEdgeId,
         selectedEdge.data,
-        (edgeDetails?.type as EntityType) ?? EntityType.PIPELINE
+        (edgeDetails?.type as EntityType) ?? EntityType.PIPELINE,
+        edgeDetails
       );
 
       addLineageHandler(newEdge)
@@ -1417,14 +1414,29 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
         SearchIndex.PIPELINE,
         SearchIndex.STORED_PROCEDURE,
       ]);
-      setEdgeOptions(
-        data.data.hits.hits.map((hit) =>
-          getEntityReferenceFromEntity(
-            hit._source,
-            hit._source.entityType as EntityType
-          )
+
+      const selectedPipeline = selectedEdge.data?.pipeline;
+
+      const edgeOptions = data.data.hits.hits.map((hit) =>
+        getEntityReferenceFromEntity(
+          hit._source,
+          hit._source.entityType as EntityType
         )
       );
+
+      const optionContainItem = edgeOptions.find(
+        (item) => item.id === selectedEdgeId
+      );
+
+      setEdgeOptions([
+        ...(selectedPipeline &&
+        isEmpty(optionContainItem) &&
+        isEmpty(edgeSearchValue) &&
+        selectedPipeline.id === selectedEdgeId
+          ? [selectedPipeline]
+          : []),
+        ...edgeOptions,
+      ]);
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -1630,10 +1642,10 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   }, [selectedEdge, confirmDelete]);
 
   useEffect(() => {
-    if (edgeSearchValue) {
+    if (showAddEdgeModal) {
       getSearchResults(edgeSearchValue);
     }
-  }, [edgeSearchValue]);
+  }, [edgeSearchValue, showAddEdgeModal]);
 
   useEffect(() => {
     edgesRef.current = edges;
@@ -1775,7 +1787,6 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
           edgeSearchValue={edgeSearchValue}
           selectedEdgeId={selectedEdgeId}
           showAddEdgeModal={showAddEdgeModal}
-          onClear={onEdgeSelectionClear}
           onModalCancel={handleModalCancel}
           onRemoveEdgeClick={handleRemoveEdgeClick}
           onSave={handleModalSave}

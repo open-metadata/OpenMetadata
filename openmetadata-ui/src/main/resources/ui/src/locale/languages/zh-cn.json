@@ -1419,6 +1419,7 @@
     "onboarding-claim-ownership-description": "查看数据资产并声明所有权，以更好的维护数据",
     "onboarding-explore-data-description": "查看组织中热门的数据资产",
     "onboarding-stay-up-to-date-description": "关注您经常使用的数据集以获取最新信息",
+    "only-reviewers-can-approve-or-reject": "Only Reviewers can Approve or Reject",
     "optional-configuration-update-description-dbt": "可选配置，选择是否从 dbt 更新描述",
     "page-is-not-available": "您要查找的页面不可用",
     "page-sub-header-for-activity-feed": "活动信息流可用于查看数据的修改事件概览",
