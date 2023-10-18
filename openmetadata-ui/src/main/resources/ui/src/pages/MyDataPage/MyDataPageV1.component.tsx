@@ -42,6 +42,7 @@ import { useAuth } from '../../hooks/authHooks';
 import { getDocumentByFQN } from '../../rest/DocStoreAPI';
 import { getActiveAnnouncement } from '../../rest/feedsAPI';
 import { getUserById } from '../../rest/userAPI';
+import { getWidgetFromKey } from '../../utils/CustomizableLandingPageUtils';
 import customizePageClassBase from '../../utils/CustomizePageClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { WidgetConfig } from '../CustomizablePage/CustomizablePage.interface';
@@ -157,38 +158,9 @@ const MyDataPageV1 = () => {
         !isEmpty(AppState.userDetails)) &&
       isNil(followedData)
     ) {
-      fetchMyData().catch(() => {
-        // ignore since error is displayed in toast in the parent promise.
-        // Added block for sonar code smell
-      });
+      fetchMyData();
     }
   }, [AppState.userDetails, AppState.users, isAuthDisabled]);
-
-  const getWidgetFromKey = useCallback(
-    (widgetConfig: WidgetConfig) => {
-      const Widget = customizePageClassBase.getWidgetsFromKey(widgetConfig.i);
-
-      return (
-        <Widget
-          announcements={announcements}
-          followedData={followedData ?? []}
-          followedDataCount={followedDataCount}
-          isLoadingOwnedData={isLoadingOwnedData}
-          selectedGridSize={widgetConfig.w}
-          widgetKey={widgetConfig.i}
-        />
-      );
-    },
-    [
-      followedData,
-      followedDataCount,
-      isLoadingOwnedData,
-      layout,
-      announcements,
-      isAnnouncementLoading,
-      rightPanelLayout,
-    ]
-  );
 
   const widgets = useMemo(
     () =>
@@ -206,10 +178,23 @@ const MyDataPageV1 = () => {
             })}
             data-grid={widget}
             key={widget.i}>
-            {getWidgetFromKey(widget)}
+            {getWidgetFromKey({
+              announcements: announcements,
+              followedData: followedData ?? [],
+              followedDataCount: followedDataCount,
+              isLoadingOwnedData: isLoadingOwnedData,
+              widgetConfig: widget,
+            })}
           </div>
         )),
-    [layout, getWidgetFromKey]
+    [
+      layout,
+      isAnnouncementLoading,
+      announcements,
+      followedData,
+      followedDataCount,
+      isLoadingOwnedData,
+    ]
   );
 
   const fetchAnnouncements = useCallback(async () => {
@@ -249,7 +234,6 @@ const MyDataPageV1 = () => {
             isAnnouncementLoading={isAnnouncementLoading}
             isLoadingOwnedData={isLoadingOwnedData}
             layout={rightPanelLayout}
-            parentLayoutData={layout}
           />
         }
         rightPanelWidth={350}>

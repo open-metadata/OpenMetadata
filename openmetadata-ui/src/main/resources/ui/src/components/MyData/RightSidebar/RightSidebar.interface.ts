@@ -16,18 +16,13 @@ import { EntityReference } from '../../../generated/entity/type';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 
 export interface RightSidebarProps {
-  isEditView?: boolean;
-  draggedItem?: WidgetConfig;
-  resetLayout?: boolean;
-  handleResetLayout?: (value: boolean) => void;
   announcements: Thread[];
   isAnnouncementLoading: boolean;
+  isEditView?: boolean;
   followedDataCount: number;
   followedData: Array<EntityReference>;
   isLoadingOwnedData: boolean;
   layout: Array<WidgetConfig>;
   handleLayoutChange?: React.Dispatch<React.SetStateAction<WidgetConfig[]>>;
-  parentLayoutData?: Array<WidgetConfig>;
-  updateParentLayout?: (newLayout: Array<WidgetConfig>) => void;
-  handleSaveCurrentPageLayout?: (value: boolean) => void;
+  draggedItem?: WidgetConfig;
 }

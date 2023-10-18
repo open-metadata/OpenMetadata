@@ -40,7 +40,9 @@ import { Transi18next } from '../../../utils/CommonUtils';
 import {
   getAddWidgetHandler,
   getLayoutUpdateHandler,
+  getLayoutWithEmptyWidgetPlaceholder,
   getRemoveWidgetHandler,
+  getWidgetFromKey,
 } from '../../../utils/CustomizableLandingPageUtils';
 import customizePageClassBase from '../../../utils/CustomizePageClassBase';
 import {
@@ -53,7 +55,6 @@ import ActivityFeedProvider from '../../ActivityFeed/ActivityFeedProvider/Activi
 import PageLayoutV1 from '../../containers/PageLayoutV1';
 import RightSidebar from '../../MyData/RightSidebar/RightSidebar.component';
 import AddWidgetModal from '../AddWidgetModal/AddWidgetModal';
-import EmptyWidgetPlaceholder from '../EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
 import { CustomizeMyDataProps } from './CustomizeMyData.interface';
 
 const ReactGridLayout = WidthProvider(RGL);
@@ -68,34 +69,22 @@ function CustomizeMyData({
   const history = useHistory();
   const { fqn: personaFQN } = useParams<{ fqn: string; pageFqn: PageType }>();
   const location = useLocation();
-  const [resetRightPanelLayout, setResetRightPanelLayout] =
-    useState<boolean>(false);
   const [draggedItem, setDraggedItem] = useState<WidgetConfig>();
-  const [mainPanelLayout, setMainPanelLayout] = useState<Array<WidgetConfig>>([
-    ...(initialPageData.data?.page?.rightPanelLayout ??
-      customizePageClassBase.landingPageLayout.mainPanelLayout),
-    {
-      h: 2,
-      i: LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER,
-      w: 3,
-      x: 0,
-      y: 100,
-      isDraggable: false,
-    },
-  ]);
+  const [mainPanelLayout, setMainPanelLayout] = useState<Array<WidgetConfig>>(
+    getLayoutWithEmptyWidgetPlaceholder(
+      initialPageData.data?.page?.mainPanelLayout ??
+        customizePageClassBase.landingPageLayout.mainPanelLayout,
+      2,
+      3
+    )
+  );
   const [rightPanelLayout, setRightPanelLayout] = useState<Array<WidgetConfig>>(
-    [
-      ...(initialPageData.data?.page?.rightPanelLayout ??
-        customizePageClassBase.landingPageLayout.rightPanelLayout),
-      {
-        h: 2.3,
-        i: LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER,
-        w: 1,
-        x: 0,
-        y: 100,
-        isDraggable: false,
-      },
-    ]
+    getLayoutWithEmptyWidgetPlaceholder(
+      initialPageData.data?.page?.rightPanelLayout ??
+        customizePageClassBase.landingPageLayout.rightPanelLayout,
+      2.3,
+      1
+    )
   );
 
   const [placeholderWidgetKey, setPlaceholderWidgetKey] = useState<string>(
@@ -123,14 +112,6 @@ function CustomizeMyData({
 
   const handlePlaceholderWidgetKey = useCallback((value: string) => {
     setPlaceholderWidgetKey(value);
-  }, []);
-
-  const handleResetRightPanelLayout = useCallback((value: boolean) => {
-    setResetRightPanelLayout(value);
-  }, []);
-
-  const handleLayoutChange = useCallback((newLayout: Array<WidgetConfig>) => {
-    setMainPanelLayout(newLayout);
   }, []);
 
   const handleRemoveWidget = useCallback((widgetKey: string) => {
@@ -206,50 +187,6 @@ function CustomizeMyData({
     }
   };
 
-  const getWidgetFromKey = useCallback(
-    (widgetConfig: WidgetConfig) => {
-      if (widgetConfig.i.endsWith('.EmptyWidgetPlaceholder')) {
-        return (
-          <EmptyWidgetPlaceholder
-            handleOpenAddWidgetModal={handleOpenAddWidgetModal}
-            handlePlaceholderWidgetKey={handlePlaceholderWidgetKey}
-            handleRemoveWidget={handleRemoveWidget}
-            isEditable={widgetConfig.isDraggable}
-            widgetKey={widgetConfig.i}
-          />
-        );
-      }
-
-      const Widget = customizePageClassBase.getWidgetsFromKey(widgetConfig.i);
-
-      return (
-        <Widget
-          isEditView
-          announcements={announcements}
-          followedData={followedData ?? []}
-          followedDataCount={followedDataCount}
-          handleRemoveWidget={handleRemoveWidget}
-          isLoadingOwnedData={isLoadingOwnedData}
-          selectedGridSize={widgetConfig.w}
-          widgetKey={widgetConfig.i}
-        />
-      );
-    },
-    [
-      handleOpenAddWidgetModal,
-      handleRemoveWidget,
-      followedData,
-      followedDataCount,
-      isLoadingOwnedData,
-      handleLayoutChange,
-      isAnnouncementLoading,
-      announcements,
-      resetRightPanelLayout,
-      handleResetRightPanelLayout,
-      handlePlaceholderWidgetKey,
-    ]
-  );
-
   const addedWidgetsList = useMemo(
     () =>
       mainPanelLayout
@@ -271,10 +208,28 @@ function CustomizeMyData({
           key={widget.i}
           unselectable="on"
           onDragStart={(e) => e.dataTransfer.setData('text/plain', '')}>
-          {getWidgetFromKey(widget)}
+          {getWidgetFromKey({
+            announcements: announcements,
+            followedData: followedData ?? [],
+            followedDataCount: followedDataCount,
+            isLoadingOwnedData: isLoadingOwnedData,
+            widgetConfig: widget,
+            handleOpenAddWidgetModal: handleOpenAddWidgetModal,
+            handlePlaceholderWidgetKey: handlePlaceholderWidgetKey,
+            handleRemoveWidget: handleRemoveWidget,
+          })}
         </div>
       )),
-    [mainPanelLayout, getWidgetFromKey]
+    [
+      mainPanelLayout,
+      announcements,
+      followedData,
+      followedDataCount,
+      isLoadingOwnedData,
+      handleOpenAddWidgetModal,
+      handlePlaceholderWidgetKey,
+      handleRemoveWidget,
+    ]
   );
 
   const fetchAnnouncements = useCallback(async () => {
@@ -299,17 +254,26 @@ function CustomizeMyData({
       ...initialPageData,
       data: {
         page: {
-          ...initialPageData.data.page,
-          layout: uniqBy(
+          mainPanelLayout: uniqBy(
             mainPanelLayout.filter(
-              (widget) => !widget.i.endsWith('.EmptyWidgetPlaceholder')
+              (widget) =>
+                widget.i.startsWith('KnowledgePanel') &&
+                !widget.i.endsWith('.EmptyWidgetPlaceholder')
+            ),
+            'i'
+          ),
+          rightPanelLayout: uniqBy(
+            rightPanelLayout.filter(
+              (widget) =>
+                widget.i.startsWith('KnowledgePanel') &&
+                !widget.i.endsWith('.EmptyWidgetPlaceholder')
             ),
             'i'
           ),
         },
       },
     });
-  }, [mainPanelLayout]);
+  }, [mainPanelLayout, rightPanelLayout]);
 
   const handleCancel = useCallback(() => {
     history.push(
@@ -327,18 +291,22 @@ function CustomizeMyData({
   }, []);
 
   const handleReset = useCallback(() => {
-    setMainPanelLayout([
-      ...customizePageClassBase.landingPageLayout.mainPanelLayout,
-      {
-        h: 2,
-        i: LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER,
-        w: 3,
-        x: 0,
-        y: 100,
-        isDraggable: false,
+    const newMainPanelLayout =
+      customizePageClassBase.landingPageLayout.mainPanelLayout;
+    const newRightPanelLayout =
+      customizePageClassBase.landingPageLayout.rightPanelLayout;
+    setMainPanelLayout(newMainPanelLayout);
+    setRightPanelLayout(newRightPanelLayout);
+    handlePageDataChange({
+      ...initialPageData,
+      data: {
+        page: {
+          mainPanelLayout: uniqBy(newMainPanelLayout, 'i'),
+          rightPanelLayout: uniqBy(newRightPanelLayout, 'i'),
+        },
       },
-    ]);
-    setResetRightPanelLayout(true);
+    });
+    handleSaveCurrentPageLayout(true);
     setIsResetModalOpen(false);
   }, []);
 
@@ -404,13 +372,9 @@ function CustomizeMyData({
             followedData={followedData ?? []}
             followedDataCount={followedDataCount}
             handleLayoutChange={setRightPanelLayout}
-            handleSaveCurrentPageLayout={handleSaveCurrentPageLayout}
             isAnnouncementLoading={isAnnouncementLoading}
             isLoadingOwnedData={isLoadingOwnedData}
             layout={rightPanelLayout}
-            parentLayoutData={mainPanelLayout}
-            resetLayout={resetRightPanelLayout}
-            updateParentLayout={handleLayoutChange}
           />
         }
         rightPanelWidth={350}>

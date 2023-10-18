@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import RGL, { Layout, WidthProvider } from 'react-grid-layout';
 import { SIZE } from '../../../enums/common.enum';
 import { LandingPageWidgetKeys } from '../../../enums/CustomizablePage.enum';
@@ -21,10 +21,10 @@ import {
   getAddWidgetHandler,
   getLayoutUpdateHandler,
   getRemoveWidgetHandler,
+  getWidgetFromKey,
 } from '../../../utils/CustomizableLandingPageUtils';
 import customizePageClassBase from '../../../utils/CustomizePageClassBase';
 import AddWidgetModal from '../../CustomizableComponents/AddWidgetModal/AddWidgetModal';
-import EmptyWidgetPlaceholder from '../../CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
 import './right-sidebar.less';
 import { RightSidebarProps } from './RightSidebar.interface';
 
@@ -37,14 +37,9 @@ const RightSidebar = ({
   followedData,
   followedDataCount,
   isLoadingOwnedData,
-  resetLayout = false,
-  handleResetLayout,
   layout,
   handleLayoutChange,
-  handleSaveCurrentPageLayout,
   draggedItem,
-  parentLayoutData,
-  updateParentLayout,
 }: RightSidebarProps) => {
   const [placeholderWidgetKey, setPlaceholderWidgetKey] = useState<string>(
     LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
@@ -88,51 +83,6 @@ const RightSidebar = ({
     [layout]
   );
 
-  const getWidgetFromKey = useCallback(
-    (widgetConfig: WidgetConfig) => {
-      if (widgetConfig.i.endsWith('.EmptyWidgetPlaceholder')) {
-        return (
-          <div className="h-full">
-            <EmptyWidgetPlaceholder
-              handleOpenAddWidgetModal={handleOpenAddWidgetModal}
-              handlePlaceholderWidgetKey={handlePlaceholderWidgetKey}
-              handleRemoveWidget={handleRemoveWidget}
-              iconHeight={SIZE.SMALL}
-              iconWidth={SIZE.SMALL}
-              isEditable={widgetConfig.isDraggable}
-              widgetKey={widgetConfig.i}
-            />
-          </div>
-        );
-      }
-
-      const Widget = customizePageClassBase.getWidgetsFromKey(widgetConfig.i);
-
-      return (
-        <Widget
-          announcements={announcements}
-          followedData={followedData ?? []}
-          followedDataCount={followedDataCount}
-          handleRemoveWidget={handleRemoveWidget}
-          isEditView={isEditView}
-          isLoadingOwnedData={isLoadingOwnedData}
-          selectedGridSize={widgetConfig.w}
-          widgetKey={widgetConfig.i}
-        />
-      );
-    },
-    [
-      announcements,
-      followedData,
-      followedDataCount,
-      isLoadingOwnedData,
-      isEditView,
-      handleRemoveWidget,
-      handleOpenAddWidgetModal,
-      handlePlaceholderWidgetKey,
-    ]
-  );
-
   const widgets = useMemo(
     () =>
       layout
@@ -145,10 +95,32 @@ const RightSidebar = ({
         )
         .map((widget: WidgetConfig) => (
           <div data-grid={widget} key={widget.i} unselectable="on">
-            {getWidgetFromKey(widget)}
+            {getWidgetFromKey({
+              announcements: announcements,
+              followedData: followedData ?? [],
+              followedDataCount: followedDataCount,
+              isLoadingOwnedData: isLoadingOwnedData,
+              widgetConfig: widget,
+              handleOpenAddWidgetModal: handleOpenAddWidgetModal,
+              handlePlaceholderWidgetKey: handlePlaceholderWidgetKey,
+              handleRemoveWidget: handleRemoveWidget,
+              iconHeight: SIZE.SMALL,
+              iconWidth: SIZE.SMALL,
+            })}
           </div>
         )),
-    [layout, announcements, getWidgetFromKey, isEditView, isAnnouncementLoading]
+    [
+      layout,
+      announcements,
+      isEditView,
+      isAnnouncementLoading,
+      followedData,
+      followedDataCount,
+      isLoadingOwnedData,
+      handleOpenAddWidgetModal,
+      handlePlaceholderWidgetKey,
+      handleRemoveWidget,
+    ]
   );
 
   const handleLayoutUpdate = useCallback(
@@ -172,7 +144,6 @@ const RightSidebar = ({
     if (
       draggedItem &&
       !layout.some((widget) => widget.i === draggedItem.i) &&
-      updateParentLayout &&
       handleLayoutChange
     ) {
       handleLayoutChange([
@@ -184,38 +155,8 @@ const RightSidebar = ({
           h: draggedItem?.h,
         },
       ]);
-      updateParentLayout(
-        parentLayoutData?.filter((widget) => widget.i !== draggedItem.i) ?? []
-      );
     }
   };
-
-  useEffect(() => {
-    if (
-      resetLayout &&
-      handleResetLayout &&
-      handleSaveCurrentPageLayout &&
-      handleLayoutChange
-    ) {
-      handleLayoutChange([
-        ...customizePageClassBase.rightPanelDefaultLayout,
-        ...(isEditView
-          ? [
-              {
-                h: 2.3,
-                i: LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER,
-                w: 1,
-                x: 0,
-                y: 100,
-                isDraggable: false,
-              },
-            ]
-          : []),
-      ]);
-      handleResetLayout(false);
-      handleSaveCurrentPageLayout(true);
-    }
-  }, [resetLayout]);
 
   return (
     <>
