@@ -25,7 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        e2e-test: ['bigquery', 'dbt_redshift', 'metabase', 'mssql', 'mysql', 'redash', 'snowflake', 'tableau', 'powerbi', 'vertica', 'python', 'redshift', 'hive', 'quicksight', 'datalake_s3', 'postgres']
+        e2e-test: ['bigquery', 'dbt_redshift', 'metabase', 'mssql', 'mysql', 'redash', 'snowflake', 'tableau', 'powerbi', 'vertica', 'python', 'redshift', 'hive', 'quicksight', 'datalake_s3', 'postgres', 'oracle', 'athena', 'bigquery_multiple_project']
     environment: test
 
     steps:
@@ -44,7 +44,7 @@ jobs:
         python-version: 3.9
 
     - name: configure aws credentials
-      if: contains('quicksight', matrix.e2e-test) || contains('datalake_s3', matrix.e2e-test)
+      if: contains('quicksight', matrix.e2e-test) || contains('datalake_s3', matrix.e2e-test) || contains('athena', matrix.e2e-test)
       uses: aws-actions/configure-aws-credentials@v1
       with:
         role-to-assume: ${{ secrets.E2E_AWS_IAM_ROLE_ARN }}
@@ -94,6 +94,7 @@ jobs:
         E2E_BQ_PROJECT_ID_TAXONOMY: ${{ secrets.TEST_BQ_PROJECT_ID_TAXONOMY }}
         E2E_BQ_PRIVATE_KEY: ${{ secrets.TEST_BQ_PRIVATE_KEY_E2E }}
         E2E_BQ_PROJECT_ID: ${{ secrets.TEST_BQ_PROJECT_ID }}
+        E2E_BQ_PROJECT_ID2: ${{ secrets.TEST_BQ_PROJECT_ID2 }}
         E2E_BQ_PRIVATE_KEY_ID: ${{ secrets.TEST_BQ_PRIVATE_KEY_ID }}
         E2E_BQ_CLIENT_EMAIL: ${{ secrets.TEST_BQ_CLIENT_EMAIL }}
         E2E_BQ_CLIENT_ID: ${{ secrets.TEST_BQ_CLIENT_ID }}
@@ -141,6 +142,13 @@ jobs:
         E2E_POSTGRES_PASSWORD: ${{ secrets.E2E_POSTGRES_PASSWORD }}
         E2E_POSTGRES_HOSTPORT: ${{ secrets.E2E_POSTGRES_HOSTPORT }}
         E2E_POSTGRES_DATABASE: ${{ secrets.E2E_POSTGRES_DATABASE }}
+        E2E_ORACLE_HOST_PORT: ${{ secrets.E2E_ORACLE_HOST_PORT }}
+        E2E_ORACLE_USERNAME: ${{ secrets.E2E_ORACLE_USERNAME }}
+        E2E_ORACLE_PASSWORD: ${{ secrets.E2E_ORACLE_PASSWORD }}
+        E2E_ORACLE_SERVICE_NAME: ${{ secrets.E2E_ORACLE_SERVICE_NAME }}
+        E2E_ATHENA_REGION: ${{ secrets.E2E_ATHENA_REGION }}
+        E2E_ATHENA_S3STAGINGDIR: ${{ secrets.E2E_ATHENA_S3STAGINGDIR }}
+        E2E_ATHENA_WORKGROUP: ${{ secrets.E2E_ATHENA_WORKGROUP }}
       run: |
         source env/bin/activate
         export SITE_CUSTOMIZE_PATH=$(python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())))")/sitecustomize.py

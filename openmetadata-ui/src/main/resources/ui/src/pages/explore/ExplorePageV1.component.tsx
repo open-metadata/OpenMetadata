@@ -77,8 +77,6 @@ const ExplorePageV1: FunctionComponent = () => {
   const [advancesSearchQuickFilters, setAdvancedSearchQuickFilters] =
     useState<QueryFilterInterface>();
 
-  const [sortValue, setSortValue] = useState<string>(INITIAL_SORT_FIELD);
-
   const [sortOrder, setSortOrder] = useState<SORT_ORDER>(SORT_ORDER.DESC);
 
   const [searchHitCounts, setSearchHitCounts] = useState<SearchHitCounts>();
@@ -87,24 +85,38 @@ const ExplorePageV1: FunctionComponent = () => {
 
   const { queryFilter } = useAdvanceSearch();
 
-  const parsedSearch = useMemo(
-    () =>
-      Qs.parse(
-        location.search.startsWith('?')
-          ? location.search.substring(1)
-          : location.search
-      ),
-    [location.search]
-  );
+  const [parsedSearch, searchQueryParam, sortValue] = useMemo(() => {
+    const parsedSearch = Qs.parse(
+      location.search.startsWith('?')
+        ? location.search.substring(1)
+        : location.search
+    );
 
-  const searchQueryParam = useMemo(
-    () => (isString(parsedSearch.search) ? parsedSearch.search : ''),
-    [location.search]
-  );
+    const searchQueryParam = isString(parsedSearch.search)
+      ? parsedSearch.search
+      : '';
+
+    const sortValue = isString(parsedSearch.sort)
+      ? parsedSearch.sort
+      : INITIAL_SORT_FIELD;
+
+    return [parsedSearch, searchQueryParam, sortValue];
+  }, [location.search]);
 
   const handlePageChange: ExploreProps['onChangePage'] = (page, size) => {
     history.push({
       search: Qs.stringify({ ...parsedSearch, page, size: size ?? PAGE_SIZE }),
+    });
+  };
+
+  const handleSortValueChange = (page: number, sortVal: string) => {
+    history.push({
+      search: Qs.stringify({
+        ...parsedSearch,
+        page,
+        size: size ?? PAGE_SIZE,
+        sort: sortVal,
+      }),
     });
   };
 
@@ -152,6 +164,7 @@ const ExplorePageV1: FunctionComponent = () => {
           getExplorePath({
             tab: tabsInfo[nSearchIndex].path,
             extraParameters: {
+              sort: searchQueryParam ? '_score' : INITIAL_SORT_FIELD,
               page: '1',
               quickFilter: commonQuickFilters
                 ? JSON.stringify(commonQuickFilters)
@@ -161,7 +174,7 @@ const ExplorePageV1: FunctionComponent = () => {
           })
         );
       },
-      [commonQuickFilters]
+      [commonQuickFilters, searchQueryParam]
     );
 
   const handleQuickFilterChange = useCallback(
@@ -193,13 +206,13 @@ const ExplorePageV1: FunctionComponent = () => {
       if (isNil(tabInfo)) {
         const activeKey = findActiveSearchIndex(searchHitCounts);
 
-        return activeKey ? activeKey : SearchIndex.TABLE;
+        return activeKey ? activeKey : SearchIndex.DATA_PRODUCT;
       }
 
       return tabInfo[0] as ExploreSearchIndex;
     }
 
-    return SearchIndex.TABLE;
+    return SearchIndex.DATA_PRODUCT;
   }, [tab, searchHitCounts]);
 
   const tabItems = useMemo(() => {
@@ -297,19 +310,13 @@ const ExplorePageV1: FunctionComponent = () => {
       queryFilter as unknown as QueryFilterInterface
     );
 
-    let newSortValue = sortValue;
-    if (searchQueryParam !== '') {
-      newSortValue = '_score';
-      setSortValue(newSortValue);
-    }
-
     setIsLoading(true);
     Promise.all([
       searchQuery({
         query: escapeESReservedCharacters(searchQueryParam),
         searchIndex,
         queryFilter: combinedQueryFilter,
-        sortField: newSortValue,
+        sortField: sortValue,
         sortOrder,
         pageNumber: page,
         pageSize: size,
@@ -322,6 +329,7 @@ const ExplorePageV1: FunctionComponent = () => {
         }),
       Promise.all(
         [
+          SearchIndex.DATA_PRODUCT,
           SearchIndex.TABLE,
           SearchIndex.TOPIC,
           SearchIndex.DASHBOARD,
@@ -348,6 +356,7 @@ const ExplorePageV1: FunctionComponent = () => {
         )
       ).then(
         ([
+          dataProductResponse,
           tableResponse,
           topicResponse,
           dashboardResponse,
@@ -361,6 +370,7 @@ const ExplorePageV1: FunctionComponent = () => {
           searchIndexResponse,
         ]) => {
           setSearchHitCounts({
+            [SearchIndex.DATA_PRODUCT]: dataProductResponse.hits.total.value,
             [SearchIndex.TABLE]: tableResponse.hits.total.value,
             [SearchIndex.TOPIC]: topicResponse.hits.total.value,
             [SearchIndex.DASHBOARD]: dashboardResponse.hits.total.value,
@@ -440,9 +450,8 @@ const ExplorePageV1: FunctionComponent = () => {
         handlePageChange(1);
         setSortOrder(sort);
       }}
-      onChangeSortValue={(sort) => {
-        handlePageChange(1);
-        setSortValue(sort);
+      onChangeSortValue={(sortVal) => {
+        handleSortValueChange(1, sortVal);
       }}
     />
   );

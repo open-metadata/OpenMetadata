@@ -11,12 +11,21 @@
 """
 Workflow definition for the Data Quality
 """
+import traceback
+from typing import Optional
+
 from metadata.data_quality.processor.test_case_runner import TestCaseRunner
 from metadata.data_quality.source.test_suite import TestSuiteSource
+from metadata.generated.schema.entity.services.connections.serviceConnection import (
+    ServiceConnection,
+)
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.tests.testSuite import ServiceType, TestSuite
 from metadata.ingestion.api.steps import Processor, Sink
+from metadata.utils import fqn
 from metadata.utils.importer import import_sink_class
 from metadata.utils.logger import test_suite_logger
-from metadata.workflow.base import BaseWorkflow
+from metadata.workflow.base import BaseWorkflow, T
 
 logger = test_suite_logger()
 
@@ -48,3 +57,59 @@ class TestSuiteWorkflow(BaseWorkflow):
 
     def _get_test_runner_processor(self) -> Processor:
         return TestCaseRunner.create(self.config.dict(), self.metadata)
+
+    def _retrieve_service_connection_if_needed(self, service_type: ServiceType) -> None:
+        """Get service object from source config `entityFullyQualifiedName`"""
+        if (
+            not self.config.source.serviceConnection
+            and not self.metadata.config.forceEntityOverwriting
+        ):
+            fully_qualified_name = (
+                self.config.source.sourceConfig.config.entityFullyQualifiedName.__root__
+            )
+            try:
+                service_name = fqn.split(fully_qualified_name)[0]
+            except IndexError as exc:
+                logger.debug(traceback.format_exc())
+                raise IndexError(
+                    f"Could not retrieve service name from entity fully qualified name {fully_qualified_name}: {exc}"
+                )
+            try:
+                service: DatabaseService = self.metadata.get_by_name(
+                    DatabaseService, service_name
+                )
+                if not service:
+                    raise ConnectionError(
+                        f"Could not retrieve service with name `{service_name}`. "
+                        "Typically caused by the `entityFullyQualifiedName` does not exists in OpenMetadata "
+                        "or the JWT Token is invalid."
+                    )
+
+                self.config.source.serviceConnection = ServiceConnection(
+                    __root__=service.connection
+                )
+
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.error(
+                    f"Error getting service connection for service name [{service_name}]"
+                    f" using the secrets manager provider [{self.metadata.config.secretsManagerProvider}]: {exc}"
+                )
+                raise exc
+
+    def _get_ingestion_pipeline_service(self) -> Optional[T]:
+        """
+        Ingestion Pipelines are linked to either an EntityService (DatabaseService, MessagingService,...)
+        or a Test Suite.
+
+        Depending on the Source Config Type, we'll need to GET one or the other to create
+        the Ingestion Pipeline
+        """
+        return self.metadata.get_by_name(
+            entity=TestSuite,
+            fqn=fqn.build(
+                metadata=None,
+                entity_type=TestSuite,
+                table_fqn=self.config.source.sourceConfig.config.entityFullyQualifiedName,
+            ),
+        )
