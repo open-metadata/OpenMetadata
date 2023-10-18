@@ -217,6 +217,7 @@ function CustomizeMyData({
             handleOpenAddWidgetModal: handleOpenAddWidgetModal,
             handlePlaceholderWidgetKey: handlePlaceholderWidgetKey,
             handleRemoveWidget: handleRemoveWidget,
+            isEditView: true,
           })}
         </div>
       )),

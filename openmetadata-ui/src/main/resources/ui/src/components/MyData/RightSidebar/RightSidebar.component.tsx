@@ -106,6 +106,7 @@ const RightSidebar = ({
               handleRemoveWidget: handleRemoveWidget,
               iconHeight: SIZE.SMALL,
               iconWidth: SIZE.SMALL,
+              isEditView: isEditView,
             })}
           </div>
         )),
@@ -120,6 +121,7 @@ const RightSidebar = ({
       handleOpenAddWidgetModal,
       handlePlaceholderWidgetKey,
       handleRemoveWidget,
+      isEditView,
     ]
   );
 
