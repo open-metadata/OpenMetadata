@@ -45,6 +45,7 @@ from metadata.ingestion.source.database.mssql.utils import (
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.sqa_utils import update_mssql_ischema_names
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_comments,
     get_all_view_definitions,
@@ -56,25 +57,7 @@ logger = ingestion_logger()
 # Avoid using these data types in new development work, and plan to modify applications that currently use them.
 # Use nvarchar(max), varchar(max), and varbinary(max) instead.
 # ref: https://learn.microsoft.com/en-us/sql/t-sql/data-types/ntext-text-and-image-transact-sql?view=sql-server-ver16
-ischema_names.update(
-    {
-        "nvarchar": create_sqlalchemy_type("NVARCHAR"),
-        "nchar": create_sqlalchemy_type("NCHAR"),
-        "ntext": create_sqlalchemy_type("NTEXT"),
-        "bit": create_sqlalchemy_type("BIT"),
-        "image": create_sqlalchemy_type("IMAGE"),
-        "binary": create_sqlalchemy_type("BINARY"),
-        "smallmoney": create_sqlalchemy_type("SMALLMONEY"),
-        "money": create_sqlalchemy_type("MONEY"),
-        "real": create_sqlalchemy_type("REAL"),
-        "smalldatetime": create_sqlalchemy_type("SMALLDATETIME"),
-        "datetime2": create_sqlalchemy_type("DATETIME2"),
-        "datetimeoffset": create_sqlalchemy_type("DATETIMEOFFSET"),
-        "sql_variant": create_sqlalchemy_type("SQL_VARIANT"),
-        "uniqueidentifier": create_sqlalchemy_type("UUID"),
-        "xml": create_sqlalchemy_type("XML"),
-    }
-)
+ischema_names = update_mssql_ischema_names(ischema_names)
 
 MSDialect.get_table_comment = get_table_comment
 MSDialect.get_view_definition = get_view_definition

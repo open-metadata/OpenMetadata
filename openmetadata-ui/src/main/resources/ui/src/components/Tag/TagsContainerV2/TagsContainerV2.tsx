@@ -45,6 +45,7 @@ import TagSelectForm from '../TagsSelectForm/TagsSelectForm.component';
 import TagsV1 from '../TagsV1/TagsV1.component';
 import TagsViewer from '../TagsViewer/TagsViewer';
 import { LayoutType } from '../TagsViewer/TagsViewer.interface';
+import './tags-container.style.less';
 import { TagsContainerV2Props } from './TagsContainerV2.interface';
 
 const TagsContainerV2 = ({
@@ -404,15 +405,17 @@ const TagsContainerV2 = ({
 
   return (
     <div
-      className="w-full"
+      className="w-full tags-container"
       data-testid={isGlossaryType ? 'glossary-container' : 'tags-container'}>
       {header}
       {tagBody}
 
-      <Space align="baseline" className="m-t-xs w-full" size="middle">
-        {showBottomEditButton && !showInlineEditButton && editTagButton}
-        {children}
-      </Space>
+      {(children || showBottomEditButton) && (
+        <Space align="baseline" className="m-t-xs w-full" size="middle">
+          {showBottomEditButton && !showInlineEditButton && editTagButton}
+          {children}
+        </Space>
+      )}
     </div>
   );
 };

@@ -62,26 +62,31 @@ const AppSchedule = ({
     <>
       <Row>
         <Col className="flex-col" flex="auto">
-          <div>
-            <Space size={8}>
-              <Typography.Text className="right-panel-label">
-                {t('label.schedule-type')}
-              </Typography.Text>
-              <Typography.Text className="font-medium">
-                {(appData.appSchedule as AppScheduleClass).scheduleType ?? ''}
-              </Typography.Text>
-            </Space>
-          </div>
-          <div>
-            <Space size={8}>
-              <Typography.Text className="right-panel-label">
-                {t('label.schedule-interval')}
-              </Typography.Text>
-              <Typography.Text className="font-medium">
-                {cronString}
-              </Typography.Text>
-            </Space>
-          </div>
+          {appData.appSchedule && (
+            <>
+              <div>
+                <Space size={8}>
+                  <Typography.Text className="right-panel-label">
+                    {t('label.schedule-type')}
+                  </Typography.Text>
+                  <Typography.Text className="font-medium">
+                    {(appData.appSchedule as AppScheduleClass).scheduleType ??
+                      ''}
+                  </Typography.Text>
+                </Space>
+              </div>
+              <div>
+                <Space size={8}>
+                  <Typography.Text className="right-panel-label">
+                    {t('label.schedule-interval')}
+                  </Typography.Text>
+                  <Typography.Text className="font-medium">
+                    {cronString}
+                  </Typography.Text>
+                </Space>
+              </div>
+            </>
+          )}
         </Col>
         <Col className="d-flex items-center justify-end" flex="200px">
           <Space>

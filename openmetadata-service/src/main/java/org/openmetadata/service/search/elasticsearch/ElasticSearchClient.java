@@ -136,6 +136,7 @@ import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.Elas
 import org.openmetadata.service.search.indexes.ContainerIndex;
 import org.openmetadata.service.search.indexes.DashboardDataModelIndex;
 import org.openmetadata.service.search.indexes.DashboardIndex;
+import org.openmetadata.service.search.indexes.DataProductIndex;
 import org.openmetadata.service.search.indexes.DomainIndex;
 import org.openmetadata.service.search.indexes.GlossaryTermIndex;
 import org.openmetadata.service.search.indexes.MlModelIndex;
@@ -295,7 +296,7 @@ public class ElasticSearchClient implements SearchClient {
       case "dashboard_data_model_search_index":
         searchSourceBuilder = buildDashboardDataModelsSearch(request.getQuery(), request.getFrom(), request.getSize());
         break;
-      case "search_entity_index":
+      case "search_entity_search_index":
         searchSourceBuilder = buildSearchEntitySearch(request.getQuery(), request.getFrom(), request.getSize());
         break;
       case "domain_search_index":
@@ -305,6 +306,9 @@ public class ElasticSearchClient implements SearchClient {
       case "aggregated_cost_analysis_report_data_index":
         searchSourceBuilder =
             buildCostAnalysisReportDataSearch(request.getQuery(), request.getFrom(), request.getSize());
+        break;
+      case "data_product_search_index":
+        searchSourceBuilder = buildDataProductSearch(request.getQuery(), request.getFrom(), request.getSize());
         break;
       default:
         searchSourceBuilder = buildAggregateSearchBuilder(request.getQuery(), request.getFrom(), request.getSize());
@@ -339,7 +343,7 @@ public class ElasticSearchClient implements SearchClient {
 
     /* For backward-compatibility we continue supporting the deleted argument, this should be removed in future versions */
     if (request.getIndex().equalsIgnoreCase("domain_search_index")
-        || request.getIndex().equalsIgnoreCase("data_products_search_index")
+        || request.getIndex().equalsIgnoreCase("data_product_search_index")
         || request.getIndex().equalsIgnoreCase("query_search_index")
         || request.getIndex().equalsIgnoreCase("raw_cost_analysis_report_data_index")
         || request.getIndex().equalsIgnoreCase("aggregated_cost_analysis_report_data_index")) {
@@ -356,7 +360,10 @@ public class ElasticSearchClient implements SearchClient {
     }
 
     if (request.getIndex().equalsIgnoreCase("glossary_term_search_index")) {
-      searchSourceBuilder.query(QueryBuilders.boolQuery().must(QueryBuilders.matchQuery("status", "Approved")));
+      searchSourceBuilder.query(
+          QueryBuilders.boolQuery()
+              .must(searchSourceBuilder.query())
+              .must(QueryBuilders.matchQuery("status", "Approved")));
     }
 
     /* for performance reasons ElasticSearch doesn't provide accurate hits
@@ -839,9 +846,12 @@ public class ElasticSearchClient implements SearchClient {
     highlightDescription.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightName = new HighlightBuilder.Field(FIELD_NAME);
     highlightName.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDisplayName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
+    highlightDisplayName.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
     hb.field(highlightDescription);
     hb.field(highlightName);
+    hb.field(highlightDisplayName);
 
     hb.preTags(PRE_TAG);
     hb.postTags(POST_TAG);
@@ -849,6 +859,33 @@ public class ElasticSearchClient implements SearchClient {
     SearchSourceBuilder searchSourceBuilder =
         new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
     searchSourceBuilder.aggregation(AggregationBuilders.terms("fields.name.keyword").field("fields.name.keyword"));
+    return addAggregation(searchSourceBuilder);
+  }
+
+  private static SearchSourceBuilder buildDataProductSearch(String query, int from, int size) {
+    QueryStringQueryBuilder queryBuilder =
+        QueryBuilders.queryStringQuery(query)
+            .fields(DataProductIndex.getFields())
+            .defaultOperator(Operator.AND)
+            .fuzziness(Fuzziness.AUTO);
+
+    HighlightBuilder hb = new HighlightBuilder();
+    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
+    highlightDescription.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightName = new HighlightBuilder.Field(FIELD_NAME);
+    highlightName.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDisplayName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
+    highlightDisplayName.highlighterType(UNIFIED);
+
+    hb.field(highlightDescription);
+    hb.field(highlightName);
+    hb.field(highlightDisplayName);
+
+    hb.preTags(PRE_TAG);
+    hb.postTags(POST_TAG);
+
+    SearchSourceBuilder searchSourceBuilder =
+        new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
     return addAggregation(searchSourceBuilder);
   }
 
