@@ -76,6 +76,7 @@ class ProfilerInterface(ABC):
         table_partition_config: Optional[PartitionProfilerConfig],
         thread_count: int = 5,
         timeout_seconds: int = 43200,
+        sample_data_count: Optional[int] = 100,
         **kwargs,
     ):
         """Required attribute for the interface"""
@@ -98,6 +99,7 @@ class ProfilerInterface(ABC):
             table_partition_config if not self.profile_query else None
         )
         self.timeout_seconds = timeout_seconds
+        self.sample_data_count = sample_data_count
 
         self._get_metric_fn = {
             MetricTypes.Table.value: self._compute_table_metrics,
@@ -153,6 +155,9 @@ class ProfilerInterface(ABC):
             profile_sample_config = None
             table_partition_config = None
 
+        sample_data_count = cls.get_sample_data_count_config(
+            entity_config, source_config
+        )
         return cls(
             service_connection_config=service_connection_config,
             ometa_client=ometa_client,
@@ -163,6 +168,7 @@ class ProfilerInterface(ABC):
             table_partition_config=table_partition_config,
             thread_count=thread_count,
             timeout_seconds=timeout_seconds,
+            sample_data_count=sample_data_count,
             **kwargs,
         )
 
@@ -203,6 +209,22 @@ class ProfilerInterface(ABC):
             )
 
         return None
+
+    @staticmethod
+    def get_sample_data_count_config(
+        entity_config: Optional[TableConfig],
+        source_config: DatabaseServiceProfilerPipeline,
+    ) -> Optional[int]:
+        """_summary_
+        Args:
+            entity_config (Optional[TableConfig]): table config object from yaml/json file
+            source_config DatabaseServiceProfilerPipeline: profiler pipeline details
+        Returns:
+            Optional[int]: int
+        """
+        if entity_config:
+            return entity_config.sampleDataCount
+        return source_config.sampleDataCount
 
     @staticmethod
     def get_profile_query(

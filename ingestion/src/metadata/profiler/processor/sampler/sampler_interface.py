@@ -32,6 +32,7 @@ class SamplerInterface(ABC):
         profile_sample_config: Optional[ProfileSampleConfig] = None,
         partition_details: Optional[Dict] = None,
         profile_sample_query: Optional[str] = None,
+        sample_data_count: Optional[int] = 100,
     ):
         self.profile_sample = None
         self.profile_sample_type = None
@@ -41,7 +42,7 @@ class SamplerInterface(ABC):
         self.client = client
         self.table = table
         self._profile_sample_query = profile_sample_query
-        self.sample_limit = 100
+        self.sample_limit = sample_data_count
         self._sample_rows = None
         self._partition_details = partition_details
 

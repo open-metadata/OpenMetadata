@@ -46,6 +46,7 @@ class TableConfig(ConfigModel):
     fullyQualifiedName: FullyQualifiedEntityName
     profileSample: Optional[Union[float, int]] = None
     profileSampleType: Optional[ProfileSampleType] = None
+    sampleDataCount: Optional[int] = 100
     profileQuery: Optional[str] = None
     partitionConfig: Optional[PartitionProfilerConfig]
     columnConfig: Optional[ColumnConfig]

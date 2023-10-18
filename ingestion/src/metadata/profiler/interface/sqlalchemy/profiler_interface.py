@@ -20,7 +20,7 @@ import threading
 import traceback
 from collections import defaultdict
 from datetime import datetime, timezone
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from sqlalchemy import Column, inspect
 from sqlalchemy.exc import ProgrammingError
@@ -79,6 +79,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         thread_count: int = 5,
         timeout_seconds: int = 43200,
         sqa_metadata=None,
+        sample_data_count: Optional[int] = 100,
         **kwargs,
     ):
         """Instantiate SQA Interface object"""
@@ -93,6 +94,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             table_partition_config,
             thread_count,
             timeout_seconds,
+            sample_data_count,
         )
 
         self._table = self._convert_table_to_orm_object(sqa_metadata)
@@ -117,6 +119,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             profile_sample_config=self.profile_sample_config,
             partition_details=self.partition_details,
             profile_sample_query=self.profile_query,
+            sample_data_count=self.sample_data_count,
         )
 
     def _session_factory(self) -> scoped_session:
