@@ -54,7 +54,7 @@ VERSIONS = {
     "looker-sdk": "looker-sdk>=22.20.0",
     "lkml": "lkml~=1.3",
     "tableau": "tableau-api-lib~=0.1",
-    "pyhive": "pyhive~=0.6",
+    "pyhive": "pyhive~=0.7",
     "mongo": "pymongo~=4.3",
     "redshift": "sqlalchemy-redshift==0.8.12",
     "snowflake": "snowflake-sqlalchemy~=1.4",
