@@ -12,7 +12,6 @@
 """
 Test Athena connector with CLI
 """
-import urllib.parse
 from pathlib import Path
 from typing import List
 
