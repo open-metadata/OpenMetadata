@@ -13,7 +13,7 @@ Postgres source module
 """
 import traceback
 from collections import namedtuple
-from typing import Dict, Iterable, Optional, Tuple
+from typing import Iterable, Optional, Tuple
 
 from sqlalchemy import sql
 from sqlalchemy.dialects.postgresql.base import PGDialect, ischema_names
@@ -239,49 +239,32 @@ class PostgresSource(CommonDbSourceService):
                 )
             )
 
-    def get_all_table_owners(self, connection, query):
-        """
-        Method to fetch owner of all available tables
-        """
-        self.all_table_owners: Dict[
-            Tuple[str, str], str
-        ] = {}  # pylint: disable=attribute-defined-outside-init
-        self.current_db: str = (
-            connection.engine.url.database
-        )  # pylint: disable=attribute-defined-outside-init
-        result = connection.execute(query)
+    def get_table_owner(
+        self, table_name, schema=None
+    ):  # pylint: disable=unused-argument
+
+        result = self.connection.execute(POSTGRES_TABLE_OWNERS)
         for table in result:
             self.all_table_owners[(table[1], table[0])] = table[2]
-
-    def get_table_owner(
-        self, connection, table_name, schema=None, **kw
-    ):  # pylint: disable=unused-argument
-        if (
-            not hasattr(self, "all_table_owners")
-            or self.current_db != connection.engine.url.database
-        ):
-            query = POSTGRES_TABLE_OWNERS
-            self.get_all_table_owners(connection, query)
-        return {"text": self.all_table_owners.get((table_name, schema))}
+        return self.all_table_owners.get((table_name, schema))
 
     def get_owner_detail(self, schema_name: str, table_name: str) -> Optional[str]:
         """Get database owner
         Args
-        schema_name, table_nam
+        schema_name, table_name
         Returns:
             Optional[EntityReference]
         """
         owner = None
-        conn = self.connection
-        owner_name = self.get_table_owner(conn, table_name, schema_name)
+        owner_name = self.get_table_owner(table_name, schema_name)
         user_owner_fqn = fqn.build(
-            self.metadata, entity_type=User, user_name=owner_name["text"]
+            self.metadata, entity_type=User, user_name=owner_name
         )
         if user_owner_fqn:
             owner = self.metadata.get_entity_reference(entity=User, fqn=user_owner_fqn)
         else:
             team_owner_fqn = fqn.build(
-                self.metadata, entity_type=Team, team_name=owner_name["text"]
+                self.metadata, entity_type=Team, team_name=owner_name
             )
             if team_owner_fqn:
                 owner = self.metadata.get_entity_reference(
@@ -290,7 +273,7 @@ class PostgresSource(CommonDbSourceService):
             else:
                 logger.warning(
                     "Unable to ingest owner from Postgres since no user or"
-                    f" team was found with name {owner_name['text']}"
+                    f" team was found with name {owner_name}"
                 )
         return owner
 
@@ -382,7 +365,7 @@ class PostgresSource(CommonDbSourceService):
 
     def process_owner(self, table_name_and_type: Tuple[str, str]):
         try:
-            if self.config.serviceConnection.__root__.config.includeOwners:
+            if self.source_config.includeOwners:
                 schema_name = self.context.database_schema.name.__root__
                 table_name = table_name_and_type[0]
                 owner = self.get_owner_detail(schema_name, table_name)
