@@ -35,8 +35,8 @@ class Status(BaseModel):
     filtered: List[Dict[str, str]] = Field(default_factory=list)
     failures: List[StackTraceError] = Field(default_factory=list)
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, **data):
+        super().__init__(**data)
         self.source_start_time = time.time()
 
     def scanned(self, record: Any) -> None:
