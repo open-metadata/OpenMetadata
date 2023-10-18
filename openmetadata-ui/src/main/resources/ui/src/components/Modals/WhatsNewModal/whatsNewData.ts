@@ -995,7 +995,22 @@ export const WHATS_NEW = [
     id: 19,
     version: 'v1.2.0',
     description: 'Released on 23rd Oct 2023.',
-    features: [],
+    features: [
+      {
+        title: 'Knowledge Center (Exclusively for Collate)',
+        description:
+          'Knowledge Center, where organizations can create and share Knowledge Articles with their Data Team. Custom build your knowledge articles to be specific for a Domain, Team, or Data Asset.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/DfOgeZ9f7no',
+      },
+      {
+        title: 'Cost Analysis Report (Exclusively for Collate)',
+        description:
+          'Cost Analysis Charts that captures metrics on the Last access time, Last accessed by, and so on. This helps organizations to analyze the cost based on data asset usage. This report is visible as part of the Data Insights Report.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/KI58oBHxTOU',
+      },
+    ],
     changeLogs: {
       'Domains and Data Products': `- Added support for Domains and Data Products.
 - Assets can be added to a Domain, and users can scope their discovery experience to one Domain.
