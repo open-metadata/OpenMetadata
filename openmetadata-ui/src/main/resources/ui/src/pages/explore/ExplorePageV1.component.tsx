@@ -216,17 +216,24 @@ const ExplorePageV1: FunctionComponent = () => {
   }, [tab, searchHitCounts]);
 
   const tabItems = useMemo(() => {
-    const items = Object.entries(tabsInfo).map(
-      ([tabSearchIndex, tabDetail]) => ({
+    if (!searchHitCounts) {
+      return [];
+    }
+
+    const parentMap: Record<string, any> = {}; // Use this map to group children by parent
+
+    for (const [tabSearchIndex, tabDetail] of Object.entries(tabsInfo)) {
+      const { label, category } = tabDetail;
+      const menuItem = {
         key: tabSearchIndex,
         label: (
-          <div data-testid={`${lowerCase(tabDetail.label)}-tab`}>
+          <div data-testid={`${lowerCase(label)}-tab`}>
             <Space className="w-full justify-between">
               <Typography.Text
                 className={
                   tabSearchIndex === searchIndex ? 'text-primary' : ''
                 }>
-                {tabDetail.label}
+                {label}
               </Typography.Text>
               <span>
                 {!isNil(searchHitCounts)
@@ -243,15 +250,43 @@ const ExplorePageV1: FunctionComponent = () => {
         count: searchHitCounts
           ? searchHitCounts[tabSearchIndex as ExploreSearchIndex]
           : 0,
-      })
-    );
+      };
 
-    return searchQueryParam
-      ? items.filter((tabItem) => {
-          return tabItem.count > 0 || tabItem.key === searchCriteria;
-        })
-      : items;
-  }, [tabsInfo, searchHitCounts, searchIndex]);
+      if (!parentMap[category]) {
+        parentMap[category] = {
+          count: 0,
+          items: [],
+        };
+      }
+      parentMap[category].items.push(menuItem);
+      parentMap[category].count += menuItem.count;
+    }
+
+    const menuItems = [];
+
+    for (const [parent, children] of Object.entries(parentMap)) {
+      const filteredChildren = searchQueryParam
+        ? children.items.filter((item: { count: number }) => item.count > 0)
+        : children.items;
+
+      if (filteredChildren.length > 0) {
+        menuItems.push({
+          key: parent,
+          label: (
+            <div data-testid={`${lowerCase(parent)}-menu`}>
+              <Space className="w-full justify-between">
+                <Typography.Text>{parent}</Typography.Text>
+                <span>{getCountBadge(children.count)}</span>
+              </Space>
+            </div>
+          ),
+          children: filteredChildren,
+        });
+      }
+    }
+
+    return menuItems;
+  }, [tabsInfo, searchHitCounts, searchCriteria, searchQueryParam]);
 
   const page = useMemo(() => {
     const pageParam = parsedSearch.page;

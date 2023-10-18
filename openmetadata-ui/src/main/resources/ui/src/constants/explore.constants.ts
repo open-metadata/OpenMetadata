@@ -53,6 +53,7 @@ export interface ExploreTabInfo {
   path: string;
   icon?: string;
   selectedIcon?: string;
+  category: string;
 }
 
 export const tabsInfo: { [K in ExploreSearchIndex]: ExploreTabInfo } = {
@@ -61,6 +62,7 @@ export const tabsInfo: { [K in ExploreSearchIndex]: ExploreTabInfo } = {
     sortingFields: tableSortingFields,
     sortField: INITIAL_SORT_FIELD,
     path: 'dataProducts',
+    category: i18n.t('label.domain'),
   },
   [SearchIndex.TABLE]: {
     label: i18n.t('label.table-plural'),
@@ -69,12 +71,14 @@ export const tabsInfo: { [K in ExploreSearchIndex]: ExploreTabInfo } = {
     path: 'tables',
     icon: Icons.TABLE_GREY,
     selectedIcon: Icons.TABLE,
+    category: i18n.t('label.database'),
   },
   [SearchIndex.STORED_PROCEDURE]: {
     label: i18n.t('label.stored-procedure-plural'),
     sortingFields: entitySortingFields,
     sortField: INITIAL_SORT_FIELD,
     path: 'storedProcedure',
+    category: i18n.t('label.database'),
   },
   [SearchIndex.DASHBOARD]: {
     label: i18n.t('label.dashboard-plural'),
@@ -83,12 +87,14 @@ export const tabsInfo: { [K in ExploreSearchIndex]: ExploreTabInfo } = {
     path: 'dashboards',
     icon: Icons.DASHBOARD_GREY,
     selectedIcon: Icons.DASHBOARD,
+    category: i18n.t('label.dashboard-plural'),
   },
   [SearchIndex.DASHBOARD_DATA_MODEL]: {
     label: i18n.t('label.dashboard-data-model-plural'),
     sortingFields: entitySortingFields,
     sortField: INITIAL_SORT_FIELD,
     path: 'dashboardDataModel',
+    category: i18n.t('label.dashboard-plural'),
   },
   [SearchIndex.PIPELINE]: {
     label: i18n.t('label.pipeline-plural'),
@@ -97,6 +103,7 @@ export const tabsInfo: { [K in ExploreSearchIndex]: ExploreTabInfo } = {
     path: 'pipelines',
     icon: Icons.PIPELINE_GREY,
     selectedIcon: Icons.PIPELINE,
+    category: i18n.t('label.pipeline-plural'),
   },
   [SearchIndex.TOPIC]: {
     label: i18n.t('label.topic-plural'),
@@ -105,36 +112,42 @@ export const tabsInfo: { [K in ExploreSearchIndex]: ExploreTabInfo } = {
     path: 'topics',
     icon: Icons.TOPIC_GREY,
     selectedIcon: Icons.TOPIC,
+    category: i18n.t('label.topic-plural'),
   },
   [SearchIndex.MLMODEL]: {
     label: i18n.t('label.ml-model-plural'),
     sortingFields: entitySortingFields,
     sortField: INITIAL_SORT_FIELD,
     path: 'mlmodels',
+    category: i18n.t('label.ml-model-plural'),
   },
   [SearchIndex.CONTAINER]: {
     label: i18n.t('label.container-plural'),
     sortingFields: entitySortingFields,
     sortField: INITIAL_SORT_FIELD,
     path: 'containers',
+    category: i18n.t('label.storage'),
   },
   [SearchIndex.SEARCH_INDEX]: {
     label: i18n.t('label.search-index-plural'),
     sortingFields: entitySortingFields,
     sortField: INITIAL_SORT_FIELD,
     path: 'searchIndexes',
+    category: i18n.t('label.search'),
   },
   [SearchIndex.GLOSSARY]: {
     label: i18n.t('label.glossary-plural'),
     sortingFields: entitySortingFields,
     sortField: INITIAL_SORT_FIELD,
     path: 'glossaries',
+    category: i18n.t('label.governance'),
   },
   [SearchIndex.TAG]: {
     label: i18n.t('label.tag-plural'),
     sortingFields: entitySortingFields,
     sortField: INITIAL_SORT_FIELD,
     path: 'tags',
+    category: i18n.t('label.governance'),
   },
 };
 
