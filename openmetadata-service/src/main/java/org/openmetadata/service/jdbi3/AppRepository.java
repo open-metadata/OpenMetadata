@@ -32,7 +32,6 @@ import org.quartz.SchedulerException;
 @Slf4j
 public class AppRepository extends EntityRepository<App> {
   public static String APP_BOT_ROLE = "ApplicationBotRole";
-  public static String APP_SCHEDULE_EXTENSION = "ScheduleExtension";
 
   public static final String UPDATE_FIELDS = "appConfiguration,appSchedule";
 
@@ -63,16 +62,14 @@ public class AppRepository extends EntityRepository<App> {
   }
 
   @Override
-  public void prepare(App entity, boolean update) {
-    if (entity.getBot() == null) {}
-  }
+  public void prepare(App entity, boolean update) {}
 
   public EntityReference createNewAppBot(App application) {
     String botName = String.format("%sBot", application.getName());
     BotRepository botRepository = (BotRepository) Entity.getEntityRepository(Entity.BOT);
     UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
-    User botUser = null;
-    Bot bot = null;
+    User botUser;
+    Bot bot;
     try {
       botUser = userRepository.findByName(botName, Include.NON_DELETED);
     } catch (EntityNotFoundException ex) {
@@ -143,13 +140,7 @@ public class AppRepository extends EntityRepository<App> {
     entity.withBot(botUserRef).withOwner(ownerRef);
   }
 
-  @SuppressWarnings("unused")
-  protected void postUpdate(App original, App updated) {
-    super.postUpdate(original, updated);
-    // TODO: here we should handle Live as well
-
-  }
-
+  @Override
   public void postDelete(App entity) {
     try {
       AppScheduler.getInstance().deleteScheduledApplication(entity);
@@ -162,13 +153,13 @@ public class AppRepository extends EntityRepository<App> {
   public EntityReference getBotUser(App application) {
     return application.getBot() != null
         ? application.getBot()
-        : getToEntityRef(application.getId(), Relationship.HAS, Entity.BOT, false);
+        : getToEntityRef(application.getId(), Relationship.CONTAINS, Entity.BOT, false);
   }
 
   @Override
   public void storeRelationships(App entity) {
     if (entity.getBot() != null) {
-      addRelationship(entity.getId(), entity.getBot().getId(), Entity.APPLICATION, Entity.BOT, Relationship.HAS);
+      addRelationship(entity.getId(), entity.getBot().getId(), Entity.APPLICATION, Entity.BOT, Relationship.CONTAINS);
     }
   }
 

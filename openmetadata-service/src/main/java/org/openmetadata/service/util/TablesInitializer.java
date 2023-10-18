@@ -283,6 +283,7 @@ public final class TablesInitializer {
         flyway.migrate();
         validateAndRunSystemDataMigrations(
             jdbi,
+            config,
             ConnectionType.from(config.getDataSourceFactory().getDriverClass()),
             nativeSQLRootPath,
             extensionSQLScriptRootPath,
@@ -293,6 +294,7 @@ public final class TablesInitializer {
         // Validate and Run System Data Migrations
         validateAndRunSystemDataMigrations(
             jdbi,
+            config,
             ConnectionType.from(config.getDataSourceFactory().getDriverClass()),
             nativeSQLRootPath,
             extensionSQLScriptRootPath,
@@ -345,6 +347,7 @@ public final class TablesInitializer {
 
   public static void validateAndRunSystemDataMigrations(
       Jdbi jdbi,
+      OpenMetadataApplicationConfig config,
       ConnectionType connType,
       String nativeMigrationSQLPath,
       String extensionSQLScriptRootPath,
@@ -353,7 +356,7 @@ public final class TablesInitializer {
     MigrationWorkflow workflow =
         new MigrationWorkflow(jdbi, nativeMigrationSQLPath, connType, extensionSQLScriptRootPath, forceMigrations);
     Entity.setCollectionDAO(jdbi.onDemand(CollectionDAO.class));
-    Entity.initializeRepositories(jdbi);
+    Entity.initializeRepositories(config, jdbi);
     workflow.loadMigrations();
     workflow.runMigrationWorkflows();
     Entity.cleanup();

@@ -11,7 +11,9 @@ public interface NativeApplication extends Job {
 
   void triggerOnDemand();
 
-  void schedule();
+  void scheduleInternal();
+
+  void initializeExternalApp();
 
   default void startApp(JobExecutionContext jobExecutionContext) {}
 }

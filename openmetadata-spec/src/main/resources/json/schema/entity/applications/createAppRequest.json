@@ -27,6 +27,5 @@
       "$ref": "./app.json#/definitions/appSchedule"
     }
   },
-  "required": ["appConfiguration", "appSchedule"],
   "additionalProperties": false
 }
