@@ -356,6 +356,7 @@ const GlossaryPage = () => {
           isGlossaryActive={isGlossaryActive}
           isSummaryPanelOpen={Boolean(previewAsset)}
           isVersionsView={false}
+          refreshActiveGlossaryTerm={fetchGlossaryTermDetails}
           selectedData={selectedData as Glossary}
           updateGlossary={updateGlossary}
           updateVote={updateVote}

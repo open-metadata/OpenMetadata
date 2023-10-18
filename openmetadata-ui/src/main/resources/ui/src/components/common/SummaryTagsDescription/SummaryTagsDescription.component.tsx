@@ -40,7 +40,7 @@ const SummaryTagsDescription = ({
         <Col span={24}>
           {tags.length > 0 ? (
             <Row>
-              <Col span={23}>
+              <Col className="d-flex flex-wrap" span={23}>
                 <TagsViewer sizeCap={-1} tags={tags} />
               </Col>
             </Row>

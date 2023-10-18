@@ -43,7 +43,7 @@ Too many tools around specific use cases clutter the data landscape. It is bette
 
 Data does not come free. You need resources the teams to keep the data of high quality, reliable, and trustworthy. Decentralize data for end-to-end domain based data ownership.
 
-## How OpenMetadata Helps Enhance the Data Culture
+## How OpenMetadata Helps Enhance Data Culture
 In order to enhance the data culture of a company, data need to be Trusted, Documented and Discoverable across the organization. OpenMetadata is an all-in-one platform for data discovery, collaboration, quality, governance, observability, lineage, glossary, and much more. Alongwith ensuring reliable quality of your data, you can use the collaborative features to maintain proper documentation, ownership, and appropriate tiering of your data assets.
 
 ### 1. Centralize your Metadata in OpenMetadata

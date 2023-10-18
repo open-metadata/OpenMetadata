@@ -13,7 +13,6 @@
 
 import { CookieStorage } from 'cookie-storage';
 import { isEmpty } from 'lodash';
-import { observer } from 'mobx-react';
 import React, {
   createContext,
   FC,
@@ -32,10 +31,7 @@ import {
   getLoggedInUserPermissions,
   getResourcePermission,
 } from '../../rest/permissionAPI';
-import {
-  getUrlPathnameExpiryAfterRoute,
-  isProtectedRoute,
-} from '../../utils/AuthProvider.util';
+import { getUrlPathnameExpiryAfterRoute } from '../../utils/AuthProvider.util';
 import {
   getOperationPermissions,
   getUIPermission,
@@ -177,7 +173,7 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
     /**
      * Only fetch permissions if current user is present
      */
-    if (isProtectedRoute(location.pathname) && !isEmpty(currentUser)) {
+    if (!isEmpty(currentUser)) {
       fetchLoggedInUserPermissions();
     }
     if (isEmpty(currentUser)) {
@@ -209,4 +205,4 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
 
 export const usePermissionProvider = () => useContext(PermissionContext);
 
-export default observer(PermissionProvider);
+export default PermissionProvider;
