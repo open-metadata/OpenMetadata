@@ -33,14 +33,23 @@ class AthenaCliTest(CliCommonDB.TestSuite):
             test_type=cls.get_test_type(), connector=connector
         )
         cls.openmetadata = workflow.source.metadata
-
-    def tearDown(self) -> None:
-        pass
+        cls.config_file_path = str(
+            Path(PATH_TO_RESOURCES + f"/database/{connector}/{connector}.yaml")
+        )
+        cls.test_file_path = str(
+            Path(PATH_TO_RESOURCES + f"/database/{connector}/test.yaml")
+        )
 
     def create_table_and_view(self):
         pass
 
     def delete_table_and_view(self):
+        pass
+
+    def expected_profiled_tables(self):
+        return 2
+
+    def tearDown(self) -> None:
         pass
 
     @staticmethod
@@ -59,7 +68,7 @@ class AthenaCliTest(CliCommonDB.TestSuite):
 
     @staticmethod
     def fqn_created_table() -> str:
-        return 'aws_athena.default.aws-athena-e2e."sales/sales.csv"'
+        return "e2e_athena.database_name.testdatalake_db.customers"
 
     @staticmethod
     def fqn_deleted_table() -> None:
@@ -67,27 +76,27 @@ class AthenaCliTest(CliCommonDB.TestSuite):
 
     @staticmethod
     def get_includes_schemas() -> List[str]:
-        return ["aws-athena-e2e"]
+        return ["testdatalake_db"]
 
     @staticmethod
     def get_includes_tables() -> List[str]:
-        return [".*example.*"]
+        return [".*customers.*"]
 
     @staticmethod
     def get_excludes_tables() -> List[str]:
-        return [".*test.*"]
+        return [".*sales.*"]
 
     @staticmethod
     def expected_filtered_schema_includes() -> int:
-        return 0
+        return 3
 
     @staticmethod
     def expected_filtered_schema_excludes() -> int:
-        return 0
+        return 1
 
     @staticmethod
     def expected_filtered_table_includes() -> int:
-        return 7
+        return 26
 
     @staticmethod
     def expected_filtered_table_excludes() -> int:
@@ -95,12 +104,10 @@ class AthenaCliTest(CliCommonDB.TestSuite):
 
     @staticmethod
     def expected_filtered_mix() -> int:
-        return 7
+        return 4
 
     def retrieve_lineage(self, entity_fqn: str) -> dict:
-        return self.openmetadata.client.get(
-            f"/lineage/table/name/{urllib.parse.quote_plus(entity_fqn)}?upstreamDepth=3&downstreamDepth=3"
-        )
+        pass
 
     @pytest.mark.order(2)
     def test_create_table_with_profiler(self) -> None:
