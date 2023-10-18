@@ -13,7 +13,7 @@ Postgres source module
 """
 import traceback
 from collections import namedtuple
-from typing import Iterable, Optional, Tuple
+from typing import Dict, Iterable, Optional, Tuple
 
 from sqlalchemy import sql
 from sqlalchemy.dialects.postgresql.base import PGDialect, ischema_names
@@ -48,6 +48,7 @@ from metadata.ingestion.source.database.postgres.queries import (
     POSTGRES_GET_DB_NAMES,
     POSTGRES_GET_TABLE_NAMES,
     POSTGRES_PARTITION_DETAILS,
+    POSTGRES_TABLE_OWNERS,
 )
 from metadata.ingestion.source.database.postgres.utils import (
     get_column_info,
@@ -238,6 +239,31 @@ class PostgresSource(CommonDbSourceService):
                 )
             )
 
+    def get_all_table_owners(self, connection, query):
+        """
+        Method to fetch owner of all available tables
+        """
+        self.all_table_owners: Dict[
+            Tuple[str, str], str
+        ] = {}  # pylint: disable=attribute-defined-outside-init
+        self.current_db: str = (
+            connection.engine.url.database
+        )  # pylint: disable=attribute-defined-outside-init
+        result = connection.execute(query)
+        for table in result:
+            self.all_table_owners[(table[1], table[0])] = table[2]
+
+    def get_table_owner(
+        self, connection, table_name, schema=None, **kw
+    ):  # pylint: disable=unused-argument
+        if (
+            not hasattr(self, "all_table_owners")
+            or self.current_db != connection.engine.url.database
+        ):
+            query = POSTGRES_TABLE_OWNERS
+            self.get_all_table_owners(connection, query)
+        return {"text": self.all_table_owners.get((table_name, schema))}
+
     def get_owner_detail(self, schema_name: str, table_name: str) -> Optional[str]:
         """Get database owner
         Args
@@ -246,32 +272,27 @@ class PostgresSource(CommonDbSourceService):
             Optional[EntityReference]
         """
         owner = None
-        query = self.connection.execute(
-            f"select tableowner from pg_catalog.pg_tables where schemaname='{schema_name}' and tablename='{table_name}';"  # pylint: disable=line-too-long
+        conn = self.connection
+        owner_name = self.get_table_owner(conn, table_name, schema_name)
+        user_owner_fqn = fqn.build(
+            self.metadata, entity_type=User, user_name=owner_name["text"]
         )
-        for name in query:
-            owner_name = name[0]
-            user_owner_fqn = fqn.build(
-                self.metadata, entity_type=User, user_name=owner_name
+        if user_owner_fqn:
+            owner = self.metadata.get_entity_reference(entity=User, fqn=user_owner_fqn)
+        else:
+            team_owner_fqn = fqn.build(
+                self.metadata, entity_type=Team, team_name=owner_name["text"]
             )
-            if user_owner_fqn:
+            if team_owner_fqn:
                 owner = self.metadata.get_entity_reference(
-                    entity=User, fqn=user_owner_fqn
+                    entity=Team, fqn=team_owner_fqn
                 )
             else:
-                team_owner_fqn = fqn.build(
-                    self.metadata, entity_type=Team, team_name=owner_name
+                logger.warning(
+                    "Unable to ingest owner from Postgres since no user or"
+                    f" team was found with name {owner_name['text']}"
                 )
-                if team_owner_fqn:
-                    owner = self.metadata.get_entity_reference(
-                        entity=Team, fqn=team_owner_fqn
-                    )
-                else:
-                    logger.warning(
-                        "Unable to ingest owner from Postgres since no user or"
-                        f" team was found with name {owner_name}"
-                    )
-            return owner
+        return owner
 
     def yield_table(
         self, table_name_and_type: Tuple[str, str]
