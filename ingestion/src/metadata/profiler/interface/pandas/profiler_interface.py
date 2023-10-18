@@ -58,6 +58,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         table_partition_config,
         thread_count: int = 5,
         timeout_seconds: int = 43200,
+        sample_data_count: int = 100,
         **kwargs,
     ):
         """Instantiate Pandas Interface object"""
@@ -72,6 +73,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
             table_partition_config,
             thread_count,
             timeout_seconds,
+            sample_data_count,
             **kwargs,
         )
 

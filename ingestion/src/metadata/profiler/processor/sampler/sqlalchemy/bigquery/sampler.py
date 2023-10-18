@@ -35,6 +35,7 @@ class BigQuerySampler(SQASampler):
         profile_sample_config: Optional[ProfileSampleConfig] = None,
         partition_details: Optional[Dict] = None,
         profile_sample_query: Optional[str] = None,
+        sample_data_count: Optional[int] = 100,
         table_type: TableType = None,
     ):
         super().__init__(
@@ -43,6 +44,7 @@ class BigQuerySampler(SQASampler):
             profile_sample_config,
             partition_details,
             profile_sample_query,
+            sample_data_count,
         )
         self.table_type: TableType = table_type
 
