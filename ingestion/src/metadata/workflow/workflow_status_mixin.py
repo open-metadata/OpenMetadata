@@ -26,6 +26,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.step import Step
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.helpers import datetime_to_ts
 
 SUCCESS_THRESHOLD_VALUE = 90
 
@@ -97,8 +98,8 @@ class WorkflowStatusMixin:
                 pipeline_status = PipelineStatus(
                     runId=self.run_id,
                     pipelineState=state,
-                    startDate=datetime.now().timestamp() * 1000,
-                    timestamp=datetime.now().timestamp() * 1000,
+                    startDate=datetime_to_ts(datetime.now()),
+                    timestamp=datetime_to_ts(datetime.now()),
                 )
             else:
                 pipeline_status = self.metadata.get_pipeline_status(
