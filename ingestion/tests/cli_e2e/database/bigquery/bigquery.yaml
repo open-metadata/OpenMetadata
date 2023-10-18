@@ -5,7 +5,9 @@ source:
   serviceConnection:
     config:
       type: BigQuery
-      taxonomyProjectID: [$E2E_BQ_PROJECT_ID_TAXONOMY]
+      taxonomyProjectID:  
+        - $E2E_BQ_PROJECT_ID
+        - $E2E_BQ_PROJECT_ID2
       credentials:
         gcpConfig:
           type: service_account
