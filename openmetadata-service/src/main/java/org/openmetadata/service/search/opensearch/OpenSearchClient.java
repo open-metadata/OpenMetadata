@@ -858,7 +858,7 @@ public class OpenSearchClient implements SearchClient {
     highlightDescription.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightName = new HighlightBuilder.Field(FIELD_NAME);
     highlightName.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightDisplayName = new HighlightBuilder.Field(FIELD_NAME);
+    HighlightBuilder.Field highlightDisplayName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
     highlightDisplayName.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
     hb.field(highlightDescription);
