@@ -68,7 +68,7 @@ export const CustomizablePage = () => {
           fullyQualifiedName: getDecodedFqn(pageLayoutFQN),
           entityType: EntityType.PAGE,
           data: {
-            page: customizePageClassBase.landingPageLayout,
+            page: { layout: customizePageClassBase.defaultLayout },
           },
         });
       }

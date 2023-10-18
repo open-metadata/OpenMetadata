@@ -10,8 +10,28 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-.announcement-container-list {
-  .feed-card-body {
-    padding: 0;
+
+@import url('../../../styles/variables.less');
+
+.right-panel-heading {
+  margin-bottom: 8px !important;
+  color: @text-grey-muted;
+}
+
+.right-panel-list-item:last-child {
+  border-bottom: none;
+}
+
+.right-panel-list-item {
+  .entity-button-icon {
+    height: 24px;
+    width: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    svg {
+      height: 18px;
+      width: 18px;
+    }
   }
 }

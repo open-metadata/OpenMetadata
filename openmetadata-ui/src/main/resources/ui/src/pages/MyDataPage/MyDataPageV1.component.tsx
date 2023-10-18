@@ -12,7 +12,6 @@
  */
 
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { isEmpty, isNil } from 'lodash';
 import React, {
   useCallback,
@@ -30,10 +29,8 @@ import { useApplicationConfigContext } from '../../components/ApplicationConfigP
 import { useAuthContext } from '../../components/authentication/auth-provider/AuthProvider';
 import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import Loader from '../../components/Loader/Loader';
-import RightSidebar from '../../components/MyData/RightSidebar/RightSidebar.component';
 import WelcomeScreen from '../../components/WelcomeScreen/WelcomeScreen.component';
 import { LOGGED_IN_USER_STORAGE_KEY } from '../../constants/constants';
-import { LandingPageWidgetKeys } from '../../enums/CustomizablePage.enum';
 import { AssetsType, EntityType } from '../../enums/entity.enum';
 import { Thread } from '../../generated/entity/feed/thread';
 import { PageType } from '../../generated/system/ui/page';
@@ -61,9 +58,6 @@ const MyDataPageV1 = () => {
   const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(true);
   const [layout, setLayout] = useState<Array<WidgetConfig>>([]);
-  const [rightPanelLayout, setRightPanelLayout] = useState<Array<WidgetConfig>>(
-    []
-  );
   const isMounted = useRef(false);
   const [showWelcomeScreen, setShowWelcomeScreen] = useState(false);
   const [isAnnouncementLoading, setIsAnnouncementLoading] =
@@ -87,19 +81,12 @@ const MyDataPageV1 = () => {
       if (!isEmpty(selectedPersona)) {
         const pageFQN = `${EntityType.PERSONA}.${selectedPersona.fullyQualifiedName}.${EntityType.PAGE}.${PageType.LandingPage}`;
         const pageData = await getDocumentByFQN(pageFQN);
-        setLayout(pageData.data.page.mainPanelLayout);
-        setRightPanelLayout(pageData.data.page.rightPanelLayout);
+        setLayout(pageData.data.page.layout);
       } else {
-        setLayout(customizePageClassBase.landingPageLayout.mainPanelLayout);
-        setRightPanelLayout(
-          customizePageClassBase.landingPageLayout.rightPanelLayout
-        );
+        setLayout(customizePageClassBase.defaultLayout);
       }
     } catch {
-      setLayout(customizePageClassBase.landingPageLayout.mainPanelLayout);
-      setRightPanelLayout(
-        customizePageClassBase.landingPageLayout.rightPanelLayout
-      );
+      setLayout(customizePageClassBase.defaultLayout);
     } finally {
       setIsLoading(false);
     }
@@ -164,29 +151,17 @@ const MyDataPageV1 = () => {
 
   const widgets = useMemo(
     () =>
-      layout
-        .filter((widget: WidgetConfig) =>
-          !isAnnouncementLoading &&
-          widget.i.startsWith(LandingPageWidgetKeys.ANNOUNCEMENTS)
-            ? !isEmpty(announcements)
-            : true
-        )
-        .map((widget) => (
-          <div
-            className={classNames({
-              'mt--1': widget.i === LandingPageWidgetKeys.RIGHT_PANEL,
-            })}
-            data-grid={widget}
-            key={widget.i}>
-            {getWidgetFromKey({
-              announcements: announcements,
-              followedData: followedData ?? [],
-              followedDataCount: followedDataCount,
-              isLoadingOwnedData: isLoadingOwnedData,
-              widgetConfig: widget,
-            })}
-          </div>
-        )),
+      layout.map((widget) => (
+        <div data-grid={widget} key={widget.i}>
+          {getWidgetFromKey({
+            announcements: announcements,
+            followedData: followedData ?? [],
+            followedDataCount: followedDataCount,
+            isLoadingOwnedData: isLoadingOwnedData,
+            widgetConfig: widget,
+          })}
+        </div>
+      )),
     [
       layout,
       isAnnouncementLoading,
@@ -225,24 +200,14 @@ const MyDataPageV1 = () => {
   return (
     <ActivityFeedProvider>
       <PageLayoutV1
-        pageTitle={t('label.my-data')}
-        rightPanel={
-          <RightSidebar
-            announcements={announcements}
-            followedData={followedData ?? []}
-            followedDataCount={followedDataCount}
-            isAnnouncementLoading={isAnnouncementLoading}
-            isLoadingOwnedData={isLoadingOwnedData}
-            layout={rightPanelLayout}
-          />
-        }
-        rightPanelWidth={350}>
+        mainContainerClassName="p-t-0"
+        pageTitle={t('label.my-data')}>
         {isLoading ? (
           <Loader />
         ) : (
           <ReactGridLayout
             className="bg-white"
-            cols={3}
+            cols={4}
             isDraggable={false}
             isResizable={false}
             margin={[

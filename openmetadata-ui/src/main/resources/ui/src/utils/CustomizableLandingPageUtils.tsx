@@ -170,6 +170,7 @@ export const getWidgetFromKey = ({
   iconHeight,
   iconWidth,
   isEditView,
+  isAnnouncementLoading,
 }: {
   widgetConfig: WidgetConfig;
   handleOpenAddWidgetModal?: () => void;
@@ -182,6 +183,7 @@ export const getWidgetFromKey = ({
   iconHeight?: SIZE;
   iconWidth?: SIZE;
   isEditView?: boolean;
+  isAnnouncementLoading?: boolean;
 }) => {
   if (
     widgetConfig.i.endsWith('.EmptyWidgetPlaceholder') &&
@@ -210,6 +212,7 @@ export const getWidgetFromKey = ({
       followedData={followedData ?? []}
       followedDataCount={followedDataCount}
       handleRemoveWidget={handleRemoveWidget}
+      isAnnouncementLoading={isAnnouncementLoading}
       isEditView={isEditView}
       isLoadingOwnedData={isLoadingOwnedData}
       selectedGridSize={widgetConfig.w}

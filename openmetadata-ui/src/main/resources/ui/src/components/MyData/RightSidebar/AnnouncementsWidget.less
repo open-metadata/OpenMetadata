@@ -10,19 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-import { Thread } from '../../../generated/entity/feed/thread';
-import { EntityReference } from '../../../generated/entity/type';
-import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
-
-export interface RightSidebarProps {
-  announcements: Thread[];
-  isAnnouncementLoading: boolean;
-  isEditView?: boolean;
-  followedDataCount: number;
-  followedData: Array<EntityReference>;
-  isLoadingOwnedData: boolean;
-  layout: Array<WidgetConfig>;
-  handleLayoutChange?: React.Dispatch<React.SetStateAction<WidgetConfig[]>>;
-  draggedItem?: WidgetConfig;
+.announcement-container {
+  .ant-card-body {
+    height: 100%;
+  }
+  .announcement-container-list {
+    overflow-y: auto;
+    overflow-x: hidden;
+    max-height: 90%;
+    .feed-card-body {
+      padding: 0;
+    }
+  }
 }
