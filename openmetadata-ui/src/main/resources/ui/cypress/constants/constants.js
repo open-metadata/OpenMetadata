@@ -373,6 +373,7 @@ export const SERVICE_TYPE = {
   MLModels: 'ML Models',
   Storage: 'Storage',
   StoredProcedure: 'StoredProcedure',
+  Search: 'Search',
 };
 
 export const ENTITIES = {
