@@ -33,6 +33,7 @@ import {
   TOOLBAR_ITEMS,
 } from '../../constants/Feeds.constants';
 import { HTMLToMarkdown, matcher } from '../../utils/FeedUtils';
+import { LinkBlot } from '../../utils/QuillLink/QuillLink';
 import { insertMention, insertRef } from '../../utils/QuillUtils';
 import { getEntityIcon } from '../../utils/TableUtils';
 import { editorRef } from '../common/rich-text-editor/RichTextEditor.interface';
@@ -41,6 +42,7 @@ import { FeedEditorProp } from './FeedEditor.interface';
 
 Quill.register('modules/markdownOptions', QuillMarkdown);
 Quill.register('modules/emoji', Emoji);
+Quill.register(LinkBlot);
 const Delta = Quill.import('delta');
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const strikethrough = (_node: any, delta: typeof Delta) => {
@@ -81,6 +83,7 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
         mention: {
           allowedChars: MENTION_ALLOWED_CHARS,
           mentionDenotationChars: MENTION_DENOTATION_CHARS,
+          blotName: 'link-mention',
           onOpen: () => {
             toggleMentionList(false);
           },

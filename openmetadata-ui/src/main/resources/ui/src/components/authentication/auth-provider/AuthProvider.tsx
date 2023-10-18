@@ -428,7 +428,8 @@ export const AuthProvider = ({
       if (config.url?.includes('/search/query')) {
         // Parse and update the query parameter
         const queryParams = Qs.parse(config.url.split('?')[1]);
-        const domainStatement = `(domain.fullyQualifiedName:${activeDomain})`;
+        // adding quotes for exact matching
+        const domainStatement = `(domain.fullyQualifiedName:"${activeDomain}")`;
         queryParams.q = queryParams.q ?? '';
         queryParams.q += isEmpty(queryParams.q)
           ? domainStatement
