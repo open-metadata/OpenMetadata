@@ -199,20 +199,18 @@ const ExplorePageV1: FunctionComponent = () => {
   };
 
   const searchIndex = useMemo(() => {
-    if (searchHitCounts) {
-      const tabInfo = Object.entries(tabsInfo).find(
-        ([, tabInfo]) => tabInfo.path === tab
-      );
-      if (isNil(tabInfo)) {
-        const activeKey = findActiveSearchIndex(searchHitCounts);
+    const tabInfo = Object.entries(tabsInfo).find(
+      ([, tabInfo]) => tabInfo.path === tab
+    );
+    if (searchHitCounts && isNil(tabInfo)) {
+      const activeKey = findActiveSearchIndex(searchHitCounts);
 
-        return activeKey ?? SearchIndex.DATA_PRODUCT;
-      }
-
-      return tabInfo[0] as ExploreSearchIndex;
+      return activeKey ?? SearchIndex.DATA_PRODUCT;
     }
 
-    return SearchIndex.DATA_PRODUCT;
+    return !isNil(tabInfo)
+      ? (tabInfo[0] as ExploreSearchIndex)
+      : SearchIndex.DATA_PRODUCT;
   }, [tab, searchHitCounts]);
 
   const tabItems = useMemo(() => {

@@ -10,8 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-.announcement-container-list {
-  .feed-card-body {
-    padding: 0;
+import { Quill } from 'react-quill';
+
+const MentionBlot = Quill.import('blots/mention');
+
+export class LinkBlot extends MentionBlot {
+  static render(data: { value: string; link: string; id: string }) {
+    const element = document.createElement('a');
+    element.innerText = data.value;
+    element.href = data.link;
+    element.id = data.id;
+
+    return element;
   }
 }
+LinkBlot.blotName = 'link-mention';
