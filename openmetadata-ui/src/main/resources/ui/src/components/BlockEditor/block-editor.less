@@ -294,7 +294,12 @@
 }
 
 .is-format-active {
-  background-color: @grey-2;
+  .ant-typography {
+    color: @primary-color;
+  }
+  svg {
+    fill: @primary-color;
+  }
 }
 .image-placeholder {
   display: flex;
