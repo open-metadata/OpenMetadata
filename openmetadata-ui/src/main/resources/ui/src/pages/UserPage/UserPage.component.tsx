@@ -19,8 +19,6 @@ import { observer } from 'mobx-react';
 import Qs from 'qs';
 import {
   default as React,
-  Dispatch,
-  SetStateAction,
   useCallback,
   useEffect,
   useMemo,
@@ -31,48 +29,20 @@ import { useHistory, useParams } from 'react-router-dom';
 import { useAuthContext } from '../../components/authentication/auth-provider/AuthProvider';
 import Loader from '../../components/Loader/Loader';
 import Users from '../../components/Users/Users.component';
-import { PAGE_SIZE } from '../../constants/constants';
-import { myDataSearchIndex } from '../../constants/Mydata.constants';
 import { UserProfileTab } from '../../enums/user.enum';
 import { User } from '../../generated/entity/teams/user';
-import { searchData } from '../../rest/miscAPI';
 import { getUserByName, updateUserDetail } from '../../rest/userAPI';
-import { SearchEntityHits } from '../../utils/APIUtils';
 import { Transi18next } from '../../utils/CommonUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { UserAssetsDataType } from './UserPage.interface';
 
 const UserPage = () => {
   const history = useHistory();
   const { t } = useTranslation();
-  const { fqn: username, tab = UserProfileTab.ACTIVITY } =
-    useParams<{ fqn: string; tab: UserProfileTab }>();
+  const { fqn: username } = useParams<{ fqn: string; tab: UserProfileTab }>();
   const [isLoading, setIsLoading] = useState(true);
   const [userData, setUserData] = useState<User>({} as User);
   const [isError, setIsError] = useState(false);
-  const [isUserEntitiesLoading, setIsUserEntitiesLoading] =
-    useState<boolean>(false);
   const { currentUser, updateCurrentUser } = useAuthContext();
-
-  const [followingEntities, setFollowingEntities] =
-    useState<UserAssetsDataType>({
-      data: [],
-      total: 0,
-    });
-  const [ownedEntities, setOwnedEntities] = useState<UserAssetsDataType>({
-    data: [],
-    total: 0,
-  });
-
-  const { page = 1 } = useMemo(
-    () =>
-      Qs.parse(
-        location.search.startsWith('?')
-          ? location.search.substr(1)
-          : location.search
-      ),
-    [location.search]
-  );
 
   const fetchUserData = async () => {
     try {
@@ -96,67 +66,20 @@ const UserPage = () => {
     }
   };
 
-  const getQueryFilters = (fetchOwnedEntities: boolean) => {
-    if (fetchOwnedEntities) {
-      const teamsIds = (userData.teams ?? []).map((team) => team.id);
-      const mergedIds = [
-        ...teamsIds.map((id) => `owner.id:${id}`),
-        `owner.id:${userData.id}`,
-      ].join(' OR ');
+  const myDataQueryFilter = useMemo(() => {
+    const teamsIds = (userData.teams ?? []).map((team) => team.id);
+    const mergedIds = [
+      ...teamsIds.map((id) => `owner.id:${id}`),
+      `owner.id:${userData.id}`,
+    ].join(' OR ');
 
-      return `(${mergedIds})`;
-    } else {
-      return `followers:${userData.id}`;
-    }
-  };
+    return `(${mergedIds})`;
+  }, [userData]);
 
-  const fetchEntities = async (
-    fetchOwnedEntities = false,
-    handleEntity: Dispatch<SetStateAction<UserAssetsDataType>>
-  ) => {
-    if (userData.id) {
-      setIsUserEntitiesLoading(true);
-      try {
-        const response = await searchData(
-          '',
-          Number(page),
-          PAGE_SIZE,
-          getQueryFilters(fetchOwnedEntities),
-          '',
-          '',
-          myDataSearchIndex
-        );
-        const hits = response.data.hits.hits as SearchEntityHits;
-
-        if (hits?.length > 0) {
-          const total = response.data.hits.total.value;
-          handleEntity({
-            data: hits,
-            total,
-          });
-        } else {
-          const total = 0;
-          handleEntity({
-            data: [],
-            total,
-          });
-        }
-      } catch (error) {
-        showErrorToast(
-          error as AxiosError,
-          t('server.entity-fetch-error', {
-            entity: t('label.type-entities', {
-              type: fetchOwnedEntities
-                ? t('label.owner')
-                : t('label.following'),
-            }),
-          })
-        );
-      } finally {
-        setIsUserEntitiesLoading(false);
-      }
-    }
-  };
+  const followingQueryFilter = useMemo(
+    () => `followers:${userData.id}`,
+    [userData.id]
+  );
 
   const handleEntityPaginate = (page: string | number) => {
     history.push({
@@ -208,18 +131,6 @@ const UserPage = () => {
     fetchUserData();
   }, [username]);
 
-  useEffect(() => {
-    if (tab === UserProfileTab.FOLLOWING) {
-      fetchEntities(false, setFollowingEntities);
-    }
-  }, [page, tab, userData]);
-
-  useEffect(() => {
-    if (tab === UserProfileTab.MY_DATA) {
-      fetchEntities(true, setOwnedEntities);
-    }
-  }, [page, tab, userData]);
-
   if (isLoading) {
     return <Loader />;
   }
@@ -230,10 +141,11 @@ const UserPage = () => {
 
   return (
     <Users
-      followingEntities={followingEntities}
       handlePaginate={handleEntityPaginate}
-      isUserEntitiesLoading={isUserEntitiesLoading}
-      ownedEntities={ownedEntities}
+      queryFilters={{
+        myData: myDataQueryFilter,
+        following: followingQueryFilter,
+      }}
       updateUserDetails={updateUserDetails}
       userData={userData}
       username={username}
