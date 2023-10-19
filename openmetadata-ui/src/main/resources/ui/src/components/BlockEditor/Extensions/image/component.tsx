@@ -120,7 +120,7 @@ const PopoverContent: FC<PopoverContentProps> = ({
       <Row gutter={[8, 8]}>
         <Col span={24}>
           <Form.Item name="Url" rules={[{ required: true, type: 'url' }]}>
-            <Input placeholder="Paste the image link..." />
+            <Input autoFocus placeholder="Paste the image link..." />
           </Form.Item>
         </Col>
         <Col className="om-image-node-embed-link-btn-col" span={24}>
