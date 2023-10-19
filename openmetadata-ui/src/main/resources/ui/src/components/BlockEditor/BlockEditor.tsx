@@ -213,7 +213,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
             }
           />
         )}
-        <div className="block-editor-wrapper">
+        <div className="block-editor-wrapper" id="block-editor-wrapper">
           <EditorContent editor={editor} onMouseDown={handleLinkPopup} />
           {menus}
         </div>
