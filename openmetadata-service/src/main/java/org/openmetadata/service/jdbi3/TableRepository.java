@@ -88,7 +88,7 @@ import org.openmetadata.service.util.ResultList;
 public class TableRepository extends EntityRepository<Table> {
 
   // Table fields that can be patched in a PATCH request
-  static final String PATCH_FIELDS = "tableConstraints,tablePartition";
+  static final String PATCH_FIELDS = "tableConstraints,tablePartition,columns";
   // Table fields that can be updated in a PUT request
   static final String UPDATE_FIELDS = "tableConstraints,tablePartition,dataModel,sourceUrl";
 
@@ -126,7 +126,10 @@ public class TableRepository extends EntityRepository<Table> {
               ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), table.getId())
               : table.getUsageSummary());
     }
-    getColumnTags(fields.contains(FIELD_TAGS), table.getColumns());
+    if (fields.contains(COLUMN_FIELD)) {
+      // We'll get column tags only if we are getting the column fields
+      getColumnTags(fields.contains(FIELD_TAGS), table.getColumns());
+    }
     table.setJoins(fields.contains("joins") ? getJoins(table) : table.getJoins());
     table.setTableProfilerConfig(
         fields.contains(TABLE_PROFILER_CONFIG) ? getTableProfilerConfig(table) : table.getTableProfilerConfig());
