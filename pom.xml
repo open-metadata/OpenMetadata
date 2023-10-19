@@ -103,7 +103,7 @@
     <postgres.connector.version>42.6.0</postgres.connector.version>
     <jsonschema2pojo.version>1.2.1</jsonschema2pojo.version>
     <commons-lang.version>2.6</commons-lang.version>
-    <lombok.version>1.18.28</lombok.version>
+    <lombok.version>1.18.30</lombok.version>
     <tomcat-jdbc.version>10.1.10</tomcat-jdbc.version>
     <!--  We need ElasticSearch client to be compatible with both ElasticSearch and AWS OpenSearch
     This compatibility broken in 7.14, so lets keep this version pinned to 7.13.x
