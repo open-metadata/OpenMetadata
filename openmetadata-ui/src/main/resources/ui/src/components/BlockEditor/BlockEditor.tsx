@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Editor, EditorContent, ReactRenderer, useEditor } from '@tiptap/react';
+import { Editor, EditorContent, ReactRenderer } from '@tiptap/react';
 import { isEmpty, isNil } from 'lodash';
 import React, {
   forwardRef,
@@ -28,7 +28,8 @@ import {
 } from '../../utils/FeedUtils';
 import './block-editor.less';
 import BubbleMenu from './BubbleMenu/BubbleMenu';
-import ImageModal, { ImageData } from './ImageModal/ImageModal';
+import { extensions } from './Extensions';
+import { useCustomEditor } from './hooks/useCustomEditor';
 import LinkModal, { LinkData } from './LinkModal/LinkModal';
 import LinkPopup from './LinkPopup/LinkPopup';
 
@@ -46,10 +47,10 @@ export interface BlockEditorProps {
 const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
   ({ content = '', editable = true, onChange }, ref) => {
     const [isLinkModalOpen, setIsLinkModalOpen] = useState<boolean>(false);
-    const [isImageModalOpen, setIsImageModalOpen] = useState<boolean>(false);
 
-    const editor = useEditor({
+    const editor = useCustomEditor({
       ...EDITOR_OPTIONS,
+      extensions,
       onUpdate({ editor }) {
         const htmlContent = editor.getHTML();
 
@@ -63,9 +64,6 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
 
     const handleLinkToggle = () => {
       setIsLinkModalOpen((prev) => !prev);
-    };
-    const handleImageToggle = () => {
-      setIsImageModalOpen((prev) => !prev);
     };
 
     const handleLinkCancel = () => {
@@ -166,16 +164,6 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
       }
     };
 
-    const handleAddImage = (values: ImageData) => {
-      if (isNil(editor)) {
-        return;
-      }
-
-      editor.chain().focus().setImage({ src: values.src }).run();
-
-      handleImageToggle();
-    };
-
     useImperativeHandle(ref, () => ({
       onFocus() {
         if (!isNil(editor) && !editor.isFocused) {
@@ -232,13 +220,6 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
                 editor?.getAttributes('link').href ? 'edit' : 'add'
               )
             }
-          />
-        )}
-        {isImageModalOpen && (
-          <ImageModal
-            isOpen={isImageModalOpen}
-            onCancel={handleImageToggle}
-            onSave={handleAddImage}
           />
         )}
         <div className="block-editor-wrapper">

@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 import { mergeAttributes, Node, nodeInputRule } from '@tiptap/core';
+import { ReactNodeViewRenderer } from '@tiptap/react';
 import { IMAGE_INPUT_REGEX } from '../../../../constants/BlockEditor.constants';
+import ImageComponent from './component';
 
 export interface ImageOptions {
   inline: boolean;
@@ -37,6 +39,7 @@ declare module '@tiptap/core' {
 export const Image = Node.create<ImageOptions>({
   name: 'image',
   selectable: false,
+  draggable: true,
 
   addOptions() {
     return {
@@ -58,12 +61,42 @@ export const Image = Node.create<ImageOptions>({
     return {
       src: {
         default: null,
+        parseHTML: (element) => element.getAttribute('src')?.toString(),
+        renderHTML: (attributes) => {
+          if (!attributes.src) {
+            return {};
+          }
+
+          return {
+            src: attributes.src,
+          };
+        },
       },
       alt: {
         default: null,
+        parseHTML: (element) => element.getAttribute('alt')?.toString(),
+        renderHTML: (attributes) => {
+          if (!attributes.alt) {
+            return {};
+          }
+
+          return {
+            alt: attributes.alt,
+          };
+        },
       },
       title: {
         default: null,
+        parseHTML: (element) => element.getAttribute('title')?.toString(),
+        renderHTML: (attributes) => {
+          if (!attributes.title) {
+            return {};
+          }
+
+          return {
+            title: attributes.title,
+          };
+        },
       },
     };
   },
@@ -83,6 +116,10 @@ export const Image = Node.create<ImageOptions>({
       'img',
       mergeAttributes(this.options.HTMLAttributes, HTMLAttributes),
     ];
+  },
+
+  addNodeView() {
+    return ReactNodeViewRenderer(ImageComponent);
   },
 
   addCommands() {
