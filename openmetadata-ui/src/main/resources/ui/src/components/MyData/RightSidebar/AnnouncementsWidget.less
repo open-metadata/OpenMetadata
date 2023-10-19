@@ -10,28 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-@import url('../../styles/variables.less');
-
-.right-panel-heading {
-  margin-bottom: 8px !important;
-  color: @text-grey-muted;
-}
-
-.right-panel-list-item:last-child {
-  border-bottom: none;
-}
-
-.right-panel-list-item {
-  .entity-button-icon {
-    height: 24px;
-    width: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    svg {
-      height: 18px;
-      width: 18px;
+.announcement-container {
+  .ant-card-body {
+    height: 100%;
+  }
+  .announcement-container-list {
+    overflow-y: auto;
+    overflow-x: hidden;
+    max-height: 90%;
+    .feed-card-body {
+      padding: 0;
     }
   }
 }

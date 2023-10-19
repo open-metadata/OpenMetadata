@@ -11,32 +11,27 @@
  *  limitations under the License.
  */
 
-@import url('../../styles/variables.less');
+@import url('../../../styles/variables.less');
 
-.page-layout-rightpanel {
-  border: 1px solid @border-color;
-  border-radius: 0;
-  padding-left: 0 !important;
-  border-top: 0;
+.right-panel-heading {
+  margin-bottom: 8px !important;
+  color: @text-grey-muted;
 }
 
-.right-panel-announcement {
-  .feed-header-content {
-    display: inline;
+.right-panel-list-item:last-child {
+  border-bottom: none;
+}
+
+.right-panel-list-item {
+  .entity-button-icon {
+    height: 24px;
+    width: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    svg {
+      height: 18px;
+      width: 18px;
+    }
   }
-}
-
-.announcement-alert-heading {
-  color: @info-color;
-  font-weight: 600;
-}
-
-.view-all-btn {
-  color: @text-grey-muted !important;
-}
-
-.ant-card.card-widget {
-  box-shadow: none;
-  border-radius: 10px;
-  height: 100%;
 }
