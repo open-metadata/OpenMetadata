@@ -11,19 +11,12 @@
  *  limitations under the License.
  */
 
-import { App } from '../../../generated/entity/applications/app';
-import { AppRunRecord } from '../../../generated/entity/applications/appRunRecord';
+import { PipelineStatus } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 
-export interface AppRunRecordWithId extends AppRunRecord {
-  id: string;
-}
-
-export interface AppRunsHistoryRef {
-  refreshAppHistory: () => void;
-}
-
-export interface AppRunsHistoryProps {
-  maxRecords?: number;
-  showPagination?: boolean;
-  appData?: App;
+export interface DataInsightLatestRun {
+  lastIngestionLogs: {
+    data_insight_task: string;
+    total: string;
+  };
+  pipelineStatus: PipelineStatus;
 }

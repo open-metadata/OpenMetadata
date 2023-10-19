@@ -306,17 +306,24 @@ const AppDetails = () => {
         ),
       },
       ...tabConfiguration,
-      {
-        label: (
-          <TabsLabel id={ApplicationTabs.HISTORY} name={t('label.history')} />
-        ),
-        key: ApplicationTabs.HISTORY,
-        children: (
-          <div className="p-y-md">
-            <AppRunsHistory />
-          </div>
-        ),
-      },
+      ...(appData?.appType === AppType.Internal
+        ? [
+            {
+              label: (
+                <TabsLabel
+                  id={ApplicationTabs.HISTORY}
+                  name={t('label.history')}
+                />
+              ),
+              key: ApplicationTabs.HISTORY,
+              children: (
+                <div className="p-y-md">
+                  <AppRunsHistory />
+                </div>
+              ),
+            },
+          ]
+        : []),
     ];
   }, [appData, jsonSchema]);
 

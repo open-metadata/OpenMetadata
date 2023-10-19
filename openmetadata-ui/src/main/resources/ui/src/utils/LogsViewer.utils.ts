@@ -14,6 +14,10 @@
 import { isUndefined, startCase } from 'lodash';
 import { TableProfilerTab } from '../components/ProfilerDashboard/profilerDashboard.interface';
 import { getTableTabPath } from '../constants/constants';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../constants/GlobalSettings.constants';
 import { OPEN_METADATA } from '../constants/service-guide.constant';
 import { EntityTabs } from '../enums/entity.enum';
 import { Pipeline } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
@@ -23,7 +27,12 @@ import { getNameFromFQN } from './CommonUtils';
 import Fqn from './Fqn';
 import i18n from './i18next/LocalUtil';
 import { getSettingsPathFromPipelineType } from './IngestionUtils';
-import { getDataQualityPagePath, getLogEntityPath } from './RouterUtils';
+import {
+  getApplicationDetailsPath,
+  getDataQualityPagePath,
+  getLogEntityPath,
+  getSettingPath,
+} from './RouterUtils';
 import { getEncodedFqn } from './StringsUtils';
 
 /**
@@ -56,6 +65,23 @@ export const getLogBreadCrumbs = (
       },
     ];
   }
+
+  if (serviceType === GlobalSettingOptions.APPLICATIONS) {
+    return [
+      {
+        name: startCase(serviceType),
+        url: getSettingPath(
+          GlobalSettingsMenuCategory.INTEGRATIONS,
+          GlobalSettingOptions.APPLICATIONS
+        ),
+      },
+      {
+        name: ingestionName,
+        url: getApplicationDetailsPath(ingestionName),
+      },
+    ];
+  }
+
   if (isUndefined(ingestionDetails)) {
     return [];
   }

@@ -13,6 +13,7 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
+import { DataInsightLatestRun } from '../components/Applications/AppDetails/AppDetails.interface';
 import { App } from '../generated/entity/applications/app';
 import { AppRunRecord } from '../generated/entity/applications/appRunRecord';
 import { CreateAppRequest } from '../generated/entity/applications/createAppRequest';
@@ -63,6 +64,14 @@ export const getApplicationRuns = async (
     {
       params,
     }
+  );
+
+  return response.data;
+};
+
+export const getLatestApplicationRuns = async (appName: string) => {
+  const response = await APIClient.get<DataInsightLatestRun>(
+    `${BASE_URL}/name/${appName}/runs/latest`
   );
 
   return response.data;

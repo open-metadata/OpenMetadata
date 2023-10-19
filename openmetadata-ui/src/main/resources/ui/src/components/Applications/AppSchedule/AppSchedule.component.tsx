@@ -122,6 +122,7 @@ const AppSchedule = ({
 
         <Col span={24}>
           <AppRunsHistory
+            appData={appData}
             maxRecords={1}
             ref={appRunsHistoryRef}
             showPagination={false}
@@ -131,13 +132,19 @@ const AppSchedule = ({
       <Modal
         destroyOnClose
         className="update-schedule-modal"
+        closable={false}
         data-testid="update-schedule-modal"
         footer={null}
         maskClosable={false}
+        okText={t('label.save')}
         open={showModal}
         title={t('label.update-entity', { entity: t('label.schedule') })}>
         <TestSuiteScheduler
           isQuartzCron
+          buttonProps={{
+            cancelText: t('label.cancel'),
+            okText: t('label.save'),
+          }}
           initialData={getIngestionFrequency(PipelineType.Application)}
           onCancel={onDialogCancel}
           onSubmit={onDialogSave}
