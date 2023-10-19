@@ -95,6 +95,14 @@ const GlossaryTermTab = ({
   const [isTableLoading, setIsTableLoading] = useState(false);
   const [isTableHovered, setIsTableHovered] = useState(false);
 
+  const glossaryTermStatus: Status | null = useMemo(() => {
+    if (!isGlossary) {
+      return (selectedData as GlossaryTerm).status ?? Status.Approved;
+    }
+
+    return null;
+  }, [isGlossary, selectedData]);
+
   const columns = useMemo(() => {
     const data: ColumnsType<ModifiedGlossaryTerm> = [
       {
@@ -171,38 +179,48 @@ const GlossaryTermTab = ({
         title: t('label.action-plural'),
         key: 'new-term',
         width: 80,
-        render: (_, record) => (
-          <div className="d-flex items-center">
-            <Tooltip
-              title={t('label.add-entity', {
-                entity: t('label.glossary-term'),
-              })}>
-              <Button
-                className="add-new-term-btn text-grey-muted flex-center"
-                data-testid="add-classification"
-                icon={<PlusOutlinedIcon color={DE_ACTIVE_COLOR} width="14px" />}
-                size="small"
-                type="text"
-                onClick={() => {
-                  onAddGlossaryTerm(record as GlossaryTerm);
-                }}
-              />
-            </Tooltip>
-            <Tooltip
-              title={t('label.edit-entity', {
-                entity: t('label.glossary-term'),
-              })}>
-              <Button
-                className="cursor-pointer flex-center"
-                data-testid="edit-button"
-                icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-                size="small"
-                type="text"
-                onClick={() => onEditGlossaryTerm(record as GlossaryTerm)}
-              />
-            </Tooltip>
-          </div>
-        ),
+        render: (_, record) => {
+          const status = record.status ?? Status.Approved;
+          const allowAddTerm = status === Status.Approved;
+
+          return (
+            <div className="d-flex items-center">
+              {allowAddTerm && (
+                <Tooltip
+                  title={t('label.add-entity', {
+                    entity: t('label.glossary-term'),
+                  })}>
+                  <Button
+                    className="add-new-term-btn text-grey-muted flex-center"
+                    data-testid="add-classification"
+                    icon={
+                      <PlusOutlinedIcon color={DE_ACTIVE_COLOR} width="14px" />
+                    }
+                    size="small"
+                    type="text"
+                    onClick={() => {
+                      onAddGlossaryTerm(record as GlossaryTerm);
+                    }}
+                  />
+                </Tooltip>
+              )}
+
+              <Tooltip
+                title={t('label.edit-entity', {
+                  entity: t('label.glossary-term'),
+                })}>
+                <Button
+                  className="cursor-pointer flex-center"
+                  data-testid="edit-button"
+                  icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+                  size="small"
+                  type="text"
+                  onClick={() => onEditGlossaryTerm(record as GlossaryTerm)}
+                />
+              </Tooltip>
+            </div>
+          );
+        },
       });
     }
 
@@ -332,7 +350,7 @@ const GlossaryTermTab = ({
         heading={t('label.glossary-term')}
         permission={permissions.Create}
         type={
-          permissions.Create
+          permissions.Create && glossaryTermStatus === Status.Approved
             ? ERROR_PLACEHOLDER_TYPE.CREATE
             : ERROR_PLACEHOLDER_TYPE.NO_DATA
         }

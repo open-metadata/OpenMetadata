@@ -1,11 +1,35 @@
 {
   "name": "DataInsightsApplication",
   "appConfiguration": {
-    "sendToAdmins": true,
-    "sendToTeams": true
+    "name": "OpenMetadata_dataInsight",
+    "displayName": "OpenMetadata_dataInsight",
+    "description": "OpenMetadata DataInsight Pipeline",
+    "pipelineType": "dataInsight",
+    "sourceConfig": {
+      "config": {
+        "type": "MetadataToElasticSearch"
+      }
+    },
+    "airflowConfig": {
+      "pausePipeline": false,
+      "concurrency": 1,
+      "pipelineTimezone": "UTC",
+      "retries": 3,
+      "retryDelay": 300,
+      "pipelineCatchup": false,
+      "scheduleInterval": "0 0 * * *",
+      "maxActiveRuns": 1,
+      "workflowDefaultView": "tree",
+      "workflowDefaultViewOrientation": "LR"
+    },
+    "loggerLevel": "INFO",
+    "service": {
+      "name": "OpenMetadata",
+      "type": "Metadata"
+    }
   },
   "appSchedule": {
     "scheduleType": "Custom",
-    "cronExpression": "0 0 0 1/1 * ? *"
+    "cronExpression": "0 0 * * *"
   }
 }

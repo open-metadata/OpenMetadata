@@ -63,11 +63,11 @@ const AppInstallVerifyCard = ({
               alt="OpenMetadata Logo"
               className="vertical-middle"
               dataTestId="image"
-              height={64}
-              width={64}
+              height={56}
+              width={56}
             />
           }
-          size={120}
+          size={100}
         />
       </Space>
       <Typography.Title className="m-t-md" level={5}>

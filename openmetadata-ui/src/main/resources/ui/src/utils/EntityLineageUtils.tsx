@@ -824,7 +824,8 @@ export const getNewLineageConnectionDetails = (
   selectedEdgeValue: EntityLineageEdge | undefined,
   selectedPipelineId: string | undefined,
   customEdgeData: CustomEdgeData,
-  type: EntityType
+  type: EntityType,
+  edgeDetails?: EntityReference
 ) => {
   const { source, sourceType, target, targetType } = customEdgeData;
   const updatedLineageDetails: LineageDetails = {
@@ -836,6 +837,7 @@ export const getNewLineageConnectionDetails = (
       : {
           id: selectedPipelineId,
           type,
+          fullyQualifiedName: edgeDetails?.fullyQualifiedName ?? '',
         },
   };
 

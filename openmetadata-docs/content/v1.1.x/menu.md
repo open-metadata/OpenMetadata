@@ -655,6 +655,12 @@ site_menu:
     url: /how-to-guides/openmetadata/data-collaboration/add-announcement
   - category: How to Guides / The Six Pillars of OpenMetadata / Data Quality and Profiler
     url: /how-to-guides/openmetadata/data-quality-profiler
+  - category: How to Guides / The Six Pillars of OpenMetadata / Data Quality and Profiler / Profiler and Data Quality Tab
+    url: /how-to-guides/openmetadata/data-quality-profiler/tab
+  - category: How to Guides / The Six Pillars of OpenMetadata / Data Quality and Profiler / How to Write and Deploy No-Code Test Cases
+    url: /how-to-guides/openmetadata/data-quality-profiler/test
+  - category: How to Guides / The Six Pillars of OpenMetadata / Data Quality and Profiler / How to Set Alerts for Test Case Fails
+    url: /how-to-guides/openmetadata/data-quality-profiler/alerts
   - category: How to Guides / The Six Pillars of OpenMetadata / Data Lineage
     url: /how-to-guides/openmetadata/data-lineage
   - category: How to Guides / The Six Pillars of OpenMetadata / Data Lineage / How to Deploy a Lineage Workflow

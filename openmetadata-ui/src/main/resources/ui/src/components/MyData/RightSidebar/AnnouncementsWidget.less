@@ -10,34 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-@import url('../../../styles/variables.less');
-.feeds-widget-container {
-  background: #ffffff;
-  border: 1px solid @border-color;
-  border-radius: 10px;
-
-  .ant-tabs-tab-btn {
-    padding: 0 12px;
-  }
-  .ant-tabs-content {
+.announcement-container {
+  .ant-card-body {
     height: 100%;
-    overflow: hidden;
   }
-  .ant-tabs-content:hover {
+  .announcement-container-list {
     overflow-y: auto;
+    overflow-x: hidden;
+    max-height: 90%;
+    .feed-card-body {
+      padding: 0;
+    }
   }
-  .ant-tabs-nav {
-    padding: 8px 16px 0 28px;
-    margin-bottom: 0;
-  }
-
-  .widget-manage-dropdown .ant-dropdown-trigger {
-    display: flex;
-    justify-content: center;
-    border: none;
-  }
-}
-.feed-card-body {
-  padding-left: 32px;
 }
