@@ -71,7 +71,9 @@ const TeamsSubscription = ({
       if (hasEditPermission) {
         return (
           <div className="flex-center gap-2">
-            <Typography.Text data-testid="subscription-no-data">
+            <Typography.Text
+              className="font-medium"
+              data-testid="subscription-no-data">
               {t('label.none')}
             </Typography.Text>
             <EditIcon
