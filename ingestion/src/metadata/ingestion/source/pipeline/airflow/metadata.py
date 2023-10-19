@@ -222,7 +222,7 @@ class AirflowSource(PipelineServiceSource):
                         executionStatus=STATUS_MAP.get(
                             dag_run.state, StatusType.Pending.value
                         ),
-                        timestamp=dag_run.execution_date.timestamp(),
+                        timestamp=datetime_to_ts(dag_run.execution_date),
                     )
                     yield Either(
                         right=OMetaPipelineStatus(
