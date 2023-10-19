@@ -106,6 +106,7 @@ import { SubscriptionWebhook, TeamsPageTab } from './team.interface';
 import { getTabs } from './TeamDetailsV1.utils';
 import TeamHierarchy from './TeamHierarchy';
 import './teams.less';
+import TeamsHeadingLabel from './TeamsHeaderSection/TeamsHeadingLabel.component';
 import TeamsInfo from './TeamsHeaderSection/TeamsInfo.component';
 import TeamsSubscription from './TeamsHeaderSection/TeamsSubscription.component';
 import { UserTab } from './UserTab/UserTab.component';
@@ -886,60 +887,71 @@ const TeamDetailsV1 = ({
 
   const teamsCollapseHeader = useMemo(
     () => (
-      <Space wrap className="w-full justify-between">
-        <Space className="w-full" size="middle">
-          <Avatar className="teams-profile" size={40}>
-            <IconTeams className="text-primary" width={20} />
-          </Avatar>
+      <>
+        <Space wrap className="w-full justify-between">
+          <Space className="w-full" size="middle">
+            <Avatar className="teams-profile" size={40}>
+              <IconTeams className="text-primary" width={20} />
+            </Avatar>
 
-          <Space direction="vertical" size={3}>
-            {!isOrganization && (
-              <TitleBreadcrumb titleLinks={slashedTeamName} />
+            <Space direction="vertical" size={3}>
+              {!isOrganization && (
+                <TitleBreadcrumb titleLinks={slashedTeamName} />
+              )}
+
+              <TeamsHeadingLabel
+                currentTeam={currentTeam}
+                entityPermissions={entityPermissions}
+                updateTeamHandler={updateTeamHandler}
+              />
+            </Space>
+          </Space>
+
+          <Space align="center">
+            {teamActionButton}
+            {!isOrganization ? (
+              entityPermissions.EditAll && (
+                <ManageButton
+                  isRecursiveDelete
+                  afterDeleteAction={afterDeleteAction}
+                  allowSoftDelete={!currentTeam.deleted}
+                  canDelete={entityPermissions.EditAll}
+                  entityId={currentTeam.id}
+                  entityName={
+                    currentTeam.fullyQualifiedName ?? currentTeam.name
+                  }
+                  entityType="team"
+                  extraDropdownContent={extraDropdownContent}
+                  hardDeleteMessagePostFix={getDeleteMessagePostFix(
+                    currentTeam.fullyQualifiedName ?? currentTeam.name,
+                    t('label.permanently-lowercase')
+                  )}
+                  softDeleteMessagePostFix={getDeleteMessagePostFix(
+                    currentTeam.fullyQualifiedName ?? currentTeam.name,
+                    t('label.soft-lowercase')
+                  )}
+                />
+              )
+            ) : (
+              <ManageButton
+                canDelete={false}
+                entityName={currentTeam.fullyQualifiedName ?? currentTeam.name}
+                extraDropdownContent={[...IMPORT_EXPORT_MENU_ITEM]}
+              />
             )}
-
-            <TeamsInfo
-              childTeamsCount={childTeams.length}
-              currentTeam={currentTeam}
-              entityPermissions={entityPermissions}
-              isGroupType={isGroupType}
-              parentTeams={parentTeams}
-              updateTeamHandler={updateTeamHandler}
-            />
           </Space>
         </Space>
-
-        <Space align="center">
-          {teamActionButton}
-          {!isOrganization ? (
-            entityPermissions.EditAll && (
-              <ManageButton
-                isRecursiveDelete
-                afterDeleteAction={afterDeleteAction}
-                allowSoftDelete={!currentTeam.deleted}
-                canDelete={entityPermissions.EditAll}
-                entityId={currentTeam.id}
-                entityName={currentTeam.fullyQualifiedName ?? currentTeam.name}
-                entityType="team"
-                extraDropdownContent={extraDropdownContent}
-                hardDeleteMessagePostFix={getDeleteMessagePostFix(
-                  currentTeam.fullyQualifiedName ?? currentTeam.name,
-                  t('label.permanently-lowercase')
-                )}
-                softDeleteMessagePostFix={getDeleteMessagePostFix(
-                  currentTeam.fullyQualifiedName ?? currentTeam.name,
-                  t('label.soft-lowercase')
-                )}
-              />
-            )
-          ) : (
-            <ManageButton
-              canDelete={false}
-              entityName={currentTeam.fullyQualifiedName ?? currentTeam.name}
-              extraDropdownContent={[...IMPORT_EXPORT_MENU_ITEM]}
-            />
-          )}
-        </Space>
-      </Space>
+        <div className="p-t-md p-l-xss">
+          <TeamsInfo
+            childTeamsCount={childTeams.length}
+            currentTeam={currentTeam}
+            entityPermissions={entityPermissions}
+            isGroupType={isGroupType}
+            parentTeams={parentTeams}
+            updateTeamHandler={updateTeamHandler}
+          />
+        </div>
+      </>
     ),
     [
       isGroupType,
@@ -1053,7 +1065,6 @@ const TeamDetailsV1 = ({
             accordion
             bordered={false}
             className="site-collapse-custom-collapse"
-            defaultActiveKey={['1']}
             expandIconPosition="end">
             <Collapse.Panel
               className="site-collapse-custom-panel"

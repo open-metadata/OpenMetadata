@@ -86,7 +86,7 @@ export const DomainLabel = ({
       return (
         <Link
           className={classNames(
-            'text-primary no-underline',
+            'text-primary no-underline domain-link',
             !showDomainHeading ? 'font-medium text-xs' : ''
           )}
           data-testid="domain-link"
@@ -100,6 +100,7 @@ export const DomainLabel = ({
       return (
         <Typography.Text
           className={classNames(
+            'domain-link',
             !showDomainHeading ? 'font-medium text-xs' : ''
           )}
           data-testid="no-domain-text">
