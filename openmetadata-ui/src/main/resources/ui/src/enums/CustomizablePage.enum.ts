@@ -19,7 +19,6 @@ export enum WidgetWidths {
 
 export enum LandingPageWidgetKeys {
   ACTIVITY_FEED = 'KnowledgePanel.ActivityFeed',
-  RIGHT_PANEL = 'Container.RightSidebar',
   ANNOUNCEMENTS = 'KnowledgePanel.Announcements',
   FOLLOWING = 'KnowledgePanel.Following',
   RECENTLY_VIEWED = 'KnowledgePanel.RecentlyViewed',
