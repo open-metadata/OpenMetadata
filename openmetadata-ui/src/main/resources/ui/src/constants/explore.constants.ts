@@ -13,6 +13,7 @@
 
 import { ExploreSearchIndex } from '../components/Explore/explore.interface';
 import { SortingField } from '../components/Explore/SortingDropDown';
+import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import i18n from '../utils/i18next/LocalUtil';
 import { Icons } from '../utils/SvgUtils';
@@ -53,17 +54,135 @@ export interface ExploreTabInfo {
   path: string;
   icon?: string;
   selectedIcon?: string;
-  category: string;
+  category?: string;
 }
 
-export const tabsInfo: { [K in ExploreSearchIndex]: ExploreTabInfo } = {
-  [SearchIndex.DATA_PRODUCT]: {
-    label: i18n.t('label.data-product-plural'),
-    sortingFields: tableSortingFields,
-    sortField: INITIAL_SORT_FIELD,
-    path: 'dataProducts',
-    category: i18n.t('label.domain'),
+export const EXPLORE_TAB_ITEMS = [
+  {
+    label: i18n.t('label.database-plural'),
+    key: EntityType.DATABASE,
+    children: [
+      {
+        key: SearchIndex.TABLE,
+        label: i18n.t('label.table-plural'),
+        sortingFields: tableSortingFields,
+        sortField: INITIAL_SORT_FIELD,
+        path: 'tables',
+        icon: Icons.TABLE_GREY,
+        selectedIcon: Icons.TABLE,
+        category: i18n.t('label.database'),
+      },
+      {
+        key: SearchIndex.STORED_PROCEDURE,
+        label: i18n.t('label.stored-procedure-plural'),
+        sortingFields: entitySortingFields,
+        sortField: INITIAL_SORT_FIELD,
+        path: 'storedProcedure',
+        category: i18n.t('label.database'),
+      },
+    ],
   },
+  {
+    label: i18n.t('label.dashboard-plural'),
+    key: EntityType.DASHBOARD,
+    children: [
+      {
+        key: SearchIndex.DASHBOARD,
+        label: i18n.t('label.dashboard-plural'),
+        sortingFields: entitySortingFields,
+        sortField: INITIAL_SORT_FIELD,
+        path: 'dashboards',
+        icon: Icons.DASHBOARD_GREY,
+        selectedIcon: Icons.DASHBOARD,
+        category: i18n.t('label.dashboard-plural'),
+      },
+      {
+        key: SearchIndex.DASHBOARD_DATA_MODEL,
+        label: i18n.t('label.data-model-plural'),
+        sortingFields: entitySortingFields,
+        sortField: INITIAL_SORT_FIELD,
+        path: 'dashboardDataModel',
+        category: i18n.t('label.dashboard-plural'),
+      },
+    ],
+  },
+  {
+    key: SearchIndex.PIPELINE,
+    label: i18n.t('label.pipeline-plural'),
+    sortingFields: entitySortingFields,
+    sortField: INITIAL_SORT_FIELD,
+    path: 'pipelines',
+    icon: Icons.PIPELINE_GREY,
+    selectedIcon: Icons.PIPELINE,
+  },
+  {
+    key: SearchIndex.TOPIC,
+    label: i18n.t('label.topic-plural'),
+    sortingFields: entitySortingFields,
+    sortField: INITIAL_SORT_FIELD,
+    path: 'topics',
+    icon: Icons.TOPIC_GREY,
+    selectedIcon: Icons.TOPIC,
+  },
+  {
+    key: SearchIndex.MLMODEL,
+    label: i18n.t('label.ml-model-plural'),
+    sortingFields: entitySortingFields,
+    sortField: INITIAL_SORT_FIELD,
+    path: 'mlmodels',
+  },
+  {
+    key: SearchIndex.CONTAINER,
+    label: i18n.t('label.container-plural'),
+    sortingFields: entitySortingFields,
+    sortField: INITIAL_SORT_FIELD,
+    path: 'containers',
+  },
+  {
+    key: SearchIndex.SEARCH_INDEX,
+    label: i18n.t('label.search-index-plural'),
+    sortingFields: entitySortingFields,
+    sortField: INITIAL_SORT_FIELD,
+    path: 'searchIndexes',
+  },
+  {
+    key: EntityType.GOVERN,
+    label: i18n.t('label.governance'),
+    children: [
+      {
+        key: SearchIndex.GLOSSARY,
+        label: i18n.t('label.glossary-plural'),
+        value: EntityType.GLOSSARY,
+        sortingFields: entitySortingFields,
+        sortField: INITIAL_SORT_FIELD,
+        path: 'glossaries',
+        category: i18n.t('label.governance'),
+      },
+      {
+        key: SearchIndex.TAG,
+        label: i18n.t('label.tag-plural'),
+        value: EntityType.TAG,
+        sortingFields: entitySortingFields,
+        sortField: INITIAL_SORT_FIELD,
+        path: 'tags',
+        category: i18n.t('label.governance'),
+      },
+    ],
+  },
+  {
+    key: EntityType.DOMAIN,
+    label: i18n.t('label.domain-plural'),
+    children: [
+      {
+        key: SearchIndex.DATA_PRODUCT,
+        label: i18n.t('label.data-product-plural'),
+        value: EntityType.DATA_PRODUCT,
+      },
+    ],
+  },
+];
+
+export const tabsInfo: { [K in ExploreSearchIndex]: ExploreTabInfo } = {
   [SearchIndex.TABLE]: {
     label: i18n.t('label.table-plural'),
     sortingFields: tableSortingFields,
@@ -103,7 +222,6 @@ export const tabsInfo: { [K in ExploreSearchIndex]: ExploreTabInfo } = {
     path: 'pipelines',
     icon: Icons.PIPELINE_GREY,
     selectedIcon: Icons.PIPELINE,
-    category: i18n.t('label.pipeline-plural'),
   },
   [SearchIndex.TOPIC]: {
     label: i18n.t('label.topic-plural'),
@@ -112,28 +230,24 @@ export const tabsInfo: { [K in ExploreSearchIndex]: ExploreTabInfo } = {
     path: 'topics',
     icon: Icons.TOPIC_GREY,
     selectedIcon: Icons.TOPIC,
-    category: i18n.t('label.topic-plural'),
   },
   [SearchIndex.MLMODEL]: {
     label: i18n.t('label.ml-model-plural'),
     sortingFields: entitySortingFields,
     sortField: INITIAL_SORT_FIELD,
     path: 'mlmodels',
-    category: i18n.t('label.ml-model-plural'),
   },
   [SearchIndex.CONTAINER]: {
     label: i18n.t('label.container-plural'),
     sortingFields: entitySortingFields,
     sortField: INITIAL_SORT_FIELD,
     path: 'containers',
-    category: i18n.t('label.storage'),
   },
   [SearchIndex.SEARCH_INDEX]: {
     label: i18n.t('label.search-index-plural'),
     sortingFields: entitySortingFields,
     sortField: INITIAL_SORT_FIELD,
     path: 'searchIndexes',
-    category: i18n.t('label.search'),
   },
   [SearchIndex.GLOSSARY]: {
     label: i18n.t('label.glossary-plural'),
@@ -148,6 +262,13 @@ export const tabsInfo: { [K in ExploreSearchIndex]: ExploreTabInfo } = {
     sortField: INITIAL_SORT_FIELD,
     path: 'tags',
     category: i18n.t('label.governance'),
+  },
+  [SearchIndex.DATA_PRODUCT]: {
+    label: i18n.t('label.data-product-plural'),
+    sortingFields: tableSortingFields,
+    sortField: INITIAL_SORT_FIELD,
+    path: 'dataProducts',
+    category: i18n.t('label.domain'),
   },
 };
 

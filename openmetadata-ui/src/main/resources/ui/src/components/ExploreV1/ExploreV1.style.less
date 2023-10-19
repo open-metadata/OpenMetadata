@@ -68,10 +68,28 @@
   .custom-menu.ant-menu-root.ant-menu-inline {
     .ant-menu-item {
       height: 40px;
+      padding: 0 28px 0 20px !important;
     }
   }
 
-  .ant-menu-submenu-title {
-    padding-left: 14px !important;
+  .ant-menu-submenu {
+    .ant-menu-submenu-title {
+      padding-left: 14px !important;
+      margin-bottom: 0;
+      padding-right: 28px;
+    }
+  }
+
+  .ant-menu-submenu-open {
+    .ant-menu-submenu-title {
+      background-color: @grey-1;
+    }
+    .ant-menu-sub.ant-menu-inline {
+      background-color: @grey-1;
+    }
+  }
+
+  .ant-menu-submenu-arrow {
+    right: 10px;
   }
 }

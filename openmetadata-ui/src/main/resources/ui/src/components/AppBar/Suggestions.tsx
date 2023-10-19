@@ -228,7 +228,7 @@ const Suggestions = ({
     return <Loader />;
   }
 
-  if (options.length === 0 && !isTourOpen) {
+  if (options.length === 0 && !isTourOpen && searchText) {
     return (
       <Typography.Text>
         <Transi18next

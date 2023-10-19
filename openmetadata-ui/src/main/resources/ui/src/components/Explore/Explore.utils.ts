@@ -12,12 +12,12 @@
  */
 
 import { get } from 'lodash';
-import { SearchDropdownOption } from '../../components/SearchDropdown/SearchDropdown.interface';
 import {
   QueryFieldInterface,
   QueryFieldValueInterface,
   QueryFilterInterface,
 } from '../../pages/explore/ExplorePage.interface';
+import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
 import {
   ExploreQuickFilterField,
   ExploreSearchIndex,

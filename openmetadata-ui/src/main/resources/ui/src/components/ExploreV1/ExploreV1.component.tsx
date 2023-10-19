@@ -20,6 +20,7 @@ import {
   Col,
   Layout,
   Menu,
+  MenuProps,
   Row,
   Space,
   Switch,
@@ -82,6 +83,11 @@ const ExploreV1: React.FC<ExploreProps> = ({
   const [showSummaryPanel, setShowSummaryPanel] = useState(false);
   const [entityDetails, setEntityDetails] =
     useState<SearchedDataProps['data'][number]['_source']>();
+  const [openKeys, setOpenKeys] = useState<string[]>([]);
+
+  const onOpenChange: MenuProps['onOpenChange'] = (keys) => {
+    setOpenKeys(keys);
+  };
 
   const parsedSearch = useMemo(
     () =>
@@ -190,6 +196,20 @@ const ExploreV1: React.FC<ExploreProps> = ({
   }, []);
 
   useEffect(() => {
+    const tabInfo = tabsInfo[searchIndex];
+    const category = tabInfo ? tabInfo.category : undefined;
+    if (category) {
+      setOpenKeys((prevOpenKeys) => {
+        if (prevOpenKeys.includes(category)) {
+          return prevOpenKeys;
+        }
+
+        return [...prevOpenKeys, category];
+      });
+    }
+  }, [searchIndex]);
+
+  useEffect(() => {
     const dropdownItems = getDropDownItems(activeTabKey);
 
     setSelectedQuickFilters(
@@ -235,12 +255,14 @@ const ExploreV1: React.FC<ExploreProps> = ({
                 data-testid="explore-left-panel"
                 items={tabItems}
                 mode="inline"
+                openKeys={openKeys}
                 rootClassName="left-container"
                 selectedKeys={[activeTabKey]}
                 onClick={(info) => {
                   info && onChangeSearchIndex(info.key as ExploreSearchIndex);
                   setShowSummaryPanel(false);
                 }}
+                onOpenChange={onOpenChange}
               />
             </Sider>
             <Content>

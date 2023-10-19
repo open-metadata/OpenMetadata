@@ -38,6 +38,7 @@ import { useTourProvider } from '../../components/TourProvider/TourProvider';
 import { getExplorePath, PAGE_SIZE } from '../../constants/constants';
 import {
   COMMON_FILTERS_FOR_DIFFERENT_TABS,
+  EXPLORE_TAB_ITEMS,
   INITIAL_SORT_FIELD,
   tabsInfo,
 } from '../../constants/explore.constants';
@@ -206,24 +207,17 @@ const ExplorePageV1: FunctionComponent = () => {
       if (isNil(tabInfo)) {
         const activeKey = findActiveSearchIndex(searchHitCounts);
 
-        return activeKey ? activeKey : SearchIndex.DATA_PRODUCT;
+        return activeKey ? activeKey : SearchIndex.TABLE;
       }
 
       return tabInfo[0] as ExploreSearchIndex;
     }
 
-    return SearchIndex.DATA_PRODUCT;
+    return SearchIndex.TABLE;
   }, [tab, searchHitCounts]);
 
-  const tabItems = useMemo(() => {
-    if (!searchHitCounts) {
-      return [];
-    }
-
-    const parentMap: Record<string, any> = {}; // Use this map to group children by parent
-
-    for (const [tabSearchIndex, tabDetail] of Object.entries(tabsInfo)) {
-      const { label, category } = tabDetail;
+  const getExploreMenuItem = useCallback(
+    (tabSearchIndex, label) => {
       const menuItem = {
         key: tabSearchIndex,
         label: (
@@ -252,41 +246,53 @@ const ExplorePageV1: FunctionComponent = () => {
           : 0,
       };
 
-      if (!parentMap[category]) {
-        parentMap[category] = {
-          count: 0,
-          items: [],
-        };
-      }
-      parentMap[category].items.push(menuItem);
-      parentMap[category].count += menuItem.count;
+      return menuItem;
+    },
+    [searchHitCounts, searchIndex]
+  );
+
+  const tabItems = useMemo(() => {
+    if (!searchHitCounts) {
+      return [];
     }
 
-    const menuItems = [];
+    const resultMenuItems = [];
 
-    for (const [parent, children] of Object.entries(parentMap)) {
-      const filteredChildren = searchQueryParam
-        ? children.items.filter((item: { count: number }) => item.count > 0)
-        : children.items;
+    for (const item of EXPLORE_TAB_ITEMS) {
+      if (!item.children) {
+        resultMenuItems.push(getExploreMenuItem(item.key, item.label));
+      } else {
+        const filteredChildren = searchQueryParam
+          ? item.children.filter(
+              (item) => searchHitCounts[item.key as ExploreSearchIndex] > 0
+            )
+          : item.children;
 
-      if (filteredChildren.length > 0) {
-        menuItems.push({
-          key: parent,
+        const subItems = filteredChildren.map((subItem) =>
+          getExploreMenuItem(subItem.key, subItem.label)
+        );
+
+        const categoryItem = {
+          key: item.key,
           label: (
-            <div data-testid={`${lowerCase(parent)}-menu`}>
+            <div data-testid={`${lowerCase(item.key)}-menu`}>
               <Space className="w-full justify-between">
-                <Typography.Text>{parent}</Typography.Text>
-                <span>{getCountBadge(children.count)}</span>
+                <Typography.Text>{item.label}</Typography.Text>
+                <span>{getCountBadge()}</span>
               </Space>
             </div>
           ),
-          children: filteredChildren,
-        });
+          children: subItems,
+        };
+
+        // const newItem = { ...item, children: subItems };
+        // resultMenuItems.push(newItem);
+        resultMenuItems.push(categoryItem);
       }
     }
 
-    return menuItems;
-  }, [tabsInfo, searchHitCounts, searchCriteria, searchQueryParam]);
+    return resultMenuItems;
+  }, [searchHitCounts, searchCriteria, searchQueryParam]);
 
   const page = useMemo(() => {
     const pageParam = parsedSearch.page;
