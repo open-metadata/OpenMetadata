@@ -102,13 +102,12 @@ import { usePermissionProvider } from '../../PermissionProvider/PermissionProvid
 import { ResourceEntity } from '../../PermissionProvider/PermissionProvider.interface';
 import TabsLabel from '../../TabsLabel/TabsLabel.component';
 import ListEntities from './RolesAndPoliciesList';
-import { SubscriptionWebhook, TeamsPageTab } from './team.interface';
+import { TeamsPageTab } from './team.interface';
 import { getTabs } from './TeamDetailsV1.utils';
 import TeamHierarchy from './TeamHierarchy';
 import './teams.less';
 import TeamsHeadingLabel from './TeamsHeaderSection/TeamsHeadingLabel.component';
 import TeamsInfo from './TeamsHeaderSection/TeamsInfo.component';
-import TeamsSubscription from './TeamsHeaderSection/TeamsSubscription.component';
 import { UserTab } from './UserTab/UserTab.component';
 
 const TeamDetailsV1 = ({
@@ -200,12 +199,6 @@ const TeamDetailsV1 = ({
   });
 
   const addTeam = t('label.add-entity', { entity: t('label.team') });
-
-  const hasEditSubscriptionPermission = useMemo(
-    () =>
-      entityPermissions.EditAll || currentTeam.owner?.id === currentUser?.id,
-    [entityPermissions, currentTeam, currentUser]
-  );
 
   const teamCount = useMemo(
     () =>
@@ -337,23 +330,6 @@ const TeamDetailsV1 = ({
       removeUserFromTeam(deletingUser.user?.id as string).then(() => {
         setDeletingUser(DELETE_USER_INITIAL_STATE);
       });
-    }
-  };
-
-  const updateTeamSubscription = async (data?: SubscriptionWebhook) => {
-    if (currentTeam) {
-      const updatedData: Team = {
-        ...currentTeam,
-        profile: {
-          subscription: isEmpty(data)
-            ? undefined
-            : {
-                [data?.webhook ?? '']: { endpoint: data?.endpoint },
-              },
-        },
-      };
-
-      await updateTeamHandler(updatedData);
     }
   };
 
@@ -1072,18 +1048,6 @@ const TeamDetailsV1 = ({
               header={teamsCollapseHeader}
               key="1">
               <Row>
-                {(currentTeam.owner?.id === currentUser?.id ||
-                  entityPermissions.EditAll ||
-                  isAlreadyJoinedTeam) && (
-                  <Col className="p-md border-top" span={24}>
-                    <TeamsSubscription
-                      hasEditPermission={hasEditSubscriptionPermission}
-                      subscription={currentTeam.profile?.subscription}
-                      updateTeamSubscription={updateTeamSubscription}
-                    />
-                  </Col>
-                )}
-
                 <Col className="border-top" span={24}>
                   <Card
                     className="ant-card-feed card-body-border-none card-padding-y-0 p-y-sm"

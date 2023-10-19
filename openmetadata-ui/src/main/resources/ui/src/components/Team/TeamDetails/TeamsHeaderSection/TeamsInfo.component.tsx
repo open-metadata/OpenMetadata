@@ -28,7 +28,8 @@ import { useAuthContext } from '../../../authentication/auth-provider/AuthProvid
 import { DomainLabel } from '../../../common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import TeamTypeSelect from '../../../common/TeamTypeSelect/TeamTypeSelect.component';
-import { TeamsInfoProps } from '../team.interface';
+import { SubscriptionWebhook, TeamsInfoProps } from '../team.interface';
+import TeamsSubscription from './TeamsSubscription.component';
 
 const TeamsInfo = ({
   parentTeams,
@@ -46,6 +47,8 @@ const TeamsInfo = ({
   const [isEmailEdit, setIsEmailEdit] = useState<boolean>(false);
   const [showTypeSelector, setShowTypeSelector] = useState(false);
 
+  const { currentUser } = useAuthContext();
+
   const { email, owner, teamType, id, fullyQualifiedName } = useMemo(
     () => currentTeam,
     [currentTeam]
@@ -58,6 +61,12 @@ const TeamsInfo = ({
     }),
 
     [entityPermissions]
+  );
+
+  const hasEditSubscriptionPermission = useMemo(
+    () =>
+      entityPermissions.EditAll || currentTeam.owner?.id === currentUser?.id,
+    [entityPermissions, currentTeam, currentUser]
   );
 
   const onEmailSave = async (data: { email: string }) => {
@@ -96,6 +105,23 @@ const TeamsInfo = ({
       await updateTeamHandler(updatedData);
 
       setShowTypeSelector(false);
+    }
+  };
+
+  const updateTeamSubscription = async (data?: SubscriptionWebhook) => {
+    if (currentTeam) {
+      const updatedData: Team = {
+        ...currentTeam,
+        profile: {
+          subscription: isEmpty(data)
+            ? undefined
+            : {
+                [data?.webhook ?? '']: { endpoint: data?.endpoint },
+              },
+        },
+      };
+
+      await updateTeamHandler(updatedData);
     }
   };
 
@@ -258,6 +284,13 @@ const TeamsInfo = ({
       />
       <Divider type="vertical" />
       {emailRender}
+
+      <Divider type="vertical" />
+      <TeamsSubscription
+        hasEditPermission={hasEditSubscriptionPermission}
+        subscription={currentTeam.profile?.subscription}
+        updateTeamSubscription={updateTeamSubscription}
+      />
       {teamTypeElement}
     </Space>
   );
