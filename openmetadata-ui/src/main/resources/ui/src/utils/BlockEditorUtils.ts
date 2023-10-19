@@ -32,11 +32,11 @@ export const isInViewport = (ele: HTMLElement, container: HTMLElement) => {
   return eleTop >= containerTop && eleBottom <= containerBottom;
 };
 
-export type FormateContentFor = 'server' | 'client';
+export type FormatContentFor = 'server' | 'client';
 
 export const formatContent = (
   htmlString: string,
-  formatFor: FormateContentFor
+  formatFor: FormatContentFor
 ) => {
   // Create a new DOMParser
   const parser = new DOMParser();
