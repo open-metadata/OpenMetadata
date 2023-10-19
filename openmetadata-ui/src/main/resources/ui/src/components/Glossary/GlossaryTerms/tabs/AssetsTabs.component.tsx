@@ -26,7 +26,7 @@ import {
 } from 'antd';
 import classNames from 'classnames';
 import { t } from 'i18next';
-import { find, isEmpty } from 'lodash';
+import { find, isEmpty, isObject } from 'lodash';
 import React, {
   forwardRef,
   useCallback,
@@ -50,7 +50,6 @@ import { SearchIndex } from '../../../../enums/search.enum';
 import { searchData } from '../../../../rest/miscAPI';
 import { getCountBadge } from '../../../../utils/CommonUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import ErrorPlaceHolder from '../../../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../../../common/next-previous/NextPrevious';
 import { PagingHandlerParams } from '../../../common/next-previous/NextPrevious.interface';
 import PageLayoutV1 from '../../../containers/PageLayoutV1';
@@ -62,6 +61,7 @@ import {
 
 import { FilterOutlined } from '@ant-design/icons';
 import { getEntityIcon } from '../../../../utils/TableUtils';
+import ErrorPlaceHolder from '../../../common/error-with-placeholder/ErrorPlaceHolder';
 import './assets-tabs.less';
 import {
   AssetsOfEntity,
@@ -82,8 +82,10 @@ const AssetsTabs = forwardRef(
       isSummaryPanelOpen,
       onAddAsset,
       assetCount,
+      queryFilter,
       type = AssetsOfEntity.GLOSSARY,
       viewType = AssetsViewType.PILLS,
+      noDataPlaceholder,
     }: AssetsTabsProps,
     ref
   ) => {
@@ -100,16 +102,25 @@ const AssetsTabs = forwardRef(
     const [selectedCard, setSelectedCard] = useState<SourceType>();
     const [visible, setVisible] = useState<boolean>(false);
     const [openKeys, setOpenKeys] = useState<EntityType[]>([]);
+    const [isCountLoading, setIsCountLoading] = useState<boolean>(true);
 
     const queryParam = useMemo(() => {
-      if (type === AssetsOfEntity.DOMAIN) {
-        return `(domain.fullyQualifiedName:"${fqn}")`;
-      } else if (type === AssetsOfEntity.DATA_PRODUCT) {
-        return `(dataProducts.fullyQualifiedName:"${fqn}")`;
-      } else if (type === AssetsOfEntity.TEAM) {
-        return `(owner.fullyQualifiedName:"${fqn}")`;
-      } else {
-        return `(tags.tagFQN:"${fqn}")`;
+      switch (type) {
+        case AssetsOfEntity.DOMAIN:
+          return `(domain.fullyQualifiedName:"${fqn}")`;
+
+        case AssetsOfEntity.DATA_PRODUCT:
+          return `(dataProducts.fullyQualifiedName:"${fqn}")`;
+
+        case AssetsOfEntity.TEAM:
+          return `(owner.fullyQualifiedName:"${fqn}")`;
+
+        case AssetsOfEntity.MY_DATA:
+        case AssetsOfEntity.FOLLOWING:
+          return queryFilter ?? '';
+
+        default:
+          return `(tags.tagFQN:"${fqn}")`;
       }
     }, [type, fqn]);
 
@@ -381,7 +392,7 @@ const AssetsTabs = forwardRef(
         .catch((err) => {
           showErrorToast(err);
         })
-        .finally(() => setIsLoading(false));
+        .finally(() => setIsCountLoading(false));
     };
 
     useEffect(() => {
@@ -392,71 +403,80 @@ const AssetsTabs = forwardRef(
       };
     }, []);
 
-    const assetListing = useMemo(() => {
-      if (isLoading) {
+    const assetErrorPlaceHolder = useMemo(() => {
+      if (!isEmpty(activeFilter)) {
         return (
-          <Row gutter={[0, 16]}>
-            <Col span={24}>
-              <Skeleton />
-            </Col>
-            <Col span={24}>
-              <Skeleton />
-            </Col>
-          </Row>
+          <ErrorPlaceHolder
+            heading={t('label.asset')}
+            type={ERROR_PLACEHOLDER_TYPE.FILTER}
+          />
+        );
+      } else if (noDataPlaceholder) {
+        return (
+          <ErrorPlaceHolder>
+            {isObject(noDataPlaceholder) && (
+              <Typography.Paragraph>
+                {noDataPlaceholder.message}
+              </Typography.Paragraph>
+            )}
+          </ErrorPlaceHolder>
+        );
+      } else {
+        return (
+          <ErrorPlaceHolder
+            doc={GLOSSARIES_DOCS}
+            heading={t('label.asset')}
+            permission={permissions.Create}
+            type={ERROR_PLACEHOLDER_TYPE.CREATE}
+            onClick={onAddAsset}
+          />
         );
       }
+    }, [activeFilter, noDataPlaceholder, permissions, onAddAsset]);
 
-      return data.length ? (
-        <div className="assets-data-container">
-          {data.map(({ _source, _id = '' }, index) => (
-            <ExploreSearchCard
-              showEntityIcon
-              className={classNames(
-                'm-b-sm cursor-pointer',
-                selectedCard?.id === _source.id ? 'highlight-card' : ''
-              )}
-              handleSummaryPanelDisplay={setSelectedCard}
-              id={_id}
-              key={index}
-              showTags={false}
-              source={_source}
-            />
-          ))}
-          {total > PAGE_SIZE && data.length > 0 && (
-            <NextPrevious
-              isNumberBased
-              currentPage={currentPage}
-              pageSize={PAGE_SIZE}
-              paging={{ total }}
-              pagingHandler={({ currentPage }: PagingHandlerParams) =>
-                setCurrentPage(currentPage)
-              }
-            />
-          )}
-        </div>
-      ) : (
-        <div className="m-t-xlg">
-          {!isEmpty(activeFilter) ? (
-            <ErrorPlaceHolder
-              heading={t('label.asset')}
-              type={ERROR_PLACEHOLDER_TYPE.FILTER}
-            />
-          ) : (
-            <ErrorPlaceHolder
-              doc={GLOSSARIES_DOCS}
-              heading={t('label.asset')}
-              permission={permissions.Create}
-              type={
-                permissions.Create
-                  ? ERROR_PLACEHOLDER_TYPE.CREATE
-                  : ERROR_PLACEHOLDER_TYPE.NO_DATA
-              }
-              onClick={onAddAsset}
-            />
-          )}
-        </div>
-      );
-    }, [data, isLoading, total, currentPage, selectedCard, setSelectedCard]);
+    const assetListing = useMemo(
+      () =>
+        data.length ? (
+          <div className="assets-data-container">
+            {data.map(({ _source, _id = '' }, index) => (
+              <ExploreSearchCard
+                showEntityIcon
+                className={classNames(
+                  'm-b-sm cursor-pointer',
+                  selectedCard?.id === _source.id ? 'highlight-card' : ''
+                )}
+                handleSummaryPanelDisplay={setSelectedCard}
+                id={_id}
+                key={index}
+                showTags={false}
+                source={_source}
+              />
+            ))}
+            {total > PAGE_SIZE && data.length > 0 && (
+              <NextPrevious
+                isNumberBased
+                currentPage={currentPage}
+                pageSize={PAGE_SIZE}
+                paging={{ total }}
+                pagingHandler={({ currentPage }: PagingHandlerParams) =>
+                  setCurrentPage(currentPage)
+                }
+              />
+            )}
+          </div>
+        ) : (
+          <div className="m-t-xlg">{assetErrorPlaceHolder}</div>
+        ),
+      [
+        data,
+        total,
+        currentPage,
+        selectedCard,
+        assetErrorPlaceHolder,
+        setSelectedCard,
+        setCurrentPage,
+      ]
+    );
 
     const assetsHeader = useMemo(() => {
       if (viewType === AssetsViewType.PILLS) {
@@ -523,6 +543,8 @@ const AssetsTabs = forwardRef(
     }, [
       viewType,
       activeFilter,
+      isLoading,
+      data,
       openKeys,
       visible,
       currentPage,
@@ -577,6 +599,19 @@ const AssetsTabs = forwardRef(
         setSelectedCard(undefined);
       }
     }, [isSummaryPanelOpen]);
+
+    if (isLoading || isCountLoading) {
+      return (
+        <Row className="p-lg" gutter={[0, 16]}>
+          <Col span={24}>
+            <Skeleton />
+          </Col>
+          <Col span={24}>
+            <Skeleton />
+          </Col>
+        </Row>
+      );
+    }
 
     return (
       <div
