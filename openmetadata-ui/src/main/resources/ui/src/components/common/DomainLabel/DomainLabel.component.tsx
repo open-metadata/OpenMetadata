@@ -126,7 +126,7 @@ export const DomainLabel = ({
       return (
         <>
           <div className="d-flex items-center m-b-xs">
-            <Typography.Text className="right-panel-label">
+            <Typography.Text className="right-panel-label m-r-xss">
               {t('label.domain')}
             </Typography.Text>
             {selectableList}
