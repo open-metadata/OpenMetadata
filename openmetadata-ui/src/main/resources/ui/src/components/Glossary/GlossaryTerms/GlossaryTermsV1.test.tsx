@@ -80,6 +80,7 @@ const mockProps = {
   onRelatedTermClick: jest.fn(),
   handleGlossaryTermDelete: jest.fn(),
   refreshGlossaryTerms: jest.fn(),
+  refreshActiveGlossaryTerm: jest.fn(),
   onAddGlossaryTerm: jest.fn(),
   onEditGlossaryTerm: jest.fn(),
 };

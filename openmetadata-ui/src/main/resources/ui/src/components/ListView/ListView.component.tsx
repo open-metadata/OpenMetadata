@@ -12,7 +12,8 @@
  */
 import Icon from '@ant-design/icons';
 import { Col, Radio, Row } from 'antd';
-import React, { useState } from 'react';
+import { isEmpty } from 'lodash';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as GridIcon } from '../../assets/svg/ic-grid.svg';
 import { ReactComponent as ListIcon } from '../../assets/svg/ic-list.svg';
@@ -30,6 +31,20 @@ export const ListView = <T extends object = any>({
     ListViewOptions.TABLE
   );
   const { t } = useTranslation();
+
+  const cardRender = useMemo(() => {
+    if (isEmpty(tableprops.dataSource)) {
+      return tableprops.locale?.emptyText;
+    }
+
+    return (
+      <Row gutter={[16, 16]}>
+        {(tableprops.dataSource ?? []).map((dataSource) =>
+          cardRenderer(dataSource)
+        )}
+      </Row>
+    );
+  }, [tableprops, cardRenderer]);
 
   return (
     <Row gutter={[16, 16]}>
@@ -59,11 +74,7 @@ export const ListView = <T extends object = any>({
         {currentView === ListViewOptions.TABLE ? (
           <Table {...tableprops} />
         ) : (
-          <Row gutter={[16, 16]}>
-            {(tableprops.dataSource ?? []).map((dataSource) =>
-              cardRenderer(dataSource)
-            )}
-          </Row>
+          cardRender
         )}
       </Col>
     </Row>

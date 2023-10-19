@@ -12,6 +12,7 @@
  */
 import { ItemType, MenuItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
+import { isEmpty } from 'lodash';
 import React, {
   FC,
   ReactNode,
@@ -29,7 +30,7 @@ import {
 import { Domain } from '../../../generated/entity/domains/domain';
 import { getDomainList } from '../../../rest/domainAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import { usePermissionProvider } from '../../PermissionProvider/PermissionProvider';
 import { DomainContextType } from './DomainProvider.interface';
 
 export const DomainContext = React.createContext({} as DomainContextType);
@@ -42,7 +43,7 @@ const DomainProvider: FC<Props> = ({ children }: Props) => {
   const { t } = useTranslation();
   const [domains, setDomains] = useState<Domain[]>([]);
   const [domainLoading, setDomainLoading] = useState(false);
-  const { isAuthenticated } = useAuthContext();
+  const { permissions } = usePermissionProvider();
   const localStorageData =
     localStorage.getItem(ACTIVE_DOMAIN_STORAGE_KEY) ?? DEFAULT_DOMAIN_VALUE;
 
@@ -121,10 +122,10 @@ const DomainProvider: FC<Props> = ({ children }: Props) => {
   ]);
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (!isEmpty(permissions)) {
       fetchDomainList();
     }
-  }, [isAuthenticated]);
+  }, [permissions]);
 
   return (
     <DomainContext.Provider value={domainContextObj}>

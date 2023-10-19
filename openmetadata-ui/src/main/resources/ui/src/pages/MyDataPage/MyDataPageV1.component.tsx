@@ -12,7 +12,6 @@
  */
 
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { isEmpty, isNil } from 'lodash';
 import React, {
   useCallback,
@@ -21,17 +20,17 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { Responsive, WidthProvider } from 'react-grid-layout';
+import RGL, { WidthProvider } from 'react-grid-layout';
+import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import AppState from '../../AppState';
 import ActivityFeedProvider from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { useApplicationConfigContext } from '../../components/ApplicationConfigProvider/ApplicationConfigProvider';
 import { useAuthContext } from '../../components/authentication/auth-provider/AuthProvider';
+import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import Loader from '../../components/Loader/Loader';
-import RightSidebar from '../../components/MyData/RightSidebar/RightSidebar.component';
 import WelcomeScreen from '../../components/WelcomeScreen/WelcomeScreen.component';
 import { LOGGED_IN_USER_STORAGE_KEY } from '../../constants/constants';
-import { LandingPageWidgetKeys } from '../../enums/CustomizablePage.enum';
 import { AssetsType, EntityType } from '../../enums/entity.enum';
 import { Thread } from '../../generated/entity/feed/thread';
 import { PageType } from '../../generated/system/ui/page';
@@ -40,15 +39,17 @@ import { useAuth } from '../../hooks/authHooks';
 import { getDocumentByFQN } from '../../rest/DocStoreAPI';
 import { getActiveAnnouncement } from '../../rest/feedsAPI';
 import { getUserById } from '../../rest/userAPI';
+import { getWidgetFromKey } from '../../utils/CustomizableLandingPageUtils';
 import customizePageClassBase from '../../utils/CustomizePageClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { WidgetConfig } from '../CustomizablePage/CustomizablePage.interface';
 import './my-data.less';
 
-const ResponsiveGridLayout = WidthProvider(Responsive);
+const ReactGridLayout = WidthProvider(RGL);
 
 const MyDataPageV1 = () => {
   const location = useLocation();
+  const { t } = useTranslation();
   const { isAuthDisabled } = useAuth(location.pathname);
   const { currentUser } = useAuthContext();
   const { selectedPersona } = useApplicationConfigContext();
@@ -82,10 +83,10 @@ const MyDataPageV1 = () => {
         const pageData = await getDocumentByFQN(pageFQN);
         setLayout(pageData.data.page.layout);
       } else {
-        setLayout(customizePageClassBase.landingPageDefaultLayout);
+        setLayout(customizePageClassBase.defaultLayout);
       }
     } catch {
-      setLayout(customizePageClassBase.landingPageDefaultLayout);
+      setLayout(customizePageClassBase.defaultLayout);
     } finally {
       setIsLoading(false);
     }
@@ -144,74 +145,31 @@ const MyDataPageV1 = () => {
         !isEmpty(AppState.userDetails)) &&
       isNil(followedData)
     ) {
-      fetchMyData().catch(() => {
-        // ignore since error is displayed in toast in the parent promise.
-        // Added block for sonar code smell
-      });
+      fetchMyData();
     }
   }, [AppState.userDetails, AppState.users, isAuthDisabled]);
 
-  const getWidgetFromKey = useCallback(
-    (widgetConfig: WidgetConfig) => {
-      if (widgetConfig.i.startsWith(LandingPageWidgetKeys.RIGHT_PANEL)) {
-        return (
-          <div className="h-full border-left p-l-md">
-            <RightSidebar
-              announcements={announcements}
-              followedData={followedData ?? []}
-              followedDataCount={followedDataCount}
-              isAnnouncementLoading={isAnnouncementLoading}
-              isLoadingOwnedData={isLoadingOwnedData}
-              layoutConfigData={widgetConfig.data}
-              parentLayoutData={layout}
-            />
-          </div>
-        );
-      }
-
-      const Widget = customizePageClassBase.getWidgetsFromKey(widgetConfig.i);
-
-      return (
-        <Widget
-          announcements={announcements}
-          followedData={followedData ?? []}
-          followedDataCount={followedDataCount}
-          isLoadingOwnedData={isLoadingOwnedData}
-          selectedGridSize={widgetConfig.w}
-          widgetKey={widgetConfig.i}
-        />
-      );
-    },
+  const widgets = useMemo(
+    () =>
+      layout.map((widget) => (
+        <div data-grid={widget} key={widget.i}>
+          {getWidgetFromKey({
+            announcements: announcements,
+            followedData: followedData ?? [],
+            followedDataCount: followedDataCount,
+            isLoadingOwnedData: isLoadingOwnedData,
+            widgetConfig: widget,
+          })}
+        </div>
+      )),
     [
+      layout,
+      isAnnouncementLoading,
+      announcements,
       followedData,
       followedDataCount,
       isLoadingOwnedData,
-      layout,
-      announcements,
-      isAnnouncementLoading,
     ]
-  );
-
-  const widgets = useMemo(
-    () =>
-      layout
-        .filter((widget: WidgetConfig) =>
-          !isAnnouncementLoading &&
-          widget.i.startsWith(LandingPageWidgetKeys.ANNOUNCEMENTS)
-            ? !isEmpty(announcements)
-            : true
-        )
-        .map((widget) => (
-          <div
-            className={classNames({
-              'mt--1': widget.i === LandingPageWidgetKeys.RIGHT_PANEL,
-            })}
-            data-grid={widget}
-            key={widget.i}>
-            {getWidgetFromKey(widget)}
-          </div>
-        )),
-    [layout, getWidgetFromKey]
   );
 
   const fetchAnnouncements = useCallback(async () => {
@@ -240,17 +198,17 @@ const MyDataPageV1 = () => {
   }
 
   return (
-    <div className="bg-white h-full">
-      <ActivityFeedProvider>
+    <ActivityFeedProvider>
+      <PageLayoutV1
+        mainContainerClassName="p-t-0"
+        pageTitle={t('label.my-data')}>
         {isLoading ? (
           <Loader />
         ) : (
-          <ResponsiveGridLayout
-            autoSize
-            breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
+          <ReactGridLayout
             className="bg-white"
-            cols={{ lg: 4, md: 4, sm: 4, xs: 4, xxs: 4 }}
-            draggableHandle=".drag-widget-icon"
+            cols={4}
+            isDraggable={false}
             isResizable={false}
             margin={[
               customizePageClassBase.landingPageWidgetMargin,
@@ -258,10 +216,10 @@ const MyDataPageV1 = () => {
             ]}
             rowHeight={100}>
             {widgets}
-          </ResponsiveGridLayout>
+          </ReactGridLayout>
         )}
-      </ActivityFeedProvider>
-    </div>
+      </PageLayoutV1>
+    </ActivityFeedProvider>
   );
 };
 

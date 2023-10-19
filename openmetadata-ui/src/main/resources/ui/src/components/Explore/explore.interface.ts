@@ -46,6 +46,7 @@ export type UrlParams = {
 };
 
 export type ExploreSearchIndex =
+  | SearchIndex.DATA_PRODUCT
   | SearchIndex.TABLE
   | SearchIndex.PIPELINE
   | SearchIndex.DASHBOARD
