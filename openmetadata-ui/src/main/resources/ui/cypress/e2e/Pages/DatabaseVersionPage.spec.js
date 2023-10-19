@@ -153,7 +153,11 @@ describe(`Database version page should work properly`, () => {
       .scrollIntoView()
       .should('be.visible');
 
-    cy.get(`[data-testid="diff-added"]`).scrollIntoView().should('be.visible');
+    cy.get(
+      `[data-testid="asset-description-container"] [data-testid="diff-added"]`
+    )
+      .scrollIntoView()
+      .should('be.visible');
 
     cy.get(
       `[data-testid="entity-right-panel"] .diff-added [data-testid="tag-PersonalData.SpecialCategory"]`

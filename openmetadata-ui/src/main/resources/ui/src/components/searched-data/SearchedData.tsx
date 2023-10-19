@@ -64,11 +64,12 @@ const SearchedData: React.FC<SearchedDataProps> = ({
         });
       }
 
-      let name = table.name;
       let displayName = getEntityName(table);
       if (!isUndefined(highlight)) {
-        name = highlight?.name?.join(' ') || name;
-        displayName = highlight?.displayName?.join(' ') || displayName;
+        displayName =
+          highlight?.displayName?.join(' ') ||
+          highlight?.name?.join(' ') ||
+          displayName;
       }
 
       const matches = highlight
@@ -92,6 +93,8 @@ const SearchedData: React.FC<SearchedDataProps> = ({
             .filter((d) => !ASSETS_NAME.includes(d.key))
         : [];
 
+      const source = { ...table, description: tDesc, displayName };
+
       return (
         <div className="m-b-md" key={`tabledatacard${index}`}>
           <ExploreSearchCard
@@ -104,7 +107,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
             id={`tabledatacard${index}`}
             matches={matches}
             showTags={false}
-            source={{ ...table, name, description: tDesc, displayName }}
+            source={source}
           />
         </div>
       );
