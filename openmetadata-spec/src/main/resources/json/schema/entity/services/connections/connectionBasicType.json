@@ -64,6 +64,29 @@
       "description": "Supports DBT Extraction.",
       "type": "boolean",
       "default": true
+    },
+    "sampleDataS3Config": {
+      "description": "S3 Credentials to store sample data.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataS3Config",
+      "properties": {
+        "bucketName": {
+          "title": "Bucket Name",
+          "description": "S3 Bucket Name.",
+          "type": "string",
+          "default": ""
+        },
+        "prefix": {
+          "title": "Prefix",
+          "description": "Prefix of the data source.",
+          "type": "string",
+          "default": ""
+        },
+        "awsConfig": {
+          "title": "DataLake GCS Security Config",
+          "$ref": "../../../security/credentials/awsCredentials.json"
+        }
+      }
     }
   }
 }

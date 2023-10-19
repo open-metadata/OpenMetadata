@@ -25,16 +25,9 @@ import static org.openmetadata.service.Entity.getEntity;
 import static org.openmetadata.service.util.LambdaExceptionUtil.ignoringComparator;
 import static org.openmetadata.service.util.LambdaExceptionUtil.rethrowFunction;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Streams;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -48,6 +41,8 @@ import org.openmetadata.schema.api.data.CreateTableProfile;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.services.connections.database.SampleDataS3Config;
 import org.openmetadata.schema.tests.CustomMetric;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.Column;
@@ -77,12 +72,8 @@ import org.openmetadata.service.resources.databases.DatabaseUtil;
 import org.openmetadata.service.resources.databases.TableResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.security.mask.PIIMasker;
-import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.*;
 import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.RestUtil;
-import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 public class TableRepository extends EntityRepository<Table> {
@@ -215,7 +206,9 @@ public class TableRepository extends EntityRepository<Table> {
   @Transaction
   public Table addSampleData(UUID tableId, TableData tableData) {
     // Validate the request content
-    Table table = dao.findEntityById(tableId);
+    Table table = Entity.getEntity("table", tableId, "*", ALL);
+    DatabaseService databaseService = Entity.getEntity(table.getService(), "", ALL);
+    LinkedHashMap<Object, Object> config = (LinkedHashMap<Object, Object>) databaseService.getConnection().getConfig();
 
     // Validate all the columns
     for (String columnName : tableData.getColumns()) {
@@ -229,22 +222,42 @@ public class TableRepository extends EntityRepository<Table> {
                 "Number of columns is %d but row has %d sample values", tableData.getColumns().size(), row.size()));
       }
     }
-
-    daoCollection
-        .entityExtensionDAO()
-        .insert(tableId, TABLE_SAMPLE_DATA_EXTENSION, "tableData", JsonUtils.pojoToJson(tableData));
-    setFieldsInternal(table, Fields.EMPTY_FIELDS);
+    if (config.get("sampleDataS3Config") != null) {
+      ObjectMapper mapper = new ObjectMapper();
+      SampleDataS3Config sampleDataS3Config =
+          mapper.convertValue(config.get("sampleDataS3Config"), SampleDataS3Config.class);
+      S3Util s3Util = new S3Util();
+      s3Util.uploadSampleData(sampleDataS3Config, tableData, table);
+    } else {
+      daoCollection
+          .entityExtensionDAO()
+          .insert(tableId, TABLE_SAMPLE_DATA_EXTENSION, "tableData", JsonUtils.pojoToJson(tableData));
+      setFieldsInternal(table, Fields.EMPTY_FIELDS);
+    }
     return table.withSampleData(tableData);
   }
 
   public Table getSampleData(UUID tableId, boolean authorizePII) {
     // Validate the request content
-    Table table = dao.findEntityById(tableId);
+    Table table = Entity.getEntity("table", tableId, "*", ALL);
 
-    TableData sampleData =
-        JsonUtils.readValue(
-            daoCollection.entityExtensionDAO().getExtension(table.getId(), TABLE_SAMPLE_DATA_EXTENSION),
-            TableData.class);
+    DatabaseService databaseService = Entity.getEntity(table.getService(), "", ALL);
+    LinkedHashMap<Object, Object> config = (LinkedHashMap<Object, Object>) databaseService.getConnection().getConfig();
+    TableData sampleData;
+
+    if (config.get("sampleDataS3Config") != null) {
+      ObjectMapper mapper = new ObjectMapper();
+      SampleDataS3Config sampleDataS3Config =
+          mapper.convertValue(config.get("sampleDataS3Config"), SampleDataS3Config.class);
+      S3Util s3Util = new S3Util();
+      sampleData = s3Util.getSampleData(sampleDataS3Config, table);
+    } else {
+      sampleData =
+          JsonUtils.readValue(
+              daoCollection.entityExtensionDAO().getExtension(table.getId(), TABLE_SAMPLE_DATA_EXTENSION),
+              TableData.class);
+    }
+
     table.setSampleData(sampleData);
     setFieldsInternal(table, Fields.EMPTY_FIELDS);
 

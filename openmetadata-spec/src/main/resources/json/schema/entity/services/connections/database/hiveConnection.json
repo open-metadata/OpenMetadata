@@ -109,6 +109,10 @@
     "supportsProfiler": {
       "title": "Supports Profiler",
       "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+    },
+    "sampleDataS3Config": {
+      "title": "S3 Config for Sample Data",
+      "$ref": "../connectionBasicType.json#/definitions/sampleDataS3Config"
     }
   },
   "additionalProperties": false,

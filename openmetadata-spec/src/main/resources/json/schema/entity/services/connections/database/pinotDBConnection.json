@@ -80,6 +80,10 @@
     "supportsQueryComment": {
       "title": "Supports Query Comment",
       "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
+    },
+    "sampleDataS3Config": {
+      "title": "S3 Config for Sample Data",
+      "$ref": "../connectionBasicType.json#/definitions/sampleDataS3Config"
     }
   },
   "additionalProperties": false,

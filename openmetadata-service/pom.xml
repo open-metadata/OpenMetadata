@@ -229,6 +229,13 @@
       <version>${awssdk.version}</version>
     </dependency>
 
+    <!-- Dependencies for s3 sample data upload -->
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>s3</artifactId>
+      <version>${awssdk.version}</version>
+    </dependency>
+
     <!--test dependencies-->
     <dependency>
       <groupId>org.glassfish.jersey.core</groupId>

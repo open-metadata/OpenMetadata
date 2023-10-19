@@ -30,6 +30,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipel
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
+import org.openmetadata.schema.services.connections.database.SampleDataS3Config;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.InvalidServiceConnectionException;
@@ -140,6 +141,14 @@ public abstract class SecretsManager {
           String.format("Failed to encrypt ingestion pipeline instance [%s]", ingestionPipeline.getName()));
     }
     ingestionPipeline.setOpenMetadataServerConnection(openMetadataConnection);
+  }
+
+  public void decryptSampleDataS3Config(SampleDataS3Config s3Config) {
+    try {
+      decryptPasswordFields(s3Config);
+    } catch (Exception e) {
+      throw new CustomExceptionMessage(Response.Status.BAD_REQUEST, "Failed to decrypt S3 Config");
+    }
   }
 
   public Workflow encryptWorkflow(Workflow workflow) {
