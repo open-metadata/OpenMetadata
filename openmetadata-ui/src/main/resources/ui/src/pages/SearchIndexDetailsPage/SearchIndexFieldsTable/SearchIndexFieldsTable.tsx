@@ -119,7 +119,7 @@ const SearchIndexFieldsTable = ({
       }
 
       return (
-        <>
+        <div data-testid={`${record.name}-data-type`}>
           {isReadOnly ||
           (displayValue && displayValue.length < 25 && !isReadOnly) ? (
             toLower(displayValue)
@@ -130,7 +130,7 @@ const SearchIndexFieldsTable = ({
               </Typography.Text>
             </Tooltip>
           )}
-        </>
+        </div>
       );
     },
     [isReadOnly]
