@@ -109,7 +109,7 @@ public class AbstractNativeApplication implements NativeApplication {
         // Get Pipeline
         IngestionPipeline dataInsightPipeline =
             getIngestionPipeline(createPipelineRequest, String.format("%sBot", app.getName()), "admin")
-                .withProvider(ProviderType.SYSTEM);
+                .withProvider(ProviderType.USER);
         ingestionPipelineRepository.setFullyQualifiedName(dataInsightPipeline);
         ingestionPipelineRepository.initializeEntity(dataInsightPipeline);
 
