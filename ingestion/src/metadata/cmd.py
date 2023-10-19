@@ -237,6 +237,11 @@ def backup_args(parser: argparse.ArgumentParser):
         default=None,
     )
     parser.add_argument(
+       "--filename",
+       help="Filename to store the backup",
+       default=None,
+    )
+    parser.add_argument(
         "--upload-destination-type",
         help="AWS or AZURE",
         choices=UploadDestinationType.__members__,
@@ -444,6 +449,7 @@ def metadata(args=None):  # pylint: disable=too-many-branches
                 schema=contains_args.get("schema"),
             ),
             output=contains_args.get("output"),
+            filename=contains_args.get("filename"),
             upload_destination_type=contains_args.get("upload_destination_type"),
             upload=contains_args.get("upload"),
         )
