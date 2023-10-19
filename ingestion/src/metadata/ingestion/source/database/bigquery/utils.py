@@ -45,7 +45,7 @@ def get_schema_names(self, connection, **kw):
     query = BIGQUERY_GET_SCHEMA_NAME
     cursor = connection.execute(
         query.format(project_id=kw["project_id"], schema_filter=format_pattern)
-        if kw.get("pushDownFilter") and kw["filter_pattern"]
+        if kw["filter_pattern"] and kw["filter_pattern"].pushDownFilter
         else query.format(project_id=kw["project_id"], schema_filter="")
     )
     result = [self.normalize_name(row[0]) for row in cursor]

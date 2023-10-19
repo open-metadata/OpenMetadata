@@ -10,6 +10,12 @@
       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
       "description": "Regex to only fetch dashboards or charts that matches the pattern.",
       "properties": {
+        "pushDownFilter": {
+          "description": "LIKE Operator will be applied to filter the data",
+          "type": "boolean",
+          "default": false,
+          "title": "Use LIKE For Filtering"
+        },
         "includes": {
           "description": "List of strings/regex patterns to match and include only database entities that match.",
           "type": "array",

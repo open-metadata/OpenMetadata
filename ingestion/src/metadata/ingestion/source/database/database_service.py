@@ -439,18 +439,12 @@ class DatabaseServiceSource(
                 database_name=self.context.database.name.__root__,
                 schema_name=schema_name,
             )
-            if (
-                not self.source_config.pushDownFilter
-                and not hasattr(
-                    self.config.serviceConnection.__root__.config,
-                    "supportsPushDownFilter",
-                )
-                and filter_by_schema(
-                    self.source_config.schemaFilterPattern,
-                    schema_fqn
-                    if self.source_config.useFqnForFiltering
-                    else schema_name,
-                )
+            if not hasattr(
+                self.config.serviceConnection.__root__.config,
+                "supportsPushDownFilter",
+            ) and filter_by_schema(
+                self.source_config.schemaFilterPattern,
+                schema_fqn if self.source_config.useFqnForFiltering else schema_name,
             ):
                 if add_to_status:
                     self.status.filter(schema_fqn, "Schema Filtered Out")

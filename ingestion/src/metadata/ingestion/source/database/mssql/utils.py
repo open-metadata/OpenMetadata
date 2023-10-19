@@ -309,7 +309,7 @@ def get_schema_names_reflection(self, **kw):
 
 
 def get_schema_names(self, connection, **kw):
-    if kw["filter_pattern"]:
+    if kw["filter_pattern"].pushDownFilter:
         format_pattern = (
             f'where {get_filter_pattern_query(kw["filter_pattern"].includes,"name")}'
             if kw["filter_pattern"].includes
@@ -319,7 +319,7 @@ def get_schema_names(self, connection, **kw):
     query = MSSQL_GET_SCHEMA_NAMES
     cursor = connection.execute(
         query.format(format_pattern)
-        if kw.get("pushDownFilter") and kw["filter_pattern"]
+        if kw["filter_pattern"] and kw["filter_pattern"].pushDownFilter
         else query.format("")
     )
     result = [self.normalize_name(row[0]) for row in cursor]

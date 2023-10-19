@@ -53,26 +53,26 @@ def _filter(filter_pattern: Optional[FilterPattern], name: str) -> bool:
     if not filter_pattern:
         # No filter pattern, nothing to filter
         return False
+    if not filter_pattern.pushDownFilter:
+        if filter_pattern.includes:
+            validate_regex(filter_pattern.includes)
+            return not any(  # pylint: disable=use-a-generator
+                [
+                    name
+                    for regex in filter_pattern.includes
+                    if (re.match(regex, name, re.IGNORECASE))
+                ]
+            )
 
-    if filter_pattern.includes:
-        validate_regex(filter_pattern.includes)
-        return not any(  # pylint: disable=use-a-generator
-            [
-                name
-                for regex in filter_pattern.includes
-                if (re.match(regex, name, re.IGNORECASE))
-            ]
-        )
-
-    if filter_pattern.excludes:
-        validate_regex(filter_pattern.excludes)
-        return any(  # pylint: disable=use-a-generator
-            [
-                name
-                for regex in filter_pattern.excludes
-                if (re.match(regex, name, re.IGNORECASE))
-            ]
-        )
+        if filter_pattern.excludes:
+            validate_regex(filter_pattern.excludes)
+            return any(  # pylint: disable=use-a-generator
+                [
+                    name
+                    for regex in filter_pattern.excludes
+                    if (re.match(regex, name, re.IGNORECASE))
+                ]
+            )
 
     return False
 

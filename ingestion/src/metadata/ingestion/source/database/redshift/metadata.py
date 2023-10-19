@@ -165,8 +165,8 @@ class RedshiftSource(StoredProcedureMixin, CommonDbSourceService):
             )
         result = self.connection.execute(
             sql.text(REDSHIFT_GET_ALL_RELATION_INFO.format(format_pattern))
-            if self.source_config.pushDownFilter
-            and self.source_config.tableFilterPattern
+            if self.source_config.tableFilterPattern
+            and self.source_config.tableFilterPattern.pushDownFilter
             else sql.text(REDSHIFT_GET_ALL_RELATION_INFO.format("")),
             {"schema": schema_name},
         )
@@ -204,8 +204,8 @@ class RedshiftSource(StoredProcedureMixin, CommonDbSourceService):
 
             results = self.connection.execute(
                 REDSHIFT_GET_DATABASE_NAMES.format(format_pattern)
-                if self.source_config.pushDownFilter
-                and self.source_config.databaseFilterPattern
+                if self.source_config.databaseFilterPattern
+                and self.source_config.databaseFilterPattern.pushDownFilter
                 else REDSHIFT_GET_DATABASE_NAMES.format("")
             )
             for res in results:
@@ -217,7 +217,7 @@ class RedshiftSource(StoredProcedureMixin, CommonDbSourceService):
                     service_name=self.context.database_service.name.__root__,
                     database_name=new_database,
                 )
-                if not self.source_config.pushDownFilter:
+                if not hasattr(self.service_connection, "supportsPushDownFilter"):
                     if filter_by_database(
                         self.source_config.databaseFilterPattern,
                         database_fqn
@@ -242,8 +242,7 @@ class RedshiftSource(StoredProcedureMixin, CommonDbSourceService):
             yield self.service_connection.databaseSchema
         else:
             for schema_name in self.inspector.get_schema_names(
-                pushDownFilter=self.source_config.pushDownFilter,
-                filter_pattern=self.source_config.schemaFilterPattern,
+                filter_pattern=self.source_config.schemaFilterPattern
             ):
                 yield schema_name
 

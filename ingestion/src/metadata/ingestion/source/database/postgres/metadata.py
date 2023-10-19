@@ -150,14 +150,14 @@ class PostgresSource(CommonDbSourceService):
             ]
             format_pattern = (
                 f"AND c.relname LIKE ANY (ARRAY{tb_patterns_include})"
-                if self.source_config.databaseFilterPattern.includes
+                if self.source_config.tableFilterPattern.includes
                 else f"AND c.relname NOT LIKE ANY (ARRAY{tb_patterns_exclude})"
             )
 
         result = self.connection.execute(
             sql.text(POSTGRES_GET_TABLE_NAMES.format(format_pattern))
-            if self.source_config.pushDownFilter
-            and self.source_config.tableFilterPattern
+            if self.source_config.tableFilterPattern
+            and self.source_config.tableFilterPattern.pushDownFilter
             else sql.text(POSTGRES_GET_TABLE_NAMES.format("")),
             {"schema": schema_name},
         )
@@ -195,8 +195,8 @@ class PostgresSource(CommonDbSourceService):
 
             results = self.connection.execute(
                 POSTGRES_GET_DB_NAMES.format(format_pattern)
-                if self.source_config.pushDownFilter
-                and self.source_config.databaseFilterPattern
+                if self.source_config.databaseFilterPattern
+                and self.source_config.databaseFilterPattern.pushDownFilter
                 else POSTGRES_GET_DB_NAMES.format("")
             )
             for res in results:
@@ -208,7 +208,7 @@ class PostgresSource(CommonDbSourceService):
                     service_name=self.context.database_service.name.__root__,
                     database_name=new_database,
                 )
-                if not self.source_config.pushDownFilter:
+                if not hasattr(self.service_connection, "supportsPushDownFilter"):
                     if filter_by_database(
                         self.source_config.databaseFilterPattern,
                         database_fqn
@@ -232,8 +232,7 @@ class PostgresSource(CommonDbSourceService):
             yield self.service_connection.databaseSchema
         else:
             for schema_name in self.inspector.get_schema_names(
-                pushDownFilter=self.source_config.pushDownFilter,
-                filter_pattern=self.source_config.schemaFilterPattern,
+                filter_pattern=self.source_config.schemaFilterPattern
             ):
                 yield schema_name
 

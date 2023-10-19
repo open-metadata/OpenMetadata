@@ -284,7 +284,7 @@ def get_table_names(self, connection, schema=None, **kw):
                 tablespace=tablespace, table_filter=format_pattern
             )
         )
-        if kw.get("pushDownFilter") and kw["filter_pattern"]
+        if kw["filter_pattern"] and kw["filter_pattern"].pushDownFilter
         else sql.text(
             ORACLE_GET_TABLE_NAMES.format(tablespace=tablespace, table_filter="")
         ),
@@ -360,7 +360,7 @@ def get_schema_names(self, connection, **kw):
 
     cursor = connection.execute(
         query.format(format_pattern)
-        if kw.get("pushDownFilter") and kw["filter_pattern"]
+        if kw["filter_pattern"] and kw["filter_pattern"].pushDownFilter
         else query.format("")
     )
     result = [self.normalize_name(row[0]) for row in cursor]

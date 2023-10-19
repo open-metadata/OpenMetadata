@@ -67,12 +67,6 @@
       "default": false,
       "title": "Use FQN For Filtering"
     },
-    "pushDownFilter": {
-      "description": "LIKE Operator will be applied to filter the data",
-      "type": "boolean",
-      "default": false,
-      "title": "Use LIKE For Filtering"
-    },
     "schemaFilterPattern": {
       "description": "Regex to only fetch tables or databases that matches the pattern.",
       "$ref": "../type/filterPattern.json#/definitions/filterPattern",

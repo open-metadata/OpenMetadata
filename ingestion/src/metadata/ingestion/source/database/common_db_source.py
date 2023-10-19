@@ -266,17 +266,13 @@ class CommonDbSourceService(
                         table_name=table_name,
                         skip_es_search=True,
                     )
-                    if (
-                        not self.source_config.pushDownFilter
-                        and not hasattr(
-                            self.service_connection, "supportsPushDownFilter"
-                        )
-                        and filter_by_table(
-                            self.source_config.tableFilterPattern,
-                            table_fqn
-                            if self.source_config.useFqnForFiltering
-                            else table_name,
-                        )
+                    if not hasattr(
+                        self.service_connection, "supportsPushDownFilter"
+                    ) and filter_by_table(
+                        self.source_config.tableFilterPattern,
+                        table_fqn
+                        if self.source_config.useFqnForFiltering
+                        else table_name,
                     ):
                         self.status.filter(
                             table_fqn,

@@ -137,7 +137,6 @@ class ClickhouseSource(CommonDbSourceService):
             TableNameAndType(name=table_name)
             for table_name in self.inspector.get_table_names(
                 schema=schema_name,
-                pushDownFilter=self.source_config.pushDownFilter,
                 filter_pattern=self.source_config.tableFilterPattern,
             )
             or []
@@ -181,7 +180,6 @@ class ClickhouseSource(CommonDbSourceService):
             yield self.service_connection.databaseSchema
         else:
             for schema_name in self.inspector.get_schema_names(
-                pushDownFilter=self.source_config.pushDownFilter,
                 filter_pattern=self.source_config.schemaFilterPattern,
             ):
                 yield schema_name

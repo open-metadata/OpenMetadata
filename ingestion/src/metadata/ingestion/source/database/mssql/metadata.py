@@ -25,7 +25,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
@@ -109,8 +108,8 @@ class MssqlSource(CommonDbSourceService):
                 )
             results = self.connection.execute(
                 query.format(format_pattern)
-                if self.source_config.pushDownFilter
-                and self.source_config.databaseFilterPattern
+                if self.source_config.databaseFilterPattern
+                and self.source_config.databaseFilterPattern.pushDownFilter
                 else query.format("")
             )
             for res in results:
@@ -122,7 +121,7 @@ class MssqlSource(CommonDbSourceService):
                     service_name=self.context.database_service.name.__root__,
                     database_name=new_database,
                 )
-                if not self.source_config.pushDownFilter:
+                if not hasattr(self.service_connection, "supportsPushDownFilter"):
                     if filter_by_database(
                         self.source_config.databaseFilterPattern,
                         database_fqn
@@ -146,7 +145,6 @@ class MssqlSource(CommonDbSourceService):
             yield self.service_connection.databaseSchema
         else:
             for schema_name in self.inspector.get_schema_names(
-                pushDownFilter=self.source_config.pushDownFilter,
                 filter_pattern=self.source_config.schemaFilterPattern,
             ):
                 yield schema_name
@@ -177,8 +175,8 @@ class MssqlSource(CommonDbSourceService):
 
         result = self.connection.execute(
             query.format(format_pattern)
-            if self.source_config.pushDownFilter
-            and self.source_config.databaseFilterPattern
+            if self.source_config.tableFilterPattern
+            and self.source_config.tableFilterPattern.pushDownFilter
             else query.format("")
         )
 
