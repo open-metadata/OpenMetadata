@@ -33,7 +33,7 @@ import { getCountBadge, getEntityDetailLink } from '../../../utils/CommonUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import FeedsFilterPopover from '../../common/FeedsFilterPopover/FeedsFilterPopover.component';
-import './feeds-widget.less';
+import './FeedsWidget.less';
 
 const FeedsWidget = ({
   isEditView = false,
