@@ -113,7 +113,7 @@ def add_status(
     ]
 
     updated_status = PipelineStatus(
-        timestamp=execution_date,
+        timestamp=datetime_to_ts(execution_date),
         executionStatus=get_dag_status(
             all_tasks=dag.task_ids,
             task_status=updated_task_status,
