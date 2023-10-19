@@ -1236,6 +1236,7 @@
     "disabled-classification-actions-message": "您无法在已禁用的分类上执行此操作",
     "discover-your-data-and-unlock-the-value-of-data-assets": "深入探索数据，释放数据资产的价值",
     "domain-does-not-have-assets": "Domain {{name}} doesn't have any assets to add to the Data Product",
+    "domains-not-configured": "Domains are not configured",
     "downstream-depth-message": "请选择下游深度的值",
     "downstream-depth-tooltip": "显示最多三个下游谱系节点以确定目标（子级）",
     "drag-and-drop-files-here": "拖放文件到此处",

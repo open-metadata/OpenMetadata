@@ -1236,6 +1236,7 @@
     "disabled-classification-actions-message": "You can not perform this action on disabled classifications.",
     "discover-your-data-and-unlock-the-value-of-data-assets": "Descubra sus datos y desbloquee el valor de los activos de datos.",
     "domain-does-not-have-assets": "Domain {{name}} doesn't have any assets to add to the Data Product",
+    "domains-not-configured": "Domains are not configured",
     "downstream-depth-message": "Por favor seleccione un valor para la profundidad del lineaje",
     "downstream-depth-tooltip": "Muestre hasta 3 nodos de linaje para identificar el objetivo (niveles descendientes).",
     "drag-and-drop-files-here": "Arrastre y suelte archivos aquí",
