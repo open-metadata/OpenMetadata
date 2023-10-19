@@ -27,7 +27,7 @@ public interface SearchClient {
   String ADD = "add";
 
   String DELETE = "delete";
-  String GLOBAL_SEARCH_ALIAS = "AllEntities";
+  String GLOBAL_SEARCH_ALIAS = "all";
   String DEFAULT_UPDATE_SCRIPT = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
   String REMOVE_DOMAINS_CHILDREN_SCRIPT = "ctx._source.remove('domain')";
   String PROPAGATE_ENTITY_REFERENCE_FIELD_SCRIPT = "if(ctx._source.%s == null){ ctx._source.put('%s', params)}";
