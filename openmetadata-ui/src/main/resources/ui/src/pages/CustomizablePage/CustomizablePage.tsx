@@ -26,7 +26,6 @@ import {
   getDocumentByFQN,
   updateDocument,
 } from '../../rest/DocStoreAPI';
-import { getFinalLandingPage } from '../../utils/CustomizableLandingPageUtils';
 import customizePageClassBase from '../../utils/CustomizePageClassBase';
 import { getDecodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -59,27 +58,19 @@ export const CustomizablePage = () => {
     try {
       setIsLoading(true);
       const pageData = await getDocumentByFQN(pageLayoutFQN);
-      const finalPageData = getFinalLandingPage(pageData, true);
 
-      setPage(finalPageData);
-      setEditedPage(finalPageData);
+      setPage(pageData);
+      setEditedPage(pageData);
     } catch (error) {
       if ((error as AxiosError).response?.status === ClientErrors.NOT_FOUND) {
-        setPage(
-          getFinalLandingPage(
-            {
-              name: `${decodedPersonaFQN}${decodedPageFQN}`,
-              fullyQualifiedName: getDecodedFqn(pageLayoutFQN),
-              entityType: EntityType.PAGE,
-              data: {
-                page: {
-                  layout: customizePageClassBase.landingPageDefaultLayout,
-                },
-              },
-            },
-            true
-          )
-        );
+        setPage({
+          name: `${decodedPersonaFQN}${decodedPageFQN}`,
+          fullyQualifiedName: getDecodedFqn(pageLayoutFQN),
+          entityType: EntityType.PAGE,
+          data: {
+            page: { layout: customizePageClassBase.defaultLayout },
+          },
+        });
       }
     } finally {
       setIsLoading(false);
@@ -88,15 +79,14 @@ export const CustomizablePage = () => {
 
   const handleSave = async () => {
     try {
-      const finalPage = getFinalLandingPage(editedPage);
       let response: Document;
 
       if (page.id) {
-        const jsonPatch = compare(page, finalPage);
+        const jsonPatch = compare(page, editedPage);
 
         response = await updateDocument(page.id ?? '', jsonPatch);
       } else {
-        response = await createDocument(finalPage);
+        response = await createDocument(editedPage);
       }
       setPage(response);
       setEditedPage(response);

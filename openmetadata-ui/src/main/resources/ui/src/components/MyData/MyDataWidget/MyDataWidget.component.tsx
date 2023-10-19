@@ -55,7 +55,7 @@ const MyDataWidgetInternal = ({
           includeData.includes(data.type as AssetsType)
         );
 
-        setData(includedOwnsData.slice(0, 9));
+        setData(includedOwnsData.slice(0, 8));
         setTotalOwnedAssetsCount(includedOwnsData.length);
       }
     } catch (err) {
