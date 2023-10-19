@@ -6,7 +6,7 @@ source:
       type: Athena
       databaseName: database_name
       awsConfig:
-        awsRegion: $E2E_AWS_REGION
+        awsRegion: $E2E_ATHENA_REGION
       s3StagingDir: $E2E_ATHENA_S3STAGINGDIR
       workgroup: $E2E_ATHENA_WORKGROUP
   sourceConfig:
