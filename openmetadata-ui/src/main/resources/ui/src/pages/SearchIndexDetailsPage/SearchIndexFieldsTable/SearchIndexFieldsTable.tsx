@@ -111,7 +111,7 @@ const SearchIndexFieldsTable = ({
   > = useCallback(
     (dataTypeDisplay, record) => {
       const displayValue = isEmpty(dataTypeDisplay)
-        ? record.name
+        ? record.dataType
         : dataTypeDisplay;
 
       if (isEmpty(displayValue)) {
