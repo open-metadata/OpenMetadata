@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-// / <reference types="Cypress" />
+// eslint-disable-next-line spaced-comment
+/// <reference types="Cypress" />
 
 import {
   addOwner,
@@ -171,7 +172,11 @@ describe(`Database schema version page should work properly`, () => {
       .scrollIntoView()
       .should('be.visible');
 
-    cy.get(`[data-testid="diff-added"]`).scrollIntoView().should('be.visible');
+    cy.get(
+      `[data-testid="asset-description-container"] [data-testid="diff-added"]`
+    )
+      .scrollIntoView()
+      .should('be.visible');
 
     cy.get(
       `[data-testid="entity-right-panel"] .diff-added [data-testid="tag-PersonalData.SpecialCategory"]`

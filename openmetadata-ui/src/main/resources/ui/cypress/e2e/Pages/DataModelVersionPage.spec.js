@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-// / <reference types="Cypress" />
+// eslint-disable-next-line spaced-comment
+/// <reference types="Cypress" />
 
 import {
   addOwner,
@@ -72,7 +73,9 @@ describe('Data model version page should work properly', () => {
   it('Data model version page should show description and tag changes properly', () => {
     visitDataModelVersionPage(dataModelFQN, dataModelId, dataModelName, '0.2');
 
-    cy.get(`[data-testid="diff-added"]`).scrollIntoView().should('be.visible');
+    cy.get(
+      `[data-testid="asset-description-container"] [data-testid="diff-added"]`
+    ).should('be.visible');
 
     cy.get(
       `[data-testid="entity-right-panel"] .diff-added [data-testid="tag-PersonalData.SpecialCategory"]`
@@ -92,11 +95,13 @@ describe('Data model version page should work properly', () => {
       .scrollIntoView()
       .should('be.visible');
 
-    cy.get(`[data-testid="diff-removed"]`)
+    cy.get(`[data-row-key="column_2"] [data-testid="diff-removed"]`)
       .scrollIntoView()
       .should('be.visible');
 
-    cy.get(`[data-testid="diff-added"]`).scrollIntoView().should('be.visible');
+    cy.get(`[data-row-key="column_3"] [data-testid="diff-added"]`)
+      .scrollIntoView()
+      .should('be.visible');
   });
 
   it(`Data model version page should show removed tags changes properly`, () => {

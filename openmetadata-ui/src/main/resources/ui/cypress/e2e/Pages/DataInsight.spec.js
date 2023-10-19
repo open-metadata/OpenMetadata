@@ -136,15 +136,11 @@ describe('Data Insight feature', () => {
   });
 
   it('Deploy data insight index', () => {
+    interceptURL('GET', '/api/v1/apps?limit=*', 'apps');
     interceptURL(
       'GET',
-      '/api/v1/services/ingestionPipelines?fields=pipelineStatuses&service=OpenMetadata&pipelineType=dataInsight',
-      'ingestionPipeline'
-    );
-    interceptURL(
-      'GET',
-      '/api/v1/services/ingestionPipelines/OpenMetadata.OpenMetadata_dataInsight/pipelineStatus?*',
-      'pipelineStatus'
+      '/api/v1/apps/name/DataInsightsApplication/runs?offset=*&limit=*',
+      'dataInsightsApplication'
     );
     interceptURL(
       'POST',
@@ -153,25 +149,20 @@ describe('Data Insight feature', () => {
     );
     interceptURL(
       'POST',
-      '/api/v1/services/ingestionPipelines/trigger/*',
+      '/api/v1/apps/trigger/DataInsightsApplication',
       'triggerPipeline'
     );
     cy.get('[data-testid="app-bar-item-settings"]').click();
-    cy.get('[data-menu-id*="openMetadata.dataInsight"]')
-      .scrollIntoView()
-      .click();
-    verifyResponseStatusCode('@ingestionPipeline', 200);
-    cy.wait('@pipelineStatus').then(({ response }) => {
-      const data = response.body.data;
-      if (data.length > 0) {
-        cy.get('[data-testid="re-deploy-btn"]').click();
-      } else {
-        cy.get('[data-testid="deploy"]').click();
-      }
-      cy.wait('@deploy');
-    });
+    cy.get('[data-menu-id*="integrations.apps"]').scrollIntoView().click();
+    verifyResponseStatusCode('@apps', 200);
+    cy.get(
+      '[data-testid="data-insights-card"] [data-testid="config-btn"]'
+    ).click();
+    verifyResponseStatusCode('@dataInsightsApplication', 200);
+    cy.get('[data-testid="deploy-button"]').click();
+    verifyResponseStatusCode('@triggerPipeline', 200);
     cy.reload();
-    verifyResponseStatusCode('@ingestionPipeline', 200);
+    verifyResponseStatusCode('@dataInsightsApplication', 200);
     cy.get('[data-testid="run"]').click();
     verifyResponseStatusCode('@triggerPipeline', 200);
     checkSuccessStatus();

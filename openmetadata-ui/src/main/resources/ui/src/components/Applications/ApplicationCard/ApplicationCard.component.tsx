@@ -12,6 +12,7 @@
  */
 import { Button, Card, Space, Typography } from 'antd';
 import classNames from 'classnames';
+import { kebabCase } from 'lodash';
 import React from 'react';
 import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import AppLogo from '../AppLogo/AppLogo.component';
@@ -31,7 +32,8 @@ const ApplicationCard = ({
       className={classNames(
         className,
         'application-card card-body-border-none'
-      )}>
+      )}
+      data-testid={`${kebabCase(title)}-card`}>
       <div className="d-flex items-center gap-3">
         <div className="application-logo">
           <AppLogo appName={appName} />
@@ -44,7 +46,11 @@ const ApplicationCard = ({
             className="max-two-lines"
             markdown={description}
           />
-          <Button className="p-0" type="link" onClick={onClick}>
+          <Button
+            className="p-0"
+            data-testid="config-btn"
+            type="link"
+            onClick={onClick}>
             {linkTitle}
           </Button>
         </Space>
