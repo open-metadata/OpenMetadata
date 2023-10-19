@@ -14,7 +14,10 @@ import { Button, Col, Divider, Modal, Row, Space, Typography } from 'antd';
 import cronstrue from 'cronstrue';
 import React, { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AppScheduleClass } from '../../../generated/entity/applications/app';
+import {
+  AppScheduleClass,
+  AppType,
+} from '../../../generated/entity/applications/app';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { getIngestionFrequency } from '../../../utils/CommonUtils';
 import TestSuiteScheduler from '../../AddDataQualityTest/components/TestSuiteScheduler';
@@ -26,6 +29,7 @@ const AppSchedule = ({
   appData,
   onSave,
   onDemandTrigger,
+  onDeployTrigger,
 }: AppScheduleProps) => {
   const { t } = useTranslation();
   const [showModal, setShowModal] = useState(false);
@@ -90,6 +94,15 @@ const AppSchedule = ({
         </Col>
         <Col className="d-flex items-center justify-end" flex="200px">
           <Space>
+            {appData.appType === AppType.External && (
+              <Button
+                data-testid="deploy-button"
+                type="primary"
+                onClick={onDeployTrigger}>
+                {t('label.deploy')}
+              </Button>
+            )}
+
             <Button
               data-testid="edit-button"
               type="primary"
@@ -97,7 +110,7 @@ const AppSchedule = ({
               {t('label.edit')}
             </Button>
             <Button
-              data-testid="deploy-button"
+              data-testid="run-now-button"
               type="primary"
               onClick={onAppTrigger}>
               {t('label.run-now')}

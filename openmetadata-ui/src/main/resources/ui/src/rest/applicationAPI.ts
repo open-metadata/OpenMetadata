@@ -91,3 +91,7 @@ export const patchApplication = async (id: string, patch: Operation[]) => {
 export const triggerOnDemandApp = (appName: string): Promise<AxiosResponse> => {
   return APIClient.post(`${BASE_URL}/trigger/${appName}`, {});
 };
+
+export const deployApp = (appName: string): Promise<AxiosResponse> => {
+  return APIClient.post(`${BASE_URL}/deploy/${appName}`);
+};

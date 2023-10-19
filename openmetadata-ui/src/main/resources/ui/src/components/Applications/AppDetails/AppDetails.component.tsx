@@ -54,6 +54,7 @@ import {
   ScheduleTimeline,
 } from '../../../generated/entity/applications/app';
 import {
+  deployApp,
   getApplicationByName,
   patchApplication,
   triggerOnDemandApp,
@@ -224,7 +225,24 @@ const AppDetails = () => {
   const onDemandTrigger = async () => {
     try {
       await triggerOnDemandApp(appData?.fullyQualifiedName ?? '');
-      showSuccessToast(t('message.application-trigger-successfully'));
+      showSuccessToast(
+        t('message.application-action-successfully', {
+          action: t('label.triggered-lowercase'),
+        })
+      );
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const onDeployTrigger = async () => {
+    try {
+      await deployApp(appData?.fullyQualifiedName ?? '');
+      showSuccessToast(
+        t('message.application-action-successfully', {
+          action: t('label.deploy'),
+        })
+      );
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -280,6 +298,7 @@ const AppDetails = () => {
                 appData={appData}
                 onCancel={onBrowseAppsClick}
                 onDemandTrigger={onDemandTrigger}
+                onDeployTrigger={onDeployTrigger}
                 onSave={onAppScheduleSave}
               />
             )}
