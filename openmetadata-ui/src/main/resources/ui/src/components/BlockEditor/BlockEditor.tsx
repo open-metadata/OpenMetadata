@@ -20,12 +20,7 @@ import React, {
 } from 'react';
 import tippy, { Instance, Props } from 'tippy.js';
 import { EDITOR_OPTIONS } from '../../constants/BlockEditor.constants';
-import {
-  getBackendFormat,
-  getFrontEndFormat,
-  HTMLToMarkdown,
-  MarkdownToHTMLConverter,
-} from '../../utils/FeedUtils';
+import { formatContent } from '../../utils/BlockEditorUtils';
 import './block-editor.less';
 import BubbleMenu from './BubbleMenu/BubbleMenu';
 import { extensions } from './Extensions';
@@ -54,9 +49,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
       onUpdate({ editor }) {
         const htmlContent = editor.getHTML();
 
-        const markdown = HTMLToMarkdown.turndown(htmlContent);
-
-        const backendFormat = getBackendFormat(markdown);
+        const backendFormat = formatContent(htmlContent, 'server');
 
         onChange?.(backendFormat);
       },
@@ -185,9 +178,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
       // mentioned here https://github.com/ueberdosis/tiptap/issues/3764#issuecomment-1546854730
       setTimeout(() => {
         if (content !== undefined) {
-          const htmlContent = MarkdownToHTMLConverter.makeHtml(
-            getFrontEndFormat(content)
-          );
+          const htmlContent = formatContent(content, 'client');
           editor.commands.setContent(htmlContent);
         }
       });

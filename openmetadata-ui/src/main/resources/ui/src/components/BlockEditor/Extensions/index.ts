@@ -10,11 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import LinkExtension from '@tiptap/extension-link';
+
 import Placeholder from '@tiptap/extension-placeholder';
 import TaskItem from '@tiptap/extension-task-item';
 import TaskList from '@tiptap/extension-task-list';
 import StarterKit from '@tiptap/starter-kit';
+import { LinkExtension } from '../link';
 import DiffView from './diff-view';
 import DragAndDrop from './drag-and-drop';
 import { Hashtag } from './hashtag';
