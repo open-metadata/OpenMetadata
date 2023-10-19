@@ -127,7 +127,7 @@ const TotalDataAssetsWidget = ({
         </Row>
       )}
       {data.length ? (
-        <Row>
+        <Row className="h-95">
           <Col span={isWidgetSizeLarge ? 14 : 24}>
             <Typography.Text className="font-medium">
               {t('label.data-insight-total-entity-summary')}
@@ -160,7 +160,7 @@ const TotalDataAssetsWidget = ({
             </div>
           </Col>
           {isWidgetSizeLarge && (
-            <Col span={10}>
+            <Col className="overflow-y-scroll h-max-full" span={10}>
               <TotalEntityInsightSummary
                 entities={entities}
                 latestData={latestData}

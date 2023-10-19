@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { isEmpty, isUndefined, max, uniqueId } from 'lodash';
+import i18next from 'i18next';
+import { capitalize, isEmpty, isUndefined, max, uniqueId } from 'lodash';
 import React from 'react';
 import { Layout } from 'react-grid-layout';
 import EmptyWidgetPlaceholder from '../components/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
@@ -140,6 +141,19 @@ export const getWidgetWidth = (widget: Document) => {
   );
 
   return widgetSize as number;
+};
+
+export const getWidgetWidthLabelFromKey = (widgetKey: string) => {
+  switch (widgetKey) {
+    case 'large':
+      return i18next.t('label.large');
+    case 'medium':
+      return i18next.t('label.medium');
+    case 'small':
+      return i18next.t('label.small');
+    default:
+      return capitalize(widgetKey);
+  }
 };
 
 const getAllWidgetsArray = (layout: WidgetConfig[]) => {
