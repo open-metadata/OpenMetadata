@@ -39,6 +39,7 @@ export const SelectableList = ({
   customTagRenderer,
   searchBarDataTestId,
   removeIconTooltipLabel,
+  emptyPlaceholderText,
 }: SelectableListProps) => {
   const [uniqueOptions, setUniqueOptions] = useState<EntityReference[]>([]);
   const [searchText, setSearchText] = useState('');
@@ -173,83 +174,91 @@ export const SelectableList = ({
   };
 
   return (
-    <List
-      data-testid="selectable-list"
-      footer={
-        multiSelect && (
-          <div className="d-flex justify-between">
-            <Button
-              color="primary"
-              data-testid="clear-all-button"
-              size="small"
-              type="text"
-              onClick={handleClearAllClick}>
-              {t('label.clear-entity', { entity: t('label.all-lowercase') })}
-            </Button>
-            <Space className="m-l-auto text-right">
+    <>
+      <List
+        data-testid="selectable-list"
+        dataSource={uniqueOptions}
+        footer={
+          multiSelect && (
+            <div className="d-flex justify-between">
               <Button
                 color="primary"
-                data-testid="cancel-button"
+                data-testid="clear-all-button"
                 size="small"
-                onClick={onCancel}>
-                {t('label.cancel')}
+                type="text"
+                onClick={handleClearAllClick}>
+                {t('label.clear-entity', { entity: t('label.all-lowercase') })}
               </Button>
-              <Button
-                data-testid="selectable-list-update-btn"
-                size="small"
-                type="primary"
-                onClick={handleUpdateClick}>
-                {t('label.update')}
-              </Button>
-            </Space>
-          </div>
-        )
-      }
-      header={
-        <Searchbar
-          removeMargin
-          placeholder={searchPlaceholder ?? t('label.search')}
-          searchBarDataTestId={searchBarDataTestId}
-          searchValue={searchText}
-          typingInterval={500}
-          onSearch={handleSearch}
-        />
-      }
-      itemLayout="vertical"
-      loading={{ spinning: fetching, indicator: <Loader /> }}
-      size="small">
-      <VirtualList
-        data={uniqueOptions}
-        height={ADD_USER_CONTAINER_HEIGHT}
-        itemKey="id"
-        onScroll={onScroll}>
-        {(item) => (
-          <List.Item
-            className="selectable-list-item cursor-pointer"
-            extra={
-              multiSelect ? (
-                <Checkbox checked={selectedItemsInternal.has(item.id)} />
-              ) : (
-                selectedItemsInternal.has(item.id) && (
-                  <RemoveIcon
-                    removeIconTooltipLabel={removeIconTooltipLabel}
-                    removeOwner={handleRemoveClick}
-                  />
-                )
-              )
-            }
-            key={item.id}
-            title={getEntityName(item)}
-            onClick={() => selectionHandler(item)}>
-            {customTagRenderer ? (
-              customTagRenderer(item)
-            ) : (
-              <UserTag id={item.id} name={getEntityName(item)} />
+              <Space className="m-l-auto text-right">
+                <Button
+                  color="primary"
+                  data-testid="cancel-button"
+                  size="small"
+                  onClick={onCancel}>
+                  {t('label.cancel')}
+                </Button>
+                <Button
+                  data-testid="selectable-list-update-btn"
+                  size="small"
+                  type="primary"
+                  onClick={handleUpdateClick}>
+                  {t('label.update')}
+                </Button>
+              </Space>
+            </div>
+          )
+        }
+        header={
+          <Searchbar
+            removeMargin
+            placeholder={searchPlaceholder ?? t('label.search')}
+            searchBarDataTestId={searchBarDataTestId}
+            searchValue={searchText}
+            typingInterval={500}
+            onSearch={handleSearch}
+          />
+        }
+        itemLayout="vertical"
+        loading={{ spinning: fetching, indicator: <Loader /> }}
+        locale={{
+          emptyText: emptyPlaceholderText ?? t('message.no-data-available'),
+        }}
+        size="small">
+        {uniqueOptions.length > 0 && (
+          <VirtualList
+            data={uniqueOptions}
+            height={ADD_USER_CONTAINER_HEIGHT}
+            itemKey="id"
+            onScroll={onScroll}>
+            {(item) => (
+              <List.Item
+                className="selectable-list-item cursor-pointer"
+                extra={
+                  multiSelect ? (
+                    <Checkbox checked={selectedItemsInternal.has(item.id)} />
+                  ) : (
+                    selectedItemsInternal.has(item.id) && (
+                      <RemoveIcon
+                        removeIconTooltipLabel={removeIconTooltipLabel}
+                        removeOwner={handleRemoveClick}
+                      />
+                    )
+                  )
+                }
+                key={item.id}
+                title={getEntityName(item)}
+                onClick={() => selectionHandler(item)}>
+                {customTagRenderer ? (
+                  customTagRenderer(item)
+                ) : (
+                  <UserTag id={item.id} name={getEntityName(item)} />
+                )}
+              </List.Item>
             )}
-          </List.Item>
+          </VirtualList>
         )}
-      </VirtualList>
-    </List>
+      </List>
+    </>
   );
 };
 
