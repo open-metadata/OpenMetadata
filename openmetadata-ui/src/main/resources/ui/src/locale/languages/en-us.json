@@ -1236,6 +1236,7 @@
     "disabled-classification-actions-message": "You can not perform this action on disabled classifications.",
     "discover-your-data-and-unlock-the-value-of-data-assets": "Things got easier with no-code data quality. Simple steps to test, deploy, and gather results, with instant test failure notifications. Stay up-to-date with reliable data that you can trust.",
     "domain-does-not-have-assets": "Domain {{name}} doesn't have any assets to add to the Data Product",
+    "domains-not-configured": "Domains are not configured",
     "downstream-depth-message": "Please select a value for downstream depth",
     "downstream-depth-tooltip": "Display up to 3 nodes of downstream lineage to identify the target (child levels).",
     "drag-and-drop-files-here": "Drag & drop files here",
