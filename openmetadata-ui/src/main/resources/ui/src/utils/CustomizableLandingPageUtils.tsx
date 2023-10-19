@@ -11,21 +11,18 @@
  *  limitations under the License.
  */
 
-import {
-  floor,
-  isEmpty,
-  isUndefined,
-  max,
-  maxBy,
-  round,
-  uniqueId,
-} from 'lodash';
+import { isEmpty, isUndefined, max, uniqueId } from 'lodash';
+import React from 'react';
 import { Layout } from 'react-grid-layout';
+import EmptyWidgetPlaceholder from '../components/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
+import { SIZE } from '../enums/common.enum';
 import {
   LandingPageWidgetKeys,
   WidgetWidths,
 } from '../enums/CustomizablePage.enum';
 import { Document } from '../generated/entity/docStore/document';
+import { Thread } from '../generated/entity/feed/thread';
+import { EntityReference } from '../generated/entity/type';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import customizePageClassBase from './CustomizePageClassBase';
 
@@ -161,58 +158,81 @@ const getAllWidgetsArray = (layout: WidgetConfig[]) => {
   return widgetsArray;
 };
 
-const getLayoutWithCalculatedRightPanelHeight = (
-  layout: WidgetConfig[],
-  increaseHeight?: boolean
-) => {
-  const allWidgets = getAllWidgetsArray(layout);
-  const maxHeightsArray = allWidgets.map((widget) => {
-    const widgetHeightAndPos = widget.h + widget.y;
-    const floorHeightAndPosValue = floor(widgetHeightAndPos);
+export const getWidgetFromKey = ({
+  widgetConfig,
+  handleOpenAddWidgetModal,
+  handlePlaceholderWidgetKey,
+  handleRemoveWidget,
+  announcements,
+  followedDataCount,
+  followedData,
+  isLoadingOwnedData,
+  iconHeight,
+  iconWidth,
+  isEditView,
+  isAnnouncementLoading,
+}: {
+  widgetConfig: WidgetConfig;
+  handleOpenAddWidgetModal?: () => void;
+  handlePlaceholderWidgetKey?: (key: string) => void;
+  handleRemoveWidget?: (key: string) => void;
+  announcements: Thread[];
+  followedData?: EntityReference[];
+  followedDataCount: number;
+  isLoadingOwnedData: boolean;
+  iconHeight?: SIZE;
+  iconWidth?: SIZE;
+  isEditView?: boolean;
+  isAnnouncementLoading?: boolean;
+}) => {
+  if (
+    widgetConfig.i.endsWith('.EmptyWidgetPlaceholder') &&
+    !isUndefined(handleOpenAddWidgetModal) &&
+    !isUndefined(handlePlaceholderWidgetKey) &&
+    !isUndefined(handleRemoveWidget)
+  ) {
+    return (
+      <EmptyWidgetPlaceholder
+        handleOpenAddWidgetModal={handleOpenAddWidgetModal}
+        handlePlaceholderWidgetKey={handlePlaceholderWidgetKey}
+        handleRemoveWidget={handleRemoveWidget}
+        iconHeight={iconHeight}
+        iconWidth={iconWidth}
+        isEditable={widgetConfig.isDraggable}
+        widgetKey={widgetConfig.i}
+      />
+    );
+  }
 
-    const heightOfWidget =
-      widgetHeightAndPos * customizePageClassBase.landingPageRowHeight +
-      (floorHeightAndPosValue + 1) *
-        customizePageClassBase.landingPageWidgetMargin;
+  const Widget = customizePageClassBase.getWidgetsFromKey(widgetConfig.i);
 
-    return {
-      h: round(
-        (heightOfWidget + customizePageClassBase.landingPageWidgetMargin) /
-          (customizePageClassBase.landingPageRowHeight +
-            customizePageClassBase.landingPageWidgetMargin),
-        2
-      ),
-      height: heightOfWidget,
-    };
-  });
-
-  const maxHeight = maxBy(maxHeightsArray, 'height');
-
-  return layout.map((widget) =>
-    widget.i === LandingPageWidgetKeys.RIGHT_PANEL
-      ? {
-          ...widget,
-          h: increaseHeight
-            ? customizePageClassBase.landingPageRightContainerEditHeight
-            : maxHeight?.h ?? widget.h,
-        }
-      : widget
+  return (
+    <Widget
+      announcements={announcements}
+      followedData={followedData ?? []}
+      followedDataCount={followedDataCount}
+      handleRemoveWidget={handleRemoveWidget}
+      isAnnouncementLoading={isAnnouncementLoading}
+      isEditView={isEditView}
+      isLoadingOwnedData={isLoadingOwnedData}
+      selectedGridSize={widgetConfig.w}
+      widgetKey={widgetConfig.i}
+    />
   );
 };
 
-export const getFinalLandingPage = (
-  page: Document,
-  increaseHeight?: boolean
-): Document => {
-  return {
-    ...page,
-    data: {
-      page: {
-        layout: getLayoutWithCalculatedRightPanelHeight(
-          page.data.page?.layout ?? [],
-          increaseHeight
-        ),
-      },
-    },
-  };
-};
+export const getLayoutWithEmptyWidgetPlaceholder = (
+  layout: WidgetConfig[],
+  emptyWidgetHeight = 2,
+  emptyWidgetWidth = 1
+) => [
+  ...layout,
+  {
+    h: emptyWidgetHeight,
+    i: LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER,
+    w: emptyWidgetWidth,
+    x: 0,
+    y: 100,
+    isDraggable: false,
+  },
+];

@@ -30,6 +30,9 @@ interface PageLayoutProp extends HTMLAttributes<HTMLDivElement> {
   rightPanel?: ReactNode;
   center?: boolean;
   pageTitle: string;
+  headerClassName?: string;
+  mainContainerClassName?: string;
+  pageContainerStyle?: React.CSSProperties;
   rightPanelWidth?: number;
   leftPanelWidth?: number;
 }
@@ -53,6 +56,9 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   center = false,
   leftPanelWidth = 230,
   rightPanelWidth = 284,
+  headerClassName = '',
+  mainContainerClassName = '',
+  pageContainerStyle = {},
 }: PageLayoutProp) => {
   const contentWidth = useMemo(() => {
     if (leftPanel && rightPanel) {
@@ -71,17 +77,20 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
       <DocumentTitle title={pageTitle} />
       {header && (
         <div
-          className={classNames({
-            'header-center': center,
-            'm-t-md p-x-md': !center,
-          })}>
+          className={classNames(
+            {
+              'header-center': center,
+              'm-t-md p-x-md': !center,
+            },
+            headerClassName
+          )}>
           {header}
         </div>
       )}
       <Row
         className={classNames(className, 'bg-white')}
         data-testid="page-layout-v1"
-        style={pageContainerStyles}>
+        style={{ ...pageContainerStyles, ...pageContainerStyle }}>
         {leftPanel && (
           <Col
             className="page-layout-leftpanel"
@@ -95,7 +104,8 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
             'page-layout-v1-center p-t-sm page-layout-v1-vertical-scroll',
             {
               'flex justify-center': center,
-            }
+            },
+            mainContainerClassName
           )}
           flex={contentWidth}
           offset={center ? 3 : 0}

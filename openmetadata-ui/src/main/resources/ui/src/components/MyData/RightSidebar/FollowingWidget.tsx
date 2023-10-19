@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { CloseOutlined, DragOutlined } from '@ant-design/icons';
-import { Space } from 'antd';
+import { Card, Space } from 'antd';
 import { isUndefined } from 'lodash';
 import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -44,7 +44,7 @@ function FollowingWidget({
   }, [widgetKey]);
 
   return (
-    <div className="bg-white h-full" data-testid="following-data-container">
+    <Card className="card-widget h-full" data-testid="following-data-container">
       <EntityListWithV1
         entityList={followedData}
         headerText={
@@ -78,7 +78,7 @@ function FollowingWidget({
         noDataPlaceholder={t('message.not-followed-anything')}
         testIDText="following"
       />
-    </div>
+    </Card>
   );
 }
 

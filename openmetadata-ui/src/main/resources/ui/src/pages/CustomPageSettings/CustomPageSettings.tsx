@@ -152,7 +152,9 @@ export const CustomPageSettings = () => {
                 size="small"
                 type="text"
                 onClick={() => handleCustomisePersona(persona)}>
-                {t('label.customize-landing-page')}
+                {t('label.customize-entity', {
+                  entity: t('label.landing-page'),
+                })}
               </Button>
             }
             title={getEntityName(persona)}>

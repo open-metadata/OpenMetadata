@@ -254,7 +254,9 @@ export const getGlobalSettingsMenuWithPermission = (
       key: 'openMetadata',
       items: [
         {
-          label: i18next.t('label.customize-landing-page'),
+          label: i18next.t('label.customize-entity', {
+            entity: i18next.t('label.landing-page'),
+          }),
           isProtected: Boolean(isAdminUser),
           key: 'openMetadata.customizeLandingPage',
           icon: <CustomDashboardLogoIcon className="w-4 side-panel-icons" />,

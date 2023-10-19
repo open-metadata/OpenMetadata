@@ -12,18 +12,21 @@
  */
 
 import { CloseOutlined, DragOutlined } from '@ant-design/icons';
-import { Button, Col, Row, Space, Typography } from 'antd';
+import { Button, Card, Col, Row, Space, Typography } from 'antd';
 import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import EntityListSkeleton from '../../components/Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
-import { EntityReference } from '../../generated/type/entityReference';
-import { WidgetCommonProps } from '../../pages/CustomizablePage/CustomizablePage.interface';
-import { getRecentlyViewedData, prepareLabel } from '../../utils/CommonUtils';
-import { getEntityName } from '../../utils/EntityUtils';
-import { getEntityIcon, getEntityLink } from '../../utils/TableUtils';
-import './recently-viewed.less';
+import { EntityReference } from '../../../generated/type/entityReference';
+import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
+import {
+  getRecentlyViewedData,
+  prepareLabel,
+} from '../../../utils/CommonUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityIcon, getEntityLink } from '../../../utils/TableUtils';
+import EntityListSkeleton from '../../Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
+import './RecentlyViewed.less';
 
 const RecentlyViewed = ({
   isEditView,
@@ -63,7 +66,9 @@ const RecentlyViewed = ({
   }, []);
 
   return (
-    <div className="bg-white h-full" data-testid="recently-viewed-container">
+    <Card
+      className="card-widget h-full"
+      data-testid="recently-viewed-container">
       <EntityListSkeleton
         dataLength={data.length !== 0 ? data.length : 5}
         loading={Boolean(isLoading)}>
@@ -127,7 +132,7 @@ const RecentlyViewed = ({
           </div>
         </>
       </EntityListSkeleton>
-    </div>
+    </Card>
   );
 };
 
