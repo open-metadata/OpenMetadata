@@ -14,13 +14,7 @@ name: PostgreSQL Cypress Integration Tests
 on:
   push:
     branches:
-      - main 
-      - '0.[0-9]+.[0-9]+'
-      - '1.[0-9]+[0-9]+'
-    paths:
-      - 'openmetadata-docs/**'
-  pull_request_target:
-    types: [labeled, opened, synchronize, reopened]
+      - main
     paths:
       - 'openmetadata-docs/**'
 
@@ -29,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        job: [0]
+        job: [0, 1, 2]
     environment: test
     steps:
       - run: 'echo "Step is not required"'

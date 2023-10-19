@@ -240,6 +240,9 @@ const Appbar: React.FC = (): JSX.Element => {
           tab: defaultTab,
           search: value,
           isPersistFilters: false,
+          extraParameters: {
+            sort: '_score',
+          },
         })
       );
     }

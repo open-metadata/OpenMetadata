@@ -410,10 +410,12 @@ const TagsContainerV2 = ({
       {header}
       {tagBody}
 
-      <Space align="baseline" className="m-t-xs w-full" size="middle">
-        {showBottomEditButton && !showInlineEditButton && editTagButton}
-        {children}
-      </Space>
+      {(children || showBottomEditButton) && (
+        <Space align="baseline" className="m-t-xs w-full" size="middle">
+          {showBottomEditButton && !showInlineEditButton && editTagButton}
+          {children}
+        </Space>
+      )}
     </div>
   );
 };

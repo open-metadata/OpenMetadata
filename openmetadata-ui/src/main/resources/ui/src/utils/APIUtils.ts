@@ -23,6 +23,7 @@ import { User } from '../generated/entity/teams/user';
 import { SearchResponse } from '../interface/search.interface';
 
 export type SearchEntityHits = SearchResponse<
+  | SearchIndex.DATA_PRODUCT
   | SearchIndex.PIPELINE
   | SearchIndex.DASHBOARD
   | SearchIndex.TABLE
@@ -56,7 +57,7 @@ export const formatDataResponse = (
     newData.owner = get(hit, '_source.owner');
     newData.highlight = hit.highlight;
     newData.entityType = hit._source.entityType;
-    newData.deleted = hit._source.deleted;
+    newData.deleted = get(hit, '_source.deleted');
 
     if ('tableType' in source) {
       newData.tableType = source.tableType ?? '';

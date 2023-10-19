@@ -38,7 +38,7 @@ import org.openmetadata.schema.dataInsight.type.TotalEntitiesByTier;
 import org.openmetadata.schema.dataInsight.type.TotalEntitiesByType;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppSchedule;
-import org.openmetadata.schema.entity.app.DataInsightAppConfig;
+import org.openmetadata.schema.entity.app.DataInsightsReportAppConfig;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
@@ -77,8 +77,8 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     long scheduleTime = currentTime - getTimeFromSchedule(scheduleConfiguration, jobExecutionContext);
     int numberOfDaysChange = getNumberOfDays(scheduleConfiguration);
     try {
-      DataInsightAppConfig insightAlertConfig =
-          JsonUtils.convertValue(app.getAppConfiguration(), DataInsightAppConfig.class);
+      DataInsightsReportAppConfig insightAlertConfig =
+          JsonUtils.convertValue(app.getAppConfiguration(), DataInsightsReportAppConfig.class);
       // Send to Admins
       if (Boolean.TRUE.equals(insightAlertConfig.getSendToAdmins())) {
         sendToAdmins(searchRepository.getSearchClient(), scheduleTime, currentTime, numberOfDaysChange);
