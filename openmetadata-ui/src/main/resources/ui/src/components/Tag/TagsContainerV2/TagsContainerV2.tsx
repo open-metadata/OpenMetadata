@@ -105,7 +105,7 @@ const TagsContainerV2 = ({
       paging: Paging;
     }> => {
       const glossaryResponse = await searchQuery({
-        query: searchQueryParam ? searchQueryParam : '*',
+        query: searchQueryParam ? `*${searchQueryParam}*` : '*',
         pageNumber: page,
         pageSize: 10,
         queryFilter: {},

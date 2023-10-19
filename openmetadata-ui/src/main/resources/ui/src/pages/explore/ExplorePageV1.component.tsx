@@ -205,7 +205,7 @@ const ExplorePageV1: FunctionComponent = () => {
     if (searchHitCounts && isNil(tabInfo)) {
       const activeKey = findActiveSearchIndex(searchHitCounts);
 
-      return activeKey ? activeKey : SearchIndex.DATA_PRODUCT;
+      return activeKey ?? SearchIndex.DATA_PRODUCT;
     }
 
     return !isNil(tabInfo)

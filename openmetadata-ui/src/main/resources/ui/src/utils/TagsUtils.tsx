@@ -307,7 +307,7 @@ export const fetchTagsElasticSearch = async (
   paging: Paging;
 }> => {
   const res = await searchQuery({
-    query: searchText,
+    query: `*${searchText}*`,
     filters: 'disabled:false',
     pageNumber: page,
     pageSize: PAGE_SIZE,

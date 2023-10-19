@@ -19,6 +19,8 @@ export enum AssetsOfEntity {
   DOMAIN = 'DOMAIN',
   DATA_PRODUCT = 'DATA_PRODUCT',
   TEAM = 'TEAM',
+  MY_DATA = 'MY_DATA',
+  FOLLOWING = 'FOLLOWING',
 }
 
 export enum AssetsViewType {
@@ -34,4 +36,10 @@ export interface AssetsTabsProps {
   isSummaryPanelOpen: boolean;
   type?: AssetsOfEntity;
   viewType?: AssetsViewType;
+  queryFilter?: string;
+  noDataPlaceholder?: boolean | AssetNoDataPlaceholderProps;
+}
+
+export interface AssetNoDataPlaceholderProps {
+  message: string;
 }

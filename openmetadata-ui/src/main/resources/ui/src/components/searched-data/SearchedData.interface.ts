@@ -13,6 +13,7 @@
 
 import Qs from 'qs';
 import { ReactNode } from 'react';
+import { Style } from '../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../generated/entity/type';
 import { TagLabel } from '../../generated/type/tagLabel';
 import {
@@ -82,6 +83,7 @@ export type SourceType = (
   tags?: TagLabel[];
   entityType?: string;
   service?: EntityReference;
+  style?: Style;
   owner?: Partial<
     Pick<
       EntityReference,

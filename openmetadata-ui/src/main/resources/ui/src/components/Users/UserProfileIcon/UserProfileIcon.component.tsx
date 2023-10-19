@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { CheckOutlined } from '@ant-design/icons';
-import { Dropdown, Tag, Tooltip, Typography } from 'antd';
+import { Dropdown, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { isEmpty } from 'lodash';
 import React, {
@@ -37,6 +37,7 @@ import i18n from '../../../utils/i18next/LocalUtil';
 import { useApplicationConfigContext } from '../../ApplicationConfigProvider/ApplicationConfigProvider';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import Avatar from '../../common/avatar/Avatar';
+import './user-profile-icon.less';
 
 type ListMenuItemProps = {
   listItems: EntityReference[];
@@ -125,12 +126,6 @@ export const UserProfileIcon = () => {
     };
   }, [currentUser]);
 
-  const readMoreTag = (count: number) => (
-    <Tag>
-      {count} {t('label.more')}
-    </Tag>
-  );
-
   const personaLabelRenderer = useCallback(
     (item: EntityReference) => (
       <span onClick={() => handleSelectedPersonaChange(item)}>
@@ -146,7 +141,7 @@ export const UserProfileIcon = () => {
   const teamLabelRenderer = useCallback(
     (item) => (
       <Link
-        className="ant-typography-ellipsis-custom text-sm m-b-0"
+        className="ant-typography-ellipsis-custom text-sm m-b-0 p-0"
         component={Typography.Link}
         to={getTeamAndUserDetailsPath(item.name as string)}>
         {getEntityName(item)}
@@ -193,11 +188,13 @@ export const UserProfileIcon = () => {
         children: renderLimitedListMenuItem({
           listItems: roles ?? [],
           labelRenderer: getEntityName,
-          readMoreLabelRenderer: readMoreTag,
+          readMoreLabelRenderer: readMoreTeamRenderer,
           readMoreKey: 'more-roles',
         }),
         label: (
-          <span className="text-grey-muted">{i18n.t('label.role-plural')}</span>
+          <span className="text-grey-muted text-xs">
+            {i18n.t('label.role-plural')}
+          </span>
         ),
         type: 'group',
       },
@@ -210,11 +207,11 @@ export const UserProfileIcon = () => {
         children: renderLimitedListMenuItem({
           listItems: inheritedRoles ?? [],
           labelRenderer: getEntityName,
-          readMoreLabelRenderer: readMoreTag,
+          readMoreLabelRenderer: readMoreTeamRenderer,
           readMoreKey: 'more-inherited-roles',
         }),
         label: (
-          <span className="text-grey-muted">
+          <span className="text-grey-muted text-xs">
             {i18n.t('label.inherited-role-plural')}
           </span>
         ),
@@ -230,10 +227,10 @@ export const UserProfileIcon = () => {
           listItems: personas ?? [],
           readMoreKey: 'more-persona',
           labelRenderer: personaLabelRenderer,
-          readMoreLabelRenderer: readMoreTag,
+          readMoreLabelRenderer: readMoreTeamRenderer,
         }),
         label: (
-          <span className="text-grey-muted">
+          <span className="text-grey-muted text-xs">
             {i18n.t('label.persona-plural')}
           </span>
         ),
@@ -252,7 +249,9 @@ export const UserProfileIcon = () => {
           readMoreLabelRenderer: readMoreTeamRenderer,
         }),
         label: (
-          <span className="text-grey-muted">{i18n.t('label.team-plural')}</span>
+          <span className="text-grey-muted text-xs">
+            {i18n.t('label.team-plural')}
+          </span>
         ),
         type: 'group',
       },
@@ -283,10 +282,10 @@ export const UserProfileIcon = () => {
 
   return (
     <Dropdown
-      data-testid="dropdown-profile"
       menu={{
         items,
         defaultOpenKeys: ['personas', 'roles', 'inheritedRoles', 'teams'],
+        rootClassName: 'profile-dropdown',
       }}
       trigger={['click']}>
       <div className="app-user-icon" data-testid="dropdown-profile">
