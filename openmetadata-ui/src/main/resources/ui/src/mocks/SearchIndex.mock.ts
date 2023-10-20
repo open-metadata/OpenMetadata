@@ -22,7 +22,6 @@ export const MOCK_SEARCH_INDEX_FIELDS: SearchIndexField[] = [
   {
     name: 'name',
     dataType: DataType.Text,
-    dataTypeDisplay: 'text',
     description: 'Table Entity Name.',
     fullyQualifiedName: 'elasticsearch_sample.table_search_index.name',
     tags: [
