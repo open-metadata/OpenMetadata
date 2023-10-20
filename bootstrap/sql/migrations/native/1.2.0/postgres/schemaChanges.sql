@@ -276,3 +276,16 @@ ALTER TABLE entity_extension_time_series DROP COLUMN temp;
 
 ALTER TABLE entity_extension_time_series ALTER COLUMN entityFQNHash TYPE VARCHAR(768), ALTER COLUMN jsonSchema TYPE VARCHAR(256) , ALTER COLUMN extension TYPE VARCHAR(256),
     ADD CONSTRAINT entity_extension_time_series_constraint UNIQUE (entityFQNHash, extension, timestamp);
+
+-- Airflow pipeline status set to millis
+UPDATE entity_extension_time_series ts
+SET json = jsonb_set(
+	ts.json,
+	'{timestamp}',
+	to_jsonb(cast(ts.json #> '{timestamp}' as int8) *1000)
+)
+FROM pipeline_entity p
+WHERE ts.entityFQNHash  = p.fqnHash
+  and ts.extension = 'pipeline.pipelineStatus'
+  AND p.json #>> '{serviceType}' = 'Airflow'
+;
