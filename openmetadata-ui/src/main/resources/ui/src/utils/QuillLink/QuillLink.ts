@@ -10,28 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Quill } from 'react-quill';
 
-@import url('../../styles/variables.less');
+const MentionBlot = Quill.import('blots/mention');
 
-.right-panel-heading {
-  margin-bottom: 8px !important;
-  color: @text-grey-muted;
-}
+export class LinkBlot extends MentionBlot {
+  static render(data: { value: string; link: string; id: string }) {
+    const element = document.createElement('a');
+    element.innerText = data.value;
+    element.href = data.link;
+    element.id = data.id;
 
-.right-panel-list-item:last-child {
-  border-bottom: none;
-}
-
-.right-panel-list-item {
-  .entity-button-icon {
-    height: 24px;
-    width: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    svg {
-      height: 18px;
-      width: 18px;
-    }
+    return element;
   }
 }
+LinkBlot.blotName = 'link-mention';

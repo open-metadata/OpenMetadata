@@ -12,7 +12,7 @@
 Base class for ingesting database services
 """
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, List, Optional, Set, Tuple
+from typing import Any, Iterable, List, Optional, Set, Tuple, Union
 
 from pydantic import BaseModel
 from sqlalchemy.engine import Inspector
@@ -32,7 +32,6 @@ from metadata.generated.schema.api.services.createDatabaseService import (
 )
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.query import Query
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
 from metadata.generated.schema.entity.data.table import (
     Column,
@@ -67,7 +66,6 @@ from metadata.ingestion.models.topology import (
     create_source_context,
 )
 from metadata.ingestion.source.connections import get_test_connection_fn
-from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_schema
 from metadata.utils.logger import ingestion_logger
@@ -106,7 +104,10 @@ class DatabaseServiceTopology(ServiceTopology):
             ),
         ],
         children=["database"],
-        post_process=["yield_view_lineage"],
+        # Note how we have `yield_view_lineage` and `yield_stored_procedure_lineage`
+        # as post_processed. This is because we cannot ensure proper lineage processing
+        # until we have finished ingesting all the metadata from the source.
+        post_process=["yield_view_lineage", "yield_procedure_lineage_and_queries"],
     )
     database = TopologyNode(
         producer="get_database_names",
@@ -174,26 +175,10 @@ class DatabaseServiceTopology(ServiceTopology):
         stages=[
             NodeStage(
                 type_=StoredProcedure,
-                context="stored_procedure",
+                context="stored_procedures",
                 processor="yield_stored_procedure",
                 consumer=["database_service", "database", "database_schema"],
-            ),
-        ],
-        children=["stored_procedure_queries"],
-    )
-    stored_procedure_queries = TopologyNode(
-        producer="get_stored_procedure_queries",
-        stages=[
-            NodeStage(
-                type_=AddLineageRequest,
-                processor="yield_procedure_lineage",
-                context="stored_procedure_query_lineage",  # Used to flag if the query has had processed lineage
-                nullable=True,
-            ),
-            NodeStage(
-                type_=Query,
-                processor="yield_procedure_query",
-                nullable=True,
+                cache_all=True,
             ),
         ],
     )
@@ -347,20 +332,10 @@ class DatabaseServiceSource(
         """Process the stored procedure information"""
 
     @abstractmethod
-    def get_stored_procedure_queries(self) -> Iterable[QueryByProcedure]:
-        """List the queries associated to a stored procedure"""
-
-    @abstractmethod
-    def yield_procedure_query(
-        self, query_by_procedure: QueryByProcedure
-    ) -> Iterable[Either[CreateQueryRequest]]:
-        """Process the stored procedure query"""
-
-    @abstractmethod
-    def yield_procedure_lineage(
-        self, query_by_procedure: QueryByProcedure
-    ) -> Iterable[Either[AddLineageRequest]]:
-        """Add procedure lineage from its query"""
+    def yield_procedure_lineage_and_queries(
+        self,
+    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
+        """Extracts the lineage information from Stored Procedures"""
 
     def get_raw_database_schema_names(self) -> Iterable[str]:
         """

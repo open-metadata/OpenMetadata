@@ -24,7 +24,7 @@ export const MYDATA_SUMMARY_OPTIONS = {
   topics: 'topics',
   dashboards: 'dashboards',
   pipelines: 'pipelines',
-  mlmodels: 'ml models',
+  mlmodels: 'mlmodels',
   service: 'service',
   user: 'user',
   teams: 'teams',
@@ -34,6 +34,14 @@ export const MYDATA_SUMMARY_OPTIONS = {
   tags: 'tags',
   storedProcedures: 'storedProcedures',
   dataModel: 'dashboardDataModel',
+  searchIndexes: 'searchIndexes',
+};
+export const EXPLORE_PAGE_TABS = {
+  mlmodels: 'ml models',
+  storedProcedures: 'stored procedures',
+  dataProducts: 'data products',
+  dataModel: 'dashboard data model',
+  searchIndexes: 'search indexes',
 };
 
 export const SEARCH_INDEX = {
@@ -365,6 +373,7 @@ export const SERVICE_TYPE = {
   MLModels: 'ML Models',
   Storage: 'Storage',
   StoredProcedure: 'StoredProcedure',
+  Search: 'Search',
 };
 
 export const ENTITIES = {
@@ -511,7 +520,7 @@ export const DOMAIN_1 = {
   updatedDescription:
     'This is the updated description for Cypress for testing domain creation',
   experts: 'Aaron Johnson',
-  owner: 'Aaron Singh',
+  owner: 'Alex Pollard',
   updatedOwner: 'Aaron Johnson',
   domainType: 'Source-aligned',
   dataProducts: [
@@ -537,7 +546,7 @@ export const DOMAIN_2 = {
   updatedName: 'Cypress.Domain.New',
   updatedDisplayName: 'Cypress.Domain.New',
   description: 'This is the Cypress for testing domain creation',
-  experts: 'Aaron Singh',
-  owner: 'Aaron Singh',
+  experts: 'Alex Pollard',
+  owner: 'Alex Pollard',
   domainType: 'Source-aligned',
 };
