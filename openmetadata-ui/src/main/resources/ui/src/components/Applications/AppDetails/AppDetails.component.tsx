@@ -88,7 +88,7 @@ const AppDetails = () => {
   const fetchAppDetails = useCallback(async () => {
     setIsLoading(true);
     try {
-      const data = await getApplicationByName(fqn, 'owner');
+      const data = await getApplicationByName(fqn, ['owner', 'pipelines']);
       setAppData(data);
       const schema = await import(
         `../../../utils/ApplicationSchemas/${fqn}.json`
@@ -250,8 +250,7 @@ const AppDetails = () => {
 
   const tabs = useMemo(() => {
     const tabConfiguration =
-      appData &&
-      appData.appConfiguration &&
+      appData?.appConfiguration &&
       appData.appType === AppType.Internal &&
       jsonSchema
         ? [

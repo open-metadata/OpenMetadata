@@ -107,7 +107,7 @@ const AppInstall = () => {
   const onSubmit = async (repeatFrequency: string) => {
     try {
       const data: CreateAppRequest = {
-        appConfiguration: appConfiguration,
+        appConfiguration: appConfiguration ?? appData?.appConfiguration,
         appSchedule: {
           scheduleType: ScheduleTimeline.Custom,
           cronExpression: repeatFrequency,
