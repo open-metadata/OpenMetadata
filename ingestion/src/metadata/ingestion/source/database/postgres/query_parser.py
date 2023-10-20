@@ -159,7 +159,10 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
                     except Exception as err:
                         logger.debug(traceback.format_exc())
                         logger.error(str(err))
-            yield TableQueries(queries=queries)
+            if queries:
+                yield TableQueries(queries=queries)
+            else:
+                return None
         except Exception as err:
             logger.error(f"Source usage processing error - {err}")
             logger.debug(traceback.format_exc())
