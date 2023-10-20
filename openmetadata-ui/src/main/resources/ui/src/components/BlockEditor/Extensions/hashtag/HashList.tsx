@@ -16,7 +16,7 @@ import classNames from 'classnames';
 import React, { forwardRef, useImperativeHandle, useState } from 'react';
 import { isInViewport } from '../../../../utils/BlockEditorUtils';
 import { getEntityIcon } from '../../../../utils/TableUtils';
-import { ExtensionRef, SuggestionItem } from '../BlockEditor.interface';
+import { ExtensionRef, SuggestionItem } from '../../BlockEditor.interface';
 
 export default forwardRef<
   ExtensionRef,
@@ -103,7 +103,7 @@ export default forwardRef<
 
   return (
     <Space
-      className="hashtag-menu-wrapper"
+      className="suggestion-menu-wrapper"
       direction="vertical"
       id="hashtag-viewport">
       {items.map((item, index) => {

@@ -24,3 +24,7 @@ export interface SuggestionItem {
 export interface ExtensionRef {
   onKeyDown: (props: SuggestionKeyDownProps) => boolean;
 }
+
+export interface EditorSlotsRef {
+  onMouseDown: (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
+}

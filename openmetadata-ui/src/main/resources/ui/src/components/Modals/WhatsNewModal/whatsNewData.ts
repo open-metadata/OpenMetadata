@@ -1011,6 +1011,13 @@ export const WHATS_NEW = [
         path: 'https://www.youtube.com/embed/6NgI_G38D0A',
       },
       {
+        title: 'Metadata Applications',
+        description:
+          'In the OpenMetadata 1.2.0 release, we support Search Index, Data Insights, and the Data Insights Report as applications. Each App represents an automation or a feature that acts on the metadata and can drive automation. Admins can install and setup the applications.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/pUS9-RevqsU',
+      },
+      {
         title: 'Customizable Landing Page',
         description:
           'OpenMetadata 1.2.0 release now supports the creation of Personas. Also, landing pages can be customized with widgets for various Personas. That way, you can ensure that the OpenMetadata landing page displays what is most important for a particular data team.',

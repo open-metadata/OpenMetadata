@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { EditorState } from '@tiptap/pm/state';
+import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 
 export const getSelectedText = (state: EditorState) => {
   const { from, to } = state.selection;
@@ -29,4 +30,55 @@ export const isInViewport = (ele: HTMLElement, container: HTMLElement) => {
 
   // The element is fully visible in the container
   return eleTop >= containerTop && eleBottom <= containerBottom;
+};
+
+export type FormatContentFor = 'server' | 'client';
+
+export const formatContent = (
+  htmlString: string,
+  formatFor: FormatContentFor
+) => {
+  // Create a new DOMParser
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(htmlString, 'text/html');
+
+  // Use querySelectorAll to find all anchor tags with text content starting with "@" or "#"
+  const anchorTags = doc.querySelectorAll(
+    'a[data-type="mention"], a[data-type="hashtag"]'
+  );
+
+  if (formatFor === 'server') {
+    anchorTags.forEach((tag) => {
+      const href = tag.getAttribute('href');
+      const text = tag.textContent;
+      const fqn = tag.getAttribute('data-fqn');
+      const entityType = tag.getAttribute('data-entityType');
+
+      const entityLink = `<#E${FQN_SEPARATOR_CHAR}${entityType}${FQN_SEPARATOR_CHAR}${fqn}|[${text}](${href})>`;
+      tag.textContent = entityLink;
+    });
+  } else {
+    anchorTags.forEach((tag) => {
+      const label = tag.getAttribute('data-label');
+      const type = tag.getAttribute('data-type');
+      const prefix = type === 'mention' ? '@' : '#';
+
+      tag.textContent = `${prefix}${label}`;
+    });
+  }
+  const modifiedHtmlString = doc.body.innerHTML;
+
+  return modifiedHtmlString;
+};
+
+export const isHTMLString = (content: string) => {
+  try {
+    const parser = new DOMParser();
+    const parsedDocument = parser.parseFromString(content, 'text/html');
+
+    // since text can be also counted as child node so we will check if length is greater than 1
+    return parsedDocument.body.childNodes.length > 1;
+  } catch (e) {
+    return false;
+  }
 };

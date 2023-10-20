@@ -124,6 +124,32 @@ export const Hashtag = Node.create<HashtagOptions>({
           };
         },
       },
+      type: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('data-entityType'),
+        renderHTML: (attributes) => {
+          if (!attributes.type) {
+            return {};
+          }
+
+          return {
+            'data-entityType': attributes.type,
+          };
+        },
+      },
+      fqn: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('data-fqn'),
+        renderHTML: (attributes) => {
+          if (!attributes.fqn) {
+            return {};
+          }
+
+          return {
+            'data-fqn': attributes.fqn,
+          };
+        },
+      },
     };
   },
 

@@ -20,7 +20,7 @@ import {
 } from '../../../../constants/Feeds.constants';
 import { getSearchedUsers, getUserSuggestions } from '../../../../rest/miscAPI';
 import { buildMentionLink } from '../../../../utils/FeedUtils';
-import { ExtensionRef } from '../BlockEditor.interface';
+import { ExtensionRef } from '../../BlockEditor.interface';
 import MentionList from './MentionList';
 
 export const mentionSuggestion = () => ({

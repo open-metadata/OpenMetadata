@@ -18,6 +18,7 @@ import { uniqueId } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DESCRIPTION_MAX_PREVIEW_CHARACTERS } from '../../../constants/constants';
+import { formatContent, isHTMLString } from '../../../utils/BlockEditorUtils';
 import { getTrimmedContent } from '../../../utils/CommonUtils';
 import { customHTMLRenderer } from './CustomHtmlRederer/CustomHtmlRederer';
 import { PreviewerProp } from './RichTextEditor.interface';
@@ -59,7 +60,9 @@ const RichTextEditorPreviewer = ({
   }, [hasReadMore, readMore, maxLength, content]);
 
   useEffect(() => {
-    setContent(markdown);
+    setContent(
+      isHTMLString(markdown) ? formatContent(markdown, 'client') : markdown
+    );
   }, [markdown]);
 
   const handleMouseDownEvent = useCallback(async (e: MouseEvent) => {
