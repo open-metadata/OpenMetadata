@@ -16,7 +16,7 @@
     <sonar.coverage.jacoco.xmlReportPaths>${project.basedir}/target/site/jacoco-aggregate/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
     <sonar.tests>${project.basedir}/src/test/java</sonar.tests>
     <org.testcontainers.version>1.19.1</org.testcontainers.version>
-    <awssdk.version>2.21.0</awssdk.version>
+    <awssdk.version>2.21.4</awssdk.version>
     <expiring.map.version>0.5.11</expiring.map.version>
     <java.saml>2.9.0</java.saml>
     <quartz.version>2.3.2</quartz.version>
