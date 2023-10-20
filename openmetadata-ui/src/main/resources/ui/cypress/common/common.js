@@ -24,6 +24,7 @@ import {
   CUSTOM_PROPERTY_INVALID_NAMES,
   CUSTOM_PROPERTY_NAME_VALIDATION_ERROR,
   DELETE_TERM,
+  EXPLORE_PAGE_TABS,
   NAME_VALIDATION_ERROR,
   SEARCH_INDEX,
 } from '../constants/constants';
@@ -407,7 +408,7 @@ export const testServiceCreationAndIngestion = ({
 
 export const deleteCreatedService = (
   typeOfService,
-  service_Name,
+  serviceName,
   apiService,
   serviceCategory
 ) => {
@@ -431,8 +432,17 @@ export const deleteCreatedService = (
 
   verifyResponseStatusCode('@getServices', 200);
 
+  interceptURL(
+    'GET',
+    'api/v1/search/query?q=*&from=0&size=15&index=*',
+    'searchService'
+  );
+  cy.get('[data-testid="searchbar"]').type(serviceName);
+
+  verifyResponseStatusCode('@searchService', 200);
+
   // click on created service
-  cy.get(`[data-testid="service-name-${service_Name}"]`)
+  cy.get(`[data-testid="service-name-${serviceName}"]`)
     .should('exist')
     .should('be.visible')
     .click();
@@ -442,7 +452,7 @@ export const deleteCreatedService = (
     .should('be.visible')
     .invoke('text')
     .then((text) => {
-      expect(text).to.equal(service_Name);
+      expect(text).to.equal(serviceName);
     });
 
   verifyResponseStatusCode('@getServices', 200);
@@ -463,7 +473,7 @@ export const deleteCreatedService = (
 
   // Clicking on permanent delete radio button and checking the service name
   cy.get('[data-testid="hard-delete-option"]')
-    .contains(service_Name)
+    .contains(serviceName)
     .should('be.visible')
     .click();
 
@@ -485,7 +495,7 @@ export const deleteCreatedService = (
     `${serviceCategory ?? typeOfService} Service deleted successfully!`
   );
 
-  cy.get(`[data-testid="service-name-${service_Name}"]`).should('not.exist');
+  cy.get(`[data-testid="service-name-${serviceName}"]`).should('not.exist');
 };
 
 export const goToAddNewServicePage = (service_type) => {
@@ -567,7 +577,7 @@ export const visitEntityDetailsPage = (
         cy.get('[data-testid="searchBox"]').type('{enter}');
         verifyResponseStatusCode('@explorePageSearch', 200);
 
-        const tabName = entity === 'searchIndexes' ? 'search indexes' : entity;
+        const tabName = EXPLORE_PAGE_TABS?.[entity] ?? entity;
 
         cy.get(`[data-testid="${tabName}-tab"]`).should('be.visible').click();
         cy.get(`[data-testid="${tabName}-tab"]`).should('be.visible');
@@ -691,6 +701,14 @@ export const restoreUser = (username) => {
   interceptURL('GET', '/api/v1/users*', 'deletedUser');
   cy.get('[data-testid="show-deleted"]').click();
   verifyResponseStatusCode('@deletedUser', 200);
+  interceptURL(
+    'GET',
+    '/api/v1/search/query?q=**&from=0&size=*&index=*',
+    'searchUser'
+  );
+  cy.get('[data-testid="searchbar"]').type(username);
+
+  verifyResponseStatusCode('@searchUser', 200);
 
   cy.get(`[data-testid="restore-user-btn-${username}"]`).click();
   cy.get('.ant-modal-body > p').should(
@@ -1116,6 +1134,14 @@ export const updateDescriptionForIngestedTables = (
 
   // Services page
   cy.get('.ant-menu-title-content').contains(type).should('be.visible').click();
+  interceptURL(
+    'GET',
+    'api/v1/search/query?q=*&from=0&size=15&index=*',
+    'searchService'
+  );
+  cy.get('[data-testid="searchbar"]').type(serviceName);
+
+  verifyResponseStatusCode('@searchService', 200);
 
   // click on created service
   cy.get(`[data-testid="service-name-${serviceName}"]`)

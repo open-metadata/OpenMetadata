@@ -13,10 +13,9 @@ Snowflake source module
 """
 import json
 import traceback
-from typing import Iterable, List, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple
 
 import sqlparse
-from requests.utils import quote
 from snowflake.sqlalchemy.custom_types import VARIANT
 from snowflake.sqlalchemy.snowdialect import SnowflakeDialect, ischema_names
 from sqlalchemy.engine.reflection import Inspector
@@ -53,9 +52,6 @@ from metadata.ingestion.source.database.common_db_source import (
 from metadata.ingestion.source.database.life_cycle_query_mixin import (
     LifeCycleQueryMixin,
 )
-from metadata.ingestion.source.database.snowflake.constants import (
-    SNOWFLAKE_REGION_ID_MAP,
-)
 from metadata.ingestion.source.database.snowflake.models import (
     STORED_PROC_LANGUAGE_MAP,
     SnowflakeStoredProcedure,
@@ -64,9 +60,10 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_FETCH_ALL_TAGS,
     SNOWFLAKE_GET_CLUSTER_KEY,
     SNOWFLAKE_GET_CURRENT_ACCOUNT,
-    SNOWFLAKE_GET_CURRENT_REGION,
     SNOWFLAKE_GET_DATABASE_COMMENTS,
     SNOWFLAKE_GET_FILTER_DATABASES,
+    SNOWFLAKE_GET_DATABASES,
+    SNOWFLAKE_GET_ORGANIZATION_NAME,
     SNOWFLAKE_GET_SCHEMA_COMMENTS,
     SNOWFLAKE_GET_STORED_PROCEDURE_QUERIES,
     SNOWFLAKE_GET_STORED_PROCEDURES,
@@ -145,7 +142,7 @@ class SnowflakeSource(LifeCycleQueryMixin, StoredProcedureMixin, CommonDbSourceS
         self.database_desc_map = {}
 
         self._account: Optional[str] = None
-        self._region: Optional[str] = None
+        self._org_name: Optional[str] = None
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata):
@@ -159,32 +156,25 @@ class SnowflakeSource(LifeCycleQueryMixin, StoredProcedureMixin, CommonDbSourceS
 
     @property
     def account(self) -> Optional[str]:
-        """Query the account information"""
+        """
+        Query the account information
+            ref https://docs.snowflake.com/en/sql-reference/functions/current_account_name
+        """
         if self._account is None:
             self._account = self._get_current_account()
 
         return self._account
 
     @property
-    def region(self) -> Optional[str]:
+    def org_name(self) -> Optional[str]:
         """
-        Query the region information
-
-        Region id can be a vanilla id like "AWS_US_WEST_2"
-        and in case of multi region group it can be like "PUBLIC.AWS_US_WEST_2"
-        in such cases this method will extract vanilla region id and return the
-        region name from constant map SNOWFLAKE_REGION_ID_MAP
-
-        for more info checkout this doc:
-            https://docs.snowflake.com/en/sql-reference/functions/current_region
+        Query the Organization information.
+            ref https://docs.snowflake.com/en/sql-reference/functions/current_organization_name
         """
-        if self._region is None:
-            raw_region = self._get_current_region()
-            if raw_region:
-                clean_region_id = raw_region.split(".")[-1]
-                self._region = SNOWFLAKE_REGION_ID_MAP.get(clean_region_id.lower())
+        if self._org_name is None:
+            self._org_name = self._get_org_name()
 
-        return self._region
+        return self._org_name
 
     def set_session_query_tag(self) -> None:
         """
@@ -456,14 +446,14 @@ class SnowflakeSource(LifeCycleQueryMixin, StoredProcedureMixin, CommonDbSourceS
 
         return table_list
 
-    def _get_current_region(self) -> Optional[str]:
+    def _get_org_name(self) -> Optional[str]:
         try:
-            res = self.engine.execute(SNOWFLAKE_GET_CURRENT_REGION).one()
+            res = self.engine.execute(SNOWFLAKE_GET_ORGANIZATION_NAME).one()
             if res:
-                return res.REGION
+                return res.NAME
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.debug(f"Failed to fetch current region due to: {exc}")
+            logger.debug(f"Failed to fetch Organization name due to: {exc}")
         return None
 
     def _get_current_account(self) -> Optional[str]:
@@ -480,7 +470,7 @@ class SnowflakeSource(LifeCycleQueryMixin, StoredProcedureMixin, CommonDbSourceS
         self, database_name: Optional[str] = None, schema_name: Optional[str] = None
     ) -> str:
         url = (
-            f"https://app.snowflake.com/{self.region.lower()}"
+            f"https://app.snowflake.com/{self.org_name.lower()}"
             f"/{self.account.lower()}/#/data/databases/{database_name}"
         )
         if schema_name:
@@ -499,7 +489,7 @@ class SnowflakeSource(LifeCycleQueryMixin, StoredProcedureMixin, CommonDbSourceS
         Method to get the source url for snowflake
         """
         try:
-            if self.account and self.region:
+            if self.account and self.org_name:
                 tab_type = "view" if table_type == TableType.View else "table"
                 url = self._get_source_url_root(
                     database_name=database_name, schema_name=schema_name
@@ -580,7 +570,7 @@ class SnowflakeSource(LifeCycleQueryMixin, StoredProcedureMixin, CommonDbSourceS
                             schema_name=self.context.database_schema.name.__root__,
                         )
                         + f"/procedure/{stored_procedure.name}"
-                        + f"{quote(stored_procedure.signature) if stored_procedure.signature else ''}"
+                        + f"{stored_procedure.signature if stored_procedure.signature else ''}"
                     ),
                 )
             )
@@ -593,29 +583,19 @@ class SnowflakeSource(LifeCycleQueryMixin, StoredProcedureMixin, CommonDbSourceS
                 )
             )
 
-    def get_stored_procedure_queries(self) -> Iterable[QueryByProcedure]:
+    def get_stored_procedure_queries_dict(self) -> Dict[str, List[QueryByProcedure]]:
         """
-        Pick the stored procedure name from the context
-        and return the list of associated queries
+        Return the dictionary associating stored procedures to the
+        queries they triggered
         """
-        # Only process if we actually have yield a stored procedure
-        if self.context.stored_procedure:
-            start, _ = get_start_and_end(self.source_config.queryLogDuration)
-            query = SNOWFLAKE_GET_STORED_PROCEDURE_QUERIES.format(
-                start_date=start,
-                warehouse=self.service_connection.warehouse,
-                schema_name=self.context.database_schema.name.__root__,
-                database_name=self.context.database.name.__root__,
-            )
+        start, _ = get_start_and_end(self.source_config.queryLogDuration)
+        query = SNOWFLAKE_GET_STORED_PROCEDURE_QUERIES.format(
+            start_date=start,
+            warehouse=self.service_connection.warehouse,
+        )
 
-            queries_dict = self.procedure_queries_dict(
-                query=query,
-                schema_name=self.context.database_schema.name.__root__,
-                database_name=self.context.database.name.__root__,
-            )
+        queries_dict = self.procedure_queries_dict(
+            query=query,
+        )
 
-            for query_by_procedure in (
-                queries_dict.get(self.context.stored_procedure.name.__root__.lower())
-                or []
-            ):
-                yield query_by_procedure
+        return queries_dict
