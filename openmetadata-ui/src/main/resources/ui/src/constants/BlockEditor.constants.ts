@@ -33,3 +33,15 @@ export const EDITOR_OPTIONS: Partial<EditorOptions> = {
 
 export const IMAGE_INPUT_REGEX =
   /(?:^|\s)(!\[(.+|:?)]\((\S+)(?:(?:\s+)["'](\S+)["'])?\))$/;
+
+export const CLICKABLE_NODES = [
+  'IMG',
+  'P',
+  'A',
+  'BUTTON',
+  'INPUT',
+  'SELECT',
+  'TEXTAREA',
+  'svg',
+  'IFRAME',
+];
