@@ -479,7 +479,7 @@
         <groupId>org.eclipse.jetty</groupId>
         <artifactId>jetty-io</artifactId>
         <!-- 9.x required for Dropwizard 2.1.x -->
-        <version>9.4.51.v20230217</version>
+        <version>9.4.52.v20230823</version>
       </dependency>
 
       <!-- avoid security issue https://security.snyk.io/vuln/SNYK-JAVA-ORGGLASSFISH-1297098 -->
