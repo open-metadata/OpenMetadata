@@ -10,14 +10,14 @@ To change the Logo for the application, we need to update logo at two locations.
 1. Login Page
 
 {% image
-src="/images/v1.2/how-to-guides/login-Page-Logo.png"
+src="/images/v1.1/how-to-guides/login-Page-Logo.png"
 alt="loginPage-image"
 /%}
 
 2. Navigation Bar
 
 {% image
-src="/images/v1.2/how-to-guides/nav-Bar-Logo.png"
+src="/images/v1.1/how-to-guides/nav-Bar-Logo.png"
 alt="navBar-image"
 /%}
 
