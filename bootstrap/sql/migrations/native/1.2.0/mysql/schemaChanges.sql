@@ -272,5 +272,5 @@ SET ts.json = JSON_INSERT(
     JSON_EXTRACT(ts.json, '$.timestamp') * 1000
  )
 WHERE ts.extension = 'pipeline.pipelineStatus'
-  AND JSON_EXTRACT(p.json, '$.serviceType') = 'Airflow'
+  AND JSON_EXTRACT(p.json, '$.serviceType') in ('Airflow', 'GluePipeline', 'Airbyte', 'Dagster', 'DomoPipeline')
 ;

@@ -36,6 +36,7 @@ from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.time_utils import convert_timestamp_to_milliseconds
 
 logger = ingestion_logger()
 
@@ -146,13 +147,19 @@ class GluepipelineSource(PipelineServiceSource):
                             executionStatus=STATUS_MAP.get(
                                 attempt["JobRunState"].lower(), StatusType.Pending
                             ).value,
-                            startTime=attempt["StartedOn"].timestamp(),
-                            endTime=attempt["CompletedOn"].timestamp(),
+                            startTime=convert_timestamp_to_milliseconds(
+                                attempt["StartedOn"].timestamp()
+                            ),
+                            endTime=convert_timestamp_to_milliseconds(
+                                attempt["CompletedOn"].timestamp()
+                            ),
                         )
                     )
                     pipeline_status = PipelineStatus(
                         taskStatus=task_status,
-                        timestamp=attempt["StartedOn"].timestamp(),
+                        timestamp=convert_timestamp_to_milliseconds(
+                            attempt["StartedOn"].timestamp()
+                        ),
                         executionStatus=STATUS_MAP.get(
                             attempt["JobRunState"].lower(), StatusType.Pending
                         ).value,

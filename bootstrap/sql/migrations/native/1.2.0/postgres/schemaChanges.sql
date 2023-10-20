@@ -287,5 +287,5 @@ SET json = jsonb_set(
 FROM pipeline_entity p
 WHERE ts.entityFQNHash  = p.fqnHash
   and ts.extension = 'pipeline.pipelineStatus'
-  AND p.json #>> '{serviceType}' = 'Airflow'
+  AND p.json #>> '{serviceType}' in ('Airflow', 'GluePipeline', 'Airbyte', 'Dagster', 'DomoPipeline')
 ;

@@ -121,6 +121,6 @@ def convert_timestamp_to_milliseconds(timestamp: int) -> int:
     Retunrs:
         int
     """
-    if len(str(timestamp)) == 13:
+    if len(str(round(timestamp))) == 13:
         return timestamp
     return timestamp * 1000

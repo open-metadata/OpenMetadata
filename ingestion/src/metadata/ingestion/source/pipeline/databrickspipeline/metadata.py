@@ -38,6 +38,7 @@ from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.time_utils import convert_timestamp_to_milliseconds
 
 logger = ingestion_logger()
 
@@ -199,14 +200,20 @@ class DatabrickspipelineSource(PipelineServiceSource):
                                     task_run["state"].get("result_state"),
                                     StatusType.Failed,
                                 ),
-                                startTime=task_run["start_time"],
-                                endTime=task_run["end_time"],
+                                startTime=convert_timestamp_to_milliseconds(
+                                    task_run["start_time"]
+                                ),
+                                endTime=convert_timestamp_to_milliseconds(
+                                    task_run["end_time"]
+                                ),
                                 logLink=task_run["run_page_url"],
                             )
                         )
                         pipeline_status = PipelineStatus(
                             taskStatus=task_status,
-                            timestamp=attempt["start_time"],
+                            timestamp=convert_timestamp_to_milliseconds(
+                                attempt["start_time"]
+                            ),
                             executionStatus=STATUS_MAP.get(
                                 attempt["state"].get("result_state"),
                                 StatusType.Failed,
