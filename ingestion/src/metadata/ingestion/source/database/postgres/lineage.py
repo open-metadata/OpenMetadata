@@ -50,31 +50,4 @@ class PostgresLineageSource(PostgresQueryParserSource, LineageSource):
                 )
             """
 
-    def _iter(self, *_, **__) -> Iterable[Either[AddLineageRequest]]:
-        """
-        Based on the query logs, prepare the lineage
-        and send it to the sink
-        """
-        for table_queries in self.get_table_query():
-            for table_query in table_queries.queries:
-                lineages = get_lineage_by_query(
-                    self.metadata,
-                    query=table_query.query,
-                    service_name=table_query.serviceName,
-                    database_name=table_query.databaseName,
-                    schema_name=table_query.databaseSchema,
-                    dialect=Dialect.POSTGRES,
-                )
-
-                for lineage_request in lineages or []:
-                    yield lineage_request
-
-        if self.service_connection.scheme == PostgresScheme.pgspider_psycopg2:
-            lineages = get_lineage_from_multi_tenant_table(
-                self.metadata,
-                connection=self.service_connection,
-                service_name=self.config.serviceName,
-            )
-
-            for lineage_request in lineages or []:
-                yield lineage_request
+    
