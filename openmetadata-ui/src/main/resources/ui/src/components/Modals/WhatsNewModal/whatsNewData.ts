@@ -994,8 +994,29 @@ export const WHATS_NEW = [
   {
     id: 19,
     version: 'v1.2.0',
-    description: 'Released on 23rd Oct 2023.',
+    description: 'Released on 26th Oct 2023.',
     features: [
+      {
+        title: 'Domain',
+        description:
+          'OpenMetadata 1.2.0 release now supports the creation of Domains. Assets can be added to a Domain, and users can scope their discovery experience to one Domain. Assets can also be added as Data Products in a Domain.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/t-9G3vaSdjI',
+      },
+      {
+        title: 'Data Products',
+        description:
+          'OpenMetadata 1.2.0 release now supports data products. Assets can be added as Data Products in a Domain.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/6NgI_G38D0A',
+      },
+      {
+        title: 'Customizable Landing Page',
+        description:
+          'OpenMetadata 1.2.0 release now supports the creation of Personas. Also, landing pages can be customized with widgets for various Personas. That way, you can ensure that the OpenMetadata landing page displays what is most important for a particular data team.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/Y-5cPQgzNdo',
+      },
       {
         title: 'Knowledge Center (Exclusively for Collate)',
         description:
@@ -1034,12 +1055,12 @@ export const WHATS_NEW = [
 - Added column-level lineage support for **SELECT * queries**`,
       Connectors: `- Greenplum connector is now supported.
 - Couchbase connector is now supported.`,
+      'Customizable Landing Page': `- Admins can create Personas to group individuals in their company, such as Data Engineers, Data Stewards, or Data Scientists.
+- Admins can customize the landing page for each Persona with a set of supported widgets: Activity Feed, Announcements, Knowledge Center, etc.
+- We will add support for more widgets in upcoming releases.`,
       'Knowledge Center ([Exclusively for Collate](https://www.getcollate.io/))': `- Backend APIs support creating, editing, and listing knowledge articles (with external links).
 - Knowledge articles and links can be associated with a Domain, Team, or an Entity.
 - UI support to build a Knowledge Center and expand the documentation of your company.`,
-      'Customizable Landing Page ([Exclusively for Collate](https://www.getcollate.io/))': `- Admins can create Personas to group individuals in their company, such as Data Engineers, Data Stewards, or Data Scientists.
-- Admins can customize the landing page for each Persona with a set of supported widgets: Activity Feed, Announcements, Knowledge Center, etc.
-- We will add support for more widgets in upcoming releases.`,
       'Cost Analysis Report ([Exclusively for Collate](https://www.getcollate.io/))': `- The Usage Workflow will now also track how tables are Accessed and Updated.
 - This information will be used in the Data Insights workflow to show the evolution of your used and used assets and compare them by size.
 - Support has been added for Snowflake, and we will continue to add more sources in upcoming releases.`,
