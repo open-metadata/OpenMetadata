@@ -56,11 +56,7 @@ const AppSchedule = ({
         const fqn = appData.pipelines[0].fullyQualifiedName ?? '';
         const pipelineData = await getIngestionPipelineByFqn(fqn);
 
-        if (pipelineData) {
-          setIsPipelineDeployed(pipelineData.deployed ?? true);
-        } else {
-          setIsPipelineDeployed(false);
-        }
+        setIsPipelineDeployed(pipelineData.deployed ?? false);
       } else {
         setIsPipelineDeployed(false);
       }
