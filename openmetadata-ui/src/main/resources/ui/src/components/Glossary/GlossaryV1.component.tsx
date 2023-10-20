@@ -63,6 +63,7 @@ const GlossaryV1 = ({
   isVersionsView,
   onAssetClick,
   isSummaryPanelOpen,
+  refreshActiveGlossaryTerm,
 }: GlossaryV1Props) => {
   const { t } = useTranslation();
   const { action, tab } =
@@ -265,9 +266,11 @@ const GlossaryV1 = ({
           reviewers,
           owner,
           relatedTerms,
+          style,
         } = formData || {};
 
         newTermData.name = name;
+        newTermData.style = style;
         newTermData.displayName = displayName;
         newTermData.description = description;
         newTermData.synonyms = synonyms;
@@ -336,6 +339,7 @@ const GlossaryV1 = ({
             isSummaryPanelOpen={isSummaryPanelOpen}
             isVersionView={isVersionsView}
             permissions={glossaryTermPermission}
+            refreshActiveGlossaryTerm={refreshActiveGlossaryTerm}
             refreshGlossaryTerms={() => loadGlossaryTerms(true)}
             termsLoading={isTermsLoading}
             updateVote={updateVote}

@@ -136,8 +136,7 @@ const AppDetails = () => {
           })}
           icon={
             <StopOutlined
-              color={DE_ACTIVE_COLOR}
-              style={{ fontSize: '18px' }}
+              style={{ fontSize: '18px', color: DE_ACTIVE_COLOR }}
             />
           }
           id="disable-button"
@@ -231,6 +230,39 @@ const AppDetails = () => {
   };
 
   const tabs = useMemo(() => {
+    const tabConfiguration =
+      appData && appData.appConfiguration && jsonSchema
+        ? [
+            {
+              label: (
+                <TabsLabel
+                  id={ApplicationTabs.CONFIGURATION}
+                  name={t('label.configuration')}
+                />
+              ),
+              key: ApplicationTabs.CONFIGURATION,
+              children: (
+                <div>
+                  <FormBuilder
+                    disableTestConnection
+                    useSelectWidget
+                    cancelText={t('label.back')}
+                    formData={appData.appConfiguration}
+                    okText={t('label.submit')}
+                    schema={jsonSchema}
+                    serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
+                    serviceType=""
+                    showTestConnection={false}
+                    validator={validator}
+                    onCancel={noop}
+                    onSubmit={onConfigSave}
+                  />
+                </div>
+              ),
+            },
+          ]
+        : [];
+
     return [
       {
         label: (
@@ -250,35 +282,7 @@ const AppDetails = () => {
           </div>
         ),
       },
-      {
-        label: (
-          <TabsLabel
-            id={ApplicationTabs.CONFIGURATION}
-            name={t('label.configuration')}
-          />
-        ),
-        key: ApplicationTabs.CONFIGURATION,
-        children: (
-          <div>
-            {jsonSchema && appData && (
-              <FormBuilder
-                disableTestConnection
-                useSelectWidget
-                cancelText={t('label.back')}
-                formData={appData.appConfiguration}
-                okText={t('label.submit')}
-                schema={jsonSchema}
-                serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
-                serviceType=""
-                showTestConnection={false}
-                validator={validator}
-                onCancel={noop}
-                onSubmit={onConfigSave}
-              />
-            )}
-          </div>
-        ),
-      },
+      ...tabConfiguration,
       {
         label: (
           <TabsLabel id={ApplicationTabs.HISTORY} name={t('label.history')} />
@@ -334,7 +338,7 @@ const AppDetails = () => {
               onOpenChange={setShowActions}>
               <Tooltip placement="right">
                 <Button
-                  className="glossary-manage-dropdown-button tw-px-1.5"
+                  className="glossary-manage-dropdown-button p-x-xs"
                   data-testid="manage-button"
                   onClick={() => setShowActions(true)}>
                   <IconDropdown className="anticon self-center manage-dropdown-icon" />

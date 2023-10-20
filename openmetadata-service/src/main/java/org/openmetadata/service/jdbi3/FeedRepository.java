@@ -50,6 +50,7 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Triple;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.json.JSONObject;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.feed.CloseTask;
@@ -209,21 +210,25 @@ public class FeedRepository {
     return new ThreadContext(thread, event);
   }
 
+  @Transaction
   public Thread create(Thread thread) {
     ThreadContext threadContext = getThreadContext(thread);
     return createThread(threadContext);
   }
 
+  @Transaction
   public Thread create(Thread thread, ChangeEvent event) {
     ThreadContext threadContext = getThreadContext(thread, event);
     return createThread(threadContext);
   }
 
+  @Transaction
   public void store(ThreadContext threadContext) {
     // Insert a new thread
     dao.feedDAO().insert(JsonUtils.pojoToJson(threadContext.getThread()));
   }
 
+  @Transaction
   public void storeRelationships(ThreadContext threadContext) {
     Thread thread = threadContext.getThread();
     EntityLink about = threadContext.getAbout();
@@ -332,6 +337,7 @@ public class FeedRepository {
     return tags.stream().map(TagLabel::getTagFQN).collect(Collectors.joining(", "));
   }
 
+  @Transaction
   private void addClosingPost(Thread thread, String user, String closingComment) {
     // Add a post to the task
     String message;
@@ -360,6 +366,7 @@ public class FeedRepository {
     addPostToThread(thread.getId(), post, user);
   }
 
+  @Transaction
   public void closeTask(Thread thread, String user, CloseTask closeTask) {
     ThreadContext threadContext = getThreadContext(thread);
     TaskDetails task = thread.getTask();
@@ -397,6 +404,7 @@ public class FeedRepository {
                         null));
   }
 
+  @Transaction
   public Thread addPostToThread(UUID id, Post post, String userName) {
     // Validate the user posting the message
     UUID fromUserId = Entity.getEntityReferenceByName(USER, post.getFrom(), NON_DELETED).getId();
@@ -428,6 +436,7 @@ public class FeedRepository {
     return post.get();
   }
 
+  @Transaction
   public DeleteResponse<Post> deletePost(Thread thread, Post post, String userName) {
     List<Post> posts = thread.getPosts();
     // Remove the post to be deleted from the posts list
@@ -442,12 +451,14 @@ public class FeedRepository {
     return new DeleteResponse<>(post, RestUtil.ENTITY_DELETED);
   }
 
+  @Transaction
   public DeleteResponse<Thread> deleteThread(Thread thread, String deletedByUser) {
     deleteThreadInternal(thread.getId());
     LOG.info("{} deleted thread with id {}", deletedByUser, thread.getId());
     return new DeleteResponse<>(thread, RestUtil.ENTITY_DELETED);
   }
 
+  @Transaction
   public void deleteThreadInternal(UUID id) {
     // Delete all the relationships to other entities
     dao.relationshipDAO().deleteAll(id, Entity.THREAD);
@@ -459,6 +470,7 @@ public class FeedRepository {
     dao.feedDAO().delete(id);
   }
 
+  @Transaction
   public void deleteByAbout(UUID entityId) {
     List<String> threadIds = listOrEmpty(dao.feedDAO().findByEntityId(entityId.toString()));
     for (String threadId : threadIds) {
@@ -611,6 +623,7 @@ public class FeedRepository {
     return new ResultList<>(threads, beforeCursor, afterCursor, total);
   }
 
+  @Transaction
   private void storeReactions(Thread thread, String user) {
     // Reactions are captured at the thread level. If the user reacted to a post of a thread,
     // it will still be tracked as "user reacted to thread" since this will only be used to filter

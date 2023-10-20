@@ -19,14 +19,7 @@ import {
 } from '@testing-library/react';
 import React, { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { FeedFilter } from '../../enums/mydata.enum';
-import { ThreadType } from '../../generated/entity/feed/thread';
-import {
-  mockEntityData,
-  mockTeamsData,
-  mockUserData,
-  mockUserRole,
-} from './mocks/User.mocks';
+import { mockTeamsData, mockUserData, mockUserRole } from './mocks/User.mocks';
 import Users from './Users.component';
 import { UserPageTabs } from './Users.interface';
 
@@ -85,6 +78,19 @@ jest.mock(
 );
 
 jest.mock(
+  '../Persona/PersonaSelectableList/PersonaSelectableList.component',
+  () => ({
+    PersonaSelectableList: jest
+      .fn()
+      .mockReturnValue(<p>PersonaSelectableList</p>),
+  })
+);
+
+jest.mock('../Glossary/GlossaryTerms/tabs/AssetsTabs.component', () => {
+  return jest.fn().mockReturnValue(<p>AssetsTabs</p>);
+});
+
+jest.mock(
   '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
   () => {
     return jest.fn().mockImplementation(({ children }) => <>{children}</>);
@@ -129,39 +135,16 @@ jest.mock('../containers/PageLayoutV1', () =>
 jest.mock('../common/description/Description', () => {
   return jest.fn().mockReturnValue(<p>Description</p>);
 });
-
-const mockFetchFeedHandler = jest.fn();
-const feedFilterHandler = jest.fn();
-const fetchData = jest.fn();
-const postFeed = jest.fn();
 const updateUserDetails = jest.fn();
-const mockPaging = {
-  after: 'MTY0OTIzNTQ3MzExMg==',
-  total: 202,
-};
 
 const mockProp = {
   username: 'test',
-  feedData: [],
-  feedFilter: FeedFilter.ALL,
-  feedFilterHandler: feedFilterHandler,
-  fetchData: fetchData,
-  fetchFeedHandler: mockFetchFeedHandler,
-  followingEntities: mockEntityData,
-  ownedEntities: mockEntityData,
-  isFeedLoading: false,
-  paging: mockPaging,
-  postFeedHandler: postFeed,
-  isAdminUser: false,
-  isLoggedInUser: false,
-  isAuthDisabled: true,
-  isUserEntitiesLoading: false,
+  queryFilters: {
+    myData: 'my-data',
+    following: 'following',
+  },
   updateUserDetails,
-  updateThreadHandler: jest.fn(),
-  setFeedFilter: jest.fn(),
-  threadType: 'Task' as ThreadType.Task,
   handlePaginate: jest.fn(),
-  onSwitchChange: jest.fn(),
 };
 
 jest.mock('../../rest/userAPI', () => ({
@@ -234,29 +217,29 @@ describe('Test User Component', () => {
     expect(datasetContainer).toBeInTheDocument();
   });
 
-  it('MyData tab should show loader if the data is loading', async () => {
+  it('MyData tab should load asset component', async () => {
     mockParams.tab = UserPageTabs.MY_DATA;
     const { container } = render(
-      <Users userData={mockUserData} {...mockProp} isUserEntitiesLoading />,
+      <Users userData={mockUserData} {...mockProp} />,
       {
         wrapper: MemoryRouter,
       }
     );
-    const loader = await findByTestId(container, 'loader');
+    const assetComponent = await findByText(container, 'AssetsTabs');
 
-    expect(loader).toBeInTheDocument();
+    expect(assetComponent).toBeInTheDocument();
   });
 
-  it('Following tab should show loader if the data is loading', async () => {
+  it('Following tab should show load asset component', async () => {
     mockParams.tab = UserPageTabs.FOLLOWING;
     const { container } = render(
-      <Users userData={mockUserData} {...mockProp} isUserEntitiesLoading />,
+      <Users userData={mockUserData} {...mockProp} />,
       {
         wrapper: MemoryRouter,
       }
     );
-    const loader = await findByTestId(container, 'loader');
+    const assetComponent = await findByText(container, 'AssetsTabs');
 
-    expect(loader).toBeInTheDocument();
+    expect(assetComponent).toBeInTheDocument();
   });
 });

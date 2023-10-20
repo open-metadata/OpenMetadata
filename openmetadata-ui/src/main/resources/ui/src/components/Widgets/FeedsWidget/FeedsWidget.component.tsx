@@ -16,45 +16,43 @@ import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import AppState from '../../../AppState';
 import ActivityFeedListV1 from '../../../components/ActivityFeed/ActivityFeedList/ActivityFeedListV1.component';
 import { useActivityFeedProvider } from '../../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { useTourProvider } from '../../../components/TourProvider/TourProvider';
 import { mockFeedData } from '../../../constants/mockTourData.constants';
-import { LandingPageWidgetKeys } from '../../../enums/CustomizablePage.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import {
   ThreadTaskStatus,
   ThreadType,
 } from '../../../generated/entity/feed/thread';
+import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { getFeedsWithFilter } from '../../../rest/feedsAPI';
 import { getCountBadge, getEntityDetailLink } from '../../../utils/CommonUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import FeedsFilterPopover from '../../common/FeedsFilterPopover/FeedsFilterPopover.component';
-import './feeds-widget.less';
-import { FeedsWidgetProps } from './FeedsWidget.interface';
+import './FeedsWidget.less';
 
 const FeedsWidget = ({
   isEditView = false,
   handleRemoveWidget,
-}: FeedsWidgetProps) => {
+  widgetKey,
+}: WidgetCommonProps) => {
   const { t } = useTranslation();
   const history = useHistory();
   const { isTourOpen } = useTourProvider();
+  const { currentUser } = useAuthContext();
   const [activeTab, setActiveTab] = useState<ActivityFeedTabs>(
     ActivityFeedTabs.ALL
   );
   const { loading, entityThread, entityPaging, getFeedData } =
     useActivityFeedProvider();
   const [taskCount, setTaskCount] = useState(0);
-  const currentUser = useMemo(
-    () => AppState.getCurrentUserDetails(),
-    [AppState.userDetails, AppState.nonSecureUserDetails]
-  );
+
   const [defaultFilter, setDefaultFilter] = useState<FeedFilter>(
-    FeedFilter.OWNER_OR_FOLLOWS
+    currentUser?.isAdmin ? FeedFilter.ALL : FeedFilter.OWNER_OR_FOLLOWS
   );
 
   useEffect(() => {
@@ -133,9 +131,8 @@ const FeedsWidget = ({
   }, [activeTab, entityThread]);
 
   const handleCloseClick = useCallback(() => {
-    !isUndefined(handleRemoveWidget) &&
-      handleRemoveWidget(LandingPageWidgetKeys.ACTIVITY_FEED);
-  }, []);
+    !isUndefined(handleRemoveWidget) && handleRemoveWidget(widgetKey);
+  }, [widgetKey]);
 
   return (
     <div

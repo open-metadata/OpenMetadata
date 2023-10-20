@@ -102,12 +102,12 @@ import { usePermissionProvider } from '../../PermissionProvider/PermissionProvid
 import { ResourceEntity } from '../../PermissionProvider/PermissionProvider.interface';
 import TabsLabel from '../../TabsLabel/TabsLabel.component';
 import ListEntities from './RolesAndPoliciesList';
-import { SubscriptionWebhook, TeamsPageTab } from './team.interface';
+import { TeamsPageTab } from './team.interface';
 import { getTabs } from './TeamDetailsV1.utils';
 import TeamHierarchy from './TeamHierarchy';
 import './teams.less';
+import TeamsHeadingLabel from './TeamsHeaderSection/TeamsHeadingLabel.component';
 import TeamsInfo from './TeamsHeaderSection/TeamsInfo.component';
-import TeamsSubscription from './TeamsHeaderSection/TeamsSubscription.component';
 import { UserTab } from './UserTab/UserTab.component';
 
 const TeamDetailsV1 = ({
@@ -200,12 +200,6 @@ const TeamDetailsV1 = ({
 
   const addTeam = t('label.add-entity', { entity: t('label.team') });
 
-  const hasEditSubscriptionPermission = useMemo(
-    () =>
-      entityPermissions.EditAll || currentTeam.owner?.id === currentUser?.id,
-    [entityPermissions, currentTeam, currentUser]
-  );
-
   const teamCount = useMemo(
     () =>
       isOrganization && currentTeam && currentTeam.childrenCount
@@ -229,12 +223,15 @@ const TeamDetailsV1 = ({
    * @param id - user id
    * @param leave - if "Leave Team" action is in progress
    */
-  const deleteUserHandler = (id: string, leave = false) => {
-    const user = [...(currentTeam?.users as Array<UserTeams>)].find(
-      (u) => u.id === id
-    );
-    setDeletingUser({ user, state: true, leave });
-  };
+  const deleteUserHandler = useCallback(
+    (id: string, leave = false) => {
+      const user = [...(currentTeam?.users as Array<UserTeams>)].find(
+        (u) => u.id === id
+      );
+      setDeletingUser({ user, state: true, leave });
+    },
+    [currentTeam, setDeletingUser]
+  );
 
   const fetchErrorPlaceHolder = useCallback(
     ({
@@ -286,7 +283,7 @@ const TeamDetailsV1 = ({
     }
   };
 
-  const joinTeam = () => {
+  const joinTeam = useCallback(() => {
     if (currentUser && currentTeam) {
       const newTeams = cloneDeep(currentUser.teams ?? []);
       newTeams.push({
@@ -304,7 +301,7 @@ const TeamDetailsV1 = ({
 
       handleJoinTeamClick(currentUser.id, options);
     }
-  };
+  }, [currentUser, currentTeam, handleJoinTeamClick]);
 
   const leaveTeam = (): Promise<void> => {
     if (currentUser && currentTeam) {
@@ -333,23 +330,6 @@ const TeamDetailsV1 = ({
       removeUserFromTeam(deletingUser.user?.id as string).then(() => {
         setDeletingUser(DELETE_USER_INITIAL_STATE);
       });
-    }
-  };
-
-  const updateTeamSubscription = async (data?: SubscriptionWebhook) => {
-    if (currentTeam) {
-      const updatedData: Team = {
-        ...currentTeam,
-        profile: {
-          subscription: isEmpty(data)
-            ? undefined
-            : {
-                [data?.webhook ?? '']: { endpoint: data?.endpoint },
-              },
-        },
-      };
-
-      await updateTeamHandler(updatedData);
     }
   };
 
@@ -609,7 +589,8 @@ const TeamDetailsV1 = ({
   );
 
   const isAlreadyJoinedTeam = useMemo(
-    () => currentUser?.teams?.find((team) => team.id === currentTeam.id),
+    () =>
+      Boolean(currentUser?.teams?.find((team) => team.id === currentTeam.id)),
     [currentTeam.id, currentUser]
   );
 
@@ -722,13 +703,14 @@ const TeamDetailsV1 = ({
     () => (
       <AssetsTabs
         isSummaryPanelOpen
+        assetCount={assetsCount}
         permissions={entityPermissions}
         type={AssetsOfEntity.TEAM}
         onAddAsset={() => history.push(ROUTES.EXPLORE)}
         onAssetClick={setPreviewAsset}
       />
     ),
-    [entityPermissions, setPreviewAsset]
+    [entityPermissions, assetsCount, setPreviewAsset]
   );
 
   const rolesTabRender = useMemo(
@@ -761,33 +743,33 @@ const TeamDetailsV1 = ({
           ),
         })
       ) : (
-        <Space className="w-full roles-and-policy p-md" direction="vertical">
-          <Button
-            data-testid="add-role"
-            disabled={!entityPermissions.EditAll}
-            title={
-              entityPermissions.EditAll
-                ? addRole
-                : t('message.no-permission-for-action')
-            }
-            type="primary"
-            onClick={() =>
-              setAddAttribute({
-                type: EntityType.ROLE,
-                selectedData: currentTeam.defaultRoles ?? [],
-              })
-            }>
-            {addRole}
-          </Button>
-          <ListEntities
-            hasAccess={entityPermissions.EditAll}
-            list={currentTeam.defaultRoles ?? []}
-            type={EntityType.ROLE}
-            onDelete={(record) =>
-              setEntity({ record, attribute: 'defaultRoles' })
-            }
-          />
-        </Space>
+        <Row className="roles-and-policy p-md" gutter={[0, 10]}>
+          {entityPermissions.EditAll && (
+            <Col className="d-flex justify-end" span={24}>
+              <Button
+                data-testid="add-role"
+                type="primary"
+                onClick={() =>
+                  setAddAttribute({
+                    type: EntityType.ROLE,
+                    selectedData: currentTeam.defaultRoles ?? [],
+                  })
+                }>
+                {addRole}
+              </Button>
+            </Col>
+          )}
+          <Col span={24}>
+            <ListEntities
+              hasAccess={entityPermissions.EditAll}
+              list={currentTeam.defaultRoles ?? []}
+              type={EntityType.ROLE}
+              onDelete={(record) =>
+                setEntity({ record, attribute: 'defaultRoles' })
+              }
+            />
+          </Col>
+        </Row>
       ),
     [currentTeam, entityPermissions, addRole]
   );
@@ -869,65 +851,83 @@ const TeamDetailsV1 = ({
         )
       )),
 
-    [currentUser, isAlreadyJoinedTeam, isAuthDisabled, isAdminUser]
+    [
+      currentUser,
+      isAlreadyJoinedTeam,
+      isAuthDisabled,
+      isAdminUser,
+      joinTeam,
+      deleteUserHandler,
+    ]
   );
 
   const teamsCollapseHeader = useMemo(
     () => (
-      <Space wrap className="w-full justify-between">
-        <Space className="w-full" size="middle">
-          <Avatar className="teams-profile" size={40}>
-            <IconTeams className="text-primary" width={20} />
-          </Avatar>
+      <>
+        <Space wrap className="w-full justify-between">
+          <Space className="w-full" size="middle">
+            <Avatar className="teams-profile" size={40}>
+              <IconTeams className="text-primary" width={20} />
+            </Avatar>
 
-          <Space direction="vertical" size={3}>
-            {!isOrganization && (
-              <TitleBreadcrumb titleLinks={slashedTeamName} />
+            <Space direction="vertical" size={3}>
+              {!isOrganization && (
+                <TitleBreadcrumb titleLinks={slashedTeamName} />
+              )}
+
+              <TeamsHeadingLabel
+                currentTeam={currentTeam}
+                entityPermissions={entityPermissions}
+                updateTeamHandler={updateTeamHandler}
+              />
+            </Space>
+          </Space>
+
+          <Space align="center">
+            {teamActionButton}
+            {!isOrganization ? (
+              entityPermissions.EditAll && (
+                <ManageButton
+                  isRecursiveDelete
+                  afterDeleteAction={afterDeleteAction}
+                  allowSoftDelete={!currentTeam.deleted}
+                  canDelete={entityPermissions.EditAll}
+                  entityId={currentTeam.id}
+                  entityName={
+                    currentTeam.fullyQualifiedName ?? currentTeam.name
+                  }
+                  entityType="team"
+                  extraDropdownContent={extraDropdownContent}
+                  hardDeleteMessagePostFix={getDeleteMessagePostFix(
+                    currentTeam.fullyQualifiedName ?? currentTeam.name,
+                    t('label.permanently-lowercase')
+                  )}
+                  softDeleteMessagePostFix={getDeleteMessagePostFix(
+                    currentTeam.fullyQualifiedName ?? currentTeam.name,
+                    t('label.soft-lowercase')
+                  )}
+                />
+              )
+            ) : (
+              <ManageButton
+                canDelete={false}
+                entityName={currentTeam.fullyQualifiedName ?? currentTeam.name}
+                extraDropdownContent={[...IMPORT_EXPORT_MENU_ITEM]}
+              />
             )}
-
-            <TeamsInfo
-              childTeamsCount={childTeams.length}
-              currentTeam={currentTeam}
-              entityPermissions={entityPermissions}
-              isGroupType={isGroupType}
-              parentTeams={parentTeams}
-              updateTeamHandler={updateTeamHandler}
-            />
           </Space>
         </Space>
-
-        <Space align="center">
-          {teamActionButton}
-          {!isOrganization ? (
-            entityPermissions.EditAll && (
-              <ManageButton
-                isRecursiveDelete
-                afterDeleteAction={afterDeleteAction}
-                allowSoftDelete={!currentTeam.deleted}
-                canDelete={entityPermissions.EditAll}
-                entityId={currentTeam.id}
-                entityName={currentTeam.fullyQualifiedName ?? currentTeam.name}
-                entityType="team"
-                extraDropdownContent={extraDropdownContent}
-                hardDeleteMessagePostFix={getDeleteMessagePostFix(
-                  currentTeam.fullyQualifiedName ?? currentTeam.name,
-                  t('label.permanently-lowercase')
-                )}
-                softDeleteMessagePostFix={getDeleteMessagePostFix(
-                  currentTeam.fullyQualifiedName ?? currentTeam.name,
-                  t('label.soft-lowercase')
-                )}
-              />
-            )
-          ) : (
-            <ManageButton
-              canDelete={false}
-              entityName={currentTeam.fullyQualifiedName ?? currentTeam.name}
-              extraDropdownContent={[...IMPORT_EXPORT_MENU_ITEM]}
-            />
-          )}
-        </Space>
-      </Space>
+        <div className="p-t-md p-l-xss">
+          <TeamsInfo
+            childTeamsCount={childTeams.length}
+            currentTeam={currentTeam}
+            entityPermissions={entityPermissions}
+            isGroupType={isGroupType}
+            parentTeams={parentTeams}
+            updateTeamHandler={updateTeamHandler}
+          />
+        </div>
+      </>
     ),
     [
       isGroupType,
@@ -1041,7 +1041,6 @@ const TeamDetailsV1 = ({
             accordion
             bordered={false}
             className="site-collapse-custom-collapse"
-            defaultActiveKey={['1']}
             expandIconPosition="end">
             <Collapse.Panel
               className="site-collapse-custom-panel"
@@ -1049,18 +1048,6 @@ const TeamDetailsV1 = ({
               header={teamsCollapseHeader}
               key="1">
               <Row>
-                {(currentTeam.owner?.id === currentUser?.id ||
-                  entityPermissions.EditAll ||
-                  isAlreadyJoinedTeam) && (
-                  <Col className="p-md border-top" span={24}>
-                    <TeamsSubscription
-                      hasEditPermission={hasEditSubscriptionPermission}
-                      subscription={currentTeam.profile?.subscription}
-                      updateTeamSubscription={updateTeamSubscription}
-                    />
-                  </Col>
-                )}
-
                 <Col className="border-top" span={24}>
                   <Card
                     className="ant-card-feed card-body-border-none card-padding-y-0 p-y-sm"

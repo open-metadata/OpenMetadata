@@ -18,6 +18,7 @@ import { Paging } from '../../../generated/type/paging';
 export type TagsSelectFormProps = {
   placeholder: string;
   defaultValue: string[];
+  tagData?: SelectOption[];
   onChange?: (value: string[]) => void;
   onSubmit: (option: DefaultOptionType | DefaultOptionType[]) => Promise<void>;
   onCancel: () => void;

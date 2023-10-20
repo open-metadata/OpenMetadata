@@ -18,13 +18,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - main 
-      - '0.[0-9]+.[0-9]+'
-      - '1.[0-9]+[0-9]+'
-    paths-ignore:
-      - 'openmetadata-docs/**'
-  pull_request_target:
-    types: [labeled, opened, synchronize, reopened]
+      - main
     paths-ignore:
       - 'openmetadata-docs/**'
 
@@ -41,7 +35,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        job: [0]
+        job: [0, 1, 2]
     environment: test
     steps:
       - name: Free Disk Space (Ubuntu)
@@ -125,10 +119,10 @@ jobs:
         with:
           install: false
           record: true
-          parallel: false
+          parallel: true
           working-directory: openmetadata-ui/src/main/resources/ui/
           wait-on: 'http://localhost:8585'
-          group: Tests with database postgresql
+          group:  cypress-ci-psql-oss-${{ github.run_id }}-${{github.run_attempt}}
           browser: chrome
         env:
           CYPRESS_BASE_URL: "http://localhost:8585"

@@ -15,7 +15,7 @@ for Google SSO, but it can apply to any SSO.
 
 - Click on `ingestion-bot`:
 {% image
-src="/images/v1.2/how-to-guides/feature-configurations/bots/click-bot.png"
+src="/images/v1.1/how-to-guides/feature-configurations/bots/click-bot.png"
 alt="click-bot"
 caption="Click on 'ingestion-bot'" /%}
 
@@ -24,7 +24,7 @@ caption="Click on 'ingestion-bot'" /%}
 generated JWT Token by clicking the "**Revoke**" button:
 
 {% image
-src="/images/v1.2/how-to-guides/feature-configurations/bots/revoke-jwt-token.png"
+src="/images/v1.1/how-to-guides/feature-configurations/bots/revoke-jwt-token.png"
 alt="revoke-jwt-toke"
 caption="Revoke JWT Token" /%}
 
@@ -32,15 +32,14 @@ caption="Revoke JWT Token" /%}
 - Then, click on "**Generate New Token**":
 
 {% image
-src="/images/v1.2/how-to-guides/feature-configurations/bots/generate-new-token.png"
+src="/images/v1.1/how-to-guides/feature-configurations/bots/generate-new-token.png"
 alt="generate-new-token"
 caption="Generate New Token to edit" /%}
 
 
 - Select your configured SSO from the list. In this case, `Google SSO`.
 
-{% image
-src="/images/v1.2/how-to-guides/feature-configurations/bots/select-google-sso.png"
+{% image src="/images/v1.1/how-to-guides/feature-configurations/bots/select-google-sso.png"
 alt="select-google-sso"
 caption="Select 'Google SSO'" /%}
 
@@ -48,7 +47,7 @@ caption="Select 'Google SSO'" /%}
 bot.
 
 {% image
-src="/images/v1.2/how-to-guides/feature-configurations/bots/configure-bot.png"
+src="/images/v1.1/how-to-guides/feature-configurations/bots/configure-bot.png"
 alt="configure-bot"
 caption="Configure the ingestion-bot with your SSO values" /%}
 

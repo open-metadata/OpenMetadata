@@ -24,6 +24,7 @@ import {
   CONTAINER_DROPDOWN_ITEMS,
   DASHBOARD_DATA_MODEL_TYPE,
   DASHBOARD_DROPDOWN_ITEMS,
+  DATA_PRODUCT_DROPDOWN_ITEMS,
   GLOSSARY_DROPDOWN_ITEMS,
   PIPELINE_DROPDOWN_ITEMS,
   SEARCH_INDEX_DROPDOWN_ITEMS,
@@ -79,6 +80,8 @@ export const getDropDownItems = (index: string) => {
       return [...GLOSSARY_DROPDOWN_ITEMS];
     case SearchIndex.TAG:
       return [...TAG_DROPDOWN_ITEMS];
+    case SearchIndex.DATA_PRODUCT:
+      return [...DATA_PRODUCT_DROPDOWN_ITEMS];
 
     default:
       return [];

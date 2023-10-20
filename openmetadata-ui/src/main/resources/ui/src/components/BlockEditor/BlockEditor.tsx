@@ -121,6 +121,8 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
       const target = e.target as HTMLElement;
       const dataType = target.getAttribute('data-type');
 
+      let hasPopup = !isEmpty(popup);
+
       if (['mention', 'hashtag'].includes(dataType ?? '')) {
         return;
       }
@@ -133,13 +135,13 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
             href,
             handleLinkToggle: () => {
               handleLinkToggle();
-              if (!isEmpty(popup)) {
+              if (hasPopup) {
                 popup[0].hide();
               }
             },
             handleUnlink: () => {
               handleUnlink();
-              if (!isEmpty(popup)) {
+              if (hasPopup) {
                 popup[0].hide();
               }
             },
@@ -156,8 +158,9 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
           placement: 'top',
           hideOnClick: true,
         });
+        hasPopup = !isEmpty(popup);
       } else {
-        if (!isEmpty(popup)) {
+        if (hasPopup) {
           popup[0].hide();
         }
       }

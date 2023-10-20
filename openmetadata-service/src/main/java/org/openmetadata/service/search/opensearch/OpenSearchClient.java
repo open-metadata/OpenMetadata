@@ -11,14 +11,17 @@ import static org.openmetadata.service.search.EntityBuilderConstant.DATA_MODEL_C
 import static org.openmetadata.service.search.EntityBuilderConstant.DOMAIN_DISPLAY_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.ES_MESSAGE_SCHEMA_FIELD;
 import static org.openmetadata.service.search.EntityBuilderConstant.ES_TAG_FQN_FIELD;
+import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_COLUMN_NAMES;
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_AGGREGATE_SIZE;
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_RESULT_HITS;
 import static org.openmetadata.service.search.EntityBuilderConstant.OWNER_DISPLAY_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.POST_TAG;
 import static org.openmetadata.service.search.EntityBuilderConstant.PRE_TAG;
+import static org.openmetadata.service.search.EntityBuilderConstant.SCHEMA_FIELD_NAMES;
 import static org.openmetadata.service.search.EntityBuilderConstant.UNIFIED;
 import static org.openmetadata.service.search.UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -42,7 +45,6 @@ import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.openmetadata.schema.DataInsightInterface;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
 import org.openmetadata.service.search.SearchClient;
@@ -50,6 +52,7 @@ import org.openmetadata.service.search.SearchRequest;
 import org.openmetadata.service.search.indexes.ContainerIndex;
 import org.openmetadata.service.search.indexes.DashboardDataModelIndex;
 import org.openmetadata.service.search.indexes.DashboardIndex;
+import org.openmetadata.service.search.indexes.DataProductIndex;
 import org.openmetadata.service.search.indexes.DomainIndex;
 import org.openmetadata.service.search.indexes.GlossaryTermIndex;
 import org.openmetadata.service.search.indexes.MlModelIndex;
@@ -223,7 +226,8 @@ public class OpenSearchClient implements SearchClient {
   public void updateIndex(IndexMapping indexMapping, String indexMappingContent) {
     try {
       PutMappingRequest request = new PutMappingRequest(indexMapping.getIndexName());
-      request.source(indexMappingContent, XContentType.JSON);
+      JsonNode readProperties = JsonUtils.readTree(indexMappingContent).get("mappings");
+      request.source(JsonUtils.getMap(readProperties));
       AcknowledgedResponse putMappingResponse = client.indices().putMapping(request, RequestOptions.DEFAULT);
       LOG.debug("{} Updated {}", indexMapping.getIndexMappingFile(), putMappingResponse.isAcknowledged());
     } catch (Exception e) {
@@ -289,13 +293,16 @@ public class OpenSearchClient implements SearchClient {
       case "domain_search_index":
         searchSourceBuilder = buildDomainsSearch(request.getQuery(), request.getFrom(), request.getSize());
         break;
-      case "search_entity_index":
+      case "search_entity_search_index":
         searchSourceBuilder = buildSearchEntitySearch(request.getQuery(), request.getFrom(), request.getSize());
         break;
       case "raw_cost_analysis_report_data_index":
       case "aggregated_cost_analysis_report_data_index":
         searchSourceBuilder =
             buildCostAnalysisReportDataSearch(request.getQuery(), request.getFrom(), request.getSize());
+        break;
+      case "data_product_search_index":
+        searchSourceBuilder = buildDataProductSearch(request.getQuery(), request.getFrom(), request.getSize());
         break;
       default:
         searchSourceBuilder = buildAggregateSearchBuilder(request.getQuery(), request.getFrom(), request.getSize());
@@ -330,7 +337,7 @@ public class OpenSearchClient implements SearchClient {
 
     /* For backward-compatibility we continue supporting the deleted argument, this should be removed in future versions */
     if (request.getIndex().equalsIgnoreCase("domain_search_index")
-        || request.getIndex().equalsIgnoreCase("data_products_search_index")
+        || request.getIndex().equalsIgnoreCase("data_product_search_index")
         || request.getIndex().equalsIgnoreCase("query_search_index")
         || request.getIndex().equalsIgnoreCase("raw_cost_analysis_report_data_index")
         || request.getIndex().equalsIgnoreCase("aggregated_cost_analysis_report_data_index")) {
@@ -347,7 +354,10 @@ public class OpenSearchClient implements SearchClient {
     }
 
     if (request.getIndex().equalsIgnoreCase("glossary_term_search_index")) {
-      searchSourceBuilder.query(QueryBuilders.boolQuery().must(QueryBuilders.matchQuery("status", "Approved")));
+      searchSourceBuilder.query(
+          QueryBuilders.boolQuery()
+              .must(searchSourceBuilder.query())
+              .must(QueryBuilders.matchQuery("status", "Approved")));
     }
 
     /* for performance reasons OpenSearch doesn't provide accurate hits
@@ -539,7 +549,9 @@ public class OpenSearchClient implements SearchClient {
     hb.field(new HighlightBuilder.Field("messageSchema.schemaFields.description").highlighterType(UNIFIED));
     hb.field(new HighlightBuilder.Field("messageSchema.schemaFields.children.name").highlighterType(UNIFIED));
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
-    searchSourceBuilder.aggregation(AggregationBuilders.terms(ES_MESSAGE_SCHEMA_FIELD).field(ES_MESSAGE_SCHEMA_FIELD));
+    searchSourceBuilder
+        .aggregation(AggregationBuilders.terms(ES_MESSAGE_SCHEMA_FIELD).field(ES_MESSAGE_SCHEMA_FIELD))
+        .aggregation(AggregationBuilders.terms(SCHEMA_FIELD_NAMES).field(SCHEMA_FIELD_NAMES));
     return addAggregation(searchSourceBuilder);
   }
 
@@ -611,6 +623,7 @@ public class OpenSearchClient implements SearchClient {
     searchSourceBuilder
         .aggregation(AggregationBuilders.terms("databaseSchema.name.keyword").field("databaseSchema.name.keyword"))
         .aggregation(AggregationBuilders.terms(COLUMNS_NAME_KEYWORD).field(COLUMNS_NAME_KEYWORD))
+        .aggregation(AggregationBuilders.terms(FIELD_COLUMN_NAMES).field(FIELD_COLUMN_NAMES))
         .aggregation(AggregationBuilders.terms("tableType").field("tableType"));
     return addAggregation(searchSourceBuilder);
   }
@@ -705,8 +718,9 @@ public class OpenSearchClient implements SearchClient {
     hb.postTags(POST_TAG);
     SearchSourceBuilder searchSourceBuilder =
         new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
-    searchSourceBuilder.aggregation(
-        AggregationBuilders.terms(DATA_MODEL_COLUMNS_NAME_KEYWORD).field(DATA_MODEL_COLUMNS_NAME_KEYWORD));
+    searchSourceBuilder
+        .aggregation(AggregationBuilders.terms(DATA_MODEL_COLUMNS_NAME_KEYWORD).field(DATA_MODEL_COLUMNS_NAME_KEYWORD))
+        .aggregation(AggregationBuilders.terms(FIELD_COLUMN_NAMES).field(FIELD_COLUMN_NAMES));
     return addAggregation(searchSourceBuilder);
   }
 
@@ -804,7 +818,8 @@ public class OpenSearchClient implements SearchClient {
     searchSourceBuilder
         .aggregation(AggregationBuilders.terms("dataModelType").field("dataModelType"))
         .aggregation(AggregationBuilders.terms(COLUMNS_NAME_KEYWORD).field(COLUMNS_NAME_KEYWORD))
-        .aggregation(AggregationBuilders.terms("project.keyword").field("project.keyword"));
+        .aggregation(AggregationBuilders.terms("project.keyword").field("project.keyword"))
+        .aggregation(AggregationBuilders.terms(FIELD_COLUMN_NAMES).field(FIELD_COLUMN_NAMES));
     return addAggregation(searchSourceBuilder);
   }
 
@@ -845,9 +860,12 @@ public class OpenSearchClient implements SearchClient {
     highlightDescription.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightName = new HighlightBuilder.Field(FIELD_NAME);
     highlightName.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDisplayName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
+    highlightDisplayName.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
     hb.field(highlightDescription);
     hb.field(highlightName);
+    hb.field(highlightDisplayName);
 
     hb.preTags(PRE_TAG);
     hb.postTags(POST_TAG);
@@ -882,6 +900,32 @@ public class OpenSearchClient implements SearchClient {
                 .size(MAX_AGGREGATE_SIZE))
         .aggregation(AggregationBuilders.terms(ES_TAG_FQN_FIELD).field(ES_TAG_FQN_FIELD));
     return builder;
+  }
+
+  private static SearchSourceBuilder buildDataProductSearch(String query, int from, int size) {
+    QueryStringQueryBuilder queryBuilder =
+        QueryBuilders.queryStringQuery(query)
+            .fields(DataProductIndex.getFields())
+            .defaultOperator(Operator.AND)
+            .fuzziness(Fuzziness.AUTO);
+
+    HighlightBuilder hb = new HighlightBuilder();
+    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
+    highlightDescription.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightName = new HighlightBuilder.Field(FIELD_NAME);
+    highlightName.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDisplayName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
+    highlightDisplayName.highlighterType(UNIFIED);
+    hb.field(highlightDescription);
+    hb.field(highlightName);
+    hb.field(highlightDisplayName);
+
+    hb.preTags(PRE_TAG);
+    hb.postTags(POST_TAG);
+
+    SearchSourceBuilder searchSourceBuilder =
+        new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
+    return addAggregation(searchSourceBuilder);
   }
 
   private static SearchSourceBuilder searchBuilder(QueryBuilder queryBuilder, HighlightBuilder hb, int from, int size) {
@@ -988,7 +1032,7 @@ public class OpenSearchClient implements SearchClient {
 
   @Override
   public void updateChildren(
-      String indexName, Pair<String, String> fieldAndValue, Pair<String, EntityReference> updates) {
+      String indexName, Pair<String, String> fieldAndValue, Pair<String, Map<String, Object>> updates) {
     if (isClientAvailable) {
       UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexName);
       updateByQueryRequest.setQuery(new MatchQueryBuilder(fieldAndValue.getKey(), fieldAndValue.getValue()));
@@ -997,7 +1041,7 @@ public class OpenSearchClient implements SearchClient {
               ScriptType.INLINE,
               Script.DEFAULT_SCRIPT_LANG,
               updates.getKey(),
-              JsonUtils.getMap(updates.getValue() == null ? new HashMap<>() : updates.getValue()));
+              updates.getValue() == null ? new HashMap<>() : updates.getValue());
       updateByQueryRequest.setScript(script);
       updateOpenSearchByQuery(updateByQueryRequest);
     }

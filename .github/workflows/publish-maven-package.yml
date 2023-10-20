@@ -22,6 +22,7 @@ on:
       - "openmetadata-spec/src/main/resources/json/schema/**"
       - "openmetadata-clients/**"
       - "pom.xml"
+      - ".github/workflows/publish-maven-package.yml"
 
   release:
     types:

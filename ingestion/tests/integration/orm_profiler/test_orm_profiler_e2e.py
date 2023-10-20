@@ -24,7 +24,11 @@ from unittest import TestCase
 from sqlalchemy import Column, DateTime, Integer, String, create_engine
 from sqlalchemy.orm import declarative_base
 
-from metadata.generated.schema.entity.data.table import ProfileSampleType, Table
+from metadata.generated.schema.entity.data.table import (
+    ColumnProfile,
+    ProfileSampleType,
+    Table,
+)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -34,6 +38,10 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
 )
 from metadata.ingestion.connections.session import create_and_bind_session
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.time_utils import (
+    get_beginning_of_day_timestamp_mill,
+    get_end_of_day_timestamp_mill,
+)
 from metadata.workflow.metadata import MetadataWorkflow
 from metadata.workflow.profiler import ProfilerWorkflow
 from metadata.workflow.workflow_output_handler import print_status
@@ -576,3 +584,184 @@ class ProfilerWorkflowTest(TestCase):
         ).profile
 
         assert profile.rowCount == 4.0
+
+    def test_datalake_profiler_workflow_with_custom_profiler_config(self):
+        """Test custom profiler config return expected sample and metric computation"""
+        profiler_metrics = [
+            "MIN",
+            "MAX",
+            "MEAN",
+            "MEDIAN",
+        ]
+        id_metrics = ["MIN", "MAX"]
+        non_metric_values = ["name", "timestamp"]
+
+        workflow_config = deepcopy(ingestion_config)
+        workflow_config["source"]["sourceConfig"]["config"].update(
+            {
+                "type": "Profiler",
+            }
+        )
+        workflow_config["processor"] = {
+            "type": "orm-profiler",
+            "config": {
+                "profiler": {
+                    "name": "ingestion_profiler",
+                    "metrics": profiler_metrics,
+                },
+                "tableConfig": [
+                    {
+                        "fullyQualifiedName": "test_sqlite.main.main.users",
+                        "columnConfig": {
+                            "includeColumns": [
+                                {"columnName": "id", "metrics": id_metrics},
+                                {"columnName": "age"},
+                            ]
+                        },
+                    }
+                ],
+            },
+        }
+
+        profiler_workflow = ProfilerWorkflow.create(workflow_config)
+        profiler_workflow.execute()
+        status = profiler_workflow.result_status()
+        profiler_workflow.stop()
+
+        assert status == 0
+
+        table = self.metadata.get_by_name(
+            entity=Table,
+            fqn="test_sqlite.main.main.users",
+            fields=["tableProfilerConfig"],
+        )
+
+        id_profile = self.metadata.get_profile_data(
+            "test_sqlite.main.main.users.id",
+            get_beginning_of_day_timestamp_mill(),
+            get_end_of_day_timestamp_mill(),
+            profile_type=ColumnProfile,
+        ).entities
+
+        latest_id_profile = max(id_profile, key=lambda o: o.timestamp.__root__)
+
+        id_metric_ln = 0
+        for metric_name, metric in latest_id_profile:
+            if metric_name.upper() in id_metrics:
+                assert metric is not None
+                id_metric_ln += 1
+            else:
+                assert metric is None if metric_name not in non_metric_values else True
+
+        assert id_metric_ln == len(id_metrics)
+
+        age_profile = self.metadata.get_profile_data(
+            "test_sqlite.main.main.users.age",
+            get_beginning_of_day_timestamp_mill(),
+            get_end_of_day_timestamp_mill(),
+            profile_type=ColumnProfile,
+        ).entities
+
+        latest_age_profile = max(age_profile, key=lambda o: o.timestamp.__root__)
+
+        age_metric_ln = 0
+        for metric_name, metric in latest_age_profile:
+            if metric_name.upper() in profiler_metrics:
+                assert metric is not None
+                age_metric_ln += 1
+            else:
+                assert metric is None if metric_name not in non_metric_values else True
+
+        assert age_metric_ln == len(profiler_metrics)
+
+        latest_exc_timestamp = latest_age_profile.timestamp.__root__
+        fullname_profile = self.metadata.get_profile_data(
+            "test_sqlite.main.main.users.fullname",
+            get_beginning_of_day_timestamp_mill(),
+            get_end_of_day_timestamp_mill(),
+            profile_type=ColumnProfile,
+        ).entities
+
+        assert not [
+            p for p in fullname_profile if p.timestamp.__root__ == latest_exc_timestamp
+        ]
+
+        sample_data = self.metadata.get_sample_data(table)
+        assert sorted([c.__root__ for c in sample_data.sampleData.columns]) == sorted(
+            ["id", "age"]
+        )
+
+    def test_sample_data_ingestion(self):
+        """test the rows of the sample data are what we expect"""
+        workflow_config = deepcopy(ingestion_config)
+        workflow_config["source"]["sourceConfig"]["config"].update(
+            {
+                "type": "Profiler",
+                "tableFilterPattern": {"includes": ["users"]},
+            }
+        )
+        workflow_config["processor"] = {
+            "type": "orm-profiler",
+            "config": {
+                "profiler": {
+                    "name": "my_profiler",
+                    "timeout_seconds": 60,
+                    "metrics": ["row_count", "min", "max", "COUNT", "null_count"],
+                },
+                "tableConfig": [
+                    {
+                        "fullyQualifiedName": "test_sqlite.main.main.users",
+                    }
+                ],
+            },
+        }
+
+        profiler_workflow = ProfilerWorkflow.create(workflow_config)
+        profiler_workflow.execute()
+        status = profiler_workflow.result_status()
+        profiler_workflow.stop()
+
+        assert status == 0
+
+        table = self.metadata.get_by_name(
+            entity=Table,
+            fqn="test_sqlite.main.main.users",
+        )
+
+        # Test we are getting the expected sample data
+        expected_sample_data = [
+            [
+                1,
+                "John",
+                "John Doe",
+                "johnny b goode",
+                30,
+            ],
+            [
+                2,
+                "Jane",
+                "Jone Doe",
+                None,
+                31,
+            ],
+            [
+                3,
+                "Joh",
+                "Joh Doe",
+                None,
+                37,
+            ],
+            [
+                4,
+                "Jae",
+                "Jae Doe",
+                None,
+                38,
+            ],
+        ]
+        sample_data = self.metadata.get_sample_data(table).sampleData.rows
+        sample_data = [data[:-1] for data in sample_data]  # remove timestamp as dynamic
+        self.assertListEqual(
+            sorted(sample_data),
+            sorted(expected_sample_data),
+        )

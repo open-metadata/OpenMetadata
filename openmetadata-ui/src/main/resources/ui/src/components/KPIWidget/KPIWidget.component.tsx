@@ -32,7 +32,7 @@ import {
 } from '../../constants/constants';
 import { KPI_WIDGET_GRAPH_COLORS } from '../../constants/DataInsight.constants';
 import { DATA_INSIGHT_DOCS } from '../../constants/docs.constants';
-import { LandingPageWidgetKeys } from '../../enums/CustomizablePage.enum';
+import { WidgetWidths } from '../../enums/CustomizablePage.enum';
 import { Kpi, KpiResult } from '../../generated/dataInsight/kpi/kpi';
 import { UIKpiResult } from '../../interface/data-insight.interface';
 import {
@@ -88,6 +88,8 @@ const KPIWidget = ({
   isEditView = false,
   selectedDays = CHART_WIDGET_DAYS_DURATION,
   handleRemoveWidget,
+  widgetKey,
+  selectedGridSize = WidgetWidths.medium,
 }: KPIWidgetProps) => {
   const { t } = useTranslation();
   const [kpiList, setKpiList] = useState<Array<Kpi>>([]);
@@ -184,9 +186,13 @@ const KPIWidget = ({
   };
 
   const handleCloseClick = useCallback(() => {
-    !isUndefined(handleRemoveWidget) &&
-      handleRemoveWidget(LandingPageWidgetKeys.KPI);
-  }, []);
+    !isUndefined(handleRemoveWidget) && handleRemoveWidget(widgetKey);
+  }, [widgetKey]);
+
+  const isWidgetSizeMedium = useMemo(
+    () => selectedGridSize === WidgetWidths.medium,
+    [selectedGridSize]
+  );
 
   useEffect(() => {
     fetchKpiList().catch(() => {
@@ -212,34 +218,38 @@ const KPIWidget = ({
       data-testid="kpi-card"
       id="kpi-charts"
       loading={isKPIListLoading || isLoading}>
+      <Row justify="end">
+        <Col>
+          {isEditView && (
+            <Space align="center">
+              <DragOutlined
+                className="drag-widget-icon cursor-pointer"
+                size={14}
+              />
+              <CloseOutlined size={14} onClick={handleCloseClick} />
+            </Space>
+          )}
+        </Col>
+      </Row>
       <Row align="middle" justify="space-between">
         <Col>
           <Typography.Text className="font-medium">
             {t('label.kpi-title')}
           </Typography.Text>
         </Col>
-        {isEditView && (
-          <Space align="center">
-            <DragOutlined
-              className="drag-widget-icon cursor-pointer"
-              size={14}
-            />
-            <CloseOutlined size={14} onClick={handleCloseClick} />
-          </Space>
-        )}
       </Row>
       {kpiList.length > 0 ? (
-        <Row>
+        <Row className="p-t-md">
           {graphData.length ? (
             <>
-              <Col span={14}>
+              <Col span={isWidgetSizeMedium ? 14 : 24}>
                 <ResponsiveContainer debounce={1} height={250} width="100%">
                   <LineChart
                     data={graphData}
                     margin={{
                       top: 10,
-                      right: 50,
-                      left: -20,
+                      right: isWidgetSizeMedium ? 50 : 20,
+                      left: -30,
                       bottom: 0,
                     }}>
                     <CartesianGrid
@@ -259,16 +269,18 @@ const KPIWidget = ({
                   </LineChart>
                 </ResponsiveContainer>
               </Col>
-              {!isUndefined(kpiLatestResults) && !isEmpty(kpiLatestResults) && (
-                <Col span={10}>
-                  <KPILatestResultsV1
-                    kpiLatestResultsRecord={kpiLatestResults}
-                  />
-                </Col>
-              )}
+              {!isUndefined(kpiLatestResults) &&
+                !isEmpty(kpiLatestResults) &&
+                isWidgetSizeMedium && (
+                  <Col span={10}>
+                    <KPILatestResultsV1
+                      kpiLatestResultsRecord={kpiLatestResults}
+                    />
+                  </Col>
+                )}
             </>
           ) : (
-            <Col className="justify-center" span={24}>
+            <Col span={24}>
               <EmptyPlaceholder />
             </Col>
           )}

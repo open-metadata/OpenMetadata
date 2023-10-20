@@ -19,11 +19,11 @@ export enum WidgetWidths {
 
 export enum LandingPageWidgetKeys {
   ACTIVITY_FEED = 'KnowledgePanel.ActivityFeed',
-  RIGHT_PANEL = 'Container.RightSidebar',
   ANNOUNCEMENTS = 'KnowledgePanel.Announcements',
   FOLLOWING = 'KnowledgePanel.Following',
   RECENTLY_VIEWED = 'KnowledgePanel.RecentlyViewed',
   MY_DATA = 'KnowledgePanel.MyData',
   KPI = 'KnowledgePanel.KPI',
   TOTAL_DATA_ASSETS = 'KnowledgePanel.TotalAssets',
+  EMPTY_WIDGET_PLACEHOLDER = 'ExtraWidget.EmptyWidgetPlaceholder',
 }

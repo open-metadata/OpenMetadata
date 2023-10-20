@@ -12,8 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
-import { isEmpty, isNil, isUndefined } from 'lodash';
+import { isEmpty, isNil } from 'lodash';
 import React, {
   useCallback,
   useEffect,
@@ -21,40 +20,39 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { Responsive, WidthProvider } from 'react-grid-layout';
+import RGL, { WidthProvider } from 'react-grid-layout';
+import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import AppState from '../../AppState';
 import ActivityFeedProvider from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { useApplicationConfigContext } from '../../components/ApplicationConfigProvider/ApplicationConfigProvider';
 import { useAuthContext } from '../../components/authentication/auth-provider/AuthProvider';
-import KPIWidget from '../../components/KPIWidget/KPIWidget.component';
+import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import Loader from '../../components/Loader/Loader';
-import { MyDataWidget } from '../../components/MyData/MyDataWidget/MyDataWidget.component';
-import RightSidebar from '../../components/MyData/RightSidebar/RightSidebar.component';
-import TotalDataAssetsWidget from '../../components/TotalDataAssetsWidget/TotalDataAssetsWidget.component';
 import WelcomeScreen from '../../components/WelcomeScreen/WelcomeScreen.component';
-import FeedsWidget from '../../components/Widgets/FeedsWidget/FeedsWidget.component';
 import { LOGGED_IN_USER_STORAGE_KEY } from '../../constants/constants';
-import {
-  LANDING_PAGE_LAYOUT,
-  LANDING_PAGE_WIDGET_MARGIN,
-} from '../../constants/CustomisePage.constants';
-import { LandingPageWidgetKeys } from '../../enums/CustomizablePage.enum';
 import { AssetsType, EntityType } from '../../enums/entity.enum';
+import { Thread } from '../../generated/entity/feed/thread';
 import { PageType } from '../../generated/system/ui/page';
 import { EntityReference } from '../../generated/type/entityReference';
 import { useAuth } from '../../hooks/authHooks';
 import { getDocumentByFQN } from '../../rest/DocStoreAPI';
+import { getActiveAnnouncement } from '../../rest/feedsAPI';
 import { getUserById } from '../../rest/userAPI';
+import { getWidgetFromKey } from '../../utils/CustomizableLandingPageUtils';
+import customizePageClassBase from '../../utils/CustomizePageClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { WidgetConfig } from '../CustomisablePages/CustomisablePage.interface';
+import { WidgetConfig } from '../CustomizablePage/CustomizablePage.interface';
 import './my-data.less';
 
-const ResponsiveGridLayout = WidthProvider(Responsive);
+const ReactGridLayout = WidthProvider(RGL);
 
 const MyDataPageV1 = () => {
   const location = useLocation();
+  const { t } = useTranslation();
   const { isAuthDisabled } = useAuth(location.pathname);
   const { currentUser } = useAuthContext();
+  const { selectedPersona } = useApplicationConfigContext();
   const [followedData, setFollowedData] = useState<Array<EntityReference>>();
   const [followedDataCount, setFollowedDataCount] = useState(0);
   const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(false);
@@ -62,6 +60,9 @@ const MyDataPageV1 = () => {
   const [layout, setLayout] = useState<Array<WidgetConfig>>([]);
   const isMounted = useRef(false);
   const [showWelcomeScreen, setShowWelcomeScreen] = useState(false);
+  const [isAnnouncementLoading, setIsAnnouncementLoading] =
+    useState<boolean>(true);
+  const [announcements, setAnnouncements] = useState<Thread[]>([]);
   const storageData = localStorage.getItem(LOGGED_IN_USER_STORAGE_KEY);
 
   const loggedInUserName = useMemo(() => {
@@ -74,26 +75,18 @@ const MyDataPageV1 = () => {
       : false;
   }, [storageData, loggedInUserName]);
 
-  const userPersona = useMemo(
-    () =>
-      currentUser?.personas?.find(
-        (persona) => currentUser?.defaultPersona?.id === persona.id
-      ),
-    [currentUser]
-  );
-
   const fetchDocument = async () => {
     try {
       setIsLoading(true);
-      if (!isUndefined(userPersona)) {
-        const pageFQN = `${EntityType.PERSONA}.${userPersona.fullyQualifiedName}.${EntityType.PAGE}.${PageType.LandingPage}`;
+      if (!isEmpty(selectedPersona)) {
+        const pageFQN = `${EntityType.PERSONA}.${selectedPersona.fullyQualifiedName}.${EntityType.PAGE}.${PageType.LandingPage}`;
         const pageData = await getDocumentByFQN(pageFQN);
         setLayout(pageData.data.page.layout);
       } else {
-        setLayout(LANDING_PAGE_LAYOUT);
+        setLayout(customizePageClassBase.defaultLayout);
       }
     } catch {
-      setLayout(LANDING_PAGE_LAYOUT);
+      setLayout(customizePageClassBase.defaultLayout);
     } finally {
       setIsLoading(false);
     }
@@ -111,9 +104,12 @@ const MyDataPageV1 = () => {
   };
 
   useEffect(() => {
+    fetchDocument();
+  }, [selectedPersona]);
+
+  useEffect(() => {
     isMounted.current = true;
     updateWelcomeScreen(!usernameExistsInCookie);
-    fetchDocument();
 
     return () => updateWelcomeScreen(false);
   }, []);
@@ -149,62 +145,49 @@ const MyDataPageV1 = () => {
         !isEmpty(AppState.userDetails)) &&
       isNil(followedData)
     ) {
-      fetchMyData().catch(() => {
-        // ignore since error is displayed in toast in the parent promise.
-        // Added block for sonar code smell
-      });
+      fetchMyData();
     }
   }, [AppState.userDetails, AppState.users, isAuthDisabled]);
-
-  const getWidgetFromKey = useCallback(
-    (widgetConfig: WidgetConfig) => {
-      switch (widgetConfig.i) {
-        case LandingPageWidgetKeys.ACTIVITY_FEED:
-          return <FeedsWidget />;
-
-        case LandingPageWidgetKeys.MY_DATA:
-          return <MyDataWidget />;
-
-        case LandingPageWidgetKeys.KPI:
-          return <KPIWidget />;
-
-        case LandingPageWidgetKeys.TOTAL_DATA_ASSETS:
-          return <TotalDataAssetsWidget />;
-
-        case LandingPageWidgetKeys.RIGHT_PANEL:
-          return (
-            <div className="h-full border-left">
-              <RightSidebar
-                followedData={followedData ?? []}
-                followedDataCount={followedDataCount}
-                isLoadingOwnedData={isLoadingOwnedData}
-                layoutConfigData={widgetConfig.data}
-                parentLayoutData={layout}
-              />
-            </div>
-          );
-
-        default:
-          return;
-      }
-    },
-    [followedData, followedDataCount, isLoadingOwnedData, layout]
-  );
 
   const widgets = useMemo(
     () =>
       layout.map((widget) => (
-        <div
-          className={classNames({
-            'mt--1': widget.i === LandingPageWidgetKeys.RIGHT_PANEL,
+        <div data-grid={widget} key={widget.i}>
+          {getWidgetFromKey({
+            announcements: announcements,
+            followedData: followedData ?? [],
+            followedDataCount: followedDataCount,
+            isLoadingOwnedData: isLoadingOwnedData,
+            widgetConfig: widget,
           })}
-          data-grid={widget}
-          key={widget.i}>
-          {getWidgetFromKey(widget)}
         </div>
       )),
-    [layout, getWidgetFromKey]
+    [
+      layout,
+      isAnnouncementLoading,
+      announcements,
+      followedData,
+      followedDataCount,
+      isLoadingOwnedData,
+    ]
   );
+
+  const fetchAnnouncements = useCallback(async () => {
+    try {
+      setIsAnnouncementLoading(true);
+      const response = await getActiveAnnouncement();
+
+      setAnnouncements(response.data);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsAnnouncementLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAnnouncements();
+  }, []);
 
   if (showWelcomeScreen) {
     return (
@@ -215,25 +198,28 @@ const MyDataPageV1 = () => {
   }
 
   return (
-    <div className="bg-white h-full">
-      <ActivityFeedProvider>
+    <ActivityFeedProvider>
+      <PageLayoutV1
+        mainContainerClassName="p-t-0"
+        pageTitle={t('label.my-data')}>
         {isLoading ? (
           <Loader />
         ) : (
-          <ResponsiveGridLayout
-            autoSize
-            breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
+          <ReactGridLayout
             className="bg-white"
-            cols={{ lg: 4, md: 4, sm: 4, xs: 4, xxs: 4 }}
-            draggableHandle=".drag-widget-icon"
+            cols={4}
+            isDraggable={false}
             isResizable={false}
-            margin={[LANDING_PAGE_WIDGET_MARGIN, LANDING_PAGE_WIDGET_MARGIN]}
+            margin={[
+              customizePageClassBase.landingPageWidgetMargin,
+              customizePageClassBase.landingPageWidgetMargin,
+            ]}
             rowHeight={100}>
             {widgets}
-          </ResponsiveGridLayout>
+          </ReactGridLayout>
         )}
-      </ActivityFeedProvider>
-    </div>
+      </PageLayoutV1>
+    </ActivityFeedProvider>
   );
 };
 

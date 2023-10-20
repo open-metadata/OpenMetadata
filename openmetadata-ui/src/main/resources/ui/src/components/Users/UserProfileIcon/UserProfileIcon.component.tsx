@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 import { CheckOutlined } from '@ant-design/icons';
-import { Dropdown, Tag, Typography } from 'antd';
+import { Dropdown, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
-import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import React, {
   ReactNode,
@@ -33,11 +32,12 @@ import {
   TERM_USER,
 } from '../../../constants/constants';
 import { EntityReference } from '../../../generated/entity/type';
-import { updateUserDetail } from '../../../rest/userAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
+import { useApplicationConfigContext } from '../../ApplicationConfigProvider/ApplicationConfigProvider';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import Avatar from '../../common/avatar/Avatar';
+import './user-profile-icon.less';
 
 type ListMenuItemProps = {
   listItems: EntityReference[];
@@ -80,7 +80,9 @@ const renderLimitedListMenuItem = ({
 };
 
 export const UserProfileIcon = () => {
-  const { currentUser, onLogoutHandler, updateCurrentUser } = useAuthContext();
+  const { currentUser, onLogoutHandler } = useAuthContext();
+  const { selectedPersona, updateSelectedPersona } =
+    useApplicationConfigContext();
   const [isImgUrlValid, setIsImgUrlValid] = useState<boolean>(true);
   const { t } = useTranslation();
   const profilePicture = useMemo(
@@ -90,23 +92,15 @@ export const UserProfileIcon = () => {
 
   const handleOnImageError = useCallback(() => {
     setIsImgUrlValid(false);
+
+    return false;
   }, []);
 
-  const handleDefaultPersonaChange = async (persona: EntityReference) => {
+  const handleSelectedPersonaChange = async (persona: EntityReference) => {
     if (!currentUser) {
       return;
     }
-    const operations = compare(currentUser, {
-      ...currentUser,
-      defaultPersona: { id: persona.id, type: 'persona' },
-    });
-
-    try {
-      const updatedUser = await updateUserDetail(currentUser.id, operations);
-      updateCurrentUser(updatedUser);
-    } catch (error) {
-      // Error
-    }
+    updateSelectedPersona(persona);
   };
 
   useEffect(() => {
@@ -115,51 +109,39 @@ export const UserProfileIcon = () => {
     }
   }, [profilePicture]);
 
-  const { userName, defaultPersona, teams, roles, inheritedRoles, personas } =
-    useMemo(() => {
-      const userName =
-        currentUser?.displayName ?? currentUser?.name ?? TERM_USER;
-      const defaultPersona = currentUser?.personas?.find(
-        (persona) => persona.id === currentUser.defaultPersona?.id
-      );
+  const { userName, teams, roles, inheritedRoles, personas } = useMemo(() => {
+    const userName = currentUser?.displayName ?? currentUser?.name ?? TERM_USER;
 
-      return {
-        userName,
-        defaultPersona,
-        roles: currentUser?.isAdmin
-          ? [
-              ...(currentUser?.roles ?? []),
-              { name: TERM_ADMIN, type: 'role' } as EntityReference,
-            ]
-          : currentUser?.roles,
-        teams: currentUser?.teams,
-        inheritedRoles: currentUser?.inheritedRoles,
-        personas: currentUser?.personas,
-      };
-    }, [currentUser]);
-
-  const readMoreTag = (count: number) => (
-    <Tag>
-      {count} {t('label.more')}
-    </Tag>
-  );
+    return {
+      userName,
+      roles: currentUser?.isAdmin
+        ? [
+            ...(currentUser?.roles ?? []),
+            { name: TERM_ADMIN, type: 'role' } as EntityReference,
+          ]
+        : currentUser?.roles,
+      teams: currentUser?.teams,
+      inheritedRoles: currentUser?.inheritedRoles,
+      personas: currentUser?.personas,
+    };
+  }, [currentUser]);
 
   const personaLabelRenderer = useCallback(
     (item: EntityReference) => (
-      <span onClick={() => handleDefaultPersonaChange(item)}>
+      <span onClick={() => handleSelectedPersonaChange(item)}>
         {getEntityName(item)}{' '}
-        {defaultPersona?.id === item.id && (
+        {selectedPersona?.id === item.id && (
           <CheckOutlined className="m-l-xs" style={{ color: '#4CAF50' }} />
         )}
       </span>
     ),
-    [handleDefaultPersonaChange, defaultPersona]
+    [handleSelectedPersonaChange, selectedPersona]
   );
 
   const teamLabelRenderer = useCallback(
     (item) => (
       <Link
-        className="ant-typography-ellipsis-custom text-sm m-b-0"
+        className="ant-typography-ellipsis-custom text-sm m-b-0 p-0"
         component={Typography.Link}
         to={getTeamAndUserDetailsPath(item.name as string)}>
         {getEntityName(item)}
@@ -206,11 +188,13 @@ export const UserProfileIcon = () => {
         children: renderLimitedListMenuItem({
           listItems: roles ?? [],
           labelRenderer: getEntityName,
-          readMoreLabelRenderer: readMoreTag,
+          readMoreLabelRenderer: readMoreTeamRenderer,
           readMoreKey: 'more-roles',
         }),
         label: (
-          <span className="text-grey-muted">{i18n.t('label.role-plural')}</span>
+          <span className="text-grey-muted text-xs">
+            {i18n.t('label.role-plural')}
+          </span>
         ),
         type: 'group',
       },
@@ -223,11 +207,11 @@ export const UserProfileIcon = () => {
         children: renderLimitedListMenuItem({
           listItems: inheritedRoles ?? [],
           labelRenderer: getEntityName,
-          readMoreLabelRenderer: readMoreTag,
+          readMoreLabelRenderer: readMoreTeamRenderer,
           readMoreKey: 'more-inherited-roles',
         }),
         label: (
-          <span className="text-grey-muted">
+          <span className="text-grey-muted text-xs">
             {i18n.t('label.inherited-role-plural')}
           </span>
         ),
@@ -243,10 +227,10 @@ export const UserProfileIcon = () => {
           listItems: personas ?? [],
           readMoreKey: 'more-persona',
           labelRenderer: personaLabelRenderer,
-          readMoreLabelRenderer: readMoreTag,
+          readMoreLabelRenderer: readMoreTeamRenderer,
         }),
         label: (
-          <span className="text-grey-muted">
+          <span className="text-grey-muted text-xs">
             {i18n.t('label.persona-plural')}
           </span>
         ),
@@ -265,7 +249,9 @@ export const UserProfileIcon = () => {
           readMoreLabelRenderer: readMoreTeamRenderer,
         }),
         label: (
-          <span className="text-grey-muted">{i18n.t('label.team-plural')}</span>
+          <span className="text-grey-muted text-xs">
+            {i18n.t('label.team-plural')}
+          </span>
         ),
         type: 'group',
       },
@@ -285,40 +271,48 @@ export const UserProfileIcon = () => {
         type: 'group',
       },
     ],
-    [currentUser, userName, defaultPersona, teams, roles, personas]
+    [currentUser, userName, selectedPersona, teams, roles, personas]
   );
+
+  useEffect(() => {
+    updateSelectedPersona(
+      currentUser?.defaultPersona ?? ({} as EntityReference)
+    );
+  }, [currentUser?.defaultPersona]);
 
   return (
     <Dropdown
       menu={{
         items,
         defaultOpenKeys: ['personas', 'roles', 'inheritedRoles', 'teams'],
+        rootClassName: 'profile-dropdown',
       }}
       trigger={['click']}>
-      <div className="app-user-icon">
+      <div className="app-user-icon" data-testid="dropdown-profile">
         <div className="d-flex gap-2 w-40 items-center">
           {isImgUrlValid ? (
             <img
               alt="user"
-              className="profile-image circle"
+              className="app-bar-user-avatar"
               referrerPolicy="no-referrer"
               src={profilePicture ?? ''}
-              width={36}
               onError={handleOnImageError}
             />
           ) : (
             <Avatar name={userName} type="circle" width="36" />
           )}
           <div className="d-flex flex-col">
-            <Typography.Text className="usename">
-              {getEntityName(currentUser)}
-            </Typography.Text>
+            <Tooltip title={getEntityName(currentUser)}>
+              <Typography.Text className="username truncate w-max-112">
+                {getEntityName(currentUser)}
+              </Typography.Text>
+            </Tooltip>
             <Typography.Text
-              className="text-grey-muted text-xs"
+              className="text-grey-muted text-xs w-28"
               ellipsis={{ tooltip: true }}>
-              {defaultPersona
-                ? getEntityName(defaultPersona)
-                : t('label.default')}
+              {isEmpty(selectedPersona)
+                ? t('label.default')
+                : getEntityName(selectedPersona)}
             </Typography.Text>
           </div>
         </div>

@@ -92,6 +92,9 @@
           }
         ]
       },
+      "column_suggest": {
+        "type": "completion"
+      },
       "owner": {
         "properties": {
           "id": {
@@ -135,6 +138,25 @@
           },
           "href": {
             "type": "text"
+          }
+        }
+      },
+      "tier": {
+        "properties": {
+          "tagFQN": {
+            "type": "keyword"
+          },
+          "labelType": {
+            "type": "keyword"
+          },
+          "description": {
+            "type": "text"
+          },
+          "source": {
+            "type": "keyword"
+          },
+          "state": {
+            "type": "keyword"
           }
         }
       },
@@ -257,6 +279,9 @@
             "type": "integer"
           }
         }
+      },
+      "columnNames": {
+        "type": "keyword"
       },
       "project": {
         "type": "text",

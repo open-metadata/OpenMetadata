@@ -130,8 +130,8 @@ MOCK_CREATE_TABLE = [
             Column(
                 name="address",
                 displayName="address",
-                dataType=DataType.RECORD,
-                dataTypeDisplay=DataType.RECORD.value,
+                dataType=DataType.JSON,
+                dataTypeDisplay=DataType.JSON.value,
                 children=[
                     Column(
                         name="line",

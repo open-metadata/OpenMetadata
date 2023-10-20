@@ -22,7 +22,10 @@ import { ReactComponent as IconComments } from '../../../assets/svg/comment.svg'
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconRequest } from '../../../assets/svg/request-icon.svg';
 import { TableTagsProps } from '../../../components/TableTags/TableTags.interface';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import {
+  DE_ACTIVE_COLOR,
+  KNOWLEDGE_CENTER_CLASSIFICATION,
+} from '../../../constants/constants';
 import { TAG_CONSTANT, TAG_START_WITH } from '../../../constants/Tag.constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
@@ -40,10 +43,12 @@ import {
   getRequestTagsPath,
   getUpdateTagsPath,
 } from '../../../utils/TasksUtils';
+import { SelectOption } from '../../AsyncSelectList/AsyncSelectList.interface';
 import TagSelectForm from '../TagsSelectForm/TagsSelectForm.component';
 import TagsV1 from '../TagsV1/TagsV1.component';
 import TagsViewer from '../TagsViewer/TagsViewer';
 import { LayoutType } from '../TagsViewer/TagsViewer.interface';
+import './tags-container.style.less';
 import { TagsContainerV2Props } from './TagsContainerV2.interface';
 
 const TagsContainerV2 = ({
@@ -61,6 +66,7 @@ const TagsContainerV2 = ({
   onSelectionChange,
   onThreadLinkSelect,
   children,
+  filterClassifications = [KNOWLEDGE_CENTER_CLASSIFICATION],
 }: TagsContainerV2Props) => {
   const history = useHistory();
   const [form] = Form.useForm();
@@ -74,11 +80,17 @@ const TagsContainerV2 = ({
     showAddTagButton,
     selectedTagsInternal,
     isHoriZontalLayout,
+    initialOptions,
   } = useMemo(
     () => ({
       isGlossaryType: tagType === TagSource.Glossary,
       showAddTagButton: permission && isEmpty(tags?.[tagType]),
       selectedTagsInternal: tags?.[tagType].map(({ tagFQN }) => tagFQN),
+      initialOptions: tags?.[tagType].map((data) => ({
+        label: data.tagFQN,
+        value: data.tagFQN,
+        data,
+      })) as SelectOption[],
       isHoriZontalLayout: layoutType === LayoutType.HORIZONTAL,
     }),
     [tagType, permission, tags?.[tagType], tags, layoutType]
@@ -97,7 +109,7 @@ const TagsContainerV2 = ({
       paging: Paging;
     }> => {
       const glossaryResponse = await searchQuery({
-        query: searchQueryParam ? searchQueryParam : '*',
+        query: searchQueryParam ? `*${searchQueryParam}*` : '*',
         pageNumber: page,
         pageSize: 10,
         queryFilter: {},
@@ -123,7 +135,7 @@ const TagsContainerV2 = ({
   const fetchAPI = useCallback(
     (searchValue: string, page: number) => {
       if (tagType === TagSource.Classification) {
-        return fetchTagsElasticSearch(searchValue, page);
+        return fetchTagsElasticSearch(searchValue, page, filterClassifications);
       } else {
         return fetchGlossaryList(searchValue, page);
       }
@@ -207,6 +219,7 @@ const TagsContainerV2 = ({
         defaultValue={selectedTagsInternal ?? []}
         fetchApi={fetchAPI}
         placeholder={getTagPlaceholder(isGlossaryType)}
+        tagData={initialOptions}
         onCancel={handleCancel}
         onSubmit={handleSave}
       />
@@ -218,6 +231,7 @@ const TagsContainerV2 = ({
     fetchAPI,
     handleCancel,
     handleSave,
+    initialOptions,
   ]);
 
   const handleTagsTask = (hasTags: boolean) => {
@@ -395,15 +409,17 @@ const TagsContainerV2 = ({
 
   return (
     <div
-      className="w-full"
+      className="w-full tags-container"
       data-testid={isGlossaryType ? 'glossary-container' : 'tags-container'}>
       {header}
       {tagBody}
 
-      <Space align="baseline" className="m-t-xs w-full" size="middle">
-        {showBottomEditButton && !showInlineEditButton && editTagButton}
-        {children}
-      </Space>
+      {(children || showBottomEditButton) && (
+        <Space align="baseline" className="m-t-xs w-full" size="middle">
+          {showBottomEditButton && !showInlineEditButton && editTagButton}
+          {children}
+        </Space>
+      )}
     </div>
   );
 };
