@@ -123,7 +123,7 @@ const GlossaryPage = () => {
     setIsLoading(true);
     try {
       const { data } = await getGlossariesList({
-        fields: 'owner,tags,reviewers,votes',
+        fields: 'owner,tags,reviewers,votes,domain',
         limit: PAGE_SIZE_LARGE,
       });
       setGlossaries(data);

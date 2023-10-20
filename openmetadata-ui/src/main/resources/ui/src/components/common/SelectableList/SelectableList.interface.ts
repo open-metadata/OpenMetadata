@@ -27,4 +27,5 @@ export interface SelectableListProps {
   customTagRenderer?: (props: EntityReference) => ReactNode;
   searchBarDataTestId?: string;
   removeIconTooltipLabel?: string;
+  emptyPlaceholderText?: ReactNode;
 }

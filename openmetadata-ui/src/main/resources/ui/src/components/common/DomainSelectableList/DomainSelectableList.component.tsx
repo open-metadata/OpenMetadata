@@ -26,10 +26,12 @@ import { EntityReference } from '../../../generated/entity/type';
 import { getDomainList } from '../../../rest/domainAPI';
 import { searchData } from '../../../rest/miscAPI';
 import { formatDomainsResponse } from '../../../utils/APIUtils';
+import { Transi18next } from '../../../utils/CommonUtils';
 import {
   getEntityName,
   getEntityReferenceListFromEntities,
 } from '../../../utils/EntityUtils';
+import { getDomainPath } from '../../../utils/RouterUtils';
 import { SelectableList } from '../SelectableList/SelectableList.component';
 import './domain-select-dropdown.less';
 import { DomainSelectableListProps } from './DomainSelectableList.interface';
@@ -111,6 +113,22 @@ const DomainSelectableList = ({
       content={
         <SelectableList
           customTagRenderer={DomainListItemRenderer}
+          emptyPlaceholderText={
+            <Transi18next
+              i18nKey="message.no-domain-available"
+              renderElement={
+                <a
+                  href={getDomainPath()}
+                  rel="noreferrer"
+                  style={{ color: '#1890ff' }}
+                  target="_blank"
+                />
+              }
+              values={{
+                link: t('label.domain-plural'),
+              }}
+            />
+          }
           fetchOptions={fetchOptions}
           multiSelect={false}
           removeIconTooltipLabel={t('label.remove-entity', {

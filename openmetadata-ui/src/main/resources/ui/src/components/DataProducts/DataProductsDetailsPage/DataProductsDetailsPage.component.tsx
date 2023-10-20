@@ -562,6 +562,9 @@ const DataProductsDetailsPage = ({
       />
 
       <AssetSelectionModal
+        emptyPlaceHolderText={t('message.domain-does-not-have-assets', {
+          name: getEntityName(dataProduct.domain),
+        })}
         entityFqn={dataProductFqn}
         open={assetModalVisible}
         queryFilter={getQueryFilterToIncludeDomain(

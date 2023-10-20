@@ -15,19 +15,21 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Divider, Form, Input, Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, last } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import { EMAIL_REG_EX } from '../../../../constants/regex.constants';
+import { EntityType } from '../../../../enums/entity.enum';
 import { Team, TeamType } from '../../../../generated/entity/teams/team';
 import { EntityReference } from '../../../../generated/entity/type';
 import { useAuth } from '../../../../hooks/authHooks';
-import { hasEditAccess } from '../../../../utils/CommonUtils';
 import { useAuthContext } from '../../../authentication/auth-provider/AuthProvider';
+import { DomainLabel } from '../../../common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import TeamTypeSelect from '../../../common/TeamTypeSelect/TeamTypeSelect.component';
-import { TeamsInfoProps } from '../team.interface';
+import { SubscriptionWebhook, TeamsInfoProps } from '../team.interface';
+import TeamsSubscription from './TeamsSubscription.component';
 
 const TeamsInfo = ({
   parentTeams,
@@ -42,47 +44,30 @@ const TeamsInfo = ({
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
 
-  const [isHeadingEditing, setIsHeadingEditing] = useState(false);
   const [isEmailEdit, setIsEmailEdit] = useState<boolean>(false);
   const [showTypeSelector, setShowTypeSelector] = useState(false);
-  const [heading, setHeading] = useState(
-    currentTeam ? currentTeam.displayName : ''
+
+  const { currentUser } = useAuthContext();
+
+  const { email, owner, teamType, id, fullyQualifiedName } = useMemo(
+    () => currentTeam,
+    [currentTeam]
   );
 
-  const { email, owner, teamType } = useMemo(() => currentTeam, [currentTeam]);
+  const { hasEditPermission, hasAccess } = useMemo(
+    () => ({
+      hasEditPermission: entityPermissions.EditAll,
+      hasAccess: isAuthDisabled || isAdminUser,
+    }),
 
-  const { hasEditPermission, hasEditDisplayNamePermission, hasAccess } =
-    useMemo(
-      () => ({
-        hasEditPermission: entityPermissions.EditAll,
-        hasEditDisplayNamePermission:
-          entityPermissions.EditDisplayName || entityPermissions.EditAll,
-        hasAccess: isAuthDisabled || isAdminUser,
-      }),
-
-      [entityPermissions]
-    );
-
-  /**
-   * Check if current team is the owner or not
-   * @returns - True true or false based on hasEditAccess response
-   */
-  const isCurrentTeamOwner = useMemo(
-    () => hasEditAccess(owner?.type ?? '', owner?.id ?? ''),
-    [owner]
+    [entityPermissions]
   );
 
-  const onHeadingSave = async (): Promise<void> => {
-    if (heading && currentTeam) {
-      const updatedData: Team = {
-        ...currentTeam,
-        displayName: heading,
-      };
-
-      await updateTeamHandler(updatedData);
-    }
-    setIsHeadingEditing(false);
-  };
+  const hasEditSubscriptionPermission = useMemo(
+    () =>
+      entityPermissions.EditAll || currentTeam.owner?.id === currentUser?.id,
+    [entityPermissions, currentTeam, currentUser]
+  );
 
   const onEmailSave = async (data: { email: string }) => {
     if (currentTeam) {
@@ -123,70 +108,22 @@ const TeamsInfo = ({
     }
   };
 
-  const teamHeadingRender = useMemo(
-    () =>
-      isHeadingEditing ? (
-        <Space>
-          <Input
-            className="w-48"
-            data-testid="team-name-input"
-            placeholder={t('message.enter-comma-separated-field', {
-              field: t('label.term-lowercase'),
-            })}
-            type="text"
-            value={heading}
-            onChange={(e) => setHeading(e.target.value)}
-          />
-          <Space data-testid="buttons" size={4}>
-            <Button
-              className="rounded-4 text-sm p-xss"
-              data-testid="cancelAssociatedTag"
-              type="primary"
-              onMouseDown={() => setIsHeadingEditing(false)}>
-              <CloseOutlined />
-            </Button>
-            <Button
-              className="rounded-4 text-sm p-xss"
-              data-testid="saveAssociatedTag"
-              type="primary"
-              onMouseDown={onHeadingSave}>
-              <CheckOutlined />
-            </Button>
-          </Space>
-        </Space>
-      ) : (
-        <Space align="baseline">
-          <Typography.Title
-            className="m-b-0 w-max-200"
-            data-testid="team-heading"
-            ellipsis={{ tooltip: true }}
-            level={5}>
-            {heading}
-          </Typography.Title>
-          {(hasAccess || isCurrentTeamOwner) && (
-            <Tooltip
-              placement="right"
-              title={
-                hasEditDisplayNamePermission
-                  ? t('label.edit-entity', {
-                      entity: t('label.display-name'),
-                    })
-                  : t('message.no-permission-for-action')
-              }>
-              <Icon
-                className="align-middle"
-                component={EditIcon}
-                data-testid="edit-team-name"
-                disabled={!hasEditDisplayNamePermission}
-                style={{ fontSize: '16px' }}
-                onClick={() => setIsHeadingEditing(true)}
-              />
-            </Tooltip>
-          )}
-        </Space>
-      ),
-    [heading, isHeadingEditing, hasEditDisplayNamePermission]
-  );
+  const updateTeamSubscription = async (data?: SubscriptionWebhook) => {
+    if (currentTeam) {
+      const updatedData: Team = {
+        ...currentTeam,
+        profile: {
+          subscription: isEmpty(data)
+            ? undefined
+            : {
+                [data?.webhook ?? '']: { endpoint: data?.endpoint },
+              },
+        },
+      };
+
+      await updateTeamHandler(updatedData);
+    }
+  };
 
   const emailRender = useMemo(
     () => (
@@ -329,15 +266,15 @@ const TeamsInfo = ({
     setShowTypeSelector,
   ]);
 
-  useEffect(() => {
-    if (currentTeam) {
-      setHeading(currentTeam.displayName ?? currentTeam.name);
-    }
-  }, [currentTeam]);
-
   return (
-    <Space size={4}>
-      {teamHeadingRender}
+    <Space size={0}>
+      <DomainLabel
+        domain={currentTeam.domain}
+        entityFqn={fullyQualifiedName ?? ''}
+        entityId={id ?? ''}
+        entityType={EntityType.TEAM}
+        hasPermission={hasEditPermission}
+      />
       <Divider type="vertical" />
       <OwnerLabel
         className="text-sm"
@@ -347,6 +284,13 @@ const TeamsInfo = ({
       />
       <Divider type="vertical" />
       {emailRender}
+
+      <Divider type="vertical" />
+      <TeamsSubscription
+        hasEditPermission={hasEditSubscriptionPermission}
+        subscription={currentTeam.profile?.subscription}
+        updateTeamSubscription={updateTeamSubscription}
+      />
       {teamTypeElement}
     </Space>
   );

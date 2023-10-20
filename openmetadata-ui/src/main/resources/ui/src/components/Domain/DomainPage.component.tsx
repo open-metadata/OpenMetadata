@@ -179,10 +179,11 @@ const DomainPage = () => {
         type={
           createDomainPermission
             ? ERROR_PLACEHOLDER_TYPE.CREATE
-            : ERROR_PLACEHOLDER_TYPE.NO_DATA
+            : ERROR_PLACEHOLDER_TYPE.CUSTOM
         }
-        onClick={handleAddDomainClick}
-      />
+        onClick={handleAddDomainClick}>
+        {t('message.domains-not-configured')}
+      </ErrorPlaceHolder>
     );
   }
 

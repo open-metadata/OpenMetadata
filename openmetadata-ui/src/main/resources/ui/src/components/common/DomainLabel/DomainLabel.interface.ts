@@ -23,4 +23,5 @@ export type DomainLabelProps = {
   entityType: EntityType;
   entityFqn: string;
   entityId: string;
+  showDomainHeading?: boolean;
 };
