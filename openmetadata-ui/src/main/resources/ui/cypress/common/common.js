@@ -701,6 +701,14 @@ export const restoreUser = (username) => {
   interceptURL('GET', '/api/v1/users*', 'deletedUser');
   cy.get('[data-testid="show-deleted"]').click();
   verifyResponseStatusCode('@deletedUser', 200);
+  interceptURL(
+    'GET',
+    '/api/v1/search/query?q=**&from=0&size=*&index=*',
+    'searchUser'
+  );
+  cy.get('[data-testid="searchbar"]').type(username);
+
+  verifyResponseStatusCode('@searchUser', 200);
 
   cy.get(`[data-testid="restore-user-btn-${username}"]`).click();
   cy.get('.ant-modal-body > p').should(
