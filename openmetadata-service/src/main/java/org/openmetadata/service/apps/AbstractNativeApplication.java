@@ -121,7 +121,7 @@ public class AbstractNativeApplication implements NativeApplication {
                 dataInsightPipeline.getId(),
                 Entity.APPLICATION,
                 Entity.INGESTION_PIPELINE,
-                Relationship.CONTAINS.ordinal());
+                Relationship.HAS.ordinal());
 
       } catch (Exception ex) {
         LOG.error("[IngestionPipelineResource] Failed in Creating Reindex and Insight Pipeline", ex);
