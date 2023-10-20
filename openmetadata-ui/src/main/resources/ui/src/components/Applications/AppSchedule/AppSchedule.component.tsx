@@ -12,15 +12,23 @@
  */
 import { Button, Col, Divider, Modal, Row, Space, Typography } from 'antd';
 import cronstrue from 'cronstrue';
-import React, { useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   AppScheduleClass,
   AppType,
 } from '../../../generated/entity/applications/app';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { getServiceByFQN } from '../../../rest/serviceAPI';
 import { getIngestionFrequency } from '../../../utils/CommonUtils';
 import TestSuiteScheduler from '../../AddDataQualityTest/components/TestSuiteScheduler';
+import Loader from '../../Loader/Loader';
 import AppRunsHistory from '../AppRunsHistory/AppRunsHistory.component';
 import { AppRunsHistoryRef } from '../AppRunsHistory/AppRunsHistory.interface';
 import { AppScheduleProps } from './AppScheduleProps.interface';
@@ -34,6 +42,34 @@ const AppSchedule = ({
   const { t } = useTranslation();
   const [showModal, setShowModal] = useState(false);
   const appRunsHistoryRef = useRef<AppRunsHistoryRef>(null);
+  const [isPipelineDeployed, setIsPipelineDeployed] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchPipelineDetails = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      if (
+        appData.appType === AppType.External &&
+        appData.pipelines &&
+        appData.pipelines.length > 0
+      ) {
+        const fqn = appData.pipelines[0].fullyQualifiedName ?? '';
+        const pipelineData = await getServiceByFQN('pipelineServices', fqn);
+
+        if (pipelineData) {
+          setIsPipelineDeployed(true);
+        } else {
+          setIsPipelineDeployed(false);
+        }
+      } else {
+        setIsPipelineDeployed(false);
+      }
+    } catch (error) {
+      setIsPipelineDeployed(false);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [appData]);
 
   const cronString = useMemo(() => {
     if (appData.appSchedule) {
@@ -61,6 +97,44 @@ const AppSchedule = ({
     await onDemandTrigger();
     appRunsHistoryRef.current?.refreshAppHistory();
   };
+
+  const appRunHistory = useMemo(() => {
+    if (appData.appType === AppType.Internal) {
+      return (
+        <AppRunsHistory
+          appData={appData}
+          maxRecords={1}
+          ref={appRunsHistoryRef}
+          showPagination={false}
+        />
+      );
+    } else {
+      if (isPipelineDeployed) {
+        return (
+          <AppRunsHistory
+            appData={appData}
+            maxRecords={1}
+            ref={appRunsHistoryRef}
+            showPagination={false}
+          />
+        );
+      } else {
+        return (
+          <Typography.Text>
+            {t('message.no-ingestion-pipeline-found')}
+          </Typography.Text>
+        );
+      }
+    }
+  }, [appData, isPipelineDeployed, appRunsHistoryRef]);
+
+  useEffect(() => {
+    fetchPipelineDetails();
+  }, []);
+
+  if (isLoading) {
+    return <Loader />;
+  }
 
   return (
     <>
@@ -120,14 +194,7 @@ const AppSchedule = ({
 
         <Divider />
 
-        <Col span={24}>
-          <AppRunsHistory
-            appData={appData}
-            maxRecords={1}
-            ref={appRunsHistoryRef}
-            showPagination={false}
-          />
-        </Col>
+        <Col span={24}>{appRunHistory}</Col>
       </Row>
       <Modal
         destroyOnClose
