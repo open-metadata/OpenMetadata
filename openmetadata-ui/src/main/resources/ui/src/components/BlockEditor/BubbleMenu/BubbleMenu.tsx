@@ -87,7 +87,10 @@ const BubbleMenu: FC<BubbleMenuProps> = ({ editor, toggleLink }) => {
       },
       {
         ariaLabel: 'Link',
-        command: toggleLink,
+        command: () => {
+          editor.chain().focus().setLink({ href: '' }).run();
+          toggleLink();
+        },
         isActive: () => editor.isActive('link'),
         icon: FormatLinkIcon,
       },

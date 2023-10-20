@@ -10,23 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Editor, EditorContent, ReactRenderer } from '@tiptap/react';
-import { isEmpty, isNil } from 'lodash';
+import { EditorContent } from '@tiptap/react';
+import { isNil } from 'lodash';
 import React, {
   forwardRef,
   useEffect,
   useImperativeHandle,
-  useState,
+  useRef,
 } from 'react';
-import tippy, { Instance, Props } from 'tippy.js';
 import { EDITOR_OPTIONS } from '../../constants/BlockEditor.constants';
 import { formatContent } from '../../utils/BlockEditorUtils';
 import './block-editor.less';
-import BubbleMenu from './BubbleMenu/BubbleMenu';
+import { EditorSlotsRef } from './BlockEditor.interface';
+import EditorSlots from './EditorSlots';
 import { extensions } from './Extensions';
 import { useCustomEditor } from './hooks/useCustomEditor';
-import LinkModal, { LinkData } from './LinkModal/LinkModal';
-import LinkPopup from './LinkPopup/LinkPopup';
 
 export interface BlockEditorRef {
   onFocus: () => void;
@@ -39,7 +37,7 @@ export interface BlockEditorProps {
 
 const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
   ({ content = '', editable = true, onChange }, ref) => {
-    const [isLinkModalOpen, setIsLinkModalOpen] = useState<boolean>(false);
+    const editorSlots = useRef<EditorSlotsRef>(null);
 
     const editor = useCustomEditor({
       ...EDITOR_OPTIONS,
@@ -53,114 +51,6 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
       },
     });
 
-    const handleLinkToggle = () => {
-      setIsLinkModalOpen((prev) => !prev);
-    };
-
-    const handleLinkCancel = () => {
-      handleLinkToggle();
-      if (!isNil(editor)) {
-        editor?.chain().blur().run();
-      }
-    };
-
-    const handleLinkSave = (values: LinkData, op: 'edit' | 'add') => {
-      if (isNil(editor)) {
-        return;
-      }
-      // set the link
-      if (op === 'edit') {
-        editor
-          ?.chain()
-          .focus()
-          .extendMarkRange('link')
-          .updateAttributes('link', {
-            href: values.href,
-          })
-          .run();
-      }
-
-      if (op === 'add') {
-        editor?.chain().focus().setLink({ href: values.href }).run();
-      }
-
-      // move cursor at the end
-      editor?.chain().selectTextblockEnd().run();
-
-      // close the modal
-      handleLinkToggle();
-    };
-
-    const handleUnlink = () => {
-      if (isNil(editor)) {
-        return;
-      }
-
-      editor?.chain().focus().extendMarkRange('link').unsetLink().run();
-
-      // move cursor at the end
-      editor?.chain().selectTextblockEnd().run();
-    };
-
-    const handleLinkPopup = (
-      e: React.MouseEvent<HTMLDivElement, MouseEvent>
-    ) => {
-      let popup: Instance<Props>[] = [];
-      let component: ReactRenderer;
-      const target = e.target as HTMLElement;
-      const dataType = target.getAttribute('data-type');
-
-      let hasPopup = !isEmpty(popup);
-
-      if (['mention', 'hashtag'].includes(dataType ?? '')) {
-        const href = target.getAttribute('href');
-        const linkTarget = target.getAttribute('target');
-        if (href && linkTarget) {
-          window.open(href, linkTarget);
-        }
-
-        return;
-      }
-      if (target.nodeName === 'A') {
-        const href = target.getAttribute('href');
-
-        component = new ReactRenderer(LinkPopup, {
-          editor: editor as Editor,
-          props: {
-            href,
-            handleLinkToggle: () => {
-              handleLinkToggle();
-              if (hasPopup) {
-                popup[0].hide();
-              }
-            },
-            handleUnlink: () => {
-              handleUnlink();
-              if (hasPopup) {
-                popup[0].hide();
-              }
-            },
-          },
-        });
-
-        popup = tippy('body', {
-          getReferenceClientRect: () => target.getBoundingClientRect(),
-          appendTo: () => document.body,
-          content: component.element,
-          showOnCreate: true,
-          interactive: true,
-          trigger: 'manual',
-          placement: 'top',
-          hideOnClick: true,
-        });
-        hasPopup = !isEmpty(popup);
-      } else {
-        if (hasPopup) {
-          popup[0].hide();
-        }
-      }
-    };
-
     useImperativeHandle(ref, () => ({
       onFocus() {
         if (!isNil(editor) && !editor.isFocused) {
@@ -168,10 +58,6 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
         }
       },
     }));
-
-    const menus = !isNil(editor) && (
-      <BubbleMenu editor={editor} toggleLink={handleLinkToggle} />
-    );
 
     useEffect(() => {
       if (isNil(editor) || editor.isDestroyed || content === undefined) {
@@ -203,25 +89,13 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
     }, [editable, editor]);
 
     return (
-      <>
-        {isLinkModalOpen && (
-          <LinkModal
-            data={{ href: editor?.getAttributes('link').href }}
-            isOpen={isLinkModalOpen}
-            onCancel={handleLinkCancel}
-            onSave={(values) =>
-              handleLinkSave(
-                values,
-                editor?.getAttributes('link').href ? 'edit' : 'add'
-              )
-            }
-          />
-        )}
-        <div className="block-editor-wrapper" id="block-editor-wrapper">
-          <EditorContent editor={editor} onMouseDown={handleLinkPopup} />
-          {menus}
-        </div>
-      </>
+      <div className="block-editor-wrapper" id="block-editor-wrapper">
+        <EditorContent
+          editor={editor}
+          onMouseDown={editorSlots.current?.onMouseDown}
+        />
+        <EditorSlots editor={editor} ref={editorSlots} />
+      </div>
     );
   }
 );
