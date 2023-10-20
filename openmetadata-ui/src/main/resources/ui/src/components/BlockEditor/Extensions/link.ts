@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { markInputRule, markPasteRule } from '@tiptap/core';
 import TipTapLinkExtension from '@tiptap/extension-link';
 
 export const LinkExtension = TipTapLinkExtension.extend({
@@ -82,6 +83,46 @@ export const LinkExtension = TipTapLinkExtension.extend({
           };
         },
       },
+      'data-textcontent': {
+        default: null,
+        parseHTML: (element) => element.getAttribute('data-textcontent'),
+        renderHTML: (attributes) => {
+          if (!attributes['data-textcontent']) {
+            return {};
+          }
+
+          return {
+            'data-textcontent': attributes['data-textcontent'],
+          };
+        },
+      },
     };
+  },
+  addInputRules() {
+    return [
+      markInputRule({
+        find: /\[(.*?)\]\((https?:\/\/[^\s)]+)\)/,
+        type: this.type,
+        getAttributes: (match) => {
+          const [, text, href] = match;
+
+          return { 'data-textcontent': text, href };
+        },
+      }),
+    ];
+  },
+  addPasteRules() {
+    return [
+      ...(this.parent?.() ?? []),
+      markPasteRule({
+        find: /\[(.*?)\]\((https?:\/\/[^\s)]+)\)/,
+        type: this.type,
+        getAttributes: (match) => {
+          const [, text, href] = match;
+
+          return { 'data-textcontent': text, href };
+        },
+      }),
+    ];
   },
 });

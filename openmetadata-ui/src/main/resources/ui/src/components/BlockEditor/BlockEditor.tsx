@@ -32,11 +32,9 @@ export interface BlockEditorRef {
   onFocus: () => void;
 }
 export interface BlockEditorProps {
-  // should be markdown string
   content?: string;
   editable?: boolean;
-  // will be call with markdown content
-  onChange?: (content: string) => void;
+  onChange?: (htmlContent: string) => void;
 }
 
 const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
@@ -115,6 +113,12 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
       let hasPopup = !isEmpty(popup);
 
       if (['mention', 'hashtag'].includes(dataType ?? '')) {
+        const href = target.getAttribute('href');
+        const linkTarget = target.getAttribute('target');
+        if (href && linkTarget) {
+          window.open(href, linkTarget);
+        }
+
         return;
       }
       if (target.nodeName === 'A') {

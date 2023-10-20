@@ -107,7 +107,13 @@ const BubbleMenu: FC<BubbleMenuProps> = ({ editor, toggleLink }) => {
     // - the selected node is an image
     // - the selection is empty
     // - the selection is a node selection (for drag handles)
-    if (editor.isActive('image') || empty || isNodeSelection(selection)) {
+    // - link is active
+    if (
+      editor.isActive('image') ||
+      empty ||
+      isNodeSelection(selection) ||
+      editor.isActive('link')
+    ) {
       return false;
     }
 
