@@ -25,10 +25,15 @@ const ChangeLogs = ({ data }: Props) => {
 
   return (
     <div>
-      {logKeys.map((log, index) => (
-        <div className="mb-4" key={index}>
+      {logKeys.map((log) => (
+        <div className="mb-4" key={log}>
           <div className="border-bottom mb-2.5 border-text">
-            <p className="text-base font-medium mb-2.5">{log}</p>
+            <p className="text-base font-medium mb-2.5 log-title">
+              <RichTextEditorPreviewer
+                enableSeeMoreVariant={false}
+                markdown={log}
+              />
+            </p>
           </div>
           <RichTextEditorPreviewer
             enableSeeMoreVariant={false}
