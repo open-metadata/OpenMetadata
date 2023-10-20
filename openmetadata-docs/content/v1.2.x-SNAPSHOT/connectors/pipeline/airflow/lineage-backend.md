@@ -54,7 +54,6 @@ After the installation, we need to update the Airflow configuration. This can be
 backend = airflow_provider_openmetadata.lineage.backend.OpenMetadataLineageBackend
 airflow_service_name = local_airflow
 openmetadata_api_endpoint = http://localhost:8585/api
-auth_provider_type = openmetadata
 jwt_token = <your-token>
 ```
 
@@ -64,7 +63,6 @@ Or we can directly provide environment variables:
 AIRFLOW__LINEAGE__BACKEND="airflow_provider_openmetadata.lineage.backend.OpenMetadataLineageBackend"
 AIRFLOW__LINEAGE__AIRFLOW_SERVICE_NAME="local_airflow"
 AIRFLOW__LINEAGE__OPENMETADATA_API_ENDPOINT="http://localhost:8585/api"
-AIRFLOW__LINEAGE__AUTH_PROVIDER_TYPE="openmetadata"
 AIRFLOW__LINEAGE__JWT_TOKEN="<your-token>"
 ```
 

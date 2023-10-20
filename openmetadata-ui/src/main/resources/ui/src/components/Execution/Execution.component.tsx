@@ -40,9 +40,7 @@ import { PipelineStatus, Task } from '../../generated/entity/data/pipeline';
 import { getPipelineStatus } from '../../rest/pipelineAPI';
 import {
   getCurrentMillis,
-  getCurrentUnixInteger,
   getEpochMillisForPastDays,
-  getUnixSecondsForPastDays,
 } from '../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './Execution.style.less';
@@ -60,9 +58,9 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
   const [executions, setExecutions] = useState<Array<PipelineStatus>>();
   const [datesSelected, setDatesSelected] = useState<boolean>(false);
   const [startTime, setStartTime] = useState(
-    getUnixSecondsForPastDays(EXECUTION_FILTER_RANGE.last365days.days)
+    getEpochMillisForPastDays(EXECUTION_FILTER_RANGE.last365days.days)
   );
-  const [endTime, setEndTime] = useState(getCurrentUnixInteger());
+  const [endTime, setEndTime] = useState(getCurrentMillis());
   const [isClickedCalendar, setIsClickedCalendar] = useState(false);
   const [status, setStatus] = useState(MenuOptions.all);
   const [isLoading, setIsLoading] = useState(false);

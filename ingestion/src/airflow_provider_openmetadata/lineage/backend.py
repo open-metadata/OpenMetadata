@@ -35,20 +35,13 @@ class OpenMetadataLineageBackend(LineageBackend):
     """
     Sends lineage data from tasks to OpenMetadata.
 
-    Configurable via ``airflow_provider_openmetadata.cfg`` as follows: ::
+    Configurable via `airflow.cfg` as follows:
+
     [lineage]
-    backend = airflow_provider_openmetadata.lineage.OpenMetadataLineageBackend
-    airflow_service_name = airflow #make sure this service_name matches
-        the one configured in openMetadata
-    openmetadata_api_endpoint = http://localhost:8585
-    auth_provider_type = no-auth # use google here if you are
-        configuring google as SSO
-    secret_key = google-client-secret-key # it needs to be configured
-        only if you are using google as SSO the one configured in openMetadata
-    openmetadata_api_endpoint = http://localhost:8585
-    auth_provider_type = no-auth # use google here if you are configuring google as SSO
-    secret_key = google-client-secret-key # it needs to be configured
-                 only if you are using google as SSO
+    backend = airflow_provider_openmetadata.lineage.backend.OpenMetadataLineageBackend
+    airflow_service_name = airflow
+    openmetadata_api_endpoint = http://localhost:8585/api
+    jwt_token = <token>  # To auth to the OpenMetadata API
     """
 
     def send_lineage(
