@@ -39,8 +39,6 @@ const SearchedData: React.FC<SearchedDataProps> = ({
   isLoading = false,
   onPaginationChange,
   showResultCount = false,
-  showOnboardingTemplate = false,
-  showOnlyChildren = false,
   totalValue,
   isFilterSelected,
   isSummaryPanelVisible,
@@ -146,30 +144,24 @@ const SearchedData: React.FC<SearchedDataProps> = ({
         <Loader />
       ) : (
         <div data-testid="search-container">
-          {totalValue > 0 || showOnboardingTemplate || showOnlyChildren ? (
+          {totalValue > 0 ? (
             <>
               {children}
-              {!showOnlyChildren ? (
-                <>
-                  <ResultCount />
-                  <div data-testid="search-results">
-                    {searchResultCards}
-                    <Pagination
-                      hideOnSinglePage
-                      className="text-center m-b-sm"
-                      current={isNumber(Number(page)) ? Number(page) : 1}
-                      pageSize={
-                        size && isNumber(Number(size))
-                          ? Number(size)
-                          : PAGE_SIZE
-                      }
-                      pageSizeOptions={[10, 25, 50]}
-                      total={totalValue}
-                      onChange={onPaginationChange}
-                    />
-                  </div>
-                </>
-              ) : null}
+              <ResultCount />
+              <div data-testid="search-results">
+                {searchResultCards}
+                <Pagination
+                  hideOnSinglePage
+                  className="text-center m-b-sm"
+                  current={isNumber(Number(page)) ? Number(page) : 1}
+                  pageSize={
+                    size && isNumber(Number(size)) ? Number(size) : PAGE_SIZE
+                  }
+                  pageSizeOptions={[10, 25, 50]}
+                  total={totalValue}
+                  onChange={onPaginationChange}
+                />
+              </div>
             </>
           ) : (
             <>
