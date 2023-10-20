@@ -70,3 +70,15 @@ export const formatContent = (
 
   return modifiedHtmlString;
 };
+
+export const isHTMLString = (content: string) => {
+  try {
+    const parser = new DOMParser();
+    const parsedDocument = parser.parseFromString(content, 'text/html');
+
+    // since text can be also counted as child node so we will check if length is greater than 1
+    return parsedDocument.body.childNodes.length > 1;
+  } catch (e) {
+    return false;
+  }
+};
