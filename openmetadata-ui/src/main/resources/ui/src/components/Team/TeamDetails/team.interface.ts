@@ -64,3 +64,9 @@ export interface SubscriptionWebhook {
   webhook: string;
   endpoint: string;
 }
+
+export interface TeamsHeadingLabelProps {
+  currentTeam: Team;
+  entityPermissions: OperationPermission;
+  updateTeamHandler: (data: Team) => Promise<void>;
+}

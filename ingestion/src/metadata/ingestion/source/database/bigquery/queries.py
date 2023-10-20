@@ -113,6 +113,8 @@ SELECT
   Q.query_type as query_type,
   SP.query_text as procedure_text,
   Q.query_text as query_text,
+  null as query_database_name,
+  null as query_schema_name,
   SP.start_time as procedure_start_time,
   SP.end_time as procedure_end_time,
   Q.start_time as query_start_time,
