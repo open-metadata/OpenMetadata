@@ -147,7 +147,7 @@ public class PIIMasker {
                   MessageParser.EntityLink testCaseLink = MessageParser.EntityLink.parse(testCase.getEntityLink());
                   Table table =
                       Entity.getEntityByName(
-                          Entity.TABLE, testCaseLink.getEntityFQN(), "owner,tags", Include.NON_DELETED);
+                          Entity.TABLE, testCaseLink.getEntityFQN(), "owner,tags,columns", Include.NON_DELETED);
 
                   // Ignore table tests
                   if (testCaseLink.getFieldName() == null) return testCase;

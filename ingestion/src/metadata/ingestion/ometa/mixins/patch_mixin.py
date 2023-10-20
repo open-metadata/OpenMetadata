@@ -367,7 +367,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             Updated Entity
         """
         instance: Optional[Table] = self._fetch_entity_if_exists(
-            entity=Table, entity_id=table.id, fields=["tags"]
+            entity=Table, entity_id=table.id, fields=["tags", "columns"]
         )
 
         if not instance:
