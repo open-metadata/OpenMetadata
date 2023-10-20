@@ -21,6 +21,7 @@ import static org.openmetadata.service.search.EntityBuilderConstant.SCHEMA_FIELD
 import static org.openmetadata.service.search.EntityBuilderConstant.UNIFIED;
 import static org.openmetadata.service.search.UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -225,7 +226,8 @@ public class OpenSearchClient implements SearchClient {
   public void updateIndex(IndexMapping indexMapping, String indexMappingContent) {
     try {
       PutMappingRequest request = new PutMappingRequest(indexMapping.getIndexName());
-      request.source(indexMappingContent, XContentType.JSON);
+      JsonNode readProperties = JsonUtils.readTree(indexMappingContent).get("mappings");
+      request.source(JsonUtils.getMap(readProperties));
       AcknowledgedResponse putMappingResponse = client.indices().putMapping(request, RequestOptions.DEFAULT);
       LOG.debug("{} Updated {}", indexMapping.getIndexMappingFile(), putMappingResponse.isAcknowledged());
     } catch (Exception e) {

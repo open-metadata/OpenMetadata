@@ -1,4 +1,3 @@
 package opensearch;
 
-public class OpenSearchNoop {
-}
+public class OpenSearchNoop {}
