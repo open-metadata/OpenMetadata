@@ -23,7 +23,7 @@ NAME_PATTERN = r"(?<=call)(.*)(?=\()"
 
 
 def get_procedure_name_from_call(
-    query_text: str, schema_name: str, database_name: str, sensitive_match: bool = False
+    query_text: str, sensitive_match: bool = False
 ) -> Optional[str]:
     """
     In the query text we'll have:
@@ -47,8 +47,8 @@ def get_procedure_name_from_call(
             res.group(0)  # Get the first match
             .strip()  # Remove whitespace
             .lower()  # Replace all the lowercase variants of the procedure name prefixes
-            .replace(f"{database_name.lower()}.", "")
-            .replace(f"{schema_name.lower()}.", "")
+            .replace("`", "")  # Clean weird characters from escaping the SQL
+            .split(".")[-1]
         )
     except Exception as exc:
         logger.warning(

@@ -24,8 +24,6 @@ class StoredProceduresTests(TestCase):
         self.assertEquals(
             get_procedure_name_from_call(
                 query_text="CALL db.schema.procedure_name(...)",
-                schema_name="schema",
-                database_name="db",
             ),
             "procedure_name",
         )
@@ -33,8 +31,6 @@ class StoredProceduresTests(TestCase):
         self.assertEquals(
             get_procedure_name_from_call(
                 query_text="CALL schema.procedure_name(...)",
-                schema_name="schema",
-                database_name="db",
             ),
             "procedure_name",
         )
@@ -42,8 +38,6 @@ class StoredProceduresTests(TestCase):
         self.assertEquals(
             get_procedure_name_from_call(
                 query_text="CALL procedure_name(...)",
-                schema_name="schema",
-                database_name="db",
             ),
             "procedure_name",
         )
@@ -51,8 +45,6 @@ class StoredProceduresTests(TestCase):
         self.assertEquals(
             get_procedure_name_from_call(
                 query_text="CALL DB.SCHEMA.PROCEDURE_NAME(...)",
-                schema_name="SCHEMA",
-                database_name="DB",
             ),
             "procedure_name",
         )
@@ -60,7 +52,5 @@ class StoredProceduresTests(TestCase):
         self.assertIsNone(
             get_procedure_name_from_call(
                 query_text="something very random",
-                schema_name="schema",
-                database_name="db",
             )
         )

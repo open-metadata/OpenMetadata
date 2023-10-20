@@ -74,8 +74,8 @@ MOCK_SCHEMA_NAME_1 = "INFORMATION_SCHEMA"
 MOCK_SCHEMA_NAME_2 = "TPCDS_SF10TCL"
 MOCK_VIEW_NAME = "COLUMNS"
 MOCK_TABLE_NAME = "CALL_CENTER"
-EXPECTED_SNOW_URL_VIEW = "https://app.snowflake.com/us-west-2/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/INFORMATION_SCHEMA/view/COLUMNS"
-EXPECTED_SNOW_URL_TABLE = "https://app.snowflake.com/us-west-2/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/TPCDS_SF10TCL/table/CALL_CENTER"
+EXPECTED_SNOW_URL_VIEW = "https://app.snowflake.com/random_org/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/INFORMATION_SCHEMA/view/COLUMNS"
+EXPECTED_SNOW_URL_TABLE = "https://app.snowflake.com/random_org/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/TPCDS_SF10TCL/table/CALL_CENTER"
 
 
 class SnowflakeUnitTest(TestCase):
@@ -135,15 +135,15 @@ class SnowflakeUnitTest(TestCase):
         ):
             with patch.object(
                 SnowflakeSource,
-                "region",
-                return_value="us-west-2",
+                "org_name",
+                return_value="random_org",
                 new_callable=PropertyMock,
             ):
                 self._assert_urls()
 
             with patch.object(
                 SnowflakeSource,
-                "region",
+                "org_name",
                 new_callable=PropertyMock,
                 return_value=None,
             ):
