@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EditorContent } from '@tiptap/react';
+import { Editor, EditorContent } from '@tiptap/react';
 import { isNil } from 'lodash';
 import React, {
   forwardRef,
@@ -27,7 +27,7 @@ import { extensions } from './Extensions';
 import { useCustomEditor } from './hooks/useCustomEditor';
 
 export interface BlockEditorRef {
-  onFocus: () => void;
+  editor: Editor | null;
 }
 export interface BlockEditorProps {
   content?: string;
@@ -52,11 +52,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
     });
 
     useImperativeHandle(ref, () => ({
-      onFocus() {
-        if (!isNil(editor) && !editor.isFocused) {
-          editor.commands.focus('end');
-        }
-      },
+      editor,
     }));
 
     useEffect(() => {
