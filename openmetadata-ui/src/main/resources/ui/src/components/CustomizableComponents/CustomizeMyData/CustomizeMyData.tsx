@@ -54,6 +54,7 @@ import ActivityFeedProvider from '../../ActivityFeed/ActivityFeedProvider/Activi
 import PageLayoutV1 from '../../containers/PageLayoutV1';
 import AddWidgetModal from '../AddWidgetModal/AddWidgetModal';
 import { CustomizeMyDataProps } from './CustomizeMyData.interface';
+import './CustomizeMyData.less';
 
 const ReactGridLayout = WidthProvider(RGL);
 
