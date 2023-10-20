@@ -243,6 +243,7 @@ const AppDetails = () => {
           action: t('label.deploy'),
         })
       );
+      fetchAppDetails();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }

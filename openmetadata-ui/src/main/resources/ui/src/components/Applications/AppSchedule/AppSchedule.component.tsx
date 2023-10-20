@@ -25,7 +25,7 @@ import {
   AppType,
 } from '../../../generated/entity/applications/app';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { getServiceByFQN } from '../../../rest/serviceAPI';
+import { getIngestionPipelineByFqn } from '../../../rest/ingestionPipelineAPI';
 import { getIngestionFrequency } from '../../../utils/CommonUtils';
 import TestSuiteScheduler from '../../AddDataQualityTest/components/TestSuiteScheduler';
 import Loader from '../../Loader/Loader';
@@ -54,10 +54,10 @@ const AppSchedule = ({
         appData.pipelines.length > 0
       ) {
         const fqn = appData.pipelines[0].fullyQualifiedName ?? '';
-        const pipelineData = await getServiceByFQN('pipelineServices', fqn);
+        const pipelineData = await getIngestionPipelineByFqn(fqn);
 
         if (pipelineData) {
-          setIsPipelineDeployed(true);
+          setIsPipelineDeployed(pipelineData.deployed ?? true);
         } else {
           setIsPipelineDeployed(false);
         }
