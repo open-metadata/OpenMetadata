@@ -26,13 +26,11 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import org.apache.logging.log4j.util.Strings;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.security.credentials.AWSCredentials;
 import org.openmetadata.schema.services.connections.database.SampleDataS3Config;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
-import software.amazon.awssdk.auth.credentials.AwsSessionCredentials;
-import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
-import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
-import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.*;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
@@ -40,8 +38,9 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Exception;
-
-// import software.amazon.awssdk.services.s3.model.S3
+import software.amazon.awssdk.services.sts.StsClient;
+import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
+import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
 
 public class S3Util {
 
@@ -59,22 +58,63 @@ public class S3Util {
     return Strings.isNotEmpty(original) ? original : defaultStr;
   }
 
+  private static AwsCredentialsProvider getAwsCredentialsProvider(AWSCredentials awsCredentials) {
+    String accessKeyId = S3Util.getOrDefault(awsCredentials.getAwsAccessKeyId(), "");
+    String secretAccessKey = S3Util.getOrDefault(awsCredentials.getAwsSecretAccessKey(), "");
+    String sessionToken = S3Util.getOrDefault(awsCredentials.getAwsSessionToken(), "");
+
+    // get the credentials provider with given creds
+    AwsCredentialsProvider credentialsProvider;
+    if (Strings.isBlank(accessKeyId) && Strings.isBlank(secretAccessKey)) {
+      credentialsProvider = DefaultCredentialsProvider.create();
+    } else if (Strings.isBlank(sessionToken)) {
+      credentialsProvider = StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKeyId, secretAccessKey));
+    } else {
+      credentialsProvider =
+          StaticCredentialsProvider.create(AwsSessionCredentials.create(accessKeyId, secretAccessKey, sessionToken));
+    }
+
+    // get assumed credential provider if applicable
+    if (Strings.isNotEmpty(awsCredentials.getAssumeRoleArn())) {
+      StsClient stsClient =
+          StsClient.builder()
+              .credentialsProvider(credentialsProvider)
+              .region(Region.of(awsCredentials.getAwsRegion()))
+              .build();
+
+      AssumeRoleRequest assumeRoleRequest =
+          AssumeRoleRequest.builder()
+              .roleArn(awsCredentials.getAssumeRoleArn())
+              .roleSessionName(awsCredentials.getAssumeRoleSessionName())
+              .build();
+
+      AssumeRoleResponse assumeRoleResponse = stsClient.assumeRole(assumeRoleRequest);
+
+      // Extract temporary credentials
+      String assumedAccessKeyId = assumeRoleResponse.credentials().accessKeyId();
+      String assumedSecretAccessKey = assumeRoleResponse.credentials().secretAccessKey();
+      String assumedSessionToken = assumeRoleResponse.credentials().sessionToken();
+
+      AWSCredentials assumedCredentials = new AWSCredentials();
+      assumedCredentials
+          .withAwsSessionToken(assumedSessionToken)
+          .withAwsRegion(awsCredentials.getAwsRegion())
+          .withAwsAccessKeyId(assumedAccessKeyId)
+          .withAwsSecretAccessKey(assumedSecretAccessKey);
+
+      return S3Util.getAwsCredentialsProvider(assumedCredentials);
+    }
+
+    return credentialsProvider;
+  }
+
   private static S3Client getS3Client(SampleDataS3Config s3Config) {
     if (s3Config != null
         && s3Config.getAwsConfig() != null
         && Strings.isNotEmpty(s3Config.getAwsConfig().getAwsRegion())) {
       SecretsManagerFactory.getSecretsManager().decryptSampleDataS3Config(s3Config);
       String region = s3Config.getAwsConfig().getAwsRegion();
-      String accessKeyId = S3Util.getOrDefault(s3Config.getAwsConfig().getAwsAccessKeyId(), "");
-      String secretAccessKey = S3Util.getOrDefault(s3Config.getAwsConfig().getAwsSecretAccessKey(), "");
-      String sessionToken = S3Util.getOrDefault(s3Config.getAwsConfig().getAwsSessionToken(), "");
-      AwsCredentialsProvider credentialsProvider;
-      if (Strings.isBlank(accessKeyId) && Strings.isBlank(secretAccessKey)) {
-        credentialsProvider = DefaultCredentialsProvider.create();
-      } else {
-        credentialsProvider =
-            StaticCredentialsProvider.create(AwsSessionCredentials.create(accessKeyId, secretAccessKey, sessionToken));
-      }
+      AwsCredentialsProvider credentialsProvider = S3Util.getAwsCredentialsProvider(s3Config.getAwsConfig());
       return S3Client.builder().region(Region.of(region)).credentialsProvider(credentialsProvider).build();
     }
     return S3Client.create();
@@ -138,13 +178,9 @@ public class S3Util {
         TABLE_DATA_CACHE.invalidate(sampleDataConfigWrapper);
       }
       return TABLE_DATA_CACHE.get(sampleDataConfigWrapper);
-
-    } catch (S3Exception e) {
-      System.err.println(e.getMessage());
     } catch (ExecutionException e) {
       throw new RuntimeException(e);
     }
-    return null;
   }
 
   static class TableDataLoader extends CacheLoader<SampleDataConfigWrapper, TableData> {

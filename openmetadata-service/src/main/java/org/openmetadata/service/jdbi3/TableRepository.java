@@ -301,9 +301,9 @@ public class TableRepository extends EntityRepository<Table> {
     TableData sampleDataPage = new TableData();
     sampleDataPage.setColumns(sampleData.getColumns());
     int pageStart = (pageNo - 1) * limit;
-    int pageEnd = Math.min(sampleData.getRows().size()-1, pageStart+limit);
+    int pageEnd = Math.min(sampleData.getRows().size() - 1, pageStart + limit);
 
-    if ( pageStart >= 0 && pageStart < sampleData.getRows().size()) {
+    if (pageStart >= 0 && pageStart < sampleData.getRows().size()) {
       List pageData = new ArrayList<>();
       pageData.addAll(sampleData.getRows().subList((pageNo - 1) * limit, pageEnd));
       sampleDataPage.setRows(pageData);

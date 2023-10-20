@@ -558,7 +558,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @DefaultValue("1")
           @Min(0)
           @Max(10000)
-              @QueryParam("pageNo")
+          @QueryParam("pageNo")
           int pageNo) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_SAMPLE_DATA);
     ResourceContext resourceContext = getResourceContextById(id);
