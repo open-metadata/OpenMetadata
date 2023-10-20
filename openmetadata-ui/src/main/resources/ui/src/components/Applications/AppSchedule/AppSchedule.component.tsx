@@ -99,7 +99,7 @@ const AppSchedule = ({
   };
 
   const appRunHistory = useMemo(() => {
-    if (appData.appType === AppType.Internal) {
+    if (appData.appType === AppType.Internal || isPipelineDeployed) {
       return (
         <AppRunsHistory
           appData={appData}
@@ -108,24 +108,13 @@ const AppSchedule = ({
           showPagination={false}
         />
       );
-    } else {
-      if (isPipelineDeployed) {
-        return (
-          <AppRunsHistory
-            appData={appData}
-            maxRecords={1}
-            ref={appRunsHistoryRef}
-            showPagination={false}
-          />
-        );
-      } else {
-        return (
-          <Typography.Text>
-            {t('message.no-ingestion-pipeline-found')}
-          </Typography.Text>
-        );
-      }
     }
+
+    return (
+      <Typography.Text>
+        {t('message.no-ingestion-pipeline-found')}
+      </Typography.Text>
+    );
   }, [appData, isPipelineDeployed, appRunsHistoryRef]);
 
   useEffect(() => {
