@@ -30,15 +30,16 @@ export const visitServiceDetailsPage = (service, verifyHeader = true) => {
     .should('be.visible')
     .click();
 
-  cy.wait('@getServices').then((interception) => {
-    const responseBody = interception.response.body;
-    // check if service name is received on the first page otherwise, click on Next button
-    const item = responseBody.data.find((item) => item.name === service.name);
-    if (!item && responseBody.paging.after) {
-      cy.get('[data-testid="next"]').click();
-      verifyResponseStatusCode('@getServices', 200);
-    }
-  });
+  cy.wait('@getServices');
+
+  interceptURL(
+    'GET',
+    'api/v1/search/query?q=*&from=0&size=*&index=*',
+    'searchService'
+  );
+  cy.get('[data-testid="searchbar"]').type(service.name);
+
+  verifyResponseStatusCode('@searchService', 200);
 
   // click on created service
   cy.get(`[data-testid="service-name-${service.name}"]`)

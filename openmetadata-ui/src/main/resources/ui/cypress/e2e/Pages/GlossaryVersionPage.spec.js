@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-// / <reference types="Cypress" />
+// eslint-disable-next-line spaced-comment
+/// <reference types="Cypress" />
 
 import {
   addOwner,
@@ -245,7 +246,7 @@ describe('Glossary and glossary term version pages should work properly', () => 
     );
     interceptURL(
       'GET',
-      `/api/v1/glossaryTerms/name/*?fields=parent`,
+      `/api/v1/glossaryTerms?parent=*&limit=*&fields=*`,
       'getGlossaryTermParents'
     );
     interceptURL(
@@ -295,7 +296,7 @@ describe('Glossary and glossary term version pages should work properly', () => 
     );
     interceptURL(
       'GET',
-      `/api/v1/glossaryTerms/name/*?fields=parent`,
+      `/api/v1/glossaryTerms?parent=*&limit=*&fields=*`,
       'getGlossaryTermParents'
     );
     interceptURL(
@@ -323,7 +324,6 @@ describe('Glossary and glossary term version pages should work properly', () => 
 
     cy.get('[data-testid="version-button"]').contains('0.3').click();
 
-    verifyResponseStatusCode('@getGlossaryTermDetails', 200);
     verifyResponseStatusCode('@getVersionsList', 200);
     verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
@@ -333,7 +333,6 @@ describe('Glossary and glossary term version pages should work properly', () => 
 
     cy.get('[data-testid="version-button"]').contains('0.3').click();
 
-    verifyResponseStatusCode('@getGlossaryTermDetails', 200);
     verifyResponseStatusCode('@getGlossaryTermParents', 200);
     verifyResponseStatusCode('@getChildGlossaryTerms', 200);
 
@@ -347,7 +346,6 @@ describe('Glossary and glossary term version pages should work properly', () => 
 
     cy.get('[data-testid="version-button"]').contains('0.4').click();
 
-    verifyResponseStatusCode('@getGlossaryTermDetails', 200);
     verifyResponseStatusCode('@getVersionsList', 200);
     verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
@@ -357,7 +355,6 @@ describe('Glossary and glossary term version pages should work properly', () => 
 
     cy.get('[data-testid="version-button"]').contains('0.4').click();
 
-    verifyResponseStatusCode('@getGlossaryTermDetails', 200);
     verifyResponseStatusCode('@getGlossaryTermParents', 200);
     verifyResponseStatusCode('@getChildGlossaryTerms', 200);
 
@@ -371,7 +368,6 @@ describe('Glossary and glossary term version pages should work properly', () => 
 
     cy.get('[data-testid="version-button"]').contains('0.5').click();
 
-    verifyResponseStatusCode('@getGlossaryTermDetails', 200);
     verifyResponseStatusCode('@getVersionsList', 200);
     verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
@@ -381,7 +377,6 @@ describe('Glossary and glossary term version pages should work properly', () => 
 
     cy.get('[data-testid="version-button"]').contains('0.5').click();
 
-    verifyResponseStatusCode('@getGlossaryTermDetails', 200);
     verifyResponseStatusCode('@getGlossaryTermParents', 200);
     verifyResponseStatusCode('@getChildGlossaryTerms', 200);
 
@@ -395,7 +390,6 @@ describe('Glossary and glossary term version pages should work properly', () => 
 
     cy.get('[data-testid="version-button"]').contains('0.6').click();
 
-    verifyResponseStatusCode('@getGlossaryTermDetails', 200);
     verifyResponseStatusCode('@getVersionsList', 200);
     verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 

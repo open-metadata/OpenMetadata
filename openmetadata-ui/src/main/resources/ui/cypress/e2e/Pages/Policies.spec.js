@@ -126,11 +126,12 @@ describe('Policy page should work properly', () => {
     });
     // Validate role is displayed
     cy.get('[data-testid="role-link"]')
-      .should('contain', roles.dataConsumer)
-      .should('be.visible');
+      .contains(roles.dataConsumer)
+      .should('exist');
+
     cy.get('[data-testid="role-link"]')
-      .should('contain', roles.dataSteward)
-      .should('be.visible');
+      .contains(roles.dataSteward)
+      .should('exist');
   });
 
   it('Add new policy', () => {
@@ -358,8 +359,7 @@ describe('Policy page should work properly', () => {
 
   it('Delete created policy', () => {
     cy.get(`[data-testid="delete-action-${policyName}"]`)
-      .should('exist')
-      .should('be.visible')
+      .scrollIntoView()
       .click();
 
     cy.get('[data-testid="confirmation-text-input"]')

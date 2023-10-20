@@ -18,6 +18,17 @@ import {
 } from '../../common/common';
 import { service } from '../../constants/constants';
 
+const searchService = () => {
+  interceptURL(
+    'GET',
+    'api/v1/search/query?q=*&from=0&size=15&index=*',
+    'searchService'
+  );
+  cy.get('[data-testid="searchbar"]').type(service.name);
+
+  verifyResponseStatusCode('@searchService', 200);
+};
+
 describe('Services page should work properly', () => {
   beforeEach(() => {
     interceptURL(
@@ -49,6 +60,7 @@ describe('Services page should work properly', () => {
   });
 
   it('Update service description', () => {
+    searchService();
     cy.get(`[data-testid="service-name-${service.name}"]`)
       .should('be.visible')
       .click();
@@ -70,6 +82,7 @@ describe('Services page should work properly', () => {
   });
 
   it('Update owner and check description', () => {
+    searchService();
     cy.get(`[data-testid="service-name-${service.name}"]`)
       .should('be.visible')
       .click();
@@ -128,7 +141,7 @@ describe('Services page should work properly', () => {
     );
 
     interceptURL('GET', '/api/v1/users?*', 'waitForUsers');
-
+    searchService();
     cy.get(`[data-testid="service-name-${service.name}"]`)
       .should('be.visible')
       .click();

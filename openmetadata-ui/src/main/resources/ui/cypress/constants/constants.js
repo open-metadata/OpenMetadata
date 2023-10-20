@@ -520,7 +520,7 @@ export const DOMAIN_1 = {
   updatedDescription:
     'This is the updated description for Cypress for testing domain creation',
   experts: 'Aaron Johnson',
-  owner: 'Aaron Singh',
+  owner: 'Alex Pollard',
   updatedOwner: 'Aaron Johnson',
   domainType: 'Source-aligned',
   dataProducts: [
@@ -546,7 +546,7 @@ export const DOMAIN_2 = {
   updatedName: 'Cypress.Domain.New',
   updatedDisplayName: 'Cypress.Domain.New',
   description: 'This is the Cypress for testing domain creation',
-  experts: 'Aaron Singh',
-  owner: 'Aaron Singh',
+  experts: 'Alex Pollard',
+  owner: 'Alex Pollard',
   domainType: 'Source-aligned',
 };

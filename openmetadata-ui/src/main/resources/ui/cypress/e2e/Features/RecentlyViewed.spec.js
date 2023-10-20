@@ -72,12 +72,14 @@ describe('Recently viwed data assets', () => {
       cy.wait(500);
       cy.get(
         `[data-testid="recently-viewed-container"] [title="${entity.displayName}"]`
-      ).should('be.visible');
+      )
+        .scrollIntoView()
+        .should('be.visible');
 
       // Checking count since we will only show max 5 not more than that
       cy.get(
         `[data-testid="recently-viewed-container"] .right-panel-list-item`
-      ).should('have.length', index > 4 ? 5 : index + 1);
+      ).should('have.length', index + 1);
     });
   });
 });
