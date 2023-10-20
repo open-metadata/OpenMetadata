@@ -532,6 +532,41 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return addHref(uriInfo, table);
   }
 
+  @GET
+  @Path("/{id}/onlySampleData")
+  @Operation(
+      operationId = "getSampleData",
+      summary = "Get sample data",
+      description = "Get sample data from the table.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully update the Table",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
+      })
+  public TableData getSampleData(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Limit the number tables returned. (1 to 10000, default = " + "100) ")
+          @DefaultValue("100")
+          @Min(0)
+          @Max(10000)
+          @QueryParam("limit")
+          int limitParam,
+      @Parameter(description = "Page Number. (1 to 10000, default = " + "1) ")
+          @DefaultValue("1")
+          @Min(0)
+          @Max(10000)
+              @QueryParam("pageNo")
+          int pageNo) {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_SAMPLE_DATA);
+    ResourceContext resourceContext = getResourceContextById(id);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwner());
+    return repository.getOnlySampleData(id, authorizePII, pageNo, limitParam);
+  }
+
   @DELETE
   @Path("/{id}/sampleData")
   @Operation(

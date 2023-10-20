@@ -250,7 +250,7 @@ public class TableRepository extends EntityRepository<Table> {
       SampleDataS3Config sampleDataS3Config =
           mapper.convertValue(config.get("sampleDataS3Config"), SampleDataS3Config.class);
       S3Util s3Util = new S3Util();
-      sampleData = s3Util.getSampleData(sampleDataS3Config, table);
+      sampleData = s3Util.getSampleDataPaginated(sampleDataS3Config, table);
     } else {
       sampleData =
           JsonUtils.readValue(
@@ -269,6 +269,47 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     return table;
+  }
+
+  public TableData getOnlySampleData(UUID tableId, boolean authorizePII, int pageNo, int limit) {
+    // Validate the request content
+    Table table = Entity.getEntity("table", tableId, "*", ALL);
+
+    DatabaseService databaseService = Entity.getEntity(table.getService(), "", ALL);
+    LinkedHashMap<Object, Object> config = (LinkedHashMap<Object, Object>) databaseService.getConnection().getConfig();
+    TableData sampleData;
+
+    if (config.get("sampleDataS3Config") != null) {
+      ObjectMapper mapper = new ObjectMapper();
+      SampleDataS3Config sampleDataS3Config =
+          mapper.convertValue(config.get("sampleDataS3Config"), SampleDataS3Config.class);
+      S3Util s3Util = new S3Util();
+      sampleData = s3Util.getSampleData(sampleDataS3Config, table);
+    } else {
+      sampleData =
+          JsonUtils.readValue(
+              daoCollection.entityExtensionDAO().getExtension(table.getId(), TABLE_SAMPLE_DATA_EXTENSION),
+              TableData.class);
+    }
+
+    // Set the column tags. Will be used to mask the sample data
+    if (!authorizePII) {
+      getColumnTags(true, table.getColumns());
+      table.setTags(getTags(table));
+      return PIIMasker.getSampleData(table).getSampleData();
+    }
+    TableData sampleDataPage = new TableData();
+    sampleDataPage.setColumns(sampleData.getColumns());
+    int pageStart = (pageNo - 1) * limit;
+    int pageEnd = Math.min(sampleData.getRows().size()-1, pageStart+limit);
+
+    if ( pageStart >= 0 && pageStart < sampleData.getRows().size()) {
+      List pageData = new ArrayList<>();
+      pageData.addAll(sampleData.getRows().subList((pageNo - 1) * limit, pageEnd));
+      sampleDataPage.setRows(pageData);
+    }
+
+    return sampleDataPage;
   }
 
   @Transaction
