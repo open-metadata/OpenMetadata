@@ -13,7 +13,7 @@
 
 import { Col, Divider, Drawer, Row, Typography } from 'antd';
 import classNames from 'classnames';
-import { capitalize, toString } from 'lodash';
+import { capitalize, isEmpty, toString } from 'lodash';
 import React, { Fragment, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityHistory } from '../../../generated/type/entityHistory';
@@ -136,7 +136,10 @@ const EntityVersionTimeLine: React.FC<Props> = ({
                     'diff-description':
                       toString(currV?.version) === currentVersion,
                   })}>
-                  {getSummary(currV?.changeDescription)}
+                  {getSummary({
+                    changeDescription: currV?.changeDescription,
+                    isGlossaryTerm: !isEmpty(currV?.glossary),
+                  })}
                 </div>
                 <p className="text-xs font-italic">
                   <span className="font-medium">{currV?.updatedBy}</span>

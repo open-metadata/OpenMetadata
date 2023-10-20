@@ -12,7 +12,7 @@
  */
 import { CloseOutlined, DragOutlined } from '@ant-design/icons';
 import { Button, Card, Col, Row, Space, Typography } from 'antd';
-import { isUndefined } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -27,6 +27,7 @@ import { Transi18next } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityIcon, getEntityLink } from '../../../utils/TableUtils';
 import EntityListSkeleton from '../../Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
+import './MyDataWidget.less';
 
 const MyDataWidgetInternal = ({
   isEditView = false,
@@ -74,7 +75,7 @@ const MyDataWidgetInternal = ({
   }, [currentUserDetails]);
 
   return (
-    <Card className="card-widget h-full" loading={isLoading}>
+    <Card className="my-data-widget-container card-widget" loading={isLoading}>
       <Row>
         <Col span={24}>
           <div className="d-flex justify-between m-b-xs">
@@ -110,51 +111,51 @@ const MyDataWidgetInternal = ({
       <EntityListSkeleton
         dataLength={data.length !== 0 ? data.length : 5}
         loading={Boolean(isLoading)}>
-        <>
-          <div className="entity-list-body">
-            {data.length ? (
-              data.map((item) => {
-                return (
-                  <div
-                    className="right-panel-list-item flex items-center justify-between"
-                    data-testid={`Recently Viewed-${getEntityName(item)}`}
-                    key={item.id}>
-                    <div className="d-flex items-center">
-                      <Link
-                        className=""
-                        to={getEntityLink(
-                          item.type || '',
-                          item.fullyQualifiedName as string
-                        )}>
-                        <Button
-                          className="entity-button flex-center p-0 m--ml-1"
-                          icon={
-                            <div className="entity-button-icon m-r-xs">
-                              {getEntityIcon(item.type || '')}
-                            </div>
-                          }
-                          type="text">
-                          <Typography.Text
-                            className="text-left text-xs"
-                            ellipsis={{ tooltip: true }}>
-                            {getEntityName(item)}
-                          </Typography.Text>
-                        </Button>
-                      </Link>
-                    </div>
-                  </div>
-                );
-              })
-            ) : (
-              <span className="text-sm">
-                <Transi18next
-                  i18nKey="message.no-owned-data"
-                  renderElement={<Link to={ROUTES.EXPLORE} />}
-                />
-              </span>
-            )}
+        {isEmpty(data) ? (
+          <div className="flex-center h-full">
+            <span className="text-center">
+              <Transi18next
+                i18nKey="message.no-owned-data"
+                renderElement={<Link to={ROUTES.EXPLORE} />}
+              />
+            </span>
           </div>
-        </>
+        ) : (
+          <div className="entity-list-body">
+            {data.map((item) => {
+              return (
+                <div
+                  className="right-panel-list-item flex items-center justify-between"
+                  data-testid={`Recently Viewed-${getEntityName(item)}`}
+                  key={item.id}>
+                  <div className="d-flex items-center">
+                    <Link
+                      className=""
+                      to={getEntityLink(
+                        item.type || '',
+                        item.fullyQualifiedName as string
+                      )}>
+                      <Button
+                        className="entity-button flex-center p-0 m--ml-1"
+                        icon={
+                          <div className="entity-button-icon m-r-xs">
+                            {getEntityIcon(item.type || '')}
+                          </div>
+                        }
+                        type="text">
+                        <Typography.Text
+                          className="text-left text-xs"
+                          ellipsis={{ tooltip: true }}>
+                          {getEntityName(item)}
+                        </Typography.Text>
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </EntityListSkeleton>
     </Card>
   );

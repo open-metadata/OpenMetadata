@@ -21,6 +21,7 @@ import { getUserPath } from '../../../constants/constants';
 import { EntityReference } from '../../../generated/entity/type';
 import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { EntityListWithV1 } from '../../Entity/EntityList/EntityList';
+import './FollowingWidget.less';
 
 export interface FollowingWidgetProps extends WidgetCommonProps {
   followedData: EntityReference[];
@@ -44,7 +45,9 @@ function FollowingWidget({
   }, [widgetKey]);
 
   return (
-    <Card className="card-widget h-full" data-testid="following-data-container">
+    <Card
+      className="following-widget-container card-widget h-full"
+      data-testid="following-data-container">
       <EntityListWithV1
         entityList={followedData}
         headerText={

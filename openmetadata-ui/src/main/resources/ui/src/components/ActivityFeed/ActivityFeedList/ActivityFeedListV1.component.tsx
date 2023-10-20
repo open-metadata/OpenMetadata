@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Typography } from 'antd';
+import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ActivityFeedIcon } from '../../../assets/svg/activity-feed.svg';
@@ -67,34 +68,31 @@ const ActivityFeedListV1 = ({
     return <Loader />;
   }
 
-  return (
+  return isEmpty(entityThread) ? (
+    <div className="h-full p-x-md" data-testid="no-data-placeholder-container">
+      <ErrorPlaceHolder
+        icon={
+          isTaskTab ? (
+            <TaskIcon height={24} width={24} />
+          ) : (
+            <ActivityFeedIcon height={SIZE.MEDIUM} width={SIZE.MEDIUM} />
+          )
+        }
+        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+        <Typography.Paragraph
+          className="tw-max-w-md"
+          style={{ marginBottom: '0' }}>
+          {isTaskTab && (
+            <Typography.Text strong>
+              {t('message.no-open-tasks')} <br />
+            </Typography.Text>
+          )}
+          {emptyPlaceholderText}
+        </Typography.Paragraph>
+      </ErrorPlaceHolder>
+    </div>
+  ) : (
     <div className="feed-list-container p-y-md" id="feedData">
-      {entityThread.length === 0 && (
-        <div
-          className="h-full p-x-md"
-          data-testid="no-data-placeholder-container">
-          <ErrorPlaceHolder
-            icon={
-              isTaskTab ? (
-                <TaskIcon height={24} width={24} />
-              ) : (
-                <ActivityFeedIcon height={SIZE.MEDIUM} width={SIZE.MEDIUM} />
-              )
-            }
-            type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-            <Typography.Paragraph
-              className="tw-max-w-md"
-              style={{ marginBottom: '0' }}>
-              {isTaskTab && (
-                <Typography.Text strong>
-                  {t('message.no-open-tasks')} <br />
-                </Typography.Text>
-              )}
-              {emptyPlaceholderText}
-            </Typography.Paragraph>
-          </ErrorPlaceHolder>
-        </div>
-      )}
       {entityThread.map((feed) => (
         <FeedPanelBodyV1
           feed={feed}

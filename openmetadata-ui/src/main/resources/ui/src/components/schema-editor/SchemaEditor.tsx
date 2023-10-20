@@ -21,6 +21,7 @@ import 'codemirror/addon/selection/active-line';
 import 'codemirror/lib/codemirror.css';
 import 'codemirror/mode/javascript/javascript';
 import 'codemirror/mode/sql/sql';
+import { isUndefined } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { Controlled as CodeMirror } from 'react-codemirror2';
 import { JSON_TAB_SIZE } from '../../constants/constants';
@@ -83,7 +84,9 @@ const SchemaEditor = ({
     _data: EditorChange,
     value: string
   ): void => {
-    onChange && onChange(getSchemaEditorValue(value));
+    if (!isUndefined(onChange)) {
+      onChange(getSchemaEditorValue(value));
+    }
   };
 
   useEffect(() => {
