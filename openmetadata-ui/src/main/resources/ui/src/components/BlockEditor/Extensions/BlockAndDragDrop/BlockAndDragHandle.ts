@@ -190,6 +190,7 @@ export const BlockAndDragHandle = (options: BlockAndDragHandleOptions) => {
       dragHandleElement = document.createElement('div');
       dragHandleElement.draggable = true;
       dragHandleElement.dataset.dragHandle = '';
+      dragHandleElement.title = 'Drag to move\nClick to open menu';
       dragHandleElement.classList.add('om-drag-handle');
       dragHandleElement.addEventListener('dragstart', (e) => {
         handleDragStart(e, view);
@@ -204,6 +205,7 @@ export const BlockAndDragHandle = (options: BlockAndDragHandleOptions) => {
       blockHandleElement = document.createElement('div');
       blockHandleElement.draggable = false;
       blockHandleElement.dataset.blockHandle = '';
+      blockHandleElement.title = 'Add new node';
       blockHandleElement.classList.add('om-block-handle');
 
       hideBlockHandle();
