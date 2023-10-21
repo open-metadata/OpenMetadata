@@ -47,7 +47,9 @@ const MarketPlaceAppDetails = () => {
       );
       const imageSrc = imageModule.default;
 
-      return <img alt={screenshotName} src={imageSrc} />;
+      return (
+        <img alt={screenshotName} src={imageSrc} style={{ height: '320px' }} />
+      );
     } catch (error) {
       return <></>;
     }

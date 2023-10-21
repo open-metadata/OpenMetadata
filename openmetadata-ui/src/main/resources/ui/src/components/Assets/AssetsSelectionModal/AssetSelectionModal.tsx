@@ -351,7 +351,7 @@ export const AssetSelectionModal = ({
         {isLoading && <Loader />}
 
         {!isLoading && items.length > 0 && (
-          <List loading={{ spinning: isLoading, indicator: <Loader /> }}>
+          <List>
             <VirtualList
               data={items}
               height={500}

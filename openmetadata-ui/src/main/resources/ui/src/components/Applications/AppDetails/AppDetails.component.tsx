@@ -50,9 +50,11 @@ import {
 import { ServiceCategory } from '../../../enums/service.enum';
 import {
   App,
+  AppType,
   ScheduleTimeline,
 } from '../../../generated/entity/applications/app';
 import {
+  deployApp,
   getApplicationByName,
   patchApplication,
   triggerOnDemandApp,
@@ -86,7 +88,7 @@ const AppDetails = () => {
   const fetchAppDetails = useCallback(async () => {
     setIsLoading(true);
     try {
-      const data = await getApplicationByName(fqn, 'owner');
+      const data = await getApplicationByName(fqn, ['owner', 'pipelines']);
       setAppData(data);
       const schema = await import(
         `../../../utils/ApplicationSchemas/${fqn}.json`
@@ -223,7 +225,25 @@ const AppDetails = () => {
   const onDemandTrigger = async () => {
     try {
       await triggerOnDemandApp(appData?.fullyQualifiedName ?? '');
-      showSuccessToast(t('message.application-trigger-successfully'));
+      showSuccessToast(
+        t('message.application-action-successfully', {
+          action: t('label.triggered-lowercase'),
+        })
+      );
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const onDeployTrigger = async () => {
+    try {
+      await deployApp(appData?.fullyQualifiedName ?? '');
+      showSuccessToast(
+        t('message.application-action-successfully', {
+          action: t('label.deploy'),
+        })
+      );
+      fetchAppDetails();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -231,7 +251,9 @@ const AppDetails = () => {
 
   const tabs = useMemo(() => {
     const tabConfiguration =
-      appData && appData.appConfiguration && jsonSchema
+      appData?.appConfiguration &&
+      appData.appType === AppType.Internal &&
+      jsonSchema
         ? [
             {
               label: (
@@ -276,6 +298,7 @@ const AppDetails = () => {
                 appData={appData}
                 onCancel={onBrowseAppsClick}
                 onDemandTrigger={onDemandTrigger}
+                onDeployTrigger={onDeployTrigger}
                 onSave={onAppScheduleSave}
               />
             )}
@@ -283,17 +306,24 @@ const AppDetails = () => {
         ),
       },
       ...tabConfiguration,
-      {
-        label: (
-          <TabsLabel id={ApplicationTabs.HISTORY} name={t('label.history')} />
-        ),
-        key: ApplicationTabs.HISTORY,
-        children: (
-          <div className="p-y-md">
-            <AppRunsHistory />
-          </div>
-        ),
-      },
+      ...(appData?.appType === AppType.Internal
+        ? [
+            {
+              label: (
+                <TabsLabel
+                  id={ApplicationTabs.HISTORY}
+                  name={t('label.history')}
+                />
+              ),
+              key: ApplicationTabs.HISTORY,
+              children: (
+                <div className="p-y-md">
+                  <AppRunsHistory />
+                </div>
+              ),
+            },
+          ]
+        : []),
     ];
   }, [appData, jsonSchema]);
 

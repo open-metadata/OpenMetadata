@@ -10,11 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { AppMarketPlaceDefinition } from '../../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
 
-export interface AppInstallVerifyCardProps {
-  appData: AppMarketPlaceDefinition;
-  nextButtonLabel: string;
-  onSave: () => void;
-  onCancel: () => void;
+import { PipelineStatus } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+
+export interface DataInsightLatestRun {
+  lastIngestionLogs: {
+    data_insight_task: string;
+    total: string;
+  };
+  pipelineStatus: PipelineStatus;
 }
