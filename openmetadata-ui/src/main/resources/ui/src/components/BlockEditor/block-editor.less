@@ -17,8 +17,11 @@
 @markdown-bg-color: #f8f8fa;
 
 .block-editor-wrapper {
+  .om-block-editor {
+    height: 100vh;
+  }
   // show placeholder when editor is in focused mode
-  .tiptap .is-node-empty:last-child::before {
+  .tiptap.ProseMirror-focused .is-node-empty.has-focus::before {
     color: @grey-3;
     content: attr(data-placeholder);
     float: left;
@@ -250,7 +253,8 @@
   box-shadow: none;
 }
 
-.om-drag-handle {
+.om-drag-handle,
+.om-block-handle {
   position: fixed;
   opacity: 1;
   transition: opacity ease-in 0.2s;
@@ -282,12 +286,18 @@
     pointer-events: none;
   }
 }
+.om-block-handle {
+  cursor: pointer;
+  background-image: url('data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4KCjwhLS0gTGljZW5zZTogTUlULiBNYWRlIGJ5IGRldmVsb3BtZW50c2VlZDogaHR0cHM6Ly9naXRodWIuY29tL2RldmVsb3BtZW50c2VlZC9jb2xsZWN0aWNvbnMtbGliIC0tPgo8c3ZnIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDE2IDE2IiB2ZXJzaW9uPSIxLjEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIGZpbGw9IiM3OTc5NzkiPgogIDxyZWN0IHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgaWQ9Imljb24tYm91bmQiIGZpbGw9Im5vbmUiIC8+CiAgPHBvbHlnb24gcG9pbnRzPSIxNSw3IDksNyA5LDEgNywxIDcsNyAxLDcgMSw5IDcsOSA3LDE1IDksMTUgOSw5IDE1LDkiIC8+Cjwvc3ZnPg==');
+}
 
 .om-list-decimal {
   list-style-type: decimal !important;
+  padding-left: 16px;
 }
 .om-list-disc {
   list-style-type: disc !important;
+  padding-left: 16px;
 }
 .om-leading-normal {
   line-height: 1.5;

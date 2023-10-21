@@ -10,57 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Extension } from '@tiptap/core';
-
 import { NodeSelection, Plugin } from '@tiptap/pm/state';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import { EditorView, __serializeForClipboard } from '@tiptap/pm/view';
+import { isUndefined } from 'lodash';
+import { BlockAndDragHandleOptions } from './BlockAndDragDrop';
+import { absoluteRect, nodeDOMAtCoords, nodePosAtDOM } from './helpers';
 
-export interface DragHandleOptions {
-  /**
-   * The width of the drag handle
-   */
-  dragHandleWidth: number;
-}
-const absoluteRect = (node: Element) => {
-  const data = node.getBoundingClientRect();
+export const BlockAndDragHandle = (options: BlockAndDragHandleOptions) => {
+  let dragHandleElement: HTMLElement | null = null;
+  let blockHandleElement: HTMLElement | null = null;
 
-  return {
-    top: data.top,
-    left: data.left,
-    width: data.width,
-  };
-};
+  // Drag Handle handlers
 
-const nodeDOMAtCoords = (coords: { x: number; y: number }) => {
-  return document
-    .elementsFromPoint(coords.x, coords.y)
-    .find(
-      (elem: Element) =>
-        elem.parentElement?.matches?.('.ProseMirror') ||
-        elem.matches(
-          [
-            'li',
-            'p:not(:first-child)',
-            'pre',
-            'blockquote',
-            'h1, h2, h3, h4, h5, h6',
-          ].join(', ')
-        )
-    );
-};
-
-const nodePosAtDOM = (node: Element, view: EditorView) => {
-  const boundingRect = node.getBoundingClientRect();
-
-  return view.posAtCoords({
-    left: boundingRect.left + 1,
-    top: boundingRect.top + 1,
-  })?.inside;
-};
-
-const DragHandle = (options: DragHandleOptions) => {
   const handleDragStart = (event: DragEvent, view: EditorView) => {
     view.focus();
 
@@ -78,7 +41,7 @@ const DragHandle = (options: DragHandleOptions) => {
     }
 
     const nodePos = nodePosAtDOM(node, view);
-    if (nodePos == null || nodePos < 0) {
+    if (isUndefined(nodePos)) {
       return;
     }
 
@@ -99,7 +62,7 @@ const DragHandle = (options: DragHandleOptions) => {
     view.dragging = { slice, move: event.ctrlKey };
   };
 
-  const handleClick = (event: MouseEvent, view: EditorView) => {
+  const handleDragClick = (event: MouseEvent, view: EditorView) => {
     view.focus();
 
     view.dom.classList.remove('om-node-dragging');
@@ -114,7 +77,7 @@ const DragHandle = (options: DragHandleOptions) => {
     }
 
     const nodePos = nodePosAtDOM(node, view);
-    if (!nodePos) {
+    if (isUndefined(nodePos)) {
       return;
     }
 
@@ -122,8 +85,6 @@ const DragHandle = (options: DragHandleOptions) => {
       view.state.tr.setSelection(NodeSelection.create(view.state.doc, nodePos))
     );
   };
-
-  let dragHandleElement: HTMLElement | null = null;
 
   const hideDragHandle = () => {
     if (dragHandleElement) {
@@ -137,8 +98,95 @@ const DragHandle = (options: DragHandleOptions) => {
     }
   };
 
+  const handleMouseMoveForDragHandle = (event: MouseEvent) => {
+    const node = nodeDOMAtCoords({
+      x: event.clientX + 50 + options.dragHandleWidth,
+      y: event.clientY,
+    });
+
+    if (!(node instanceof Element) || node.matches('ul, ol')) {
+      hideDragHandle();
+
+      return;
+    }
+
+    const compStyle = window.getComputedStyle(node);
+    const lineHeight = parseInt(compStyle.lineHeight, 10);
+    const paddingTop = parseInt(compStyle.paddingTop, 10);
+
+    const rect = absoluteRect(node);
+
+    rect.top += (lineHeight - 24) / 2;
+    rect.top += paddingTop;
+    // Li markers
+    if (node.matches('ul:not([data-type=taskList]) li, ol li')) {
+      rect.left -= options.dragHandleWidth;
+    }
+    rect.width = options.dragHandleWidth;
+
+    if (!dragHandleElement) {
+      return;
+    }
+
+    dragHandleElement.style.left = `${rect.left - rect.width}px`;
+    dragHandleElement.style.top = `${rect.top}px`;
+    showDragHandle();
+  };
+
+  // Block Handle handlers
+
+  const hideBlockHandle = () => {
+    if (blockHandleElement) {
+      blockHandleElement.classList.add('hidden');
+    }
+  };
+
+  const showBlockHandle = () => {
+    if (blockHandleElement) {
+      blockHandleElement.classList.remove('hidden');
+    }
+  };
+
+  const handleMouseMoveForBlockHandle = (event: MouseEvent) => {
+    const node = nodeDOMAtCoords({
+      x: event.clientX + options.dragHandleWidth * 4 + options.blockHandleWidth,
+      y: event.clientY,
+    });
+
+    if (!(node instanceof Element) || node.matches('ul, ol')) {
+      hideBlockHandle();
+
+      return;
+    }
+
+    const compStyle = window.getComputedStyle(node);
+    const lineHeight = parseInt(compStyle.lineHeight, 10);
+    const paddingTop = parseInt(compStyle.paddingTop, 10);
+
+    const rect = absoluteRect(node);
+
+    rect.top += (lineHeight - 24) / 2;
+    rect.top += paddingTop;
+    // Li markers
+    if (node.matches('ul:not([data-type=taskList]) li, ol li')) {
+      rect.left -= options.blockHandleWidth;
+    }
+    rect.width = options.blockHandleWidth;
+
+    if (!blockHandleElement) {
+      return;
+    }
+
+    blockHandleElement.style.left = `${
+      rect.left - rect.width - options.blockHandleWidth
+    }px`;
+    blockHandleElement.style.top = `${rect.top}px`;
+    showBlockHandle();
+  };
+
   return new Plugin({
     view: (view) => {
+      // drag handle initialization
       dragHandleElement = document.createElement('div');
       dragHandleElement.draggable = true;
       dragHandleElement.dataset.dragHandle = '';
@@ -147,17 +195,29 @@ const DragHandle = (options: DragHandleOptions) => {
         handleDragStart(e, view);
       });
       dragHandleElement.addEventListener('click', (e) => {
-        handleClick(e, view);
+        handleDragClick(e, view);
       });
 
       hideDragHandle();
 
+      // block handle initialization
+      blockHandleElement = document.createElement('div');
+      blockHandleElement.draggable = false;
+      blockHandleElement.dataset.blockHandle = '';
+      blockHandleElement.classList.add('om-block-handle');
+
+      hideBlockHandle();
+
       view?.dom?.parentElement?.appendChild(dragHandleElement);
+      view?.dom?.parentElement?.appendChild(blockHandleElement);
 
       return {
         destroy: () => {
           dragHandleElement?.remove?.();
           dragHandleElement = null;
+
+          blockHandleElement?.remove?.();
+          blockHandleElement = null;
         },
       };
     },
@@ -167,45 +227,16 @@ const DragHandle = (options: DragHandleOptions) => {
           if (!view.editable) {
             return;
           }
-
-          const node = nodeDOMAtCoords({
-            x: event.clientX + 50 + options.dragHandleWidth,
-            y: event.clientY,
-          });
-
-          if (!(node instanceof Element) || node.matches('ul, ol')) {
-            hideDragHandle();
-
-            return;
-          }
-
-          const compStyle = window.getComputedStyle(node);
-          const lineHeight = parseInt(compStyle.lineHeight, 10);
-          const paddingTop = parseInt(compStyle.paddingTop, 10);
-
-          const rect = absoluteRect(node);
-
-          rect.top += (lineHeight - 24) / 2;
-          rect.top += paddingTop;
-          // Li markers
-          if (node.matches('ul:not([data-type=taskList]) li, ol li')) {
-            rect.left -= options.dragHandleWidth;
-          }
-          rect.width = options.dragHandleWidth;
-
-          if (!dragHandleElement) {
-            return;
-          }
-
-          dragHandleElement.style.left = `${rect.left - rect.width}px`;
-          dragHandleElement.style.top = `${rect.top}px`;
-          showDragHandle();
+          handleMouseMoveForDragHandle(event);
+          handleMouseMoveForBlockHandle(event);
         },
         keydown: () => {
           hideDragHandle();
+          hideBlockHandle();
         },
         mousewheel: () => {
           hideDragHandle();
+          hideBlockHandle();
         },
         // dragging class is used for CSS
         dragstart: (view) => {
@@ -221,20 +252,3 @@ const DragHandle = (options: DragHandleOptions) => {
     },
   });
 };
-
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-interface DragAndDropOptions {}
-
-const DragAndDrop = Extension.create<DragAndDropOptions>({
-  name: 'dragAndDrop',
-
-  addProseMirrorPlugins() {
-    return [
-      DragHandle({
-        dragHandleWidth: 24,
-      }),
-    ];
-  },
-});
-
-export default DragAndDrop;
