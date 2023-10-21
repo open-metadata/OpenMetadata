@@ -109,7 +109,7 @@ public class AbstractNativeApplication implements NativeApplication {
         // Get Pipeline
         IngestionPipeline dataInsightPipeline =
             getIngestionPipeline(createPipelineRequest, String.format("%sBot", app.getName()), "admin")
-                .withProvider(ProviderType.SYSTEM);
+                .withProvider(ProviderType.USER);
         ingestionPipelineRepository.setFullyQualifiedName(dataInsightPipeline);
         ingestionPipelineRepository.initializeEntity(dataInsightPipeline);
 
@@ -121,7 +121,7 @@ public class AbstractNativeApplication implements NativeApplication {
                 dataInsightPipeline.getId(),
                 Entity.APPLICATION,
                 Entity.INGESTION_PIPELINE,
-                Relationship.CONTAINS.ordinal());
+                Relationship.HAS.ordinal());
 
       } catch (Exception ex) {
         LOG.error("[IngestionPipelineResource] Failed in Creating Reindex and Insight Pipeline", ex);

@@ -111,22 +111,27 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
             emails.add(user.getEmail());
           }
         }
-        DataInsightTotalAssetTemplate totalAssetTemplate =
-            createTotalAssetTemplate(searchClient, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
-        DataInsightDescriptionAndOwnerTemplate descriptionTemplate =
-            createDescriptionTemplate(searchClient, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
-        DataInsightDescriptionAndOwnerTemplate ownershipTemplate =
-            createOwnershipTemplate(searchClient, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
-        DataInsightDescriptionAndOwnerTemplate tierTemplate =
-            createTierTemplate(searchClient, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
-        EmailUtil.sendDataInsightEmailNotificationToUser(
-            emails,
-            totalAssetTemplate,
-            descriptionTemplate,
-            ownershipTemplate,
-            tierTemplate,
-            EmailUtil.getDataInsightReportSubject(),
-            EmailUtil.DATA_INSIGHT_REPORT_TEMPLATE);
+
+        try {
+          DataInsightTotalAssetTemplate totalAssetTemplate =
+              createTotalAssetTemplate(searchClient, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
+          DataInsightDescriptionAndOwnerTemplate descriptionTemplate =
+              createDescriptionTemplate(searchClient, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
+          DataInsightDescriptionAndOwnerTemplate ownershipTemplate =
+              createOwnershipTemplate(searchClient, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
+          DataInsightDescriptionAndOwnerTemplate tierTemplate =
+              createTierTemplate(searchClient, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
+          EmailUtil.sendDataInsightEmailNotificationToUser(
+              emails,
+              totalAssetTemplate,
+              descriptionTemplate,
+              ownershipTemplate,
+              tierTemplate,
+              EmailUtil.getDataInsightReportSubject(),
+              EmailUtil.DATA_INSIGHT_REPORT_TEMPLATE);
+        } catch (Exception ex) {
+          LOG.error("[DataInsightReport] Failed for Team: {}, Reason : {}", team.getName(), ex.getMessage());
+        }
       }
     }
   }
@@ -135,23 +140,27 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
       throws ParseException, IOException, TemplateException {
     // Get Admins
     Set<String> emailList = getAdminsData(CreateEventSubscription.SubscriptionType.DATA_INSIGHT);
-
-    DataInsightTotalAssetTemplate totalAssetTemplate =
-        createTotalAssetTemplate(searchClient, null, scheduleTime, currentTime, numberOfDaysChange);
-    DataInsightDescriptionAndOwnerTemplate descriptionTemplate =
-        createDescriptionTemplate(searchClient, null, scheduleTime, currentTime, numberOfDaysChange);
-    DataInsightDescriptionAndOwnerTemplate ownershipTemplate =
-        createOwnershipTemplate(searchClient, null, scheduleTime, currentTime, numberOfDaysChange);
-    DataInsightDescriptionAndOwnerTemplate tierTemplate =
-        createTierTemplate(searchClient, null, scheduleTime, currentTime, numberOfDaysChange);
-    EmailUtil.sendDataInsightEmailNotificationToUser(
-        emailList,
-        totalAssetTemplate,
-        descriptionTemplate,
-        ownershipTemplate,
-        tierTemplate,
-        EmailUtil.getDataInsightReportSubject(),
-        EmailUtil.DATA_INSIGHT_REPORT_TEMPLATE);
+    try {
+      // Build Insights Report
+      DataInsightTotalAssetTemplate totalAssetTemplate =
+          createTotalAssetTemplate(searchClient, null, scheduleTime, currentTime, numberOfDaysChange);
+      DataInsightDescriptionAndOwnerTemplate descriptionTemplate =
+          createDescriptionTemplate(searchClient, null, scheduleTime, currentTime, numberOfDaysChange);
+      DataInsightDescriptionAndOwnerTemplate ownershipTemplate =
+          createOwnershipTemplate(searchClient, null, scheduleTime, currentTime, numberOfDaysChange);
+      DataInsightDescriptionAndOwnerTemplate tierTemplate =
+          createTierTemplate(searchClient, null, scheduleTime, currentTime, numberOfDaysChange);
+      EmailUtil.sendDataInsightEmailNotificationToUser(
+          emailList,
+          totalAssetTemplate,
+          descriptionTemplate,
+          ownershipTemplate,
+          tierTemplate,
+          EmailUtil.getDataInsightReportSubject(),
+          EmailUtil.DATA_INSIGHT_REPORT_TEMPLATE);
+    } catch (Exception ex) {
+      LOG.error("[DataInsightReport] Failed for Admin, Reason : {}", ex.getMessage(), ex);
+    }
   }
 
   private List<Kpi> getAvailableKpi() {

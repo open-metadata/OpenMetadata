@@ -11,7 +11,7 @@
       "name": "ApplicationBotRule-Allow",
       "description" : "Allow ingestion bots to read data entities",
       "resources" : ["All"],
-      "operations": ["ViewAll"],
+      "operations": ["Create", "EditAll", "ViewAll", "Delete"],
       "effect": "allow"
     }
   ]

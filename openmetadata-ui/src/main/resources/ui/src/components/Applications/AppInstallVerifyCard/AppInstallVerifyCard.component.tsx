@@ -39,6 +39,7 @@ import { AppInstallVerifyCardProps } from './AppInstallVerifyCard.interface';
 
 const AppInstallVerifyCard = ({
   appData,
+  nextButtonLabel,
   onCancel,
   onSave,
 }: AppInstallVerifyCardProps) => {
@@ -135,7 +136,7 @@ const AppInstallVerifyCard = ({
             key="save-btn"
             type="primary"
             onClick={onSave}>
-            {t('label.configure')}
+            {nextButtonLabel}
           </Button>
         </div>
       </Card>

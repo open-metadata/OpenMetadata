@@ -46,6 +46,10 @@ export interface TestSuiteSchedulerProps {
   onSubmit: (repeatFrequency: string) => void;
   onCancel: () => void;
   isQuartzCron?: boolean;
+  buttonProps?: {
+    okText: string;
+    cancelText: string;
+  };
 }
 
 export interface RightPanelProps {

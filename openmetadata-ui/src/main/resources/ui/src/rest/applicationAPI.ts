@@ -13,6 +13,7 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
+import { DataInsightLatestRun } from '../components/Applications/AppDetails/AppDetails.interface';
 import { App } from '../generated/entity/applications/app';
 import { AppRunRecord } from '../generated/entity/applications/appRunRecord';
 import { CreateAppRequest } from '../generated/entity/applications/createAppRequest';
@@ -68,6 +69,14 @@ export const getApplicationRuns = async (
   return response.data;
 };
 
+export const getLatestApplicationRuns = async (appName: string) => {
+  const response = await APIClient.get<DataInsightLatestRun>(
+    `${BASE_URL}/name/${appName}/runs/latest`
+  );
+
+  return response.data;
+};
+
 export const uninstallApp = (appName: string, hardDelete = false) => {
   return APIClient.delete(`${BASE_URL}/name/${appName}`, {
     params: { hardDelete },
@@ -90,4 +99,8 @@ export const patchApplication = async (id: string, patch: Operation[]) => {
 
 export const triggerOnDemandApp = (appName: string): Promise<AxiosResponse> => {
   return APIClient.post(`${BASE_URL}/trigger/${appName}`, {});
+};
+
+export const deployApp = (appName: string): Promise<AxiosResponse> => {
+  return APIClient.post(`${BASE_URL}/deploy/${appName}`);
 };

@@ -162,7 +162,7 @@ export const PAGE_HEADERS = {
   },
   APPLICATION: {
     header: i18n.t('label.extend-open-meta-data'),
-    subHeader: i18n.t('message.tools-to-improve-workflow'),
+    subHeader: i18n.t('message.application-to-improve-data'),
   },
   CUSTOM_PAGE: {
     header: i18n.t('label.customize-entity', {
