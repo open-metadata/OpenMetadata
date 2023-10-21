@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row } from 'antd';
+import { Button, Col, Row, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { capitalize, isNull } from 'lodash';
@@ -23,13 +23,20 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
+import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
+import { GlobalSettingOptions } from '../../../constants/GlobalSettings.constants';
+import { AppType } from '../../../generated/entity/applications/app';
 import { Status } from '../../../generated/entity/applications/appRunRecord';
 import { Paging } from '../../../generated/type/paging';
 import { usePaging } from '../../../hooks/paging/usePaging';
-import { getApplicationRuns } from '../../../rest/applicationAPI';
+import {
+  getApplicationRuns,
+  getLatestApplicationRuns,
+} from '../../../rest/applicationAPI';
 import { getStatusTypeForApplication } from '../../../utils/ApplicationUtils';
 import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
+import { getLogsViewerPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../../common/next-previous/NextPrevious';
@@ -44,7 +51,10 @@ import {
 } from './AppRunsHistory.interface';
 
 const AppRunsHistory = forwardRef(
-  ({ maxRecords, showPagination = true }: AppRunsHistoryProps, ref) => {
+  (
+    { appData, maxRecords, showPagination = true }: AppRunsHistoryProps,
+    ref
+  ) => {
     const { t } = useTranslation();
     const { fqn } = useParams<{ fqn: string }>();
     const [isLoading, setIsLoading] = useState(true);
@@ -62,9 +72,25 @@ const AppRunsHistory = forwardRef(
       handlePageSizeChange,
     } = usePaging();
 
+    const history = useHistory();
+
+    const isExternalApp = useMemo(
+      () => appData?.appType === AppType.External,
+      [appData]
+    );
+
     const handleRowExpandable = useCallback(
       (key?: string) => {
         if (key) {
+          if (isExternalApp && appData) {
+            return history.push(
+              getLogsViewerPath(
+                GlobalSettingOptions.APPLICATIONS,
+                appData.name ?? '',
+                appData.name ?? ''
+              )
+            );
+          }
           if (expandedRowKeys.includes(key)) {
             setExpandedRowKeys((prev) => prev.filter((item) => item !== key));
           } else {
@@ -95,6 +121,9 @@ const AppRunsHistory = forwardRef(
           title: t('label.run-type'),
           dataIndex: 'runType',
           key: 'runType',
+          render: (runType) => (
+            <Typography.Text>{runType ?? NO_DATA_PLACEHOLDER}</Typography.Text>
+          ),
         },
         {
           title: t('label.status'),
@@ -143,18 +172,33 @@ const AppRunsHistory = forwardRef(
       async (pagingOffset?: Paging) => {
         try {
           setIsLoading(true);
-          const { data, paging } = await getApplicationRuns(fqn, {
-            offset: pagingOffset?.offset ?? 0,
-            limit: maxRecords ?? pageSize,
-          });
 
-          setAppRunsHistoryData(
-            data.map((item) => ({
-              ...item,
-              id: `${item.appId}-${item.runType}-${item.timestamp}`,
-            }))
-          );
-          handlePagingChange(paging);
+          if (isExternalApp) {
+            const res = await getLatestApplicationRuns(fqn);
+
+            setAppRunsHistoryData([
+              {
+                ...res,
+                timestamp: res.pipelineStatus.timestamp,
+                status: (res.pipelineStatus.pipelineState ??
+                  Status.Failed) as Status,
+                id: `${res.pipelineStatus.runId}-${res.pipelineStatus.timestamp}`,
+              },
+            ]);
+          } else {
+            const { data, paging } = await getApplicationRuns(fqn, {
+              offset: pagingOffset?.offset ?? 0,
+              limit: maxRecords ?? pageSize,
+            });
+
+            setAppRunsHistoryData(
+              data.map((item) => ({
+                ...item,
+                id: `${item.appId}-${item.runType}-${item.timestamp}`,
+              }))
+            );
+            handlePagingChange(paging);
+          }
         } catch (err) {
           showErrorToast(err as AxiosError);
         } finally {
