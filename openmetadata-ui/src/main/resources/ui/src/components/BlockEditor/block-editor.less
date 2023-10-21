@@ -17,11 +17,9 @@
 @markdown-bg-color: #f8f8fa;
 
 .block-editor-wrapper {
-  .om-block-editor {
-    p:last-child {
-      // this is to have enough space after last node, referred from the reference editor
-      padding-bottom: 30vh;
-    }
+  .om-block-editor > p:last-child {
+    // this is to have enough space after last node, referred from the reference editor
+    padding-bottom: 30vh;
   }
   // show placeholder when editor is in focused mode
   .tiptap.ProseMirror-focused .is-node-empty.has-focus::before {
