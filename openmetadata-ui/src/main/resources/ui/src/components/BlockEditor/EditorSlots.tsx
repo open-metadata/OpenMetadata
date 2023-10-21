@@ -15,6 +15,7 @@ import { isEmpty, isNil } from 'lodash';
 import React, { forwardRef, useImperativeHandle, useState } from 'react';
 import tippy, { Instance, Props } from 'tippy.js';
 import { EditorSlotsRef } from './BlockEditor.interface';
+import BlockMenu from './BlockMenu/BlockMenu';
 import BubbleMenu from './BubbleMenu/BubbleMenu';
 import LinkModal, { LinkData } from './LinkModal/LinkModal';
 import LinkPopup from './LinkPopup/LinkPopup';
@@ -164,6 +165,7 @@ const EditorSlots = forwardRef<EditorSlotsRef, EditorSlotsProps>(
           />
         )}
         {menus}
+        {!isNil(editor) && <BlockMenu editor={editor} />}
       </>
     );
   }

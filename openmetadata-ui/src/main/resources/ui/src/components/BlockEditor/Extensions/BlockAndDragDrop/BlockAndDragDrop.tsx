@@ -11,34 +11,33 @@
  *  limitations under the License.
  */
 import { Extension } from '@tiptap/core';
-import { PluginKey } from '@tiptap/pm/state';
-import Suggestion, { SuggestionOptions } from '@tiptap/suggestion';
+import { BlockAndDragHandle } from './BlockAndDragHandle';
 
-export const slashMenuPluginKey = new PluginKey('slashSuggestion');
+export interface BlockAndDragHandleOptions {
+  /**
+   * The width of the drag handle
+   */
+  dragHandleWidth: number;
+  /**
+   * The width of the drag handle
+   */
+  blockHandleWidth: number;
+}
 
-export default Extension.create({
-  name: 'slashCommand',
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+interface DragAndDropOptions {}
 
-  addOptions() {
-    return {
-      ...this.parent?.(),
-      slashSuggestion: {
-        char: '/',
-        startOfLine: true,
-        command: ({ editor, range, props }) => {
-          props.command({ editor, range, props });
-        },
-      } as Partial<SuggestionOptions>,
-    };
-  },
+const DragAndDrop = Extension.create<DragAndDropOptions>({
+  name: 'dragAndDrop',
 
   addProseMirrorPlugins() {
     return [
-      Suggestion({
-        pluginKey: slashMenuPluginKey,
-        ...this.options.slashSuggestion,
-        editor: this.editor,
+      BlockAndDragHandle({
+        dragHandleWidth: 24,
+        blockHandleWidth: 24,
       }),
     ];
   },
 });
+
+export default DragAndDrop;

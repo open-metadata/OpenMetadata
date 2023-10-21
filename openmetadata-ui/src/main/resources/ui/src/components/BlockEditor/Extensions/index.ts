@@ -15,8 +15,9 @@ import Placeholder from '@tiptap/extension-placeholder';
 import TaskItem from '@tiptap/extension-task-item';
 import TaskList from '@tiptap/extension-task-list';
 import StarterKit from '@tiptap/starter-kit';
+import BlockAndDragDrop from './BlockAndDragDrop/BlockAndDragDrop';
 import DiffView from './diff-view';
-import DragAndDrop from './drag-and-drop';
+import { Focus } from './focus';
 import { Hashtag } from './hashtag';
 import { hashtagSuggestion } from './hashtag/hashtagSuggestion';
 import { Image } from './image/image';
@@ -102,5 +103,8 @@ export const extensions = [
     allowBase64: true,
     inline: true,
   }),
-  DragAndDrop,
+  BlockAndDragDrop,
+  Focus.configure({
+    mode: 'deepest',
+  }),
 ];
