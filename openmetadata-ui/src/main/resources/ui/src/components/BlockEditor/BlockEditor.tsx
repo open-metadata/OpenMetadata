@@ -49,6 +49,11 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
 
         onChange?.(backendFormat);
       },
+      editorProps: {
+        attributes: {
+          class: 'om-block-editor',
+        },
+      },
     });
 
     useImperativeHandle(ref, () => ({
