@@ -237,9 +237,9 @@ def backup_args(parser: argparse.ArgumentParser):
         default=None,
     )
     parser.add_argument(
-       "--filename",
-       help="Filename to store the backup",
-       default=None,
+        "--filename",
+        help="Filename to store the backup",
+        default=None,
     )
     parser.add_argument(
         "--upload-destination-type",

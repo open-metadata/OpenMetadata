@@ -183,7 +183,7 @@ def run_backup(
         f"{common_backup_obj_instance.host}:{common_backup_obj_instance.port}/{common_backup_obj_instance.database}...",
     )
 
-    out = get_output(output,filename)
+    out = get_output(output, filename)
 
     engine = get_engine(common_args=common_backup_obj_instance)
     dump(engine=engine, output=out, schema=common_backup_obj_instance.schema)
