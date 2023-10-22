@@ -1,117 +1,19 @@
 .DEFAULT_GOAL := help
 PY_SOURCE ?= ingestion/src
+include ingestion/Makefile
 
 .PHONY: help
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[35m%-30s\033[0m %s\n", $$1, $$2}'
-
-.PHONY: install
-install:  ## Install the ingestion module to the current environment
-	python -m pip install ingestion/
-
-.PHONY: install_apis
-install_apis:  ## Install the REST APIs module to the current environment
-	python -m pip install openmetadata-airflow-apis/
-
-.PHONY: install_test
-install_test:  ## Install the ingestion module with test dependencies
-	python -m pip install "ingestion[test]/"
 
 .PHONY: install_e2e_tests
 install_e2e_tests:  ## Install the ingestion module with e2e test dependencies (playwright)
 	python -m pip install "ingestion[e2e_test]/"
 	playwright install --with-deps
 
-.PHONY: install_dev
-install_dev:  ## Install the ingestion module with dev dependencies
-	python -m pip install "ingestion[dev]/"
-
-.PHONY: install_all
-install_all:  ## Install the ingestion module with all dependencies
-	python -m pip install "ingestion[all]/"
-
-.PHONY: precommit_install
-precommit_install:  ## Install the project's precommit hooks from .pre-commit-config.yaml
-	@echo "Installing pre-commit hooks"
-	@echo "Make sure to first run install_test first"
-	pre-commit install
-
-.PHONY: lint
-lint: ## Run pylint on the Python sources to analyze the codebase
-	PYTHONPATH="${PYTHONPATH}:./ingestion/plugins" find $(PY_SOURCE) -path $(PY_SOURCE)/metadata/generated -prune -false -o -type f -name "*.py" | xargs pylint
-
-.PHONY: py_format
-py_format:  ## Run black and isort to format the Python codebase
-	pycln ingestion/ openmetadata-airflow-apis/ --extend-exclude $(PY_SOURCE)/metadata/generated --all
-	isort ingestion/ openmetadata-airflow-apis/ --skip $(PY_SOURCE)/metadata/generated --skip ingestion/env --skip ingestion/build --skip openmetadata-airflow-apis/build --profile black --multi-line 3
-	black ingestion/ openmetadata-airflow-apis/ --extend-exclude $(PY_SOURCE)/metadata/generated
-
-.PHONY: py_format_check
-py_format_check:  ## Check if Python sources are correctly formatted
-	pycln ingestion/ openmetadata-airflow-apis/ --diff --extend-exclude $(PY_SOURCE)/metadata/generated --all
-	isort --check-only ingestion/ openmetadata-airflow-apis/ --skip $(PY_SOURCE)/metadata/generated --skip ingestion/build --skip openmetadata-airflow-apis/build --profile black --multi-line 3
-	black --check --diff ingestion/ openmetadata-airflow-apis/  --extend-exclude $(PY_SOURCE)/metadata/generated
-	PYTHONPATH="${PYTHONPATH}:./ingestion/plugins" pylint --fail-under=10 $(PY_SOURCE)/metadata --ignore-paths $(PY_SOURCE)/metadata/generated || (echo "PyLint error code $$?"; exit 1)
-
-## Ingestion models generation
-.PHONY: generate
-generate:  ## Generate the pydantic models from the JSON Schemas to the ingestion module
-	@echo "Running Datamodel Code Generator"
-	@echo "Make sure to first run the install_dev recipe"
-	rm -rf ingestion/src/metadata/generated
-	mkdir -p ingestion/src/metadata/generated
-	python scripts/datamodel_generation.py
-	$(MAKE) py_antlr js_antlr
-	$(MAKE) install
-
-## Ingestion tests & QA
-.PHONY: run_ometa_integration_tests
-run_ometa_integration_tests:  ## Run Python integration tests
-	coverage run --rcfile ingestion/.coveragerc -a --branch -m pytest -c ingestion/setup.cfg --junitxml=ingestion/junit/test-results-integration.xml ingestion/tests/integration/ometa ingestion/tests/integration/orm_profiler ingestion/tests/integration/test_suite ingestion/tests/integration/data_insight ingestion/tests/integration/lineage
-
-.PHONY: unit_ingestion
-unit_ingestion:  ## Run Python unit tests
-	coverage run --rcfile ingestion/.coveragerc -a --branch -m pytest -c ingestion/setup.cfg --junitxml=ingestion/junit/test-results-unit.xml --ignore=ingestion/tests/unit/source ingestion/tests/unit
-
 .PHONY: run_e2e_tests
 run_e2e_tests: ## Run e2e tests
 	pytest --screenshot=only-on-failure --output="ingestion/tests/e2e/artifacts" $(ARGS) --junitxml=ingestion/junit/test-results-e2e.xml ingestion/tests/e2e
-
-.PHONY: run_python_tests
-run_python_tests:  ## Run all Python tests with coverage
-	coverage erase
-	$(MAKE) unit_ingestion
-	$(MAKE) run_ometa_integration_tests
-	coverage report --rcfile ingestion/.coveragerc || true
-
-.PHONY: coverage
-coverage:  ## Run all Python tests and generate the coverage XML report
-	$(MAKE) run_python_tests
-	coverage xml --rcfile ingestion/.coveragerc -o ingestion/coverage.xml || true
-	sed -e "s/$(shell python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")/src/g" ingestion/coverage.xml >> ingestion/ci-coverage.xml
-
-.PHONY: sonar_ingestion
-sonar_ingestion:  ## Run the Sonar analysis based on the tests results and push it to SonarCloud
-	docker run \
-		--rm \
-		-e SONAR_HOST_URL="https://sonarcloud.io" \
-		-e SONAR_SCANNER_OPTS="-Xmx1g" \
-		-e SONAR_LOGIN=$(token) \
-		-v ${PWD}/ingestion:/usr/src \
-		sonarsource/sonar-scanner-cli \
-		-Dproject.settings=sonar-project.properties
-
-.PHONY: run_apis_tests
-run_apis_tests:  ## Run the openmetadata airflow apis tests
-	coverage erase
-	coverage run --rcfile openmetadata-airflow-apis/.coveragerc -a --branch -m pytest --junitxml=openmetadata-airflow-apis/junit/test-results.xml openmetadata-airflow-apis/tests
-	coverage report --rcfile openmetadata-airflow-apis/.coveragerc
-
-.PHONY: coverage_apis
-coverage_apis:  ## Run the python tests on openmetadata-airflow-apis
-	$(MAKE) run_apis_tests
-	coverage xml --rcfile openmetadata-airflow-apis/.coveragerc -o openmetadata-airflow-apis/coverage.xml
-	sed -e "s/$(shell python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")\///g" openmetadata-airflow-apis/coverage.xml >> openmetadata-airflow-apis/ci-coverage.xml
 
 ## Yarn
 .PHONY: yarn_install_cache
@@ -158,12 +60,11 @@ core_py_antlr:  ## Generate the Python core code for parsing FQNs under ingestio
 
 .PHONY: py_antlr
 py_antlr:  ## Generate the Python code for parsing FQNs
-	antlr4 -Dlanguage=Python3 -o ingestion/src/metadata/generated/antlr ${PWD}/openmetadata-spec/src/main/antlr4/org/openmetadata/schema/*.g4
+	antlr4 -Dlanguage=Python3 -o ingestion/src/metadata/generated/antlr openmetadata-spec/src/main/antlr4/org/openmetadata/schema/*.g4
 
 .PHONY: js_antlr
 js_antlr:  ## Generate the Python code for parsing FQNs
-	antlr4 -Dlanguage=JavaScript -o openmetadata-ui/src/main/resources/ui/src/generated/antlr ${PWD}/openmetadata-spec/src/main/antlr4/org/openmetadata/schema/*.g4
-
+	antlr4 -Dlanguage=JavaScript -o openmetadata-ui/src/main/resources/ui/src/generated/antlr openmetadata-spec/src/main/antlr4/org/openmetadata/schema/*.g4
 
 .PHONY: install_antlr_cli
 install_antlr_cli:  ## Install antlr CLI locally
