@@ -17,6 +17,7 @@ import entitySpclCharImg from '../../../assets/img/EntitySplChar.png';
 import sqlLineageImg from '../../../assets/img/ImprovedSQLLineage.png';
 import ingestionFramework from '../../../assets/img/IngestionFramework.png';
 import tagCategoryImg from '../../../assets/img/TagCategory.png';
+import collateIcon from '../../../assets/svg/ic-collate.svg';
 
 export const LATEST_VERSION_ID = 19;
 
@@ -24,6 +25,8 @@ export const COOKIE_VERSION = 'VERSION_1_2_0'; // To be changed with each releas
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
+
+const CollateIconWithLinkMD = `[![Collate](${collateIcon})](https://www.getcollate.io/)`;
 
 export const WHATS_NEW = [
   {
@@ -1065,10 +1068,12 @@ export const WHATS_NEW = [
       'Customizable Landing Page': `- Admins can create Personas to group individuals in their company, such as Data Engineers, Data Stewards, or Data Scientists.
 - Admins can customize the landing page for each Persona with a set of supported widgets: Activity Feed, Announcements, Knowledge Center, etc.
 - We will add support for more widgets in upcoming releases.`,
-      'Knowledge Center ([Exclusively for Collate](https://www.getcollate.io/))': `- Backend APIs support creating, editing, and listing knowledge articles (with external links).
+      Glossary: `- Supports Glossary approval workflow.
+- Support Glossary categorision for easy distingusion.`,
+      [`Knowledge Center ${CollateIconWithLinkMD}`]: `- Backend APIs support creating, editing, and listing knowledge articles (with external links).
 - Knowledge articles and links can be associated with a Domain, Team, or an Entity.
 - UI support to build a Knowledge Center and expand the documentation of your company.`,
-      'Cost Analysis Report ([Exclusively for Collate](https://www.getcollate.io/))': `- The Usage Workflow will now also track how tables are Accessed and Updated.
+      [`Cost Analysis Report ${CollateIconWithLinkMD}`]: `- The Usage Workflow will now also track how tables are Accessed and Updated.
 - This information will be used in the Data Insights workflow to show the evolution of your used and used assets and compare them by size.
 - Support has been added for Snowflake, and we will continue to add more sources in upcoming releases.`,
     },
