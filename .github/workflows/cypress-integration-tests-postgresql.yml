@@ -125,7 +125,6 @@ jobs:
           group:  cypress-ci-psql-oss-${{ github.run_id }}-${{github.run_attempt}}
           browser: chrome
         env:
-          DEBUG: "cypress:*"
           CYPRESS_BASE_URL: "http://localhost:8585"
           CYPRESS_RECORD_KEY: ${{ secrets.TEST_RECORD_KEY }}
           CYPRESS_SNOWFLAKE_USERNAME: ${{ secrets.TEST_SNOWFLAKE_USERNAME }}
