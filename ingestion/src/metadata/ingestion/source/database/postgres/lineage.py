@@ -11,19 +11,8 @@
 """
 Postgres lineage module
 """
-from typing import Iterable
 
-from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
-    PostgresScheme,
-)
-from metadata.ingestion.api.models import Either
-from metadata.ingestion.lineage.models import Dialect
-from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.source.database.lineage_source import LineageSource
-from metadata.ingestion.source.database.postgres.pgspider.lineage import (
-    get_lineage_from_multi_tenant_table,
-)
 from metadata.ingestion.source.database.postgres.queries import POSTGRES_SQL_STATEMENT
 from metadata.ingestion.source.database.postgres.query_parser import (
     PostgresQueryParserSource,
@@ -49,5 +38,3 @@ class PostgresLineageSource(PostgresQueryParserSource, LineageSource):
                     OR query_text ILIKE '%%merge%%'
                 )
             """
-
-    
