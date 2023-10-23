@@ -132,6 +132,10 @@ export const updateAssets = (domainObj) => {
 
   cy.get('[data-testid="domain-link"]').should('contain', domainObj.name);
 
+  cy.get('[data-testid="app-bar-item-domain"]')
+    .should('be.visible')
+    .click({ force: true });
+
   goToAssetsTab(domainObj);
 
   cy.get('.assets-data-container [data-testid="entity-header-display-name"]')
@@ -147,7 +151,7 @@ export const removeAssets = (domainObj) => {
   verifyResponseStatusCode('@assetTab', 200);
 
   interceptURL('GET', '/api/v1/domain*', 'domains');
-  interceptURL('PATCH', '/api/v1/table/*', 'patchDomain');
+  interceptURL('PATCH', '/api/v1/tables/*', 'patchDomain');
 
   cy.get('[data-testid="entity-header-display-name"]')
     .contains(entity.term)
@@ -159,6 +163,10 @@ export const removeAssets = (domainObj) => {
   verifyResponseStatusCode('@domains', 200);
   cy.get('[data-testid="remove-owner"]').click();
   verifyResponseStatusCode('@patchDomain', 200);
+
+  cy.get('[data-testid="app-bar-item-domain"]')
+    .should('be.visible')
+    .click({ force: true });
 
   goToAssetsTab(domainObj);
   cy.contains('Adding a new Asset is easy, just give it a spin!').should(

@@ -127,7 +127,7 @@ const UserPopOverCard: FC<Props> = ({ children, userName, type = 'user' }) => {
 
     return (
       <Space align="center">
-        <ProfilePicture id="" name={userName} width="24" />
+        <ProfilePicture id="" name={userName} type="circle" width="24" />
         <div className="self-center">
           <Button
             className="text-info p-0"

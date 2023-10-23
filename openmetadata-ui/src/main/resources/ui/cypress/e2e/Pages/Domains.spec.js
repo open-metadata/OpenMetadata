@@ -57,7 +57,7 @@ describe('Domain page should work properly', () => {
     updateDomainDetails(DOMAIN_1);
   });
 
-  it.skip('Assets Tab should work properly', () => {
+  it('Assets Tab should work properly', () => {
     updateAssets(DOMAIN_1);
   });
 

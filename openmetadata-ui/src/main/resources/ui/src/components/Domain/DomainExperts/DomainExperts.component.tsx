@@ -65,6 +65,7 @@ function DomainExperts({
             id={expert.id}
             name={expert.name ?? ''}
             textClass="text-xs"
+            type="circle"
             width="20"
           />
           <Link to={getUserPath(expert.name ?? '')}>

@@ -90,7 +90,12 @@ import {
   getTableFQNFromColumnFQN,
   sortTagsCaseInsensitive,
 } from './CommonUtils';
-import { getGlossaryPath, getSettingPath } from './RouterUtils';
+import {
+  getDataProductsDetailsPath,
+  getDomainDetailsPath,
+  getGlossaryPath,
+  getSettingPath,
+} from './RouterUtils';
 import { getSearchIndexDetailsPath } from './SearchIndexUtils';
 import { serviceTypeLogo } from './ServiceUtils';
 import { getDecodedFqn, ordinalize } from './StringsUtils';
@@ -285,6 +290,14 @@ export const getEntityLink = (
     case EntityType.SEARCH_INDEX:
     case SearchIndex.SEARCH_INDEX:
       return getSearchIndexDetailsPath(fullyQualifiedName);
+
+    case EntityType.DOMAIN:
+    case SearchIndex.DOMAIN:
+      return getDomainDetailsPath(fullyQualifiedName);
+
+    case EntityType.DATA_PRODUCT:
+    case SearchIndex.DATA_PRODUCT:
+      return getDataProductsDetailsPath(fullyQualifiedName);
 
     case SearchIndex.TABLE:
     case EntityType.TABLE:
