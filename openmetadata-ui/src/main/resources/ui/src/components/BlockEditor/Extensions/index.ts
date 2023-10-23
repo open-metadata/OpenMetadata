@@ -15,6 +15,7 @@ import Placeholder from '@tiptap/extension-placeholder';
 import TaskItem from '@tiptap/extension-task-item';
 import TaskList from '@tiptap/extension-task-list';
 import StarterKit from '@tiptap/starter-kit';
+import { DROP_CURSOR_COLOR } from '../../../constants/BlockEditor.constants';
 import BlockAndDragDrop from './BlockAndDragDrop/BlockAndDragDrop';
 import DiffView from './diff-view';
 import { Focus } from './focus';
@@ -47,6 +48,10 @@ export const extensions = [
       HTMLAttributes: {
         class: 'om-leading-normal',
       },
+    },
+    dropcursor: {
+      width: 4,
+      color: DROP_CURSOR_COLOR,
     },
   }),
   Placeholder.configure({

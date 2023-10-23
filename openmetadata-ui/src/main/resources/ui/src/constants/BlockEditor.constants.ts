@@ -45,3 +45,5 @@ export const CLICKABLE_NODES = [
   'svg',
   'IFRAME',
 ];
+
+export const DROP_CURSOR_COLOR = '#ebf6fe';
