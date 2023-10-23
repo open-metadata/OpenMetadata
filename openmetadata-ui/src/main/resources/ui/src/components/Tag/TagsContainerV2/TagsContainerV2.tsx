@@ -255,7 +255,7 @@ const TagsContainerV2 = ({
               : t('label.request-tag-plural')
           }>
           <IconRequest
-            className="cursor-pointer"
+            className="cursor-pointer align-middle"
             data-testid="request-entity-tags"
             height={14}
             name="request-tags"
@@ -276,7 +276,7 @@ const TagsContainerV2 = ({
             entity: t('label.conversation'),
           })}>
           <IconComments
-            className="cursor-pointer"
+            className="cursor-pointer align-middle"
             data-testid="tag-thread"
             height={14}
             name="comments"
@@ -306,7 +306,7 @@ const TagsContainerV2 = ({
               {!isEmpty(tags?.[tagType]) && !isEditTags && (
                 <Col>
                   <EditIcon
-                    className="cursor-pointer"
+                    className="cursor-pointer align-middle"
                     color={DE_ACTIVE_COLOR}
                     data-testid="edit-button"
                     width="14px"
@@ -341,7 +341,7 @@ const TagsContainerV2 = ({
     () =>
       permission && !isEmpty(tags?.[tagType]) ? (
         <EditIcon
-          className="hover-cell-icon cursor-pointer"
+          className="hover-cell-icon cursor-pointer align-middle"
           data-testid="edit-button"
           height={14}
           name={t('label.edit')}
