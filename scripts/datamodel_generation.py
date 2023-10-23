@@ -28,8 +28,8 @@ datamodel_code_generator.model.pydantic.types.IMPORT_SECRET_STR = Import.from_fu
 from datamodel_code_generator.__main__ import main
 
 current_directory = os.getcwd()
-ingestion_path = "./" if current_directory.endswith("OpenMetadata/ingestion") else "ingestion/"
-directory_root = "../" if current_directory.endswith("OpenMetadata/ingestion") else "./"
+ingestion_path = "./" if current_directory.endswith("/ingestion") else "ingestion/"
+directory_root = "../" if current_directory.endswith("/ingestion") else "./"
 
 UNICODE_REGEX_REPLACEMENT_FILE_PATHS = [
     f"{ingestion_path}src/metadata/generated/schema/entity/classification/tag.py",
