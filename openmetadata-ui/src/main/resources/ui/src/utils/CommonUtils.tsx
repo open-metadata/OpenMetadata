@@ -67,7 +67,6 @@ import {
 import { UrlEntityCharRegEx } from '../constants/regex.constants';
 import { SIZE } from '../enums/common.enum';
 import { EntityTabs, EntityType, FqnPart } from '../enums/entity.enum';
-import { ThreadType } from '../generated/entity/feed/thread';
 import { PipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { EntityReference } from '../generated/entity/teams/user';
 import { Paging } from '../generated/type/paging';
@@ -527,10 +526,7 @@ export const getFeedCounts = (
   conversationCallback: (value: React.SetStateAction<number>) => void
 ) => {
   // To get conversation count
-  getFeedCount(
-    getEntityFeedLink(entityType, entityFQN),
-    ThreadType.Conversation
-  )
+  getFeedCount(getEntityFeedLink(entityType, entityFQN))
     .then((res) => {
       if (res) {
         conversationCallback(res.totalCount);
