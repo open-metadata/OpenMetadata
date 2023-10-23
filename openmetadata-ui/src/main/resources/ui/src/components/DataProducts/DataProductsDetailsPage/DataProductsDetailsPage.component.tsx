@@ -289,7 +289,7 @@ const DataProductsDetailsPage = ({
                     entityType: t('label.data-product'),
                   }
                 )}
-                icon={<DeleteIcon color={DE_ACTIVE_COLOR} width="18px" />}
+                icon={<DeleteIcon color={DE_ACTIVE_COLOR} width="14px" />}
                 id="delete-button"
                 name={t('label.delete')}
               />
