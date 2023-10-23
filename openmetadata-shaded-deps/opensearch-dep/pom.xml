@@ -122,6 +122,10 @@
                             <pattern>org.apache.lucene</pattern>
                             <shadedPattern>os.org.apache.lucene</shadedPattern>
                         </relocation>
+                        <relocation>
+                            <pattern>META-INF/versions/9/org/apache/logging/log4j/</pattern>
+                            <shadedPattern>org/apache/logging/log4j/</shadedPattern>
+                        </relocation>
                     </relocations>
                     <filters>
                         <filter>
