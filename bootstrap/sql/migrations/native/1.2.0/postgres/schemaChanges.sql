@@ -264,3 +264,28 @@ CREATE TABLE IF NOT EXISTS apps_extension_time_series (
     json JSONB NOT NULL,
     timestamp BIGINT GENERATED ALWAYS AS ((json ->> 'timestamp')::bigint) STORED NOT NULL
 );  
+
+
+-- Adding back the PK queries from 1.1.5 to keep the correct VARCHAR length
+-- We don't have an ID, so we'll create a temp SERIAL number and use it for deletion
+ALTER TABLE entity_extension_time_series ADD COLUMN temp SERIAL;
+WITH CTE AS (
+  SELECT temp, ROW_NUMBER() OVER (PARTITION BY entityFQNHash, extension, timestamp ORDER BY entityFQNHash) RN FROM entity_extension_time_series)
+DELETE FROM entity_extension_time_series WHERE temp in (SELECT temp FROM CTE WHERE RN > 1);
+ALTER TABLE entity_extension_time_series DROP COLUMN temp;
+
+ALTER TABLE entity_extension_time_series ALTER COLUMN entityFQNHash TYPE VARCHAR(768), ALTER COLUMN jsonSchema TYPE VARCHAR(256) , ALTER COLUMN extension TYPE VARCHAR(256),
+    ADD CONSTRAINT entity_extension_time_series_constraint UNIQUE (entityFQNHash, extension, timestamp);
+
+-- Airflow pipeline status set to millis
+UPDATE entity_extension_time_series ts
+SET json = jsonb_set(
+	ts.json,
+	'{timestamp}',
+	to_jsonb(cast(ts.json #> '{timestamp}' as int8) *1000)
+)
+FROM pipeline_entity p
+WHERE ts.entityFQNHash  = p.fqnHash
+  and ts.extension = 'pipeline.pipelineStatus'
+  AND p.json #>> '{serviceType}' in ('Airflow', 'GluePipeline', 'Airbyte', 'Dagster', 'DomoPipeline')
+;

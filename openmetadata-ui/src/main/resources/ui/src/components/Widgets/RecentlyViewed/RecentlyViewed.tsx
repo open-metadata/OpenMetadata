@@ -13,7 +13,7 @@
 
 import { CloseOutlined, DragOutlined } from '@ant-design/icons';
 import { Button, Card, Col, Row, Space, Typography } from 'antd';
-import { isUndefined } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -67,7 +67,7 @@ const RecentlyViewed = ({
 
   return (
     <Card
-      className="card-widget h-full"
+      className="recently-viewed-widget-container card-widget"
       data-testid="recently-viewed-container">
       <EntityListSkeleton
         dataLength={data.length !== 0 ? data.length : 5}
@@ -75,7 +75,7 @@ const RecentlyViewed = ({
         <>
           <Row justify="space-between">
             <Col>
-              <Typography.Paragraph className="right-panel-label m-b-sm">
+              <Typography.Paragraph className="font-medium m-b-sm">
                 {t('label.recent-views')}
               </Typography.Paragraph>
             </Col>
@@ -91,45 +91,49 @@ const RecentlyViewed = ({
               </Col>
             )}
           </Row>
-          <div className="entity-list-body">
-            {data.length
-              ? data.map((item) => {
-                  return (
-                    <div
-                      className="right-panel-list-item flex items-center justify-between"
-                      data-testid={`Recently Viewed-${getEntityName(item)}`}
-                      key={item.id}>
-                      <div className=" flex items-center">
-                        <Link
-                          className=""
-                          to={getEntityLink(
-                            item.type || '',
-                            item.fullyQualifiedName as string
-                          )}>
-                          <Button
-                            className="entity-button flex-center p-0 m--ml-1"
-                            icon={
-                              <div className="entity-button-icon m-r-xs">
-                                {getEntityIcon(item.type || '')}
-                              </div>
-                            }
-                            title={getEntityName(
-                              item as unknown as EntityReference
-                            )}
-                            type="text">
-                            <Typography.Text
-                              className="w-72 text-left text-xs"
-                              ellipsis={{ tooltip: true }}>
-                              {getEntityName(item)}
-                            </Typography.Text>
-                          </Button>
-                        </Link>
-                      </div>
+          {isEmpty(data) ? (
+            <div className="flex-center h-full">
+              {t('message.no-recently-viewed-date')}
+            </div>
+          ) : (
+            <div className="entity-list-body">
+              {data.map((item) => {
+                return (
+                  <div
+                    className="right-panel-list-item flex items-center justify-between"
+                    data-testid={`Recently Viewed-${getEntityName(item)}`}
+                    key={item.id}>
+                    <div className=" flex items-center">
+                      <Link
+                        className=""
+                        to={getEntityLink(
+                          item.type || '',
+                          item.fullyQualifiedName as string
+                        )}>
+                        <Button
+                          className="entity-button flex-center p-0 m--ml-1"
+                          icon={
+                            <div className="entity-button-icon m-r-xs">
+                              {getEntityIcon(item.type || '')}
+                            </div>
+                          }
+                          title={getEntityName(
+                            item as unknown as EntityReference
+                          )}
+                          type="text">
+                          <Typography.Text
+                            className="w-72 text-left text-xs"
+                            ellipsis={{ tooltip: true }}>
+                            {getEntityName(item)}
+                          </Typography.Text>
+                        </Button>
+                      </Link>
                     </div>
-                  );
-                })
-              : t('message.no-recently-viewed-date')}
-          </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </>
       </EntityListSkeleton>
     </Card>

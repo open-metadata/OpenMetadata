@@ -32,7 +32,7 @@ class UploadDestinationType(Enum):
 logger = cli_logger()
 
 
-def get_output(output: Optional[str] = None) -> Path:
+def get_output(output: Optional[str] = None, filename: Optional[str] = None) -> Path:
     """
     Helper function to prepare the output backup file
     path and name.
@@ -40,10 +40,11 @@ def get_output(output: Optional[str] = None) -> Path:
     It will create the output dir if it does not exist.
 
     :param output: local path to store the backup
+    :param filename: name of the backup file
     :return: backup file name
     """
     now = datetime.now().strftime("%Y%m%d%H%M")
-    name = f"openmetadata_{now}_backup.sql"
+    name = filename if filename else f"openmetadata_{now}_backup.sql"
 
     if output:
         path = Path(output).expanduser()
@@ -160,6 +161,7 @@ def upload_backup_azure(account_url: str, container: str, file: Path) -> None:
 def run_backup(
     common_backup_obj_instance: BackupRestoreArgs,
     output: Optional[str],
+    filename: Optional[str],
     upload_destination_type: Optional[UploadDestinationType],
     upload: Optional[Tuple[str, str, str]],
 ) -> None:
@@ -169,6 +171,7 @@ def run_backup(
 
     :param common_backup_obj_instance: cls instance to fetch common args
     :param output: local path to store the backup
+    :param filename: filename to store the backup
     :param upload_destination_type: Azure or AWS Destination Type
     :param upload: URI to upload result file
 
@@ -180,7 +183,7 @@ def run_backup(
         f"{common_backup_obj_instance.host}:{common_backup_obj_instance.port}/{common_backup_obj_instance.database}...",
     )
 
-    out = get_output(output)
+    out = get_output(output, filename)
 
     engine = get_engine(common_args=common_backup_obj_instance)
     dump(engine=engine, output=out, schema=common_backup_obj_instance.schema)

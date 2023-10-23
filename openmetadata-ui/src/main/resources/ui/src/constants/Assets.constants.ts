@@ -166,7 +166,7 @@ export const ASSET_SUB_MENU_FILTER: Array<{
         label: i18n.t('label.entity-service', {
           entity: i18n.t('label.database'),
         }),
-        value: EntityType.SEARCH_SERVICE,
+        value: EntityType.DATABASE_SERVICE,
         key: SearchIndex.DATABASE_SERVICE,
       },
       {
@@ -311,7 +311,7 @@ export const ASSET_SUB_MENU_FILTER: Array<{
       {
         key: SearchIndex.GLOSSARY,
         label: i18n.t('label.glossary-plural'),
-        value: EntityType.GLOSSARY,
+        value: EntityType.GLOSSARY_TERM,
       },
       {
         key: SearchIndex.TAG,

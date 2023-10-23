@@ -43,6 +43,7 @@ from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceS
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
+from metadata.utils.time_utils import convert_timestamp_to_milliseconds
 
 logger = ingestion_logger()
 
@@ -161,8 +162,12 @@ class DagsterSource(PipelineServiceSource):
                 executionStatus=STATUS_MAP.get(
                     run.status.lower(), StatusType.Pending.value
                 ),
-                startTime=round(run.startTime) if run.startTime else None,
-                endTime=round(run.endTime) if run.endTime else None,
+                startTime=round(convert_timestamp_to_milliseconds(run.startTime))
+                if run.startTime
+                else None,
+                endTime=round(convert_timestamp_to_milliseconds(run.endTime))
+                if run.endTime
+                else None,
             )
 
             pipeline_status = PipelineStatus(
@@ -170,7 +175,9 @@ class DagsterSource(PipelineServiceSource):
                 executionStatus=STATUS_MAP.get(
                     run.status.lower(), StatusType.Pending.value
                 ),
-                timestamp=round(run.endTime) if run.endTime else None,
+                timestamp=round(convert_timestamp_to_milliseconds(run.endTime))
+                if run.endTime
+                else None,
             )
             pipeline_status_yield = OMetaPipelineStatus(
                 pipeline_fqn=self.context.pipeline.fullyQualifiedName.__root__,
