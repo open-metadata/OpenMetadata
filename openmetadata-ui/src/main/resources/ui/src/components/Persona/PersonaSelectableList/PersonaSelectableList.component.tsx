@@ -10,13 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Popover, Tooltip } from 'antd';
+import { Button, Popover } from 'antd';
 import { noop } from 'lodash';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { DE_ACTIVE_COLOR, PAGE_SIZE_LARGE } from '../../../constants/constants';
-import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { EntityType } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { getAllPersonas } from '../../../rest/PersonaAPI';
@@ -89,6 +88,10 @@ export const PersonaSelectableList = ({
     [onUpdate]
   );
 
+  if (!hasPermission) {
+    return null;
+  }
+
   return (
     <Popover
       destroyTooltipOnHide
@@ -112,18 +115,13 @@ export const PersonaSelectableList = ({
       onOpenChange={setPopupVisible}
       {...popoverProps}>
       {children ?? (
-        <Tooltip
-          placement="topRight"
-          title={hasPermission ? '' : NO_PERMISSION_FOR_ACTION}>
-          <Button
-            className="p-0 flex-center"
-            data-testid="add-user"
-            disabled={!hasPermission}
-            icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-            size="small"
-            type="text"
-          />
-        </Tooltip>
+        <Button
+          className="p-0 flex-center"
+          data-testid="add-user"
+          icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+          size="small"
+          type="text"
+        />
       )}
     </Popover>
   );

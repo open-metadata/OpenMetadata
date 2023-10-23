@@ -142,6 +142,8 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
   const [dateRangeObject, setDateRangeObject] =
     useState<DateRangeObject>(DEFAULT_RANGE_DATA);
   const [testSuite, setTestSuite] = useState<Table['testSuite']>();
+  const [isTestsLoading, setIsTestsLoading] = useState(false);
+  const [isProfilerDataLoading, setIsProfilerDataLoading] = useState(false);
 
   const isColumnProfile = activeTab === TableProfilerTab.COLUMN_PROFILE;
   const isDataQuality = activeTab === TableProfilerTab.DATA_QUALITY;
@@ -377,7 +379,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
   };
 
   const fetchAllTests = async (params?: ListTestCaseParams) => {
-    setIsLoading(true);
+    setIsTestsLoading(true);
     try {
       const { data } = await getListTestCase({
         ...params,
@@ -391,23 +393,21 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
-      setIsLoading(false);
+      setIsTestsLoading(false);
     }
   };
 
-  const handleTestUpdate = useCallback(
-    (testCase?: TestCase) => {
-      if (isUndefined(testCase)) {
-        return;
-      }
-      const updatedTests = allTests.current.map((test) => {
-        return testCase.id === test.id ? { ...test, ...testCase } : test;
-      });
-      splitTableAndColumnTest(updatedTests);
-      allTests.current = updatedTests;
-    },
-    [allTests.current]
-  );
+  const handleTestUpdate = useCallback((testCase?: TestCase) => {
+    if (isUndefined(testCase)) {
+      return;
+    }
+    const updatedTests = allTests.current.map((test) => {
+      return testCase.id === test.id ? { ...test, ...testCase } : test;
+    });
+    splitTableAndColumnTest(updatedTests);
+    allTests.current = updatedTests;
+  }, []);
+
   const handleTestCaseStatusChange = (value: string) => {
     if (value !== selectedTestCaseStatus) {
       setSelectedTestCaseStatus(value);
@@ -420,7 +420,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
     }
   };
 
-  const getFilterTestCase = () => {
+  const filteredTestCase = useMemo(() => {
     let tests: TestCase[] = [];
     if (selectedTestType === TestType.Table) {
       tests = tableTests.tests;
@@ -435,21 +435,21 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
         selectedTestCaseStatus === '' ||
         data.testCaseResult?.testCaseStatus === selectedTestCaseStatus
     );
-  };
+  }, [tableTests, columnTests, selectedTestCaseStatus]);
 
   const fetchLatestProfilerData = async () => {
     // As we are encoding the fqn in API function to apply all over the application
     // and the datasetFQN comes form url parameter which is already encoded,
     // we are decoding FQN below to avoid double encoding in the API function
     const decodedDatasetFQN = decodeURIComponent(datasetFQN);
-    setIsLoading(true);
+    setIsProfilerDataLoading(true);
     try {
       const response = await getLatestTableProfileByFqn(decodedDatasetFQN);
       setTable(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
-      setIsLoading(false);
+      setIsProfilerDataLoading(false);
     }
   };
 
@@ -493,6 +493,8 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
   useEffect(() => {
     if (isDataQuality && isUndefined(testSuite)) {
       fetchTestSuiteDetails();
+    } else {
+      setIsLoading(false);
     }
   }, [isDataQuality, testSuite]);
 
@@ -503,7 +505,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
     if (fetchTest) {
       fetchAllTests();
     }
-  }, [viewTest, isTourOpen, isTableProfile, allTests]);
+  }, [viewTest, isTourOpen, isTableProfile]);
 
   useEffect(() => {
     const fetchProfiler =
@@ -689,16 +691,16 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
               }))}
               dateRangeObject={dateRangeObject}
               hasEditAccess={editTest}
-              isLoading={isLoading}
+              isLoading={isProfilerDataLoading || isLoading}
             />
           )}
 
           {isDataQuality && (
             <QualityTab
               afterDeleteAction={fetchAllTests}
-              isLoading={isLoading}
+              isLoading={isTestsLoading || isLoading}
               showTableColumn={false}
-              testCases={getFilterTestCase()}
+              testCases={filteredTestCase}
               testSuite={testSuite}
               onTestCaseResultUpdate={handleResultUpdate}
               onTestUpdate={handleTestUpdate}

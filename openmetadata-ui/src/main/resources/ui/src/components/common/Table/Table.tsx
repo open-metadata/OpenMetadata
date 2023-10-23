@@ -58,7 +58,7 @@ const Table = <T extends object = any>({ loading, ...rest }: TableProps<T>) => {
   return (
     <AntdTable
       {...rest}
-      expandable={{ ...getTableExpandableConfig, ...rest.expandable }}
+      expandable={{ ...getTableExpandableConfig<T>(), ...rest.expandable }}
     />
   );
 };

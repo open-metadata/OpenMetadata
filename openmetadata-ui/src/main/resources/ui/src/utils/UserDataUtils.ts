@@ -46,7 +46,6 @@ export const getAllUsersList = (arrQueryFields = ''): void => {
 };
 
 export const fetchAllUsers = () => {
-  AppState.loadUserProfilePics();
   getAllUsersList('profile,teams,roles');
 };
 

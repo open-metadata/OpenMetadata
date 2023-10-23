@@ -14,9 +14,7 @@
 import { isEmpty, isNil, isUndefined } from 'lodash';
 import { action, makeAutoObservable } from 'mobx';
 import { ClientAuth, NewUser } from 'Models';
-import { reactLocalStorage } from 'reactjs-localstorage';
 import { EntityUnion } from './components/Explore/explore.interface';
-import { LOCALSTORAGE_USER_PROFILES } from './constants/constants';
 import { ResourcePermission } from './generated/entity/policies/accessControl/resourcePermission';
 import {
   EntityReference as UserTeams,
@@ -71,7 +69,6 @@ class AppState {
       getUserProfilePic: action,
       getUserDisplayName: action,
       updateUserProfilePic: action,
-      loadUserProfilePics: action,
       getProfilePicsLoading: action,
       updateProfilePicsLoading: action,
       isProfilePicLoading: action,
@@ -147,10 +144,6 @@ class AppState {
       },
     ];
 
-    reactLocalStorage.setObject(LOCALSTORAGE_USER_PROFILES, {
-      data: this.userProfilePics,
-    });
-
     return profile;
   }
 
@@ -196,21 +189,6 @@ class AppState {
     });
 
     this.userProfilePicsLoading = filteredList;
-  }
-
-  loadUserProfilePics() {
-    const { data } = reactLocalStorage.getObject(
-      LOCALSTORAGE_USER_PROFILES
-    ) as {
-      data: Array<{
-        id: string;
-        name: string;
-        profile: ImageList['image512'];
-      }>;
-    };
-    if (data) {
-      this.userProfilePics = data;
-    }
   }
 
   getCurrentUserDetails() {

@@ -60,7 +60,7 @@ const goToProfilerTab = () => {
   cy.get('[data-testid="profiler"]').should('be.visible').click();
 };
 
-describe.skip('Data Quality and Profiler should work properly', () => {
+describe('Data Quality and Profiler should work properly', () => {
   beforeEach(() => {
     cy.login();
     interceptURL('GET', `/api/v1/tables/*/systemProfile?*`, 'systemProfile');

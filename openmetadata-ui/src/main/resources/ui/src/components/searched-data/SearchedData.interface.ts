@@ -102,8 +102,6 @@ export interface SearchedDataProps {
   fetchLeftPanel?: () => ReactNode;
   isSummaryPanelVisible: boolean;
   showResultCount?: boolean;
-  showOnboardingTemplate?: boolean;
-  showOnlyChildren?: boolean;
   isFilterSelected: boolean;
   handleSummaryPanelDisplay?: (
     details: SearchedDataProps['data'][number]['_source'],

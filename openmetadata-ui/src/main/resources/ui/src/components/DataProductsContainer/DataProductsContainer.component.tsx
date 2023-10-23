@@ -50,8 +50,16 @@ const DataProductsContainer = ({
   const fetchAPI = useCallback(
     (searchValue: string, page: number) => {
       let searchText = searchValue;
-      if (activeDomain) {
-        searchText += ` AND domain.fullyQualifiedName:${activeDomain.name}`;
+      const domainText = activeDomain
+        ? `(domain.fullyQualifiedName:"${activeDomain.name}")`
+        : '';
+
+      if (!isEmpty(searchText)) {
+        searchText = `${searchText} ${
+          !isEmpty(domainText) ? `AND ${domainText}` : ''
+        } `;
+      } else {
+        searchText = domainText;
       }
 
       return fetchDataProductsElasticSearch(searchText, page);

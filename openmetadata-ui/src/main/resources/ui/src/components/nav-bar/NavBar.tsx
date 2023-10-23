@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons';
 import {
   Badge,
   Col,
@@ -36,6 +37,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import AppState from '../../AppState';
 import { ReactComponent as DropDownIcon } from '../../assets/svg/DropDown.svg';
+import { ReactComponent as IconBell } from '../../assets/svg/ic-alert-bell.svg';
 import { ReactComponent as DomainIcon } from '../../assets/svg/ic-domain.svg';
 import { ReactComponent as Help } from '../../assets/svg/ic-help.svg';
 import { ActivityFeedTabs } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
@@ -448,35 +450,6 @@ const NavBar = ({
           </Dropdown>
 
           <Dropdown
-            destroyPopupOnHide
-            className="cursor-pointer"
-            dropdownRender={() => (
-              <NotificationBox
-                hasMentionNotification={hasMentionNotification}
-                hasTaskNotification={hasTaskNotification}
-                onMarkMentionsNotificationRead={handleMentionsNotificationRead}
-                onMarkTaskNotificationRead={handleTaskNotificationRead}
-                onTabChange={handleActiveTab}
-              />
-            )}
-            overlayStyle={{
-              zIndex: 9999,
-              width: '425px',
-              minHeight: '375px',
-            }}
-            placement="bottomRight"
-            trigger={['click']}
-            onOpenChange={handleBellClick}>
-            <Badge dot={hasTaskNotification || hasMentionNotification}>
-              <SVGIcons
-                alt="Alert bell icon"
-                icon={Icons.ALERT_BELL}
-                width="18"
-              />
-            </Badge>
-          </Dropdown>
-
-          <Dropdown
             className="cursor-pointer"
             menu={{
               items: languageSelectOptions,
@@ -497,12 +470,44 @@ const NavBar = ({
           </Dropdown>
 
           <Dropdown
-            className="cursor-pointer m-t-xss"
+            destroyPopupOnHide
+            className="cursor-pointer"
+            dropdownRender={() => (
+              <NotificationBox
+                hasMentionNotification={hasMentionNotification}
+                hasTaskNotification={hasTaskNotification}
+                onMarkMentionsNotificationRead={handleMentionsNotificationRead}
+                onMarkTaskNotificationRead={handleTaskNotificationRead}
+                onTabChange={handleActiveTab}
+              />
+            )}
+            overlayStyle={{
+              zIndex: 9999,
+              width: '425px',
+              minHeight: '375px',
+            }}
+            placement="bottomRight"
+            trigger={['click']}
+            onOpenChange={handleBellClick}>
+            <Badge dot={hasTaskNotification || hasMentionNotification}>
+              <Icon
+                className="align-middle"
+                component={IconBell}
+                style={{ fontSize: '20px' }}
+              />
+            </Badge>
+          </Dropdown>
+
+          <Dropdown
             menu={{ items: supportDropdown }}
             overlayStyle={{ width: 175 }}
             placement="bottomRight"
             trigger={['click']}>
-            <Help height={20} width={20} />
+            <Icon
+              className="align-middle"
+              component={Help}
+              style={{ fontSize: '20px' }}
+            />
           </Dropdown>
 
           <UserProfileIcon />
