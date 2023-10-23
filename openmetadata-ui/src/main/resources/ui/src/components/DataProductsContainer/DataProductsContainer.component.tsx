@@ -51,11 +51,13 @@ const DataProductsContainer = ({
     (searchValue: string, page: number) => {
       let searchText = searchValue;
       const domainText = activeDomain
-        ? `domain.fullyQualifiedName:"${activeDomain.name}"`
+        ? `(domain.fullyQualifiedName:"${activeDomain.name}")`
         : '';
 
-      if (searchText) {
-        searchText += ` AND ${domainText}`;
+      if (!isEmpty(searchText)) {
+        searchText = `${searchText} ${
+          !isEmpty(domainText) ? `AND ${domainText}` : ''
+        } `;
       } else {
         searchText = domainText;
       }
