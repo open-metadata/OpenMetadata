@@ -95,10 +95,6 @@ jest.mock('../common/next-previous/NextPrevious', () => {
   return jest.fn().mockReturnValue(<p>Pagination</p>);
 });
 
-jest.mock('../onboarding/Onboarding', () => {
-  return jest.fn().mockReturnValue(<p>Onboarding</p>);
-});
-
 jest.mock('../common/error-with-placeholder/ErrorPlaceHolderES', () => {
   return jest.fn().mockReturnValue(<p>ErrorPlaceHolderES</p>);
 });
@@ -165,22 +161,6 @@ describe('Test SearchedData Component', () => {
     );
 
     expect(getByText(container, /hello world/i)).toBeInTheDocument();
-  });
-
-  it('Onboarding component should display if there is showOnboardingTemplate is true', () => {
-    const { container } = render(
-      <SearchedData
-        {...MOCK_PROPS}
-        showOnboardingTemplate
-        data={[]}
-        totalValue={0}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    expect(getByText(container, /Onboarding/i)).toBeInTheDocument();
   });
 
   it('ErrorPlaceHolderES component should display if there is no data', () => {

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, List, Modal, Select, Space } from 'antd';
+import { Button, List, Modal, Select, Space, Typography } from 'antd';
 import { compare } from 'fast-json-patch';
 import { map, startCase } from 'lodash';
 import { EntityDetailUnion } from 'Models';
@@ -38,6 +38,7 @@ import {
   getAssetsSearchIndex,
   getEntityAPIfromSource,
 } from '../../../utils/Assets/AssetsUtils';
+import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
 import Searchbar from '../../common/searchbar/Searchbar';
 import TableDataCardV2 from '../../common/table-data-card-v2/TableDataCardV2';
 import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
@@ -53,6 +54,7 @@ export const AssetSelectionModal = ({
   open,
   type = AssetsOfEntity.GLOSSARY,
   queryFilter = {},
+  emptyPlaceHolderText,
 }: AssetSelectionModalProps) => {
   const { t } = useTranslation();
   const [search, setSearch] = useState('');
@@ -235,7 +237,7 @@ export const AssetSelectionModal = ({
       entityDetailsResponse.forEach((response) => {
         if (response.status === 'fulfilled') {
           const entity = response.value;
-          entity && map.set(entity.fullyQualifiedName, entity.tags);
+          entity && map.set(entity.fullyQualifiedName, (entity as Table).tags);
         }
       });
       const patchAPIPromises = [...(selectedItems?.values() ?? [])]
@@ -345,26 +347,40 @@ export const AssetSelectionModal = ({
           searchValue={search}
           onSearch={setSearch}
         />
-        <List loading={{ spinning: isLoading, indicator: <Loader /> }}>
-          <VirtualList
-            data={items}
-            height={500}
-            itemKey="id"
-            onScroll={onScroll}>
-            {({ _source: item }) => (
-              <TableDataCardV2
-                openEntityInNewPage
-                showCheckboxes
-                checked={selectedItems?.has(item.id ?? '')}
-                className="m-b-sm asset-selection-model-card cursor-pointer"
-                handleSummaryPanelDisplay={handleCardClick}
-                id={`tabledatacard-${item.id}`}
-                key={item.id}
-                source={{ ...item, tags: [] }}
-              />
+
+        {isLoading && <Loader />}
+
+        {!isLoading && items.length > 0 && (
+          <List>
+            <VirtualList
+              data={items}
+              height={500}
+              itemKey="id"
+              onScroll={onScroll}>
+              {({ _source: item }) => (
+                <TableDataCardV2
+                  openEntityInNewPage
+                  showCheckboxes
+                  checked={selectedItems?.has(item.id ?? '')}
+                  className="m-b-sm asset-selection-model-card cursor-pointer"
+                  handleSummaryPanelDisplay={handleCardClick}
+                  id={`tabledatacard-${item.id}`}
+                  key={item.id}
+                  source={{ ...item, tags: [] }}
+                />
+              )}
+            </VirtualList>
+          </List>
+        )}
+        {!isLoading && items.length === 0 && (
+          <ErrorPlaceHolder>
+            {emptyPlaceHolderText && (
+              <Typography.Paragraph>
+                {emptyPlaceHolderText}
+              </Typography.Paragraph>
             )}
-          </VirtualList>
-        </List>
+          </ErrorPlaceHolder>
+        )}
       </Space>
     </Modal>
   );

@@ -30,8 +30,10 @@ import {
 import { myDataSearchIndex } from '../../constants/Mydata.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { EntityReference } from '../../generated/entity/type';
+import { useAuth } from '../../hooks/authHooks';
 import { searchData } from '../../rest/miscAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 import Chip from '../common/Chip/Chip.component';
 import PageLayoutV1 from '../containers/PageLayoutV1';
 import EntitySummaryPanel from '../Explore/EntitySummaryPanel/EntitySummaryPanel.component';
@@ -59,9 +61,12 @@ const Users = ({
   const { tab: activeTab = UserPageTabs.ACTIVITY } =
     useParams<{ tab: UserPageTabs }>();
   const [assetCount, setAssetCount] = useState<number>(0);
-
+  const { isAdminUser } = useAuth();
   const history = useHistory();
   const location = useLocation();
+  const { currentUser } = useAuthContext();
+
+  const isSelfProfileView = userData?.id === currentUser?.id;
 
   const [previewAsset, setPreviewAsset] =
     useState<EntityDetailsObjectInterface>();
@@ -270,8 +275,8 @@ const Users = ({
                     data-testid="inherited-roles">
                     {t('label.persona')}
                     <PersonaSelectableList
-                      hasPermission
                       multiSelect
+                      hasPermission={Boolean(isAdminUser)}
                       selectedPersonas={userData.personas ?? []}
                       onUpdate={handlePersonaUpdate}
                     />
@@ -292,7 +297,7 @@ const Users = ({
                     data-testid="inherited-roles">
                     {t('label.default-persona')}
                     <PersonaSelectableList
-                      hasPermission
+                      hasPermission={isAdminUser || isSelfProfileView}
                       multiSelect={false}
                       personaList={userData.personas}
                       selectedPersonas={defaultPersona ? [defaultPersona] : []}
