@@ -30,6 +30,10 @@ COPY docker/openmetadata-start.sh /
 
 RUN chmod 777 openmetadata-start.sh
 
+RUN adduser -D openmetadata
+RUN chown -R openmetadata:openmetadata /opt/openmetadata
+USER openmetadata
+
 WORKDIR /opt/openmetadata
 ENTRYPOINT [ "/bin/bash" ]
 CMD ["/openmetadata-start.sh"]
