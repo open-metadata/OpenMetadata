@@ -46,9 +46,9 @@ mock_bq_config = {
 }
 
 mock_credentials_path_bq_config = mock_bq_config
-mock_credentials_path_bq_config["source"]["serviceConnection"]["config"]["credentials"]["gcpConfig"][
-    "__root__"
-] = "credentials.json"
+mock_credentials_path_bq_config["source"]["serviceConnection"]["config"]["credentials"][
+    "gcpConfig"
+]["__root__"] = "credentials.json"
 
 
 MOCK_DB_NAME = "random-project-id"
@@ -94,10 +94,14 @@ class BigqueryLineageSourceTest(TestCase):
     @patch("metadata.ingestion.source.database.bigquery.connection.get_connection")
     @patch("metadata.ingestion.source.database.bigquery.connection.test_connection")
     @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata")
-    def __init__(self, methodName, get_connection, test_connection, OpenMetadata) -> None:
+    def __init__(
+        self, methodName, get_connection, test_connection, OpenMetadata
+    ) -> None:
         super().__init__(methodName)
 
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_credentials_path_bq_config)
+        self.config = OpenMetadataWorkflowConfig.parse_obj(
+            mock_credentials_path_bq_config
+        )
         self.bq_query_parser = BigqueryLineageSource(self.config.source, OpenMetadata())
 
     def test_get_engine_without_project_id_specified(self):
