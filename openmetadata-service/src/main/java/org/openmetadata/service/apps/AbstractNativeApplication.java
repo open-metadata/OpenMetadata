@@ -1,11 +1,16 @@
 package org.openmetadata.service.apps;
 
+import static com.cronutils.model.CronType.QUARTZ;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_INFO_KEY;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.COLLECTION_DAO_KEY;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.SEARCH_CLIENT_KEY;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.INVALID_APP_TYPE;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.LIVE_APP_SCHEDULE_ERR;
 
+import com.cronutils.mapper.CronMapper;
+import com.cronutils.model.Cron;
+import com.cronutils.model.definition.CronDefinitionBuilder;
+import com.cronutils.parser.CronParser;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.AppRuntime;
@@ -39,6 +44,8 @@ public class AbstractNativeApplication implements NativeApplication {
   protected CollectionDAO collectionDAO;
   private App app;
   protected SearchRepository searchRepository;
+  private final CronMapper cronMapper = CronMapper.fromQuartzToUnix();
+  private final CronParser cronParser = new CronParser(CronDefinitionBuilder.instanceDefinitionFor(QUARTZ));
 
   @Override
   public void init(App app, CollectionDAO dao, SearchRepository searchRepository) {
@@ -113,6 +120,8 @@ public class AbstractNativeApplication implements NativeApplication {
                 .getByName(null, ingestionConfig.getService().getName(), serviceRepository.getFields("id"))
                 .getEntityReference();
 
+        Cron quartzCron = cronParser.parse(app.getAppSchedule().getCronExpression());
+
         CreateIngestionPipeline createPipelineRequest =
             new CreateIngestionPipeline()
                 .withName(ingestionConfig.getName())
@@ -121,7 +130,7 @@ public class AbstractNativeApplication implements NativeApplication {
                 .withPipelineType(ingestionConfig.getPipelineType())
                 .withSourceConfig(ingestionConfig.getSourceConfig())
                 .withAirflowConfig(
-                    ingestionConfig.getAirflowConfig().withScheduleInterval(app.getAppSchedule().getCronExpression()))
+                    ingestionConfig.getAirflowConfig().withScheduleInterval(cronMapper.map(quartzCron).asString()))
                 .withService(service);
 
         // Get Pipeline
