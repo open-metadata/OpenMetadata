@@ -28,7 +28,6 @@ import { SearchIndex } from '../../enums/search.enum';
 import { User } from '../../generated/entity/teams/user';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
-import { SearchResponse } from '../../interface/search.interface';
 import { searchData } from '../../rest/miscAPI';
 import { getUsers, UsersQueryParams } from '../../rest/userAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -117,9 +116,7 @@ const UserListPageV1 = () => {
         isDeleted
       )
         .then((res) => {
-          const data = (
-            res.data as SearchResponse<SearchIndex.USER>
-          ).hits.hits.map(({ _source }) => _source);
+          const data = res.data.hits.hits.map(({ _source }) => _source);
           setPaging({
             total: res.data.hits.total.value,
           });
