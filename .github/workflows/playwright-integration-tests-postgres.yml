@@ -14,7 +14,6 @@
 
 name: Postgres Playwright Integration Tests
 on:
-  pull_request:
   push:
     branches:
       - main 
@@ -22,10 +21,10 @@ on:
       - '1.[0-9]+[0-9]+'
     paths-ignore:
       - 'openmetadata-docs/**'
-  # pull_request_target:
-  #   types: [labeled, opened, synchronize, reopened]
-  #   paths-ignore:
-  #     - 'openmetadata-docs/**'
+  pull_request_target:
+    types: [labeled, opened, synchronize, reopened]
+    paths-ignore:
+      - 'openmetadata-docs/**'
 
 jobs:
   playwright-postgresql:
