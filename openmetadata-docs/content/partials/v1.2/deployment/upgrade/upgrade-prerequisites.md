@@ -99,7 +99,7 @@ pip install openmetadata-managed-apis==x.y.z
 
 ## Deprecation Notice
 
-- OpenMetadata only supports Python version 3.8 to 3.10.
+- OpenMetadata only supports Python version 3.8 to 3.10. We will add support for 3.11 in the release 1.3.
 
 ## Breaking Changes for 1.2 Stable Release
 
@@ -115,4 +115,57 @@ then there is no way to link a query to a service and the query will be removed.
 
 - Domo Database, Dashboard and Pipeline renamed the `sandboxDomain` in favor of `instanceDomain`.
 
+### Ingestion Framework Changes
+
+We have reorganized the structure of the `Workflow` classes, which requires updated imports:
+
+- **Metadata Workflow**
+  - From: `from metadata.ingestion.api.workflow import Workflow`
+  - To: `from metadata.workflow.metadata import MetadataWorkflow`
+
+- **Lineage Workflow**
+  - From: `from metadata.ingestion.api.workflow import Workflow`
+  - To: `from metadata.workflow.metadata import MetadataWorkflow` (same as metadata)
+
+- **Usage Workflow**
+  - From: `from metadata.ingestion.api.workflow import Workflow`
+  - To: `from metadata.workflow.usage import UsageWorkflow`
+
+- **Profiler Workflow**
+  - From: `from metadata.profiler.api.workflow import ProfilerWorkflow`
+  - To: `from metadata.workflow.profiler import ProfilerWorkflow`
+
+- **Data Quality Workflow**
+  - From: `from metadata.data_quality.api.workflow import TestSuiteWorkflow`
+  - To: `from metadata.workflow.data_quality import TestSuiteWorkflow`
+
+- **Data Insights Workflow**
+  - From: `from metadata.data_insight.api.workflow import DataInsightWorkflow`
+  - To: `from metadata.workflow.data_insight import DataInsightWorkflow`
+
+- **Elasticsearch Reindex Workflow**
+  - From: `from metadata.ingestion.api.workflow import Workflow`
+  - To: `from metadata.workflow.metadata import MetadataWorkflow` (same as metadata)
+
+The `Workflow` class that you import can then be called as follows:
+
+```python
+from metadata.workflow.workflow_output_handler import print_status
+
+workflow = workflow_class.create(workflow_config)
+workflow.execute()
+workflow.raise_from_status()
+print_status(workflow)  # This method has been updated. Before it was `workflow.print_status()`
+workflow.stop()
+```
+
+If you try to run your workflows externally and start noticing `ImportError`s, you will need to review the points above.
+
+### Metadata CLI Changes
+
+In 1.1.7 and below you could run the Usage Workflow as `metadata ingest -c <path to yaml>`. Now, the Usage Workflow
+has its own command `metadata usage -c <path to yaml>`.
+
 ### Other Changes
+
+- Pipeline Status are now timestamps in milliseconds.
