@@ -2,8 +2,9 @@
 
 import time
 
-from ingestion.tests.e2e.configs.common import go_to_service
 from playwright.sync_api import Page, expect
+
+from ...configs.common import go_to_service
 
 
 def assert_change_database_owner(page_context: Page, service_name: str):

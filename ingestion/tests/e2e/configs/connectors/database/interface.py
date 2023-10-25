@@ -6,10 +6,6 @@ import time
 from abc import ABC, abstractmethod
 from time import sleep
 
-from ingestion.tests.e2e.configs.connectors.model import (
-    ConnectorTestConfig,
-    IngestionFilterConfig,
-)
 from playwright.sync_api import Page, TimeoutError, expect
 
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -26,6 +22,8 @@ from metadata.utils.time_utils import (
     get_beginning_of_day_timestamp_mill,
     get_end_of_day_timestamp_mill,
 )
+
+from ...connectors.model import ConnectorTestConfig, IngestionFilterConfig
 
 BASE_URL = "http://localhost:8585"
 

@@ -1,8 +1,9 @@
 """Test Db2 database ingestion."""
 
 import pytest
-from ingestion.tests.e2e.configs.connectors.database.db2 import Db2Connector
-from ingestion.tests.e2e.configs.connectors.model import (
+
+from ...configs.connectors.database.db2 import Db2Connector
+from ...configs.connectors.model import (
     ConnectorIngestionTestConfig,
     ConnectorTestConfig,
     ConnectorValidationTestConfig,

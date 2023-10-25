@@ -1,8 +1,14 @@
 """Test Hive database ingestion."""
 
 import pytest
-from ingestion.tests.e2e.configs.connectors.database.hive import HiveConnector
-from ingestion.tests.e2e.configs.connectors.model import (
+from playwright.sync_api import Page
+
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    PipelineState,
+)
+
+from ...configs.connectors.database.hive import HiveConnector
+from ...configs.connectors.model import (
     ConnectorIngestionTestConfig,
     ConnectorTestConfig,
     ConnectorValidationTestConfig,
@@ -10,15 +16,10 @@ from ingestion.tests.e2e.configs.connectors.model import (
     IngestionTestConfig,
     ValidationTestConfig,
 )
-from ingestion.tests.e2e.entity.database.common_assertions import (
+from ...entity.database.common_assertions import (
     assert_change_database_owner,
     assert_profile_data,
     assert_sample_data_ingestion,
-)
-from playwright.sync_api import Page
-
-from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
-    PipelineState,
 )
 
 
