@@ -4,6 +4,7 @@
 import pytest
 from playwright.sync_api import Page
 
+from ingestion.tests.e2e.configs.connectors.database.redshift import RedshiftConnector
 from ingestion.tests.e2e.configs.connectors.model import (
     ConnectorIngestionTestConfig,
     ConnectorTestConfig,
@@ -12,7 +13,6 @@ from ingestion.tests.e2e.configs.connectors.model import (
     IngestionTestConfig,
     ValidationTestConfig,
 )
-from ingestion.tests.e2e.configs.connectors.database.redshift import RedshiftConnector
 from ingestion.tests.e2e.entity.database.common_assertions import (
     assert_change_database_owner,
     assert_pii_column_auto_tagging,
