@@ -40,7 +40,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
                     ),
                     validation=ConnectorValidationTestConfig(
                         profiler=ValidationTestConfig(
-                            database="dev", schema_="dbt_jaffle", table="customers"
+                            database="e2e_cli_tests", schema_="dbt_jaffle", table="customers"
                         )  # type: ignore
                     ),
                 )
