@@ -23,10 +23,12 @@ import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.quartz.JobExecutionContext;
@@ -74,21 +76,36 @@ public class AbstractNativeApplication implements NativeApplication {
   @Override
   public void initializeExternalApp() {
     if (app.getAppType() == AppType.External && app.getScheduleType().equals(ScheduleType.Scheduled)) {
-      // Init Application Code for Some Initialization
-      List<CollectionDAO.EntityRelationshipRecord> records =
-          collectionDAO
-              .relationshipDAO()
-              .findTo(app.getId(), Entity.APPLICATION, Relationship.CONTAINS.ordinal(), Entity.INGESTION_PIPELINE);
-      if (!records.isEmpty()) {
-        return;
-      }
+      IngestionPipelineRepository ingestionPipelineRepository =
+          (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+      ExternalAppIngestionConfig ingestionConfig =
+          JsonUtils.convertValue(app.getAppConfiguration(), ExternalAppIngestionConfig.class);
 
       try {
-        ExternalAppIngestionConfig ingestionConfig =
-            JsonUtils.convertValue(app.getAppConfiguration(), ExternalAppIngestionConfig.class);
+        // Check if the Pipeline Already Exists
+        String fqn = FullyQualifiedName.add(ingestionConfig.getService().getName(), ingestionConfig.getName());
+        IngestionPipeline storedPipeline =
+            ingestionPipelineRepository.getByName(null, fqn, ingestionPipelineRepository.getFields("id"));
 
-        IngestionPipelineRepository ingestionPipelineRepository =
-            (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+        // Init Application Code for Some Initialization
+        List<CollectionDAO.EntityRelationshipRecord> records =
+            collectionDAO
+                .relationshipDAO()
+                .findTo(app.getId(), Entity.APPLICATION, Relationship.HAS.ordinal(), Entity.INGESTION_PIPELINE);
+
+        if (records.isEmpty()) {
+          // Add Ingestion Pipeline to Application
+          collectionDAO
+              .relationshipDAO()
+              .insert(
+                  app.getId(),
+                  storedPipeline.getId(),
+                  Entity.APPLICATION,
+                  Entity.INGESTION_PIPELINE,
+                  Relationship.HAS.ordinal());
+        }
+      } catch (EntityNotFoundException ex) {
+        // Pipeline needs to be created
         EntityRepository<?> serviceRepository =
             Entity.getServiceEntityRepository(ServiceType.fromValue(ingestionConfig.getService().getType()));
         EntityReference service =
@@ -103,7 +120,8 @@ public class AbstractNativeApplication implements NativeApplication {
                 .withDescription(ingestionConfig.getDescription())
                 .withPipelineType(ingestionConfig.getPipelineType())
                 .withSourceConfig(ingestionConfig.getSourceConfig())
-                .withAirflowConfig(ingestionConfig.getAirflowConfig())
+                .withAirflowConfig(
+                    ingestionConfig.getAirflowConfig().withScheduleInterval(app.getAppSchedule().getCronExpression()))
                 .withService(service);
 
         // Get Pipeline
@@ -122,16 +140,10 @@ public class AbstractNativeApplication implements NativeApplication {
                 Entity.APPLICATION,
                 Entity.INGESTION_PIPELINE,
                 Relationship.HAS.ordinal());
-
-      } catch (Exception ex) {
-        LOG.error("[IngestionPipelineResource] Failed in Creating Reindex and Insight Pipeline", ex);
-        LOG.error("Failed to initialize DataInsightApp", ex);
-        throw new RuntimeException(ex);
       }
-
-      return;
+    } else {
+      throw new IllegalArgumentException(INVALID_APP_TYPE);
     }
-    throw new IllegalArgumentException(INVALID_APP_TYPE);
   }
 
   protected void validateServerExecutableApp(AppRuntime context) {
