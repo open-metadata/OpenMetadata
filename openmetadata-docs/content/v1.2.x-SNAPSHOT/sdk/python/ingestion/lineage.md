@@ -161,8 +161,8 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 
 add_lineage_request = AddLineageRequest(
-    description="test lineage",
     edge=EntitiesEdge(
+        description="test lineage",
         fromEntity=EntityReference(id=table_a_entity.id, type="table"),
         toEntity=EntityReference(id=table_b_entity.id, type="table"),
     ),
