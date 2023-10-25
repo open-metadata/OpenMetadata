@@ -414,7 +414,10 @@ const ContainerPage = () => {
   const handleExtensionUpdate = async (updatedContainer: Container) => {
     try {
       const response = await handleUpdateContainerData(updatedContainer);
-      setContainerData(response);
+      setContainerData({
+        ...response,
+        tags: sortTagsCaseInsensitive(response.tags ?? []),
+      });
       getEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
