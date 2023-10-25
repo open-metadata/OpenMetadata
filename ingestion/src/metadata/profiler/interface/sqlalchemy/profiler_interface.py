@@ -23,8 +23,9 @@ from datetime import datetime, timezone
 from typing import Dict, List
 
 from sqlalchemy import Column, inspect
-from sqlalchemy.exc import ProgrammingError
+from sqlalchemy.exc import ProgrammingError, ResourceClosedError
 from sqlalchemy.orm import scoped_session
+from metadata.profiler.orm.registry import Dialects
 
 from metadata.generated.schema.entity.data.table import TableData
 from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
@@ -258,6 +259,11 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
 
             row = runner.select_first_from_query(metric_query)
             return dict(row)
+        except ResourceClosedError as exc:
+            # if the query returns no results, we will get a ResourceClosedError from Druid
+            if not runner._session.get_bind().dialect.name == Dialects.Druid:
+                msg = f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
+                handle_query_exception(msg, exc, session)
         except Exception as exc:
             msg = f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
             handle_query_exception(msg, exc, session)

@@ -12,6 +12,7 @@
 Helper module to handle data sampling
 for the profiler
 """
+import traceback
 from typing import List, Optional, Union, cast
 
 from sqlalchemy import Column, inspect, text
@@ -37,6 +38,9 @@ from metadata.utils.sqa_utils import (
     get_partition_col_type,
     get_value_filter,
 )
+from metadata.utils.logger import profiler_interface_registry_logger
+
+logger = profiler_interface_registry_logger()
 
 RANDOM_LABEL = "random"
 
@@ -143,12 +147,19 @@ class SQASampler(SamplerInterface):
                 if col.name != RANDOM_LABEL and col.name in names
             ]
 
-        sqa_sample = (
-            self.client.query(*sqa_columns)
-            .select_from(rnd)
-            .limit(self.sample_limit)
-            .all()
-        )
+        try:
+            sqa_sample = (
+                self.client.query(*sqa_columns)
+                .select_from(rnd)
+                .limit(self.sample_limit)
+                .all()
+            )
+        except Exception:
+            logger.debug("Cannot fetch sample data with random sampling. Falling back to 100 rows.")
+            logger.debug(traceback.format_exc())
+            sqa_columns = [col for col in inspect(self.table).c]
+            sqa_sample = self.client.query(*sqa_columns).select_from(self.table).limit(100).all()
+
         return TableData(
             columns=[column.name for column in sqa_columns],
             rows=[list(row) for row in sqa_sample],

@@ -69,6 +69,13 @@ def _(element, compiler, **kw):
     proc = compiler.process(element.clauses, **kw)
     return "if(isNaN(stddevPop(%s)), null, stddevPop(%s))" % ((proc,) * 2)
 
+@compiles(StdDevFn, Dialects.Druid)
+def _(element, compiler, **kw):
+    """returns  stdv for druid. Could not validate with our cluster
+    we might need to look into installing the druid-stats module
+    https://druid.apache.org/docs/latest/configuration/extensions/#loading-extensions
+    """
+    return "NULL"
 
 class StdDev(StaticMetric):
     """
