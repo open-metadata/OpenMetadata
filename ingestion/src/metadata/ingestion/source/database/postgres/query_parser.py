@@ -11,11 +11,9 @@
 """
 Postgres Query parser module
 """
-import csv
 import traceback
 from abc import ABC
-from datetime import datetime
-from typing import Iterable, Optional
+from typing import Iterable
 
 from sqlalchemy.engine.base import Engine
 
@@ -25,7 +23,7 @@ from metadata.generated.schema.entity.services.connections.database.postgresConn
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
+from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
@@ -75,46 +73,11 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
             time_column_name=get_postgres_time_column_name(engine=self.engine),
         )
 
+    # pylint: disable=no-member
     def get_table_query(self) -> Iterable[TableQuery]:
         try:
             if self.config.sourceConfig.config.queryLogFilePath:
-                table_query_list = []
-                with open(
-                    self.config.sourceConfig.config.queryLogFilePath,
-                    "r",
-                    encoding="utf-8",
-                ) as query_log_file:
-                    for record in csv.DictReader(query_log_file):
-                        query_dict = dict(record)
-
-                        analysis_date = (
-                            datetime.utcnow()
-                            if not query_dict.get("session_start_time")
-                            else datetime.strptime(
-                                query_dict.get("session_start_time"),
-                                "%Y-%m-%d %H:%M:%S+%f",
-                            )
-                        )
-
-                        query_dict["aborted"] = query_dict["sql_state_code"] == "00000"
-                        if "statement" in query_dict["message"]:
-                            query_dict["message"] = query_dict["message"].split(":")[1]
-
-                        table_query_list.append(
-                            TableQuery(
-                                query=query_dict["message"],
-                                userName=query_dict.get("user_name", ""),
-                                startTime=query_dict.get("session_start_time", ""),
-                                endTime=query_dict.get("log_time", ""),
-                                analysisDate=analysis_date,
-                                aborted=self.get_aborted_status(query_dict),
-                                databaseName=self.get_database_name(query_dict),
-                                serviceName=self.config.serviceName,
-                                databaseSchema=self.get_schema_name(query_dict),
-                            )
-                        )
-                yield TableQueries(queries=table_query_list)
-
+                yield from super().yield_table_queries_from_logs()
             else:
                 database = self.config.serviceConnection.__root__.config.database
                 if database:
@@ -129,40 +92,6 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
                         self.engine = get_connection(self.service_connection)
                         yield from self.process_table_query()
 
-        except Exception as err:
-            logger.error(f"Source usage processing error - {err}")
-            logger.debug(traceback.format_exc())
-
-    def process_table_query(self) -> Optional[Iterable[TableQuery]]:
-        """
-        Process Query
-        """
-        try:
-            with get_connection(self.service_connection).connect() as conn:
-                rows = conn.execute(self.get_sql_statement())
-                queries = []
-                for row in rows:
-                    row = dict(row)
-                    try:
-                        queries.append(
-                            TableQuery(
-                                query=row["query_text"],
-                                userName=row["usename"],
-                                analysisDate=datetime.now(),
-                                aborted=self.get_aborted_status(row),
-                                databaseName=self.get_database_name(row),
-                                serviceName=self.config.serviceName,
-                                databaseSchema=self.get_schema_name(row),
-                                duration=row.get("duration"),
-                            )
-                        )
-                    except Exception as err:
-                        logger.debug(traceback.format_exc())
-                        logger.error(str(err))
-            if queries:
-                yield TableQueries(queries=queries)
-            else:
-                return None
         except Exception as err:
             logger.error(f"Source usage processing error - {err}")
             logger.debug(traceback.format_exc())
