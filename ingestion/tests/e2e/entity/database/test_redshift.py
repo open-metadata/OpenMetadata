@@ -12,7 +12,7 @@ from ingestion.tests.e2e.configs.connectors.model import (
     IngestionTestConfig,
     ValidationTestConfig,
 )
-from ingestion.tests.e2e.configs.connectors.redshift import RedshiftConnector
+from ingestion.tests.e2e.configs.connectors.database.redshift import RedshiftConnector
 from ingestion.tests.e2e.entity.database.common_assertions import (
     assert_change_database_owner,
     assert_pii_column_auto_tagging,
@@ -53,18 +53,19 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
 class TestRedshiftConnector:
     """Redshift connector test case"""
 
+    @pytest.mark.dependency()
     def test_pipelines_statuses(self):
         """check ingestion pipelines ran successfully"""
         assert self.metadata_ingestion_status == PipelineState.success
         # if the connector does not support profiler ingestion return None as status
         assert self.profiler_ingestion_status in {PipelineState.success, None}
 
-    @pytest.mark.dependency(depends=["test_pipelines_statuses"])
+    @pytest.mark.dependency(depends=["TestRedshiftConnector::test_pipelines_statuses"])
     def test_change_database_owner(self, admin_page_context: Page):
         """test change database owner"""
         assert_change_database_owner(admin_page_context, self.service_name)
 
-    @pytest.mark.dependency(depends=["test_pipelines_statuses"])
+    @pytest.mark.dependency(depends=["TestRedshiftConnector::test_pipelines_statuses"])
     def test_check_profile_data(self, admin_page_context: Page):
         """check profile data are visible"""
         assert_profile_data(
@@ -76,7 +77,7 @@ class TestRedshiftConnector:
             self.connector_obj,
         )
 
-    @pytest.mark.dependency(depends=["test_pipelines_statuses"])
+    @pytest.mark.dependency(depends=["TestRedshiftConnector::test_pipelines_statuses"])
     def test_sample_data_ingestion(self, admin_page_context: Page):
         """test sample dta is ingested as expected for the table"""
         assert_sample_data_ingestion(
@@ -87,7 +88,7 @@ class TestRedshiftConnector:
             self.connector_obj.validation_config.profiler.table,
         )
 
-    @pytest.mark.dependency(depends=["test_pipelines_statuses"])
+    @pytest.mark.dependency(depends=["TestRedshiftConnector::test_pipelines_statuses"])
     def test_pii_colum_auto_tagging(self, admin_page_context: Page):
         """check pii column auto tagging tagged as expected"""
         assert_pii_column_auto_tagging(

@@ -1,8 +1,8 @@
-"""Test Hive database ingestion."""
+"""Test Db2 database ingestion."""
 
 import pytest
 
-from ingestion.tests.e2e.configs.connectors.db2 import Db2Connector
+from ingestion.tests.e2e.configs.connectors.database.db2 import Db2Connector
 from ingestion.tests.e2e.configs.connectors.model import (
     ConnectorIngestionTestConfig,
     ConnectorTestConfig,
@@ -36,5 +36,5 @@ from ingestion.tests.e2e.configs.connectors.model import (
     indirect=True,
 )
 @pytest.mark.usefixtures("setUpClass")
-class TestHiveConnector:
+class TestDb2Connector:
     """We need to validate dependency can be installed in the test env."""
