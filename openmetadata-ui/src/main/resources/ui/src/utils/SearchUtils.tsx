@@ -36,7 +36,7 @@ import {
 import { EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { getPartialNameFromTableFQN } from './CommonUtils';
-import { serviceTypeLogo } from './ServiceUtils';
+import serviceUtilClassBase from './ServiceUtilClassBase';
 import { escapeESReservedCharacters } from './StringsUtils';
 import { getEntityLink } from './TableUtils';
 
@@ -200,7 +200,7 @@ export const getSuggestionElement = (
           alt={serviceType}
           className="m-r-sm"
           height="16px"
-          src={serviceTypeLogo(serviceType)}
+          src={serviceUtilClassBase.getServiceTypeLogo(serviceType)}
           width="16px"
         />
       }

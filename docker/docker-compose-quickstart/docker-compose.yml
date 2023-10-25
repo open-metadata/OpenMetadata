@@ -97,7 +97,7 @@ services:
       # Database configuration for MySQL
       DB_DRIVER_CLASS: ${DB_DRIVER_CLASS:-com.mysql.cj.jdbc.Driver}
       DB_SCHEME: ${DB_SCHEME:-mysql}
-      DB_USE_SSL: ${DB_USE_SSL:-false}
+      DB_PARAMS: ${DB_PARAMS:-"allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC"}
       DB_USER: ${DB_USER:-openmetadata_user}
       DB_USER_PASSWORD: ${DB_USER_PASSWORD:-openmetadata_password}
       DB_HOST: ${DB_HOST:-mysql}
@@ -125,6 +125,7 @@ services:
       EVENT_MONITOR_LATENCY: ${EVENT_MONITOR_LATENCY:-[]}
 
       #pipelineServiceClientConfiguration
+      PIPELINE_SERVICE_CLIENT_ENABLED: ${PIPELINE_SERVICE_CLIENT_ENABLED:-true}
       PIPELINE_SERVICE_CLIENT_CLASS_NAME: ${PIPELINE_SERVICE_CLIENT_CLASS_NAME:-"org.openmetadata.service.clients.pipeline.airflow.AirflowRESTClient"}
       PIPELINE_SERVICE_IP_INFO_ENABLED: ${PIPELINE_SERVICE_IP_INFO_ENABLED:-false}
       PIPELINE_SERVICE_CLIENT_HOST_IP: ${PIPELINE_SERVICE_CLIENT_HOST_IP:-""}
@@ -160,9 +161,7 @@ services:
       OM_URI: ${OM_URI:- "http://localhost:8585"}
 
       #extensionConfiguration
-      OM_RESOURCE_PACKAGES: ${OM_RESOURCE_PACKAGES:-[]}
-      OM_EXTENSIONS: ${OM_EXTENSIONS:-[]}
-
+      MIGRATION_EXTENSION_PATH: ${MIGRATION_EXTENSION_PATH:-""}
 
       # Heap OPTS Configurations
       OPENMETADATA_HEAP_OPTS: ${OPENMETADATA_HEAP_OPTS:--Xmx1G -Xms1G}
@@ -252,7 +251,7 @@ services:
       # Database configuration for MySQL
       DB_DRIVER_CLASS: ${DB_DRIVER_CLASS:-com.mysql.cj.jdbc.Driver}
       DB_SCHEME: ${DB_SCHEME:-mysql}
-      DB_USE_SSL: ${DB_USE_SSL:-false}
+      DB_PARAMS: ${DB_PARAMS:-"allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC"}
       DB_USER: ${DB_USER:-openmetadata_user}
       DB_USER_PASSWORD: ${DB_USER_PASSWORD:-openmetadata_password}
       DB_HOST: ${DB_HOST:-mysql}
@@ -280,6 +279,7 @@ services:
       EVENT_MONITOR_LATENCY: ${EVENT_MONITOR_LATENCY:-[]}
 
       #pipelineServiceClientConfiguration
+      PIPELINE_SERVICE_CLIENT_ENABLED: ${PIPELINE_SERVICE_CLIENT_ENABLED:-true}
       PIPELINE_SERVICE_CLIENT_CLASS_NAME: ${PIPELINE_SERVICE_CLIENT_CLASS_NAME:-"org.openmetadata.service.clients.pipeline.airflow.AirflowRESTClient"}
       PIPELINE_SERVICE_IP_INFO_ENABLED: ${PIPELINE_SERVICE_IP_INFO_ENABLED:-false}
       PIPELINE_SERVICE_CLIENT_HOST_IP: ${PIPELINE_SERVICE_CLIENT_HOST_IP:-""}
@@ -315,8 +315,7 @@ services:
       OM_URI: ${OM_URI:- "http://localhost:8585"}
 
       #extensionConfiguration
-      OM_RESOURCE_PACKAGES: ${OM_RESOURCE_PACKAGES:-[]}
-      OM_EXTENSIONS: ${OM_EXTENSIONS:-[]}
+      MIGRATION_EXTENSION_PATH: ${MIGRATION_EXTENSION_PATH:-""}
 
 
       # Heap OPTS Configurations

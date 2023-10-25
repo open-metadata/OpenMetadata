@@ -136,7 +136,7 @@ const AppRunsHistory = forwardRef(
 
             return (
               <StatusBadge
-                dataTestId={record.appId + '-status'}
+                dataTestId="pipeline-status"
                 label={capitalize(record.status)}
                 status={status}
               />
