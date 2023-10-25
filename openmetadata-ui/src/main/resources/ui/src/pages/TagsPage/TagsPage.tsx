@@ -628,15 +628,19 @@ const TagsPage = () => {
                   className=" text-primary"
                   data-testid="add-classification"
                   disabled={!createClassificationPermission}
-                  icon={<PlusIcon className="anticon" />}
                   onClick={() => {
                     setIsAddingClassification((prevState) => !prevState);
                   }}>
-                  <span>
-                    {t('label.add-entity', {
-                      entity: t('label.classification'),
-                    })}
-                  </span>
+                  <div className="d-flex items-center justify-center">
+                    <PlusIcon className="anticon" />
+                    <Typography.Text
+                      className="p-l-xss"
+                      ellipsis={{ tooltip: true }}>
+                      {t('label.add-entity', {
+                        entity: t('label.classification'),
+                      })}
+                    </Typography.Text>
+                  </div>
                 </Button>
               </Tooltip>
             </Space>

@@ -225,6 +225,7 @@ const SigninPage = () => {
                     requiredMark={false}
                     rules={[{ required: true }]}>
                     <Input
+                      autoFocus
                       placeholder={
                         isAuthProviderLDAP
                           ? t('label.email')

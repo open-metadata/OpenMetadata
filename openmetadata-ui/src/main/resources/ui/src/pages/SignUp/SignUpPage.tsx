@@ -125,6 +125,7 @@ const SignUp = () => {
               },
             ]}>
             <Input
+              autoFocus
               data-testid="full-name-input"
               placeholder={t('label.your-entity', {
                 entity: t('label.full-name'),

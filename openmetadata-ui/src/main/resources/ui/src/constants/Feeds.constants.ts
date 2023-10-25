@@ -36,7 +36,7 @@ export const confirmStateInitialValue = {
   isThread: false,
 };
 
-export const MENTION_ALLOWED_CHARS = /^[A-Za-z0-9_]*$/;
+export const MENTION_ALLOWED_CHARS = /^[A-Za-z0-9_.]*$/;
 export const MENTION_DENOTATION_CHARS = ['@', '#'];
 
 export const TOOLBAR_ITEMS = [
