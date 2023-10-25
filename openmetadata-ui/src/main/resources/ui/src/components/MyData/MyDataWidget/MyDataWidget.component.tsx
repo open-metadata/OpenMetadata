@@ -17,15 +17,20 @@ import { observer } from 'mobx-react';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import AppState from '../../../AppState';
-import { getUserPath, ROUTES } from '../../../constants/constants';
-import { AssetsType } from '../../../enums/entity.enum';
-import { EntityReference } from '../../../generated/entity/type';
+import {
+  getUserPath,
+  INITIAL_PAGING_VALUE,
+  PAGE_SIZE,
+  ROUTES,
+} from '../../../constants/constants';
+import { SearchIndex } from '../../../enums/search.enum';
 import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
-import { getUserById } from '../../../rest/userAPI';
+import { searchData } from '../../../rest/miscAPI';
 import { Transi18next } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityIcon, getEntityLink } from '../../../utils/TableUtils';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import { SourceType } from '../../searched-data/SearchedData.interface';
 import EntityListSkeleton from '../../Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
 import './MyDataWidget.less';
 
@@ -35,34 +40,43 @@ const MyDataWidgetInternal = ({
   widgetKey,
 }: WidgetCommonProps) => {
   const { t } = useTranslation();
-  const currentUserDetails = AppState.getCurrentUserDetails();
+  const { currentUser } = useAuthContext();
   const [isLoading, setIsLoading] = useState(true);
-  const [data, setData] = useState<EntityReference[]>([]);
+  const [data, setData] = useState<SourceType[]>([]);
   const [totalOwnedAssetsCount, setTotalOwnedAssetsCount] = useState<number>(0);
 
   const fetchMyDataAssets = async () => {
-    if (!currentUserDetails || !currentUserDetails.id) {
-      return;
-    }
-    setIsLoading(true);
-    try {
-      const userData = await getUserById(currentUserDetails?.id, 'owns');
+    if (!isUndefined(currentUser)) {
+      setIsLoading(true);
+      try {
+        const teamsIds = (currentUser.teams ?? []).map((team) => team.id);
+        const mergedIds = [
+          ...teamsIds.map((id) => `owner.id:${id}`),
+          `owner.id:${currentUser.id}`,
+        ].join(' OR ');
 
-      if (userData) {
-        const includeData = Object.values(AssetsType);
-        const owns: EntityReference[] = userData.owns ?? [];
-
-        const includedOwnsData = owns.filter((data) =>
-          includeData.includes(data.type as AssetsType)
+        const queryFilter = `(${mergedIds})`;
+        const res = await searchData(
+          '',
+          INITIAL_PAGING_VALUE,
+          PAGE_SIZE,
+          queryFilter,
+          '',
+          '',
+          SearchIndex.ALL
         );
 
-        setData(includedOwnsData.slice(0, 8));
-        setTotalOwnedAssetsCount(includedOwnsData.length);
+        // Extract useful details from the Response
+        const totalOwnedAssets = res?.data?.hits?.total.value ?? 0;
+        const ownedAssets = res?.data?.hits?.hits;
+
+        setData(ownedAssets.map((hit) => hit._source).slice(0, 8));
+        setTotalOwnedAssetsCount(totalOwnedAssets);
+      } catch (err) {
+        setData([]);
+      } finally {
+        setIsLoading(false);
       }
-    } catch (err) {
-      setData([]);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -72,7 +86,7 @@ const MyDataWidgetInternal = ({
 
   useEffect(() => {
     fetchMyDataAssets();
-  }, [currentUserDetails]);
+  }, [currentUser]);
 
   return (
     <Card className="my-data-widget-container card-widget" loading={isLoading}>
@@ -86,7 +100,7 @@ const MyDataWidgetInternal = ({
               {data.length ? (
                 <Link
                   data-testid="view-all-link"
-                  to={getUserPath(currentUserDetails?.name || '', 'mydata')}>
+                  to={getUserPath(currentUser?.name ?? '', 'mydata')}>
                   <span className="text-grey-muted font-normal text-xs">
                     {t('label.view-all')}{' '}
                     <span data-testid="my-data-total-count">
@@ -132,14 +146,14 @@ const MyDataWidgetInternal = ({
                     <Link
                       className=""
                       to={getEntityLink(
-                        item.type || '',
+                        item.entityType ?? '',
                         item.fullyQualifiedName as string
                       )}>
                       <Button
                         className="entity-button flex-center p-0 m--ml-1"
                         icon={
                           <div className="entity-button-icon m-r-xs">
-                            {getEntityIcon(item.type || '')}
+                            {getEntityIcon(item.entityType ?? '')}
                           </div>
                         }
                         type="text">
