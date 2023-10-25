@@ -8,7 +8,7 @@ from .interface import DataBaseConnectorInterface
 
 
 class DruidConnector(DataBaseConnectorInterface):
-    """db2 connector"""
+    """druid connector"""
 
     def get_service(self, page: Page):
         """get service from the service page"""
