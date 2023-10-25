@@ -97,7 +97,7 @@ import {
   getSettingPath,
 } from './RouterUtils';
 import { getSearchIndexDetailsPath } from './SearchIndexUtils';
-import { serviceTypeLogo } from './ServiceUtils';
+import serviceUtilClassBase from './ServiceUtilClassBase';
 import { getDecodedFqn, ordinalize } from './StringsUtils';
 import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
 
@@ -324,7 +324,7 @@ export const getServiceIcon = (source: SourceType) => {
       <img
         alt="service-icon"
         className="inline h-7"
-        src={serviceTypeLogo(source.serviceType || '')}
+        src={serviceUtilClassBase.getServiceTypeLogo(source.serviceType || '')}
       />
     );
   }

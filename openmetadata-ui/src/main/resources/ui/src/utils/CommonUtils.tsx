@@ -76,7 +76,7 @@ import { getEntityFeedLink, getTitleCase } from './EntityUtils';
 import Fqn from './Fqn';
 import { history } from './HistoryUtils';
 import { getSearchIndexTabPath } from './SearchIndexUtils';
-import { serviceTypeLogo } from './ServiceUtils';
+import serviceUtilClassBase from './ServiceUtilClassBase';
 import { getEncodedFqn } from './StringsUtils';
 import { TASK_ENTITIES } from './TasksUtils';
 import { showErrorToast } from './ToastUtils';
@@ -379,7 +379,7 @@ export const getServiceLogo = (
   serviceType: string,
   className = ''
 ): JSX.Element | null => {
-  const logo = serviceTypeLogo(serviceType);
+  const logo = serviceUtilClassBase.getServiceTypeLogo(serviceType);
 
   if (!isNull(logo)) {
     return <img alt="" className={className} src={logo} />;
