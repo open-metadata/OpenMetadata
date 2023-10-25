@@ -3,9 +3,8 @@
 import random
 import string
 
-from playwright.sync_api import Page, expect
-
 from ingestion.tests.e2e.configs.users.user import User
+from playwright.sync_api import Page, expect
 
 BASE_URL = "http://localhost:8585"
 

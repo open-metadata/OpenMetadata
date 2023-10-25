@@ -2,8 +2,6 @@
 
 
 import pytest
-from playwright.sync_api import Page
-
 from ingestion.tests.e2e.configs.connectors.database.redshift import RedshiftConnector
 from ingestion.tests.e2e.configs.connectors.model import (
     ConnectorIngestionTestConfig,
@@ -19,6 +17,8 @@ from ingestion.tests.e2e.entity.database.common_assertions import (
     assert_profile_data,
     assert_sample_data_ingestion,
 )
+from playwright.sync_api import Page
+
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     PipelineState,
 )
@@ -35,14 +35,14 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
                             schema_=IngestionFilterConfig(includes=["dbt_jaffle"]),
                         ),  # type: ignore
                         profiler=IngestionTestConfig(
-                            table=IngestionFilterConfig(includes=["customers"]),
+                            table=IngestionFilterConfig(includes=["customer"]),
                         ),  # type: ignore
                     ),
                     validation=ConnectorValidationTestConfig(
                         profiler=ValidationTestConfig(
                             database="e2e_cli_tests",
                             schema_="dbt_jaffle",
-                            table="customers",
+                            table="customer",
                         )  # type: ignore
                     ),
                 )
@@ -55,19 +55,16 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
 class TestRedshiftConnector:
     """Redshift connector test case"""
 
-    @pytest.mark.dependency()
     def test_pipelines_statuses(self):
         """check ingestion pipelines ran successfully"""
         assert self.metadata_ingestion_status == PipelineState.success
         # if the connector does not support profiler ingestion return None as status
         assert self.profiler_ingestion_status in {PipelineState.success, None}
 
-    @pytest.mark.dependency(depends=["TestRedshiftConnector::test_pipelines_statuses"])
     def test_change_database_owner(self, admin_page_context: Page):
         """test change database owner"""
         assert_change_database_owner(admin_page_context, self.service_name)
 
-    @pytest.mark.dependency(depends=["TestRedshiftConnector::test_pipelines_statuses"])
     def test_check_profile_data(self, admin_page_context: Page):
         """check profile data are visible"""
         assert_profile_data(
@@ -79,7 +76,6 @@ class TestRedshiftConnector:
             self.connector_obj,
         )
 
-    @pytest.mark.dependency(depends=["TestRedshiftConnector::test_pipelines_statuses"])
     def test_sample_data_ingestion(self, admin_page_context: Page):
         """test sample dta is ingested as expected for the table"""
         assert_sample_data_ingestion(
@@ -90,7 +86,6 @@ class TestRedshiftConnector:
             self.connector_obj.validation_config.profiler.table,
         )
 
-    @pytest.mark.dependency(depends=["TestRedshiftConnector::test_pipelines_statuses"])
     def test_pii_colum_auto_tagging(self, admin_page_context: Page):
         """check pii column auto tagging tagged as expected"""
         assert_pii_column_auto_tagging(
@@ -99,5 +94,5 @@ class TestRedshiftConnector:
             self.connector_obj.validation_config.profiler.database,
             self.connector_obj.validation_config.profiler.schema_,
             self.connector_obj.validation_config.profiler.table,
-            "first_name",
+            "c_name",
         )

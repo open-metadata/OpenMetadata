@@ -1,8 +1,9 @@
 """common database assertions"""
 
-from playwright.sync_api import Page, expect
+import time
 
 from ingestion.tests.e2e.configs.common import go_to_service
+from playwright.sync_api import Page, expect
 
 
 def assert_change_database_owner(page_context: Page, service_name: str):
@@ -10,11 +11,11 @@ def assert_change_database_owner(page_context: Page, service_name: str):
     go_to_service("Databases", page_context, service_name)
     page_context.get_by_test_id("edit-owner").click()
     page_context.get_by_test_id("owner-select-users-search-bar").click()
-    page_context.get_by_test_id("owner-select-users-search-bar").fill("created-user")
-    page_context.get_by_text("created-user").click()
+    page_context.get_by_test_id("owner-select-users-search-bar").fill("Aaron Johnson")
+    page_context.get_by_text("Aaron Johnson").click()
     expect(
         page_context.get_by_test_id("owner-label").get_by_test_id("owner-link")
-    ).to_have_text("created-user")
+    ).to_have_text("Aaron Johnson")
 
 
 def assert_profile_data(
@@ -31,6 +32,7 @@ def assert_profile_data(
     page_context.get_by_role("link", name=schema).click()
     page_context.get_by_role("link", name=table, exact=True).click()
     page_context.get_by_text("Profiler & Data Quality").click()
+    time.sleep(0.05)
     for card in range(connector_obj.profiler_summary_card_count):
         summary_card = page_context.get_by_test_id("summary-card-container").nth(card)
         description = summary_card.get_by_test_id(
@@ -70,6 +72,7 @@ def assert_pii_column_auto_tagging(
     page_context.get_by_role("link", name=schema).click()
     page_context.get_by_role("link", name=table, exact=True).click()
 
+    time.sleep(0.05)
     table_row = page_context.locator(f'tr:has-text("{column}")')
     tag = table_row.locator("td:nth-child(4)")
     expect(tag).to_be_visible()

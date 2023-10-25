@@ -2,10 +2,9 @@
 
 
 import pytest
-from playwright.sync_api import Browser, Page, expect
-
 from ingestion.tests.e2e.configs.common import go_to_service
 from ingestion.tests.e2e.configs.users.admin import Admin
+from playwright.sync_api import Browser, Page, expect
 
 TIMEOUT = 60000
 BASE_URL = "http://localhost:8585"

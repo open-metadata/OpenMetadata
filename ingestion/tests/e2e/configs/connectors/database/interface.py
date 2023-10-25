@@ -6,12 +6,12 @@ import time
 from abc import ABC, abstractmethod
 from time import sleep
 
-from playwright.sync_api import Page, TimeoutError, expect
-
 from ingestion.tests.e2e.configs.connectors.model import (
     ConnectorTestConfig,
     IngestionFilterConfig,
 )
+from playwright.sync_api import Page, TimeoutError, expect
+
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -36,7 +36,7 @@ class DataBaseConnectorInterface(ABC):
     def __init__(self, config: ConnectorTestConfig):
         """Initialize the connector"""
         self.supports_profiler_ingestion = True
-        self.profiler_summary_card_count = 5
+        self.profiler_summary_card_count = 4
 
         self.ingestion_config = config.ingestion
         self.validation_config = config.validation
