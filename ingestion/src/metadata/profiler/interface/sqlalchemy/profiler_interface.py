@@ -25,7 +25,6 @@ from typing import Dict, List
 from sqlalchemy import Column, inspect
 from sqlalchemy.exc import ProgrammingError, ResourceClosedError
 from sqlalchemy.orm import scoped_session
-from metadata.profiler.orm.registry import Dialects
 
 from metadata.generated.schema.entity.data.table import TableData
 from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
@@ -39,6 +38,7 @@ from metadata.profiler.metrics.static.sum import Sum
 from metadata.profiler.orm.functions.table_metric_construct import (
     table_metric_construct_factory,
 )
+from metadata.profiler.orm.registry import Dialects
 from metadata.profiler.processor.runner import QueryRunner
 from metadata.profiler.processor.sampler.sampler_factory import sampler_factory_
 from metadata.utils.custom_thread_pool import CustomThreadPoolExecutor
@@ -261,7 +261,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             return dict(row)
         except ResourceClosedError as exc:
             # if the query returns no results, we will get a ResourceClosedError from Druid
-            if not runner._session.get_bind().dialect.name == Dialects.Druid:
+            if not runner._session.get_bind().dialect.name == Dialects.Druid: # pylint: disable=protected-access
                 msg = f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
                 handle_query_exception(msg, exc, session)
         except Exception as exc:

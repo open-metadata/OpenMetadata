@@ -1,24 +1,30 @@
 """connectors interface"""
 
 import random
-from time import sleep
-import time
 import string
+import time
 from abc import ABC, abstractmethod
-from typing import List
+from time import sleep
 
-from playwright.sync_api import Page, expect, TimeoutError
+from playwright.sync_api import Page, TimeoutError, expect
 
-from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import PipelineState
-from ingestion.tests.e2e.configs.connectors.model import ConnectorTestConfig, IngestionFilterConfig, ValidationTestConfig
-from ingestion.tests.e2e.configs.users.admin import Admin
-from metadata.utils.time_utils import get_beginning_of_day_timestamp_mill, get_end_of_day_timestamp_mill
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from ingestion.tests.e2e.configs.connectors.model import (
+    ConnectorTestConfig,
+    IngestionFilterConfig,
+)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    PipelineState,
+)
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
+)
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.time_utils import (
+    get_beginning_of_day_timestamp_mill,
+    get_end_of_day_timestamp_mill,
 )
 
 BASE_URL = "http://localhost:8585"
@@ -113,29 +119,35 @@ class DataBaseConnectorInterface(ABC):
                 if not filter_elements:
                     continue
                 for element in filter_elements:
-                    page.locator(f'xpath=//*[@id="root/{container_type}FilterPattern/{filter_type}"]').fill(
-                        element
-                    )
+                    page.locator(
+                        f'xpath=//*[@id="root/{container_type}FilterPattern/{filter_type}"]'
+                    ).fill(element)
 
-
-    def get_sorted_ingestion_pipeline_statues(self, ingestion_pipeline_fqn: str, desc=True):
+    def get_sorted_ingestion_pipeline_statues(
+        self, ingestion_pipeline_fqn: str, desc=True
+    ):
         statuses = self.ometa.get_pipeline_status_between_ts(
-                ingestion_pipeline_fqn,
-                get_beginning_of_day_timestamp_mill(),
-                get_end_of_day_timestamp_mill(),
-            )
-        return sorted(statuses, key=lambda x: x.startDate.__root__, reverse=True if desc else False)
-
+            ingestion_pipeline_fqn,
+            get_beginning_of_day_timestamp_mill(),
+            get_end_of_day_timestamp_mill(),
+        )
+        return sorted(
+            statuses,
+            key=lambda x: x.startDate.__root__,
+            reverse=True if desc else False,
+        )
 
     def get_pipeline_status(self, ingestion_pipeline_fqn: str):
         # Not best practice. Should use `expect`, though playwright does not have a `wait_until` function
         # we'll make a call to the API to get the pipeline status and check if it's success
         status = None
-        timeout = time.time() + 60*5 # 5 minutes from now
+        timeout = time.time() + 60 * 5  # 5 minutes from now
 
         while not status or status == PipelineState.running:
             if time.time() > timeout:
-                raise TimeoutError("Pipeline with status {status} has been running for more than 5 minutes")
+                raise TimeoutError(
+                    "Pipeline with status {status} has been running for more than 5 minutes"
+                )
             statuses = self.get_sorted_ingestion_pipeline_statues(
                 ingestion_pipeline_fqn,
             )
@@ -148,7 +160,7 @@ class DataBaseConnectorInterface(ABC):
 
     def create_service_ingest_metadata(self, page: Page):
         """Ingest redshift service data
-        
+
         Args:
             page (Page): playwright page. Should be logged in and pointing to the home page
                 e.g. page.goto(f"{BASE_URL}/")

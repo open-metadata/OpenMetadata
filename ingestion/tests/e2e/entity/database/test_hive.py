@@ -3,33 +3,46 @@
 import pytest
 from playwright.sync_api import Page
 
-from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import PipelineState
-from ingestion.tests.e2e.configs.connectors.model import ConnectorTestConfig, ConnectorValidationTestConfig, IngestionTestConfig, ConnectorIngestionTestConfig, IngestionFilterConfig, ValidationTestConfig
 from ingestion.tests.e2e.configs.connectors.hive import HiveConnector
-from ingestion.tests.e2e.entity.database.common_assertions import assert_change_database_owner, assert_profile_data, assert_sample_data_ingestion
+from ingestion.tests.e2e.configs.connectors.model import (
+    ConnectorIngestionTestConfig,
+    ConnectorTestConfig,
+    ConnectorValidationTestConfig,
+    IngestionFilterConfig,
+    IngestionTestConfig,
+    ValidationTestConfig,
+)
+from ingestion.tests.e2e.entity.database.common_assertions import (
+    assert_change_database_owner,
+    assert_profile_data,
+    assert_sample_data_ingestion,
+)
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    PipelineState,
+)
 
 
 @pytest.mark.parametrize(
     "setUpClass",
-    [{"connector_obj":HiveConnector(
-        ConnectorTestConfig(
-            ingestion=ConnectorIngestionTestConfig(
-                metadata=IngestionTestConfig(
-                    database=IngestionFilterConfig(
-                        includes=["default"]
+    [
+        {
+            "connector_obj": HiveConnector(
+                ConnectorTestConfig(
+                    ingestion=ConnectorIngestionTestConfig(
+                        metadata=IngestionTestConfig(
+                            database=IngestionFilterConfig(includes=["default"]),
+                        ),  # type: ignore
                     ),
-                ), # type: ignore
-            ),
-            validation=ConnectorValidationTestConfig(
-                profiler=ValidationTestConfig(
-                    database="default",
-                    schema_="default",
-                    table="t1"
-                ) # type: ignore
+                    validation=ConnectorValidationTestConfig(
+                        profiler=ValidationTestConfig(
+                            database="default", schema_="default", table="t1"
+                        )  # type: ignore
+                    ),
+                )
             )
-        )
-    )}],
-    indirect=True
+        }
+    ],
+    indirect=True,
 )
 @pytest.mark.usefixtures("setUpClass")
 class TestHiveConnector:
@@ -40,7 +53,6 @@ class TestHiveConnector:
         assert self.metadata_ingestion_status == PipelineState.success
         # if the connector does not support profiler ingestion return None as status
         assert self.profiler_ingestion_status in {PipelineState.success, None}
-
 
     @pytest.mark.dependency(depends=["test_pipelines_statuses"])
     def test_change_database_owner(self, admin_page_context: Page):

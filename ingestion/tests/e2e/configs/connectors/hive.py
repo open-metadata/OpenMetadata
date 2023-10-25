@@ -14,9 +14,11 @@ class HiveConnector(DataBaseConnectorInterface):
 
     def set_connection(self, page):
         """Set connection for redshift service"""
-        page.locator("[id=\"root\\/hostPort\"]").fill(os.environ["E2E_HIVE_HOST_PORT"])
-        expect(page.locator("[id=\"root\\/hostPort\"]")).to_have_value(
+        page.locator('[id="root\\/hostPort"]').fill(os.environ["E2E_HIVE_HOST_PORT"])
+        expect(page.locator('[id="root\\/hostPort"]')).to_have_value(
             os.environ["E2E_HIVE_HOST_PORT"]
         )
 
-        page.locator("[id=\"root\\/metastoreConnection__oneof_select\"]").select_option("2")
+        page.locator('[id="root\\/metastoreConnection__oneof_select"]').select_option(
+            "2"
+        )

@@ -1,41 +1,53 @@
 """Test default database ingestion (Redshift)."""
 
 
-from playwright.sync_api import Page
 import pytest
+from playwright.sync_api import Page
 
-from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import PipelineState
-from ingestion.tests.e2e.configs.connectors.model import ConnectorTestConfig, ConnectorValidationTestConfig, IngestionTestConfig, ConnectorIngestionTestConfig, IngestionFilterConfig, ValidationTestConfig
+from ingestion.tests.e2e.configs.connectors.model import (
+    ConnectorIngestionTestConfig,
+    ConnectorTestConfig,
+    ConnectorValidationTestConfig,
+    IngestionFilterConfig,
+    IngestionTestConfig,
+    ValidationTestConfig,
+)
 from ingestion.tests.e2e.configs.connectors.redshift import RedshiftConnector
-from ingestion.tests.e2e.entity.database.common_assertions import assert_change_database_owner, assert_pii_column_auto_tagging, assert_profile_data, assert_sample_data_ingestion
+from ingestion.tests.e2e.entity.database.common_assertions import (
+    assert_change_database_owner,
+    assert_pii_column_auto_tagging,
+    assert_profile_data,
+    assert_sample_data_ingestion,
+)
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    PipelineState,
+)
 
 
 @pytest.mark.parametrize(
     "setUpClass",
-    [{"connector_obj":RedshiftConnector(
-        ConnectorTestConfig(
-            ingestion=ConnectorIngestionTestConfig(
-                metadata=IngestionTestConfig(
-                    schema_=IngestionFilterConfig(
-                        includes=["dbt_jaffle"]
+    [
+        {
+            "connector_obj": RedshiftConnector(
+                ConnectorTestConfig(
+                    ingestion=ConnectorIngestionTestConfig(
+                        metadata=IngestionTestConfig(
+                            schema_=IngestionFilterConfig(includes=["dbt_jaffle"]),
+                        ),  # type: ignore
+                        profiler=IngestionTestConfig(
+                            table=IngestionFilterConfig(includes=["customers"]),
+                        ),  # type: ignore
                     ),
-                ), # type: ignore
-                profiler=IngestionTestConfig(
-                    table=IngestionFilterConfig(
-                        includes=["customers"]
+                    validation=ConnectorValidationTestConfig(
+                        profiler=ValidationTestConfig(
+                            database="dev", schema_="dbt_jaffle", table="customers"
+                        )  # type: ignore
                     ),
-                ) # type: ignore
-            ),
-            validation=ConnectorValidationTestConfig(
-                profiler=ValidationTestConfig(
-                    database="dev",
-                    schema_="dbt_jaffle",
-                    table="customers"
-                ) # type: ignore
+                )
             )
-        )
-    )}],
-    indirect=True
+        }
+    ],
+    indirect=True,
 )
 @pytest.mark.usefixtures("setUpClass")
 class TestRedshiftConnector:
@@ -46,7 +58,6 @@ class TestRedshiftConnector:
         assert self.metadata_ingestion_status == PipelineState.success
         # if the connector does not support profiler ingestion return None as status
         assert self.profiler_ingestion_status in {PipelineState.success, None}
-
 
     @pytest.mark.dependency(depends=["test_pipelines_statuses"])
     def test_change_database_owner(self, admin_page_context: Page):
@@ -85,5 +96,5 @@ class TestRedshiftConnector:
             self.connector_obj.validation_config.profiler.database,
             self.connector_obj.validation_config.profiler.schema_,
             self.connector_obj.validation_config.profiler.table,
-            "first_name"
+            "first_name",
         )

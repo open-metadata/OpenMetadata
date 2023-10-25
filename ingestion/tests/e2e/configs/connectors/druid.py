@@ -9,6 +9,7 @@ from .interface import DataBaseConnectorInterface
 
 class DruidConnector(DataBaseConnectorInterface):
     """db2 connector"""
+
     def get_service(self, page: Page):
         """get service from the service page"""
         page.get_by_test_id("Druid").click()

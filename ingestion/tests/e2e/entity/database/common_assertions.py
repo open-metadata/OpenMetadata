@@ -18,13 +18,13 @@ def assert_change_database_owner(page_context: Page, service_name: str):
 
 
 def assert_profile_data(
-        page_context: Page,
-        service_name: str,
-        database: str,
-        schema: str,
-        table: str,
-        connector_obj,
-    ):
+    page_context: Page,
+    service_name: str,
+    database: str,
+    schema: str,
+    table: str,
+    connector_obj,
+):
     """Assert profile data have been computed correctly"""
     go_to_service("Databases", page_context, service_name)
     page_context.get_by_role("link", name=database).click()
@@ -33,17 +33,19 @@ def assert_profile_data(
     page_context.get_by_text("Profiler & Data Quality").click()
     for card in range(connector_obj.profiler_summary_card_count):
         summary_card = page_context.get_by_test_id("summary-card-container").nth(card)
-        description = summary_card.get_by_test_id("summary-card-description").inner_text()
+        description = summary_card.get_by_test_id(
+            "summary-card-description"
+        ).inner_text()
         assert description not in {"0"}
 
 
 def assert_sample_data_ingestion(
-        page_context: Page,
-        service_name: str,
-        database: str,
-        schema: str,
-        table: str,
-    ):
+    page_context: Page,
+    service_name: str,
+    database: str,
+    schema: str,
+    table: str,
+):
     """assert sample data are ingested as expected"""
     go_to_service("Databases", page_context, service_name)
     page_context.get_by_role("link", name=database).click()
@@ -53,14 +55,15 @@ def assert_sample_data_ingestion(
 
     expect(page_context.get_by_test_id("sample-data")).to_be_visible()
 
+
 def assert_pii_column_auto_tagging(
-        page_context: Page,
-        service_name: str,
-        database: str,
-        schema: str,
-        table: str,
-        column: str,
-    ):
+    page_context: Page,
+    service_name: str,
+    database: str,
+    schema: str,
+    table: str,
+    column: str,
+):
     """assert pii column auto tagging tagged as expected"""
     go_to_service("Databases", page_context, service_name)
     page_context.get_by_role("link", name=database).click()
@@ -68,6 +71,6 @@ def assert_pii_column_auto_tagging(
     page_context.get_by_role("link", name=table, exact=True).click()
 
     table_row = page_context.locator(f'tr:has-text("{column}")')
-    tag = table_row.locator('td:nth-child(4)')
+    tag = table_row.locator("td:nth-child(4)")
     expect(tag).to_be_visible()
     assert tag.text_content() in {"Sensitive", "NonSensitive"}

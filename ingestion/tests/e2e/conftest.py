@@ -2,9 +2,9 @@
 
 
 import pytest
-from playwright.sync_api import Browser, expect, Page
+from playwright.sync_api import Browser, Page, expect
 
-from ingestion.tests.e2e.configs.common import create_user, go_to_service
+from ingestion.tests.e2e.configs.common import go_to_service
 from ingestion.tests.e2e.configs.users.admin import Admin
 
 TIMEOUT = 60000
@@ -38,7 +38,7 @@ def admin_page_context(page: Page):
 
 
 @pytest.fixture(scope="class")
-def setUpClass(browser: Browser, request): # pylint: disable=invalid-name
+def setUpClass(browser: Browser, request):  # pylint: disable=invalid-name
     """set up class for ingestion pipelines"""
     context_ = browser.new_context(base_url=BASE_URL)
     page = context_.new_page()
