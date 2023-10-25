@@ -14,7 +14,7 @@
   "permission": "All",
   "className": "org.openmetadata.service.apps.bundles.searchIndex.SearchIndexApp",
   "runtime": {
-    "enabled": "true"
+    "enabled": true
   },
   "appConfiguration": {
     "entities": [
@@ -50,7 +50,7 @@
       "storedProcedure",
       "dataProduct"
     ],
-    "recreateIndex": "false",
+    "recreateIndex": true,
     "batchSize": "100",
     "searchIndexMappingLanguage": "EN"
   }
