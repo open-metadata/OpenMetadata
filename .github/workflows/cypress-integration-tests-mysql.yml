@@ -125,6 +125,7 @@ jobs:
           group: cypress-ci-mysql-oss-${{ github.run_id }}-${{github.run_attempt}}
           browser: chrome
         env:
+          DEBUG: "cypress:server:util:process_profiler"
           CYPRESS_BASE_URL: "http://localhost:8585"
           CYPRESS_RECORD_KEY: ${{ secrets.TEST_RECORD_KEY }}
           CYPRESS_SNOWFLAKE_USERNAME: ${{ secrets.TEST_SNOWFLAKE_USERNAME }}
