@@ -28,10 +28,8 @@ import { SearchIndex } from '../../enums/search.enum';
 import { User } from '../../generated/entity/teams/user';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
-import { SearchResponse } from '../../interface/search.interface';
 import { searchData } from '../../rest/miscAPI';
 import { getUsers, UsersQueryParams } from '../../rest/userAPI';
-import { formatUsersResponse } from '../../utils/APIUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const teamsAndUsers = [GlobalSettingOptions.USERS, GlobalSettingOptions.ADMINS];
@@ -118,9 +116,7 @@ const UserListPageV1 = () => {
         isDeleted
       )
         .then((res) => {
-          const data = formatUsersResponse(
-            (res.data as SearchResponse<SearchIndex.USER>).hits.hits
-          );
+          const data = res.data.hits.hits.map(({ _source }) => _source);
           setPaging({
             total: res.data.hits.total.value,
           });
@@ -143,7 +139,7 @@ const UserListPageV1 = () => {
 
     userQuerySearch(value, pageNumber, isAdminPage, showDeletedUser).then(
       (resUsers) => {
-        setUserList(resUsers as unknown as User[]);
+        setUserList(resUsers);
         setIsDataLoading(false);
       }
     );

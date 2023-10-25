@@ -12,6 +12,17 @@
  */
 import { interceptURL, verifyResponseStatusCode } from './common';
 
+export const searchServiceFromSettingPage = (service) => {
+  interceptURL(
+    'GET',
+    'api/v1/search/query?q=*&from=0&size=15&index=*',
+    'searchService'
+  );
+  cy.get('[data-testid="searchbar"]').type(service);
+
+  verifyResponseStatusCode('@searchService', 200);
+};
+
 export const visitServiceDetailsPage = (service, verifyHeader = true) => {
   // Click on settings page
   interceptURL(
@@ -32,14 +43,7 @@ export const visitServiceDetailsPage = (service, verifyHeader = true) => {
 
   cy.wait('@getServices');
 
-  interceptURL(
-    'GET',
-    'api/v1/search/query?q=*&from=0&size=*&index=*',
-    'searchService'
-  );
-  cy.get('[data-testid="searchbar"]').type(service.name);
-
-  verifyResponseStatusCode('@searchService', 200);
+  searchServiceFromSettingPage(service.name);
 
   // click on created service
   cy.get(`[data-testid="service-name-${service.name}"]`)

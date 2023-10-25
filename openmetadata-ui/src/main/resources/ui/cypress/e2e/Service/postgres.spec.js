@@ -104,8 +104,16 @@ describe('Postgres Ingestion', () => {
       '/api/v1/services/ingestionPipelines/deploy/*',
       'deployIngestion'
     );
+    interceptURL(
+      'GET',
+      '/api/v1/permissions/ingestionPipeline/name/*',
+      'ingestionPermissions'
+    );
 
-    visitServiceDetailsPage({ type: serviceType, name: serviceName });
+    visitServiceDetailsPage(
+      { type: SERVICE_TYPE.Database, name: serviceName },
+      false
+    );
 
     cy.get('[data-testid="ingestions"]')
       .scrollIntoView()

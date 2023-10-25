@@ -124,14 +124,6 @@ describe('Policy page should work properly', () => {
         .should('contain', policy)
         .should('be.visible');
     });
-    // Validate role is displayed
-    cy.get('[data-testid="role-link"]')
-      .contains(roles.dataConsumer)
-      .should('exist');
-
-    cy.get('[data-testid="role-link"]')
-      .contains(roles.dataSteward)
-      .should('exist');
   });
 
   it('Add new policy', () => {

@@ -256,6 +256,8 @@ describe('Teams flow should work properly', () => {
       .should('be.visible')
       .should('contain', TEAM_DETAILS.updatedName);
 
+    cy.get('[role="tablist"] [data-icon="right"]').click();
+
     // Click on edit description button
     cy.get('[data-testid="edit-description"]')
       .should('be.visible')

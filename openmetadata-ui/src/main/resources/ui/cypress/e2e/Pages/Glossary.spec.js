@@ -275,7 +275,7 @@ const updateTags = (inTerm) => {
   // visit glossary page
   interceptURL(
     'GET',
-    '/api/v1/search/query?q=disabled:false&index=tag_search_index&from=0&size=10&query_filter=%7B%7D',
+    '/api/v1/search/query?q=*&index=tag_search_index&from=0&size=*&query_filter=*',
     'tags'
   );
   cy.get(
