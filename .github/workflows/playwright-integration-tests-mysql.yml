@@ -117,6 +117,8 @@ jobs:
           E2E_REDSHIFT_USERNAME: ${{ secrets.E2E_REDSHIFT_USERNAME }}
           E2E_REDSHIFT_PASSWORD: ${{ secrets.E2E_REDSHIFT_PASSWORD }}
           E2E_REDSHIFT_DATABASE: ${{ secrets.E2E_REDSHIFT_DATABASE }}
+          E2E_DRUID_HOST_PORT: ${{ secrets.E2E_DRUID_HOST_PORT }}
+          E2E_HIVE_HOST_PORT: ${{ secrets.E2E_HIVE_HOST_PORT }}
         run: |
           source env/bin/activate
           make install_e2e_tests
