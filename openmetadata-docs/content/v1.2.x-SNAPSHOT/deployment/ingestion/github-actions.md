@@ -34,7 +34,9 @@ In the GitHub Action we will just be triggering a custom Python script. This scr
 import os
 import yaml
 
-from metadata.ingestion.api.workflow import Workflow
+from metadata.workflow.metadata import MetadataWorkflow
+
+from metadata.workflow.workflow_output_handler import print_status
 
 CONFIG = f"""
 source:
@@ -50,10 +52,10 @@ source:
 
 def run():
     workflow_config = yaml.safe_load(CONFIG)
-    workflow = Workflow.create(workflow_config)
+    workflow = MetadataWorkflow.create(workflow_config)
     workflow.execute()
     workflow.raise_from_status()
-    workflow.print_status()
+    print_status(workflow)
     workflow.stop()
 
 

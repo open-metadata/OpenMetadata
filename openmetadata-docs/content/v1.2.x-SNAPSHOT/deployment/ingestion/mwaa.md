@@ -51,7 +51,8 @@ except ModuleNotFoundError:
 
 from airflow.utils.dates import days_ago
 
-from metadata.ingestion.api.workflow import Workflow
+from metadata.workflow.metadata import MetadataWorkflow
+from metadata.workflow.workflow_output_handler import print_status
 
 default_args = {
     "retries": 3,
@@ -65,10 +66,10 @@ YAML config
 
 def metadata_ingestion_workflow():
     workflow_config = json.loads(config)
-    workflow = Workflow.create(workflow_config)
+    workflow = MetadataWorkflow.create(workflow_config)
     workflow.execute()
     workflow.raise_from_status()
-    workflow.print_status()
+    print_status(workflow)
     workflow.stop()
 
 with DAG(
@@ -329,17 +330,19 @@ default_args = {
 }
 
 def metadata_ingestion_workflow():
-    from metadata.ingestion.api.workflow import Workflow
+    from metadata.workflow.metadata import MetadataWorkflow
+    from metadata.workflow.workflow_output_handler import print_status
+    
     import yaml
     
     config = """
 YAML config
     """
     workflow_config = yaml.loads(config)
-    workflow = Workflow.create(workflow_config)
+    workflow = MetadataWorkflow.create(workflow_config)
     workflow.execute()
     workflow.raise_from_status()
-    workflow.print_status()
+    print_status(workflow)
     workflow.stop()
 
 with DAG(

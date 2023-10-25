@@ -750,7 +750,8 @@ Here we are also importing all the basic requirements to parse YAMLs, handle dat
 import yaml
 from datetime import timedelta
 from airflow import DAG
-from metadata.profiler.api.workflow import ProfilerWorkflow
+from metadata.workflow.profiler import ProfilerWorkflow
+from metadata.workflow.workflow_output_handler import print_status
 
 try:
    from airflow.operators.python import PythonOperator
@@ -787,7 +788,7 @@ def metadata_ingestion_workflow():
    workflow = ProfilerWorkflow.create(workflow_config)
    workflow.execute()
    workflow.raise_from_status()
-   workflow.print_status()
+   print_status(workflow)
    workflow.stop()
 
 

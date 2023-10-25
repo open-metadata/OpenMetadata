@@ -321,20 +321,23 @@ and whatever Airflow requires to create a DAG.
 We know that to create a new DAG in Airflow we need a Python file to be placed under the `AIRFLOW_HOME/dags` directory (by default).
 Then, calling the `/deploy` endpoint will make the necessary steps to create such a file. 
 
-What it is important here is to notice that in order to run a workflow we just need the following few lines of Python code:
+What it is important here is to notice that in order to run a metadata ingestion workflow,
+we just need the following few lines of Python code:
 
 ```python
-from metadata.ingestion.api.workflow import Workflow
+from metadata.workflow.metadata import MetadataWorkflow
+
+from metadata.workflow.workflow_output_handler import print_status
 
 config = """
 <your YAML configuration>
 """
 
 workflow_config = yaml.safe_load(config)
-workflow = Workflow.create(workflow_config)
+workflow = MetadataWorkflow.create(workflow_config)
 workflow.execute()
 workflow.raise_from_status()
-workflow.print_status()
+print_status(workflow)
 workflow.stop()
 ```
 

@@ -47,12 +47,15 @@ We will show further examples later, but a piece of code is the best showcase fo
 a full ingestion process, you just need to execute a single function:
 
 ```python
+from metadata.workflow.metadata import MetadataWorkflow
+from metadata.workflow.workflow_output_handler import print_status
+
 def run():
     workflow_config = yaml.safe_load(CONFIG)
-    workflow = Workflow.create(workflow_config)
+    workflow = MetadataWorkflow.create(workflow_config)
     workflow.execute()
     workflow.raise_from_status()
-    workflow.print_status()
+    print_status(workflow)
     workflow.stop()
 ```
 

@@ -77,6 +77,14 @@ Add a new Run/Debug configuration like the below screenshot.
 
 {% image src="/images/v1.2/developers/contribute/build-code-and-run-tests/intellij-runtime-config.png" alt="Intellij Runtime Configuration" caption="Intellij Runtime Configuration" /%}
 
+Note that if you want to test the connectors (Ingestion) while having the server running locally and the ingestion
+running as a container, you will need to ensure that both components can properly talk to each other. To do so,
+pass the following environment variable to IntelliJ when starting the server:
+
+```bash
+SERVER_HOST_API_URL=http://host.docker.internal:8585/api
+```
+
 ## Add missing dependency
 Right-click on openmetadata-service
 

@@ -161,7 +161,9 @@ In the end, we'll map these secrets to environment variables in the process, tha
 import os
 import yaml
 
-from metadata.ingestion.api.workflow import Workflow
+from metadata.workflow.metadata import MetadataWorkflow
+
+from metadata.workflow.workflow_output_handler import print_status
 
 CONFIG = f"""
 source:
@@ -177,10 +179,10 @@ source:
 
 def run():
     workflow_config = yaml.safe_load(CONFIG)
-    workflow = Workflow.create(workflow_config)
+    workflow = MetadataWorkflow.create(workflow_config)
     workflow.execute()
     workflow.raise_from_status()
-    workflow.print_status()
+    print_status(workflow)
     workflow.stop()
 
 
@@ -282,7 +284,9 @@ except ModuleNotFoundError:
     from airflow.operators.python_operator import PythonOperator
 
 from metadata.config.common import load_config_file
-from metadata.ingestion.api.workflow import Workflow
+from metadata.workflow.metadata import MetadataWorkflow
+
+from metadata.workflow.workflow_output_handler import print_status
 
 # Import the hook
 from airflow.hooks.base import BaseHook
@@ -319,10 +323,10 @@ workflowConfig:
 
 def metadata_ingestion_workflow():
     workflow_config = yaml.safe_load(config)
-    workflow = Workflow.create(workflow_config)
+    workflow = MetadataWorkflow.create(workflow_config)
     workflow.execute()
     workflow.raise_from_status()
-    workflow.print_status()
+    print_status(workflow)
     workflow.stop()
 
 with DAG(
@@ -357,7 +361,9 @@ except ModuleNotFoundError:
     from airflow.operators.python_operator import PythonOperator
 
 from metadata.config.common import load_config_file
-from metadata.ingestion.api.workflow import Workflow
+from metadata.workflow.metadata import MetadataWorkflow
+
+from metadata.workflow.workflow_output_handler import print_status
 
 config = """
 source:
@@ -379,10 +385,10 @@ workflowConfig:
 
 def metadata_ingestion_workflow():
     workflow_config = yaml.safe_load(config)
-    workflow = Workflow.create(workflow_config)
+    workflow = MetadataWorkflow.create(workflow_config)
     workflow.execute()
     workflow.raise_from_status()
-    workflow.print_status()
+    print_status(workflow)
     workflow.stop()
 
 with DAG(
