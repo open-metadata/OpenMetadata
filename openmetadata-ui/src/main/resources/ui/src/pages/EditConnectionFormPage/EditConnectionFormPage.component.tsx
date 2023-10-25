@@ -33,10 +33,10 @@ import { getServiceByFQN, updateService } from '../../rest/serviceAPI';
 import { getEntityMissingError } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getPathByServiceFQN, getSettingPath } from '../../utils/RouterUtils';
+import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import {
   getServiceRouteFromServiceType,
   getServiceType,
-  serviceTypeLogo,
 } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -103,7 +103,7 @@ function EditConnectionFormPage() {
         },
         {
           name: getEntityName(response),
-          imgSrc: serviceTypeLogo(response.serviceType),
+          imgSrc: serviceUtilClassBase.getServiceTypeLogo(response.serviceType),
           url: getPathByServiceFQN(serviceCategory, serviceFQN),
         },
         {
