@@ -263,8 +263,8 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             # if the query returns no results, we will get a ResourceClosedError from Druid
             if (
                 # pylint: disable=protected-access
-                not runner._session.get_bind().dialect.name
-                == Dialects.Druid
+                runner._session.get_bind().dialect.name
+                != Dialects.Druid
             ):
                 msg = f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
                 handle_query_exception(msg, exc, session)
