@@ -44,6 +44,7 @@ export const getOwner = (
           id={owner?.id || ''}
           name={owner?.name ?? ''}
           textClass="text-xs"
+          type="circle"
           width="20"
         />
         <Link
