@@ -469,6 +469,7 @@ const DataProductsDetailsPage = ({
               )
             }
             serviceName=""
+            titleColor={dataProduct.style?.color}
           />
         </Col>
         <Col className="p-x-md" flex="320px">
