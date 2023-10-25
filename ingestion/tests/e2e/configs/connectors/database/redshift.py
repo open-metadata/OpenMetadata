@@ -26,7 +26,7 @@ class RedshiftConnector(DataBaseConnectorInterface):
         expect(page.get_by_label("Host and Port")).to_have_value(
             os.environ["E2E_REDSHIFT_HOST_PORT"]
         )
-        page.get_by_label("Database*").fill(os.environ["E2E_REDSHIFT_DATABASE"])
+        page.get_by_label("Database*").fill(os.environ["E2E_REDSHIFT_DB"])
         expect(page.get_by_label("Database*")).to_have_value(
-            os.environ["E2E_REDSHIFT_DATABASE"]
+            os.environ["E2E_REDSHIFT_DB"]
         )

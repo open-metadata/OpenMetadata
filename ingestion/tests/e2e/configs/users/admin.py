@@ -1,6 +1,6 @@
 """Admin user configuration for e2e tests."""
 
-from ingestion.tests.e2e.configs.users.user import User
+from ...configs.users.user import User
 
 
 class Admin(User):

@@ -5,7 +5,7 @@ import string
 
 from playwright.sync_api import Page, expect
 
-from ingestion.tests.e2e.configs.users.user import User
+from .users.user import User
 
 BASE_URL = "http://localhost:8585"
 

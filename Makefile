@@ -75,7 +75,7 @@ unit_ingestion:  ## Run Python unit tests
 
 .PHONY: run_e2e_tests
 run_e2e_tests: ## Run e2e tests
-	pytest --screenshot=only-on-failure --output="ingestion/tests/e2e/artifacts" $(ARGS) --junitxml=ingestion/junit/test-results-e2e.xml ingestion/tests/e2e
+	pytest --screenshot=only-on-failure --output="ingestion/tests/e2e/artifacts" $(ARGS) --slowmo 5 --junitxml=ingestion/junit/test-results-e2e.xml ingestion/tests/e2e
 
 .PHONY: run_python_tests
 run_python_tests:  ## Run all Python tests with coverage
