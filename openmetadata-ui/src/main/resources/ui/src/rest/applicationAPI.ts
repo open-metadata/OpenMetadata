@@ -25,6 +25,8 @@ const BASE_URL = '/apps';
 
 type AppListParams = ListParams & {
   offset?: number;
+  startTs?: number;
+  endTs?: number;
 };
 
 export const getApplicationList = async (params?: ListParams) => {
@@ -60,7 +62,7 @@ export const getApplicationRuns = async (
   params?: AppListParams
 ) => {
   const response = await APIClient.get<PagingResponse<AppRunRecord[]>>(
-    `${BASE_URL}/name/${appName}/runs`,
+    `${BASE_URL}/name/${appName}/status`,
     {
       params,
     }
@@ -71,7 +73,7 @@ export const getApplicationRuns = async (
 
 export const getLatestApplicationRuns = async (appName: string) => {
   const response = await APIClient.get<DataInsightLatestRun>(
-    `${BASE_URL}/name/${appName}/runs/latest`
+    `${BASE_URL}/name/${appName}/logs`
   );
 
   return response.data;

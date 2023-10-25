@@ -318,7 +318,7 @@ const AppDetails = () => {
               key: ApplicationTabs.HISTORY,
               children: (
                 <div className="p-y-md">
-                  <AppRunsHistory />
+                  <AppRunsHistory appData={appData} />
                 </div>
               ),
             },
