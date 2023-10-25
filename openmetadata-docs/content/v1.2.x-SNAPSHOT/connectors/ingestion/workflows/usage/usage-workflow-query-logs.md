@@ -8,6 +8,7 @@ slug: /connectors/ingestion/workflows/usage/usage-workflow-query-logs
 In order to extract usage information, OpenMetadata parses the queries that have run against the database. This query
 log information is available from WITHIN the database in the following services:
 
+- [Athena](/connectors/database/athena)
 - [BigQuery](/connectors/database/bigquery)
 - [Snowflake](/connectors/database/snowflake)
 - [MSSQL](/connectors/database/mssql)
@@ -16,11 +17,11 @@ log information is available from WITHIN the database in the following services:
 - [Databricks](/connectors/database/databricks)
 - [Postgres](/connectors/database/postgres)
 
-If you are using any other database connector, direct execution of lineage workflow is not possible.
-This is mainly because these database connectors does not maintain query execution logs which is required for lineage workflow.
+If you are using any other database connector, direct execution of Usage Workflow is not possible.
+This is mainly because these database connectors does not maintain query execution logs which is required for Usage Workflow.
 
 If you are interested in running the usage workflow for a connector not listed above, this documentation will help
-you to execute the lineage workflow using a query log file. This can be arbitrarily executed for **any** database connector.
+you to execute the Usage Workflow using a query log file. This can be arbitrarily executed for **any** database connector.
 
 ## Query Log File
 
