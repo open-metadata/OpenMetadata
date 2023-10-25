@@ -165,6 +165,7 @@ describe('Data Insight feature', () => {
     verifyResponseStatusCode('@dataInsightsApplication', 200);
     cy.get('[data-testid="run-now-button"]').click();
     verifyResponseStatusCode('@triggerPipeline', 200);
+    cy.reload();
     checkSuccessStatus();
   });
 
