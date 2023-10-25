@@ -15,9 +15,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -52,7 +50,6 @@ import org.openmetadata.schema.entity.app.CreateApp;
 import org.openmetadata.schema.entity.app.ScheduleType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
-import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
@@ -205,7 +202,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
   }
 
   @GET
-  @Path("/name/{name}/runs")
+  @Path("/name/{name}/status")
   @Operation(
       operationId = "listAppRunRecords",
       summary = "List App Run Records",
@@ -219,7 +216,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
             description = "List of Installed Applications Runs",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = AppRunList.class)))
       })
-  public ResultList<AppRunRecord> listAppRuns(
+  public Response listAppRuns(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the App", schema = @Schema(type = "string")) @PathParam("name") String name,
@@ -234,24 +231,54 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @QueryParam("offset")
           @Min(0)
           @Max(1000000)
-          int offset) {
-    App installation = repository.getByName(uriInfo, name, repository.getFields("id"));
-    return repository.listAppRuns(installation.getId(), limitParam, offset);
+          int offset,
+      @Parameter(
+              description = "Filter pipeline status after the given start timestamp",
+              schema = @Schema(type = "number"))
+          @QueryParam("startTs")
+          Long startTs,
+      @Parameter(
+              description = "Filter pipeline status before the given end timestamp",
+              schema = @Schema(type = "number"))
+          @QueryParam("endTs")
+          Long endTs) {
+    App installation = repository.getByName(uriInfo, name, repository.getFields("id,pipelines"));
+    if (installation.getAppType().equals(AppType.Internal)) {
+      return Response.status(Response.Status.OK)
+          .entity(repository.listAppRuns(installation.getId(), limitParam, offset))
+          .build();
+    } else {
+      if (!installation.getPipelines().isEmpty()) {
+        EntityReference pipelineRef = installation.getPipelines().get(0);
+        IngestionPipelineRepository ingestionPipelineRepository =
+            (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+        IngestionPipeline ingestionPipeline =
+            ingestionPipelineRepository.get(
+                uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNER));
+        return Response.ok(
+                ingestionPipelineRepository.listPipelineStatus(
+                    ingestionPipeline.getFullyQualifiedName(), startTs, endTs),
+                MediaType.APPLICATION_JSON_TYPE)
+            .build();
+      } else {
+        throw new RuntimeException("App does not have an associated pipeline.");
+      }
+    }
   }
 
   @GET
-  @Path("/name/{name}/runs/latest")
+  @Path("/name/{name}/logs")
   @Operation(
-      operationId = "latestAppRunRecord",
-      summary = "Get Latest App Run Record",
-      description = "Get a latest applications Run Record.",
+      summary = "Retrieve all logs from last ingestion pipeline run for the application",
+      description = "Get all logs from last ingestion pipeline run by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "List of Installed Applications Runs",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = AppRunRecord.class)))
+            description = "JSON object with the task instance name of the ingestion on each key and log in the value",
+            content = @Content(mediaType = "application/json")),
+        @ApiResponse(responseCode = "404", description = "Logs for instance {id} is not found")
       })
-  public Response listLatestAppRun(
+  public Response getLastLogs(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the App", schema = @Schema(type = "string")) @PathParam("name") String name,
@@ -269,12 +296,9 @@ public class AppResource extends EntityResource<App, AppRepository> {
         IngestionPipeline ingestionPipeline =
             ingestionPipelineRepository.get(
                 uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNER));
-        PipelineStatus latestPipelineStatus = ingestionPipelineRepository.getLatestPipelineStatus(ingestionPipeline);
-        Map<String, String> lastIngestionLogs = pipelineServiceClient.getLastIngestionLogs(ingestionPipeline, after);
-        Map<String, Object> appRun = new HashMap<>();
-        appRun.put("pipelineStatus", latestPipelineStatus);
-        appRun.put("lastIngestionLogs", lastIngestionLogs);
-        return Response.ok(appRun, MediaType.APPLICATION_JSON_TYPE).build();
+        return Response.ok(
+                pipelineServiceClient.getLastIngestionLogs(ingestionPipeline, after), MediaType.APPLICATION_JSON_TYPE)
+            .build();
       }
     }
     throw new BadRequestException("Failed to Get Logs for the Installation.");

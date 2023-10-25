@@ -28,14 +28,21 @@ import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { GlobalSettingOptions } from '../../../constants/GlobalSettings.constants';
 import { AppType } from '../../../generated/entity/applications/app';
 import { Status } from '../../../generated/entity/applications/appRunRecord';
+import {
+  PipelineState,
+  PipelineStatus,
+} from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Paging } from '../../../generated/type/paging';
 import { usePaging } from '../../../hooks/paging/usePaging';
+import { getApplicationRuns } from '../../../rest/applicationAPI';
 import {
-  getApplicationRuns,
-  getLatestApplicationRuns,
-} from '../../../rest/applicationAPI';
-import { getStatusTypeForApplication } from '../../../utils/ApplicationUtils';
-import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
+  getStatusFromPipelineState,
+  getStatusTypeForApplication,
+} from '../../../utils/ApplicationUtils';
+import {
+  formatDateTime,
+  getEpochMillisForPastDays,
+} from '../../../utils/date-time/DateTimeUtils';
 import { getLogsViewerPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
@@ -109,6 +116,39 @@ const AppRunsHistory = forwardRef(
       return record.status === Status.Running;
     }, []);
 
+    const getActionButton = useCallback(
+      (record: AppRunRecordWithId, index: number) => {
+        if (appData?.appType === AppType.Internal) {
+          return (
+            <Button
+              className="p-0"
+              data-testid="logs"
+              disabled={showLogAction(record)}
+              size="small"
+              type="link"
+              onClick={() => handleRowExpandable(record.id)}>
+              {t('label.log-plural')}
+            </Button>
+          );
+        } else if (isExternalApp && index === 0) {
+          return (
+            <Button
+              className="p-0"
+              data-testid="logs"
+              disabled={showLogAction(record)}
+              size="small"
+              type="link"
+              onClick={() => handleRowExpandable(record.id)}>
+              {t('label.log-plural')}
+            </Button>
+          );
+        } else {
+          return NO_DATA_PLACEHOLDER;
+        }
+      },
+      [showLogAction, appData, isExternalApp]
+    );
+
     const tableColumn: ColumnsType<AppRunRecordWithId> = useMemo(
       () => [
         {
@@ -147,24 +187,16 @@ const AppRunsHistory = forwardRef(
           title: t('label.action-plural'),
           dataIndex: 'actions',
           key: 'actions',
-          render: (_, record) => (
-            <Button
-              className="p-0"
-              data-testid="logs"
-              disabled={showLogAction(record)}
-              size="small"
-              type="link"
-              onClick={() => handleRowExpandable(record.id)}>
-              {t('label.log-plural')}
-            </Button>
-          ),
+          render: (_, record, index) => getActionButton(record, index),
         },
       ],
       [
+        appData,
         formatDateTime,
         handleRowExpandable,
         getStatusTypeForApplication,
         showLogAction,
+        getActionButton,
       ]
     );
 
@@ -174,17 +206,23 @@ const AppRunsHistory = forwardRef(
           setIsLoading(true);
 
           if (isExternalApp) {
-            const res = await getLatestApplicationRuns(fqn);
+            const currentTime = Date.now();
+            const oneDayAgo = getEpochMillisForPastDays(1);
 
-            setAppRunsHistoryData([
-              {
-                ...res,
-                timestamp: res.pipelineStatus.timestamp,
-                status: (res.pipelineStatus.pipelineState ??
-                  Status.Failed) as Status,
-                id: `${res.pipelineStatus.runId}-${res.pipelineStatus.timestamp}`,
-              },
-            ]);
+            const { data } = await getApplicationRuns(fqn, {
+              startTs: oneDayAgo,
+              endTs: currentTime,
+            });
+
+            setAppRunsHistoryData(
+              data.map((item) => ({
+                ...item,
+                status: getStatusFromPipelineState(
+                  (item as PipelineStatus).pipelineState ?? PipelineState.Failed
+                ),
+                id: (item as PipelineStatus).runId ?? '',
+              }))
+            );
           } else {
             const { data, paging } = await getApplicationRuns(fqn, {
               offset: pagingOffset?.offset ?? 0,
