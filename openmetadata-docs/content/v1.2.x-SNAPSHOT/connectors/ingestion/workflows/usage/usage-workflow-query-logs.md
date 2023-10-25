@@ -50,7 +50,7 @@ In order to run a Usage Workflow we need to make sure that Metadata Ingestion Wo
 ### 1. Create a configuration file using template YAML
 
 Create a new file called `query_log_usage.yaml` in the current directory. Note that the current directory should be the openmetadata directory.
-Copy and paste the configuration template below into the `query_log_usage.yaml` the file you created. 
+Copy and paste the configuration template below into the `query_log_usage.yaml` the file you created.
 
 ```yaml
 source:
