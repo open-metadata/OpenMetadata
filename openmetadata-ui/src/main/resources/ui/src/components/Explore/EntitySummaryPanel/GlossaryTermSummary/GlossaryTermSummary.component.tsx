@@ -91,9 +91,7 @@ function GlossaryTermSummary({
               <Typography.Text
                 className="text-grey-body"
                 data-testid="no-reviewer-header">
-                {t('label.no-entity', {
-                  entity: t('label.children-lowercase'),
-                })}
+                {t('label.no-reviewer')}
               </Typography.Text>
             )}
           </Col>

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Button, Col, Row } from 'antd';
-import Table, { ColumnsType } from 'antd/lib/table';
+import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isString } from 'lodash';
 import { PagingResponse } from 'Models';
@@ -45,6 +45,7 @@ import FilterTablePlaceHolder from '../../common/error-with-placeholder/FilterTa
 import NextPrevious from '../../common/next-previous/NextPrevious';
 import { PagingHandlerParams } from '../../common/next-previous/NextPrevious.interface';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
+import Table from '../../common/Table/Table';
 import { usePermissionProvider } from '../../PermissionProvider/PermissionProvider';
 import { TableProfilerTab } from '../../ProfilerDashboard/profilerDashboard.interface';
 import ProfilerProgressWidget from '../../TableProfiler/Component/ProfilerProgressWidget';

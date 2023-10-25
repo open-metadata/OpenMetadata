@@ -107,7 +107,6 @@ UPDATE dashboard_service_entity
 SET json = jsonb_set(
   json::jsonb #- '{connection,config,sandboxDomain}',
   '{connection,config,instanceDomain}',
-    json JSONB NOT NULL,
   (json #> '{connection,config,sandboxDomain}')::jsonb,
   true
 )
