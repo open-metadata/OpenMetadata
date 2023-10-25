@@ -21,10 +21,10 @@ class FqnSplitListener(FqnListener):
     def __init__(self):
         self._list = []
 
-    def enter_quoted_name(self, ctx: FqnParser.QuotedNameContext):
+    def enterQuotedName(self, ctx: FqnParser.QuotedNameContext):
         self._list.append(ctx.getText())
 
-    def enter_unquoted_name(self, ctx: FqnParser.UnquotedNameContext):
+    def enterUnquotedName(self, ctx: FqnParser.UnquotedNameContext):
         self._list.append(ctx.getText())
 
     def split(self):
@@ -35,16 +35,16 @@ class EntityLinkSplitListener(EntityLinkListener):
     def __init__(self):
         self._list = []
 
-    def enter_entity_attribute(self, ctx: EntityLinkParser.EntityAttributeContext):
+    def enterEntityAttribute(self, ctx: EntityLinkParser.EntityAttributeContext):
         self._list.append(ctx.getText())
 
-    def enter_entity_type(self, ctx: EntityLinkParser.EntityTypeContext):
+    def enterEntityType(self, ctx: EntityLinkParser.EntityTypeContext):
         self._list.append(ctx.getText())
 
-    def enter_entity_field(self, ctx: EntityLinkParser.EntityFieldContext):
+    def enterEntityField(self, ctx: EntityLinkParser.EntityFieldContext):
         self._list.append(ctx.getText())
 
-    def enter_entity_fqn(self, ctx: EntityLinkParser.EntityFqnContext):
+    def enterEntityFqn(self, ctx: EntityLinkParser.EntityFqnContext):
         self._list.append(ctx.getText())
 
     def split(self):
