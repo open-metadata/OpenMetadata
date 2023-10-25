@@ -42,6 +42,7 @@ import {
   addToRecentViewed,
   getCurrentUserId,
   getEntityMissingError,
+  sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import {
   defaultFields,
@@ -171,7 +172,10 @@ const DashboardDetailsPage = () => {
         return {
           ...previous,
           version: response.version,
-          [key]: response[key],
+          [key]:
+            key === 'tags'
+              ? sortTagsCaseInsensitive(response[key] ?? [])
+              : response[key],
         };
       });
     } catch (error) {

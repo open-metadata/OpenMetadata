@@ -80,7 +80,10 @@ import {
 } from '../../rest/databaseAPI';
 import { getFeedCount, postThread } from '../../rest/feedsAPI';
 import { searchQuery } from '../../rest/searchAPI';
-import { getEntityMissingError } from '../../utils/CommonUtils';
+import {
+  getEntityMissingError,
+  sortTagsCaseInsensitive,
+} from '../../utils/CommonUtils';
 import { getDatabaseSchemaTable } from '../../utils/DatabaseDetails.utils';
 import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
@@ -359,11 +362,20 @@ const DatabaseDetails: FunctionComponent = () => {
     }
   };
 
-  const settingsUpdateHandler = async (data: Database) => {
+  const settingsUpdateHandler = async (
+    data: Database,
+    key?: keyof Database
+  ) => {
     try {
       const res = await saveUpdatedDatabaseData(data);
 
-      setDatabase(res);
+      setDatabase(() => {
+        if (key === 'tags') {
+          return { ...res, tags: sortTagsCaseInsensitive(res.tags ?? []) };
+        }
+
+        return res;
+      });
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -475,7 +487,7 @@ const DatabaseDetails: FunctionComponent = () => {
     if (selectedTags) {
       const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
       const updatedTable = { ...database, tags: updatedTags };
-      await settingsUpdateHandler(updatedTable as Database);
+      await settingsUpdateHandler(updatedTable as Database, 'tags');
     }
   };
 

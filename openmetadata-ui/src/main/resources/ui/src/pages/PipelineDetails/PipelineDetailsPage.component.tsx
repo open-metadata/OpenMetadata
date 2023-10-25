@@ -40,6 +40,7 @@ import {
   addToRecentViewed,
   getCurrentUserId,
   getEntityMissingError,
+  sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
@@ -211,7 +212,10 @@ const PipelineDetailsPage = () => {
   const settingsUpdateHandler = async (updatedPipeline: Pipeline) => {
     try {
       const res = await saveUpdatedPipelineData(updatedPipeline);
-      setPipelineDetails({ ...res, tags: res.tags ?? [] });
+      setPipelineDetails({
+        ...res,
+        tags: sortTagsCaseInsensitive(res.tags ?? []),
+      });
     } catch (error) {
       showErrorToast(
         error as AxiosError,

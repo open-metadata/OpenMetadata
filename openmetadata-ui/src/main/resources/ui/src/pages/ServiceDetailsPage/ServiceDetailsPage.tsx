@@ -102,7 +102,10 @@ import { getSearchIndexes } from '../../rest/SearchIndexAPI';
 import { getServiceByFQN, patchService } from '../../rest/serviceAPI';
 import { getContainers } from '../../rest/storageAPI';
 import { getTopics } from '../../rest/topicsAPI';
-import { getEntityMissingError } from '../../utils/CommonUtils';
+import {
+  getEntityMissingError,
+  sortTagsCaseInsensitive,
+} from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
@@ -746,7 +749,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
           jsonPatch
         );
 
-        setServiceDetails(response);
+        setServiceDetails({
+          ...response,
+          tags: sortTagsCaseInsensitive(response.tags ?? []),
+        });
       } catch (err) {
         showErrorToast(err as AxiosError);
       }

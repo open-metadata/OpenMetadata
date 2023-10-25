@@ -51,6 +51,7 @@ import { postThread } from '../../rest/feedsAPI';
 import {
   getCurrentUserId,
   getEntityMissingError,
+  sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import { getSortedDataModelColumnTags } from '../../utils/DataModelsUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
@@ -203,7 +204,7 @@ const DataModelsPage = () => {
 
       setDataModelData((prev) => ({
         ...(prev as DashboardDataModel),
-        tags: newTags,
+        tags: sortTagsCaseInsensitive(newTags ?? []),
         version,
       }));
     } catch (error) {
