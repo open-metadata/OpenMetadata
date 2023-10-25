@@ -67,7 +67,7 @@ Set the sample to be use by the profiler for the specific table.
 - `Percentage`: Value must be between 0 and 100 exclusive (0 < percentage < 100). This will sample the table based on a percentage
 - `Row Count`: The table will be sampled based on a number of rows (i.e. `1,000`, `2,000`), etc.
 
-⚠️ This option is currently not support for Druid. Sampling leverage `RANDOOM` functions in most database (some have specific sampling functions) and Druid provides neither of these option. We recommend using the partitionning or sample query option if you need to limit the amount of data scanned.
+⚠️ This option is currently not support for Druid. Sampling leverage `RANDOM` functions in most database (some have specific sampling functions) and Druid provides neither of these option. We recommend using the partitionning or sample query option if you need to limit the amount of data scanned.
 
 **Auto PII Tagging (Optional)**
 Configuration to automatically tag columns that might contain sensitive information.
