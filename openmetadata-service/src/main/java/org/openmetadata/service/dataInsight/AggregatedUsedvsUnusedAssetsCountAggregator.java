@@ -28,7 +28,7 @@ public abstract class AggregatedUsedvsUnusedAssetsCountAggregator<A, H, B, S>
       Double total = used + unused;
       Double usedPercentage = 0.0;
       Double unusedPercentage = 0.0;
-      if(total != 0){
+      if (total != 0.0) {
         usedPercentage = used / total;
         unusedPercentage = unused / total;
       }
