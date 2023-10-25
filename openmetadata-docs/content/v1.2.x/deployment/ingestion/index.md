@@ -44,11 +44,24 @@ component that can be run from - literally - anywhere.
 In order to install it, you just need to get it from [PyPI](https://pypi.org/project/openmetadata-ingestion/).
 
 We will show further examples later, but a piece of code is the best showcase for its simplicity. In order to run
-a full ingestion process, you just need to execute a single function:
+a full ingestion process, you just need to execute a single function. For example, if we wanted to run the ingestion
+from within a simple YAML script:
 
 ```python
 from metadata.workflow.metadata import MetadataWorkflow
 from metadata.workflow.workflow_output_handler import print_status
+
+# Specify your YAML configuration
+CONFIG = """
+source:
+  ...
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: 'http://localhost:8585/api'
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: ...
+"""
 
 def run():
     workflow_config = yaml.safe_load(CONFIG)
@@ -57,10 +70,15 @@ def run():
     workflow.raise_from_status()
     print_status(workflow)
     workflow.stop()
+
+
+if __name__ == "__main__":
+  run()
 ```
 
 Where this function runs is completely up to you, and you can adapt it to what makes the most sense within your
-organization and engineering context.
+organization and engineering context. Below you'll see some examples of different orchestrators you can leverage
+to execute the ingestion process.
 
 ### 2. Ingestion Configuration
 
