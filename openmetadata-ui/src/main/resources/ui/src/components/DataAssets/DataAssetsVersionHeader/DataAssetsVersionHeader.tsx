@@ -23,7 +23,7 @@ import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-b
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { EntityType } from '../../../enums/entity.enum';
 import { getDataAssetsVersionHeaderInfo } from '../../../utils/DataAssetsVersionHeaderUtils';
-import { serviceTypeLogo } from '../../../utils/ServiceUtils';
+import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import { EntitiesWithDomainField } from '../DataAssetsHeader/DataAssetsHeader.interface';
 import { DataAssetsVersionHeaderProps } from './DataAssetsVersionHeader.interface';
@@ -88,6 +88,13 @@ function DataAssetsVersionHeader({
     () => getDataAssetsVersionHeaderInfo(entityType, currentVersionData),
     [entityType, currentVersionData]
   );
+  const logo = useMemo(
+    () =>
+      serviceUtilClassBase.getServiceTypeLogo(
+        currentVersionData.serviceType ?? ''
+      ),
+    [currentVersionData.serviceType]
+  );
 
   return (
     <Row className="p-x-lg" gutter={[8, 12]} justify="space-between">
@@ -102,10 +109,7 @@ function DataAssetsVersionHeader({
               displayName={displayName}
               icon={
                 currentVersionData.serviceType && (
-                  <img
-                    className="h-9"
-                    src={serviceTypeLogo(currentVersionData.serviceType)}
-                  />
+                  <img className="h-9" src={logo} />
                 )
               }
               name={currentVersionData?.name}

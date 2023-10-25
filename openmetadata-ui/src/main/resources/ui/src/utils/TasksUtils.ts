@@ -75,7 +75,7 @@ import { getEntityName } from './EntityUtils';
 import { getEntityFQN, getEntityType } from './FeedUtils';
 import { defaultFields as MlModelFields } from './MlModelDetailsUtils';
 import { defaultFields as PipelineFields } from './PipelineDetailsUtils';
-import { serviceTypeLogo } from './ServiceUtils';
+import serviceUtilClassBase from './ServiceUtilClassBase';
 import { STORED_PROCEDURE_DEFAULT_FIELDS } from './StoredProceduresUtils';
 import { getEncodedFqn } from './StringsUtils';
 import { getEntityLink } from './TableUtils';
@@ -313,7 +313,7 @@ export const getBreadCrumbList = (
         ? getServiceDetailsPath(entityData.service?.name || '', serviceCategory)
         : '',
       imgSrc: entityData.serviceType
-        ? serviceTypeLogo(entityData.serviceType || '')
+        ? serviceUtilClassBase.getServiceTypeLogo(entityData.serviceType)
         : undefined,
     };
   };

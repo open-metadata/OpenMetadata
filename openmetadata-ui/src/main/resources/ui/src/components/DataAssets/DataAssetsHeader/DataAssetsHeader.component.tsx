@@ -59,7 +59,7 @@ import {
   getEntityName,
   getEntityVoteStatus,
 } from '../../../utils/EntityUtils';
-import { serviceTypeLogo } from '../../../utils/ServiceUtils';
+import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { getTierTags } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import {
@@ -140,7 +140,10 @@ export const DataAssetsHeader = ({
   const icon = useMemo(
     () =>
       dataAsset?.serviceType ? (
-        <img className="h-9" src={serviceTypeLogo(dataAsset.serviceType)} />
+        <img
+          className="h-9"
+          src={serviceUtilClassBase.getServiceTypeLogo(dataAsset.serviceType)}
+        />
       ) : null,
     [dataAsset]
   );
