@@ -53,6 +53,7 @@ public class AppRepository extends EntityRepository<App> {
     return entity.withBot(getBotUser(entity));
   }
 
+  @Override
   protected List<EntityReference> getIngestionPipelines(App service) {
     List<CollectionDAO.EntityRelationshipRecord> pipelines =
         findToRecords(service.getId(), entityType, Relationship.HAS, Entity.INGESTION_PIPELINE);
