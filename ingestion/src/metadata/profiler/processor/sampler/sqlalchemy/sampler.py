@@ -109,7 +109,7 @@ class SQASampler(SamplerInterface):
         if self._profile_sample_query:
             return self._rdn_sample_from_user_query()
 
-        if not self.profile_sample:
+        if not self.profile_sample or int(self.profile_sample) == 100:
             if self._partition_details:
                 return self._partitioned_table()
 
