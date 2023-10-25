@@ -279,6 +279,7 @@ test = {
     "pytest==7.0.0",
     "pytest-cov",
     "pytest-order",
+    "pytest-dependency",
     # install dbt dependency
     "dbt-artifacts-parser",
     VERSIONS["sqlalchemy-databricks"],
