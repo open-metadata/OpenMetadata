@@ -24,7 +24,6 @@ import { pluralize } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import ErrorPlaceHolderES from '../common/error-with-placeholder/ErrorPlaceHolderES';
 import Loader from '../Loader/Loader';
-import Onboarding from '../onboarding/Onboarding';
 import { SearchedDataProps } from './SearchedData.interface';
 
 const ASSETS_NAME = [
@@ -40,8 +39,6 @@ const SearchedData: React.FC<SearchedDataProps> = ({
   isLoading = false,
   onPaginationChange,
   showResultCount = false,
-  showOnboardingTemplate = false,
-  showOnlyChildren = false,
   totalValue,
   isFilterSelected,
   isSummaryPanelVisible,
@@ -147,34 +144,24 @@ const SearchedData: React.FC<SearchedDataProps> = ({
         <Loader />
       ) : (
         <div data-testid="search-container">
-          {totalValue > 0 || showOnboardingTemplate || showOnlyChildren ? (
+          {totalValue > 0 ? (
             <>
               {children}
-              {!showOnlyChildren ? (
-                <>
-                  <ResultCount />
-                  {data.length > 0 ? (
-                    <div data-testid="search-results">
-                      {searchResultCards}
-                      <Pagination
-                        hideOnSinglePage
-                        className="text-center m-b-sm"
-                        current={isNumber(Number(page)) ? Number(page) : 1}
-                        pageSize={
-                          size && isNumber(Number(size))
-                            ? Number(size)
-                            : PAGE_SIZE
-                        }
-                        pageSizeOptions={[10, 25, 50]}
-                        total={totalValue}
-                        onChange={onPaginationChange}
-                      />
-                    </div>
-                  ) : (
-                    <Onboarding />
-                  )}
-                </>
-              ) : null}
+              <ResultCount />
+              <div data-testid="search-results">
+                {searchResultCards}
+                <Pagination
+                  hideOnSinglePage
+                  className="text-center m-b-sm"
+                  current={isNumber(Number(page)) ? Number(page) : 1}
+                  pageSize={
+                    size && isNumber(Number(size)) ? Number(size) : PAGE_SIZE
+                  }
+                  pageSizeOptions={[10, 25, 50]}
+                  total={totalValue}
+                  onChange={onPaginationChange}
+                />
+              </div>
             </>
           ) : (
             <>

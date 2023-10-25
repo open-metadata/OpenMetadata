@@ -14,6 +14,7 @@ Snowflake models
 from typing import Optional
 
 from pydantic import BaseModel, Field, validator
+from requests.utils import quote
 
 from metadata.generated.schema.entity.data.storedProcedure import Language
 from metadata.utils.logger import ingestion_logger
@@ -51,7 +52,8 @@ class SnowflakeStoredProcedure(BaseModel):
         A signature may look like `(TABLE_NAME VARCHAR, NAME VARCHAR)`
         We want it to keep only `(VARCHAR, VARCHAR).
 
-        This is needed to build the source URL of the procedure
+        This is needed to build the source URL of the procedure, so we'll
+        directly parse the quoted signature
         """
         try:
             clean_signature = signature.replace("(", "").replace(")", "")
@@ -61,7 +63,7 @@ class SnowflakeStoredProcedure(BaseModel):
             signature_list = clean_signature.split(",")
             clean_signature_list = [elem.split(" ")[-1] for elem in signature_list]
 
-            return f"({','.join(clean_signature_list)})"
+            return f"({quote(', '.join(clean_signature_list))})"
         except Exception as exc:
             logger.warning(f"Error cleaning up Stored Procedure signature - [{exc}]")
             return signature

@@ -289,7 +289,7 @@ const DataProductsDetailsPage = ({
                     entityType: t('label.data-product'),
                   }
                 )}
-                icon={<DeleteIcon color={DE_ACTIVE_COLOR} width="18px" />}
+                icon={<DeleteIcon color={DE_ACTIVE_COLOR} width="14px" />}
                 id="delete-button"
                 name={t('label.delete')}
               />
@@ -562,6 +562,9 @@ const DataProductsDetailsPage = ({
       />
 
       <AssetSelectionModal
+        emptyPlaceHolderText={t('message.domain-does-not-have-assets', {
+          name: getEntityName(dataProduct.domain),
+        })}
         entityFqn={dataProductFqn}
         open={assetModalVisible}
         queryFilter={getQueryFilterToIncludeDomain(

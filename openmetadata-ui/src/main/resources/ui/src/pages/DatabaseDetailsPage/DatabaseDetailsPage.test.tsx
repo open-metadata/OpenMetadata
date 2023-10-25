@@ -263,6 +263,16 @@ jest.mock(
   })
 );
 
+jest.mock('../../utils/DatabaseDetails.utils', () => ({
+  getDatabaseSchemaTable: jest
+    .fn()
+    .mockReturnValue(<>testDatabaseSchemaTable</>),
+}));
+
+jest.mock('../../components/router/withActivityFeed', () => ({
+  withActivityFeed: jest.fn().mockImplementation((Some) => Some),
+}));
+
 describe('Test DatabaseDetails page', () => {
   it('Component should render', async () => {
     const { container } = render(<DatabaseDetailsPage />, {
@@ -271,39 +281,14 @@ describe('Test DatabaseDetails page', () => {
 
     const entityHeader = await findByText(container, 'DataAssetsHeader');
     const descriptionContainer = await findByText(container, 'Description');
-    const databaseTable = await findByTestId(
+    const databaseTable = await findByText(
       container,
-      'database-databaseSchemas'
+      'testDatabaseSchemaTable'
     );
 
     expect(entityHeader).toBeInTheDocument();
     expect(descriptionContainer).toBeInTheDocument();
     expect(databaseTable).toBeInTheDocument();
-  });
-
-  it('Table and its header should render', async () => {
-    const { container } = render(<DatabaseDetailsPage />, {
-      wrapper: MemoryRouter,
-    });
-    const databaseTable = await findByTestId(
-      container,
-      'database-databaseSchemas'
-    );
-    const headerName = await findByText(container, 'label.schema-name');
-    const headerDescription = await findByText(
-      databaseTable,
-      'label.description'
-    );
-    const headerOwner = await findByText(container, 'label.owner');
-    const headerUsage = await findByText(container, 'label.usage');
-    const searchBox = await findByText(container, 'Searchbar.component');
-
-    expect(databaseTable).toBeInTheDocument();
-    expect(headerName).toBeInTheDocument();
-    expect(headerDescription).toBeInTheDocument();
-    expect(headerOwner).toBeInTheDocument();
-    expect(headerUsage).toBeInTheDocument();
-    expect(searchBox).toBeInTheDocument();
   });
 
   it('Should render error placeholder if getDatabase Details Api fails', async () => {
@@ -344,9 +329,9 @@ describe('Test DatabaseDetails page', () => {
 
     const entityHeader = await findByText(container, 'DataAssetsHeader');
     const descriptionContainer = await findByText(container, 'Description');
-    const databaseTable = await findByTestId(
+    const databaseTable = await findByText(
       container,
-      'database-databaseSchemas'
+      'testDatabaseSchemaTable'
     );
 
     expect(entityHeader).toBeInTheDocument();

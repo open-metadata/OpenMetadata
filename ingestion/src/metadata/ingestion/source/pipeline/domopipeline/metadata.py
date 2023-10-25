@@ -36,6 +36,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.time_utils import convert_timestamp_to_milliseconds
 
 logger = ingestion_logger()
 
@@ -127,8 +128,16 @@ class DomopipelineSource(PipelineServiceSource):
         runs = self.connection.get_runs(pipeline_id)
         try:
             for run in runs or []:
-                start_time = run["beginTime"] // 1000 if run.get("beginTime") else None
-                end_time = run["endTime"] // 1000 if run.get("endTime") else None
+                start_time = (
+                    convert_timestamp_to_milliseconds(run["beginTime"])
+                    if run.get("beginTime")
+                    else None
+                )
+                end_time = (
+                    convert_timestamp_to_milliseconds(run["endTime"])
+                    if run.get("endTime")
+                    else None
+                )
                 run_state = run.get("state", "Pending")
 
                 task_status = TaskStatus(

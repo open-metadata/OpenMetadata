@@ -22,7 +22,10 @@ import { ReactComponent as IconComments } from '../../../assets/svg/comment.svg'
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconRequest } from '../../../assets/svg/request-icon.svg';
 import { TableTagsProps } from '../../../components/TableTags/TableTags.interface';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import {
+  DE_ACTIVE_COLOR,
+  KNOWLEDGE_CENTER_CLASSIFICATION,
+} from '../../../constants/constants';
 import { TAG_CONSTANT, TAG_START_WITH } from '../../../constants/Tag.constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
@@ -63,6 +66,7 @@ const TagsContainerV2 = ({
   onSelectionChange,
   onThreadLinkSelect,
   children,
+  filterClassifications = [KNOWLEDGE_CENTER_CLASSIFICATION],
 }: TagsContainerV2Props) => {
   const history = useHistory();
   const [form] = Form.useForm();
@@ -131,7 +135,7 @@ const TagsContainerV2 = ({
   const fetchAPI = useCallback(
     (searchValue: string, page: number) => {
       if (tagType === TagSource.Classification) {
-        return fetchTagsElasticSearch(searchValue, page);
+        return fetchTagsElasticSearch(searchValue, page, filterClassifications);
       } else {
         return fetchGlossaryList(searchValue, page);
       }
@@ -251,7 +255,7 @@ const TagsContainerV2 = ({
               : t('label.request-tag-plural')
           }>
           <IconRequest
-            className="cursor-pointer"
+            className="cursor-pointer align-middle"
             data-testid="request-entity-tags"
             height={14}
             name="request-tags"
@@ -272,7 +276,7 @@ const TagsContainerV2 = ({
             entity: t('label.conversation'),
           })}>
           <IconComments
-            className="cursor-pointer"
+            className="cursor-pointer align-middle"
             data-testid="tag-thread"
             height={14}
             name="comments"
@@ -302,7 +306,7 @@ const TagsContainerV2 = ({
               {!isEmpty(tags?.[tagType]) && !isEditTags && (
                 <Col>
                   <EditIcon
-                    className="cursor-pointer"
+                    className="cursor-pointer align-middle"
                     color={DE_ACTIVE_COLOR}
                     data-testid="edit-button"
                     width="14px"
@@ -337,7 +341,7 @@ const TagsContainerV2 = ({
     () =>
       permission && !isEmpty(tags?.[tagType]) ? (
         <EditIcon
-          className="hover-cell-icon cursor-pointer"
+          className="hover-cell-icon cursor-pointer align-middle"
           data-testid="edit-button"
           height={14}
           name={t('label.edit')}

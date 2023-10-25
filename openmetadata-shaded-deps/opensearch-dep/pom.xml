@@ -34,15 +34,6 @@
             <build>
                 <plugins>
                     <plugin>
-                        <groupId>org.sonatype.plugins</groupId>
-                        <artifactId>nexus-staging-maven-plugin</artifactId>
-                        <version>1.6.13</version>
-                        <extensions>true</extensions>
-                        <configuration>
-                            <skipNexusStagingDeployMojo>true</skipNexusStagingDeployMojo>
-                        </configuration>
-                    </plugin>
-                    <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-source-plugin</artifactId>
                         <version>${maven-source-plugin.version}</version>
@@ -130,6 +121,10 @@
                         <relocation>
                             <pattern>org.apache.lucene</pattern>
                             <shadedPattern>os.org.apache.lucene</shadedPattern>
+                        </relocation>
+                        <relocation>
+                            <pattern>META-INF/versions/9/org/apache/logging/log4j/</pattern>
+                            <shadedPattern>org/apache/logging/log4j/</shadedPattern>
                         </relocation>
                     </relocations>
                     <filters>

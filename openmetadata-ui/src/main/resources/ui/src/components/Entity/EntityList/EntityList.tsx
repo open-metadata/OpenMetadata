@@ -12,6 +12,7 @@
  */
 
 import { Button, Col, Row, Typography } from 'antd';
+import { isEmpty } from 'lodash';
 import React, { FunctionComponent } from 'react';
 import { Link } from 'react-router-dom';
 import { EntityReference } from '../../../generated/entity/type';
@@ -44,7 +45,7 @@ export const EntityListWithV1: FunctionComponent<AntdEntityListProp> = ({
       <>
         <Row className="m-b-xs" justify="space-between">
           <Col>
-            <Typography.Text className="right-panel-label">
+            <Typography.Text className="font-medium">
               {headerTextLabel}
             </Typography.Text>
           </Col>
@@ -52,47 +53,49 @@ export const EntityListWithV1: FunctionComponent<AntdEntityListProp> = ({
             <Typography.Text>{headerText}</Typography.Text>
           </Col>
         </Row>
-        <div className="entity-list-body">
-          {entityList.length
-            ? entityList.map((item) => {
-                return (
-                  <div
-                    className="right-panel-list-item flex items-center justify-between"
-                    data-testid={`${testIDText}-${getEntityName(
-                      item as unknown as EntityReference
-                    )}`}
-                    key={item.id}>
-                    <div className="flex items-center">
-                      <Link
-                        className="font-medium"
-                        to={getEntityLink(
-                          item.type || '',
-                          item.fullyQualifiedName ?? ''
-                        )}>
-                        <Button
-                          className="entity-button flex-center p-0 m--ml-1"
-                          icon={
-                            <div className="entity-button-icon m-r-xs">
-                              {getEntityIcon(item.type || '')}
-                            </div>
-                          }
-                          title={getEntityName(
-                            item as unknown as EntityReference
-                          )}
-                          type="text">
-                          <Typography.Text
-                            className="w-72 text-left text-xs"
-                            ellipsis={{ tooltip: true }}>
-                            {getEntityName(item as unknown as EntityReference)}
-                          </Typography.Text>
-                        </Button>
-                      </Link>
-                    </div>
+        {isEmpty(entityList) ? (
+          <div className="flex-center h-full">{noDataPlaceholder}</div>
+        ) : (
+          <div className="entity-list-body">
+            {entityList.map((item) => {
+              return (
+                <div
+                  className="right-panel-list-item flex items-center justify-between"
+                  data-testid={`${testIDText}-${getEntityName(
+                    item as unknown as EntityReference
+                  )}`}
+                  key={item.id}>
+                  <div className="flex items-center">
+                    <Link
+                      className="font-medium"
+                      to={getEntityLink(
+                        item.type || '',
+                        item.fullyQualifiedName ?? ''
+                      )}>
+                      <Button
+                        className="entity-button flex-center p-0 m--ml-1"
+                        icon={
+                          <div className="entity-button-icon m-r-xs">
+                            {getEntityIcon(item.type || '')}
+                          </div>
+                        }
+                        title={getEntityName(
+                          item as unknown as EntityReference
+                        )}
+                        type="text">
+                        <Typography.Text
+                          className="w-72 text-left text-xs"
+                          ellipsis={{ tooltip: true }}>
+                          {getEntityName(item as unknown as EntityReference)}
+                        </Typography.Text>
+                      </Button>
+                    </Link>
                   </div>
-                );
-              })
-            : noDataPlaceholder}
-        </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </>
     </EntityListSkeleton>
   );
