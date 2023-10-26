@@ -20,6 +20,7 @@ import H3Image from '../../../../assets/img/ic-slash-h3.png';
 import NumberedListImage from '../../../../assets/img/ic-slash-numbered-list.png';
 import QuoteImage from '../../../../assets/img/ic-slash-quote.png';
 import TextImage from '../../../../assets/img/ic-slash-text.png';
+import TaskListIcon from '../../../../assets/img/ic-task-list.png';
 import CodeBlockImage from '../../../../assets/svg/ic-format-code-block.svg';
 import IconFormatImage from '../../../../assets/svg/ic-format-image.svg';
 import MentionImage from '../../../../assets/svg/ic-mentions.svg';
@@ -193,6 +194,16 @@ export const getSuggestionItems = (props: {
       },
       imgSrc: IconFormatImage,
       searchTerms: ['image', 'media'],
+    },
+    {
+      title: 'Task List',
+      description: 'A list of tasks to do',
+      searchTerms: ['task', 'checklist'],
+      command: ({ editor, range }) => {
+        editor.chain().focus().deleteRange(range).toggleTaskList().run();
+      },
+      imgSrc: TaskListIcon,
+      type: SuggestionItemType.ADVANCED_BLOCKS,
     },
   ];
 
