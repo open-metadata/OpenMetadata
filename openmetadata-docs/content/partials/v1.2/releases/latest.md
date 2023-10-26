@@ -50,8 +50,8 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 
 ## Lineage
 - Performance improvements made for lineage based on the new release of SQLfluff.
-- Added support for UPDATE … FROM Snowflake queries
-- Added column-level lineage support for SELECT * queries
+- Added support for `UPDATE … FROM Snowflake` queries
+- Added column-level lineage support for `SELECT *` queries
 
 ## Connectors
 - Greenplum connector is now supported.
