@@ -26,7 +26,7 @@ export const SIDEBAR_LIST = [
   {
     key: ROUTES.EXPLORE,
     label: i18next.t('label.explore'),
-    redirect_url: '/explore/dataProducts',
+    redirect_url: '/explore/tables',
     icon: ExploreIcon,
     dataTestId: 'app-bar-item-explore',
   },

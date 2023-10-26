@@ -56,12 +56,6 @@ export interface ExploreTabInfo {
 }
 
 export const tabsInfo: { [K in ExploreSearchIndex]: ExploreTabInfo } = {
-  [SearchIndex.DATA_PRODUCT]: {
-    label: i18n.t('label.data-product-plural'),
-    sortingFields: tableSortingFields,
-    sortField: INITIAL_SORT_FIELD,
-    path: 'dataProducts',
-  },
   [SearchIndex.TABLE]: {
     label: i18n.t('label.table-plural'),
     sortingFields: tableSortingFields,
@@ -135,6 +129,12 @@ export const tabsInfo: { [K in ExploreSearchIndex]: ExploreTabInfo } = {
     sortingFields: entitySortingFields,
     sortField: INITIAL_SORT_FIELD,
     path: 'tags',
+  },
+  [SearchIndex.DATA_PRODUCT]: {
+    label: i18n.t('label.data-product-plural'),
+    sortingFields: tableSortingFields,
+    sortField: INITIAL_SORT_FIELD,
+    path: 'dataProducts',
   },
 };
 
