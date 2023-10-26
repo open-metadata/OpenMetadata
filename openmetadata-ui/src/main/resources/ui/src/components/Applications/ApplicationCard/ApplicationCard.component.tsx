@@ -14,13 +14,11 @@ import { Button, Card, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { kebabCase } from 'lodash';
 import React from 'react';
-import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import AppLogo from '../AppLogo/AppLogo.component';
 import { ApplicationCardProps } from './ApplicationCard.interface';
 
 const ApplicationCard = ({
   title,
-  description,
   className,
   linkTitle,
   onClick,
@@ -38,14 +36,10 @@ const ApplicationCard = ({
         <div className="application-logo">
           <AppLogo appName={appName} />
         </div>
-        <Space className="application-info" direction="vertical" size={4}>
+        <Space className="application-info" direction="vertical" size={0}>
           <Typography.Title className="m-0" level={5}>
             {title}
           </Typography.Title>
-          <RichTextEditorPreviewer
-            className="max-two-lines"
-            markdown={description}
-          />
           <Button
             className="p-0"
             data-testid="config-btn"
