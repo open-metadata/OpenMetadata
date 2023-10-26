@@ -173,6 +173,7 @@ const AppInstall = () => {
             <Typography.Title level={5}>{t('label.schedule')}</Typography.Title>
             <TestSuiteScheduler
               isQuartzCron
+              includePeriodOptions={isExternalApp ? ['Day'] : undefined}
               initialData={getIngestionFrequency(PipelineType.Application)}
               onCancel={() => setActiveServiceStep(isExternalApp ? 1 : 2)}
               onSubmit={onSubmit}
@@ -182,7 +183,7 @@ const AppInstall = () => {
       default:
         return <></>;
     }
-  }, [activeServiceStep, appData, jsonSchema]);
+  }, [activeServiceStep, appData, jsonSchema, isExternalApp]);
 
   useEffect(() => {
     fetchAppDetails();

@@ -284,6 +284,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Parameter(description = "Name of the App", schema = @Schema(type = "string")) @PathParam("name") String name,
       @Parameter(description = "Returns log chunk after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
+          @DefaultValue("")
           String after) {
     App installation = repository.getByName(uriInfo, name, repository.getFields("id,pipelines"));
     if (installation.getAppType().equals(AppType.Internal)) {

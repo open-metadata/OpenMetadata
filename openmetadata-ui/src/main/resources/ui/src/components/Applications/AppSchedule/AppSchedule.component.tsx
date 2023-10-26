@@ -197,6 +197,9 @@ const AppSchedule = ({
             cancelText: t('label.cancel'),
             okText: t('label.save'),
           }}
+          includePeriodOptions={
+            appData.appType === AppType.External ? ['Day'] : undefined
+          }
           initialData={getIngestionFrequency(PipelineType.Application)}
           onCancel={onDialogCancel}
           onSubmit={onDialogSave}
