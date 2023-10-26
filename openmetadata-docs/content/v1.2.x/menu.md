@@ -8,10 +8,21 @@ site_menu:
     color: violet-70
     icon: quickstart
   - category: Quickstart / Try OpenMetadata in Docker
-    url: /quick-start/local-deployment
+    url: /quick-start/local-docker-deployment
+  - category: Quickstart / Try OpenMetadata in Kubernetes
+    url: /quick-start/local-kubernetes-deployment
   - category: Quickstart / Try the OpenMetadata Sandbox
     url: /quick-start/sandbox
 
+  - category: Deployment
+    url: /deployment
+    color: violet-70
+    icon: deployment
+  - category: Deployment / Bare Metal Deployment
+    url: /deployment/bare-metal
+  - category: Deployment / Bare Metal Deployment / Enable Security
+    url: /deployment/bare-metal/security
+  
   - category: Releases
     url: /releases
     color: violet-70
@@ -24,15 +35,6 @@ site_menu:
     url: /releases/roadmap
   - category: Releases / All Releases
     url: /releases/all-releases
-
-  - category: Deployment
-    url: /deployment
-    color: violet-70
-    icon: deployment
-  - category: Deployment / Bare Metal Deployment
-    url: /deployment/bare-metal
-  - category: Deployment / Bare Metal Deployment / Enable Security
-    url: /deployment/bare-metal/security
 
   - category: Deployment / Docker Deployment
     url: /deployment/docker
@@ -269,6 +271,10 @@ site_menu:
     url: /connectors/database/glue
   - category: Connectors / Database / Glue / Run Externally
     url: /connectors/database/glue/yaml
+  - category: Connectors / Database / Greenplum
+    url: /connectors/database/greenplum
+  - category: Connectors / Database / Greenplum / Run Externally
+    url: /connectors/database/greenplum/yaml
   - category: Connectors / Database / Hive
     url: /connectors/database/hive
   - category: Connectors / Database / Hive / Run Externally
