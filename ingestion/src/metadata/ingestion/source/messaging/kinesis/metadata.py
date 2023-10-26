@@ -128,6 +128,7 @@ class KinesisSource(MessagingServiceSource):
                 sourceUrl=source_url,
             )
             yield Either(right=topic)
+            self.register_record(topic_request=topic)
 
         except Exception as exc:
             yield Either(

@@ -74,11 +74,11 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <mockito.version>5.2.0</mockito.version>
+    <mockito.version>5.6.0</mockito.version>
     <!-- Upgrading slf4j causes dropwizard issues -->
     <slf4j.version>1.7.36</slf4j.version>
     <jackson.version>2.15.3</jackson.version>
-    <dropwizard.version>2.1.8</dropwizard.version>
+    <dropwizard.version>2.1.9</dropwizard.version>
     <dropwizard-jdbi3.version>2.1.6</dropwizard-jdbi3.version>
     <diffMatch.version>1.0</diffMatch.version>
     <jersey-bom.version>2.40</jersey-bom.version>
@@ -98,7 +98,7 @@
     <commons-cli.version>1.5.0</commons-cli.version>
     <commons-io.version>2.14.0</commons-io.version>
     <flyway.version>9.22.3</flyway.version>
-    <redshift-jdbc.version>2.1.0.19</redshift-jdbc.version>
+    <redshift-jdbc.version>2.1.0.20</redshift-jdbc.version>
     <gson.version>2.10.1</gson.version>
     <mysql.connector.version>8.0.33</mysql.connector.version>
     <postgres.connector.version>42.6.0</postgres.connector.version>
@@ -117,7 +117,7 @@
     <httpclient.version>4.5.14</httpclient.version>
     <!-- Upgrading to spring version 6.x requires Java 17 -->
     <spring.version>5.3.28</spring.version>
-    <log4j.version>2.20.0</log4j.version>
+    <log4j.version>2.21.0</log4j.version>
     <org.junit.jupiter.version>5.9.3</org.junit.jupiter.version>
     <dropwizard-health.version>1.7.3</dropwizard-health.version>
     <fernet.version>1.5.0</fernet.version>
@@ -380,7 +380,7 @@
       <dependency>
         <groupId>org.mockito</groupId>
         <artifactId>mockito-inline</artifactId>
-        <version>${mockito.version}</version>
+        <version>5.2.0</version>
         <scope>test</scope>
       </dependency>
       <dependency>
@@ -480,7 +480,7 @@
         <groupId>org.eclipse.jetty</groupId>
         <artifactId>jetty-io</artifactId>
         <!-- 9.x required for Dropwizard 2.1.x -->
-        <version>9.4.52.v20230823</version>
+        <version>9.4.53.v20231009</version>
       </dependency>
 
       <!-- avoid security issue https://security.snyk.io/vuln/SNYK-JAVA-ORGGLASSFISH-1297098 -->
@@ -687,7 +687,7 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-resources-plugin</artifactId>
-          <version>3.1.0</version>
+          <version>3.3.0</version>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>

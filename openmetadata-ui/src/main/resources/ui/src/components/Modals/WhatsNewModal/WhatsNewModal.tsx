@@ -82,28 +82,24 @@ const WhatsNewModal: FunctionComponent<WhatsNewModalProps> = ({
           span={3}>
           <Space className="flex-col-reverse" direction="vertical">
             {WHATS_NEW.map((d) => (
-              <Row gutter={[0, 8]} key={d.id}>
-                <Col>
+              <Button
+                className={classNames(
+                  'p-0',
+                  activeData.id === d.id ? 'text-primary' : null
+                )}
+                icon={
                   <VersionIndicatorIcon
                     fill={
                       activeData.id === d.id ? PRIMERY_COLOR : DE_ACTIVE_COLOR
                     }
-                    style={{ verticalAlign: 'middle' }}
                   />
-                </Col>
-                <Col>
-                  <Button
-                    className={classNames(
-                      'm-l-xss p-0',
-                      activeData.id === d.id ? 'text-primary' : null
-                    )}
-                    size="small"
-                    type="text"
-                    onClick={() => setActiveData(d)}>
-                    {d.version}
-                  </Button>
-                </Col>
-              </Row>
+                }
+                key={d.id}
+                size="small"
+                type="text"
+                onClick={() => setActiveData(d)}>
+                {d.version}
+              </Button>
             ))}
           </Space>
         </Col>

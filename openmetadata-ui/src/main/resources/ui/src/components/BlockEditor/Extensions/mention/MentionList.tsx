@@ -16,7 +16,7 @@ import classNames from 'classnames';
 import React, { forwardRef, useImperativeHandle, useState } from 'react';
 import ProfilePicture from '../../../../components/common/ProfilePicture/ProfilePicture';
 import { isInViewport } from '../../../../utils/BlockEditorUtils';
-import { ExtensionRef, SuggestionItem } from '../BlockEditor.interface';
+import { ExtensionRef, SuggestionItem } from '../../BlockEditor.interface';
 
 export default forwardRef<ExtensionRef, SuggestionProps<SuggestionItem>>(
   (props, ref) => {
@@ -99,7 +99,7 @@ export default forwardRef<ExtensionRef, SuggestionProps<SuggestionItem>>(
 
     return (
       <Space
-        className="mention-menu-wrapper"
+        className="suggestion-menu-wrapper"
         direction="vertical"
         id="mention-viewport">
         {items.map((item, index) => (

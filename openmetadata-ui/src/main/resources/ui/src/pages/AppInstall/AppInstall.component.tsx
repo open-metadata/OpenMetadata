@@ -15,7 +15,7 @@ import { RJSFSchema } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import TestSuiteScheduler from '../../components/AddDataQualityTest/components/TestSuiteScheduler';
@@ -31,6 +31,7 @@ import {
   GlobalSettingsMenuCategory,
 } from '../../constants/GlobalSettings.constants';
 import { ServiceCategory } from '../../enums/service.enum';
+import { AppType } from '../../generated/entity/applications/app';
 import {
   CreateAppRequest,
   ScheduleTimeline,
@@ -60,6 +61,20 @@ const AppInstall = () => {
   const [activeServiceStep, setActiveServiceStep] = useState(1);
   const [appConfiguration, setAppConfiguration] = useState();
   const [jsonSchema, setJsonSchema] = useState<RJSFSchema>();
+
+  const isExternalApp = useMemo(
+    () => appData?.appType === AppType.External,
+    [appData]
+  );
+
+  const stepperList = useMemo(
+    () =>
+      isExternalApp
+        ? STEPS_FOR_APP_INSTALL.filter((item) => item.step !== 2)
+        : STEPS_FOR_APP_INSTALL,
+
+    [isExternalApp]
+  );
 
   const fetchAppDetails = useCallback(async () => {
     setIsLoading(true);
@@ -92,7 +107,7 @@ const AppInstall = () => {
   const onSubmit = async (repeatFrequency: string) => {
     try {
       const data: CreateAppRequest = {
-        appConfiguration: appConfiguration,
+        appConfiguration: appConfiguration ?? appData?.appConfiguration,
         appSchedule: {
           scheduleType: ScheduleTimeline.Custom,
           cronExpression: repeatFrequency,
@@ -125,10 +140,14 @@ const AppInstall = () => {
         return (
           <AppInstallVerifyCard
             appData={appData}
+            nextButtonLabel={
+              isExternalApp ? t('label.schedule') : t('label.configure')
+            }
             onCancel={onCancel}
-            onSave={() => setActiveServiceStep(2)}
+            onSave={() => setActiveServiceStep(isExternalApp ? 3 : 2)}
           />
         );
+
       case 2:
         return (
           <div className="w-500 p-md border rounded-4">
@@ -154,8 +173,9 @@ const AppInstall = () => {
             <Typography.Title level={5}>{t('label.schedule')}</Typography.Title>
             <TestSuiteScheduler
               isQuartzCron
+              includePeriodOptions={isExternalApp ? ['Day'] : undefined}
               initialData={getIngestionFrequency(PipelineType.Application)}
-              onCancel={() => setActiveServiceStep(2)}
+              onCancel={() => setActiveServiceStep(isExternalApp ? 1 : 2)}
               onSubmit={onSubmit}
             />
           </div>
@@ -163,7 +183,7 @@ const AppInstall = () => {
       default:
         return <></>;
     }
-  }, [activeServiceStep, appData, jsonSchema]);
+  }, [activeServiceStep, appData, jsonSchema, isExternalApp]);
 
   useEffect(() => {
     fetchAppDetails();
@@ -189,7 +209,7 @@ const AppInstall = () => {
         <Col span={24}>
           <IngestionStepper
             activeStep={activeServiceStep}
-            steps={STEPS_FOR_APP_INSTALL}
+            steps={stepperList}
           />
         </Col>
         <Col span={24}>

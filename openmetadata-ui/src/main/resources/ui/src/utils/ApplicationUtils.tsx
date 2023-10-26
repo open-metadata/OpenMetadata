@@ -12,6 +12,7 @@
  */
 import { StatusType } from '../components/common/StatusBadge/StatusBadge.interface';
 import { Status } from '../generated/entity/applications/appRunRecord';
+import { PipelineState } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 
 export const getStatusTypeForApplication = (status: Status) => {
   if (status === Status.Failed) {
@@ -23,4 +24,20 @@ export const getStatusTypeForApplication = (status: Status) => {
   }
 
   return StatusType.Failure;
+};
+
+export const getStatusFromPipelineState = (status: PipelineState) => {
+  if (status === PipelineState.Failed) {
+    return Status.Failed;
+  } else if (status === PipelineState.Success) {
+    return Status.Success;
+  } else if (
+    status === PipelineState.Running ||
+    status === PipelineState.PartialSuccess ||
+    status === PipelineState.Queued
+  ) {
+    return Status.Running;
+  }
+
+  return Status.Failed;
 };

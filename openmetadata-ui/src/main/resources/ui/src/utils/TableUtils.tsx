@@ -90,9 +90,14 @@ import {
   getTableFQNFromColumnFQN,
   sortTagsCaseInsensitive,
 } from './CommonUtils';
-import { getGlossaryPath, getSettingPath } from './RouterUtils';
+import {
+  getDataProductsDetailsPath,
+  getDomainDetailsPath,
+  getGlossaryPath,
+  getSettingPath,
+} from './RouterUtils';
 import { getSearchIndexDetailsPath } from './SearchIndexUtils';
-import { serviceTypeLogo } from './ServiceUtils';
+import serviceUtilClassBase from './ServiceUtilClassBase';
 import { getDecodedFqn, ordinalize } from './StringsUtils';
 import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
 
@@ -286,6 +291,14 @@ export const getEntityLink = (
     case SearchIndex.SEARCH_INDEX:
       return getSearchIndexDetailsPath(fullyQualifiedName);
 
+    case EntityType.DOMAIN:
+    case SearchIndex.DOMAIN:
+      return getDomainDetailsPath(fullyQualifiedName);
+
+    case EntityType.DATA_PRODUCT:
+    case SearchIndex.DATA_PRODUCT:
+      return getDataProductsDetailsPath(fullyQualifiedName);
+
     case SearchIndex.TABLE:
     case EntityType.TABLE:
     default:
@@ -311,7 +324,7 @@ export const getServiceIcon = (source: SourceType) => {
       <img
         alt="service-icon"
         className="inline h-7"
-        src={serviceTypeLogo(source.serviceType || '')}
+        src={serviceUtilClassBase.getServiceTypeLogo(source.serviceType || '')}
       />
     );
   }

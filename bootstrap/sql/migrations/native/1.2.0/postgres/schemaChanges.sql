@@ -107,7 +107,6 @@ UPDATE dashboard_service_entity
 SET json = jsonb_set(
   json::jsonb #- '{connection,config,sandboxDomain}',
   '{connection,config,instanceDomain}',
-    json JSONB NOT NULL,
   (json #> '{connection,config,sandboxDomain}')::jsonb,
   true
 )
@@ -287,5 +286,5 @@ SET json = jsonb_set(
 FROM pipeline_entity p
 WHERE ts.entityFQNHash  = p.fqnHash
   and ts.extension = 'pipeline.pipelineStatus'
-  AND p.json #>> '{serviceType}' = 'Airflow'
+  AND p.json #>> '{serviceType}' in ('Airflow', 'GluePipeline', 'Airbyte', 'Dagster', 'DomoPipeline')
 ;

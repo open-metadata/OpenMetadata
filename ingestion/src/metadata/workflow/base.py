@@ -22,6 +22,7 @@ To be extended by any other workflow:
 import traceback
 import uuid
 from abc import ABC, abstractmethod
+from datetime import datetime
 from typing import Optional, Tuple, TypeVar, cast
 
 from metadata.generated.schema.api.services.ingestionPipelines.createIngestionPipeline import (
@@ -57,6 +58,7 @@ from metadata.utils.class_helper import (
     get_service_class_from_service_type,
     get_service_type_from_source_type,
 )
+from metadata.utils.helpers import datetime_to_ts
 from metadata.utils.logger import ingestion_logger, set_loggers_level
 from metadata.workflow.workflow_output_handler import get_ingestion_status_timer
 from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
@@ -97,6 +99,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         self.config = config
         self._timer: Optional[RepeatedTimer] = None
         self._ingestion_pipeline: Optional[IngestionPipeline] = None
+        self._start_ts = datetime_to_ts(datetime.now())
 
         set_loggers_level(config.workflowConfig.loggerLevel.value)
 

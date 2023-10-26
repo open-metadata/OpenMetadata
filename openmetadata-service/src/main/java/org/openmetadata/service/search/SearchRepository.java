@@ -382,6 +382,9 @@ public class SearchRepository {
             GLOBAL_SEARCH_ALIAS,
             new ImmutablePair<>(entityType + ".id", docId),
             new ImmutablePair<>(REMOVE_DOMAINS_CHILDREN_SCRIPT, null));
+        // we are doing below because we want to delete the data products with domain when domain is deleted
+        searchClient.deleteEntityByFields(
+            indexMapping.getAlias(), List.of(new ImmutablePair<>(entityType + ".id", docId)));
         break;
       case Entity.TAG:
       case Entity.GLOSSARY_TERM:

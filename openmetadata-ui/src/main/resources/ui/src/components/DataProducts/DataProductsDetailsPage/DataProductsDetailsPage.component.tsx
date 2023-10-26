@@ -289,7 +289,7 @@ const DataProductsDetailsPage = ({
                     entityType: t('label.data-product'),
                   }
                 )}
-                icon={<DeleteIcon color={DE_ACTIVE_COLOR} width="18px" />}
+                icon={<DeleteIcon color={DE_ACTIVE_COLOR} width="14px" />}
                 id="delete-button"
                 name={t('label.delete')}
               />
@@ -469,9 +469,10 @@ const DataProductsDetailsPage = ({
               )
             }
             serviceName=""
+            titleColor={dataProduct.style?.color}
           />
         </Col>
-        <Col className="p-x-md" flex="280px">
+        <Col className="p-x-md" flex="320px">
           <div style={{ textAlign: 'right' }}>
             {!isVersionsView && dataProductPermission.Create && (
               <Button

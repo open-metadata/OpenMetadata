@@ -90,6 +90,7 @@ const BasicSignUp = () => {
                     name="firstName"
                     rules={[{ whitespace: true, required: true }]}>
                     <Input
+                      autoFocus
                       placeholder={t('label.enter-entity-name', {
                         entity: t('label.first-lowercase'),
                       })}

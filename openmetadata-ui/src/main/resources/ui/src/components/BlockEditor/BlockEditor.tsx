@@ -10,183 +10,55 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Editor, EditorContent, ReactRenderer, useEditor } from '@tiptap/react';
-import { isEmpty, isNil } from 'lodash';
+import { Editor, EditorContent } from '@tiptap/react';
+import { isNil } from 'lodash';
 import React, {
   forwardRef,
   useEffect,
   useImperativeHandle,
-  useState,
+  useRef,
 } from 'react';
-import tippy, { Instance, Props } from 'tippy.js';
 import { EDITOR_OPTIONS } from '../../constants/BlockEditor.constants';
-import {
-  getBackendFormat,
-  getFrontEndFormat,
-  HTMLToMarkdown,
-  MarkdownToHTMLConverter,
-} from '../../utils/FeedUtils';
+import { formatContent } from '../../utils/BlockEditorUtils';
 import './block-editor.less';
-import BubbleMenu from './BubbleMenu/BubbleMenu';
-import ImageModal, { ImageData } from './ImageModal/ImageModal';
-import LinkModal, { LinkData } from './LinkModal/LinkModal';
-import LinkPopup from './LinkPopup/LinkPopup';
+import { EditorSlotsRef } from './BlockEditor.interface';
+import EditorSlots from './EditorSlots';
+import { extensions } from './Extensions';
+import { useCustomEditor } from './hooks/useCustomEditor';
 
 export interface BlockEditorRef {
-  onFocus: () => void;
+  editor: Editor | null;
 }
 export interface BlockEditorProps {
-  // should be markdown string
   content?: string;
   editable?: boolean;
-  // will be call with markdown content
-  onChange?: (content: string) => void;
+  onChange?: (htmlContent: string) => void;
 }
 
 const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
   ({ content = '', editable = true, onChange }, ref) => {
-    const [isLinkModalOpen, setIsLinkModalOpen] = useState<boolean>(false);
-    const [isImageModalOpen, setIsImageModalOpen] = useState<boolean>(false);
+    const editorSlots = useRef<EditorSlotsRef>(null);
 
-    const editor = useEditor({
+    const editor = useCustomEditor({
       ...EDITOR_OPTIONS,
+      extensions,
       onUpdate({ editor }) {
         const htmlContent = editor.getHTML();
 
-        const markdown = HTMLToMarkdown.turndown(htmlContent);
-
-        const backendFormat = getBackendFormat(markdown);
+        const backendFormat = formatContent(htmlContent, 'server');
 
         onChange?.(backendFormat);
       },
+      editorProps: {
+        attributes: {
+          class: 'om-block-editor',
+        },
+      },
     });
 
-    const handleLinkToggle = () => {
-      setIsLinkModalOpen((prev) => !prev);
-    };
-    const handleImageToggle = () => {
-      setIsImageModalOpen((prev) => !prev);
-    };
-
-    const handleLinkCancel = () => {
-      handleLinkToggle();
-      if (!isNil(editor)) {
-        editor?.chain().blur().run();
-      }
-    };
-
-    const handleLinkSave = (values: LinkData, op: 'edit' | 'add') => {
-      if (isNil(editor)) {
-        return;
-      }
-      // set the link
-      if (op === 'edit') {
-        editor
-          ?.chain()
-          .focus()
-          .extendMarkRange('link')
-          .updateAttributes('link', {
-            href: values.href,
-          })
-          .run();
-      }
-
-      if (op === 'add') {
-        editor?.chain().focus().setLink({ href: values.href }).run();
-      }
-
-      // move cursor at the end
-      editor?.chain().selectTextblockEnd().run();
-
-      // close the modal
-      handleLinkToggle();
-    };
-
-    const handleUnlink = () => {
-      if (isNil(editor)) {
-        return;
-      }
-
-      editor?.chain().focus().extendMarkRange('link').unsetLink().run();
-
-      // move cursor at the end
-      editor?.chain().selectTextblockEnd().run();
-    };
-
-    const handleLinkPopup = (
-      e: React.MouseEvent<HTMLDivElement, MouseEvent>
-    ) => {
-      let popup: Instance<Props>[] = [];
-      let component: ReactRenderer;
-      const target = e.target as HTMLElement;
-      const dataType = target.getAttribute('data-type');
-
-      let hasPopup = !isEmpty(popup);
-
-      if (['mention', 'hashtag'].includes(dataType ?? '')) {
-        return;
-      }
-      if (target.nodeName === 'A') {
-        const href = target.getAttribute('href');
-
-        component = new ReactRenderer(LinkPopup, {
-          editor: editor as Editor,
-          props: {
-            href,
-            handleLinkToggle: () => {
-              handleLinkToggle();
-              if (hasPopup) {
-                popup[0].hide();
-              }
-            },
-            handleUnlink: () => {
-              handleUnlink();
-              if (hasPopup) {
-                popup[0].hide();
-              }
-            },
-          },
-        });
-
-        popup = tippy('body', {
-          getReferenceClientRect: () => target.getBoundingClientRect(),
-          appendTo: () => document.body,
-          content: component.element,
-          showOnCreate: true,
-          interactive: true,
-          trigger: 'manual',
-          placement: 'top',
-          hideOnClick: true,
-        });
-        hasPopup = !isEmpty(popup);
-      } else {
-        if (hasPopup) {
-          popup[0].hide();
-        }
-      }
-    };
-
-    const handleAddImage = (values: ImageData) => {
-      if (isNil(editor)) {
-        return;
-      }
-
-      editor.chain().focus().setImage({ src: values.src }).run();
-
-      handleImageToggle();
-    };
-
     useImperativeHandle(ref, () => ({
-      onFocus() {
-        if (!isNil(editor) && !editor.isFocused) {
-          editor.commands.focus('end');
-        }
-      },
+      editor,
     }));
-
-    const menus = !isNil(editor) && (
-      <BubbleMenu editor={editor} toggleLink={handleLinkToggle} />
-    );
 
     useEffect(() => {
       if (isNil(editor) || editor.isDestroyed || content === undefined) {
@@ -197,9 +69,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
       // mentioned here https://github.com/ueberdosis/tiptap/issues/3764#issuecomment-1546854730
       setTimeout(() => {
         if (content !== undefined) {
-          const htmlContent = MarkdownToHTMLConverter.makeHtml(
-            getFrontEndFormat(content)
-          );
+          const htmlContent = formatContent(content, 'client');
           editor.commands.setContent(htmlContent);
         }
       });
@@ -220,32 +90,13 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
     }, [editable, editor]);
 
     return (
-      <>
-        {isLinkModalOpen && (
-          <LinkModal
-            data={{ href: editor?.getAttributes('link').href }}
-            isOpen={isLinkModalOpen}
-            onCancel={handleLinkCancel}
-            onSave={(values) =>
-              handleLinkSave(
-                values,
-                editor?.getAttributes('link').href ? 'edit' : 'add'
-              )
-            }
-          />
-        )}
-        {isImageModalOpen && (
-          <ImageModal
-            isOpen={isImageModalOpen}
-            onCancel={handleImageToggle}
-            onSave={handleAddImage}
-          />
-        )}
-        <div className="block-editor-wrapper">
-          <EditorContent editor={editor} onMouseDown={handleLinkPopup} />
-          {menus}
-        </div>
-      </>
+      <div className="block-editor-wrapper" id="block-editor-wrapper">
+        <EditorContent
+          editor={editor}
+          onMouseDown={editorSlots.current?.onMouseDown}
+        />
+        <EditorSlots editor={editor} ref={editorSlots} />
+      </div>
     );
   }
 );

@@ -25,6 +25,7 @@ import {
   verifyResponseStatusCode,
   visitEntityDetailsPage,
 } from '../../common/common';
+import { visitServiceDetailsPage } from '../../common/serviceUtils';
 import { API_SERVICE, SERVICE_TYPE } from '../../constants/constants';
 
 const serviceType = 'Postgres';
@@ -103,48 +104,17 @@ describe('Postgres Ingestion', () => {
       '/api/v1/services/ingestionPipelines/deploy/*',
       'deployIngestion'
     );
-    cy.get('[data-testid="app-bar-item-settings"]')
-      .should('be.visible')
-      .click({ force: true });
-    verifyResponseStatusCode('@getSettingsPage', 200);
-    // Services page
-    interceptURL('GET', '/api/v1/services/*', 'getServices');
-
-    cy.get('[data-testid="settings-left-panel"]')
-      .contains(SERVICE_TYPE.Database)
-      .should('be.visible')
-      .click();
-
-    verifyResponseStatusCode('@getServices', 200);
-    interceptURL(
-      'GET',
-      '/api/v1/services/ingestionPipelines?*',
-      'ingestionData'
-    );
-    interceptURL(
-      'GET',
-      '/api/v1/system/config/pipeline-service-client',
-      'airflow'
-    );
     interceptURL(
       'GET',
       '/api/v1/permissions/ingestionPipeline/name/*',
       'ingestionPermissions'
     );
-    interceptURL('GET', '/api/v1/services/*/name/*', 'serviceDetails');
-    interceptURL('GET', `/api/v1/*`, 'database');
 
-    cy.get(`[data-testid="service-name-${serviceName}"]`)
-      .should('exist')
-      .click();
-    verifyResponseStatusCode('@ingestionData', 200, {
-      responseTimeout: 50000,
-    });
-    verifyResponseStatusCode('@serviceDetails', 200);
-    verifyResponseStatusCode('@airflow', 200);
-    verifyResponseStatusCode('@database', 200);
+    visitServiceDetailsPage(
+      { type: SERVICE_TYPE.Database, name: serviceName },
+      false
+    );
 
-    cy.get('[data-testid="tabs"]').should('exist');
     cy.get('[data-testid="ingestions"]')
       .scrollIntoView()
       .should('be.visible')

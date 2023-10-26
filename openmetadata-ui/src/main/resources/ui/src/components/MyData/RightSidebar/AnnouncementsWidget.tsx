@@ -13,7 +13,7 @@
 import { CloseOutlined, DragOutlined } from '@ant-design/icons';
 import { Alert, Card, Col, Row, Space, Typography } from 'antd';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AnnouncementIcon } from '../../../assets/svg/announcements-v1.svg';
 import { Thread } from '../../../generated/entity/feed/thread';
@@ -41,11 +41,71 @@ function AnnouncementsWidget({
     !isUndefined(handleRemoveWidget) && handleRemoveWidget(widgetKey);
   }, [widgetKey]);
 
+  const announcement = useMemo(() => {
+    if (isAnnouncementLoading) {
+      return <Loader size="small" />;
+    }
+
+    if (isEmpty(announcements)) {
+      return (
+        <div className="flex-center h-full">
+          {t('message.no-entity-data-available', {
+            entity: t('label.announcement-lowercase'),
+          })}
+        </div>
+      );
+    }
+
+    return (
+      <div className="announcement-container-list">
+        <Row gutter={[8, 8]}>
+          {announcements.map((item) => {
+            return (
+              <Col key={item.id} span={24}>
+                <Alert
+                  className="right-panel-announcement"
+                  description={
+                    <>
+                      <FeedCardHeaderV1
+                        about={item.about}
+                        className="d-inline"
+                        createdBy={item.createdBy}
+                        showUserAvatar={false}
+                        timeStamp={item.threadTs}
+                      />
+                      <FeedCardBodyV1
+                        isOpenInDrawer
+                        announcement={item.announcement}
+                        className="p-t-xs"
+                        isEditPost={false}
+                        message={item.message}
+                        showSchedule={false}
+                      />
+                    </>
+                  }
+                  message={
+                    <div className="d-flex announcement-alert-heading">
+                      <AnnouncementIcon width={20} />
+                      <span className="text-sm p-l-xss">
+                        {t('label.announcement')}
+                      </span>
+                    </div>
+                  }
+                  type="info"
+                />
+              </Col>
+            );
+          })}
+        </Row>
+      </div>
+    );
+  }, [isAnnouncementLoading, announcements]);
+
   return (
     <Card className="announcement-container card-widget h-full">
       <Row justify="space-between">
         <Col>
-          <Typography.Paragraph className="right-panel-label m-b-sm">
+          <Typography.Paragraph className="font-medium m-b-sm">
             {t('label.recent-announcement-plural')}
           </Typography.Paragraph>
         </Col>
@@ -61,58 +121,7 @@ function AnnouncementsWidget({
           </Col>
         )}
       </Row>
-      {isAnnouncementLoading ? (
-        <Loader size="small" />
-      ) : (
-        <div className="announcement-container-list">
-          {isEmpty(announcements) && (
-            <Typography.Text className="text-xs">
-              {t('message.no-entity-data-available', {
-                entity: t('label.announcement-lowercase'),
-              })}
-            </Typography.Text>
-          )}
-          <Row gutter={[8, 8]}>
-            {announcements.map((item) => {
-              return (
-                <Col key={item.id} span={24}>
-                  <Alert
-                    className="right-panel-announcement"
-                    description={
-                      <>
-                        <FeedCardHeaderV1
-                          about={item.about}
-                          className="d-inline"
-                          createdBy={item.createdBy}
-                          showUserAvatar={false}
-                          timeStamp={item.threadTs}
-                        />
-                        <FeedCardBodyV1
-                          isOpenInDrawer
-                          announcement={item.announcement}
-                          className="p-t-xs"
-                          isEditPost={false}
-                          message={item.message}
-                          showSchedule={false}
-                        />
-                      </>
-                    }
-                    message={
-                      <div className="d-flex announcement-alert-heading">
-                        <AnnouncementIcon width={20} />
-                        <span className="text-sm p-l-xss">
-                          {t('label.announcement')}
-                        </span>
-                      </div>
-                    }
-                    type="info"
-                  />
-                </Col>
-              );
-            })}
-          </Row>
-        </div>
-      )}
+      {announcement}
     </Card>
   );
 }
