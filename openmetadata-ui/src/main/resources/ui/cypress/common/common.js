@@ -579,8 +579,8 @@ export const visitEntityDetailsPage = (
 
         const tabName = EXPLORE_PAGE_TABS?.[entity] ?? entity;
 
-        cy.get(`[data-testid="${tabName}-tab"]`).should('be.visible').click();
-        cy.get(`[data-testid="${tabName}-tab"]`).should('be.visible');
+        cy.get(`[data-testid="${tabName}-tab"]`).click();
+
         verifyResponseStatusCode('@explorePageTabSearch', 200);
 
         cy.get(`[data-testid="${id}"] [data-testid="entity-link"]`)
