@@ -109,6 +109,10 @@ const AppRunsHistory = forwardRef(
     );
 
     const showLogAction = useCallback((record: AppRunRecordWithId): boolean => {
+      if (appData?.appType === AppType.External) {
+        return false;
+      }
+
       if (record.status === Status.Success && isNull(record?.successContext)) {
         return true;
       }
