@@ -10,6 +10,8 @@ Learn how to upgrade your OpenMetadata instance to 1.2.0!
 {% /inlineCallout %}
 {% /inlineCalloutContainer %}
 
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.2.0-release).
+
 ## Domains and Data Products
 - Added support for Domains and Data Products.
 - Assets can be added to a Domain, and users can scope their discovery experience to one Domain.
