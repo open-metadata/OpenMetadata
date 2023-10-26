@@ -1,9 +1,9 @@
 ---
-title: Run the Postgres Connector Externally
-slug: /connectors/database/postgres/yaml
+title: Run the Greenplum Connector Externally
+slug: /connectors/database/greenplum/yaml
 ---
 
-# Run the Postgres Connector Externally
+# Run the Greenplum Connector Externally
 
 {% multiTablesWrapper %}
 
@@ -11,24 +11,25 @@ slug: /connectors/database/postgres/yaml
 | :----------------- | :--------------------------- |
 | Stage              | PROD                         |
 | Metadata           | {% icon iconName="check" /%} |
-| Query Usage        | {% icon iconName="check" /%} |
+| Query Usage        | {% icon iconName="cross" /%} |
 | Data Profiler      | {% icon iconName="check" /%} |
 | Data Quality       | {% icon iconName="check" /%} |
-| Lineage            | {% icon iconName="check" /%} |
+| Lineage            | {% icon iconName="cross" /%} |
 | DBT                | {% icon iconName="check" /%} |
-| Supported Versions | Postgres>=11                       |
+| Supported Versions |  -                           |
 
 | Feature      | Status                       |
 | :----------- | :--------------------------- |
-| Lineage      | {% icon iconName="check" /%}          |
-| Table-level  | {% icon iconName="check" /%} |
-| Column-level | {% icon iconName="check" /%} |
+| Lineage      | {% icon iconName="cross" /%}          |
+| Table-level  | {% icon iconName="cross" /%} |
+| Column-level | {% icon iconName="cross" /%} |
+
 
 {% /multiTablesWrapper %}
 
-In this section, we provide guides and references to use the Postgres connector.
+In this section, we provide guides and references to use the Greenplum connector.
 
-Configure and schedule Postgres metadata and profiler workflows from the OpenMetadata UI:
+Configure and schedule Greenplum metadata and profiler workflows from the OpenMetadata UI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
@@ -46,31 +47,9 @@ To deploy OpenMetadata, check the Deployment guides.
 {%/inlineCallout%}
 
 
-
-**Note:** Note that we only support officially supported Postgres versions. You can check the version list [here](https://www.postgresql.org/support/versioning/).
-
-### Usage and Lineage considerations
-
-When extracting lineage and usage information from Postgres we base our finding on the `pg_stat_statements` table.
-You can find more information about it on the official [docs](https://www.postgresql.org/docs/current/pgstatstatements.html#id-1.11.7.39.6).
-
-Another interesting consideration here is explained in the following SO [question](https://stackoverflow.com/questions/50803147/what-is-the-timeframe-for-pg-stat-statements).
-As a summary:
-- The `pg_stat_statements` has no time data embedded in it.
-- It will show all queries from the last reset (one can call `pg_stat_statements_reset()`).
-
-Then, when extracting usage and lineage data, the query log duration will have no impact, only the query limit.
-
-**Note:** For usage and lineage grant your user `pg_read_all_stats` permission.
-
-```sql
-GRANT pg_read_all_stats TO your_user;
-```
-
-
 ### Python Requirements
 
-To run the Postgres ingestion, you will need to install:
+To run the Greenplum ingestion, you will need to install:
 
 ```bash
 pip3 install "openmetadata-ingestion[postgres]"
@@ -79,8 +58,8 @@ pip3 install "openmetadata-ingestion[postgres]"
 ## Metadata Ingestion
 
 All connectors are defined as JSON Schemas.
-[Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/postgresConnection.json)
-you can find the structure to create a connection to Postgres.
+[Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/greenplumConnection.json)
+you can find the structure to create a connection to Greenplum.
 
 In order to create and run a Metadata Ingestion workflow, we will follow
 the steps to create a YAML configuration able to connect to the source,
@@ -91,7 +70,7 @@ The workflow is modeled around the following
 
 ### 1. Define the YAML Config
 
-This is a sample config for Postgres:
+This is a sample config for Greenplum:
 
 {% codePreview %}
 
@@ -101,10 +80,9 @@ This is a sample config for Postgres:
 
 {% codeInfo srNumber=1 %}
 
-**username**: Specify the User to connect to Postgres. It should have enough privileges to read all the metadata.
+**username**: Specify the User to connect to Greenplum. It should have enough privileges to read all the metadata.
 
 {% /codeInfo %}
-
 {% codeInfo srNumber=2 %}
 
 **authType**: Choose from basic auth and IAM based auth.
@@ -185,19 +163,19 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 {% codeInfo srNumber=4 %}
 
 
-**hostPort**: Enter the fully qualified hostname and port number for your Postgres deployment in the Host and Port field.
+**hostPort**: Enter the fully qualified hostname and port number for your Greenplum deployment in the Host and Port field.
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=5 %}
 
-**database**: Initial Postgres database to connect to. If you want to ingest all databases, set ingestAllDatabases to true.
+**database**: Initial Greenplum database to connect to. If you want to ingest all databases, set ingestAllDatabases to true.
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=6 %}
 
-**ingestAllDatabases**: Ingest data from all databases in Postgres. You can use databaseFilterPattern on top of this.
+**ingestAllDatabases**: Ingest data from all databases in Greenplum. You can use databaseFilterPattern on top of this.
 
 {% /codeInfo %}
 
@@ -249,11 +227,11 @@ To send the metadata to OpenMetadata, it needs to be specified as `type: metadat
 
 ```yaml
 source:
-  type: postgres
-  serviceName: local_postgres
+  type: greenplum
+  serviceName: local_greenplum
   serviceConnection:
     config:
-      type: Postgres
+      type: Greenplum
 ```
 ```yaml {% srNumber=1 %}
       username: username
@@ -341,141 +319,6 @@ metadata ingest -c <path-to-yaml>
 Note that from connector to connector, this recipe will always be the same. By updating the YAML configuration,
 you will be able to extract metadata from different sources.
 
-
-## Query Usage
-
-The Query Usage workflow will be using the `query-parser` processor.
-
-After running a Metadata Ingestion workflow, we can run Query Usage workflow.
-While the `serviceName` will be the same to that was used in Metadata Ingestion, so the ingestion bot can get the `serviceConnection` details from the server.
-
-
-### 1. Define the YAML Config
-
-This is a sample config for Postgres Usage:
-
-{% codePreview %}
-
-{% codeInfoContainer %}
-
-{% codeInfo srNumber=11 %}
-
-#### Source Configuration - Source Config
-
-You can find all the definitions and types for the  `sourceConfig` [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/databaseServiceQueryUsagePipeline.json).
-
-**queryLogDuration**: Configuration to tune how far we want to look back in query logs to process usage data.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=12 %}
-
-**stageFileLocation**: Temporary file name to store the query logs before processing. Absolute file path required.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=13 %}
-
-**resultLimit**: Configuration to set the limit for query logs
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=14 %}
-
-**queryLogFilePath**: Configuration to set the file path for query logs
-
-{% /codeInfo %}
-
-
-{% codeInfo srNumber=15 %}
-
-#### Processor, Stage and Bulk Sink Configuration
-
-To specify where the staging files will be located.
-
-Note that the location is a directory that will be cleaned at the end of the ingestion.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=16 %}
-
-#### Workflow Configuration
-
-The main property here is the `openMetadataServerConfig`, where you can define the host and security provider of your OpenMetadata installation.
-
-For a simple, local installation using our docker containers, this looks like:
-
-{% /codeInfo %}
-
-{% /codeInfoContainer %}
-
-{% codeBlock fileName="filename.yaml" %}
-
-```yaml
-source:
-  type: postgres-usage
-  serviceName: <service name>
-  sourceConfig:
-    config:
-      type: DatabaseUsage
-```
-```yaml {% srNumber=11 %}
-      # Number of days to look back
-      queryLogDuration: 7
-```
-
-```yaml {% srNumber=12 %}
-      # This is a directory that will be DELETED after the usage runs
-      stageFileLocation: <path to store the stage file>
-```
-
-```yaml {% srNumber=13 %}
-      # resultLimit: 1000
-```
-
-```yaml {% srNumber=14 %}
-      # If instead of getting the query logs from the database we want to pass a file with the queries
-      # queryLogFilePath: path-to-file
-```
-
-```yaml {% srNumber=15 %}
-processor:
-  type: query-parser
-  config: {}
-stage:
-  type: table-usage
-  config:
-    filename: /tmp/postgres_usage
-bulkSink:
-  type: metadata-usage
-  config:
-    filename: /tmp/postgres_usage
-```
-
-```yaml {% srNumber=16 %}
-workflowConfig:
-  # loggerLevel: DEBUG  # DEBUG, INFO, WARN or ERROR
-  openMetadataServerConfig:
-    hostPort: <OpenMetadata host and port>
-    authProvider: <OpenMetadata auth provider>
-```
-
-{% /codeBlock %}
-{% /codePreview %}
-
-### 2. Run with the CLI
-
-There is an extra requirement to run the Usage pipelines. You will need to install:
-
-```bash
-pip3 install --upgrade 'openmetadata-ingestion[postgres]'
-```
-
-After saving the YAML config, we will run the command the same way we did for the metadata ingestion:
-
-```bash
-metadata ingest -c <path-to-yaml>
-```
 
 ## Data Profiler
 
@@ -586,8 +429,8 @@ For a simple, local installation using our docker containers, this looks like:
 
 ```yaml
 source:
-  type: postgres
-  serviceName: local_postgres
+  type: greenplum
+  serviceName: local_greenplum
   sourceConfig:
     config:
       type: Profiler
