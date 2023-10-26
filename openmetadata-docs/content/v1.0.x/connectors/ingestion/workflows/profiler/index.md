@@ -116,17 +116,30 @@ This setting allows user to exclude or include specific columns and metrics from
 *Note: for Google BigQuery tables partitioned on timestamp/datetime column type, month and year interval are not supported. You will need to set the `Interval Unit` to `DAY` or `HOUR`.*
 
 **Enable Partition**
-If your table includes a timestamp, date or datetime column type you can enable partitionning. If enabled, the profiler will fetch the last `<interval>` `<interval unit>` of data to profile the table. Note that if "profile sample" is set, this configuration will be used against the partitioned data and not the whole table.
+When enabled, the profiler will fetch the data based on your profiler settings. Note that if "profile sample" is set, this configuration will be used against the partitioned data and not the whole table.
 - `Column Name`: this is the name of the column that will be used as the partition field
 - `Interval Type`:
-  - `TIME-UNIT`: a business logical timestamp/date/datetime (e.g. order date, sign up datetime, etc.)
-  - `INGESTION-TIME`: a process logical timestamp/date/datetime (i.e. when was my data ingested in my table)
+  - `TIME-UNIT`: a business logic timestamp/date/datetime (e.g. order date, sign up datetime, etc.)
+  - `INGESTION-TIME`: a process logic timestamp/date/datetime (i.e. when was my data ingested in my table)
+  - `COLUMN-VALUE`: a value representing a chunk of data (e.g. Product Type A, B, C, etc.)
+  - `INTEGER-RANGE`: a range of integer that will be used as the partition (e.g. Customer ID between 1 and 10)
+
+Once you have picked the `Interval Type` you will need to define the configuration specific to your `Interval Type`.
+
+`INGESTION-TIME` or `INTEGER-RANGE`
 - `Interval`: the interval value (e.g. `1`, `2`, etc.)
 - `Interval Unit`: 
   - `HOUR`
   - `DAY`
   - `MONTH`
   - `YEAR`
+
+`COLUMN-VALUE`
+- `Value`: a list of value to use for the partitionning logic
+
+`INTEGER-RANGE`
+- `Start Range`: the start of the range (inclusive)
+- `End Range`: the end of the range (inclusive)
 
 
 ## YAML Configuration
