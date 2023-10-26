@@ -50,7 +50,7 @@ We extract ElasticSearch's metadata by using its [API](https://www.elastic.co/gu
     - Password: Password of the user account to connect with ElasticSearch.
     2. API Key Authentication
     - API Key: API Key to connect to ElasticSearch required when API Key Authentication is enabled on ElasticSearch.
-    - API Key Id: Enter API Key ID In case of API Key Authentication if there is any API Key ID associated with the API Key, otherwise this field can be left blank..
+    - API Key Id: Enter API Key ID In case of API Key Authentication if there is any API Key ID associated with the API Key, otherwise this field can be left blank.
 - **Client Certificate Path**: In case the SSL is enabled on your ElasticSearch instance and CA certificate is required for authentication, then specify the path of certificate in this field. NOTE: In case of docker deployment you need to store this certificate accessible to OpenMetadata Ingestion docker container, you can do it via copying the certificate to the docker container or store it in the volume associate with the OpenMetadata Ingestion container.
 - **Connection Timeout in Seconds**: Connection timeout configuration for communicating with ElasticSearch APIs.
 

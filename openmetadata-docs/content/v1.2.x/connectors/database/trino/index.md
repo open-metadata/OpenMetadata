@@ -72,7 +72,11 @@ Executing the profiler workflow or data quality tests, will require the user to 
 #### Connection Details
 
 - **Username**: Specify the User to connect to Trino. It should have enough privileges to read all the metadata.
-- **Password**: Password to connect to Trino.
+- **Auth Config**: User can authenticate the Trino Instance with auth type as `Basic Authentication` i.e. Password **or** by using `JWT Authentication`.
+  - **Basic Auth**:
+    - **Password**: Password to connect to Trino.
+  - **JWT Auth Config**:
+    - **JWT**: JWT can be used to authenticate with trino. Follow the steps in the [official trino](https://trino.io/docs/current/security/jwt.html) documentation to setup trino with jwt.
 - **Host and Port**: Enter the fully qualified hostname and port number for your Trino deployment in the Host and Port field.
 - **Catalog**: Trino offers a catalog feature where all the databases are stored. (Providing the Catalog is not mandatory from 0.12.2 or greater versions)
 - **DatabaseSchema**: DatabaseSchema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single databaseSchema. When left blank, OpenMetadata Ingestion attempts to scan all the databaseSchema.

@@ -13,9 +13,9 @@ You can find further information on the ElasticSearch connector in the [docs](ht
 $$section
 ### Host and Port $(id="hostPort")
 
-This parameter specifies the host and port of the ElasticSearch instance. This should be specified as a string in the format `hostname:port`. For example, you might set the hostPort parameter to `localhost:9200`.
+This parameter specifies the host and port of the ElasticSearch instance. This should be specified as a string in the format `http://hostname:port`. For example, you might set the hostPort parameter to `http://localhost:9200` or `https://localhost:9200`.
 
-If you are running the OpenMetadata ingestion in a docker and your services are hosted on the `localhost`, then use `host.docker.internal:9200` as the value.
+If you are running the OpenMetadata ingestion in a docker and your services are hosted on the `localhost`, then use `http://host.docker.internal:9200` as the value.
 $$
 
 $$section

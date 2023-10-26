@@ -94,7 +94,11 @@ This is a sample config for Trino:
 
 {% codeInfo srNumber=2 %}
 
-**password**: Password to connect to Trino.
+- **authType**: User can authenticate the Trino Instance with auth type as `Basic Authentication` i.e. Password **or** by using `JWT Authentication`.
+  - **Basic Auth**:
+    - **password**: Password to connect to Trino.
+  - **JWT Auth Config**:
+    - **jwt**: JWT can be used to authenticate with trino. Follow the steps in the [official trino](https://trino.io/docs/current/security/jwt.html) documentation to setup trino with jwt.
 
 {% /codeInfo %}
 
@@ -186,7 +190,11 @@ source:
       username: <username>
 ```
 ```yaml {% srNumber=3 %}
-      password: <password>
+      authType:
+      # For basic auth
+        password: password
+      # # For JWT auth
+      #   jwt: jwt_token
 ```
 ```yaml {% srNumber=4 %}
       catalog: <catalog>
