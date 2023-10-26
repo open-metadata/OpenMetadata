@@ -14,15 +14,18 @@ import { Button, Card, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { kebabCase } from 'lodash';
 import React from 'react';
+import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import AppLogo from '../AppLogo/AppLogo.component';
 import { ApplicationCardProps } from './ApplicationCard.interface';
 
 const ApplicationCard = ({
   title,
+  description,
   className,
   linkTitle,
   onClick,
   appName,
+  showDescription = true,
 }: ApplicationCardProps) => {
   return (
     <Card
@@ -40,6 +43,12 @@ const ApplicationCard = ({
           <Typography.Title className="m-0" level={5}>
             {title}
           </Typography.Title>
+          {showDescription && (
+            <RichTextEditorPreviewer
+              className="max-two-lines"
+              markdown={description}
+            />
+          )}
           <Button
             className="p-0"
             data-testid="config-btn"
