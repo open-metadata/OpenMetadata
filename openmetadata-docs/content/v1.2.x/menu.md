@@ -269,6 +269,10 @@ site_menu:
     url: /connectors/database/glue
   - category: Connectors / Database / Glue / Run Externally
     url: /connectors/database/glue/yaml
+  - category: Connectors / Database / Greenplum
+    url: /connectors/database/greenplum
+  - category: Connectors / Database / Greenplum / Run Externally
+    url: /connectors/database/greenplum/yaml
   - category: Connectors / Database / Hive
     url: /connectors/database/hive
   - category: Connectors / Database / Hive / Run Externally
