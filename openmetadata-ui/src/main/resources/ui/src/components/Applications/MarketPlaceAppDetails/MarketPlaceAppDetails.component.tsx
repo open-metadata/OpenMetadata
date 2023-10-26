@@ -176,7 +176,7 @@ const MarketPlaceAppDetails = () => {
       pageTitle={t('label.application-plural')}>
       <Row>
         <Col span={24}>
-          <Typography.Title className="p-md m-0" level={2}>
+          <Typography.Title className="p-md m-0 p-t-xss" level={2}>
             {getEntityName(appData)}
           </Typography.Title>
         </Col>
@@ -202,7 +202,10 @@ const MarketPlaceAppDetails = () => {
 
         <Col span={24}>
           <div className="p-md">
-            <RichTextEditorPreviewer markdown={appData?.description ?? ''} />
+            <RichTextEditorPreviewer
+              enableSeeMoreVariant={false}
+              markdown={appData?.description ?? ''}
+            />
           </div>
         </Col>
       </Row>
