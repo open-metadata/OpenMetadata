@@ -113,7 +113,7 @@ jobs:
         uses: cypress-io/github-action@v4
         timeout-minutes: 120
         with:
-          install: true
+          install-command: yarn --frozen-lockfile --silent --ignore-scripts
           record: true
           parallel: true
           working-directory: openmetadata-ui/src/main/resources/ui/
