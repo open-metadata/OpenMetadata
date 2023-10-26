@@ -12,23 +12,7 @@ version. To see what's coming in next releases, please check our [Roadmap](/rele
 
 {% /note %}
 
-# 1.1.4 Release 🎉
-
-{% inlineCalloutContainer %}
-{% inlineCallout
-color="violet-70"
-icon="celebration"
-bold="Upgrade OpenMetadata"
-href="/deployment/upgrade" %}
-Learn how to upgrade your OpenMetadata instance to 1.1.4!
-{% /inlineCallout %}
-{% /inlineCalloutContainer %}
-
-## UI Improvements
-- Fixed ingestion deployment with schedule as `None`
-
-## Backend
-- Fixed Test Suite migrations
+{% partial file="/v1.2/releases/latest.md" /%}
 
 # 1.1.2 Release 🎉
 

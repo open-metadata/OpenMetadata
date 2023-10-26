@@ -104,7 +104,7 @@ Please note that the pods names above as openmetadata-dependencies-* are part of
 
 Helm Chart for OpenMetadata Dependencies uses the following helm charts:
 - [Bitnami MySQL](https://artifacthub.io/packages/helm/bitnami/mysql/8.8.23) (helm chart version 8.8.23)
-- [ElasticSearch](https://artifacthub.io/packages/helm/elastic/elasticsearch/7.10.2) (helm chart version 7.10.2)
+- [ElasticSearch](https://artifacthub.io/packages/helm/elastic/elasticsearch/7.10.2) (helm chart version 8.10.2)
 - [Airflow](https://artifacthub.io/packages/helm/airflow-helm/airflow/8.6.1) (helm chart version 8.6.1)
 
 If you want to customise helm values for the dependencies as per your cluster, you can follow the above links and update
@@ -232,7 +232,7 @@ If you are running OpenMetadata in AWS, it is recommended to use [Amazon RDS](ht
 We support 
 
 - Amazon RDS (MySQL) engine version 8 or greater
-- Amazon OpenSearch (ElasticSearch) engine version up to 7.10 or Amazon OpenSearch engine version up to 1.3
+- Amazon OpenSearch (ElasticSearch) engine version up to 8.10.2 or Amazon OpenSearch engine version up to 2.7
 - Amazon RDS (PostgreSQL) engine version between 12 and 14.6
 
 For Production Systems, we recommend Amazon RDS to be in Multiple Availability Zones. For Amazon OpenSearch (or ElasticSearch) Service, we recommend Multiple Availability Zones with minimum 3 Master Nodes.
@@ -299,7 +299,7 @@ COPY setup.py .
 RUN pip install --no-deps .
 ```
   
-where `openmetadata/ingestion:x.y.z` needs to point to the same version of the OpenMetadata server, for example `openmetadata/ingestion:0.13.2`.
+where `openmetadata/ingestion:x.y.z` needs to point to the same version of the OpenMetadata server, for example `openmetadata/ingestion:1.2.0`.
 This image needs to be built and published to the container registry of your choice.
 
 ### 2. Update your dependency values YAML
@@ -313,7 +313,7 @@ airflow:
   airflow:
     image:
       repository: <your repository>  # by default, openmetadata/ingestion
-      tag: <your tag>  # by default, the version you are deploying, e.g., 0.13.2
+      tag: <your tag>  # by default, the version you are deploying, e.g., 1.2.0
       pullPolicy: "IfNotPresent"
 ```
 

@@ -88,7 +88,7 @@ version: "3.9"
 services:
   mysql:
     container_name: openmetadata_mysql
-    image: openmetadata/db:1.0.0
+    image: openmetadata/db:1.2.0
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: password
@@ -101,7 +101,7 @@ services:
         ipv4_address: 172.16.240.10
   ingestion:
     container_name: openmetadata_ingestion
-    image: openmetadata/ingestion:1.0.0
+    image: openmetadata/ingestion:1.2.0
     depends_on:
       - mysql
     expose:
