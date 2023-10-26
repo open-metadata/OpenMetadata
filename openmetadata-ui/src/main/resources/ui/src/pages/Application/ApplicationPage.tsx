@@ -142,6 +142,7 @@ const ApplicationPage = () => {
                     description={item.description ?? ''}
                     key={uniqueId()}
                     linkTitle={t('label.configure')}
+                    showDescription={false}
                     title={getEntityName(item)}
                     onClick={() => viewAppDetails(item)}
                   />

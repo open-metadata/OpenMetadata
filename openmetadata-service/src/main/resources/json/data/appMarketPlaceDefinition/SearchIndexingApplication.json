@@ -1,6 +1,5 @@
 {
   "name": "SearchIndexingApplication",
-  "fullyQualifiedName": "SearchIndexingApplication",
   "displayName": "Search Indexing",
   "description": "OpenMetadata connects with Elastic/Open Search to provide search feature for Data Assets. This application provides additional features related to ES/OS.",
   "features": "Sync OpenMetadata and Elastic Search and Recreate Indexes.",
