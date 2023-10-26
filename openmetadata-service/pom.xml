@@ -19,6 +19,7 @@
     <awssdk.version>2.21.4</awssdk.version>
     <expiring.map.version>0.5.11</expiring.map.version>
     <java.saml>2.9.0</java.saml>
+    <xmlsec.version>2.2.6</xmlsec.version>
     <quartz.version>2.3.2</quartz.version>
   </properties>
 
@@ -446,7 +447,16 @@
           <groupId>com.fasterxml.woodstox</groupId>
           <artifactId>woodstox-core</artifactId>
         </exclusion>
+        <exclusion>
+          <groupId>org.apache.santurario</groupId>
+          <artifactId>xmlsec</artifactId>
+        </exclusion>
       </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.santuario</groupId>
+      <artifactId>xmlsec</artifactId>
+      <version>${xmlsec.version}</version>
     </dependency>
     <dependency>
       <groupId>org.quartz-scheduler</groupId>
