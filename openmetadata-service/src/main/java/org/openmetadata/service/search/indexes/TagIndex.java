@@ -48,7 +48,7 @@ public class TagIndex implements SearchIndex {
 
   public static Map<String, Float> getFields() {
     Map<String, Float> fields = new HashMap<>();
-    fields.put(FIELD_NAME, 15.0f);
+    fields.put(FIELD_NAME, 10.0f);
     fields.put(FIELD_DISPLAY_NAME, 10.0f);
     fields.put(FIELD_NAME_NGRAM, 1.0f);
     fields.put(NAME_KEYWORD, 25.0f);
