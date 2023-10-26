@@ -42,15 +42,7 @@ docker compose -f docker-compose.yml up -d
 
 ## Step 2: Re-index all your metadata
 
-Go to Settings -> OpenMetadata -> Search
-
-{% image src="/images/v1.2/deployment/upgrade/elasticsearch-re-index.png" alt="create-project" caption="Reindex" /%}
-
-Click on reindex all.
-
-In the dialog box choose Recreate Indexes to All.
-
-{% image src="/images/v1.2/deployment/upgrade/reindex-ES.png" alt="create-project" caption="Reindex" /%}
+{% partial file="/v1.2/deployment/reindex.md" /%}
 
 ---
 
