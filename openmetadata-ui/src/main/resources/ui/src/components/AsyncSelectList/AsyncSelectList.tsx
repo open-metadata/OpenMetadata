@@ -200,7 +200,13 @@ const AsyncSelectList: FC<AsyncSelectListProps> = ({
         (option) => option.value === value
       );
 
-      return data ?? { value, label: value };
+      return (
+        data ?? {
+          value,
+          label: value,
+          data: initialData?.find((item) => item.value === value)?.data,
+        }
+      );
     });
     selectedTagsRef.current = selectedValues;
     onChange?.(selectedValues);
