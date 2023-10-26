@@ -1,7 +1,6 @@
 <div align="center">
-    <img src="./openmetadata-docs/readme/openmetadata-banner.png" align="center" alt="OpenMetadata" height="350"/>
+    <img src="./openmetadata-docs/readme/openmetadata-banner.png?raw=true" align="center" alt="OpenMetadata" height="350"/>
   <hr />
-  ![OpenMetadata](./openmetadata-docs/readme/openmetadata-banner.png)
 
 [![Build Status](https://github.com/open-metadata/OpenMetadata/actions/workflows/maven-build.yml/badge.svg?event=push)](https://github.com/open-metadata/OpenMetadata/actions/workflows/maven-build.yml)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=open-metadata_OpenMetadata&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=open-metadata_OpenMetadata)
