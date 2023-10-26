@@ -14,7 +14,7 @@ services:
   execute-migrate-all:
     container_name: execute_migrate_all
     command: "./bootstrap/bootstrap_storage.sh migrate-all"
-    image: docker.getcollate.io/openmetadata/server:1.2.0-beta
+    image: docker.getcollate.io/openmetadata/server:1.2.0
     environment:
       OPENMETADATA_CLUSTER_NAME: ${OPENMETADATA_CLUSTER_NAME:-openmetadata}
       SERVER_PORT: ${SERVER_PORT:-8585}
