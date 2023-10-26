@@ -19,6 +19,7 @@ This is the supported list of connectors for Database Services:
 - [Druid](/connectors/database/druid)
 - [DynamoDB](/connectors/database/dynamodb)
 - [Glue](/connectors/database/glue)
+- [Greenplum](/connectors/database/greenplum)
 - [Hive](/connectors/database/hive)
 - [MariaDB](/connectors/database/mariadb)
 - [MSSQL](/connectors/database/mssql)
