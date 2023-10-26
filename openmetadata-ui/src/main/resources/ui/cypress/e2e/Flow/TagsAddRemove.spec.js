@@ -19,7 +19,11 @@ import {
   verifyResponseStatusCode,
   visitEntityDetailsPage,
 } from '../../common/common';
-import { TAGS_ADD_REMOVE_ENTITIES } from '../../constants/tagsAddRemove.constants';
+import {
+  CYPRESS_CLASSIFICATION_FORM_MOCK_DATA,
+  CYPRESS_TAGS_FORM_MOCK_DATA,
+  TAGS_ADD_REMOVE_ENTITIES,
+} from '../../constants/tagsAddRemove.constants';
 
 const addTags = (tag) => {
   const tagName = Cypress._.split(tag, '.')[1];
@@ -109,6 +113,34 @@ describe('Check if tags addition and removal flow working properly from tables',
     cy.login();
   });
 
+  let tags = [];
+
+  it(`Prerequisite for Classification and Tags creation`, () => {
+    const token = localStorage.getItem('oidcIdToken');
+
+    cy.request({
+      method: 'POST',
+      url: `/api/v1/classifications`,
+      headers: { Authorization: `Bearer ${token}` },
+      body: CYPRESS_CLASSIFICATION_FORM_MOCK_DATA,
+    }).then((response) => {
+      expect(response.status).to.eq(201);
+
+      CYPRESS_TAGS_FORM_MOCK_DATA.forEach((tagItem) => {
+        cy.request({
+          method: 'POST',
+          url: `/api/v1/tags`,
+          headers: { Authorization: `Bearer ${token}` },
+          body: tagItem,
+        }).then((response) => {
+          tags.push(response.body.fullyQualifiedName);
+
+          expect(response.status).to.eq(201);
+        });
+      });
+    });
+  });
+
   TAGS_ADD_REMOVE_ENTITIES.map((entityDetails) => {
     const apiEntity =
       entityDetails.entity === 'dashboardDataModel'
@@ -148,7 +180,7 @@ describe('Check if tags addition and removal flow working properly from tables',
         ).click();
       });
 
-      addTags(entityDetails.tags[0]);
+      addTags(tags[0]);
 
       cy.get('[data-testid="saveAssociatedTag"]')
         .scrollIntoView()
@@ -157,7 +189,7 @@ describe('Check if tags addition and removal flow working properly from tables',
 
       verifyResponseStatusCode('@tagsChange', 200);
 
-      checkTags(entityDetails.tags[0], true);
+      checkTags(tags[0], true);
 
       removeTags(true);
     });
@@ -227,7 +259,7 @@ describe('Check if tags addition and removal flow working properly from tables',
           });
         }
 
-        entityDetails.tags.map((tag) => addTags(tag));
+        tags.map((tag) => addTags(tag));
         cy.clickOutside();
 
         cy.get('[data-testid="saveAssociatedTag"]')
@@ -237,10 +269,10 @@ describe('Check if tags addition and removal flow working properly from tables',
 
         verifyResponseStatusCode('@tagsChange', 200);
 
-        entityDetails.tags.map((tag) => checkTags(tag));
+        tags.map((tag) => checkTags(tag));
         verifyTagFilter({
           entity: entityDetails.entity,
-          tag: entityDetails.tags[0],
+          tag: tags[0],
         });
         removeTags(false, entityDetails.separate);
       }

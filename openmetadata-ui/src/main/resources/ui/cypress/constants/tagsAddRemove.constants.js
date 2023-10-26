@@ -83,3 +83,30 @@ export const TAGS_ADD_REMOVE_ENTITIES = [
     permissionApi: '/api/v1/permissions/*/name/*',
   },
 ];
+
+export const CYPRESS_TAGS_FORM_MOCK_DATA = [
+  {
+    name: 'cypress-tags-add',
+    displayName: 'cypress-tags-add',
+    description: 'this is cypress-tags-add',
+    style: {
+      color: '#df2a2a',
+    },
+    classification: 'Classification-cypress',
+  },
+  {
+    name: 'cypress-tags-database',
+    displayName: 'cypress-tags-database',
+    description: 'this is cypress-tags-database',
+    style: {
+      color: '#28f093',
+    },
+    classification: 'Classification-cypress',
+  },
+];
+
+export const CYPRESS_CLASSIFICATION_FORM_MOCK_DATA = {
+  description: 'this is Classification-cypress',
+  displayName: 'Classification-cypress',
+  name: 'Classification-cypress',
+};
