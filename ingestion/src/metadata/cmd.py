@@ -416,7 +416,8 @@ def metadata(args=None):  # pylint: disable=too-many-branches
     contains_args = vars(get_parser(args))
     metadata_workflow = contains_args.get("command")
     config_file = contains_args.get("config")
-    path = Path(config_file).expanduser()
+    if config_file:
+        path = Path(config_file).expanduser()
     if contains_args.get("debug"):
         set_loggers_level(logging.DEBUG)
     elif contains_args.get("log_level"):
