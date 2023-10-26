@@ -50,6 +50,7 @@ export interface TestSuiteSchedulerProps {
     okText: string;
     cancelText: string;
   };
+  includePeriodOptions?: string[];
 }
 
 export interface RightPanelProps {
