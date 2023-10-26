@@ -95,12 +95,7 @@ You can learn more about how the migration process works [here](/deployment/upgr
 
 ## Step 5: Re-index all your metadata
 
-Go to Settings -> OpenMetadata -> Elasticsearch
-{% image src="/images/v1.2/deployment/upgrade/elasticsearch-re-index.png" alt="create-project" caption="Create a New Project" /%}
-
-Click on reindex all
-in the dialog box choose Recreate Indexes to All
-{% image src="/images/v1.2/deployment/upgrade/reindex-ES.png" alt="create-project" caption="Reindex" /%}
+{% partial file="/v1.2/deployment/reindex.md" /%}
 
 ## Troubleshooting
 
