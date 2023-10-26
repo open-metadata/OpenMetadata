@@ -390,7 +390,7 @@ export const testServiceCreationAndIngestion = ({
 
     // wait for ingestion to run
     cy.clock();
-    cy.wait(10000);
+    cy.wait(1000);
 
     interceptURL(
       'GET',
@@ -399,7 +399,7 @@ export const testServiceCreationAndIngestion = ({
     );
     interceptURL('GET', '/api/v1/services/*/name/*', 'serviceDetails');
 
-    cy.get('[data-testid="view-service-button"]').should('be.visible').click();
+    cy.get('[data-testid="view-service-button"]').click();
     verifyResponseStatusCode('@serviceDetails', 200);
     verifyResponseStatusCode('@ingestionPipelines', 200);
     handleIngestionRetry(type, testIngestionButton);
