@@ -15,7 +15,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -50,6 +52,7 @@ import org.openmetadata.schema.entity.app.CreateApp;
 import org.openmetadata.schema.entity.app.ScheduleType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
@@ -300,6 +303,48 @@ public class AppResource extends EntityResource<App, AppRepository> {
         return Response.ok(
                 pipelineServiceClient.getLastIngestionLogs(ingestionPipeline, after), MediaType.APPLICATION_JSON_TYPE)
             .build();
+      }
+    }
+    throw new BadRequestException("Failed to Get Logs for the Installation.");
+  }
+
+  @GET
+  @Path("/name/{name}/runs/latest")
+  @Operation(
+      operationId = "latestAppRunRecord",
+      summary = "Get Latest App Run Record",
+      description = "Get a latest applications Run Record.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of Installed Applications Runs",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = AppRunRecord.class)))
+      })
+  public Response listLatestAppRun(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the App", schema = @Schema(type = "string")) @PathParam("name") String name,
+      @Parameter(description = "Returns log chunk after this cursor", schema = @Schema(type = "string"))
+          @QueryParam("after")
+          @DefaultValue("")
+          String after) {
+    App installation = repository.getByName(uriInfo, name, repository.getFields("id,pipelines"));
+    if (installation.getAppType().equals(AppType.Internal)) {
+      return Response.status(Response.Status.OK).entity(repository.getLatestAppRuns(installation.getId())).build();
+    } else {
+      if (!installation.getPipelines().isEmpty()) {
+        EntityReference pipelineRef = installation.getPipelines().get(0);
+        IngestionPipelineRepository ingestionPipelineRepository =
+            (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+        IngestionPipeline ingestionPipeline =
+            ingestionPipelineRepository.get(
+                uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNER));
+        PipelineStatus latestPipelineStatus = ingestionPipelineRepository.getLatestPipelineStatus(ingestionPipeline);
+        Map<String, String> lastIngestionLogs = pipelineServiceClient.getLastIngestionLogs(ingestionPipeline, after);
+        Map<String, Object> appRun = new HashMap<>();
+        appRun.put("pipelineStatus", latestPipelineStatus);
+        appRun.put("lastIngestionLogs", lastIngestionLogs);
+        return Response.ok(appRun, MediaType.APPLICATION_JSON_TYPE).build();
       }
     }
     throw new BadRequestException("Failed to Get Logs for the Installation.");
