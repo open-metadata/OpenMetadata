@@ -27,10 +27,13 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
-from metadata.ingestion.source.dashboard.mstr.models import MstrDashboardDetails, MstrDashboard
+from metadata.ingestion.source.dashboard.mstr.models import (
+    MstrDashboard,
+    MstrDashboardDetails,
+)
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
-from metadata.utils.helpers import get_standard_chart_type, clean_uri
+from metadata.utils.helpers import clean_uri, get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -73,7 +76,9 @@ class MstrSource(DashboardServiceSource):
 
         if not self.client.is_project_name():
             for project in self.client.get_projects_list():
-                dashboards.extend(self.client.get_dashboards_list(project.id, project.name))
+                dashboards.extend(
+                    self.client.get_dashboards_list(project.id, project.name)
+                )
 
         return dashboards
 
@@ -93,7 +98,7 @@ class MstrSource(DashboardServiceSource):
         return dashboard_details
 
     def yield_dashboard(
-            self, dashboard_details: MstrDashboardDetails
+        self, dashboard_details: MstrDashboardDetails
     ) -> Iterable[CreateDashboardRequest]:
         """
         Method to Get Dashboard Entity
@@ -123,17 +128,15 @@ class MstrSource(DashboardServiceSource):
             self.register_record(dashboard_request=dashboard_request)
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error creating dashboard: {exc}"
-            )
+            logger.warning(f"Error creating dashboard: {exc}")
 
     def yield_dashboard_lineage_details(
-            self, dashboard_details: MstrDashboardDetails, db_service_name: str
+        self, dashboard_details: MstrDashboardDetails, db_service_name: str
     ) -> Optional[Iterable[AddLineageRequest]]:
         yield None
 
     def yield_dashboard_chart(
-            self, dashboard_details: MstrDashboardDetails
+        self, dashboard_details: MstrDashboardDetails
     ) -> Optional[Iterable[CreateChartRequest]]:
         """Get chart method
 
@@ -150,14 +153,20 @@ class MstrSource(DashboardServiceSource):
                     visualizations = page.visualizations
                     for chart in visualizations:
                         try:
-                            if filter_by_chart(self.source_config.chartFilterPattern, chart.name):
-                                self.status.filter(chart.name, "Chart Pattern not allowed")
+                            if filter_by_chart(
+                                self.source_config.chartFilterPattern, chart.name
+                            ):
+                                self.status.filter(
+                                    chart.name, "Chart Pattern not allowed"
+                                )
                                 continue
 
                             yield CreateChartRequest(
-                                name='{}{}'.format(page.key, chart.key),
+                                name="{}{}".format(page.key, chart.key),
                                 displayName=chart.name,
-                                chartType=get_standard_chart_type(chart.visualizationType).value,
+                                chartType=get_standard_chart_type(
+                                    chart.visualizationType
+                                ).value,
                                 service=self.context.dashboard_service.fullyQualifiedName.__root__,
                             )
                             self.status.scanned(chart.name)
@@ -167,6 +176,4 @@ class MstrSource(DashboardServiceSource):
 
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error creating dashboard: {exc}"
-            )
+            logger.warning(f"Error creating dashboard: {exc}")

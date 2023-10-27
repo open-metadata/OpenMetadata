@@ -12,9 +12,9 @@
 MSTR Models
 """
 from datetime import datetime
-from typing import List, Optional, Dict
+from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class MstrOwner(BaseModel):

@@ -11,7 +11,6 @@
 """
 REST Auth & Client for Mstr
 """
-import json
 import traceback
 from typing import List, Optional
 
@@ -23,8 +22,13 @@ from metadata.generated.schema.entity.services.connections.dashboard.mstrConnect
 )
 from metadata.ingestion.connections.test_connections import SourceConnectionException
 from metadata.ingestion.source.dashboard.mstr.models import (
-    MstrProject, MstrProjectList, MstrDashboardDetails, MstrSearchResult, MstrSearchResultList, MstrDashboardList,
-    MstrDashboard
+    MstrDashboard,
+    MstrDashboardDetails,
+    MstrDashboardList,
+    MstrProject,
+    MstrProjectList,
+    MstrSearchResult,
+    MstrSearchResultList,
 )
 from metadata.utils.logger import ingestion_logger
 
@@ -40,15 +44,15 @@ class MstrClient:
 
     def _get_base_url(self, path=None):
         if not path:
-            return f'{self.config.hostPort}/{API_VERSION}/'
-        return f'{self.config.hostPort}/{API_VERSION}/{path}'
+            return f"{self.config.hostPort}/{API_VERSION}/"
+        return f"{self.config.hostPort}/{API_VERSION}/{path}"
 
     def _get_mstr_session(self) -> MSTRRESTSession:
         try:
             session = MSTRRESTSession(base_url=self._get_base_url())
             session.login(
                 username=self.config.username,
-                password=self.config.password.get_secret_value()
+                password=self.config.password.get_secret_value(),
             )
             return session
 
@@ -61,8 +65,8 @@ class MstrClient:
             raise SourceConnectionException(msg) from exc
 
     def __init__(
-            self,
-            config: MstrConnection,
+        self,
+        config: MstrConnection,
     ):
         self.config = config
         self.mstr_session = self._get_mstr_session()
@@ -76,10 +80,7 @@ class MstrClient:
         """
         try:
             resp_projects = self.mstr_session.get(
-                url=self._get_base_url('projects'),
-                params={
-                    'include_auth': True
-                }
+                url=self._get_base_url("projects"), params={"include_auth": True}
             )
 
             if not resp_projects.ok:
@@ -100,10 +101,8 @@ class MstrClient:
         """
         try:
             resp_projects = self.mstr_session.get(
-                url=self._get_base_url(f'projects/{self.config.projectName}'),
-                params={
-                    'include_auth': True
-                }
+                url=self._get_base_url(f"projects/{self.config.projectName}"),
+                params={"include_auth": True},
             )
 
             if not resp_projects.ok:
@@ -118,31 +117,33 @@ class MstrClient:
 
         return None
 
-    def get_search_results_list(self, project_id, object_type) -> List[MstrSearchResult]:
+    def get_search_results_list(
+        self, project_id, object_type
+    ) -> List[MstrSearchResult]:
         """
         Get Search Results
         """
         try:
             resp_results = self.mstr_session.get(
-                url=self._get_base_url('searches/results'),
+                url=self._get_base_url("searches/results"),
                 params={
-                    'include_auth': True,
-                    'project_id': project_id,
-                    'type': object_type,
-                    'getAncestors': False,
-                    'offset': 0,
-                    'limit': -1,
-                    'certifiedStatus': 'ALL',
-                    'isCrossCluster': False,
-                    'result.hidden': False,
-                }
+                    "include_auth": True,
+                    "project_id": project_id,
+                    "type": object_type,
+                    "getAncestors": False,
+                    "offset": 0,
+                    "limit": -1,
+                    "certifiedStatus": "ALL",
+                    "isCrossCluster": False,
+                    "result.hidden": False,
+                },
             )
 
             if not resp_results.ok:
                 raise requests.ConnectionError()
 
             results = []
-            for resp_result in resp_results.json()['result']:
+            for resp_result in resp_results.json()["result"]:
                 results.append(resp_result)
 
             results_list = MstrSearchResultList(results=results)
@@ -160,13 +161,14 @@ class MstrClient:
         """
         try:
             results = self.get_search_results_list(
-                project_id=project_id,
-                object_type=55
+                project_id=project_id, object_type=55
             )
 
             dashboards = []
             for result in results:
-                dashboards.append(MstrDashboard(projectName=project_name, **result.dict()))
+                dashboards.append(
+                    MstrDashboard(projectName=project_name, **result.dict())
+                )
 
             dashboards_list = MstrDashboardList(dashboards=dashboards)
             return dashboards_list.dashboards
@@ -177,19 +179,19 @@ class MstrClient:
 
         return []
 
-    def get_dashboard_details(self, project_id, project_name, dashboard_id) -> Optional[MstrDashboardDetails]:
+    def get_dashboard_details(
+        self, project_id, project_name, dashboard_id
+    ) -> Optional[MstrDashboardDetails]:
         """
         Get Dashboard Details
         """
         try:
             resp_dashboard = self.mstr_session.get(
-                url=self._get_base_url(f'v2/dossiers/{dashboard_id}/definition'),
+                url=self._get_base_url(f"v2/dossiers/{dashboard_id}/definition"),
                 params={
-                    'include_auth': True,
+                    "include_auth": True,
                 },
-                headers={
-                    'X-MSTR-ProjectID': project_id
-                }
+                headers={"X-MSTR-ProjectID": project_id},
             )
 
             if not resp_dashboard.ok:
