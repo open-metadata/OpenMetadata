@@ -18,4 +18,4 @@ slug: /main-concepts/metadata-standard/schemas/type/reaction
 - **`reactionType`** *(string)*: Type of reaction. Must be one of: `['thumbsUp', 'thumbsDown', 'hooray', 'laugh', 'confused', 'heart', 'rocket', 'eyes']`.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

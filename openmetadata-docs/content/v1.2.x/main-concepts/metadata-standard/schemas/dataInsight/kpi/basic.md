@@ -12,7 +12,7 @@ slug: /main-concepts/metadata-standard/schemas/datainsight/kpi/basic
 - **`kpiTargetType`** *(string)*: This enum defines the type of key Result. Must be one of: `['NUMBER', 'PERCENTAGE']`.
 - **`kpiTarget`** *(object)*: This schema defines the parameter values that can be passed for a Kpi Parameter. Cannot contain additional properties.
   - **`name`** *(string)*: name of the parameter. Must match the parameter names in metrics of the chart this objective refers.
-  - **`value`** *(string)*: value to be passed for the Parameters. These are input from Users. We capture this in in string and convert during the runtime.
+  - **`value`** *(string)*: value to be passed for the Parameters. These are input from Users. We capture this in string and convert during the runtime.
   - **`targetMet`** *(boolean)*: whether the target value was met or not.
 - **`kpiResult`** *(object)*: Schema to capture kpi result. Cannot contain additional properties.
   - **`timestamp`**: Data one which result is updated. Refer to *../../type/basic.json#/definitions/timestamp*.
@@ -21,4 +21,4 @@ slug: /main-concepts/metadata-standard/schemas/datainsight/kpi/basic
     - **Items**: Refer to *#/definitions/kpiTarget*.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.
