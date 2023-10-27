@@ -11,22 +11,20 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Input, Row, Space, Typography } from 'antd';
+import { Button, Divider, Input, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import AppState from '../../../../AppState';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { useAuthContext } from '../../../../components/authentication/auth-provider/AuthProvider';
-import DescriptionV1 from '../../../../components/common/description/DescriptionV1';
 import InlineEdit from '../../../../components/InlineEdit/InlineEdit.component';
 import ChangePasswordForm from '../../../../components/Users/ChangePasswordForm';
 import {
   DE_ACTIVE_COLOR,
   ICON_DIMENSION,
 } from '../../../../constants/constants';
-import { EntityType } from '../../../../enums/entity.enum';
 import {
   ChangePasswordRequest,
   RequestType,
@@ -37,6 +35,9 @@ import { useAuth } from '../../../../hooks/authHooks';
 import { changePassword } from '../../../../rest/auth-API';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
+import Chip from '../../../common/Chip/Chip.component';
+import { PersonaSelectableList } from '../../../Persona/PersonaSelectableList/PersonaSelectableList.component';
+import UserProfileImage from '../UserProfileImage/UserProfileImage.component';
 import { UserProfileDetailsProps } from './UserProfileDetails.interface';
 
 const UserProfileDetails = ({
@@ -47,13 +48,14 @@ const UserProfileDetails = ({
   const { fqn: username } = useParams<{ fqn: string }>();
 
   const { isAdminUser } = useAuth();
-  const { authConfig } = useAuthContext();
+  const { authConfig, currentUser } = useAuthContext();
 
   const [isLoading, setIsLoading] = useState(false);
   const [isChangePassword, setIsChangePassword] = useState<boolean>(false);
   const [displayName, setDisplayName] = useState(userData.displayName);
   const [isDisplayNameEdit, setIsDisplayNameEdit] = useState(false);
-  const [isDescriptionEdit, setIsDescriptionEdit] = useState(false);
+
+  const isSelfProfileView = userData?.id === currentUser?.id;
 
   const isAuthProviderBasic = useMemo(
     () =>
@@ -72,15 +74,16 @@ const UserProfileDetails = ({
     [isAdminUser, isLoggedInUser]
   );
 
-  const onDisplayNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const defaultPersona = useMemo(
+    () =>
+      userData.personas?.find(
+        (persona) => persona.id === userData.defaultPersona?.id
+      ),
+    [userData]
+  );
+
+  const onDisplayNameChange = (e: React.ChangeEvent<HTMLInputElement>) =>
     setDisplayName(e.target.value);
-  };
-
-  const handleDescriptionChange = async (description: string) => {
-    await updateUserDetails({ description });
-
-    setIsDescriptionEdit(false);
-  };
 
   const handleDisplayNameSave = () => {
     if (displayName !== userData.displayName) {
@@ -93,7 +96,6 @@ const UserProfileDetails = ({
     () =>
       isDisplayNameEdit && hasEditPermission ? (
         <InlineEdit
-          direction="vertical"
           onCancel={() => setIsDisplayNameEdit(false)}
           onSave={handleDisplayNameSave}>
           <Input
@@ -108,29 +110,23 @@ const UserProfileDetails = ({
           />
         </InlineEdit>
       ) : (
-        <Row align="middle" wrap={false}>
-          <Col flex="auto">
-            <Typography.Text
-              className="text-lg font-medium"
-              ellipsis={{ tooltip: true }}>
-              {hasEditPermission
-                ? userData.displayName ||
-                  t('label.add-entity', { entity: t('label.display-name') })
-                : getEntityName(userData)}
-            </Typography.Text>
-          </Col>
-          <Col className="d-flex justify-end" flex="25px">
-            {hasEditPermission && (
-              <EditIcon
-                className="cursor-pointer"
-                color={DE_ACTIVE_COLOR}
-                data-testid="edit-displayName"
-                {...ICON_DIMENSION}
-                onClick={() => setIsDisplayNameEdit(true)}
-              />
-            )}
-          </Col>
-        </Row>
+        <Space align="center">
+          <Typography.Text className="font-medium text-md">
+            {hasEditPermission
+              ? userData.displayName ||
+                t('label.add-entity', { entity: t('label.display-name') })
+              : getEntityName(userData)}
+          </Typography.Text>
+          {hasEditPermission && (
+            <EditIcon
+              className="cursor-pointer align-middle"
+              color={DE_ACTIVE_COLOR}
+              data-testid="edit-displayName"
+              {...ICON_DIMENSION}
+              onClick={() => setIsDisplayNameEdit(true)}
+            />
+          )}
+        </Space>
       ),
     [
       userData,
@@ -139,42 +135,6 @@ const UserProfileDetails = ({
       getEntityName,
       onDisplayNameChange,
       handleDisplayNameSave,
-    ]
-  );
-
-  const descriptionRenderComponent = useMemo(
-    () =>
-      hasEditPermission ? (
-        <DescriptionV1
-          reduceDescription
-          description={userData.description ?? ''}
-          entityName={getEntityName(userData as unknown as EntityReference)}
-          entityType={EntityType.USER}
-          hasEditAccess={isAdminUser}
-          isEdit={isDescriptionEdit}
-          showCommentsIcon={false}
-          onCancel={() => setIsDescriptionEdit(false)}
-          onDescriptionEdit={() => setIsDescriptionEdit(true)}
-          onDescriptionUpdate={handleDescriptionChange}
-        />
-      ) : (
-        <Typography.Paragraph className="m-b-0">
-          {userData.description ?? (
-            <span className="text-grey-muted">
-              {t('label.no-entity', {
-                entity: t('label.description'),
-              })}
-            </span>
-          )}
-        </Typography.Paragraph>
-      ),
-    [
-      userData,
-      isAdminUser,
-      isDescriptionEdit,
-      hasEditPermission,
-      getEntityName,
-      handleDescriptionChange,
     ]
   );
 
@@ -217,26 +177,77 @@ const UserProfileDetails = ({
     }
   };
 
-  return (
-    <Space
-      className="p-sm w-full"
-      data-testid="user-profile-details"
-      direction="vertical"
-      size="middle">
-      <Space className="w-full" direction="vertical" size={2}>
-        {displayNameRenderComponent}
-        <Typography.Paragraph
-          className="m-b-0 text-grey-muted"
-          ellipsis={{ tooltip: true }}>
+  const userEmailRender = useMemo(
+    () => (
+      <Space align="center">
+        <Typography.Text className="text-grey-muted">{`${t(
+          'label.email'
+        )} :`}</Typography.Text>
+
+        <Typography.Paragraph className="m-b-0">
           {userData.email}
         </Typography.Paragraph>
       </Space>
+    ),
+    [userData.email]
+  );
 
-      <Space direction="vertical" size="middle">
-        {descriptionRenderComponent}
+  const handleDefaultPersonaUpdate = useCallback(
+    async (defaultPersona?: EntityReference) => {
+      await updateUserDetails({ ...userData, defaultPersona });
+    },
+    [updateUserDetails, userData]
+  );
+
+  const defaultPersonaRender = useMemo(
+    () => (
+      <Space align="center">
+        <Typography.Text
+          className="text-grey-muted"
+          data-testid="default-persona-label">
+          {`${t('label.default-persona')} :`}
+        </Typography.Text>
+
+        {defaultPersona && (
+          <Chip data={defaultPersona ? [defaultPersona] : []} />
+        )}
+        <PersonaSelectableList
+          hasPermission={isAdminUser || isSelfProfileView}
+          multiSelect={false}
+          personaList={userData.personas}
+          selectedPersonas={defaultPersona ? [defaultPersona] : []}
+          onUpdate={handleDefaultPersonaUpdate}
+        />
+      </Space>
+    ),
+    [
+      userData,
+      isAdminUser,
+      isSelfProfileView,
+      defaultPersona,
+      handleDefaultPersonaUpdate,
+    ]
+  );
+
+  return (
+    <>
+      <Space
+        className="w-full justify-between"
+        data-testid="user-profile-details"
+        size="middle">
+        <Space className="w-full">
+          <UserProfileImage userData={userData} />
+          {displayNameRenderComponent}
+          <Divider type="vertical" />
+
+          {userEmailRender}
+          <Divider type="vertical" />
+
+          {defaultPersonaRender}
+        </Space>
+
         {changePasswordRenderComponent}
       </Space>
-
       <ChangePasswordForm
         isLoading={isLoading}
         isLoggedInUser={isLoggedInUser}
@@ -244,7 +255,7 @@ const UserProfileDetails = ({
         onCancel={() => setIsChangePassword(false)}
         onSave={(data) => handleChangePassword(data)}
       />
-    </Space>
+    </>
   );
 };
 

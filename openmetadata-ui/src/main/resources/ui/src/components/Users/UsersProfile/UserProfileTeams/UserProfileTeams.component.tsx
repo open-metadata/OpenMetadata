@@ -82,23 +82,21 @@ const UserProfileTeams = ({
           )}
         </Space>
       }>
-      <div className="m-b-md">
-        {isTeamsEdit && isAdminUser ? (
-          <InlineEdit
-            direction="vertical"
-            onCancel={() => setIsTeamsEdit(false)}
-            onSave={handleTeamsSave}>
-            <TeamsSelectable
-              filterJoinable
-              maxValueCount={4}
-              selectedTeams={selectedTeams}
-              onSelectionChange={setSelectedTeams}
-            />
-          </InlineEdit>
-        ) : (
-          teamsRenderElement
-        )}
-      </div>
+      {isTeamsEdit && isAdminUser ? (
+        <InlineEdit
+          direction="vertical"
+          onCancel={() => setIsTeamsEdit(false)}
+          onSave={handleTeamsSave}>
+          <TeamsSelectable
+            filterJoinable
+            maxValueCount={4}
+            selectedTeams={selectedTeams}
+            onSelectionChange={setSelectedTeams}
+          />
+        </InlineEdit>
+      ) : (
+        teamsRenderElement
+      )}
     </Card>
   );
 };

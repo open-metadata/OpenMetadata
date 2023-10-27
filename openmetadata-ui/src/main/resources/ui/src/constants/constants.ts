@@ -50,7 +50,7 @@ export const LOGGED_IN_USER_STORAGE_KEY = 'loggedInUsers';
 export const ACTIVE_DOMAIN_STORAGE_KEY = 'activeDomain';
 export const DEFAULT_DOMAIN_VALUE = 'All Domains';
 
-export const USER_DATA_SIZE = 4;
+export const USER_DATA_SIZE = 5;
 export const INITIAL_PAGING_VALUE = 1;
 export const JSON_TAB_SIZE = 2;
 export const PAGE_SIZE = 10;
