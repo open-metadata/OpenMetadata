@@ -1,8 +1,8 @@
-## Prerequisites
+# Prerequisites
 
 Everytime that you plan on upgrading OpenMetadata to a newer version, make sure to go over all these steps:
 
-### 1. Backup your Metadata
+### Backup your Metadata
 
 Before upgrading your OpenMetadata version we strongly recommend backing up the metadata.
 
@@ -64,46 +64,7 @@ You can refer to the following guide to get more details about the backup and re
   {% /inlineCallout %}
 {% /inlineCalloutContainer %}
 
-### 2. Review the Deprecation Notice and Breaking Changes
-
-Releases might introduce deprecations and breaking changes that you should be aware of and understand before moving forward.
-
-Below in this page you will find the details for the latest release, and you can find older release notes [here](/deployment/upgrade/versions).
-
-The goal is to answer questions like:
-- *Do I need to update my configurations?*
-- *If I am running connectors externally, did their service connection change?*
-
-Carefully reviewing this will prevent easy errors.
-
-### (Optional) 3. Update your OpenMetadata Ingestion Client
-
-If you are running the ingestion workflows **externally** or using a custom Airflow installation, you need to make sure that the Python Client you use is aligned
-with the OpenMetadata server version.
-
-For example, if you are upgrading the server to the version `x.y.z`, you will need to update your client with
-
-```bash
-pip install openmetadata-ingestion[<plugin>]==x.y.z
-```
-
-The `plugin` parameter is a list of the sources that we want to ingest. An example would look like this `openmetadata-ingestion[mysql,snowflake,s3]==1.2.0`.
-You will find specific instructions for each connector [here](/connectors).
-
-Moreover, if working with your own Airflow deployment - not the `openmetadata-ingestion` image - you will need to upgrade
-as well the `openmetadata-managed-apis` version:
-
-```bash
-pip install openmetadata-managed-apis==x.y.z
-```
-
-## Deprecation Notice
-
-- OpenMetadata only supports Python version 3.8 to 3.10. We will add support for 3.11 in the release 1.3.
-
-## Breaking Changes for 1.2 Stable Release
-
-### BEFORE the migration - Update `sort_buffer_size` (MySQL) or `work_mem` (Postgres)
+### Update `sort_buffer_size` (MySQL) or `work_mem` (Postgres)
 
 Before running the migrations, it is important to update these parameters to ensure there are no runtime errors.
 A safe value would be setting them to 20MB.
@@ -141,27 +102,35 @@ during the migration after bumping this value, you can increase them further.
 
 After the migration is finished, you can revert this changes.
 
+# Deprecation Notice
+
+- OpenMetadata only supports Python version 3.8 to 3.10. We will add support for 3.11 in the release 1.3.
+- OpenMetadata version 0.13.x is deprecated.
+
+# Breaking Changes
+
 ### Version Upgrades
 
-- OpenMetadata now supports **Elasticsearch** up to version **8.10.2** and **Opensearch** up to version **2.7**
 - The OpenMetadata Server is now based on **JDK 17**
-
-#### Elasticsearch & Opensearch troubleshooting
+- OpenMetadata now supports **Elasticsearch** up to version **8.10.2** and **Opensearch** up to version **2.7**
 
 There is no direct migration to bump the indexes to the new supported versions. You might see errors like:
 
 ```
-"java.lang.IllegalStateException: cannot upgrade a node from version [7.16.3] directly to version [8.5.1], upgrade to version [7.17.0] 
+java.lang.IllegalStateException: cannot upgrade a node from version [7.16.3] directly to version [8.5.1]
 ERROR: Elasticsearch did not exit normally - check the logs at /usr/share/elasticsearch/logs/elasticsearch.log
 ERROR: Elasticsearch exited unexpectedly
 ```
 
-In order to move forward, you can remove volumes / delete the indexes directly from your search instances. Note that
-OpenMetadata stores everything in the database, so indexes can be recreated directly from the UI.
+In order to move forward, **you must remove the volumes or delete the indexes** directly from your search instances. Note that
+OpenMetadata stores everything in the database, so indexes can be recreated from the UI. We will
+show you how in the [Post-Upgrade Steps](/deployment/upgrade#reindex).
 
-{% partial file="/v1.2/deployment/reindex.md" /%}
+### Helm Chart Values
 
-Since this is required after the upgrade, we want to reindex `All` the entities.
+- Added a new key `openmetadata.config.database.dbParams` to pass extra database parameters as string format, e.g., `useSSL=true&serverTimezone=UTC`.
+- Removed the entry for `openmetadata.config.database.dbUseSSL`. You should use `openmetadata.config.database.dbParams` instead.
+- Updated the ElasticSearch Helm Chart Dependencies to version 8.5.1
 
 ### Query Entity
 
@@ -174,6 +143,9 @@ then there is no way to link a query to a service and the query will be removed.
 ### Service Connection Changes
 
 - Domo Database, Dashboard and Pipeline renamed the `sandboxDomain` in favor of `instanceDomain`.
+- The `DatabaseMetadata` configuration renamed `viewParsingTimeoutLimit` to `queryParsingTimeoutLimit`.
+- The `DatabaseMetadata` configuration removed the `markAllDeletedTables` option. For simplicity, we'll only
+  mark as deleted the tables coming from the filtered ingestion results.
 
 ### Ingestion Framework Changes
 
