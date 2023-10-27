@@ -10,14 +10,14 @@ slug: /main-concepts/metadata-standard/schemas/api/createeventpublisherjob
 ## Properties
 
 - **`name`** *(string)*: Name of the result.
-- **`publisherType`**: Refer to *../system/eventPublisherJob.json#/definitions/publisherType*.
-- **`runMode`**: Refer to *../system/eventPublisherJob.json#/definitions/runMode*.
-- **`entities`** *(array)*: List of Entities to Reindex. Default: `['all']`.
+- **`publisherType`**: Refer to *[../system/eventPublisherJob.json#/definitions/publisherType](#/system/eventPublisherJob.json#/definitions/publisherType)*.
+- **`runMode`**: Refer to *[../system/eventPublisherJob.json#/definitions/runMode](#/system/eventPublisherJob.json#/definitions/runMode)*.
+- **`entities`** *(array)*: List of Entities to Reindex. Default: `["all"]`.
   - **Items** *(string)*
-- **`recreateIndex`** *(boolean)*: This schema publisher run modes. Default: `False`.
+- **`recreateIndex`** *(boolean)*: This schema publisher run modes. Default: `false`.
 - **`batchSize`** *(integer)*: Maximum number of events sent in a batch (Default 10). Default: `100`.
-- **`searchIndexMappingLanguage`**: Recreate Indexes with updated Language. Refer to *../configuration/elasticSearchConfiguration.json#/definitions/searchIndexMappingLanguage*.
+- **`searchIndexMappingLanguage`**: Recreate Indexes with updated Language. Refer to *[../configuration/elasticSearchConfiguration.json#/definitions/searchIndexMappingLanguage](#/configuration/elasticSearchConfiguration.json#/definitions/searchIndexMappingLanguage)*.
 - **`afterCursor`** *(string)*: Provide After in case of failure to start reindexing after the issue is solved.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 11:39:15.608628.

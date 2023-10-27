@@ -9,15 +9,15 @@ slug: /main-concepts/metadata-standard/schemas/analytics/webanalyticeventtype/cu
 
 ## Properties
 
-- **`fullUrl`**: complete URL of the page. Refer to *../basic.json#/definitions/fullUrl*.
-- **`url`**: url part after the domain specification. Refer to *../basic.json#/definitions/url*.
-- **`hostname`**: domain name. Refer to *../basic.json#/definitions/hostname*.
-- **`sessionId`**: Unique ID identifying a session. Refer to *../basic.json#/definitions/sessionId*.
-- **`eventType`**: Type of event that was performed. Refer to *#/definitions/customEventTypes*.
+- **`fullUrl`**: complete URL of the page. Refer to *[../basic.json#/definitions/fullUrl](#/basic.json#/definitions/fullUrl)*.
+- **`url`**: url part after the domain specification. Refer to *[../basic.json#/definitions/url](#/basic.json#/definitions/url)*.
+- **`hostname`**: domain name. Refer to *[../basic.json#/definitions/hostname](#/basic.json#/definitions/hostname)*.
+- **`sessionId`**: Unique ID identifying a session. Refer to *[../basic.json#/definitions/sessionId](#/basic.json#/definitions/sessionId)*.
+- **`eventType`**: Type of event that was performed. Refer to *[#/definitions/customEventTypes](#definitions/customEventTypes)*.
 - **`eventValue`** *(string)*: Value of the event.
 ## Definitions
 
-- **`customEventTypes`** *(string)*: Type of events that can be performed. Must be one of: `['CLICK']`.
+- <a id="definitions/customEventTypes"></a>**`customEventTypes`** *(string)*: Type of events that can be performed. Must be one of: `["CLICK"]`.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 11:39:15.608628.

@@ -20,11 +20,11 @@ slug: /main-concepts/metadata-standard/schemas/configuration/elasticsearchconfig
 - **`socketTimeoutSecs`** *(integer)*: Socket Timeout in Seconds. Default: `60`.
 - **`keepAliveTimeoutSecs`** *(integer)*: Keep Alive Timeout in Seconds.
 - **`batchSize`** *(integer)*: Batch Size for Requests. Default: `10`.
-- **`searchIndexMappingLanguage`**: Refer to *#/definitions/searchIndexMappingLanguage*.
-- **`searchType`** *(string)*: This enum defines the search Type elastic/open search. Must be one of: `['elasticsearch', 'opensearch']`. Default: `elasticsearch`.
+- **`searchIndexMappingLanguage`**: Refer to *[#/definitions/searchIndexMappingLanguage](#definitions/searchIndexMappingLanguage)*.
+- **`searchType`** *(string)*: This enum defines the search Type elastic/open search. Must be one of: `["elasticsearch", "opensearch"]`. Default: `"elasticsearch"`.
 ## Definitions
 
-- **`searchIndexMappingLanguage`** *(string)*: This schema defines the language options available for search index mappings. Must be one of: `['EN', 'JP', 'ZH']`. Default: `EN`.
+- <a id="definitions/searchIndexMappingLanguage"></a>**`searchIndexMappingLanguage`** *(string)*: This schema defines the language options available for search index mappings. Must be one of: `["EN", "JP", "ZH"]`. Default: `"EN"`.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 11:39:15.608628.

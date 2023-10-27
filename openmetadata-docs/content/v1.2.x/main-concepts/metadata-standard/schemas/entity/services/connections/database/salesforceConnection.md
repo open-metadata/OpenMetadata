@@ -9,20 +9,20 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
 
 ## Properties
 
-- **`type`**: Service Type. Refer to *#/definitions/salesforceType*. Default: `Salesforce`.
+- **`type`**: Service Type. Refer to *[#/definitions/salesforceType](#definitions/salesforceType)*. Default: `"Salesforce"`.
 - **`username`** *(string)*: Username to connect to the Salesforce. This user should have privileges to read all the metadata in Redshift.
-- **`password`** *(string)*: Password to connect to the Salesforce.
-- **`securityToken`** *(string)*: Salesforce Security Token.
+- **`password`** *(string, format: password)*: Password to connect to the Salesforce.
+- **`securityToken`** *(string, format: password)*: Salesforce Security Token.
 - **`sobjectName`** *(string)*: Salesforce Object Name.
 - **`databaseName`** *(string)*: Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.
-- **`salesforceApiVersion`** *(string)*: API version of the Salesforce instance. Default: `42.0`.
-- **`salesforceDomain`** *(string)*: Domain of Salesforce instance. Default: `login`.
-- **`connectionOptions`**: Refer to *../connectionBasicType.json#/definitions/connectionOptions*.
-- **`connectionArguments`**: Refer to *../connectionBasicType.json#/definitions/connectionArguments*.
-- **`supportsMetadataExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsMetadataExtraction*.
+- **`salesforceApiVersion`** *(string)*: API version of the Salesforce instance. Default: `"42.0"`.
+- **`salesforceDomain`** *(string)*: Domain of Salesforce instance. Default: `"login"`.
+- **`connectionOptions`**: Refer to *[../connectionBasicType.json#/definitions/connectionOptions](#/connectionBasicType.json#/definitions/connectionOptions)*.
+- **`connectionArguments`**: Refer to *[../connectionBasicType.json#/definitions/connectionArguments](#/connectionBasicType.json#/definitions/connectionArguments)*.
+- **`supportsMetadataExtraction`**: Refer to *[../connectionBasicType.json#/definitions/supportsMetadataExtraction](#/connectionBasicType.json#/definitions/supportsMetadataExtraction)*.
 ## Definitions
 
-- **`salesforceType`** *(string)*: Service type. Must be one of: `['Salesforce']`. Default: `Salesforce`.
+- <a id="definitions/salesforceType"></a>**`salesforceType`** *(string)*: Service type. Must be one of: `["Salesforce"]`. Default: `"Salesforce"`.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 11:39:15.608628.

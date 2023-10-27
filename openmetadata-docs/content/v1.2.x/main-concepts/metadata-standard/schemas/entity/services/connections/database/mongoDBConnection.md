@@ -9,15 +9,18 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
 
 ## Properties
 
-- **`type`**: Service Type. Refer to *#/definitions/mongoDBType*. Default: `MongoDB`.
+- **`type`**: Service Type. Refer to *[#/definitions/mongoDBType](#definitions/mongoDBType)*. Default: `"MongoDB"`.
 - **`connectionDetails`**: MongoDB Connection Details.
+  - **One of**
+    - : Refer to *[mongoDB/mongoDBValues.json](#ngoDB/mongoDBValues.json)*.
+    - : Refer to *[#/definitions/MongoConnectionString](#definitions/MongoConnectionString)*.
 - **`databaseName`** *(string)*: Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.
-- **`supportsMetadataExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsMetadataExtraction*.
+- **`supportsMetadataExtraction`**: Refer to *[../connectionBasicType.json#/definitions/supportsMetadataExtraction](#/connectionBasicType.json#/definitions/supportsMetadataExtraction)*.
 ## Definitions
 
-- **`mongoDBType`** *(string)*: Service type. Must be one of: `['MongoDB']`. Default: `MongoDB`.
-- **`MongoConnectionString`** *(object)*
+- <a id="definitions/mongoDBType"></a>**`mongoDBType`** *(string)*: Service type. Must be one of: `["MongoDB"]`. Default: `"MongoDB"`.
+- <a id="definitions/MongoConnectionString"></a>**`MongoConnectionString`** *(object)*
   - **`connectionURI`** *(string)*: Connection URI to connect to your MongoDB cluster.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 11:39:15.608628.

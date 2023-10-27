@@ -11,7 +11,7 @@ slug: /main-concepts/metadata-standard/schemas/type/csvdocumentation
 
 - **`summary`** *(string)*: Summary documentation for CSV file.
 - **`headers`** *(array)*: Documentation for CSV file header.
-  - **Items**: Refer to *csvFile.json#/definitions/csvHeader*.
+  - **Items**: Refer to *[csvFile.json#/definitions/csvHeader](#vFile.json#/definitions/csvHeader)*.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 11:39:15.608628.

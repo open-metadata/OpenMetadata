@@ -9,8 +9,15 @@ slug: /main-concepts/metadata-standard/schemas/auth/ssoauth
 
 ## Properties
 
-- **`ssoServiceType`** *(string)*: Type of database service such as Amundsen, Atlas... Must be one of: `['google', 'okta', 'auth0', 'custom-oidc', 'azure', 'basic', 'saml']`.
+- **`ssoServiceType`** *(string)*: Type of database service such as Amundsen, Atlas... Must be one of: `["google", "okta", "auth0", "custom-oidc", "azure"]`.
 - **`authConfig`**: The authentication configuration used by the SSO.
+  - **One of**
+    - : Google SSO Configuration. Refer to *[../security/client/googleSSOClientConfig.json](#/security/client/googleSSOClientConfig.json)*.
+    - : Okta SSO Configuration. Refer to *[../security/client/oktaSSOClientConfig.json](#/security/client/oktaSSOClientConfig.json)*.
+    - : Auth0 SSO Configuration. Refer to *[../security/client/auth0SSOClientConfig.json](#/security/client/auth0SSOClientConfig.json)*.
+    - : Azure SSO Configuration. Refer to *[../security/client/azureSSOClientConfig.json](#/security/client/azureSSOClientConfig.json)*.
+    - : Custom OIDC SSO Configuration. Refer to *[../security/client/customOidcSSOClientConfig.json](#/security/client/customOidcSSOClientConfig.json)*.
+    - : SAML SSO Configuration. Refer to *[../security/client/samlSSOClientConfig.json](#/security/client/samlSSOClientConfig.json)*.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 11:39:15.608628.

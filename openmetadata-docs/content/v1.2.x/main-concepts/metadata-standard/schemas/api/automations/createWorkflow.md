@@ -9,14 +9,18 @@ slug: /main-concepts/metadata-standard/schemas/api/automations/createworkflow
 
 ## Properties
 
-- **`name`**: Name of the workflow. Refer to *../../type/basic.json#/definitions/entityName*.
+- **`name`**: Name of the workflow. Refer to *[../../type/basic.json#/definitions/entityName](#/../type/basic.json#/definitions/entityName)*.
 - **`displayName`** *(string)*: Display Name that identifies this workflow definition.
-- **`description`**: Description of the test connection def. Refer to *../../type/basic.json#/definitions/markdown*.
-- **`workflowType`**: Type of the workflow. Refer to *../../entity/automations/workflow.json#/definitions/workflowType*.
+- **`description`**: Description of the test connection def. Refer to *[../../type/basic.json#/definitions/markdown](#/../type/basic.json#/definitions/markdown)*.
+- **`workflowType`**: Type of the workflow. Refer to *[../../entity/automations/workflow.json#/definitions/workflowType](#/../entity/automations/workflow.json#/definitions/workflowType)*.
 - **`request`**: Request body for a specific workflow type.
-- **`status`**: Workflow computation status. Refer to *../../entity/automations/workflow.json#/definitions/workflowStatus*. Default: `Pending`.
+  - **One of**
+    - : Refer to *[../../entity/automations/testServiceConnection.json](#/../entity/automations/testServiceConnection.json)*.
+- **`status`**: Workflow computation status. Refer to *[../../entity/automations/workflow.json#/definitions/workflowStatus](#/../entity/automations/workflow.json#/definitions/workflowStatus)*. Default: `"Pending"`.
 - **`response`**: Response to the request.
-- **`owner`**: Owner of this workflow. Refer to *../../type/entityReference.json*. Default: `None`.
+  - **One of**
+    - : Refer to *[../../entity/services/connections/testConnectionResult.json](#/../entity/services/connections/testConnectionResult.json)*.
+- **`owner`**: Owner of this workflow. Refer to *[../../type/entityReference.json](#/../type/entityReference.json)*. Default: `null`.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 11:39:15.608628.

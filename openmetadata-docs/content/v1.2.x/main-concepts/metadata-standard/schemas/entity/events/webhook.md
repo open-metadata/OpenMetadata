@@ -9,14 +9,14 @@ slug: /main-concepts/metadata-standard/schemas/entity/events/webhook
 
 ## Properties
 
-- **`endpoint`** *(string)*: Endpoint to receive the webhook events over POST requests.
+- **`endpoint`** *(string, format: uri)*: Endpoint to receive the webhook events over POST requests.
 - **`secretKey`** *(string)*: Secret set by the webhook client used for computing HMAC SHA256 signature of webhook payload and sent in `X-OM-Signature` header in POST requests to publish the events.
-- **`sendToAdmins`** *(boolean)*: Send the Event to Admins. Default: `False`.
-- **`sendToOwners`** *(boolean)*: Send the Event to Owners. Default: `False`.
-- **`sendToFollowers`** *(boolean)*: Send the Event to Followers. Default: `False`.
+- **`sendToAdmins`** *(boolean)*: Send the Event to Admins. Default: `false`.
+- **`sendToOwners`** *(boolean)*: Send the Event to Owners. Default: `false`.
+- **`sendToFollowers`** *(boolean)*: Send the Event to Followers. Default: `false`.
 ## Definitions
 
-- **`entityName`** *(string)*: Unique name of the application receiving webhook events.
+- <a id="definitions/entityName"></a>**`entityName`** *(string)*: Unique name of the application receiving webhook events.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 11:39:15.608628.

@@ -10,7 +10,7 @@ slug: /main-concepts/metadata-standard/schemas/type/dailycount
 ## Properties
 
 - **`count`** *(integer)*: Daily count of a measurement on the given date. Minimum: `0`.
-- **`date`**: Refer to *basic.json#/definitions/date*.
+- **`date`**: Refer to *[basic.json#/definitions/date](#sic.json#/definitions/date)*.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 11:39:15.608628.

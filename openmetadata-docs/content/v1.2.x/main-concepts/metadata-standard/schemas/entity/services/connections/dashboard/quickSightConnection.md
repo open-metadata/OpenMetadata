@@ -9,15 +9,15 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/dashb
 
 ## Properties
 
-- **`type`**: Service Type. Refer to *#/definitions/quickSightType*. Default: `QuickSight`.
-- **`awsConfig`**: Refer to *../../../../security/credentials/awsCredentials.json*.
+- **`type`**: Service Type. Refer to *[#/definitions/quickSightType](#definitions/quickSightType)*. Default: `"QuickSight"`.
+- **`awsConfig`**: Refer to *[../../../../security/credentials/awsCredentials.json](#/../../../security/credentials/awsCredentials.json)*.
 - **`awsAccountId`** *(string)*: AWS Account ID.
-- **`identityType`** *(string)*: The authentication method that the user uses to sign in. Must be one of: `['IAM', 'QUICKSIGHT', 'ANONYMOUS']`. Default: `IAM`.
+- **`identityType`** *(string)*: The authentication method that the user uses to sign in. Must be one of: `["IAM", "QUICKSIGHT", "ANONYMOUS"]`. Default: `"IAM"`.
 - **`namespace`** *(string)*: The Amazon QuickSight namespace that contains the dashboard IDs in this request ( To be provided when identityType is `ANONYMOUS` ).
-- **`supportsMetadataExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsMetadataExtraction*.
+- **`supportsMetadataExtraction`**: Refer to *[../connectionBasicType.json#/definitions/supportsMetadataExtraction](#/connectionBasicType.json#/definitions/supportsMetadataExtraction)*.
 ## Definitions
 
-- **`quickSightType`** *(string)*: QuickSight service type. Must be one of: `['QuickSight']`. Default: `QuickSight`.
+- <a id="definitions/quickSightType"></a>**`quickSightType`** *(string)*: QuickSight service type. Must be one of: `["QuickSight"]`. Default: `"QuickSight"`.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 11:39:15.608628.

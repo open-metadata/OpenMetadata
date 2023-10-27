@@ -9,12 +9,12 @@ slug: /main-concepts/metadata-standard/schemas/auth/personalaccesstoken
 
 ## Properties
 
-- **`token`**: Unique Refresh Token for user. Refer to *../type/basic.json#/definitions/uuid*.
+- **`token`**: Unique Refresh Token for user. Refer to *[../type/basic.json#/definitions/uuid](#/type/basic.json#/definitions/uuid)*.
 - **`tokenName`** *(string)*: Name of the token.
-- **`userId`**: User Id of the User this refresh token is given to. Refer to *../type/basic.json#/definitions/uuid*.
-- **`tokenType`**: Token Type. Refer to *./emailVerificationToken.json#/definitions/tokenType*. Default: `PERSONAL_ACCESS`.
-- **`expiryDate`**: Expiry Date-Time of the token. Refer to *../type/basic.json#/definitions/timestamp*.
+- **`userId`**: User Id of the User this refresh token is given to. Refer to *[../type/basic.json#/definitions/uuid](#/type/basic.json#/definitions/uuid)*.
+- **`tokenType`**: Token Type. Refer to *[./emailVerificationToken.json#/definitions/tokenType](#emailVerificationToken.json#/definitions/tokenType)*. Default: `"PERSONAL_ACCESS"`.
+- **`expiryDate`**: Expiry Date-Time of the token. Refer to *[../type/basic.json#/definitions/timestamp](#/type/basic.json#/definitions/timestamp)*.
 - **`jwtToken`** *(string)*: JWT Auth Token.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 11:39:15.608628.

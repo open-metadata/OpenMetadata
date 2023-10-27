@@ -9,30 +9,34 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/storageservice
 
 ## Properties
 
-- **`id`**: Unique identifier of this storage service instance. Refer to *../../type/basic.json#/definitions/uuid*.
-- **`name`**: Name that identifies this storage service. Refer to *../../type/basic.json#/definitions/entityName*.
-- **`fullyQualifiedName`**: FullyQualifiedName same as `name`. Refer to *../../type/basic.json#/definitions/fullyQualifiedEntityName*.
+- **`id`**: Unique identifier of this storage service instance. Refer to *[../../type/basic.json#/definitions/uuid](#/../type/basic.json#/definitions/uuid)*.
+- **`name`**: Name that identifies this storage service. Refer to *[../../type/basic.json#/definitions/entityName](#/../type/basic.json#/definitions/entityName)*.
+- **`fullyQualifiedName`**: FullyQualifiedName same as `name`. Refer to *[../../type/basic.json#/definitions/fullyQualifiedEntityName](#/../type/basic.json#/definitions/fullyQualifiedEntityName)*.
 - **`displayName`** *(string)*: Display Name that identifies this storage service.
-- **`serviceType`**: Type of storage service such as S3, GCS, AZURE... Refer to *#/definitions/storageServiceType*.
-- **`description`**: Description of a storage service instance. Refer to *../../type/basic.json#/definitions/markdown*.
-- **`connection`**: Refer to *#/definitions/storageConnection*.
-- **`pipelines`**: References to pipelines deployed for this storage service to extract metadata, usage, lineage etc.. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*.
-- **`testConnectionResult`**: Last test connection results for this service. Refer to *connections/testConnectionResult.json*.
-- **`tags`** *(array)*: Tags for this storage Service. Default: `None`.
-  - **Items**: Refer to *../../type/tagLabel.json*.
-- **`version`**: Metadata version of the entity. Refer to *../../type/entityHistory.json#/definitions/entityVersion*.
-- **`updatedAt`**: Last update time corresponding to the new version of the entity in Unix epoch time milliseconds. Refer to *../../type/basic.json#/definitions/timestamp*.
+- **`serviceType`**: Type of storage service such as S3, GCS, AZURE... Refer to *[#/definitions/storageServiceType](#definitions/storageServiceType)*.
+- **`description`**: Description of a storage service instance. Refer to *[../../type/basic.json#/definitions/markdown](#/../type/basic.json#/definitions/markdown)*.
+- **`connection`**: Refer to *[#/definitions/storageConnection](#definitions/storageConnection)*.
+- **`pipelines`**: References to pipelines deployed for this storage service to extract metadata, usage, lineage etc.. Refer to *[../../type/entityReferenceList.json](#/../type/entityReferenceList.json)*.
+- **`testConnectionResult`**: Last test connection results for this service. Refer to *[connections/testConnectionResult.json](#nnections/testConnectionResult.json)*.
+- **`tags`** *(array)*: Tags for this storage Service. Default: `null`.
+  - **Items**: Refer to *[../../type/tagLabel.json](#/../type/tagLabel.json)*.
+- **`version`**: Metadata version of the entity. Refer to *[../../type/entityHistory.json#/definitions/entityVersion](#/../type/entityHistory.json#/definitions/entityVersion)*.
+- **`updatedAt`**: Last update time corresponding to the new version of the entity in Unix epoch time milliseconds. Refer to *[../../type/basic.json#/definitions/timestamp](#/../type/basic.json#/definitions/timestamp)*.
 - **`updatedBy`** *(string)*: User who made the update.
-- **`href`**: Link to the resource corresponding to this storage service. Refer to *../../type/basic.json#/definitions/href*.
-- **`owner`**: Owner of this storage service. Refer to *../../type/entityReference.json*.
-- **`changeDescription`**: Change that lead to this version of the entity. Refer to *../../type/entityHistory.json#/definitions/changeDescription*.
-- **`deleted`** *(boolean)*: When `true` indicates the entity has been soft deleted. Default: `False`.
-- **`domain`**: Domain the Storage service belongs to. Refer to *../../type/entityReference.json*.
+- **`href`**: Link to the resource corresponding to this storage service. Refer to *[../../type/basic.json#/definitions/href](#/../type/basic.json#/definitions/href)*.
+- **`owner`**: Owner of this storage service. Refer to *[../../type/entityReference.json](#/../type/entityReference.json)*.
+- **`changeDescription`**: Change that lead to this version of the entity. Refer to *[../../type/entityHistory.json#/definitions/changeDescription](#/../type/entityHistory.json#/definitions/changeDescription)*.
+- **`deleted`** *(boolean)*: When `true` indicates the entity has been soft deleted. Default: `false`.
+- **`domain`**: Domain the Storage service belongs to. Refer to *[../../type/entityReference.json](#/../type/entityReference.json)*.
 ## Definitions
 
-- **`storageServiceType`** *(string)*: Type of storage service such as S3, GFS, AZURE... Must be one of: `['S3', 'CustomStorage']`.
-- **`storageConnection`** *(object)*: storage Connection. Cannot contain additional properties.
+- <a id="definitions/storageServiceType"></a>**`storageServiceType`** *(string)*: Type of storage service such as S3, GFS, AZURE... Must be one of: `["S3", "ADLS", "CustomStorage"]`.
+- <a id="definitions/storageConnection"></a>**`storageConnection`** *(object)*: storage Connection. Cannot contain additional properties.
   - **`config`**
+    - **One of**
+      - : Refer to *[connections/storage/s3Connection.json](#nnections/storage/s3Connection.json)*.
+      - : Refer to *[connections/storage/adlsConection.json](#nnections/storage/adlsConection.json)*.
+      - : Refer to *[connections/storage/customStorageConnection.json](#nnections/storage/customStorageConnection.json)*.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 11:39:15.608628.

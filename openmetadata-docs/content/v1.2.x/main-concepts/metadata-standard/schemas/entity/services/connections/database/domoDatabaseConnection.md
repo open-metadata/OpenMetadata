@@ -9,17 +9,17 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
 
 ## Properties
 
-- **`type`**: Service Type. Refer to *#/definitions/domoDatabaseType*. Default: `DomoDatabase`.
+- **`type`**: Service Type. Refer to *[#/definitions/domoDatabaseType](#definitions/domoDatabaseType)*. Default: `"DomoDatabase"`.
 - **`clientId`** *(string)*: Client ID for DOMO.
-- **`secretToken`** *(string)*: Secret Token to connect DOMO.
+- **`secretToken`** *(string, format: password)*: Secret Token to connect DOMO.
 - **`accessToken`** *(string)*: Access token to connect to DOMO.
-- **`apiHost`** *(string)*: API Host to connect to DOMO instance. Default: `api.domo.com`.
-- **`sandboxDomain`** *(string)*: Connect to Sandbox Domain.
+- **`apiHost`** *(string, format: string)*: API Host to connect to DOMO instance. Default: `"api.domo.com"`.
+- **`instanceDomain`** *(string, format: uri)*: URL of your Domo instance, e.g., https://openmetadata.domo.com.
 - **`databaseName`** *(string)*: Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.
-- **`supportsMetadataExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsMetadataExtraction*.
+- **`supportsMetadataExtraction`**: Refer to *[../connectionBasicType.json#/definitions/supportsMetadataExtraction](#/connectionBasicType.json#/definitions/supportsMetadataExtraction)*.
 ## Definitions
 
-- **`domoDatabaseType`** *(string)*:  service type. Must be one of: `['DomoDatabase']`. Default: `DomoDatabase`.
+- <a id="definitions/domoDatabaseType"></a>**`domoDatabaseType`** *(string)*:  service type. Must be one of: `["DomoDatabase"]`. Default: `"DomoDatabase"`.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 11:39:15.608628.

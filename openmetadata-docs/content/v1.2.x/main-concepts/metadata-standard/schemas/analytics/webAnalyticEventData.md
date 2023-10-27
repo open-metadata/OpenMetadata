@@ -9,10 +9,13 @@ slug: /main-concepts/metadata-standard/schemas/analytics/webanalyticeventdata
 
 ## Properties
 
-- **`eventId`**: Unique identifier of the report. Refer to *../type/basic.json#/definitions/uuid*.
-- **`timestamp`**: event timestamp. Refer to *../type/basic.json#/definitions/timestamp*.
-- **`eventType`**: event type. Refer to *./basic.json#/definitions/webAnalyticEventType*.
+- **`eventId`**: Unique identifier of the report. Refer to *[../type/basic.json#/definitions/uuid](#/type/basic.json#/definitions/uuid)*.
+- **`timestamp`**: event timestamp. Refer to *[../type/basic.json#/definitions/timestamp](#/type/basic.json#/definitions/timestamp)*.
+- **`eventType`**: event type. Refer to *[./basic.json#/definitions/webAnalyticEventType](#basic.json#/definitions/webAnalyticEventType)*.
 - **`eventData`**: Web analytic data captured.
+  - **One of**
+    - : Refer to *[webAnalyticEventType/pageViewEvent.json](#bAnalyticEventType/pageViewEvent.json)*.
+    - : Refer to *[webAnalyticEventType/customEvent.json](#bAnalyticEventType/customEvent.json)*.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 11:39:15.608628.

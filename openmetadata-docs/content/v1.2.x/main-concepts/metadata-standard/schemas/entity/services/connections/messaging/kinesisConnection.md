@@ -9,12 +9,12 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/messa
 
 ## Properties
 
-- **`type`**: Service Type. Refer to *#/definitions/kinesisType*. Default: `Kinesis`.
-- **`awsConfig`**: Refer to *../../../../security/credentials/awsCredentials.json*.
-- **`supportsMetadataExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsMetadataExtraction*.
+- **`type`**: Service Type. Refer to *[#/definitions/kinesisType](#definitions/kinesisType)*. Default: `"Kinesis"`.
+- **`awsConfig`**: Refer to *[../../../../security/credentials/awsCredentials.json](#/../../../security/credentials/awsCredentials.json)*.
+- **`supportsMetadataExtraction`**: Refer to *[../connectionBasicType.json#/definitions/supportsMetadataExtraction](#/connectionBasicType.json#/definitions/supportsMetadataExtraction)*.
 ## Definitions
 
-- **`kinesisType`** *(string)*: Service type. Must be one of: `['Kinesis']`. Default: `Kinesis`.
+- <a id="definitions/kinesisType"></a>**`kinesisType`** *(string)*: Service type. Must be one of: `["Kinesis"]`. Default: `"Kinesis"`.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 11:39:15.608628.

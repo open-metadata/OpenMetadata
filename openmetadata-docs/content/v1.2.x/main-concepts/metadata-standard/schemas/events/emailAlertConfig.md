@@ -11,9 +11,9 @@ slug: /main-concepts/metadata-standard/schemas/events/emailalertconfig
 
 - **`receivers`** *(array)*: List of receivers to send mail to.
   - **Items** *(string)*
-- **`sendToAdmins`** *(boolean)*: Send the Mails to Admins. Default: `False`.
-- **`sendToOwners`** *(boolean)*: Send the Mails to Owners. Default: `False`.
-- **`sendToFollowers`** *(boolean)*: Send the Mails to Followers. Default: `False`.
+- **`sendToAdmins`** *(boolean)*: Send the Mails to Admins. Default: `false`.
+- **`sendToOwners`** *(boolean)*: Send the Mails to Owners. Default: `false`.
+- **`sendToFollowers`** *(boolean)*: Send the Mails to Followers. Default: `false`.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 11:39:15.608628.

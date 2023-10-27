@@ -9,14 +9,14 @@ slug: /main-concepts/metadata-standard/schemas/type/entityreference
 
 ## Properties
 
-- **`id`**: Unique identifier that identifies an entity instance. Refer to *basic.json#/definitions/uuid*.
+- **`id`**: Unique identifier that identifies an entity instance. Refer to *[basic.json#/definitions/uuid](#sic.json#/definitions/uuid)*.
 - **`type`** *(string)*: Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`, `dashboardService`...
 - **`name`** *(string)*: Name of the entity instance.
 - **`fullyQualifiedName`** *(string)*: Fully qualified name of the entity instance. For entities such as tables, databases fullyQualifiedName is returned in this field. For entities that don't have name hierarchy such as `user` and `team` this will be same as the `name` field.
-- **`description`**: Optional description of entity. Refer to *basic.json#/definitions/markdown*.
+- **`description`**: Optional description of entity. Refer to *[basic.json#/definitions/markdown](#sic.json#/definitions/markdown)*.
 - **`displayName`** *(string)*: Display Name that identifies this entity.
 - **`deleted`** *(boolean)*: If true the entity referred to has been soft-deleted.
-- **`href`**: Link to the entity resource. Refer to *basic.json#/definitions/href*.
+- **`href`**: Link to the entity resource. Refer to *[basic.json#/definitions/href](#sic.json#/definitions/href)*.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 11:39:15.608628.

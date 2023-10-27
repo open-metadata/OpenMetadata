@@ -9,23 +9,26 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
 
 ## Properties
 
-- **`type`**: Service Type. Refer to *#/definitions/azureSQLType*. Default: `AzureSQL`.
-- **`scheme`**: SQLAlchemy driver scheme options. Refer to *#/definitions/azureSQLScheme*. Default: `mssql+pyodbc`.
+- **`type`**: Service Type. Refer to *[#/definitions/azureSQLType](#definitions/azureSQLType)*. Default: `"AzureSQL"`.
+- **`scheme`**: SQLAlchemy driver scheme options. Refer to *[#/definitions/azureSQLScheme](#definitions/azureSQLScheme)*. Default: `"mssql+pyodbc"`.
 - **`username`** *(string)*: Username to connect to AzureSQL. This user should have privileges to read the metadata.
-- **`password`** *(string)*: Password to connect to AzureSQL.
+- **`password`** *(string, format: password)*: Password to connect to AzureSQL.
 - **`hostPort`** *(string)*: Host and port of the AzureSQL service.
 - **`database`** *(string)*: Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank, OpenMetadata Ingestion attempts to scan all the databases.
-- **`driver`** *(string)*: SQLAlchemy driver for AzureSQL. Default: `ODBC Driver 18 for SQL Server`.
-- **`connectionOptions`**: Refer to *../connectionBasicType.json#/definitions/connectionOptions*.
-- **`connectionArguments`**: Refer to *../connectionBasicType.json#/definitions/connectionArguments*.
-- **`supportsMetadataExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsMetadataExtraction*.
-- **`supportsDBTExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsDBTExtraction*.
-- **`supportsProfiler`**: Refer to *../connectionBasicType.json#/definitions/supportsProfiler*.
-- **`supportsDatabase`**: Refer to *../connectionBasicType.json#/definitions/supportsDatabase*.
+- **`driver`** *(string)*: SQLAlchemy driver for AzureSQL. Default: `"ODBC Driver 18 for SQL Server"`.
+- **`ingestAllDatabases`** *(boolean)*: Ingest data from all databases in Azuresql. You can use databaseFilterPattern on top of this. Default: `false`.
+- **`connectionOptions`**: Refer to *[../connectionBasicType.json#/definitions/connectionOptions](#/connectionBasicType.json#/definitions/connectionOptions)*.
+- **`connectionArguments`**: Refer to *[../connectionBasicType.json#/definitions/connectionArguments](#/connectionBasicType.json#/definitions/connectionArguments)*.
+- **`supportsMetadataExtraction`**: Refer to *[../connectionBasicType.json#/definitions/supportsMetadataExtraction](#/connectionBasicType.json#/definitions/supportsMetadataExtraction)*.
+- **`supportsUsageExtraction`**: Refer to *[../connectionBasicType.json#/definitions/supportsUsageExtraction](#/connectionBasicType.json#/definitions/supportsUsageExtraction)*.
+- **`supportsLineageExtraction`**: Refer to *[../connectionBasicType.json#/definitions/supportsLineageExtraction](#/connectionBasicType.json#/definitions/supportsLineageExtraction)*.
+- **`supportsDBTExtraction`**: Refer to *[../connectionBasicType.json#/definitions/supportsDBTExtraction](#/connectionBasicType.json#/definitions/supportsDBTExtraction)*.
+- **`supportsProfiler`**: Refer to *[../connectionBasicType.json#/definitions/supportsProfiler](#/connectionBasicType.json#/definitions/supportsProfiler)*.
+- **`supportsDatabase`**: Refer to *[../connectionBasicType.json#/definitions/supportsDatabase](#/connectionBasicType.json#/definitions/supportsDatabase)*.
 ## Definitions
 
-- **`azureSQLType`** *(string)*: Service type. Must be one of: `['AzureSQL']`. Default: `AzureSQL`.
-- **`azureSQLScheme`** *(string)*: SQLAlchemy driver scheme options. Must be one of: `['mssql+pyodbc']`. Default: `mssql+pyodbc`.
+- <a id="definitions/azureSQLType"></a>**`azureSQLType`** *(string)*: Service type. Must be one of: `["AzureSQL"]`. Default: `"AzureSQL"`.
+- <a id="definitions/azureSQLScheme"></a>**`azureSQLScheme`** *(string)*: SQLAlchemy driver scheme options. Must be one of: `["mssql+pyodbc"]`. Default: `"mssql+pyodbc"`.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 11:39:15.608628.

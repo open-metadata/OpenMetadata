@@ -9,12 +9,12 @@ slug: /main-concepts/metadata-standard/schemas/configuration/authconfig
 
 ## Properties
 
-- **`google`**: Google SSO Configuration. Refer to *../security/client/googleSSOClientConfig.json*.
-- **`okta`**: Okta SSO Configuration. Refer to *../security/client/oktaSSOClientConfig.json*.
-- **`auth0`**: Auth0 SSO Configuration. Refer to *../security/client/auth0SSOClientConfig.json*.
-- **`azure`**: Azure SSO Configuration. Refer to *../security/client/azureSSOClientConfig.json*.
-- **`customOidc`**: Custom OIDC SSO Configuration. Refer to *../security/client/customOidcSSOClientConfig.json*.
-- **`openmetadata`**: OpenMetadata SSO Configuration. Refer to *../security/client/openMetadataJWTClientConfig.json*.
+- **`google`**: Google SSO Configuration. Refer to *[../security/client/googleSSOClientConfig.json](#/security/client/googleSSOClientConfig.json)*.
+- **`okta`**: Okta SSO Configuration. Refer to *[../security/client/oktaSSOClientConfig.json](#/security/client/oktaSSOClientConfig.json)*.
+- **`auth0`**: Auth0 SSO Configuration. Refer to *[../security/client/auth0SSOClientConfig.json](#/security/client/auth0SSOClientConfig.json)*.
+- **`azure`**: Azure SSO Configuration. Refer to *[../security/client/azureSSOClientConfig.json](#/security/client/azureSSOClientConfig.json)*.
+- **`customOidc`**: Custom OIDC SSO Configuration. Refer to *[../security/client/customOidcSSOClientConfig.json](#/security/client/customOidcSSOClientConfig.json)*.
+- **`openmetadata`**: OpenMetadata SSO Configuration. Refer to *[../security/client/openMetadataJWTClientConfig.json](#/security/client/openMetadataJWTClientConfig.json)*.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 11:39:15.608628.

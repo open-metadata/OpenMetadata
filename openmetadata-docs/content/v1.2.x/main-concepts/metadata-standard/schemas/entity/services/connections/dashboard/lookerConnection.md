@@ -9,16 +9,20 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/dashb
 
 ## Properties
 
-- **`type`**: Service Type. Refer to *#/definitions/lookerType*. Default: `Looker`.
+- **`type`**: Service Type. Refer to *[#/definitions/lookerType](#definitions/lookerType)*. Default: `"Looker"`.
 - **`clientId`** *(string)*: User's Client ID. This user should have privileges to read all the metadata in Looker.
-- **`clientSecret`** *(string)*: User's Client Secret.
-- **`hostPort`** *(string)*: URL to the Looker instance.
+- **`clientSecret`** *(string, format: password)*: User's Client Secret.
+- **`hostPort`** *(string, format: uri)*: URL to the Looker instance.
 - **`gitCredentials`**: Credentials to extract the .lkml files from a repository. This is required to get all the lineage and definitions.
-- **`supportsMetadataExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsMetadataExtraction*.
+  - **One of**
+    - : Refer to *[#/definitions/noGitCredentials](#definitions/noGitCredentials)*.
+    - : Refer to *[../../../../security/credentials/githubCredentials.json](#/../../../security/credentials/githubCredentials.json)*.
+    - : Refer to *[../../../../security/credentials/bitbucketCredentials.json](#/../../../security/credentials/bitbucketCredentials.json)*.
+- **`supportsMetadataExtraction`**: Refer to *[../connectionBasicType.json#/definitions/supportsMetadataExtraction](#/connectionBasicType.json#/definitions/supportsMetadataExtraction)*.
 ## Definitions
 
-- **`lookerType`** *(string)*: Looker service type. Must be one of: `['Looker']`. Default: `Looker`.
-- **`noGitCredentials`** *(object)*: Do not set any credentials. Note that credentials are required to extract .lkml views and their lineage. Cannot contain additional properties.
+- <a id="definitions/lookerType"></a>**`lookerType`** *(string)*: Looker service type. Must be one of: `["Looker"]`. Default: `"Looker"`.
+- <a id="definitions/noGitCredentials"></a>**`noGitCredentials`** *(object)*: Do not set any credentials. Note that credentials are required to extract .lkml views and their lineage. Cannot contain additional properties.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 11:39:15.608628.

@@ -9,17 +9,19 @@ slug: /main-concepts/metadata-standard/schemas/api/data/createdatabase
 
 ## Properties
 
-- **`name`**: Name that identifies this database instance uniquely. Refer to *../../entity/data/database.json#/definitions/entityName*.
+- **`name`**: Name that identifies this database instance uniquely. Refer to *[../../entity/data/database.json#/definitions/entityName](#/../entity/data/database.json#/definitions/entityName)*.
 - **`displayName`** *(string)*: Display Name that identifies this database.
-- **`description`**: Description of the database instance. What it has and how to use it. Refer to *../../type/basic.json#/definitions/markdown*.
-- **`tags`** *(array)*: Tags for this Database Service. Default: `None`.
-  - **Items**: Refer to *../../type/tagLabel.json*.
-- **`owner`**: Owner of this database. Refer to *../../type/entityReference.json*.
-- **`service`**: Link to the database service fully qualified name where this database is hosted in. Refer to *../../type/basic.json#/definitions/fullyQualifiedEntityName*.
-- **`default`** *(boolean)*: Some databases don't support a database/catalog in the hierarchy and use default database. For example, `MySql`. For such databases, set this flag to true to indicate that this is a default database. Default: `False`.
-- **`retentionPeriod`**: Retention period of the data in the database. Period is expressed as duration in ISO 8601 format in UTC. Example - `P23DT23H`. Refer to *../../type/basic.json#/definitions/duration*.
-- **`extension`**: Entity extension data with custom attributes added to the entity. Refer to *../../type/basic.json#/definitions/entityExtension*.
+- **`description`**: Description of the database instance. What it has and how to use it. Refer to *[../../type/basic.json#/definitions/markdown](#/../type/basic.json#/definitions/markdown)*.
+- **`tags`** *(array)*: Tags for this Database Service. Default: `null`.
+  - **Items**: Refer to *[../../type/tagLabel.json](#/../type/tagLabel.json)*.
+- **`owner`**: Owner of this database. Refer to *[../../type/entityReference.json](#/../type/entityReference.json)*.
+- **`service`**: Link to the database service fully qualified name where this database is hosted in. Refer to *[../../type/basic.json#/definitions/fullyQualifiedEntityName](#/../type/basic.json#/definitions/fullyQualifiedEntityName)*.
+- **`default`** *(boolean)*: Some databases don't support a database/catalog in the hierarchy and use default database. For example, `MySql`. For such databases, set this flag to true to indicate that this is a default database. Default: `false`.
+- **`retentionPeriod`**: Retention period of the data in the database. Period is expressed as duration in ISO 8601 format in UTC. Example - `P23DT23H`. Refer to *[../../type/basic.json#/definitions/duration](#/../type/basic.json#/definitions/duration)*.
+- **`extension`**: Entity extension data with custom attributes added to the entity. Refer to *[../../type/basic.json#/definitions/entityExtension](#/../type/basic.json#/definitions/entityExtension)*.
+- **`sourceUrl`**: Source URL of database. Refer to *[../../type/basic.json#/definitions/sourceUrl](#/../type/basic.json#/definitions/sourceUrl)*.
 - **`domain`** *(string)*: Fully qualified name of the domain the Database belongs to.
+- **`lifeCycle`**: Life Cycle of the entity. Refer to *[../../type/lifeCycle.json](#/../type/lifeCycle.json)*.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 11:39:15.608628.

@@ -9,20 +9,21 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/report
 
 ## Properties
 
-- **`id`**: Unique identifier that identifies this report. Refer to *../../type/basic.json#/definitions/uuid*.
-- **`name`**: Name that identifies this report instance uniquely. Refer to *../../type/basic.json#/definitions/entityName*.
-- **`fullyQualifiedName`**: A unique name that identifies a report in the format 'ServiceName.ReportName'. Refer to *../../type/basic.json#/definitions/fullyQualifiedEntityName*.
+- **`id`**: Unique identifier that identifies this report. Refer to *[../../type/basic.json#/definitions/uuid](#/../type/basic.json#/definitions/uuid)*.
+- **`name`**: Name that identifies this report instance uniquely. Refer to *[../../type/basic.json#/definitions/entityName](#/../type/basic.json#/definitions/entityName)*.
+- **`fullyQualifiedName`**: A unique name that identifies a report in the format 'ServiceName.ReportName'. Refer to *[../../type/basic.json#/definitions/fullyQualifiedEntityName](#/../type/basic.json#/definitions/fullyQualifiedEntityName)*.
 - **`displayName`** *(string)*: Display Name that identifies this report. It could be title or label from the source services.
-- **`description`**: Description of this report instance. Refer to *../../type/basic.json#/definitions/markdown*.
-- **`version`**: Metadata version of the entity. Refer to *../../type/entityHistory.json#/definitions/entityVersion*.
-- **`updatedAt`**: Last update time corresponding to the new version of the entity in Unix epoch time milliseconds. Refer to *../../type/basic.json#/definitions/timestamp*.
+- **`description`**: Description of this report instance. Refer to *[../../type/basic.json#/definitions/markdown](#/../type/basic.json#/definitions/markdown)*.
+- **`version`**: Metadata version of the entity. Refer to *[../../type/entityHistory.json#/definitions/entityVersion](#/../type/entityHistory.json#/definitions/entityVersion)*.
+- **`updatedAt`**: Last update time corresponding to the new version of the entity in Unix epoch time milliseconds. Refer to *[../../type/basic.json#/definitions/timestamp](#/../type/basic.json#/definitions/timestamp)*.
 - **`updatedBy`** *(string)*: User who made the update.
-- **`href`**: Link to the resource corresponding to this report. Refer to *../../type/basic.json#/definitions/href*.
-- **`owner`**: Owner of this pipeline. Refer to *../../type/entityReference.json*.
-- **`service`**: Link to service where this report is hosted in. Refer to *../../type/entityReference.json*.
-- **`usageSummary`**: Latest usage information for this database. Refer to *../../type/usageDetails.json*. Default: `None`.
-- **`changeDescription`**: Change that lead to this version of the entity. Refer to *../../type/entityHistory.json#/definitions/changeDescription*.
-- **`deleted`** *(boolean)*: When `true` indicates the entity has been soft deleted. Default: `False`.
+- **`href`**: Link to the resource corresponding to this report. Refer to *[../../type/basic.json#/definitions/href](#/../type/basic.json#/definitions/href)*.
+- **`owner`**: Owner of this pipeline. Refer to *[../../type/entityReference.json](#/../type/entityReference.json)*.
+- **`service`**: Link to service where this report is hosted in. Refer to *[../../type/entityReference.json](#/../type/entityReference.json)*.
+- **`usageSummary`**: Latest usage information for this database. Refer to *[../../type/usageDetails.json](#/../type/usageDetails.json)*. Default: `null`.
+- **`changeDescription`**: Change that lead to this version of the entity. Refer to *[../../type/entityHistory.json#/definitions/changeDescription](#/../type/entityHistory.json#/definitions/changeDescription)*.
+- **`deleted`** *(boolean)*: When `true` indicates the entity has been soft deleted. Default: `false`.
+- **`votes`**: Refer to *[../../type/votes.json](#/../type/votes.json)*.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 11:39:15.608628.

@@ -9,25 +9,30 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
 
 ## Properties
 
-- **`type`**: Service Type. Refer to *#/definitions/hiveType*. Default: `Hive`.
-- **`scheme`**: SQLAlchemy driver scheme options. Refer to *#/definitions/hiveScheme*. Default: `hive`.
+- **`type`**: Service Type. Refer to *[#/definitions/hiveType](#definitions/hiveType)*. Default: `"Hive"`.
+- **`scheme`**: SQLAlchemy driver scheme options. Refer to *[#/definitions/hiveScheme](#definitions/hiveScheme)*. Default: `"hive"`.
 - **`username`** *(string)*: Username to connect to Hive. This user should have privileges to read all the metadata in Hive.
-- **`password`** *(string)*: Password to connect to Hive.
+- **`password`** *(string, format: password)*: Password to connect to Hive.
 - **`hostPort`** *(string)*: Host and port of the Hive service.
-- **`auth`** *(string)*: Authentication mode to connect to hive. Must be one of: `['NONE', 'LDAP', 'KERBEROS', 'CUSTOM', 'NOSASL', 'BASIC', 'GSSAPI', 'JWT', 'PLAIN']`. Default: `NONE`.
+- **`auth`** *(string)*: Authentication mode to connect to hive. Must be one of: `["NONE", "LDAP", "KERBEROS", "CUSTOM", "NOSASL", "BASIC", "GSSAPI", "JWT", "PLAIN"]`. Default: `"NONE"`.
 - **`kerberosServiceName`** *(string)*: If authenticating with Kerberos specify the Kerberos service name.
 - **`databaseSchema`** *(string)*: Database Schema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion attempts to scan all the schemas.
 - **`databaseName`** *(string)*: Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.
 - **`authOptions`** *(string)*: Authentication options to pass to Hive connector. These options are based on SQLAlchemy.
-- **`connectionOptions`**: Refer to *../connectionBasicType.json#/definitions/connectionOptions*.
-- **`connectionArguments`**: Refer to *../connectionBasicType.json#/definitions/connectionArguments*.
-- **`supportsMetadataExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsMetadataExtraction*.
-- **`supportsDBTExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsDBTExtraction*.
-- **`supportsProfiler`**: Refer to *../connectionBasicType.json#/definitions/supportsProfiler*.
+- **`metastoreConnection`**: Hive Metastore Connection Details.
+  - **One of**
+    - : Refer to *[./postgresConnection.json](#postgresConnection.json)*.
+    - : Refer to *[./mysqlConnection.json](#mysqlConnection.json)*.
+    - *object*
+- **`connectionOptions`**: Refer to *[../connectionBasicType.json#/definitions/connectionOptions](#/connectionBasicType.json#/definitions/connectionOptions)*.
+- **`connectionArguments`**: Refer to *[../connectionBasicType.json#/definitions/connectionArguments](#/connectionBasicType.json#/definitions/connectionArguments)*.
+- **`supportsMetadataExtraction`**: Refer to *[../connectionBasicType.json#/definitions/supportsMetadataExtraction](#/connectionBasicType.json#/definitions/supportsMetadataExtraction)*.
+- **`supportsDBTExtraction`**: Refer to *[../connectionBasicType.json#/definitions/supportsDBTExtraction](#/connectionBasicType.json#/definitions/supportsDBTExtraction)*.
+- **`supportsProfiler`**: Refer to *[../connectionBasicType.json#/definitions/supportsProfiler](#/connectionBasicType.json#/definitions/supportsProfiler)*.
 ## Definitions
 
-- **`hiveType`** *(string)*: Service type. Must be one of: `['Hive']`. Default: `Hive`.
-- **`hiveScheme`** *(string)*: SQLAlchemy driver scheme options. Must be one of: `['hive', 'hive+http', 'hive+https', 'impala', 'impala4']`. Default: `hive`.
+- <a id="definitions/hiveType"></a>**`hiveType`** *(string)*: Service type. Must be one of: `["Hive"]`. Default: `"Hive"`.
+- <a id="definitions/hiveScheme"></a>**`hiveScheme`** *(string)*: SQLAlchemy driver scheme options. Must be one of: `["hive", "hive+http", "hive+https"]`. Default: `"hive"`.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 11:39:15.608628.

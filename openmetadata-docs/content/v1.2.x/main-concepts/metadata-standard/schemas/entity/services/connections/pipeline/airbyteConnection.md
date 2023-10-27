@@ -9,14 +9,14 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/pipel
 
 ## Properties
 
-- **`type`**: Service Type. Refer to *#/definitions/AirbyteType*. Default: `Airbyte`.
-- **`hostPort`** *(string)*: Pipeline Service Management/UI URL.
+- **`type`**: Service Type. Refer to *[#/definitions/AirbyteType](#definitions/AirbyteType)*. Default: `"Airbyte"`.
+- **`hostPort`** *(string, format: uri)*: Pipeline Service Management/UI URL.
 - **`username`** *(string)*: Username to connect to Airbyte.
-- **`password`** *(string)*: Password to connect to Airbyte.
-- **`supportsMetadataExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsMetadataExtraction*.
+- **`password`** *(string, format: password)*: Password to connect to Airbyte.
+- **`supportsMetadataExtraction`**: Refer to *[../connectionBasicType.json#/definitions/supportsMetadataExtraction](#/connectionBasicType.json#/definitions/supportsMetadataExtraction)*.
 ## Definitions
 
-- **`AirbyteType`** *(string)*: Service type. Must be one of: `['Airbyte']`. Default: `Airbyte`.
+- <a id="definitions/AirbyteType"></a>**`AirbyteType`** *(string)*: Service type. Must be one of: `["Airbyte"]`. Default: `"Airbyte"`.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 11:39:15.608628.

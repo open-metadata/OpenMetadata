@@ -11,12 +11,12 @@ slug: /main-concepts/metadata-standard/schemas/api/feed/threadcount
 
 - **`totalCount`** *(integer)*: Total count of all the threads. Minimum: `0`.
 - **`counts`** *(array)*: .
-  - **Items**: Refer to *#/definitions/entityLinkThreadCount*.
+  - **Items**: Refer to *[#/definitions/entityLinkThreadCount](#definitions/entityLinkThreadCount)*.
 ## Definitions
 
-- **`entityLinkThreadCount`** *(object)*: Type used to return thread count per entity link. Cannot contain additional properties.
-  - **`count`** *(integer)*: Count of threads for the given entity link. Minimum: `0`.
-  - **`entityLink`**: Refer to *../../type/basic.json#/definitions/entityLink*.
+- <a id="definitions/entityLinkThreadCount"></a>**`entityLinkThreadCount`** *(object)*: Type used to return thread count per entity link. Cannot contain additional properties.
+  - **`count`** *(integer, required)*: Count of threads for the given entity link. Minimum: `0`.
+  - **`entityLink`**: Refer to *[../../type/basic.json#/definitions/entityLink](#/../type/basic.json#/definitions/entityLink)*.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 11:39:15.608628.

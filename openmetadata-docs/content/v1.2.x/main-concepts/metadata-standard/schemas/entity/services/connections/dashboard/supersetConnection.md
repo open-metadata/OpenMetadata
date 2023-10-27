@@ -9,13 +9,17 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/dashb
 
 ## Properties
 
-- **`type`**: Service Type. Refer to *#/definitions/supersetType*. Default: `Superset`.
-- **`hostPort`** *(string)*: URL for the superset instance. Default: `http://localhost:8088`.
+- **`type`**: Service Type. Refer to *[#/definitions/supersetType](#definitions/supersetType)*. Default: `"Superset"`.
+- **`hostPort`** *(string, format: uri)*: URL for the superset instance. Default: `"http://localhost:8088"`.
 - **`connection`**: Choose between API or database connection fetch metadata from superset.
-- **`supportsMetadataExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsMetadataExtraction*.
+  - **One of**
+    - : Refer to *[../../../utils/supersetApiConnection.json](#/../../utils/supersetApiConnection.json)*.
+    - : Refer to *[../database/postgresConnection.json](#/database/postgresConnection.json)*.
+    - : Refer to *[../database/mysqlConnection.json](#/database/mysqlConnection.json)*.
+- **`supportsMetadataExtraction`**: Refer to *[../connectionBasicType.json#/definitions/supportsMetadataExtraction](#/connectionBasicType.json#/definitions/supportsMetadataExtraction)*.
 ## Definitions
 
-- **`supersetType`** *(string)*: Superset service type. Must be one of: `['Superset']`. Default: `Superset`.
+- <a id="definitions/supersetType"></a>**`supersetType`** *(string)*: Superset service type. Must be one of: `["Superset"]`. Default: `"Superset"`.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 11:39:15.608628.

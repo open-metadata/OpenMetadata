@@ -9,9 +9,9 @@ slug: /main-concepts/metadata-standard/schemas/configuration/ldaptruststoreconfi
 
 ## Properties
 
-- **`allowWildCards`** *(boolean)*: Allow wildcards. Default: `False`.
+- **`allowWildCards`** *(boolean)*: Allow wildcards. Default: `false`.
 - **`acceptableHostNames`** *(array)*: list of acceptable host names.
   - **Items** *(string)*
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 11:39:15.608628.

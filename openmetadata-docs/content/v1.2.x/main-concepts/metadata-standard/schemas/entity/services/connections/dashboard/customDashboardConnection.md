@@ -9,12 +9,12 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/dashb
 
 ## Properties
 
-- **`type`**: Custom dashboard service type. Refer to *#/definitions/customDashboardType*. Default: `CustomDashboard`.
+- **`type`**: Custom dashboard service type. Refer to *[#/definitions/customDashboardType](#definitions/customDashboardType)*. Default: `"CustomDashboard"`.
 - **`sourcePythonClass`** *(string)*: Source Python Class Name to instantiated by the ingestion workflow.
-- **`connectionOptions`**: Refer to *../connectionBasicType.json#/definitions/connectionOptions*.
+- **`connectionOptions`**: Refer to *[../connectionBasicType.json#/definitions/connectionOptions](#/connectionBasicType.json#/definitions/connectionOptions)*.
 ## Definitions
 
-- **`customDashboardType`** *(string)*: Custom dashboard service type. Must be one of: `['CustomDashboard']`. Default: `CustomDashboard`.
+- <a id="definitions/customDashboardType"></a>**`customDashboardType`** *(string)*: Custom dashboard service type. Must be one of: `["CustomDashboard"]`. Default: `"CustomDashboard"`.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 11:39:15.608628.

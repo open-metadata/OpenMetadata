@@ -9,14 +9,14 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/pipel
 
 ## Properties
 
-- **`type`**: Service Type. Refer to *#/definitions/DagsterType*. Default: `Dagster`.
-- **`host`** *(string)*: URL to the Dagster instance.
-- **`token`** *(string)*: To Connect to Dagster Cloud.
-- **`timeout`** *(integer)*: Connection Time Limit Between OM and Dagster Graphql API in second. Default: `1000`.
-- **`supportsMetadataExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsMetadataExtraction*.
+- **`type`**: Service Type. Refer to *[#/definitions/DagsterType](#definitions/DagsterType)*. Default: `"Dagster"`.
+- **`host`** *(string, format: uri)*: URL to the Dagster instance.
+- **`token`** *(string, format: password)*: To Connect to Dagster Cloud.
+- **`timeout`** *(integer)*: Connection Time Limit Between OM and Dagster Graphql API in second. Default: `"1000"`.
+- **`supportsMetadataExtraction`**: Refer to *[../connectionBasicType.json#/definitions/supportsMetadataExtraction](#/connectionBasicType.json#/definitions/supportsMetadataExtraction)*.
 ## Definitions
 
-- **`DagsterType`** *(string)*: Service type. Must be one of: `['Dagster']`. Default: `Dagster`.
+- <a id="definitions/DagsterType"></a>**`DagsterType`** *(string)*: Service type. Must be one of: `["Dagster"]`. Default: `"Dagster"`.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 11:39:15.608628.

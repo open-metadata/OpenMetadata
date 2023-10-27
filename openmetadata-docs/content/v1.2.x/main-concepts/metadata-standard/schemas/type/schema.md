@@ -10,25 +10,25 @@ slug: /main-concepts/metadata-standard/schemas/type/schema
 ## Properties
 
 - **`schemaText`** *(string)*: Schema used for message serialization. Optional as some topics may not have associated schemas.
-- **`schemaType`**: Schema used for message serialization. Refer to *#/definitions/schemaType*. Default: `None`.
+- **`schemaType`**: Schema used for message serialization. Refer to *[#/definitions/schemaType](#definitions/schemaType)*. Default: `"None"`.
 - **`schemaFields`** *(array)*: Columns in this table. Default: `[]`.
-  - **Items**: Refer to *#/definitions/field*.
+  - **Items**: Refer to *[#/definitions/field](#definitions/field)*.
 ## Definitions
 
-- **`schemaType`**: Schema type used for the message. Must be one of: `['Avro', 'Protobuf', 'JSON', 'Other', 'None']`.
-- **`dataTypeTopic`** *(string)*: This enum defines the type of data defined in schema. Must be one of: `['RECORD', 'NULL', 'BOOLEAN', 'INT', 'LONG', 'BYTES', 'FLOAT', 'DOUBLE', 'TIMESTAMP', 'TIMESTAMPZ', 'TIME', 'DATE', 'STRING', 'ARRAY', 'MAP', 'ENUM', 'UNION', 'FIXED', 'ERROR', 'UNKNOWN']`.
-- **`fieldName`** *(string)*: Local name (not fully qualified name) of the field. .
-- **`field`** *(object)*: This schema defines the nested object to capture protobuf/avro/jsonschema of topic's schema. Cannot contain additional properties.
-  - **`name`**: Refer to *#/definitions/fieldName*.
+- <a id="definitions/schemaType"></a>**`schemaType`**: Schema type used for the message. Must be one of: `["Avro", "Protobuf", "JSON", "Other", "None"]`.
+- <a id="definitions/dataTypeTopic"></a>**`dataTypeTopic`** *(string)*: This enum defines the type of data defined in schema. Must be one of: `["RECORD", "NULL", "BOOLEAN", "INT", "LONG", "BYTES", "FLOAT", "DOUBLE", "TIMESTAMP", "TIMESTAMPZ", "TIME", "DATE", "STRING", "ARRAY", "MAP", "ENUM", "UNION", "FIXED", "ERROR", "UNKNOWN"]`.
+- <a id="definitions/fieldName"></a>**`fieldName`** *(string)*: Local name (not fully qualified name) of the field. .
+- <a id="definitions/field"></a>**`field`** *(object)*: This schema defines the nested object to capture protobuf/avro/jsonschema of topic's schema. Cannot contain additional properties.
+  - **`name`**: Refer to *[#/definitions/fieldName](#definitions/fieldName)*.
   - **`displayName`** *(string)*: Display Name that identifies this field name.
-  - **`dataType`**: Data type of the field (int, date etc.). Refer to *#/definitions/dataTypeTopic*.
+  - **`dataType`**: Data type of the field (int, date etc.). Refer to *[#/definitions/dataTypeTopic](#definitions/dataTypeTopic)*.
   - **`dataTypeDisplay`** *(string)*: Display name used for dataType. This is useful for complex types, such as `array<int>`, `map<int,string>`, `struct<>`, and union types.
-  - **`description`**: Description of the column. Refer to *basic.json#/definitions/markdown*.
-  - **`fullyQualifiedName`**: Refer to *basic.json#/definitions/fullyQualifiedEntityName*.
-  - **`tags`** *(array)*: Tags associated with the column. Default: `None`.
-    - **Items**: Refer to *tagLabel.json*.
-  - **`children`** *(array)*: Child fields if dataType or arrayDataType is `map`, `record`, `message`. Default: `None`.
-    - **Items**: Refer to *#/definitions/field*.
+  - **`description`**: Description of the column. Refer to *[basic.json#/definitions/markdown](#sic.json#/definitions/markdown)*.
+  - **`fullyQualifiedName`**: Refer to *[basic.json#/definitions/fullyQualifiedEntityName](#sic.json#/definitions/fullyQualifiedEntityName)*.
+  - **`tags`** *(array)*: Tags associated with the column. Default: `null`.
+    - **Items**: Refer to *[tagLabel.json](#gLabel.json)*.
+  - **`children`** *(array)*: Child fields if dataType or arrayDataType is `map`, `record`, `message`. Default: `null`.
+    - **Items**: Refer to *[#/definitions/field](#definitions/field)*.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 11:39:15.608628.

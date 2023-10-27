@@ -9,8 +9,8 @@ slug: /main-concepts/metadata-standard/schemas/events/datainsightalertconfig
 
 ## Properties
 
-- **`sendToAdmins`** *(boolean)*: Send the Mails to Admins. Default: `False`.
-- **`sendToTeams`** *(boolean)*: Send the Mails to Teams. Default: `False`.
+- **`sendToAdmins`** *(boolean)*: Send the Mails to Admins. Default: `false`.
+- **`sendToTeams`** *(boolean)*: Send the Mails to Teams. Default: `false`.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 11:39:15.608628.

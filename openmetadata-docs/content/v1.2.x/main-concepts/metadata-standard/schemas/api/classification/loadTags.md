@@ -9,9 +9,9 @@ slug: /main-concepts/metadata-standard/schemas/api/classification/loadtags
 
 ## Properties
 
-- **`createClassification`**: Refer to *createClassification.json*.
-- **`createTags`** *(array)*
-  - **Items**: Refer to *createTag.json*.
+- **`createClassification`**: Refer to *[createClassification.json](#eateClassification.json)*.
+- **`createTags`** *(array)*: Length must be at least 1.
+  - **Items**: Refer to *[createTag.json](#eateTag.json)*.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 11:39:15.608628.

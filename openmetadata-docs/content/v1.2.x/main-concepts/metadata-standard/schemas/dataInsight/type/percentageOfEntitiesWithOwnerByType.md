@@ -9,11 +9,11 @@ slug: /main-concepts/metadata-standard/schemas/datainsight/type/percentageofenti
 
 ## Properties
 
-- **`timestamp`**: timestamp. Refer to *../../type/basic.json#/definitions/timestamp*.
+- **`timestamp`**: timestamp. Refer to *[../../type/basic.json#/definitions/timestamp](#/../type/basic.json#/definitions/timestamp)*.
 - **`entityType`** *(string)*: Type of entity. Derived from the entity class.
 - **`hasOwnerFraction`** *(number)*: Decimal fraction of entity with an owner. Minimum: `0`. Maximum: `1`.
 - **`hasOwner`** *(number)*: Decimal fraction of entity with an owner.
 - **`entityCount`** *(number)*: Decimal fraction of entity with an owner.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 11:39:15.608628.

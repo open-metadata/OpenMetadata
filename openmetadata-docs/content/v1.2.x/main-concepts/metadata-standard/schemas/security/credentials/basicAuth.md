@@ -10,7 +10,7 @@ slug: /main-concepts/metadata-standard/schemas/security/credentials/basicauth
 ## Properties
 
 - **`username`** *(string)*: Username to access the service.
-- **`password`** *(string)*: Password to access the service.
+- **`password`** *(string, format: password)*: Password to access the service.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 11:39:15.608628.

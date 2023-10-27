@@ -9,12 +9,12 @@ slug: /main-concepts/metadata-standard/schemas/configuration/testresultnotificat
 
 ## Properties
 
-- **`enabled`** *(boolean)*: Is Test Notification Enabled? Default: `False`.
+- **`enabled`** *(boolean)*: Is Test Notification Enabled? Default: `false`.
 - **`onResult`** *(array)*: Send notification on Success, Failed or Aborted?
-  - **Items**: Refer to *../tests/basic.json#/definitions/testCaseStatus*.
+  - **Items**: Refer to *[../tests/basic.json#/definitions/testCaseStatus](#/tests/basic.json#/definitions/testCaseStatus)*.
 - **`receivers`** *(array)*: Send notification on the mail.
-  - **Items**: Refer to *../type/basic.json#/definitions/email*.
-- **`sendToOwners`** *(boolean)*: Send notification on the mail. Default: `False`.
+  - **Items**: Refer to *[../type/basic.json#/definitions/email](#/type/basic.json#/definitions/email)*.
+- **`sendToOwners`** *(boolean)*: Send notification on the mail. Default: `false`.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 11:39:15.608628.

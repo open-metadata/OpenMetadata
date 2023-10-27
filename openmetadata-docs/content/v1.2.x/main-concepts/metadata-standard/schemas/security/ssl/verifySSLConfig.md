@@ -3,14 +3,16 @@ title: verifySSLConfig
 slug: /main-concepts/metadata-standard/schemas/security/ssl/verifysslconfig
 ---
 
-# VerifySSLConfig
+# Verify SSL Config
 
 *Client configuration to validate SSL certificates.*
 
 ## Definitions
 
-- **`verifySSL`** *(string)*: Client SSL verification. Make sure to configure the SSLConfig if enabled. Must be one of: `['no-ssl', 'ignore', 'validate']`. Default: `no-ssl`.
-- **`sslConfig`**: Client SSL configuration.
+- <a id="definitions/verifySSL"></a>**`verifySSL`** *(string)*: Client SSL verification. Make sure to configure the SSLConfig if enabled. Must be one of: `["no-ssl", "ignore", "validate"]`. Default: `"no-ssl"`.
+- <a id="definitions/sslConfig"></a>**`sslConfig`**: Client SSL configuration.
+  - **One of**
+    - : Refer to *[validateSSLClientConfig.json](#lidateSSLClientConfig.json)*.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 11:39:15.608628.

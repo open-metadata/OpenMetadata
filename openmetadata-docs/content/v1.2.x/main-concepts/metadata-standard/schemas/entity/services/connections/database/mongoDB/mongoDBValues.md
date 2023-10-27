@@ -9,14 +9,14 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
 
 ## Properties
 
-- **`scheme`**: Mongo connection scheme options. Refer to *#/definitions/mongoDBScheme*. Default: `mongodb`.
+- **`scheme`**: Mongo connection scheme options. Refer to *[#/definitions/mongoDBScheme](#definitions/mongoDBScheme)*. Default: `"mongodb"`.
 - **`username`** *(string)*: Username to connect to MongoDB. This user should have privileges to read all the metadata in MongoDB.
-- **`password`** *(string)*: Password to connect to MongoDB.
+- **`password`** *(string, format: password)*: Password to connect to MongoDB.
 - **`hostPort`** *(string)*: Host and port of the MongoDB service.
-- **`connectionOptions`**: Refer to *../../connectionBasicType.json#/definitions/connectionOptions*.
+- **`connectionOptions`**: Refer to *[../../connectionBasicType.json#/definitions/connectionOptions](#/../connectionBasicType.json#/definitions/connectionOptions)*.
 ## Definitions
 
-- **`mongoDBScheme`** *(string)*: Mongo connection scheme options. Must be one of: `['mongodb', 'mongodb+srv']`. Default: `mongodb`.
+- <a id="definitions/mongoDBScheme"></a>**`mongoDBScheme`** *(string)*: Mongo connection scheme options. Must be one of: `["mongodb", "mongodb+srv"]`. Default: `"mongodb"`.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 11:39:15.608628.
