@@ -9,9 +9,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/applications/jobstatus
 
 ## Definitions
 
-- <a id="definitions/configuration"></a>**`configuration`**: Configuration Object.
-  - **One of**
-    - : Refer to *[./configuration/searchIndexingApp.json](#configuration/searchIndexingApp.json)*.
+- **`configuration`**: Configuration Object.
 
 
-Documentation file automatically generated at 2023-10-27 11:39:15.608628.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

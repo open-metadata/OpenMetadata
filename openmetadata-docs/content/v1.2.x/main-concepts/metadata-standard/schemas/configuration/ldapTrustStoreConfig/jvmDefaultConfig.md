@@ -9,7 +9,7 @@ slug: /main-concepts/metadata-standard/schemas/configuration/ldaptruststoreconfi
 
 ## Properties
 
-- **`verifyHostname`** *(boolean)*: list of host names to verify. Default: `false`.
+- **`verifyHostname`** *(boolean)*: list of host names to verify. Default: `False`.
 
 
-Documentation file automatically generated at 2023-10-27 11:39:15.608628.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

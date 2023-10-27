@@ -9,7 +9,7 @@ slug: /main-concepts/metadata-standard/schemas/configuration/authenticationconfi
 
 ## Properties
 
-- **`provider`**: Refer to *[../entity/services/connections/metadata/openMetadataConnection.json#/definitions/authProvider](#/entity/services/connections/metadata/openMetadataConnection.json#/definitions/authProvider)*.
+- **`provider`**: Refer to *../entity/services/connections/metadata/openMetadataConnection.json#/definitions/authProvider*.
 - **`providerName`** *(string)*: Custom OIDC Authentication Provider Name.
 - **`publicKeyUrls`** *(array)*: List of Public Key URLs.
   - **Items** *(string)*
@@ -18,9 +18,9 @@ slug: /main-concepts/metadata-standard/schemas/configuration/authenticationconfi
 - **`callbackUrl`** *(string)*: Callback URL.
 - **`jwtPrincipalClaims`** *(array)*: Jwt Principal Claim.
   - **Items** *(string)*
-- **`enableSelfSignup`** *(boolean)*: Enable Self Sign Up. Default: `false`.
-- **`ldapConfiguration`**: LDAP Configuration in case the Provider is LDAP. Refer to *[./ldapConfiguration.json](#ldapConfiguration.json)*.
-- **`samlConfiguration`**: Saml Configuration that is applicable only when the provider is Saml. Refer to *[../security/client/samlSSOClientConfig.json](#/security/client/samlSSOClientConfig.json)*.
+- **`enableSelfSignup`** *(boolean)*: Enable Self Sign Up. Default: `False`.
+- **`ldapConfiguration`**: LDAP Configuration in case the Provider is LDAP. Refer to *./ldapConfiguration.json*.
+- **`samlConfiguration`**: Saml Configuration that is applicable only when the provider is Saml. Refer to *../security/client/samlSSOClientConfig.json*.
 
 
-Documentation file automatically generated at 2023-10-27 11:39:15.608628.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

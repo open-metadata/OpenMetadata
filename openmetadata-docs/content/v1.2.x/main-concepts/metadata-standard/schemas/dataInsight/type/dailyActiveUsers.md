@@ -9,8 +9,8 @@ slug: /main-concepts/metadata-standard/schemas/datainsight/type/dailyactiveusers
 
 ## Properties
 
-- **`timestamp`**: timestamp. Refer to *[../../type/basic.json#/definitions/timestamp](#/../type/basic.json#/definitions/timestamp)*.
+- **`timestamp`**: timestamp. Refer to *../../type/basic.json#/definitions/timestamp*.
 - **`activeUsers`** *(integer)*: Number of active users (user with at least 1 session).
 
 
-Documentation file automatically generated at 2023-10-27 11:39:15.608628.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

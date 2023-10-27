@@ -9,35 +9,35 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/query
 
 ## Properties
 
-- **`id`**: Unique identifier of the query. Refer to *[../../type/basic.json#/definitions/uuid](#/../type/basic.json#/definitions/uuid)*.
-- **`name`**: Name of an entity to which the query belongs to. Refer to *[../../type/basic.json#/definitions/entityName](#/../type/basic.json#/definitions/entityName)*.
-- **`fullyQualifiedName`**: Fully qualified name of a query. Refer to *[../../type/basic.json#/definitions/fullyQualifiedEntityName](#/../type/basic.json#/definitions/fullyQualifiedEntityName)*.
+- **`id`**: Unique identifier of the query. Refer to *../../type/basic.json#/definitions/uuid*.
+- **`name`**: Name of an entity to which the query belongs to. Refer to *../../type/basic.json#/definitions/entityName*.
+- **`fullyQualifiedName`**: Fully qualified name of a query. Refer to *../../type/basic.json#/definitions/fullyQualifiedEntityName*.
 - **`displayName`** *(string)*: Display Name that identifies this Query. It could be title or label.
-- **`description`**: Description of a query. Refer to *[../../type/basic.json#/definitions/markdown](#/../type/basic.json#/definitions/markdown)*.
-- **`version`**: Metadata version of the entity. Refer to *[../../type/entityHistory.json#/definitions/entityVersion](#/../type/entityHistory.json#/definitions/entityVersion)*.
-- **`updatedAt`**: Last update time corresponding to the new version of the entity in Unix epoch time milliseconds. Refer to *[../../type/basic.json#/definitions/timestamp](#/../type/basic.json#/definitions/timestamp)*.
+- **`description`**: Description of a query. Refer to *../../type/basic.json#/definitions/markdown*.
+- **`version`**: Metadata version of the entity. Refer to *../../type/entityHistory.json#/definitions/entityVersion*.
+- **`updatedAt`**: Last update time corresponding to the new version of the entity in Unix epoch time milliseconds. Refer to *../../type/basic.json#/definitions/timestamp*.
 - **`updatedBy`** *(string)*: User who made the query.
-- **`href`**: Link to this Query resource. Refer to *[../../type/basic.json#/definitions/href](#/../type/basic.json#/definitions/href)*.
-- **`changeDescription`**: Change that lead to this version of the entity. Refer to *[../../type/entityHistory.json#/definitions/changeDescription](#/../type/entityHistory.json#/definitions/changeDescription)*.
-- **`owner`**: Owner of this Query. Refer to *[../../type/entityReference.json](#/../type/entityReference.json)*. Default: `null`.
+- **`href`**: Link to this Query resource. Refer to *../../type/basic.json#/definitions/href*.
+- **`changeDescription`**: Change that lead to this version of the entity. Refer to *../../type/entityHistory.json#/definitions/changeDescription*.
+- **`owner`**: Owner of this Query. Refer to *../../type/entityReference.json*. Default: `None`.
 - **`duration`** *(number)*: How long did the query took to run in seconds.
-- **`users`** *(array)*: List of users who ran this query. Default: `null`.
-  - **Items**: Refer to *[../../type/entityReference.json](#/../type/entityReference.json)*.
-- **`followers`**: Followers of this Query. Refer to *[../../type/entityReferenceList.json](#/../type/entityReferenceList.json)*.
-- **`votes`**: Refer to *[../../type/votes.json](#/../type/votes.json)*.
-- **`query`**: SQL Query definition. Refer to *[../../type/basic.json#/definitions/sqlQuery](#/../type/basic.json#/definitions/sqlQuery)*.
+- **`users`** *(array)*: List of users who ran this query. Default: `None`.
+  - **Items**: Refer to *../../type/entityReference.json*.
+- **`followers`**: Followers of this Query. Refer to *../../type/entityReferenceList.json*.
+- **`votes`**: Refer to *../../type/votes.json*.
+- **`query`**: SQL Query definition. Refer to *../../type/basic.json#/definitions/sqlQuery*.
 - **`query_type`** *(string)*: SQL query type.
 - **`exclude_usage`** *(boolean)*: Flag to check if query is to be excluded while processing usage.
 - **`checksum`** *(string)*: Checksum to avoid registering duplicate queries.
-- **`queryDate`**: Date on which the query ran. Refer to *[../../type/basic.json#/definitions/timestamp](#/../type/basic.json#/definitions/timestamp)*.
+- **`queryDate`**: Date on which the query ran. Refer to *../../type/basic.json#/definitions/timestamp*.
 - **`usedBy`** *(array)*: List of users who ran the query but does not exist in OpenMetadata.
   - **Items** *(string)*
-- **`tags`** *(array)*: Tags for this SQL query. Default: `null`.
-  - **Items**: Refer to *[../../type/tagLabel.json](#/../type/tagLabel.json)*.
-- **`queryUsedIn`**: Entities that are using this query. Refer to *[../../type/entityReferenceList.json](#/../type/entityReferenceList.json)*.
-- **`triggeredBy`**: Entity that triggered the query. E.g., a Stored Procedure or a Pipeline Task. Refer to *[../../type/entityReference.json](#/../type/entityReference.json)*.
-- **`processedLineage`** *(boolean)*: Flag if this query has already been successfully processed for lineage. Default: `false`.
-- **`service`**: Link to the service this query belongs to. Refer to *[../../type/entityReference.json](#/../type/entityReference.json)*.
+- **`tags`** *(array)*: Tags for this SQL query. Default: `None`.
+  - **Items**: Refer to *../../type/tagLabel.json*.
+- **`queryUsedIn`**: Entities that are using this query. Refer to *../../type/entityReferenceList.json*.
+- **`triggeredBy`**: Entity that triggered the query. E.g., a Stored Procedure or a Pipeline Task. Refer to *../../type/entityReference.json*.
+- **`processedLineage`** *(boolean)*: Flag if this query has already been successfully processed for lineage. Default: `False`.
+- **`service`**: Link to the service this query belongs to. Refer to *../../type/entityReference.json*.
 
 
-Documentation file automatically generated at 2023-10-27 11:39:15.608628.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

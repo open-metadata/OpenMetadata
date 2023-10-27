@@ -9,8 +9,8 @@ slug: /main-concepts/metadata-standard/schemas/api/setowner
 
 ## Properties
 
-- **`id`**: Id of the owner of the entity. Refer to *[../type/basic.json#/definitions/uuid](#/type/basic.json#/definitions/uuid)*.
+- **`id`**: Id of the owner of the entity. Refer to *../type/basic.json#/definitions/uuid*.
 - **`type`** *(string)*: Entity type of the owner typically either 'user' or 'team'.
 
 
-Documentation file automatically generated at 2023-10-27 11:39:15.608628.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

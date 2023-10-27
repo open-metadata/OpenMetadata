@@ -9,11 +9,11 @@ slug: /main-concepts/metadata-standard/schemas/entity/applications/createapprequ
 
 ## Properties
 
-- **`name`**: Name of the Application. Refer to *[../../type/basic.json#/definitions/entityName](#/../type/basic.json#/definitions/entityName)*.
-- **`owner`**: Owner of this workflow. Refer to *[../../type/entityReference.json](#/../type/entityReference.json)*. Default: `null`.
-- **`bot`**: Fqn of Bot Associated with this application. Refer to *[../../type/basic.json#/definitions/fullyQualifiedEntityName](#/../type/basic.json#/definitions/fullyQualifiedEntityName)*. Default: `null`.
+- **`name`**: Name of the Application. Refer to *../../type/basic.json#/definitions/entityName*.
+- **`owner`**: Owner of this workflow. Refer to *../../type/entityReference.json*. Default: `None`.
+- **`bot`**: Fqn of Bot Associated with this application. Refer to *../../type/basic.json#/definitions/fullyQualifiedEntityName*. Default: `None`.
 - **`appConfiguration`**: Application Configuration object.
-- **`appSchedule`**: Refer to *[./app.json#/definitions/appSchedule](#app.json#/definitions/appSchedule)*.
+- **`appSchedule`**: Refer to *./app.json#/definitions/appSchedule*.
 
 
-Documentation file automatically generated at 2023-10-27 11:39:15.608628.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

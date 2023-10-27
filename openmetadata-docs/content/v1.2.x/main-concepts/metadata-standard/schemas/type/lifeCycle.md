@@ -9,15 +9,15 @@ slug: /main-concepts/metadata-standard/schemas/type/lifecycle
 
 ## Properties
 
-- **`created`**: Access Details about created aspect of the data asset. Refer to *[#/definitions/accessDetails](#definitions/accessDetails)*.
-- **`updated`**: Access Details about updated aspect of the data asset. Refer to *[#/definitions/accessDetails](#definitions/accessDetails)*.
-- **`accessed`**: Access Details about accessed aspect of the data asset. Refer to *[#/definitions/accessDetails](#definitions/accessDetails)*.
+- **`created`**: Access Details about created aspect of the data asset. Refer to *#/definitions/accessDetails*.
+- **`updated`**: Access Details about updated aspect of the data asset. Refer to *#/definitions/accessDetails*.
+- **`accessed`**: Access Details about accessed aspect of the data asset. Refer to *#/definitions/accessDetails*.
 ## Definitions
 
-- <a id="definitions/accessDetails"></a>**`accessDetails`** *(object)*: Access details of an entity . Cannot contain additional properties.
-  - **`timestamp`**: Timestamp of data asset accessed for creation, update, read. Refer to *[basic.json#/definitions/timestamp](#sic.json#/definitions/timestamp)*. Default: `null`.
-  - **`accessedBy`**: User, Pipeline, Query that created,updated or accessed the data asset. Refer to *[entityReference.json](#tityReference.json)*. Default: `null`.
-  - **`accessedByAProcess`** *(string)*: Any process that accessed the data asset that is not captured in OpenMetadata. Default: `null`.
+- **`accessDetails`** *(object)*: Access details of an entity . Cannot contain additional properties.
+  - **`timestamp`**: Timestamp of data asset accessed for creation, update, read. Refer to *basic.json#/definitions/timestamp*. Default: `None`.
+  - **`accessedBy`**: User, Pipeline, Query that created,updated or accessed the data asset. Refer to *entityReference.json*. Default: `None`.
+  - **`accessedByAProcess`** *(string)*: Any process that accessed the data asset that is not captured in OpenMetadata. Default: `None`.
 
 
-Documentation file automatically generated at 2023-10-27 11:39:15.608628.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

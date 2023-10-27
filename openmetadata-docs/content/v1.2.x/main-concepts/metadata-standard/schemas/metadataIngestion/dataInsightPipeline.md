@@ -9,10 +9,10 @@ slug: /main-concepts/metadata-standard/schemas/metadataingestion/datainsightpipe
 
 ## Properties
 
-- **`type`**: Pipeline type. Refer to *[#/definitions/dataInsightConfigType](#definitions/dataInsightConfigType)*. Default: `"dataInsight"`.
+- **`type`**: Pipeline type. Refer to *#/definitions/dataInsightConfigType*. Default: `dataInsight`.
 ## Definitions
 
-- <a id="definitions/dataInsightConfigType"></a>**`dataInsightConfigType`** *(string)*: Pipeline Source Config Metadata Pipeline type. Must be one of: `["dataInsight"]`. Default: `"dataInsight"`.
+- **`dataInsightConfigType`** *(string)*: Pipeline Source Config Metadata Pipeline type. Must be one of: `['dataInsight']`. Default: `dataInsight`.
 
 
-Documentation file automatically generated at 2023-10-27 11:39:15.608628.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

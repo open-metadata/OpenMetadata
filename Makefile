@@ -253,8 +253,9 @@ build-ingestion-base-local:  ## Builds the ingestion DEV docker operator with th
 .PHONY: generate-schema-docs
 generate-schema-docs:  ## Generates markdown files for documenting the JSON Schemas
 	@echo "Generating Schema docs"
-	python -m pip install "jsonschema2md"
-	python scripts/generate_docs_schemas.py
+# Installing "0.4.0" version for simpler formatting
+	python3 -m pip install "jsonschema2md==0.4.0" 
+	python3 scripts/generate_docs_schemas.py
 
 #Upgrade release automation scripts below	
 .PHONY: update_all

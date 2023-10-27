@@ -9,21 +9,21 @@ slug: /main-concepts/metadata-standard/schemas/entity/docstore/document
 
 ## Properties
 
-- **`id`**: Refer to *[../../type/basic.json#/definitions/uuid](#/../type/basic.json#/definitions/uuid)*.
-- **`name`**: Name of the DocStore. Refer to *[../../type/basic.json#/definitions/entityName](#/../type/basic.json#/definitions/entityName)*.
+- **`id`**: Refer to *../../type/basic.json#/definitions/uuid*.
+- **`name`**: Name of the DocStore. Refer to *../../type/basic.json#/definitions/entityName*.
 - **`displayName`** *(string)*: Display Name that identifies this column name.
-- **`fullyQualifiedName`**: Refer to *[../../type/basic.json#/definitions/fullyQualifiedEntityName](#/../type/basic.json#/definitions/fullyQualifiedEntityName)*.
+- **`fullyQualifiedName`**: Refer to *../../type/basic.json#/definitions/fullyQualifiedEntityName*.
 - **`description`** *(string)*: Description of the DocStore Entity.
 - **`entityType`** *(string)*: Type of the Entity stored in DocStore.
-- **`data`**: Refer to *[#/definitions/data](#definitions/data)*.
-- **`updatedAt`**: Last update time corresponding to the new version of the entity in Unix epoch time milliseconds. Refer to *[../../type/basic.json#/definitions/timestamp](#/../type/basic.json#/definitions/timestamp)*.
+- **`data`**: Refer to *#/definitions/data*.
+- **`updatedAt`**: Last update time corresponding to the new version of the entity in Unix epoch time milliseconds. Refer to *../../type/basic.json#/definitions/timestamp*.
 - **`updatedBy`** *(string)*: User who made the update.
-- **`version`**: Metadata version of the entity. Refer to *[../../type/entityHistory.json#/definitions/entityVersion](#/../type/entityHistory.json#/definitions/entityVersion)*.
-- **`changeDescription`**: Change that lead to this version of the entity. Refer to *[../../type/entityHistory.json#/definitions/changeDescription](#/../type/entityHistory.json#/definitions/changeDescription)*.
-- **`href`**: Link to the resource corresponding to this entity. Refer to *[../../type/basic.json#/definitions/href](#/../type/basic.json#/definitions/href)*.
+- **`version`**: Metadata version of the entity. Refer to *../../type/entityHistory.json#/definitions/entityVersion*.
+- **`changeDescription`**: Change that lead to this version of the entity. Refer to *../../type/entityHistory.json#/definitions/changeDescription*.
+- **`href`**: Link to the resource corresponding to this entity. Refer to *../../type/basic.json#/definitions/href*.
 ## Definitions
 
-- <a id="definitions/data"></a>**`data`** *(object)*: Can contain additional properties.
+- **`data`** *(object)*: Can contain additional properties.
 
 
-Documentation file automatically generated at 2023-10-27 11:39:15.608628.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

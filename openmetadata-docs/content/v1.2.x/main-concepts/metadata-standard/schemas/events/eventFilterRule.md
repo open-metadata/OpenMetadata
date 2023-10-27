@@ -10,10 +10,10 @@ slug: /main-concepts/metadata-standard/schemas/events/eventfilterrule
 ## Properties
 
 - **`name`** *(string)*: Name of this Event Filter.
-- **`fullyQualifiedName`**: FullyQualifiedName in the form `eventSubscription.eventFilterRuleName`. Refer to *[../type/basic.json#/definitions/fullyQualifiedEntityName](#/type/basic.json#/definitions/fullyQualifiedEntityName)*.
-- **`description`**: Description of the Event Filter Rule. Refer to *[../type/basic.json#/definitions/markdown](#/type/basic.json#/definitions/markdown)*.
-- **`effect`** *(string)*: Must be one of: `["include", "exclude"]`.
-- **`condition`**: Expression in SpEL used for matching of a `Rule` based on entity, resource, and environmental attributes. Refer to *[../type/basic.json#/definitions/expression](#/type/basic.json#/definitions/expression)*.
+- **`fullyQualifiedName`**: FullyQualifiedName in the form `eventSubscription.eventFilterRuleName`. Refer to *../type/basic.json#/definitions/fullyQualifiedEntityName*.
+- **`description`**: Description of the Event Filter Rule. Refer to *../type/basic.json#/definitions/markdown*.
+- **`effect`** *(string)*: Must be one of: `['include', 'exclude']`.
+- **`condition`**: Expression in SpEL used for matching of a `Rule` based on entity, resource, and environmental attributes. Refer to *../type/basic.json#/definitions/expression*.
 
 
-Documentation file automatically generated at 2023-10-27 11:39:15.608628.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

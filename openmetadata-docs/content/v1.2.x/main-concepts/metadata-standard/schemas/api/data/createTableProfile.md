@@ -9,11 +9,11 @@ slug: /main-concepts/metadata-standard/schemas/api/data/createtableprofile
 
 ## Properties
 
-- **`tableProfile`**: Table Profile. Refer to *[../../entity/data/table.json#/definitions/tableProfile](#/../entity/data/table.json#/definitions/tableProfile)*.
+- **`tableProfile`**: Table Profile. Refer to *../../entity/data/table.json#/definitions/tableProfile*.
 - **`columnProfile`** *(array)*: List of local column profiles of the table.
-  - **Items**: Refer to *[../../entity/data/table.json#/definitions/columnProfile](#/../entity/data/table.json#/definitions/columnProfile)*.
+  - **Items**: Refer to *../../entity/data/table.json#/definitions/columnProfile*.
 - **`systemProfile`** *(array)*: List of system profiles for the table.
-  - **Items**: Refer to *[../../entity/data/table.json#/definitions/systemProfile](#/../entity/data/table.json#/definitions/systemProfile)*.
+  - **Items**: Refer to *../../entity/data/table.json#/definitions/systemProfile*.
 
 
-Documentation file automatically generated at 2023-10-27 11:39:15.608628.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

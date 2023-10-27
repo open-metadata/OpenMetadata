@@ -9,23 +9,23 @@ slug: /main-concepts/metadata-standard/schemas/type/profile
 
 ## Properties
 
-- **`images`**: Refer to *[#/definitions/imageList](#definitions/imageList)*.
-- **`subscription`**: Refer to *[#/definitions/messagingProvider](#definitions/messagingProvider)*.
+- **`images`**: Refer to *#/definitions/imageList*.
+- **`subscription`**: Refer to *#/definitions/messagingProvider*.
 ## Definitions
 
-- <a id="definitions/messagingProvider"></a>**`messagingProvider`** *(object)*: Holds the Subscription Config for different types. Cannot contain additional properties.
-  - **`slack`**: Refer to *[../entity/events/webhook.json](#/entity/events/webhook.json)*.
-  - **`msTeams`**: Refer to *[../entity/events/webhook.json](#/entity/events/webhook.json)*.
-  - **`gChat`**: Refer to *[../entity/events/webhook.json](#/entity/events/webhook.json)*.
-  - **`generic`**: Refer to *[../entity/events/webhook.json](#/entity/events/webhook.json)*.
-- <a id="definitions/imageList"></a>**`imageList`** *(object)*: Links to a list of images of varying resolutions/sizes. Cannot contain additional properties.
-  - **`image`** *(string, format: uri)*
-  - **`image24`** *(string, format: uri)*
-  - **`image32`** *(string, format: uri)*
-  - **`image48`** *(string, format: uri)*
-  - **`image72`** *(string, format: uri)*
-  - **`image192`** *(string, format: uri)*
-  - **`image512`** *(string, format: uri)*
+- **`messagingProvider`** *(object)*: Holds the Subscription Config for different types. Cannot contain additional properties.
+  - **`slack`**: Refer to *../entity/events/webhook.json*.
+  - **`msTeams`**: Refer to *../entity/events/webhook.json*.
+  - **`gChat`**: Refer to *../entity/events/webhook.json*.
+  - **`generic`**: Refer to *../entity/events/webhook.json*.
+- **`imageList`** *(object)*: Links to a list of images of varying resolutions/sizes. Cannot contain additional properties.
+  - **`image`** *(string)*
+  - **`image24`** *(string)*
+  - **`image32`** *(string)*
+  - **`image48`** *(string)*
+  - **`image72`** *(string)*
+  - **`image192`** *(string)*
+  - **`image512`** *(string)*
 
 
-Documentation file automatically generated at 2023-10-27 11:39:15.608628.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

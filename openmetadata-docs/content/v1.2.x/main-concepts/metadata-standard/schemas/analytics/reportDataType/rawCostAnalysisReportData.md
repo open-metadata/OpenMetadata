@@ -9,9 +9,9 @@ slug: /main-concepts/metadata-standard/schemas/analytics/reportdatatype/rawcosta
 
 ## Properties
 
-- **`entity`**: Entity of the life cycle data. Refer to *[../../type/entityReference.json](#/../type/entityReference.json)*.
-- **`lifeCycle`**: Life Cycle data related to the entity. Refer to *[../../type/lifeCycle.json](#/../type/lifeCycle.json)*.
+- **`entity`**: Entity of the life cycle data. Refer to *../../type/entityReference.json*.
+- **`lifeCycle`**: Life Cycle data related to the entity. Refer to *../../type/lifeCycle.json*.
 - **`sizeInByte`** *(number)*: Entity size in bytes.
 
 
-Documentation file automatically generated at 2023-10-27 11:39:15.608628.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

@@ -11,11 +11,11 @@ slug: /main-concepts/metadata-standard/schemas/type/votes
 
 - **`upVotes`** *(integer)*: Total up-votes the entity has. Default: `0`.
 - **`downVotes`** *(integer)*: Total down-votes the entity has. Default: `0`.
-- **`upVoters`**: List of all the Users who upVoted. Refer to *[./entityReferenceList.json](#entityReferenceList.json)*.
-- **`downVoters`**: List of all the Users who downVoted. Refer to *[./entityReferenceList.json](#entityReferenceList.json)*.
+- **`upVoters`**: List of all the Users who upVoted. Refer to *./entityReferenceList.json*.
+- **`downVoters`**: List of all the Users who downVoted. Refer to *./entityReferenceList.json*.
 ## Definitions
 
-- <a id="definitions/voteType"></a>**`voteType`** *(string)*: Vote Type. Must be one of: `["votedUp", "votedDown", "unVoted"]`. Default: `"unVoted"`.
+- **`voteType`** *(string)*: Vote Type. Must be one of: `['votedUp', 'votedDown', 'unVoted']`. Default: `unVoted`.
 
 
-Documentation file automatically generated at 2023-10-27 11:39:15.608628.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

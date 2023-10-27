@@ -11,11 +11,11 @@ slug: /main-concepts/metadata-standard/schemas/datainsight/type/mostactiveusers
 
 - **`userName`** *(string)*: Name of a user.
 - **`team`** *(string)*: Team a user belongs to.
-- **`lastSession`**: date time of the most recent session for the user. Refer to *[../../type/basic.json#/definitions/timestamp](#/../type/basic.json#/definitions/timestamp)*.
+- **`lastSession`**: date time of the most recent session for the user. Refer to *../../type/basic.json#/definitions/timestamp*.
 - **`sessions`** *(number)*: Total number of sessions.
 - **`sessionDuration`** *(number)*: Total duration of all sessions in seconds.
 - **`avgSessionDuration`** *(number)*: avg. duration of a sessions in seconds.
 - **`pageViews`** *(number)*: Total number of pages viewed by the user.
 
 
-Documentation file automatically generated at 2023-10-27 11:39:15.608628.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

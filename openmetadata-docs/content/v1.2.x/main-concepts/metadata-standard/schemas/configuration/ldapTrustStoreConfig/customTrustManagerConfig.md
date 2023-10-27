@@ -9,11 +9,11 @@ slug: /main-concepts/metadata-standard/schemas/configuration/ldaptruststoreconfi
 
 ## Properties
 
-- **`verifyHostname`** *(boolean)*: list of host names to verify. Default: `false`.
-- **`examineValidityDates`** *(boolean)*: Examine validity dates of certificate. Default: `false`.
+- **`verifyHostname`** *(boolean)*: list of host names to verify. Default: `False`.
+- **`examineValidityDates`** *(boolean)*: Examine validity dates of certificate. Default: `False`.
 - **`trustStoreFilePath`** *(string)*: Truststore file path.
 - **`trustStoreFilePassword`** *(string)*: Truststore file password.
 - **`trustStoreFileFormat`** *(string)*: Truststore file format.
 
 
-Documentation file automatically generated at 2023-10-27 11:39:15.608628.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

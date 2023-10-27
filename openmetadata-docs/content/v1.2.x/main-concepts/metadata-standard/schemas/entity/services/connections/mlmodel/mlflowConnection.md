@@ -9,13 +9,13 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/mlmod
 
 ## Properties
 
-- **`type`**: Service Type. Refer to *[#/definitions/mlflowType](#definitions/mlflowType)*. Default: `"Mlflow"`.
+- **`type`**: Service Type. Refer to *#/definitions/mlflowType*. Default: `Mlflow`.
 - **`trackingUri`** *(string)*: Mlflow Experiment tracking URI. E.g., http://localhost:5000.
 - **`registryUri`** *(string)*: Mlflow Model registry backend. E.g., mysql+pymysql://mlflow:password@localhost:3307/experiments.
-- **`supportsMetadataExtraction`**: Refer to *[../connectionBasicType.json#/definitions/supportsMetadataExtraction](#/connectionBasicType.json#/definitions/supportsMetadataExtraction)*.
+- **`supportsMetadataExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsMetadataExtraction*.
 ## Definitions
 
-- <a id="definitions/mlflowType"></a>**`mlflowType`** *(string)*: Service type. Must be one of: `["Mlflow"]`. Default: `"Mlflow"`.
+- **`mlflowType`** *(string)*: Service type. Must be one of: `['Mlflow']`. Default: `Mlflow`.
 
 
-Documentation file automatically generated at 2023-10-27 11:39:15.608628.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

@@ -13,4 +13,4 @@ slug: /main-concepts/metadata-standard/schemas/metadataingestion/storage/storage
 - **`objectPrefix`** *(string)*: Path of the folder where the storage metadata file is stored. If the file is at the root, you can keep it empty.
 
 
-Documentation file automatically generated at 2023-10-27 11:39:15.608628.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

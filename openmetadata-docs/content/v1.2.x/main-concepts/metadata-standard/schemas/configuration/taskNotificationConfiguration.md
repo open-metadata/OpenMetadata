@@ -9,7 +9,7 @@ slug: /main-concepts/metadata-standard/schemas/configuration/tasknotificationcon
 
 ## Properties
 
-- **`enabled`** *(boolean)*: Is Task Notification Enabled? Default: `false`.
+- **`enabled`** *(boolean)*: Is Task Notification Enabled? Default: `False`.
 
 
-Documentation file automatically generated at 2023-10-27 11:39:15.608628.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

@@ -9,12 +9,12 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/searc
 
 ## Properties
 
-- **`type`**: Custom search service type. Refer to *[#/definitions/customSearchType](#definitions/customSearchType)*. Default: `"CustomSearch"`.
+- **`type`**: Custom search service type. Refer to *#/definitions/customSearchType*. Default: `CustomSearch`.
 - **`sourcePythonClass`** *(string)*: Source Python Class Name to instantiated by the ingestion workflow.
-- **`connectionOptions`**: Refer to *[../connectionBasicType.json#/definitions/connectionOptions](#/connectionBasicType.json#/definitions/connectionOptions)*.
+- **`connectionOptions`**: Refer to *../connectionBasicType.json#/definitions/connectionOptions*.
 ## Definitions
 
-- <a id="definitions/customSearchType"></a>**`customSearchType`** *(string)*: Custom search service type. Must be one of: `["CustomSearch"]`. Default: `"CustomSearch"`.
+- **`customSearchType`** *(string)*: Custom search service type. Must be one of: `['CustomSearch']`. Default: `CustomSearch`.
 
 
-Documentation file automatically generated at 2023-10-27 11:39:15.608628.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

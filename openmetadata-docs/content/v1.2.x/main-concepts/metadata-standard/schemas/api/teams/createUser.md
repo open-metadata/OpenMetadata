@@ -9,25 +9,25 @@ slug: /main-concepts/metadata-standard/schemas/api/teams/createuser
 
 ## Properties
 
-- **`name`**: Refer to *[../../entity/teams/user.json#/definitions/entityName](#/../entity/teams/user.json#/definitions/entityName)*.
-- **`description`**: Used for user biography. Refer to *[../../type/basic.json#/definitions/markdown](#/../type/basic.json#/definitions/markdown)*.
+- **`name`**: Refer to *../../entity/teams/user.json#/definitions/entityName*.
+- **`description`**: Used for user biography. Refer to *../../type/basic.json#/definitions/markdown*.
 - **`displayName`** *(string)*: Name used for display purposes. Example 'FirstName LastName'.
-- **`email`**: Refer to *[../../type/basic.json#/definitions/email](#/../type/basic.json#/definitions/email)*.
-- **`timezone`** *(string, format: timezone)*: Timezone of the user.
+- **`email`**: Refer to *../../type/basic.json#/definitions/email*.
+- **`timezone`** *(string)*: Timezone of the user.
 - **`isBot`** *(boolean)*: When true indicates user is a bot with appropriate privileges.
 - **`botName`** *(string)*: User bot name if we want to associate this bot with an specific bot.
-- **`isAdmin`** *(boolean)*: When true indicates user is an administrator for the system with superuser privileges. Default: `false`.
-- **`profile`**: Refer to *[../../type/profile.json](#/../type/profile.json)*. Default: `null`.
-- **`teams`** *(array)*: Teams that the user belongs to. Default: `null`.
-  - **Items**: Refer to *[../../type/basic.json#/definitions/uuid](#/../type/basic.json#/definitions/uuid)*.
-- **`roles`** *(array)*: Roles that the user has been assigned. Default: `null`.
-  - **Items**: Refer to *[../../type/basic.json#/definitions/uuid](#/../type/basic.json#/definitions/uuid)*.
-- **`personas`**: Persona that the user belongs to. Refer to *[../../type/entityReferenceList.json](#/../type/entityReferenceList.json)*.
-- **`defaultPersona`**: Default Persona from User's Personas. Refer to *[../../type/entityReference.json](#/../type/entityReference.json)*.
-- **`authenticationMechanism`**: Authentication mechanism specified . Refer to *[../../entity/teams/user.json#/definitions/authenticationMechanism](#/../entity/teams/user.json#/definitions/authenticationMechanism)*. Default: `null`.
-- **`createPasswordType`** *(string)*: User Password Method. Must be one of: `["ADMIN_CREATE", "USER_CREATE"]`. Default: `"USER_CREATE"`.
+- **`isAdmin`** *(boolean)*: When true indicates user is an administrator for the system with superuser privileges. Default: `False`.
+- **`profile`**: Refer to *../../type/profile.json*. Default: `None`.
+- **`teams`** *(array)*: Teams that the user belongs to. Default: `None`.
+  - **Items**: Refer to *../../type/basic.json#/definitions/uuid*.
+- **`roles`** *(array)*: Roles that the user has been assigned. Default: `None`.
+  - **Items**: Refer to *../../type/basic.json#/definitions/uuid*.
+- **`personas`**: Persona that the user belongs to. Refer to *../../type/entityReferenceList.json*.
+- **`defaultPersona`**: Default Persona from User's Personas. Refer to *../../type/entityReference.json*.
+- **`authenticationMechanism`**: Authentication mechanism specified . Refer to *../../entity/teams/user.json#/definitions/authenticationMechanism*. Default: `None`.
+- **`createPasswordType`** *(string)*: User Password Method. Must be one of: `['ADMIN_CREATE', 'USER_CREATE']`. Default: `USER_CREATE`.
 - **`password`** *(string)*: Password for User.
 - **`confirmPassword`** *(string)*: Confirm Password for User.
 
 
-Documentation file automatically generated at 2023-10-27 11:39:15.608628.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

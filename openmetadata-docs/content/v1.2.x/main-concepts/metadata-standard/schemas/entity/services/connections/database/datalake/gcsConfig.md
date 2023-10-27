@@ -9,7 +9,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
 
 ## Properties
 
-- **`securityConfig`**: Refer to *[../../../../../security/credentials/gcpCredentials.json](#/../../../../security/credentials/gcpCredentials.json)*.
+- **`securityConfig`**: Refer to *../../../../../security/credentials/gcpCredentials.json*.
 
 
-Documentation file automatically generated at 2023-10-27 11:39:15.608628.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

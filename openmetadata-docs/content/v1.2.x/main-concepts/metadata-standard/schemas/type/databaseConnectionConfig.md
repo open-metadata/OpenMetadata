@@ -14,15 +14,15 @@ slug: /main-concepts/metadata-standard/schemas/type/databaseconnectionconfig
 - **`hostPort`** *(string)*: Host and port of the data source.
 - **`database`** *(string)*: Database of the data source.
 - **`schema`** *(string)*: schema of the data source.
-- **`includeViews`** *(boolean)*: optional configuration to turn off fetching metadata for views. Default: `true`.
-- **`includeTables`** *(boolean)*: Optional configuration to turn off fetching metadata for tables. Default: `true`.
-- **`generateSampleData`** *(boolean)*: Turn on/off collecting sample data. Default: `true`.
-- **`sampleDataQuery`** *(string)*: query to generate sample data. Default: `"select * from {}.{} limit 50"`.
-- **`enableDataProfiler`** *(boolean)*: Run data profiler as part of ingestion to get table profile data. Default: `false`.
-- **`includeFilterPattern`** *(array)*: Regex to only fetch tables or databases that matches the pattern. Default: `null`.
+- **`includeViews`** *(boolean)*: optional configuration to turn off fetching metadata for views. Default: `True`.
+- **`includeTables`** *(boolean)*: Optional configuration to turn off fetching metadata for tables. Default: `True`.
+- **`generateSampleData`** *(boolean)*: Turn on/off collecting sample data. Default: `True`.
+- **`sampleDataQuery`** *(string)*: query to generate sample data. Default: `select * from {}.{} limit 50`.
+- **`enableDataProfiler`** *(boolean)*: Run data profiler as part of ingestion to get table profile data. Default: `False`.
+- **`includeFilterPattern`** *(array)*: Regex to only fetch tables or databases that matches the pattern. Default: `None`.
   - **Items** *(string)*
-- **`excludeFilterPattern`** *(array)*: Regex exclude tables or databases that matches the pattern. Default: `null`.
+- **`excludeFilterPattern`** *(array)*: Regex exclude tables or databases that matches the pattern. Default: `None`.
   - **Items** *(string)*
 
 
-Documentation file automatically generated at 2023-10-27 11:39:15.608628.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

@@ -10,7 +10,7 @@ slug: /main-concepts/metadata-standard/schemas/auth/createpersonaltoken
 ## Properties
 
 - **`tokenName`** *(string)*: Name of the Personal Access Token.
-- **`JWTTokenExpiry`**: Refer to *[jwtAuth.json#/definitions/JWTTokenExpiry](#tAuth.json#/definitions/JWTTokenExpiry)*.
+- **`JWTTokenExpiry`**: Refer to *jwtAuth.json#/definitions/JWTTokenExpiry*.
 
 
-Documentation file automatically generated at 2023-10-27 11:39:15.608628.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

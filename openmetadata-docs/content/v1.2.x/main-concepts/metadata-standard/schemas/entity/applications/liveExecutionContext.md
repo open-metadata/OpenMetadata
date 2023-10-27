@@ -9,9 +9,9 @@ slug: /main-concepts/metadata-standard/schemas/entity/applications/liveexecution
 
 ## Properties
 
-- **`enabled`** *(boolean)*: If Live Execution is enabled. Default: `false`.
+- **`enabled`** *(boolean)*: If Live Execution is enabled. Default: `False`.
 - **`resources`** *(array)*: Resource full classname to register to extend any endpoints.
   - **Items** *(string)*
 
 
-Documentation file automatically generated at 2023-10-27 11:39:15.608628.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

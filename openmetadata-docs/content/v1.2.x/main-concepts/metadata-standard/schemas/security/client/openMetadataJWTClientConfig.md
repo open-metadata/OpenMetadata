@@ -9,7 +9,7 @@ slug: /main-concepts/metadata-standard/schemas/security/client/openmetadatajwtcl
 
 ## Properties
 
-- **`jwtToken`** *(string, format: password)*: OpenMetadata generated JWT token.
+- **`jwtToken`** *(string)*: OpenMetadata generated JWT token.
 
 
-Documentation file automatically generated at 2023-10-27 11:39:15.608628.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

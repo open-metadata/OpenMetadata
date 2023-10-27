@@ -9,12 +9,12 @@ slug: /main-concepts/metadata-standard/schemas/auth/passwordresettoken
 
 ## Properties
 
-- **`token`**: Unique Refresh Token for user. Refer to *[../type/basic.json#/definitions/uuid](#/type/basic.json#/definitions/uuid)*.
-- **`userId`**: User Id of the User this refresh token is given to. Refer to *[../type/basic.json#/definitions/uuid](#/type/basic.json#/definitions/uuid)*.
-- **`tokenType`**: Token Type. Refer to *[./emailVerificationToken.json#/definitions/tokenType](#emailVerificationToken.json#/definitions/tokenType)*. Default: `"PASSWORD_RESET"`.
-- **`expiryDate`**: Expiry Date-Time of the token. Refer to *[../type/basic.json#/definitions/timestamp](#/type/basic.json#/definitions/timestamp)*.
-- **`isActive`** *(boolean)*: Expiry Date-Time of the token. Default: `true`.
-- **`isClaimed`** *(boolean)*: Expiry Date-Time of the token. Default: `false`.
+- **`token`**: Unique Refresh Token for user. Refer to *../type/basic.json#/definitions/uuid*.
+- **`userId`**: User Id of the User this refresh token is given to. Refer to *../type/basic.json#/definitions/uuid*.
+- **`tokenType`**: Token Type. Refer to *./emailVerificationToken.json#/definitions/tokenType*. Default: `PASSWORD_RESET`.
+- **`expiryDate`**: Expiry Date-Time of the token. Refer to *../type/basic.json#/definitions/timestamp*.
+- **`isActive`** *(boolean)*: Expiry Date-Time of the token. Default: `True`.
+- **`isClaimed`** *(boolean)*: Expiry Date-Time of the token. Default: `False`.
 
 
-Documentation file automatically generated at 2023-10-27 11:39:15.608628.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

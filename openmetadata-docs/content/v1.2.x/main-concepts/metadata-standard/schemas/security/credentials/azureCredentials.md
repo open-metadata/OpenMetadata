@@ -10,9 +10,9 @@ slug: /main-concepts/metadata-standard/schemas/security/credentials/azurecredent
 ## Properties
 
 - **`clientId`** *(string)*: Your Service Principal App ID (Client ID).
-- **`clientSecret`** *(string, format: password)*: Your Service Principal Password (Client Secret).
+- **`clientSecret`** *(string)*: Your Service Principal Password (Client Secret).
 - **`tenantId`** *(string)*: Tenant ID of your Azure Subscription.
 - **`accountName`** *(string)*: Account Name of your storage account.
 
 
-Documentation file automatically generated at 2023-10-27 11:39:15.608628.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

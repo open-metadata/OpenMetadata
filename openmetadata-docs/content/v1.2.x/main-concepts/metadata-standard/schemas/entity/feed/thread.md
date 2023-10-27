@@ -9,49 +9,49 @@ slug: /main-concepts/metadata-standard/schemas/entity/feed/thread
 
 ## Properties
 
-- **`id`**: Unique identifier that identifies an entity instance. Refer to *[../../type/basic.json#/definitions/uuid](#/../type/basic.json#/definitions/uuid)*.
-- **`type`**: Refer to *[#/definitions/threadType](#definitions/threadType)*.
-- **`href`**: Link to the resource corresponding to this entity. Refer to *[../../type/basic.json#/definitions/href](#/../type/basic.json#/definitions/href)*.
-- **`threadTs`**: Timestamp of the first post created the thread in Unix epoch time milliseconds. Refer to *[../../type/basic.json#/definitions/timestamp](#/../type/basic.json#/definitions/timestamp)*.
-- **`about`**: Data asset about which this thread is created for with format <#E::{entities}::{entityName}::{field}::{fieldValue}. Refer to *[../../type/basic.json#/definitions/entityLink](#/../type/basic.json#/definitions/entityLink)*.
-- **`entityId`**: Entity Id of the entity in `about` that the thread belongs to. Refer to *[../../type/basic.json#/definitions/uuid](#/../type/basic.json#/definitions/uuid)*.
-- **`addressedTo`**: User or team this thread is addressed to in format <#E::{entities}::{entityName}::{field}::{fieldValue}. Refer to *[../../type/basic.json#/definitions/entityLink](#/../type/basic.json#/definitions/entityLink)*.
+- **`id`**: Unique identifier that identifies an entity instance. Refer to *../../type/basic.json#/definitions/uuid*.
+- **`type`**: Refer to *#/definitions/threadType*.
+- **`href`**: Link to the resource corresponding to this entity. Refer to *../../type/basic.json#/definitions/href*.
+- **`threadTs`**: Timestamp of the first post created the thread in Unix epoch time milliseconds. Refer to *../../type/basic.json#/definitions/timestamp*.
+- **`about`**: Data asset about which this thread is created for with format <#E::{entities}::{entityName}::{field}::{fieldValue}. Refer to *../../type/basic.json#/definitions/entityLink*.
+- **`entityId`**: Entity Id of the entity in `about` that the thread belongs to. Refer to *../../type/basic.json#/definitions/uuid*.
+- **`addressedTo`**: User or team this thread is addressed to in format <#E::{entities}::{entityName}::{field}::{fieldValue}. Refer to *../../type/basic.json#/definitions/entityLink*.
 - **`createdBy`** *(string)*: User who created the thread.
-- **`updatedAt`**: Last update time corresponding to the new version of the entity in Unix epoch time milliseconds. Refer to *[../../type/basic.json#/definitions/timestamp](#/../type/basic.json#/definitions/timestamp)*.
+- **`updatedAt`**: Last update time corresponding to the new version of the entity in Unix epoch time milliseconds. Refer to *../../type/basic.json#/definitions/timestamp*.
 - **`updatedBy`** *(string)*: User who made the update.
-- **`resolved`** *(boolean)*: When `true` indicates the thread has been resolved. Default: `false`.
+- **`resolved`** *(boolean)*: When `true` indicates the thread has been resolved. Default: `False`.
 - **`message`** *(string)*: The main message of the thread in Markdown format.
 - **`postsCount`** *(integer)*: The total count of posts in the thread. Default: `0`.
 - **`posts`** *(array)*
-  - **Items**: Refer to *[#/definitions/post](#definitions/post)*.
-- **`reactions`**: Reactions for the thread. Refer to *[../../type/reaction.json#/definitions/reactionList](#/../type/reaction.json#/definitions/reactionList)*.
-- **`task`**: Details about the task. This is only applicable if thread is of type task. Refer to *[#/definitions/taskDetails](#definitions/taskDetails)*.
-- **`announcement`**: Details about the announcement. This is only applicable if thread is of type announcement. Refer to *[#/definitions/announcementDetails](#definitions/announcementDetails)*.
+  - **Items**: Refer to *#/definitions/post*.
+- **`reactions`**: Reactions for the thread. Refer to *../../type/reaction.json#/definitions/reactionList*.
+- **`task`**: Details about the task. This is only applicable if thread is of type task. Refer to *#/definitions/taskDetails*.
+- **`announcement`**: Details about the announcement. This is only applicable if thread is of type announcement. Refer to *#/definitions/announcementDetails*.
 ## Definitions
 
-- <a id="definitions/taskType"></a>**`taskType`** *(string)*: Type of a task. Must be one of: `["RequestDescription", "UpdateDescription", "RequestTag", "UpdateTag", "RequestApproval", "Generic"]`.
-- <a id="definitions/taskDetails"></a>**`taskDetails`** *(object)*: Details about the task. This is only applicable if thread is of type task. Cannot contain additional properties.
-  - **`id`** *(integer, required)*: Unique identifier that identifies the task.
-  - **`type`**: Refer to *[#/definitions/taskType](#definitions/taskType)*.
-  - **`assignees`**: List of users or teams the task is assigned to. Refer to *[../../type/entityReferenceList.json](#/../type/entityReferenceList.json)*.
-  - **`status`**: Refer to *[#/definitions/threadTaskStatus](#definitions/threadTaskStatus)*.
+- **`taskType`** *(string)*: Type of a task. Must be one of: `['RequestDescription', 'UpdateDescription', 'RequestTag', 'UpdateTag', 'RequestApproval', 'Generic']`.
+- **`taskDetails`** *(object)*: Details about the task. This is only applicable if thread is of type task. Cannot contain additional properties.
+  - **`id`** *(integer)*: Unique identifier that identifies the task.
+  - **`type`**: Refer to *#/definitions/taskType*.
+  - **`assignees`**: List of users or teams the task is assigned to. Refer to *../../type/entityReferenceList.json*.
+  - **`status`**: Refer to *#/definitions/threadTaskStatus*.
   - **`closedBy`** *(string)*: The user that closed the task.
-  - **`closedAt`**: Timestamp when the task was closed in Unix epoch time milliseconds. Refer to *[../../type/basic.json#/definitions/timestamp](#/../type/basic.json#/definitions/timestamp)*.
+  - **`closedAt`**: Timestamp when the task was closed in Unix epoch time milliseconds. Refer to *../../type/basic.json#/definitions/timestamp*.
   - **`oldValue`** *(string)*: The value of old object for which the task is created.
   - **`suggestion`** *(string)*: The suggestion object to replace the old value for which the task is created.
   - **`newValue`** *(string)*: The new value object that was accepted to complete the task.
-- <a id="definitions/threadTaskStatus"></a>**`threadTaskStatus`** *(string)*: Status of a task. Must be one of: `["Open", "Closed"]`. Default: `"Open"`.
-- <a id="definitions/threadType"></a>**`threadType`** *(string)*: Type of thread. Must be one of: `["Conversation", "Task", "Announcement"]`. Default: `"Conversation"`.
-- <a id="definitions/announcementDetails"></a>**`announcementDetails`** *(object)*: Details about the announcement. This is only applicable if thread is of type announcement. Cannot contain additional properties.
+- **`threadTaskStatus`** *(string)*: Status of a task. Must be one of: `['Open', 'Closed']`. Default: `Open`.
+- **`threadType`** *(string)*: Type of thread. Must be one of: `['Conversation', 'Task', 'Announcement']`. Default: `Conversation`.
+- **`announcementDetails`** *(object)*: Details about the announcement. This is only applicable if thread is of type announcement. Cannot contain additional properties.
   - **`description`** *(string)*: Announcement description in Markdown format. See markdown support for more details.
-  - **`startTime`**: Timestamp of the start time from when the announcement should be shown. Refer to *[../../type/basic.json#/definitions/timestamp](#/../type/basic.json#/definitions/timestamp)*.
-  - **`endTime`**: Timestamp of when the announcement should end. Refer to *[../../type/basic.json#/definitions/timestamp](#/../type/basic.json#/definitions/timestamp)*.
-- <a id="definitions/post"></a>**`post`** *(object)*: Post within a feed. Cannot contain additional properties.
-  - **`id`**: Unique identifier that identifies the post. Refer to *[../../type/basic.json#/definitions/uuid](#/../type/basic.json#/definitions/uuid)*.
-  - **`message`** *(string, required)*: Message in Markdown format. See Markdown support for more details.
-  - **`postTs`**: Timestamp of the post in Unix epoch time milliseconds. Refer to *[../../type/basic.json#/definitions/timestamp](#/../type/basic.json#/definitions/timestamp)*.
-  - **`from`** *(string, required)*: Name of the User posting the message.
-  - **`reactions`**: Reactions for the post. Refer to *[../../type/reaction.json#/definitions/reactionList](#/../type/reaction.json#/definitions/reactionList)*.
+  - **`startTime`**: Timestamp of the start time from when the announcement should be shown. Refer to *../../type/basic.json#/definitions/timestamp*.
+  - **`endTime`**: Timestamp of when the announcement should end. Refer to *../../type/basic.json#/definitions/timestamp*.
+- **`post`** *(object)*: Post within a feed. Cannot contain additional properties.
+  - **`id`**: Unique identifier that identifies the post. Refer to *../../type/basic.json#/definitions/uuid*.
+  - **`message`** *(string)*: Message in Markdown format. See Markdown support for more details.
+  - **`postTs`**: Timestamp of the post in Unix epoch time milliseconds. Refer to *../../type/basic.json#/definitions/timestamp*.
+  - **`from`** *(string)*: Name of the User posting the message.
+  - **`reactions`**: Reactions for the post. Refer to *../../type/reaction.json#/definitions/reactionList*.
 
 
-Documentation file automatically generated at 2023-10-27 11:39:15.608628.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

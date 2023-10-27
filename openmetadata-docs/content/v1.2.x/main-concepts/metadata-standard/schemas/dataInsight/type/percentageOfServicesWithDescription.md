@@ -9,11 +9,11 @@ slug: /main-concepts/metadata-standard/schemas/datainsight/type/percentageofserv
 
 ## Properties
 
-- **`timestamp`**: timestamp. Refer to *[../../type/basic.json#/definitions/timestamp](#/../type/basic.json#/definitions/timestamp)*.
+- **`timestamp`**: timestamp. Refer to *../../type/basic.json#/definitions/timestamp*.
 - **`serviceName`** *(string)*: Type of entity. Derived from the entity class.
 - **`completedDescriptionFraction`** *(number)*: decimal fraction of entity with completed description. Minimum: `0`. Maximum: `1`.
 - **`completedDescription`** *(number)*: decimal fraction of entity with completed description.
 - **`entityCount`** *(number)*: Decimal fraction of entity with an owner.
 
 
-Documentation file automatically generated at 2023-10-27 11:39:15.608628.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

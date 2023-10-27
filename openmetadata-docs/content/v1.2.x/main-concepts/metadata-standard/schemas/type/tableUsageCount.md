@@ -15,19 +15,19 @@ slug: /main-concepts/metadata-standard/schemas/type/tableusagecount
 - **`count`** *(integer)*: Usage count of table. Default: `1`.
 - **`databaseSchema`** *(string)*: Database schema of the associated with table.
 - **`sqlQueries`** *(array)*: List of SQL Queries associated with table.
-  - **Items**: Refer to *[../api/data/createQuery.json](#/api/data/createQuery.json)*.
+  - **Items**: Refer to *../api/data/createQuery.json*.
 - **`joins`** *(array)*: List of joins associated with table.
-  - **Items**: Refer to *[#/definitions/tableColumnJoin](#definitions/tableColumnJoin)*.
+  - **Items**: Refer to *#/definitions/tableColumnJoin*.
 - **`serviceName`** *(string)*: Name that identifies this database service.
 ## Definitions
 
-- <a id="definitions/tableColumn"></a>**`tableColumn`** *(object)*: Cannot contain additional properties.
+- **`tableColumn`** *(object)*: Cannot contain additional properties.
   - **`table`** *(string)*: Name of the table.
   - **`column`** *(string)*: Name of the column.
-- <a id="definitions/tableColumnJoin"></a>**`tableColumnJoin`** *(object)*: Cannot contain additional properties.
-  - **`tableColumn`**: Source table column. Refer to *[#/definitions/tableColumn](#definitions/tableColumn)*.
+- **`tableColumnJoin`** *(object)*: Cannot contain additional properties.
+  - **`tableColumn`**: Source table column. Refer to *#/definitions/tableColumn*.
   - **`joinedWith`** *(array)*: List of table columns with which the table is joined with.
-    - **Items**: Refer to *[#/definitions/tableColumn](#definitions/tableColumn)*.
+    - **Items**: Refer to *#/definitions/tableColumn*.
 
 
-Documentation file automatically generated at 2023-10-27 11:39:15.608628.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

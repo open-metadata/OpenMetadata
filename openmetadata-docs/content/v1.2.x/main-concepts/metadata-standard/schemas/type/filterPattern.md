@@ -9,11 +9,11 @@ slug: /main-concepts/metadata-standard/schemas/type/filterpattern
 
 ## Definitions
 
-- <a id="definitions/filterPattern"></a>**`filterPattern`** *(object)*: Regex to only fetch dashboards or charts that matches the pattern. Cannot contain additional properties.
+- **`filterPattern`** *(object)*: Regex to only fetch dashboards or charts that matches the pattern. Cannot contain additional properties.
   - **`includes`** *(array)*: List of strings/regex patterns to match and include only database entities that match. Default: `[]`.
     - **Items** *(string)*
   - **`excludes`** *(array)*: List of strings/regex patterns to match and exclude only database entities that match. Default: `[]`.
     - **Items** *(string)*
 
 
-Documentation file automatically generated at 2023-10-27 11:39:15.608628.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

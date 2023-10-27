@@ -12,19 +12,19 @@ slug: /main-concepts/metadata-standard/schemas/email/emailrequest
 - **`senderName`** *(string)*: Sender Name.
 - **`senderMail`** *(string)*: From Email Address.
 - **`recipientMails`** *(array)*: List of Receiver Name with Email.
-  - **Items**: Refer to *[#/definitions/nameEmailPair](#definitions/nameEmailPair)*.
+  - **Items**: Refer to *#/definitions/nameEmailPair*.
 - **`ccMails`** *(array)*: List of CC.
-  - **Items**: Refer to *[#/definitions/nameEmailPair](#definitions/nameEmailPair)*.
+  - **Items**: Refer to *#/definitions/nameEmailPair*.
 - **`bccMails`** *(array)*: List of BCC.
-  - **Items**: Refer to *[#/definitions/nameEmailPair](#definitions/nameEmailPair)*.
+  - **Items**: Refer to *#/definitions/nameEmailPair*.
 - **`subject`** *(string)*: Subject for Mail.
-- **`contentType`** *(string)*: Must be one of: `["plain", "html"]`. Default: `"plain"`.
+- **`contentType`** *(string)*: Must be one of: `['plain', 'html']`. Default: `plain`.
 - **`content`** *(string)*: Content for mail.
 ## Definitions
 
-- <a id="definitions/nameEmailPair"></a>**`nameEmailPair`** *(object)*: Name Email Pair. Cannot contain additional properties.
+- **`nameEmailPair`** *(object)*: Name Email Pair. Cannot contain additional properties.
   - **`name`** *(string)*: Name.
-  - **`email`**: Email address of the user. Refer to *[../type/basic.json#/definitions/email](#/type/basic.json#/definitions/email)*.
+  - **`email`**: Email address of the user. Refer to *../type/basic.json#/definitions/email*.
 
 
-Documentation file automatically generated at 2023-10-27 11:39:15.608628.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

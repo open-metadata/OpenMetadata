@@ -13,7 +13,7 @@ slug: /main-concepts/metadata-standard/schemas/configuration/authorizerconfigura
 - **`containerRequestFilter`** *(string)*: Filter for the request authorization.
 - **`adminPrincipals`** *(array)*: List of unique admin principals.
   - **Items** *(string)*
-- **`botPrincipals`** *(array)*: **@Deprecated** List of unique bot principals. Default: `null`.
+- **`botPrincipals`** *(array)*: **@Deprecated** List of unique bot principals. Default: `None`.
   - **Items** *(string)*
 - **`testPrincipals`** *(array)*: List of unique principals used as test users. **NOTE THIS IS ONLY FOR TEST SETUP AND NOT TO BE USED IN PRODUCTION SETUP**.
   - **Items** *(string)*
@@ -24,4 +24,4 @@ slug: /main-concepts/metadata-standard/schemas/configuration/authorizerconfigura
 - **`enableSecureSocketConnection`** *(boolean)*: Enable Secure Socket Connection.
 
 
-Documentation file automatically generated at 2023-10-27 11:39:15.608628.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

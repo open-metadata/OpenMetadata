@@ -9,7 +9,7 @@ slug: /main-concepts/metadata-standard/schemas/type/entityreferencelist
 
 ## Items
 
-- **Items**: Refer to *[entityReference.json](#tityReference.json)*.
+- **Items**: Refer to *entityReference.json*.
 
 
-Documentation file automatically generated at 2023-10-27 11:39:15.608628.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.
