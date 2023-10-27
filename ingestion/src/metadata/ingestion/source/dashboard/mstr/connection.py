@@ -22,19 +22,19 @@ from metadata.generated.schema.entity.services.connections.dashboard.mstrConnect
 )
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.dashboard.mstr.client import MstrClient
+from metadata.ingestion.source.dashboard.mstr.client import MSTRClient
 
 
-def get_connection(connection: MstrConnection) -> MstrClient:
+def get_connection(connection: MstrConnection) -> MSTRClient:
     """
     Create connection
     """
-    return MstrClient(connection)
+    return MSTRClient(connection)
 
 
 def test_connection(
     metadata: OpenMetadata,
-    client: MstrClient,
+    client: MSTRClient,
     service_connection: MstrConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
 ) -> None:

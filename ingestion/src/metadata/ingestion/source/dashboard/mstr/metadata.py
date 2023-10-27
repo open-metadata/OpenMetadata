@@ -19,17 +19,16 @@ from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.services.connections.dashboard.mstrConnection import (
     MstrConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.mstr.models import (
     MstrDashboard,
     MstrDashboardDetails,
+    MstrPage,
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
@@ -44,25 +43,15 @@ class MstrSource(DashboardServiceSource):
     MSTR Source Class
     """
 
-    config: WorkflowSource
-    metadata_config: OpenMetadataConnection
-
     @classmethod
-    def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict: dict, metadata: OpenMetadata):
         config = WorkflowSource.parse_obj(config_dict)
         connection: MstrConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, MstrConnection):
             raise InvalidSourceException(
                 f"Expected MstrConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
-
-    def __init__(
-        self,
-        config: WorkflowSource,
-        metadata_config: OpenMetadataConnection,
-    ):
-        super().__init__(config, metadata_config)
+        return cls(config, metadata)
 
     def get_dashboards_list(self) -> Optional[List[MstrDashboard]]:
         """
@@ -126,14 +115,14 @@ class MstrSource(DashboardServiceSource):
             )
             yield dashboard_request
             self.register_record(dashboard_request=dashboard_request)
-        except Exception as exc:  # pylint: disable=broad-except
+        except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error creating dashboard: {exc}")
 
     def yield_dashboard_lineage_details(
         self, dashboard_details: MstrDashboardDetails, db_service_name: str
     ) -> Optional[Iterable[AddLineageRequest]]:
-        yield None
+        """Not Implemented"""
 
     def yield_dashboard_chart(
         self, dashboard_details: MstrDashboardDetails
@@ -146,34 +135,30 @@ class MstrSource(DashboardServiceSource):
             Iterable[CreateChartRequest]
         """
         try:
-            chapters = dashboard_details.chapters
-            for chapter in chapters:
-                pages = chapter.pages
-                for page in pages:
-                    visualizations = page.visualizations
-                    for chart in visualizations:
-                        try:
-                            if filter_by_chart(
-                                self.source_config.chartFilterPattern, chart.name
-                            ):
-                                self.status.filter(
-                                    chart.name, "Chart Pattern not allowed"
-                                )
-                                continue
+            for chapter in dashboard_details.chapters:
+                for page in chapter.pages:
+                    yield from self._yield_chart_from_visualization(page)
 
-                            yield CreateChartRequest(
-                                name="{}{}".format(page.key, chart.key),
-                                displayName=chart.name,
-                                chartType=get_standard_chart_type(
-                                    chart.visualizationType
-                                ).value,
-                                service=self.context.dashboard_service.fullyQualifiedName.__root__,
-                            )
-                            self.status.scanned(chart.name)
-                        except Exception as exc:  # pylint: disable=broad-except
-                            logger.debug(traceback.format_exc())
-                            logger.warning(f"Error creating chart [{chart}]: {exc}")
-
-        except Exception as exc:  # pylint: disable=broad-except
+        except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error creating dashboard: {exc}")
+
+    def _yield_chart_from_visualization(
+        self, page: MstrPage
+    ) -> Iterable[CreateChartRequest]:
+        for chart in page.visualizations:
+            try:
+                if filter_by_chart(self.source_config.chartFilterPattern, chart.name):
+                    self.status.filter(chart.name, "Chart Pattern not allowed")
+                    continue
+
+                yield CreateChartRequest(
+                    name=f"{page.key}{chart.key}",
+                    displayName=chart.name,
+                    chartType=get_standard_chart_type(chart.visualizationType).value,
+                    service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                )
+                self.status.scanned(chart.name)
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Error creating chart [{chart}]: {exc}")

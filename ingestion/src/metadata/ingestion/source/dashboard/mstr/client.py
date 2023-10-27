@@ -37,7 +37,7 @@ logger = ingestion_logger()
 API_VERSION = "MicroStrategyLibrary/api"
 
 
-class MstrClient:
+class MSTRClient:
     """
     Client Handling API communication with Metabase
     """
@@ -69,17 +69,17 @@ class MstrClient:
         config: MstrConnection,
     ):
         self.config = config
-        self.mstr_session = self._get_mstr_session()
+        self.session = self._get_mstr_session()
 
     def is_project_name(self) -> bool:
-        return True if self.config.projectName else False
+        return bool(self.config.projectName)
 
     def get_projects_list(self) -> List[MstrProject]:
         """
         Get List of all projects
         """
         try:
-            resp_projects = self.mstr_session.get(
+            resp_projects = self.session.get(
                 url=self._get_base_url("projects"), params={"include_auth": True}
             )
 
@@ -89,9 +89,9 @@ class MstrClient:
             project_list = MstrProjectList(projects=resp_projects.json())
             return project_list.projects
 
-        except Exception:
+        except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning("Failed to fetch the project list")
+            logger.warning(f"Failed to fetch the project list due to [{exc}]")
 
         return []
 
@@ -100,7 +100,7 @@ class MstrClient:
         Get Project By Name
         """
         try:
-            resp_projects = self.mstr_session.get(
+            resp_projects = self.session.get(
                 url=self._get_base_url(f"projects/{self.config.projectName}"),
                 params={"include_auth": True},
             )
@@ -124,7 +124,7 @@ class MstrClient:
         Get Search Results
         """
         try:
-            resp_results = self.mstr_session.get(
+            resp_results = self.session.get(
                 url=self._get_base_url("searches/results"),
                 params={
                     "include_auth": True,
@@ -186,7 +186,7 @@ class MstrClient:
         Get Dashboard Details
         """
         try:
-            resp_dashboard = self.mstr_session.get(
+            resp_dashboard = self.session.get(
                 url=self._get_base_url(f"v2/dossiers/{dashboard_id}/definition"),
                 params={
                     "include_auth": True,
