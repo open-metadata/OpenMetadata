@@ -21,7 +21,7 @@ To have cost analysis data available you will need to execute the below workflow
 
 1. **Usage Workflow**:
 - Purpose: Gather lifecycle information for data assets.
-- Description: The Usage Workflow collects essential information regarding data asset Life Cycle. This information includes details such as `accessed_at` timestamps and `accessed_by` user information for each data asset. This data is crucial for determining whether a data asset is frequently used or unused within a specified time period.
+- Description: The Usage Workflow collects essential information regarding the data asset Life Cycle. This information includes details such as `accessed_at` timestamps and `accessed_by` user information for each data asset. This data is crucial to determine whether a data asset is frequently used or unused within a specified time period.
 - Click [here](/connectors/ingestion/workflows/usage) for documentation on the usage workflow.
 
 
