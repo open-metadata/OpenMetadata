@@ -122,8 +122,8 @@ ERROR: Elasticsearch did not exit normally - check the logs at /usr/share/elasti
 ERROR: Elasticsearch exited unexpectedly
 ```
 
-In order to move forward, you can remove volumes / delete the indexes directly from your search instances. Note that
-OpenMetadata stores everything in the database, so indexes can be recreated directly from the UI. We will
+In order to move forward, **you must remove volumes or delete the indexes** directly from your search instances. Note that
+OpenMetadata stores everything in the database, so indexes can be recreated from the UI. We will
 show you how in the [Post-Upgrade Steps](/deployment/upgrade#reindex).
 
 ### Helm Chart Values
