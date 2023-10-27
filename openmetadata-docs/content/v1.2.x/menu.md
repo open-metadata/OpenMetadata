@@ -754,6 +754,8 @@ site_menu:
 
   - category: Features / Data Insights
     url: /features/data-insight
+  - category: Features / Data Insights / Cost Analysis
+    url: /features/data-insight/cost-analysis
 
   - category: Features / Alerts & Notifications
     url: /features/alerts-notifications
