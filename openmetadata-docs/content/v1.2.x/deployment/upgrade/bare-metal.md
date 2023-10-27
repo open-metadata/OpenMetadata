@@ -88,6 +88,4 @@ binaries. You may restart the server by running the following command.
 ./bin/openmetadata.sh start
 ```
 
-## Step 7: Re-index all your metadata
-
-{% partial file="/v1.2/deployment/reindex.md" /%}
+{% partial file="/v1.2/deployment/upgrade/post-upgrade-steps.md" /%}
