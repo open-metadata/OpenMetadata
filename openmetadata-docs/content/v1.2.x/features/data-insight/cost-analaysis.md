@@ -17,7 +17,7 @@ Gain valuable insights into your resource allocation and utilization with `Cost 
 {% /multiTablesWrapper %}
 
 ## Requirements
-For the supported connectors below workflows are required to be executed after the metadata ingestion in completed to gather the necessary data for the Cost Analysis Charts.
+For the supported connectors, below workflows are required to be executed after the metadata ingestion is completed to gather the necessary data for the Cost Analysis Charts.
 
 1. **Usage Workflow**:
 - Purpose: Gather lifecycle information for data assets.
