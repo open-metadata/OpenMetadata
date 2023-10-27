@@ -25,6 +25,7 @@ export const EDITOR_OPTIONS: Partial<EditorOptions> = {
     'orderedList',
     'strike',
     'image',
+    'taskItem',
   ],
   parseOptions: {
     preserveWhitespace: 'full',

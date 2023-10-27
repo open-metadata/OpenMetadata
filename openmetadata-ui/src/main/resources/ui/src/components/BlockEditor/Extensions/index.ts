@@ -96,6 +96,7 @@ export const extensions = [
     HTMLAttributes: {
       class: 'om-task-item',
     },
+    nested: true,
   }),
   Mention.configure({
     suggestion: mentionSuggestion(),
