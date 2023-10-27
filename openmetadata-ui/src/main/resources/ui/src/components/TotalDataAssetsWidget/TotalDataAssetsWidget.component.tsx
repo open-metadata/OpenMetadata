@@ -13,7 +13,7 @@
 import { CloseOutlined, DragOutlined } from '@ant-design/icons';
 import { Card, Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isUndefined } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import {
   default as React,
   useCallback,
@@ -126,8 +126,19 @@ const TotalDataAssetsWidget = ({
           </Col>
         </Row>
       )}
-      {data.length ? (
-        <Row>
+      {isEmpty(data) ? (
+        <Row className="h-full">
+          <Col span={14}>
+            <Typography.Text className="font-medium">
+              {t('label.data-insight-total-entity-summary')}
+            </Typography.Text>
+          </Col>
+          <Col className="h-95" span={24}>
+            <EmptyGraphPlaceholder />
+          </Col>
+        </Row>
+      ) : (
+        <Row className="h-95">
           <Col span={isWidgetSizeLarge ? 14 : 24}>
             <Typography.Text className="font-medium">
               {t('label.data-insight-total-entity-summary')}
@@ -160,7 +171,7 @@ const TotalDataAssetsWidget = ({
             </div>
           </Col>
           {isWidgetSizeLarge && (
-            <Col span={10}>
+            <Col className="overflow-y-scroll h-max-full" span={10}>
               <TotalEntityInsightSummary
                 entities={entities}
                 latestData={latestData}
@@ -170,17 +181,6 @@ const TotalDataAssetsWidget = ({
               />
             </Col>
           )}
-        </Row>
-      ) : (
-        <Row>
-          <Col span={14}>
-            <Typography.Text className="font-medium">
-              {t('label.data-insight-total-entity-summary')}
-            </Typography.Text>
-          </Col>
-          <Col span={24}>
-            <EmptyGraphPlaceholder />
-          </Col>
         </Row>
       )}
     </Card>

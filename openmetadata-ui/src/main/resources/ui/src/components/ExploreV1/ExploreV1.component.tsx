@@ -76,7 +76,6 @@ const ExploreV1: React.FC<ExploreProps> = ({
   quickFilters,
 }) => {
   const { t } = useTranslation();
-  // const { tab } = useParams<{ tab: string }>();
   const [selectedQuickFilters, setSelectedQuickFilters] = useState<
     ExploreQuickFilterField[]
   >([] as ExploreQuickFilterField[]);

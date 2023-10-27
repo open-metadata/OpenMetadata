@@ -78,7 +78,10 @@ import {
   ListStoredProcedureParams,
 } from '../../rest/storedProceduresAPI';
 import { getTableList, TableListParams } from '../../rest/tableAPI';
-import { getEntityMissingError } from '../../utils/CommonUtils';
+import {
+  getEntityMissingError,
+  sortTagsCaseInsensitive,
+} from '../../utils/CommonUtils';
 import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getDecodedFqn } from '../../utils/StringsUtils';
@@ -378,7 +381,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         const res = await saveUpdatedDatabaseSchemaData(
           updatedData as DatabaseSchema
         );
-        setDatabaseSchema(res);
+        setDatabaseSchema({
+          ...res,
+          tags: sortTagsCaseInsensitive(res.tags ?? []),
+        });
         getEntityFeedCount();
       } catch (error) {
         showErrorToast(error as AxiosError, t('server.api-error'));

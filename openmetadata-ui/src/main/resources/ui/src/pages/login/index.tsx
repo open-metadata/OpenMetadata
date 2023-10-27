@@ -201,7 +201,7 @@ const SigninPage = () => {
             className={classNames('mt-24 text-center flex-center flex-col', {
               'sso-container': !isAuthProviderBasic,
             })}>
-            <BrandImage height="auto" width={152} />
+            <BrandImage height="auto" width={200} />
             <Typography.Text className="mt-8 w-80 text-xl font-medium text-grey-muted">
               {t('message.om-description')}{' '}
             </Typography.Text>
@@ -225,6 +225,7 @@ const SigninPage = () => {
                     requiredMark={false}
                     rules={[{ required: true }]}>
                     <Input
+                      autoFocus
                       placeholder={
                         isAuthProviderLDAP
                           ? t('label.email')

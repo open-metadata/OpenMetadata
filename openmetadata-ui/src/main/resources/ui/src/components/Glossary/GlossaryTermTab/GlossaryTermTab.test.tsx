@@ -107,7 +107,7 @@ describe('Test GlossaryTermTab component', () => {
 
     expect(getAllByText(container, 'OwnerLabel')).toHaveLength(2);
 
-    expect(getAllByTestId(container, 'add-classification')).toHaveLength(2);
+    expect(getAllByTestId(container, 'add-classification')).toHaveLength(1);
     expect(getAllByTestId(container, 'edit-button')).toHaveLength(2);
   });
 });

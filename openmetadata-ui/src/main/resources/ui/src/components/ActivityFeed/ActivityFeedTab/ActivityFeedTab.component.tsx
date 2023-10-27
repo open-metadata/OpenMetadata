@@ -50,7 +50,7 @@ import {
 } from '../../../utils/EntityUtils';
 import Loader from '../../Loader/Loader';
 import { TaskTab } from '../../Task/TaskTab/TaskTab.component';
-import '../../Widgets/FeedsWidget/feeds-widget.less';
+import '../../Widgets/FeedsWidget/FeedsWidget.less';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import ActivityFeedListV1 from '../ActivityFeedList/ActivityFeedListV1.component';
 import FeedPanelBodyV1 from '../ActivityFeedPanel/FeedPanelBodyV1';
@@ -200,12 +200,10 @@ export const ActivityFeedTab = ({
   }, [fqn]);
 
   const { feedFilter, threadType } = useMemo(() => {
-    let filter;
-    if (!isUserEntity) {
-      filter = currentUser?.isAdmin
-        ? FeedFilter.ALL
-        : FeedFilter.OWNER_OR_FOLLOWS;
-    }
+    const currentFilter = currentUser?.isAdmin
+      ? FeedFilter.ALL
+      : FeedFilter.OWNER_OR_FOLLOWS;
+    const filter = isUserEntity ? currentFilter : undefined;
 
     return {
       threadType:

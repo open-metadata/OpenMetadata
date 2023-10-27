@@ -204,6 +204,14 @@
       "description": "Application Logo Url.",
       "type": "string",
       "format": "uri"
+    },
+    "appScreenshots": {
+      "description": "Application Screenshots.",
+      "type": "array",
+      "items":{
+        "type": "string"
+      },
+      "uniqueItems": true
     }
   },
   "additionalProperties": false,

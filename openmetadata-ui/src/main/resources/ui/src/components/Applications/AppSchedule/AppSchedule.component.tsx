@@ -12,12 +12,23 @@
  */
 import { Button, Col, Divider, Modal, Row, Space, Typography } from 'antd';
 import cronstrue from 'cronstrue';
-import React, { useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
-import { AppScheduleClass } from '../../../generated/entity/applications/app';
+import {
+  AppScheduleClass,
+  AppType,
+} from '../../../generated/entity/applications/app';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { getIngestionPipelineByFqn } from '../../../rest/ingestionPipelineAPI';
 import { getIngestionFrequency } from '../../../utils/CommonUtils';
 import TestSuiteScheduler from '../../AddDataQualityTest/components/TestSuiteScheduler';
+import Loader from '../../Loader/Loader';
 import AppRunsHistory from '../AppRunsHistory/AppRunsHistory.component';
 import { AppRunsHistoryRef } from '../AppRunsHistory/AppRunsHistory.interface';
 import { AppScheduleProps } from './AppScheduleProps.interface';
@@ -26,10 +37,35 @@ const AppSchedule = ({
   appData,
   onSave,
   onDemandTrigger,
+  onDeployTrigger,
 }: AppScheduleProps) => {
   const { t } = useTranslation();
   const [showModal, setShowModal] = useState(false);
   const appRunsHistoryRef = useRef<AppRunsHistoryRef>(null);
+  const [isPipelineDeployed, setIsPipelineDeployed] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchPipelineDetails = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      if (
+        appData.appType === AppType.External &&
+        appData.pipelines &&
+        appData.pipelines.length > 0
+      ) {
+        const fqn = appData.pipelines[0].fullyQualifiedName ?? '';
+        const pipelineData = await getIngestionPipelineByFqn(fqn);
+
+        setIsPipelineDeployed(pipelineData.deployed ?? false);
+      } else {
+        setIsPipelineDeployed(false);
+      }
+    } catch (error) {
+      setIsPipelineDeployed(false);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [appData]);
 
   const cronString = useMemo(() => {
     if (appData.appSchedule) {
@@ -58,33 +94,74 @@ const AppSchedule = ({
     appRunsHistoryRef.current?.refreshAppHistory();
   };
 
+  const appRunHistory = useMemo(() => {
+    if (appData.appType === AppType.Internal || isPipelineDeployed) {
+      return (
+        <AppRunsHistory
+          appData={appData}
+          maxRecords={1}
+          ref={appRunsHistoryRef}
+          showPagination={false}
+        />
+      );
+    }
+
+    return (
+      <Typography.Text>
+        {t('message.no-ingestion-pipeline-found')}
+      </Typography.Text>
+    );
+  }, [appData, isPipelineDeployed, appRunsHistoryRef]);
+
+  useEffect(() => {
+    fetchPipelineDetails();
+  }, []);
+
+  if (isLoading) {
+    return <Loader />;
+  }
+
   return (
     <>
       <Row>
         <Col className="flex-col" flex="auto">
-          <div>
-            <Space size={8}>
-              <Typography.Text className="right-panel-label">
-                {t('label.schedule-type')}
-              </Typography.Text>
-              <Typography.Text className="font-medium">
-                {(appData.appSchedule as AppScheduleClass).scheduleType ?? ''}
-              </Typography.Text>
-            </Space>
-          </div>
-          <div>
-            <Space size={8}>
-              <Typography.Text className="right-panel-label">
-                {t('label.schedule-interval')}
-              </Typography.Text>
-              <Typography.Text className="font-medium">
-                {cronString}
-              </Typography.Text>
-            </Space>
-          </div>
+          {appData.appSchedule && (
+            <>
+              <div>
+                <Space size={8}>
+                  <Typography.Text className="right-panel-label">
+                    {t('label.schedule-type')}
+                  </Typography.Text>
+                  <Typography.Text className="font-medium">
+                    {(appData.appSchedule as AppScheduleClass).scheduleType ??
+                      ''}
+                  </Typography.Text>
+                </Space>
+              </div>
+              <div>
+                <Space size={8}>
+                  <Typography.Text className="right-panel-label">
+                    {t('label.schedule-interval')}
+                  </Typography.Text>
+                  <Typography.Text className="font-medium">
+                    {cronString}
+                  </Typography.Text>
+                </Space>
+              </div>
+            </>
+          )}
         </Col>
         <Col className="d-flex items-center justify-end" flex="200px">
           <Space>
+            {appData.appType === AppType.External && (
+              <Button
+                data-testid="deploy-button"
+                type="primary"
+                onClick={onDeployTrigger}>
+                {t('label.deploy')}
+              </Button>
+            )}
+
             <Button
               data-testid="edit-button"
               type="primary"
@@ -92,7 +169,7 @@ const AppSchedule = ({
               {t('label.edit')}
             </Button>
             <Button
-              data-testid="deploy-button"
+              data-testid="run-now-button"
               type="primary"
               onClick={onAppTrigger}>
               {t('label.run-now')}
@@ -102,24 +179,27 @@ const AppSchedule = ({
 
         <Divider />
 
-        <Col span={24}>
-          <AppRunsHistory
-            maxRecords={1}
-            ref={appRunsHistoryRef}
-            showPagination={false}
-          />
-        </Col>
+        <Col span={24}>{appRunHistory}</Col>
       </Row>
       <Modal
         destroyOnClose
         className="update-schedule-modal"
+        closable={false}
         data-testid="update-schedule-modal"
         footer={null}
         maskClosable={false}
+        okText={t('label.save')}
         open={showModal}
         title={t('label.update-entity', { entity: t('label.schedule') })}>
         <TestSuiteScheduler
           isQuartzCron
+          buttonProps={{
+            cancelText: t('label.cancel'),
+            okText: t('label.save'),
+          }}
+          includePeriodOptions={
+            appData.appType === AppType.External ? ['Day'] : undefined
+          }
           initialData={getIngestionFrequency(PipelineType.Application)}
           onCancel={onDialogCancel}
           onSubmit={onDialogSave}

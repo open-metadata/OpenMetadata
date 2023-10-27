@@ -39,6 +39,7 @@ import { AppInstallVerifyCardProps } from './AppInstallVerifyCard.interface';
 
 const AppInstallVerifyCard = ({
   appData,
+  nextButtonLabel,
   onCancel,
   onSave,
 }: AppInstallVerifyCardProps) => {
@@ -63,11 +64,11 @@ const AppInstallVerifyCard = ({
               alt="OpenMetadata Logo"
               className="vertical-middle"
               dataTestId="image"
-              height={64}
-              width={64}
+              height={56}
+              width={56}
             />
           }
-          size={120}
+          size={100}
         />
       </Space>
       <Typography.Title className="m-t-md" level={5}>
@@ -135,7 +136,7 @@ const AppInstallVerifyCard = ({
             key="save-btn"
             type="primary"
             onClick={onSave}>
-            {t('label.configure')}
+            {nextButtonLabel}
           </Button>
         </div>
       </Card>

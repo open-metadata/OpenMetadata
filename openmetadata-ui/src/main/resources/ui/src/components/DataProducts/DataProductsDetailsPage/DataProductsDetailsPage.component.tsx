@@ -44,10 +44,7 @@ import { EntityDetailsObjectInterface } from '../../../components/Explore/explor
 import AssetsTabs, {
   AssetsTabRef,
 } from '../../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
-import {
-  AssetsOfEntity,
-  AssetsViewType,
-} from '../../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
+import { AssetsOfEntity } from '../../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import EntityDeleteModal from '../../../components/Modals/EntityDeleteModal/EntityDeleteModal';
 import EntityNameModal from '../../../components/Modals/EntityNameModal/EntityNameModal.component';
 import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
@@ -56,7 +53,6 @@ import {
   ResourceEntity,
 } from '../../../components/PermissionProvider/PermissionProvider.interface';
 import TabsLabel from '../../../components/TabsLabel/TabsLabel.component';
-import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { myDataSearchIndex } from '../../../constants/Mydata.constants';
@@ -70,8 +66,9 @@ import { Operation } from '../../../generated/entity/policies/policy';
 import { Style } from '../../../generated/type/tagLabel';
 import { searchData } from '../../../rest/miscAPI';
 import { getEntityDeleteMessage } from '../../../utils/CommonUtils';
+import { getQueryFilterToIncludeDomain } from '../../../utils/DomainUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
-import Fqn from '../../../utils/Fqn.js';
 import {
   checkPermission,
   DEFAULT_ENTITY_PERMISSION,
@@ -117,25 +114,18 @@ const DataProductsDetailsPage = ({
   const [assetCount, setAssetCount] = useState<number>(0);
 
   const breadcrumbs = useMemo(() => {
-    if (!dataProductFqn) {
+    if (!dataProduct.domain) {
       return [];
     }
 
-    const arr = Fqn.split(dataProductFqn);
-    const dataFQN: Array<string> = [];
-
     return [
-      ...arr.slice(0, -1).map((d) => {
-        dataFQN.push(d);
-
-        return {
-          name: d,
-          url: getDomainPath(dataFQN.join(FQN_SEPARATOR_CHAR)),
-          activeTitle: false,
-        };
-      }),
+      {
+        name: getEntityName(dataProduct.domain),
+        url: getDomainPath(dataProduct.domain.fullyQualifiedName),
+        activeTitle: false,
+      },
     ];
-  }, [dataProductFqn]);
+  }, [dataProduct.domain]);
 
   const [name, displayName] = useMemo(() => {
     const defaultName = dataProduct.name;
@@ -299,7 +289,7 @@ const DataProductsDetailsPage = ({
                     entityType: t('label.data-product'),
                   }
                 )}
-                icon={<DeleteIcon color={DE_ACTIVE_COLOR} width="18px" />}
+                icon={<DeleteIcon color={DE_ACTIVE_COLOR} width="14px" />}
                 id="delete-button"
                 name={t('label.delete')}
               />
@@ -425,7 +415,6 @@ const DataProductsDetailsPage = ({
                     permissions={dataProductPermission}
                     ref={assetTabRef}
                     type={AssetsOfEntity.DATA_PRODUCT}
-                    viewType={AssetsViewType.TABS}
                     onAddAsset={() => setAssetModelVisible(true)}
                     onAssetClick={handleAssetClick}
                   />
@@ -480,9 +469,10 @@ const DataProductsDetailsPage = ({
               )
             }
             serviceName=""
+            titleColor={dataProduct.style?.color}
           />
         </Col>
-        <Col className="p-x-md" flex="280px">
+        <Col className="p-x-md" flex="320px">
           <div style={{ textAlign: 'right' }}>
             {!isVersionsView && dataProductPermission.Create && (
               <Button
@@ -573,8 +563,14 @@ const DataProductsDetailsPage = ({
       />
 
       <AssetSelectionModal
+        emptyPlaceHolderText={t('message.domain-does-not-have-assets', {
+          name: getEntityName(dataProduct.domain),
+        })}
         entityFqn={dataProductFqn}
         open={assetModalVisible}
+        queryFilter={getQueryFilterToIncludeDomain(
+          dataProduct.domain?.fullyQualifiedName ?? ''
+        )}
         type={AssetsOfEntity.DATA_PRODUCT}
         onCancel={() => setAssetModelVisible(false)}
         onSave={handleAssetSave}

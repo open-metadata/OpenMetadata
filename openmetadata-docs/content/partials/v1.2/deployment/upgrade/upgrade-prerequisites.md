@@ -1,8 +1,8 @@
-## Prerequisites
+# Prerequisites
 
 Everytime that you plan on upgrading OpenMetadata to a newer version, make sure to go over all these steps:
 
-### 1. Backup your Metadata
+### Backup your Metadata
 
 Before upgrading your OpenMetadata version we strongly recommend backing up the metadata.
 
@@ -27,7 +27,7 @@ You can learn more about how the migration process works [here](/deployment/upgr
 ```python
 python -m venv venv
 source venv/bin/activate
-pip install openmetadata-ingestion~=1.1.1
+pip install openmetadata-ingestion~=1.2.0
 ```
 
 Validate the installed metadata version with `python -m metadata --version`
@@ -64,44 +64,67 @@ You can refer to the following guide to get more details about the backup and re
   {% /inlineCallout %}
 {% /inlineCalloutContainer %}
 
-### 2. Review the Deprecation Notice and Breaking Changes
+### Update `sort_buffer_size` (MySQL) or `work_mem` (Postgres)
 
-Releases might introduce deprecations and breaking changes that you should be aware of and understand before moving forward.
+Before running the migrations, it is important to update these parameters to ensure there are no runtime errors.
+A safe value would be setting them to 20MB.
 
-Below in this page you will find the details for the latest release, and you can find older release notes [here](/deployment/upgrade/versions).
+**If using MySQL**
 
-The goal is to answer questions like:
-- *Do I need to update my configurations?*
-- *If I am running connectors externally, did their service connection change?*
+You can update it via SQL (note that it will reset after the server restarts):
 
-Carefully reviewing this will prevent easy errors.
-
-### (Optional) 3. Update your OpenMetadata Ingestion Client
-
-If you are running the ingestion workflows **externally** or using a custom Airflow installation, you need to make sure that the Python Client you use is aligned
-with the OpenMetadata server version.
-
-For example, if you are upgrading the server to the version `x.y.z`, you will need to update your client with
-
-```bash
-pip install openmetadata-ingestion[<plugin>]==x.y.z
+```sql
+SET GLOBAL sort_buffer_size = 20971520
 ```
 
-The `plugin` parameter is a list of the sources that we want to ingest. An example would look like this `openmetadata-ingestion[mysql,snowflake,s3]==1.1.5`.
-You will find specific instructions for each connector [here](/connectors).
+To make the configuration persistent, you'd need to navigate to your MySQL Server install directory and update the
+`my.ini` or `my.cnf` [files](https://dev.mysql.com/doc/refman/8.0/en/option-files.html) with `sort_buffer_size = 20971520`.
 
-Moreover, if working with your own Airflow deployment - not the `openmetadata-ingestion` image - you will need to upgrade
-as well the `openmetadata-managed-apis` version:
+If using RDS, you will need to update your instance's [Parameter Group](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithParamGroups.html)
+to include the above change.
 
-```bash
-pip install openmetadata-managed-apis==x.y.z
+**If using Postgres**
+
+You can update it via SQL (not that it will reset after the server restarts):
+
+```sql
+SET work_mem = '20MB';
 ```
 
-## Deprecation Notice
+To make the configuration persistent, you'll need to update the `postgresql.conf` [file](https://www.postgresql.org/docs/9.3/config-setting.html)
+with `work_mem = 20MB`.
 
-- OpenMetadata only supports Python version 3.8 to 3.10.
+If using RDS, you will need to update your instance's [Parameter Group](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithParamGroups.html)
+to include the above change.
 
-## Breaking Changes for 1.2 Stable Release
+Note that this value would depend on the size of your `query_entity` table. If you still see `Out of Sort Memory Error`s
+during the migration after bumping this value, you can increase them further.
+
+After the migration is finished, you can revert this changes.
+
+# Deprecation Notice
+
+- OpenMetadata only supports Python version 3.8 to 3.10. We will add support for 3.11 in the release 1.3.
+- OpenMetadata version 0.13.x is deprecated.
+
+# Breaking Changes
+
+### Version Upgrades
+
+- The OpenMetadata Server is now based on **JDK 17**
+- OpenMetadata now supports **Elasticsearch** up to version **8.10.2** and **Opensearch** up to version **2.7**
+
+There is no direct migration to bump the indexes to the new supported versions. You might see errors like:
+
+```
+"java.lang.IllegalStateException: cannot upgrade a node from version [7.16.3] directly to version [8.5.1]
+ERROR: Elasticsearch did not exit normally - check the logs at /usr/share/elasticsearch/logs/elasticsearch.log
+ERROR: Elasticsearch exited unexpectedly
+```
+
+In order to move forward, you can remove volumes / delete the indexes directly from your search instances. Note that
+OpenMetadata stores everything in the database, so indexes can be recreated directly from the UI. We will
+show you how in the [Post-Upgrade Steps](/deployment/upgrade#reindex).
 
 ### Query Entity
 
@@ -115,4 +138,57 @@ then there is no way to link a query to a service and the query will be removed.
 
 - Domo Database, Dashboard and Pipeline renamed the `sandboxDomain` in favor of `instanceDomain`.
 
+### Ingestion Framework Changes
+
+We have reorganized the structure of the `Workflow` classes, which requires updated imports:
+
+- **Metadata Workflow**
+  - From: `from metadata.ingestion.api.workflow import Workflow`
+  - To: `from metadata.workflow.metadata import MetadataWorkflow`
+
+- **Lineage Workflow**
+  - From: `from metadata.ingestion.api.workflow import Workflow`
+  - To: `from metadata.workflow.metadata import MetadataWorkflow` (same as metadata)
+
+- **Usage Workflow**
+  - From: `from metadata.ingestion.api.workflow import Workflow`
+  - To: `from metadata.workflow.usage import UsageWorkflow`
+
+- **Profiler Workflow**
+  - From: `from metadata.profiler.api.workflow import ProfilerWorkflow`
+  - To: `from metadata.workflow.profiler import ProfilerWorkflow`
+
+- **Data Quality Workflow**
+  - From: `from metadata.data_quality.api.workflow import TestSuiteWorkflow`
+  - To: `from metadata.workflow.data_quality import TestSuiteWorkflow`
+
+- **Data Insights Workflow**
+  - From: `from metadata.data_insight.api.workflow import DataInsightWorkflow`
+  - To: `from metadata.workflow.data_insight import DataInsightWorkflow`
+
+- **Elasticsearch Reindex Workflow**
+  - From: `from metadata.ingestion.api.workflow import Workflow`
+  - To: `from metadata.workflow.metadata import MetadataWorkflow` (same as metadata)
+
+The `Workflow` class that you import can then be called as follows:
+
+```python
+from metadata.workflow.workflow_output_handler import print_status
+
+workflow = workflow_class.create(workflow_config)
+workflow.execute()
+workflow.raise_from_status()
+print_status(workflow)  # This method has been updated. Before it was `workflow.print_status()`
+workflow.stop()
+```
+
+If you try to run your workflows externally and start noticing `ImportError`s, you will need to review the points above.
+
+### Metadata CLI Changes
+
+In 1.1.7 and below you could run the Usage Workflow as `metadata ingest -c <path to yaml>`. Now, the Usage Workflow
+has its own command `metadata usage -c <path to yaml>`.
+
 ### Other Changes
+
+- Pipeline Status are now timestamps in milliseconds.

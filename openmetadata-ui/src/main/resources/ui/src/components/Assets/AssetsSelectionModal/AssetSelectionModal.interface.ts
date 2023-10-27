@@ -17,6 +17,7 @@ import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../../../generated/entity/data/dashboardDataModel';
 import { Database } from '../../../generated/entity/data/database';
 import { DatabaseSchema } from '../../../generated/entity/data/databaseSchema';
+import { Glossary } from '../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Mlmodel } from '../../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../../generated/entity/data/pipeline';
@@ -31,6 +32,7 @@ import { MlmodelService } from '../../../generated/entity/services/mlmodelServic
 import { PipelineService } from '../../../generated/entity/services/pipelineService';
 import { SearchService } from '../../../generated/entity/services/searchService';
 import { StorageService } from '../../../generated/entity/services/storageService';
+import { Team } from '../../../generated/entity/teams/team';
 
 export interface AssetSelectionModalProps {
   entityFqn: string;
@@ -38,6 +40,8 @@ export interface AssetSelectionModalProps {
   type?: AssetsOfEntity;
   onCancel: () => void;
   onSave?: () => void;
+  queryFilter?: Record<string, unknown>;
+  emptyPlaceHolderText?: string;
 }
 
 export type AssetsUnion =
@@ -72,6 +76,7 @@ export type MapPatchAPIResponse = {
   [EntityType.STORED_PROCEDURE]: StoredProcedure;
   [EntityType.DASHBOARD_DATA_MODEL]: DashboardDataModel;
   [EntityType.GLOSSARY_TERM]: GlossaryTerm;
+  [EntityType.GLOSSARY]: Glossary;
   [EntityType.DATABASE_SCHEMA]: DatabaseSchema;
   [EntityType.DATABASE]: Database;
   [EntityType.DASHBOARD_SERVICE]: DashboardService;
@@ -81,4 +86,5 @@ export type MapPatchAPIResponse = {
   [EntityType.STORAGE_SERVICE]: StorageService;
   [EntityType.DATABASE_SERVICE]: DatabaseService;
   [EntityType.SEARCH_SERVICE]: SearchService;
+  [EntityType.TEAM]: Team;
 };

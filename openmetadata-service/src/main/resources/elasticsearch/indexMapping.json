@@ -27,7 +27,7 @@
     "indexName": "chart_search_index",
     "alias": "chart",
     "indexMappingFile": "/elasticsearch/%s/chart_index_mapping.json",
-    "parentAliases": ["dashboard", "dashboardService", "all"]
+    "parentAliases": ["dashboard", "dashboardService"]
   },
   "dashboard": {
     "indexName": "dashboard_search_index",
@@ -93,7 +93,7 @@
     "indexName": "data_product_search_index",
     "indexMappingFile": "/elasticsearch/%s/data_products_index_mapping.json",
     "alias": "dataProduct",
-    "parentAliases": []
+    "parentAliases": ["domain"]
   },
   "domain": {
     "indexName": "domain_search_index",

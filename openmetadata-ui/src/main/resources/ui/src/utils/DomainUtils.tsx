@@ -44,6 +44,7 @@ export const getOwner = (
           id={owner?.id || ''}
           name={owner?.name ?? ''}
           textClass="text-xs"
+          type="circle"
           width="20"
         />
         <Link
@@ -109,3 +110,23 @@ export const getUserNames = (
 
   return getOwner(hasPermission, getEntityName(entity.owner), entity.owner);
 };
+
+export const getQueryFilterToIncludeDomain = (fqn: string) => ({
+  query: {
+    bool: {
+      must: [
+        {
+          bool: {
+            must: [
+              {
+                term: {
+                  'domain.fullyQualifiedName': fqn,
+                },
+              },
+            ],
+          },
+        },
+      ],
+    },
+  },
+});

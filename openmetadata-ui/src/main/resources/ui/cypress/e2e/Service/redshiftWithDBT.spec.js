@@ -23,6 +23,7 @@ import {
   verifyResponseStatusCode,
   visitEntityDetailsPage,
 } from '../../common/common';
+import { searchServiceFromSettingPage } from '../../common/serviceUtils';
 import {
   API_SERVICE,
   DBT,
@@ -136,6 +137,7 @@ describe('RedShift Ingestion', () => {
     );
     interceptURL('GET', '/api/v1/services/*/name/*', 'serviceDetails');
     interceptURL('GET', '/api/v1/databases?*', 'databases');
+    searchServiceFromSettingPage(REDSHIFT.serviceName);
     cy.get(`[data-testid="service-name-${REDSHIFT.serviceName}"]`)
       .should('exist')
       .click();

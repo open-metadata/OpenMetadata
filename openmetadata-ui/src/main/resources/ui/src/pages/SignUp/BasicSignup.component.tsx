@@ -70,7 +70,7 @@ const BasicSignUp = () => {
       <div className="d-flex flex-grow" data-testid="signin-page">
         <div className="w-5/12">
           <div className="mt-4 text-center flex-center flex-col">
-            <BrandImage height="auto" width={152} />
+            <BrandImage height="auto" width={200} />
             <Typography.Text className="mt-8 w-80 text-xl font-medium text-grey-muted">
               {t('message.om-description')}
             </Typography.Text>
@@ -90,6 +90,7 @@ const BasicSignUp = () => {
                     name="firstName"
                     rules={[{ whitespace: true, required: true }]}>
                     <Input
+                      autoFocus
                       placeholder={t('label.enter-entity-name', {
                         entity: t('label.first-lowercase'),
                       })}

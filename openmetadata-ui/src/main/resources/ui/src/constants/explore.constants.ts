@@ -130,6 +130,12 @@ export const tabsInfo: { [K in ExploreSearchIndex]: ExploreTabInfo } = {
     sortField: INITIAL_SORT_FIELD,
     path: 'tags',
   },
+  [SearchIndex.DATA_PRODUCT]: {
+    label: i18n.t('label.data-product-plural'),
+    sortingFields: tableSortingFields,
+    sortField: INITIAL_SORT_FIELD,
+    path: 'dataProducts',
+  },
 };
 
 export const COMMON_FILTERS_FOR_DIFFERENT_TABS = [

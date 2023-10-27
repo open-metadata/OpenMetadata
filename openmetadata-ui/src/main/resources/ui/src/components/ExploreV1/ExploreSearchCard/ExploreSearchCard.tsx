@@ -101,7 +101,8 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
 
       if (
         source.entityType !== EntityType.GLOSSARY_TERM &&
-        source.entityType !== EntityType.TAG
+        source.entityType !== EntityType.TAG &&
+        source.entityType !== EntityType.DATA_PRODUCT
       ) {
         _otherDetails.push({
           key: 'Tier',
@@ -130,6 +131,34 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       [source]
     );
 
+    const entityIcon = useMemo(() => {
+      if (showEntityIcon) {
+        if (source.entityType === 'glossaryTerm') {
+          if (source.style?.iconURL) {
+            return (
+              <img
+                className="align-middle m-r-xs"
+                data-testid="icon"
+                height={24}
+                src={source.style.iconURL}
+                width={24}
+              />
+            );
+          }
+
+          return;
+        }
+
+        return (
+          <span className="w-6 h-6 m-r-xs d-inline-flex text-xl align-middle">
+            {getEntityIcon(source.entityType ?? '')}
+          </span>
+        );
+      }
+
+      return;
+    }, [source, showEntityIcon, getEntityIcon]);
+
     const header = useMemo(() => {
       return (
         <Row gutter={[8, 8]}>
@@ -157,14 +186,10 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
               </Button>
             ) : (
               <div className="w-full d-flex items-start">
-                {showEntityIcon && (
-                  <span className="w-6 h-6 m-r-xs d-flex text-xl">
-                    {getEntityIcon(source.entityType ?? '')}
-                  </span>
-                )}
+                {entityIcon}
 
                 <Link
-                  className="no-underline w-full"
+                  className="no-underline w-full line-height-22"
                   data-testid="entity-link"
                   target={openEntityInNewPage ? '_blank' : '_self'}
                   to={
@@ -176,7 +201,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                       : ''
                   }>
                   <Typography.Text
-                    className="text-lg font-medium text-link-color"
+                    className="text-lg font-medium text-link-color break-word"
                     data-testid="entity-header-display-name">
                     {stringToHTML(getEntityName(source))}
                   </Typography.Text>

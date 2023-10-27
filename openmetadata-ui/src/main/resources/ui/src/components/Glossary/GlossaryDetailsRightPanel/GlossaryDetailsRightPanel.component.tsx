@@ -30,6 +30,7 @@ import {
   NO_DATA_PLACEHOLDER,
 } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
+import { EntityType } from '../../../enums/entity.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import {
   GlossaryTerm,
@@ -45,6 +46,7 @@ import {
   getDiffValue,
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtils';
+import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
 import GlossaryReviewers from './GlossaryReviewers';
 
 type Props = {
@@ -115,6 +117,7 @@ const GlossaryDetailsRightPanel = ({
               id={owner?.id || ''}
               name={owner?.name ?? ''}
               textClass="text-xs"
+              type="circle"
               width="20"
             />
             <Link
@@ -199,6 +202,16 @@ const GlossaryDetailsRightPanel = ({
 
   return (
     <Row gutter={[0, 40]}>
+      <Col span={24}>
+        <DomainLabel
+          showDomainHeading
+          domain={selectedData.domain}
+          entityFqn={selectedData.fullyQualifiedName ?? ''}
+          entityId={selectedData.id ?? ''}
+          entityType={EntityType.GLOSSARY}
+          hasPermission={permissions.EditAll}
+        />
+      </Col>
       <Col data-testid="glossary-owner-name" span="24">
         <div className="d-flex items-center m-b-xs">
           <Typography.Text className="right-panel-label">
