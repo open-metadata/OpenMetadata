@@ -126,6 +126,12 @@ In order to move forward, you can remove volumes / delete the indexes directly f
 OpenMetadata stores everything in the database, so indexes can be recreated directly from the UI. We will
 show you how in the [Post-Upgrade Steps](/deployment/upgrade#reindex).
 
+### Helm Chart Values
+
+- Added a new key `openmetadata.config.database.dbParams` to pass extra database parameters as string format, e.g., `useSSL=true&serverTimezone=UTC`.
+- Removed the entry for `openmetadata.config.database.dbUseSSL`. You should use `openmetadata.config.database.dbParams` instead.
+- Updated the ElasticSearch Helm Chart Dependencies to version 8.5.1
+
 ### Query Entity
 
 The Query Entity now has the `service` property, linking the Query to the Database Service that it belongs to. Note
