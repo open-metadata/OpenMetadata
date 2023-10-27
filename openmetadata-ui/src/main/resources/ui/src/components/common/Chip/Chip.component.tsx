@@ -52,7 +52,7 @@ const Chip = ({
 
   if (isEmpty(data) && showNoDataPlaceholder) {
     return (
-      <Typography.Paragraph className="text-grey-muted">
+      <Typography.Paragraph className="text-grey-muted m-b-0">
         {noDataPlaceholder ?? NO_DATA_PLACEHOLDER}
       </Typography.Paragraph>
     );

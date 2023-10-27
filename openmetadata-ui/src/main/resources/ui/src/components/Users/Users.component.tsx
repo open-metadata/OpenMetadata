@@ -310,7 +310,7 @@ const Users = ({
                   <Col className="p-x-sm" span={6}>
                     <div className="d-flex flex-col justify-between h-full">
                       <Card
-                        className="ant-card-feed relative card-body-border-none card-padding-y-0 m-b-md"
+                        className="ant-card-feed relative card-body-border-none card-padding-y-0"
                         title={
                           <Typography.Text
                             className="right-panel-label items-center d-flex gap-2"

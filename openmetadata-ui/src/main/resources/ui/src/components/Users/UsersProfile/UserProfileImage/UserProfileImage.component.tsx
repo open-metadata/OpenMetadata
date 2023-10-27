@@ -54,7 +54,7 @@ const UserProfileImage = ({ userData }: UserProfileImageProps) => {
           id={userData?.id ?? ''}
           name={userData?.name ?? ''}
           textClass="text-xl"
-          width=""
+          width="54"
         />
       )}
     </div>
