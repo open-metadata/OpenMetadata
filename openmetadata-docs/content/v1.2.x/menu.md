@@ -196,11 +196,7 @@ site_menu:
     url: /deployment/upgrade/kubernetes
   - category: Deployment / Upgrade OpenMetadata / Version Changes
     url: /deployment/upgrade/versions
-  - category: Deployment / Upgrade OpenMetadata / Version Changes / 0.12 to 0.13
-    url: /deployment/upgrade/versions/012-to-013
-  - category: Deployment / Upgrade OpenMetadata / Version Changes / 0.13 to 1.0
-    url: /deployment/upgrade/versions/013-to-100
-  - category: Deployment / Upgrade OpenMetadata / Version Changes / 1.0 to 1.1
+  - category: Deployment / Upgrade OpenMetadata / Version Changes / 1.0.x to 1.1.x
     url: /deployment/upgrade/versions/100-to-110
 
   - category: Deployment / Backup & Restore Metadata

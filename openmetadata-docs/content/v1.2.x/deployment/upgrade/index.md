@@ -5,18 +5,20 @@ slug: /deployment/upgrade
 
 # Upgrade OpenMetadata
 
+In this guide, you will find all the necessary information to safely upgrade your OpenMetadata instance to 1.2.x.
+
 {% partial file="/v1.2/deployment/upgrade/upgrade-prerequisites.md" /%}
 
-## Upgrade your installation
+# Upgrade your installation
 
-Once your metadata is safe, follow the required upgrade instructions:
+Once your metadata is safe, follow the required upgrade instructions based on your environment:
 
 {% inlineCalloutContainer %}
   {% inlineCallout
     color="violet-70"
     icon="fit_screen"
     bold="Upgrade a Kubernetes Deployment"
-    href="/deployment/upgrade/kubernetes" %}
+    href="/deployment/upgrade/kubernetes#upgrade-process" %}
       Upgrade your Kubernetes installation
   {% /inlineCallout %}
 
@@ -24,7 +26,7 @@ Once your metadata is safe, follow the required upgrade instructions:
     color="violet-70"
     icon="celebration"
     bold="Upgrade a Docker Deployment"
-    href="/deployment/upgrade/docker" %}
+    href="/deployment/upgrade/docker#upgrade-process" %}
       Upgrade your Docker installation
   {% /inlineCallout %}
 
@@ -32,7 +34,9 @@ Once your metadata is safe, follow the required upgrade instructions:
     color="violet-70"
     icon="storage"
     bold="Upgrade a Bare Metal Deployment"
-    href="/deployment/upgrade/bare-metal" %}
+    href="/deployment/upgrade/bare-metal#upgrade-process" %}
       Upgrade your Bare Metal installation
   {% /inlineCallout %}
 {% /inlineCalloutContainer %}
+
+{% partial file="/v1.2/deployment/upgrade/post-upgrade-steps.md" /%}
