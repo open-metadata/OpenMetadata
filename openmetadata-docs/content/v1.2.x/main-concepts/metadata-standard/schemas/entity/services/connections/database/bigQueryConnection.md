@@ -24,6 +24,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
 - **`supportsLineageExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsLineageExtraction*.
 - **`supportsDBTExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsDBTExtraction*.
 - **`supportsProfiler`**: Refer to *../connectionBasicType.json#/definitions/supportsProfiler*.
+- **`supportsDatabase`**: Refer to *../connectionBasicType.json#/definitions/supportsDatabase*.
 - **`supportsQueryComment`**: Refer to *../connectionBasicType.json#/definitions/supportsQueryComment*.
 ## Definitions
 
@@ -31,4 +32,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
 - **`bigqueryScheme`** *(string)*: SQLAlchemy driver scheme options. Must be one of: `['bigquery']`. Default: `bigquery`.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

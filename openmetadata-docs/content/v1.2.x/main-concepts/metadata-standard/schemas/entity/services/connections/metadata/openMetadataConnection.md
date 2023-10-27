@@ -12,7 +12,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/metad
 - **`clusterName`** *(string)*: Cluster name to differentiate OpenMetadata Server instance. Default: `openmetadata`.
 - **`type`**: Service Type. Refer to *#/definitions/openmetadataType*. Default: `OpenMetadata`.
 - **`hostPort`** *(string)*: OpenMetadata Server Config. Must include API end point ex: http://localhost:8585/api. Default: `http://localhost:8585/api`.
-- **`authProvider`** *(string)*: OpenMetadata Server Authentication Provider. Make sure configure same auth providers as the one configured on OpenMetadata server. Must be one of: `['no-auth', 'azure', 'google', 'okta', 'auth0', 'custom-oidc', 'openmetadata']`. Default: `no-auth`.
+- **`authProvider`**: Refer to *#/definitions/authProvider*.
 - **`verifySSL`**: Refer to *../../../../security/ssl/verifySSLConfig.json#/definitions/verifySSL*. Default: `no-ssl`.
 - **`sslConfig`**: Refer to *../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig*.
 - **`securityConfig`**: OpenMetadata Client security configuration.
@@ -35,6 +35,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/metad
 - **`includePipelineServices`** *(boolean)*: Include Pipeline Services for Indexing. Default: `True`.
 - **`limitRecords`** *(integer)*: Limit the number of records for Indexing. Default: `1000`.
 - **`forceEntityOverwriting`** *(boolean)*: Force the overwriting of any entity during the ingestion. Default: `False`.
+- **`storeServiceConnection`** *(boolean)*: If set to true, when creating a service during the ingestion we will store its Service Connection. Otherwise, the ingestion will create a bare service without connection details. Default: `True`.
 - **`elasticsSearch`** *(object)*: Configuration for Sink Component in the OpenMetadata Ingestion Framework. Cannot contain additional properties.
   - **`type`** *(string)*: Type of sink component ex: metadata.
   - **`config`**: Refer to *../../../../type/basic.json#/definitions/componentConfig*.
@@ -46,6 +47,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/metad
 - **`openmetadataType`** *(string)*: OpenMetadata service type. Must be one of: `['OpenMetadata']`. Default: `OpenMetadata`.
 - **`extraHeaders`** *(object)*: Additional headers to be sent to the API endpoint. Can contain additional properties.
   - **Additional Properties** *(string)*
+- **`authProvider`** *(string)*: OpenMetadata Server Authentication Provider. Make sure configure same auth providers as the one configured on OpenMetadata server. Must be one of: `['no-auth', 'basic', 'azure', 'google', 'okta', 'auth0', 'aws-cognito', 'custom-oidc', 'ldap', 'saml', 'openmetadata']`. Default: `basic`.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

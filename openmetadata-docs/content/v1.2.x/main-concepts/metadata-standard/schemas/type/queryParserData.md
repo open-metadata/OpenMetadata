@@ -20,6 +20,8 @@ slug: /main-concepts/metadata-standard/schemas/type/queryparserdata
   - **`joins`** *(object)*: Maps each parsed table name of a query to the join information. Can contain additional properties.
     - **Additional Properties**
   - **`sql`** *(string)*: SQL query.
+  - **`query_type`** *(string)*: SQL query type.
+  - **`exclude_usage`** *(boolean)*: Flag to check if query is to be excluded while processing usage.
   - **`serviceName`** *(string)*: Name that identifies this database service.
   - **`userName`** *(string)*: Name of the user that executed the SQL query.
   - **`date`** *(string)*: Date of execution of SQL query.
@@ -27,4 +29,4 @@ slug: /main-concepts/metadata-standard/schemas/type/queryparserdata
   - **`duration`** *(number)*: How long did the query took to run in seconds.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

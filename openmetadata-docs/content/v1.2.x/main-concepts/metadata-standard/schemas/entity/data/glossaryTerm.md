@@ -13,20 +13,21 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/glossaryterm
 - **`name`**: Preferred name for the glossary term. Refer to *../../type/basic.json#/definitions/entityName*.
 - **`displayName`** *(string)*: Display Name that identifies this glossary.
 - **`description`**: Description of the glossary term. Refer to *../../type/basic.json#/definitions/markdown*.
+- **`style`**: Refer to *../../type/basic.json#/definitions/style*.
 - **`fullyQualifiedName`**: A unique name that identifies a glossary term. It captures name hierarchy of glossary of terms in the form of `glossaryName.parentTerm.childTerm`. Refer to *../../type/basic.json#/definitions/fullyQualifiedEntityName*.
 - **`synonyms`** *(array)*: Alternate names that are synonyms or near-synonyms for the glossary term.
   - **Items**: Refer to *../../type/basic.json#/definitions/entityName*.
 - **`glossary`**: Glossary that this term belongs to. Refer to *../../type/entityReference.json*.
 - **`parent`**: Parent glossary term that this term is child of. When `null` this term is the root term of the glossary. Refer to *../../type/entityReference.json*.
-- **`children`**: Other glossary terms that are children of this glossary term. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*.
-- **`relatedTerms`**: Other glossary terms that are related to this glossary term. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*.
+- **`children`**: Other glossary terms that are children of this glossary term. Refer to *../../type/entityReferenceList.json*.
+- **`relatedTerms`**: Other glossary terms that are related to this glossary term. Refer to *../../type/entityReferenceList.json*.
 - **`references`** *(array)*: Link to a reference from an external glossary.
   - **Items**: Refer to *../../entity/data/glossaryTerm.json#/definitions/termReference*.
 - **`version`**: Metadata version of the entity. Refer to *../../type/entityHistory.json#/definitions/entityVersion*.
 - **`updatedAt`**: Last update time corresponding to the new version of the entity in Unix epoch time milliseconds. Refer to *../../type/basic.json#/definitions/timestamp*.
 - **`updatedBy`** *(string)*: User who made the update.
 - **`href`**: Link to the resource corresponding to this entity. Refer to *../../type/basic.json#/definitions/href*.
-- **`reviewers`**: User names of the reviewers for this glossary. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*.
+- **`reviewers`**: User names of the reviewers for this glossary. Refer to *../../type/entityReferenceList.json*.
 - **`owner`**: Owner of this glossary term. Refer to *../../type/entityReference.json*.
 - **`usageCount`** *(integer)*: Count of how many times this and it's children glossary terms are used as labels.
 - **`tags`** *(array)*: Tags associated with this glossary term. These tags captures relationship of a glossary term with a tag automatically. As an example a glossary term 'User.PhoneNumber' might have an associated tag 'PII.Sensitive'. When 'User.Address' is used to label a column in a table, 'PII.Sensitive' label is also applied automatically due to Associated tag relationship. Default: `None`.
@@ -37,13 +38,15 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/glossaryterm
 - **`provider`**: Refer to *../../type/basic.json#/definitions/providerType*.
 - **`disabled`** *(boolean)*: System glossary can't be deleted. Use this flag to disable them.
 - **`mutuallyExclusive`** *(boolean)*: Glossary terms that are children of this term are mutually exclusive. When mutually exclusive is `true` only one term can be used to label an entity from this group. When mutually exclusive is `false`, multiple terms from this group can be used to label an entity. Default: `false`.
+- **`extension`**: Entity extension data with custom attributes added to the entity. Refer to *../../type/basic.json#/definitions/entityExtension*.
 - **`domain`**: Domain the Glossary Term belongs to. When not set, the Glossary TErm inherits the domain from the Glossary it belongs to. Refer to *../../type/entityReference.json*.
+- **`votes`**: Refer to *../../type/votes.json*.
 ## Definitions
 
 - **`termReference`** *(object)*: Cannot contain additional properties.
   - **`name`** *(string)*: Name that identifies the source of an external glossary term. Example `HealthCare.gov`.
   - **`endpoint`** *(string)*: Name that identifies the source of an external glossary term. Example `HealthCare.gov`.
-- **`status`** *(string)*: Must be one of: `['Draft', 'Approved', 'Deprecated']`. Default: `Draft`.
+- **`status`** *(string)*: Must be one of: `['Draft', 'Approved', 'Deprecated', 'Rejected']`.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

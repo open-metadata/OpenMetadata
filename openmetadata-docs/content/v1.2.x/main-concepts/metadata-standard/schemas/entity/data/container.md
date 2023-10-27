@@ -21,7 +21,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/container
 - **`owner`**: Owner of this container. Refer to *../../type/entityReference.json*.
 - **`service`**: Link to the storage service where this container is hosted in. Refer to *../../type/entityReference.json*.
 - **`parent`**: Link to the parent container under which this entity sits, if not top level. Refer to *../../type/entityReference.json*.
-- **`children`**: References to child containers residing under this entity. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*.
+- **`children`**: References to child containers residing under this entity. Refer to *../../type/entityReferenceList.json*.
 - **`dataModel`**: References to the container's data model, if data is structured, or null otherwise. Refer to *#/definitions/containerDataModel*. Default: `None`.
 - **`prefix`** *(string)*: Optional prefix path defined for this container. Default: `None`.
 - **`numberOfObjects`** *(number)*: The number of objects/files this container has. Default: `None`.
@@ -29,13 +29,16 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/container
 - **`fileFormats`** *(array)*: File & data formats identified for the container:  e.g. dataFormats=[csv, json]. These can be present both when the container has a dataModel or not. Default: `None`.
   - **Items**: Refer to *#/definitions/fileFormat*.
 - **`serviceType`**: Service type this table is hosted in. Refer to *../services/storageService.json#/definitions/storageServiceType*.
-- **`followers`**: Followers of this container. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*.
+- **`followers`**: Followers of this container. Refer to *../../type/entityReferenceList.json*.
 - **`tags`** *(array)*: Tags for this container. Default: `None`.
   - **Items**: Refer to *../../type/tagLabel.json*.
 - **`changeDescription`**: Change that lead to this version of the entity. Refer to *../../type/entityHistory.json#/definitions/changeDescription*.
 - **`deleted`** *(boolean)*: When `true` indicates the entity has been soft deleted. Default: `False`.
 - **`extension`**: Entity extension data with custom attributes added to the entity. Refer to *../../type/basic.json#/definitions/entityExtension*.
+- **`sourceUrl`**: Source URL of container. Refer to *../../type/basic.json#/definitions/sourceUrl*.
 - **`domain`**: Domain the Container belongs to. When not set, the Container inherits the domain from the storage service it belongs to. Refer to *../../type/entityReference.json*.
+- **`votes`**: Refer to *../../type/votes.json*.
+- **`lifeCycle`**: Life Cycle properties of the entity. Refer to *../../type/lifeCycle.json*.
 ## Definitions
 
 - **`entityName`** *(string)*: Name of a container. Expected to be unique in the same level containers.
@@ -46,4 +49,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/container
 - **`fileFormat`** *(string)*: This schema defines the file formats for the object/files within a container. Must be one of: `['zip', 'gz', 'zstd', 'csv', 'tsv', 'json', 'parquet', 'avro']`.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

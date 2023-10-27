@@ -14,9 +14,10 @@ slug: /main-concepts/metadata-standard/schemas/entity/classification/tag
 - **`displayName`** *(string)*: Display Name that identifies this tag.
 - **`fullyQualifiedName`** *(string)*: Unique name of the tag of format `Classification.tag1.tag2`.
 - **`description`**: Description of the tag. Refer to *../../type/basic.json#/definitions/markdown*.
+- **`style`**: Refer to *../../type/basic.json#/definitions/style*.
 - **`classification`**: Reference to the classification that this tag is part of. Refer to *../../type/entityReference.json*.
 - **`parent`**: Reference to the parent tag. When null, the term is at the root of the Classification. Refer to *../../type/entityReference.json*.
-- **`children`**: Children tags under this tag. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*.
+- **`children`**: Children tags under this tag. Refer to *../../type/entityReferenceList.json*.
 - **`version`**: Metadata version of the entity. Refer to *../../type/entityHistory.json#/definitions/entityVersion*.
 - **`updatedAt`**: Last update time corresponding to the new version of the entity in Unix epoch time milliseconds. Refer to *../../type/basic.json#/definitions/timestamp*.
 - **`updatedBy`** *(string)*: User who made the update.
@@ -33,4 +34,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/classification/tag
 - **`tagName`** *(string)*: Name of the tag.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

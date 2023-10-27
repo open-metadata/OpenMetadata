@@ -34,7 +34,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/table
 - **`tags`** *(array)*: Tags for this table. Default: `None`.
   - **Items**: Refer to *../../type/tagLabel.json*.
 - **`usageSummary`**: Latest usage information for this table. Refer to *../../type/usageDetails.json*. Default: `None`.
-- **`followers`**: Followers of this table. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*.
+- **`followers`**: Followers of this table. Refer to *../../type/entityReferenceList.json*.
 - **`joins`**: Details of other tables this table is frequently joined with. Refer to *#/definitions/tableJoins*. Default: `None`.
 - **`sampleData`**: Sample data for a table. Refer to *#/definitions/tableData*. Default: `None`.
 - **`tableProfilerConfig`**: Table Profiler Config to include or exclude columns from profiling. Refer to *#/definitions/tableProfilerConfig*.
@@ -47,13 +47,16 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/table
 - **`extension`**: Entity extension data with custom attributes added to the entity. Refer to *../../type/basic.json#/definitions/entityExtension*.
 - **`sourceUrl`**: Source URL of table. Refer to *../../type/basic.json#/definitions/sourceUrl*.
 - **`domain`**: Domain the table belongs to. When not set, the table inherits the domain from the database schema it belongs to. Refer to *../../type/entityReference.json*.
-- **`dataProducts`**: List of of data products this entity is part of. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*.
+- **`dataProducts`**: List of data products this entity is part of. Refer to *../../type/entityReferenceList.json*.
+- **`fileFormat`**: File format in case of file/datalake tables. Refer to *#/definitions/fileFormat*.
+- **`votes`**: Refer to *../../type/votes.json*.
+- **`lifeCycle`**: Life Cycle of the entity. Refer to *../../type/lifeCycle.json*.
 ## Definitions
 
 - **`entityName`** *(string)*: Name of a table. Expected to be unique within a database.
 - **`profileSampleType`** *(string)*: Type of Profile Sample (percentage or rows). Must be one of: `['PERCENTAGE', 'ROWS']`. Default: `PERCENTAGE`.
-- **`tableType`** *(string)*: This schema defines the type used for describing different types of tables. Must be one of: `['Regular', 'External', 'View', 'SecureView', 'MaterializedView', 'Iceberg', 'Local', 'Partitioned', 'Foreign']`.
-- **`dataType`** *(string)*: This enum defines the type of data stored in a column. Must be one of: `['NUMBER', 'TINYINT', 'SMALLINT', 'INT', 'BIGINT', 'BYTEINT', 'BYTES', 'FLOAT', 'DOUBLE', 'DECIMAL', 'NUMERIC', 'TIMESTAMP', 'TIMESTAMPZ', 'TIME', 'DATE', 'DATETIME', 'INTERVAL', 'STRING', 'MEDIUMTEXT', 'TEXT', 'CHAR', 'LONG', 'VARCHAR', 'BOOLEAN', 'BINARY', 'VARBINARY', 'ARRAY', 'BLOB', 'LONGBLOB', 'MEDIUMBLOB', 'MAP', 'STRUCT', 'UNION', 'SET', 'GEOGRAPHY', 'ENUM', 'JSON', 'UUID', 'VARIANT', 'GEOMETRY', 'BYTEA', 'AGGREGATEFUNCTION', 'ERROR', 'FIXED', 'RECORD', 'NULL', 'SUPER', 'HLLSKETCH', 'PG_LSN', 'PG_SNAPSHOT', 'TSQUERY', 'TXID_SNAPSHOT', 'XML', 'MACADDR', 'TSVECTOR', 'UNKNOWN', 'CIDR', 'INET', 'CLOB', 'ROWID', 'LOWCARDINALITY', 'YEAR', 'POINT', 'POLYGON', 'TUPLE', 'SPATIAL', 'TABLE']`.
+- **`tableType`** *(string)*: This schema defines the type used for describing different types of tables. Must be one of: `['Regular', 'External', 'View', 'SecureView', 'MaterializedView', 'Iceberg', 'Local', 'Partitioned', 'Foreign', 'Transient']`.
+- **`dataType`** *(string)*: This enum defines the type of data stored in a column. Must be one of: `['NUMBER', 'TINYINT', 'SMALLINT', 'INT', 'BIGINT', 'BYTEINT', 'BYTES', 'FLOAT', 'DOUBLE', 'DECIMAL', 'NUMERIC', 'TIMESTAMP', 'TIMESTAMPZ', 'TIME', 'DATE', 'DATETIME', 'INTERVAL', 'STRING', 'MEDIUMTEXT', 'TEXT', 'CHAR', 'LONG', 'VARCHAR', 'BOOLEAN', 'BINARY', 'VARBINARY', 'ARRAY', 'BLOB', 'LONGBLOB', 'MEDIUMBLOB', 'MAP', 'STRUCT', 'UNION', 'SET', 'GEOGRAPHY', 'ENUM', 'JSON', 'UUID', 'VARIANT', 'GEOMETRY', 'BYTEA', 'AGGREGATEFUNCTION', 'ERROR', 'FIXED', 'RECORD', 'NULL', 'SUPER', 'HLLSKETCH', 'PG_LSN', 'PG_SNAPSHOT', 'TSQUERY', 'TXID_SNAPSHOT', 'XML', 'MACADDR', 'TSVECTOR', 'UNKNOWN', 'CIDR', 'INET', 'CLOB', 'ROWID', 'LOWCARDINALITY', 'YEAR', 'POINT', 'POLYGON', 'TUPLE', 'SPATIAL', 'TABLE', 'NTEXT', 'IMAGE', 'IPV4', 'IPV6', 'DATETIMERANGE']`.
 - **`constraint`** *(string)*: This enum defines the type for column constraint. Must be one of: `['NULL', 'NOT_NULL', 'UNIQUE', 'PRIMARY_KEY']`. Cannot contain additional properties. Default: `None`.
 - **`tableConstraint`** *(object)*: This enum defines the type for table constraint. Cannot contain additional properties.
   - **`constraintType`** *(string)*: Must be one of: `['UNIQUE', 'PRIMARY_KEY', 'FOREIGN_KEY', 'SORT_KEY', 'DIST_KEY']`.
@@ -181,6 +184,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/table
 - **`modelType`**: Must be one of: `['DBT']`.
 - **`dataModel`** *(object)*: This captures information about how the table is modeled. Currently only DBT model is supported. Cannot contain additional properties.
   - **`modelType`**: Refer to *#/definitions/modelType*.
+  - **`resourceType`** *(string)*: Resource Type of the model.
   - **`description`**: Description of the Table from the model. Refer to *../../type/basic.json#/definitions/markdown*.
   - **`path`** *(string)*: Path to sql definition file.
   - **`rawSql`**: This corresponds to rws SQL from `<model_name>.sql` in DBT. This might be null when SQL query need not be compiled as done in DBT. Refer to *../../type/basic.json#/definitions/sqlQuery*.
@@ -193,6 +197,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/table
   - **`columns`** *(array)*: Columns from the schema defined during modeling. In case of DBT, the metadata here comes from `schema.yaml`. Default: `None`.
     - **Items**: Refer to *#/definitions/column*.
   - **`generatedAt`**: Refer to *../../type/basic.json#/definitions/dateTime*.
+- **`fileFormat`** *(string)*: File format in case of file/datalake tables. Must be one of: `['csv', 'tsv', 'avro', 'parquet', 'json', 'json.gz', 'json.zip']`.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

@@ -9,6 +9,7 @@ slug: /main-concepts/metadata-standard/schemas/analytics/reportdatatype/entityre
 
 ## Properties
 
+- **`serviceName`** *(string)*: Name of the service.
 - **`entityType`** *(string)*: type of the entity.
 - **`entityTier`** *(string)*: Tier for the entity.
 - **`team`** *(string)*: Team associated with the entity (i.e. owner).
@@ -20,4 +21,4 @@ slug: /main-concepts/metadata-standard/schemas/analytics/reportdatatype/entityre
 - **`entityCount`** *(integer)*: number of entities.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

@@ -16,7 +16,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/dashboardservice
 - **`serviceType`**: Type of dashboard service such as Looker or Superset... Refer to *#/definitions/dashboardServiceType*.
 - **`description`**: Description of a dashboard service instance. Refer to *../../type/basic.json#/definitions/markdown*.
 - **`connection`**: Refer to *#/definitions/dashboardConnection*.
-- **`pipelines`**: References to pipelines deployed for this dashboard service. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*.
+- **`pipelines`**: References to pipelines deployed for this dashboard service. Refer to *../../type/entityReferenceList.json*.
 - **`testConnectionResult`**: Last test connection results for this service. Refer to *connections/testConnectionResult.json*.
 - **`tags`** *(array)*: Tags for this Dashboard Service. Default: `None`.
   - **Items**: Refer to *../../type/tagLabel.json*.
@@ -30,9 +30,9 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/dashboardservice
 - **`domain`**: Domain the Dashboard service belongs to. Refer to *../../type/entityReference.json*.
 ## Definitions
 
-- **`dashboardServiceType`** *(string)*: Type of Dashboard service - Superset, Looker, Redash, Tableau, Metabase, PowerBi or Mode. Must be one of: `['Superset', 'Looker', 'Tableau', 'Redash', 'Metabase', 'PowerBI', 'Mode', 'CustomDashboard', 'DomoDashboard', 'QuickSight']`.
+- **`dashboardServiceType`** *(string)*: Type of Dashboard service - Superset, Looker, Redash, Tableau, Metabase, PowerBi, Mode, or Lightdash. Must be one of: `['Superset', 'Looker', 'Tableau', 'Redash', 'Metabase', 'PowerBI', 'Mode', 'CustomDashboard', 'DomoDashboard', 'QuickSight', 'QlikSense', 'Lightdash']`.
 - **`dashboardConnection`** *(object)*: Dashboard Connection. Cannot contain additional properties.
   - **`config`**
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

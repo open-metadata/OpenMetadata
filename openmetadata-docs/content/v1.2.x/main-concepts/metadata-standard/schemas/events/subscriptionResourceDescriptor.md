@@ -17,4 +17,4 @@ slug: /main-concepts/metadata-standard/schemas/events/subscriptionresourcedescri
 - **`operation`** *(string)*: This schema defines all possible filter operations on metadata of entities in OpenMetadata. Must be one of: `['matchAnySource', 'matchAnyOwnerName', 'matchAnyEntityFqn', 'matchAnyEntityId', 'matchAnyEventType', 'matchTestResult', 'matchUpdatedBy', 'matchIngestionPipelineState', 'matchAnyFieldChange']`.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

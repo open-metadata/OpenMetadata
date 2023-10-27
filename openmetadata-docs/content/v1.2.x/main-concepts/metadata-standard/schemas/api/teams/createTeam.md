@@ -17,7 +17,7 @@ slug: /main-concepts/metadata-standard/schemas/api/teams/createteam
 - **`profile`**: Optional team profile information. Refer to *../../type/profile.json*.
 - **`parents`** *(array)*: Parent teams. For an `Organization` the `parent` is always null. A `BusinessUnit` always has only one parent of type `BusinessUnit` or an `Organization`. A `Division` can have multiple parents of type `BusinessUnit` or `Division`. A `Department` can have multiple parents of type `Division` or `Department`. Default: `None`.
   - **Items**: Refer to *../../type/basic.json#/definitions/uuid*.
-- **`children`** *(array)*: Children teams. An `Organization` can have `BusinessUnit`, `Division` or `Department` as children. A `BusinessUnit` can have `BusinessUnit`, `Division`, or `Department` as children. A `Division` can have `Division` or `Department` as children. A `Department` can have can have `Department` as children. Default: `None`.
+- **`children`** *(array)*: Children teams. An `Organization` can have `BusinessUnit`, `Division` or `Department` as children. A `BusinessUnit` can have `BusinessUnit`, `Division`, or `Department` as children. A `Division` can have `Division` or `Department` as children. A `Department` can have `Department` as children. Default: `None`.
   - **Items**: Refer to *../../type/basic.json#/definitions/uuid*.
 - **`users`** *(array)*: Optional IDs of users that are part of the team. Default: `None`.
   - **Items**: Refer to *../../type/basic.json#/definitions/uuid*.
@@ -30,4 +30,4 @@ slug: /main-concepts/metadata-standard/schemas/api/teams/createteam
 - **`domain`** *(string)*: Fully qualified name of the domain the Team belongs to.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

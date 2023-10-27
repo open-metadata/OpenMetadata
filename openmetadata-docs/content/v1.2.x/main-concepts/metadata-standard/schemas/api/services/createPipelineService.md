@@ -19,6 +19,7 @@ slug: /main-concepts/metadata-standard/schemas/api/services/createpipelineservic
 - **`owner`**: Owner of this pipeline service. Refer to *../../type/entityReference.json*.
 - **`scheduleInterval`** *(string)*: Scheduler Interval for the pipeline in cron format. Default: `None`.
 - **`domain`** *(string)*: Fully qualified name of the domain the Pipeline Service belongs to.
+- **`lifeCycle`**: Life Cycle of the entity. Refer to *../../type/lifeCycle.json*.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

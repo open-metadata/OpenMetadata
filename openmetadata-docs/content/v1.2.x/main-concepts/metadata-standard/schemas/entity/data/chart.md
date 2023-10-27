@@ -21,7 +21,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/chart
 - **`sourceUrl`**: Chart URL suffix from its service. Refer to *../../type/basic.json#/definitions/sourceUrl*.
 - **`href`**: Link to the resource corresponding to this entity. Refer to *../../type/basic.json#/definitions/href*.
 - **`owner`**: Owner of this dashboard. Refer to *../../type/entityReference.json*.
-- **`followers`**: Followers of this chart. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*.
+- **`followers`**: Followers of this chart. Refer to *../../type/entityReferenceList.json*.
 - **`tags`** *(array)*: Tags for this chart. Default: `None`.
   - **Items**: Refer to *../../type/tagLabel.json*.
 - **`service`**: Link to service where this dashboard is hosted in. Refer to *../../type/entityReference.json*.
@@ -30,10 +30,12 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/chart
 - **`changeDescription`**: Change that lead to this version of the entity. Refer to *../../type/entityHistory.json#/definitions/changeDescription*.
 - **`deleted`** *(boolean)*: When `true` indicates the entity has been soft deleted. Default: `False`.
 - **`domain`**: Domain the Chart belongs to. The Chart inherits domain from the dashboard service it belongs to. Refer to *../../type/entityReference.json*.
-- **`dataProducts`**: List of of data products this entity is part of. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*.
+- **`dataProducts`**: List of data products this entity is part of. Refer to *../../type/entityReferenceList.json*.
+- **`votes`**: Refer to *../../type/votes.json*.
+- **`lifeCycle`**: Life Cycle properties of the entity. Refer to *../../type/lifeCycle.json*.
 ## Definitions
 
 - **`chartType`** *(string)*: This schema defines the type used for describing different types of charts. Must be one of: `['Line', 'Table', 'Bar', 'Area', 'Pie', 'Histogram', 'Scatter', 'Text', 'BoxPlot', 'Other']`.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

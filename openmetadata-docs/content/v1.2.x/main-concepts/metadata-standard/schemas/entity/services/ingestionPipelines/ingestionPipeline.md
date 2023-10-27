@@ -5,7 +5,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/ingestionpipeline
 
 # IngestionPipeline
 
-*Ingestion Pipeline Config is used to setup a DAG and deploy. This entity is used to setup metadata/quality pipelines on Apache Airflow.*
+*Ingestion Pipeline Config is used to set up a DAG and deploy. This entity is used to setup metadata/quality pipelines on Apache Airflow.*
 
 ## Properties
 
@@ -19,7 +19,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/ingestionpipeline
 - **`sourceConfig`**: Refer to *../../../metadataIngestion/workflow.json#/definitions/sourceConfig*.
 - **`openMetadataServerConnection`**: Refer to *../connections/metadata/openMetadataConnection.json*.
 - **`airflowConfig`**: Refer to *#/definitions/airflowConfig*.
-- **`service`**: Link to the database service where this database is hosted in. Refer to *../../../type/entityReference.json*.
+- **`service`**: Link to the service (such as database, messaging, storage services, etc. for which this ingestion pipeline ingests the metadata from. Refer to *../../../type/entityReference.json*.
 - **`pipelineStatuses`**: Last of executions and status for the Pipeline. Refer to *#/definitions/pipelineStatus*.
 - **`loggerLevel`**: Set the logging level for the workflow. Refer to *../../../metadataIngestion/workflow.json#/definitions/logLevels*.
 - **`deployed`** *(boolean)*: Indicates if the workflow has been successfully deployed to Airflow. Default: `False`.
@@ -33,7 +33,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/ingestionpipeline
 - **`provider`**: Refer to *../../../type/basic.json#/definitions/providerType*.
 ## Definitions
 
-- **`pipelineType`** *(string)*: Type of Pipeline - metadata, usage. Must be one of: `['metadata', 'usage', 'lineage', 'profiler', 'TestSuite', 'dataInsight', 'elasticSearchReindex', 'dbt']`.
+- **`pipelineType`** *(string)*: Type of Pipeline - metadata, usage. Must be one of: `['metadata', 'usage', 'lineage', 'profiler', 'TestSuite', 'dataInsight', 'elasticSearchReindex', 'dbt', 'Application']`.
 - **`pipelineStatus`** *(object)*: This defines runtime status of Pipeline. Cannot contain additional properties.
   - **`runId`** *(string)*: Pipeline unique run ID.
   - **`pipelineState`** *(string)*: Pipeline status denotes if its failed or succeeded. Must be one of: `['queued', 'success', 'failed', 'running', 'partialSuccess']`.
@@ -46,7 +46,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/ingestionpipeline
   - **`startDate`**: Start date of the pipeline. Refer to *../../../type/basic.json#/definitions/dateTime*.
   - **`endDate`**: End Date of the pipeline. Refer to *../../../type/basic.json#/definitions/dateTime*.
   - **`pipelineTimezone`** *(string)*: Timezone in which pipeline going to be scheduled. Default: `UTC`.
-  - **`retries`** *(integer)*: Retry pipeline in case of failure. Default: `3`.
+  - **`retries`** *(integer)*: Retry pipeline in case of failure. Default: `0`.
   - **`retryDelay`** *(integer)*: Delay between retries in seconds. Default: `300`.
   - **`pipelineCatchup`** *(boolean)*: Run past executions if the start date is in the past. Default: `False`.
   - **`scheduleInterval`** *(string)*: Scheduler Interval for the pipeline in cron format.
@@ -57,4 +57,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/ingestionpipeline
   - **`email`**: Email to notify workflow status. Refer to *../../../type/basic.json#/definitions/email*.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

@@ -34,7 +34,7 @@ from typing import List
 import jsonschema2md
 
 SOURCES_ROOT = "openmetadata-spec/src/main/resources/json/schema"
-SINK_ROOT = "openmetadata-docs/content/v1.1.0"
+SINK_ROOT = "openmetadata-docs/content/v1.2.x"
 SCHEMAS_ROOT = SINK_ROOT + "/main-concepts/metadata-standard/schemas/"
 
 PARSER = jsonschema2md.Parser(

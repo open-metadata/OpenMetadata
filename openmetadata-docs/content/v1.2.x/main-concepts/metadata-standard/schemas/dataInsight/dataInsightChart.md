@@ -32,7 +32,7 @@ slug: /main-concepts/metadata-standard/schemas/datainsight/datainsightchart
   - **`name`** *(string)*: name of the parameter.
   - **`displayName`** *(string)*: Display Name that identifies this parameter name.
   - **`chartDataType`** *(string)*: Data type of the parameter (int, date etc.). Must be one of: `['NUMBER', 'INT', 'FLOAT', 'DOUBLE', 'DECIMAL', 'TIMESTAMP', 'TIME', 'DATE', 'DATETIME', 'ARRAY', 'MAP', 'SET', 'STRING', 'BOOLEAN', 'PERCENTAGE']`.
-- **`dataReportIndex`** *(string)*: Index where data are stored. Must be one of: `['entity_report_data_index', 'web_analytic_entity_view_report_data_index', 'web_analytic_user_activity_report_data_index']`.
+- **`dataReportIndex`** *(string)*: Index where data are stored. Must be one of: `['entity_report_data_index', 'web_analytic_entity_view_report_data_index', 'web_analytic_user_activity_report_data_index', 'raw_cost_analysis_report_data_index', 'aggregated_cost_analysis_report_data_index']`.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

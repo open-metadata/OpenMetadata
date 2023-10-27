@@ -16,7 +16,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/databaseservice
 - **`serviceType`**: Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres... Refer to *#/definitions/databaseServiceType*.
 - **`description`**: Description of a database service instance. Refer to *../../type/basic.json#/definitions/markdown*.
 - **`connection`**: Refer to *#/definitions/databaseConnection*.
-- **`pipelines`**: References to pipelines deployed for this database service to extract metadata, usage, lineage etc.. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*.
+- **`pipelines`**: References to pipelines deployed for this database service to extract metadata, usage, lineage etc.. Refer to *../../type/entityReferenceList.json*.
 - **`testConnectionResult`**: Last test connection results for this service. Refer to *connections/testConnectionResult.json*.
 - **`tags`** *(array)*: Tags for this Database Service. Default: `None`.
   - **Items**: Refer to *../../type/tagLabel.json*.
@@ -30,9 +30,9 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/databaseservice
 - **`domain`**: Domain the Database service belongs to. Refer to *../../type/entityReference.json*.
 ## Definitions
 
-- **`databaseServiceType`** *(string)*: Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres... Must be one of: `['BigQuery', 'Mysql', 'Redshift', 'Snowflake', 'Postgres', 'Mssql', 'Oracle', 'Athena', 'Hive', 'Impala', 'Presto', 'Trino', 'Vertica', 'Glue', 'MariaDB', 'Druid', 'Db2', 'Clickhouse', 'Databricks', 'AzureSQL', 'DynamoDB', 'SingleStore', 'SQLite', 'DeltaLake', 'Salesforce', 'PinotDB', 'Datalake', 'DomoDatabase', 'QueryLog', 'CustomDatabase', 'Dbt', 'SapHana', 'MongoDB']`.
+- **`databaseServiceType`** *(string)*: Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres... Must be one of: `['BigQuery', 'Mysql', 'Redshift', 'Snowflake', 'Postgres', 'Mssql', 'Oracle', 'Athena', 'Hive', 'Impala', 'Presto', 'Trino', 'Vertica', 'Glue', 'MariaDB', 'Druid', 'Db2', 'Clickhouse', 'Databricks', 'AzureSQL', 'DynamoDB', 'SingleStore', 'SQLite', 'DeltaLake', 'Salesforce', 'PinotDB', 'Datalake', 'DomoDatabase', 'QueryLog', 'CustomDatabase', 'Dbt', 'SapHana', 'MongoDB', 'Couchbase', 'Greenplum']`.
 - **`databaseConnection`** *(object)*: Database Connection. Cannot contain additional properties.
   - **`config`**
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

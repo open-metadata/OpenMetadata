@@ -9,8 +9,8 @@ slug: /main-concepts/metadata-standard/schemas/auth/ssoauth
 
 ## Properties
 
-- **`ssoServiceType`** *(string)*: Type of database service such as Amundsen, Atlas... Must be one of: `['google', 'okta', 'auth0', 'custom-oidc', 'azure', 'basic', 'saml']`.
+- **`ssoServiceType`** *(string)*: Type of database service such as Amundsen, Atlas... Must be one of: `['google', 'okta', 'auth0', 'custom-oidc', 'azure']`.
 - **`authConfig`**: The authentication configuration used by the SSO.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

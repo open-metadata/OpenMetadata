@@ -20,4 +20,4 @@ slug: /main-concepts/metadata-standard/schemas/type/usagedetails
   - **`percentileRank`** *(number)*: Optional daily percentile rank data asset use when relevant. Minimum: `0`. Maximum: `100`.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

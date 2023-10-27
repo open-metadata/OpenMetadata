@@ -16,7 +16,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/storageservice
 - **`serviceType`**: Type of storage service such as S3, GCS, AZURE... Refer to *#/definitions/storageServiceType*.
 - **`description`**: Description of a storage service instance. Refer to *../../type/basic.json#/definitions/markdown*.
 - **`connection`**: Refer to *#/definitions/storageConnection*.
-- **`pipelines`**: References to pipelines deployed for this storage service to extract metadata, usage, lineage etc.. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*.
+- **`pipelines`**: References to pipelines deployed for this storage service to extract metadata, usage, lineage etc.. Refer to *../../type/entityReferenceList.json*.
 - **`testConnectionResult`**: Last test connection results for this service. Refer to *connections/testConnectionResult.json*.
 - **`tags`** *(array)*: Tags for this storage Service. Default: `None`.
   - **Items**: Refer to *../../type/tagLabel.json*.
@@ -30,9 +30,9 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/storageservice
 - **`domain`**: Domain the Storage service belongs to. Refer to *../../type/entityReference.json*.
 ## Definitions
 
-- **`storageServiceType`** *(string)*: Type of storage service such as S3, GFS, AZURE... Must be one of: `['S3', 'CustomStorage']`.
+- **`storageServiceType`** *(string)*: Type of storage service such as S3, GFS, AZURE... Must be one of: `['S3', 'ADLS', 'CustomStorage']`.
 - **`storageConnection`** *(object)*: storage Connection. Cannot contain additional properties.
   - **`config`**
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

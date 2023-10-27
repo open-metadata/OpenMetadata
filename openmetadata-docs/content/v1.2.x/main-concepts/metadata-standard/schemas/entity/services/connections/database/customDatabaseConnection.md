@@ -17,4 +17,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
 - **`customDatabaseType`** *(string)*: Custom database service type. Must be one of: `['CustomDatabase']`. Default: `CustomDatabase`.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

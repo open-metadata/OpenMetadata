@@ -17,8 +17,9 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
 - **`databaseName`** *(string)*: Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.
 - **`databaseSchema`** *(string)*: Database Schema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion attempts to scan all the schemas.
 - **`duration`** *(integer)*: Clickhouse SQL connection duration.
+- **`https`** *(boolean)*: Use HTTPS Protocol for connection with clickhouse.
 - **`secure`** *(boolean)*: Establish secure connection with clickhouse.
-- **`keyfile`** *(boolean)*: Path to key file for establishing secure connection.
+- **`keyfile`** *(string)*: Path to key file for establishing secure connection.
 - **`connectionOptions`**: Refer to *../connectionBasicType.json#/definitions/connectionOptions*.
 - **`connectionArguments`**: Refer to *../connectionBasicType.json#/definitions/connectionArguments*.
 - **`supportsMetadataExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsMetadataExtraction*.
@@ -33,4 +34,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
 - **`clickhouseScheme`** *(string)*: SQLAlchemy driver scheme options. Must be one of: `['clickhouse+http', 'clickhouse+native']`. Default: `clickhouse+http`.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

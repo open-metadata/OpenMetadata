@@ -22,4 +22,4 @@ slug: /main-concepts/metadata-standard/schemas/configuration/applicationconfigur
   - **`jwtTokenExpiryTime`** *(integer)*: Jwt Token Expiry time for login in seconds. Default: `3600`.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

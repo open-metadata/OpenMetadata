@@ -16,6 +16,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
 - **`hostPort`** *(string)*: Host and port of the MSSQL service.
 - **`database`** *(string)*: Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank, OpenMetadata Ingestion attempts to scan all the databases.
 - **`driver`** *(string)*: ODBC driver version in case of pyodbc connection. Default: `ODBC Driver 18 for SQL Server`.
+- **`ingestAllDatabases`** *(boolean)*: Ingest data from all databases in Mssql. You can use databaseFilterPattern on top of this. Default: `False`.
 - **`connectionOptions`**: Refer to *../connectionBasicType.json#/definitions/connectionOptions*.
 - **`connectionArguments`**: Refer to *../connectionBasicType.json#/definitions/connectionArguments*.
 - **`supportsMetadataExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsMetadataExtraction*.
@@ -30,4 +31,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
 - **`mssqlScheme`** *(string)*: SQLAlchemy driver scheme options. Must be one of: `['mssql+pyodbc', 'mssql+pytds', 'mssql+pymssql']`. Default: `mssql+pytds`.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

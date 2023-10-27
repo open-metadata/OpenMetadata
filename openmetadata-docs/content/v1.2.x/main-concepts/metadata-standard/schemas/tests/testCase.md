@@ -34,7 +34,7 @@ slug: /main-concepts/metadata-standard/schemas/tests/testcase
 
 - **`testCaseParameterValue`** *(object)*: This schema defines the parameter values that can be passed for a Test Case.
   - **`name`** *(string)*: name of the parameter. Must match the parameter names in testCaseParameterDefinition.
-  - **`value`** *(string)*: value to be passed for the Parameters. These are input from Users. We capture this in in string and convert during the runtime.
+  - **`value`** *(string)*: value to be passed for the Parameters. These are input from Users. We capture this in string and convert during the runtime.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

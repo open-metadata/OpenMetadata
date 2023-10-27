@@ -31,15 +31,18 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/topic
 - **`topicConfig`**: Contains key/value pair of topic configuration. Refer to *#/definitions/topicConfig*.
 - **`sampleData`**: Sample data for a topic. Refer to *#/definitions/topicSampleData*. Default: `None`.
 - **`owner`**: Owner of this topic. Refer to *../../type/entityReference.json*.
-- **`followers`**: Followers of this table. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*.
+- **`followers`**: Followers of this table. Refer to *../../type/entityReferenceList.json*. Default: `None`.
 - **`tags`** *(array)*: Tags for this table. Default: `None`.
   - **Items**: Refer to *../../type/tagLabel.json*.
 - **`href`**: Link to the resource corresponding to this entity. Refer to *../../type/basic.json#/definitions/href*.
 - **`changeDescription`**: Change that lead to this version of the entity. Refer to *../../type/entityHistory.json#/definitions/changeDescription*.
 - **`deleted`** *(boolean)*: When `true` indicates the entity has been soft deleted. Default: `False`.
 - **`extension`**: Entity extension data with custom attributes added to the entity. Refer to *../../type/basic.json#/definitions/entityExtension*.
+- **`sourceUrl`**: Source URL of topic. Refer to *../../type/basic.json#/definitions/sourceUrl*.
 - **`domain`**: Domain the Topic belongs to. When not set, the Topic inherits the domain from the messaging service it belongs to. Refer to *../../type/entityReference.json*.
-- **`dataProducts`**: List of of data products this entity is part of. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*.
+- **`dataProducts`**: List of data products this entity is part of. Refer to *../../type/entityReferenceList.json*.
+- **`votes`**: Refer to *../../type/votes.json*.
+- **`lifeCycle`**: Life Cycle properties of the entity. Refer to *../../type/lifeCycle.json*.
 ## Definitions
 
 - **`cleanupPolicy`**: Topic clean up policy. For Kafka - `cleanup.policy` configuration. Must be one of: `['delete', 'compact']`.
@@ -49,4 +52,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/topic
     - **Items** *(string)*
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

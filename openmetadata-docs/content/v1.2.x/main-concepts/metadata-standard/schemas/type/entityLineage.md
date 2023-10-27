@@ -29,6 +29,7 @@ slug: /main-concepts/metadata-standard/schemas/type/entitylineage
     - **Items**: Refer to *#/definitions/columnLineage*.
   - **`pipeline`**: Pipeline where the sqlQuery is periodically run. Refer to *../type/entityReference.json*.
   - **`description`** *(string)*: description of lineage.
+  - **`source`** *(string)*: Lineage type describes how a lineage was created. Must be one of: `['Manual', 'ViewLineage', 'QueryLineage', 'PipelineLineage', 'DashboardLineage', 'DbtLineage']`. Default: `Manual`.
 - **`edge`** *(object)*: Edge in the lineage graph from one entity to another by entity IDs. Cannot contain additional properties.
   - **`fromEntity`**: From entity that is upstream of lineage edge. Refer to *basic.json#/definitions/uuid*.
   - **`toEntity`**: To entity that is downstream of lineage edge. Refer to *basic.json#/definitions/uuid*.
@@ -41,4 +42,4 @@ slug: /main-concepts/metadata-standard/schemas/type/entitylineage
   - **`lineageDetails`**: Optional lineageDetails provided only for table to table lineage edge. Refer to *#/definitions/lineageDetails*.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

@@ -16,10 +16,11 @@ slug: /main-concepts/metadata-standard/schemas/metadataingestion/dbtpipeline
 - **`dbtClassificationName`** *(string)*: Custom OpenMetadata Classification name for dbt tags. Default: `dbtTags`.
 - **`schemaFilterPattern`**: Regex to only fetch tables or databases that matches the pattern. Refer to *../type/filterPattern.json#/definitions/filterPattern*.
 - **`tableFilterPattern`**: Regex exclude tables or databases that matches the pattern. Refer to *../type/filterPattern.json#/definitions/filterPattern*.
+- **`parsingTimeoutLimit`** *(integer)*: Configuration to set the timeout for parsing the query in seconds. Default: `300`.
 - **`databaseFilterPattern`**: Regex to only fetch databases that matches the pattern. Refer to *../type/filterPattern.json#/definitions/filterPattern*.
 ## Definitions
 
 - **`dbtConfigType`** *(string)*: DBT Config Pipeline type. Must be one of: `['DBT']`. Default: `DBT`.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

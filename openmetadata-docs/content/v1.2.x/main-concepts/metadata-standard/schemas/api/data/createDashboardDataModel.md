@@ -23,6 +23,7 @@ slug: /main-concepts/metadata-standard/schemas/api/data/createdashboarddatamodel
   - **Items**: Refer to *../../entity/data/table.json#/definitions/column*.
 - **`project`** *(string)*: Name of the project / workspace / collection in which the dataModel is contained.
 - **`domain`** *(string)*: Fully qualified name of the domain the Dashboard Data Model belongs to.
+- **`lifeCycle`**: Life Cycle of the entity. Refer to *../../type/lifeCycle.json*.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

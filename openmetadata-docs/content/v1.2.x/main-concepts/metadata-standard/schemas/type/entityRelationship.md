@@ -20,7 +20,7 @@ slug: /main-concepts/metadata-standard/schemas/type/entityrelationship
 - **`deleted`** *(boolean)*: `true` indicates the relationship has been soft deleted. Default: `False`.
 ## Definitions
 
-- **`relationshipType`** *(string)*: This enum captures all the relationships between Catalog entities. Note that the relationship from is a Strong entity and to is Weak entity when possible. Must be one of: `['contains', 'createdBy', 'repliedTo', 'isAbout', 'addressedTo', 'mentionedIn', 'testedBy', 'uses', 'owns', 'parentOf', 'has', 'follows', 'joinedWith', 'upstream', 'appliedTo', 'relatedTo', 'reviews', 'reactedTo', 'voted', 'expert']`.
+- **`relationshipType`** *(string)*: This enum captures all the relationships between Catalog entities. Note that the relationship from is a Strong entity and to is Weak entity when possible. Must be one of: `['contains', 'createdBy', 'repliedTo', 'isAbout', 'addressedTo', 'mentionedIn', 'testedBy', 'uses', 'owns', 'parentOf', 'has', 'follows', 'joinedWith', 'upstream', 'appliedTo', 'relatedTo', 'reviews', 'reactedTo', 'voted', 'expert', 'editedBy', 'defaultsTo']`.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

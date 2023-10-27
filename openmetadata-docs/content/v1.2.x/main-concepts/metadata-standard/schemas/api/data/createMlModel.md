@@ -26,7 +26,9 @@ slug: /main-concepts/metadata-standard/schemas/api/data/createmlmodel
 - **`owner`**: Owner of this database. Refer to *../../type/entityReference.json*.
 - **`service`**: Link to the MLModel service fqn where this pipeline is hosted in. Refer to *../../type/basic.json#/definitions/fullyQualifiedEntityName*.
 - **`extension`**: Entity extension data with custom attributes added to the entity. Refer to *../../type/basic.json#/definitions/entityExtension*.
+- **`sourceUrl`**: Source URL of mlModel. Refer to *../../type/basic.json#/definitions/sourceUrl*.
 - **`domain`** *(string)*: Fully qualified name of the domain the MLModel belongs to.
+- **`lifeCycle`**: Life Cycle of the entity. Refer to *../../type/lifeCycle.json*.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.
