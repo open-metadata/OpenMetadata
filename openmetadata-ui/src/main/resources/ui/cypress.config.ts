@@ -29,6 +29,10 @@ export default defineConfig({
     setupNodeEvents(on, config) {
       return plugins(on, config);
     },
-    specPattern: ['cypress/e2e/Service/*.{js,jsx,ts,tsx}'],
+    specPattern: [
+      'cypress/e2e/Features/*.{js,jsx,ts,tsx}',
+      'cypress/e2e/Flow/*.{js,jsx,ts,tsx}',
+      'cypress/e2e/Pages/*.{js,jsx,ts,tsx}',
+    ],
   },
 });
