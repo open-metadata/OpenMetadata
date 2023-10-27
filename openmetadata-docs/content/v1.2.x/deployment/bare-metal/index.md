@@ -51,16 +51,14 @@ You can refer a sample script [here](https://github.com/open-metadata/OpenMetada
 {%/note%}
 
 
-## Elasticsearch (version 7.X)
+## Elasticsearch (version 8.X)
 
-OpenMetadata supports ElasticSearch version up to 7.13. To install or upgrade Elasticsearch to a supported version please see the instructions for your operating system at 
+OpenMetadata supports ElasticSearch version up to 8.10.2. To install or upgrade Elasticsearch to a supported version please see the instructions for your operating system at 
 [Installing ElasticSearch](https://www.elastic.co/guide/en/elasticsearch/reference/current/install-elasticsearch.html).
-
-We do not support ElasticSearch 8.x yet.
 
 Please follow the instructions here to [install ElasticSearch](https://www.elastic.co/guide/en/elasticsearch/reference/7.13/setup.html).
 
-If you are using AWS OpenSearch Service, OpenMetadata Supports AWS OpenSearch Service engine version up to 1.3. For more information on AWS OpenSearch Service, please visit the official docs [here](https://docs.aws.amazon.com/opensearch-service/latest/developerguide/what-is.html).
+If you are using AWS OpenSearch Service, OpenMetadata Supports AWS OpenSearch Service engine version up to 2.7. For more information on AWS OpenSearch Service, please visit the official docs [here](https://docs.aws.amazon.com/opensearch-service/latest/developerguide/what-is.html).
 
 ## Airflow (version 2.0.0 or greater) or other workflow schedulers
 
@@ -171,7 +169,7 @@ If you are running OpenMetadata in AWS, it is recommended to use [Amazon RDS](ht
 We support 
 
 - Amazon RDS (MySQL) engine version 8 or greater
-- Amazon OpenSearch (ElasticSearch) engine version up to 7.1 or Amazon OpenSearch engine version up to 1.3
+- Amazon OpenSearch (ElasticSearch) engine version up to 8.10.2 or Amazon OpenSearch engine version up to 2.7
 - Amazon RDS (PostgreSQL) engine version between 12 and 14.6
 
 For Production Systems, we recommend Amazon RDS to be in Multiple Availability Zones. For Amazon OpenSearch (or ElasticSearch) Service, we recommend Multiple Availability Zones with minimum 3 Master Nodes.
