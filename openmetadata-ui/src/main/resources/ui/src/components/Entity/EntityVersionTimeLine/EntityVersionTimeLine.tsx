@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { EntityHistory } from '../../../generated/type/entityHistory';
 import { getSummary, isMajorVersion } from '../../../utils/EntityVersionUtils';
 import CloseIcon from '../../Modals/CloseIcon.component';
+import { getUserById } from "../../../rest/userAPI";
 
 type Props = {
   versionList: EntityHistory;
@@ -36,6 +37,17 @@ const EntityVersionTimeLine: React.FC<Props> = ({
 }: Props) => {
   const { t } = useTranslation();
   const [versionType] = useState<VersionType>('all');
+
+  const fetchUserName = async (id: string) => {
+    let nameData: string = " ";
+    try {
+      const userData = await getUserById(id, 'displayName');
+      nameData = userData.displayName ?? "Unknown User";
+    }catch (err) {
+      nameData = "Unknown User";
+    } 
+    return nameData;
+  }
 
   const versions = useMemo(() => {
     let versionTypeList = [];
@@ -78,6 +90,9 @@ const EntityVersionTimeLine: React.FC<Props> = ({
     return versionTypeList.length ? (
       versionTypeList.map((v, i) => {
         const currV = JSON.parse(v);
+        const userId: string = currV?.updatedBy;
+        const userName: string = " ";
+        {userId == 'admin'?userName='admin':userName=fetchUserName(userId)}
         const majorVersionChecks = () => {
           return (
             isMajorVersion(
