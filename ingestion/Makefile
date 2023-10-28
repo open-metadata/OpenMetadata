@@ -59,7 +59,7 @@ unit_ingestion:  ## Run Python unit tests
 ## Ingestion tests & QA
 .PHONY: run_ometa_integration_tests
 run_ometa_integration_tests:  ## Run Python integration tests
-	coverage run --rcfile $(INGESTION_DIR)/.coveragerc -a --branch -m pytest -c $(INGESTION_DIR)/setup.cfg --junitxml=$(INGESTION_DIR)/junit/test-results-integration.xml $(INGESTION_DIR)/tests/integration/ometa ingestion/tests/integration/orm_profiler $(INGESTION_DIR)/tests/integration/test_suite $(INGESTION_DIR)/tests/integration/data_insight $(INGESTION_DIR)/tests/integration/lineage
+	coverage run --rcfile $(INGESTION_DIR)/.coveragerc -a --branch -m pytest -c $(INGESTION_DIR)/setup.cfg --junitxml=$(INGESTION_DIR)/junit/test-results-integration.xml $(INGESTION_DIR)/tests/integration/ometa $(INGESTION_DIR)/tests/integration/orm_profiler $(INGESTION_DIR)/tests/integration/test_suite $(INGESTION_DIR)/tests/integration/data_insight $(INGESTION_DIR)/tests/integration/lineage
 
 .PHONY: run_python_tests
 run_python_tests:  ## Run all Python tests with coverage
