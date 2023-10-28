@@ -60,11 +60,22 @@ core_py_antlr:  ## Generate the Python core code for parsing FQNs under ingestio
 
 .PHONY: py_antlr
 py_antlr:  ## Generate the Python code for parsing FQNs
-	antlr4 -Dlanguage=Python3 -o ingestion/src/metadata/generated/antlr openmetadata-spec/src/main/antlr4/org/openmetadata/schema/*.g4
+	antlr4 -Dlanguage=Python3 -o ingestion/src/metadata/generated/antlr ${PWD}/openmetadata-spec/src/main/antlr4/org/openmetadata/schema/*.g4
 
 .PHONY: js_antlr
 js_antlr:  ## Generate the Python code for parsing FQNs
-	antlr4 -Dlanguage=JavaScript -o openmetadata-ui/src/main/resources/ui/src/generated/antlr openmetadata-spec/src/main/antlr4/org/openmetadata/schema/*.g4
+	antlr4 -Dlanguage=JavaScript -o openmetadata-ui/src/main/resources/ui/src/generated/antlr ${PWD}/openmetadata-spec/src/main/antlr4/org/openmetadata/schema/*.g4
+
+## Ingestion models generation
+.PHONY: generate
+generate:  ## Generate the pydantic models from the JSON Schemas to the ingestion module
+	@echo "Running Datamodel Code Generator"
+	@echo "Make sure to first run the install_dev recipe"
+	rm -rf ingestion/src/metadata/generated
+	mkdir -p ingestion/src/metadata/generated
+	python scripts/datamodel_generation.py
+	$(MAKE) py_antlr js_antlr
+	$(MAKE) install
 
 .PHONY: install_antlr_cli
 install_antlr_cli:  ## Install antlr CLI locally

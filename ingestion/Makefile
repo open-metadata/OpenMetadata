@@ -92,16 +92,7 @@ coverage_apis:  ## Run the python tests on openmetadata-airflow-apis
 	coverage xml --rcfile $(ROOT_DIR)/openmetadata-airflow-apis/.coveragerc -o $(ROOT_DIR)/openmetadata-airflow-apis/coverage.xml
 	sed -e "s/$(shell python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")\///g" $(INGESTION_DIR)/openmetadata-airflow-apis/coverage.xml >> $(INGESTION_DIR)/openmetadata-airflow-apis/ci-coverage.xml
 
-## Ingestion models generation
-.PHONY: generate
-generate:  ## Generate the pydantic models from the JSON Schemas to the ingestion module
-	@echo "Running Datamodel Code Generator"
-	@echo "Make sure to first run the install_dev recipe"
-	rm -rf $(INGESTION_DIR)/src/metadata/generated
-	mkdir -p $(INGESTION_DIR)/src/metadata/generated
-	python $(ROOT_DIR)/scripts/datamodel_generation.py
-	$(MAKE) -C $(ROOT_DIR) py_antlr js_antlr
-	$(MAKE) install
+
 
 .PHONY: coverage
 coverage:  ## Run all Python tests and generate the coverage XML report
