@@ -188,51 +188,10 @@ source:
 ```yaml {% srNumber=11 %}
       paginationLimit: pagination_limit
 ```
-```yaml {% srNumber=8 %}
-  sourceConfig:
-    config:
-      type: DashboardMetadata
-      includeOwners: True
-      markDeletedDashboards: True
-      includeTags: True
-      includeDataModels: True
-      # dbServiceNames:
-      #   - service1
-      #   - service2
-      # dashboardFilterPattern:
-      #   includes:
-      #     - dashboard1
-      #     - dashboard2
-      #   excludes:
-      #     - dashboard3
-      #     - dashboard4
-      # chartFilterPattern:
-      #   includes:
-      #     - chart1
-      #     - chart2
-      #   excludes:
-      #     - chart3
-      #     - chart4
-      # dataModelFilterPattern:
-      #   includes:
-      #     - datamodel1
-      #     - datamodel2
-      #   excludes:
-      #     - datamodel3
-      #     - datamodel4
-      # projectFilterPattern:
-      #   includes:
-      #     - project1
-      #     - project2
-      #   excludes:
-      #     - project3
-      #     - project4
-```
-```yaml {% srNumber=9 %}
-sink:
-  type: metadata-rest
-  config: {}
-```
+
+{% partial file="/v1.2/connectors/yaml/dashboard/source-config.md" /%}
+
+{% partial file="/v1.2/connectors/yaml/ingestion-sink.md" /%}
 
 {% partial file="/v1.2/connectors/yaml/workflow-config.md" /%}
 
