@@ -111,6 +111,11 @@ Again, this information will be added on top of the inferred schema from the dat
 }
 ```
 
+{% /codeBlock %}
+
+{% /codePreview %}
+
+
 ### Global Manifest
 
 You can also manage a **single** manifest file to centralize the ingestion process for any container. In that case,
