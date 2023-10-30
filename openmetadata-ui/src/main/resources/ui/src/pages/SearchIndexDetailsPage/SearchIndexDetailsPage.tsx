@@ -24,6 +24,7 @@ import ActivityFeedProvider, {
 } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
+import { useAuthContext } from '../../components/authentication/auth-provider/AuthProvider';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../components/common/description/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
@@ -63,7 +64,6 @@ import {
 } from '../../rest/SearchIndexAPI';
 import {
   addToRecentViewed,
-  getCurrentUserId,
   getFeedCounts,
   sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
@@ -86,7 +86,8 @@ function SearchIndexDetailsPage() {
     useParams<{ fqn: string; tab: string }>();
   const { t } = useTranslation();
   const history = useHistory();
-  const USERId = getCurrentUserId();
+  const { currentUser } = useAuthContext();
+  const USERId = currentUser?.id ?? '';
   const [loading, setLoading] = useState<boolean>(true);
   const [searchIndexDetails, setSearchIndexDetails] = useState<SearchIndex>();
   const [feedCount, setFeedCount] = useState<number>(0);

@@ -146,7 +146,7 @@ To send the metadata to OpenMetadata, it needs to be specified as `type: metadat
 
 {% /codeInfo %}
 
-{% partial file="/v1.2/connectors/workflow-config.md" /%}
+{% partial file="/v1.2/connectors/yaml/workflow-config-def.md" /%}
 
 {% /codeInfoContainer %}
 
@@ -188,53 +188,12 @@ source:
 ```yaml {% srNumber=11 %}
       paginationLimit: pagination_limit
 ```
-```yaml {% srNumber=8 %}
-  sourceConfig:
-    config:
-      type: DashboardMetadata
-      includeOwners: True
-      markDeletedDashboards: True
-      includeTags: True
-      includeDataModels: True
-      # dbServiceNames:
-      #   - service1
-      #   - service2
-      # dashboardFilterPattern:
-      #   includes:
-      #     - dashboard1
-      #     - dashboard2
-      #   excludes:
-      #     - dashboard3
-      #     - dashboard4
-      # chartFilterPattern:
-      #   includes:
-      #     - chart1
-      #     - chart2
-      #   excludes:
-      #     - chart3
-      #     - chart4
-      # dataModelFilterPattern:
-      #   includes:
-      #     - datamodel1
-      #     - datamodel2
-      #   excludes:
-      #     - datamodel3
-      #     - datamodel4
-      # projectFilterPattern:
-      #   includes:
-      #     - project1
-      #     - project2
-      #   excludes:
-      #     - project3
-      #     - project4
-```
-```yaml {% srNumber=9 %}
-sink:
-  type: metadata-rest
-  config: {}
-```
 
-{% partial file="/v1.2/connectors/workflow-config-yaml.md" /%}
+{% partial file="/v1.2/connectors/yaml/dashboard/source-config.md" /%}
+
+{% partial file="/v1.2/connectors/yaml/ingestion-sink.md" /%}
+
+{% partial file="/v1.2/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
@@ -363,13 +322,4 @@ workflowConfig:
 ```
 
 
-### 2. Run with the CLI
-
-First, we will need to save the YAML file. Afterward, and with all requirements installed, we can run:
-
-```bash
-metadata ingest -c <path-to-yaml>
-```
-
-Note that from connector to connector, this recipe will always be the same. By updating the YAML configuration,
-you will be able to extract metadata from different sources.
+{% partial file="/v1.2/connectors/yaml/ingestion-cli.md" /%}

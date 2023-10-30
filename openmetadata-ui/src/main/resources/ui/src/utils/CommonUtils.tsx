@@ -187,12 +187,6 @@ export const getTableFQNFromColumnFQN = (columnFQN: string): string => {
   );
 };
 
-export const getCurrentUserId = (): string => {
-  const currentUser = AppState.getCurrentUserDetails();
-
-  return currentUser?.id || '';
-};
-
 export const pluralize = (count: number, noun: string, suffix = 's') => {
   const countString = count.toLocaleString();
   if (count !== 1 && count !== 0 && !noun.endsWith(suffix)) {
