@@ -45,7 +45,6 @@ jest.mock('../../rest/storedProceduresAPI', () => ({
 }));
 
 jest.mock('../../utils/CommonUtils', () => ({
-  getCurrentUserId: jest.fn(),
   getFeedCounts: jest.fn(),
   sortTagsCaseInsensitive: jest.fn(),
 }));

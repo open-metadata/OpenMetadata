@@ -58,7 +58,7 @@ import { ThreadType } from '../../generated/entity/feed/thread';
 import { TagSource } from '../../generated/type/schema';
 import { postThread } from '../../rest/feedsAPI';
 import { restorePipeline } from '../../rest/pipelineAPI';
-import { getCurrentUserId, getFeedCounts } from '../../utils/CommonUtils';
+import { getFeedCounts } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
@@ -70,6 +70,7 @@ import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
+import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
@@ -93,8 +94,9 @@ const PipelineDetails = ({
   const history = useHistory();
   const { tab } = useParams<{ tab: EntityTabs }>();
   const { t } = useTranslation();
+  const { currentUser } = useAuthContext();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
-  const userID = getCurrentUserId();
+  const userID = currentUser?.id ?? '';
   const {
     deleted,
     owner,

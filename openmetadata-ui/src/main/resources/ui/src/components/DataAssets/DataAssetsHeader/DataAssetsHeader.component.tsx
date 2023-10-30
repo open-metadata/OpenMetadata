@@ -49,10 +49,7 @@ import {
 import { useClipboard } from '../../../hooks/useClipBoard';
 import { getActiveAnnouncement, getFeedCount } from '../../../rest/feedsAPI';
 import { getContainerByName } from '../../../rest/storageAPI';
-import {
-  getCurrentUserId,
-  getEntityDetailLink,
-} from '../../../utils/CommonUtils';
+import { getEntityDetailLink } from '../../../utils/CommonUtils';
 import { getDataAssetsHeaderInfo } from '../../../utils/DataAssetsHeader.utils';
 import {
   getEntityFeedLink,
@@ -62,6 +59,7 @@ import {
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { getTierTags } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import {
   DataAssetHeaderInfo,
   DataAssetsHeaderProps,
@@ -129,7 +127,8 @@ export const DataAssetsHeader = ({
   onDisplayNameUpdate,
   afterDomainUpdateAction,
 }: DataAssetsHeaderProps) => {
-  const USER_ID = getCurrentUserId();
+  const { currentUser } = useAuthContext();
+  const USER_ID = currentUser?.id ?? '';
   const { t } = useTranslation();
   const { isTourPage } = useTourProvider();
   const { onCopyToClipBoard } = useClipboard(window.location.href);
