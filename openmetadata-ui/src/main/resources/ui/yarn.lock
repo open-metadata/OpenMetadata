@@ -2982,16 +2982,6 @@
   dependencies:
     type-fest "^2.19.0"
 
-"@rjsf/antd@5.4.0":
-  version "5.4.0"
-  resolved "https://registry.yarnpkg.com/@rjsf/antd/-/antd-5.4.0.tgz#194a784272a5782aeea35d80e25ee5a5b076bfa4"
-  integrity sha512-mC96NITW/CFfPtF/J8EdxStaP/Jc/EfEaIB00GyUWbZUYjXFJ+cAeltfXFQPOrrlC6gFCDRbkZexRW+Hazv6eA==
-  dependencies:
-    classnames "^2.3.2"
-    lodash "^4.17.15"
-    lodash-es "^4.17.15"
-    rc-picker "^2.6.11"
-
 "@rjsf/core@5.4.0":
   version "5.4.0"
   resolved "https://registry.yarnpkg.com/@rjsf/core/-/core-5.4.0.tgz#d75e42a5b8fe9af7b62b04fd8b93629f4e1fa5a7"
@@ -12129,20 +12119,6 @@ rc-pagination@~3.1.17:
   dependencies:
     "@babel/runtime" "^7.10.1"
     classnames "^2.2.1"
-
-rc-picker@^2.6.11:
-  version "2.7.2"
-  resolved "https://registry.yarnpkg.com/rc-picker/-/rc-picker-2.7.2.tgz#bf656ca274228c84b955dfaa7705738908cb900f"
-  integrity sha512-KbUKgbzgWVN5L+V9xhZDKSmseHIyFneBlmuMtMrZ9fU7Oypw6D+owS5kuUicIEV08Y17oXt8dUqauMeC5IFBPg==
-  dependencies:
-    "@babel/runtime" "^7.10.1"
-    classnames "^2.2.1"
-    date-fns "2.x"
-    dayjs "1.x"
-    moment "^2.24.0"
-    rc-trigger "^5.0.4"
-    rc-util "^5.4.0"
-    shallowequal "^1.1.0"
 
 rc-picker@~2.6.11:
   version "2.6.11"

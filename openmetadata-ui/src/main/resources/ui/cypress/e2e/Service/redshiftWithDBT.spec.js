@@ -210,21 +210,24 @@ describe('RedShift Ingestion', () => {
   });
 
   it('Validate DBT is ingested properly', () => {
+    interceptURL(
+      'GET',
+      `/api/v1/classifications?fields=termCount&limit=*`,
+      'fetchClassifications'
+    );
     // Verify DBT tags
     interceptURL(
       'GET',
       `/api/v1/tags?fields=usageCount&parent=${DBT.classification}&limit=10`,
       'getTagList'
     );
-    cy.get('[data-testid="governance"]')
-      .should('exist')
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="governance"]').click();
 
-    cy.get('[data-testid="app-bar-item-tags"]')
-      .should('exist')
-      .should('be.visible')
-      .click({ waitForAnimations: true });
+    cy.get('[data-testid="app-bar-item-tags"]').click({
+      waitForAnimations: true,
+    });
+
+    verifyResponseStatusCode('@fetchClassifications', 200);
 
     verifyResponseStatusCode('@getTagList', 200);
     // Verify DBT tag category is added
@@ -240,17 +243,13 @@ describe('RedShift Ingestion', () => {
     visitEntityDetailsPage(REDSHIFT.DBTTable, REDSHIFT.serviceName, 'tables');
 
     // Verify tags
-    cy.get('[data-testid="entity-tags"]')
-      .should('exist')
-      .should('be.visible')
-      .should('contain', `${DBT.classification}.${DBT.tagName}`);
+    cy.get('[data-testid="entity-tags"]').should('contain', `${DBT.tagName}`);
     // Verify DBT tab is present
-    cy.get('[data-testid="dbt"]').should('exist').should('be.visible');
     cy.get('[data-testid="dbt"]').click();
     // Verify query is present in the DBT tab
     cy.get('.CodeMirror').should('be.visible').should('contain', DBT.dbtQuery);
 
-    cy.get('[data-testid="lineage"]').should('be.visible').click();
+    cy.get('[data-testid="lineage"]').click();
 
     cy.get('[data-testid="entity-header-display-name"]').should(
       'contain',

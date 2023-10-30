@@ -43,15 +43,14 @@ describe('Superset Ingestion', () => {
       cy.get('#root\\/connection\\/username')
         .scrollIntoView()
         .type(Cypress.env('supersetUsername'));
-      cy.get('#root\\/connection\\/authType\\/password')
+      cy.get('#root\\/connection\\/password')
         .scrollIntoView()
         .type(Cypress.env('supersetPassword'));
-      cy.get('#root\\/connection\\/hostPort')
+      cy.get('#root\\/hostPort')
         .scrollIntoView()
         .focus()
         .clear()
         .type(Cypress.env('supersetHostPort'));
-      cy.get('#root\\/connection\\/database').scrollIntoView().type('superset');
     };
 
     const addIngestionInput = () => {

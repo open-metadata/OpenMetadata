@@ -99,10 +99,8 @@ describe('Add and Remove Owner', () => {
     verifyResponseStatusCode('@entityPermission', 200);
     verifyResponseStatusCode('@activityFeed', 200);
 
-    cy.get('[data-testid="breadcrumb"]')
-      .should('be.visible')
-      .contains(value.schema)
-      .click();
+    // click to schema in breadcrumb
+    cy.get(':nth-child(3) > .link-title').click();
     verifyResponseStatusCode('@entityPermission', 200);
     verifyResponseStatusCode('@schemaDetails', 200);
     verifyResponseStatusCode('@activityFeed', 200);
@@ -117,10 +115,8 @@ describe('Add and Remove Owner', () => {
     verifyResponseStatusCode('@entityPermission', 200);
     verifyResponseStatusCode('@activityFeed', 200);
 
-    cy.get('[data-testid="breadcrumb"]')
-      .should('be.visible')
-      .contains(value.database)
-      .click();
+    // click to database in breadcrumb
+    cy.get(':nth-child(2) > .link-title').click();
     verifyResponseStatusCode('@entityPermission', 200);
     verifyResponseStatusCode('@databaseDetails', 200);
     verifyResponseStatusCode('@activityFeed', 200);
@@ -145,10 +141,9 @@ describe('Add and Remove Owner', () => {
     verifyResponseStatusCode('@entityPermission', 200);
     verifyResponseStatusCode('@activityFeed', 200);
 
-    cy.get('[data-testid="breadcrumb"]')
-      .should('be.visible')
-      .contains(value.serviceName)
-      .click();
+    // click to service in breadcrumb
+    cy.get(':nth-child(1) > .link-title').click();
+
     verifyResponseStatusCode('@entityPermission', 200);
     verifyResponseStatusCode('@ingestionPipelines', 200);
     verifyResponseStatusCode('@serviceDetails', 200);

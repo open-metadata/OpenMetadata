@@ -32,10 +32,6 @@ concurrency:
 jobs:
   cypress-ci-mysql:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        job: [0, 1, 2]
     environment: test
     steps:
       - name: Free Disk Space (Ubuntu)
@@ -117,9 +113,9 @@ jobs:
         uses: cypress-io/github-action@v4
         timeout-minutes: 120
         with:
-          install: true
+          install-command: yarn --frozen-lockfile --silent --ignore-scripts
           record: true
-          parallel: true
+          parallel: false
           working-directory: openmetadata-ui/src/main/resources/ui/
           wait-on: 'http://localhost:8585'
           group: cypress-ci-mysql-oss-${{ github.run_id }}-${{github.run_attempt}}
