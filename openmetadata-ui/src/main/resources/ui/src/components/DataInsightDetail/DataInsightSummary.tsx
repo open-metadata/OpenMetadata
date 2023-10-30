@@ -252,7 +252,6 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
                     <UserPopOverCard userName={mostActiveUser.userName}>
                       <Space>
                         <ProfilePicture
-                          id=""
                           name={mostActiveUser.userName}
                           type="circle"
                         />

@@ -111,7 +111,6 @@ const EntitySummaryDetails = ({
                   <>
                     <ProfilePicture
                       displayName={userDetails.ownerName}
-                      id={userDetails.id as string}
                       name={userDetails.ownerName ?? ''}
                       type="circle"
                       width="24"
@@ -133,7 +132,6 @@ const EntitySummaryDetails = ({
                 ) : (
                   <ProfilePicture
                     displayName={displayVal}
-                    id=""
                     name={data.profileName ?? ''}
                     type="circle"
                     width={data.avatarWidth ?? '24'}

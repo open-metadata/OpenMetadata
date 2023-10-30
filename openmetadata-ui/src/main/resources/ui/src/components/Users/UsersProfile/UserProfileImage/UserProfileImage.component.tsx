@@ -51,7 +51,6 @@ const UserProfileImage = ({ userData }: UserProfileImageProps) => {
         <ProfilePicture
           displayName={userData?.displayName ?? userData.name}
           height="186"
-          id={userData?.id ?? ''}
           name={userData?.name ?? ''}
           textClass="text-5xl"
           width=""

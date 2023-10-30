@@ -29,6 +29,35 @@ import '../UserSelectableList/user-select-dropdown.less';
 import { UserTag } from '../UserTag/UserTag.component';
 import { SelectableListProps } from './SelectableList.interface';
 
+const RemoveIcon = ({
+  removeOwner,
+  removeIconTooltipLabel,
+}: {
+  removeOwner?: () => void;
+  removeIconTooltipLabel?: string;
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <Tooltip
+      title={
+        removeIconTooltipLabel ??
+        t('label.remove-entity', {
+          entity: t('label.owner-lowercase'),
+        })
+      }>
+      <SVGIcons
+        data-testid="remove-owner"
+        icon={Icons.ICON_REMOVE_COLORED}
+        onClick={(e) => {
+          e.stopPropagation();
+          removeOwner && removeOwner();
+        }}
+      />
+    </Tooltip>
+  );
+};
+
 export const SelectableList = ({
   fetchOptions,
   multiSelect,
@@ -250,41 +279,12 @@ export const SelectableList = ({
               {customTagRenderer ? (
                 customTagRenderer(item)
               ) : (
-                <UserTag id={item.id} name={getEntityName(item)} />
+                <UserTag id={item.id} name={item.name ?? ''} />
               )}
             </List.Item>
           )}
         </VirtualList>
       )}
     </List>
-  );
-};
-
-const RemoveIcon = ({
-  removeOwner,
-  removeIconTooltipLabel,
-}: {
-  removeOwner?: () => void;
-  removeIconTooltipLabel?: string;
-}) => {
-  const { t } = useTranslation();
-
-  return (
-    <Tooltip
-      title={
-        removeIconTooltipLabel ??
-        t('label.remove-entity', {
-          entity: t('label.owner-lowercase'),
-        })
-      }>
-      <SVGIcons
-        data-testid="remove-owner"
-        icon={Icons.ICON_REMOVE_COLORED}
-        onClick={(e) => {
-          e.stopPropagation();
-          removeOwner && removeOwner();
-        }}
-      />
-    </Tooltip>
   );
 };

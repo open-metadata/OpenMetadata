@@ -108,6 +108,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
             mainContainerClassName
           )}
           flex={contentWidth}
+          id="app-container"
           offset={center ? 3 : 0}
           span={center ? 18 : 24}>
           {children}

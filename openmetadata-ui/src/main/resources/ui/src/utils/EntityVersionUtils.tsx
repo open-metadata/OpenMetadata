@@ -504,7 +504,6 @@ export const getOwnerInfo = (owner: EntityReference, ownerLabel: ReactNode) => {
       ) : (
         <ProfilePicture
           displayName={getEntityName(owner)}
-          id={owner.id ?? ''}
           name={owner.name ?? ''}
           textClass="text-xs"
           type="circle"

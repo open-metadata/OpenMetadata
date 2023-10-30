@@ -83,7 +83,6 @@ const AppInstallVerifyCard = ({
             <span className="d-flex cursor-pointer" data-testid="authorAvatar">
               <ProfilePicture
                 className="d-flex"
-                id=""
                 name={currentUser?.displayName ?? currentUser?.name ?? ''}
                 type="circle"
                 width="32"

@@ -70,7 +70,6 @@ import Fqn from './Fqn';
 import { getEncodedFqn } from './StringsUtils';
 import { getEntityLink } from './TableUtils';
 import { showErrorToast } from './ToastUtils';
-import { getUserProfilePic } from './UserDataUtils';
 
 export const getEntityType = (entityLink: string) => {
   return EntityLink.getEntityType(entityLink);

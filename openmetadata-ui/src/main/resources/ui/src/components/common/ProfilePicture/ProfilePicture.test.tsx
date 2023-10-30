@@ -13,8 +13,6 @@
 
 import { findByTestId, findByText, render } from '@testing-library/react';
 import React from 'react';
-import AppState from '../../../AppState';
-import { getUserProfilePic } from '../../../utils/UserDataUtils';
 import ProfilePicture from './ProfilePicture';
 
 jest.mock('../avatar/Avatar', () => {
@@ -26,25 +24,13 @@ jest.mock('../../../utils/UserDataUtils', () => {
     fetchAllUsers: jest.fn(),
     fetchUserProfilePic: jest.fn(),
     getUserDataFromOidc: jest.fn(),
-    getUserProfilePic: jest.fn(),
     matchUserDetails: jest.fn(),
   };
 });
 
 const mockData = {
-  id: 'test-1',
   name: 'test-name',
 };
-
-const mockGetUserProfilePic = jest.fn(() => 'mockedProfilePic');
-
-beforeAll(() => {
-  jest.spyOn(AppState, 'isProfilePicLoading').mockImplementation(() => false);
-});
-
-afterAll(() => {
-  jest.restoreAllMocks();
-});
 
 describe('Test ProfilePicture component', () => {
   it('ProfilePicture component should render with Avatar', async () => {
@@ -63,20 +49,7 @@ describe('Test ProfilePicture component', () => {
     expect(avatar).toBeInTheDocument();
   });
 
-  it('Profile image should load', async () => {
-    (getUserProfilePic as jest.Mock).mockImplementationOnce(
-      mockGetUserProfilePic
-    );
-    const { container } = render(<ProfilePicture {...mockData} />);
-
-    const image = await findByTestId(container, 'profile-image');
-
-    expect(image).toBeInTheDocument();
-  });
-
   it('Profile Avatar should be loading', async () => {
-    jest.spyOn(AppState, 'isProfilePicLoading').mockImplementation(() => true);
-
     const { container } = render(<ProfilePicture {...mockData} />);
 
     const loader = await findByTestId(container, 'loader-cntnr');

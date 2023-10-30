@@ -19,12 +19,31 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { getUserPath } from '../../constants/constants';
 import { User } from '../../generated/entity/teams/user';
+import { EntityReference } from '../../generated/entity/type';
 import { getEntityName } from '../../utils/EntityUtils';
 import { LIST_CAP } from '../../utils/PermissionsUtils';
 import {
   getRoleWithFqnPath,
   getTeamsWithFqnPath,
 } from '../../utils/RouterUtils';
+import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
+
+export const userCellRenderer = (user: EntityReference | User) => {
+  return (
+    <Link
+      className="d-flex gap-2 items-center "
+      data-testid={user.name}
+      to={getUserPath(user.fullyQualifiedName ?? user.name ?? '')}>
+      <ProfilePicture
+        displayName={user.displayName}
+        name={user.name ?? ''}
+        type="circle"
+        width="16"
+      />
+      {getEntityName(user)}
+    </Link>
+  );
+};
 
 export const commonUserDetailColumns = (
   isLoading?: boolean
@@ -33,14 +52,7 @@ export const commonUserDetailColumns = (
     title: t('label.username'),
     dataIndex: 'username',
     key: 'username',
-    render: (_, record) => (
-      <Link
-        className="cursor-pointer"
-        data-testid={record.name}
-        to={getUserPath(record.fullyQualifiedName || record.name)}>
-        {getEntityName(record)}
-      </Link>
-    ),
+    render: (_, record) => userCellRenderer(record),
   },
   {
     title: t('label.team-plural'),

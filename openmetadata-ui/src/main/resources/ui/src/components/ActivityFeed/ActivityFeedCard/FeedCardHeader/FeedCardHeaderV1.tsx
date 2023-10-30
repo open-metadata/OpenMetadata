@@ -91,7 +91,7 @@ const FeedCardHeaderV1 = ({
       {showUserAvatar && (
         <UserPopOverCard userName={createdBy}>
           <span className="p-r-xs cursor-pointer" data-testid="authorAvatar">
-            <ProfilePicture id="" name={createdBy} type="circle" width="24" />
+            <ProfilePicture name={createdBy} type="circle" width="24" />
           </span>
         </UserPopOverCard>
       )}

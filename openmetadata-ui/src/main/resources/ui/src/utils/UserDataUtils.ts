@@ -12,7 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
-import { isEqual, isUndefined } from 'lodash';
+import { isEqual } from 'lodash';
 import { SearchedUsersAndTeams } from 'Models';
 import AppState from '../AppState';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
@@ -28,7 +28,7 @@ import {
   getSuggestedTeams,
   getSuggestedUsers,
 } from '../rest/miscAPI';
-import { getUserById, getUserByName, getUsers } from '../rest/userAPI';
+import { getUsers } from '../rest/userAPI';
 import { OidcUser } from './../components/authentication/auth-provider/AuthProvider.interface';
 import { User } from './../generated/entity/teams/user';
 import { formatTeamsResponse, formatUsersResponse } from './APIUtils';
@@ -89,65 +89,6 @@ export const matchUserDetails = (
 
 export const isCurrentUserAdmin = () => {
   return Boolean(AppState.getCurrentUserDetails()?.isAdmin);
-};
-
-export const fetchUserProfilePic = (userId?: string, username?: string) => {
-  let promise;
-
-  if (userId) {
-    promise = getUserById(userId, 'profile');
-  } else if (username) {
-    promise = getUserByName(username, 'profile');
-  } else {
-    return;
-  }
-
-  AppState.updateProfilePicsLoading(userId, username);
-
-  promise
-    .then((res) => {
-      const userData = res as User;
-      const profile = userData.profile?.images?.image512 || '';
-
-      AppState.updateUserProfilePic(
-        userData.id,
-        userData.name,
-        profile,
-        userData.displayName
-      );
-    })
-    .catch((err: AxiosError) => {
-      // ignore exception
-      AppState.updateUserProfilePic(
-        userId,
-        username,
-        err.response?.status === 404 ? '' : undefined
-      );
-    })
-    .finally(() => {
-      AppState.removeProfilePicsLoading(userId, username);
-    });
-};
-
-export const getUserProfilePic = (
-  permission: boolean,
-  userId?: string,
-  username?: string
-) => {
-  let profile;
-  if (userId || username) {
-    profile = AppState.getUserProfilePic(userId, username);
-
-    if (
-      isUndefined(profile) &&
-      !AppState.isProfilePicLoading(userId, username) &&
-      permission
-    ) {
-      fetchUserProfilePic(userId, username);
-    }
-  }
-
-  return profile;
 };
 
 export const searchFormattedUsersAndTeams = async (

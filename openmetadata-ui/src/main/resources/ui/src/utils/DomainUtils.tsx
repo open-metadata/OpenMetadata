@@ -41,7 +41,6 @@ export const getOwner = (
       <>
         <ProfilePicture
           displayName={getEntityName(owner)}
-          id={owner?.id || ''}
           name={owner?.name ?? ''}
           textClass="text-xs"
           type="circle"

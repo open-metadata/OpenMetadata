@@ -54,7 +54,6 @@ const AssigneeList: FC<Props> = ({
             data-testid={`assignee-${assignee.name}`}
             onClick={(e) => handleClick(e, assignee)}>
             <ProfilePicture
-              id=""
               name={assignee.name ?? ''}
               type={profilePicType}
               width={profileWidth}

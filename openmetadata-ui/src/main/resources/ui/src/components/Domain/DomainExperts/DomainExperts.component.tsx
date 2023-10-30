@@ -62,7 +62,6 @@ function DomainExperts({
         <Space className="m-r-xss" key={expert.id} size={4}>
           <ProfilePicture
             displayName={getEntityName(expert)}
-            id={expert.id}
             name={expert.name ?? ''}
             textClass="text-xs"
             type="circle"

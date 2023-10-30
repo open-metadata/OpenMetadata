@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { cloneDeep } from 'lodash';
 import React, {
   createContext,
   FC,
@@ -18,16 +19,33 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { LogoConfiguration } from '../../generated/configuration/applicationConfiguration';
+import { User } from '../../generated/entity/teams/user';
 import { EntityReference } from '../../generated/entity/type';
 import { getCustomLogoConfig } from '../../rest/settingConfigAPI';
 
 interface ContextConfig extends LogoConfiguration {
   routeElements?: ReactNode;
+  userProfilePics: Record<string, User>;
+  updateUserProfilePics: (data: { id: string; user: User }) => void;
+  userProfilePicsLoading: React.MutableRefObject<string[]>;
   selectedPersona: EntityReference;
   updateSelectedPersona: (personaFqn: EntityReference) => void;
+}
+
+export enum UserProfileLoadingStatus {
+  INITIAL = 'initial',
+  LOADING = 'loading',
+  ERROR = 'error',
+  COMPLETED = 'completed',
+}
+
+export interface UserProfileMap {
+  user?: User;
+  status: UserProfileLoadingStatus;
 }
 
 export const ApplicationConfigContext = createContext<ContextConfig>(
@@ -52,6 +70,10 @@ const ApplicationConfigProvider: FC<ApplicationConfigProviderProps> = ({
   const [selectedPersona, setSelectedPersona] = useState<EntityReference>(
     {} as EntityReference
   );
+  const [userProfilePics, setUserProfilePics] = useState<Record<string, User>>(
+    {}
+  );
+  const userProfilePicsLoading = useRef<string[]>([]);
 
   const fetchApplicationConfig = async () => {
     try {
@@ -70,6 +92,18 @@ const ApplicationConfigProvider: FC<ApplicationConfigProviderProps> = ({
     setSelectedPersona(persona);
   }, []);
 
+  const updateUserProfilePics = useCallback(
+    ({ id, user }: { id: string; user: User }) => {
+      setUserProfilePics((prev) => {
+        const updatedMap = cloneDeep(prev);
+        updatedMap[id] = user;
+
+        return updatedMap;
+      });
+    },
+    []
+  );
+
   useEffect(() => {
     fetchApplicationConfig();
   }, []);
@@ -80,8 +114,18 @@ const ApplicationConfigProvider: FC<ApplicationConfigProviderProps> = ({
       routeElements,
       selectedPersona,
       updateSelectedPersona,
+      userProfilePics,
+      updateUserProfilePics,
+      userProfilePicsLoading,
     }),
-    [applicationConfig, routeElements, selectedPersona, updateSelectedPersona]
+    [
+      applicationConfig,
+      routeElements,
+      selectedPersona,
+      updateSelectedPersona,
+      userProfilePics,
+      updateUserProfilePics,
+    ]
   );
 
   return (

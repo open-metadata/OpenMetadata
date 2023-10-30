@@ -122,7 +122,6 @@ const ActivityFeedCardV1 = ({
                             className="profile-image-span cursor-pointer"
                             data-testid="authorAvatar">
                             <ProfilePicture
-                              id=""
                               name={user}
                               type="circle"
                               width="22"
