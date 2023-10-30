@@ -35,15 +35,16 @@ import {
   addTestCaseToLogicalTestSuite,
   createTestSuites,
 } from '../../../rest/testAPI';
-import { getCurrentUserId } from '../../../utils/CommonUtils';
 import { getTestSuitePath } from '../../../utils/RouterUtils';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import AddTestSuiteForm from '../AddTestSuiteForm/AddTestSuiteForm';
 
 const TestSuiteStepper = () => {
   const { t } = useTranslation();
   const history = useHistory();
+  const { currentUser } = useAuthContext();
   const [activeServiceStep, setActiveServiceStep] = useState(1);
   const [testSuiteResponse, setTestSuiteResponse] = useState<TestSuite>();
 
@@ -63,7 +64,7 @@ const TestSuiteStepper = () => {
   const onSubmit = async (data: string[]) => {
     try {
       const owner = {
-        id: getCurrentUserId(),
+        id: currentUser?.id ?? '',
         type: OwnerType.USER,
       };
 
