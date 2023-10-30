@@ -51,6 +51,7 @@ import {
 import { getDecodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ActivityFeedProvider from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import PageLayoutV1 from '../../containers/PageLayoutV1';
 import AddWidgetModal from '../AddWidgetModal/AddWidgetModal';
 import { CustomizeMyDataProps } from './CustomizeMyData.interface';
@@ -65,6 +66,7 @@ function CustomizeMyData({
   handleSaveCurrentPageLayout,
 }: Readonly<CustomizeMyDataProps>) {
   const { t } = useTranslation();
+  const { currentUser } = useAuthContext();
   const history = useHistory();
   const { fqn: personaFQN } = useParams<{ fqn: string; pageFqn: PageType }>();
   const location = useLocation();
@@ -93,11 +95,6 @@ function CustomizeMyData({
   const decodedPersonaFQN = useMemo(
     () => getDecodedFqn(personaFQN),
     [personaFQN]
-  );
-
-  const currentUser = useMemo(
-    () => AppState.getCurrentUserDetails(),
-    [AppState.userDetails, AppState.nonSecureUserDetails]
   );
 
   const handlePlaceholderWidgetKey = useCallback((value: string) => {

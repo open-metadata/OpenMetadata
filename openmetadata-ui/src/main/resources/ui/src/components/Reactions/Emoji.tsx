@@ -14,14 +14,13 @@
 import '@github/g-emoji-element';
 import { Button, Popover } from 'antd';
 import classNames from 'classnames';
-import { observer } from 'mobx-react';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import AppState from '../../AppState';
 import { REACTION_LIST } from '../../constants/reactions.constant';
 import { ReactionOperation } from '../../enums/reactions.enum';
 import { Reaction, ReactionType } from '../../generated/type/reaction';
 import useImage from '../../hooks/useImage';
+import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 
 interface EmojiProps {
   reaction: ReactionType;
@@ -38,6 +37,7 @@ const Emoji: FC<EmojiProps> = ({
   onReactionSelect,
 }) => {
   const { t } = useTranslation();
+  const { currentUser } = useAuthContext();
   const [reactionType, setReactionType] = useState(reaction);
   const [isClicked, setIsClicked] = useState(false);
   const [visible, setVisible] = useState(false);
@@ -49,12 +49,6 @@ const Emoji: FC<EmojiProps> = ({
   );
 
   const { image } = useImage(`emojis/${reactionObject?.reaction}.png`);
-
-  // get current user details
-  const currentUser = useMemo(
-    () => AppState.getCurrentUserDetails(),
-    [AppState.userDetails, AppState.nonSecureUserDetails]
-  );
 
   // check if current user has reacted with emoji
   const isReacted = reactionList.some(
@@ -136,4 +130,4 @@ const Emoji: FC<EmojiProps> = ({
   );
 };
 
-export default observer(Emoji);
+export default Emoji;

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { observer } from 'mobx-react';
 import React, {
   FC,
   ReactNode,
@@ -21,8 +20,8 @@ import React, {
   useState,
 } from 'react';
 import { io, Socket } from 'socket.io-client';
-import AppState from '../../AppState';
 import { ROUTES } from '../../constants/constants';
+import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 
 export const WebSocketContext = React.createContext<{ socket?: Socket }>({});
 
@@ -32,11 +31,7 @@ interface Props {
 
 const WebSocketProvider: FC<Props> = ({ children }: Props) => {
   const [socket, setSocket] = useState<Socket>();
-
-  // Update current user details of AppState change
-  const currentUser = React.useMemo(() => {
-    return AppState.getCurrentUserDetails();
-  }, [AppState.userDetails, AppState.nonSecureUserDetails]);
+  const { currentUser } = useAuthContext();
 
   // Init websocket for Feed & notification
   const initWebSocket = useCallback(() => {
@@ -70,4 +65,4 @@ const WebSocketProvider: FC<Props> = ({ children }: Props) => {
 
 export const useWebSocketConnector = () => useContext(WebSocketContext);
 
-export default observer(WebSocketProvider);
+export default WebSocketProvider;

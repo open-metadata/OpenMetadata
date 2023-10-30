@@ -15,9 +15,7 @@ import { Popover, Space } from 'antd';
 import classNames from 'classnames';
 import { compare, Operation } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
-import { observer } from 'mobx-react';
 import React, { FC, useEffect, useRef, useState } from 'react';
-import AppState from '../../../AppState';
 import { ReactionOperation } from '../../../enums/reactions.enum';
 import { AnnouncementDetails } from '../../../generated/api/feed/createThread';
 import { Post } from '../../../generated/entity/feed/thread';
@@ -27,6 +25,7 @@ import {
   getEntityFQN,
   getEntityType,
 } from '../../../utils/FeedUtils';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import EditAnnouncementModal from '../../Modals/AnnouncementModal/EditAnnouncementModal';
@@ -60,8 +59,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   const entityType = getEntityType(entityLink ?? '');
   const entityFQN = getEntityFQN(entityLink ?? '');
   const entityField = getEntityField(entityLink ?? '');
-
-  const currentUser = AppState.getCurrentUserDetails();
+  const { currentUser } = useAuthContext();
   const containerRef = useRef<HTMLDivElement>(null);
   const [feedDetail, setFeedDetail] = useState<Post>(feed);
 
@@ -255,4 +253,4 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   );
 };
 
-export default observer(ActivityFeedCard);
+export default ActivityFeedCard;

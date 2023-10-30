@@ -231,7 +231,6 @@ jest.mock('../../utils/CommonUtils', () => {
     getEntityPlaceHolder: jest.fn().mockReturnValue('entityPlaceholder'),
     getOwnerValue: jest.fn().mockReturnValue('Owner'),
     getEmptyPlaceholder: jest.fn().mockReturnValue(<p>ErrorPlaceHolder</p>),
-    getCurrentUserId: jest.fn().mockReturnValue('testId'),
     getCountBadge: jest.fn().mockReturnValue(<p>1</p>),
   };
 });

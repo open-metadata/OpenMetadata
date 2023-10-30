@@ -15,12 +15,11 @@ import { Button, Form, FormProps, Input, Space, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import { observer } from 'mobx-react';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
-import AppState from '../../../AppState';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import { useAuthContext } from '../../../components/authentication/auth-provider/AuthProvider';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
 import RichTextEditor from '../../../components/common/rich-text-editor/RichTextEditor';
 import { EditorContentRef } from '../../../components/common/rich-text-editor/RichTextEditor.interface';
@@ -55,6 +54,7 @@ import { EntityData, Option } from '../TasksPage.interface';
 
 const RequestDescription = () => {
   const { t } = useTranslation();
+  const { currentUser } = useAuthContext();
   const location = useLocation();
   const history = useHistory();
   const [form] = useForm();
@@ -81,12 +81,6 @@ const RequestDescription = () => {
   const decodedEntityFQN = useMemo(
     () => getDecodedFqn(entityFQN),
     [entityType]
-  );
-
-  // get current user details
-  const currentUser = useMemo(
-    () => AppState.getCurrentUserDetails(),
-    [AppState.userDetails, AppState.nonSecureUserDetails]
   );
 
   const back = () => history.goBack();
@@ -297,4 +291,4 @@ const RequestDescription = () => {
   );
 };
 
-export default observer(RequestDescription);
+export default RequestDescription;

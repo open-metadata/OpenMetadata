@@ -66,8 +66,8 @@ const MyDataPageV1 = () => {
   const storageData = localStorage.getItem(LOGGED_IN_USER_STORAGE_KEY);
 
   const loggedInUserName = useMemo(() => {
-    return AppState.getCurrentUserDetails()?.name ?? '';
-  }, [AppState]);
+    return currentUser?.name ?? '';
+  }, [currentUser]);
 
   const usernameExistsInCookie = useMemo(() => {
     return storageData

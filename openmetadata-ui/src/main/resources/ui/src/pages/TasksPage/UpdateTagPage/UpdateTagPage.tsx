@@ -15,12 +15,11 @@ import { Button, Form, FormProps, Input, Space, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
-import { observer } from 'mobx-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
-import AppState from '../../../AppState';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import { useAuthContext } from '../../../components/authentication/auth-provider/AuthProvider';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
 import ExploreSearchCard from '../../../components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
@@ -62,6 +61,7 @@ const UpdateTag = () => {
   const location = useLocation();
   const history = useHistory();
   const [form] = useForm();
+  const { currentUser } = useAuthContext();
 
   const { entityType, fqn: entityFQN } =
     useParams<{ fqn: string; entityType: EntityType }>();
@@ -84,12 +84,6 @@ const UpdateTag = () => {
     field !== EntityField.COLUMNS ? getEntityName(entityData) : ''
   }`;
   const decodedEntityFQN = useMemo(() => getDecodedFqn(entityFQN), [entityFQN]);
-
-  // get current user details
-  const currentUser = useMemo(
-    () => AppState.getCurrentUserDetails(),
-    [AppState.userDetails, AppState.nonSecureUserDetails]
-  );
 
   const back = () => history.goBack();
 
@@ -323,4 +317,4 @@ const UpdateTag = () => {
   );
 };
 
-export default observer(UpdateTag);
+export default UpdateTag;

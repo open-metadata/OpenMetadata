@@ -25,7 +25,6 @@ import {
   RawSuggestResponse,
   SearchResponse,
 } from '../interface/search.interface';
-import { getCurrentUserId } from '../utils/CommonUtils';
 import { getSearchAPIQueryParams } from '../utils/SearchUtils';
 import APIClient from './index';
 
@@ -55,14 +54,6 @@ export const searchData = <SI extends SearchIndex>(
   return APIClient.get<SearchResponse<SI>>(`/search/query?q=${q}`, {
     params,
   });
-};
-
-export const getOwnershipCount = (
-  ownership: string
-): Promise<AxiosResponse> => {
-  return APIClient.get(
-    `/search/query?q=${ownership}:${getCurrentUserId()}&from=${0}&size=${0}`
-  );
 };
 
 export const fetchAuthenticationConfig = async () => {

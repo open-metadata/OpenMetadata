@@ -16,10 +16,8 @@ import { Button, Drawer, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { uniqueId } from 'lodash';
-import { observer } from 'mobx-react';
-import React, { FC, useMemo, useState } from 'react';
+import React, { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import AppState from '../../../../AppState';
 import {
   CreateThread,
   ThreadType,
@@ -30,6 +28,7 @@ import { getEntityFeedLink } from '../../../../utils/EntityUtils';
 import { deletePost, updateThreadData } from '../../../../utils/FeedUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ActivityThreadPanelBody from '../../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanelBody';
+import { useAuthContext } from '../../../authentication/auth-provider/AuthProvider';
 import AddAnnouncementModal from '../../../Modals/AnnouncementModal/AddAnnouncementModal';
 
 interface Props {
@@ -50,13 +49,8 @@ const AnnouncementDrawer: FC<Props> = ({
   createPermission,
 }) => {
   const { t } = useTranslation();
+  const { currentUser } = useAuthContext();
   const [isAnnouncement, setIsAnnouncement] = useState<boolean>(false);
-
-  // get current user details
-  const currentUser = useMemo(
-    () => AppState.getCurrentUserDetails(),
-    [AppState.userDetails, AppState.nonSecureUserDetails]
-  );
 
   const title = (
     <Space
@@ -158,4 +152,4 @@ const AnnouncementDrawer: FC<Props> = ({
   );
 };
 
-export default observer(AnnouncementDrawer);
+export default AnnouncementDrawer;

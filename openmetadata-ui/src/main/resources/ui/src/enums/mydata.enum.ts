@@ -11,11 +11,6 @@
  *  limitations under the License.
  */
 
-export enum Ownership {
-  OWNER = 'owner.id',
-  FOLLOWERS = 'followers',
-}
-
 export enum FeedFilter {
   ALL = 'ALL',
   OWNER = 'OWNER',

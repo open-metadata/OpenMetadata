@@ -34,9 +34,6 @@ jest.mock('../../AddDataQualityTest/rightPanelData', () => ({
   getRightPanelForAddTestSuitePage: jest.fn().mockReturnValue('Add test suite'),
 }));
 
-jest.mock('../../../utils/CommonUtils', () => ({
-  getCurrentUserId: jest.fn().mockReturnValue('1'),
-}));
 jest.mock('../../../constants/TestSuite.constant', () => ({
   STEPS_FOR_ADD_TEST_SUITE: [],
   TEST_SUITE_STEPPER_BREADCRUMB: [],

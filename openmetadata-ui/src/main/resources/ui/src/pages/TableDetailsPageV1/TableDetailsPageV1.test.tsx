@@ -44,7 +44,6 @@ jest.mock('../../rest/tableAPI', () => ({
 }));
 
 jest.mock('../../utils/CommonUtils', () => ({
-  getCurrentUserId: jest.fn(),
   getFeedCounts: jest.fn(),
   getPartialNameFromTableFQN: jest.fn().mockImplementation(() => 'fqn'),
   getTableFQNFromColumnFQN: jest.fn(),

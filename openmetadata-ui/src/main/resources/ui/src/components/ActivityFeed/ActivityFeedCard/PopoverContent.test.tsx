@@ -13,6 +13,7 @@
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
+import { User } from '../../../generated/entity/teams/user';
 import PopoverContent from './PopoverContent';
 
 const onConfirmation = jest.fn();
@@ -35,26 +36,18 @@ const mockProps = {
   reactions: [],
   threadId: '3d6bb831-fbe4-484e-ba54-1bd7568ddc59',
 };
+const mockUserData: User = {
+  name: 'aaron_johnson0',
+  email: 'testUser1@email.com',
+  id: '011bdb24-90a7-4a97-ba66-24002adb2b12',
+  isAdmin: true,
+};
 
-jest.mock('../../../AppState', () => {
-  const mockUser = {
-    id: '011bdb24-90a7-4a97-ba66-24002adb2b12',
-    type: 'user',
-    name: 'aaron_johnson0',
-    fullyQualifiedName: 'aaron_johnson0',
-    displayName: 'Aaron Johnson',
-    deleted: false,
-    isAdmin: true,
-    href: 'http://localhost:8585/api/v1/users/011bdb24-90a7-4a97-ba66-24002adb2b12',
-    teams: [{ id: '8754b53f-15cd-4d9a-af52-bdb3a2abffss' }],
-  };
-
-  return {
-    getCurrentUserDetails: jest.fn().mockReturnValue(mockUser),
-    userDetails: undefined,
-    nonSecureUserDetails: mockUser,
-  };
-});
+jest.mock('../../authentication/auth-provider/AuthProvider', () => ({
+  useAuthContext: jest.fn(() => ({
+    currentUser: mockUserData,
+  })),
+}));
 
 jest.mock('../../../constants/reactions.constant', () => ({
   REACTION_LIST: [

@@ -22,7 +22,6 @@ import { getPartialNameFromFQN } from '../utils/CommonUtils';
 import i18n from '../utils/i18next/LocalUtil';
 import { getSettingPath } from '../utils/RouterUtils';
 import { getEncodedFqn } from '../utils/StringsUtils';
-import { FQN_SEPARATOR_CHAR } from './char.constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -119,14 +118,6 @@ export const pagingObject = { after: '', before: '', total: 0 };
 
 export const ONLY_NUMBER_REGEX = /^[0-9\b]+$/;
 
-export const tiers = [
-  { key: `Tier${FQN_SEPARATOR_CHAR}Tier1`, doc_count: 0 },
-  { key: `Tier${FQN_SEPARATOR_CHAR}Tier2`, doc_count: 0 },
-  { key: `Tier${FQN_SEPARATOR_CHAR}Tier3`, doc_count: 0 },
-  { key: `Tier${FQN_SEPARATOR_CHAR}Tier4`, doc_count: 0 },
-  { key: `Tier${FQN_SEPARATOR_CHAR}Tier5`, doc_count: 0 },
-];
-
 export const globalSearchOptions = [
   { value: '', label: t('label.all') },
   { value: SearchIndex.TABLE, label: t('label.table') },
@@ -142,22 +133,7 @@ export const globalSearchOptions = [
   { value: SearchIndex.SEARCH_INDEX, label: t('label.search-index') },
 ];
 
-export const versionTypes = [
-  { name: t('label.all'), value: 'all' },
-  { name: t('label.major'), value: 'major' },
-  { name: t('label.minor'), value: 'minor' },
-];
-
 export const DESCRIPTIONLENGTH = 100;
-
-export const visibleFilters = [
-  'service',
-  'tier',
-  'tags',
-  'database',
-  'databaseschema',
-  'servicename',
-];
 
 export const CHART_WIDGET_DAYS_DURATION = 14;
 
@@ -777,11 +753,6 @@ export const getKpiPath = (kpiName: string) => {
   path = path.replace(KPI_NAME, kpiName);
 
   return path;
-};
-
-export const TIMEOUT = {
-  USER_LIST: 60000, // 60 seconds for user retrieval
-  TOAST_DELAY: 5000, // 5 seconds timeout for toaster autohide delay
 };
 
 export const configOptions = {
