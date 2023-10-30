@@ -54,7 +54,7 @@ describe('Query Entity', () => {
     cy.get(descriptionBox).scrollIntoView().type(DATA.description);
     cy.get('[data-testid="query-used-in"]').type(DATA.queryUsedIn.table1);
     verifyResponseStatusCode('@explorePageSearch', 200);
-    cy.get(`[title="${DATA.queryUsedIn.table1}"]`).click();
+    cy.get(`[title="${DATA.queryUsedIn.table1}"]`).scrollIntoView().click();
     cy.clickOutside();
 
     cy.get('[data-testid="save-btn"]').click();

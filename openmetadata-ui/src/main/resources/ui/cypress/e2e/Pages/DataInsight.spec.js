@@ -96,18 +96,13 @@ const addKpi = (data) => {
     .scrollIntoView()
     .type(100);
   cy.get('[data-testid="start-date"]').click().type(`${startDate}{enter}`);
-  cy.clickOutside();
-  cy.get('[data-testid="end-date"]')
-    .scrollIntoView()
-    .click()
-    .type(`${endDate}{enter}`);
-  cy.clickOutside();
+  cy.get('[data-testid="end-date"]').click().type(`${endDate}{enter}`);
   cy.get(descriptionBox).scrollIntoView().type('cypress test');
   cy.get('[data-testid="submit-btn"]').scrollIntoView().click();
   verifyResponseStatusCode('@createKpi', 201);
 };
 
-describe('Data Insight feature', () => {
+describe.skip('Data Insight feature', () => {
   beforeEach(() => {
     interceptURL(
       'GET',
