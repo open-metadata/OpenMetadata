@@ -86,31 +86,9 @@ This is a sample config for ElasticSearch:
 **connectionTimeoutSecs**: Connection timeout configuration for communicating with ElasticSearch APIs.
 {% /codeInfo %}
 
+{% partial file="/v1.2/connectors/yaml/search/source-config-def.md" /%}
 
-
-#### Source Configuration - Source Config
-
-{% codeInfo srNumber=6 %}
-
-The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/searchServiceMetadataPipeline.json):
-
-**includeSampleData**: Set the Ingest Sample Data toggle to control whether to ingest sample data as part of metadata ingestion.
-
-**sampleSize**: If include sample data is enabled, 10 records will be ingested by default. Using this field you can customize the size of sample data.
-
-**markDeletedSearchIndexes**: Optional configuration to soft delete `search indexes` in OpenMetadata if the source `search indexes` are deleted. After deleting, all the associated entities like lineage, etc., with that `search index` will be deleted.
-
-**searchIndexFilterPattern**: Note that the `searchIndexFilterPattern` support regex to include or exclude search indexes during metadata ingestion process.
-
-{% /codeInfo %}
-
-#### Sink Configuration
-
-{% codeInfo srNumber=7%}
-
-To send the metadata to OpenMetadata, it needs to be specified as `type: metadata-rest`.
-
-{% /codeInfo %}
+{% partial file="/v1.2/connectors/yaml/ingestion-sink-def.md" /%}
 
 {% partial file="/v1.2/connectors/yaml/workflow-config-def.md" /%}
 
@@ -144,28 +122,12 @@ source:
 ```yaml {% srNumber=5 %}
       connectionTimeoutSecs: 30
 ```
-```yaml {% srNumber=6 %}
-  sourceConfig:
-    config:
-      type: SearchMetadata
-      # markDeletedSearchIndexes: True
-      # includeSampleData: True
-      # sampleSize: 10
-      # searchIndexFilterPattern:
-      #   includes:
-      #     - index1
-      #     - index2
-      #   excludes:
-      #     - index4
-      #     - index3
-```
-```yaml {% srNumber=7 %}
-sink:
-  type: metadata-rest
-  config: {}
-```
 
-{% partial file="/v1.2/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.2/connectors/yaml/search/source-config-def.md" /%}
+
+{% partial file="/v1.2/connectors/yaml/ingestion-sink-def.md" /%}
+
+{% partial file="/v1.2/connectors/yaml/workflow-config-def.md" /%}
 
 {% /codeBlock %}
 
