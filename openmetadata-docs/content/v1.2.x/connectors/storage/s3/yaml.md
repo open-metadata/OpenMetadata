@@ -213,30 +213,9 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 
 {% /codeInfo %}
 
+{% partial file="/v1.2/connectors/yaml/storage/source-config-def.md" /%}
 
-#### Source Configuration - Source Config
-
-{% codeInfo srNumber=13 %}
-
-The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/storageServiceMetadataPipeline.json):
-
-**containerFilterPattern**: Note that the filter supports regex as include or exclude. You can find examples [here](/connectors/ingestion/workflows/metadata/filter-patterns/database).
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=16 %}
-
-**storageMetadataConfigSource**: Path to the `openmetadata_storage_manifest.json` global manifest file. It can be located in S3, a local path or as a URL to the file.
-
-{% /codeInfo %}
-
-#### Sink Configuration
-
-{% codeInfo srNumber=14 %}
-
-To send the metadata to OpenMetadata, it needs to be specified as `type: metadata-rest`.
-
-{% /codeInfo %}
+{% partial file="/v1.2/connectors/yaml/ingestion-sink-def.md" /%}
 
 {% partial file="/v1.2/connectors/yaml/workflow-config-def.md" /%}
 
@@ -301,39 +280,9 @@ source:
         # key: value
 ```
 
-```yaml {% srNumber=13 %}
-      sourceConfig:
-        config:
-          type: StorageMetadata
-          # containerFilterPattern:
-          #   includes:
-          #     - container1
-          #     - container2
-          #   excludes:
-          #     - container3
-          #     - container4
-```
-```yaml {% srNumber=16 %}
-          # storageMetadataConfigSource:
-          ## For S3
-          #   securityConfig:
-          #     awsAccessKeyId: ...
-          #     awsSecretAccessKey: ...
-          #     awsRegion: ...
-          #   prefixConfig:
-          #     containerName: om-glue-test
-          #     objectPrefix: <optional prefix>
-          ## For HTTP
-          #   manifestHttpPath: http://...
-          ## For Local
-          #   manifestFilePath: /path/to/openmetadata_storage_manifest.json
-```
+{% partial file="/v1.2/connectors/yaml/storage/source-config.md" /%}
 
-```yaml {% srNumber=14 %}
-sink:
-  type: metadata-rest
-  config: {}
-```
+{% partial file="/v1.2/connectors/yaml/ingestion-sink.md" /%}
 
 {% partial file="/v1.2/connectors/yaml/workflow-config.md" /%}
 

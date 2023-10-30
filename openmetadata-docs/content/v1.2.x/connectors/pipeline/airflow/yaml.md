@@ -157,11 +157,11 @@ source:
         # databaseMode: ":memory:" (optional)
 ```
 
-{% partial file="/v1.2/connectors/yaml/pipeline/source-config-def.md" /%}
+{% partial file="/v1.2/connectors/yaml/pipeline/source-config.md" /%}
 
-{% partial file="/v1.2/connectors/yaml/ingestion-sink-def.md" /%}
+{% partial file="/v1.2/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.2/connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.2/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 

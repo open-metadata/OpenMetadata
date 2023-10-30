@@ -92,11 +92,11 @@ source:
       registryUri: mysql+pymysql://mlflow:password@localhost:3307/experiments
 ```
 
-{% partial file="/v1.2/connectors/yaml/ml-model/source-config-def.md" /%}
+{% partial file="/v1.2/connectors/yaml/ml-model/source-config.md" /%}
 
-{% partial file="/v1.2/connectors/yaml/ingestion-sink-def.md" /%}
+{% partial file="/v1.2/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.2/connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.2/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
