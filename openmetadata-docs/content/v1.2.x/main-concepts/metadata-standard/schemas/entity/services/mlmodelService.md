@@ -18,7 +18,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/mlmodelservice
 - **`version`**: Metadata version of the entity. Refer to *../../type/entityHistory.json#/definitions/entityVersion*.
 - **`updatedAt`**: Last update time corresponding to the new version of the entity in Unix epoch time milliseconds. Refer to *../../type/basic.json#/definitions/timestamp*.
 - **`updatedBy`** *(string)*: User who made the update.
-- **`pipelines`**: References to pipelines deployed for this pipeline service to extract metadata. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*.
+- **`pipelines`**: References to pipelines deployed for this pipeline service to extract metadata. Refer to *../../type/entityReferenceList.json*.
 - **`connection`**: Refer to *#/definitions/mlModelConnection*.
 - **`testConnectionResult`**: Last test connection results for this service. Refer to *connections/testConnectionResult.json*.
 - **`tags`** *(array)*: Tags for this MlModel Service. Default: `None`.
@@ -35,4 +35,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/mlmodelservice
   - **`config`**
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

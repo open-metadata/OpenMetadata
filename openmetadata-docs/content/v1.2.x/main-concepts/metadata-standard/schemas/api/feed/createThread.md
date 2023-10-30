@@ -20,9 +20,9 @@ slug: /main-concepts/metadata-standard/schemas/api/feed/createthread
 
 - **`createTaskDetails`** *(object)*: Details about the task. This is only applicable if thread is of type task. Cannot contain additional properties.
   - **`type`**: Refer to *../../entity/feed/thread.json#/definitions/taskType*.
-  - **`assignees`**: List of users or teams the task is assigned to. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*.
+  - **`assignees`**: List of users or teams the task is assigned to. Refer to *../../type/entityReferenceList.json*.
   - **`oldValue`** *(string)*: The value of old object for which the task is created.
   - **`suggestion`** *(string)*: The suggestion object for the task provided by the creator.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

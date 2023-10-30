@@ -14,6 +14,9 @@ slug: /main-concepts/metadata-standard/schemas/metadataingestion/databaseservice
 - **`includeTables`** *(boolean)*: Optional configuration to turn off fetching metadata for tables. Default: `True`.
 - **`includeViews`** *(boolean)*: Optional configuration to turn off fetching metadata for views. Default: `True`.
 - **`includeTags`** *(boolean)*: Optional configuration to toggle the tags ingestion. Default: `True`.
+- **`includeStoredProcedures`** *(boolean)*: Optional configuration to toggle the Stored Procedures ingestion. Default: `True`.
+- **`queryLogDuration`** *(integer)*: Configuration to tune how far we want to look back in query logs to process Stored Procedures results. Default: `1`.
+- **`queryParsingTimeoutLimit`** *(integer)*: Configuration to set the timeout for parsing the query in seconds. Default: `300`.
 - **`useFqnForFiltering`** *(boolean)*: Regex will be applied on fully qualified name (e.g service_name.db_name.schema_name.table_name) instead of raw name (e.g. table_name). Default: `False`.
 - **`schemaFilterPattern`**: Regex to only fetch tables or databases that matches the pattern. Refer to *../type/filterPattern.json#/definitions/filterPattern*.
 - **`tableFilterPattern`**: Regex exclude tables or databases that matches the pattern. Refer to *../type/filterPattern.json#/definitions/filterPattern*.
@@ -23,4 +26,4 @@ slug: /main-concepts/metadata-standard/schemas/metadataingestion/databaseservice
 - **`databaseMetadataConfigType`** *(string)*: Database Source Config Metadata Pipeline type. Must be one of: `['DatabaseMetadata']`. Default: `DatabaseMetadata`.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

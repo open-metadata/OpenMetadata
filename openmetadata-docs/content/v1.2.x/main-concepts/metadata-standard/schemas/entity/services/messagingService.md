@@ -16,7 +16,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/messagingservice
 - **`description`**: Description of a messaging service instance. Refer to *../../type/basic.json#/definitions/markdown*.
 - **`displayName`** *(string)*: Display Name that identifies this messaging service. It could be title or label from the source services.
 - **`connection`**: Refer to *#/definitions/messagingConnection*.
-- **`pipelines`**: References to pipelines deployed for this messaging service to extract topic configs and schemas. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*.
+- **`pipelines`**: References to pipelines deployed for this messaging service to extract topic configs and schemas. Refer to *../../type/entityReferenceList.json*.
 - **`testConnectionResult`**: Last test connection results for this service. Refer to *connections/testConnectionResult.json*.
 - **`tags`** *(array)*: Tags for this Message Service. Default: `None`.
   - **Items**: Refer to *../../type/tagLabel.json*.
@@ -37,4 +37,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/messagingservice
   - **`config`**
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

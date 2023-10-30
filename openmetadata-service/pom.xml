@@ -582,7 +582,7 @@
                     </includes>
                     <systemPropertyVariables>
                       <jdbcContainerClassName>org.testcontainers.containers.PostgreSQLContainer</jdbcContainerClassName>
-                      <jdbcContainerImage>postgres:12.10</jdbcContainerImage>
+                      <jdbcContainerImage>postgres:15</jdbcContainerImage>
                     </systemPropertyVariables>
                   </configuration>
                 </execution>

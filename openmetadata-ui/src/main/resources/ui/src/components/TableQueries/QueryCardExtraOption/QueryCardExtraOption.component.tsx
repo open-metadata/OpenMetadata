@@ -20,7 +20,7 @@ import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { ReactComponent as ThumbsUpFilled } from '../../../assets/svg/thumbs-up-filled.svg';
 import { ReactComponent as ThumbsUpOutline } from '../../../assets/svg/thumbs-up-outline.svg';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
-import { getCurrentUserId, pluralize } from '../../../utils/CommonUtils';
+import { pluralize } from '../../../utils/CommonUtils';
 import { QueryVoteType } from '../TableQueries.interface';
 import { QueryCardExtraOptionProps } from './QueryCardExtraOption.interface';
 
@@ -28,6 +28,7 @@ import { AxiosError } from 'axios';
 import ConfirmationModal from '../../../components/Modals/ConfirmationModal/ConfirmationModal';
 import { deleteQuery } from '../../../rest/queryAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import './query-card-extra-option.style.less';
 
 const QueryCardExtraOption = ({
@@ -38,6 +39,7 @@ const QueryCardExtraOption = ({
   afterDeleteAction,
 }: QueryCardExtraOptionProps) => {
   const { EditAll, EditQueries, Delete } = permission;
+  const { currentUser } = useAuthContext();
   const { t } = useTranslation();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
@@ -87,7 +89,7 @@ const QueryCardExtraOption = ({
 
   const voteStatus = useMemo(() => {
     const { votes } = query;
-    const userId = getCurrentUserId();
+    const userId = currentUser?.id ?? '';
     if (isUndefined(votes)) {
       return QueryVoteType.unVoted;
     }
@@ -102,7 +104,7 @@ const QueryCardExtraOption = ({
     } else {
       return QueryVoteType.unVoted;
     }
-  }, [query, getCurrentUserId]);
+  }, [query, currentUser]);
 
   const handleVoteChange = (type: QueryVoteType) => {
     let updatedVoteType;

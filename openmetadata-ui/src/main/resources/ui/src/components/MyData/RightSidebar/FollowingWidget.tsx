@@ -16,10 +16,10 @@ import { isUndefined } from 'lodash';
 import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import AppState from '../../../AppState';
 import { getUserPath } from '../../../constants/constants';
 import { EntityReference } from '../../../generated/entity/type';
 import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { EntityListWithV1 } from '../../Entity/EntityList/EntityList';
 import './FollowingWidget.less';
 
@@ -38,7 +38,7 @@ function FollowingWidget({
   widgetKey,
 }: Readonly<FollowingWidgetProps>) {
   const { t } = useTranslation();
-  const currentUserDetails = AppState.getCurrentUserDetails();
+  const { currentUser } = useAuthContext();
 
   const handleCloseClick = useCallback(() => {
     !isUndefined(handleRemoveWidget) && handleRemoveWidget(widgetKey);
@@ -56,7 +56,7 @@ function FollowingWidget({
               <Link
                 className="view-all-btn text-grey-muted"
                 data-testid="following-data"
-                to={getUserPath(currentUserDetails?.name ?? '', 'following')}>
+                to={getUserPath(currentUser?.name ?? '', 'following')}>
                 <span className="font-normal text-xs">
                   {t('label.view-all')}{' '}
                   <span data-testid="following-data-total-count">

@@ -9,8 +9,8 @@ slug: /main-concepts/metadata-standard/schemas/api/feed/createpost
 
 ## Properties
 
-- **`message`** *(string)*: Message in markdown format. See markdown support for more details.
+- **`message`** *(string)*: Message in Markdown format. See markdown support for more details.
 - **`from`** *(string)*: Name of the User posting the message.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

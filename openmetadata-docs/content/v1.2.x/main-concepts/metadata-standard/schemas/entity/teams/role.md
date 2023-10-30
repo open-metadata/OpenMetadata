@@ -22,9 +22,9 @@ slug: /main-concepts/metadata-standard/schemas/entity/teams/role
 - **`allowDelete`** *(boolean)*: Some system roles can't be deleted.
 - **`allowEdit`** *(boolean)*: Some system roles can't be edited.
 - **`deleted`** *(boolean)*: When `true` indicates the entity has been soft deleted. Default: `False`.
-- **`policies`**: Policies that is attached to this role. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*.
-- **`users`**: Users that have this role assigned to them. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*.
-- **`teams`**: Teams that have this role assigned to them. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*.
+- **`policies`**: Policies that is attached to this role. Refer to *../../type/entityReferenceList.json*.
+- **`users`**: Users that have this role assigned to them. Refer to *../../type/entityReferenceList.json*.
+- **`teams`**: Teams that have this role assigned to them. Refer to *../../type/entityReferenceList.json*.
 - **`provider`**: Refer to *../../type/basic.json#/definitions/providerType*.
 - **`disabled`** *(boolean)*: System policy can't be deleted. Use this flag to disable them.
 ## Definitions
@@ -32,4 +32,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/teams/role
 - **`roleName`**: A unique name for the role. Refer to *../../type/basic.json#/definitions/entityName*.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

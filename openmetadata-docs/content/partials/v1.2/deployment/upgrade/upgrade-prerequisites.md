@@ -117,14 +117,20 @@ After the migration is finished, you can revert this changes.
 There is no direct migration to bump the indexes to the new supported versions. You might see errors like:
 
 ```
-"java.lang.IllegalStateException: cannot upgrade a node from version [7.16.3] directly to version [8.5.1]
+java.lang.IllegalStateException: cannot upgrade a node from version [7.16.3] directly to version [8.5.1]
 ERROR: Elasticsearch did not exit normally - check the logs at /usr/share/elasticsearch/logs/elasticsearch.log
 ERROR: Elasticsearch exited unexpectedly
 ```
 
-In order to move forward, you can remove volumes / delete the indexes directly from your search instances. Note that
-OpenMetadata stores everything in the database, so indexes can be recreated directly from the UI. We will
+In order to move forward, **you must remove the volumes or delete the indexes** directly from your search instances. Note that
+OpenMetadata stores everything in the database, so indexes can be recreated from the UI. We will
 show you how in the [Post-Upgrade Steps](/deployment/upgrade#reindex).
+
+### Helm Chart Values
+
+- Added a new key `openmetadata.config.database.dbParams` to pass extra database parameters as string format, e.g., `useSSL=true&serverTimezone=UTC`.
+- Removed the entry for `openmetadata.config.database.dbUseSSL`. You should use `openmetadata.config.database.dbParams` instead.
+- Updated the ElasticSearch Helm Chart Dependencies to version 8.5.1
 
 ### Query Entity
 
@@ -137,6 +143,9 @@ then there is no way to link a query to a service and the query will be removed.
 ### Service Connection Changes
 
 - Domo Database, Dashboard and Pipeline renamed the `sandboxDomain` in favor of `instanceDomain`.
+- The `DatabaseMetadata` configuration renamed `viewParsingTimeoutLimit` to `queryParsingTimeoutLimit`.
+- The `DatabaseMetadata` configuration removed the `markAllDeletedTables` option. For simplicity, we'll only
+  mark as deleted the tables coming from the filtered ingestion results.
 
 ### Ingestion Framework Changes
 

@@ -17,6 +17,7 @@ import { isUndefined, omitBy, toString } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { useAuthContext } from '../../components/authentication/auth-provider/AuthProvider';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import DashboardDetails from '../../components/DashboardDetails/DashboardDetails.component';
 import Loader from '../../components/Loader/Loader';
@@ -40,7 +41,6 @@ import {
 import { postThread } from '../../rest/feedsAPI';
 import {
   addToRecentViewed,
-  getCurrentUserId,
   getEntityMissingError,
   sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
@@ -59,7 +59,8 @@ export type ChartType = {
 
 const DashboardDetailsPage = () => {
   const { t } = useTranslation();
-  const USERId = getCurrentUserId();
+  const { currentUser } = useAuthContext();
+  const USERId = currentUser?.id ?? '';
   const history = useHistory();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { fqn: dashboardFQN } = useParams<{ fqn: string }>();
