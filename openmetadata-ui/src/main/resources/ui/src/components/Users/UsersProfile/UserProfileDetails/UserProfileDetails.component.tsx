@@ -16,7 +16,6 @@ import { AxiosError } from 'axios';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
-import AppState from '../../../../AppState';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { useAuthContext } from '../../../../components/authentication/auth-provider/AuthProvider';
 import InlineEdit from '../../../../components/InlineEdit/InlineEdit.component';
@@ -49,7 +48,7 @@ const UserProfileDetails = ({
   const { fqn: username } = useParams<{ fqn: string }>();
 
   const { isAdminUser } = useAuth();
-  const { authConfig } = useAuthContext();
+  const { authConfig, currentUser } = useAuthContext();
 
   const [isLoading, setIsLoading] = useState(false);
   const [isChangePassword, setIsChangePassword] = useState<boolean>(false);
@@ -69,8 +68,8 @@ const UserProfileDetails = ({
   );
 
   const isLoggedInUser = useMemo(
-    () => username === AppState.getCurrentUserDetails()?.name,
-    [username, AppState.nonSecureUserDetails, AppState.userDetails]
+    () => username === currentUser?.name,
+    [username, currentUser]
   );
 
   const hasEditPermission = useMemo(

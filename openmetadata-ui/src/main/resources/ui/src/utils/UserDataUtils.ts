@@ -87,10 +87,6 @@ export const matchUserDetails = (
   return isMatch;
 };
 
-export const isCurrentUserAdmin = () => {
-  return Boolean(AppState.getCurrentUserDetails()?.isAdmin);
-};
-
 export const fetchUserProfilePic = (userId?: string, username?: string) => {
   let promise;
 
