@@ -61,7 +61,7 @@ Here are some of the supported features in a nutshell:
 
 Check out for more [here](https://docs.open-metadata.org/features) ✨
 
-![](./openmetadata-docs/readme/lineage.gif)
+![](https://docs.open-metadata.org/images/v1.2/features/all-your-data-in-one-place.gif)
 
 ## Try our Sandbox
 
