@@ -166,25 +166,9 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 
 {% /codeInfo %}
 
-#### Source Configuration - Source Config
+{% partial file="/v1.2/connectors/yaml/messaging/source-config-def.md" /%}
 
-{% codeInfo srNumber=9 %}
-
-The sourceConfig is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/messagingServiceMetadataPipeline.json):
-
-**generateSampleData:** Option to turn on/off generating sample data during metadata extraction.
-
-**topicFilterPattern:** Note that the `topicFilterPattern` supports regex as include or exclude.
-
-{% /codeInfo %}
-
-#### Sink Configuration
-
-{% codeInfo srNumber=10 %}
-
-To send the metadata to OpenMetadata, it needs to be specified as `type: metadata-rest`.
-
-{% /codeInfo %}
+{% partial file="/v1.2/connectors/yaml/ingestion-sink-def.md" /%}
 
 {% partial file="/v1.2/connectors/yaml/workflow-config-def.md" /%}
 
@@ -227,23 +211,10 @@ source:
 ```yaml {% srNumber=8 %}
         # assumeRoleSourceIdentity: identity
 ```
-```yaml {% srNumber=9 %}
-  sourceConfig:
-    config:
-      type: MessagingMetadata
-      topicFilterPattern:
-        excludes:
-          - _confluent.*
-        # includes:
-        #   - topic1
-      # generateSampleData: true
 
-```
-```yaml {% srNumber=10 %}
-sink:
-  type: metadata-rest
-  config: {}
-```
+{% partial file="/v1.2/connectors/yaml/messaging/source-config.md" /%}
+
+{% partial file="/v1.2/connectors/yaml/ingestion-sink.md" /%}
 
 {% partial file="/v1.2/connectors/yaml/workflow-config.md" /%}
 
