@@ -19,4 +19,4 @@ slug: /main-concepts/metadata-standard/schemas/auth/emailverificationtoken
 - **`tokenType`** *(string)*: Different Type of User token. Must be one of: `['REFRESH_TOKEN', 'EMAIL_VERIFICATION', 'PASSWORD_RESET', 'PERSONAL_ACCESS_TOKEN']`.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

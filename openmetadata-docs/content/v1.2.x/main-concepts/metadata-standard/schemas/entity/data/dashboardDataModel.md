@@ -23,19 +23,20 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/dashboarddatamodel
   - **Items**: Refer to *../../type/tagLabel.json*.
 - **`changeDescription`**: Change that lead to this version of the entity. Refer to *../../type/entityHistory.json#/definitions/changeDescription*.
 - **`deleted`** *(boolean)*: When `true` indicates the entity has been soft deleted. Default: `False`.
-- **`followers`**: Followers of this dashboard. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*.
+- **`followers`**: Followers of this dashboard. Refer to *../../type/entityReferenceList.json*.
 - **`service`**: Link to service where this data model is hosted in. Refer to *../../type/entityReference.json*.
 - **`serviceType`**: Service type where this data model is hosted in. Refer to *../services/dashboardService.json#/definitions/dashboardServiceType*.
 - **`dataModelType`**: Refer to *#/definitions/dataModelType*.
 - **`sql`**: In case the Data Model is based on a SQL query. Refer to *../../type/basic.json#/definitions/sqlQuery*. Default: `None`.
 - **`columns`** *(array)*: Columns from the data model. Default: `None`.
   - **Items**: Refer to *table.json#/definitions/column*.
-- **`dataModels`**: List of data models used by this data model. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*.
 - **`project`** *(string)*: Name of the project / workspace / collection in which the dataModel is contained.
 - **`domain`**: Domain the Dashboard Data Model belongs to. When not set, the Dashboard model inherits the domain from the dashboard service it belongs to. Refer to *../../type/entityReference.json*.
+- **`votes`**: Refer to *../../type/votes.json*.
+- **`lifeCycle`**: Life Cycle properties of the entity. Refer to *../../type/lifeCycle.json*.
 ## Definitions
 
-- **`dataModelType`** *(string)*: This schema defines the type used for describing different types of data models. Must be one of: `['TableauDataModel', 'SupersetDataModel', 'MetabaseDataModel', 'LookMlView', 'LookMlExplore', 'PowerBIDataModel']`.
+- **`dataModelType`** *(string)*: This schema defines the type used for describing different types of data models. Must be one of: `['TableauDataModel', 'SupersetDataModel', 'MetabaseDataModel', 'LookMlView', 'LookMlExplore', 'PowerBIDataModel', 'QlikSenseDataModel']`.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

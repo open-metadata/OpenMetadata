@@ -22,10 +22,12 @@ slug: /main-concepts/metadata-standard/schemas/api/teams/createuser
   - **Items**: Refer to *../../type/basic.json#/definitions/uuid*.
 - **`roles`** *(array)*: Roles that the user has been assigned. Default: `None`.
   - **Items**: Refer to *../../type/basic.json#/definitions/uuid*.
+- **`personas`**: Persona that the user belongs to. Refer to *../../type/entityReferenceList.json*.
+- **`defaultPersona`**: Default Persona from User's Personas. Refer to *../../type/entityReference.json*.
 - **`authenticationMechanism`**: Authentication mechanism specified . Refer to *../../entity/teams/user.json#/definitions/authenticationMechanism*. Default: `None`.
 - **`createPasswordType`** *(string)*: User Password Method. Must be one of: `['ADMIN_CREATE', 'USER_CREATE']`. Default: `USER_CREATE`.
 - **`password`** *(string)*: Password for User.
 - **`confirmPassword`** *(string)*: Confirm Password for User.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

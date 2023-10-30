@@ -15,10 +15,10 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
 - **`authType`**: Choose Auth Config Type.
 - **`hostPort`** *(string)*: Host and port of the source service.
 - **`database`** *(string)*: Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank, OpenMetadata Ingestion attempts to scan all the databases.
+- **`ingestAllDatabases`** *(boolean)*: Ingest data from all databases in Postgres. You can use databaseFilterPattern on top of this. Default: `False`.
 - **`sslMode`**: SSL Mode to connect to postgres database. Must be one of: `['disable', 'allow', 'prefer', 'require', 'verify-ca', 'verify-full']`. Default: `disable`.
 - **`sslConfig`**: Refer to *../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig*.
 - **`classificationName`** *(string)*: Custom OpenMetadata Classification name for Postgres policy tags. Default: `PostgresPolicyTags`.
-- **`ingestAllDatabases`** *(boolean)*: Ingest data from all databases in Postgres. You can use databaseFilterPattern on top of this. Default: `False`.
 - **`connectionOptions`**: Refer to *../connectionBasicType.json#/definitions/connectionOptions*.
 - **`connectionArguments`**: Refer to *../connectionBasicType.json#/definitions/connectionArguments*.
 - **`supportsMetadataExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsMetadataExtraction*.
@@ -34,4 +34,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
 - **`postgresScheme`** *(string)*: SQLAlchemy driver scheme options. Must be one of: `['postgresql+psycopg2', 'pgspider+psycopg2']`. Default: `postgresql+psycopg2`.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

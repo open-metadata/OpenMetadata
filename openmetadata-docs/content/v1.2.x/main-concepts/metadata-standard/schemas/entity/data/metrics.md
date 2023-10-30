@@ -26,6 +26,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/metrics
 - **`changeDescription`**: Change that lead to this version of the entity. Refer to *../../type/entityHistory.json#/definitions/changeDescription*.
 - **`deleted`** *(boolean)*: When `true` indicates the entity has been soft deleted. Default: `False`.
 - **`domain`**: Domain the Metrics belongs to. Refer to *../../type/entityReference.json*.
+- **`votes`**: Refer to *../../type/votes.json*.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

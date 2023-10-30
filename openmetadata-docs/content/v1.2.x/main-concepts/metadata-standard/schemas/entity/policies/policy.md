@@ -22,8 +22,8 @@ slug: /main-concepts/metadata-standard/schemas/entity/policies/policy
 - **`updatedBy`** *(string)*: User who made the update.
 - **`changeDescription`**: Change that led to this version of the Policy. Refer to *../../type/entityHistory.json#/definitions/changeDescription*.
 - **`rules`**: Set of rules that the policy contains. Refer to *#/definitions/rules*.
-- **`teams`**: Teams that use this policy directly and not through roles. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*.
-- **`roles`**: Roles that use this policy. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*.
+- **`teams`**: Teams that use this policy directly and not through roles. Refer to *../../type/entityReferenceList.json*.
+- **`roles`**: Roles that use this policy. Refer to *../../type/entityReferenceList.json*.
 - **`location`**: Location to which a policy is applied. This field is relevant only for `lifeCycle` policies. Refer to *../../type/entityReference.json*. Default: `None`.
 - **`allowDelete`** *(boolean)*: Some system policies can't be deleted.
 - **`allowEdit`** *(boolean)*: Some system roles can't be edited.
@@ -36,4 +36,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/policies/policy
   - **Items**: Refer to *accessControl/rule.json*.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

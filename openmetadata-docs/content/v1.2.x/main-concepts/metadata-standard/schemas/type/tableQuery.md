@@ -15,6 +15,8 @@ slug: /main-concepts/metadata-standard/schemas/type/tablequery
 
 - **`tableQuery`**
   - **`query`** *(string)*: SQL query.
+  - **`query_type`** *(string)*: SQL query type.
+  - **`exclude_usage`** *(boolean)*: Flag to check if query is to be excluded while processing usage.
   - **`userName`** *(string)*: Name of the user that executed the SQL query.
   - **`startTime`** *(string)*: Start time of execution of SQL query.
   - **`endTime`** *(string)*: End time of execution of SQL query.
@@ -26,4 +28,4 @@ slug: /main-concepts/metadata-standard/schemas/type/tablequery
   - **`duration`** *(number)*: How long did the query took to run in seconds.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

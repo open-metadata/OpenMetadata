@@ -16,7 +16,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/metadataservice
 - **`serviceType`**: Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres... Refer to *#/definitions/metadataServiceType*.
 - **`description`**: Description of a database service instance. Refer to *../../type/basic.json#/definitions/markdown*.
 - **`connection`**: Refer to *#/definitions/metadataConnection*.
-- **`pipelines`**: References to pipelines deployed for this database service to extract metadata, usage, lineage etc.. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*.
+- **`pipelines`**: References to pipelines deployed for this database service to extract metadata, usage, lineage etc.. Refer to *../../type/entityReferenceList.json*.
 - **`version`**: Metadata version of the entity. Refer to *../../type/entityHistory.json#/definitions/entityVersion*.
 - **`updatedAt`**: Last update time corresponding to the new version of the entity in Unix epoch time milliseconds. Refer to *../../type/basic.json#/definitions/timestamp*.
 - **`updatedBy`** *(string)*: User who made the update.
@@ -35,4 +35,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/metadataservice
   - **`config`**
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.
