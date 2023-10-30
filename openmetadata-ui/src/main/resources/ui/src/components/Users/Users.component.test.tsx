@@ -12,11 +12,13 @@
  */
 
 import {
+  findByRole,
   findByTestId,
   findByText,
   queryByTestId,
   render,
 } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import React, { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { mockTeamsData, mockUserData, mockUserRole } from './mocks/User.mocks';
@@ -174,7 +176,22 @@ describe('Test User Component', () => {
       container,
       'UserProfileDetails'
     );
-    const UserProfileImage = await findByText(container, 'UserProfileImage');
+
+    expect(UserProfileDetails).toBeInTheDocument();
+  });
+
+  it('User profile should render when open collapsible header', async () => {
+    const { container } = render(
+      <Users userData={mockUserData} {...mockProp} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const collapsibleButton = await findByRole(container, 'img');
+
+    userEvent.click(collapsibleButton);
+
     const UserProfileInheritedRoles = await findByText(
       container,
       'UserProfileInheritedRoles'
@@ -183,8 +200,6 @@ describe('Test User Component', () => {
 
     const UserProfileTeams = await findByText(container, 'UserProfileTeams');
 
-    expect(UserProfileDetails).toBeInTheDocument();
-    expect(UserProfileImage).toBeInTheDocument();
     expect(UserProfileRoles).toBeInTheDocument();
     expect(UserProfileTeams).toBeInTheDocument();
     expect(UserProfileInheritedRoles).toBeInTheDocument();
