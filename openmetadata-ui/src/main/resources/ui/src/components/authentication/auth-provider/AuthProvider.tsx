@@ -66,7 +66,6 @@ import {
 import localState from '../../../utils/LocalStorageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import {
-  fetchAllUsers,
   getUserDataFromOidc,
   matchUserDetails,
 } from '../../../utils/UserDataUtils';
@@ -534,7 +533,6 @@ export const AuthProvider = ({
       } else {
         setLoading(false);
         setIsAuthDisabled(true);
-        fetchAllUsers();
       }
     } catch (error) {
       setLoading(false);
