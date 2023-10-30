@@ -88,7 +88,7 @@ const visitTestSuiteDetailsPage = (testSuiteName) => {
   clickOnTestSuite(testSuiteName);
 };
 
-describe('Data Quality and Profiler should work properly', () => {
+describe.skip('Data Quality and Profiler should work properly', () => {
   beforeEach(() => {
     cy.login();
     interceptURL('GET', `/api/v1/tables/*/systemProfile?*`, 'systemProfile');

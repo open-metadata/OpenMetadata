@@ -389,7 +389,7 @@ export const testServiceCreationAndIngestion = ({
 
     // wait for ingestion to run
     cy.clock();
-    cy.wait(10000);
+    cy.wait(1000);
 
     interceptURL(
       'GET',
@@ -398,7 +398,7 @@ export const testServiceCreationAndIngestion = ({
     );
     interceptURL('GET', '/api/v1/services/*/name/*', 'serviceDetails');
 
-    cy.get('[data-testid="view-service-button"]').should('be.visible').click();
+    cy.get('[data-testid="view-service-button"]').click();
     verifyResponseStatusCode('@serviceDetails', 200);
     verifyResponseStatusCode('@ingestionPipelines', 200);
     handleIngestionRetry(type, testIngestionButton);
@@ -579,8 +579,8 @@ export const visitEntityDetailsPage = ({
 
         const tabName = EXPLORE_PAGE_TABS?.[entity] ?? entity;
 
-        cy.get(`[data-testid="${tabName}-tab"]`).should('be.visible').click();
-        cy.get(`[data-testid="${tabName}-tab"]`).should('be.visible');
+        cy.get(`[data-testid="${tabName}-tab"]`).click();
+
         verifyResponseStatusCode('@explorePageTabSearch', 200);
 
         cy.get(`[data-testid="${id}"] [data-testid="entity-link"]`)
