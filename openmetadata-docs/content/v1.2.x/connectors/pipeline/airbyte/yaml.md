@@ -61,32 +61,12 @@ This is a sample config for Airbyte:
 {% /codeInfo %}
 
 
-#### Source Configuration - Source Config
+{% partial file="/v1.2/connectors/yaml/pipeline/source-config-def.md" /%}
 
-{% codeInfo srNumber=2 %}
-
-The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/pipelineServiceMetadataPipeline.json):
-
-**dbServiceNames**: Database Service Name for the creation of lineage, if the source supports it.
-
-**includeTags**: Set the 'Include Tags' toggle to control whether to include tags as part of metadata ingestion.
-
-**markDeletedPipelines**: Set the Mark Deleted Pipelines toggle to flag pipelines as soft-deleted if they are not present anymore in the source system.
-
-**pipelineFilterPattern** and **chartFilterPattern**: Note that the `pipelineFilterPattern` and `chartFilterPattern` both support regex as include or exclude.
-
-{% /codeInfo %}
-
-
-#### Sink Configuration
-
-{% codeInfo srNumber=3 %}
-
-To send the metadata to OpenMetadata, it needs to be specified as `type: metadata-rest`.
-
-{% /codeInfo %}
+{% partial file="/v1.2/connectors/yaml/ingestion-sink-def.md" /%}
 
 {% partial file="/v1.2/connectors/yaml/workflow-config-def.md" /%}
+
 
 {% /codeInfoContainer %}
 
@@ -104,28 +84,12 @@ source:
 ```yaml {% srNumber=1 %}
       hostPort: http://localhost:8000
 ```
-```yaml {% srNumber=2 %}
-  sourceConfig:
-    config:
-      type: PipelineMetadata
-      # markDeletedPipelines: True
-      # includeTags: True
-      # includeLineage: true
-      # pipelineFilterPattern:
-      #   includes:
-      #     - pipeline1
-      #     - pipeline2
-      #   excludes:
-      #     - pipeline3
-      #     - pipeline4
-```
-```yaml {% srNumber=3 %}
-sink:
-  type: metadata-rest
-  config: {}
-```
 
-{% partial file="/v1.2/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.2/connectors/yaml/pipeline/source-config-def.md" /%}
+
+{% partial file="/v1.2/connectors/yaml/ingestion-sink-def.md" /%}
+
+{% partial file="/v1.2/connectors/yaml/workflow-config-def.md" /%}
 
 {% /codeBlock %}
 

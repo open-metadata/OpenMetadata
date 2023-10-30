@@ -164,23 +164,9 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 
 {% /codeInfo %}
 
-#### Source Configuration - Source Config
+{% partial file="/v1.2/connectors/yaml/ml-model/source-config-def.md" /%}
 
-{% codeInfo srNumber=9 %}
-
-The sourceConfig is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/messagingServiceMetadataPipeline.json):
-
-**markDeletedMlModels**: Set the Mark Deleted Ml Models toggle to flag ml models as soft-deleted if they are not present anymore in the source system.
-
-{% /codeInfo %}
-
-#### Sink Configuration
-
-{% codeInfo srNumber=10 %}
-
-To send the metadata to OpenMetadata, it needs to be specified as `type: metadata-rest`.
-
-{% /codeInfo %}
+{% partial file="/v1.2/connectors/yaml/ingestion-sink-def.md" /%}
 
 {% partial file="/v1.2/connectors/yaml/workflow-config-def.md" /%}
 
@@ -223,19 +209,12 @@ source:
 ```yaml {% srNumber=8 %}
         # assumeRoleSourceIdentity: identity
 ```
-```yaml {% srNumber=9 %}
-  sourceConfig:
-    config:
-      type: MlModelMetadata
-      # markDeletedMlModels: true
-```
-```yaml {% srNumber=10 %}
-sink:
-  type: metadata-rest
-  config: {}
-```
 
-{% partial file="/v1.2/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.2/connectors/yaml/ml-model/source-config-def.md" /%}
+
+{% partial file="/v1.2/connectors/yaml/ingestion-sink-def.md" /%}
+
+{% partial file="/v1.2/connectors/yaml/workflow-config-def.md" /%}
 
 {% /codeBlock %}
 

@@ -103,32 +103,9 @@ In terms of `connection` we support the following selections:
 
 {% /codeInfo %}
 
+{% partial file="/v1.2/connectors/yaml/pipeline/source-config-def.md" /%}
 
-
-#### Source Configuration - Source Config
-
-{% codeInfo srNumber=5 %}
-
-The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/pipelineServiceMetadataPipeline.json):
-
-**dbServiceNames**: Database Service Name for the creation of lineage, if the source supports it.
-
-**includeTags**: Set the 'Include Tags' toggle to control whether to include tags as part of metadata ingestion.
-
-**markDeletedPipelines**: Set the Mark Deleted Pipelines toggle to flag pipelines as soft-deleted if they are not present anymore in the source system.
-
-**pipelineFilterPattern** and **chartFilterPattern**: Note that the `pipelineFilterPattern` and `chartFilterPattern` both support regex as include or exclude.
-
-{% /codeInfo %}
-
-
-#### Sink Configuration
-
-{% codeInfo srNumber=6 %}
-
-To send the metadata to OpenMetadata, it needs to be specified as `type: metadata-rest`.
-
-{% /codeInfo %}
+{% partial file="/v1.2/connectors/yaml/ingestion-sink-def.md" /%}
 
 {% partial file="/v1.2/connectors/yaml/workflow-config-def.md" /%}
 
@@ -179,28 +156,12 @@ source:
         # hostPort: localhost:3306
         # databaseMode: ":memory:" (optional)
 ```
-```yaml {% srNumber=6 %}
-  sourceConfig:
-    config:
-      type: PipelineMetadata
-      # markDeletedPipelines: True
-      # includeTags: True
-      # includeLineage: true
-      # pipelineFilterPattern:
-      #   includes:
-      #     - pipeline1
-      #     - pipeline2
-      #   excludes:
-      #     - pipeline3
-      #     - pipeline4
-```
-```yaml {% srNumber=6 %}
-sink:
-  type: metadata-rest
-  config: {}
-```
 
-{% partial file="/v1.2/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.2/connectors/yaml/pipeline/source-config-def.md" /%}
+
+{% partial file="/v1.2/connectors/yaml/ingestion-sink-def.md" /%}
+
+{% partial file="/v1.2/connectors/yaml/workflow-config-def.md" /%}
 
 {% /codeBlock %}
 
