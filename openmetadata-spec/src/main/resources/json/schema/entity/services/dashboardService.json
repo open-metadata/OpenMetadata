@@ -26,7 +26,8 @@
         "DomoDashboard",
         "QuickSight",
         "QlikSense",
-        "Lightdash"
+        "Lightdash",
+        "Mstr"
       ],
       "javaEnums": [
         {
@@ -64,6 +65,9 @@
         },
         {
           "name": "Lightdash"
+        },
+        {
+          "name": "Mstr"
         }
       ]
     },
@@ -113,6 +117,9 @@
             },
             {
               "$ref": "./connections/dashboard/lightdashConnection.json"
+            },
+            {
+              "$ref": "./connections/dashboard/mstrConnection.json"
             }
           ]
         }
