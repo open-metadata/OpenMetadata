@@ -64,6 +64,7 @@ const UserProfileTeams = ({
   return (
     <Card
       className="relative card-body-border-none card-padding-y-0"
+      data-testid="user-team-card-container"
       key="teams-card"
       title={
         <Space align="center">
@@ -75,7 +76,7 @@ const UserProfileTeams = ({
             <EditIcon
               className="cursor-pointer align-middle"
               color={DE_ACTIVE_COLOR}
-              data-testid="edit-teams"
+              data-testid="edit-teams-button"
               {...ICON_DIMENSION}
               onClick={() => setIsTeamsEdit(true)}
             />

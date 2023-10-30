@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { Col, Collapse, Row, Tabs, Typography } from 'antd';
+import { Col, Collapse, Row, Space, Tabs, Typography } from 'antd';
 import Card from 'antd/lib/card/Card';
-import { noop } from 'lodash';
+import { isEmpty, noop } from 'lodash';
 import { observer } from 'mobx-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -58,7 +58,7 @@ const Users = ({
   const { tab: activeTab = UserPageTabs.ACTIVITY } =
     useParams<{ tab: UserPageTabs }>();
   const [assetCount, setAssetCount] = useState<number>(0);
-  const { isAdminUser } = useAuth();
+  const { isAdminUser, isAuthDisabled } = useAuth();
   const history = useHistory();
   const location = useLocation();
   const { currentUser } = useAuthContext();
@@ -76,8 +76,8 @@ const Users = ({
   );
 
   const hasEditPermission = useMemo(
-    () => isAdminUser || isLoggedInUser,
-    [isAdminUser, isLoggedInUser]
+    () => isAdminUser || isLoggedInUser || isAuthDisabled,
+    [isAdminUser, isLoggedInUser, isAuthDisabled]
   );
 
   const fetchAssetsCount = async (query: string) => {
@@ -223,7 +223,7 @@ const Users = ({
             description={userData.description ?? ''}
             entityName={getEntityName(userData as unknown as EntityReference)}
             entityType={EntityType.USER}
-            hasEditAccess={isAdminUser}
+            hasEditAccess={hasEditPermission}
             isEdit={isDescriptionEdit}
             showCommentsIcon={false}
             onCancel={() => setIsDescriptionEdit(false)}
@@ -231,15 +231,17 @@ const Users = ({
             onDescriptionUpdate={handleDescriptionChange}
           />
         ) : (
-          <Typography.Paragraph className="m-b-0">
-            {userData.description ?? (
-              <span className="text-grey-muted">
-                {t('label.no-entity', {
+          <Space direction="vertical" size="middle">
+            <Typography.Text className="right-panel-label">
+              {t('label.description')}
+            </Typography.Text>
+            <Typography.Paragraph className="m-b-0">
+              {isEmpty(userData.description) &&
+                t('label.no-entity', {
                   entity: t('label.description'),
                 })}
-              </span>
-            )}
-          </Typography.Paragraph>
+            </Typography.Paragraph>
+          </Space>
         )}
       </div>
     ),
