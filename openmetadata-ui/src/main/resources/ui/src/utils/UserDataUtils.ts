@@ -11,43 +11,16 @@
  *  limitations under the License.
  */
 
-import { AxiosError } from 'axios';
 import { isEqual } from 'lodash';
-import { SearchedUsersAndTeams } from 'Models';
-import AppState from '../AppState';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
 import { SettledStatus } from '../enums/axios.enum';
 import { SearchIndex } from '../enums/search.enum';
-import {
-  RawSuggestResponse,
-  SearchResponse,
-} from '../interface/search.interface';
-import {
-  getSearchedTeams,
-  getSearchedUsers,
-  getSuggestedTeams,
-  getSuggestedUsers,
-} from '../rest/miscAPI';
-import { getUsers } from '../rest/userAPI';
+import { SearchResponse } from '../interface/search.interface';
+import { getSearchedTeams, getSearchedUsers } from '../rest/miscAPI';
 import { OidcUser } from './../components/authentication/auth-provider/AuthProvider.interface';
 import { User } from './../generated/entity/teams/user';
 import { formatTeamsResponse, formatUsersResponse } from './APIUtils';
 import { getImages } from './CommonUtils';
-
-// Moving this code here from App.tsx
-export const getAllUsersList = (arrQueryFields = ''): void => {
-  getUsers({ fields: arrQueryFields, limit: 1 })
-    .then((res) => {
-      AppState.updateUsers(res.data);
-    })
-    .catch(() => {
-      AppState.updateUsers([]);
-    });
-};
-
-export const fetchAllUsers = () => {
-  getAllUsersList('profile,teams,roles');
-};
 
 export const getUserDataFromOidc = (
   userData: User,
@@ -87,10 +60,6 @@ export const matchUserDetails = (
   return isMatch;
 };
 
-export const isCurrentUserAdmin = () => {
-  return Boolean(AppState.getCurrentUserDetails()?.isAdmin);
-};
-
 export const searchFormattedUsersAndTeams = async (
   searchQuery = WILD_CARD_CHAR,
   from = 1
@@ -128,37 +97,4 @@ export const searchFormattedUsersAndTeams = async (
   } catch (error) {
     return { users: [], teams: [], usersTotal: 0, teamsTotal: 0 };
   }
-};
-
-export const suggestFormattedUsersAndTeams = (
-  searchQuery: string
-): Promise<SearchedUsersAndTeams> => {
-  return new Promise<SearchedUsersAndTeams>((resolve, reject) => {
-    const promises = [
-      getSuggestedUsers(searchQuery),
-      getSuggestedTeams(searchQuery),
-    ];
-
-    Promise.allSettled(promises)
-      .then(([resUsers, resTeams]) => {
-        const users =
-          resUsers.status === SettledStatus.FULFILLED
-            ? formatUsersResponse(
-                (resUsers.value.data as RawSuggestResponse<SearchIndex.USER>)
-                  .suggest['metadata-suggest'][0].options
-              )
-            : [];
-        const teams =
-          resTeams.status === SettledStatus.FULFILLED
-            ? formatTeamsResponse(
-                (resTeams.value.data as RawSuggestResponse<SearchIndex.TEAM>)
-                  .suggest['metadata-suggest'][0].options
-              )
-            : [];
-        resolve({ users, teams });
-      })
-      .catch((err: AxiosError) => {
-        reject(err);
-      });
-  });
 };

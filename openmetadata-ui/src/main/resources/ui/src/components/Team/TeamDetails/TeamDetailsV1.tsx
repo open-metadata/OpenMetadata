@@ -33,7 +33,6 @@ import Qs from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation } from 'react-router-dom';
-import AppState from '../../../AppState';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as ExportIcon } from '../../../assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from '../../../assets/svg/ic-import.svg';
@@ -144,7 +143,7 @@ const TeamDetailsV1 = ({
   const history = useHistory();
   const location = useLocation();
   const { isAdminUser } = useAuth();
-  const { isAuthDisabled } = useAuthContext();
+  const { currentUser, isAuthDisabled } = useAuthContext();
 
   const { activeTab } = useMemo(() => {
     const param = location.search;
@@ -169,7 +168,6 @@ const TeamDetailsV1 = ({
 
     return isGroupType ? TeamsPageTab.USERS : TeamsPageTab.TEAMS;
   }, [activeTab, isGroupType]);
-  const [currentUser, setCurrentUser] = useState<User>();
   const [deletingUser, setDeletingUser] = useState<{
     user: UserTeams | undefined;
     state: boolean;
@@ -444,10 +442,6 @@ const TeamDetailsV1 = ({
     setChildTeamList(filterChildTeams(childTeams ?? [], showDeletedTeam));
     setSearchTerm('');
   }, [childTeams, showDeletedTeam]);
-
-  useEffect(() => {
-    setCurrentUser(AppState.getCurrentUserDetails());
-  }, [currentTeam, AppState.userDetails, AppState.nonSecureUserDetails]);
 
   useEffect(() => {
     handleCurrentUserPage();
