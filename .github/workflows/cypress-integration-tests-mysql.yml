@@ -115,7 +115,7 @@ jobs:
         with:
           install-command: yarn --frozen-lockfile --silent --ignore-scripts
           record: true
-          parallel: true
+          parallel: false
           working-directory: openmetadata-ui/src/main/resources/ui/
           wait-on: 'http://localhost:8585'
           group: cypress-ci-mysql-oss-${{ github.run_id }}-${{github.run_attempt}}
