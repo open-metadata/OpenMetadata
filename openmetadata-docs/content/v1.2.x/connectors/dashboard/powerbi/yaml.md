@@ -223,7 +223,7 @@ To send the metadata to OpenMetadata, it needs to be specified as `type: metadat
 
 {% /codeInfo %}
 
-{% partial file="/v1.2/connectors/workflow-config.md" /%}
+{% partial file="/v1.2/connectors/yaml/workflow-config-def.md" /%}
 
 {% /codeInfoContainer %}
 
@@ -297,19 +297,10 @@ sink:
   config: {}
 ```
 
-{% partial file="/v1.2/connectors/workflow-config-yaml.md" /%}
+{% partial file="/v1.2/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
 {% /codePreview %}
 
-### 2. Run with the CLI
-
-First, we will need to save the YAML file. Afterward, and with all requirements installed, we can run:
-
-```bash
-metadata ingest -c <path-to-yaml>
-```
-
-Note that from connector to connector, this recipe will always be the same. By updating the YAML configuration,
-you will be able to extract metadata from different sources.
+{% partial file="/v1.2/connectors/yaml/ingestion-cli.md" /%}
