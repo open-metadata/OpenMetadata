@@ -18,7 +18,7 @@ slug: /main-concepts/metadata-standard/schemas/tests/testsuite
   - **Items**: Refer to *../type/entityReference.json*.
 - **`connection`**: Refer to *#/definitions/testSuiteConnection*.
 - **`testConnectionResult`**: Refer to *../entity/services/connections/testConnectionResult.json*.
-- **`pipelines`**: References to pipelines deployed for this database service to extract metadata, usage, lineage etc.. Refer to *../type/entityReferenceList.json#/definitions/entityReferenceList*. Default: `None`.
+- **`pipelines`**: References to pipelines deployed for this database service to extract metadata, usage, lineage etc.. Refer to *../type/entityReferenceList.json*. Default: `None`.
 - **`serviceType`** *(string)*: Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres... Must be one of: `['TestSuite']`. Default: `TestSuite`.
 - **`owner`**: Owner of this TestCase definition. Refer to *../type/entityReference.json*. Default: `None`.
 - **`version`**: Metadata version of the entity. Refer to *../type/entityHistory.json#/definitions/entityVersion*.
@@ -30,10 +30,12 @@ slug: /main-concepts/metadata-standard/schemas/tests/testsuite
 - **`executable`** *(boolean)*: Indicates if the test suite is executable. Set on the backend. Default: `False`.
 - **`executableEntityReference`**: Entity reference the test suite is executed against. Only applicable if the test suite is executable. Refer to *../type/entityReference.json*.
 - **`summary`**: Summary of the previous day test cases execution for this test suite. Refer to *./basic.json#/definitions/testSummary*.
+- **`testCaseResultSummary`** *(array)*: Summary of test case execution.
+  - **Items**: Refer to *#/definitions/testSuiteConnection/resultSummary*.
 ## Definitions
 
 - **`testSuiteConnection`** *(object)*
   - **`config`** *(null)*
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

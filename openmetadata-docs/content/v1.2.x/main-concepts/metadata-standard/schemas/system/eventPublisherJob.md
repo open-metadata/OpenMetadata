@@ -9,14 +9,8 @@ slug: /main-concepts/metadata-standard/schemas/system/eventpublisherjob
 
 ## Properties
 
-- **`id`**: Unique identifier of the Job. Refer to *../type/basic.json#/definitions/uuid*.
 - **`name`** *(string)*: Name of the result.
-- **`startedBy`** *(string)*: Job started by.
-- **`publisherType`**: Refer to *#/definitions/publisherType*.
-- **`runMode`**: Refer to *#/definitions/runMode*.
 - **`timestamp`**: Refer to *../type/basic.json#/definitions/timestamp*.
-- **`startTime`**: Refer to *../type/basic.json#/definitions/timestamp*.
-- **`endTime`**: Refer to *../type/basic.json#/definitions/timestamp*.
 - **`status`** *(string)*: This schema publisher run job status. Must be one of: `['STARTED', 'RUNNING', 'COMPLETED', 'FAILED', 'ACTIVE', 'ACTIVE_WITH_ERROR', 'STOPPED']`.
 - **`failure`** *(object)*: List of Failures in the Job. Cannot contain additional properties.
   - **`sourceError`** *(object)*: Refer to *#/definitions/failureDetails*. Default: `None`.
@@ -50,4 +44,4 @@ slug: /main-concepts/metadata-standard/schemas/system/eventpublisherjob
 - **`publisherType`** *(string)*: This schema event Publisher Types. Must be one of: `['elasticSearch', 'kafka']`.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

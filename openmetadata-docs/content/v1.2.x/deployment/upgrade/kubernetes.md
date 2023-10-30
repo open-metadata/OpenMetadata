@@ -45,11 +45,12 @@ Verify with the below command to see the latest release available locally.
 ```commandline
 helm search repo open-metadata --versions
 > NAME                                   	CHART VERSION	APP VERSION	DESCRIPTION                                
-open-metadata/openmetadata             	1.1.3        	1.1.0      	A Helm chart for OpenMetadata on Kubernetes
-open-metadata/openmetadata             	1.1.2        	1.1.0      	A Helm chart for OpenMetadata on Kubernetes
+open-metadata/openmetadata              1.2.1           1.2.0           A Helm chart for OpenMetadata on Kubernetes
+open-metadata/openmetadata              1.2.0           1.2.0           A Helm chart for OpenMetadata on Kubernetes
+
 ...
-open-metadata/openmetadata-dependencies	1.1.3        	1.1.0      	Helm Dependencies for OpenMetadata
-open-metadata/openmetadata-dependencies	1.1.2        	1.1.0      	Helm Dependencies for OpenMetadata
+open-metadata/openmetadata-dependencies 1.2.1           1.2.0           Helm Dependencies for OpenMetadata
+open-metadata/openmetadata-dependencies 1.2.0           1.2.0           Helm Dependencies for OpenMetadata
 ...
 ```
 
@@ -93,11 +94,9 @@ You can learn more about how the migration process works [here](/deployment/upgr
 
 {% /note %}
 
-## Step 5: Re-index all your metadata
+{% partial file="/v1.2/deployment/upgrade/post-upgrade-steps.md" /%}
 
-{% partial file="/v1.2/deployment/reindex.md" /%}
-
-## Troubleshooting
+# Troubleshooting
 
 ### Helm Upgrade fails with additional property airflow not allowed
 
@@ -167,27 +166,6 @@ openmetadata:
 ```
 
 Run the [helm lint](https://helm.sh/docs/helm/helm_lint/) command on your custom values after making the changes to validate with the JSON Schema.
-
-### With 0.13.0 Release
-
-If your helm dependencies upgrade fails with the below command result -
-
-```
-Error: UPGRADE FAILED: cannot patch "mysql" with kind StatefulSet: StatefulSet.apps "mysql" is invalid: spec: 
-Forbidden: updates to statefulset spec for fields other than 'replicas', 'template', 'updateStrategy', 'persistentVolumeClaimRetentionPolicy' 
-and 'minReadySeconds' are forbidden
-```
-
-This is probably because with `0.13.0`, we have **default size of mysql persistence set to 50Gi**.
-
-Kubernetes does not allow changes to Persistent volume with helm upgrades.
-
-In order to work around this issue, you can either default the persistence size to 8Gi or run the below command which will patch Persistent Volumes and Persistent Volume Claims for mysql helm and then run the above `helm upgrade` command.
-
-```
-kubectl patch pvc data-mysql-0 -p '{"spec":{"resources":{"requests":{"storage":"50Gi"}}}}'
-kubectl patch pv <mysql-pv> -p '{"spec":{"storage":"50Gi"}}'
-```
 
 ### MySQL Pod fails on Upgrade
 

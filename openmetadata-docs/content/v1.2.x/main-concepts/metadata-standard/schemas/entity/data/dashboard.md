@@ -20,11 +20,11 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/dashboard
 - **`updatedBy`** *(string)*: User who made the update.
 - **`dashboardType`**: Refer to *#/definitions/dashboardType*.
 - **`sourceUrl`**: Dashboard URL suffix from its service. Refer to *../../type/basic.json#/definitions/sourceUrl*.
-- **`charts`**: All the charts included in this Dashboard. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*. Default: `None`.
-- **`dataModels`**: List of data models used by this dashboard or the charts contained on it. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*. Default: `None`.
+- **`charts`**: All the charts included in this Dashboard. Refer to *../../type/entityReferenceList.json*. Default: `None`.
+- **`dataModels`**: List of data models used by this dashboard or the charts contained on it. Refer to *../../type/entityReferenceList.json*. Default: `None`.
 - **`href`**: Link to the resource corresponding to this entity. Refer to *../../type/basic.json#/definitions/href*.
 - **`owner`**: Owner of this dashboard. Refer to *../../type/entityReference.json*.
-- **`followers`**: Followers of this dashboard. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*.
+- **`followers`**: Followers of this dashboard. Refer to *../../type/entityReferenceList.json*.
 - **`tags`** *(array)*: Tags for this dashboard. Default: `None`.
   - **Items**: Refer to *../../type/tagLabel.json*.
 - **`service`**: Link to service where this dashboard is hosted in. Refer to *../../type/entityReference.json*.
@@ -34,10 +34,12 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/dashboard
 - **`deleted`** *(boolean)*: When `true` indicates the entity has been soft deleted. Default: `False`.
 - **`extension`**: Entity extension data with custom attributes added to the entity. Refer to *../../type/basic.json#/definitions/entityExtension*.
 - **`domain`**: Domain the Dashboard belongs to. When not set, the Dashboard inherits the domain from the dashboard service it belongs to. Refer to *../../type/entityReference.json*.
-- **`dataProducts`**: List of of data products this entity is part of. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*.
+- **`dataProducts`**: List of data products this entity is part of. Refer to *../../type/entityReferenceList.json*.
+- **`votes`**: Refer to *../../type/votes.json*.
+- **`lifeCycle`**: Life Cycle properties of the entity. Refer to *../../type/lifeCycle.json*.
 ## Definitions
 
 - **`dashboardType`** *(string)*: This schema defines the type used for describing different types of dashboards. Must be one of: `['Dashboard', 'Report']`. Default: `Dashboard`.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

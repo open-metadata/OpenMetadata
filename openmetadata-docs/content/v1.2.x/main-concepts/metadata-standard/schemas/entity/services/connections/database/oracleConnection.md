@@ -33,6 +33,8 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
   - **`databaseSchema`** *(string)*: databaseSchema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single databaseSchema. When left blank, OpenMetadata Ingestion attempts to scan all the databaseSchema.
 - **`OracleServiceName`** *(object)*
   - **`oracleServiceName`** *(string)*: The Oracle Service name is the TNS alias that you give when you remotely connect to your database.
+- **`OracleTNSConnection`** *(object)*
+  - **`oracleTNSConnection`** *(string)*: Pass the full constructed TNS string, e.g., (DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=myhost)(PORT=1530)))(CONNECT_DATA=(SID=MYSERVICENAME))).
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

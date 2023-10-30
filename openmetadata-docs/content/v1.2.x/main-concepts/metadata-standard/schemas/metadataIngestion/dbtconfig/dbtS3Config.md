@@ -10,7 +10,9 @@ slug: /main-concepts/metadata-standard/schemas/metadataingestion/dbtconfig/dbts3
 ## Properties
 
 - **`dbtSecurityConfig`**: Refer to *../../security/credentials/awsCredentials.json*.
-- **`dbtPrefixConfig`**: Refer to *./dbtBucketDetails.json*.
+- **`dbtPrefixConfig`** *(object)*: Details of the bucket where the dbt files are stored. Cannot contain additional properties.
+  - **`dbtBucketName`** *(string)*: Name of the bucket where the dbt files are stored.
+  - **`dbtObjectPrefix`** *(string)*: Path of the folder where the dbt files are stored.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

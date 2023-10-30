@@ -5,7 +5,7 @@ slug: /main-concepts/metadata-standard/schemas/api/services/ingestionpipelines/c
 
 # CreateIngestionPipelineRequest
 
-*Ingestion Pipeline Config is used to setup a Airflow DAG.*
+*Ingestion Pipeline Config is used to set up an Airflow DAG.*
 
 ## Properties
 
@@ -20,4 +20,4 @@ slug: /main-concepts/metadata-standard/schemas/api/services/ingestionpipelines/c
 - **`owner`**: Owner of this Pipeline. Refer to *../../../type/entityReference.json*.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

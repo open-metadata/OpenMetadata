@@ -21,4 +21,4 @@ slug: /main-concepts/metadata-standard/schemas/email/smtpsettings
 - **`transportationStrategy`** *(string)*: Must be one of: `['SMTP', 'SMTPS', 'SMTP_TLS']`. Default: `SMTP`.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.
