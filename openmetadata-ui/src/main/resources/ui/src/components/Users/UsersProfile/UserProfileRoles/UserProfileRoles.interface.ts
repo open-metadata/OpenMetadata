@@ -13,7 +13,6 @@
 import { User } from '../../../../generated/entity/teams/user';
 
 export interface UserProfileRolesProps {
-  isUserAdmin?: boolean;
   userRoles: User['roles'];
   updateUserDetails: (data: Partial<User>) => Promise<void>;
 }

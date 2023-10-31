@@ -34,7 +34,6 @@ import { showErrorToast } from '../../../../utils/ToastUtils';
 import { UserProfileRolesProps } from './UserProfileRoles.interface';
 
 const UserProfileRoles = ({
-  isUserAdmin,
   userRoles,
   updateUserDetails,
 }: UserProfileRolesProps) => {
@@ -53,7 +52,7 @@ const UserProfileRoles = ({
       value: role.id,
     }));
 
-    if (!isUserAdmin) {
+    if (!isAdminUser) {
       options.push({
         label: TERM_ADMIN,
         value: toLower(TERM_ADMIN),
@@ -61,7 +60,7 @@ const UserProfileRoles = ({
     }
 
     return options;
-  }, [roles]);
+  }, [roles, isAdminUser, getEntityName]);
 
   const fetchRoles = async () => {
     setIsRolesLoading(true);
@@ -112,27 +111,27 @@ const UserProfileRoles = ({
     () => (
       <Chip
         data={[
-          ...(isUserAdmin
+          ...(isAdminUser
             ? [{ id: 'admin', type: 'role', name: TERM_ADMIN }]
             : []),
           ...(userRoles ?? []),
         ]}
         icon={<UserIcons height={20} />}
         noDataPlaceholder={t('message.no-roles-assigned')}
-        showNoDataPlaceholder={!isUserAdmin}
+        showNoDataPlaceholder={!isAdminUser}
       />
     ),
-    [userRoles, isUserAdmin]
+    [userRoles, isAdminUser]
   );
 
   useEffect(() => {
     const defaultUserRoles = [
       ...(userRoles?.map((role) => role.id) ?? []),
-      ...(isUserAdmin ? [toLower(TERM_ADMIN)] : []),
+      ...(isAdminUser ? [toLower(TERM_ADMIN)] : []),
     ];
 
     setSelectedRoles(defaultUserRoles);
-  }, [isUserAdmin, userRoles]);
+  }, [isAdminUser, userRoles]);
 
   useEffect(() => {
     if (isRolesEdit && isEmpty(roles)) {
@@ -154,7 +153,7 @@ const UserProfileRoles = ({
             <EditIcon
               className="cursor-pointer align-middle"
               color={DE_ACTIVE_COLOR}
-              data-testid="edit-roles"
+              data-testid="edit-roles-button"
               {...ICON_DIMENSION}
               onClick={() => setIsRolesEdit(true)}
             />
