@@ -143,7 +143,8 @@ class DatabricksUnityCatalogLineageSource(Source):
                             databricks_table_fqn=databricks_table_fqn,
                         )
                         yield Either(
-                            left=AddLineageRequest(
+                            left=None,
+                            right=AddLineageRequest(
                                 edge=EntitiesEdge(
                                     toEntity=EntityReference(id=table.id, type="table"),
                                     fromEntity=EntityReference(
@@ -152,7 +153,6 @@ class DatabricksUnityCatalogLineageSource(Source):
                                     lineageDetails=lineage_details,
                                 )
                             ),
-                            right=None,
                         )
 
     def test_connection(self) -> None:
