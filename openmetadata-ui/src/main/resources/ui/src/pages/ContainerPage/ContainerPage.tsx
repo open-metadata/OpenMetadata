@@ -14,15 +14,14 @@ import { Col, Row, Space, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, omitBy, toString } from 'lodash';
-import { observer } from 'mobx-react';
 import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import AppState from '../../AppState';
 import { useActivityFeedProvider } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
+import { useAuthContext } from '../../components/authentication/auth-provider/AuthProvider';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../components/common/description/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
@@ -66,7 +65,6 @@ import {
 } from '../../rest/storageAPI';
 import {
   addToRecentViewed,
-  getCurrentUserId,
   getEntityMissingError,
   getFeedCounts,
   sortTagsCaseInsensitive,
@@ -82,6 +80,7 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 const ContainerPage = () => {
   const history = useHistory();
   const { t } = useTranslation();
+  const { currentUser } = useAuthContext();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const { fqn: containerName, tab } =
@@ -212,7 +211,7 @@ const ContainerPage = () => {
       entityId: containerData?.id,
       entityName: getEntityName(containerData),
       isUserFollowing: containerData?.followers?.some(
-        ({ id }: { id: string }) => id === getCurrentUserId()
+        ({ id }: { id: string }) => id === currentUser?.id
       ),
       followers: containerData?.followers ?? [],
       size: containerData?.size || 0,
@@ -220,13 +219,7 @@ const ContainerPage = () => {
       partitioned: containerData?.dataModel?.isPartitioned,
       entityFqn: containerData?.fullyQualifiedName ?? '',
     };
-  }, [containerData]);
-
-  // get current user details
-  const currentUser = useMemo(
-    () => AppState.getCurrentUserDetails(),
-    [AppState.userDetails, AppState.nonSecureUserDetails]
-  );
+  }, [containerData, currentUser]);
 
   const isDataModelEmpty = useMemo(
     () => isEmpty(containerData?.dataModel),
@@ -770,4 +763,4 @@ const ContainerPage = () => {
   );
 };
 
-export default withActivityFeed(observer(ContainerPage));
+export default withActivityFeed(ContainerPage);

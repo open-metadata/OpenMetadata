@@ -14,6 +14,7 @@ Snowflake System Metric Queries and query operations
 """
 
 import re
+import traceback
 from typing import Optional
 
 from sqlalchemy.engine.row import Row
@@ -62,10 +63,12 @@ def get_snowflake_system_queries(
     """
 
     try:
-        logger.debug(f"Trying to parse query:\n{row.QUERY_TEXT}\n")
+        dict_row = dict(row)
+        query_text = dict_row.get("QUERY_TEXT", dict_row.get("query_text"))
+        logger.debug(f"Trying to parse query:\n{query_text}\n")
 
         pattern = r"(?:(INSERT\s*INTO\s*|INSERT\s*OVERWRITE\s*INTO\s*|UPDATE\s*|MERGE\s*INTO\s*|DELETE\s*FROM\s*))([\w._\"]+)(?=[\s*\n])"  # pylint: disable=line-too-long
-        match = re.match(pattern, row.QUERY_TEXT, re.IGNORECASE)
+        match = re.match(pattern, query_text, re.IGNORECASE)
         try:
             identifier = match.group(2)
         except (IndexError, AttributeError):
@@ -85,15 +88,16 @@ def get_snowflake_system_queries(
             and schema.lower() == schema_name.lower()
         ):
             return QueryResult(
-                query_id=row.QUERY_ID,
+                query_id=dict_row.get("QUERY_ID", dict_row.get("query_id")),
                 database_name=database_name.lower(),
                 schema_name=schema_name.lower(),
                 table_name=table_name.lower(),
-                query_text=row.QUERY_TEXT,
-                query_type=row.QUERY_TYPE,
-                timestamp=row.START_TIME,
+                query_text=query_text,
+                query_type=dict_row.get("QUERY_TYPE", dict_row.get("query_type")),
+                timestamp=dict_row.get("START_TIME", dict_row.get("start_time")),
             )
     except Exception:
+        logger.debug(traceback.format_exc())
         return None
 
     return None

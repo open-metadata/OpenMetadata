@@ -1,6 +1,6 @@
 #### Workflow Configuration
 
-{% codeInfo srNumber=99 %}
+{% codeInfo srNumber=300 %}
 
 The main property here is the `openMetadataServerConfig`, where you can define the host and security provider of your OpenMetadata installation.
 
