@@ -30,7 +30,7 @@ import { PipelineServiceType } from '../../../generated/entity/services/pipeline
 import { errorMsg, getServiceLogo } from '../../../utils/CommonUtils';
 import ServiceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
-import Searchbar from '../../common/SearchBar/Searchbar';
+import Searchbar from '../../common/SearchBar/SearchBar.component';
 import './select-service-type.less';
 import { SelectServiceTypeProps } from './Steps.interface';
 

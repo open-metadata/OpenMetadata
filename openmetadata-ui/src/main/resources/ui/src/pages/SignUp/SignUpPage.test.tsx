@@ -20,7 +20,7 @@ import {
   mockChangedFormData,
   mockCreateUser,
   mockFormData,
-} from './mocks/signup.mock';
+} from './mocks/SignupData.mock';
 import SignUp from './SignUpPage';
 
 let letExpectedUserName = {

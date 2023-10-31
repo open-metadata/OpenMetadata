@@ -18,7 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as GridIcon } from '../../assets/svg/ic-grid.svg';
 import { ReactComponent as ListIcon } from '../../assets/svg/ic-list.svg';
 import Table from '../../components/common/Table/Table';
-import Searchbar from '../common/SearchBar/Searchbar';
+import Searchbar from '../common/SearchBar/SearchBar.component';
 import { ListViewOptions, ListViewProps } from './ListView.interface';
 
 // eslint-disable-next-line @typescript-eslint/ban-types, @typescript-eslint/no-explicit-any

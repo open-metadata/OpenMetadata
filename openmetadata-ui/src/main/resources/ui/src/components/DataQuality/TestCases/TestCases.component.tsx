@@ -34,7 +34,7 @@ import {
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
-import Searchbar from '../../common/SearchBar/Searchbar';
+import Searchbar from '../../common/SearchBar/SearchBar.component';
 import { usePermissionProvider } from '../../PermissionProvider/PermissionProvider';
 import DataQualityTab from '../../ProfilerDashboard/component/DataQualityTab';
 import { DataQualitySearchParams } from '../DataQuality.interface';

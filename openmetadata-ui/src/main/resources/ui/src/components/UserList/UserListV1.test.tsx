@@ -51,7 +51,7 @@ jest.mock('../Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader</div>);
 });
 
-jest.mock('../common/searchbar/Searchbar', () => {
+jest.mock('../common/SearchBar/SearchBar.component', () => {
   return jest
     .fn()
     .mockImplementation((prop) => (

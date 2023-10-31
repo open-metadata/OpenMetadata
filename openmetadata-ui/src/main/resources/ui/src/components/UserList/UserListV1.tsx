@@ -38,7 +38,7 @@ import DeleteWidgetModal from '../common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../common/NextPrevious/NextPrevious.interface';
-import Searchbar from '../common/SearchBar/Searchbar';
+import Searchbar from '../common/SearchBar/SearchBar.component';
 import PageHeader from '../PageHeader/PageHeader.component';
 import './users-list.less';
 

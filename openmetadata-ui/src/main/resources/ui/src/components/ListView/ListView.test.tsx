@@ -21,7 +21,7 @@ jest.mock('../../components/common/Table/Table', () => {
   return jest.fn(() => <p>Table</p>);
 });
 
-jest.mock('../../components/common/searchbar/Searchbar', () => {
+jest.mock('../../components/common/SearchBar/SearchBar.component', () => {
   return jest.fn().mockImplementation(() => <p>Searchbar</p>);
 });
 

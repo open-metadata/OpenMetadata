@@ -91,7 +91,7 @@ import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import Description from '../../common/EntityDescription/Description';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Searchbar from '../../common/SearchBar/Searchbar';
+import Searchbar from '../../common/SearchBar/SearchBar.component';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';

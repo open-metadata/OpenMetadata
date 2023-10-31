@@ -33,7 +33,7 @@ import {
   prepareConstraintIcon,
 } from '../../utils/TableUtils';
 import RichTextEditorPreviewer from '../common/RichTextEditor/RichTextEditorPreviewer';
-import Searchbar from '../common/SearchBar/Searchbar';
+import Searchbar from '../common/SearchBar/SearchBar.component';
 import TagsViewer from '../Tag/TagsViewer/TagsViewer';
 import { VersionTableProps } from './VersionTable.interfaces';
 

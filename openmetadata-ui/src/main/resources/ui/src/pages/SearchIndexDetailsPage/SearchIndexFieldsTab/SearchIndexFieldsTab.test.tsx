@@ -33,7 +33,7 @@ const mockProps: SearchIndexFieldsTabProps = {
   entityFqn: 'search_service.search_index_fqn',
 };
 
-jest.mock('../../../components/common/searchbar/Searchbar', () =>
+jest.mock('../../../components/common/SearchBar/SearchBar.component', () =>
   jest
     .fn()
     .mockImplementation(({ onSearch }) => (

@@ -53,7 +53,7 @@ jest.mock('../../../components/common/Table/Table', () =>
 jest.mock('../../../utils/CommonUtils', () => ({
   formatNumberWithComma: jest.fn(),
 }));
-jest.mock('../../common/searchbar/Searchbar', () => {
+jest.mock('../../common/SearchBar/SearchBar.component', () => {
   return jest
     .fn()
     .mockImplementation(({ searchValue, onSearch }) => (
