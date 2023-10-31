@@ -19,6 +19,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
 - **`databaseSchema`** *(string)*: Database Schema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion attempts to scan all the schemas.
 - **`databaseName`** *(string)*: Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.
 - **`authOptions`** *(string)*: Authentication options to pass to Hive connector. These options are based on SQLAlchemy.
+- **`metastoreConnection`**: Hive Metastore Connection Details.
 - **`connectionOptions`**: Refer to *../connectionBasicType.json#/definitions/connectionOptions*.
 - **`connectionArguments`**: Refer to *../connectionBasicType.json#/definitions/connectionArguments*.
 - **`supportsMetadataExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsMetadataExtraction*.
@@ -27,7 +28,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
 ## Definitions
 
 - **`hiveType`** *(string)*: Service type. Must be one of: `['Hive']`. Default: `Hive`.
-- **`hiveScheme`** *(string)*: SQLAlchemy driver scheme options. Must be one of: `['hive', 'hive+http', 'hive+https', 'impala', 'impala4']`. Default: `hive`.
+- **`hiveScheme`** *(string)*: SQLAlchemy driver scheme options. Must be one of: `['hive', 'hive+http', 'hive+https']`. Default: `hive`.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

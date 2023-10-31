@@ -21,7 +21,7 @@ slug: /main-concepts/metadata-standard/schemas/type/changeevent
 - **`entity`**: For `eventType` `entityCreated`, this field captures JSON coded string of the entity using the schema corresponding to `entityType`.
 ## Definitions
 
-- **`eventType`** *(string)*: Type of event. Must be one of: `['entityCreated', 'entityUpdated', 'entitySoftDeleted', 'entityDeleted']`.
+- **`eventType`** *(string)*: Type of event. Must be one of: `['entityCreated', 'entityUpdated', 'entityNoChange', 'entitySoftDeleted', 'entityDeleted', 'entityRestored']`.
 - **`entityTypes`** *(string)*: Type of event. Must be one of: `['All', 'Chart', 'Dashboard', 'Database', 'Database Schema', 'Glossary', 'Glossary Term', 'Location', 'Metrics', 'Ml Model', 'Pipeline', 'Report', 'Table', 'Topic', 'Test Case']`.
 - **`fieldTypes`** *(string)*: Type of event. Must be one of: `['All', 'Display Name', 'Description', 'Owner', 'Location', 'Tags', 'Usage Summary', 'Followers', 'Sample Data', 'Synonyms', 'Glossary', 'Test Case Result Success', 'Test Case Result Failed', 'Test Case Result Aborted']`.
 - **`filters`** *(object)*: Cannot contain additional properties.
@@ -30,10 +30,10 @@ slug: /main-concepts/metadata-standard/schemas/type/changeevent
     - **Items** *(string)*
   - **`exclude`** *(array)*: Field which are not allowed to pass. Default: `[]`.
     - **Items** *(string)*
-- **`eventFilter`** *(object)*: Represents a Filter attached to a entity. Cannot contain additional properties.
+- **`eventFilter`** *(object)*: Represents a Filter attached to an entity. Cannot contain additional properties.
   - **`entityType`** *(string)*: Entity type for filter , example : topic , table, dashboard, mlmodel , etc.
   - **`filters`** *(array)*: List of operations supported by the resource.
     - **Items**: Refer to *#/definitions/filters*.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

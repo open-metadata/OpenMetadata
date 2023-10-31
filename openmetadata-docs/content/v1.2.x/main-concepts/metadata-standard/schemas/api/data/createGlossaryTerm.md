@@ -14,6 +14,7 @@ slug: /main-concepts/metadata-standard/schemas/api/data/createglossaryterm
 - **`name`**: Preferred name for the glossary term. Refer to *../../type/basic.json#/definitions/entityName*.
 - **`displayName`** *(string)*: Display Name that identifies this glossary term.
 - **`description`**: Description of the glossary term. Refer to *../../type/basic.json#/definitions/markdown*.
+- **`style`**: Refer to *../../type/basic.json#/definitions/style*.
 - **`synonyms`** *(array)*: Alternate names that are synonyms or near-synonyms for the glossary term.
   - **Items**: Refer to *../../type/basic.json#/definitions/entityName*.
 - **`relatedTerms`** *(array)*: Other array of glossary term fully qualified names that are related to this glossary term.
@@ -27,6 +28,7 @@ slug: /main-concepts/metadata-standard/schemas/api/data/createglossaryterm
   - **Items**: Refer to *../../type/tagLabel.json*.
 - **`provider`**: Refer to *../../type/basic.json#/definitions/providerType*.
 - **`mutuallyExclusive`** *(boolean)*: Glossary terms that are children of this term are mutually exclusive. When mutually exclusive is `true` only one term can be used to label an entity from this group. When mutually exclusive is `false`, multiple terms from this group can be used to label an entity. Default: `false`.
+- **`extension`**: Entity extension data with custom attributes added to the entity. Refer to *../../type/basic.json#/definitions/entityExtension*.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

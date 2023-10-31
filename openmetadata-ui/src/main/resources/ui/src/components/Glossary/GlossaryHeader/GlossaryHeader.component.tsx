@@ -62,10 +62,7 @@ import {
   getGlossariesById,
   getGlossaryTermsById,
 } from '../../../rest/glossaryAPI';
-import {
-  getCurrentUserId,
-  getEntityDeleteMessage,
-} from '../../../utils/CommonUtils';
+import { getEntityDeleteMessage } from '../../../utils/CommonUtils';
 import { getEntityVoteStatus } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
 import { StatusClass } from '../../../utils/GlossaryUtils';
@@ -77,6 +74,7 @@ import {
 } from '../../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
 
 export interface GlossaryHeaderProps {
@@ -105,7 +103,7 @@ const GlossaryHeader = ({
 }: GlossaryHeaderProps) => {
   const { t } = useTranslation();
   const history = useHistory();
-  const USER_ID = getCurrentUserId();
+  const { currentUser } = useAuthContext();
 
   const { fqn, version } = useParams<{
     fqn: string;
@@ -150,8 +148,8 @@ const GlossaryHeader = ({
   }, [permissions]);
 
   const voteStatus = useMemo(
-    () => getEntityVoteStatus(USER_ID, selectedData.votes),
-    [selectedData.votes, USER_ID]
+    () => getEntityVoteStatus(currentUser?.id ?? '', selectedData.votes),
+    [selectedData.votes, currentUser]
   );
 
   const icon = useMemo(() => {

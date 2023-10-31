@@ -30,7 +30,6 @@ slug: /main-concepts/metadata-standard/schemas/events/eventsubscription
 - **`timeout`** *(integer)*: Connection timeout in seconds. (Default 10s). Default: `10`.
 - **`readTimeout`** *(integer)*: Read timeout in seconds. (Default 12s). Default: `12`.
 - **`statusDetails`**: Refer to *#/definitions/subscriptionStatus*.
-- **`deleted`** *(boolean)*: When `true` indicates the entity has been soft deleted. Default: `False`.
 - **`provider`**: Refer to *../type/basic.json#/definitions/providerType*.
 ## Definitions
 
@@ -62,4 +61,4 @@ slug: /main-concepts/metadata-standard/schemas/events/eventsubscription
   - **`cronExpression`** *(string)*: Cron Expression in case of Custom scheduled Trigger.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

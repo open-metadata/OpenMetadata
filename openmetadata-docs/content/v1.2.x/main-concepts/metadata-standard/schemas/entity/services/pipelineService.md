@@ -21,7 +21,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/pipelineservice
 - **`testConnectionResult`**: Last test connection results for this service. Refer to *connections/testConnectionResult.json*.
 - **`tags`** *(array)*: Tags for this Pipeline Service. Default: `None`.
   - **Items**: Refer to *../../type/tagLabel.json*.
-- **`pipelines`**: References to pipelines deployed for this pipeline service to extract metadata. Refer to *../../type/entityReferenceList.json#/definitions/entityReferenceList*.
+- **`pipelines`**: References to pipelines deployed for this pipeline service to extract metadata. Refer to *../../type/entityReferenceList.json*.
 - **`connection`**: Refer to *#/definitions/pipelineConnection*.
 - **`owner`**: Owner of this pipeline service. Refer to *../../type/entityReference.json*.
 - **`href`**: Link to the resource corresponding to this pipeline service. Refer to *../../type/basic.json#/definitions/href*.
@@ -35,4 +35,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/pipelineservice
   - **`config`**
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.

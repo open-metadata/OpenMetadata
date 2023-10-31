@@ -33,4 +33,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
 - **`redshiftScheme`** *(string)*: SQLAlchemy driver scheme options. Must be one of: `['redshift+psycopg2']`. Default: `redshift+psycopg2`.
 
 
-Documentation file automatically generated at 2023-07-07 05:50:35.981927.
+Documentation file automatically generated at 2023-10-27 13:55:46.343512.
