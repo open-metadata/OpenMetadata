@@ -142,14 +142,17 @@ class DatabricksUnityCatalogLineageSource(Source):
                             to_table=table,
                             databricks_table_fqn=databricks_table_fqn,
                         )
-                        yield AddLineageRequest(
-                            edge=EntitiesEdge(
-                                toEntity=EntityReference(id=table.id, type="table"),
-                                fromEntity=EntityReference(
-                                    id=from_entity.id, type="table"
-                                ),
-                                lineageDetails=lineage_details,
-                            )
+                        yield Either(
+                            left=AddLineageRequest(
+                                edge=EntitiesEdge(
+                                    toEntity=EntityReference(id=table.id, type="table"),
+                                    fromEntity=EntityReference(
+                                        id=from_entity.id, type="table"
+                                    ),
+                                    lineageDetails=lineage_details,
+                                )
+                            ),
+                            right=None,
                         )
 
     def test_connection(self) -> None:
