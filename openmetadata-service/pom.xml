@@ -16,9 +16,10 @@
     <sonar.coverage.jacoco.xmlReportPaths>${project.basedir}/target/site/jacoco-aggregate/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
     <sonar.tests>${project.basedir}/src/test/java</sonar.tests>
     <org.testcontainers.version>1.19.1</org.testcontainers.version>
-    <awssdk.version>2.21.0</awssdk.version>
+    <awssdk.version>2.21.5</awssdk.version>
     <expiring.map.version>0.5.11</expiring.map.version>
     <java.saml>2.9.0</java.saml>
+    <xmlsec.version>2.2.6</xmlsec.version>
     <quartz.version>2.3.2</quartz.version>
   </properties>
 
@@ -89,7 +90,7 @@
     <dependency>
       <groupId>ru.vyarus.guicey</groupId>
       <artifactId>guicey-jdbi3</artifactId>
-      <version>5.9.1</version>
+      <version>5.9.2</version>
     </dependency>
     <dependency>
       <groupId>com.smoketurner</groupId>
@@ -446,7 +447,16 @@
           <groupId>com.fasterxml.woodstox</groupId>
           <artifactId>woodstox-core</artifactId>
         </exclusion>
+        <exclusion>
+          <groupId>org.apache.santurario</groupId>
+          <artifactId>xmlsec</artifactId>
+        </exclusion>
       </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.santuario</groupId>
+      <artifactId>xmlsec</artifactId>
+      <version>${xmlsec.version}</version>
     </dependency>
     <dependency>
       <groupId>org.quartz-scheduler</groupId>
@@ -457,6 +467,11 @@
       <groupId>com.fasterxml.woodstox</groupId>
       <artifactId>woodstox-core</artifactId>
       <version>${woodstox.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.cronutils</groupId>
+      <artifactId>cron-utils</artifactId>
+      <version>9.2.0</version>
     </dependency>
     <dependency>
       <groupId>com.google.guava</groupId>
@@ -567,7 +582,7 @@
                     </includes>
                     <systemPropertyVariables>
                       <jdbcContainerClassName>org.testcontainers.containers.PostgreSQLContainer</jdbcContainerClassName>
-                      <jdbcContainerImage>postgres:12.10</jdbcContainerImage>
+                      <jdbcContainerImage>postgres:15</jdbcContainerImage>
                     </systemPropertyVariables>
                   </configuration>
                 </execution>
@@ -712,7 +727,7 @@
                 <name>Apache 2.0</name>
               </license>
             </info>
-            <descriptionFile>../openmetadata-docs/content/v1.2.x-SNAPSHOT/main-concepts/metadata-standard/apis.md</descriptionFile>
+            <descriptionFile>../openmetadata-docs/content/v1.2.x/main-concepts/metadata-standard/apis.md</descriptionFile>
           </swaggerConfig>
         </configuration>
         <executions>

@@ -13,6 +13,7 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
+import { DataInsightLatestRun } from '../components/Applications/AppDetails/AppDetails.interface';
 import { App } from '../generated/entity/applications/app';
 import { AppRunRecord } from '../generated/entity/applications/appRunRecord';
 import { CreateAppRequest } from '../generated/entity/applications/createAppRequest';
@@ -24,6 +25,8 @@ const BASE_URL = '/apps';
 
 type AppListParams = ListParams & {
   offset?: number;
+  startTs?: number;
+  endTs?: number;
 };
 
 export const getApplicationList = async (params?: ListParams) => {
@@ -59,10 +62,18 @@ export const getApplicationRuns = async (
   params?: AppListParams
 ) => {
   const response = await APIClient.get<PagingResponse<AppRunRecord[]>>(
-    `${BASE_URL}/name/${appName}/runs`,
+    `${BASE_URL}/name/${appName}/status`,
     {
       params,
     }
+  );
+
+  return response.data;
+};
+
+export const getLatestApplicationRuns = async (appName: string) => {
+  const response = await APIClient.get<DataInsightLatestRun>(
+    `${BASE_URL}/name/${appName}/logs`
   );
 
   return response.data;
@@ -90,4 +101,8 @@ export const patchApplication = async (id: string, patch: Operation[]) => {
 
 export const triggerOnDemandApp = (appName: string): Promise<AxiosResponse> => {
   return APIClient.post(`${BASE_URL}/trigger/${appName}`, {});
+};
+
+export const deployApp = (appName: string): Promise<AxiosResponse> => {
+  return APIClient.post(`${BASE_URL}/deploy/${appName}`);
 };

@@ -1,11 +1,16 @@
 package org.openmetadata.service.apps;
 
+import static com.cronutils.model.CronType.QUARTZ;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_INFO_KEY;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.COLLECTION_DAO_KEY;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.SEARCH_CLIENT_KEY;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.INVALID_APP_TYPE;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.LIVE_APP_SCHEDULE_ERR;
 
+import com.cronutils.mapper.CronMapper;
+import com.cronutils.model.Cron;
+import com.cronutils.model.definition.CronDefinitionBuilder;
+import com.cronutils.parser.CronParser;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.AppRuntime;
@@ -23,10 +28,12 @@ import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.quartz.JobExecutionContext;
@@ -37,6 +44,8 @@ public class AbstractNativeApplication implements NativeApplication {
   protected CollectionDAO collectionDAO;
   private App app;
   protected SearchRepository searchRepository;
+  private final CronMapper cronMapper = CronMapper.fromQuartzToUnix();
+  private final CronParser cronParser = new CronParser(CronDefinitionBuilder.instanceDefinitionFor(QUARTZ));
 
   @Override
   public void init(App app, CollectionDAO dao, SearchRepository searchRepository) {
@@ -74,27 +83,44 @@ public class AbstractNativeApplication implements NativeApplication {
   @Override
   public void initializeExternalApp() {
     if (app.getAppType() == AppType.External && app.getScheduleType().equals(ScheduleType.Scheduled)) {
-      // Init Application Code for Some Initialization
-      List<CollectionDAO.EntityRelationshipRecord> records =
-          collectionDAO
-              .relationshipDAO()
-              .findTo(app.getId(), Entity.APPLICATION, Relationship.CONTAINS.ordinal(), Entity.INGESTION_PIPELINE);
-      if (!records.isEmpty()) {
-        return;
-      }
+      IngestionPipelineRepository ingestionPipelineRepository =
+          (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+      ExternalAppIngestionConfig ingestionConfig =
+          JsonUtils.convertValue(app.getAppConfiguration(), ExternalAppIngestionConfig.class);
 
       try {
-        ExternalAppIngestionConfig ingestionConfig =
-            JsonUtils.convertValue(app.getAppConfiguration(), ExternalAppIngestionConfig.class);
+        // Check if the Pipeline Already Exists
+        String fqn = FullyQualifiedName.add(ingestionConfig.getService().getName(), ingestionConfig.getName());
+        IngestionPipeline storedPipeline =
+            ingestionPipelineRepository.getByName(null, fqn, ingestionPipelineRepository.getFields("id"));
 
-        IngestionPipelineRepository ingestionPipelineRepository =
-            (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+        // Init Application Code for Some Initialization
+        List<CollectionDAO.EntityRelationshipRecord> records =
+            collectionDAO
+                .relationshipDAO()
+                .findTo(app.getId(), Entity.APPLICATION, Relationship.HAS.ordinal(), Entity.INGESTION_PIPELINE);
+
+        if (records.isEmpty()) {
+          // Add Ingestion Pipeline to Application
+          collectionDAO
+              .relationshipDAO()
+              .insert(
+                  app.getId(),
+                  storedPipeline.getId(),
+                  Entity.APPLICATION,
+                  Entity.INGESTION_PIPELINE,
+                  Relationship.HAS.ordinal());
+        }
+      } catch (EntityNotFoundException ex) {
+        // Pipeline needs to be created
         EntityRepository<?> serviceRepository =
             Entity.getServiceEntityRepository(ServiceType.fromValue(ingestionConfig.getService().getType()));
         EntityReference service =
             serviceRepository
                 .getByName(null, ingestionConfig.getService().getName(), serviceRepository.getFields("id"))
                 .getEntityReference();
+
+        Cron quartzCron = cronParser.parse(app.getAppSchedule().getCronExpression());
 
         CreateIngestionPipeline createPipelineRequest =
             new CreateIngestionPipeline()
@@ -103,13 +129,14 @@ public class AbstractNativeApplication implements NativeApplication {
                 .withDescription(ingestionConfig.getDescription())
                 .withPipelineType(ingestionConfig.getPipelineType())
                 .withSourceConfig(ingestionConfig.getSourceConfig())
-                .withAirflowConfig(ingestionConfig.getAirflowConfig())
+                .withAirflowConfig(
+                    ingestionConfig.getAirflowConfig().withScheduleInterval(cronMapper.map(quartzCron).asString()))
                 .withService(service);
 
         // Get Pipeline
         IngestionPipeline dataInsightPipeline =
             getIngestionPipeline(createPipelineRequest, String.format("%sBot", app.getName()), "admin")
-                .withProvider(ProviderType.SYSTEM);
+                .withProvider(ProviderType.USER);
         ingestionPipelineRepository.setFullyQualifiedName(dataInsightPipeline);
         ingestionPipelineRepository.initializeEntity(dataInsightPipeline);
 
@@ -121,17 +148,11 @@ public class AbstractNativeApplication implements NativeApplication {
                 dataInsightPipeline.getId(),
                 Entity.APPLICATION,
                 Entity.INGESTION_PIPELINE,
-                Relationship.CONTAINS.ordinal());
-
-      } catch (Exception ex) {
-        LOG.error("[IngestionPipelineResource] Failed in Creating Reindex and Insight Pipeline", ex);
-        LOG.error("Failed to initialize DataInsightApp", ex);
-        throw new RuntimeException(ex);
+                Relationship.HAS.ordinal());
       }
-
-      return;
+    } else {
+      throw new IllegalArgumentException(INVALID_APP_TYPE);
     }
-    throw new IllegalArgumentException(INVALID_APP_TYPE);
   }
 
   protected void validateServerExecutableApp(AppRuntime context) {

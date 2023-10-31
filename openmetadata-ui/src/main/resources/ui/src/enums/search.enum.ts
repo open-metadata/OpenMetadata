@@ -40,13 +40,3 @@ export enum SearchIndex {
   DASHBOARD_DATA_MODEL = 'dashboard_data_model_search_index',
   DATA_PRODUCT = 'data_product_search_index',
 }
-
-export enum PublisherType {
-  ElasticSearch = 'elasticSearch',
-  Kafka = 'kafka',
-}
-
-export enum RunMode {
-  Stream = 'stream',
-  Batch = 'batch',
-}

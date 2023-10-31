@@ -107,7 +107,6 @@ UPDATE dashboard_service_entity
 SET json = jsonb_set(
   json::jsonb #- '{connection,config,sandboxDomain}',
   '{connection,config,instanceDomain}',
-    json JSONB NOT NULL,
   (json #> '{connection,config,sandboxDomain}')::jsonb,
   true
 )
@@ -238,7 +237,7 @@ WHERE json #>> '{reportDataType}' = 'WebAnalyticUserActivityReportData';
 CREATE TABLE IF NOT EXISTS installed_apps (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
     nameHash VARCHAR(256) NOT NULL,
-    name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
     json JSONB NOT NULL,
     updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
     updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
@@ -250,7 +249,7 @@ CREATE TABLE IF NOT EXISTS installed_apps (
 CREATE TABLE IF NOT EXISTS apps_marketplace (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
     nameHash VARCHAR(256) NOT NULL,
-    name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
     json JSONB NOT NULL,
     updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
     updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
@@ -276,3 +275,16 @@ ALTER TABLE entity_extension_time_series DROP COLUMN temp;
 
 ALTER TABLE entity_extension_time_series ALTER COLUMN entityFQNHash TYPE VARCHAR(768), ALTER COLUMN jsonSchema TYPE VARCHAR(256) , ALTER COLUMN extension TYPE VARCHAR(256),
     ADD CONSTRAINT entity_extension_time_series_constraint UNIQUE (entityFQNHash, extension, timestamp);
+
+-- Airflow pipeline status set to millis
+UPDATE entity_extension_time_series ts
+SET json = jsonb_set(
+	ts.json,
+	'{timestamp}',
+	to_jsonb(cast(ts.json #> '{timestamp}' as int8) *1000)
+)
+FROM pipeline_entity p
+WHERE ts.entityFQNHash  = p.fqnHash
+  and ts.extension = 'pipeline.pipelineStatus'
+  AND p.json #>> '{serviceType}' in ('Airflow', 'GluePipeline', 'Airbyte', 'Dagster', 'DomoPipeline')
+;

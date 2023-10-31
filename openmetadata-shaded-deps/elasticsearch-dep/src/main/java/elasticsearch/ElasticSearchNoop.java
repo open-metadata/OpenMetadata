@@ -1,4 +1,3 @@
 package elasticsearch;
 
-public class ElasticSearchNoop {
-}
+public class ElasticSearchNoop {}

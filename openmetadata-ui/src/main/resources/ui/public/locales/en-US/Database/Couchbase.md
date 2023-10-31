@@ -20,9 +20,11 @@ $$
 $$section
 ### Hostport $(id="hostport")
 
-This parameter specifies the hostname/ endpoint of your client connection of the Couchbase instance. 
+This parameter specifies the hostname/ endpoint of your client connection of the Couchbase instance.
+$$
 
 $$section
+
 ### Bucket Name $(id="bucket")
 In OpenMetadata, the Database Service hierarchy works as follows:
 ```
@@ -30,5 +32,4 @@ Database Service > Bucket > Schema > Table
 ```
 In the case of Couchbase, if you don't provide bucket name then by default it will ingest all availabe buckets.
 $$
-
 

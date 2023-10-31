@@ -27,7 +27,8 @@ const tableName = 'cloudfront_logs2';
 const description = `This is ${serviceName} description`;
 const filterPattern = 'default';
 
-describe('Glue Ingestion', () => {
+// We do not have creds for glue to validate
+describe.skip('Glue Ingestion', () => {
   beforeEach(() => {
     cy.login();
   });

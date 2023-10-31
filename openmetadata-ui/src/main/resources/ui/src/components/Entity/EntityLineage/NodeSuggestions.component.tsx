@@ -34,7 +34,7 @@ import {
   getEntityNodeIcon,
   getSearchIndexFromNodeType,
 } from '../../../utils/EntityLineageUtils';
-import { serviceTypeLogo } from '../../../utils/ServiceUtils';
+import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { ExploreSearchIndex } from '../../Explore/explore.interface';
 import './node-suggestion.less';
@@ -139,7 +139,9 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
                   alt={entity.serviceType}
                   className="m-r-xs"
                   height="16px"
-                  src={serviceTypeLogo(entity.serviceType as string)}
+                  src={serviceUtilClassBase.getServiceTypeLogo(
+                    entity.serviceType as string
+                  )}
                   width="16px"
                 />
                 <div className="flex-1 text-left">

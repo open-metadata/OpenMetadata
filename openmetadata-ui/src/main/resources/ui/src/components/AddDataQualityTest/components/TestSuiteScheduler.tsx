@@ -19,9 +19,11 @@ import { TestSuiteSchedulerProps } from '../AddDataQualityTest.interface';
 
 const TestSuiteScheduler: React.FC<TestSuiteSchedulerProps> = ({
   initialData,
+  buttonProps,
   onCancel,
   onSubmit,
   isQuartzCron = false,
+  includePeriodOptions,
 }) => {
   const [repeatFrequency, setRepeatFrequency] = useState<string | undefined>(
     initialData
@@ -37,6 +39,7 @@ const TestSuiteScheduler: React.FC<TestSuiteSchedulerProps> = ({
     <Row gutter={[16, 32]}>
       <Col span={24}>
         <CronEditor
+          includePeriodOptions={includePeriodOptions}
           isQuartzCron={isQuartzCron}
           value={repeatFrequency}
           onChange={(value: string) => setRepeatFrequency(value)}
@@ -44,12 +47,14 @@ const TestSuiteScheduler: React.FC<TestSuiteSchedulerProps> = ({
       </Col>
       <Col span={24}>
         <Space className="w-full justify-end" size={16}>
-          <Button onClick={onCancel}>{t('label.back')}</Button>
+          <Button onClick={onCancel}>
+            {buttonProps?.cancelText ?? t('label.back')}
+          </Button>
           <Button
             data-testid="deploy-button"
             type="primary"
             onClick={() => onSubmit(repeatFrequency || '')}>
-            {t('label.submit')}
+            {buttonProps?.okText ?? t('label.submit')}
           </Button>
         </Space>
       </Col>
