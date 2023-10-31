@@ -28,8 +28,8 @@ import { AsyncSelectListProps } from '../components/AsyncSelectList/AsyncSelectL
 import ColorPicker from '../components/common/ColorPicker/ColorPicker.component';
 import FilterPattern from '../components/common/FilterPattern/FilterPattern';
 import { FilterPatternProps } from '../components/common/FilterPattern/filterPattern.interface';
-import RichTextEditor from '../components/common/rich-text-editor/RichTextEditor';
-import { RichTextEditorProp } from '../components/common/rich-text-editor/RichTextEditor.interface';
+import RichTextEditor from '../components/common/RichTextEditor/RichTextEditor';
+import { RichTextEditorProp } from '../components/common/RichTextEditor/RichTextEditor.interface';
 import { UserSelectableList } from '../components/common/UserSelectableList/UserSelectableList.component';
 import { UserSelectableListProps } from '../components/common/UserSelectableList/UserSelectableList.interface';
 import { UserTeamSelectableList } from '../components/common/UserTeamSelectableList/UserTeamSelectableList.component';

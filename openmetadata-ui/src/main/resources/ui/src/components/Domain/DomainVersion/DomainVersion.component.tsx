@@ -26,8 +26,8 @@ import {
   getDomainVersionsPath,
 } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import PageLayoutV1 from '../../containers/PageLayoutV1';
 import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
+import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import DomainDetailsPage from '../DomainDetailsPage/DomainDetailsPage.component';
 
 const DomainVersion = () => {

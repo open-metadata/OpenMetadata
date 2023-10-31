@@ -27,7 +27,6 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import PageHeader from '../../components/header/PageHeader.component';
 import {
   DEFAULT_CHART_OPACITY,
   GRAPH_BACKGROUND_COLOR,
@@ -57,7 +56,8 @@ import {
 } from '../../utils/DataInsightUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import './DataInsightDetail.less';
+import PageHeader from '../PageHeader/PageHeader.component';
+import './data-insight-detail.less';
 import DataInsightProgressBar from './DataInsightProgressBar';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
 import EntitySummaryProgressBar from './EntitySummaryProgressBar.component';

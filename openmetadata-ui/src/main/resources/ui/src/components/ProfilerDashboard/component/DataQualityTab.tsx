@@ -26,9 +26,8 @@ import { ReactComponent as IconCheckMark } from '../../../assets/svg/ic-check-ma
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import EditTestCaseModal from '../../../components/AddDataQualityTest/EditTestCaseModal';
 import AppBadge from '../../../components/common/Badge/Badge.component';
-import FilterTablePlaceHolder from '../../../components/common/error-with-placeholder/FilterTablePlaceHolder';
+import FilterTablePlaceHolder from '../../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { StatusBox } from '../../../components/common/LastRunGraph/LastRunGraph.component';
-import NextPrevious from '../../../components/common/next-previous/NextPrevious';
 import Table from '../../../components/common/Table/Table';
 import { TestCaseStatusModal } from '../../../components/DataQuality/TestCaseStatusModal/TestCaseStatusModal.component';
 import ConfirmationModal from '../../../components/Modals/ConfirmationModal/ConfirmationModal';
@@ -58,12 +57,13 @@ import { getEncodedFqn, replacePlus } from '../../../utils/StringsUtils';
 import { getEntityFqnFromEntityLink } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
+import NextPrevious from '../../common/NextPrevious/NextPrevious';
 import {
   DataQualityTabProps,
   TableProfilerTab,
   TestCaseAction,
 } from '../profilerDashboard.interface';
-import './DataQualityTab.style.less';
+import './data-quality-tab.less';
 import TestSummary from './TestSummary';
 
 const DataQualityTab: React.FC<DataQualityTabProps> = ({

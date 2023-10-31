@@ -20,8 +20,6 @@ import Qs from 'qs';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
-import NextPrevious from '../../components/common/next-previous/NextPrevious';
-import { PagingHandlerParams } from '../../components/common/next-previous/NextPrevious.interface';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -54,7 +52,9 @@ import {
 } from '../../utils/Query/QueryUtils';
 import { getAddQueryPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
+import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NextPrevious from '../common/NextPrevious/NextPrevious';
+import { PagingHandlerParams } from '../common/NextPrevious/NextPrevious.interface';
 import Loader from '../Loader/Loader';
 import QueryCard from './QueryCard';
 import { QueryVote, TableQueriesProp } from './TableQueries.interface';

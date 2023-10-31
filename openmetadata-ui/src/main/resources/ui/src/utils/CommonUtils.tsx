@@ -43,7 +43,7 @@ import {
   getDayCron,
   getHourCron,
 } from '../components/common/CronEditor/CronEditor.constant';
-import ErrorPlaceHolder from '../components/common/error-with-placeholder/ErrorPlaceHolder';
+import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../components/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {

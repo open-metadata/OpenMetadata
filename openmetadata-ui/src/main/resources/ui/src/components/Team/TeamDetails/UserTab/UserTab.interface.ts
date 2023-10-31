@@ -10,12 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { NextPreviousProps } from '../../../../components/common/next-previous/NextPrevious.interface';
 import { OperationPermission } from '../../../../components/PermissionProvider/PermissionProvider.interface';
 import { Team } from '../../../../generated/entity/teams/team';
 import { User } from '../../../../generated/entity/teams/user';
 import { EntityReference } from '../../../../generated/type/entityReference';
 import { Paging } from '../../../../generated/type/paging';
+import { NextPreviousProps } from '../../../common/NextPrevious/NextPrevious.interface';
 
 export interface UserTabProps {
   users: User[];

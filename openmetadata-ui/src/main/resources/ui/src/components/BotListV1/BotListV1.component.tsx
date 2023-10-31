@@ -18,8 +18,7 @@ import { isEmpty, lowerCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import FilterTablePlaceHolder from '../../components/common/error-with-placeholder/FilterTablePlaceHolder';
-import { PagingHandlerParams } from '../../components/common/next-previous/NextPrevious.interface';
+import FilterTablePlaceHolder from '../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import Table from '../../components/common/Table/Table';
 import { getBotsPath } from '../../constants/constants';
 import { BOTS_DOCS } from '../../constants/docs.constants';
@@ -37,11 +36,12 @@ import { getEntityName } from '../../utils/EntityUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import DeleteWidgetModal from '../common/DeleteWidget/DeleteWidgetModal';
-import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
-import NextPrevious from '../common/next-previous/NextPrevious';
-import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
-import Searchbar from '../common/searchbar/Searchbar';
-import PageHeader from '../header/PageHeader.component';
+import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NextPrevious from '../common/NextPrevious/NextPrevious';
+import { PagingHandlerParams } from '../common/NextPrevious/NextPrevious.interface';
+import RichTextEditorPreviewer from '../common/RichTextEditor/RichTextEditorPreviewer';
+import Searchbar from '../common/SearchBar/Searchbar';
+import PageHeader from '../PageHeader/PageHeader.component';
 import { BotListV1Props } from './BotListV1.interfaces';
 
 const BotListV1 = ({

@@ -40,10 +40,10 @@ import {
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getTestSuitePath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
-import FilterTablePlaceHolder from '../../common/error-with-placeholder/FilterTablePlaceHolder';
-import NextPrevious from '../../common/next-previous/NextPrevious';
-import { PagingHandlerParams } from '../../common/next-previous/NextPrevious.interface';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
+import NextPrevious from '../../common/NextPrevious/NextPrevious';
+import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import Table from '../../common/Table/Table';
 import { usePermissionProvider } from '../../PermissionProvider/PermissionProvider';

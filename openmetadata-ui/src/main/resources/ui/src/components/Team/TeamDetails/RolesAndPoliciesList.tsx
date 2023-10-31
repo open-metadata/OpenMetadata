@@ -25,7 +25,7 @@ import {
   getRoleWithFqnPath,
 } from '../../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
-import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
+import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
 
 const ListEntities = ({
   list,

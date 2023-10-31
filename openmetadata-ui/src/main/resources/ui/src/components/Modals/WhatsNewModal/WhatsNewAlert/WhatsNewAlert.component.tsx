@@ -20,10 +20,10 @@ import { ReactComponent as RocketIcon } from '../../../../assets/svg/rocket.svg'
 import { ROUTES } from '../../../../constants/constants';
 import { useAuth } from '../../../../hooks/authHooks';
 import { Transi18next } from '../../../../utils/CommonUtils';
+import { getReleaseVersionExpiry } from '../../../../utils/WhatsNewModal.util';
+import '../whats-new-modal.less';
 import { COOKIE_VERSION, LATEST_VERSION_ID, WHATS_NEW } from '../whatsNewData';
 import WhatsNewModal from '../WhatsNewModal';
-import '../WhatsNewModal.styles.less';
-import { getReleaseVersionExpiry } from '../WhatsNewModal.util';
 
 const cookieStorage = new CookieStorage();
 

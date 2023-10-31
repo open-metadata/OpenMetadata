@@ -37,7 +37,7 @@ import {
   getServiceIcon,
   getUsagePercentile,
 } from '../../../utils/TableUtils';
-import TitleBreadcrumb from '../../common/title-breadcrumb/title-breadcrumb.component';
+import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import TableDataCardBody from '../../TableDataCardBody/TableDataCardBody';
 import { useTourProvider } from '../../TourProvider/TourProvider';
 import './explore-search-card.less';

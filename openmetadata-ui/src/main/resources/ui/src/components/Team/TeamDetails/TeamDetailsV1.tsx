@@ -39,11 +39,9 @@ import { ReactComponent as ImportIcon } from '../../../assets/svg/ic-import.svg'
 import { ReactComponent as IconRestore } from '../../../assets/svg/ic-restore.svg';
 import { ReactComponent as IconOpenLock } from '../../../assets/svg/open-lock.svg';
 import { ReactComponent as IconTeams } from '../../../assets/svg/teams.svg';
-import { useAuthContext } from '../../../components/authentication/auth-provider/AuthProvider';
 import { ManageButtonItemLabel } from '../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { useEntityExportModalProvider } from '../../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import EntitySummaryPanel from '../../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
-import { EntityDetailsObjectInterface } from '../../../components/Explore/explore.interface';
 import AssetsTabs from '../../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import { AssetsOfEntity } from '../../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import {
@@ -75,7 +73,7 @@ import {
   TeamDetailsProp,
 } from '../../../interface/teamsAndUsers.interface';
 import AddAttributeModal from '../../../pages/RolesPage/AddAttributeModal/AddAttributeModal';
-import { ImportType } from '../../../pages/teams/ImportTeamsPage/ImportTeamsPage.interface';
+import { ImportType } from '../../../pages/TeamsPage/ImportTeamsPage/ImportTeamsPage.interface';
 import { getSuggestions } from '../../../rest/miscAPI';
 import { exportTeam, restoreTeam } from '../../../rest/teamsAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
@@ -89,12 +87,14 @@ import {
   getDeleteMessagePostFix,
 } from '../../../utils/TeamUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import Description from '../../common/description/Description';
-import ManageButton from '../../common/entityPageInfo/ManageButton/ManageButton';
-import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
-import Searchbar from '../../common/searchbar/Searchbar';
-import TitleBreadcrumb from '../../common/title-breadcrumb/title-breadcrumb.component';
-import { TitleBreadcrumbProps } from '../../common/title-breadcrumb/title-breadcrumb.interface';
+import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+import Description from '../../common/EntityDescription/Description';
+import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Searchbar from '../../common/SearchBar/Searchbar';
+import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
 import Loader from '../../Loader/Loader';
 import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
 import { usePermissionProvider } from '../../PermissionProvider/PermissionProvider';

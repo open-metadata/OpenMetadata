@@ -13,7 +13,7 @@
 
 import { Operation } from 'fast-json-patch';
 import { FormErrorData } from 'Models';
-import { NextPreviousProps } from '../components/common/next-previous/NextPrevious.interface';
+import { NextPreviousProps } from '../components/common/NextPrevious/NextPrevious.interface';
 import { OperationPermission } from '../components/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import { EntityType } from '../enums/entity.enum';

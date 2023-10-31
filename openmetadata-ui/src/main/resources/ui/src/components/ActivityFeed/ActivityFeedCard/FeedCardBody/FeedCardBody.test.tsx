@@ -32,7 +32,7 @@ jest.mock('../../../../utils/FeedUtils', () => ({
   },
 }));
 
-jest.mock('../../../common/rich-text-editor/RichTextEditorPreviewer', () => {
+jest.mock('../../../common/RichTextEditor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichText Preview</p>);
 });
 

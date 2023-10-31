@@ -19,7 +19,7 @@ jest.mock('../../../components/Loader/Loader', () =>
 );
 
 jest.mock(
-  '../../../components/common/rich-text-editor/RichTextEditorPreviewer',
+  '../../../components/common/RichTextEditor/RichTextEditorPreviewer',
   () =>
     jest
       .fn()

@@ -32,9 +32,9 @@ import {
   ListTestCaseParams,
 } from '../../../rest/testAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
-import { PagingHandlerParams } from '../../common/next-previous/NextPrevious.interface';
-import Searchbar from '../../common/searchbar/Searchbar';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
+import Searchbar from '../../common/SearchBar/Searchbar';
 import { usePermissionProvider } from '../../PermissionProvider/PermissionProvider';
 import DataQualityTab from '../../ProfilerDashboard/component/DataQualityTab';
 import { DataQualitySearchParams } from '../DataQuality.interface';

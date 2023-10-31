@@ -17,14 +17,14 @@ import { mockEntityPermissions } from '../../pages/DatabaseSchemaPage/mocks/Data
 import { getTestSuiteByName } from '../../rest/testAPI';
 import TestSuiteDetailsPage from './TestSuiteDetailsPage.component';
 
-jest.mock('../../components/containers/PageLayoutV1', () => {
+jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
 jest.mock('../../components/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader.component</div>);
 });
 jest.mock(
-  '../../components/common/title-breadcrumb/title-breadcrumb.component',
+  '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
   () => {
     return jest
       .fn()
@@ -32,7 +32,7 @@ jest.mock(
   }
 );
 jest.mock(
-  '../../components/common/error-with-placeholder/ErrorPlaceHolder',
+  '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
   () => {
     return jest
       .fn()
@@ -48,14 +48,14 @@ jest.mock(
   }
 );
 jest.mock(
-  '../../components/common/entityPageInfo/ManageButton/ManageButton',
+  '../../components/common/EntityPageInfos/ManageButton/ManageButton',
   () => {
     return jest
       .fn()
       .mockImplementation(() => <div>ManageButton.component</div>);
   }
 );
-jest.mock('../../components/common/description/Description', () => {
+jest.mock('../../components/common/EntityDescription/Description', () => {
   return jest.fn().mockImplementation(() => <div>Description.component</div>);
 });
 jest.mock('../../components/ProfilerDashboard/component/DataQualityTab', () => {
@@ -63,7 +63,7 @@ jest.mock('../../components/ProfilerDashboard/component/DataQualityTab', () => {
     .fn()
     .mockImplementation(() => <div>DataQualityTab.component</div>);
 });
-jest.mock('../../components/authentication/auth-provider/AuthProvider', () => {
+jest.mock('../../components/Auth/AuthProviders/AuthProvider', () => {
   return {
     useAuthContext: jest
       .fn()

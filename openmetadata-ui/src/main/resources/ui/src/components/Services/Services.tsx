@@ -19,10 +19,8 @@ import { isEmpty, map, startCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
-import NextPrevious from '../../components/common/next-previous/NextPrevious';
-import { PagingHandlerParams } from '../../components/common/next-previous/NextPrevious.interface';
 import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
-import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
+import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
 import { ListView } from '../../components/ListView/ListView.component';
 import { ColumnFilter } from '../../components/Table/ColumnFilter/ColumnFilter.component';
 import { getServiceDetailsPath, pagingObject } from '../../constants/constants';
@@ -53,9 +51,11 @@ import {
 } from '../../utils/ServiceUtils';
 import { FilterIcon } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
-import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
-import PageHeader from '../header/PageHeader.component';
+import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
+import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NextPrevious from '../common/NextPrevious/NextPrevious';
+import { PagingHandlerParams } from '../common/NextPrevious/NextPrevious.interface';
+import PageHeader from '../PageHeader/PageHeader.component';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 
 interface ServicesProps {

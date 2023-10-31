@@ -18,11 +18,11 @@ import { isEmpty, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import NextPrevious from '../../components/common/next-previous/NextPrevious';
-import { NextPreviousProps } from '../../components/common/next-previous/NextPrevious.interface';
-import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
-import PageHeader from '../../components/header/PageHeader.component';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
+import { NextPreviousProps } from '../../components/common/NextPrevious/NextPrevious.interface';
+import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
+import PageHeader from '../../components/PageHeader/PageHeader.component';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -38,7 +38,7 @@ import { getEntityName } from '../../utils/EntityUtils';
 import { getCustomizePagePath } from '../../utils/GlobalSettingsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import './CustomPageSettings.less';
+import './custom-page-settings.less';
 
 export const CustomPageSettings = () => {
   const { t } = useTranslation();

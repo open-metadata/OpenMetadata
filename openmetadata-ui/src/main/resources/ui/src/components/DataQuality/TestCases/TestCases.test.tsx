@@ -68,7 +68,7 @@ jest.mock('react-router-dom', () => {
     useLocation: jest.fn().mockImplementation(() => mockLocation),
   };
 });
-jest.mock('../../../components/common/next-previous/NextPrevious', () => {
+jest.mock('../../../components/common/NextPrevious/NextPrevious', () => {
   return jest.fn().mockImplementation(() => <div>NextPrevious.component</div>);
 });
 jest.mock('../../../components/common/searchbar/Searchbar', () => {
@@ -83,7 +83,7 @@ jest.mock(
   }
 );
 jest.mock(
-  '../../../components/common/error-with-placeholder/ErrorPlaceHolder',
+  '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
   () => {
     return jest
       .fn()

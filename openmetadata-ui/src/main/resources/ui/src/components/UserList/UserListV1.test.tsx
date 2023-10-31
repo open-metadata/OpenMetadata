@@ -15,7 +15,7 @@ import { cleanup, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { act } from 'react-test-renderer';
-import { MOCK_USER_DATA } from '../../pages/UserListPage/mockUserData';
+import { MOCK_USER_DATA } from '../../pages/UserListPage/MockUserPageData';
 import UserListV1 from './UserListV1';
 
 jest.mock('../../rest/userAPI', () => ({
@@ -35,15 +35,15 @@ jest.mock('../common/DeleteWidget/DeleteWidgetModal', () => {
   return jest.fn().mockImplementation(() => <div>DeleteWidgetModal</div>);
 });
 
-jest.mock('../common/error-with-placeholder/ErrorPlaceHolder', () => {
+jest.mock('../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
   return jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>);
 });
 
-jest.mock('../common/next-previous/NextPrevious', () => {
+jest.mock('../common/NextPrevious/NextPrevious', () => {
   return jest.fn().mockImplementation(() => <div>NextPrevious</div>);
 });
 
-jest.mock('../header/PageHeader.component', () => {
+jest.mock('../PageHeader/PageHeader.component', () => {
   return jest.fn().mockImplementation(() => <div>PageHeader</div>);
 });
 

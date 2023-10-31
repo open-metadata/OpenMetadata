@@ -24,7 +24,7 @@ import React from 'react';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
 import { searchData } from '../../rest/miscAPI';
 import { getUsers } from '../../rest/userAPI';
-import { MOCK_USER_DATA } from './mockUserData';
+import { MOCK_USER_DATA } from './MockUserPageData';
 import UserListPageV1 from './UserListPageV1';
 
 const mockParam = {

@@ -20,12 +20,12 @@ import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import DeleteWidgetModal from '../../../components/common/DeleteWidget/DeleteWidgetModal';
-import ErrorPlaceHolder from '../../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import NextPrevious from '../../../components/common/next-previous/NextPrevious';
-import { PagingHandlerParams } from '../../../components/common/next-previous/NextPrevious.interface';
-import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
+import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';
+import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
+import RichTextEditorPreviewer from '../../../components/common/RichTextEditor/RichTextEditorPreviewer';
 import Table from '../../../components/common/Table/Table';
-import PageHeader from '../../../components/header/PageHeader.component';
+import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../components/PermissionProvider/PermissionProvider.interface';
 import {
@@ -54,7 +54,7 @@ import {
   getRoleWithFqnPath,
 } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import './PoliciesList.less';
+import './policies-list.less';
 
 const PoliciesListPage = () => {
   const { t } = useTranslation();

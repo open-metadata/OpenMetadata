@@ -43,12 +43,12 @@ const props: UserTabProps = {
   onRemoveUser: jest.fn().mockResolvedValue('removed'),
 };
 jest.mock(
-  '../../../../components/common/error-with-placeholder/ErrorPlaceHolder',
+  '../../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
   () => {
     return jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>);
   }
 );
-jest.mock('../../../../components/common/next-previous/NextPrevious', () => {
+jest.mock('../../../../components/common/NextPrevious/NextPrevious', () => {
   return jest.fn().mockImplementation(() => <div>NextPrevious</div>);
 });
 jest.mock('../../../../components/common/searchbar/Searchbar', () => {
@@ -58,7 +58,7 @@ jest.mock('../../../../components/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader</div>);
 });
 jest.mock(
-  '../../../../components/common/entityPageInfo/ManageButton/ManageButton',
+  '../../../../components/common/EntityPageInfos/ManageButton/ManageButton',
   () => {
     return jest.fn().mockImplementation(() => <div>ManageButton</div>);
   }

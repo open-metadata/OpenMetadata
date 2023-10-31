@@ -23,12 +23,9 @@ import { ReactComponent as IconTag } from '../../assets/svg/classification.svg';
 import { ReactComponent as LockIcon } from '../../assets/svg/closed-lock.svg';
 import { ReactComponent as VersionIcon } from '../../assets/svg/ic-version.svg';
 import AppBadge from '../../components/common/Badge/Badge.component';
-import Description from '../../components/common/description/Description';
-import ManageButton from '../../components/common/entityPageInfo/ManageButton/ManageButton';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import NextPrevious from '../../components/common/next-previous/NextPrevious';
-import { NextPreviousProps } from '../../components/common/next-previous/NextPrevious.interface';
-import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
+import Description from '../../components/common/EntityDescription/Description';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
 import Table from '../../components/common/Table/Table';
 import EntityHeaderTitle from '../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
@@ -61,6 +58,9 @@ import {
   getClassificationDetailsPath,
   getClassificationVersionsPath,
 } from '../../utils/RouterUtils';
+import ManageButton from '../common/EntityPageInfos/ManageButton/ManageButton';
+import NextPrevious from '../common/NextPrevious/NextPrevious';
+import { NextPreviousProps } from '../common/NextPrevious/NextPrevious.interface';
 
 export interface ClassificationDetailsProps {
   paging: Paging;

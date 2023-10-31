@@ -18,16 +18,16 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { AddTestCaseList } from '../../components/AddTestCaseList/AddTestCaseList.component';
-import { useAuthContext } from '../../components/authentication/auth-provider/AuthProvider';
-import Description from '../../components/common/description/Description';
-import ManageButton from '../../components/common/entityPageInfo/ManageButton/ManageButton';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import { PagingHandlerParams } from '../../components/common/next-previous/NextPrevious.interface';
+import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
+import Description from '../../components/common/EntityDescription/Description';
+import ManageButton from '../../components/common/EntityPageInfos/ManageButton/ManageButton';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
-import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
-import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
-import PageLayoutV1 from '../../components/containers/PageLayoutV1';
+import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import Loader from '../../components/Loader/Loader';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -53,7 +53,7 @@ import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getDataQualityPagePath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import './TestSuiteDetailsPage.styles.less';
+import './test-suite-details-page.styles.less';
 
 const TestSuiteDetailsPage = () => {
   const { t } = useTranslation();

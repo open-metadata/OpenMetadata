@@ -50,18 +50,18 @@ import { SearchIndex } from '../../../../enums/search.enum';
 import { searchData } from '../../../../rest/miscAPI';
 import { getCountBadge } from '../../../../utils/CommonUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import NextPrevious from '../../../common/next-previous/NextPrevious';
-import { PagingHandlerParams } from '../../../common/next-previous/NextPrevious.interface';
-import PageLayoutV1 from '../../../containers/PageLayoutV1';
+import NextPrevious from '../../../common/NextPrevious/NextPrevious';
+import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 import ExploreSearchCard from '../../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
+import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import {
   SearchedDataProps,
   SourceType,
-} from '../../../searched-data/SearchedData.interface';
+} from '../../../SearchedData/SearchedData.interface';
 
 import { FilterOutlined } from '@ant-design/icons';
 import { getEntityIcon } from '../../../../utils/TableUtils';
-import ErrorPlaceHolder from '../../../common/error-with-placeholder/ErrorPlaceHolder';
+import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import './assets-tabs.less';
 import {
   AssetsOfEntity,

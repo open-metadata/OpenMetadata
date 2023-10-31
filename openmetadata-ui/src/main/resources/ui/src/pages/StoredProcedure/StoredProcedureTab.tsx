@@ -16,16 +16,16 @@ import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import NextPrevious from '../../components/common/next-previous/NextPrevious';
-import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
+import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
 import Loader from '../../components/Loader/Loader';
 import { PAGE_SIZE } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { ServicePageData } from '../../pages/ServiceDetailsPage/ServiceDetailsPage';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getEntityLink } from '../../utils/TableUtils';
-import { StoredProcedureTabProps } from './storedProcedure.interface';
+import { StoredProcedureTabProps } from './StoreProcedure.interface';
 
 const StoredProcedureTab = ({
   storedProcedure,

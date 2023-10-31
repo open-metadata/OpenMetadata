@@ -22,26 +22,26 @@ import { useHistory, useParams } from 'react-router-dom';
 import { useActivityFeedProvider } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
-import { useAuthContext } from '../../components/authentication/auth-provider/AuthProvider';
+import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
+import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
-import DescriptionV1 from '../../components/common/description/DescriptionV1';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import QueryViewer from '../../components/common/QueryViewer/QueryViewer.component';
-import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import DataProductsContainer from '../../components/DataProductsContainer/DataProductsContainer.component';
 import EntityLineageComponent from '../../components/Entity/EntityLineage/EntityLineage.component';
 import Loader from '../../components/Loader/Loader';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
 } from '../../components/PermissionProvider/PermissionProvider.interface';
-import { withActivityFeed } from '../../components/router/withActivityFeed';
 import SampleDataTableComponent from '../../components/SampleDataTable/SampleDataTable.component';
 import SchemaTab from '../../components/SchemaTab/SchemaTab.component';
-import { SourceType } from '../../components/searched-data/SearchedData.interface';
+import { SourceType } from '../../components/SearchedData/SearchedData.interface';
 import TableProfilerV1 from '../../components/TableProfiler/TableProfilerV1';
 import TableQueries from '../../components/TableQueries/TableQueries';
 import { QueryVote } from '../../components/TableQueries/TableQueries.interface';

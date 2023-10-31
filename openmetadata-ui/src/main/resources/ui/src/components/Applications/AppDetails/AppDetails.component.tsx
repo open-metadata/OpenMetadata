@@ -39,8 +39,8 @@ import { useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
-import PageLayoutV1 from '../../../components/containers/PageLayoutV1';
 import Loader from '../../../components/Loader/Loader';
+import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import TabsLabel from '../../../components/TabsLabel/TabsLabel.component';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import {

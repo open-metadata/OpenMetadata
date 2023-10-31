@@ -21,12 +21,12 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as PlusIcon } from '../../assets/svg/plus-primary.svg';
 import ClassificationDetails from '../../components/ClassificationDetails/ClassificationDetails';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import LeftPanelCard from '../../components/common/LeftPanelCard/LeftPanelCard';
-import { PagingHandlerParams } from '../../components/common/next-previous/NextPrevious.interface';
-import PageLayoutV1 from '../../components/containers/PageLayoutV1';
+import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import Loader from '../../components/Loader/Loader';
 import EntityDeleteModal from '../../components/Modals/EntityDeleteModal/EntityDeleteModal';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,

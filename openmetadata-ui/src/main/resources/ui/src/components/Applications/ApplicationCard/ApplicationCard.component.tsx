@@ -14,7 +14,7 @@ import { Button, Card, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { kebabCase } from 'lodash';
 import React from 'react';
-import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
+import RichTextEditorPreviewer from '../../../components/common/RichTextEditor/RichTextEditorPreviewer';
 import AppLogo from '../AppLogo/AppLogo.component';
 import { ApplicationCardProps } from './ApplicationCard.interface';
 

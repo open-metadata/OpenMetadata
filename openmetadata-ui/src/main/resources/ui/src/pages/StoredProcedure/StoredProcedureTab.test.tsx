@@ -15,8 +15,8 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { INITIAL_PAGING_VALUE, pagingObject } from '../../constants/constants';
 import { mockStoredProcedureData } from '../../mocks/StoredProcedure.mock';
-import { StoredProcedureTabProps } from './storedProcedure.interface';
 import StoredProcedureTab from './StoredProcedureTab';
+import { StoredProcedureTabProps } from './StoreProcedure.interface';
 
 const mockPagingHandler = jest.fn();
 const mockShowDeletedHandler = jest.fn();
@@ -36,13 +36,13 @@ const mockProps: StoredProcedureTabProps = {
 };
 
 jest.mock(
-  '../../components/common/error-with-placeholder/ErrorPlaceHolder',
+  '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
   () => {
     return jest.fn().mockImplementation(() => <p>testErrorPlaceHolder</p>);
   }
 );
 
-jest.mock('../../components/common/next-previous/NextPrevious', () => {
+jest.mock('../../components/common/NextPrevious/NextPrevious', () => {
   return jest.fn().mockImplementation(({ pagingHandler }) => (
     <p data-testid="next-previous" onClick={pagingHandler}>
       testNextPrevious
@@ -51,7 +51,7 @@ jest.mock('../../components/common/next-previous/NextPrevious', () => {
 });
 
 jest.mock(
-  '../../components/common/rich-text-editor/RichTextEditorPreviewer',
+  '../../components/common/RichTextEditor/RichTextEditorPreviewer',
   () => {
     return jest
       .fn()

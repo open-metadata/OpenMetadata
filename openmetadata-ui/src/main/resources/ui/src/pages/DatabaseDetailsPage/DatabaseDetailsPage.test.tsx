@@ -131,7 +131,7 @@ jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
 }));
 
 jest.mock(
-  '../../components/common/rich-text-editor/RichTextEditorPreviewer',
+  '../../components/common/RichTextEditor/RichTextEditorPreviewer',
   () => {
     return jest.fn().mockImplementation(({ markdown }) => <p>{markdown}</p>);
   }
@@ -197,7 +197,7 @@ jest.mock('../../utils/TableUtils', () => ({
   getTagsWithoutTier: jest.fn().mockImplementation(() => []),
 }));
 
-jest.mock('../../components/common/next-previous/NextPrevious', () => {
+jest.mock('../../components/common/NextPrevious/NextPrevious', () => {
   return jest.fn().mockReturnValue(<div>NextPrevious</div>);
 });
 
@@ -229,11 +229,11 @@ jest.mock(
   })
 );
 
-jest.mock('../../components/common/description/DescriptionV1', () => {
+jest.mock('../../components/common/EntityDescription/DescriptionV1', () => {
   return jest.fn().mockReturnValue(<p>Description</p>);
 });
 
-jest.mock('../../components/containers/PageLayoutV1', () => {
+jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => children);
 });
 
@@ -269,7 +269,7 @@ jest.mock('../../utils/DatabaseDetails.utils', () => ({
     .mockReturnValue(<>testDatabaseSchemaTable</>),
 }));
 
-jest.mock('../../components/router/withActivityFeed', () => ({
+jest.mock('../../components/AppRouter/withActivityFeed', () => ({
   withActivityFeed: jest.fn().mockImplementation((Some) => Some),
 }));
 

@@ -21,7 +21,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
 import { getEntityName } from '../../utils/EntityUtils';
-import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
+import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
 import './welcome-screen.style.less';
 
 const { Paragraph, Text } = Typography;

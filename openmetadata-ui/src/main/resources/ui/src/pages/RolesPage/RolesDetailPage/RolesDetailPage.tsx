@@ -18,9 +18,9 @@ import { isEmpty, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import Description from '../../../components/common/description/Description';
-import ErrorPlaceHolder from '../../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
+import Description from '../../../components/common/EntityDescription/Description';
+import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import Loader from '../../../components/Loader/Loader';
 import {
   GlobalSettingOptions,
@@ -37,7 +37,7 @@ import { getEntityName } from '../../../utils/EntityUtils';
 import { getSettingPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import AddAttributeModal from '../AddAttributeModal/AddAttributeModal';
-import './RolesDetail.less';
+import './roles-detail.less';
 import RolesDetailPageList from './RolesDetailPageList.component';
 
 const { TabPane } = Tabs;

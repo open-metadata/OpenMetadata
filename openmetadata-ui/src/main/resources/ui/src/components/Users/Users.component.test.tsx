@@ -66,7 +66,7 @@ jest.mock('./UsersProfile/UserProfileTeams/UserProfileTeams.component', () => {
   return jest.fn().mockReturnValue(<div>UserProfileTeams</div>);
 });
 
-jest.mock('../../components/searched-data/SearchedData', () => {
+jest.mock('../../components/SearchedData/SearchedData', () => {
   return jest.fn().mockReturnValue(<p>SearchedData</p>);
 });
 
@@ -110,7 +110,7 @@ jest.mock('../../rest/teamsAPI', () => ({
   getTeams: jest.fn().mockImplementation(() => Promise.resolve(mockTeamsData)),
 }));
 
-jest.mock('../containers/PageLayoutV1', () =>
+jest.mock('../PageLayoutV1/PageLayoutV1', () =>
   jest
     .fn()
     .mockImplementation(
@@ -132,7 +132,7 @@ jest.mock('../containers/PageLayoutV1', () =>
     )
 );
 
-jest.mock('../common/description/Description', () => {
+jest.mock('../common/EntityDescription/Description', () => {
   return jest.fn().mockReturnValue(<p>Description</p>);
 });
 const updateUserDetails = jest.fn();
@@ -151,7 +151,7 @@ jest.mock('../../rest/userAPI', () => ({
   checkValidImage: jest.fn().mockImplementation(() => Promise.resolve(true)),
 }));
 
-jest.mock('../containers/PageLayoutV1', () =>
+jest.mock('../PageLayoutV1/PageLayoutV1', () =>
   jest.fn().mockImplementation(({ children, leftPanel, rightPanel }) => (
     <div>
       {leftPanel}

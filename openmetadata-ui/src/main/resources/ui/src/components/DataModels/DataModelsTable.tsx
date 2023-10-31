@@ -17,14 +17,14 @@ import { isUndefined } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import NextPrevious from '../../components/common/next-previous/NextPrevious';
-import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
 import Table from '../../components/common/Table/Table';
 import { getDataModelDetailsPath, PAGE_SIZE } from '../../constants/constants';
 import { DataModelTableProps } from '../../pages/DataModelPage/DataModelsInterface';
 import { ServicePageData } from '../../pages/ServiceDetailsPage/ServiceDetailsPage';
 import { getEntityName } from '../../utils/EntityUtils';
+import NextPrevious from '../common/NextPrevious/NextPrevious';
 
 const DataModelTable = ({
   data,

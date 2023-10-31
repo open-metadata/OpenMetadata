@@ -24,7 +24,7 @@ import { EntityReference } from '../../../generated/entity/data/table';
 import { Paging } from '../../../generated/type/paging';
 import { getEntityName } from '../../../utils/EntityUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
-import Searchbar from '../searchbar/Searchbar';
+import Searchbar from '../SearchBar/Searchbar';
 import '../UserSelectableList/user-select-dropdown.less';
 import { UserTag } from '../UserTag/UserTag.component';
 import { SelectableListProps } from './SelectableList.interface';

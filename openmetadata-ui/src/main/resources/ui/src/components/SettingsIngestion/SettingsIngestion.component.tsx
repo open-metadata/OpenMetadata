@@ -15,7 +15,7 @@ import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import ErrorPlaceHolderIngestion from '../../components/common/error-with-placeholder/ErrorPlaceHolderIngestion';
+import ErrorPlaceHolderIngestion from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion';
 import Ingestion from '../../components/Ingestion/Ingestion.component';
 import Loader from '../../components/Loader/Loader';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';

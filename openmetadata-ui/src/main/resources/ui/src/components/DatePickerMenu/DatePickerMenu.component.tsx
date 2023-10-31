@@ -34,7 +34,7 @@ import {
   getDaysCount,
   getTimestampLabel,
 } from '../../utils/DatePickerMenuUtils';
-import './DatePickerMenu.style.less';
+import './date-picker-menu.less';
 
 interface DatePickerMenuProps {
   showSelectedCustomRange?: boolean;

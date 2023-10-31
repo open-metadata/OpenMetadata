@@ -15,7 +15,7 @@ import { AxiosError } from 'axios';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
-import { PagingHandlerParams } from '../../components/common/next-previous/NextPrevious.interface';
+import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import UserListV1 from '../../components/UserList/UserListV1';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import {
