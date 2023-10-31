@@ -14,7 +14,7 @@ slug: /connectors/database/hive
 | Query Usage        | {% icon iconName="cross" /%} |
 | Data Profiler      | {% icon iconName="check" /%} |
 | Data Quality       | {% icon iconName="check" /%} |
-| Lineage            | Manual          |
+| Stored Procedures            | {% icon iconName="cross" /%} |
 | DBT                | {% icon iconName="cross" /%} |
 | Supported Versions | Hive >= 2.0                         |
 
