@@ -19,7 +19,6 @@ import { EntityTags } from 'Models';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import AppState from '../../AppState';
 import { useActivityFeedProvider } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import DescriptionV1 from '../../components/common/description/DescriptionV1';
@@ -48,6 +47,7 @@ import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
+import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
@@ -71,6 +71,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   handleToggleDelete,
 }) => {
   const { t } = useTranslation();
+  const { currentUser } = useAuthContext();
   const history = useHistory();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const { fqn: mlModelFqn, tab: activeTab } =
@@ -116,11 +117,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       fetchResourcePermission();
     }
   }, [mlModelDetail.id]);
-
-  const currentUser = useMemo(
-    () => AppState.getCurrentUserDetails(),
-    [AppState.nonSecureUserDetails, AppState.userDetails]
-  );
 
   const { mlModelTags, isFollowing, tier } = useMemo(() => {
     return {

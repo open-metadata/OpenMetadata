@@ -14,8 +14,8 @@ slug: /connectors/database/mysql/yaml
 | Query Usage        | {% icon iconName="cross" /%} |
 | Data Profiler      | {% icon iconName="check" /%} |
 | Data Quality       | {% icon iconName="check" /%} |
-| Lineage            | Partially via Views          |
-| DBT                | {% icon iconName="cross" /%} |
+| Stored Procedures            | {% icon iconName="cross" /%} |
+| DBT                | {% icon iconName="check" /%} |
 | Supported Versions | MySQL >= 8.0.0                         |
 
 | Feature      | Status                       |
@@ -172,32 +172,11 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 
 {% /codeInfo %}
 
-#### Source Configuration - Source Config
+{% partial file="/v1.2/connectors/yaml/database/source-config-def.md" /%}
 
-{% codeInfo srNumber=8 %}
+{% partial file="/v1.2/connectors/yaml/ingestion-sink-def.md" /%}
 
-The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/databaseServiceMetadataPipeline.json):
-
-**markDeletedTables**: To flag tables as soft-deleted if they are not present anymore in the source system.
-
-**includeTables**: true or false, to ingest table data. Default is true.
-
-**includeViews**: true or false, to ingest views definitions.
-
-**databaseFilterPattern**, **schemaFilterPattern**, **tableFilterPattern**: Note that the filter supports regex as include or exclude. You can find examples [here](/connectors/ingestion/workflows/metadata/filter-patterns/database)
-
-{% /codeInfo %}
-
-
-#### Sink Configuration
-
-{% codeInfo srNumber=9 %}
-
-To send the metadata to OpenMetadata, it needs to be specified as `type: metadata-rest`.
-
-{% /codeInfo %}
-
-{% partial file="/v1.2/connectors/workflow-config.md" /%}
+{% partial file="/v1.2/connectors/yaml/workflow-config-def.md" /%}
 
 #### Advanced Configuration
 
@@ -256,337 +235,20 @@ source:
       # connectionArguments:
       #   key: value
 ```
-```yaml {% srNumber=8 %}
-  sourceConfig:
-    config:
-      type: DatabaseMetadata
-      markDeletedTables: true
-      includeTables: true
-      includeViews: true
-      # includeTags: true
-      # databaseFilterPattern:
-      #   includes:
-      #     - database1
-      #     - database2
-      #   excludes:
-      #     - database3
-      #     - database4
-      # schemaFilterPattern:
-      #   includes:
-      #     - schema1
-      #     - schema2
-      #   excludes:
-      #     - schema3
-      #     - schema4
-      # tableFilterPattern:
-      #   includes:
-      #     - table1
-      #     - table2
-      #   excludes:
-      #     - table3
-      #     - table4
-```
 
-```yaml {% srNumber=9 %}
-sink:
-  type: metadata-rest
-  config: {}
-```
+{% partial file="/v1.2/connectors/yaml/database/source-config.md" /%}
 
-{% partial file="/v1.2/connectors/workflow-config-yaml.md" /%}
+{% partial file="/v1.2/connectors/yaml/ingestion-sink.md" /%}
+
+{% partial file="/v1.2/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
 {% /codePreview %}
 
-### 2. Run with the CLI
+{% partial file="/v1.2/connectors/yaml/ingestion-cli.md" /%}
 
-First, we will need to save the YAML file. Afterward, and with all requirements installed, we can run:
-
-```bash
-metadata ingest -c <path-to-yaml>
-```
-
-Note that from connector to connector, this recipe will always be the same. By updating the YAML configuration,
-you will be able to extract metadata from different sources.
-
-## Data Profiler
-
-The Data Profiler workflow will be using the `orm-profiler` processor.
-
-After running a Metadata Ingestion workflow, we can run Data Profiler workflow.
-While the `serviceName` will be the same to that was used in Metadata Ingestion, so the ingestion bot can get the `serviceConnection` details from the server.
-
-
-### 1. Define the YAML Config
-
-This is a sample config for the profiler:
-
-{% codePreview %}
-
-{% codeInfoContainer %}
-
-{% codeInfo srNumber=15 %}
-#### Source Configuration - Source Config
-
-You can find all the definitions and types for the  `sourceConfig` [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/databaseServiceProfilerPipeline.json).
-
-**generateSampleData**: Option to turn on/off generating sample data.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=16 %}
-
-**profileSample**: Percentage of data or no. of rows we want to execute the profiler and tests on.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=17 %}
-
-**threadCount**: Number of threads to use during metric computations.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=18 %}
-
-**processPiiSensitive**: Optional configuration to automatically tag columns that might contain sensitive information.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=19 %}
-
-**confidence**: Set the Confidence value for which you want the column to be marked
-
-{% /codeInfo %}
-
-
-{% codeInfo srNumber=20 %}
-
-**timeoutSeconds**: Profiler Timeout in Seconds
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=21 %}
-
-**databaseFilterPattern**: Regex to only fetch databases that matches the pattern.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=22 %}
-
-**schemaFilterPattern**: Regex to only fetch tables or databases that matches the pattern.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=23 %}
-
-**tableFilterPattern**: Regex to only fetch tables or databases that matches the pattern.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=24 %}
-
-#### Processor Configuration
-
-Choose the `orm-profiler`. Its config can also be updated to define tests from the YAML itself instead of the UI:
-
-**tableConfig**: `tableConfig` allows you to set up some configuration at the table level.
-{% /codeInfo %}
-
-
-{% codeInfo srNumber=25 %}
-
-#### Sink Configuration
-
-To send the metadata to OpenMetadata, it needs to be specified as `type: metadata-rest`.
-{% /codeInfo %}
-
-
-{% codeInfo srNumber=26 %}
-
-#### Workflow Configuration
-
-The main property here is the `openMetadataServerConfig`, where you can define the host and security provider of your OpenMetadata installation.
-
-For a simple, local installation using our docker containers, this looks like:
-
-{% /codeInfo %}
-
-{% /codeInfoContainer %}
-
-{% codeBlock fileName="filename.yaml" %}
-
-
-```yaml
-source:
-  type: mysql
-  serviceName: <service name>
-  sourceConfig:
-    config:
-      type: Profiler
-```
-
-```yaml {% srNumber=15 %}
-      generateSampleData: true
-```
-```yaml {% srNumber=16 %}
-      # profileSample: 85
-```
-```yaml {% srNumber=17 %}
-      # threadCount: 5
-```
-```yaml {% srNumber=18 %}
-      processPiiSensitive: false
-```
-```yaml {% srNumber=19 %}
-      # confidence: 80
-```
-```yaml {% srNumber=20 %}
-      # timeoutSeconds: 43200
-```
-```yaml {% srNumber=21 %}
-      # databaseFilterPattern:
-      #   includes:
-      #     - database1
-      #     - database2
-      #   excludes:
-      #     - database3
-      #     - database4
-```
-```yaml {% srNumber=22 %}
-      # schemaFilterPattern:
-      #   includes:
-      #     - schema1
-      #     - schema2
-      #   excludes:
-      #     - schema3
-      #     - schema4
-```
-```yaml {% srNumber=23 %}
-      # tableFilterPattern:
-      #   includes:
-      #     - table1
-      #     - table2
-      #   excludes:
-      #     - table3
-      #     - table4
-```
-
-```yaml {% srNumber=24 %}
-processor:
-  type: orm-profiler
-  config: {}  # Remove braces if adding properties
-    # tableConfig:
-    #   - fullyQualifiedName: <table fqn>
-    #     profileSample: <number between 0 and 99> # default 
-
-    #     profileSample: <number between 0 and 99> # default will be 100 if omitted
-    #     profileQuery: <query to use for sampling data for the profiler>
-    #     columnConfig:
-    #       excludeColumns:
-    #         - <column name>
-    #       includeColumns:
-    #         - columnName: <column name>
-    #         - metrics:
-    #           - MEAN
-    #           - MEDIAN
-    #           - ...
-    #     partitionConfig:
-    #       enablePartitioning: <set to true to use partitioning>
-    #       partitionColumnName: <partition column name>
-    #       partitionIntervalType: <TIME-UNIT, INTEGER-RANGE, INGESTION-TIME, COLUMN-VALUE>
-    #       Pick one of the variation shown below
-    #       ----'TIME-UNIT' or 'INGESTION-TIME'-------
-    #       partitionInterval: <partition interval>
-    #       partitionIntervalUnit: <YEAR, MONTH, DAY, HOUR>
-    #       ------------'INTEGER-RANGE'---------------
-    #       partitionIntegerRangeStart: <integer>
-    #       partitionIntegerRangeEnd: <integer>
-    #       -----------'COLUMN-VALUE'----------------
-    #       partitionValues:
-    #         - <value>
-    #         - <value>
-
-```
-
-```yaml {% srNumber=25 %}
-sink:
-  type: metadata-rest
-  config: {}
-```
-
-```yaml {% srNumber=26 %}
-workflowConfig:
-  # loggerLevel: DEBUG  # DEBUG, INFO, WARN or ERROR
-  openMetadataServerConfig:
-    hostPort: <OpenMetadata host and port>
-    authProvider: <OpenMetadata auth provider>
-```
-
-{% /codeBlock %}
-
-{% /codePreview %}
-
-- You can learn more about how to configure and run the Profiler Workflow to extract Profiler data and execute the Data Quality from [here](/connectors/ingestion/workflows/profiler)
-
-### 2. Run with the CLI
-
-After saving the YAML config, we will run the command the same way we did for the metadata ingestion:
-
-```bash
-metadata profile -c <path-to-yaml>
-```
-
-Note how instead of running `ingest`, we are using the `profile` command to select the Profiler workflow.
-
-## SSL Configuration
-
-In order to integrate SSL in the Metadata Ingestion Config, the user will have to add the SSL config under connectionArguments which is placed in the source.
-
-{% codePreview %}
-
-{% codeInfoContainer %}
-
-{% codeInfo srNumber=27 %}
-
-**ssl**: A dict of arguments which contains:
-  - **ssl_ca**: Path to the file that contains a PEM-formatted CA certificate.
-  - **ssl_cert**: Path to the file that contains a PEM-formatted client certificate.
-  - **ssl_disabled**: A boolean value that disables usage of TLS.
-  - **ssl_key**: Path to the file that contains a PEM-formatted private key for the client certificate.
-  - **ssl_verify_cert**: Set to true to check the server certificate's validity.
-  - **ssl_verify_identity**: Set to true to check the server's identity.
-
-{% /codeInfo %}
-
-{% /codeInfoContainer %}
-
-{% codeBlock fileName="filename.yaml" %}
-
-```yaml {% srNumber=27 %}
-source:
-  type: mysql
-  serviceName: "<service name>"
-  serviceConnection:
-    config:
-      type: Mysql
-      username: <username>
-      password: <password>
-      hostPort: <hostPort>
-      ...
-      ...
-      connectionArguments:
-        ssl:
-          ssl_ca: /path/to/client-ssl/ca.pem,
-          ssl_cert: /path/to/client-ssl/client-cert.pem
-          ssl_key: /path/to/client-ssl/client-key.pem
-          #ssl_disabled: True #boolean
-          #ssl_verify_cert: True #boolean
-          #ssl_verify_identity: True #boolean
-
-```
-{% /codeBlock %}
-{% /codePreview %}
+{% partial file="/v1.2/connectors/yaml/data-profiler.md" variables={connector: "mysql"} /%}
 
 ## dbt Integration
 
@@ -597,17 +259,5 @@ source:
   title="dbt Integration"
   description="Learn more about how to ingest dbt models' definitions and their lineage."
   link="/connectors/ingestion/workflows/dbt" /%}
-
-{% /tilesContainer %}
-
-## Related
-
-{% tilesContainer %}
-
-{% tile
-    title="Ingest with Airflow"
-    description="Configure the ingestion using Airflow SDK"
-    link="/connectors/database/mysql/airflow"
-  / %}
 
 {% /tilesContainer %}

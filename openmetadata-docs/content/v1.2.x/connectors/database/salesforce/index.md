@@ -15,7 +15,7 @@ slug: /connectors/database/salesforce
 | Query Usage        | {% icon iconName="cross" /%} |
 | Data Profiler      | {% icon iconName="check" /%} |
 | Data Quality       | {% icon iconName="check" /%} |
-| Lineage            | {% icon iconName="cross" /%}         |
+| Stored Procedures            | {% icon iconName="cross" /%} |
 | DBT                | {% icon iconName="cross" /%} |
 | Supported Versions | --                           |
 
