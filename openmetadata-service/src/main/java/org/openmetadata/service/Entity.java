@@ -108,6 +108,8 @@ public final class Entity {
 
   public static final String FIELD_LIFE_CYCLE = "lifeCycle";
 
+  public static final String FIELD_DISABLED = "disabled";
+
   //
   // Service entities
   //
@@ -243,7 +245,7 @@ public final class Entity {
 
   private Entity() {}
 
-  public static void initializeRepositories(Jdbi jdbi) {
+  public static void initializeRepositories(OpenMetadataApplicationConfig config, Jdbi jdbi) {
     if (!initializedRepositories) {
       tokenRepository = new TokenRepository();
       List<Class<?>> repositories = getRepositories();
@@ -255,11 +257,14 @@ public final class Entity {
           clz.getDeclaredConstructor().newInstance();
         } catch (Exception e) {
           try {
-            clz.getDeclaredConstructor(Jdbi.class).newInstance(jdbi);
+            clz.getDeclaredConstructor(OpenMetadataApplicationConfig.class).newInstance(config);
           } catch (Exception ex) {
-            LOG.warn("Exception encountered", ex);
+            try {
+              clz.getDeclaredConstructor(Jdbi.class).newInstance(jdbi);
+            } catch (Exception exception) {
+              LOG.warn("Exception encountered", exception);
+            }
           }
-          LOG.warn("Exception encountered", e);
         }
       }
       initializedRepositories = true;

@@ -95,9 +95,9 @@ export const getDiffByFieldName = (
   changeDescription: ChangeDescription,
   exactMatch?: boolean
 ): EntityDiffProps => {
-  const fieldsAdded = changeDescription?.fieldsAdded || [];
-  const fieldsDeleted = changeDescription?.fieldsDeleted || [];
-  const fieldsUpdated = changeDescription?.fieldsUpdated || [];
+  const fieldsAdded = changeDescription?.fieldsAdded ?? [];
+  const fieldsDeleted = changeDescription?.fieldsDeleted ?? [];
+  const fieldsUpdated = changeDescription?.fieldsUpdated ?? [];
   if (exactMatch) {
     return {
       added: fieldsAdded.find((ch) => ch.name === name),
@@ -122,7 +122,7 @@ export const getDiffValue = (oldValue: string, newValue: string) => {
     return (
       <span
         className={diffChangeText}
-        data-testid={`${diffChangeText}-${part.value}`}
+        data-testid={`${diffChangeText}`}
         key={part.value}>
         {part.value}
       </span>
@@ -135,7 +135,7 @@ export const getAddedDiffElement = (text: string) => {
     <Typography.Text
       underline
       className="diff-added"
-      data-testid={`diff-added-${text}`}
+      data-testid="diff-added"
       key={uniqueId()}>
       {text}
     </Typography.Text>
@@ -147,7 +147,7 @@ export const getRemovedDiffElement = (text: string) => {
     <Typography.Text
       delete
       className="text-grey-muted"
-      data-testid={`diff-removed-${text}`}
+      data-testid="diff-removed"
       key={uniqueId()}>
       {text}
     </Typography.Text>
@@ -156,7 +156,7 @@ export const getRemovedDiffElement = (text: string) => {
 
 export const getNormalDiffElement = (text: string) => {
   return (
-    <Typography.Text data-testid={`diff-normal-${text}`} key={uniqueId()}>
+    <Typography.Text data-testid="diff-normal" key={uniqueId()}>
       {text}
     </Typography.Text>
   );
@@ -168,7 +168,7 @@ export const getTextDiff = (
   latestText?: string
 ) => {
   if (isEmpty(oldText) && isEmpty(newText)) {
-    return latestText || '';
+    return latestText ?? '';
   }
 
   const diffArr = diffWords(toString(oldText), toString(newText));
@@ -276,38 +276,87 @@ export const summaryFormatter = (fieldChange: FieldChange) => {
   }
 };
 
-const getSummaryText = (
-  isPrefix: boolean,
-  fieldsChanged: FieldChange[],
-  actionType: string,
-  actionText: string
-) => {
-  const prefix = isPrefix ? `+ ${actionType}` : '';
+const getGlossaryTermApprovalText = (fieldsChanged: FieldChange[]) => {
+  const statusFieldDiff = fieldsChanged.find(
+    (field) => field.name === 'status'
+  );
+  let approvalText = '';
 
-  return `${prefix} ${fieldsChanged.map(summaryFormatter).join(', ')} ${
-    !isPrefix
-      ? t('label.has-been-action-type-lowercase', {
-          actionType: actionText,
-        })
-      : ''
-  } `;
+  if (statusFieldDiff) {
+    approvalText = t('message.glossary-term-status', {
+      status:
+        statusFieldDiff.newValue === 'Approved'
+          ? t('label.approved')
+          : t('label.rejected'),
+    });
+  }
+
+  return approvalText;
 };
 
-export const getSummary = (
-  changeDescription: ChangeDescription,
-  isPrefix = false
-) => {
-  const fieldsAdded = [...(changeDescription?.fieldsAdded || [])];
-  const fieldsDeleted = [...(changeDescription?.fieldsDeleted || [])];
+const getSummaryText = ({
+  isPrefix,
+  fieldsChanged,
+  actionType,
+  actionText,
+  isGlossaryTerm,
+}: {
+  isPrefix: boolean;
+  fieldsChanged: FieldChange[];
+  actionType: string;
+  actionText: string;
+  isGlossaryTerm?: boolean;
+}) => {
+  const prefix = isPrefix ? `+ ${actionType}` : '';
+  const filteredFieldsChanged = isGlossaryTerm
+    ? fieldsChanged.filter((field) => field.name !== 'status')
+    : fieldsChanged;
+
+  let summaryText = '';
+
+  if (!isEmpty(filteredFieldsChanged)) {
+    summaryText = `${prefix} ${filteredFieldsChanged
+      .map(summaryFormatter)
+      .join(', ')} ${
+      !isPrefix
+        ? t('label.has-been-action-type-lowercase', {
+            actionType: actionText,
+          })
+        : ''
+    } `;
+  }
+
+  const isGlossaryTermStatusUpdated = fieldsChanged.some(
+    (field) => field.name === 'status'
+  );
+
+  const glossaryTermApprovalText = isGlossaryTermStatusUpdated
+    ? getGlossaryTermApprovalText(fieldsChanged)
+    : '';
+
+  return `${glossaryTermApprovalText} ${summaryText}`;
+};
+
+export const getSummary = ({
+  changeDescription,
+  isPrefix = false,
+  isGlossaryTerm = false,
+}: {
+  changeDescription: ChangeDescription;
+  isPrefix?: boolean;
+  isGlossaryTerm?: boolean;
+}) => {
+  const fieldsAdded = [...(changeDescription?.fieldsAdded ?? [])];
+  const fieldsDeleted = [...(changeDescription?.fieldsDeleted ?? [])];
   const fieldsUpdated = [
     ...(changeDescription?.fieldsUpdated?.filter(
       (field) => field.name !== 'deleted'
-    ) || []),
+    ) ?? []),
   ];
   const isDeleteUpdated = [
     ...(changeDescription?.fieldsUpdated?.filter(
       (field) => field.name === 'deleted'
-    ) || []),
+    ) ?? []),
   ];
 
   return (
@@ -329,32 +378,33 @@ export const getSummary = (
       ) : null}
       {fieldsAdded?.length > 0 ? (
         <Typography.Paragraph>
-          {getSummaryText(
+          {getSummaryText({
             isPrefix,
-            fieldsAdded,
-            t('label.added'),
-            t('label.added-lowercase')
-          )}
+            fieldsChanged: fieldsAdded,
+            actionType: t('label.added'),
+            actionText: t('label.added-lowercase'),
+          })}
         </Typography.Paragraph>
       ) : null}
       {fieldsUpdated?.length ? (
         <Typography.Paragraph>
-          {getSummaryText(
+          {getSummaryText({
             isPrefix,
-            fieldsUpdated,
-            t('label.edited'),
-            t('label.updated-lowercase')
-          )}
+            fieldsChanged: fieldsUpdated,
+            actionType: t('label.edited'),
+            actionText: t('label.updated-lowercase'),
+            isGlossaryTerm,
+          })}
         </Typography.Paragraph>
       ) : null}
       {fieldsDeleted?.length ? (
         <Typography.Paragraph>
-          {getSummaryText(
+          {getSummaryText({
             isPrefix,
-            fieldsDeleted,
-            t('label.removed'),
-            t('label.deleted-lowercase')
-          )}
+            fieldsChanged: fieldsDeleted,
+            actionType: t('label.removed'),
+            actionText: t('label.deleted-lowercase'),
+          })}
         </Typography.Paragraph>
       ) : null}
     </Fragment>
@@ -643,9 +693,9 @@ export const getAllDiffByFieldName = (
   changeDescription: ChangeDescription,
   exactMatch?: boolean
 ): EntityDiffWithMultiChanges => {
-  const fieldsAdded = changeDescription?.fieldsAdded || [];
-  const fieldsDeleted = changeDescription?.fieldsDeleted || [];
-  const fieldsUpdated = changeDescription?.fieldsUpdated || [];
+  const fieldsAdded = changeDescription?.fieldsAdded ?? [];
+  const fieldsDeleted = changeDescription?.fieldsDeleted ?? [];
+  const fieldsUpdated = changeDescription?.fieldsUpdated ?? [];
   if (exactMatch) {
     return {
       added: fieldsAdded.filter((ch) => ch.name === name),

@@ -17,6 +17,7 @@ from typing import Optional, Tuple
 
 from metadata.config.common import WorkflowExecutionError
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    IngestionPipeline,
     PipelineState,
     PipelineStatus,
 )
@@ -41,6 +42,8 @@ class WorkflowStatusMixin:
     config: OpenMetadataWorkflowConfig
     _run_id: Optional[str] = None
     metadata: OpenMetadata
+    _start_ts: int
+    ingestion_pipeline: Optional[IngestionPipeline]
 
     # All workflows require a source as a first step
     source: Source
@@ -83,6 +86,15 @@ class WorkflowStatusMixin:
                     f"{step.__class__.__name__} reported warnings", step.get_status()
                 )
 
+    def _new_pipeline_status(self, state: PipelineState) -> PipelineStatus:
+        """Create new Pipeline Status"""
+        return PipelineStatus(
+            runId=self.run_id,
+            pipelineState=state,
+            startDate=self._start_ts,
+            timestamp=self._start_ts,
+        )
+
     def set_ingestion_pipeline_status(
         self,
         state: PipelineState,
@@ -94,16 +106,13 @@ class WorkflowStatusMixin:
         # if we don't have a related Ingestion Pipeline FQN, no status is set.
         if self.config.ingestionPipelineFQN and self.ingestion_pipeline:
             if state in (PipelineState.queued, PipelineState.running):
-                pipeline_status = PipelineStatus(
-                    runId=self.run_id,
-                    pipelineState=state,
-                    startDate=datetime.now().timestamp() * 1000,
-                    timestamp=datetime.now().timestamp() * 1000,
-                )
+                pipeline_status = self._new_pipeline_status(state)
             else:
                 pipeline_status = self.metadata.get_pipeline_status(
                     self.config.ingestionPipelineFQN, self.run_id
                 )
+                if not pipeline_status:
+                    pipeline_status = self._new_pipeline_status(state)
                 # if workflow is ended then update the end date in status
                 pipeline_status.endDate = datetime.now().timestamp() * 1000
                 pipeline_status.pipelineState = state

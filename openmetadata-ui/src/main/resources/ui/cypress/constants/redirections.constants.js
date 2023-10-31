@@ -63,7 +63,7 @@ export const LEFT_PANEL_DETAILS = {
 export const NAVBAR_DETAILS = {
   explore: {
     testid: '[data-testid="app-bar-item-explore"]',
-    url: `${BASE_URL}/explore/tables`,
+    url: `${BASE_URL}/explore/dataProducts`,
   },
   quality: {
     testid: '[data-testid="app-bar-item-data-quality"]',
@@ -195,9 +195,9 @@ export const SETTINGS_LEFT_PANEL = {
     testid: '[data-menu-id*="customAttributes.storedProcedure"]',
     url: `${BASE_URL}/settings/customAttributes/storedProcedure`,
   },
-  search: {
-    testid: '[data-menu-id*="openMetadata.search"]',
-    url: `${BASE_URL}/settings/openMetadata/search`,
+  applications: {
+    testid: '[data-menu-id*="integrations.apps"]',
+    url: `${BASE_URL}/settings/integrations/apps`,
   },
   bots: {
     testid: '[data-menu-id*="bots"]',

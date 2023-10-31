@@ -393,7 +393,8 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   }
 
   private Type getType(CreateType create, String user) {
-    return copy(new Type(), create, user)
+    return repository
+        .copy(new Type(), create, user)
         .withFullyQualifiedName(create.getName())
         .withCategory(create.getCategory())
         .withSchema(create.getSchema());

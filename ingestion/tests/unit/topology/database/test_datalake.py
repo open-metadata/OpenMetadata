@@ -182,8 +182,8 @@ EXAMPLE_JSON_COL_3 = [
     ),
     Column(
         name="address",
-        dataType="RECORD",
-        dataTypeDisplay="RECORD",
+        dataType="JSON",
+        dataTypeDisplay="JSON",
         displayName="address",
         children=[
             Column(
@@ -206,8 +206,8 @@ EXAMPLE_JSON_COL_3 = [
             ),
             Column(
                 name="coordinates",
-                dataType="RECORD",
-                dataTypeDisplay="RECORD",
+                dataType="JSON",
+                dataTypeDisplay="JSON",
                 displayName="coordinates",
                 children=[
                     Column(
@@ -233,13 +233,15 @@ EXAMPLE_JSON_COL_4 = deepcopy(EXAMPLE_JSON_COL_3)
 EXAMPLE_JSON_COL_4[3].children[3].children = [
     Column(
         name="lat",
-        dataType="FLOAT",
-        dataTypeDisplay="FLOAT",
+        dataType="INT",
+        dataTypeDisplay="INT",
+        displayName="lat",
     ),
     Column(
         name="lon",
-        dataType="FLOAT",
-        dataTypeDisplay="FLOAT",
+        dataType="INT",
+        dataTypeDisplay="INT",
+        displayName="lon",
     ),
 ]
 
@@ -437,13 +439,13 @@ class DatalakeUnitTest(TestCase):
 
         sample_dict = {"name": "John", "age": 16, "sex": "M"}
 
-        exp_df_list = pd.json_normalize(
+        exp_df_list = pd.DataFrame.from_records(
             [
                 {"name": "John", "age": 16, "sex": "M"},
                 {"name": "Milan", "age": 19, "sex": "M"},
             ]
         )
-        exp_df_obj = pd.json_normalize(sample_dict)
+        exp_df_obj = pd.DataFrame.from_records([sample_dict])
 
         actual_df_1 = JSONDataFrameReader.read_from_json(
             key="file.json", json_text=EXAMPLE_JSON_TEST_1, decode=True
@@ -467,7 +469,7 @@ class DatalakeUnitTest(TestCase):
             key="file.json", json_text=EXAMPLE_JSON_TEST_4, decode=True
         )[0]
         actual_cols_4 = get_columns(actual_df_4)
-        self.assertFalse(actual_cols_4 == EXAMPLE_JSON_COL_4)
+        assert actual_cols_4 == EXAMPLE_JSON_COL_4
 
     def test_avro_file_parse(self):
         columns = AvroDataFrameReader.read_from_avro(AVRO_SCHEMA_FILE)

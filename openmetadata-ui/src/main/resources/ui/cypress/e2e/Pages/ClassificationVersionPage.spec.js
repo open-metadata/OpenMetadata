@@ -10,12 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-// / <reference types="Cypress" />
+// eslint-disable-next-line spaced-comment
+/// <reference types="Cypress" />
 
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import { visitClassificationPage } from '../../common/TagUtils';
 import {
-  COMMON_UPDATED_DESCRIPTION,
   NEW_CLASSIFICATION_FOR_VERSION_TEST,
   NEW_CLASSIFICATION_PATCH_PAYLOAD,
 } from '../../constants/Version.constants';
@@ -95,21 +95,25 @@ describe('Classification version page should work properly', () => {
     verifyResponseStatusCode('@getVersionsList', 200);
     verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
-    cy.get(`[data-testid="diff-added-${COMMON_UPDATED_DESCRIPTION}"]`)
-      .scrollIntoView()
-      .should('be.visible');
+    cy.get(
+      `[data-testid="description"] [data-testid="diff-added"]`
+    ).scrollIntoView();
 
-    cy.get(`[data-testid="diff-added-${COMMON_UPDATED_DESCRIPTION}"]`)
-      .scrollIntoView()
-      .should('be.visible');
+    cy.get(`[data-testid="description"] [data-testid="diff-added"]`).should(
+      'be.visible'
+    );
 
     cy.get('[data-testid="mutually-exclusive-container"]').as(
       'mutuallyExclusiveContainer'
     );
 
-    cy.get('[data-testid="diff-removed-No"]').should('be.visible');
+    cy.get(
+      '[data-testid="mutually-exclusive-container"] [data-testid="diff-removed"]'
+    ).should('be.visible');
 
-    cy.get('[data-testid="diff-added-Yes"]').should('be.visible');
+    cy.get(
+      '[data-testid="mutually-exclusive-container"] [data-testid="diff-added"]'
+    ).should('be.visible');
 
     cy.get('[data-testid="version-button"]').click();
 

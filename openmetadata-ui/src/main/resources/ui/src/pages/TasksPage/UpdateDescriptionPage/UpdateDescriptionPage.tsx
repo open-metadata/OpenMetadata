@@ -18,8 +18,8 @@ import { isEmpty, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
-import AppState from '../../../AppState';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import { useAuthContext } from '../../../components/authentication/auth-provider/AuthProvider';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
 import ExploreSearchCard from '../../../components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
@@ -56,6 +56,7 @@ import { EntityData, Option } from '../TasksPage.interface';
 
 const UpdateDescription = () => {
   const { t } = useTranslation();
+  const { currentUser } = useAuthContext();
   const location = useLocation();
   const history = useHistory();
   const [form] = useForm();
@@ -75,12 +76,6 @@ const UpdateDescription = () => {
   const getSanitizeValue = value?.replaceAll(/^"|"$/g, '') || '';
 
   const decodedEntityFQN = useMemo(() => getDecodedFqn(entityFQN), [entityFQN]);
-
-  // get current user details
-  const currentUser = useMemo(
-    () => AppState.getCurrentUserDetails(),
-    [AppState.userDetails, AppState.nonSecureUserDetails]
-  );
 
   const message = `Update description for ${getSanitizeValue || entityType} ${
     field !== EntityField.COLUMNS ? getEntityName(entityData) : ''

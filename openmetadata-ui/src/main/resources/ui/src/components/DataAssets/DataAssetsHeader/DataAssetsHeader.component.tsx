@@ -49,19 +49,17 @@ import {
 import { useClipboard } from '../../../hooks/useClipBoard';
 import { getActiveAnnouncement, getFeedCount } from '../../../rest/feedsAPI';
 import { getContainerByName } from '../../../rest/storageAPI';
-import {
-  getCurrentUserId,
-  getEntityDetailLink,
-} from '../../../utils/CommonUtils';
+import { getEntityDetailLink } from '../../../utils/CommonUtils';
 import { getDataAssetsHeaderInfo } from '../../../utils/DataAssetsHeader.utils';
 import {
   getEntityFeedLink,
   getEntityName,
   getEntityVoteStatus,
 } from '../../../utils/EntityUtils';
-import { serviceTypeLogo } from '../../../utils/ServiceUtils';
+import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { getTierTags } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import {
   DataAssetHeaderInfo,
   DataAssetsHeaderProps,
@@ -129,7 +127,8 @@ export const DataAssetsHeader = ({
   onDisplayNameUpdate,
   afterDomainUpdateAction,
 }: DataAssetsHeaderProps) => {
-  const USER_ID = getCurrentUserId();
+  const { currentUser } = useAuthContext();
+  const USER_ID = currentUser?.id ?? '';
   const { t } = useTranslation();
   const { isTourPage } = useTourProvider();
   const { onCopyToClipBoard } = useClipboard(window.location.href);
@@ -140,7 +139,10 @@ export const DataAssetsHeader = ({
   const icon = useMemo(
     () =>
       dataAsset?.serviceType ? (
-        <img className="h-9" src={serviceTypeLogo(dataAsset.serviceType)} />
+        <img
+          className="h-9"
+          src={serviceUtilClassBase.getServiceTypeLogo(dataAsset.serviceType)}
+        />
       ) : null,
     [dataAsset]
   );

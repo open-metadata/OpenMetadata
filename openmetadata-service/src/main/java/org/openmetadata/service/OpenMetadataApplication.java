@@ -13,7 +13,6 @@
 
 package org.openmetadata.service;
 
-import static org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider.getWrappedInstanceForDaoClass;
 import static org.openmetadata.service.util.MicrometerBundleSingleton.webAnalyticEvents;
 
 import io.dropwizard.Application;
@@ -41,7 +40,6 @@ import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
 import java.time.temporal.ChronoUnit;
 import java.util.EnumSet;
-import java.util.HashSet;
 import java.util.Optional;
 import javax.naming.ConfigurationException;
 import javax.servlet.DispatcherType;
@@ -84,9 +82,6 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiTransactionManager;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkApplicationEventListener;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider;
 import org.openmetadata.service.migration.Migration;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.monitoring.EventMonitor;
@@ -139,17 +134,14 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     ChangeEventConfig.initialize(catalogConfig);
     final Jdbi jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
-    JdbiUnitOfWorkProvider jdbiUnitOfWorkProvider = JdbiUnitOfWorkProvider.withDefault(jdbi);
-    JdbiTransactionManager.initialize(jdbiUnitOfWorkProvider.getHandleManager());
-    CollectionDAO collectionDAO = (CollectionDAO) getWrappedInstanceForDaoClass(CollectionDAO.class);
+    CollectionDAO collectionDAO = jdbi.onDemand(CollectionDAO.class);
     Entity.setCollectionDAO(collectionDAO);
-    environment.jersey().register(new JdbiUnitOfWorkApplicationEventListener(new HashSet<>()));
 
     // initialize Search Repository, all repositories use SearchRepository this line should always before initializing
     // repository
     new SearchRepository(catalogConfig.getElasticSearchConfiguration());
     // as first step register all the repositories
-    Entity.initializeRepositories(jdbi);
+    Entity.initializeRepositories(catalogConfig, jdbi);
 
     // Init Settings Cache after repositories
     SettingsCache.initialize(catalogConfig);

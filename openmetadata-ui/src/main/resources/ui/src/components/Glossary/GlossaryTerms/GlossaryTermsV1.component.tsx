@@ -13,49 +13,34 @@
 
 import { Col, Row, Tabs } from 'antd';
 import { t } from 'i18next';
-import { noop } from 'lodash';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { getGlossaryTermDetailsPath } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { myDataSearchIndex } from '../../../constants/Mydata.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
-import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
+import {
+  GlossaryTerm,
+  Status,
+} from '../../../generated/entity/data/glossaryTerm';
 import { ChangeDescription } from '../../../generated/entity/type';
+import { MOCK_GLOSSARY_NO_PERMISSIONS } from '../../../mocks/Glossary.mock';
 import { searchData } from '../../../rest/miscAPI';
 import { getCountBadge, getFeedCounts } from '../../../utils/CommonUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
+import { getQueryFilterToExcludeTerm } from '../../../utils/GlossaryUtils';
 import { getGlossaryTermsVersionsPath } from '../../../utils/RouterUtils';
-import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { AssetSelectionModal } from '../../Assets/AssetsSelectionModal/AssetSelectionModal';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
-import { EntityDetailsObjectInterface } from '../../Explore/explore.interface';
-import { OperationPermission } from '../../PermissionProvider/PermissionProvider.interface';
 import TabsLabel from '../../TabsLabel/TabsLabel.component';
-import { VotingDataProps } from '../../Voting/voting.interface';
 import { GlossaryTabs } from '../GlossaryDetails/GlossaryDetails.interface';
 import GlossaryHeader from '../GlossaryHeader/GlossaryHeader.component';
 import GlossaryTermTab from '../GlossaryTermTab/GlossaryTermTab.component';
+import { GlossaryTermsV1Props } from './GlossaryTermsV1.interface';
 import AssetsTabs, { AssetsTabRef } from './tabs/AssetsTabs.component';
 import { AssetsOfEntity } from './tabs/AssetsTabs.interface';
 import GlossaryOverviewTab from './tabs/GlossaryOverviewTab.component';
-
-type Props = {
-  isVersionView?: boolean;
-  permissions: OperationPermission;
-  glossaryTerm: GlossaryTerm;
-  childGlossaryTerms: GlossaryTerm[];
-  handleGlossaryTermUpdate: (data: GlossaryTerm) => Promise<void>;
-  handleGlossaryTermDelete: (id: string) => void;
-  refreshGlossaryTerms: () => void;
-  onAssetClick?: (asset?: EntityDetailsObjectInterface) => void;
-  isSummaryPanelOpen: boolean;
-  termsLoading: boolean;
-  onAddGlossaryTerm: (glossaryTerm: GlossaryTerm | undefined) => void;
-  onEditGlossaryTerm: (glossaryTerm: GlossaryTerm) => void;
-  updateVote?: (data: VotingDataProps) => Promise<void>;
-};
 
 const GlossaryTermsV1 = ({
   glossaryTerm,
@@ -70,8 +55,9 @@ const GlossaryTermsV1 = ({
   onAddGlossaryTerm,
   onEditGlossaryTerm,
   updateVote,
+  refreshActiveGlossaryTerm,
   isVersionView,
-}: Props) => {
+}: GlossaryTermsV1Props) => {
   const {
     fqn: glossaryFqn,
     tab,
@@ -82,6 +68,14 @@ const GlossaryTermsV1 = ({
   const [assetModalVisible, setAssetModelVisible] = useState(false);
   const [feedCount, setFeedCount] = useState<number>(0);
   const [assetCount, setAssetCount] = useState<number>(0);
+
+  const assetPermissions = useMemo(() => {
+    const glossaryTermStatus = glossaryTerm.status ?? Status.Approved;
+
+    return glossaryTermStatus === Status.Approved
+      ? permissions
+      : MOCK_GLOSSARY_NO_PERMISSIONS;
+  }, [glossaryTerm, permissions]);
 
   const activeTab = useMemo(() => {
     return tab ?? 'overview';
@@ -98,7 +92,7 @@ const GlossaryTermsV1 = ({
   const getEntityFeedCount = () => {
     getFeedCounts(
       EntityType.GLOSSARY_TERM,
-      getEncodedFqn(glossaryTerm.fullyQualifiedName ?? ''),
+      glossaryTerm.fullyQualifiedName ?? '',
       setFeedCount
     );
   };
@@ -167,8 +161,9 @@ const GlossaryTermsV1 = ({
               key: 'assets',
               children: (
                 <AssetsTabs
+                  assetCount={assetCount}
                   isSummaryPanelOpen={isSummaryPanelOpen}
-                  permissions={permissions}
+                  permissions={assetPermissions}
                   ref={assetTabRef}
                   onAddAsset={() => setAssetModelVisible(true)}
                   onAssetClick={onAssetClick}
@@ -190,34 +185,34 @@ const GlossaryTermsV1 = ({
                   entityType={EntityType.GLOSSARY_TERM}
                   fqn={glossaryTerm.fullyQualifiedName ?? ''}
                   onFeedUpdate={getEntityFeedCount}
-                  onUpdateEntityDetails={noop}
+                  onUpdateEntityDetails={refreshActiveGlossaryTerm}
+                />
+              ),
+            },
+            {
+              label: (
+                <TabsLabel
+                  id={EntityTabs.CUSTOM_PROPERTIES}
+                  name={t('label.custom-property-plural')}
+                />
+              ),
+              key: EntityTabs.CUSTOM_PROPERTIES,
+              children: (
+                <CustomPropertyTable
+                  entityDetails={isVersionView ? glossaryTerm : undefined}
+                  entityType={EntityType.GLOSSARY_TERM}
+                  handleExtensionUpdate={onExtensionUpdate}
+                  hasEditAccess={
+                    !isVersionView &&
+                    (permissions.EditAll || permissions.EditCustomFields)
+                  }
+                  hasPermission={permissions.ViewAll}
+                  isVersionView={isVersionView}
                 />
               ),
             },
           ]
         : []),
-      {
-        label: (
-          <TabsLabel
-            id={EntityTabs.CUSTOM_PROPERTIES}
-            name={t('label.custom-property-plural')}
-          />
-        ),
-        key: EntityTabs.CUSTOM_PROPERTIES,
-        children: (
-          <CustomPropertyTable
-            entityDetails={isVersionView ? glossaryTerm : undefined}
-            entityType={EntityType.GLOSSARY_TERM}
-            handleExtensionUpdate={onExtensionUpdate}
-            hasEditAccess={
-              !isVersionView &&
-              (permissions.EditAll || permissions.EditCustomFields)
-            }
-            hasPermission={permissions.ViewAll}
-            isVersionView={isVersionView}
-          />
-        ),
-      },
     ];
 
     return items;
@@ -230,6 +225,7 @@ const GlossaryTermsV1 = ({
     feedCount,
     isSummaryPanelOpen,
     isVersionView,
+    assetPermissions,
   ]);
 
   const fetchGlossaryTermAssets = async () => {
@@ -320,6 +316,9 @@ const GlossaryTermsV1 = ({
         <AssetSelectionModal
           entityFqn={glossaryTerm.fullyQualifiedName}
           open={assetModalVisible}
+          queryFilter={getQueryFilterToExcludeTerm(
+            glossaryTerm.fullyQualifiedName
+          )}
           type={AssetsOfEntity.GLOSSARY}
           onCancel={() => setAssetModelVisible(false)}
           onSave={handleAssetSave}

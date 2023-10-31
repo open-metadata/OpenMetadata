@@ -84,7 +84,7 @@ import org.openmetadata.service.util.ResultList;
 public class TableResource extends EntityResource<Table, TableRepository> {
   public static final String COLLECTION_PATH = "v1/tables/";
   static final String FIELDS =
-      "tableConstraints,tablePartition,usageSummary,owner,customMetrics,"
+      "tableConstraints,tablePartition,usageSummary,owner,customMetrics,columns,"
           + "tags,followers,joins,viewDefinition,dataModel,extension,testSuite,domain,dataProducts,lifeCycle";
 
   @Override
@@ -937,7 +937,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   private Table getTable(CreateTable create, String user) {
     return validateNewTable(
-            copy(new Table(), create, user)
+            repository
+                .copy(new Table(), create, user)
                 .withColumns(create.getColumns())
                 .withSourceUrl(create.getSourceUrl())
                 .withTableConstraints(create.getTableConstraints())

@@ -22,6 +22,7 @@ To be extended by any other workflow:
 import traceback
 import uuid
 from abc import ABC, abstractmethod
+from datetime import datetime
 from typing import Optional, Tuple, TypeVar, cast
 
 from metadata.generated.schema.api.services.ingestionPipelines.createIngestionPipeline import (
@@ -57,6 +58,7 @@ from metadata.utils.class_helper import (
     get_service_class_from_service_type,
     get_service_type_from_source_type,
 )
+from metadata.utils.helpers import datetime_to_ts
 from metadata.utils.logger import ingestion_logger, set_loggers_level
 from metadata.workflow.workflow_output_handler import get_ingestion_status_timer
 from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
@@ -97,6 +99,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         self.config = config
         self._timer: Optional[RepeatedTimer] = None
         self._ingestion_pipeline: Optional[IngestionPipeline] = None
+        self._start_ts = datetime_to_ts(datetime.now())
 
         set_loggers_level(config.workflowConfig.loggerLevel.value)
 
@@ -284,33 +287,56 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         workflow has prepared the necessary components, and we will update the SUCCESS/FAILED
         status at the end of the flow.
         """
-        maybe_pipeline: Optional[IngestionPipeline] = self.metadata.get_by_name(
-            entity=IngestionPipeline, fqn=self.config.ingestionPipelineFQN
-        )
+        try:
+            maybe_pipeline: Optional[IngestionPipeline] = self.metadata.get_by_name(
+                entity=IngestionPipeline, fqn=self.config.ingestionPipelineFQN
+            )
 
-        _, pipeline_name = fqn.split(
-            self.config.ingestionPipelineFQN
-        )  # Get the name from <service>.<name>
-        service = self.metadata.get_by_name(
+            if maybe_pipeline:
+                return maybe_pipeline
+
+            # Get the name from <service>.<name> or, for test suites, <tableFQN>.testSuite
+            *_, pipeline_name = fqn.split(self.config.ingestionPipelineFQN)
+
+            service = self._get_ingestion_pipeline_service()
+
+            if service is not None:
+
+                return self.metadata.create_or_update(
+                    CreateIngestionPipelineRequest(
+                        name=pipeline_name,
+                        service=EntityReference(
+                            id=service.id,
+                            type=get_reference_type_from_service_type(
+                                self.service_type
+                            ),
+                        ),
+                        pipelineType=get_pipeline_type_from_source_config(
+                            self.config.source.sourceConfig.config
+                        ),
+                        sourceConfig=self.config.source.sourceConfig,
+                        airflowConfig=AirflowConfig(),
+                    )
+                )
+
+            return maybe_pipeline
+
+        except Exception as exc:
+            logger.error(
+                f"Error trying to get or create the Ingestion Pipeline due to [{exc}]"
+            )
+            return None
+
+    def _get_ingestion_pipeline_service(self) -> Optional[T]:
+        """
+        Ingestion Pipelines are linked to either an EntityService (DatabaseService, MessagingService,...)
+        or a Test Suite.
+
+        Depending on the Source Config Type, we'll need to GET one or the other to create
+        the Ingestion Pipeline
+        """
+
+        return self.metadata.get_by_name(
             entity=get_service_class_from_service_type(self.service_type),
             fqn=self.config.source.serviceName,
         )
-
-        if maybe_pipeline is None and service is not None:
-
-            return self.metadata.create_or_update(
-                CreateIngestionPipelineRequest(
-                    name=pipeline_name,
-                    service=EntityReference(
-                        id=service.id,
-                        type=get_reference_type_from_service_type(self.service_type),
-                    ),
-                    pipelineType=get_pipeline_type_from_source_config(
-                        self.config.source.sourceConfig.config
-                    ),
-                    sourceConfig=self.config.source.sourceConfig,
-                    airflowConfig=AirflowConfig(),
-                )
-            )
-
-        return maybe_pipeline

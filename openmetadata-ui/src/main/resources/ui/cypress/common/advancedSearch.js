@@ -280,7 +280,7 @@ export const addOwner = (ownerName) => {
 
   interceptURL(
     'GET',
-    '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=15&index=team_search_index',
+    '/api/v1/search/query?q=**%20AND%20teamType:Group&from=0&size=25&index=team_search_index',
     'waitForTeams'
   );
 

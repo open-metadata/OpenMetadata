@@ -86,6 +86,7 @@ class DbtCommonEnum(Enum):
     OWNER = "owner"
     NODES = "nodes"
     SOURCES = "sources"
+    SOURCE = "source"
     RESOURCETYPE = "resource_type"
     MANIFEST_NODE = "manifest_node"
     UPSTREAM = "upstream"

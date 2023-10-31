@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-export interface KPIWidgetProps {
-  isEditView?: boolean;
+import { WidgetCommonProps } from '../../pages/CustomizablePage/CustomizablePage.interface';
+
+export interface KPIWidgetProps extends WidgetCommonProps {
   selectedDays?: number;
-  handleRemoveWidget?: (widgetKey: string) => void;
 }

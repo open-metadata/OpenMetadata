@@ -5,13 +5,15 @@ import static org.openmetadata.service.Entity.FIELD_USAGE_SUMMARY;
 import static org.openmetadata.service.Entity.QUERY;
 import static org.openmetadata.service.search.SearchClient.DEFAULT_UPDATE_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
+import static org.openmetadata.service.search.SearchClient.PROPAGATE_ENTITY_REFERENCE_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.PROPAGATE_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_DOMAINS_CHILDREN_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.REMOVE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_PROPAGATED_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_TAGS_CHILDREN_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_TEST_SUITE_CHILDREN_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.SOFT_DELETE_RESTORE_SCRIPT;
-import static org.openmetadata.service.search.SearchClient.UPDATE_PROPAGATED_FIELD_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.UPDATE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.IOException;
@@ -28,6 +30,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import javax.json.JsonObject;
 import javax.ws.rs.core.Response;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -43,6 +46,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.models.IndexMapping;
@@ -58,7 +62,10 @@ public class SearchRepository {
 
   private final String language;
 
-  private final List<String> inheritableFields = List.of(Entity.FIELD_OWNER, Entity.FIELD_DOMAIN);
+  private final List<String> inheritableFields =
+      List.of(Entity.FIELD_OWNER, Entity.FIELD_DOMAIN, Entity.FIELD_DISABLED);
+
+  @Getter private final ElasticSearchConfiguration elasticSearchConfiguration;
 
   public final List<String> dataInsightReports =
       List.of(
@@ -72,6 +79,7 @@ public class SearchRepository {
   public static final String ELASTIC_SEARCH_ENTITY_FQN_STREAM = "eventPublisher:ElasticSearch:STREAM";
 
   public SearchRepository(ElasticSearchConfiguration config) {
+    elasticSearchConfiguration = config;
     if (config != null && config.getSearchType() == ElasticSearchConfiguration.SearchType.OPENSEARCH) {
       searchClient = new OpenSearchClient(config);
     } else {
@@ -252,7 +260,7 @@ public class SearchRepository {
   public void propagateInheritedFieldsToChildren(
       String entityType, String entityId, ChangeDescription changeDescription, IndexMapping indexMapping) {
     if (changeDescription != null) {
-      Pair<String, EntityReference> updates = getInheritedFieldChanges(changeDescription);
+      Pair<String, Map<String, Object>> updates = getInheritedFieldChanges(changeDescription);
       Pair<String, String> parentMatch = new ImmutablePair<>(entityType + ".id", entityId);
       if (updates.getKey() != null && !updates.getKey().isEmpty()) {
         searchClient.updateChildren(indexMapping.getAlias(), parentMatch, updates);
@@ -260,40 +268,58 @@ public class SearchRepository {
     }
   }
 
-  private Pair<String, EntityReference> getInheritedFieldChanges(ChangeDescription changeDescription) {
+  private Pair<String, Map<String, Object>> getInheritedFieldChanges(ChangeDescription changeDescription) {
     StringBuilder scriptTxt = new StringBuilder();
-    EntityReference fieldData = null;
+    Map<String, Object> fieldData = new HashMap<>();
     if (changeDescription != null) {
       for (FieldChange field : changeDescription.getFieldsAdded()) {
         if (inheritableFields.contains(field.getName())) {
-          scriptTxt.append(String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getName()));
-          fieldData = JsonUtils.readValue(field.getNewValue().toString(), EntityReference.class);
+          try {
+            EntityReference entityReference =
+                JsonUtils.readValue(field.getNewValue().toString(), EntityReference.class);
+            scriptTxt.append(String.format(PROPAGATE_ENTITY_REFERENCE_FIELD_SCRIPT, field.getName(), field.getName()));
+            fieldData = JsonUtils.getMap(entityReference);
+          } catch (UnhandledServerException e) {
+            scriptTxt.append(String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getNewValue()));
+          }
         }
       }
       for (FieldChange field : changeDescription.getFieldsUpdated()) {
         if (inheritableFields.contains(field.getName())) {
-          EntityReference entityReference = JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
-          scriptTxt.append(
-              String.format(
-                  UPDATE_PROPAGATED_FIELD_SCRIPT,
-                  field.getName(),
-                  field.getName(),
-                  entityReference.getId().toString(),
-                  field.getName()));
-          fieldData = JsonUtils.readValue(field.getNewValue().toString(), EntityReference.class);
+          try {
+            EntityReference oldEntityReference =
+                JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
+            EntityReference newEntityReference =
+                JsonUtils.readValue(field.getNewValue().toString(), EntityReference.class);
+            scriptTxt.append(
+                String.format(
+                    UPDATE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT,
+                    field.getName(),
+                    field.getName(),
+                    oldEntityReference.getId().toString(),
+                    field.getName()));
+            fieldData = JsonUtils.getMap(newEntityReference);
+          } catch (UnhandledServerException e) {
+            scriptTxt.append(String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getNewValue()));
+          }
         }
       }
       for (FieldChange field : changeDescription.getFieldsDeleted()) {
         if (inheritableFields.contains(field.getName())) {
-          EntityReference entityReference = JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
-          scriptTxt.append(
-              String.format(
-                  REMOVE_PROPAGATED_FIELD_SCRIPT,
-                  field.getName(),
-                  field.getName(),
-                  entityReference.getId().toString(),
-                  field.getName()));
-          fieldData = (EntityReference) field.getNewValue();
+          try {
+            EntityReference entityReference =
+                JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
+            scriptTxt.append(
+                String.format(
+                    REMOVE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT,
+                    field.getName(),
+                    field.getName(),
+                    entityReference.getId().toString(),
+                    field.getName()));
+            fieldData = JsonUtils.getMap(entityReference);
+          } catch (UnhandledServerException e) {
+            scriptTxt.append(String.format(REMOVE_PROPAGATED_FIELD_SCRIPT, field.getName()));
+          }
         }
       }
     }
@@ -356,6 +382,9 @@ public class SearchRepository {
             GLOBAL_SEARCH_ALIAS,
             new ImmutablePair<>(entityType + ".id", docId),
             new ImmutablePair<>(REMOVE_DOMAINS_CHILDREN_SCRIPT, null));
+        // we are doing below because we want to delete the data products with domain when domain is deleted
+        searchClient.deleteEntityByFields(
+            indexMapping.getAlias(), List.of(new ImmutablePair<>(entityType + ".id", docId)));
         break;
       case Entity.TAG:
       case Entity.GLOSSARY_TERM:

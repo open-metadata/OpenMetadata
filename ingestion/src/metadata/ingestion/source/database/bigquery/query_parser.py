@@ -23,7 +23,10 @@ from metadata.generated.schema.entity.services.connections.database.bigQueryConn
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.security.credentials.gcpValues import MultipleProjectId
+from metadata.generated.schema.security.credentials.gcpValues import (
+    GcpCredentialsValues,
+    MultipleProjectId,
+)
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.bigquery.helper import get_inspector_details
@@ -69,6 +72,8 @@ class BigqueryQueryParserSource(QueryParserSource, ABC):
 
     def get_engine(self):
         if isinstance(
+            self.service_connection.credentials.gcpConfig, GcpCredentialsValues
+        ) and isinstance(
             self.service_connection.credentials.gcpConfig.projectId, MultipleProjectId
         ):
             project_ids = deepcopy(

@@ -22,8 +22,8 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Dict, List
 
-from sqlalchemy import Column
-from sqlalchemy.exc import ProgrammingError
+from sqlalchemy import Column, inspect
+from sqlalchemy.exc import ProgrammingError, ResourceClosedError
 from sqlalchemy.orm import scoped_session
 
 from metadata.generated.schema.entity.data.table import TableData
@@ -38,6 +38,7 @@ from metadata.profiler.metrics.static.sum import Sum
 from metadata.profiler.orm.functions.table_metric_construct import (
     table_metric_construct_factory,
 )
+from metadata.profiler.orm.registry import Dialects
 from metadata.profiler.processor.runner import QueryRunner
 from metadata.profiler.processor.sampler.sampler_factory import sampler_factory_
 from metadata.utils.custom_thread_pool import CustomThreadPoolExecutor
@@ -258,6 +259,15 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
 
             row = runner.select_first_from_query(metric_query)
             return dict(row)
+        except ResourceClosedError as exc:
+            # if the query returns no results, we will get a ResourceClosedError from Druid
+            if (
+                # pylint: disable=protected-access
+                runner._session.get_bind().dialect.name
+                != Dialects.Druid
+            ):
+                msg = f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
+                handle_query_exception(msg, exc, session)
         except Exception as exc:
             msg = f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
             handle_query_exception(msg, exc, session)
@@ -454,7 +464,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
 
         return profile_results
 
-    def fetch_sample_data(self, table) -> TableData:
+    def fetch_sample_data(self, table, columns) -> TableData:
         """Fetch sample data from database
 
         Args:
@@ -467,7 +477,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             table=table,
         )
 
-        return sampler.fetch_sample_data()
+        return sampler.fetch_sample_data(columns)
 
     def get_composed_metrics(
         self, column: Column, metric: Metrics, column_results: Dict
@@ -518,6 +528,10 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         logger.error(
             f"Skipping metrics due to {exc} for {runner.table.__tablename__}.{column.name}"
         )
+
+    def get_columns(self):
+        """get columns from entity"""
+        return list(inspect(self.table).c)
 
     def close(self):
         """Clean up session"""

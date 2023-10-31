@@ -1,6 +1,8 @@
 package org.openmetadata.service.migration.api;
 
+import java.util.List;
 import org.jdbi.v3.core.Handle;
+import org.openmetadata.service.migration.context.MigrationOps;
 
 public interface MigrationProcess {
   // This version should match the server version
@@ -8,6 +10,8 @@ public interface MigrationProcess {
   // This version is used to sort all the upgrade migrations and apply them in order
 
   void initialize(Handle handle);
+
+  List<MigrationOps> getMigrationOps();
 
   String getDatabaseConnectionType();
 

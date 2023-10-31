@@ -24,7 +24,6 @@ import { pluralize } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import ErrorPlaceHolderES from '../common/error-with-placeholder/ErrorPlaceHolderES';
 import Loader from '../Loader/Loader';
-import Onboarding from '../onboarding/Onboarding';
 import { SearchedDataProps } from './SearchedData.interface';
 
 const ASSETS_NAME = [
@@ -40,8 +39,6 @@ const SearchedData: React.FC<SearchedDataProps> = ({
   isLoading = false,
   onPaginationChange,
   showResultCount = false,
-  showOnboardingTemplate = false,
-  showOnlyChildren = false,
   totalValue,
   isFilterSelected,
   isSummaryPanelVisible,
@@ -64,11 +61,12 @@ const SearchedData: React.FC<SearchedDataProps> = ({
         });
       }
 
-      let name = table.name;
       let displayName = getEntityName(table);
       if (!isUndefined(highlight)) {
-        name = highlight?.name?.join(' ') || name;
-        displayName = highlight?.displayName?.join(' ') || displayName;
+        displayName =
+          highlight?.displayName?.join(' ') ||
+          highlight?.name?.join(' ') ||
+          displayName;
       }
 
       const matches = highlight
@@ -92,6 +90,8 @@ const SearchedData: React.FC<SearchedDataProps> = ({
             .filter((d) => !ASSETS_NAME.includes(d.key))
         : [];
 
+      const source = { ...table, description: tDesc, displayName };
+
       return (
         <div className="m-b-md" key={`tabledatacard${index}`}>
           <ExploreSearchCard
@@ -104,7 +104,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
             id={`tabledatacard${index}`}
             matches={matches}
             showTags={false}
-            source={{ ...table, name, description: tDesc, displayName }}
+            source={source}
           />
         </div>
       );
@@ -144,34 +144,24 @@ const SearchedData: React.FC<SearchedDataProps> = ({
         <Loader />
       ) : (
         <div data-testid="search-container">
-          {totalValue > 0 || showOnboardingTemplate || showOnlyChildren ? (
+          {totalValue > 0 ? (
             <>
               {children}
-              {!showOnlyChildren ? (
-                <>
-                  <ResultCount />
-                  {data.length > 0 ? (
-                    <div data-testid="search-results">
-                      {searchResultCards}
-                      <Pagination
-                        hideOnSinglePage
-                        className="text-center m-b-sm"
-                        current={isNumber(Number(page)) ? Number(page) : 1}
-                        pageSize={
-                          size && isNumber(Number(size))
-                            ? Number(size)
-                            : PAGE_SIZE
-                        }
-                        pageSizeOptions={[10, 25, 50]}
-                        total={totalValue}
-                        onChange={onPaginationChange}
-                      />
-                    </div>
-                  ) : (
-                    <Onboarding />
-                  )}
-                </>
-              ) : null}
+              <ResultCount />
+              <div data-testid="search-results">
+                {searchResultCards}
+                <Pagination
+                  hideOnSinglePage
+                  className="text-center m-b-sm"
+                  current={isNumber(Number(page)) ? Number(page) : 1}
+                  pageSize={
+                    size && isNumber(Number(size)) ? Number(size) : PAGE_SIZE
+                  }
+                  pageSizeOptions={[10, 25, 50]}
+                  total={totalValue}
+                  onChange={onPaginationChange}
+                />
+              </div>
             </>
           ) : (
             <>

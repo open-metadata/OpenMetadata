@@ -33,7 +33,7 @@ OpenMetadata includes the following:
 
 - **Metadata APIs** - For producing and consuming metadata built on schemas for User Interfaces and Integration of tools, systems, and services.
 
-- **Ingestion Framework** - A pluggable framework for integrating tools and ingesting metadata to the metadata store, supporting about 55 connectors. The ingestion framework supports well know data warehouses like Google BigQuery, Snowflake, Amazon Redshift, and Apache Hive; databases like MySQL, Postgres, Oracle, and MSSQL; dashboard services like Tableau, Superset, and Metabase; messaging services like Kafka, Redpanda; and pipeline services like Airflow, Glue, Fivetran, Dagster, and many more.
+- **Ingestion Framework** - A pluggable framework for integrating tools and ingesting metadata to the metadata store, supporting about 55 connectors. The ingestion framework supports well known data warehouses like Google BigQuery, Snowflake, Amazon Redshift, and Apache Hive; databases like MySQL, Postgres, Oracle, and MSSQL; dashboard services like Tableau, Superset, and Metabase; messaging services like Kafka, Redpanda; and pipeline services like Airflow, Glue, Fivetran, Dagster, and many more.
 
 - **OpenMetadata User Interface** - A single place for users to discover and collaborate on all data.
 
@@ -61,7 +61,7 @@ Here are some of the supported features in a nutshell:
 
 Check out for more [here](https://docs.open-metadata.org/features) ✨
 
-![](./openmetadata-docs/readme/lineage.gif)
+![](https://docs.open-metadata.org/images/v1.2/features/all-your-data-in-one-place.gif)
 
 ## Try our Sandbox
 

@@ -12,9 +12,11 @@ import static org.openmetadata.service.search.EntityBuilderConstant.NAME_KEYWORD
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.entity.data.Topic;
@@ -41,6 +43,8 @@ public class TopicIndex implements SearchIndex {
     List<SearchSuggest> suggest = new ArrayList<>();
     List<SearchSuggest> fieldSuggest = new ArrayList<>();
     List<SearchSuggest> serviceSuggest = new ArrayList<>();
+    Set<List<TagLabel>> tagsWithChildren = new HashSet<>();
+    List<String> fieldsWithChildrenName = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(topic.getFullyQualifiedName()).weight(5).build());
     suggest.add(SearchSuggest.builder().input(topic.getName()).weight(10).build());
     serviceSuggest.add(SearchSuggest.builder().input(topic.getService().getName()).weight(5).build());
@@ -54,12 +58,20 @@ public class TopicIndex implements SearchIndex {
 
       for (FlattenSchemaField field : flattenFields) {
         fieldSuggest.add(SearchSuggest.builder().input(field.getName()).weight(5).build());
+        fieldsWithChildrenName.add(field.getName());
+        if (field.getTags() != null) {
+          tagsWithChildren.add(field.getTags());
+        }
       }
+      doc.put("fieldNames", fieldsWithChildrenName);
     }
 
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.TOPIC, topic));
+    tagsWithChildren.add(parseTags.getTags());
+    List<TagLabel> flattenedTagList =
+        tagsWithChildren.stream().flatMap(List::stream).collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
     doc.put("displayName", topic.getDisplayName() != null ? topic.getDisplayName() : topic.getName());
-    doc.put("tags", parseTags.getTags());
+    doc.put("tags", flattenedTagList);
     doc.put("tier", parseTags.getTierTag());
     doc.put("followers", SearchIndexUtils.parseFollowers(topic.getFollowers()));
     doc.put("suggest", suggest);

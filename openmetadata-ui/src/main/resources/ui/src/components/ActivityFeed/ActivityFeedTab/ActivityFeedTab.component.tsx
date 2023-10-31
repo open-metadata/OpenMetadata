@@ -23,14 +23,16 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import AppState from '../../../AppState';
 import { ReactComponent as AllActivityIcon } from '../../../assets/svg/all-activity-v2.svg';
 import { ReactComponent as CheckIcon } from '../../../assets/svg/ic-check.svg';
 import { ReactComponent as MentionIcon } from '../../../assets/svg/ic-mentions.svg';
 import { ReactComponent as TaskIcon } from '../../../assets/svg/ic-task.svg';
 import { ReactComponent as TaskListIcon } from '../../../assets/svg/task-ic.svg';
+import {
+  COMMON_ICON_STYLES,
+  ICON_DIMENSION,
+} from '../../../constants/constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
-import { ICON_DIMENSION } from '../../../constants/constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import {
@@ -45,20 +47,21 @@ import {
   ENTITY_LINK_SEPARATOR,
   getEntityFeedLink,
 } from '../../../utils/EntityUtils';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import Loader from '../../Loader/Loader';
 import { TaskTab } from '../../Task/TaskTab/TaskTab.component';
-import '../../Widgets/FeedsWidget/feeds-widget.less';
+import '../../Widgets/FeedsWidget/FeedsWidget.less';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import ActivityFeedListV1 from '../ActivityFeedList/ActivityFeedListV1.component';
 import FeedPanelBodyV1 from '../ActivityFeedPanel/FeedPanelBodyV1';
 import FeedPanelHeader from '../ActivityFeedPanel/FeedPanelHeader';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
+import './activity-feed-tab.less';
 import {
   ActivityFeedTabProps,
   ActivityFeedTabs,
   TaskFilter,
 } from './ActivityFeedTab.interface';
-import './activity-feed-tab.less';
 
 export const ActivityFeedTab = ({
   fqn,
@@ -69,10 +72,7 @@ export const ActivityFeedTab = ({
 }: ActivityFeedTabProps) => {
   const history = useHistory();
   const { t } = useTranslation();
-  const currentUser = useMemo(
-    () => AppState.getCurrentUserDetails(),
-    [AppState.userDetails, AppState.nonSecureUserDetails]
-  );
+  const { currentUser } = useAuthContext();
   const [elementRef, isInView] = useElementInView({
     ...observerOptions,
     root: document.querySelector('#center-container'),
@@ -197,12 +197,10 @@ export const ActivityFeedTab = ({
   }, [fqn]);
 
   const { feedFilter, threadType } = useMemo(() => {
-    let filter;
-    if (!isUserEntity) {
-      filter = currentUser?.isAdmin
-        ? FeedFilter.ALL
-        : FeedFilter.OWNER_OR_FOLLOWS;
-    }
+    const currentFilter = currentUser?.isAdmin
+      ? FeedFilter.ALL
+      : FeedFilter.OWNER_OR_FOLLOWS;
+    const filter = isUserEntity ? currentFilter : undefined;
 
     return {
       threadType:
@@ -298,7 +296,10 @@ export const ActivityFeedTab = ({
             label: (
               <div className="d-flex justify-between">
                 <Space align="center" size="small">
-                  <AllActivityIcon {...ICON_DIMENSION} />
+                  <AllActivityIcon
+                    style={COMMON_ICON_STYLES}
+                    {...ICON_DIMENSION}
+                  />
                   <span>{t('label.all')}</span>
                 </Space>
 
@@ -316,7 +317,7 @@ export const ActivityFeedTab = ({
           {
             label: (
               <Space align="center" size="small">
-                <MentionIcon {...ICON_DIMENSION} />
+                <MentionIcon style={COMMON_ICON_STYLES} {...ICON_DIMENSION} />
                 <span>{t('label.mention-plural')}</span>
               </Space>
             ),
@@ -326,7 +327,10 @@ export const ActivityFeedTab = ({
             label: (
               <div className="d-flex justify-between">
                 <Space align="center" size="small">
-                  <TaskListIcon {...ICON_DIMENSION} />
+                  <TaskListIcon
+                    style={COMMON_ICON_STYLES}
+                    {...ICON_DIMENSION}
+                  />
                   <span>{t('label.task-plural')}</span>
                 </Space>
                 <span>{getCountBadge(tasksCount, '', isTaskActiveTab)}</span>

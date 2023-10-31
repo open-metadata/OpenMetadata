@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-// / <reference types="Cypress" />
+// eslint-disable-next-line spaced-comment
+/// <reference types="Cypress" />
 
 import {
   addOwner,
@@ -25,7 +26,6 @@ import {
 import { DELETE_TERM } from '../../constants/constants';
 import {
   COMMON_PATCH_PAYLOAD,
-  COMMON_UPDATED_DESCRIPTION,
   DATABASE_DETAILS_FOR_VERSION_TEST,
   DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST,
   DOMAIN_CREATION_DETAILS,
@@ -168,13 +168,13 @@ describe(`Database schema version page should work properly`, () => {
     verifyResponseStatusCode('@getVersionsList', 200);
     verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
-    cy.get(
-      `[data-testid="domain-link"] [data-testid="diff-added-${DOMAIN_CREATION_DETAILS.name}"]`
-    )
+    cy.get(`[data-testid="domain-link"] [data-testid="diff-added"]`)
       .scrollIntoView()
       .should('be.visible');
 
-    cy.get(`[data-testid="diff-added-${COMMON_UPDATED_DESCRIPTION}"]`)
+    cy.get(
+      `[data-testid="asset-description-container"] [data-testid="diff-added"]`
+    )
       .scrollIntoView()
       .should('be.visible');
 
@@ -276,9 +276,7 @@ describe(`Database schema version page should work properly`, () => {
     verifyResponseStatusCode('@getVersionsList', 200);
     verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
-    cy.get(`[data-testid="diff-added-${OWNER}"]`)
-      .scrollIntoView()
-      .should('be.visible');
+    cy.get(`[data-testid="diff-added"]`).scrollIntoView().should('be.visible');
 
     cy.get('@versionButton').contains('0.4').click();
 
@@ -296,7 +294,7 @@ describe(`Database schema version page should work properly`, () => {
     verifyResponseStatusCode('@getVersionsList', 200);
     verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
-    cy.get(`[data-testid="diff-removed-${OWNER}"]`)
+    cy.get(`[data-testid="diff-removed"]`)
       .scrollIntoView()
       .should('be.visible');
   });
@@ -344,9 +342,7 @@ describe(`Database schema version page should work properly`, () => {
     verifyResponseStatusCode('@getVersionsList', 200);
     verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
-    cy.get(`[data-testid="diff-added-${TIER}"]`)
-      .scrollIntoView()
-      .should('be.visible');
+    cy.get(`[data-testid="diff-added"]`).scrollIntoView().should('be.visible');
 
     cy.get('@versionButton').contains('0.6').click();
 
@@ -364,7 +360,7 @@ describe(`Database schema version page should work properly`, () => {
     verifyResponseStatusCode('@getVersionsList', 200);
     verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
-    cy.get(`[data-testid="diff-removed-${TIER}"]`)
+    cy.get(`[data-testid="diff-removed"]`)
       .scrollIntoView()
       .should('be.visible');
   });

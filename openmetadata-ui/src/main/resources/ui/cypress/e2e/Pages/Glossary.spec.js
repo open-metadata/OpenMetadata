@@ -52,7 +52,7 @@ let createdUserId = '';
 const visitGlossaryTermPage = (termName, fqn, fetchPermission) => {
   interceptURL(
     'GET',
-    `/api/v1/glossaryTerms/name/*.${termName}?fields=*`,
+    `/api/v1/search/query?q=*&from=0&size=*&index=glossary_term_search_index`,
     'getGlossaryTerm'
   );
   interceptURL(
@@ -261,10 +261,8 @@ const updateSynonyms = (uSynonyms) => {
     .should('exist')
     .type(uSynonyms.join('{enter}'))
     .type('{enter}');
-
-  interceptURL('PATCH', '/api/v1/glossaryTerms/*', 'saveSynonyms');
   cy.get('[data-testid="save-synonym-btn"]').should('be.visible').click();
-  verifyResponseStatusCode('@saveSynonyms', 200);
+  verifyResponseStatusCode('@saveGlossaryTermData', 200);
   cy.get('[data-testid="synonyms-container"]')
     .as('synonyms-container')
     .should('be.visible');
@@ -277,7 +275,7 @@ const updateTags = (inTerm) => {
   // visit glossary page
   interceptURL(
     'GET',
-    '/api/v1/search/query?q=disabled:false&index=tag_search_index&from=0&size=10&query_filter=%7B%7D',
+    '/api/v1/search/query?q=*&index=tag_search_index&from=0&size=*&query_filter=*',
     'tags'
   );
   cy.get(
@@ -337,7 +335,6 @@ const updateReferences = (newRef) => {
   cy.get('[data-testid="add-references-button"]').should('be.visible').click();
   cy.get('#references_1_name').should('be.visible').type(newRef.name);
   cy.get('#references_1_endpoint').should('be.visible').type(newRef.url);
-  interceptURL('PATCH', '/api/v1/glossaryTerms/*', 'saveGlossaryTermData');
   cy.get('[data-testid="save-btn"]').should('be.visible').click();
   verifyResponseStatusCode('@saveGlossaryTermData', 200);
   cy.get('[data-testid="references-container"]')
@@ -441,6 +438,42 @@ const goToGlossaryPage = () => {
   });
 };
 
+const approveGlossaryTermWorkflow = ({ glossary, glossaryTerm }) => {
+  goToGlossaryPage();
+
+  selectActiveGlossary(glossary.name);
+
+  const { name, fullyQualifiedName } = glossaryTerm;
+
+  visitGlossaryTermPage(name, fullyQualifiedName);
+
+  cy.get('[data-testid="activity_feed"]').click();
+
+  interceptURL('GET', '/api/v1/feed*', 'activityFeed');
+
+  cy.get('[data-testid="global-setting-left-panel"]').contains('Tasks').click();
+
+  verifyResponseStatusCode('@activityFeed', 200);
+
+  interceptURL('PUT', '/api/v1/feed/tasks/*/resolve', 'resolveTask');
+
+  cy.get('[data-testid="approve-task"]').click();
+
+  verifyResponseStatusCode('@resolveTask', 200);
+
+  // Verify toast notification
+  toastNotification('Task resolved successfully');
+
+  verifyResponseStatusCode('@activityFeed', 200);
+
+  goToGlossaryPage();
+  selectActiveGlossary(glossary.name);
+
+  cy.get(`[data-testid="${fullyQualifiedName}-status"]`)
+    .should('be.visible')
+    .contains('Approved');
+};
+
 describe('Prerequisites', () => {
   it('Create a user with data consumer role', () => {
     signupAndLogin(
@@ -456,6 +489,7 @@ describe('Prerequisites', () => {
 
 describe('Glossary page should work properly', () => {
   beforeEach(() => {
+    interceptURL('PATCH', '/api/v1/glossaryTerms/*', 'saveGlossaryTermData');
     cy.login();
     goToGlossaryPage();
   });
@@ -669,43 +703,14 @@ describe('Glossary page should work properly', () => {
     cy.logout();
 
     login(CREDENTIALS.email, CREDENTIALS.password);
-
-    goToGlossaryPage();
-
-    selectActiveGlossary(NEW_GLOSSARY.name);
-
-    const { name, fullyQualifiedName } = NEW_GLOSSARY_TERMS.term_1;
-
-    visitGlossaryTermPage(name, fullyQualifiedName);
-
-    cy.get('[data-testid="activity_feed"]').click();
-
-    interceptURL('GET', '/api/v1/feed*', 'activityFeed');
-
-    cy.get('[data-testid="global-setting-left-panel"]')
-      .contains('Tasks')
-      .click();
-
-    verifyResponseStatusCode('@activityFeed', 200);
-
-    interceptURL('PUT', '/api/v1/feed/tasks/*/resolve', 'resolveTask');
-
-    cy.get('[data-testid="approve-task"]').click();
-
-    verifyResponseStatusCode('@resolveTask', 200);
-
-    // Verify toast notification
-    toastNotification('Task resolved successfully');
-
-    verifyResponseStatusCode('@activityFeed', 200);
-
-    goToGlossaryPage();
-    selectActiveGlossary(NEW_GLOSSARY.name);
-
-    cy.get(`[data-testid="${fullyQualifiedName}-status"]`)
-      .should('be.visible')
-      .contains('Approved');
-
+    approveGlossaryTermWorkflow({
+      glossary: NEW_GLOSSARY,
+      glossaryTerm: NEW_GLOSSARY_TERMS.term_1,
+    });
+    approveGlossaryTermWorkflow({
+      glossary: NEW_GLOSSARY,
+      glossaryTerm: NEW_GLOSSARY_TERMS.term_2,
+    });
     cy.logout();
     Cypress.session.clearAllSavedSessions();
     cy.login();
@@ -811,11 +816,11 @@ describe('Glossary page should work properly', () => {
     cy.get(`${parentPath} [data-testid="add-tag"]`).click();
 
     // Select 1st term
-    cy.get('[data-testid="tag-selector"]').click().type(term1);
+    cy.get('[data-testid="tag-selector"] #tagsForm_tags').click().type(term1);
     cy.get(`[data-testid="tag-${glossary}.${term1}"]`).click();
     cy.get('[data-testid="tag-selector"]').should('contain', term1);
     // Select 2nd term
-    cy.get('[data-testid="tag-selector"]').click().type(term2);
+    cy.get('[data-testid="tag-selector"] #tagsForm_tags').click().type(term2);
     cy.get(`[data-testid="tag-${glossary}.${term2}"]`).click();
     cy.get('[data-testid="tag-selector"]').should('contain', term2);
 
@@ -837,12 +842,12 @@ describe('Glossary page should work properly', () => {
     ).click();
 
     // Select 1st term
-    cy.get('[data-testid="tag-selector"]').click().type(term3);
+    cy.get('[data-testid="tag-selector"] #tagsForm_tags').click().type(term3);
 
     cy.get(`[data-testid="tag-${glossary1}.${term3}"]`).click();
     cy.get('[data-testid="tag-selector"]').should('contain', term3);
     // Select 2nd term
-    cy.get('[data-testid="tag-selector"]').click().type(term4);
+    cy.get('[data-testid="tag-selector"] #tagsForm_tags').click().type(term4);
     cy.get(`[data-testid="tag-${glossary1}.${term4}"]`).click();
     cy.clickOutside();
     cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();

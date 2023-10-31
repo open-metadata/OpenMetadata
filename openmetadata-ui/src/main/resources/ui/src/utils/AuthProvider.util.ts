@@ -165,8 +165,8 @@ export const getAuthConfig = (
           cacheLocation: BrowserCacheLocation.LocalStorage,
         },
         provider,
-        enableSelfSignUp: enableSelfSignup,
-      } as Configuration;
+        enableSelfSignup,
+      };
 
       break;
     }

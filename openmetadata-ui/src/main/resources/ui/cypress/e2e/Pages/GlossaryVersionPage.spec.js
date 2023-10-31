@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-// / <reference types="Cypress" />
+// eslint-disable-next-line spaced-comment
+/// <reference types="Cypress" />
 
 import {
   addOwner,
@@ -25,7 +26,6 @@ import {
   visitGlossaryPage,
 } from '../../common/GlossaryUtils';
 import {
-  COMMON_UPDATED_DESCRIPTION,
   GLOSSARY_FOR_VERSION_TEST,
   GLOSSARY_PATCH_PAYLOAD,
   GLOSSARY_TERM_FOR_VERSION_TEST1,
@@ -132,9 +132,7 @@ describe('Glossary and glossary term version pages should work properly', () => 
 
     cy.get('[data-testid="version-button"]').contains('0.2').click();
 
-    cy.get(`[data-testid="diff-added-${COMMON_UPDATED_DESCRIPTION}"]`)
-      .scrollIntoView()
-      .should('be.visible');
+    cy.get(`[data-testid="diff-added"]`).scrollIntoView().should('be.visible');
 
     cy.get(`.diff-added [data-testid="tag-PersonalData.SpecialCategory"]`)
       .scrollIntoView()
@@ -167,9 +165,7 @@ describe('Glossary and glossary term version pages should work properly', () => 
     verifyResponseStatusCode('@getVersionsList', 200);
     verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
-    cy.get(
-      '[data-testid="glossary-owner-name"] [data-testid="diff-added-Amber Green"]'
-    )
+    cy.get('[data-testid="glossary-owner-name"] [data-testid="diff-added"]')
       .scrollIntoView()
       .should('be.visible');
 
@@ -191,9 +187,7 @@ describe('Glossary and glossary term version pages should work properly', () => 
     verifyResponseStatusCode('@getVersionsList', 200);
     verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
-    cy.get(
-      '[data-testid="glossary-owner-name"] [data-testid="diff-removed-Amber Green"]'
-    )
+    cy.get('[data-testid="glossary-owner-name"] [data-testid="diff-removed"]')
       .scrollIntoView()
       .should('be.visible');
 
@@ -215,9 +209,7 @@ describe('Glossary and glossary term version pages should work properly', () => 
     verifyResponseStatusCode('@getVersionsList', 200);
     verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
-    cy.get(
-      '[data-testid="glossary-reviewer"] [data-testid="diff-added-Amanda York"]'
-    )
+    cy.get('[data-testid="glossary-reviewer"] [data-testid="diff-added"]')
       .scrollIntoView()
       .should('be.visible');
 
@@ -239,9 +231,7 @@ describe('Glossary and glossary term version pages should work properly', () => 
     verifyResponseStatusCode('@getVersionsList', 200);
     verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
-    cy.get(
-      '[data-testid="glossary-reviewer"] [data-testid="diff-removed-Amanda York"]'
-    )
+    cy.get('[data-testid="glossary-reviewer"] [data-testid="diff-removed"]')
       .scrollIntoView()
       .should('be.visible');
   });
@@ -256,7 +246,7 @@ describe('Glossary and glossary term version pages should work properly', () => 
     );
     interceptURL(
       'GET',
-      `/api/v1/glossaryTerms/name/*?fields=parent`,
+      `/api/v1/glossaryTerms?parent=*&limit=*&fields=*`,
       'getGlossaryTermParents'
     );
     interceptURL(
@@ -273,9 +263,7 @@ describe('Glossary and glossary term version pages should work properly', () => 
 
     cy.get('[data-testid="version-button"]').contains('0.2').click();
 
-    cy.get(`[data-testid="diff-added-${COMMON_UPDATED_DESCRIPTION}"]`)
-      .scrollIntoView()
-      .should('be.visible');
+    cy.get(`[data-testid="diff-added"]`).scrollIntoView().should('be.visible');
 
     cy.get(`.diff-added [data-testid="tag-PersonalData.SpecialCategory"]`)
       .scrollIntoView()
@@ -308,7 +296,7 @@ describe('Glossary and glossary term version pages should work properly', () => 
     );
     interceptURL(
       'GET',
-      `/api/v1/glossaryTerms/name/*?fields=parent`,
+      `/api/v1/glossaryTerms?parent=*&limit=*&fields=*`,
       'getGlossaryTermParents'
     );
     interceptURL(
@@ -336,19 +324,15 @@ describe('Glossary and glossary term version pages should work properly', () => 
 
     cy.get('[data-testid="version-button"]').contains('0.3').click();
 
-    verifyResponseStatusCode('@getGlossaryTermDetails', 200);
     verifyResponseStatusCode('@getVersionsList', 200);
     verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
-    cy.get(
-      '[data-testid="glossary-owner-name"] [data-testid="diff-added-Amber Green"]'
-    )
+    cy.get('[data-testid="glossary-owner-name"] [data-testid="diff-added"]')
       .scrollIntoView()
       .should('be.visible');
 
     cy.get('[data-testid="version-button"]').contains('0.3').click();
 
-    verifyResponseStatusCode('@getGlossaryTermDetails', 200);
     verifyResponseStatusCode('@getGlossaryTermParents', 200);
     verifyResponseStatusCode('@getChildGlossaryTerms', 200);
 
@@ -362,19 +346,15 @@ describe('Glossary and glossary term version pages should work properly', () => 
 
     cy.get('[data-testid="version-button"]').contains('0.4').click();
 
-    verifyResponseStatusCode('@getGlossaryTermDetails', 200);
     verifyResponseStatusCode('@getVersionsList', 200);
     verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
-    cy.get(
-      '[data-testid="glossary-owner-name"] [data-testid="diff-removed-Amber Green"]'
-    )
+    cy.get('[data-testid="glossary-owner-name"] [data-testid="diff-removed"]')
       .scrollIntoView()
       .should('be.visible');
 
     cy.get('[data-testid="version-button"]').contains('0.4').click();
 
-    verifyResponseStatusCode('@getGlossaryTermDetails', 200);
     verifyResponseStatusCode('@getGlossaryTermParents', 200);
     verifyResponseStatusCode('@getChildGlossaryTerms', 200);
 
@@ -388,19 +368,15 @@ describe('Glossary and glossary term version pages should work properly', () => 
 
     cy.get('[data-testid="version-button"]').contains('0.5').click();
 
-    verifyResponseStatusCode('@getGlossaryTermDetails', 200);
     verifyResponseStatusCode('@getVersionsList', 200);
     verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
-    cy.get(
-      '[data-testid="glossary-reviewer"] [data-testid="diff-added-Amanda York"]'
-    )
+    cy.get('[data-testid="glossary-reviewer"] [data-testid="diff-added"]')
       .scrollIntoView()
       .should('be.visible');
 
     cy.get('[data-testid="version-button"]').contains('0.5').click();
 
-    verifyResponseStatusCode('@getGlossaryTermDetails', 200);
     verifyResponseStatusCode('@getGlossaryTermParents', 200);
     verifyResponseStatusCode('@getChildGlossaryTerms', 200);
 
@@ -414,13 +390,10 @@ describe('Glossary and glossary term version pages should work properly', () => 
 
     cy.get('[data-testid="version-button"]').contains('0.6').click();
 
-    verifyResponseStatusCode('@getGlossaryTermDetails', 200);
     verifyResponseStatusCode('@getVersionsList', 200);
     verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
-    cy.get(
-      '[data-testid="glossary-reviewer"] [data-testid="diff-removed-Amanda York"]'
-    )
+    cy.get('[data-testid="glossary-reviewer"] [data-testid="diff-removed"]')
       .scrollIntoView()
       .should('be.visible');
   });

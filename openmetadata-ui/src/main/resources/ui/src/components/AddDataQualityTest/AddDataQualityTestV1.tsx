@@ -43,10 +43,10 @@ import { CreateTestCase } from '../../generated/api/tests/createTestCase';
 import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
 import { createExecutableTestSuite, createTestCase } from '../../rest/testAPI';
-import { getCurrentUserId } from '../../utils/CommonUtils';
 import { getEntityBreadcrumbs, getEntityName } from '../../utils/EntityUtils';
 import { getEncodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 import SuccessScreen from '../common/success-screen/SuccessScreen';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
@@ -70,6 +70,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
   const [testSuiteData, setTestSuiteData] = useState<TestSuite>();
   const [testCaseRes, setTestCaseRes] = useState<TestCase>();
   const [addIngestion, setAddIngestion] = useState(false);
+  const { currentUser } = useAuthContext();
 
   const breadcrumb = useMemo(() => {
     const data: TitleBreadcrumbProps['titleLinks'] = [
@@ -92,10 +93,10 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
 
   const owner = useMemo(
     () => ({
-      id: getCurrentUserId(),
+      id: currentUser?.id ?? '',
       type: OwnerType.USER,
     }),
-    [getCurrentUserId]
+    [currentUser]
   );
 
   const handleRedirection = () => {
@@ -293,7 +294,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
         flex: 0.4,
         overlay: {
           displayThreshold: 200,
-          header: t('label.setup-guide'),
+          header: t('label.data-profiler-metrics'),
           rotation: 'counter-clockwise',
         },
       }}

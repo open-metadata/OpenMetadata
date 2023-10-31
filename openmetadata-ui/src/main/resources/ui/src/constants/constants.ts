@@ -14,18 +14,18 @@
 import { t } from 'i18next';
 import { isUndefined } from 'lodash';
 import Qs from 'qs';
+import { CSSProperties } from 'react';
 import { COOKIE_VERSION } from '../components/Modals/WhatsNewModal/whatsNewData';
 import { EntityTabs } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { getPartialNameFromFQN } from '../utils/CommonUtils';
+import i18n from '../utils/i18next/LocalUtil';
 import { getSettingPath } from '../utils/RouterUtils';
 import { getEncodedFqn } from '../utils/StringsUtils';
-import i18n from '../utils/i18next/LocalUtil';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from './GlobalSettings.constants';
-import { FQN_SEPARATOR_CHAR } from './char.constants';
 
 export const PRIMERY_COLOR = '#0968da';
 export const SECONDARY_COLOR = '#B02AAC';
@@ -118,14 +118,6 @@ export const pagingObject = { after: '', before: '', total: 0 };
 
 export const ONLY_NUMBER_REGEX = /^[0-9\b]+$/;
 
-export const tiers = [
-  { key: `Tier${FQN_SEPARATOR_CHAR}Tier1`, doc_count: 0 },
-  { key: `Tier${FQN_SEPARATOR_CHAR}Tier2`, doc_count: 0 },
-  { key: `Tier${FQN_SEPARATOR_CHAR}Tier3`, doc_count: 0 },
-  { key: `Tier${FQN_SEPARATOR_CHAR}Tier4`, doc_count: 0 },
-  { key: `Tier${FQN_SEPARATOR_CHAR}Tier5`, doc_count: 0 },
-];
-
 export const globalSearchOptions = [
   { value: '', label: t('label.all') },
   { value: SearchIndex.TABLE, label: t('label.table') },
@@ -141,22 +133,7 @@ export const globalSearchOptions = [
   { value: SearchIndex.SEARCH_INDEX, label: t('label.search-index') },
 ];
 
-export const versionTypes = [
-  { name: t('label.all'), value: 'all' },
-  { name: t('label.major'), value: 'major' },
-  { name: t('label.minor'), value: 'minor' },
-];
-
 export const DESCRIPTIONLENGTH = 100;
-
-export const visibleFilters = [
-  'service',
-  'tier',
-  'tags',
-  'database',
-  'databaseschema',
-  'servicename',
-];
 
 export const CHART_WIDGET_DAYS_DURATION = 14;
 
@@ -260,6 +237,14 @@ export const ROUTES = {
   ADD_WEBHOOK_WITH_TYPE: `/add-webhook/${PLACEHOLDER_WEBHOOK_TYPE}`,
   EDIT_WEBHOOK: `/webhook/${PLACEHOLDER_WEBHOOK_NAME}`,
 
+  ADD_APPLICATION: '/add-application',
+  MARKETPLACE: '/marketplace',
+  MARKETPLACE_APP_DETAILS: `/marketplace/apps/${PLACEHOLDER_ROUTE_FQN}`,
+  MARKETPLACE_APP_INSTALL: `/marketplace/apps/${PLACEHOLDER_ROUTE_FQN}/install`,
+
+  APP_DETAILS: `/apps/${PLACEHOLDER_ROUTE_FQN}`,
+  APP_DETAILS_WITH_TAB: `/apps/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+
   DOMAIN: '/domain',
   DOMAIN_DETAILS: `/domain/${PLACEHOLDER_ROUTE_FQN}`,
   DOMAIN_DETAILS_WITH_TAB: `/domain/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
@@ -327,7 +312,7 @@ export const ROUTES = {
 
   SETTINGS_EDIT_CUSTOM_LOGO_CONFIG: `/settings/OpenMetadata/customLogo/edit-custom-logo-configuration`,
 
-  CUSTOMISE_PAGE: `/customise-page/:fqn/:pageFqn`,
+  CUSTOMIZE_PAGE: `/customize-page/:fqn/:pageFqn`,
 };
 
 export const SOCKET_EVENTS = {
@@ -770,11 +755,6 @@ export const getKpiPath = (kpiName: string) => {
   return path;
 };
 
-export const TIMEOUT = {
-  USER_LIST: 60000, // 60 seconds for user retrieval
-  TOAST_DELAY: 5000, // 5 seconds timeout for toaster autohide delay
-};
-
 export const configOptions = {
   headers: { 'Content-type': 'application/json-patch+json' },
 };
@@ -827,3 +807,9 @@ export const ICON_DIMENSION = {
   with: 14,
   height: 14,
 };
+
+export const COMMON_ICON_STYLES: CSSProperties = {
+  verticalAlign: 'middle',
+};
+
+export const KNOWLEDGE_CENTER_CLASSIFICATION = 'KnowledgeCenter';

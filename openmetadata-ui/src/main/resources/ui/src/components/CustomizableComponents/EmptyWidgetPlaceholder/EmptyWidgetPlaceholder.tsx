@@ -26,6 +26,7 @@ function EmptyWidgetPlaceholder({
   iconWidth = SIZE.MEDIUM,
   widgetKey,
   handleOpenAddWidgetModal,
+  handlePlaceholderWidgetKey,
   handleRemoveWidget,
   isEditable = true,
 }: Readonly<EmptyWidgetPlaceholderProps>) {
@@ -33,6 +34,11 @@ function EmptyWidgetPlaceholder({
 
   const handleCloseClick = useCallback(() => {
     !isUndefined(handleRemoveWidget) && handleRemoveWidget(widgetKey);
+  }, []);
+
+  const handleAddClick = useCallback(() => {
+    handlePlaceholderWidgetKey(widgetKey);
+    handleOpenAddWidgetModal();
   }, []);
 
   return (
@@ -73,11 +79,11 @@ function EmptyWidgetPlaceholder({
                 </Typography.Text>
                 <Button
                   ghost
-                  className="p-x-lg m-t-md"
+                  className="add-button"
                   data-testid="add-widget-placeholder-button"
                   icon={<PlusOutlined />}
                   type="primary"
-                  onClick={handleOpenAddWidgetModal}>
+                  onClick={handleAddClick}>
                   {t('label.add')}
                 </Button>
               </Space>

@@ -22,6 +22,7 @@ import { useHistory, useParams } from 'react-router-dom';
 import { useActivityFeedProvider } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
+import { useAuthContext } from '../../components/authentication/auth-provider/AuthProvider';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../components/common/description/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
@@ -76,7 +77,6 @@ import {
 } from '../../rest/tableAPI';
 import {
   addToRecentViewed,
-  getCurrentUserId,
   getFeedCounts,
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
@@ -93,18 +93,20 @@ import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { FrequentlyJoinedTables } from './FrequentlyJoinedTables/FrequentlyJoinedTables.component';
+import { PartitionedKeys } from './PartitionedKeys/PartitionedKeys.component';
 import './table-details-page-v1.less';
 import TableConstraints from './TableConstraints/TableConstraints';
 
 const TableDetailsPageV1 = () => {
   const { isTourOpen, activeTabForTourDatasetPage, isTourPage } =
     useTourProvider();
+  const { currentUser } = useAuthContext();
   const [tableDetails, setTableDetails] = useState<Table>();
   const { fqn: datasetFQN, tab: activeTab = EntityTabs.SCHEMA } =
     useParams<{ fqn: string; tab: EntityTabs }>();
   const { t } = useTranslation();
   const history = useHistory();
-  const USERId = getCurrentUserId();
+  const USERId = currentUser?.id ?? '';
   const [feedCount, setFeedCount] = useState<number>(0);
   const [isEdit, setIsEdit] = useState(false);
   const [threadLink, setThreadLink] = useState<string>('');
@@ -530,6 +532,9 @@ const TableDetailsPageV1 = () => {
               onThreadLinkSelect={onThreadLinkSelect}
             />
             <TableConstraints constraints={tableDetails?.tableConstraints} />
+            {tableDetails?.tablePartition ? (
+              <PartitionedKeys tablePartition={tableDetails.tablePartition} />
+            ) : null}
           </Space>
         </Col>
       </Row>

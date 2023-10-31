@@ -20,6 +20,7 @@ export const VersionIndicatorIcon = ({
 }: VersionIndicatorInterface) => {
   return (
     <svg
+      className="anticon"
       fill="none"
       height="1em"
       style={style}

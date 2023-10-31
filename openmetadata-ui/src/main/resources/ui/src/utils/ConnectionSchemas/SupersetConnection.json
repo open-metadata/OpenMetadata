@@ -1,5 +1,4 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/services/connections/dashboard/supersetConnection.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "SupersetConnection",
   "description": "Superset Connection Config",
@@ -34,7 +33,6 @@
       "description": "Choose between API or database connection fetch metadata from superset.",
       "oneOf": [
         {
-          "$id": "https://open-metadata.org/schema/entity/services/connections/dashboard/supersetApiConnection.json",
           "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "SupersetApiConnection",
           "description": "Superset API Connection Config",
@@ -80,7 +78,6 @@
               "javaType": "org.openmetadata.schema.security.ssl.SSLConfig",
               "oneOf": [
                 {
-                  "$id": "https://open-metadata.org/schema/security/ssl/validateSSLClientConfig.json",
                   "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "Validate SSL Client Config",
                   "description": "OpenMetadata Client configured to validate SSL certificates.",
@@ -102,7 +99,6 @@
           "required": ["provider", "password", "username"]
         },
         {
-          "$id": "https://open-metadata.org/schema/entity/services/connections/database/postgresConnection.json",
           "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "PostgresConnection",
           "description": "Postgres Database Connection Config",
@@ -262,7 +258,6 @@
               "javaType": "org.openmetadata.schema.security.ssl.SSLConfig",
               "oneOf": [
                 {
-                  "$id": "https://open-metadata.org/schema/security/ssl/validateSSLClientConfig.json",
                   "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "ValidateSSLClientConfig",
                   "description": "OpenMetadata Client configured to validate SSL certificates.",
@@ -352,7 +347,6 @@
           "required": ["hostPort", "username", "database"]
         },
         {
-          "$id": "https://open-metadata.org/schema/entity/services/connections/database/mysqlConnection.json",
           "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "MysqlConnection",
           "description": "Mysql Database Connection Config",

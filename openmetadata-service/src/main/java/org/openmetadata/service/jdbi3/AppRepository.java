@@ -1,5 +1,6 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.resources.teams.UserResource.getUser;
 
 import java.util.ArrayList;
@@ -32,7 +33,6 @@ import org.quartz.SchedulerException;
 @Slf4j
 public class AppRepository extends EntityRepository<App> {
   public static String APP_BOT_ROLE = "ApplicationBotRole";
-  public static String APP_SCHEDULE_EXTENSION = "ScheduleExtension";
 
   public static final String UPDATE_FIELDS = "appConfiguration,appSchedule";
 
@@ -53,6 +53,18 @@ public class AppRepository extends EntityRepository<App> {
     return entity.withBot(getBotUser(entity));
   }
 
+  @Override
+  protected List<EntityReference> getIngestionPipelines(App service) {
+    List<CollectionDAO.EntityRelationshipRecord> pipelines =
+        findToRecords(service.getId(), entityType, Relationship.HAS, Entity.INGESTION_PIPELINE);
+    List<EntityReference> ingestionPipelines = new ArrayList<>();
+    for (CollectionDAO.EntityRelationshipRecord entityRelationshipRecord : pipelines) {
+      ingestionPipelines.add(
+          Entity.getEntityReferenceById(Entity.INGESTION_PIPELINE, entityRelationshipRecord.getId(), ALL));
+    }
+    return ingestionPipelines;
+  }
+
   public AppMarketPlaceRepository getMarketPlace() {
     return (AppMarketPlaceRepository) Entity.getEntityRepository(Entity.APP_MARKET_PLACE_DEF);
   }
@@ -63,16 +75,14 @@ public class AppRepository extends EntityRepository<App> {
   }
 
   @Override
-  public void prepare(App entity, boolean update) {
-    if (entity.getBot() == null) {}
-  }
+  public void prepare(App entity, boolean update) {}
 
   public EntityReference createNewAppBot(App application) {
     String botName = String.format("%sBot", application.getName());
     BotRepository botRepository = (BotRepository) Entity.getEntityRepository(Entity.BOT);
     UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
-    User botUser = null;
-    Bot bot = null;
+    User botUser;
+    Bot bot;
     try {
       botUser = userRepository.findByName(botName, Include.NON_DELETED);
     } catch (EntityNotFoundException ex) {
@@ -143,13 +153,7 @@ public class AppRepository extends EntityRepository<App> {
     entity.withBot(botUserRef).withOwner(ownerRef);
   }
 
-  @SuppressWarnings("unused")
-  protected void postUpdate(App original, App updated) {
-    super.postUpdate(original, updated);
-    // TODO: here we should handle Live as well
-
-  }
-
+  @Override
   public void postDelete(App entity) {
     try {
       AppScheduler.getInstance().deleteScheduledApplication(entity);
@@ -162,13 +166,13 @@ public class AppRepository extends EntityRepository<App> {
   public EntityReference getBotUser(App application) {
     return application.getBot() != null
         ? application.getBot()
-        : getToEntityRef(application.getId(), Relationship.HAS, Entity.BOT, false);
+        : getToEntityRef(application.getId(), Relationship.CONTAINS, Entity.BOT, false);
   }
 
   @Override
   public void storeRelationships(App entity) {
     if (entity.getBot() != null) {
-      addRelationship(entity.getId(), entity.getBot().getId(), Entity.APPLICATION, Entity.BOT, Relationship.HAS);
+      addRelationship(entity.getId(), entity.getBot().getId(), Entity.APPLICATION, Entity.BOT, Relationship.CONTAINS);
     }
   }
 
@@ -201,6 +205,15 @@ public class AppRepository extends EntityRepository<App> {
       // limit == 0 , return total count of entity.
       return new ResultList<>(entities, null, total);
     }
+  }
+
+  @Override
+  protected void cleanup(App app) {
+    // Remove the Pipelines for Application
+    List<EntityReference> pipelineRef = getIngestionPipelines(app);
+    pipelineRef.forEach(
+        (reference) -> Entity.deleteEntity("admin", reference.getType(), reference.getId(), true, true));
+    super.cleanup(app);
   }
 
   public AppRunRecord getLatestAppRuns(UUID appId) {

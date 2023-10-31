@@ -96,14 +96,14 @@ EXPECTED_PIPELINE_STATUS = [
     OMetaPipelineStatus(
         pipeline_fqn="local_domo_pipeline.1",
         pipeline_status=PipelineStatus(
-            timestamp=1665476792,
+            timestamp=1665476792000,
             executionStatus="Successful",
             taskStatus=[
                 TaskStatus(
                     name="1",
                     executionStatus="Successful",
-                    startTime=1665476783,
-                    endTime=1665476792,
+                    startTime=1665476783000,
+                    endTime=1665476792000,
                     logLink=None,
                 )
             ],
@@ -112,14 +112,14 @@ EXPECTED_PIPELINE_STATUS = [
     OMetaPipelineStatus(
         pipeline_fqn="local_domo_pipeline.1",
         pipeline_status=PipelineStatus(
-            timestamp=1665470252,
+            timestamp=1665470252000,
             executionStatus="Successful",
             taskStatus=[
                 TaskStatus(
                     name="1",
                     executionStatus="Successful",
-                    startTime=1665470244,
-                    endTime=1665470252,
+                    startTime=1665470244000,
+                    endTime=1665470252000,
                     logLink=None,
                 )
             ],
@@ -128,14 +128,14 @@ EXPECTED_PIPELINE_STATUS = [
     OMetaPipelineStatus(
         pipeline_fqn="local_domo_pipeline.1",
         pipeline_status=PipelineStatus(
-            timestamp=1665148827,
+            timestamp=1665148827000,
             executionStatus="Successful",
             taskStatus=[
                 TaskStatus(
                     name="1",
                     executionStatus="Successful",
-                    startTime=1665148818,
-                    endTime=1665148827,
+                    startTime=1665148818000,
+                    endTime=1665148827000,
                     logLink=None,
                 )
             ],
@@ -272,8 +272,8 @@ class DomoPipelineUnitTest(TestCase):
         pipeline_status_list = []
         results = self.domopipeline.yield_pipeline_status(MOCK_PIPELINE_DETAILS)
         for result in results:
-            if isinstance(result, OMetaPipelineStatus):
-                pipeline_status_list.append(result)
+            if isinstance(result.right, OMetaPipelineStatus):
+                pipeline_status_list.append(result.right)
 
         for _, (expected, original) in enumerate(
             zip(EXPECTED_PIPELINE_STATUS, pipeline_status_list)

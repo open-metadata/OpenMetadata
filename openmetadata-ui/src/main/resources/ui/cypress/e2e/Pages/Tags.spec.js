@@ -291,7 +291,9 @@ describe('Tags page should work', () => {
     )
       .click()
       .type(assignee);
-    cy.get('.ant-select-item-option-content').contains(assignee).click();
+    cy.get(`[data-testid="assignee-option-${assignee}"]`)
+      .scrollIntoView()
+      .click();
 
     // click outside the select box
     cy.clickOutside();

@@ -433,7 +433,8 @@ public class MlModelServiceResource
   }
 
   private MlModelService getService(CreateMlModelService create, String user) {
-    return copy(new MlModelService(), create, user)
+    return repository
+        .copy(new MlModelService(), create, user)
         .withServiceType(create.getServiceType())
         .withConnection(create.getConnection());
   }

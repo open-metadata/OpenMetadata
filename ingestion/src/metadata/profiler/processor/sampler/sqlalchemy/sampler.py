@@ -12,7 +12,8 @@
 Helper module to handle data sampling
 for the profiler
 """
-from typing import Union, cast
+import traceback
+from typing import List, Optional, Union, cast
 
 from sqlalchemy import Column, inspect, text
 from sqlalchemy.orm import DeclarativeMeta, Query, aliased
@@ -30,6 +31,7 @@ from metadata.profiler.orm.functions.random_num import RandomNumFn
 from metadata.profiler.orm.registry import Dialects
 from metadata.profiler.processor.handle_partition import partition_filter_handler
 from metadata.profiler.processor.sampler.sampler_interface import SamplerInterface
+from metadata.utils.logger import profiler_interface_registry_logger
 from metadata.utils.sqa_utils import (
     build_query_filter,
     dispatch_to_date_or_datetime,
@@ -37,6 +39,8 @@ from metadata.utils.sqa_utils import (
     get_partition_col_type,
     get_value_filter,
 )
+
+logger = profiler_interface_registry_logger()
 
 RANDOM_LABEL = "random"
 
@@ -105,7 +109,7 @@ class SQASampler(SamplerInterface):
         if self._profile_sample_query:
             return self._rdn_sample_from_user_query()
 
-        if not self.profile_sample:
+        if not self.profile_sample or int(self.profile_sample) == 100:
             if self._partition_details:
                 return self._partitioned_table()
 
@@ -117,24 +121,49 @@ class SQASampler(SamplerInterface):
         # Assign as an alias
         return aliased(self.table, sampled)
 
-    def fetch_sample_data(self) -> TableData:
+    def fetch_sample_data(self, columns: Optional[List[Column]] = None) -> TableData:
         """
         Use the sampler to retrieve sample data rows as per limit given by user
-        :return: TableData to be added to the Table Entity
+
+        Args:
+            columns (Optional[List]): List of columns to fetch
+        Retunrs:
+            TableData to be added to the Table Entity
         """
         if self._profile_sample_query:
             return self._fetch_sample_data_from_user_query()
 
         # Add new RandomNumFn column
         rnd = self.get_sample_query()
-        sqa_columns = [col for col in inspect(rnd).c if col.name != RANDOM_LABEL]
+        if not columns:
+            sqa_columns = [col for col in inspect(rnd).c if col.name != RANDOM_LABEL]
+        else:
+            # we can't directly use columns as it is bound to self.table and not the rnd table.
+            # If we use it, it will result in a cross join between self.table and rnd table
+            names = [col.name for col in columns]
+            sqa_columns = [
+                col
+                for col in inspect(rnd).c
+                if col.name != RANDOM_LABEL and col.name in names
+            ]
 
-        sqa_sample = (
-            self.client.query(*sqa_columns)
-            .select_from(rnd)
-            .limit(self.sample_limit)
-            .all()
-        )
+        try:
+            sqa_sample = (
+                self.client.query(*sqa_columns)
+                .select_from(rnd)
+                .limit(self.sample_limit)
+                .all()
+            )
+        except Exception:
+            logger.debug(
+                "Cannot fetch sample data with random sampling. Falling back to 100 rows."
+            )
+            logger.debug(traceback.format_exc())
+            sqa_columns = list(inspect(self.table).c)
+            sqa_sample = (
+                self.client.query(*sqa_columns).select_from(self.table).limit(100).all()
+            )
+
         return TableData(
             columns=[column.name for column in sqa_columns],
             rows=[list(row) for row in sqa_sample],

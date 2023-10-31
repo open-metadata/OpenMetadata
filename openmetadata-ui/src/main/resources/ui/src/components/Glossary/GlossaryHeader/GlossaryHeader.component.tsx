@@ -62,10 +62,7 @@ import {
   getGlossariesById,
   getGlossaryTermsById,
 } from '../../../rest/glossaryAPI';
-import {
-  getCurrentUserId,
-  getEntityDeleteMessage,
-} from '../../../utils/CommonUtils';
+import { getEntityDeleteMessage } from '../../../utils/CommonUtils';
 import { getEntityVoteStatus } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
 import { StatusClass } from '../../../utils/GlossaryUtils';
@@ -77,6 +74,7 @@ import {
 } from '../../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
 
 export interface GlossaryHeaderProps {
@@ -105,7 +103,7 @@ const GlossaryHeader = ({
 }: GlossaryHeaderProps) => {
   const { t } = useTranslation();
   const history = useHistory();
-  const USER_ID = getCurrentUserId();
+  const { currentUser } = useAuthContext();
 
   const { fqn, version } = useParams<{
     fqn: string;
@@ -137,13 +135,21 @@ const GlossaryHeader = ({
     }
   };
 
+  const glossaryTermStatus: Status | null = useMemo(() => {
+    if (!isGlossary) {
+      return (selectedData as GlossaryTerm).status ?? Status.Approved;
+    }
+
+    return null;
+  }, [isGlossary, selectedData]);
+
   const editDisplayNamePermission = useMemo(() => {
     return permissions.EditAll || permissions.EditDisplayName;
   }, [permissions]);
 
   const voteStatus = useMemo(
-    () => getEntityVoteStatus(USER_ID, selectedData.votes),
-    [selectedData.votes, USER_ID]
+    () => getEntityVoteStatus(currentUser?.id ?? '', selectedData.votes),
+    [selectedData.votes, currentUser]
   );
 
   const icon = useMemo(() => {
@@ -419,25 +425,29 @@ const GlossaryHeader = ({
           {t('label.add-entity', { entity: t('label.term-lowercase') })}
         </Button>
       ) : (
-        <Dropdown
-          className="m-l-xs"
-          menu={{
-            items: addButtonContent,
-          }}
-          placement="bottomRight"
-          trigger={['click']}>
-          <Button type="primary">
-            <Space>
-              {t('label.add')}
-              <DownOutlined />
-            </Space>
-          </Button>
-        </Dropdown>
+        <>
+          {glossaryTermStatus && glossaryTermStatus === Status.Approved && (
+            <Dropdown
+              className="m-l-xs"
+              menu={{
+                items: addButtonContent,
+              }}
+              placement="bottomRight"
+              trigger={['click']}>
+              <Button type="primary">
+                <Space>
+                  {t('label.add')}
+                  <DownOutlined />
+                </Space>
+              </Button>
+            </Dropdown>
+          )}
+        </>
       );
     }
 
     return null;
-  }, [isGlossary, permissions, addButtonContent]);
+  }, [isGlossary, permissions, addButtonContent, glossaryTermStatus]);
 
   /**
    * To create breadcrumb from the fqn
@@ -492,6 +502,11 @@ const GlossaryHeader = ({
             entityType={EntityType.GLOSSARY_TERM}
             icon={icon}
             serviceName=""
+            titleColor={
+              isGlossary
+                ? undefined
+                : (selectedData as GlossaryTerm).style?.color
+            }
           />
         </Col>
         <Col flex="360px">
@@ -524,7 +539,7 @@ const GlossaryHeader = ({
                 </Button>
               )}
 
-              {!isVersionView && (
+              {!isVersionView && manageButtonContent.length > 0 && (
                 <Dropdown
                   align={{ targetOffset: [-12, 0] }}
                   className="m-l-xs"

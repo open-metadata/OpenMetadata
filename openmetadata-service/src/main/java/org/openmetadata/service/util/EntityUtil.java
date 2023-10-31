@@ -500,10 +500,9 @@ public final class EntityUtil {
     return table.getColumns().stream().filter(c -> c.getName().equals(columnName)).findFirst().orElse(null);
   }
 
-  public static void sortByTagHierarchy(List<Tag> tags) {
-    // Note - before calling this method - fullyQualifiedName should set up for the tags
-    // Sort tags by tag hierarchy. Tags with parents null come first, followed by tags with
-    tags.sort(Comparator.comparing(Tag::getFullyQualifiedName));
+  public static void sortByFQN(List<? extends EntityInterface> entities) {
+    // Sort entities by fullyQualifiedName
+    entities.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
   }
 
   /**

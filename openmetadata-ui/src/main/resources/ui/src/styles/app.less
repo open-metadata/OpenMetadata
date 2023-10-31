@@ -185,6 +185,10 @@ a[href].link-text-grey,
   line-height: 16px;
 }
 
+.line-height-22 {
+  line-height: 22px;
+}
+
 // Radius
 
 .rounded-4 {
@@ -314,10 +318,6 @@ a[href].link-text-grey,
   white-space: nowrap;
 }
 
-.gap-2 {
-  gap: 0.5rem /* 8px */;
-}
-
 /* SSO layout style  */
 .sso-container {
   width: 100%;
@@ -373,7 +373,7 @@ a[href].link-text-grey,
   font-weight: 700;
   font-size: 18px;
   line-height: 22px;
-  color: @text-color !important;
+  color: @text-color;
   text-decoration: none !important;
 }
 
@@ -501,7 +501,7 @@ a[href].link-text-grey,
 
 .no-scrollbar {
   scrollbar-width: none;
-  ::-webkit-scrollbar {
+  &::-webkit-scrollbar {
     display: none;
   }
 }
@@ -737,4 +737,11 @@ a[href].link-text-grey,
   background-color: @text-highlighter;
   padding-left: 0.25rem;
   padding-right: 0.25rem;
+}
+
+.app-bar-user-avatar {
+  display: inline-block;
+  height: 36px;
+  width: 36px;
+  border-radius: 50%;
 }

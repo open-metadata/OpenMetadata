@@ -1,5 +1,8 @@
 package org.openmetadata.service.resources.apps;
 
+import static org.openmetadata.service.Entity.APPLICATION;
+import static org.openmetadata.service.jdbi3.EntityRepository.getEntitiesFromSeedData;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -9,6 +12,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -69,7 +73,17 @@ public class AppMarketPlaceResource extends EntityResource<AppMarketPlaceDefinit
           PipelineServiceClientFactory.createPipelineServiceClient(config.getPipelineServiceClientConfiguration());
 
       // Initialize Default Installed Applications
-      this.repository.initSeedDataFromResources();
+      List<CreateAppMarketPlaceDefinitionReq> createAppMarketPlaceDefinitionReqs =
+          getEntitiesFromSeedData(
+              APPLICATION,
+              String.format(".*json/data/%s/.*\\.json$", entityType),
+              CreateAppMarketPlaceDefinitionReq.class);
+      for (CreateAppMarketPlaceDefinitionReq definitionReq : createAppMarketPlaceDefinitionReqs) {
+        AppMarketPlaceDefinition definition = getApplicationDefinition(definitionReq, "admin");
+        // Update Fully Qualified Name
+        repository.setFullyQualifiedName(definition);
+        this.repository.createOrUpdate(null, definition);
+      }
     } catch (Exception ex) {
       LOG.error("Failed in initializing App MarketPlace Resource", ex);
     }
@@ -354,7 +368,8 @@ public class AppMarketPlaceResource extends EntityResource<AppMarketPlaceDefinit
   private AppMarketPlaceDefinition getApplicationDefinition(
       CreateAppMarketPlaceDefinitionReq create, String updatedBy) {
     AppMarketPlaceDefinition app =
-        copy(new AppMarketPlaceDefinition(), create, updatedBy)
+        repository
+            .copy(new AppMarketPlaceDefinition(), create, updatedBy)
             .withDeveloper(create.getDeveloper())
             .withDeveloperUrl(create.getDeveloperUrl())
             .withSupportEmail(create.getSupportEmail())
@@ -366,6 +381,7 @@ public class AppMarketPlaceResource extends EntityResource<AppMarketPlaceDefinit
             .withAppConfiguration(create.getAppConfiguration())
             .withPermission(create.getPermission())
             .withAppLogoUrl(create.getAppLogoUrl())
+            .withAppScreenshots(create.getAppScreenshots())
             .withFeatures(create.getFeatures());
 
     // Validate App

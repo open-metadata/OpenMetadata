@@ -481,6 +481,7 @@ const DomainDetailsPage = ({
                   }
                   rightPanelWidth={400}>
                   <AssetsTabs
+                    assetCount={assetCount}
                     isSummaryPanelOpen={false}
                     permissions={domainPermission}
                     ref={assetTabRef}
@@ -545,9 +546,10 @@ const DomainDetailsPage = ({
               )
             }
             serviceName=""
+            titleColor={domain.style?.color}
           />
         </Col>
-        <Col className="p-x-md" flex="280px">
+        <Col className="p-x-md" flex="320px">
           <div style={{ textAlign: 'right' }}>
             {!isVersionsView && domainPermission.Create && (
               <Dropdown

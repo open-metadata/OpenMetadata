@@ -54,6 +54,7 @@ import oracle from '../assets/img/service-icon-oracle.png';
 import pinot from '../assets/img/service-icon-pinot.png';
 import postgres from '../assets/img/service-icon-post.png';
 import powerbi from '../assets/img/service-icon-power-bi.png';
+import mstr from '../assets/img/service-icon-mstr.png';
 import prefect from '../assets/img/service-icon-prefect.png';
 import presto from '../assets/img/service-icon-presto.png';
 import pulsar from '../assets/img/service-icon-pulsar.png';
@@ -102,7 +103,6 @@ import { PipelineServiceType } from '../generated/entity/services/pipelineServic
 import { SearchServiceType } from '../generated/entity/services/searchService';
 import { ServiceType } from '../generated/entity/services/serviceType';
 import i18n from '../utils/i18next/LocalUtil';
-import { customServiceComparator } from '../utils/StringsUtils';
 import {
   addDBTIngestionGuide,
   addLineageIngestionGuide,
@@ -134,6 +134,7 @@ export const PULSAR = pulsar;
 export const REDPANDA = redpanda;
 export const SUPERSET = superset;
 export const LOOKER = looker;
+export const MSTR = mstr;
 export const TABLEAU = tableau;
 export const REDASH = redash;
 export const METABASE = metabase;
@@ -195,35 +196,6 @@ export const excludedService = [
   SearchServiceType.OpenSearch,
 ];
 
-export const IGNORED_DB_SERVICES: Array<string> = ['QueryLog', 'Dbt'];
-
-export const serviceTypes: Record<ServiceTypes, Array<string>> = {
-  databaseServices: (Object.values(DatabaseServiceType) as string[])
-    .filter((key: string) => !IGNORED_DB_SERVICES.includes(key))
-    .sort(customServiceComparator),
-  messagingServices: (Object.values(MessagingServiceType) as string[]).sort(
-    customServiceComparator
-  ),
-  dashboardServices: (Object.values(DashboardServiceType) as string[]).sort(
-    customServiceComparator
-  ),
-  pipelineServices: (Object.values(PipelineServiceType) as string[]).sort(
-    customServiceComparator
-  ),
-  mlmodelServices: (Object.values(MlModelServiceType) as string[]).sort(
-    customServiceComparator
-  ),
-  metadataServices: (Object.values(MetadataServiceType) as string[]).sort(
-    customServiceComparator
-  ),
-  storageServices: (Object.values(StorageServiceType) as string[]).sort(
-    customServiceComparator
-  ),
-  searchServices: (Object.values(SearchServiceType) as string[]).sort(
-    customServiceComparator
-  ),
-};
-
 export const arrServiceTypes: Array<ServiceTypes> = [
   'databaseServices',
   'messagingServices',
@@ -242,17 +214,6 @@ export const SERVICE_CATEGORY: { [key: string]: ServiceCategory } = {
   metadata: ServiceCategory.METADATA_SERVICES,
   storages: ServiceCategory.STORAGE_SERVICES,
   search: ServiceCategory.SEARCH_SERVICES,
-};
-
-export const SERVICE_CATEGORY_TYPE = {
-  databaseServices: 'databases',
-  messagingServices: 'messaging',
-  dashboardServices: 'dashboards',
-  pipelineServices: 'pipelines',
-  mlmodelServices: 'mlModels',
-  metadataServices: 'metadata',
-  storageServices: 'storages',
-  searchServices: 'search',
 };
 
 export const servicesDisplayName: { [key: string]: string } = {

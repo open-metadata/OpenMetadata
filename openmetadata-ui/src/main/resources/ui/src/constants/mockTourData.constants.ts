@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { SearchIndex } from '../enums/search.enum';
+
 /* eslint-disable max-len */
 
 export const MOCK_ASSETS_COUNTS = {
@@ -1912,4 +1914,19 @@ export const mockSearchData = {
       buckets: [{ key: 'ecommerce_db', doc_count: 4 }],
     },
   },
+};
+
+export const MOCK_EXPLORE_PAGE_COUNT = {
+  [SearchIndex.DATA_PRODUCT]: 0,
+  [SearchIndex.TABLE]: mockSearchData.hits.total.value,
+  [SearchIndex.TOPIC]: 0,
+  [SearchIndex.DASHBOARD]: 0,
+  [SearchIndex.PIPELINE]: 0,
+  [SearchIndex.MLMODEL]: 0,
+  [SearchIndex.CONTAINER]: 0,
+  [SearchIndex.STORED_PROCEDURE]: 0,
+  [SearchIndex.DASHBOARD_DATA_MODEL]: 0,
+  [SearchIndex.GLOSSARY]: 0,
+  [SearchIndex.TAG]: 0,
+  [SearchIndex.SEARCH_INDEX]: 0,
 };
