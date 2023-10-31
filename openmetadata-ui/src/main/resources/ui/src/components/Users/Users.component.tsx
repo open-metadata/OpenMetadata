@@ -58,7 +58,7 @@ const Users = ({
   const { tab: activeTab = UserPageTabs.ACTIVITY } =
     useParams<{ tab: UserPageTabs }>();
   const [assetCount, setAssetCount] = useState<number>(0);
-  const { isAdminUser, isAuthDisabled } = useAuth();
+  const { isAdminUser } = useAuth();
   const history = useHistory();
   const location = useLocation();
   const { currentUser } = useAuthContext();
@@ -76,8 +76,8 @@ const Users = ({
   );
 
   const hasEditPermission = useMemo(
-    () => isAdminUser || isLoggedInUser || isAuthDisabled,
-    [isAdminUser, isLoggedInUser, isAuthDisabled]
+    () => isAdminUser || isLoggedInUser,
+    [isAdminUser, isLoggedInUser]
   );
 
   const fetchAssetsCount = async (query: string) => {
@@ -236,10 +236,11 @@ const Users = ({
               {t('label.description')}
             </Typography.Text>
             <Typography.Paragraph className="m-b-0">
-              {isEmpty(userData.description) &&
-                t('label.no-entity', {
-                  entity: t('label.description'),
-                })}
+              {isEmpty(userData.description)
+                ? t('label.no-entity', {
+                    entity: t('label.description'),
+                  })
+                : userData.description}
             </Typography.Paragraph>
           </Space>
         )}
