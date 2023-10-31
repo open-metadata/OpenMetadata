@@ -71,9 +71,12 @@ jest.mock('react-router-dom', () => {
 jest.mock('../../../components/common/NextPrevious/NextPrevious', () => {
   return jest.fn().mockImplementation(() => <div>NextPrevious.component</div>);
 });
-jest.mock('../../../components/common/SearchBar/SearchBar.component', () => {
-  return jest.fn().mockImplementation(() => <div>Searchbar.component</div>);
-});
+jest.mock(
+  '../../../components/common/SearchBarComponent/SearchBar.component',
+  () => {
+    return jest.fn().mockImplementation(() => <div>Searchbar.component</div>);
+  }
+);
 jest.mock(
   '../../../components/ProfilerDashboard/component/DataQualityTab',
   () => {

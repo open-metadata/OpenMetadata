@@ -25,7 +25,7 @@ import {
 } from '../../../generated/tests/testDefinition';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import SchemaEditor from '../../SchemaEditor/SchemaEditor';
-import '../../TableProfiler/tableProfiler.less';
+import '../../TableProfiler/table-profiler.less';
 import { ParameterFormProps } from '../AddDataQualityTest.interface';
 
 const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {

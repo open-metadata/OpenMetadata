@@ -28,7 +28,7 @@ import { getNameFromFQN } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { replacePlus } from '../../utils/StringsUtils';
 import { getEntityFqnFromEntityLink } from '../../utils/TableUtils';
-import Searchbar from '../common/SearchBar/SearchBar.component';
+import Searchbar from '../common/SearchBarComponent/SearchBar.component';
 import { AddTestCaseModalProps } from './AddTestCaseList.interface';
 
 // Todo: need to help from backend guys for ES query

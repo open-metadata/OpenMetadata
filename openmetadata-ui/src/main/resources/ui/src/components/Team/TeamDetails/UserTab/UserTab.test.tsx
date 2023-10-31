@@ -51,9 +51,12 @@ jest.mock(
 jest.mock('../../../../components/common/NextPrevious/NextPrevious', () => {
   return jest.fn().mockImplementation(() => <div>NextPrevious</div>);
 });
-jest.mock('../../../../components/common/SearchBar/SearchBar.component', () => {
-  return jest.fn().mockImplementation(() => <div>Searchbar</div>);
-});
+jest.mock(
+  '../../../../components/common/SearchBarComponent/SearchBar.component',
+  () => {
+    return jest.fn().mockImplementation(() => <div>Searchbar</div>);
+  }
+);
 jest.mock('../../../../components/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader</div>);
 });

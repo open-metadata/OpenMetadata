@@ -64,12 +64,12 @@ import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import SchemaEditor from '../../SchemaEditor/SchemaEditor';
 import SliderWithInput from '../../SliderWithInput/SliderWithInput';
+import '../table-profiler.less';
 import {
   ProfilerForm,
   ProfilerSettingModalState,
   ProfilerSettingsModalProps,
 } from '../TableProfiler.interface';
-import '../tableProfiler.less';
 
 const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   tableId,

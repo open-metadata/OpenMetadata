@@ -50,7 +50,7 @@ import {
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import Loader from '../../Loader/Loader';
 import { TaskTab } from '../../Task/TaskTab/TaskTab.component';
-import '../../Widgets/FeedsWidget/FeedsWidget.less';
+import '../../Widgets/FeedsWidget/feeds-widget.less';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import ActivityFeedListV1 from '../ActivityFeedList/ActivityFeedListV1.component';
 import FeedPanelBodyV1 from '../ActivityFeedPanel/FeedPanelBodyV1';

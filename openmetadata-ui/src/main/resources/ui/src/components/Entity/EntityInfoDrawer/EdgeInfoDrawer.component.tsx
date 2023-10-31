@@ -27,11 +27,11 @@ import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { getEntityLink } from '../../../utils/TableUtils';
 import Loader from '../../Loader/Loader';
 import SchemaEditor from '../../SchemaEditor/SchemaEditor';
+import './entity-info-drawer.less';
 import {
   EdgeInfoDrawerInfo,
   EdgeInformationType,
 } from './EntityInfoDrawer.interface';
-import './EntityInfoDrawer.style.less';
 
 const EdgeInfoDrawer = ({
   edge,

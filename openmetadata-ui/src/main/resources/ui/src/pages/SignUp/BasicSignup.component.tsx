@@ -24,7 +24,7 @@ import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { passwordRegex } from '../../constants/regex.constants';
 import { AuthProvider } from '../../generated/settings/settings';
 import LoginCarousel from '../LoginPage/LoginCarousel';
-import './../login/login.style.less';
+import './../LoginPage/login.style.less';
 
 interface SignUpFormData {
   firstName: string;

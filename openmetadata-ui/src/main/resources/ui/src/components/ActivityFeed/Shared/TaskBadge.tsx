@@ -19,7 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconTaskClose } from '../../../assets/svg/complete.svg';
 import { ReactComponent as IconTaskOpen } from '../../../assets/svg/in-progress.svg';
 import { ThreadTaskStatus } from '../../../generated/entity/feed/thread';
-import './badge.less';
+import './task-badge.less';
 
 const TaskBadge = ({ status }: { status: ThreadTaskStatus }) => {
   const { t } = useTranslation();

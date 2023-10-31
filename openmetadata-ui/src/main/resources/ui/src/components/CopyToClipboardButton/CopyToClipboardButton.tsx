@@ -14,7 +14,7 @@
 import { Button, PopoverProps, Tooltip } from 'antd';
 import React, { FunctionComponent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CopyIcon } from '../../../assets/svg/icon-copy.svg';
+import { ReactComponent as CopyIcon } from '../../assets/svg/icon-copy.svg';
 import { useClipboard } from '../../hooks/useClipBoard';
 
 interface Props {

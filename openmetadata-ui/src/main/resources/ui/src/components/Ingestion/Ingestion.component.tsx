@@ -21,7 +21,7 @@ import ErrorPlaceHolderIngestion from '../../components/common/ErrorWithPlacehol
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { getEncodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import Searchbar from '../common/SearchBar/SearchBar.component';
+import Searchbar from '../common/SearchBarComponent/SearchBar.component';
 import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import {

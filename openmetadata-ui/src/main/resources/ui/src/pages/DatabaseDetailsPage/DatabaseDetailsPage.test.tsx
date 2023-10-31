@@ -250,9 +250,12 @@ jest.mock(
     return jest.fn().mockReturnValue(<p>ActivityThreadPanel</p>);
   }
 );
-jest.mock('../../components/common/SearchBar/SearchBar.component', () => {
-  return jest.fn().mockReturnValue(<p>Searchbar.component</p>);
-});
+jest.mock(
+  '../../components/common/SearchBarComponent/SearchBar.component',
+  () => {
+    return jest.fn().mockReturnValue(<p>Searchbar.component</p>);
+  }
+);
 
 jest.mock(
   '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component',

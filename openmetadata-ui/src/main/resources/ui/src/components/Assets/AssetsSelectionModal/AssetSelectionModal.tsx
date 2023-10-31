@@ -39,7 +39,7 @@ import {
   getEntityAPIfromSource,
 } from '../../../utils/Assets/AssetsUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Searchbar from '../../common/SearchBar/SearchBar.component';
+import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import TableDataCardV2 from '../../common/TableDataCardV2/TableDataCardV2';
 import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import Loader from '../../Loader/Loader';

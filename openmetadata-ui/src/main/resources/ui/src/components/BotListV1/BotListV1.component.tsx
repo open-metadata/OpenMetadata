@@ -40,7 +40,7 @@ import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewer from '../common/RichTextEditor/RichTextEditorPreviewer';
-import Searchbar from '../common/SearchBar/SearchBar.component';
+import Searchbar from '../common/SearchBarComponent/SearchBar.component';
 import PageHeader from '../PageHeader/PageHeader.component';
 import { BotListV1Props } from './BotListV1.interfaces';
 

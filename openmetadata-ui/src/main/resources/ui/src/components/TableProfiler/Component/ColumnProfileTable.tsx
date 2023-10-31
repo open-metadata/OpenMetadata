@@ -31,7 +31,7 @@ import { formatNumberWithComma } from '../../../utils/CommonUtils';
 import { updateTestResults } from '../../../utils/DataQualityAndProfilerUtils';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { getTableExpandableConfig } from '../../../utils/TableUtils';
-import Searchbar from '../../common/SearchBar/SearchBar.component';
+import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import TestIndicator from '../../common/TestIndicator/TestIndicator';
 import {
   ColumnProfileTableProps,

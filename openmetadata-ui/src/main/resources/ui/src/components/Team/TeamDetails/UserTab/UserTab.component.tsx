@@ -44,7 +44,7 @@ import { getSettingsPathWithFqn } from '../../../../utils/RouterUtils';
 import { commonUserDetailColumns } from '../../../../utils/Users.util';
 import ManageButton from '../../../common/EntityPageInfos/ManageButton/ManageButton';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
-import Searchbar from '../../../common/SearchBar/SearchBar.component';
+import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
 import { UserTabProps } from './UserTab.interface';
 
 export const UserTab = ({

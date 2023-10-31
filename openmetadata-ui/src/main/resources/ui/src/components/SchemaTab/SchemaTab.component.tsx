@@ -14,7 +14,7 @@
 import { t } from 'i18next';
 import { lowerCase } from 'lodash';
 import React, { Fragment, FunctionComponent, useState } from 'react';
-import Searchbar from '../common/SearchBar/SearchBar.component';
+import Searchbar from '../common/SearchBarComponent/SearchBar.component';
 import SchemaTable from '../SchemaTable/SchemaTable.component';
 import { Props } from './SchemaTab.interfaces';
 

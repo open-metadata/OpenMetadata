@@ -37,7 +37,7 @@ import { CustomPropertyTable } from '../../components/common/CustomPropertyTable
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
-import Searchbar from '../../components/common/SearchBar/SearchBar.component';
+import Searchbar from '../../components/common/SearchBarComponent/SearchBar.component';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import Loader from '../../components/Loader/Loader';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';

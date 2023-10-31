@@ -49,7 +49,7 @@ import {
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import Assignees from '../shared/Assignees';
 import TagSuggestion from '../shared/TagSuggestion';
-import '../TaskPage.style.less';
+import '../task-page.style.less';
 import { EntityData, Option } from '../TasksPage.interface';
 
 const RequestTag = () => {
