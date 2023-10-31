@@ -8,13 +8,13 @@ slug: /connectors/database/bigquery
 {% multiTablesWrapper %}
 
 | Feature            | Status                       |
-| :----------------- | :--------------------------- |
+| :----------------- |:-----------------------------|
 | Stage              | PROD                         |
 | Metadata           | {% icon iconName="check" /%} |
 | Query Usage        | {% icon iconName="check" /%} |
 | Data Profiler      | {% icon iconName="check" /%} |
 | Data Quality       | {% icon iconName="check" /%} |
-| Lineage            | {% icon iconName="check" /%} |
+| Stored Procedures            | {% icon iconName="check" /%} |
 | DBT                | {% icon iconName="check" /%} |
 | Supported Versions | --                           |
 
