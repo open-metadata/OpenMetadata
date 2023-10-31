@@ -216,36 +216,33 @@ const Users = ({
   );
 
   const descriptionRenderComponent = useMemo(
-    () => (
-      <div className="p-md">
-        {hasEditPermission ? (
-          <DescriptionV1
-            description={userData.description ?? ''}
-            entityName={getEntityName(userData as unknown as EntityReference)}
-            entityType={EntityType.USER}
-            hasEditAccess={hasEditPermission}
-            isEdit={isDescriptionEdit}
-            showCommentsIcon={false}
-            onCancel={() => setIsDescriptionEdit(false)}
-            onDescriptionEdit={() => setIsDescriptionEdit(true)}
-            onDescriptionUpdate={handleDescriptionChange}
-          />
-        ) : (
-          <Space direction="vertical" size="middle">
-            <Typography.Text className="right-panel-label">
-              {t('label.description')}
-            </Typography.Text>
-            <Typography.Paragraph className="m-b-0">
-              {isEmpty(userData.description)
-                ? t('label.no-entity', {
-                    entity: t('label.description'),
-                  })
-                : userData.description}
-            </Typography.Paragraph>
-          </Space>
-        )}
-      </div>
-    ),
+    () =>
+      hasEditPermission ? (
+        <DescriptionV1
+          description={userData.description ?? ''}
+          entityName={getEntityName(userData as unknown as EntityReference)}
+          entityType={EntityType.USER}
+          hasEditAccess={hasEditPermission}
+          isEdit={isDescriptionEdit}
+          showCommentsIcon={false}
+          onCancel={() => setIsDescriptionEdit(false)}
+          onDescriptionEdit={() => setIsDescriptionEdit(true)}
+          onDescriptionUpdate={handleDescriptionChange}
+        />
+      ) : (
+        <Space direction="vertical" size="middle">
+          <Typography.Text className="right-panel-label">
+            {t('label.description')}
+          </Typography.Text>
+          <Typography.Paragraph className="m-b-0">
+            {isEmpty(userData.description)
+              ? t('label.no-entity', {
+                  entity: t('label.description'),
+                })
+              : userData.description}
+          </Typography.Paragraph>
+        </Space>
+      ),
     [
       userData,
       isAdminUser,
@@ -289,8 +286,8 @@ const Users = ({
             collapsible="icon"
             header={userProfileCollapseHeader}
             key="1">
-            <Row>
-              <Col className="border-top p-y-lg" span={24}>
+            <Row className="border-top p-y-lg" gutter={[0, 24]}>
+              <Col span={24}>
                 <Row data-testid="user-profile-details">
                   <Col className="p-x-sm border-right" span={6}>
                     <UserProfileTeams
@@ -337,7 +334,7 @@ const Users = ({
                   </Col>
                 </Row>
               </Col>
-              <Col className="border-top p-b-sm" span={24}>
+              <Col className="border-top p-lg p-b-0" span={24}>
                 {descriptionRenderComponent}
               </Col>
             </Row>
