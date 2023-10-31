@@ -227,7 +227,7 @@ describe('Test User Component', () => {
       }
     );
 
-    const datasetContainer = await findByTestId(container, 'table-container');
+    const datasetContainer = await findByTestId(container, 'user-profile');
 
     expect(datasetContainer).toBeInTheDocument();
   });

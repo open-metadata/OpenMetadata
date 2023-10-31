@@ -126,7 +126,9 @@ const UserProfileDetails = ({
         <Space align="center">
           <Typography.Text
             className="font-medium text-md"
-            data-testid="user-name">
+            data-testid="user-name"
+            ellipsis={{ tooltip: true }}
+            style={{ maxWidth: '400px' }}>
             {hasEditPermission
               ? userData.displayName ||
                 t('label.add-entity', { entity: t('label.display-name') })
@@ -252,6 +254,7 @@ const UserProfileDetails = ({
   return (
     <>
       <Space
+        wrap
         className="w-full justify-between"
         data-testid="user-profile-details"
         size="middle">
