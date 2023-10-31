@@ -14,7 +14,7 @@ slug: /connectors/database/domo-database
 | Query Usage        | {% icon iconName="cross" /%} |
 | Data Profiler      | {% icon iconName="cross" /%} |
 | Data Quality       | {% icon iconName="cross" /%} |
-| Lineage            | {% icon iconName="cross" /%} |
+| Stored Procedures            | {% icon iconName="cross" /%} |
 | DBT                | {% icon iconName="cross" /%} |
 | Supported Versions | --                           |
 

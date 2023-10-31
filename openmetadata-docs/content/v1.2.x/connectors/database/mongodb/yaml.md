@@ -14,8 +14,8 @@ slug: /connectors/database/mongodb/yaml
 | Query Usage        | {% icon iconName="cross" /%} |
 | Data Profiler      | {% icon iconName="cross" /%} |
 | Data Quality       | {% icon iconName="cross" /%} |
-| Lineage            | {% icon iconName="cross" /%}          |
-| DBT                | {% icon iconName="cross" /%} |
+| Stored Procedures            | {% icon iconName="cross" /%} |
+| DBT                | {% icon iconName="check" /%} |
 | Supported Versions | --                           |
 
 | Feature      | Status                       |

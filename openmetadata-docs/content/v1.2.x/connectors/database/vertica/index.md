@@ -14,7 +14,7 @@ slug: /connectors/database/vertica
 | Query Usage        | {% icon iconName="check" /%} |
 | Data Profiler      | {% icon iconName="check" /%} |
 | Data Quality       | {% icon iconName="check" /%} |
-| Lineage            | {% icon iconName="check" /%} |
+| Stored Procedures            | {% icon iconName="cross" /%} |
 | DBT                | {% icon iconName="check" /%} |
 | Supported Versions | Vertica >= 9.2                    |
 

@@ -14,8 +14,8 @@ slug: /connectors/database/singlestore
 | Query Usage        | {% icon iconName="cross" /%} |
 | Data Profiler      | {% icon iconName="check" /%} |
 | Data Quality       | {% icon iconName="check" /%} |
-| Lineage            | Partially via Views          |
-| DBT                | {% icon iconName="cross" /%} |
+| Stored Procedures            | {% icon iconName="cross" /%} |
+| DBT                | {% icon iconName="check" /%} |
 | Supported Versions | --                           |
 
 | Feature      | Status                       |

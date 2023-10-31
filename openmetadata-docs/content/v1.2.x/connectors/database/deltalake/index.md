@@ -14,7 +14,7 @@ slug: /connectors/database/deltalake
 | Query Usage        | {% icon iconName="cross" /%} |
 | Data Profiler      | {% icon iconName="cross" /%} |
 | Data Quality       | {% icon iconName="cross" /%} |
-| Lineage            | Partially via Views          |
+| Stored Procedures            | {% icon iconName="cross" /%} |
 | DBT                | {% icon iconName="check" /%} |
 | Supported Versions | --                           |
 

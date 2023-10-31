@@ -14,7 +14,7 @@ slug: /connectors/database/sqlite/yaml
 | Query Usage        | {% icon iconName="check" /%} |
 | Data Profiler      | {% icon iconName="check" /%} |
 | Data Quality       | {% icon iconName="cross" /%} |
-| Lineage            | {% icon iconName="check" /%}          |
+| Stored Procedures            | {% icon iconName="cross" /%} |
 | DBT                | {% icon iconName="check" /%} |
 | Supported Versions | --                           |
 
