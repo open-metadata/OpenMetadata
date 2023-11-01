@@ -33,8 +33,8 @@ import { AppMarketPlaceDefinition } from '../../generated/entity/applications/ma
 import { Paging } from '../../generated/type/paging';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getMarketPlaceApplicationList } from '../../rest/applicationMarketPlaceAPI';
-import { showPagination } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
+import { showPagination } from '../../utils/Pagination/PaginationUtils';
 import {
   getMarketPlaceAppDetailsPath,
   getSettingPath,
@@ -153,7 +153,7 @@ const MarketPlacePage = () => {
           </div>
         </Col>
         <Col span={18}>
-          {showPagination(paging) && (
+          {showPagination(paging, pageSize) && (
             <NextPrevious
               currentPage={currentPage}
               pageSize={pageSize}

@@ -28,8 +28,8 @@ import {
   deployIngestionPipelineById,
   getIngestionPipelines,
 } from '../../../rest/ingestionPipelineAPI';
-import { showPagination } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { showPagination } from '../../../utils/Pagination/PaginationUtils';
 import { getEntityTypeFromServiceCategory } from '../../../utils/ServiceUtils';
 import { FilterIcon } from '../../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -289,7 +289,7 @@ export const IngestionPipelineList = ({
         />
       </Col>
       <Col span={24}>
-        {showPagination(paging) && (
+        {showPagination(paging, pageSize) && (
           <NextPrevious
             currentPage={currentPage}
             pageSize={pageSize}

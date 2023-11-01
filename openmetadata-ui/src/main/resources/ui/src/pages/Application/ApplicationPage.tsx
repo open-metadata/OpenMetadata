@@ -28,8 +28,8 @@ import { App } from '../../generated/entity/applications/app';
 import { Paging } from '../../generated/type/paging';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getApplicationList } from '../../rest/applicationAPI';
-import { showPagination } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
+import { showPagination } from '../../utils/Pagination/PaginationUtils';
 import { getApplicationDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -150,7 +150,7 @@ const ApplicationPage = () => {
               </div>
             </Col>
             <Col span={24}>
-              {showPagination(paging) && (
+              {showPagination(paging, pageSize) && (
                 <NextPrevious
                   currentPage={currentPage}
                   pageSize={pageSize}

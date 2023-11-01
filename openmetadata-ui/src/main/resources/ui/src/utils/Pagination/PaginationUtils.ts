@@ -10,19 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { isNil } from 'lodash';
+import { PAGE_SIZE_BASE } from '../../constants/constants';
+import { Paging } from '../../generated/type/paging';
 
-import { App } from '../../../generated/entity/applications/app';
-import { AppRunRecord } from '../../../generated/entity/applications/appRunRecord';
-
-export interface AppRunRecordWithId extends AppRunRecord {
-  id: string;
-}
-
-export interface AppRunsHistoryRef {
-  refreshAppHistory: () => void;
-}
-
-export interface AppRunsHistoryProps {
-  maxRecords?: number;
-  appData?: App;
-}
+/**
+ * Utility function to show pagination
+ * @param paging paging object
+ * @returns boolean
+ */
+export const showPagination = (paging: Paging, pageSize?: number) => {
+  return (
+    !isNil(paging.after) ||
+    !isNil(paging.before) ||
+    (pageSize && pageSize !== PAGE_SIZE_BASE)
+  );
+};

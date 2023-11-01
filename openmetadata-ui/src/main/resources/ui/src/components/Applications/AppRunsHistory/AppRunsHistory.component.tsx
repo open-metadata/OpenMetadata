@@ -43,6 +43,7 @@ import {
   formatDateTime,
   getEpochMillisForPastDays,
 } from '../../../utils/date-time/DateTimeUtils';
+import { showPagination } from '../../../utils/Pagination/PaginationUtils';
 import { getLogsViewerPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -58,10 +59,7 @@ import {
 } from './AppRunsHistory.interface';
 
 const AppRunsHistory = forwardRef(
-  (
-    { appData, maxRecords, showPagination = true }: AppRunsHistoryProps,
-    ref
-  ) => {
+  ({ appData, maxRecords }: AppRunsHistoryProps, ref) => {
     const { t } = useTranslation();
     const { fqn } = useParams<{ fqn: string }>();
     const [isLoading, setIsLoading] = useState(true);
@@ -270,7 +268,7 @@ const AppRunsHistory = forwardRef(
     }, [fqn]);
 
     return (
-      <Row>
+      <Row gutter={[16, 16]}>
         <Col span={24}>
           <Table
             bordered
@@ -292,18 +290,16 @@ const AppRunsHistory = forwardRef(
             size="small"
           />
         </Col>
-        <Col span={20}>
-          {paging.total > pageSize && showPagination && (
-            <div className="p-y-md">
-              <NextPrevious
-                isNumberBased
-                currentPage={currentPage}
-                pageSize={pageSize}
-                paging={paging}
-                pagingHandler={handleAppHistoryPageChange}
-                onShowSizeChange={handlePageSizeChange}
-              />
-            </div>
+        <Col span={24}>
+          {showPagination(paging, pageSize) && (
+            <NextPrevious
+              isNumberBased
+              currentPage={currentPage}
+              pageSize={pageSize}
+              paging={paging}
+              pagingHandler={handleAppHistoryPageChange}
+              onShowSizeChange={handlePageSizeChange}
+            />
           )}
         </Col>
       </Row>

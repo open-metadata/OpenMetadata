@@ -23,7 +23,7 @@ import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import Table from '../../components/common/Table/Table';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
-import { PAGE_SIZE_MEDIUM } from '../../constants/constants';
+import { PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM } from '../../constants/constants';
 import { ALERTS_DOCS } from '../../constants/docs.constants';
 import {
   GlobalSettingOptions,
@@ -35,10 +35,10 @@ import {
   EventSubscription,
   ProviderType,
 } from '../../generated/events/eventSubscription';
-import { Paging } from '../../generated/type/paging';
+import { usePaging } from '../../hooks/paging/usePaging';
 import { getAllAlerts } from '../../rest/alertsAPI';
-import { showPagination } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
+import { showPagination } from '../../utils/Pagination/PaginationUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -48,11 +48,15 @@ const AlertsPage = () => {
   const history = useHistory();
   const [loading, setLoading] = useState(true);
   const [alerts, setAlerts] = useState<EventSubscription[]>([]);
-  const [alertsPaging, setAlertsPaging] = useState<Paging>({
-    total: 0,
-  } as Paging);
-  const [currentPage, setCurrentPage] = useState(0);
   const [selectedAlert, setSelectedAlert] = useState<EventSubscription>();
+  const {
+    pageSize,
+    currentPage,
+    handlePageChange,
+    handlePageSizeChange,
+    handlePagingChange,
+    paging,
+  } = usePaging();
 
   const fetchAlerts = useCallback(async (after?: string) => {
     setLoading(true);
@@ -60,7 +64,7 @@ const AlertsPage = () => {
       const { data, paging } = await getAllAlerts({ after });
 
       setAlerts(data.filter((d) => d.provider !== ProviderType.System));
-      setAlertsPaging(paging);
+      handlePagingChange(paging);
     } catch (error) {
       showErrorToast(
         t('server.entity-fetch-error', { entity: t('label.alert-plural') })
@@ -87,7 +91,7 @@ const AlertsPage = () => {
     ({ cursorType, currentPage }: PagingHandlerParams) => {
       if (cursorType) {
         fetchAlerts(cursorType + '');
-        setCurrentPage(currentPage);
+        handlePageChange(currentPage);
       }
     },
     []
@@ -220,12 +224,13 @@ const AlertsPage = () => {
           />
         </Col>
         <Col span={24}>
-          {showPagination(alertsPaging) && (
+          {showPagination(paging) && pageSize !== PAGE_SIZE_BASE && (
             <NextPrevious
               currentPage={currentPage}
               pageSize={PAGE_SIZE_MEDIUM}
-              paging={alertsPaging}
+              paging={paging}
               pagingHandler={onPageChange}
+              onShowSizeChange={handlePageSizeChange}
             />
           )}
 

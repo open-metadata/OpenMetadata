@@ -28,7 +28,7 @@ import { Persona } from '../../../generated/entity/teams/persona';
 import { useAuth } from '../../../hooks/authHooks';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { getAllPersonas } from '../../../rest/PersonaAPI';
-import { showPagination } from '../../../utils/CommonUtils';
+import { showPagination } from '../../../utils/Pagination/PaginationUtils';
 
 export const PersonaPage = () => {
   const { isAdminUser } = useAuth();
@@ -134,7 +134,7 @@ export const PersonaPage = () => {
         </Col>
       ))}
 
-      {showPagination(paging) && (
+      {showPagination(paging, pageSize) && (
         <Col span={24}>
           <NextPrevious
             currentPage={currentPage}
