@@ -62,10 +62,8 @@ describe('Recently viwed data assets', () => {
         '/api/v1/feed?type=Announcement&activeAnnouncement=true',
         'getAnnouncements'
       );
-      interceptURL('GET', '/api/v1/users/*?fields=owns', 'ownerDetails');
 
       cy.clickOnLogo();
-      verifyResponseStatusCode('@ownerDetails', 200);
       verifyResponseStatusCode('@getAnnouncements', 200);
 
       // need to add manual wait as we are dependant on local storage for recently view data

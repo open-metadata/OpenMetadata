@@ -19,14 +19,52 @@ import {
   verifyResponseStatusCode,
   visitEntityDetailsPage,
 } from '../../common/common';
+import { createEntityTable, hardDeleteService } from '../../common/entityUtils';
 import {
   createAndUpdateDescriptionTask,
   editAssignee,
   verifyTaskDetails,
 } from '../../common/TaskUtils';
-import { SEARCH_ENTITY_TABLE } from '../../constants/constants';
+import { MYDATA_SUMMARY_OPTIONS } from '../../constants/constants';
+import { DATABASE_SERVICE } from '../../constants/entityConstant';
+import { SERVICE_CATEGORIES } from '../../constants/service.constants';
+
+const ENTITY_TABLE = {
+  term: DATABASE_SERVICE.tables,
+  displayName: DATABASE_SERVICE.tables,
+  entity: MYDATA_SUMMARY_OPTIONS.tables,
+  serviceName: DATABASE_SERVICE.service.name,
+  schemaName: DATABASE_SERVICE.schema.name,
+  entityType: 'Table',
+};
 
 describe('Task flow should work', () => {
+  before(() => {
+    cy.login();
+    cy.getAllLocalStorage().then((data) => {
+      const token = Object.values(data)[0].oidcIdToken;
+
+      createEntityTable({
+        token,
+        ...DATABASE_SERVICE,
+        tables: [DATABASE_SERVICE.tables],
+      });
+    });
+  });
+
+  after(() => {
+    cy.login();
+    cy.getAllLocalStorage().then((data) => {
+      const token = Object.values(data)[0].oidcIdToken;
+
+      hardDeleteService({
+        token,
+        serviceFqn: ENTITY_TABLE.serviceName,
+        serviceType: SERVICE_CATEGORIES.DATABASE_SERVICES,
+      });
+    });
+  });
+
   beforeEach(() => {
     cy.login();
     interceptURL('GET', '/api/v1/permissions/*/name/*', 'entityPermission');
@@ -103,10 +141,17 @@ describe('Task flow should work', () => {
   };
 
   it('Task flow for table description', () => {
-    const value = SEARCH_ENTITY_TABLE.table_1;
-    interceptURL('GET', `/api/v1/${value.entity}/name/*`, 'getEntityDetails');
+    interceptURL(
+      'GET',
+      `/api/v1/${ENTITY_TABLE.entity}/name/*`,
+      'getEntityDetails'
+    );
 
-    visitEntityDetailsPage(value.term, value.serviceName, value.entity);
+    visitEntityDetailsPage(
+      ENTITY_TABLE.term,
+      ENTITY_TABLE.serviceName,
+      ENTITY_TABLE.entity
+    );
 
     cy.get('[data-testid="request-description"]').click();
 
@@ -116,17 +161,24 @@ describe('Task flow should work', () => {
       // create description task
 
       createAndUpdateDescriptionTask({
-        ...value,
+        ...ENTITY_TABLE,
         term: entity.displayName ?? entity.name,
       });
     });
   });
 
   it('Task flow for table tags', () => {
-    const value = SEARCH_ENTITY_TABLE.table_1;
-    interceptURL('GET', `/api/v1/${value.entity}/name/*`, 'getEntityDetails');
+    interceptURL(
+      'GET',
+      `/api/v1/${ENTITY_TABLE.entity}/name/*`,
+      'getEntityDetails'
+    );
 
-    visitEntityDetailsPage(value.term, value.serviceName, value.entity);
+    visitEntityDetailsPage(
+      ENTITY_TABLE.term,
+      ENTITY_TABLE.serviceName,
+      ENTITY_TABLE.entity
+    );
 
     cy.get('[data-testid="request-entity-tags"]').click();
 
@@ -135,23 +187,10 @@ describe('Task flow should work', () => {
 
       // create tag task
       createTagTask({
-        ...value,
+        ...ENTITY_TABLE,
         term: entity.displayName ?? entity.name,
         tagCount: entity.tags.length ?? 0,
       });
     });
-  });
-
-  it('Cleanup', () => {
-    const value = SEARCH_ENTITY_TABLE.table_1;
-    interceptURL('GET', `/api/v1/${value.entity}/name/*`, 'getEntityDetails');
-
-    visitEntityDetailsPage(value.term, value.serviceName, value.entity);
-
-    cy.get(
-      '[data-testid="entity-right-panel"] [data-testid="tags-container"] [data-testid="edit-button"]'
-    ).click();
-    cy.get('[data-testid="remove-tags"]').click();
-    cy.get('[data-testid="saveAssociatedTag"]').click();
   });
 });
