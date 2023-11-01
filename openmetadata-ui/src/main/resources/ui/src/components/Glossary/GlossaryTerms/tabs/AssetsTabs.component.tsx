@@ -283,12 +283,29 @@ const AssetsTabs = forwardRef(
       ]
     );
 
+    const filteredAssetMenus = useMemo(() => {
+      switch (type) {
+        case AssetsOfEntity.DOMAIN:
+          return ASSET_SUB_MENU_FILTER.filter(
+            (item) => item.key !== EntityType.DOMAIN
+          );
+
+        case AssetsOfEntity.GLOSSARY:
+          return ASSET_SUB_MENU_FILTER.filter(
+            (item) => item.key !== EntityType.GOVERN
+          );
+
+        default:
+          return ASSET_SUB_MENU_FILTER;
+      }
+    }, [type]);
+
     const subMenuItems = useMemo(() => {
-      return ASSET_SUB_MENU_FILTER.map((option) => ({
+      return filteredAssetMenus.map((option) => ({
         ...getOptions(option),
         children: option.children.map((item) => getOptions(item, true)),
       }));
-    }, [itemCount, getOptions]);
+    }, [filteredAssetMenus, getOptions]);
 
     const searchIndexes = useMemo(() => {
       const indexesToFetch = [...ASSETS_INDEXES];
@@ -399,7 +416,7 @@ const AssetsTabs = forwardRef(
       fetchCountsByEntity();
 
       return () => {
-        onAssetClick && onAssetClick(undefined);
+        onAssetClick?.(undefined);
       };
     }, []);
 
@@ -580,7 +597,10 @@ const AssetsTabs = forwardRef(
 
     useImperativeHandle(ref, () => ({
       refreshAssets() {
-        fetchAssets({});
+        fetchAssets({
+          index: isEmpty(activeFilter) ? [SearchIndex.ALL] : activeFilter,
+          page: currentPage,
+        });
         fetchCountsByEntity();
       },
       closeSummaryPanel() {

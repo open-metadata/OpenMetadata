@@ -17,7 +17,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { getGlossaryTermDetailsPath } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
-import { myDataSearchIndex } from '../../../constants/Mydata.constants';
+import { MY_DATA_SEARCH_Index } from '../../../constants/Mydata.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import {
   GlossaryTerm,
@@ -238,7 +238,7 @@ const GlossaryTermsV1 = ({
           `(tags.tagFQN:"${glossaryFqn}")`,
           '',
           '',
-          myDataSearchIndex
+          MY_DATA_SEARCH_Index
         );
 
         setAssetCount(res.data.hits.total.value ?? 0);

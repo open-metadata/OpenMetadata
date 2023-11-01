@@ -29,13 +29,13 @@ import {
 } from '../../components/PermissionProvider/PermissionProvider.interface';
 import { TeamsPageTab } from '../../components/Team/TeamDetails/team.interface';
 import TeamDetailsV1 from '../../components/Team/TeamDetails/TeamDetailsV1';
-import { ASSETS_INDEXES } from '../../constants/Assets.constants';
 import { HTTP_STATUS_CODE } from '../../constants/auth.constants';
 import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_BASE,
   pagingObject,
 } from '../../constants/constants';
+import { MY_DATA_SEARCH_Index } from '../../constants/Mydata.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { CreateTeam, TeamType } from '../../generated/api/teams/createTeam';
@@ -270,7 +270,7 @@ const TeamsPage = () => {
           `owner.id:${selectedTeam.id}`,
           '',
           '',
-          ASSETS_INDEXES
+          MY_DATA_SEARCH_Index
         );
         const total = res?.data?.hits?.total.value ?? 0;
         setAssets(total);

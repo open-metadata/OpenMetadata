@@ -370,9 +370,11 @@ const AppDetails = () => {
                 <Button
                   className="glossary-manage-dropdown-button p-x-xs"
                   data-testid="manage-button"
-                  onClick={() => setShowActions(true)}>
-                  <IconDropdown className="anticon self-center manage-dropdown-icon" />
-                </Button>
+                  icon={
+                    <IconDropdown className="vertical-align-inherit manage-dropdown-icon" />
+                  }
+                  onClick={() => setShowActions(true)}
+                />
               </Tooltip>
             </Dropdown>
           </div>

@@ -27,7 +27,7 @@ import {
   NO_DATA_PLACEHOLDER,
   ROUTES,
 } from '../../constants/constants';
-import { myDataSearchIndex } from '../../constants/Mydata.constants';
+import { MY_DATA_SEARCH_Index } from '../../constants/Mydata.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { EntityReference } from '../../generated/entity/type';
 import { useAuth } from '../../hooks/authHooks';
@@ -81,7 +81,15 @@ const Users = ({
 
   const fetchAssetsCount = async (query: string) => {
     try {
-      const res = await searchData('', 1, 0, query, '', '', myDataSearchIndex);
+      const res = await searchData(
+        '',
+        1,
+        0,
+        query,
+        '',
+        '',
+        MY_DATA_SEARCH_Index
+      );
 
       setAssetCount(res.data.hits.total.value ?? 0);
     } catch (error) {
