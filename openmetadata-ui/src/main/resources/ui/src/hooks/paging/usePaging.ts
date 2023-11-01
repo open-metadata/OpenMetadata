@@ -11,13 +11,17 @@
  *  limitations under the License.
  */
 import { useState } from 'react';
-import { PAGE_SIZE_BASE, pagingObject } from '../../constants/constants';
+import {
+  INITIAL_PAGING_VALUE,
+  PAGE_SIZE_BASE,
+  pagingObject,
+} from '../../constants/constants';
 import { Paging } from '../../generated/type/paging';
 
-export const usePaging = () => {
+export const usePaging = (defaultPageSize = PAGE_SIZE_BASE) => {
   const [paging, setPaging] = useState<Paging>(pagingObject);
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  const [pageSize, setPageSize] = useState(PAGE_SIZE_BASE);
+  const [currentPage, setCurrentPage] = useState<number>(INITIAL_PAGING_VALUE);
+  const [pageSize, setPageSize] = useState(defaultPageSize);
 
   return {
     paging,

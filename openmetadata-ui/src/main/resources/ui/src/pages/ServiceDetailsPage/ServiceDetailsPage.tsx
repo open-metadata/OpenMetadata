@@ -818,13 +818,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
           </Row>
         </Col>
 
-        <DataModelTable
-          currentPage={dataModelCurrentPage}
-          data={dataModel}
-          isLoading={isServiceLoading}
-          paging={dataModelPaging}
-          pagingHandler={dataModelPagingHandler}
-        />
+        <DataModelTable />
       </Row>
     ),
     [

@@ -56,6 +56,7 @@ import {
   getEntityVersionByField,
   getMutuallyExclusiveDiff,
 } from '../../utils/EntityVersionUtils';
+import { showPagination } from '../../utils/Pagination/PaginationUtils';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import {
   getClassificationDetailsPath,
@@ -546,7 +547,7 @@ function ClassificationDetails({
           size="small"
         />
 
-        {paging.total > PAGE_SIZE && (
+        {showPagination(paging, pageSize) && (
           <NextPrevious
             currentPage={currentPage}
             pageSize={pageSize}

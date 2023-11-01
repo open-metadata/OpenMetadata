@@ -11,26 +11,46 @@
  *  limitations under the License.
  */
 
+import { Button, Col, Modal, Row, Space, Switch, Table, Tooltip } from 'antd';
+import { ColumnsType } from 'antd/lib/table';
+import { data } from 'autoprefixer';
 import { AxiosError } from 'axios';
-import React, { useEffect, useState } from 'react';
+import { isEmpty } from 'lodash';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
+import { ReactComponent as IconRestore } from '../../assets/svg/ic-restore.svg';
+import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import FilterTablePlaceHolder from '../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
+import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
-import UserListV1 from '../../components/UserList/UserListV1';
+import Searchbar from '../../components/common/SearchBarComponent/SearchBar.component';
+import PageHeader from '../../components/PageHeader/PageHeader.component';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_BASE,
   pagingObject,
+  ROUTES,
 } from '../../constants/constants';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
+import { ADMIN_ONLY_ACTION } from '../../constants/HelperTextUtil';
+import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { SearchIndex } from '../../enums/search.enum';
+import { CreateUser } from '../../generated/api/teams/createUser';
 import { User } from '../../generated/entity/teams/user';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
+import { useAuth } from '../../hooks/authHooks';
 import { searchData } from '../../rest/miscAPI';
-import { getUsers, UsersQueryParams } from '../../rest/userAPI';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { getUsers, updateUser, UsersQueryParams } from '../../rest/userAPI';
+import { getEntityName } from '../../utils/EntityUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { commonUserDetailColumns } from '../../utils/Users.util';
+import './user-list-page-v1.less';
 
 const teamsAndUsers = [GlobalSettingOptions.USERS, GlobalSettingOptions.ADMINS];
 
@@ -39,6 +59,7 @@ const UserListPageV1 = () => {
   const { tab } = useParams<{ [key: string]: GlobalSettingOptions }>();
   const history = useHistory();
   const location = useLocation();
+  const { isAdminUser } = useAuth();
   const [isAdminPage, setIsAdminPage] = useState<boolean | undefined>(
     tab === GlobalSettingOptions.ADMINS || undefined
   );
@@ -213,20 +234,245 @@ const UserListPageV1 = () => {
     }
   }, [tab]);
 
+  const [selectedUser, setSelectedUser] = useState<User>();
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showReactiveModal, setShowReactiveModal] = useState(false);
+  const showRestore = showDeletedUser && !isDataLoading;
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleAddNewUser = () => {
+    history.push(ROUTES.CREATE_USER);
+  };
+
+  const handleReactiveUser = async () => {
+    if (!selectedUser) {
+      return;
+    }
+    setIsLoading(true);
+    const updatedUserData: CreateUser = {
+      description: selectedUser.description,
+      displayName: selectedUser.displayName,
+      email: selectedUser.email,
+      isAdmin: selectedUser.isAdmin,
+      name: selectedUser.name,
+      profile: selectedUser.profile,
+      roles: selectedUser.roles?.map((role) => role.id),
+      teams: selectedUser.teams?.map((team) => team.id),
+    };
+
+    try {
+      const { data } = await updateUser(updatedUserData);
+      if (data) {
+        handleSearch('');
+        showSuccessToast(
+          t('message.entity-restored-success', { entity: t('label.user') })
+        );
+        setShowReactiveModal(false);
+      } else {
+        throw t('server.entity-updating-error', { entity: t('label.user') });
+      }
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-updating-error', { entity: t('label.user') })
+      );
+    } finally {
+      setIsLoading(false);
+    }
+    setSelectedUser(undefined);
+  };
+
+  const columns: ColumnsType<User> = useMemo(() => {
+    return [
+      ...commonUserDetailColumns(),
+      {
+        title: t('label.action-plural'),
+        dataIndex: 'actions',
+        key: 'actions',
+        width: 90,
+        render: (_, record) => (
+          <Space
+            align="center"
+            className="w-full justify-center action-icons"
+            size={8}>
+            {showRestore && (
+              <Tooltip placement="bottom" title={t('label.restore')}>
+                <Button
+                  data-testid={`restore-user-btn-${record.name}`}
+                  icon={<IconRestore name={t('label.restore')} width="16px" />}
+                  type="text"
+                  onClick={() => {
+                    setSelectedUser(record);
+                    setShowReactiveModal(true);
+                  }}
+                />
+              </Tooltip>
+            )}
+            <Tooltip placement="left" title={!isAdminUser && ADMIN_ONLY_ACTION}>
+              <Button
+                disabled={!isAdminUser}
+                icon={
+                  <IconDelete
+                    data-testid={`delete-user-btn-${
+                      record.displayName || record.name
+                    }`}
+                    name={t('label.delete')}
+                    width="16px"
+                  />
+                }
+                size="small"
+                type="text"
+                onClick={() => {
+                  setSelectedUser(record);
+                  setShowDeleteModal(true);
+                }}
+              />
+            </Tooltip>
+          </Space>
+        ),
+      },
+    ];
+  }, [showRestore]);
+
+  const errorPlaceHolder = useMemo(
+    () => (
+      <Row>
+        <Col className="w-full d-flex justify-end">
+          <span>
+            <Switch
+              checked={showDeletedUser}
+              data-testid="show-deleted"
+              onClick={handleShowDeletedUserChange}
+            />
+            <span className="m-l-xs">{t('label.deleted')}</span>
+          </span>
+        </Col>
+        <Col className="mt-24" span={24}>
+          <ErrorPlaceHolder
+            heading={t('label.user')}
+            permission={isAdminUser}
+            type={ERROR_PLACEHOLDER_TYPE.CREATE}
+            onClick={handleAddNewUser}
+          />
+        </Col>
+      </Row>
+    ),
+    [isAdminUser, showDeletedUser]
+  );
+
+  if (isEmpty(data) && !showDeletedUser && !isDataLoading && !searchValue) {
+    return errorPlaceHolder;
+  }
+
   return (
-    <UserListV1
-      afterDeleteAction={() => handleSearch('')}
-      currentPage={currentPage}
-      data={userList}
-      isAdminPage={isAdminPage}
-      isDataLoading={isDataLoading}
-      paging={paging}
-      searchTerm={searchValue}
-      showDeletedUser={showDeletedUser}
-      onPagingChange={handlePagingChange}
-      onSearch={handleSearch}
-      onShowDeletedUserChange={handleShowDeletedUserChange}
-    />
+    <Row
+      className="user-listing p-b-md"
+      data-testid="user-list-v1-component"
+      gutter={[16, 16]}>
+      <Col span={12}>
+        <PageHeader
+          data={isAdminPage ? PAGE_HEADERS.ADMIN : PAGE_HEADERS.USERS}
+        />
+      </Col>
+      <Col span={12}>
+        <Space align="center" className="w-full justify-end" size={16}>
+          <span>
+            <Switch
+              checked={showDeletedUser}
+              data-testid="show-deleted"
+              onClick={handleShowDeletedUserChange}
+            />
+            <span className="m-l-xs">{t('label.deleted')}</span>
+          </span>
+
+          {isAdminUser && (
+            <Button
+              data-testid="add-user"
+              type="primary"
+              onClick={handleAddNewUser}>
+              {t('label.add-entity', { entity: t('label.user') })}
+            </Button>
+          )}
+        </Space>
+      </Col>
+      <Col span={8}>
+        <Searchbar
+          removeMargin
+          placeholder={`${t('label.search-for-type', {
+            type: t('label.user'),
+          })}...`}
+          searchValue={searchValue}
+          typingInterval={500}
+          onSearch={handleSearch}
+        />
+      </Col>
+
+      <Col span={24}>
+        <Table
+          bordered
+          className="user-list-table"
+          columns={columns}
+          data-testid="user-list-table"
+          dataSource={userList}
+          loading={isDataLoading}
+          locale={{
+            emptyText: <FilterTablePlaceHolder />,
+          }}
+          pagination={false}
+          rowKey="id"
+          size="small"
+        />
+      </Col>
+      <Col span={24}>
+        {paging.total > PAGE_SIZE_BASE && (
+          <NextPrevious
+            currentPage={currentPage}
+            isNumberBased={Boolean(searchValue)}
+            pageSize={PAGE_SIZE_BASE}
+            paging={paging}
+            pagingHandler={handlePagingChange}
+          />
+        )}
+      </Col>
+
+      <Modal
+        cancelButtonProps={{
+          type: 'link',
+        }}
+        className="reactive-modal"
+        closable={false}
+        confirmLoading={isLoading}
+        maskClosable={false}
+        okText={t('label.restore')}
+        open={showReactiveModal}
+        title={t('label.restore-entity', {
+          entity: t('label.user'),
+        })}
+        onCancel={() => {
+          setShowReactiveModal(false);
+          setSelectedUser(undefined);
+        }}
+        onOk={handleReactiveUser}>
+        <p>
+          {t('message.are-you-want-to-restore', {
+            entity: getEntityName(selectedUser),
+          })}
+        </p>
+      </Modal>
+
+      <DeleteWidgetModal
+        afterDeleteAction={() => handleSearch('')}
+        allowSoftDelete={!showDeletedUser}
+        entityId={selectedUser?.id || ''}
+        entityName={selectedUser?.name || ''}
+        entityType="user"
+        visible={showDeleteModal}
+        onCancel={() => {
+          setShowDeleteModal(false);
+          setSelectedUser(undefined);
+        }}
+      />
+    </Row>
   );
 };
 

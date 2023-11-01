@@ -67,11 +67,6 @@ import {
 } from '../../../generated/entity/teams/user';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { useAuth } from '../../../hooks/authHooks';
-import {
-  AddAttribute,
-  PlaceholderProps,
-  TeamDetailsProp,
-} from '../../../interface/teamsAndUsers.interface';
 import AddAttributeModal from '../../../pages/RolesPage/AddAttributeModal/AddAttributeModal';
 import { ImportType } from '../../../pages/TeamsPage/ImportTeamsPage/ImportTeamsPage.interface';
 import { getSuggestions } from '../../../rest/miscAPI';
@@ -102,6 +97,11 @@ import { ResourceEntity } from '../../PermissionProvider/PermissionProvider.inte
 import TabsLabel from '../../TabsLabel/TabsLabel.component';
 import ListEntities from './RolesAndPoliciesList';
 import { TeamsPageTab } from './team.interface';
+import {
+  AddAttribute,
+  PlaceholderProps,
+  TeamDetailsProp,
+} from './TeamDetailsV1.interface';
 import { getTabs } from './TeamDetailsV1.utils';
 import TeamHierarchy from './TeamHierarchy';
 import './teams.less';
@@ -112,10 +112,6 @@ import { UserTab } from './UserTab/UserTab.component';
 const TeamDetailsV1 = ({
   assetsCount,
   currentTeam,
-  currentTeamUsers,
-  teamUserPaging,
-  currentTeamUserPage,
-  teamUsersSearchText,
   isDescriptionEditable,
   isTeamMemberLoading,
   childTeams,
@@ -126,9 +122,6 @@ const TeamDetailsV1 = ({
   descriptionHandler,
   showDeletedTeam,
   onShowDeletedTeamChange,
-  handleTeamUsersSearchAction,
-  handleCurrentUserPage,
-  teamUserPagingHandler,
   handleJoinTeamClick,
   handleLeaveTeamClick,
   handleAddUser,
@@ -443,10 +436,6 @@ const TeamDetailsV1 = ({
     setSearchTerm('');
   }, [childTeams, showDeletedTeam]);
 
-  useEffect(() => {
-    handleCurrentUserPage();
-  }, []);
-
   const removeUserBodyText = (leave: boolean) => {
     const text = leave
       ? t('message.leave-the-team-team-name', {
@@ -665,31 +654,18 @@ const TeamDetailsV1 = ({
   const userTabRender = useMemo(
     () => (
       <UserTab
-        currentPage={currentTeamUserPage}
         currentTeam={currentTeam}
-        isLoading={isTeamMemberLoading}
-        paging={teamUserPaging}
         permission={entityPermissions}
-        searchText={teamUsersSearchText}
-        users={currentTeamUsers}
         onAddUser={handleAddUser}
-        onChangePaging={teamUserPagingHandler}
         onRemoveUser={removeUserFromTeam}
-        onSearchUsers={handleTeamUsersSearchAction}
       />
     ),
     [
-      currentTeamUserPage,
       currentTeam,
       isTeamMemberLoading,
-      teamUserPaging,
       entityPermissions,
-      teamUsersSearchText,
-      currentTeamUsers,
       handleAddUser,
-      teamUserPagingHandler,
       removeUserFromTeam,
-      handleTeamUsersSearchAction,
     ]
   );
 
@@ -1004,7 +980,6 @@ const TeamDetailsV1 = ({
       })),
     [
       currentTeam,
-      teamUserPaging,
       searchTerm,
       teamCount,
       currentTab,

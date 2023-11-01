@@ -14,23 +14,18 @@ import { Button, Col, Row } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isString } from 'lodash';
-import { PagingResponse } from 'Models';
 import QueryString from 'qs';
 import React, { ReactNode, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
-import {
-  getTableTabPath,
-  INITIAL_PAGING_VALUE,
-  PAGE_SIZE,
-  ROUTES,
-} from '../../../constants/constants';
+import { getTableTabPath, ROUTES } from '../../../constants/constants';
 import { PROGRESS_BAR_COLOR } from '../../../constants/TestSuite.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs } from '../../../enums/entity.enum';
 import { TestSummary } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/entity/type';
 import { TestSuite } from '../../../generated/tests/testCase';
+import { usePaging } from '../../../hooks/paging/usePaging';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import {
   getListTestSuites,
@@ -38,6 +33,7 @@ import {
   TestSuiteType,
 } from '../../../rest/testAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { showPagination } from '../../../utils/Pagination/PaginationUtils';
 import { getTestSuitePath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -57,12 +53,15 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
 
   const { permissions } = usePermissionProvider();
   const { testSuite: testSuitePermission } = permissions;
-
-  const [testSuites, setTestSuites] = useState<PagingResponse<TestSuite[]>>({
-    data: [],
-    paging: { total: 0 },
-  });
-  const [currentPage, setCurrentPage] = useState(INITIAL_PAGING_VALUE);
+  const [testSuites, setTestSuites] = useState<TestSuite[]>([]);
+  const {
+    currentPage,
+    pageSize,
+    paging,
+    handlePageChange,
+    handlePageSizeChange,
+    handlePagingChange,
+  } = usePaging();
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
@@ -143,7 +142,8 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
             ? TestSuiteType.executable
             : TestSuiteType.logical,
       });
-      setTestSuites(result);
+      setTestSuites(result.data);
+      handlePagingChange(result.paging);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -151,15 +151,14 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
     }
   };
 
-  const handlePageChange = ({
+  const handleTestSuitesPageChange = ({
     cursorType,
     currentPage,
   }: PagingHandlerParams) => {
-    const { paging } = testSuites;
     if (isString(cursorType)) {
       fetchTestSuites({ [cursorType]: paging?.[cursorType] });
     }
-    setCurrentPage(currentPage);
+    handlePageChange(currentPage);
   };
 
   useEffect(() => {
@@ -202,7 +201,7 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
           bordered
           columns={columns}
           data-testid="test-suite-table"
-          dataSource={testSuites.data}
+          dataSource={testSuites}
           loading={isLoading}
           locale={{
             emptyText: <FilterTablePlaceHolder />,
@@ -212,12 +211,13 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
         />
       </Col>
       <Col span={24}>
-        {testSuites.paging.total > PAGE_SIZE && (
+        {showPagination(paging, pageSize) && (
           <NextPrevious
             currentPage={currentPage}
-            pageSize={PAGE_SIZE}
-            paging={testSuites.paging}
-            pagingHandler={handlePageChange}
+            pageSize={pageSize}
+            paging={paging}
+            pagingHandler={handleTestSuitesPageChange}
+            onShowSizeChange={handlePageSizeChange}
           />
         )}
       </Col>

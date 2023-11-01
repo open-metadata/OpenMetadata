@@ -28,11 +28,7 @@ import Table from '../../../components/common/Table/Table';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../components/PermissionProvider/PermissionProvider.interface';
-import {
-  INITIAL_PAGING_VALUE,
-  PAGE_SIZE_MEDIUM,
-  ROUTES,
-} from '../../../constants/constants';
+import { ROUTES } from '../../../constants/constants';
 import {
   NO_PERMISSION_FOR_ACTION,
   NO_PERMISSION_TO_VIEW,
@@ -42,8 +38,10 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { Operation, Policy } from '../../../generated/entity/policies/policy';
 import { Paging } from '../../../generated/type/paging';
+import { usePaging } from '../../../hooks/paging/usePaging';
 import { getPolicies } from '../../../rest/rolesAPIV1';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { showPagination } from '../../../utils/Pagination/PaginationUtils';
 import {
   checkPermission,
   LIST_CAP,
@@ -62,8 +60,15 @@ const PoliciesListPage = () => {
   const [selectedPolicy, setSelectedPolicy] = useState<Policy>();
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [paging, setPaging] = useState<Paging>();
-  const [currentPage, setCurrentPage] = useState<number>(INITIAL_PAGING_VALUE);
+  const {
+    currentPage,
+    handlePageChange,
+    paging,
+    handlePagingChange,
+    pageSize,
+    handlePageSizeChange,
+  } = usePaging();
+
   const { permissions } = usePermissionProvider();
 
   const addPolicyPermission = useMemo(() => {
@@ -209,11 +214,11 @@ const PoliciesListPage = () => {
         'roles',
         paging?.after,
         paging?.before,
-        PAGE_SIZE_MEDIUM
+        pageSize
       );
 
       setPolicies(data.data || []);
-      setPaging(data.paging);
+      handlePagingChange(data.paging);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -228,7 +233,7 @@ const PoliciesListPage = () => {
   };
 
   const handlePaging = ({ currentPage, cursorType }: PagingHandlerParams) => {
-    setCurrentPage(currentPage);
+    handlePageChange(currentPage);
     if (cursorType && paging) {
       fetchPolicies({
         [cursorType]: paging[cursorType],
@@ -239,7 +244,7 @@ const PoliciesListPage = () => {
 
   useEffect(() => {
     fetchPolicies();
-  }, []);
+  }, [pageSize]);
 
   return (
     <Row
@@ -298,12 +303,13 @@ const PoliciesListPage = () => {
         )}
       </Col>
       <Col span={24}>
-        {paging && paging.total > PAGE_SIZE_MEDIUM && (
+        {showPagination(paging, pageSize) && (
           <NextPrevious
             currentPage={currentPage}
-            pageSize={PAGE_SIZE_MEDIUM}
+            pageSize={pageSize}
             paging={paging}
             pagingHandler={handlePaging}
+            onShowSizeChange={handlePageSizeChange}
           />
         )}
       </Col>

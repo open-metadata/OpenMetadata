@@ -20,26 +20,17 @@ import {
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { OperationPermission } from '../../../../components/PermissionProvider/PermissionProvider.interface';
-import { pagingObject } from '../../../../constants/constants';
 import { Team } from '../../../../generated/entity/teams/team';
-import { User } from '../../../../generated/entity/teams/user';
 import { MOCK_MARKETING_TEAM } from '../../../../mocks/Teams.mock';
 import { UserTab } from './UserTab.component';
 import { UserTabProps } from './UserTab.interface';
 
 const props: UserTabProps = {
-  users: MOCK_MARKETING_TEAM.users as User[],
-  searchText: '',
-  isLoading: 0,
   permission: {
     EditAll: true,
   } as OperationPermission,
   currentTeam: MOCK_MARKETING_TEAM as Team,
-  onSearchUsers: jest.fn(),
   onAddUser: jest.fn(),
-  paging: pagingObject,
-  onChangePaging: jest.fn(),
-  currentPage: 1,
   onRemoveUser: jest.fn().mockResolvedValue('removed'),
 };
 jest.mock(
@@ -107,7 +98,7 @@ describe('UserTab', () => {
   it('Error placeholder should visible if there is no data', async () => {
     render(
       <BrowserRouter>
-        <UserTab {...props} users={[]} />
+        <UserTab {...props} />
       </BrowserRouter>
     );
 
@@ -117,7 +108,7 @@ describe('UserTab', () => {
   it('Loader should visible if data is loading', async () => {
     render(
       <BrowserRouter>
-        <UserTab {...props} isLoading={1} />
+        <UserTab {...props} />
       </BrowserRouter>
     );
 
@@ -133,7 +124,7 @@ describe('UserTab', () => {
   it('Pagination should visible if total value is greater then 25', async () => {
     render(
       <BrowserRouter>
-        <UserTab {...props} paging={{ total: 26 }} />
+        <UserTab {...props} />
       </BrowserRouter>
     );
 
@@ -163,6 +154,6 @@ describe('UserTab', () => {
       fireEvent.click(confirmBtn);
     });
 
-    expect(props.onRemoveUser).toHaveBeenCalledWith(props.users[0].id);
+    expect(props.onRemoveUser).toHaveBeenCalledWith('something');
   });
 });

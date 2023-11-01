@@ -14,14 +14,15 @@
 import { Space, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import cronstrue from 'cronstrue';
-import { isNil } from 'lodash';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import Table from '../../components/common/Table/Table';
 import { PAGE_SIZE } from '../../constants/constants';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { usePaging } from '../../hooks/paging/usePaging';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getErrorPlaceHolder } from '../../utils/IngestionUtils';
+import { showPagination } from '../../utils/Pagination/PaginationUtils';
 import NextPrevious from '../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../common/NextPrevious/NextPrevious.interface';
 import { IngestionListTableProps } from './IngestionListTable.interface';
@@ -48,7 +49,9 @@ function IngestionListTable({
   isLoading = false,
 }: IngestionListTableProps) {
   const { t } = useTranslation();
-  const [ingestionCurrentPage, setIngestionCurrentPage] = useState(1);
+
+  const { currentPage, pageSize, handlePageChange, handlePageSizeChange } =
+    usePaging(PAGE_SIZE);
 
   const ingestionPagingHandler = ({
     cursorType,
@@ -58,7 +61,7 @@ function IngestionListTable({
       const pagingString = `&${cursorType}=${paging[cursorType]}`;
 
       onIngestionWorkflowsUpdate(pagingString);
-      setIngestionCurrentPage(currentPage);
+      handlePageChange(currentPage);
     }
   };
 
@@ -175,13 +178,6 @@ function IngestionListTable({
     ]
   );
 
-  const showNextPrevious = useMemo(
-    () =>
-      Boolean(!isNil(paging.after) || !isNil(paging.before)) &&
-      paging.total > PAGE_SIZE,
-    [paging]
-  );
-
   return (
     <Space
       className="m-b-md w-full"
@@ -206,12 +202,13 @@ function IngestionListTable({
         size="small"
       />
 
-      {showNextPrevious && (
+      {showPagination(paging, pageSize) && (
         <NextPrevious
-          currentPage={ingestionCurrentPage}
-          pageSize={PAGE_SIZE}
+          currentPage={currentPage}
+          pageSize={pageSize}
           paging={paging}
           pagingHandler={ingestionPagingHandler}
+          onShowSizeChange={handlePageSizeChange}
         />
       )}
     </Space>
