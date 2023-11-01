@@ -36,6 +36,7 @@ import { UserProfileRolesProps } from './UserProfileRoles.interface';
 const UserProfileRoles = ({
   userRoles,
   updateUserDetails,
+  isUserAdmin,
 }: UserProfileRolesProps) => {
   const { t } = useTranslation();
 
@@ -52,7 +53,7 @@ const UserProfileRoles = ({
       value: role.id,
     }));
 
-    if (!isAdminUser) {
+    if (!isUserAdmin) {
       options.push({
         label: TERM_ADMIN,
         value: toLower(TERM_ADMIN),
@@ -60,7 +61,7 @@ const UserProfileRoles = ({
     }
 
     return options;
-  }, [roles, isAdminUser, getEntityName]);
+  }, [roles, isUserAdmin, getEntityName]);
 
   const fetchRoles = async () => {
     setIsRolesLoading(true);
@@ -111,27 +112,27 @@ const UserProfileRoles = ({
     () => (
       <Chip
         data={[
-          ...(isAdminUser
+          ...(isUserAdmin
             ? [{ id: 'admin', type: 'role', name: TERM_ADMIN }]
             : []),
           ...(userRoles ?? []),
         ]}
         icon={<UserIcons height={20} />}
         noDataPlaceholder={t('message.no-roles-assigned')}
-        showNoDataPlaceholder={!isAdminUser}
+        showNoDataPlaceholder={!isUserAdmin}
       />
     ),
-    [userRoles, isAdminUser]
+    [userRoles, isUserAdmin]
   );
 
   useEffect(() => {
     const defaultUserRoles = [
       ...(userRoles?.map((role) => role.id) ?? []),
-      ...(isAdminUser ? [toLower(TERM_ADMIN)] : []),
+      ...(isUserAdmin ? [toLower(TERM_ADMIN)] : []),
     ];
 
     setSelectedRoles(defaultUserRoles);
-  }, [isAdminUser, userRoles]);
+  }, [isUserAdmin, userRoles]);
 
   useEffect(() => {
     if (isRolesEdit && isEmpty(roles)) {
