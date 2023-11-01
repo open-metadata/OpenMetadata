@@ -69,6 +69,8 @@ export const AssetSelectionModal = ({
   const [pageNumber, setPageNumber] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
 
+  const [isSaveLoading, setIsSaveLoading] = useState<boolean>(false);
+
   const fetchEntities = useCallback(
     async ({ searchText = '', page = 1, index = activeFilter }) => {
       try {
@@ -109,9 +111,14 @@ export const AssetSelectionModal = ({
   useEffect(() => {
     if (open) {
       fetchEntities({ index: activeFilter, searchText: search });
-      fetchCurrentEntity();
     }
   }, [open, activeFilter, search, type]);
+
+  useEffect(() => {
+    if (open) {
+      fetchCurrentEntity();
+    }
+  }, [open, fetchCurrentEntity]);
 
   const handleCardClick = (
     details: SearchedDataProps['data'][number]['_source']
@@ -179,7 +186,7 @@ export const AssetSelectionModal = ({
   };
 
   const domainAndDataProductsSave = async () => {
-    setIsLoading(true);
+    setIsSaveLoading(true);
     const entityDetails = [...(selectedItems?.values() ?? [])].map((item) =>
       getEntityAPIfromSource(item.entityType)(
         item.fullyQualifiedName,
@@ -217,12 +224,12 @@ export const AssetSelectionModal = ({
     } catch (_) {
       // Nothing here
     } finally {
-      setIsLoading(false);
+      setIsSaveLoading(false);
     }
   };
 
   const handleSave = async () => {
-    setIsLoading(true);
+    setIsSaveLoading(true);
     const entityDetails = [...(selectedItems?.values() ?? [])].map((item) =>
       getEntityAPIfromSource(item.entityType)(
         item.fullyQualifiedName,
@@ -271,22 +278,26 @@ export const AssetSelectionModal = ({
     } catch (_) {
       // Nothing here
     } finally {
-      setIsLoading(false);
+      setIsSaveLoading(false);
     }
   };
 
-  const onSaveAction = () => {
+  const onSaveAction = useCallback(() => {
     if (type === AssetsOfEntity.GLOSSARY) {
       handleSave();
     } else {
       domainAndDataProductsSave();
     }
-  };
+  }, [type, handleSave, domainAndDataProductsSave]);
 
   const onScroll: UIEventHandler<HTMLElement> = useCallback(
     (e) => {
+      const scrollHeight =
+        e.currentTarget.scrollHeight - e.currentTarget.scrollTop;
+
       if (
-        e.currentTarget.scrollHeight - e.currentTarget.scrollTop === 500 &&
+        scrollHeight > 499 &&
+        scrollHeight < 501 &&
         items.length < totalCount
       ) {
         !isLoading &&
@@ -297,7 +308,15 @@ export const AssetSelectionModal = ({
           });
       }
     },
-    [activeFilter, search, totalCount, items]
+    [
+      pageNumber,
+      activeFilter,
+      search,
+      totalCount,
+      items,
+      isLoading,
+      fetchEntities,
+    ]
   );
 
   const mapAssetsSearchIndex = useMemo(() => {
@@ -312,7 +331,11 @@ export const AssetSelectionModal = ({
       footer={
         <>
           <Button onClick={onCancel}>{t('label.cancel')}</Button>
-          <Button loading={isLoading} type="primary" onClick={onSaveAction}>
+          <Button
+            disabled={isLoading}
+            loading={isSaveLoading}
+            type="primary"
+            onClick={onSaveAction}>
             {t('label.save')}
           </Button>
         </>
@@ -326,7 +349,6 @@ export const AssetSelectionModal = ({
         <Searchbar
           removeMargin
           showClearSearch
-          showLoadingStatus
           inputProps={{
             addonBefore: (
               <Select
