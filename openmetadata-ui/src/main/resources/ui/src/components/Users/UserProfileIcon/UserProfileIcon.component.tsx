@@ -110,7 +110,7 @@ export const UserProfileIcon = () => {
   }, [profilePicture]);
 
   const { userName, teams, roles, inheritedRoles, personas } = useMemo(() => {
-    const userName = currentUser?.displayName ?? currentUser?.name ?? TERM_USER;
+    const userName = getEntityName(currentUser) || TERM_USER;
 
     return {
       userName,
