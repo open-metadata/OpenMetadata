@@ -63,7 +63,7 @@ export const AssetSelectionModal = ({
     useState<Map<string, EntityDetailUnion>>();
   const [isLoading, setIsLoading] = useState(false);
   const [activeFilter, setActiveFilter] = useState<SearchIndex>(
-    SearchIndex.TABLE
+    SearchIndex.ALL
   );
   const [activeEntity, setActiveEntity] = useState<Domain | DataProduct>();
   const [pageNumber, setPageNumber] = useState(1);
@@ -335,7 +335,7 @@ export const AssetSelectionModal = ({
                   label: startCase(key),
                   value: value,
                 }))}
-                style={{ minWidth: '100px' }}
+                style={{ minWidth: '120px' }}
                 value={activeFilter}
                 onChange={setActiveFilter}
               />
