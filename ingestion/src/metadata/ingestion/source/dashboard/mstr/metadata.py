@@ -22,6 +22,7 @@ from metadata.generated.schema.entity.services.connections.dashboard.mstrConnect
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
@@ -88,7 +89,7 @@ class MstrSource(DashboardServiceSource):
 
     def yield_dashboard(
         self, dashboard_details: MstrDashboardDetails
-    ) -> Iterable[CreateDashboardRequest]:
+    ) -> Iterable[Either[CreateDashboardRequest]]:
         """
         Method to Get Dashboard Entity
         """
@@ -113,11 +114,16 @@ class MstrSource(DashboardServiceSource):
                 ],
                 service=self.context.dashboard_service.fullyQualifiedName.__root__,
             )
-            yield dashboard_request
+            yield Either(right=dashboard_request)
             self.register_record(dashboard_request=dashboard_request)
         except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Error creating dashboard: {exc}")
+            yield Either(
+                left=StackTraceError(
+                    name=dashboard_details.id,
+                    error=f"Error yielding dashboard for {dashboard_details}: {exc}",
+                    stack_trace=traceback.format_exc(),
+                )
+            )
 
     def yield_dashboard_lineage_details(
         self, dashboard_details: MstrDashboardDetails, db_service_name: str
@@ -145,20 +151,28 @@ class MstrSource(DashboardServiceSource):
 
     def _yield_chart_from_visualization(
         self, page: MstrPage
-    ) -> Iterable[CreateChartRequest]:
+    ) -> Iterable[Either[CreateChartRequest]]:
         for chart in page.visualizations:
             try:
                 if filter_by_chart(self.source_config.chartFilterPattern, chart.name):
                     self.status.filter(chart.name, "Chart Pattern not allowed")
                     continue
 
-                yield CreateChartRequest(
-                    name=f"{page.key}{chart.key}",
-                    displayName=chart.name,
-                    chartType=get_standard_chart_type(chart.visualizationType).value,
-                    service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                yield Either(
+                    right=CreateChartRequest(
+                        name=f"{page.key}{chart.key}",
+                        displayName=chart.name,
+                        chartType=get_standard_chart_type(
+                            chart.visualizationType
+                        ).value,
+                        service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                    )
                 )
-                self.status.scanned(chart.name)
             except Exception as exc:
-                logger.debug(traceback.format_exc())
-                logger.warning(f"Error creating chart [{chart}]: {exc}")
+                yield Either(
+                    left=StackTraceError(
+                        name="Chart",
+                        error=f"Error creating chart [{chart}]: {exc}",
+                        stack_trace=traceback.format_exc(),
+                    )
+                )

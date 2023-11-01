@@ -28,16 +28,16 @@ Configure the dbt Workflow from the CLI.
 
 {% multiTablesWrapper %}
 
-| Feature                     | Status                        |
-| :-------------------------- | :---------------------------- |
-| Stage                       | PROD                          |
-| dbt Queries                 | {% icon iconName="check" /%}  |
-| dbt Lineage                 | {% icon iconName="check" /%}  |
-| dbt Tags                    | {% icon iconName="check" /%}  |
-| dbt Owner                   | {% icon iconName="check" /%}  |
-| dbt Descriptions            | {% icon iconName="check" /%}  |
-| dbt Tests                   | {% icon iconName="check" /%}  |
-| Supported dbt Core Versions | `v1.2` `v1.3` `v1.4` `v1.5`   |
+| Feature                     | Status                            |
+| :-------------------------- | :-------------------------------- |
+| Stage                       | PROD                              |
+| dbt Queries                 | {% icon iconName="check" /%}      |
+| dbt Lineage                 | {% icon iconName="check" /%}      |
+| dbt Tags                    | {% icon iconName="check" /%}      |
+| dbt Owner                   | {% icon iconName="check" /%}      |
+| dbt Descriptions            | {% icon iconName="check" /%}      |
+| dbt Tests                   | {% icon iconName="check" /%}      |
+| Supported dbt Core Versions | `v1.2` `v1.3` `v1.4` `v1.5` `v1.6`|
 
 {% /multiTablesWrapper %}
 
