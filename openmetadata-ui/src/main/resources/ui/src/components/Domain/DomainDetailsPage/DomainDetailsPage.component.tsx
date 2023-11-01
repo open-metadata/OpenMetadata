@@ -232,25 +232,27 @@ const DomainDetailsPage = ({
   };
 
   const fetchDataProducts = async () => {
-    try {
-      const res = await searchData(
-        '',
-        1,
-        0,
-        `(domain.fullyQualifiedName:"${domainFqn}")`,
-        '',
-        '',
-        SearchIndex.DATA_PRODUCT
-      );
+    if (!isVersionsView) {
+      try {
+        const res = await searchData(
+          '',
+          1,
+          0,
+          `(domain.fullyQualifiedName:"${domainFqn}")`,
+          '',
+          '',
+          SearchIndex.DATA_PRODUCT
+        );
 
-      setDataProductsCount(res.data.hits.total.value ?? 0);
-    } catch (error) {
-      setDataProductsCount(0);
+        setDataProductsCount(res.data.hits.total.value ?? 0);
+      } catch (error) {
+        setDataProductsCount(0);
+      }
     }
   };
 
   const fetchDomainAssets = async () => {
-    if (fqn) {
+    if (fqn && !isVersionsView) {
       try {
         const res = await searchData(
           '',

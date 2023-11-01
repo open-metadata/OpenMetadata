@@ -68,7 +68,7 @@ const DomainVersion = () => {
     } finally {
       setLoading(false);
     }
-  }, [domain]);
+  }, [domain, version]);
 
   const fetchDomainData = useCallback(async () => {
     try {
@@ -108,12 +108,15 @@ const DomainVersion = () => {
 
   useEffect(() => {
     fetchDomainData();
-  }, [fqn, version]);
+  }, [fqn]);
 
   useEffect(() => {
     fetchVersionsInfo();
-    fetchActiveVersion();
   }, [domain]);
+
+  useEffect(() => {
+    fetchActiveVersion();
+  }, [domain, version]);
 
   return (
     <PageLayoutV1 pageTitle="Domain version">
