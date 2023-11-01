@@ -24,9 +24,11 @@ import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 import com.fasterxml.jackson.core.type.TypeReference;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -2201,9 +2203,63 @@ public interface CollectionDAO {
       return tags;
     }
 
+    default Map<String, List<TagLabel>> getTagsByPrefix(String targetFQNPrefix) {
+      Map<String, List<TagLabel>> resultSet = new LinkedHashMap<>();
+      List<Pair<String, TagLabel>> tags = getTagsInternalByPrefix(targetFQNPrefix);
+      tags.forEach(
+          pair -> {
+            String targetHash = pair.getLeft();
+            TagLabel tagLabel = pair.getRight();
+            List<TagLabel> listOfTarget = new ArrayList<>();
+            if (resultSet.containsKey(targetHash)) {
+              listOfTarget = resultSet.get(targetHash);
+              listOfTarget.add(tagLabel);
+            } else {
+              listOfTarget.add(tagLabel);
+            }
+            resultSet.put(targetHash, listOfTarget);
+          });
+      return resultSet;
+    }
+
     @SqlQuery(
         "SELECT source, tagFQN,  labelType, state FROM tag_usage WHERE targetFQNHash = :targetFQNHash ORDER BY tagFQN")
     List<TagLabel> getTagsInternal(@BindFQN("targetFQNHash") String targetFQNHash);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT tu.source, tu.tagFQN, tu.labelType, tu.targetFQNHash, tu.state, gte.fqn, gte.json "
+                + "FROM tag_usage tu "
+                + "JOIN ( "
+                + "  SELECT json, JSON_UNQUOTE(JSON_EXTRACT(json, '$.fullyQualifiedName')) AS fqn"
+                + "  FROM ( "
+                + "    SELECT * FROM glossary_term_entity "
+                + "    UNION ALL "
+                + "    SELECT * FROM tag "
+                + "  ) combined_data "
+                + " ) gte "
+                + "ON tu.tagFQN = gte.fqn "
+                + "WHERE tu.targetFQNHash LIKE CONCAT(:targetFQNHashPrefix, '.%') "
+                + "ORDER BY tu.tagFQN",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT tu.source, tu.tagFQN, tu.labelType, tu.targetFQNHash, tu.state, gte.fqn, gte.json "
+                + "FROM tag_usage tu "
+                + "JOIN ( "
+                + "  SELECT json, json->>'fullyQualifiedName' AS fqn "
+                + "  FROM ( "
+                + "    SELECT * FROM glossary_term_entity "
+                + "    UNION ALL "
+                + "    SELECT * FROM tag "
+                + "  ) combined_data "
+                + ") gte "
+                + "ON tu.tagFQN = gte.fqn "
+                + "WHERE tu.targetFQNHash LIKE CONCAT(:targetFQNHashPrefix, '.%') "
+                + "ORDER BY tu.tagFQN",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(TagLabelRowMapperWithTargetFqnHash.class)
+    List<Pair<String, TagLabel>> getTagsInternalByPrefix(@BindFQN("targetFQNHashPrefix") String targetFQNHashPrefix);
 
     @SqlQuery("SELECT * FROM tag_usage")
     @Deprecated(since = "Release 1.1")
@@ -2291,6 +2347,35 @@ public interface CollectionDAO {
             .withLabelType(TagLabel.LabelType.values()[r.getInt("labelType")])
             .withState(TagLabel.State.values()[r.getInt("state")])
             .withTagFQN(r.getString("tagFQN"));
+      }
+    }
+
+    class TagLabelRowMapperWithTargetFqnHash implements RowMapper<Pair<String, TagLabel>> {
+      @Override
+      public Pair<String, TagLabel> map(ResultSet r, StatementContext ctx) throws SQLException {
+        TagLabel label =
+            new TagLabel()
+                .withSource(TagLabel.TagSource.values()[r.getInt("source")])
+                .withLabelType(TagLabel.LabelType.values()[r.getInt("labelType")])
+                .withState(TagLabel.State.values()[r.getInt("state")])
+                .withTagFQN(r.getString("tagFQN"));
+        TagLabel.TagSource source = TagLabel.TagSource.values()[r.getInt("source")];
+        if (source == TagLabel.TagSource.CLASSIFICATION) {
+          Tag tag = JsonUtils.readValue(r.getString("json"), Tag.class);
+          label.setName(tag.getName());
+          label.setDisplayName(tag.getDisplayName());
+          label.setDescription(tag.getDescription());
+          label.setStyle(tag.getStyle());
+        } else if (source == TagLabel.TagSource.GLOSSARY) {
+          GlossaryTerm glossaryTerm = JsonUtils.readValue(r.getString("json"), GlossaryTerm.class);
+          label.setName(glossaryTerm.getName());
+          label.setDisplayName(glossaryTerm.getDisplayName());
+          label.setDescription(glossaryTerm.getDescription());
+          label.setStyle(glossaryTerm.getStyle());
+        } else {
+          throw new IllegalArgumentException("Invalid source type " + source);
+        }
+        return Pair.of(r.getString("targetFQNHash"), label);
       }
     }
 

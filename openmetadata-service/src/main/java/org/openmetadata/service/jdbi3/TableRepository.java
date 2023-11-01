@@ -128,7 +128,7 @@ public class TableRepository extends EntityRepository<Table> {
     }
     if (fields.contains(COLUMN_FIELD)) {
       // We'll get column tags only if we are getting the column fields
-      getColumnTags(fields.contains(FIELD_TAGS), table.getColumns());
+      getColumnTags(fields.contains(FIELD_TAGS), table.getFullyQualifiedName(), table.getColumns());
     }
     table.setJoins(fields.contains("joins") ? getJoins(table) : table.getJoins());
     table.setTableProfilerConfig(
@@ -253,7 +253,7 @@ public class TableRepository extends EntityRepository<Table> {
 
     // Set the column tags. Will be used to mask the sample data
     if (!authorizePII) {
-      getColumnTags(true, table.getColumns());
+      getColumnTags(true, table.getFullyQualifiedName(), table.getColumns());
       table.setTags(getTags(table));
       return PIIMasker.getSampleData(table);
     }
@@ -486,7 +486,7 @@ public class TableRepository extends EntityRepository<Table> {
 
     // Set the column tags. Will be used to hide the data
     if (!authorizePII) {
-      getColumnTags(true, table.getColumns());
+      getColumnTags(true, table.getFullyQualifiedName(), table.getColumns());
       return PIIMasker.getTableProfile(table);
     }
 
@@ -804,10 +804,26 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   // TODO duplicated code
-  private void getColumnTags(boolean setTags, List<Column> columns) {
-    for (Column c : listOrEmpty(columns)) {
-      c.setTags(setTags ? getTags(c.getFullyQualifiedName()) : c.getTags());
-      getColumnTags(setTags, c.getChildren());
+  private void getColumnTags(boolean setTags, String tableFqn, List<Column> columns) {
+    // Get Flattened Columns
+    List<Column> flattenedColumns = new ArrayList<>();
+    listOrEmpty(columns).forEach(column -> getFlattenedColumns(column, flattenedColumns));
+
+    // Fetch All tags belonging to Prefix
+    Map<String, List<TagLabel>> allTags = getTagsByPrefix(tableFqn);
+    for (Column c : listOrEmpty(flattenedColumns)) {
+      if (setTags) {
+        c.setTags(allTags.get(FullyQualifiedName.buildHash(c.getFullyQualifiedName())));
+      } else {
+        c.setTags(c.getTags());
+      }
+    }
+  }
+
+  private void getFlattenedColumns(Column column, List<Column> flattenedColumns) {
+    flattenedColumns.add(column);
+    for (Column childrenColumns : listOrEmpty(column.getChildren())) {
+      getFlattenedColumns(childrenColumns, flattenedColumns);
     }
   }
 
