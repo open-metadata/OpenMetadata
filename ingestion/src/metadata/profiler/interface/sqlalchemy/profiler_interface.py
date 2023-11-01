@@ -40,6 +40,7 @@ from metadata.profiler.orm.functions.table_metric_construct import (
 )
 from metadata.profiler.orm.registry import Dialects
 from metadata.profiler.processor.runner import QueryRunner
+from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 from metadata.utils.custom_thread_pool import CustomThreadPoolExecutor
 from metadata.utils.logger import profiler_interface_registry_logger
 
@@ -79,7 +80,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         thread_count: int = 5,
         timeout_seconds: int = 43200,
         sqa_metadata=None,
-        sample_data_count: Optional[int] = 100,
+        sample_data_count: Optional[int] = SAMPLE_DATA_DEFAULT_COUNT,
         **kwargs,
     ):
         """Instantiate SQA Interface object"""

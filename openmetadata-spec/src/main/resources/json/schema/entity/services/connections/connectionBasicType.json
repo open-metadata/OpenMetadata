@@ -64,6 +64,38 @@
       "description": "Supports DBT Extraction.",
       "type": "boolean",
       "default": true
+    },
+    "sampleDataStorageConfig": {
+      "description": "Storage config to store sample data",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
+      "properties": {
+        "bucketName": {
+          "title": "Bucket Name",
+          "description": "Bucket Name",
+          "type": "string",
+          "default": ""
+        },
+        "prefix": {
+          "title": "Prefix",
+          "description": "Prefix of the data source.",
+          "type": "string",
+          "default": ""
+        },
+        "storageConfig": {
+          "oneOf": [
+            {
+              "title": "AWS S3 Storage Config",
+              "$ref": "../../../security/credentials/awsCredentials.json"
+            },
+            {
+              "title": "OpenMetadata Storage",
+              "type": "object"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
     }
   }
 }

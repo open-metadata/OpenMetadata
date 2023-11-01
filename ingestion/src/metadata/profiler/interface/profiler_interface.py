@@ -40,6 +40,7 @@ from metadata.profiler.api.models import ProfileSampleConfig, TableConfig
 from metadata.profiler.metrics.core import MetricTypes
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.runner import QueryRunner
+from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 from metadata.utils.partition import get_partition_details
 
 
@@ -76,7 +77,7 @@ class ProfilerInterface(ABC):
         table_partition_config: Optional[PartitionProfilerConfig],
         thread_count: int = 5,
         timeout_seconds: int = 43200,
-        sample_data_count: Optional[int] = 100,
+        sample_data_count: Optional[int] = SAMPLE_DATA_DEFAULT_COUNT,
         **kwargs,
     ):
         """Required attribute for the interface"""
