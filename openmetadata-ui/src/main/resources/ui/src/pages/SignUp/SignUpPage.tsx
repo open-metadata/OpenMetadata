@@ -26,6 +26,7 @@ import {
   ROUTES,
   VALIDATION_MESSAGES,
 } from '../../constants/constants';
+import { EntityReference } from '../../generated/entity/type';
 import { createUser } from '../../rest/userAPI';
 import { getNameFromUserData } from '../../utils/AuthProvider.util';
 import brandImageClassBase from '../../utils/BrandImage/BrandImageClassBase';
@@ -53,6 +54,7 @@ const SignUp = () => {
     try {
       const res = await createUser({
         ...data,
+        teams: (data.teams as EntityReference[])?.map((t) => t.id),
         profile: {
           images: getImages(appState.newUser.picture ?? ''),
         },
