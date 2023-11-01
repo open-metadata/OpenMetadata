@@ -82,6 +82,12 @@
           "type": "string",
           "default": ""
         },
+        "overwriteData": {
+          "title": "Overwrite Sample Data",
+          "description": "When this field enabled a single parquet file will be created to store sample data, otherwise we will create a new file per day",
+          "type": "boolean",
+          "default": true
+        },
         "storageConfig": {
           "oneOf": [
             {

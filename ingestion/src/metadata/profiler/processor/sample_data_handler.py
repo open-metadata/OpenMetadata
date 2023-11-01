@@ -13,6 +13,7 @@ Profiler Processor Step
 """
 
 import traceback
+from datetime import datetime
 from functools import lru_cache, singledispatch
 from io import BytesIO
 from typing import Optional
@@ -33,11 +34,15 @@ from metadata.utils.logger import profiler_logger
 logger = profiler_logger()
 
 
-def _get_object_key(table: Table, prefix: str) -> str:
+def _get_object_key(table: Table, prefix: str, overwrite_data: bool) -> str:
+    if not overwrite_data:
+        file_name = f"sample_data_{datetime.now().strftime('%Y_%m_%d')}.parquet"
+    else:
+        file_name = "sample_data.parquet"
     path = str(table.fullyQualifiedName.__root__).replace(".", "/")
     if prefix:
-        return f"{clean_uri(prefix)}/{path}/sample_data.parquet"
-    return f"{path}/sample_data.parquet"
+        return f"{clean_uri(prefix)}/{path}/{file_name}"
+    return f"{path}/{file_name}"
 
 
 @lru_cache(maxsize=1)
@@ -70,6 +75,7 @@ def upload_sample_data(
         object_key = _get_object_key(
             table=table_entity,
             prefix=sample_storage_config.prefix,
+            overwrite_data=sample_storage_config.overwriteData,
         )
         upload_to_storage(
             sample_storage_config.storageConfig,
