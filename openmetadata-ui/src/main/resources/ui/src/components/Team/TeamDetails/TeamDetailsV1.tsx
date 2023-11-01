@@ -1034,10 +1034,10 @@ const TeamDetailsV1 = ({
           <Collapse
             accordion
             bordered={false}
-            className="site-collapse-custom-collapse"
+            className="header-collapse-custom-collapse"
             expandIconPosition="end">
             <Collapse.Panel
-              className="site-collapse-custom-panel"
+              className="header-collapse-custom-panel"
               collapsible="icon"
               header={teamsCollapseHeader}
               key="1">

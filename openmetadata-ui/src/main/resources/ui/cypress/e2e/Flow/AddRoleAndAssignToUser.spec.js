@@ -107,6 +107,11 @@ describe('Test Add role and assign it to the user', () => {
     cy.get(`[data-testid="${userName}"]`).click();
     verifyResponseStatusCode('@userDetailsPage', 200);
 
+    // click the collapse button to open the other details
+    cy.get(
+      '[data-testid="user-profile"] .ant-collapse-expand-icon > .anticon > svg'
+    ).click();
+
     cy.get(
       '[data-testid="user-profile"] [data-testid="user-profile-roles"]'
     ).should('contain', roleName);

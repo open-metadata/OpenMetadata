@@ -127,6 +127,14 @@ describe('DataConsumer Edit policy should work properly', () => {
       CREDENTIALS.lastName
     ).then((id) => {
       CREDENTIALS.id = id;
+
+      cy.clickOutside();
+
+      // click the collapse button to open the other details
+      cy.get(
+        '[data-testid="user-profile"] .ant-collapse-expand-icon > .anticon > svg'
+      ).click();
+
       cy.get(
         '[data-testid="user-profile"] [data-testid="user-profile-inherited-roles"]'
       ).should('contain', policy);
