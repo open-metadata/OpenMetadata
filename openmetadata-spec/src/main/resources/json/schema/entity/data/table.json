@@ -241,6 +241,7 @@
     "column": {
       "type": "object",
       "javaType": "org.openmetadata.schema.type.Column",
+      "javaInterfaces": ["org.openmetadata.schema.FieldInterface"],
       "description": "This schema defines the type for a column in a table.",
       "properties": {
         "name": {

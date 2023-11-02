@@ -1298,7 +1298,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return !supportsTags ? null : daoCollection.tagUsageDAO().getTags(fqn);
   }
 
-  protected Map<String, List<TagLabel>> getTagsByPrefix(String prefix) {
+  public Map<String, List<TagLabel>> getTagsByPrefix(String prefix) {
     return !supportsTags ? null : daoCollection.tagUsageDAO().getTagsByPrefix(prefix);
   }
 

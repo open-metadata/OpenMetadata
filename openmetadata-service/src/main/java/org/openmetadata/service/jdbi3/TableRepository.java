@@ -22,6 +22,7 @@ import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.Entity.getEntity;
+import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.util.LambdaExceptionUtil.ignoringComparator;
 import static org.openmetadata.service.util.LambdaExceptionUtil.rethrowFunction;
 
@@ -128,7 +129,8 @@ public class TableRepository extends EntityRepository<Table> {
     }
     if (fields.contains(COLUMN_FIELD)) {
       // We'll get column tags only if we are getting the column fields
-      getColumnTags(fields.contains(FIELD_TAGS), table.getFullyQualifiedName(), table.getColumns());
+      populateEntityFieldTags(
+          entityType, table.getColumns(), table.getFullyQualifiedName(), fields.contains(FIELD_TAGS));
     }
     table.setJoins(fields.contains("joins") ? getJoins(table) : table.getJoins());
     table.setTableProfilerConfig(
@@ -253,7 +255,7 @@ public class TableRepository extends EntityRepository<Table> {
 
     // Set the column tags. Will be used to mask the sample data
     if (!authorizePII) {
-      getColumnTags(true, table.getFullyQualifiedName(), table.getColumns());
+      populateEntityFieldTags(entityType, table.getColumns(), table.getFullyQualifiedName(), true);
       table.setTags(getTags(table));
       return PIIMasker.getSampleData(table);
     }
@@ -486,7 +488,7 @@ public class TableRepository extends EntityRepository<Table> {
 
     // Set the column tags. Will be used to hide the data
     if (!authorizePII) {
-      getColumnTags(true, table.getFullyQualifiedName(), table.getColumns());
+      populateEntityFieldTags(entityType, table.getColumns(), table.getFullyQualifiedName(), true);
       return PIIMasker.getTableProfile(table);
     }
 
@@ -801,30 +803,6 @@ public class TableRepository extends EntityRepository<Table> {
       }
     }
     return childrenColumn;
-  }
-
-  // TODO duplicated code
-  private void getColumnTags(boolean setTags, String tableFqn, List<Column> columns) {
-    // Get Flattened Columns
-    List<Column> flattenedColumns = new ArrayList<>();
-    listOrEmpty(columns).forEach(column -> getFlattenedColumns(column, flattenedColumns));
-
-    // Fetch All tags belonging to Prefix
-    Map<String, List<TagLabel>> allTags = getTagsByPrefix(tableFqn);
-    for (Column c : listOrEmpty(flattenedColumns)) {
-      if (setTags) {
-        c.setTags(allTags.get(FullyQualifiedName.buildHash(c.getFullyQualifiedName())));
-      } else {
-        c.setTags(c.getTags());
-      }
-    }
-  }
-
-  private void getFlattenedColumns(Column column, List<Column> flattenedColumns) {
-    flattenedColumns.add(column);
-    for (Column childrenColumns : listOrEmpty(column.getChildren())) {
-      getFlattenedColumns(childrenColumns, flattenedColumns);
-    }
   }
 
   private void validateTableFQN(String fqn) {
