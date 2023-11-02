@@ -39,11 +39,11 @@ describe('Check if voting work properly in entities', () => {
       );
       interceptURL('PUT', `/api/v1/${apiEntity}/*/vote`, 'upVoting');
 
-      visitEntityDetailsPage(
-        entityDetails.term,
-        entityDetails.serviceName,
-        entityDetails.entity
-      );
+      visitEntityDetailsPage({
+        term: entityDetails.term,
+        serviceName: entityDetails.serviceName,
+        entity: entityDetails.entity,
+      });
       verifyResponseStatusCode('@getEntityDetail', 200);
       verifyResponseStatusCode('@getEntityPermission', 200);
 
@@ -75,11 +75,11 @@ describe('Check if voting work properly in entities', () => {
       );
       interceptURL('PUT', `/api/v1/${apiEntity}/*/vote`, 'downVoting');
 
-      visitEntityDetailsPage(
-        entityDetails.term,
-        entityDetails.serviceName,
-        entityDetails.entity
-      );
+      visitEntityDetailsPage({
+        term: entityDetails.term,
+        serviceName: entityDetails.serviceName,
+        entity: entityDetails.entity,
+      });
       verifyResponseStatusCode('@getEntityDetail', 200);
       verifyResponseStatusCode('@getEntityPermission', 200);
 
@@ -114,11 +114,11 @@ describe('Check if voting work properly in entities', () => {
       );
       interceptURL('PUT', `/api/v1/${apiEntity}/*/vote`, 'unVoting');
 
-      visitEntityDetailsPage(
-        entityDetails.term,
-        entityDetails.serviceName,
-        entityDetails.entity
-      );
+      visitEntityDetailsPage({
+        term: entityDetails.term,
+        serviceName: entityDetails.serviceName,
+        entity: entityDetails.entity,
+      });
       verifyResponseStatusCode('@getEntityDetail', 200);
       verifyResponseStatusCode('@getEntityPermission', 200);
 

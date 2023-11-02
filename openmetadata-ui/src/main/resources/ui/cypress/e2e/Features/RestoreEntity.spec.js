@@ -78,11 +78,11 @@ describe('Restore entity functionality should work properly', () => {
   });
 
   it('Soft Delete entity table', () => {
-    visitEntityDetailsPage(
-      ENTITY_TABLE.term,
-      ENTITY_TABLE.serviceName,
-      ENTITY_TABLE.entity
-    );
+    visitEntityDetailsPage({
+      term: ENTITY_TABLE.term,
+      serviceName: ENTITY_TABLE.serviceName,
+      entity: ENTITY_TABLE.entity,
+    });
 
     cy.get('[data-testid="manage-button"]').click();
 

@@ -30,8 +30,8 @@ import { DATABASE_SERVICE } from '../../constants/entityConstant';
 import { SERVICE_CATEGORIES } from '../../constants/service.constants';
 
 const ENTITY_TABLE = {
-  term: DATABASE_SERVICE.tables,
-  displayName: DATABASE_SERVICE.tables,
+  term: DATABASE_SERVICE.tables.name,
+  displayName: DATABASE_SERVICE.tables.name,
   entity: MYDATA_SUMMARY_OPTIONS.tables,
   serviceName: DATABASE_SERVICE.service.name,
   schemaName: DATABASE_SERVICE.schema.name,
@@ -147,11 +147,11 @@ describe('Task flow should work', () => {
       'getEntityDetails'
     );
 
-    visitEntityDetailsPage(
-      ENTITY_TABLE.term,
-      ENTITY_TABLE.serviceName,
-      ENTITY_TABLE.entity
-    );
+    visitEntityDetailsPage({
+      term: ENTITY_TABLE.term,
+      serviceName: ENTITY_TABLE.serviceName,
+      entity: ENTITY_TABLE.entity,
+    });
 
     cy.get('[data-testid="request-description"]').click();
 
@@ -174,11 +174,11 @@ describe('Task flow should work', () => {
       'getEntityDetails'
     );
 
-    visitEntityDetailsPage(
-      ENTITY_TABLE.term,
-      ENTITY_TABLE.serviceName,
-      ENTITY_TABLE.entity
-    );
+    visitEntityDetailsPage({
+      term: ENTITY_TABLE.term,
+      serviceName: ENTITY_TABLE.serviceName,
+      entity: ENTITY_TABLE.entity,
+    });
 
     cy.get('[data-testid="request-entity-tags"]').click();
 

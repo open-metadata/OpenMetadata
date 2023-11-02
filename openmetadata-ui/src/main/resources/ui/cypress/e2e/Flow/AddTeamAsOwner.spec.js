@@ -75,11 +75,11 @@ describe.skip('Create a team and add that team as a owner of the entity', () => 
   });
 
   it('Add newly created group type team as owner, and remove it', () => {
-    visitEntityDetailsPage(
-      TEAM_DETAILS.term,
-      TEAM_DETAILS.serviceName,
-      TEAM_DETAILS.entity
-    );
+    visitEntityDetailsPage({
+      term: TEAM_DETAILS.term,
+      serviceName: TEAM_DETAILS.serviceName,
+      entity: TEAM_DETAILS.entity,
+    });
 
     cy.get('[data-testid="edit-owner"]').should('be.visible').click();
     cy.get('[data-testid="owner-select-teams-search-bar"]')
@@ -105,11 +105,11 @@ describe.skip('Create a team and add that team as a owner of the entity', () => 
   });
 
   it('Remove newly created group type team as owner', () => {
-    visitEntityDetailsPage(
-      TEAM_DETAILS.term,
-      TEAM_DETAILS.serviceName,
-      TEAM_DETAILS.entity
-    );
+    visitEntityDetailsPage({
+      term: TEAM_DETAILS.term,
+      serviceName: TEAM_DETAILS.serviceName,
+      entity: TEAM_DETAILS.entity,
+    });
 
     cy.get('[data-testid="edit-owner"]').should('be.visible').click();
     cy.get('[data-testid="owner-select-teams-search-bar"]')

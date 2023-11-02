@@ -40,7 +40,7 @@ const FOLLOWING_ENTITIES = [
 ];
 
 const followEntity = ({ term, serviceName, entity }, isUnfollow) => {
-  visitEntityDetailsPage(term, serviceName, entity);
+  visitEntityDetailsPage({ term, serviceName, entity });
 
   if (entity === 'dashboardDataModel') {
     interceptURL(

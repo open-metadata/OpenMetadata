@@ -229,6 +229,10 @@ describe('RedShift Ingestion', () => {
 
     verifyResponseStatusCode('@fetchClassifications', 200);
 
+    cy.get('[data-testid="data-summary-container"]')
+      .contains(DBT.classification)
+      .click();
+
     verifyResponseStatusCode('@getTagList', 200);
     // Verify DBT tag category is added
     cy.get('[data-testid="tag-name"]')
@@ -240,7 +244,11 @@ describe('RedShift Ingestion', () => {
       .should('contain', DBT.tagName);
 
     // Verify DBT in table entity
-    visitEntityDetailsPage(REDSHIFT.DBTTable, REDSHIFT.serviceName, 'tables');
+    visitEntityDetailsPage({
+      term: REDSHIFT.DBTTable,
+      serviceName: REDSHIFT.serviceName,
+      entity: 'tables',
+    });
 
     // Verify tags
     cy.get('[data-testid="entity-tags"]').should('contain', `${DBT.tagName}`);

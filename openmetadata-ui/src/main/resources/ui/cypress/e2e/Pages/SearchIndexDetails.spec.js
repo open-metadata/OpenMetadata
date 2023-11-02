@@ -154,13 +154,12 @@ describe('SearchIndexDetails page should work properly for data consumer role', 
   });
 
   it('All permissible actions on search index details page should work properly', () => {
-    visitEntityDetailsPage(
-      SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.name,
-      SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.service,
-      'searchIndexes',
-      undefined,
-      'Search Index'
-    );
+    visitEntityDetailsPage({
+      term: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.name,
+      serviceName: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.service,
+      entity: 'searchIndexes',
+      entityType: 'Search Index',
+    });
 
     // Edit domain option should not be available
     cy.get(`[data-testid="entity-page-header"]`).then(($body) => {
@@ -205,7 +204,9 @@ describe('Prerequisite for data steward role tests', () => {
 
     verifyResponseStatusCode('@getUserDetails', 200);
 
-    cy.get('[data-testid="edit-roles"]').click();
+    cy.get('[role="tablist"] .ant-collapse-arrow').click();
+
+    cy.get('[data-testid="edit-roles-button"]').click();
 
     cy.get('[data-testid="inline-edit-container"] #select-role').click();
 
@@ -230,13 +231,12 @@ describe('SearchIndexDetails page should work properly for data steward role', (
   });
 
   it('All permissible actions on search index details page should work properly', () => {
-    visitEntityDetailsPage(
-      SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.name,
-      SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.service,
-      'searchIndexes',
-      undefined,
-      'Search Index'
-    );
+    visitEntityDetailsPage({
+      term: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.name,
+      serviceName: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.service,
+      entity: 'searchIndexes',
+      entityType: 'Search Index',
+    });
 
     // Edit domain option should not be available
     cy.get(`[data-testid="entity-page-header"]`).then(($body) => {
