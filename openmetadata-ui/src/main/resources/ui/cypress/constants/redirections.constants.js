@@ -63,7 +63,7 @@ export const LEFT_PANEL_DETAILS = {
 export const NAVBAR_DETAILS = {
   explore: {
     testid: '[data-testid="app-bar-item-explore"]',
-    url: `${BASE_URL}/explore/dataProducts`,
+    url: `${BASE_URL}/explore/tables`,
   },
   quality: {
     testid: '[data-testid="app-bar-item-data-quality"]',
