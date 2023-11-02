@@ -12,7 +12,7 @@
  */
 
 import Icon, { FilterOutlined } from '@ant-design/icons';
-import { Table, Tooltip, Typography } from 'antd';
+import { Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import {
@@ -57,6 +57,7 @@ import {
   prepareConstraintIcon,
   updateFieldTags,
 } from '../../utils/TableUtils';
+import Table from '../common/Table/Table';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { SchemaTableProps, TableCellRendered } from './SchemaTable.interface';
 
@@ -71,6 +72,7 @@ const SchemaTable = ({
   onThreadLinkSelect,
   entityFqn,
   tableConstraints,
+  tablePartitioned,
 }: SchemaTableProps) => {
   const { t } = useTranslation();
 
@@ -357,6 +359,21 @@ const SchemaTable = ({
         width: 320,
         render: renderDescription,
       },
+      ...(tablePartitioned
+        ? [
+            {
+              title: t('label.partitioned'),
+              dataIndex: 'name',
+              key: 'name',
+              accessor: 'name',
+              width: 120,
+              render: (columnName: string) =>
+                tablePartitioned?.columns?.includes(columnName)
+                  ? t('label.partitioned')
+                  : t('label.non-partitioned'),
+            },
+          ]
+        : []),
       {
         title: t('label.tag-plural'),
         dataIndex: 'tags',
