@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Space, Typography } from 'antd';
+import { Typography } from 'antd';
 import { t } from 'i18next';
 import React from 'react';
 import { TablePartition } from '../../../generated/entity/data/table';
@@ -21,17 +21,11 @@ interface PartitionedKeysProps {
 
 export const PartitionedKeys = ({ tablePartition }: PartitionedKeysProps) => {
   return (
-    <Space className="p-b-sm" direction="vertical">
+    <>
       <Typography.Text className="right-panel-label">
         {t('label.table-partitioned')}
       </Typography.Text>
-      <Typography.Text>
-        {`${t('label.interval')} - ${tablePartition.intervalType}`}
-      </Typography.Text>
-      <Space>
-        {`${t('label.column-plural')} -
-        ${tablePartition.columns?.map((column) => column)}`}
-      </Space>
-    </Space>
+      <span>{` - ${tablePartition.intervalType}`}</span>
+    </>
   );
 };

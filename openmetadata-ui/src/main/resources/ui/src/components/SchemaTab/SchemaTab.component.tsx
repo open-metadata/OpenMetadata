@@ -29,6 +29,7 @@ const SchemaTab: FunctionComponent<Props> = ({
   isReadOnly = false,
   entityFqn,
   tableConstraints,
+  tablePartitioned,
 }: Props) => {
   const [searchText, setSearchText] = useState('');
 
@@ -58,6 +59,7 @@ const SchemaTab: FunctionComponent<Props> = ({
         searchText={lowerCase(searchText)}
         tableColumns={columns}
         tableConstraints={tableConstraints}
+        tablePartitioned={tablePartitioned}
         onThreadLinkSelect={onThreadLinkSelect}
         onUpdate={onUpdate}
       />
