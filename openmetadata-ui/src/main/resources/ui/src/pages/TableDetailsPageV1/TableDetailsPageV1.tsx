@@ -195,6 +195,7 @@ const TableDetailsPageV1 = () => {
     tier,
     tableTags,
     owner,
+    deleted,
     version,
     followers = [],
     description,
@@ -229,7 +230,7 @@ const TableDetailsPageV1 = () => {
       return {
         ...tableDetails,
         tier: getTierTags(tags ?? []),
-        tableTags: getTagsWithoutTier(tags || []),
+        tableTags: getTagsWithoutTier(tags ?? []),
         entityName: getEntityName(tableDetails),
         joinedTables: Object.entries(tableFQNGrouping)
           .map<JoinedWith & { name: string }>(
@@ -439,6 +440,45 @@ const TableDetailsPageV1 = () => {
     await onTableUpdate(updatedTableDetails as Table, 'dataProducts');
   };
 
+  const {
+    editTagsPermission,
+    editDescriptionPermission,
+    editCustomAttributePermission,
+    editAllPermission,
+    editLineagePermission,
+    viewSampleDataPermission,
+    viewQueriesPermission,
+    viewProfilerPermission,
+    viewAllPermission,
+    viewBasicPermission,
+  } = useMemo(
+    () => ({
+      editTagsPermission:
+        (tablePermissions.EditTags || tablePermissions.EditAll) && !deleted,
+      editDescriptionPermission:
+        (tablePermissions.EditDescription || tablePermissions.EditAll) &&
+        !deleted,
+      editCustomAttributePermission:
+        (tablePermissions.EditAll || tablePermissions.EditCustomFields) &&
+        !deleted,
+      editAllPermission: tablePermissions.EditAll && !deleted,
+      editLineagePermission:
+        (tablePermissions.EditAll || tablePermissions.EditLineage) && !deleted,
+      viewSampleDataPermission:
+        tablePermissions.ViewAll || tablePermissions.ViewSampleData,
+      viewQueriesPermission:
+        tablePermissions.ViewAll || tablePermissions.ViewQueries,
+      viewProfilerPermission:
+        tablePermissions.ViewAll ||
+        tablePermissions.ViewDataProfile ||
+        tablePermissions.ViewTests,
+      viewAllPermission: tablePermissions.ViewAll,
+      viewBasicPermission:
+        tablePermissions.ViewAll || tablePermissions.ViewBasic,
+    }),
+    [tablePermissions, deleted]
+  );
+
   const schemaTab = useMemo(
     () => (
       <Row
@@ -455,9 +495,7 @@ const TableDetailsPageV1 = () => {
               entityFqn={decodedTableFQN}
               entityName={entityName}
               entityType={EntityType.TABLE}
-              hasEditAccess={
-                tablePermissions.EditAll || tablePermissions.EditDescription
-              }
+              hasEditAccess={editDescriptionPermission}
               isEdit={isEdit}
               isReadOnly={tableDetails?.deleted}
               owner={tableDetails?.owner}
@@ -474,14 +512,10 @@ const TableDetailsPageV1 = () => {
               )}
               columns={tableDetails?.columns ?? []}
               entityFqn={decodedTableFQN}
-              hasDescriptionEditAccess={
-                tablePermissions.EditAll || tablePermissions.EditDescription
-              }
-              hasTagEditAccess={
-                tablePermissions.EditAll || tablePermissions.EditTags
-              }
+              hasDescriptionEditAccess={editDescriptionPermission}
+              hasTagEditAccess={editTagsPermission}
               isReadOnly={tableDetails?.deleted}
-              joins={tableDetails?.joins?.columnJoins || []}
+              joins={tableDetails?.joins?.columnJoins ?? []}
               tableConstraints={tableDetails?.tableConstraints}
               onThreadLinkSelect={onThreadLinkSelect}
               onUpdate={onColumnsUpdate}
@@ -500,7 +534,7 @@ const TableDetailsPageV1 = () => {
             <DataProductsContainer
               activeDomain={tableDetails?.domain}
               dataProducts={tableDetails?.dataProducts ?? []}
-              hasPermission={tablePermissions.EditAll && !tableDetails?.deleted}
+              hasPermission={editAllPermission}
               onSave={onDataProductsUpdate}
             />
 
@@ -508,10 +542,7 @@ const TableDetailsPageV1 = () => {
               displayType={DisplayType.READ_MORE}
               entityFqn={decodedTableFQN}
               entityType={EntityType.TABLE}
-              permission={
-                (tablePermissions.EditAll || tablePermissions.EditTags) &&
-                !tableDetails?.deleted
-              }
+              permission={editTagsPermission}
               selectedTags={tableTags}
               tagType={TagSource.Classification}
               onSelectionChange={handleTagSelection}
@@ -522,10 +553,7 @@ const TableDetailsPageV1 = () => {
               displayType={DisplayType.READ_MORE}
               entityFqn={decodedTableFQN}
               entityType={EntityType.TABLE}
-              permission={
-                (tablePermissions.EditAll || tablePermissions.EditTags) &&
-                !tableDetails?.deleted
-              }
+              permission={editTagsPermission}
               selectedTags={tableTags}
               tagType={TagSource.Glossary}
               onSelectionChange={handleTagSelection}
@@ -542,9 +570,11 @@ const TableDetailsPageV1 = () => {
     [
       isEdit,
       tableDetails,
-      tablePermissions,
       onDescriptionEdit,
       onDescriptionUpdate,
+      editTagsPermission,
+      editDescriptionPermission,
+      editAllPermission,
     ]
   );
 
@@ -586,8 +616,7 @@ const TableDetailsPageV1 = () => {
 
         key: EntityTabs.SAMPLE_DATA,
         children:
-          !isTourOpen &&
-          !(tablePermissions.ViewAll || tablePermissions.ViewSampleData) ? (
+          !isTourOpen && !viewSampleDataPermission ? (
             <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
           ) : (
             <SampleDataTableComponent
@@ -608,9 +637,7 @@ const TableDetailsPageV1 = () => {
           />
         ),
         key: EntityTabs.TABLE_QUERIES,
-        children: !(
-          tablePermissions.ViewAll || tablePermissions.ViewQueries
-        ) ? (
+        children: !viewQueriesPermission ? (
           <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
         ) : (
           <TableQueries
@@ -628,12 +655,7 @@ const TableDetailsPageV1 = () => {
         ),
         key: EntityTabs.PROFILER,
         children:
-          !isTourOpen &&
-          !(
-            tablePermissions.ViewAll ||
-            tablePermissions.ViewDataProfile ||
-            tablePermissions.ViewTests
-          ) ? (
+          !isTourOpen && !viewProfilerPermission ? (
             <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
           ) : (
             <TableProfilerV1
@@ -650,9 +672,7 @@ const TableDetailsPageV1 = () => {
             deleted={tableDetails?.deleted}
             entity={tableDetails as SourceType}
             entityType={EntityType.TABLE}
-            hasEditAccess={
-              tablePermissions.EditAll || tablePermissions.EditLineage
-            }
+            hasEditAccess={editLineagePermission}
           />
         ),
       },
@@ -662,7 +682,7 @@ const TableDetailsPageV1 = () => {
           <TabsLabel id={EntityTabs.DBT} name={t('label.dbt-lowercase')} />
         ),
         isHidden: !(
-          tableDetails?.dataModel?.sql || tableDetails?.dataModel?.rawSql
+          tableDetails?.dataModel?.sql ?? tableDetails?.dataModel?.rawSql
         ),
         key: EntityTabs.DBT,
         children: (
@@ -708,10 +728,8 @@ const TableDetailsPageV1 = () => {
           <CustomPropertyTable
             entityType={EntityType.TABLE}
             handleExtensionUpdate={onExtensionUpdate}
-            hasEditAccess={
-              tablePermissions.EditAll || tablePermissions.EditCustomFields
-            }
-            hasPermission={tablePermissions.ViewAll}
+            hasEditAccess={editCustomAttributePermission}
+            hasPermission={viewAllPermission}
           />
         ),
       },
@@ -729,6 +747,12 @@ const TableDetailsPageV1 = () => {
     onExtensionUpdate,
     getEntityFeedCount,
     tableDetails?.dataModel,
+    viewAllPermission,
+    editCustomAttributePermission,
+    viewSampleDataPermission,
+    viewQueriesPermission,
+    viewProfilerPermission,
+    editLineagePermission,
   ]);
 
   const onTierUpdate = useCallback(
@@ -859,11 +883,9 @@ const TableDetailsPageV1 = () => {
   useEffect(() => {
     if (isTourOpen || isTourPage) {
       setTableDetails(mockDatasetData.tableDetails as unknown as Table);
-    } else {
-      if (tablePermissions.ViewAll || tablePermissions.ViewBasic) {
-        fetchTableDetails();
-        getEntityFeedCount();
-      }
+    } else if (viewBasicPermission) {
+      fetchTableDetails();
+      getEntityFeedCount();
     }
   }, [tableFqn, isTourOpen, isTourPage, tablePermissions]);
 
@@ -905,10 +927,7 @@ const TableDetailsPageV1 = () => {
     return <Loader />;
   }
 
-  if (
-    !(isTourOpen || isTourPage) &&
-    !(tablePermissions.ViewAll || tablePermissions.ViewBasic)
-  ) {
+  if (!(isTourOpen || isTourPage) && !viewBasicPermission) {
     return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
   }
 
@@ -919,7 +938,9 @@ const TableDetailsPageV1 = () => {
   return (
     <PageLayoutV1
       className="bg-white"
-      pageTitle="Table details"
+      pageTitle={t('label.entity-detail-plural', {
+        entity: t('label.table'),
+      })}
       title="Table details">
       <Row gutter={[0, 12]}>
         {/* Entity Heading */}

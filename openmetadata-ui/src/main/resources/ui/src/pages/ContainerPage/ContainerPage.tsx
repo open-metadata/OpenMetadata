@@ -129,7 +129,7 @@ const ContainerPage = () => {
       });
       setContainerData({
         ...response,
-        tags: sortTagsCaseInsensitive(response.tags || []),
+        tags: sortTagsCaseInsensitive(response.tags ?? []),
       });
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -214,8 +214,8 @@ const ContainerPage = () => {
         ({ id }: { id: string }) => id === currentUser?.id
       ),
       followers: containerData?.followers ?? [],
-      size: containerData?.size || 0,
-      numberOfObjects: containerData?.numberOfObjects || 0,
+      size: containerData?.size ?? 0,
+      numberOfObjects: containerData?.numberOfObjects ?? 0,
       partitioned: containerData?.dataModel?.isPartitioned,
       entityFqn: containerData?.fullyQualifiedName ?? '',
     };
@@ -300,7 +300,7 @@ const ContainerPage = () => {
 
         setContainerData((prev) => ({
           ...(prev as Container),
-          followers: (containerData?.followers || []).filter(
+          followers: (containerData?.followers ?? []).filter(
             (follower) => follower.id !== oldValue[0].id
           ),
         }));
@@ -324,7 +324,7 @@ const ContainerPage = () => {
       try {
         const { owner: newOwner, version } = await handleUpdateContainerData({
           ...(containerData as Container),
-          owner: updatedOwner ? updatedOwner : undefined,
+          owner: updatedOwner,
         });
 
         setContainerData((prev) => ({
@@ -371,7 +371,7 @@ const ContainerPage = () => {
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) =>
-      isSoftDelete ? handleToggleDelete : history.push('/'),
+      isSoftDelete ? handleToggleDelete() : history.push('/'),
     []
   );
 
@@ -714,8 +714,9 @@ const ContainerPage = () => {
   return (
     <PageLayoutV1
       className="bg-white"
-      pageTitle="Table details"
-      title="Table details">
+      pageTitle={t('label.entity-detail-plural', {
+        entity: t('label.container'),
+      })}>
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
