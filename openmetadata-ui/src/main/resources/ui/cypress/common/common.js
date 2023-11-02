@@ -1182,7 +1182,7 @@ export const updateDescriptionForIngestedTables = (
   retryIngestionRun();
 
   // Navigate to table name
-  visitEntityDetailsPage({ term: tableName, serviceName, entity });
+  visitEntityDetailsPage({ term: tableName, serviceName, entity, entityFqn });
   cy.get('[data-testid="markdown-parser"]')
     .first()
     .invoke('text')
