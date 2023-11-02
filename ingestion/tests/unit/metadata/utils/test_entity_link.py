@@ -29,6 +29,10 @@ from metadata.utils.entity_link import get_decoded_column, get_table_or_column_f
             "<#E::table::rds.dev.dbt_jaffle.column_w_space::columns::last_name>",
             "last_name",
         ),
+        (
+            "<#E::table::rds.dev.dbt_jaffle.column_w_space::columns::随机的>",
+            "随机的",
+        ),
     ],
 )
 def test_get_decoded_column(entity_link, expected):
