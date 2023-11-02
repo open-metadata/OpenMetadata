@@ -87,12 +87,18 @@ const ManageButton: FC<Props> = ({
 }) => {
   const { t } = useTranslation();
   const [isDelete, setIsDelete] = useState<boolean>(false);
+  const [isEntityRestoring, setIsEntityRestoring] = useState<boolean>(false);
   const [showReactiveModal, setShowReactiveModal] = useState(false);
   const [isDisplayNameEditing, setIsDisplayNameEditing] = useState(false);
 
   const handleRestore = async () => {
-    onRestoreEntity && (await onRestoreEntity());
-    setShowReactiveModal(false);
+    try {
+      setIsEntityRestoring(true);
+      onRestoreEntity && (await onRestoreEntity());
+      setShowReactiveModal(false);
+    } finally {
+      setIsEntityRestoring(false);
+    }
   };
 
   const handleDisplayNameUpdate = (data: EntityName) => {
@@ -200,7 +206,7 @@ const ManageButton: FC<Props> = ({
           },
         ] as ItemType[])
       : []),
-    ...(extraDropdownContent ? extraDropdownContent : []),
+    ...(extraDropdownContent ?? []),
     ...(canDelete
       ? ([
           {
@@ -262,9 +268,9 @@ const ManageButton: FC<Props> = ({
           allowSoftDelete={allowSoftDelete}
           deleteMessage={deleteMessage}
           deleteOptions={deleteOptions}
-          entityId={entityId || ''}
-          entityName={entityName || ''}
-          entityType={entityType || ''}
+          entityId={entityId ?? ''}
+          entityName={entityName ?? ''}
+          entityType={entityType ?? ''}
           hardDeleteMessagePostFix={hardDeleteMessagePostFix}
           isRecursiveDelete={isRecursiveDelete}
           prepareType={prepareType}
@@ -297,6 +303,7 @@ const ManageButton: FC<Props> = ({
         }}
         className="reactive-modal"
         closable={false}
+        confirmLoading={isEntityRestoring}
         data-testid="restore-asset-modal"
         maskClosable={false}
         okText={t('label.restore')}
