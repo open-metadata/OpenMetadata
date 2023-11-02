@@ -12,7 +12,7 @@
  */
 import { Button, List, Modal, Select, Space, Typography } from 'antd';
 import { compare } from 'fast-json-patch';
-import { map, startCase } from 'lodash';
+import { delay, map, startCase } from 'lodash';
 import { EntityDetailUnion } from 'Models';
 import VirtualList from 'rc-virtual-list';
 import {
@@ -57,13 +57,14 @@ export const AssetSelectionModal = ({
   emptyPlaceHolderText,
 }: AssetSelectionModalProps) => {
   const { t } = useTranslation();
+  const TIMEOUT_DURATION = 300;
   const [search, setSearch] = useState('');
   const [items, setItems] = useState<SearchedDataProps['data']>([]);
   const [selectedItems, setSelectedItems] =
     useState<Map<string, EntityDetailUnion>>();
   const [isLoading, setIsLoading] = useState(false);
   const [activeFilter, setActiveFilter] = useState<SearchIndex>(
-    SearchIndex.ALL
+    type === AssetsOfEntity.GLOSSARY ? SearchIndex.DATA_ASSET : SearchIndex.ALL
   );
   const [activeEntity, setActiveEntity] = useState<Domain | DataProduct>();
   const [pageNumber, setPageNumber] = useState(1);
@@ -219,12 +220,15 @@ export const AssetSelectionModal = ({
         .filter(Boolean);
 
       await Promise.all(patchAPIPromises);
+      await new Promise((resolve) =>
+        delay(() => resolve(''), TIMEOUT_DURATION)
+      );
       onSave?.();
-      onCancel();
     } catch (_) {
       // Nothing here
     } finally {
       setIsSaveLoading(false);
+      onCancel();
     }
   };
 
@@ -273,12 +277,15 @@ export const AssetSelectionModal = ({
         .filter(Boolean);
 
       await Promise.all(patchAPIPromises);
+      await new Promise((resolve) =>
+        delay(() => resolve(''), TIMEOUT_DURATION)
+      );
       onSave?.();
-      onCancel();
     } catch (_) {
       // Nothing here
     } finally {
       setIsSaveLoading(false);
+      onCancel();
     }
   };
 
