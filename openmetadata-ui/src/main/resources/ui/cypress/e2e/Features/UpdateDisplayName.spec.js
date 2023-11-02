@@ -215,7 +215,7 @@ describe('Edit displayName for all the entities, services and verify breadcrumb'
   Object.values(ENTITIES_DISPLAY_NAME).map((entity) => {
     it(`${entity.entity}`, () => {
       visitEntityDetailsPage({
-        term: entity.term,
+        term: entity.name,
         serviceName: entity.serviceName,
         entity: entity.entity,
       });
