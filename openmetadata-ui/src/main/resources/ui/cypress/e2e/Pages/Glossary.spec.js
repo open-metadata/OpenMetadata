@@ -790,7 +790,11 @@ describe('Glossary page should work properly', () => {
     cy.contains('Adding a new Asset is easy, just give it a spin!').should(
       'be.visible'
     );
-    visitEntityDetailsPage(entity.term, entity.serviceName, entity.entity);
+    visitEntityDetailsPage({
+      term: entity.term,
+      serviceName: entity.serviceName,
+      entity: entity.entity,
+    });
 
     const parentPath =
       '[data-testid="entity-right-panel"] [data-testid="glossary-container"]';
