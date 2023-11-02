@@ -20,5 +20,5 @@ public interface FieldInterface {
     /* no-op implementation to be overridden */
   }
 
-  Object getChildren();
+  List<? extends FieldInterface> getChildren();
 }
