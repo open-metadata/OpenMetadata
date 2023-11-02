@@ -62,6 +62,27 @@ class SimpleSource(WorkflowSource):
             yield Either(right=element)
 
 
+class BrokenSource(WorkflowSource):
+    """Source not returning an Either"""
+
+    def prepare(self):
+        """Nothing to do"""
+
+    def test_connection(self) -> None:
+        """Nothing to do"""
+
+    @classmethod
+    def create(cls, _: dict, __: OpenMetadataConnection) -> "SimpleSource":
+        return cls()
+
+    def close(self) -> None:
+        """Nothing to do"""
+
+    def _iter(self, *args, **kwargs) -> Iterable[int]:
+        for element in range(0, 5):
+            yield int(element)
+
+
 class SimpleSink(Sink):
     """
     Simple Sink for testing
@@ -94,6 +115,17 @@ class SimpleWorkflow(BaseWorkflow):
         self.steps: Tuple[Step] = (SimpleSink(),)
 
 
+class BrokenWorkflow(BaseWorkflow):
+    """
+    Simple Workflow for testing
+    """
+
+    def set_steps(self):
+        self.source = BrokenSource()
+
+        self.steps: Tuple[Step] = (SimpleSink(),)
+
+
 # Pass only the required details so that the workflow can be initialized
 config = OpenMetadataWorkflowConfig(
     source=Source(
@@ -119,6 +151,7 @@ class TestBaseWorkflow(TestCase):
     """
 
     workflow = SimpleWorkflow(config=config)
+    broken_workflow = BrokenWorkflow(config=config)
 
     @pytest.mark.order(1)
     def test_workflow_executes(self):
@@ -143,3 +176,17 @@ class TestBaseWorkflow(TestCase):
     def test_workflow_raise_status(self):
         # We catch the error on the Sink
         self.assertRaises(WorkflowExecutionError, self.workflow.raise_from_status)
+
+    def test_broken_workflow(self):
+        """test our broken workflow return expected exc"""
+        self.broken_workflow.execute()
+        self.assertRaises(
+            WorkflowExecutionError, self.broken_workflow.raise_from_status
+        )
+        self.assertEqual(
+            self.broken_workflow.source.status.failures[0].name, "Not an Either"
+        )
+        assert (
+            "workflow/test_base_workflow.py"
+            in self.broken_workflow.source.status.failures[0].error
+        )
