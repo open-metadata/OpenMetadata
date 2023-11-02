@@ -94,7 +94,7 @@ class TestEntityLink(TestCase):
                 ["table", 'bigquery_gcp."shop-ify"."raw-product-catalog6"'],
             ),
             EntityLinkTest(
-                '<#E::table::随机的">',
+                '<#E::table::随机的>',
                 ["table", "随机的"],
             ),
         ]
