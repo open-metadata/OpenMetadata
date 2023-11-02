@@ -38,7 +38,11 @@ describe('Entity Details Page', () => {
 
   ENTITIES_LIST.map((entity) => {
     it(`Edit lineage should work for ${entity.entity} entity`, () => {
-      visitEntityDetailsPage(entity.term, entity.serviceName, entity.entity);
+      visitEntityDetailsPage({
+        term: entity.term,
+        serviceName: entity.serviceName,
+        entity: entity.entity,
+      });
       cy.get('[data-testid="lineage"]').should('be.visible').click();
 
       // Check edit button should not be disabled
@@ -55,11 +59,11 @@ describe('Lineage functionality', () => {
   });
 
   it('toggle fullscreen mode', () => {
-    visitEntityDetailsPage(
-      tableEntity.term,
-      tableEntity.serviceName,
-      tableEntity.entity
-    );
+    visitEntityDetailsPage({
+      term: tableEntity.term,
+      serviceName: tableEntity.serviceName,
+      entity: tableEntity.entity,
+    });
     cy.get('[data-testid="lineage"]').click();
 
     // Enable fullscreen
