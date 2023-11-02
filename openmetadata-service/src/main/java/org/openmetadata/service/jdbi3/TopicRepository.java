@@ -127,8 +127,6 @@ public class TopicRepository extends EntityRepository<Topic> {
           topic.getMessageSchema().getSchemaFields(),
           topic.getFullyQualifiedName(),
           fields.contains(FIELD_TAGS));
-      // populateFieldTags(entityType, topic.getMessageSchema().getSchemaFields(), topic.getFullyQualifiedName(),
-      // fields.contains(FIELD_TAGS));
     }
     return topic;
   }
@@ -164,7 +162,6 @@ public class TopicRepository extends EntityRepository<Topic> {
     if (!authorizePII) {
       populateEntityFieldTags(
           entityType, topic.getMessageSchema().getSchemaFields(), topic.getFullyQualifiedName(), true);
-      // populateFieldTags(entityType, topic.getMessageSchema().getSchemaFields(), topic.getFullyQualifiedName(), true);
       topic.setTags(getTags(topic));
       return PIIMasker.getSampleData(topic);
     }
