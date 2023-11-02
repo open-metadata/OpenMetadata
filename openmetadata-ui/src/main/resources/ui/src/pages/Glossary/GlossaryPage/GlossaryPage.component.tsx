@@ -143,7 +143,7 @@ const GlossaryPage = () => {
     try {
       const response = await getGlossaryTermByFQN(
         glossaryFqn,
-        'relatedTerms,reviewers,tags,owner,children,votes'
+        'relatedTerms,reviewers,tags,owner,children,votes,domain'
       );
       setSelectedData(response);
     } catch (error) {
