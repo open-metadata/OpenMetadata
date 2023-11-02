@@ -32,7 +32,6 @@ import { useAuth } from '../../hooks/authHooks';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getBots } from '../../rest/botsAPI';
 import { getEntityName } from '../../utils/EntityUtils';
-import { showPagination } from '../../utils/Pagination/PaginationUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import DeleteWidgetModal from '../common/DeleteWidget/DeleteWidgetModal';
@@ -62,6 +61,7 @@ const BotListV1 = ({
     handlePagingChange,
     handlePageChange,
     handlePageSizeChange,
+    showPagination,
   } = usePaging();
 
   const [handleErrorPlaceholder, setHandleErrorPlaceholder] = useState(false);
@@ -288,7 +288,7 @@ const BotListV1 = ({
         />
       </Col>
       <Col span={24}>
-        {showPagination(paging, pageSize) && (
+        {showPagination && (
           <NextPrevious
             currentPage={currentPage}
             pageSize={pageSize}

@@ -103,6 +103,7 @@ const AssetsTabs = forwardRef(
       handlePageChange,
       handlePageSizeChange,
       handlePagingChange,
+      showPagination,
     } = usePaging();
 
     const [selectedCard, setSelectedCard] = useState<SourceType>();
@@ -458,7 +459,7 @@ const AssetsTabs = forwardRef(
                 source={_source}
               />
             ))}
-            {paging.total > pageSize && data.length > 0 && (
+            {showPagination && (
               <NextPrevious
                 isNumberBased
                 currentPage={currentPage}

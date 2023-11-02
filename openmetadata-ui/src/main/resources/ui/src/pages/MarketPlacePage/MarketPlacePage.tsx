@@ -34,7 +34,6 @@ import { Paging } from '../../generated/type/paging';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getMarketPlaceApplicationList } from '../../rest/applicationMarketPlaceAPI';
 import { getEntityName } from '../../utils/EntityUtils';
-import { showPagination } from '../../utils/Pagination/PaginationUtils';
 import {
   getMarketPlaceAppDetailsPath,
   getSettingPath,
@@ -51,6 +50,7 @@ const MarketPlacePage = () => {
     handlePagingChange,
     handlePageChange,
     handlePageSizeChange,
+    showPagination,
   } = usePaging();
   const history = useHistory();
   const [isLoading, setIsLoading] = useState(true);
@@ -153,7 +153,7 @@ const MarketPlacePage = () => {
           </div>
         </Col>
         <Col span={18}>
-          {showPagination(paging, pageSize) && (
+          {showPagination && (
             <NextPrevious
               currentPage={currentPage}
               pageSize={pageSize}

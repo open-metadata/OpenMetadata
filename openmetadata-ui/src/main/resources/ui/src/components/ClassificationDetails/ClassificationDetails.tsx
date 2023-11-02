@@ -56,7 +56,6 @@ import {
   getEntityVersionByField,
   getMutuallyExclusiveDiff,
 } from '../../utils/EntityVersionUtils';
-import { showPagination } from '../../utils/Pagination/PaginationUtils';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import {
   getClassificationDetailsPath,
@@ -115,6 +114,7 @@ function ClassificationDetails({
     handlePageChange,
     handlePageSizeChange,
     handlePagingChange,
+    showPagination,
   } = usePaging();
 
   const fetchClassificationChildren = async (
@@ -547,7 +547,7 @@ function ClassificationDetails({
           size="small"
         />
 
-        {showPagination(paging, pageSize) && (
+        {showPagination && (
           <NextPrevious
             currentPage={currentPage}
             pageSize={pageSize}

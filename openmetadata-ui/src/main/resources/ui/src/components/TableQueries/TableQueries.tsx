@@ -41,7 +41,6 @@ import {
   patchQueries,
   updateQueryVote,
 } from '../../rest/queryAPI';
-import { showPagination } from '../../utils/Pagination/PaginationUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
   parseSearchParams,
@@ -87,6 +86,7 @@ const TableQueries: FC<TableQueriesProp> = ({
     handlePageSizeChange,
     paging,
     handlePagingChange,
+    showPagination,
   } = usePaging();
 
   const { getEntityPermission, permissions } = usePermissionProvider();
@@ -312,7 +312,7 @@ const TableQueries: FC<TableQueriesProp> = ({
           {isLoading.query ? <Loader /> : queryTabBody}
 
           <Col span={24}>
-            {showPagination(paging, pageSize) && (
+            {showPagination && (
               <NextPrevious
                 currentPage={currentPage}
                 pageSize={pageSize}

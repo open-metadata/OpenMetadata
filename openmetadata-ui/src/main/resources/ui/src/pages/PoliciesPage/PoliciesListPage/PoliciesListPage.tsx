@@ -41,7 +41,6 @@ import { Paging } from '../../../generated/type/paging';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { getPolicies } from '../../../rest/rolesAPIV1';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { showPagination } from '../../../utils/Pagination/PaginationUtils';
 import {
   checkPermission,
   LIST_CAP,
@@ -67,6 +66,7 @@ const PoliciesListPage = () => {
     handlePagingChange,
     pageSize,
     handlePageSizeChange,
+    showPagination,
   } = usePaging();
 
   const { permissions } = usePermissionProvider();
@@ -303,7 +303,7 @@ const PoliciesListPage = () => {
         )}
       </Col>
       <Col span={24}>
-        {showPagination(paging, pageSize) && (
+        {showPagination && (
           <NextPrevious
             currentPage={currentPage}
             pageSize={pageSize}

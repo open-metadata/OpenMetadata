@@ -30,7 +30,6 @@ import { usePaging } from '../../hooks/paging/usePaging';
 import { ServicePageData } from '../../pages/ServiceDetailsPage/ServiceDetailsPage';
 import { getDataModels } from '../../rest/dashboardAPI';
 import { getEntityName } from '../../utils/EntityUtils';
-import { showPagination } from '../../utils/Pagination/PaginationUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import NextPrevious from '../common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../common/NextPrevious/NextPrevious.interface';
@@ -46,6 +45,7 @@ const DataModelTable = () => {
     handlePageChange,
     handlePageSizeChange,
     handlePagingChange,
+    showPagination,
   } = usePaging();
   const [isLoading, setIsLoading] = useState(true);
 
@@ -143,7 +143,7 @@ const DataModelTable = () => {
         />
       </Col>
       <Col span={24}>
-        {showPagination(paging, pageSize) && (
+        {showPagination && (
           <NextPrevious
             currentPage={currentPage}
             pageSize={pageSize}

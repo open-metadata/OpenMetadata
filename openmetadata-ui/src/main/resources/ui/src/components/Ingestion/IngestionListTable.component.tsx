@@ -22,7 +22,6 @@ import { IngestionPipeline } from '../../generated/entity/services/ingestionPipe
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getErrorPlaceHolder } from '../../utils/IngestionUtils';
-import { showPagination } from '../../utils/Pagination/PaginationUtils';
 import NextPrevious from '../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../common/NextPrevious/NextPrevious.interface';
 import { IngestionListTableProps } from './IngestionListTable.interface';
@@ -50,8 +49,13 @@ function IngestionListTable({
 }: IngestionListTableProps) {
   const { t } = useTranslation();
 
-  const { currentPage, pageSize, handlePageChange, handlePageSizeChange } =
-    usePaging(PAGE_SIZE);
+  const {
+    currentPage,
+    pageSize,
+    handlePageChange,
+    handlePageSizeChange,
+    showPagination,
+  } = usePaging(PAGE_SIZE);
 
   const ingestionPagingHandler = ({
     cursorType,
@@ -202,7 +206,7 @@ function IngestionListTable({
         size="small"
       />
 
-      {showPagination(paging, pageSize) && (
+      {showPagination && (
         <NextPrevious
           currentPage={currentPage}
           pageSize={pageSize}

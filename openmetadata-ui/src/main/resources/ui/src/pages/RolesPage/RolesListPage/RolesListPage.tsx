@@ -28,11 +28,7 @@ import Table from '../../../components/common/Table/Table';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../components/PermissionProvider/PermissionProvider.interface';
-import {
-  INITIAL_PAGING_VALUE,
-  PAGE_SIZE_MEDIUM,
-  ROUTES,
-} from '../../../constants/constants';
+import { PAGE_SIZE_MEDIUM, ROUTES } from '../../../constants/constants';
 import {
   NO_PERMISSION_FOR_ACTION,
   NO_PERMISSION_TO_VIEW,
@@ -43,6 +39,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { Role } from '../../../generated/entity/teams/role';
 import { Paging } from '../../../generated/type/paging';
+import { usePaging } from '../../../hooks/paging/usePaging';
 import { getRoles } from '../../../rest/rolesAPIV1';
 import { getEntityName } from '../../../utils/EntityUtils';
 import {
@@ -63,9 +60,16 @@ const RolesListPage = () => {
 
   const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [paging, setPaging] = useState<Paging>();
-  const [currentPage, setCurrentPage] = useState<number>(INITIAL_PAGING_VALUE);
   const [selectedRole, setSelectedRole] = useState<Role>();
+  const {
+    currentPage,
+    pageSize,
+    paging,
+    handlePageChange,
+    handlePageSizeChange,
+    handlePagingChange,
+    showPagination,
+  } = usePaging(PAGE_SIZE_MEDIUM);
 
   const { permissions } = usePermissionProvider();
 
@@ -209,11 +213,11 @@ const RolesListPage = () => {
         paging?.after,
         paging?.before,
         undefined,
-        PAGE_SIZE_MEDIUM
+        pageSize
       );
 
       setRoles(data.data || []);
-      setPaging(data.paging);
+      handlePagingChange(data.paging);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -230,7 +234,7 @@ const RolesListPage = () => {
   };
 
   const handlePaging = ({ currentPage, cursorType }: PagingHandlerParams) => {
-    setCurrentPage(currentPage);
+    handlePageChange(currentPage);
     if (cursorType && paging) {
       fetchRoles({
         [cursorType]: paging[cursorType],
@@ -300,12 +304,13 @@ const RolesListPage = () => {
         )}
       </Col>
       <Col span={24}>
-        {paging && paging.total > PAGE_SIZE_MEDIUM && (
+        {showPagination && (
           <NextPrevious
             currentPage={currentPage}
-            pageSize={PAGE_SIZE_MEDIUM}
+            pageSize={pageSize}
             paging={paging}
             pagingHandler={handlePaging}
+            onShowSizeChange={handlePageSizeChange}
           />
         )}
       </Col>

@@ -51,7 +51,6 @@ import { exportUserOfTeam } from '../../../../rest/teamsAPI';
 import { getUsers } from '../../../../rest/userAPI';
 import { formatUsersResponse } from '../../../../utils/APIUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
-import { showPagination } from '../../../../utils/Pagination/PaginationUtils';
 import { getSettingsPathWithFqn } from '../../../../utils/RouterUtils';
 import { getDecodedFqn, getEncodedFqn } from '../../../../utils/StringsUtils';
 import { commonUserDetailColumns } from '../../../../utils/Users.util';
@@ -86,6 +85,7 @@ export const UserTab = ({
     handlePageChange,
     handlePageSizeChange,
     handlePagingChange,
+    showPagination,
   } = usePaging(PAGE_SIZE_MEDIUM);
 
   /**
@@ -366,7 +366,7 @@ export const UserTab = ({
           rowKey="name"
           size="small"
         />
-        {showPagination(paging, pageSize) && (
+        {showPagination && (
           <NextPrevious
             currentPage={currentPage}
             isNumberBased={Boolean(searchText)}

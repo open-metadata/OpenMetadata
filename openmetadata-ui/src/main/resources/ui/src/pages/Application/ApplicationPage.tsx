@@ -29,7 +29,6 @@ import { Paging } from '../../generated/type/paging';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getApplicationList } from '../../rest/applicationAPI';
 import { getEntityName } from '../../utils/EntityUtils';
-import { showPagination } from '../../utils/Pagination/PaginationUtils';
 import { getApplicationDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -42,6 +41,7 @@ const ApplicationPage = () => {
     handlePagingChange,
     handlePageChange,
     handlePageSizeChange,
+    showPagination,
   } = usePaging();
   const history = useHistory();
   const [isLoading, setIsLoading] = useState(true);
@@ -150,7 +150,7 @@ const ApplicationPage = () => {
               </div>
             </Col>
             <Col span={24}>
-              {showPagination(paging, pageSize) && (
+              {showPagination && (
                 <NextPrevious
                   currentPage={currentPage}
                   pageSize={pageSize}

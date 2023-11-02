@@ -33,7 +33,6 @@ import {
   TestSuiteType,
 } from '../../../rest/testAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { showPagination } from '../../../utils/Pagination/PaginationUtils';
 import { getTestSuitePath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -61,6 +60,7 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
     handlePageChange,
     handlePageSizeChange,
     handlePagingChange,
+    showPagination,
   } = usePaging();
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -211,7 +211,7 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
         />
       </Col>
       <Col span={24}>
-        {showPagination(paging, pageSize) && (
+        {showPagination && (
           <NextPrevious
             currentPage={currentPage}
             pageSize={pageSize}

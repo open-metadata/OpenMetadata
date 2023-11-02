@@ -43,7 +43,6 @@ import {
   formatDateTime,
   getEpochMillisForPastDays,
 } from '../../../utils/date-time/DateTimeUtils';
-import { showPagination } from '../../../utils/Pagination/PaginationUtils';
 import { getLogsViewerPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -75,6 +74,7 @@ const AppRunsHistory = forwardRef(
       handlePagingChange,
       handlePageChange,
       handlePageSizeChange,
+      showPagination,
     } = usePaging();
 
     const history = useHistory();
@@ -291,7 +291,7 @@ const AppRunsHistory = forwardRef(
           />
         </Col>
         <Col span={24}>
-          {showPagination(paging, pageSize) && (
+          {showPagination && (
             <NextPrevious
               isNumberBased
               currentPage={currentPage}

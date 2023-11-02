@@ -13,27 +13,11 @@
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
-import { INITIAL_PAGING_VALUE, pagingObject } from '../../constants/constants';
-import { mockStoredProcedureData } from '../../mocks/StoredProcedure.mock';
 import StoredProcedureTab from './StoredProcedureTab';
-import { StoredProcedureTabProps } from './StoreProcedure.interface';
 
 const mockPagingHandler = jest.fn();
 const mockShowDeletedHandler = jest.fn();
 const mockFetchHandler = jest.fn();
-
-const mockProps: StoredProcedureTabProps = {
-  storedProcedure: {
-    data: mockStoredProcedureData,
-    isLoading: false,
-    deleted: false,
-    paging: pagingObject,
-    currentPage: INITIAL_PAGING_VALUE,
-  },
-  pagingHandler: mockPagingHandler,
-  fetchStoredProcedure: mockFetchHandler,
-  onShowDeletedStoreProcedureChange: mockShowDeletedHandler,
-};
 
 jest.mock(
   '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
@@ -84,13 +68,13 @@ jest.mock('../../utils/TableUtils', () => ({
 
 describe('StoredProcedureTab component', () => {
   it('StoredProcedureTab should fetch details', () => {
-    render(<StoredProcedureTab {...mockProps} />);
+    render(<StoredProcedureTab />);
 
     expect(mockFetchHandler).toHaveBeenCalled();
   });
 
   it('StoredProcedureTab should render components', () => {
-    render(<StoredProcedureTab {...mockProps} />);
+    render(<StoredProcedureTab />);
 
     expect(mockFetchHandler).toHaveBeenCalled();
     expect(screen.getByTestId('stored-procedure-table')).toBeInTheDocument();
@@ -101,12 +85,7 @@ describe('StoredProcedureTab component', () => {
   });
 
   it('StoredProcedureTab should show loader till api is not resolved', () => {
-    render(
-      <StoredProcedureTab
-        {...mockProps}
-        storedProcedure={{ ...mockProps.storedProcedure, isLoading: true }}
-      />
-    );
+    render(<StoredProcedureTab />);
 
     expect(mockFetchHandler).toHaveBeenCalled();
 
@@ -114,15 +93,7 @@ describe('StoredProcedureTab component', () => {
   });
 
   it('StoredProcedureTab should show empty placeholder within table when data is empty', () => {
-    render(
-      <StoredProcedureTab
-        {...mockProps}
-        storedProcedure={{
-          ...mockProps.storedProcedure,
-          data: [],
-        }}
-      />
-    );
+    render(<StoredProcedureTab />);
 
     expect(mockFetchHandler).toHaveBeenCalled();
 
@@ -130,7 +101,7 @@ describe('StoredProcedureTab component', () => {
   });
 
   it('StoredProcedureTab should show table along with data', () => {
-    render(<StoredProcedureTab {...mockProps} />);
+    render(<StoredProcedureTab />);
 
     expect(mockFetchHandler).toHaveBeenCalled();
 
@@ -142,7 +113,7 @@ describe('StoredProcedureTab component', () => {
   });
 
   it('show deleted switch handler show properly', () => {
-    render(<StoredProcedureTab {...mockProps} />);
+    render(<StoredProcedureTab />);
 
     expect(mockFetchHandler).toHaveBeenCalled();
 
@@ -158,18 +129,7 @@ describe('StoredProcedureTab component', () => {
   });
 
   it('show render next_previous component', () => {
-    render(
-      <StoredProcedureTab
-        {...mockProps}
-        storedProcedure={{
-          data: [],
-          isLoading: false,
-          deleted: false,
-          paging: { ...pagingObject, total: 20 },
-          currentPage: INITIAL_PAGING_VALUE,
-        }}
-      />
-    );
+    render(<StoredProcedureTab />);
 
     expect(mockFetchHandler).toHaveBeenCalled();
 
@@ -177,18 +137,7 @@ describe('StoredProcedureTab component', () => {
   });
 
   it('next_previous handler should work properly', () => {
-    render(
-      <StoredProcedureTab
-        {...mockProps}
-        storedProcedure={{
-          data: [],
-          isLoading: false,
-          deleted: false,
-          paging: { ...pagingObject, total: 20 },
-          currentPage: INITIAL_PAGING_VALUE,
-        }}
-      />
-    );
+    render(<StoredProcedureTab />);
 
     expect(mockFetchHandler).toHaveBeenCalled();
 

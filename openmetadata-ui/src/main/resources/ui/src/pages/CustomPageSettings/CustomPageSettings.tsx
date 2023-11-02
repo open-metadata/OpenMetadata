@@ -35,7 +35,6 @@ import { getAllPersonas } from '../../rest/PersonaAPI';
 import { Transi18next } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getCustomizePagePath } from '../../utils/GlobalSettingsUtils';
-import { showPagination } from '../../utils/Pagination/PaginationUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './custom-page-settings.less';
@@ -54,6 +53,7 @@ export const CustomPageSettings = () => {
     pageSize,
     paging,
     handlePagingChange,
+    showPagination,
   } = usePaging();
 
   const fetchPersonas = async () => {
@@ -168,7 +168,7 @@ export const CustomPageSettings = () => {
           </Card>
         </Col>
       ))}
-      {showPagination(paging, pageSize) && (
+      {showPagination && (
         <NextPrevious
           currentPage={currentPage}
           pageSize={pageSize}

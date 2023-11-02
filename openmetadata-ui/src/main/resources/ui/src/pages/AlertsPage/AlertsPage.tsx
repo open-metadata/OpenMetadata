@@ -23,7 +23,6 @@ import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import Table from '../../components/common/Table/Table';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
-import { PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM } from '../../constants/constants';
 import { ALERTS_DOCS } from '../../constants/docs.constants';
 import {
   GlobalSettingOptions,
@@ -38,7 +37,6 @@ import {
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getAllAlerts } from '../../rest/alertsAPI';
 import { getEntityName } from '../../utils/EntityUtils';
-import { showPagination } from '../../utils/Pagination/PaginationUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -55,6 +53,7 @@ const AlertsPage = () => {
     handlePageChange,
     handlePageSizeChange,
     handlePagingChange,
+    showPagination,
     paging,
   } = usePaging();
 
@@ -224,10 +223,10 @@ const AlertsPage = () => {
           />
         </Col>
         <Col span={24}>
-          {showPagination(paging) && pageSize !== PAGE_SIZE_BASE && (
+          {showPagination && (
             <NextPrevious
               currentPage={currentPage}
-              pageSize={PAGE_SIZE_MEDIUM}
+              pageSize={pageSize}
               paging={paging}
               pagingHandler={onPageChange}
               onShowSizeChange={handlePageSizeChange}
