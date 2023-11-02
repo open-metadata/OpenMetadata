@@ -100,7 +100,7 @@ const TableQueries: FC<TableQueriesProp> = ({
     try {
       const permission = await getEntityPermission(
         ResourceEntity.QUERY,
-        selectedQuery.id || ''
+        selectedQuery.id ?? ''
       );
       setQueryPermissions(permission);
     } catch (error) {
@@ -128,7 +128,7 @@ const TableQueries: FC<TableQueriesProp> = ({
     const jsonPatch = compare(selectedQuery, updatedQuery);
 
     try {
-      const res = await patchQueries(selectedQuery.id || '', jsonPatch);
+      const res = await patchQueries(selectedQuery.id ?? '', jsonPatch);
       setSelectedQuery((pre) => (pre ? { ...pre, ...res } : res));
       setTableQueries((pre) => {
         return {
@@ -145,8 +145,8 @@ const TableQueries: FC<TableQueriesProp> = ({
 
   const updateVote = async (data: QueryVote, id?: string) => {
     try {
-      await updateQueryVote(id || '', data);
-      const response = await getQueryById(id || '', {
+      await updateQueryVote(id ?? '', data);
+      const response = await getQueryById(id ?? '', {
         fields: 'owner,votes,tags,queryUsedIn,users',
       });
       setSelectedQuery(response);
@@ -179,7 +179,7 @@ const TableQueries: FC<TableQueriesProp> = ({
       } else {
         setTableQueries(queries);
         const selectedQueryData = searchParams.query
-          ? queries.data.find((query) => query.id === searchParams.query) ||
+          ? queries.data.find((query) => query.id === searchParams.query) ??
             queries.data[0]
           : queries.data[0];
         setSelectedQuery(selectedQueryData);
@@ -229,9 +229,9 @@ const TableQueries: FC<TableQueriesProp> = ({
         setIsLoading((pre) => ({ ...pre, page: false }));
       });
     } else {
-      setIsLoading((pre) => ({ ...pre, page: false }));
+      setIsLoading((pre) => ({ ...pre, page: false, query: false }));
     }
-  }, [tableId]);
+  }, [tableId, isTableDeleted]);
 
   const handleAddQueryClick = () => {
     history.push(getAddQueryPath(datasetFQN));
@@ -265,6 +265,18 @@ const TableQueries: FC<TableQueriesProp> = ({
           type={ERROR_PLACEHOLDER_TYPE.CREATE}
           onClick={handleAddQueryClick}
         />
+      </div>
+    );
+  }
+
+  if (isTableDeleted) {
+    return (
+      <div className="flex-center font-medium mt-24" data-testid="no-queries">
+        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+          {t('message.field-data-is-not-available-for-deleted-entities', {
+            field: t('label.query-plural'),
+          })}
+        </ErrorPlaceHolder>
       </div>
     );
   }
