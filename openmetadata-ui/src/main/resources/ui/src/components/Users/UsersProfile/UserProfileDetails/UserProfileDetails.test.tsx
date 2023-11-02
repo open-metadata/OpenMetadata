@@ -16,7 +16,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { AuthProvider } from '../../../../generated/settings/settings';
 import { useAuth } from '../../../../hooks/authHooks';
 import { USER_DATA } from '../../../../mocks/User.mock';
-import { useAuthContext } from '../../../authentication/auth-provider/AuthProvider';
+import { useAuthContext } from '../../../Auth/AuthProviders/AuthProvider';
 import UserProfileDetails from './UserProfileDetails.component';
 import { UserProfileDetailsProps } from './UserProfileDetails.interface';
 
