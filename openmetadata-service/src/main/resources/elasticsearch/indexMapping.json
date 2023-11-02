@@ -3,13 +3,13 @@
     "indexName": "table_search_index",
     "indexMappingFile": "/elasticsearch/%s/table_index_mapping.json",
     "alias": "table",
-    "parentAliases": ["database", "databaseSchema", "databaseService", "all"]
+    "parentAliases": ["database", "databaseSchema", "databaseService", "all", "dataAsset"]
   },
   "storedProcedure": {
     "indexName": "stored_procedure_search_index",
     "indexMappingFile": "/elasticsearch/%s/stored_procedure_index_mapping.json",
     "alias": "storedProcedure",
-    "parentAliases": ["database", "databaseSchema", "databaseService", "all"]
+    "parentAliases": ["database", "databaseSchema", "databaseService", "all", "dataAsset"]
   },
   "databaseSchema": {
     "indexName": "database_schema_search_index",
@@ -33,37 +33,37 @@
     "indexName": "dashboard_search_index",
     "indexMappingFile": "/elasticsearch/%s/dashboard_index_mapping.json",
     "alias": "dashboard",
-    "parentAliases": ["dashboardService", "all"]
+    "parentAliases": ["dashboardService", "all", "dataAsset"]
   },
   "dashboardDataModel": {
     "indexName": "dashboard_data_model_search_index",
     "indexMappingFile": "/elasticsearch/%s/dashboard_data_model_index_mapping.json",
     "alias": "dashboardDataModel",
-    "parentAliases": ["dashboardService", "all"]
+    "parentAliases": ["dashboardService", "all", "dataAsset"]
   },
   "pipeline": {
     "indexName": "pipeline_search_index",
     "indexMappingFile": "/elasticsearch/%s/pipeline_index_mapping.json",
     "alias": "pipeline",
-    "parentAliases": ["pipelineService", "all"]
+    "parentAliases": ["pipelineService", "all", "dataAsset"]
   },
   "topic": {
     "indexName": "topic_search_index",
     "indexMappingFile": "/elasticsearch/%s/topic_index_mapping.json",
     "alias": "topic",
-    "parentAliases": ["messagingService", "all"]
+    "parentAliases": ["messagingService", "all", "dataAsset"]
   },
   "container": {
     "indexName": "container_search_index",
     "indexMappingFile": "/elasticsearch/%s/container_index_mapping.json",
     "alias": "container",
-    "parentAliases": ["storageService", "all"]
+    "parentAliases": ["storageService", "all", "dataAsset"]
   },
   "searchIndex": {
     "indexName": "search_entity_search_index",
     "indexMappingFile": "/elasticsearch/%s/search_entity_index_mapping.json",
     "alias": "searchIndex",
-    "parentAliases": ["searchService", "all"]
+    "parentAliases": ["searchService", "all", "dataAsset"]
   },
   "query": {
     "indexName": "query_search_index",
@@ -75,7 +75,7 @@
     "indexName": "mlmodel_search_index",
     "indexMappingFile": "/elasticsearch/%s/mlmodel_index_mapping.json",
     "alias": "mlmodel",
-    "parentAliases": ["all"]
+    "parentAliases": ["all", "dataAsset"]
   },
   "testCase": {
     "indexName": "test_case_search_index",
