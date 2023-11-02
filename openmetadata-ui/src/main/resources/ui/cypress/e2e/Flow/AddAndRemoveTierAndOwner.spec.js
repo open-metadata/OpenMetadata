@@ -77,13 +77,12 @@ describe('Add and Remove Owner', () => {
 
   Object.entries(ENTITIES).map(([key, value]) => {
     it(`${key} details page`, () => {
-      visitEntityDetailsPage(
-        value.term,
-        value.serviceName,
-        value.entity,
-        undefined,
-        value.entityType
-      );
+      visitEntityDetailsPage({
+        term: value.term,
+        serviceName: value.serviceName,
+        entity: value.entity,
+        entityType: value.entityType,
+      });
       verifyResponseStatusCode('@entityPermission', 200);
       verifyResponseStatusCode('@activityFeed', 200);
 
@@ -95,7 +94,11 @@ describe('Add and Remove Owner', () => {
     interceptURL('PATCH', '/api/v1/databaseSchemas/*', 'patchOwner');
     interceptURL('GET', '/api/v1/*/name/*', 'schemaDetails');
     const value = ENTITIES.table;
-    visitEntityDetailsPage(value.term, value.serviceName, value.entity);
+    visitEntityDetailsPage({
+      term: value.term,
+      serviceName: value.serviceName,
+      entity: value.entity,
+    });
     verifyResponseStatusCode('@entityPermission', 200);
     verifyResponseStatusCode('@activityFeed', 200);
 
@@ -111,7 +114,11 @@ describe('Add and Remove Owner', () => {
     interceptURL('PATCH', '/api/v1/databases/*', 'patchOwner');
     interceptURL('GET', '/api/v1/databases/name/*', 'databaseDetails');
     const value = ENTITIES.table;
-    visitEntityDetailsPage(value.term, value.serviceName, value.entity);
+    visitEntityDetailsPage({
+      term: value.term,
+      serviceName: value.serviceName,
+      entity: value.entity,
+    });
     verifyResponseStatusCode('@entityPermission', 200);
     verifyResponseStatusCode('@activityFeed', 200);
 
@@ -137,7 +144,12 @@ describe('Add and Remove Owner', () => {
     );
     interceptURL('GET', '/api/v1/databases?service=*', 'databases');
     const value = ENTITIES.table;
-    visitEntityDetailsPage(value.term, value.serviceName, value.entity);
+
+    visitEntityDetailsPage({
+      term: value.term,
+      serviceName: value.serviceName,
+      entity: value.entity,
+    });
     verifyResponseStatusCode('@entityPermission', 200);
     verifyResponseStatusCode('@activityFeed', 200);
 
@@ -325,13 +337,12 @@ describe('Add and Remove Tier', () => {
 
   Object.entries(ENTITIES).map(([key, value]) => {
     it(`${key} details page`, () => {
-      visitEntityDetailsPage(
-        value.term,
-        value.serviceName,
-        value.entity,
-        undefined,
-        value.entityType
-      );
+      visitEntityDetailsPage({
+        term: value.term,
+        serviceName: value.serviceName,
+        entity: value.entity,
+        entityType: value.entityType,
+      });
       verifyResponseStatusCode('@entityPermission', 200);
       verifyResponseStatusCode('@activityFeed', 200);
 
@@ -342,7 +353,11 @@ describe('Add and Remove Tier', () => {
   it('database details page', () => {
     interceptURL('GET', '/api/v1/databases/name/*', 'databaseDetails');
     const value = ENTITIES.table;
-    visitEntityDetailsPage(value.term, value.serviceName, value.entity);
+    visitEntityDetailsPage({
+      term: value.term,
+      serviceName: value.serviceName,
+      entity: value.entity,
+    });
     verifyResponseStatusCode('@entityPermission', 200);
     verifyResponseStatusCode('@activityFeed', 200);
 
