@@ -1,0 +1,36 @@
+parameters:
+  artifactFeed: ''
+  appName: ''
+
+stages:
+  - stage: BuildMvn
+    dependsOn: [Version, ExtractVersion]
+    variables:
+      semver: $[stageDependencies.Version.GitVersion.outputs['gitversion.GitVersion.SemVer']]
+      omVersionMvn: $[stageDependencies.ExtractVersion.OpenmetadataVersion.outputs['Version.OM_VERSION_MVN']]
+      artifactVersion: $(omVersionMvn)-dap-$(semver)
+    jobs:
+      - job: Build_and_Publish_mvn
+        displayName: Build & Publish MVN
+        steps:
+          - task: JavaToolInstaller@0
+            inputs:
+              versionSpec: '17'
+              jdkArchitectureOption: 'x64'
+              jdkSourceOption: 'PreInstalled'
+          - script: |
+              sudo apt-get install -qq -y jq
+              sudo make install_antlr_cli
+              mvn versions:set -DnewVersion=$(artifactVersion)
+              mvn clean package -DskipTests
+            displayName: GenerateOpenMetadataTarball
+          - task: UniversalPackages@0
+            displayName: Publish Open Metadata tarball
+            inputs:
+              command: publish
+              publishDirectory: $(Build.SourcesDirectory)/openmetadata-dist/target/openmetadata-$(artifactVersion).tar.gz
+              vstsFeedPublish: $(artifactFeed)
+              vstsFeedPackagePublish: $(appName)
+              versionOption: custom
+              versionPublish: $(artifactVersion)
+              packagePublishDescription: "Open Metadata DAP bundle"

@@ -1,0 +1,79 @@
+parameters:
+  outgoingFeedName: ''
+  projectName: ''
+
+stages:
+  - stage: BuildPyPi
+    dependsOn: [Version, ExtractVersion]
+    variables:
+      majorMinorPatch: $[stageDependencies.Version.GitVersion.outputs['gitversion.GitVersion.MajorMinorPatch']]
+      omVersionPy: $[stageDependencies.ExtractVersion.OpenmetadataVersion.outputs['Version.OM_VERSION_PY']]
+      runNumber: $(Build.BuildId)
+    jobs:
+    - job: Build_and_Publish_pypi
+      displayName: Build & Publish PyPi
+      pool:
+        vmImage: 'ubuntu-latest'
+      steps:
+        - script: |
+            pip install wheel
+            pip install twine
+            sudo make install_antlr_cli
+            make install_dev
+            pip install datamodel-code-generator
+          displayName: Python build tools setup
+          #  Python package versioning need to be aligned with pypi and cannot follow mvn versioning
+          #  to distinguish original openmetadata-ingestion releases from ING compiled releases
+          #  versioning as following was introduced :
+          #
+          #  MVN: open-metadata-<om-versioning>-dap-<ing-versioning>.tar.gz
+          #  pypi: openmetadata_ingestion-<om-versioning>.<ing-versioning>-py3-none-any.whl
+          #
+          #  for python packages ing versioning was aligned with python standards
+          #     main branches: .post suffix was used , dots where replaced by 0
+          #        openmetadata_ingestion-1.1.5.0.post102030-py3-none-any.whl
+          #
+          #     dev branches: .dev suffix was used, dots where replaced by 0, pipeline runid was added to version
+          #        open-metadata-ingestion-1.1.5.0.dev10203056345-py3-none-any.whl
+          #
+          #  mvn main/prod tarball : open-metadata-1.1.5-dap-1.2.3.tar.gz
+          #  python main/prod package : open-metadata-ingestion-1.1.5.0.post102030-py3-none-any.whl
+          #  python dev package: open-metadata-ingestion-1.1.5.0.dev10203056345-py3-none-any.whl
+          #
+        - bash: |
+            export ING_VERSION=`echo "post${VERSION}0" | sed -E 's/\./0/g'`
+            sed  -e  's/   version=.*/    version="'$OMVERSION'.'$ING_VERSION'",/g'  -i setup.py
+            cat setup.py | grep version
+          env:
+            VERSION: $(majorMinorPatch)
+            OMVERSION: $(omVersionPy)
+          workingDirectory: $(Build.SourcesDirectory)/ingestion
+          displayName: Release version set
+          condition: eq(variables.isMain, true)
+        - bash: |
+            export ING_VERSION=`echo "dev${VERSION}0${RUNNUMBER}" | sed -E 's/\./0/g'`
+            sed  -e  's/   version=.*/    version="'$OMVERSION'.'$ING_VERSION'",/g'  -i setup.py
+            cat setup.py | grep version
+          env:
+            VERSION: $(majorMinorPatch)
+            OMVERSION: $(omVersionPy)
+            RUNNUMBER: $(runNumber)
+          workingDirectory: $(Build.SourcesDirectory)/ingestion
+          displayName: Release version set - dev
+          condition: eq(variables.isMain, false)
+        - bash: |
+            make generate
+          displayName: generate code
+          workingDirectory: $(Build.SourcesDirectory)
+        - script: |
+            python setup.py sdist bdist_wheel && twine check dist/*
+          workingDirectory: $(Build.SourcesDirectory)/ingestion
+          displayName: Python Artifact Build
+        - task: TwineAuthenticate@1
+          displayName: Twine Authenticate
+          inputs:
+            artifactFeed: $(projectName)/$(outgoingFeedName)
+        - script: |
+            python -m twine upload -r $(outgoingFeedName) --config-file $(PYPIRC_PATH) dist/*.whl
+          workingDirectory: $(Build.SourcesDirectory)/ingestion
+          displayName: Upload artifact to PyPI
