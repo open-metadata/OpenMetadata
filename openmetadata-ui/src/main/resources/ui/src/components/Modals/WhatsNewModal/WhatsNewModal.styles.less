@@ -49,8 +49,8 @@
   right: 30px;
   z-index: 1;
   background: @white;
-  animation: scrollIn 1s normal forwards ease-in-out;
-  animation-delay: 2s;
+  animation: scrollIn 2s normal forwards ease-in-out;
+  animation-delay: 1s;
 
   .ant-card {
     position: relative;
@@ -74,10 +74,7 @@
   }
 
   .whats-new-alert-content {
-    .whats-new-alert-sub-header,
-    .show-more,
-    a[href]:not(.button-comp):not(.no-underline):not(.link-text-info),
-    .link-text {
+    .whats-new-alert-sub-header {
       color: @black;
       font-weight: 500;
       font-size: 12px;
@@ -103,9 +100,7 @@
     }
 
     &:hover {
-      .whats-new-alert-sub-header,
-      a[href]:not(.button-comp):not(.no-underline):not(.link-text-info),
-      .link-text {
+      .whats-new-alert-sub-header {
         text-decoration: underline;
         color: @primary-color;
       }

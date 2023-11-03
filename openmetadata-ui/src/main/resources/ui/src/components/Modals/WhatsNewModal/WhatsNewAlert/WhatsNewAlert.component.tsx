@@ -12,10 +12,10 @@
  */
 import { Affix, Button, Card, Col, Row, Space, Typography } from 'antd';
 import { CookieStorage } from 'cookie-storage';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router-dom';
-import UpdateIcon from '../../../../assets/img/update.gif';
+import UpdateLoaderGif from '../../../../assets/gif/whats-new-loader.gif';
 import { ReactComponent as CloseIcon } from '../../../../assets/svg/close.svg';
 import { ReactComponent as RightArrowIcon } from '../../../../assets/svg/ic-arrow-right-full.svg';
 import { ReactComponent as PlayIcon } from '../../../../assets/svg/ic-play-button.svg';
@@ -47,33 +47,37 @@ const WhatsNewAlert = () => {
     [location.pathname]
   );
 
+  const onAlertCardClick = useCallback(
+    () =>
+      setShowWhatsNew({
+        alert: false,
+        modal: true,
+      }),
+    []
+  );
+
+  const onModalCancel = useCallback(
+    () =>
+      setShowWhatsNew({
+        alert: false,
+        modal: false,
+      }),
+    []
+  );
+
+  const handleCancel = useCallback(() => {
+    cookieStorage.setItem(COOKIE_VERSION, 'true', {
+      expires: getReleaseVersionExpiry(),
+    });
+    onModalCancel();
+  }, [cookieStorage, getReleaseVersionExpiry]);
+
   useEffect(() => {
     setShowWhatsNew({
       alert: cookieStorage.getItem(COOKIE_VERSION) !== 'true',
       modal: false,
     });
   }, [isFirstTimeUser]);
-
-  const onAlertCardClick = () => {
-    setShowWhatsNew({
-      alert: false,
-      modal: true,
-    });
-  };
-  const onModalCancel = () => {
-    setShowWhatsNew({
-      alert: false,
-      modal: false,
-    });
-  };
-  const handleCancel = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    cookieStorage.setItem(COOKIE_VERSION, 'true', {
-      expires: getReleaseVersionExpiry(),
-    });
-    onModalCancel();
-  };
 
   return (
     <>
@@ -101,7 +105,7 @@ const WhatsNewAlert = () => {
                   </div>
 
                   <Typography.Text className="whats-new-alert-sub-header">
-                    {t('label.what-new-version', {
+                    {t('label.whats-new-version', {
                       version: latestVersion.version,
                     })}
                   </Typography.Text>
@@ -130,18 +134,8 @@ const WhatsNewAlert = () => {
               </Col>
             </Row>
 
-            {latestVersion?.shortSummary ? (
-              <Typography.Paragraph
-                className="whats-new-alert-description"
-                style={{ marginBottom: 0, marginTop: '8px' }}>
-                {latestVersion?.shortSummary}
-              </Typography.Paragraph>
-            ) : (
-              ''
-            )}
-
             <div className="update-icon-container">
-              <img className="update-icon" src={UpdateIcon} />
+              <img className="update-icon" src={UpdateLoaderGif} />
             </div>
           </Card>
         </Affix>
