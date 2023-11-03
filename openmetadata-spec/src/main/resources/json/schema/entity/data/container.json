@@ -176,6 +176,10 @@
       "description": "Domain the Container belongs to. When not set, the Container inherits the domain from the storage service it belongs to.",
       "$ref": "../../type/entityReference.json"
     },
+    "dataProducts" : {
+      "description": "List of data products this entity is part of.",
+      "$ref" : "../../type/entityReferenceList.json"
+    },
     "votes" : {
       "$ref": "../../type/votes.json"
     },
