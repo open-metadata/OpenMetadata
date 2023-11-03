@@ -65,7 +65,10 @@ from metadata.generated.schema.entity.data.mlmodel import (
     MlStore,
 )
 from metadata.generated.schema.entity.data.pipeline import Pipeline, PipelineStatus
-from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureCode
+from metadata.generated.schema.entity.data.storedProcedure import (
+    StoredProcedure,
+    StoredProcedureCode,
+)
 from metadata.generated.schema.entity.data.table import (
     ColumnProfile,
     SystemProfile,
@@ -769,6 +772,44 @@ class SampleDataSource(
             )
 
             yield Either(right=stored_procedure)
+
+        # Create table and stored procedure lineage
+        for lineage_entities in self.stored_procedures["lineage"]:
+
+            from_table = self.metadata.get_by_name(
+                entity=Table, fqn=lineage_entities["from_table_fqn"]
+            )
+            stored_procedure_entity = self.metadata.get_by_name(
+                entity=StoredProcedure, fqn=lineage_entities["stored_procedure_fqn"]
+            )
+            to_table = self.metadata.get_by_name(
+                entity=Table, fqn=lineage_entities["to_table_fqn"]
+            )
+            yield Either(
+                right=AddLineageRequest(
+                    edge=EntitiesEdge(
+                        fromEntity=EntityReference(
+                            id=from_table.id.__root__, type="table"
+                        ),
+                        toEntity=EntityReference(
+                            id=stored_procedure_entity.id.__root__,
+                            type="storedProcedure",
+                        ),
+                    )
+                )
+            )
+
+            yield Either(
+                right=AddLineageRequest(
+                    edge=EntitiesEdge(
+                        fromEntity=EntityReference(
+                            id=stored_procedure_entity.id.__root__,
+                            type="storedProcedure",
+                        ),
+                        toEntity=EntityReference(id=to_table.id.__root__, type="table"),
+                    )
+                )
+            )
 
     def ingest_topics(self) -> Iterable[CreateTopicRequest]:
         """
