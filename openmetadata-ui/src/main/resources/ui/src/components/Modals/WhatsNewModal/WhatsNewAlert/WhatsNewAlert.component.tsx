@@ -70,7 +70,7 @@ const WhatsNewAlert = () => {
       expires: getReleaseVersionExpiry(),
     });
     onModalCancel();
-  }, [cookieStorage, getReleaseVersionExpiry]);
+  }, [cookieStorage, onModalCancel, getReleaseVersionExpiry]);
 
   useEffect(() => {
     setShowWhatsNew({

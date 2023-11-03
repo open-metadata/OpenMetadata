@@ -83,8 +83,9 @@ Cypress.Commands.add('goToHomePage', (doNotNavigate) => {
   !doNotNavigate && cy.visit('/');
   cy.get('[data-testid="whats-new-alert-card"]').should('be.visible');
   cy.get('[data-testid="close-whats-new-alert"]').click();
-  cy.wait(500); // as alert card having a delay of 1s to come dom that why we have used await
-  cy.get('[data-testid="whats-new-alert-card"]').should('not.exist');
+  cy.get('[data-testid="whats-new-alert-card"]', {
+    timeout: 500, // need to add timeout as alert pop-oup card has an 1s of animation to appear on screen
+  }).should('not.exist');
   //   verifyResponseStatusCode('@feed', 200);
   verifyResponseStatusCode('@userProfile', 200);
 });
