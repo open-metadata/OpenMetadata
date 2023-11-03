@@ -1,0 +1,185 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import url('../variables.less');
+
+.glossary-card {
+  .ant-card-body {
+    padding: 8px 14px;
+  }
+
+  .ant-card-head {
+    .ant-card-head-wrapper {
+      padding: 0;
+      .ant-card-head-title {
+        padding: 10px 0;
+      }
+    }
+  }
+}
+
+.m-r-1 {
+  margin: 1rem 0;
+}
+.p-lr-3 {
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+}
+.left-panel-card {
+  .header {
+    padding: 0.5rem 0.75rem;
+  }
+  .ant-card-body {
+    padding: 0px;
+  }
+  .ant-card-head {
+    border-bottom: none;
+    margin-bottom: 0.5rem;
+
+    .ant-card-head-title {
+      font-weight: 600;
+      font-size: 1rem;
+      line-height: 1.5rem;
+    }
+  }
+}
+
+.right-card {
+  .ant-card-head-wrapper {
+    padding: 0.37rem 0.13rem;
+  }
+}
+
+.reference-edit-form {
+  .ant-form-item {
+    margin-bottom: 8px;
+  }
+}
+
+.glossary-synonym-tag {
+  border: 1px solid @border-color !important;
+}
+
+.term-reference-tag {
+  height: 24px;
+  .ant-tag-close-icon {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    color: @primary-color;
+  }
+  span {
+    white-space: nowrap;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+.glossary-tabs {
+  .glossary-overview-tab,
+  .glossary-term-table-container,
+  .assets-tab-container {
+    height: @glossary-term-page-height;
+    overflow-y: scroll;
+  }
+  .description-heading {
+    font-size: 16px;
+    font-weight: 500;
+  }
+  .activity-feed-tab {
+    .center-container,
+    .right-container {
+      overflow-x: hidden;
+      overflow-y: auto;
+      height: @glossary-page-tab-height;
+    }
+  }
+}
+
+.tag-button-container {
+  height: 24px;
+  span {
+    white-space: nowrap;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+.glossary-select {
+  width: calc(100% - 64px);
+}
+
+.tags-input-container {
+  .tags-item {
+    margin-top: 8px;
+    margin-right: 8px;
+  }
+  .tags-component-container {
+    margin-top: 8px;
+  }
+}
+
+.glossary-form-label {
+  width: 125px;
+  height: 32px;
+  line-height: 32px !important;
+}
+
+.glossary-form-antd-label label {
+  width: 125px;
+  margin-right: 12px;
+}
+
+.glossary-form .ant-form-item {
+  margin-bottom: 12px;
+}
+
+.edit-glossary-modal .ant-form-item {
+  margin-bottom: 12px;
+}
+
+.glossary-overview-tab .schema-heading,
+.glossary-details .schema-heading {
+  font-size: 14px;
+  font-weight: 500;
+  color: @text-grey-muted;
+}
+
+.glossary-page-layout {
+  .page-layout-rightpanel {
+    padding-right: 0;
+    background-color: @white;
+    border: 1px solid @border-color;
+    border-radius: 0;
+    padding-left: 0;
+    border-top: 0;
+
+    .summary-panel-container {
+      height: @page-height;
+    }
+  }
+}
+
+.glossary-content-container {
+  height: @glossary-page-height;
+  overflow-y: auto;
+}
+
+.glossary-richtext-editor .toastui-editor,
+.edit-glossary-modal .toastui-editor {
+  min-height: 150px !important; // overriding inline style
+  .ProseMirror {
+    min-height: 150px;
+  }
+}

@@ -1,0 +1,126 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+# Created by .ignore support plugin (hsz.mobi)
+# Maven
+__pycache__
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+
+catalog-services/catalog-services.iml
+
+# local docker volume
+docker/development/docker-volume
+docker-volume
+docker/docker-compose-quickstart/docker-volume
+# Java template
+*.class
+venv
+env
+.java-version
+# logs
+logs
+*.log
+*.egg-info
+.eggs
+*.db
+# Eclipse
+.settings/
+.project
+.classpath
+
+# Intellij
+*.iml
+*.ipr
+*.iws
+.idea/
+# Package Files
+*.jar
+*.war
+*.ear
+
+# mac dir files
+.DS_Store
+
+# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
+hs_err_pid*
+node_modules
+build
+dist
+
+# Registry Kerberos SASL secrets directory
+
+# ts build info and report
+openmetadata-ui/src/main/resources/ui/webpack
+openmetadata-ui/src/main/resources/ui/tsconfig.tsbuildinfo
+
+#tests
+.coverage*
+!ingestion/.coveragerc
+/ingestion/coverage.xml
+/ingestion/ci-coverage.xml
+/ingestion/junit/*
+/ingestion/tests/e2e/artifacts/*
+openmetadata-ui/src/main/resources/ui/src/test/unit/coverage
+openmetadata-ui/src/main/resources/ui/test-report.xml
+
+# Cypress artifacts
+openmetadata-ui/src/main/resources/ui/cypress/screenshots
+openmetadata-ui/src/main/resources/ui/cypress/videos
+openmetadata-ui/src/main/resources/ui/cypress/fixtures
+
+#UI - Dereferenced Schemas
+openmetadata-ui/src/main/resources/ui/src/jsons/connectionSchemas
+openmetadata-ui/src/main/resources/ui/src/jsons/ingestionSchemas
+
+#UI - Generated TS
+openmetadata-ui/src/main/resources/ui/src/generated
+
+#vscode
+*/.vscode/*
+.vscode/*
+
+# Python generated sources
+ingestion-core/src/metadata/generated/**
+ingestion/src/metadata/generated/**
+ingestion/requirements.txt
+ingestion/.python-version
+ingestion/venv2/**
+.python-version
+
+# MLFlow
+mlruns/
+/ingestion/tests/integration/source/mlflow/tests/db/
+
+# Antlr
+/openmetadata-ui/src/main/resources/ui/src/antlr/generated/Fqn.interp
+/openmetadata-ui/src/main/resources/ui/src/antlr/generated/Fqn.tokens
+/openmetadata-ui/src/main/resources/ui/src/antlr/generated/FqnLexer.interp
+/openmetadata-ui/src/main/resources/ui/src/antlr/generated/FqnLexer.tokens
+.antlr
+
+# SQLAlchemy tests
+file:cachedb
+
+# Snyk report
+security-report
+.dccache
+scan-requirements.txt
+
+# CLI e2e tests
+ingestion/tests/cli_e2e/**/*test.yaml

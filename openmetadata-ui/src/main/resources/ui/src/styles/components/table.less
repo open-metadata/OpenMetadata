@@ -1,0 +1,121 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+.ant-table-wrapper {
+  .ant-table-thead {
+    tr > th {
+      font-weight: 500;
+      color: @grey-4;
+      text-transform: uppercase;
+      border-right: none;
+    }
+    tr > td {
+      color: @text-color;
+    }
+    background: @grey-1;
+  }
+  .ant-table-cell {
+    vertical-align: top;
+  }
+  .ant-table-bordered {
+    table {
+      tbody {
+        tr {
+          td {
+            .drag-icon {
+              visibility: hidden;
+            }
+
+            .expand-icon {
+              cursor: pointer;
+            }
+
+            .expand-cell-empty-icon-container {
+              width: 18px;
+              height: 16px;
+              display: inline-flex;
+            }
+          }
+        }
+        .ant-table-cell-row-hover {
+          .drag-icon {
+            visibility: initial;
+          }
+        }
+      }
+    }
+    .ant-table-container {
+      border: 1px solid @border-color;
+      border-radius: 6px;
+      overflow: hidden;
+
+      .ant-table-content > table {
+        border-top: none;
+        tbody > tr {
+          td {
+            border-right: none;
+          }
+
+          &:last-child td {
+            border-bottom: none;
+          }
+        }
+        thead > tr {
+          th {
+            border-right: none;
+          }
+        }
+      }
+    }
+  }
+}
+
+.ant-table.ant-table-small .ant-table-thead > tr > th:first-child {
+  padding-left: 16px;
+}
+
+.ant-table.ant-table-small .ant-table-tbody > tr > td:first-child {
+  padding-left: 16px;
+}
+
+.drop-over-background {
+  .drop-over-child {
+    td {
+      background: @active-color;
+      border: 2px dashed @primary-color;
+      border-left: transparent;
+
+      &:first-child {
+        border-left: 2px dashed @primary-color;
+      }
+      &:last-child {
+        border-right: 2px dashed @primary-color !important;
+      }
+    }
+  }
+}
+
+.drop-over-table {
+  .ant-table {
+    table {
+      border-collapse: collapse;
+      .ant-table-tbody {
+        border: 2px dashed @primary-color;
+
+        td {
+          background: @active-color;
+        }
+      }
+    }
+  }
+}

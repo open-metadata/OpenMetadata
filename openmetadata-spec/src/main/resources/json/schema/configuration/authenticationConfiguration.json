@@ -1,0 +1,58 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/configuration/authenticationConfiguration.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AuthenticationConfiguration",
+  "description": "This schema defines the Authentication Configuration.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.security.AuthenticationConfiguration",
+  "properties": {
+    "provider": {
+      "$ref": "../entity/services/connections/metadata/openMetadataConnection.json#/definitions/authProvider"
+    },
+    "providerName": {
+      "description": "Custom OIDC Authentication Provider Name",
+      "type": "string"
+    },
+    "publicKeyUrls": {
+      "description": "List of Public Key URLs",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "authority": {
+      "description": "Authentication Authority",
+      "type": "string"
+    },
+    "clientId": {
+      "description": "Client ID",
+      "type": "string"
+    },
+    "callbackUrl": {
+      "description": "Callback URL",
+      "type": "string"
+    },
+    "jwtPrincipalClaims": {
+      "description": "Jwt Principal Claim",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "enableSelfSignup": {
+      "description": "Enable Self Sign Up",
+      "type": "boolean",
+      "default": false
+    },
+    "ldapConfiguration": {
+      "description": "LDAP Configuration in case the Provider is LDAP",
+      "$ref": "./ldapConfiguration.json"
+    },
+    "samlConfiguration": {
+      "description": "Saml Configuration that is applicable only when the provider is Saml",
+      "$ref": "../security/client/samlSSOClientConfig.json"
+    }
+  },
+  "required": ["provider", "providerName", "publicKeyUrls", "authority", "callbackUrl", "clientId", "jwtPrincipalClaims"],
+  "additionalProperties": false
+}

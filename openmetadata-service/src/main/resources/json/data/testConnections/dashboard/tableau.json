@@ -1,0 +1,39 @@
+{
+  "name": "Tableau",
+  "displayName": "Tableau Test Connection",
+  "description": "This Test Connection validates the access against the server and basic metadata extraction of workbooks and views.",
+  "steps": [
+    {
+      "name": "ServerInfo",
+      "description": "Validate that the API can properly reach the server",
+      "errorMessage": "Failed to connect to tableau, please validate the credentials",
+      "shortCircuit": true,
+      "mandatory": true
+    },
+    {
+      "name": "GetWorkbooks",
+      "description": "List all the workbooks available to the user. We will ingest Workbooks as Dashboards.",
+      "errorMessage": "Failed to fetch workbooks, please validate if user has access to fetch workbooks",
+      "mandatory": true
+    },
+    {
+      "name": "GetViews",
+      "description": "List the Views (charts) from a given Workbook.",
+      "errorMessage": "Failed to fetch views(charts), please validate if user has access to fetch views",
+      "mandatory": false
+    },
+    {
+      "name": "GetOwners",
+      "description": "Validate if the Owner information is retrieved for Workbooks",
+      "errorMessage": "Failed to fetch Workbook Owners, please validate if user has access to fetch Owners",
+      "mandatory": false
+    },
+    {
+      "name": "GetDataModels",
+      "description": "Validate if the Data Sources(Data Models) information is retrieved for Workbooks",
+      "errorMessage": "Failed to fetch Workbook Data Sources, please validate if user has access to fetch Data Sources and Metadata API is enabled for tableau server",
+      "mandatory": false
+    }
+  ]
+}
+

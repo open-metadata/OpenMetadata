@@ -1,0 +1,32 @@
+{
+  "$id": "https://open-metadata.org/schema/api/teams/createRole.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateRoleRequest",
+  "description": "Request for creating a Role entity",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.teams.CreateRole",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+
+  "properties": {
+    "name": {
+      "$ref": "../../entity/teams/role.json#/definitions/roleName"
+    },
+    "displayName": {
+      "description": "Optional name used for display purposes. Example 'Data Consumer'",
+      "type": "string"
+    },
+    "description": {
+      "description": "Optional description of the role",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "policies": {
+      "description": "Policies that is attached to this role. At least one policy is required.",
+      "type": "array",
+      "items": {
+        "$ref" : "../../type/basic.json#/definitions/entityName"
+      }
+    }
+  },
+  "required": ["name", "policies"],
+  "additionalProperties": false
+}

@@ -1,0 +1,66 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/createDatabaseSchema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateDatabaseSchemaRequest",
+  "description": "Create Database Schema entity request",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.CreateDatabaseSchema",
+  "javaInterfaces": [
+    "org.openmetadata.schema.CreateEntity"
+  ],
+  "properties": {
+    "name": {
+      "description": "Name that identifies this database schema instance uniquely.",
+      "$ref": "../../entity/data/databaseSchema.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this database schema.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the schema instance. What it has and how to use it.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "owner": {
+      "description": "Owner of this schema",
+      "$ref": "../../type/entityReference.json"
+    },
+    "database": {
+      "description": "Link to the database fully qualified name where this schema is hosted in",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "tags": {
+      "description": "Tags for this table",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "retentionPeriod" : {
+      "description": "Retention period of the data in the database. Period is expressed as duration in ISO 8601 format in UTC. Example - `P23DT23H`.",
+      "$ref": "../../type/basic.json#/definitions/duration"
+    },
+    "extension": {
+      "description": "Entity extension data with custom attributes added to the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "sourceUrl": {
+      "description": "Source URL of database schema.",
+      "$ref": "../../type/basic.json#/definitions/sourceUrl"
+    },
+    "domain" : {
+      "description": "Fully qualified name of the domain the Database Schema belongs to.",
+      "type": "string"
+    },
+    "lifeCycle": {
+      "description": "Life Cycle of the entity",
+      "$ref": "../../type/lifeCycle.json"
+    }
+  },
+  "required": [
+    "name",
+    "database"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,20 @@
+{
+  // Use Prettier as default code formatter and enable formatting on save
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnSave": true,
+
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": true, // eslint --fix on save
+    "source.fixAll.stylelint": true, // stylelint --fix on save
+    "source.organizeImports": true // Organize imports on save
+  },
+
+  // Indentations purely based on linters and file formatters, not based on existing occurrences
+  "editor.detectIndentation": false,
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  }
+}

@@ -1,0 +1,77 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/salesforceConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SalesforceConnection",
+  "description": "Salesforce Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.SalesforceConnection",
+  "definitions": {
+    "salesforceType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["Salesforce"],
+      "default": "Salesforce"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/salesforceType",
+      "default": "Salesforce"
+    },
+    "username": {
+      "title": "Username",
+      "description": "Username to connect to the Salesforce. This user should have privileges to read all the metadata in Redshift.",
+      "type": "string"
+    },
+    "password": {
+      "title": "Password",
+      "description": "Password to connect to the Salesforce.",
+      "type": "string",
+      "format": "password"
+    },
+    "securityToken": {
+      "title": "Security Token",
+      "description": "Salesforce Security Token.",
+      "type": "string",
+      "format": "password"
+    },
+    "sobjectName": {
+      "title": "Object Name",
+      "description": "Salesforce Object Name.",
+      "type": "string"
+    },
+    "databaseName": {
+      "title": "Database Name",
+      "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.",
+      "type": "string"
+    },
+    "salesforceApiVersion": {
+      "title": "Salesforce API Version",
+      "description": "API version of the Salesforce instance",
+      "type": "string",
+      "default": "42.0"
+    },
+    "salesforceDomain": {
+      "title": "Salesforce Domain",
+      "description": "Domain of Salesforce instance",
+      "type": "string",
+      "default": "login"
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["username"]
+}

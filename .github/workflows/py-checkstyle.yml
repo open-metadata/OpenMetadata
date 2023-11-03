@@ -1,0 +1,99 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+name: Python Checkstyle
+
+# read-write repo token
+# access to secrets
+on:
+  pull_request_target:
+    types: [labeled, opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+concurrency: 
+  group: py-checkstyle-${{ github.head_ref }}
+  cancel-in-progress: true
+
+jobs:
+  py-checkstyle:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+
+    steps:
+
+      - name: Wait for the labeler
+        uses: lewagon/wait-on-check-action@0179dfc359f90a703c41240506f998ee1603f9ea  #v1.0.0
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          check-name: Team Label
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 90
+
+      - name: Verify PR labels
+        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          github-token: '${{ secrets.GITHUB_TOKEN }}'
+          valid-labels: 'safe to test'
+          pull-request-number: '${{ github.event.pull_request.number }}'
+          disable-reviews: true  # To not auto approve changes
+
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.9
+
+      - name: Install Ubuntu related dependencies
+        run: |
+          sudo apt-get update  && sudo apt-get install -y libsasl2-dev unixodbc-dev python3-venv
+
+      - name: Install Python & Openmetadata related dependencies
+        run: |
+          python3 -m venv env
+          source env/bin/activate
+          sudo make install_antlr_cli
+          make install install_test install_dev
+
+      # Add back linting once we have 10/10 on main
+      - name: Code style check
+        id: style
+        continue-on-error: true
+        run: |
+          source env/bin/activate
+          make generate
+          make py_format_check
+
+      - name: Create a comment in the PR with the instructions
+        if: steps.style.outcome != 'success'
+        uses: peter-evans/create-or-update-comment@v1
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            **The Python checkstyle failed.**
+
+            Please run `make py_format` and `py_format_check` in the root of your repository and commit the changes to this PR.
+            You can also use [pre-commit](https://pre-commit.com/) to automate the Python code formatting.
+
+            You can install the pre-commit hooks with `make install_test precommit_install`.
+
+      - name: Python checkstyle failed, check the comment in the PR
+        if: steps.style.outcome != 'success'
+        run: |
+          exit 1

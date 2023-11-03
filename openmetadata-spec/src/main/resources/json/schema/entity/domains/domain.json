@@ -1,0 +1,88 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/domains/domain.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Domain",
+  "description": "A `Domain` is a bounded context that is aligned with a Business Unit or a function within an organization.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.domains.Domain",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "definitions": {
+    "domainType" : {
+      "description" : "Type of a domain",
+      "type" : "string",
+      "enum": [
+        "Source-aligned",
+        "Consumer-aligned",
+        "Aggregate"
+      ]
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique ID of the Domain",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "domainType": {
+      "description": "Domain type",
+      "$ref": "#/definitions/domainType"
+    },
+    "name": {
+      "description": "A unique name of the Domain",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "displayName": {
+      "description": "Name used for display purposes. Example 'Marketing', 'Payments', etc.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the Domain.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "style": {
+      "$ref": "../../type/basic.json#/definitions/style"
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "parent" : {
+      "description" : "Parent domains. When 'null' or not set, indicates that this is the top level domain.",
+      "$ref" : "../../type/entityReference.json"
+    },
+    "children" : {
+      "description" : "Children domains or sub-domains.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "owner": {
+      "description": "Owner of this Domain.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "experts": {
+      "description": "List of users who are experts in this Domain.",
+      "$ref": "../../type/entityReferenceList.json",
+      "default" : null
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    }
+  },
+  "required": ["id", "name", "description", "domainType"],
+  "additionalProperties": false
+}

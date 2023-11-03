@@ -1,0 +1,114 @@
+{
+   "data": {
+     "graphOrError": {
+       "id": "graph:5164c131c3524a271e7ecce49766d50a479b5ff4",
+       "name": "story_recommender_job",
+       "description": null,
+       "solidHandles": [
+         {
+           "handleID": "s3__recommender__recommender_model",
+           "solid": {
+             "name": "s3__recommender__recommender_model",
+             "inputs": [
+               {
+                 "dependsOn": [
+                   {
+                     "solid": {
+                       "name": "s3__recommender__user_story_matrix"
+                     }
+                   }
+                 ]
+               }
+             ]
+           }
+         },
+         {
+           "handleID": "s3__recommender__user_story_matrix",
+           "solid": {
+             "name": "s3__recommender__user_story_matrix",
+             "inputs": [
+               {
+                 "dependsOn": [
+                   {
+                     "solid": {
+                       "name": "snowflake__recommender__comment_stories"
+                     }
+                   }
+                 ]
+               }
+             ]
+           }
+         },
+         {
+           "handleID": "snowflake__recommender__comment_stories",
+           "solid": {
+             "name": "snowflake__recommender__comment_stories",
+             "inputs": [
+               {
+                 "dependsOn": []
+               },
+               {
+                 "dependsOn": []
+               }
+             ]
+           }
+         },
+         {
+           "handleID": "snowflake__recommender__component_top_stories",
+           "solid": {
+             "name": "snowflake__recommender__component_top_stories",
+             "inputs": [
+               {
+                 "dependsOn": [
+                   {
+                     "solid": {
+                       "name": "s3__recommender__recommender_model"
+                     }
+                   }
+                 ]
+               },
+               {
+                 "dependsOn": []
+               },
+               {
+                 "dependsOn": [
+                   {
+                     "solid": {
+                       "name": "s3__recommender__user_story_matrix"
+                     }
+                   }
+                 ]
+               }
+             ]
+           }
+         },
+         {
+           "handleID": "snowflake__recommender__user_top_recommended_stories",
+           "solid": {
+             "name": "snowflake__recommender__user_top_recommended_stories",
+             "inputs": [
+               {
+                 "dependsOn": [
+                   {
+                     "solid": {
+                       "name": "s3__recommender__recommender_model"
+                     }
+                   }
+                 ]
+               },
+               {
+                 "dependsOn": [
+                   {
+                     "solid": {
+                       "name": "s3__recommender__user_story_matrix"
+                     }
+                   }
+                 ]
+               }
+             ]
+           }
+         }
+       ]
+     }
+   }
+ }

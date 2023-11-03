@@ -1,0 +1,27 @@
+{
+  "$id": "https://open-metadata.org/schema/configuration/ldapTrustStoreConfig/truststoreConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TruststoreConfig",
+  "description": "Truststore Configuration",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.auth.ldapTrustStoreConfig.TruststoreConfig",
+  "properties": {
+    "customTrustManagerConfig": {
+      "description": "CustomTrust Configuration",
+      "$ref": "./customTrustManagerConfig.json"
+    },
+    "hostNameConfig": {
+      "description": "HostName Configuration",
+      "$ref": "./hostNameConfig.json"
+    },
+    "jvmDefaultConfig": {
+      "description": "JVMDefault Configuration",
+      "$ref": "./jvmDefaultConfig.json"
+    },
+    "trustAllConfig": {
+      "description": "TrustAll Configuration",
+      "$ref": "./trustAllConfig.json"
+    }
+  },
+  "additionalProperties": false
+}

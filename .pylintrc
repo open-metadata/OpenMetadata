@@ -1,0 +1,33 @@
+[BASIC]
+# W1203: logging-fstring-interpolation - f-string brings better readability and unifies style
+# W1202: logging-format-interpolation - lazy formatting in logging functions
+# R0903: too-few-public-methods - False negatives in pydantic classes
+# W0707: raise-missing-from - Tends to be a false positive as exception are closely encapsulated
+# R0901: too-many-ancestors - We are already inheriting from SQA classes with a bunch of ancestors
+# W0703: broad-except - We are dealing with many different source systems, but we want to make sure workflows run until the end
+# W0511: fixme - These are internal notes and guides
+# W1518: method-cache-max-size-none - allow us to use LRU Cache with maxsize `None` to speed up certain calls
+disable=W1203,W1202,R0903,W0707,R0901,W1201,W0703,W0511,W1518
+
+docstring-min-length=20
+max-args=7
+max-attributes=12
+
+# usual typevar naming
+good-names=T,C,fn,db,df,i
+module-rgx=(([a-z_][a-z0-9_]*)|([a-zA-Z0-9]+))$
+
+[MASTER]
+fail-under=6.0
+init-hook='from pylint.config import find_default_config_files; import os, sys; sys.path.append(os.path.dirname(next(find_default_config_files())))'
+extension-pkg-allow-list=pydantic
+load-plugins=ingestion.plugins.print_checker
+max-public-methods=25
+
+[MESSAGES CONTROL]
+disable=no-name-in-module,import-error,duplicate-code
+enable=useless-suppression
+
+[FORMAT]
+# We all have big monitors now
+max-line-length=120

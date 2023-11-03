@@ -1,0 +1,41 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/createTestSuite.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateTestSuiteRequest",
+  "description": "Schema corresponding to a Test Suite",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.tests.CreateTestSuite",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+  "definitions": {
+    "testSuiteEntityName": {
+      "description": "Name of a test suite entity. For executable testSuite, this should match the entity FQN in the platform.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    }
+  },
+  "properties": {
+    "name": {
+      "description": "Name that identifies this test suite.",
+      "$ref": "#/definitions/testSuiteEntityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this test suite.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the test suite.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "owner": {
+      "description": "Owner of this test suite",
+      "$ref": "../../type/entityReference.json"
+    },
+    "executableEntityReference": {
+      "description": "FQN of the entity the test suite is executed against. Only applicable for executable test suites.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    }
+  },
+  "required": ["name"],
+  "additionalProperties": false
+}

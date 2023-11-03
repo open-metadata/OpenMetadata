@@ -1,0 +1,37 @@
+{
+  "mappings": {
+    "properties": {
+      "timestamp": {
+        "type": "date"
+      },
+      "reportDataType": {
+        "type": "keyword"
+      },
+      "data": {
+        "properties": {
+          "entityType": {
+            "type": "keyword"
+          },
+          "entityTier": {
+            "type": "keyword"
+          },
+          "entityFqn": {
+            "type": "keyword"
+          },
+          "entityHref": {
+            "type": "keyword"
+        },
+          "owner": {
+            "type": "keyword"
+          },
+          "ownerId": {
+            "type": "text"
+          },
+          "views": {
+            "type": "integer"
+          }
+        }
+      }
+    }
+  }
+}

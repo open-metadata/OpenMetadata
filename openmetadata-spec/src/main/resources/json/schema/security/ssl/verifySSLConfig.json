@@ -1,0 +1,30 @@
+{
+  "$id": "https://open-metadata.org/schema/security/ssl/verifySSLConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Verify SSL Config",
+  "description": "Client configuration to validate SSL certificates.",
+  "definitions": {
+    "verifySSL": {
+      "title": "Verify SSL",
+      "description": "Client SSL verification. Make sure to configure the SSLConfig if enabled.",
+      "javaType": "org.openmetadata.schema.security.ssl.VerifySSL",
+      "type": "string",
+      "enum": [
+        "no-ssl",
+        "ignore",
+        "validate"
+      ],
+      "default": "no-ssl"
+    },
+    "sslConfig": {
+      "title": "SSL Config",
+      "description": "Client SSL configuration",
+      "javaType": "org.openmetadata.schema.security.ssl.SSLConfig",
+      "oneOf": [
+        {
+          "$ref": "validateSSLClientConfig.json"
+        }
+      ]
+    }
+  }
+}

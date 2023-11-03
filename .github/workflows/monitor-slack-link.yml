@@ -1,0 +1,75 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+name: monitor-slack-link
+on:
+  schedule:
+    - cron:  '0 */2 * * *'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  monitor-slack-link:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Free Disk Space (Ubuntu)
+      uses: jlumbroso/free-disk-space@main
+      with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          docker-images: true
+          swap-storage: true      
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.9
+
+    - name: Install Deps
+      run: |
+        python -m venv env
+        source env/bin/activate
+        pip install requests
+
+    - name: Monitor Link
+      id: monitor
+      continue-on-error: true
+      env:
+        PYTHONUNBUFFERED: "1"
+      run: |
+        source env/bin/activate
+        python scripts/slack-link-monitor.py
+
+    - name: Slack on Failure
+      if: steps.monitor.outcome != 'success'
+      uses: slackapi/slack-github-action@v1.23.0
+      with:
+        payload: |
+          {
+            "text": "🔥 Slack invitation link has expired! 🔥"
+          }
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_MONITOR_SLACK_WEBHOOK }}
+        SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+
+    - name: Force failure
+      if: steps.monitor.outcome != 'success'
+      run: |
+        exit 1

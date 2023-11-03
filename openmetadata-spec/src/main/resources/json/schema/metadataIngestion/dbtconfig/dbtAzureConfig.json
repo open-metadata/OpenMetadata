@@ -1,0 +1,32 @@
+{
+  "$id": "https://open-metadata.org/schema/metadataIngestion/dbtconfig/dbtAzureConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DBT Azure Config",
+  "type": "object",
+  "description": "DBT Catalog, Manifest and Run Results files in Azure bucket. We will search for catalog.json, manifest.json and run_results.json.",
+  "javaType": "org.openmetadata.schema.metadataIngestion.dbtconfig.DbtAzureConfig",
+  "properties": {
+    "dbtSecurityConfig": {
+      "title": "DBT Azure Security Config",
+      "$ref": "../../security/credentials/azureCredentials.json"
+    },
+    "dbtPrefixConfig": {
+      "title": "DBT Prefix Config",
+      "description": "Details of the bucket where the dbt files are stored",
+      "type": "object",
+      "properties": {
+        "dbtBucketName": {
+          "title": "DBT Bucket Name",
+          "description": "Name of the bucket where the dbt files are stored",
+          "type": "string"
+        },
+        "dbtObjectPrefix": {
+          "title": "DBT Object Prefix",
+          "description": "Path of the folder where the dbt files are stored",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "$id": "https://open-metadata.org/schema/api/tests/createTestCase.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateTestCaseRequest",
+  "description": "Test is a test definition to capture data quality tests.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.tests.CreateTestCase",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+  "properties": {
+    "name": {
+      "description": "Name that identifies this test case.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "description": {
+      "description": "Description of the testcase.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this test.",
+      "type": "string"
+    },
+    "testDefinition": {
+      "description": "Fully qualified name of the test definition.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "entityLink": {
+      "$ref": "../../type/basic.json#/definitions/entityLink"
+    },
+    "testSuite": {
+      "description": "Fully qualified name of the testSuite",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "parameterValues": {
+      "type": "array",
+      "items": {
+        "$ref": "../../tests/testCase.json#/definitions/testCaseParameterValue"
+      }
+    },
+    "owner": {
+      "description": "Owner of this test",
+      "$ref": "../../type/entityReference.json"
+    }
+  },
+  "required": ["name", "testDefinition", "entityLink", "testSuite"],
+  "additionalProperties": false
+}

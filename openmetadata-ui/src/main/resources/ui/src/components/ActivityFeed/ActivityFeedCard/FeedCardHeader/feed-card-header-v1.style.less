@@ -1,0 +1,49 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import url('../../../../styles/variables.less');
+
+.feed-header {
+  color: @text-color;
+  display: flex;
+  a {
+    color: @link-color !important;
+  }
+  .thread-author {
+    font-weight: 600;
+  }
+
+  .thread-author:hover {
+    text-decoration: underline;
+  }
+  .feed-profile-pic {
+    display: flex;
+    align-items: center;
+  }
+  .feed-header-content {
+    line-height: 20px;
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+}
+
+.feed-header-timestamp {
+  font-size: 12px;
+  color: @grey-3;
+}
+.feed-header-timestamp::before {
+  content: '\2022';
+  margin-right: 8px;
+  margin-left: 4px;
+}

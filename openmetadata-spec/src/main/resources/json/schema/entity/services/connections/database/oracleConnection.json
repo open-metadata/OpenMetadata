@@ -1,0 +1,146 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/oracleConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OracleConnection",
+  "description": "Oracle Database Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.OracleConnection",
+  "definitions": {
+    "oracleType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["Oracle"],
+      "default": "Oracle"
+    },
+    "oracleScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": ["oracle+cx_oracle"],
+      "default": "oracle+cx_oracle"
+    },
+    "OracleDatabaseSchema": {
+      "title": "Database Schema",
+      "type":"object",
+      "properties": {
+        "databaseSchema": {
+          "title": "DatabaseSchema",
+          "description": "databaseSchema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single databaseSchema. When left blank, OpenMetadata Ingestion attempts to scan all the databaseSchema.",
+          "type": "string"
+        }
+      },
+      "required": ["databaseSchema"]
+    },
+    "OracleServiceName": {
+      "title": "Oracle Service Name",
+      "type":"object",
+      "properties": {
+        "oracleServiceName": {
+          "title": "Oracle Service Name",
+          "description": "The Oracle Service name is the TNS alias that you give when you remotely connect to your database.",
+          "type": "string"
+        }
+      },
+      "required": ["oracleServiceName"]
+    },
+    "OracleTNSConnection": {
+      "title": "Oracle TNS Connection",
+      "type":"object",
+      "properties": {
+        "oracleTNSConnection": {
+          "title": "Oracle TNS Connection String",
+          "description": "Pass the full constructed TNS string, e.g., (DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=myhost)(PORT=1530)))(CONNECT_DATA=(SID=MYSERVICENAME))).",
+          "type": "string"
+        }
+      },
+      "required": ["oracleTNSConnection"]
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/oracleType",
+      "default": "Oracle"
+    },
+    "scheme": {
+      "title": "Connection Scheme",
+      "description": "SQLAlchemy driver scheme options.",
+      "$ref": "#/definitions/oracleScheme",
+      "default": "oracle+cx_oracle"
+    },
+    "username": {
+      "title": "Username",
+      "description": "Username to connect to Oracle. This user should have privileges to read all the metadata in Oracle.",
+      "type": "string"
+    },
+    "password": {
+      "title": "Password",
+      "description": "Password to connect to Oracle.",
+      "type": "string",
+      "format": "password"
+    },
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "Host and port of the Oracle service.",
+      "type": "string"
+    },
+    "oracleConnectionType": {
+      "title": "Oracle Connection Type",
+      "type": "object",
+      "description": "Connect with oracle by either passing service name or database schema name.",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/OracleDatabaseSchema"
+        },
+        {
+          "$ref": "#/definitions/OracleServiceName"
+        },
+        {
+          "$ref": "#/definitions/OracleTNSConnection"
+        }
+      ]
+    },
+    "instantClientDirectory": {
+      "title": "Oracle instant client directory",
+      "type": "string",
+      "description": "This directory will be used to set the LD_LIBRARY_PATH env variable. It is required if you need to enable thick connection mode. By default, we bring instant client 19 and point to /instantclient.",
+      "default": "/instantclient"
+    },
+    "databaseName": {
+      "title": "Database Name",
+      "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.",
+      "type": "string"
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsUsageExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsUsageExtraction"
+    },
+    "supportsLineageExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsLineageExtraction"
+    },
+    "supportsDBTExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsDBTExtraction"
+    },
+    "supportsProfiler": {
+      "title": "Supports Profiler",
+      "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+    },
+    "supportsQueryComment": {
+      "title": "Supports Query Comment",
+      "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["username", "oracleConnectionType"]
+}

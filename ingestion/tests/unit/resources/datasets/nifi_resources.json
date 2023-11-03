@@ -1,0 +1,168 @@
+{
+    "resources": [
+        {
+            "identifier": "/flow",
+            "name": "NiFi Flow"
+        },
+        {
+            "identifier": "/system",
+            "name": "System"
+        },
+        {
+            "identifier": "/controller",
+            "name": "Controller"
+        },
+        {
+            "identifier": "/counters",
+            "name": "Counters"
+        },
+        {
+            "identifier": "/provenance",
+            "name": "Provenance"
+        },
+        {
+            "identifier": "/policies",
+            "name": "Access Policies"
+        },
+        {
+            "identifier": "/tenants",
+            "name": "Tenant"
+        },
+        {
+            "identifier": "/proxy",
+            "name": "Proxy User Requests"
+        },
+        {
+            "identifier": "/resources",
+            "name": "NiFi Resources"
+        },
+        {
+            "identifier": "/site-to-site",
+            "name": "Site to Site"
+        },
+        {
+            "identifier": "/parameter-contexts",
+            "name": "Parameter Contexts"
+        },
+        {
+            "identifier": "/restricted-components",
+            "name": "Restricted Components"
+        },
+        {
+            "identifier": "/restricted-components/read-filesystem",
+            "name": "read filesystem"
+        },
+        {
+            "identifier": "/restricted-components/write-filesystem",
+            "name": "write filesystem"
+        },
+        {
+            "identifier": "/restricted-components/read-distributed-filesystem",
+            "name": "read distributed filesystem"
+        },
+        {
+            "identifier": "/restricted-components/write-distributed-filesystem",
+            "name": "write distributed filesystem"
+        },
+        {
+            "identifier": "/restricted-components/execute-code",
+            "name": "execute code"
+        },
+        {
+            "identifier": "/restricted-components/access-keytab",
+            "name": "access keytab"
+        },
+        {
+            "identifier": "/restricted-components/access-ticket-cache",
+            "name": "access ticket cache"
+        },
+        {
+            "identifier": "/restricted-components/access-environment-credentials",
+            "name": "access environment credentials"
+        },
+        {
+            "identifier": "/restricted-components/export-nifi-details",
+            "name": "export nifi details"
+        },
+        {
+            "identifier": "/process-groups/d3d6b945-0182-1000-d7e4-d81b8f79f310",
+            "name": "NiFi Flow"
+        },
+        {
+            "identifier": "/data/process-groups/d3d6b945-0182-1000-d7e4-d81b8f79f310",
+            "name": "Data for NiFi Flow"
+        },
+        {
+            "identifier": "/provenance-data/process-groups/d3d6b945-0182-1000-d7e4-d81b8f79f310",
+            "name": "Provenance data for NiFi Flow"
+        },
+        {
+            "identifier": "/policies/process-groups/d3d6b945-0182-1000-d7e4-d81b8f79f310",
+            "name": "Policies for NiFi Flow"
+        },
+        {
+            "identifier": "/processors/d3f023ac-0182-1000-8bbe-e2b00347fff8",
+            "name": "FetchFile"
+        },
+        {
+            "identifier": "/data/processors/d3f023ac-0182-1000-8bbe-e2b00347fff8",
+            "name": "Data for FetchFile"
+        },
+        {
+            "identifier": "/provenance-data/processors/d3f023ac-0182-1000-8bbe-e2b00347fff8",
+            "name": "Provenance data for FetchFile"
+        },
+        {
+            "identifier": "/policies/processors/d3f023ac-0182-1000-8bbe-e2b00347fff8",
+            "name": "Policies for FetchFile"
+        },
+        {
+            "identifier": "/operation/processors/d3f023ac-0182-1000-8bbe-e2b00347fff8",
+            "name": "Operations forFetchFile"
+        },
+        {
+            "identifier": "/processors/d3f1304d-0182-1000-f0f5-9a6927976941",
+            "name": "ListFile"
+        },
+        {
+            "identifier": "/data/processors/d3f1304d-0182-1000-f0f5-9a6927976941",
+            "name": "Data for ListFile"
+        },
+        {
+            "identifier": "/provenance-data/processors/d3f1304d-0182-1000-f0f5-9a6927976941",
+            "name": "Provenance data for ListFile"
+        },
+        {
+            "identifier": "/policies/processors/d3f1304d-0182-1000-f0f5-9a6927976941",
+            "name": "Policies for ListFile"
+        },
+        {
+            "identifier": "/operation/processors/d3f1304d-0182-1000-f0f5-9a6927976941",
+            "name": "Operations forListFile"
+        },
+        {
+            "identifier": "/controller-services/d3ec0f6b-0182-1000-b643-bec7e3d326d2",
+            "name": "DBCPConnectionPool"
+        },
+        {
+            "identifier": "/policies/controller-services/d3ec0f6b-0182-1000-b643-bec7e3d326d2",
+            "name": "Policies for DBCPConnectionPool"
+        },
+        {
+            "identifier": "/operation/controller-services/d3ec0f6b-0182-1000-b643-bec7e3d326d2",
+            "name": "Operations forDBCPConnectionPool"
+        },
+        {
+            "identifier": "/controller-services/d3ec0f6b-0182-1000-b643-bec7e3d326d2",
+            "name": "DBCPConnectionPool"
+        },
+        {
+            "identifier": "/policies/controller-services/d3ec0f6b-0182-1000-b643-bec7e3d326d2",
+            "name": "Policies for DBCPConnectionPool"
+        },
+        {
+            "identifier": "/operation/controller-services/d3ec0f6b-0182-1000-b643-bec7e3d326d2",
+            "name": "Operations forDBCPConnectionPool"
+        }
+    ]
+}

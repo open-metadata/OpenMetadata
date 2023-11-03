@@ -1,0 +1,18 @@
+{
+  "name": "columnValuesToNotMatchRegex",
+  "fullyQualifiedName": "columnValuesToNotMatchRegex",
+  "displayName": "Column Values To Not Match Regex",
+  "description": "This schema defines the test ColumnValuesToNotMatchRegex. Test the values in a column to not match a given regular expression. ",
+  "entityType": "COLUMN",
+  "testPlatforms": ["OpenMetadata"],
+  "supportedDataTypes": ["BYTES", "STRING", "MEDIUMTEXT", "TEXT", "CHAR", "VARCHAR"],
+  "parameterDefinition": [
+    {
+      "name": "forbiddenRegex",
+      "displayName": "RegEx Pattern",
+      "description": "The regular expression the column entries should not match. For database without regex support (i.e. MSSQL, AzureSQL) this test will use `NOT LIKE`.",
+      "dataType": "STRING",
+      "required": true
+    }
+  ]
+}

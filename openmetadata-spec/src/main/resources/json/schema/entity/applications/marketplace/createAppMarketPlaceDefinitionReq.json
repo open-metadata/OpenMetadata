@@ -1,0 +1,86 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/marketplace/createAppMarketPlaceDefinitionReq.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateAppMarketPlaceDefinitionReq",
+  "javaType": "org.openmetadata.schema.entity.app.CreateAppMarketPlaceDefinitionReq",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+  "description": "This schema defines the applications for Open-Metadata.",
+  "type": "object",
+  "properties": {
+    "name": {
+      "description": "Name of the Application.",
+      "$ref": "../../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name for the application.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the Application.",
+      "$ref": "../../../type/basic.json#/definitions/markdown"
+    },
+    "features": {
+      "description": "Features of the Application.",
+      "$ref": "../../../type/basic.json#/definitions/markdown"
+    },
+    "owner": {
+      "description": "Owner of this workflow.",
+      "$ref": "../../../type/entityReference.json",
+      "default": null
+    },
+    "developer": {
+      "description": "Developer For the Application.",
+      "type": "string"
+    },
+    "developerUrl": {
+      "description": "Url for the developer",
+      "type": "string"
+    },
+    "privacyPolicyUrl": {
+      "description": "Privacy Policy for the developer",
+      "type": "string"
+    },
+    "supportEmail": {
+      "description": "Support Email for the application",
+      "type": "string"
+    },
+    "className": {
+      "description": "Full Qualified ClassName for the the application",
+      "type": "string"
+    },
+    "appType": {
+      "description": "This schema defines the type of application.",
+      "$ref": "../app.json#/definitions/appType"
+    },
+    "scheduleType": {
+      "description": "This schema defines the Schedule Type of Application.",
+      "$ref": "../app.json#/definitions/scheduleType"
+    },
+    "permission": {
+      "description": "Permission used by Native Applications.",
+      "$ref": "../app.json#/definitions/permissions"
+    },
+    "runtime": {
+      "description": "If app type is live, user can provide additional runtime context.",
+      "$ref": "../app.json#/definitions/executionContext"
+    },
+    "appConfiguration": {
+      "description": "Application Configuration object."
+    },
+    "appLogoUrl": {
+      "description": "Application Logo Url.",
+      "type": "string",
+      "format": "uri"
+    },
+    "appScreenshots": {
+      "description": "Application Screenshots.",
+      "type": "array",
+      "items":{
+        "type": "string"
+      },
+      "uniqueItems": true
+    }
+  },
+  "additionalProperties": false,
+  "required": ["name", "appType", "className", "scheduleType", "permission"]
+}

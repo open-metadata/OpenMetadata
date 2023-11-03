@@ -1,0 +1,187 @@
+{
+    "execution-events": {
+        "items": [
+            {
+                "executionEventId": "3f784e72-5bf7-5704-8828-ae8464fe915b:lhq160w0",
+                "executionPlanId": "3f784e72-5bf7-5704-8828-ae8464fe915b",
+                "frameworkName": "spark 3.3.2",
+                "applicationName": "jdbc postgres ssl app",
+                "applicationId": "local-1684226801003",
+                "timestamp": 1684226827008,
+                "durationNs": 8.101352417E9,
+                "dataSourceName": "postgres?sslmode=disable:spline_test.filter",
+                "dataSourceUri": "jdbc:postgresql://localhost:5432/postgres?sslmode=disable:spline_test.filter",
+                "dataSourceType": "jdbc",
+                "append": true
+            },
+            {
+                "executionEventId": "96976f56-9fe3-5bcc-a3e7-ac28781842c9:lhpygcji",
+                "executionPlanId": "96976f56-9fe3-5bcc-a3e7-ac28781842c9",
+                "frameworkName": "spark 3.3.2",
+                "applicationName": "databricks shell",
+                "applicationId": "local-1684222240845",
+                "timestamp": 1684222269822,
+                "durationNs": 1.0835231042E10,
+                "dataSourceName": "table3",
+                "dataSourceUri": "dbfs:/user/hive/warehouse/table3",
+                "dataSourceType": "jdbc",
+                "append": true
+            }
+        ],
+        "totalCount": 2,
+        "pageNum": 1,
+        "pageSize": 10,
+        "totalDateRange": []
+    },
+    "lineage-detailed": {
+        "executionPlan": {
+            "_id": "3f784e72-5bf7-5704-8828-ae8464fe915b",
+            "name": "jdbc postgres ssl app",
+            "systemInfo": {
+                "name": "spark",
+                "version": "3.3.2"
+            },
+            "agentInfo": {
+                "name": "spline",
+                "version": "1.1.0"
+            },
+            "extra": {
+                "appName": "jdbc postgres ssl app",
+                "attributes": [
+                    {
+                        "id": "3f784e72-5bf7-5704-8828-ae8464fe915b:attr-1",
+                        "name": "sample",
+                        "dataTypeId": "75fe27b9-9a00-5c7d-966f-33ba32333133"
+                    },
+                    {
+                        "id": "3f784e72-5bf7-5704-8828-ae8464fe915b:attr-0",
+                        "name": "id",
+                        "dataTypeId": "e63adadc-648a-56a0-9424-3289858cf0bb"
+                    },
+                    {
+                        "id": "3f784e72-5bf7-5704-8828-ae8464fe915b:attr-3",
+                        "name": "sample",
+                        "dataTypeId": "75fe27b9-9a00-5c7d-966f-33ba32333133"
+                    },
+                    {
+                        "id": "3f784e72-5bf7-5704-8828-ae8464fe915b:attr-2",
+                        "name": "id",
+                        "dataTypeId": "e63adadc-648a-56a0-9424-3289858cf0bb"
+                    },
+                    {
+                        "id": "3f784e72-5bf7-5704-8828-ae8464fe915b:attr-5",
+                        "name": "sample",
+                        "dataTypeId": "75fe27b9-9a00-5c7d-966f-33ba32333133"
+                    },
+                    {
+                        "id": "3f784e72-5bf7-5704-8828-ae8464fe915b:attr-4",
+                        "name": "id",
+                        "dataTypeId": "e63adadc-648a-56a0-9424-3289858cf0bb"
+                    }
+                ],
+                "dataTypes": [
+                    {
+                        "_typeHint": "dt.Simple",
+                        "id": "e63adadc-648a-56a0-9424-3289858cf0bb",
+                        "name": "int",
+                        "nullable": true
+                    },
+                    {
+                        "_typeHint": "dt.Simple",
+                        "id": "75fe27b9-9a00-5c7d-966f-33ba32333133",
+                        "name": "string",
+                        "nullable": true
+                    },
+                    {
+                        "_typeHint": "dt.Simple",
+                        "id": "a155e715-56ab-59c4-a94b-ed1851a6984a",
+                        "name": "boolean",
+                        "nullable": true
+                    },
+                    {
+                        "_typeHint": "dt.Simple",
+                        "id": "ab4da308-91fb-550a-a5e4-beddecff2a2b",
+                        "name": "int",
+                        "nullable": false
+                    }
+                ]
+            },
+            "inputs": [
+                {
+                    "sourceType": "jdbc",
+                    "source": "jdbc:postgresql://localhost:5432/postgres?sslmode=disable:spline_demo.start"
+                },
+                {
+                    "sourceType": "jdbc",
+                    "source": "jdbc:postgresql://localhost:5432/postgres?sslmode=disable:spline_demo.destination"
+                }
+            ],
+            "output": {
+                "sourceType": "jdbc",
+                "source": "jdbc:postgresql://localhost:5432/postgres?sslmode=disable:spline_test.filter"
+            }
+        },
+        "graph": {
+            "nodes": [
+                {
+                    "_id": "3f784e72-5bf7-5704-8828-ae8464fe915b:op-4",
+                    "_type": "Read",
+                    "name": "LogicalRelation",
+                    "properties": null
+                },
+                {
+                    "_id": "3f784e72-5bf7-5704-8828-ae8464fe915b:op-5",
+                    "_type": "Read",
+                    "name": "LogicalRelation",
+                    "properties": null
+                },
+                {
+                    "_id": "3f784e72-5bf7-5704-8828-ae8464fe915b:op-3",
+                    "_type": "Transformation",
+                    "name": "Union",
+                    "properties": null
+                },
+                {
+                    "_id": "3f784e72-5bf7-5704-8828-ae8464fe915b:op-2",
+                    "_type": "Transformation",
+                    "name": "Filter",
+                    "properties": null
+                },
+                {
+                    "_id": "3f784e72-5bf7-5704-8828-ae8464fe915b:op-1",
+                    "_type": "Transformation",
+                    "name": "Project",
+                    "properties": null
+                },
+                {
+                    "_id": "3f784e72-5bf7-5704-8828-ae8464fe915b:op-0",
+                    "_type": "Write",
+                    "name": "SaveIntoDataSourceCommand",
+                    "properties": null
+                }
+            ],
+            "edges": [
+                {
+                    "source": "3f784e72-5bf7-5704-8828-ae8464fe915b:op-4",
+                    "target": "3f784e72-5bf7-5704-8828-ae8464fe915b:op-3"
+                },
+                {
+                    "source": "3f784e72-5bf7-5704-8828-ae8464fe915b:op-5",
+                    "target": "3f784e72-5bf7-5704-8828-ae8464fe915b:op-3"
+                },
+                {
+                    "source": "3f784e72-5bf7-5704-8828-ae8464fe915b:op-3",
+                    "target": "3f784e72-5bf7-5704-8828-ae8464fe915b:op-2"
+                },
+                {
+                    "source": "3f784e72-5bf7-5704-8828-ae8464fe915b:op-2",
+                    "target": "3f784e72-5bf7-5704-8828-ae8464fe915b:op-1"
+                },
+                {
+                    "source": "3f784e72-5bf7-5704-8828-ae8464fe915b:op-1",
+                    "target": "3f784e72-5bf7-5704-8828-ae8464fe915b:op-0"
+                }
+            ]
+        }
+    }
+}

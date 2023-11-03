@@ -1,0 +1,18 @@
+{
+  "name": "columnValuesToBeNotInSet",
+  "fullyQualifiedName": "columnValuesToBeNotInSet",
+  "displayName": "Column Values To Be Not In Set",
+  "description": "This schema defines the test ColumnValuesToBeNotInSet. Test the column values to not be in the set. ",
+  "entityType": "COLUMN",
+  "testPlatforms": ["OpenMetadata"],
+  "supportedDataTypes": ["NUMBER", "INT", "FLOAT", "DOUBLE", "DECIMAL", "TINYINT", "SMALLINT", "BIGINT", "BYTEINT", "BYTES", "STRING", "MEDIUMTEXT", "TEXT", "CHAR", "VARCHAR"],
+  "parameterDefinition": [
+    {
+      "name": "forbiddenValues",
+      "displayName": "Forbidden Values",
+      "description": "An Array of values.",
+      "dataType": "ARRAY",
+      "required": true
+    }
+  ]
+}

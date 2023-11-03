@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <parent>
+    <artifactId>platform</artifactId>
+    <groupId>org.open-metadata</groupId>
+    <version>1.2.0</version>
+  </parent>
+  <modelVersion>4.0.0</modelVersion>
+
+  <artifactId>openmetadata-ui</artifactId>
+
+  <properties>
+    <dropwizard.swagger.version>2.0.12-1</dropwizard.swagger.version>
+    <!-- Don't upgrade from this version as tests don't work with later version-->
+    <skipTests>false</skipTests>
+  </properties>
+
+  <profiles>
+    <profile>
+      <id>release</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-source-plugin</artifactId>
+            <version>${maven-source-plugin.version}</version>
+            <executions>
+              <execution>
+                <id>attach-sources</id>
+                <goals>
+                  <goal>jar-no-fork</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-javadoc-plugin</artifactId>
+            <version>${maven-javadoc-plugin.version}</version>
+            <configuration>
+              <doclint>none</doclint>
+            </configuration>
+            <executions>
+              <execution>
+                <id>attach-javadocs</id>
+                <goals>
+                  <goal>jar</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-gpg-plugin</artifactId>
+            <version>3.0.1</version>
+            <executions>
+              <execution>
+                <id>sign-artifacts</id>
+                <phase>verify</phase>
+                <goals>
+                  <goal>sign</goal>
+                </goals>
+                <configuration>
+                  <gpgArguments>
+                    <arg>--pinentry-mode</arg>
+                    <arg>loopback</arg>
+                  </gpgArguments>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
+
+  <build>
+    <resources>
+      <resource>
+        <directory>src/main/resources/ui/dist</directory>
+      </resource>
+      <resource>
+        <directory>src/main/resources/json/data</directory>
+      </resource>
+    </resources>
+
+    <plugins>
+      <!-- Handle Compiling Frontend -->
+      <plugin>
+        <groupId>com.github.eirslett</groupId>
+        <artifactId>frontend-maven-plugin</artifactId>
+        <version>1.11.0</version>
+
+        <!-- optional -->
+        <configuration>
+          <workingDirectory>src/main/resources/ui/</workingDirectory>
+          <installDirectory>target</installDirectory>
+        </configuration>
+
+        <executions>
+          <execution>
+            <id>install node and yarn</id>
+            <goals>
+              <goal>install-node-and-yarn</goal>
+            </goals>
+            <configuration>
+              <nodeVersion>v16.14.2</nodeVersion>
+              <yarnVersion>v1.22.18</yarnVersion>
+            </configuration>
+          </execution>
+          <execution>
+            <id>yarn install --frozen-lockfile</id>
+            <goals>
+              <goal>yarn</goal>
+            </goals>
+            <phase>prepare-package</phase>
+            <configuration>
+              <arguments>install --frozen-lockfile</arguments>
+            </configuration>
+          </execution>
+          <execution>
+            <id>yarn run test</id>
+            <goals>
+              <goal>yarn</goal>
+            </goals>
+            <phase>prepare-package</phase>
+            <configuration>
+              <skip>${skipTests}</skip>
+              <arguments>run test</arguments>
+            </configuration>
+          </execution>
+          <execution>
+            <id>yarn run build</id>
+            <goals>
+              <goal>yarn</goal>
+            </goals>
+            <!-- optional: the default phase is "generate-resources" -->
+            <phase>prepare-package</phase>
+            <configuration>
+              <!-- optional: if not specified, it will run gulp's default task
+                  (and you can remove this whole <configuration> section.) -->
+              <arguments>run build</arguments>
+              <!--arguments>build</arguments-->
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <artifactId>maven-resources-plugin</artifactId>
+        <configuration>
+            <nonFilteredFileExtensions>
+              <nonFilteredFileExtension>ttf</nonFilteredFileExtension>
+              <nonFilteredFileExtension>woff</nonFilteredFileExtension>
+              <nonFilteredFileExtension>woff2</nonFilteredFileExtension>
+              <nonFilteredFileExtension>eot</nonFilteredFileExtension>
+              <nonFilteredFileExtension>svg</nonFilteredFileExtension>
+            </nonFilteredFileExtensions>
+        </configuration>
+        <executions>
+          <execution>
+            <id>copy-resources</id>
+            <!-- here the phase you need -->
+            <phase>prepare-package</phase>
+            <goals>
+              <goal>copy-resources</goal>
+            </goals>
+            <configuration>
+              <outputDirectory>${basedir}/target/classes</outputDirectory>
+              <resources>
+                <resource>
+                  <directory>src/main/resources/ui/dist</directory>
+                  <filtering>true</filtering>
+                </resource>
+                <resource>
+                  <directory>src/main/resources/ui</directory>
+                  <targetPath>${project.build.outputDirectory}/openmetadata-ui/</targetPath>
+                  <excludes>
+                    <exclude>dist/**</exclude>
+                    <exclude>node_modules/**</exclude>
+                    <exclude>webpack/**</exclude>
+                    <exclude>*tsconfig.tsbuildinfo</exclude>
+                  </excludes>
+                  <includes>
+                    <include>**</include>
+                  </includes>
+                </resource>
+              </resources>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>

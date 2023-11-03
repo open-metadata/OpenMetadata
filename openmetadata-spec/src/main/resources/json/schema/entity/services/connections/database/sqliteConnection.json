@@ -1,0 +1,87 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/sqliteConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SQLiteConnection",
+  "description": "SQLite Database Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.SQLiteConnection",
+  "definitions": {
+    "SQLiteType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["SQLite"],
+      "default": "SQLite"
+    },
+    "SQLiteScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": ["sqlite+pysqlite"],
+      "default": "sqlite+pysqlite"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/SQLiteType",
+      "default": "SQLite"
+    },
+    "scheme": {
+      "title": "Connection Scheme",
+      "description": "SQLAlchemy driver scheme options.",
+      "$ref": "#/definitions/SQLiteScheme",
+      "default": "sqlite+pysqlite"
+    },
+    "username": {
+      "title": "Username",
+      "description": "Username to connect to SQLite. Blank for in-memory database.",
+      "type": "string"
+    },
+    "password": {
+      "title": "Password",
+      "description": "Password to connect to SQLite. Blank for in-memory database.",
+      "type": "string",
+      "format": "password"
+    },
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "Host and port of the SQLite service. Blank for in-memory database.",
+      "type": "string"
+    },
+    "database": {
+      "title": "Database",
+      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank, OpenMetadata Ingestion attempts to scan all the databases.",
+      "type": "string"
+    },
+    "databaseMode": {
+      "title": "Database Mode",
+      "description": "How to run the SQLite database. :memory: by default.",
+      "type": "string",
+      "default": ":memory:"
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsDBTExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsDBTExtraction"
+    },
+    "supportsProfiler": {
+      "title": "Supports Profiler",
+      "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+    },
+    "supportsQueryComment": {
+      "title": "Supports Query Comment",
+      "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
+    }
+  },
+  "additionalProperties": false
+}

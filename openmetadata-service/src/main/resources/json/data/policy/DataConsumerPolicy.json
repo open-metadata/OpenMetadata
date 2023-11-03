@@ -1,0 +1,18 @@
+{
+  "name": "DataConsumerPolicy",
+  "displayName": "Data Consumer Policy",
+  "fullyQualifiedName": "DataConsumerPolicy",
+  "description": "Policy for Data Consumer to perform operations on metadata entities",
+  "enabled": true,
+  "allowDelete": false,
+  "provider": "system",
+  "rules": [
+    {
+      "name": "DataConsumerPolicy-EditRule",
+      "description" : "Allow some of the edit operations on a resource for everyone.",
+      "resources" : ["all"],
+      "operations": ["ViewAll", "EditDescription", "EditTags"],
+      "effect": "allow"
+    }
+  ]
+}

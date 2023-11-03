@@ -1,0 +1,58 @@
+# Add here any member that should belong to either a specific team,
+# or that can have the tests automatically validated to run safely.
+
+"safe to test":
+  - '@ayush-shah'
+  - '@OnkarVO7'
+  - '@TeddyCr'
+  - '@ulixius9'
+  - '@pmbrull'
+  - '@aniketkatkar97'
+  - '@Ashish8689'
+  - '@chirag-madlani'
+  - '@Sachin-chaurasiya'
+  - '@shahsank3t'
+  - '@ShaileshParmar11'
+  - '@karanh37'
+  - '@harshach'
+  - '@mohityadav766'
+  - '@sureshms'
+  - '@akash-jain-10'
+  - '@dhruvinmaniar123'
+  - '@ShilpaVernekar'
+  - '@07Himank'
+  - '@Anuj359'
+  - '@tutte'
+  - '@snyk-bot'
+  - '@dependabot'
+
+ingestion:
+  - '@ayush-shah'
+  - '@OnkarVO7'
+  - '@TeddyCr'
+  - '@ulixius9'
+  - '@pmbrull'
+
+UI:
+  - '@aniketkatkar97'
+  - '@Ashish8689'
+  - '@chirag-madlani'
+  - '@Sachin-chaurasiya'
+  - '@shahsank3t'
+  - '@ShaileshParmar11'
+  - '@karanh37'
+
+backend:
+  - '@harshach'
+  - '@mohityadav766'
+  - '@sureshms'
+  - '@07Himank'
+
+devops:
+  - '@akash-jain-10'
+  - '@dhruvinmaniar123'
+  - '@Anuj359'
+  - '@tutte'
+
+documentation:
+  - '@ShilpaVernekar'

@@ -1,0 +1,87 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/datalakeConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DatalakeConnection",
+  "description": "Datalake Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.DatalakeConnection",
+  "definitions": {
+    "datalakeType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "Datalake"
+      ],
+      "default": "Datalake"
+    },
+    "localConfig": {
+      "title": "Local Config",
+      "description": "Local config source where no extra information needs to be sent.",
+      "type": "object",
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/datalakeType",
+      "default": "Datalake"
+    },
+    "configSource": {
+      "title": "DataLake Configuration Source",
+      "description": "Available sources to fetch files.",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/localConfig"
+        },
+        {
+          "$ref": "datalake/azureConfig.json"
+        },
+        {
+          "$ref": "datalake/gcsConfig.json"
+        },
+        {
+          "$ref": "datalake/s3Config.json"
+        }
+      ]
+    },
+    "bucketName": {
+      "title": "Bucket Name",
+      "description": "Bucket Name of the data source.",
+      "type": "string",
+      "default": ""
+    },
+    "prefix": {
+      "title": "Prefix",
+      "description": "Prefix of the data source.",
+      "type": "string",
+      "default": ""
+    },
+    "databaseName": {
+      "title": "Database Name",
+      "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.",
+      "type": "string"
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsProfiler": {
+      "title": "Supports Profiler",
+      "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "configSource"
+  ]
+}

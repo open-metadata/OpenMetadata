@@ -1,0 +1,43 @@
+{
+  "$id": "https://open-metadata.org/schema/api/createType.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "createType",
+  "description": "Create a Type to be used for extending entities.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.CreateType",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+
+  "properties": {
+    "name": {
+      "description": "Unique name that identifies a Type.",
+      "$ref": "../entity/type.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this Type.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Optional description of the type.",
+      "$ref" : "../type/basic.json#/definitions/markdown"
+    },
+    "nameSpace": {
+      "description": "Namespace or group to which this type belongs to.",
+      "type": "string",
+      "default" : "custom"
+    },
+    "category" : {
+      "$ref" : "../entity/type.json#/definitions/category"
+    },
+    "schema": {
+      "description": "JSON schema encoded as string. This will be used to validate the type values.",
+      "$ref": "../type/basic.json#/definitions/jsonSchema"
+    }
+  },
+  "required": [
+    "name",
+    "nameSpace",
+    "description",
+    "schema"
+  ],
+  "additionalProperties": false
+}

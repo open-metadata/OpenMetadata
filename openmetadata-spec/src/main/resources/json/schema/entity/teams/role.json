@@ -1,0 +1,89 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/teams/role.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Role",
+  "description": "A `Role` is a collection of `Policies` that provides access control. A user or a team can be assigned one or multiple roles that provide privileges to a user and members of a team to perform the job function.",
+  "javaType": "org.openmetadata.schema.entity.teams.Role",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "type": "object",
+  "definitions": {
+    "roleName": {
+      "description": "A unique name for the role.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    }
+  },
+  "properties": {
+    "id": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "$ref": "#/definitions/roleName"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "displayName": {
+      "description": "Name used for display purposes. Example 'Data Consumer'.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the role.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "allowDelete" : {
+      "description": "Some system roles can't be deleted",
+      "type" : "boolean"
+    },
+    "allowEdit" : {
+      "description": "Some system roles can't be edited",
+      "type" : "boolean"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    },
+    "policies": {
+      "description": "Policies that is attached to this role.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "users": {
+      "description": "Users that have this role assigned to them.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "teams": {
+      "description": "Teams that have this role assigned to them.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "provider" : {
+      "$ref": "../../type/basic.json#/definitions/providerType"
+    },
+    "disabled" : {
+      "description": "System policy can't be deleted. Use this flag to disable them.",
+      "type": "boolean"
+    }
+  },
+  "required": ["id", "name"],
+  "additionalProperties": false
+}

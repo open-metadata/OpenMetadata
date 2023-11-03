@@ -1,0 +1,170 @@
+{
+  "$id": "https://open-metadata.org/schema/tests/basic.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Basic",
+  "description": "This schema defines basic types that are used by other test schemas.",
+  "definitions": {
+    "testSummary": {
+      "description": "Schema to capture test case execution summary.",
+      "javaType": "org.openmetadata.schema.tests.type.TestSummary",
+      "type": "object",
+      "properties": {
+        "success": {
+          "description": "Number of test cases that passed.",
+          "type": "integer"
+        },
+        "failed": {
+          "description": "Number of test cases that failed.",
+          "type": "integer"
+        },
+        "aborted": {
+          "description": "Number of test cases that aborted.",
+          "type": "integer"
+        },
+        "total": {
+          "description": "Total number of test cases.",
+          "type": "integer"
+        }
+      }
+    },
+    "testResultValue": {
+      "description": "Schema to capture test case result values.",
+      "javaType": "org.openmetadata.schema.tests.type.TestResultValue",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "name of the value",
+          "type": "string"
+        },
+        "value": {
+          "description": "test result value",
+          "type": "string"
+        }
+      }
+    },
+    "testCaseStatus": {
+      "description": "Status of Test Case run.",
+      "javaType": "org.openmetadata.schema.tests.type.TestCaseStatus",
+      "type": "string",
+      "enum": ["Success", "Failed", "Aborted"],
+      "javaEnums": [
+        {
+          "name": "Success"
+        },
+        {
+          "name": "Failed"
+        },
+        {
+          "name": "Aborted"
+        }
+      ]
+    },
+    "testCaseResult": {
+      "description": "Schema to capture test case result.",
+      "javaType": "org.openmetadata.schema.tests.type.TestCaseResult",
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "description": "Data one which test case result is taken.",
+          "$ref": "../type/basic.json#/definitions/timestamp"
+        },
+        "testCaseStatus": {
+          "description": "Status of Test Case run.",
+          "$ref": "#/definitions/testCaseStatus"
+        },
+        "result": {
+          "description": "Details of test case results.",
+          "type": "string"
+        },
+        "sampleData": {
+          "description": "sample data to capture rows/columns that didn't match the expressed testcase.",
+          "type": "string"
+        },
+        "testResultValue": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/testResultValue"
+          }
+        },
+        "testCaseFailureStatus": {
+          "description": "Schema to capture test case result.",
+          "javaType": "org.openmetadata.schema.tests.type.TestCaseFailureStatus",
+          "type": "object",
+          "properties": 
+          {
+            "testCaseFailureStatusType": {
+              "description": "Status of Test Case Acknowledgement.",
+              "javaType": "org.openmetadata.schema.tests.type.TestCaseFailureStatusType",
+              "type": "string",
+              "enum": ["Ack", "New", "Resolved"],
+              "javaEnums": [
+                {
+                  "name": "Ack"
+                },
+                {
+                  "name": "New"
+                },
+                {
+                  "name": "Resolved"
+                }
+              ]
+            },
+            "testCaseFailureReason": {
+              "description": "Reason of Test Case resolution.",
+              "javaType": "org.openmetadata.schema.tests.type.TestCaseFailureReason",
+              "type": "string",
+              "enum": ["FalsePositive", "MissingData", "Duplicates", "OutOfBounds", "Other"],
+              "javaEnums": [
+                {
+                  "name": "FalsePositive"
+                },
+                {
+                  "name": "MissingData"
+                },
+                {
+                  "name": "Duplicates"
+                },
+                {
+                  "name": "OutOfBounds"
+                },
+                {
+                  "name": "Other"
+                }
+              ]
+            },
+            "testCaseFailureComment": {
+              "description": "Test case failure resolution comment.",
+              "type": "string"
+            },
+            "updatedBy": {
+              "description": "User who updated the test case failure status.",
+              "type": "string"
+            },
+            "updatedAt": {
+              "description": "Time when test case failure status was updated.",
+              "$ref": "../type/basic.json#/definitions/timestamp"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "testSuiteExecutionFrequency": {
+      "description": "How often the test case should run.",
+      "javaType": "org.openmetadata.schema.tests.type.TestSuiteExecutionFrequency",
+      "type": "string",
+      "enum": ["Hourly", "Daily", "Weekly"],
+      "javaEnums": [
+        {
+          "name": "Hourly"
+        },
+        {
+          "name": "Daily"
+        },
+        {
+          "name": "Weekly"
+        }
+      ]
+    }
+  }
+}

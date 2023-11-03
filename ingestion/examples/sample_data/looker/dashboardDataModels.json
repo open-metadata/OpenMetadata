@@ -1,0 +1,163 @@
+[
+  {
+    "name": "orders",
+    "displayName": "Orders",
+    "description": "Orders explore from Sample Data",
+    "dataModelType":  "LookMlExplore",
+    "serviceType": "Looker",
+    "sql":  "SELECT CASE\n           WHEN stage_of_development = 'Pre-clinical' THEN '0. Pre-clinical'\n           WHEN stage_of_development = 'Phase I' THEN '1. Phase I'\n           WHEN stage_of_development = 'Phase I/II'\n                or stage_of_development = 'Phase II' THEN '2. Phase II or Combined I/II'\n           WHEN stage_of_development = 'Phase III' THEN '3. Phase III'\n           WHEN stage_of_development = 'Authorized' THEN '4. Authorized'\n       END AS clinical_stage,\n       COUNT(*) AS count\nFROM covid_vaccines\nGROUP BY CASE\n             WHEN stage_of_development = 'Pre-clinical' THEN '0. Pre-clinical'\n             WHEN stage_of_development = 'Phase I' THEN '1. Phase I'\n             WHEN stage_of_development = 'Phase I/II'\n                  or stage_of_development = 'Phase II' THEN '2. Phase II or Combined I/II'\n             WHEN stage_of_development = 'Phase III' THEN '3. Phase III'\n             WHEN stage_of_development = 'Authorized' THEN '4. Authorized'\n         END\nORDER BY count DESC\nLIMIT 10000\nOFFSET 0;\n",
+    "columns": [
+      {
+        "name": "0. Pre-clinical",
+        "dataType": "NUMERIC",
+        "dataTypeDisplay": "numeric",
+        "description": "Vaccine Candidates in phase: 'Pre-clinical'",
+        "ordinalPosition": 1
+      },
+      {
+        "name": "2. Phase II or Combined I/II",
+        "dataType": "NUMERIC",
+        "dataTypeDisplay": "numeric",
+        "description": "Vaccine Candidates in phase: 'Phase II or Combined I/II'",
+        "ordinalPosition": 2
+      },
+      {
+        "name": "1. Phase I",
+        "dataType": "NUMERIC",
+        "dataTypeDisplay": "numeric",
+        "description": "Vaccine Candidates in phase: 'Phase I'",
+        "ordinalPosition": 3
+      },
+      {
+        "name": "3. Phase III",
+        "dataType": "NUMERIC",
+        "dataTypeDisplay": "numeric",
+        "description": "Vaccine Candidates in phase: 'Phase III'",
+        "ordinalPosition": 4
+      },
+      {
+        "name": "4. Authorized",
+        "dataType": "NUMERIC",
+        "dataTypeDisplay": "numeric",
+        "description": "Vaccine Candidates in phase: 'Authorize'",
+        "ordinalPosition": 5
+      }
+    ]
+  },
+  {
+    "name": "operations",
+    "displayName": "Operations",
+    "description": "Operations Explore from Sample Data",
+    "dataModelType":  "LookMlExplore",
+    "serviceType": "Looker",
+    "sql":  "SELECT country_name AS country_name,\n       COUNT(*) AS count,\n       count(country_name) AS \"COUNT(Country_Name)\"\nFROM covid_vaccines\nGROUP BY country_name\nLIMIT 10000\nOFFSET 0;",
+    "columns": [
+      {
+        "name": "country_name",
+        "dataType": "VARCHAR",
+        "dataTypeDisplay": "varchar",
+        "dataLength": 256,
+        "description": "Name of the country.",
+        "tags": [],
+        "ordinalPosition": 1
+      },
+      {
+        "name": "count",
+        "dataType": "NUMERIC",
+        "dataTypeDisplay": "numeric",
+        "description": "Total number of vaccine candidates per country.",
+        "tags": [],
+        "ordinalPosition": 2
+      },
+      {
+        "name": "COUNT(Country_Name)",
+        "dataType": "NUMERIC",
+        "dataTypeDisplay": "numeric",
+        "description": "Total number of vaccine candidates.",
+        "tags": [],
+        "ordinalPosition": 3
+      }
+    ]
+  },
+  {
+    "name": "operations_view",
+    "displayName": "Operations View",
+    "description": "Operations View from Sample Data",
+    "dataModelType":  "LookMlView",
+    "serviceType": "Looker",
+    "sql":  "SELECT country_name AS country_name,\n       COUNT(*) AS count,\n       count(country_name) AS \"COUNT(Country_Name)\"\nFROM covid_vaccines\nGROUP BY country_name\nLIMIT 10000\nOFFSET 0;",
+    "columns": [
+      {
+        "name": "country_name",
+        "dataType": "VARCHAR",
+        "dataTypeDisplay": "varchar",
+        "dataLength": 256,
+        "description": "Name of the country.",
+        "tags": [],
+        "ordinalPosition": 1
+      },
+      {
+        "name": "count",
+        "dataType": "NUMERIC",
+        "dataTypeDisplay": "numeric",
+        "description": "Total number of vaccine candidates per country.",
+        "tags": [],
+        "ordinalPosition": 2
+      },
+      {
+        "name": "COUNT(Country_Name)",
+        "dataType": "NUMERIC",
+        "dataTypeDisplay": "numeric",
+        "description": "Total number of vaccine candidates.",
+        "tags": [],
+        "ordinalPosition": 3
+      }
+    ]
+  },
+  {
+    "name": "orders_view",
+    "displayName": "Orders View",
+    "description": "Orders View from Sample Data",
+    "dataModelType":  "LookMlView",
+    "serviceType": "Looker",
+    "sql":  "SELECT CASE\n           WHEN stage_of_development = 'Pre-clinical' THEN '0. Pre-clinical'\n           WHEN stage_of_development = 'Phase I' THEN '1. Phase I'\n           WHEN stage_of_development = 'Phase I/II'\n                or stage_of_development = 'Phase II' THEN '2. Phase II or Combined I/II'\n           WHEN stage_of_development = 'Phase III' THEN '3. Phase III'\n           WHEN stage_of_development = 'Authorized' THEN '4. Authorized'\n       END AS clinical_stage,\n       COUNT(*) AS count\nFROM covid_vaccines\nGROUP BY CASE\n             WHEN stage_of_development = 'Pre-clinical' THEN '0. Pre-clinical'\n             WHEN stage_of_development = 'Phase I' THEN '1. Phase I'\n             WHEN stage_of_development = 'Phase I/II'\n                  or stage_of_development = 'Phase II' THEN '2. Phase II or Combined I/II'\n             WHEN stage_of_development = 'Phase III' THEN '3. Phase III'\n             WHEN stage_of_development = 'Authorized' THEN '4. Authorized'\n         END\nORDER BY count DESC\nLIMIT 10000\nOFFSET 0;\n",
+    "columns": [
+      {
+        "name": "0. Pre-clinical",
+        "dataType": "NUMERIC",
+        "dataTypeDisplay": "numeric",
+        "description": "Vaccine Candidates in phase: 'Pre-clinical'",
+        "ordinalPosition": 1
+      },
+      {
+        "name": "2. Phase II or Combined I/II",
+        "dataType": "NUMERIC",
+        "dataTypeDisplay": "numeric",
+        "description": "Vaccine Candidates in phase: 'Phase II or Combined I/II'",
+        "ordinalPosition": 2
+      },
+      {
+        "name": "1. Phase I",
+        "dataType": "NUMERIC",
+        "dataTypeDisplay": "numeric",
+        "description": "Vaccine Candidates in phase: 'Phase I'",
+        "ordinalPosition": 3
+      },
+      {
+        "name": "3. Phase III",
+        "dataType": "NUMERIC",
+        "dataTypeDisplay": "numeric",
+        "description": "Vaccine Candidates in phase: 'Phase III'",
+        "ordinalPosition": 4
+      },
+      {
+        "name": "4. Authorized",
+        "dataType": "NUMERIC",
+        "dataTypeDisplay": "numeric",
+        "description": "Vaccine Candidates in phase: 'Authorize'",
+        "ordinalPosition": 5
+      }
+    ]
+  }
+]
+

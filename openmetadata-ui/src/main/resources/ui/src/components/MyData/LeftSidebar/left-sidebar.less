@@ -1,0 +1,133 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import url('../../../styles/variables.less');
+
+.left-sidebar-col {
+  border: 1px solid @border-color;
+  border-radius: 0;
+  border-top: 0;
+  background-color: @white !important;
+  height: calc(100vh - 64px);
+
+  .ant-menu-item {
+    height: auto;
+    padding: 16px;
+  }
+  .ant-menu-submenu-title {
+    height: auto !important;
+    padding: 0 !important;
+  }
+  .ant-menu-submenu {
+    height: auto;
+  }
+  .ant-menu-vertical {
+    border: none;
+    width: 100%;
+  }
+  .ant-menu-submenu-arrow {
+    display: none;
+  }
+  .ant-menu-title-content {
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    padding: 16px 8px;
+  }
+}
+.page-layout-leftpanel {
+  padding: 0 0 24px 0 !important;
+  border-right: 1px solid @border-color;
+  overflow: auto;
+  height: calc(100vh - 64px);
+  background-color: @white;
+  overflow-x: hidden;
+}
+
+.left-panel-item {
+  cursor: pointer;
+  color: @text-grey-muted;
+  .ant-menu-submenu-vertical {
+    .ant-menu-submenu-title {
+      margin: 0;
+    }
+  }
+  svg {
+    color: @text-grey-muted;
+  }
+  padding: 16px 0;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+}
+
+.left-panel-item.active,
+.left-panel-item:hover {
+  background-color: @left-nav-item-background;
+  color: @text-color;
+
+  svg {
+    color: @primary-color;
+  }
+}
+
+.govern-menu {
+  width: 100px !important;
+  .ant-menu-item {
+    height: auto !important;
+    margin: 0;
+  }
+  .ant-menu-item:hover,
+  .ant-menu-item-selected {
+    background-color: @left-nav-item-background;
+    color: @text-color;
+    svg {
+      color: @primary-color;
+    }
+    .left-panel-label {
+      color: @text-color;
+    }
+  }
+  .ant-menu-vertical {
+    min-width: 58px !important;
+    width: 58px;
+    margin-top: 3px;
+    margin-left: 4px;
+    .ant-menu-item {
+      margin: 0;
+    }
+
+    .ant-menu-item:not(:last-child) {
+      margin: 0;
+    }
+  }
+}
+
+.left-panel-label.ant-typography {
+  font-size: 12px;
+  color: @white;
+  font-weight: 500;
+  padding: 0 20px;
+  line-height: 26px;
+  text-decoration: none;
+}
+
+.confirm-btn {
+  width: 130px;
+}
+
+.left-panel-tooltip {
+  .ant-tooltip-inner {
+    padding: 0;
+    min-height: auto;
+  }
+}

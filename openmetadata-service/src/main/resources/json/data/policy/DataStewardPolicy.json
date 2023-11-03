@@ -1,0 +1,17 @@
+{
+  "name": "DataStewardPolicy",
+  "displayName": "Data Steward Policy",
+  "fullyQualifiedName": "DataStewardPolicy",
+  "description": "Policy for Data Steward Role to perform operations on metadata entities",
+  "enabled": true,
+  "allowDelete": false,
+  "provider": "system",
+  "rules": [
+    {
+      "name": "DataStewardPolicy-EditRule",
+      "resources" : ["all"],
+      "operations": ["ViewAll", "EditDescription", "EditDisplayName","EditLineage","EditOwner", "EditTags"],
+      "effect": "allow"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "name": "tableColumnCountToEqual",
+  "fullyQualifiedName": "tableColumnCountToEqual",
+  "displayName": "Table Column Count To Equal",
+  "description": "This test defines the test TableColumnCountToEqual. Test the number of columns equal to a value.",
+  "entityType": "TABLE",
+  "testPlatforms": ["OpenMetadata"],
+  "parameterDefinition": [
+    {
+      "name": "columnCount",
+      "displayName": "Count",
+      "description": "Expected number of columns to equal to a {value}",
+      "dataType": "INT",
+      "required": true
+    }
+  ]
+}

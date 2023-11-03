@@ -1,0 +1,19 @@
+{
+  "name": "TeamOnlyPolicy",
+  "displayName": "Team only access Policy",
+  "fullyQualifiedName": "TeamOnlyPolicy",
+  "description": "Policy when attached to a team allows only users with in the team hierarchy to access the resources.",
+  "enabled": true,
+  "allowDelete": false,
+  "provider": "system",
+  "rules": [
+    {
+      "name": "TeamOnlyPolicy-Rule",
+      "description" : "Deny all the operations on all the resources for all outside the team hierarchy..",
+      "resources" : ["all"],
+      "operations": ["All"],
+      "effect": "deny",
+      "condition": "!matchTeam()"
+    }
+  ]
+}

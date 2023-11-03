@@ -1,0 +1,39 @@
+on:
+  pull_request_target:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+name: Team Label
+jobs:
+  labeler:
+    runs-on: ubuntu-latest
+    name: Team Label
+    steps:
+      - uses: JulienKode/team-labeler-action@v0.1.1
+        with:
+          repo-token: "${{ secrets.GITHUB_TOKEN }}"
+
+      - name: Verify PR labels
+        id: verify
+        continue-on-error: true
+        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
+        with:
+          github-token: '${{ secrets.GITHUB_TOKEN }}'
+          valid-labels: 'safe to test'
+          pull-request-number: '${{ github.event.pull_request.number }}'
+          disable-reviews: true  # To not auto approve changes
+
+      - name: Add verification comment
+        if: steps.verify.outcome != 'success'
+        uses: peter-evans/create-or-update-comment@v1
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            **Hi there 👋 Thanks for your contribution!**
+            
+            The OpenMetadata team will review the PR shortly! Once it has been labeled as `safe to test`, the CI workflows
+            will start executing and we'll be able to make sure everything is working as expected.
+            
+            Let us know if you need any help!
