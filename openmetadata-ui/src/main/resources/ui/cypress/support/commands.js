@@ -83,6 +83,7 @@ Cypress.Commands.add('goToHomePage', (doNotNavigate) => {
   !doNotNavigate && cy.visit('/');
   cy.get('[data-testid="whats-new-alert-card"]').should('be.visible');
   cy.get('[data-testid="close-whats-new-alert"]').click();
+  cy.wait(500); // as alert card having a delay of 1s to come dom that why we have used await
   cy.get('[data-testid="whats-new-alert-card"]').should('not.exist');
   //   verifyResponseStatusCode('@feed', 200);
   verifyResponseStatusCode('@userProfile', 200);
