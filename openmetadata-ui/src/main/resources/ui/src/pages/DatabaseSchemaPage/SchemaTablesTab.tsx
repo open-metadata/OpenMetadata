@@ -65,7 +65,7 @@ function SchemaTablesTab({
   showDeletedTables = false,
   onShowDeletedTablesChange,
   isVersionView = false,
-}: SchemaTablesTabProps) {
+}: Readonly<SchemaTablesTabProps>) {
   const { t } = useTranslation();
 
   const tableColumn: ColumnsType<Table> = useMemo(
