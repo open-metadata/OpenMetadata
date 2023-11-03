@@ -396,6 +396,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                   hasEditAccess={editDescriptionPermission}
                   isEdit={isEdit}
                   owner={mlModelDetail.owner}
+                  showActions={!deleted}
                   onCancel={onCancel}
                   onDescriptionEdit={onDescriptionEdit}
                   onDescriptionUpdate={onDescriptionUpdate}

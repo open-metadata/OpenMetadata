@@ -499,8 +499,8 @@ const ContainerPage = () => {
                   entityType={EntityType.CONTAINER}
                   hasEditAccess={hasEditDescriptionPermission}
                   isEdit={isEditDescription}
-                  isReadOnly={deleted}
                   owner={owner}
+                  showActions={!deleted}
                   onCancel={() => setIsEditDescription(false)}
                   onDescriptionEdit={() => setIsEditDescription(true)}
                   onDescriptionUpdate={handleUpdateDescription}

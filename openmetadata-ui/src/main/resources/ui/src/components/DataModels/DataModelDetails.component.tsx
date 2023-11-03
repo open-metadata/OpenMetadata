@@ -209,8 +209,8 @@ const DataModelDetails = ({
               entityType={EntityType.DASHBOARD_DATA_MODEL}
               hasEditAccess={editDescriptionPermission}
               isEdit={isEditDescription}
-              isReadOnly={deleted}
               owner={owner}
+              showActions={!deleted}
               onCancel={() => setIsEditDescription(false)}
               onDescriptionEdit={() => setIsEditDescription(true)}
               onDescriptionUpdate={handleUpdateDescription}

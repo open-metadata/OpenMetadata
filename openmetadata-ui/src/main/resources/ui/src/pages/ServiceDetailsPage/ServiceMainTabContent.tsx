@@ -159,6 +159,7 @@ function ServiceMainTabContent({
               entityType={entityType}
               hasEditAccess={editDescriptionPermission}
               isEdit={isEdit}
+              showActions={!serviceDetails.deleted}
               showCommentsIcon={false}
               onCancel={onCancel}
               onDescriptionEdit={onDescriptionEdit}

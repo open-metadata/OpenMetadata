@@ -497,8 +497,8 @@ const TableDetailsPageV1 = () => {
               entityType={EntityType.TABLE}
               hasEditAccess={editDescriptionPermission}
               isEdit={isEdit}
-              isReadOnly={tableDetails?.deleted}
               owner={tableDetails?.owner}
+              showActions={!tableDetails?.deleted}
               onCancel={onCancel}
               onDescriptionEdit={onDescriptionEdit}
               onDescriptionUpdate={onDescriptionUpdate}

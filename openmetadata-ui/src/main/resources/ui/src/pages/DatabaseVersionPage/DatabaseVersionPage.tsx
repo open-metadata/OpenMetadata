@@ -270,9 +270,9 @@ function DatabaseVersionPage() {
               <Row gutter={[16, 16]}>
                 <Col data-testid="description-container" span={24}>
                   <DescriptionV1
-                    isVersionView
                     description={description}
                     entityType={EntityType.DATABASE}
+                    showActions={false}
                   />
                 </Col>
                 {databaseTable}

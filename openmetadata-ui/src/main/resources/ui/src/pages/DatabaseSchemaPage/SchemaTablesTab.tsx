@@ -107,10 +107,10 @@ function SchemaTablesTab({
       <Col data-testid="description-container" span={24}>
         {isVersionView ? (
           <DescriptionV1
-            isVersionView
             description={description}
             entityFqn={databaseSchemaDetails.fullyQualifiedName}
             entityType={EntityType.DATABASE_SCHEMA}
+            showActions={false}
           />
         ) : (
           <DescriptionV1
@@ -120,7 +120,7 @@ function SchemaTablesTab({
             entityType={EntityType.DATABASE_SCHEMA}
             hasEditAccess={editDescriptionPermission}
             isEdit={isEdit}
-            isReadOnly={databaseSchemaDetails.deleted}
+            showActions={!databaseSchemaDetails.deleted}
             onCancel={onCancel}
             onDescriptionEdit={onDescriptionEdit}
             onDescriptionUpdate={onDescriptionUpdate}

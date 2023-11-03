@@ -640,7 +640,7 @@ const DatabaseDetails: FunctionComponent = () => {
                     entityType={EntityType.DATABASE}
                     hasEditAccess={editDescriptionPermission}
                     isEdit={isEdit}
-                    isReadOnly={database.deleted}
+                    showActions={!database.deleted}
                     onCancel={onCancel}
                     onDescriptionEdit={onDescriptionEdit}
                     onDescriptionUpdate={onDescriptionUpdate}

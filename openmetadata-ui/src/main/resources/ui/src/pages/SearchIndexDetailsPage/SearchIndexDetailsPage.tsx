@@ -339,8 +339,8 @@ function SearchIndexDetailsPage() {
                 searchIndexPermissions.EditDescription
               }
               isEdit={isEdit}
-              isReadOnly={searchIndexDetails?.deleted}
               owner={searchIndexDetails?.owner}
+              showActions={!searchIndexDetails?.deleted}
               onCancel={onCancel}
               onDescriptionEdit={onDescriptionEdit}
               onDescriptionUpdate={onDescriptionUpdate}

@@ -527,8 +527,8 @@ const StoredProcedurePage = () => {
                   entityType={EntityType.STORED_PROCEDURE}
                   hasEditAccess={editDescriptionPermission}
                   isEdit={isEdit}
-                  isReadOnly={deleted}
                   owner={owner}
+                  showActions={!deleted}
                   onCancel={onCancel}
                   onDescriptionEdit={onDescriptionEdit}
                   onDescriptionUpdate={onDescriptionUpdate}

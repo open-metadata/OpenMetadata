@@ -155,9 +155,9 @@ const TableVersion: React.FC<TableVersionProp> = ({
               <Row gutter={[0, 16]}>
                 <Col span={24}>
                   <DescriptionV1
-                    isVersionView
                     description={description}
                     entityType={EntityType.TABLE}
+                    showActions={false}
                   />
                 </Col>
                 <Col span={24}>

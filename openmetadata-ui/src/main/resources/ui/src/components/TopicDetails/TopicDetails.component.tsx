@@ -306,8 +306,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                   entityType={EntityType.TOPIC}
                   hasEditAccess={editDescriptionPermission}
                   isEdit={isEdit}
-                  isReadOnly={topicDetails.deleted}
                   owner={topicDetails.owner}
+                  showActions={!deleted}
                   onCancel={onCancel}
                   onDescriptionEdit={onDescriptionEdit}
                   onDescriptionUpdate={onDescriptionUpdate}
@@ -450,6 +450,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       topicDetails,
       decodedTopicFQN,
       fetchTopic,
+      deleted,
       onCancel,
       onDescriptionEdit,
       getEntityFeedCount,
