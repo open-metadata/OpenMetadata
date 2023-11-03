@@ -29,6 +29,7 @@ import org.openmetadata.schema.services.connections.database.DatalakeConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.services.connections.database.TrinoConnection;
+import org.openmetadata.schema.services.connections.database.TrinoDapConnection;
 import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
@@ -50,6 +51,7 @@ public final class ClassConverterFactory {
             Map.entry(DatalakeConnection.class, new DatalakeConnectionClassConverter()),
             Map.entry(MysqlConnection.class, new MysqlConnectionClassConverter()),
             Map.entry(TrinoConnection.class, new TrinoConnectionClassConverter()),
+            Map.entry(TrinoDapConnection.class, new TrinoDapConnectionClassConverter()),
             Map.entry(PostgresConnection.class, new PostgresConnectionClassConverter()),
             Map.entry(DbtGCSConfig.class, new DbtGCSConfigClassConverter()),
             Map.entry(DbtPipeline.class, new DbtPipelineClassConverter()),

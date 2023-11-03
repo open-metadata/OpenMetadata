@@ -27,6 +27,7 @@
         "Impala",
         "Presto",
         "Trino",
+        "TrinoDap",
         "Vertica",
         "Glue",
         "MariaDB",
@@ -87,6 +88,9 @@
         },
         {
           "name": "Trino"
+        },
+        {
+          "name": "TrinoDap"
         },
         {
           "name": "Vertica"
@@ -240,6 +244,9 @@
             },
             {
               "$ref": "./connections/database/trinoConnection.json"
+            },
+            {
+              "$ref": "connections/database/trinoDapConnection.json"
             },
             {
               "$ref": "./connections/database/verticaConnection.json"
