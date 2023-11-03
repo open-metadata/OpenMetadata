@@ -15,6 +15,7 @@
 @border-radius: 6px;
 @border-color: #e8e8ed;
 @markdown-bg-color: #f8f8fa;
+@hover-bg: #00000005;
 
 .block-editor-wrapper {
   .om-block-editor > p:last-child {
@@ -360,4 +361,51 @@
 .om-image-node-embed-link-btn-col {
   display: flex;
   justify-content: end;
+}
+
+.om-callout-node {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  background-color: #f8f8fa;
+  color: @text-color;
+  padding: 1rem 1.5rem;
+  gap: 0.5rem;
+  border-radius: 8px;
+  border-left: 8px solid #afafc1;
+  margin: 16px;
+  position: relative;
+}
+
+.om-callout-node-warning,
+.om-callout-node-caution {
+  background-color: #fff3dc;
+  border-left-color: @warning-color;
+}
+.om-callout-node-tip,
+.om-callout-node-info {
+  background-color: #d1e9ff;
+  border-left-color: @info-color;
+}
+
+.om-callout-node-danger {
+  background-color: #ff4c3b33;
+  border-left-color: @error-color;
+}
+.callout-type-btn.ant-btn.ant-btn-text {
+  background: @hover-bg;
+  padding: 2px 4px;
+}
+.om-callout-node-popover {
+  .ant-popover-inner-content {
+    padding: 0px;
+    .callout-type-btn {
+      padding: 8px;
+      display: block;
+      cursor: pointer;
+      &:hover {
+        background: @hover-bg;
+      }
+    }
+  }
 }

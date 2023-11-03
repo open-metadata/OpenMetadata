@@ -26,6 +26,7 @@ export const EDITOR_OPTIONS: Partial<EditorOptions> = {
     'strike',
     'image',
     'taskItem',
+    'callout',
   ],
   parseOptions: {
     preserveWhitespace: 'full',
@@ -48,3 +49,10 @@ export const CLICKABLE_NODES = [
 ];
 
 export const DROP_CURSOR_COLOR = '#ebf6fe';
+
+export const CALLOUT_CONTENT = {
+  note: '📝',
+  warning: '⚠️',
+  info: '💡',
+  danger: '⚠️',
+};
