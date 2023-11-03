@@ -7,8 +7,8 @@ stages:
     dependsOn: [Version, ExtractVersion]
     variables:
       semver: $[stageDependencies.Version.GitVersion.outputs['gitversion.GitVersion.SemVer']]
+      majorMinorPatch: $[stageDependencies.Version.GitVersion.outputs['gitversion.GitVersion.MajorMinorPatch']]
       omVersionMvn: $[stageDependencies.ExtractVersion.OpenmetadataVersion.outputs['Version.OM_VERSION_MVN']]
-      artifactVersion: $(omVersionMvn)-dap-$(semver)
     jobs:
       - job: Build_and_Publish_mvn
         displayName: Build & Publish MVN
@@ -18,6 +18,22 @@ stages:
               versionSpec: '17'
               jdkArchitectureOption: 'x64'
               jdkSourceOption: 'PreInstalled'
+          - bash: |
+              export ARTIFACT_VERSION=`echo "${OMVERSION}-dap-${MAJORMINORPATCH}"`
+              echo "##vso[task.setvariable variable=artifactVersion]${ARTIFACT_VERSION}"
+            displayName: Set PROD  version
+            condition: eq(variables.isMain, true)
+            env:
+              MAJORMINORPATCH: $(majorMinorPatch)
+              OMVERSION: $(omVersionMvn)
+          - bash: |
+              export ARTIFACT_VERSION=`echo "${OMVERSION}-dap-${SEMVER}"`
+              echo "##vso[task.setvariable variable=artifactVersion]${ARTIFACT_VERSION}"
+            displayName: Set DEV version
+            condition: eq(variables.isMain, false)
+            env:
+              SEMVER: $(semver)
+              OMVERSION: $(omVersionMvn)
           - script: |
               sudo apt-get install -qq -y jq
               sudo make install_antlr_cli

@@ -18,7 +18,7 @@ resources:
       ref: refs/heads/main
 
 variables:
-  isMain: $[eq(variables['Build.SourceBranch'], 'refs/heads/dap')]
+  isMain: $[startsWith(variables['Build.SourceBranch'], 'refs/heads/dap/')]
   appName: openmetadata
   artifactFeed: 'IngOne/P09304-incoming-private'
   outgoingFeedName: P09304-outgoing-public
@@ -45,6 +45,14 @@ stages:
       outgoingFeedName: $(outgoingFeedName)
       projectName: $(projectName)
   # Stage name: Release
-  - template: version/release.yaml@templates
-    parameters:
-      dependsOn: [ BuildMvn, BuildPyPi ]
+  - stage: Release
+    dependsOn: [ BuildMvn, BuildPyPi ]
+    displayName: Release
+    condition: eq(variables.isMain, true)
+    jobs:
+    - job: release
+      pool:
+        vmImage: 'ubuntu-latest'
+      steps:
+        - task: git-tag-on-release-task@9
+          displayName: Release
