@@ -22,11 +22,12 @@ from metadata.utils.importer import (
 )
 from metadata.utils.logger import ingestion_logger
 from metadata.workflow.base import BaseWorkflow
+from metadata.workflow.ingestion import IngestionWorkflow
 
 logger = ingestion_logger()
 
 
-class UsageWorkflow(BaseWorkflow):
+class UsageWorkflow(IngestionWorkflow):
     """
     Usage ingestion workflow implementation.
     """
@@ -69,7 +70,7 @@ class UsageWorkflow(BaseWorkflow):
         processor_config = self.config.processor.dict().get("config", {})
         processor: Processor = processor_class.create(
             processor_config,
-            self.metadata_config,
+            self.metadata,
             connection_type=str(
                 self.config.source.serviceConnection.__root__.config.type.value
             ),

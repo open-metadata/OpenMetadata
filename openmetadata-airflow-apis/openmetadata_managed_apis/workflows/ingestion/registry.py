@@ -13,6 +13,7 @@ DAG builder registry.
 
 Add a function for each type from PipelineType
 """
+from openmetadata_managed_apis.workflows.ingestion.application import build_application_dag
 from openmetadata_managed_apis.workflows.ingestion.data_insight import (
     build_data_insight_dag,
 )
@@ -43,3 +44,4 @@ build_registry.add(PipelineType.profiler.value)(build_profiler_dag)
 build_registry.add(PipelineType.TestSuite.value)(build_test_suite_dag)
 build_registry.add(PipelineType.dataInsight.value)(build_data_insight_dag)
 build_registry.add(PipelineType.elasticSearchReindex.value)(build_es_reindex_dag)
+build_registry.add(PipelineType.application.value)(build_application_dag)

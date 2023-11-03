@@ -26,11 +26,12 @@ from metadata.utils import fqn
 from metadata.utils.importer import import_sink_class
 from metadata.utils.logger import test_suite_logger
 from metadata.workflow.base import BaseWorkflow, T
+from metadata.workflow.ingestion import IngestionWorkflow
 
 logger = test_suite_logger()
 
 
-class TestSuiteWorkflow(BaseWorkflow):
+class TestSuiteWorkflow(IngestionWorkflow):
     """
     DAta Quality ingestion workflow implementation
 

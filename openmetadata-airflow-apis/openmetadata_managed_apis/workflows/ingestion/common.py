@@ -15,10 +15,12 @@ import json
 import uuid
 from datetime import datetime, timedelta
 from functools import partial
-from typing import Callable
+from typing import Callable, Union
 
 import airflow
 from airflow import DAG
+from metadata.generated.schema.metadataIngestion.application import OpenMetadataApplicationConfig
+
 from openmetadata_managed_apis.api.utils import clean_dag_id
 from pydantic import ValidationError
 from requests.utils import quote
@@ -303,7 +305,7 @@ def send_failed_status_callback(workflow_config: OpenMetadataWorkflowConfig, _):
 def build_dag(
     task_name: str,
     ingestion_pipeline: IngestionPipeline,
-    workflow_config: OpenMetadataWorkflowConfig,
+    workflow_config: Union[OpenMetadataWorkflowConfig, OpenMetadataApplicationConfig],
     workflow_fn: Callable,
 ) -> DAG:
     """

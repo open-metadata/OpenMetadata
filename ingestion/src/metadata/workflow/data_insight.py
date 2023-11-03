@@ -20,11 +20,12 @@ from metadata.utils.importer import import_sink_class
 from metadata.utils.logger import data_insight_logger
 from metadata.utils.time_utils import get_beginning_of_day_timestamp_mill
 from metadata.workflow.base import BaseWorkflow
+from metadata.workflow.ingestion import IngestionWorkflow
 
 logger = data_insight_logger()
 
 
-class DataInsightWorkflow(BaseWorkflow):
+class DataInsightWorkflow(IngestionWorkflow):
     """Data insight ingestion workflow implementation"""
 
     retention_days = 7
@@ -66,7 +67,7 @@ class DataInsightWorkflow(BaseWorkflow):
 
     def _execute_internal(self):
         """Use parent logic and add step to process KPIs"""
-        super()._execute_internal()
+        super().execute_internal()
         self._run_kpi_processor()
         self._clean_up_web_analytics_events()
 

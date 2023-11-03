@@ -42,10 +42,10 @@ import org.quartz.JobExecutionException;
 @Slf4j
 public class AbstractNativeApplication implements NativeApplication {
   protected CollectionDAO collectionDAO;
-  private App app;
+  public App app;
   protected SearchRepository searchRepository;
-  private final CronMapper cronMapper = CronMapper.fromQuartzToUnix();
-  private final CronParser cronParser = new CronParser(CronDefinitionBuilder.instanceDefinitionFor(QUARTZ));
+  public final CronMapper cronMapper = CronMapper.fromQuartzToUnix();
+  public final CronParser cronParser = new CronParser(CronDefinitionBuilder.instanceDefinitionFor(QUARTZ));
 
   @Override
   public void init(App app, CollectionDAO dao, SearchRepository searchRepository) {
@@ -187,7 +187,7 @@ public class AbstractNativeApplication implements NativeApplication {
     return JsonUtils.convertValue(app.getRuntime(), ScheduledExecutionContext.class);
   }
 
-  private IngestionPipeline getIngestionPipeline(CreateIngestionPipeline create, String botname, String user) {
+  public IngestionPipeline getIngestionPipeline(CreateIngestionPipeline create, String botname, String user) {
     IngestionPipelineRepository ingestionPipelineRepository =
         (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
     OpenMetadataConnection openMetadataServerConnection =
