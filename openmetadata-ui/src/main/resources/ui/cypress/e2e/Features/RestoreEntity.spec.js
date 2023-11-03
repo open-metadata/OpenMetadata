@@ -19,13 +19,8 @@ import {
 } from '../../common/common';
 import { createEntityTable, hardDeleteService } from '../../common/entityUtils';
 import { DELETE_TERM, MYDATA_SUMMARY_OPTIONS } from '../../constants/constants';
-import {
-  DATABASE_SERVICE,
-  TABLE_DETAILS,
-} from '../../constants/entityConstant';
+import { DATABASE_SERVICE } from '../../constants/entityConstant';
 import { SERVICE_CATEGORIES } from '../../constants/service.constants';
-
-const tableDetails = TABLE_DETAILS;
 
 const ENTITY_TABLE = {
   term: DATABASE_SERVICE.tables.name,
@@ -78,11 +73,11 @@ describe('Restore entity functionality should work properly', () => {
   });
 
   it('Soft Delete entity table', () => {
-    visitEntityDetailsPage(
-      ENTITY_TABLE.term,
-      ENTITY_TABLE.serviceName,
-      ENTITY_TABLE.entity
-    );
+    visitEntityDetailsPage({
+      term: ENTITY_TABLE.term,
+      serviceName: ENTITY_TABLE.serviceName,
+      entity: ENTITY_TABLE.entity,
+    });
 
     cy.get('[data-testid="manage-button"]').click();
 
@@ -143,11 +138,7 @@ describe('Restore entity functionality should work properly', () => {
       .contains(ENTITY_TABLE.displayName)
       .click();
 
-    cy.get('[data-testid="entity-header-display-name"]')
-      .contains(ENTITY_TABLE.displayName)
-      .click();
-
-    cy.get('[data-testid="deleted-badge"]').should('exist');
+    cy.get('[data-testid="deleted-badge"]').should('be.visible');
 
     cy.get('[data-testid="breadcrumb"]')
       .scrollIntoView()
@@ -160,7 +151,7 @@ describe('Restore entity functionality should work properly', () => {
       'queryDeletedTables'
     );
 
-    cy.get('[data-testid="show-deleted"]').click();
+    cy.get('[data-testid="show-deleted"]').click({ waitForAnimations: true });
 
     verifyResponseStatusCode('@queryDeletedTables', 200);
 

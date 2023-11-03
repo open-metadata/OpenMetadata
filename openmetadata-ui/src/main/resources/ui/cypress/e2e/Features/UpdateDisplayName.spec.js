@@ -173,11 +173,11 @@ describe('Edit displayName for all the entities, services and verify breadcrumb'
 
   it(`database`, () => {
     interceptURL('GET', 'api/v1/databases/name/*', 'database');
-    visitEntityDetailsPage(
-      SCHEMA_AND_DATABASE_DISPLAY_NAME.name,
-      SCHEMA_AND_DATABASE_DISPLAY_NAME.serviceName,
-      SCHEMA_AND_DATABASE_DISPLAY_NAME.entity
-    );
+    visitEntityDetailsPage({
+      term: SCHEMA_AND_DATABASE_DISPLAY_NAME.name,
+      serviceName: SCHEMA_AND_DATABASE_DISPLAY_NAME.serviceName,
+      entity: SCHEMA_AND_DATABASE_DISPLAY_NAME.entity,
+    });
     cy.log(SCHEMA_AND_DATABASE_DISPLAY_NAME.database);
     cy.get('[data-testid="breadcrumb"]')
       .contains(SCHEMA_AND_DATABASE_DISPLAY_NAME.database)
@@ -194,11 +194,11 @@ describe('Edit displayName for all the entities, services and verify breadcrumb'
 
   it(`databaseSchema`, () => {
     interceptURL('GET', 'api/v1/databaseSchemas/name/*', 'databaseSchemas');
-    visitEntityDetailsPage(
-      SCHEMA_AND_DATABASE_DISPLAY_NAME.name,
-      SCHEMA_AND_DATABASE_DISPLAY_NAME.serviceName,
-      SCHEMA_AND_DATABASE_DISPLAY_NAME.entity
-    );
+    visitEntityDetailsPage({
+      term: SCHEMA_AND_DATABASE_DISPLAY_NAME.name,
+      serviceName: SCHEMA_AND_DATABASE_DISPLAY_NAME.serviceName,
+      entity: SCHEMA_AND_DATABASE_DISPLAY_NAME.entity,
+    });
     cy.get('[data-testid="breadcrumb"]')
       .contains(SCHEMA_AND_DATABASE_DISPLAY_NAME.schema)
       .click();
@@ -214,7 +214,11 @@ describe('Edit displayName for all the entities, services and verify breadcrumb'
 
   Object.values(ENTITIES_DISPLAY_NAME).map((entity) => {
     it(`${entity.entity}`, () => {
-      visitEntityDetailsPage(entity.name, entity.serviceName, entity.entity);
+      visitEntityDetailsPage({
+        term: entity.name,
+        serviceName: entity.serviceName,
+        entity: entity.entity,
+      });
       updateDisplayName(entity.displayName, `/api/v1/${entity.entity}/*`);
       entity.breadcrumb.map((value) => {
         cy.get('[data-testid="breadcrumb"]').should('contain', value);

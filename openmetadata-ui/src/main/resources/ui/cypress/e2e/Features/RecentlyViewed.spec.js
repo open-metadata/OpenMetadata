@@ -55,7 +55,11 @@ describe('Recently viwed data assets', () => {
 
   it(`recently view section should have at max list of 5 entity`, () => {
     RECENTLY_VIEW_ENTITIES.map((entity, index) => {
-      visitEntityDetailsPage(entity.term, entity.serviceName, entity.entity);
+      visitEntityDetailsPage({
+        term: entity.term,
+        serviceName: entity.serviceName,
+        entity: entity.entity,
+      });
 
       interceptURL(
         'GET',
@@ -68,6 +72,9 @@ describe('Recently viwed data assets', () => {
 
       // need to add manual wait as we are dependant on local storage for recently view data
       cy.wait(500);
+      cy.get('[data-testid="recently-viewed-container"]')
+        .scrollIntoView()
+        .should('be.visible');
       cy.get(
         `[data-testid="recently-viewed-container"] [title="${entity.displayName}"]`
       )

@@ -156,13 +156,12 @@ Object.entries(ENTITY_DETAILS_FOR_VERSION_TEST).map(
       });
 
       it(`${entityType} version page should show removed tags changes properly`, () => {
-        visitEntityDetailsPage(
-          entityDetails.name,
-          entityDetails.serviceName,
-          entityDetails.entity,
-          undefined,
-          entityType
-        );
+        visitEntityDetailsPage({
+          term: entityDetails.name,
+          serviceName: entityDetails.serviceName,
+          entity: entityDetails.entity,
+          entityType: entityType,
+        });
 
         cy.get(
           '[data-testid="entity-right-panel"]  [data-testid="edit-button"]'
@@ -192,13 +191,12 @@ Object.entries(ENTITY_DETAILS_FOR_VERSION_TEST).map(
       });
 
       it(`${entityType} version page should show owner changes properly`, () => {
-        visitEntityDetailsPage(
-          entityDetails.name,
-          entityDetails.serviceName,
-          entityDetails.entity,
-          undefined,
-          entityType
-        );
+        visitEntityDetailsPage({
+          term: entityDetails.name,
+          serviceName: entityDetails.serviceName,
+          entity: entityDetails.entity,
+          entityType: entityType,
+        });
 
         cy.get('[data-testid="version-button"]').as('versionButton');
 
@@ -254,13 +252,12 @@ Object.entries(ENTITY_DETAILS_FOR_VERSION_TEST).map(
       });
 
       it(`${entityType} version page should show tier changes properly`, () => {
-        visitEntityDetailsPage(
-          entityDetails.name,
-          entityDetails.serviceName,
-          entityDetails.entity,
-          undefined,
-          entityType
-        );
+        visitEntityDetailsPage({
+          term: entityDetails.name,
+          serviceName: entityDetails.serviceName,
+          entity: entityDetails.entity,
+          entityType: entityType,
+        });
 
         cy.get('[data-testid="version-button"]').as('versionButton');
 

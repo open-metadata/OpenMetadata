@@ -32,9 +32,9 @@ To install the package, we need to update the `requirements.txt` file from the M
 openmetadata-ingestion[<plugin>]==x.y.z
 ```
 
-Where `x.y.z` is the version of the OpenMetadata ingestion package. Note that the version needs to match the server version. If we are using the server at 1.1.0, then the ingestion package needs to also be 1.1.0.
+Where `x.y.z` is the version of the OpenMetadata ingestion package. Note that the version needs to match the server version. If we are using the server at 1.2.0, then the ingestion package needs to also be 1.2.0.
 
-The plugin parameter is a list of the sources that we want to ingest. An example would look like this `openmetadata-ingestion[mysql,snowflake,s3]==1.1.0`.
+The plugin parameter is a list of the sources that we want to ingest. An example would look like this `openmetadata-ingestion[mysql,snowflake,s3]==1.2.0`.
 
 A DAG deployed using a Python Operator would then look like follows
 
@@ -102,17 +102,61 @@ run the ingestion can be found on the documentation (e.g., [Snowflake](https://d
 
 We will now describe the steps, following the official AWS documentation.
 
-### 1. Create an ECS Cluster
+### 1. Create an ECS Cluster & Task Definition
 
-- The cluster just needs a task to run in `FARGATE` mode.
+- The cluster needs a task to run in `FARGATE` mode.
 - The required image is `docker.getcollate.io/openmetadata/ingestion-base:x.y.z`
-  - The same logic as above applies. The `x.y.z` version needs to match the server version. For example, `docker.getcollate.io/openmetadata/ingestion-base:0.13.2`
+  - The same logic as above applies. The `x.y.z` version needs to match the server version. For example, `docker.getcollate.io/openmetadata/ingestion-base:1.2.0`
   
 We have tested this process with a Task Memory of 512MB and Task CPU (unit) of 256. This can be tuned depending on the amount of metadata that needs to be ingested.
 
-When creating the ECS Cluster, take notes on the log groups assigned, as we will need them to prepare the MWAA Executor Role policies.
+When creating the Task Definition, take notes on the **log groups** assigned, as we will need them to prepare the MWAA Executor Role policies.
 
-### 2. Update MWAA Executor Role policies
+For example, if in the JSON from the Task Definition we see:
+
+```json
+"logConfiguration": {
+    "logDriver": "awslogs",
+    "options": {
+        "awslogs-create-group": "true",
+        "awslogs-group": "/ecs/openmetadata",
+        "awslogs-region": "us-east-2",
+        "awslogs-stream-prefix": "ecs"
+    },
+    "secretOptions": []
+}
+```
+
+We'll need to use the `/ecs/openmetadata` below when configuring the policies.
+
+### 2. Task Definition ARN & Networking
+
+1. From the AWS Console, copy your task definition ARN. It will look something like this `arn:aws:ecs:<region>:<account>:task-definition/<name>:<revision>`.
+2. Get the network details on where the task should execute. We will be using a JSON like:
+
+```json
+{
+  "awsvpcConfiguration": {
+    "subnets": [
+      "subnet-xxxyyyzzz",
+      "subnet-xxxyyyzzz"
+    ],
+    "securityGroups": [
+      "sg-xxxyyyzzz"
+    ],
+    "assignPublicIp": "ENABLED"
+  }
+}
+```
+
+{% note %}
+
+If you want to extract MWAA metadata, add the **VPC**, **subnets** and **security groups** used when setting up MWAA. We need to
+be in the same network environment as MWAA to reach the underlying database.
+
+{% /note %}
+
+### 3. Update MWAA Executor Role policies
 
 - Identify your MWAA executor role. This can be obtained from the details view of your MWAA environment.
 - Add the following two policies to the role, the first with ECS permissions:
@@ -162,7 +206,7 @@ And for the Log Group permissions
         "logs:GetQueryResults"
     ],
     "Resource": [
-        "arn:aws:logs:<region>:<account-id>:log-group:<airflow-environment-name->*",
+        "arn:aws:logs:<region>:<account-id>:log-group:<airflow-environment-name>*",
         "arn:aws:logs:*:*:log-group:<ecs-mwaa-group>:*"
     ]
 }
@@ -171,24 +215,36 @@ And for the Log Group permissions
 
 Note how you need to replace the `region`, `account-id` and the `log group` names for your Airflow Environment and ECS.
 
+### 4. Prepare the DAG
+
 A DAG created using the ECS Operator will then look like this:
 
 ```python
-from datetime import datetime
-
-import yaml
 from airflow import DAG
-
-from http import client
-from airflow import DAG
-from airflow.providers.amazon.aws.operators.ecs import ECSOperator
+# If using Airflow < 2.5
+# from airflow.providers.amazon.aws.operators.ecs import ECSOperator
+# If using Airflow > 2.5
+from airflow.providers.amazon.aws.operators.ecs import EcsRunTaskOperator
 from airflow.utils.dates import days_ago
-import boto3
 
 
-CLUSTER_NAME="openmetadata-ingestion-cluster"  # Replace value for CLUSTER_NAME with your information.
+CLUSTER_NAME="openmetadata-ingestion"  # Replace value for CLUSTER_NAME with your information.
 CONTAINER_NAME="openmetadata-ingestion"  # Replace value for CONTAINER_NAME with your information.
 LAUNCH_TYPE="FARGATE"
+
+TASK_DEFINITION = "arn:aws:ecs:<region>:<account>:task-definition/<name>:<revision>"
+NETWORK_CONFIG = {
+  "awsvpcConfiguration": {
+    "subnets": [
+      "subnet-xxxyyyzzz",
+      "subnet-xxxyyyzzz"
+    ],
+    "securityGroups": [
+      "sg-xxxyyyzzz"
+    ],
+    "assignPublicIp": "ENABLED"
+  }
+}
 
 config = """
 YAML config
@@ -202,14 +258,11 @@ with DAG(
     start_date=days_ago(1),
     is_paused_upon_creation=True,
 ) as dag:
-    client=boto3.client('ecs')
-    services=client.list_services(cluster=CLUSTER_NAME,launchType=LAUNCH_TYPE)
-    service=client.describe_services(cluster=CLUSTER_NAME,services=services['serviceArns'])
-    ecs_operator_task = ECSOperator(
+    ecs_operator_task = EcsRunTaskOperator(
         task_id = "ecs_ingestion_task",
         dag=dag,
         cluster=CLUSTER_NAME,
-        task_definition=service['services'][0]['taskDefinition'],
+        task_definition=TASK_DEFINITION,
         launch_type=LAUNCH_TYPE,
         overrides={
             "containerOverrides":[
@@ -230,7 +283,7 @@ with DAG(
             ],
         },
 
-        network_configuration=service['services'][0]['networkConfiguration'],
+        network_configuration=NETWORK_CONFIG,
         awslogs_group="/ecs/ingest",
         awslogs_stream_prefix=f"ecs/{CONTAINER_NAME}",
     )
@@ -246,6 +299,12 @@ the official OpenMetadata docs, and the value of the `pipelineType` configuratio
 - `TestSuite`
 
 Which are based on the `PipelineType` [JSON Schema definitions](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/ingestionPipelines/ingestionPipeline.json#L14)
+
+Moreover, one of the imports will depend on the MWAA Airflow version you are using:
+- If using Airflow < 2.5: `from airflow.providers.amazon.aws.operators.ecs import ECSOperator`
+- If using Airflow > 2.5: `from airflow.providers.amazon.aws.operators.ecs import EcsRunTaskOperator`
+
+Make sure to update the `ecs_operator_task` task call accordingly.
 
 ## Ingestion Workflows as a Python Virtualenv Operator
 
@@ -371,6 +430,6 @@ run the ingestion can be found on the documentation (e.g., [Snowflake](https://d
 You will also need to determine the OpenMetadata ingestion extras and Airflow providers you need. Note that the Openmetadata version needs to match the server version. If we are using the server at 0.12.2, then the ingestion package needs to also be 0.12.2.  An example of the extras would look like this `openmetadata-ingestion[mysql,snowflake,s3]==0.12.2.2`.
 For Airflow providers, you will want to pull the provider versions from [the matching constraints file](https://raw.githubusercontent.com/apache/airflow/constraints-2.4.3/constraints-3.7.txt). Since this example installs Airflow Providers v2.4.3 on Python 3.7, we use that constraints file.
 
-Also note that the ingestion workflow function must be entirely self contained as it will run by itself in the virtualenv. Any imports it needs, including the configuration, must exist within the function itself.
+Also note that the ingestion workflow function must be entirely self-contained as it will run by itself in the virtualenv. Any imports it needs, including the configuration, must exist within the function itself.
 
 {% partial file="/v1.2/deployment/run-connectors-class.md" /%}
