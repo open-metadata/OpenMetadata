@@ -27,7 +27,7 @@ export const visitEntityDetailsVersionPage = (
   version
 ) => {
   visitEntityDetailsPage({
-    term: entityDetails.term,
+    term: entityDetails.name,
     serviceName: entityDetails.serviceName,
     entity: entityDetails.entity,
     entityType: entityDetails.entityType,
