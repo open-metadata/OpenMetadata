@@ -16,6 +16,7 @@ import {
   ColumnJoins,
   Table,
   TableData,
+  TablePartition,
 } from '../../generated/entity/data/table';
 
 export type Props = {
@@ -28,6 +29,7 @@ export type Props = {
   hasTagEditAccess: boolean;
   isReadOnly?: boolean;
   entityFqn: string;
+  tablePartitioned?: TablePartition;
   onThreadLinkSelect: (value: string, threadType?: ThreadType) => void;
   onUpdate: (columns: Table['columns']) => Promise<void>;
 };
