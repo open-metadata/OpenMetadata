@@ -2228,35 +2228,37 @@ public interface CollectionDAO {
 
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT tu.source, tu.tagFQN, tu.labelType, tu.targetFQNHash, tu.state, gte.fqn, gte.json "
-                + "FROM tag_usage tu "
-                + "JOIN ( "
-                + "  SELECT json, JSON_UNQUOTE(JSON_EXTRACT(json, '$.fullyQualifiedName')) AS fqn"
-                + "  FROM ( "
-                + "    SELECT * FROM glossary_term_entity "
-                + "    UNION ALL "
-                + "    SELECT * FROM tag "
-                + "  ) combined_data "
-                + " ) gte "
-                + "ON tu.tagFQN = gte.fqn "
-                + "WHERE tu.targetFQNHash LIKE CONCAT(:targetFQNHashPrefix, '.%') "
-                + "ORDER BY tu.tagFQN",
+            "SELECT source, tagFQN, labelType, targetFQNHash, state, json "
+                + "FROM ("
+                + "  SELECT gterm.* , tu.* "
+                + "  FROM glossary_term_entity AS gterm "
+                + "  JOIN tag_usage AS tu "
+                + "  ON gterm.fqnHash = tu.tagFQNHash "
+                + "  WHERE tu.source = 1 "
+                + "  UNION ALL "
+                + "  SELECT ta.*, tu.* "
+                + "  FROM tag AS ta "
+                + "  JOIN tag_usage AS tu "
+                + "  ON ta.fqnHash = tu.tagFQNHash "
+                + "  WHERE tu.source = 0 "
+                + ") AS combined_data "
+                + "WHERE combined_data.targetFQNHash  LIKE CONCAT(:targetFQNHashPrefix, '.%')",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT tu.source, tu.tagFQN, tu.labelType, tu.targetFQNHash, tu.state, gte.fqn, gte.json "
-                + "FROM tag_usage tu "
-                + "JOIN ( "
-                + "  SELECT json, json->>'fullyQualifiedName' AS fqn "
-                + "  FROM ( "
-                + "    SELECT * FROM glossary_term_entity "
-                + "    UNION ALL "
-                + "    SELECT * FROM tag "
-                + "  ) combined_data "
-                + ") gte "
-                + "ON tu.tagFQN = gte.fqn "
-                + "WHERE tu.targetFQNHash LIKE CONCAT(:targetFQNHashPrefix, '.%') "
-                + "ORDER BY tu.tagFQN",
+            "SELECT source, tagFQN, labelType, targetFQNHash, state, json "
+                + "FROM ("
+                + "  SELECT gterm.*, tu.* "
+                + "  FROM glossary_term_entity AS gterm "
+                + "  JOIN tag_usage AS tu ON gterm.fqnHash = tu.tagFQNHash "
+                + "  WHERE tu.source = 1 "
+                + "  UNION ALL "
+                + "  SELECT ta.*, tu.* "
+                + "  FROM tag AS ta "
+                + "  JOIN tag_usage AS tu ON ta.fqnHash = tu.tagFQNHash "
+                + "  WHERE tu.source = 0 "
+                + ") AS combined_data "
+                + "WHERE combined_data.targetFQNHash LIKE CONCAT(:targetFQNHashPrefix, '.%')",
         connectionType = POSTGRES)
     @RegisterRowMapper(TagLabelRowMapperWithTargetFqnHash.class)
     List<Pair<String, TagLabel>> getTagsInternalByPrefix(@BindFQN("targetFQNHashPrefix") String targetFQNHashPrefix);

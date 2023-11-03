@@ -543,7 +543,8 @@ public final class Entity {
     Map<String, List<TagLabel>> allTags = repository.getTagsByPrefix(fqnPrefix);
     for (T c : listOrEmpty(flattenedFields)) {
       if (setTags) {
-        c.setTags(allTags.get(FullyQualifiedName.buildHash(c.getFullyQualifiedName())));
+        List<TagLabel> columnTag = allTags.get(FullyQualifiedName.buildHash(c.getFullyQualifiedName()));
+        c.setTags(columnTag == null ? new ArrayList<>() : columnTag);
       } else {
         c.setTags(c.getTags());
       }
