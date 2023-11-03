@@ -12,7 +12,7 @@ Are you exploring or doing a PoC? It won't get easier than following our Quickst
 {% inlineCallout
 icon="celebration"
 bold="Quickstart OpenMetadata"
-href="/quick-start/local-deployment" %}
+href="/quick-start/local-docker-deployment" %}
 Get OpenMetadata up and running in under 5 minutes!
 {% /inlineCallout %}
 
@@ -34,7 +34,7 @@ We support different kinds of deployment:
     color="violet-70"
     icon="celebration"
     bold="Local Docker Deployment"
-    href="/quick-start/local-deployment"%}
+    href="/quick-start/local-docker-deployment"%}
     Get OpenMetadata up and running locally in under 7 minutes!
   {%/inlineCallout%}
   {%inlineCallout
