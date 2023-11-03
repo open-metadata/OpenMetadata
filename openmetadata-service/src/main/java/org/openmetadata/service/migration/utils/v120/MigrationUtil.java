@@ -140,7 +140,6 @@ public class MigrationUtil {
               row -> {
                 String jsonRow;
                 if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
-                  // MySQL stores JSON as a string, so we need to parse it
                   jsonRow = (String) row.get("json");
                 } else {
                   // Postgres stores JSON as a JSONB, so we can't just cast it as a string
