@@ -181,6 +181,10 @@
       "type": "boolean",
       "default": false
     },
+    "dataProducts" : {
+      "description": "List of data products this entity is part of.",
+      "$ref" : "../../type/entityReferenceList.json"
+    },
     "domain" : {
       "description": "Domain the Pipeline service belongs to.",
       "$ref": "../../type/entityReference.json"

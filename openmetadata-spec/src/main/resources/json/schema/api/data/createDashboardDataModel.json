@@ -27,6 +27,13 @@
       },
       "default": null
     },
+    "dataProducts" : {
+      "description": "List of fully qualified names of data products this entity is part of.",
+      "type": "array",
+      "items" : {
+        "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      }
+    },
     "owner": {
       "description": "Owner of this data model.",
       "$ref": "../../type/entityReference.json"

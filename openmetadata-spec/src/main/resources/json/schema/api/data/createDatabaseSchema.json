@@ -29,6 +29,13 @@
       "description": "Link to the database fully qualified name where this schema is hosted in",
       "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
+    "dataProducts" : {
+      "description": "List of fully qualified names of data products this entity is part of.",
+      "type": "array",
+      "items" : {
+        "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      }
+    },
     "tags": {
       "description": "Tags for this table",
       "type": "array",

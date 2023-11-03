@@ -37,6 +37,10 @@
       "description": "Description of the database instance.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
+    "dataProducts" : {
+      "description": "List of data products this entity is part of.",
+      "$ref" : "../../type/entityReferenceList.json"
+    },
     "tags": {
       "description": "Tags for this Database.",
       "type": "array",

@@ -168,6 +168,10 @@
       "description": "Description of this Pipeline.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
+    "dataProducts" : {
+      "description": "List of data products this entity is part of.",
+      "$ref" : "../../type/entityReferenceList.json"
+    },
     "version": {
       "description": "Metadata version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
