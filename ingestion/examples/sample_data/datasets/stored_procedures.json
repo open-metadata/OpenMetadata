@@ -253,15 +253,15 @@
             }
         },
         {
-            "name": "calculate_tax_amount",
-            "description": "Procedure to calculate tax amount",
+            "name": "update_dim_address_clean_from_dim_address",
+            "description": "Procedure to update dim_address clean table",
             "version": 0.1,
             "updatedAt": 1654112579000,
             "updatedBy": "anonymous",
             "href": "http://localhost:8585/api/v1/tables/3cda8ecb-f4c6-4ed4-8506-abe965b54b86",
             "storedProcedureCode": {
               "langauge": "SQL",
-              "code": "CREATE OR REPLACE PROCEDURE calculate_tax_amount(order_total decimal, tax_rate decimal) RETURNS decimal NOT NULL LANGUAGE SQL AS $$\nDECLARE tax DECIMAL;\nBEGIN\n  tax := order_total * (tax_rate / 100.0);\n  RETURN tax;\nEND;\n$$;"
+              "code": "CREATE OR REPLACE PROCEDURE UpdateDimAddressCleanFromDimAddress()\nLANGUAGE plpgsql\nAS $$\nBEGIN\nUPDATE dim_address_clean AS dc\nSET\n    street = da.street,\n    city = da.city,\n    state = da.state,\n    postal_code = da.postal_code\nFROM dim_address AS da\nWHERE dc.address_id = da.address_id;\n\nCOMMIT;\nEND;\n$$;"
             },
             "database": {
                 "id": "50da1ff8-4e1d-4967-8931-45edbf4dd908",
@@ -281,15 +281,15 @@
             }
         },
         {
-            "name": "find_max_value",
-            "description": "Procedure to find the maximum value",
+            "name": "transform_and_load_data",
+            "description": "Procedure to clean the customers data before loading",
             "version": 0.1,
             "updatedAt": 1656043991000,
             "updatedBy": "anonymous",
             "href": "http://localhost:8585/api/v1/tables/3cda8ecb-f4c6-4ed4-8506-abe965b54b86",
             "storedProcedureCode": {
               "langauge": "SQL",
-              "code": "CREATE OR REPLACE PROCEDURE find_max_value(numbers INT ARRAY) RETURNS INT NOT NULL LANGUAGE SQL AS $$\nDECLARE max_val INT = numbers[1];\nBEGIN\n  FOR num IN ARRAY numbers LOOP\n    IF num > max_val THEN\n      max_val := num;\n    END IF;\n  END LOOP;\n  RETURN max_val;\nEND;\n$$;"
+              "code": "CREATE OR REPLACE FUNCTION TransformAndLoadData() RETURNS VOID AS $$ BEGIN\n DELETE FROM dim_customer;\n INSERT INTO dim_customer (dim_customer_name, dim_customer_email)\n SELECT\n TRIM(raw_customer_name),\n LOWER(raw_customer_email)\n FROM raw_customer;\n COMMIT;\n END; $$ LANGUAGE plpgsql;"
             },
             "database": {
                 "id": "50da1ff8-4e1d-4967-8931-45edbf4dd908",
@@ -309,15 +309,15 @@
             }
         },
         {
-            "name": "log_user_activity",
-            "description": "Procedure to log user activity",
+            "name": "update_fact_order_from_raw_order",
+            "description": "Procedure to update fact order from raw order table",
             "version": 0.1,
             "updatedAt": 1657845268000,
             "updatedBy": "anonymous",
             "href": "http://localhost:8585/api/v1/tables/3cda8ecb-f4c6-4ed4-8506-abe965b54b86",
             "storedProcedureCode": {
               "langauge": "SQL",
-              "code": "CREATE OR REPLACE PROCEDURE log_user_activity(user_id INT, action VARCHAR, timestamp TIMESTAMP) RETURNS VOID LANGUAGE SQL AS $$\nBEGIN\nINSERT INTO user_activity (user_id, action, timestamp) VALUES (user_id, action, timestamp);\nEND;\n$$;"
+              "code": "CREATE OR REPLACE PROCEDURE UpdateFactOrderFromRawOrder()\nLANGUAGE plpgsql AS $$\nBEGIN\n    TRUNCATE fact_order;\n    INSERT INTO fact_order (Month, TotalQuantity)\n    SELECT DATE_TRUNC('month', OrderDate) AS Month, SUM(Quantity) AS TotalQuantity\n    FROM raw_order\n    GROUP BY DATE_TRUNC('month', OrderDate);\nEND;\n$$;"
             },
             "database": {
                 "id": "50da1ff8-4e1d-4967-8931-45edbf4dd908",
@@ -335,6 +335,23 @@
                 "description": "This **mock** Schema contains tables related to shopify sales and orders with related dimension tables.",
                 "href": "http://localhost:8585/api/v1/databaseSchemas/d7be1e2c-b3dc-11ec-b909-0242ac120002"
             }
+        }
+      ],
+      "lineage":[
+        {
+            "from_table_fqn": "sample_data.ecommerce_db.shopify.raw_order",
+            "stored_procedure_fqn": "sample_data.ecommerce_db.shopify.update_fact_order_from_raw_order",
+            "to_table_fqn": "sample_data.ecommerce_db.shopify.fact_order"
+        },
+        {
+            "from_table_fqn": "sample_data.ecommerce_db.shopify.raw_customer",
+            "stored_procedure_fqn": "sample_data.ecommerce_db.shopify.transform_and_load_data",
+            "to_table_fqn": "sample_data.ecommerce_db.shopify.dim_customer"
+        },
+        {
+            "from_table_fqn": "sample_data.ecommerce_db.shopify.dim_address",
+            "stored_procedure_fqn": "sample_data.ecommerce_db.shopify.update_dim_address_clean_from_dim_address",
+            "to_table_fqn": "sample_data.ecommerce_db.shopify.dim_address_clean"
         }
       ]
 }
