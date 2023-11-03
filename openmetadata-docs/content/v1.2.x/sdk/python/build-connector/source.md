@@ -10,115 +10,40 @@ The **Source** is the connector to external systems and outputs a record for dow
 ## Source API
 
 ```python
-@dataclass  # type: ignore[misc]
-class Source(Closeable, metaclass=ABCMeta):
-ctx: WorkflowContext
-    @classmethod
+class Source(IterStep, ABC):
+    """
+    Abstract source implementation. The workflow will run
+    its next_record and pass them to the next step.
+    """
+
+    metadata: OpenMetadata
+    connection_obj: Any
+    service_connection: Any
+  
+    # From the parent - Adding here just to showcase
     @abstractmethod
-    def create(cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext) -> "Source":
-        pass
+    def _iter(self) -> Iterable[Either]:
+        """Main entrypoint to run through the Iterator"""
 
     @abstractmethod
     def prepare(self):
         pass
 
     @abstractmethod
-    def next_record(self) -> Iterable[Record]:
-        pass
-
-    @abstractmethod
-    def get_status(self) -> SourceStatus:
+    def test_connection(self) -> None:
         pass
 ```
-
-**create** method is used to create an instance of Source.
 
 **prepare** will be called through Python's init method. This will be a place where you could make connections to external sources or initiate the client library.
 
-**next_record** is where the client can connect to an external resource and emit the data downstream.
+**_iter** is where the client can connect to an external resource and emit the data downstream.
 
-**get_status** is for the [workflow](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/api/workflow.py) to call and report the status of the source such as how many records its processed any failures or warnings.
+**test_connection** is used (by OpenMetadata supported connectors ONLY) to validate permissions and connectivity before moving forward with the ingestion.
+
 
 ## Example
 
-A simple example of this implementation is
-
-```python
-class SampleTablesSource(Source):
-
-    def __init__(self, config: SampleTableSourceConfig, metadata_config: MetadataServerConfig, ctx):
-        super().__init__(ctx)
-        self.status = SampleTableSourceStatus()
-        self.config = config
-        self.metadata_config = metadata_config
-        self.client = REST(metadata_config)
-        self.service_json = json.load(open(config.sample_schema_folder + "/service.json", 'r'))
-        self.database = json.load(open(config.sample_schema_folder + "/database.json", 'r'))
-        self.tables = json.load(open(config.sample_schema_folder + "/tables.json", 'r'))
-        self.service = get_service_or_create(self.service_json, metadata_config)
-
-    @classmethod
-    def create(cls, config_dict, metadata_config_dict, ctx):
-        config = SampleTableSourceConfig.parse_obj(config_dict)
-        metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(config, metadata_config, ctx)
-
-    def prepare(self):
-        pass
-
-    def next_record(self) -> Iterable[Entity]:
-
-        yield from self.yield_create_request_database_service(self.config)
-
-        service_entity: DatabaseService = self.metadata.get_by_name(
-            entity=DatabaseService, fqn=self.config.serviceName
-        )
-
-        yield CreateDatabaseRequest(
-            name="awesome-database",
-            service=service_entity.fullyQualifiedName,
-        )
-
-        database_entity: Database = self.metadata.get_by_name(
-            entity=Database, fqn.build(
-                    self.metadata,
-                    entity_type=Database,
-                    service_name=self.context.database_service.name.__root__,
-                    database_name="awesome-database",
-                )
-        )
-
-        yield CreateDatabaseSchemaRequest(
-            name="awesome-schema",
-            description="description",
-            database=database_entity.fullyQualifiedName,
-        )
-
-        database_schema_entity: DatabaseSchema = self.metadata.get_by_name(
-            entity=DatabaseSchema, fqn.build(
-                    self.metadata,
-                    entity_type=DatabaseSchema,
-                    service_name=self.context.database_service.name.__root__,
-                    database_name="awesome-database",
-                    schema_name="awesome-schema"
-                )
-        )
-
-        yield CreateTableRequest(
-            name="awesome-table",
-            description="description",
-            columns="columns",
-            databaseSchema=database_schema_entity.fullyQualifiedName,
-            tableConstraints=table.get("tableConstraints"),
-            tableType=table["tableType"],
-        )
-
-    def close(self):
-        pass
-
-    def get_status(self):
-        return self.status
-```
+A simple example of this implementation can be found in our demo Custom Connector [here](https://github.com/open-metadata/openmetadata-demo/blob/main/custom-connector/connector/my_csv_connector.py)
 
 ## For Consumers of Openmetadata-ingestion to define custom connectors in their own package with same namespace
 
