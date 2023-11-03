@@ -177,6 +177,9 @@ class ServiceUtilClassBase {
       case DatabaseServiceType.Trino:
         return TRINO;
 
+      case DatabaseServiceType.TrinoDAP:
+        return TRINO;
+
       case DatabaseServiceType.Glue:
         return GLUE;
 
