@@ -41,6 +41,7 @@ export const GRAYED_OUT_COLOR = '#CCCCCC';
 export const GREEN_COLOR = '#28A745';
 export const GREEN_COLOR_OPACITY_30 = '#28A74530';
 export const BORDER_COLOR = '#0000001a';
+export const BLACK_COLOR = '#000000';
 
 export const DEFAULT_CHART_OPACITY = 1;
 export const HOVER_CHART_OPACITY = 0.3;

@@ -376,7 +376,7 @@ export const ActivityFeedTab = ({
               }}>
               {' '}
               <CheckIcon className="m-r-xss" width={14} /> {closedTasks}{' '}
-              {t('label.close')}
+              {t('label.closed')}
             </Typography.Text>
           </div>
         )}
