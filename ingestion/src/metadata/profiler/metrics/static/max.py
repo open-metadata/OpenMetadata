@@ -43,6 +43,9 @@ def _(element, compiler, **kw):
 @compiles(MaxFn, Dialects.Trino)
 def _(element, compiler, **kw):
     col = compiler.process(element.clauses, **kw)
+    # LenFn is only applicable for concatenable columns
+    if isinstance(element.clauses.clauses[0], LenFn):
+        return f"MAX({col})"
     return f"IF(is_nan(MAX({col})), NULL, MAX({col}))"
 
 

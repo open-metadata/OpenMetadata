@@ -55,6 +55,8 @@ def _(element, compiler, **kw):
 @compiles(avg, Dialects.Trino)
 def _(element, compiler, **kw):
     proc = compiler.process(element.clauses, **kw)
+    if isinstance(element.clauses.clauses[0], LenFn):
+        return f"avg({proc})"
     return f"IF(is_nan(avg({proc})), NULL, avg({proc}))"
 
 

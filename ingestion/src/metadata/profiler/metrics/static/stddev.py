@@ -58,6 +58,8 @@ def _(element, compiler, **kw):
 @compiles(StdDevFn, Dialects.Trino)
 def _(element, compiler, **kw):
     proc = compiler.process(element.clauses, **kw)
+    if isinstance(element.clauses.clauses[0], LenFn):
+        return f"STDDEV_POP({proc})"
     return f"IF(is_nan(STDDEV_POP({proc})), NULL, STDDEV_POP({proc}))"
 
 

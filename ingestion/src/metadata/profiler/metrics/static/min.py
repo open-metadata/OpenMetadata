@@ -42,6 +42,8 @@ def _(element, compiler, **kw):
 @compiles(MinFn, Dialects.Trino)
 def _(element, compiler, **kw):
     col = compiler.process(element.clauses, **kw)
+    if isinstance(element.clauses.clauses[0], LenFn):
+        return f"MIN({col})"
     return f"IF(is_nan(MIN({col})), NULL, MIN({col}))"
 
 

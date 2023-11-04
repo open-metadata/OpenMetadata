@@ -76,6 +76,9 @@ def _(elements, compiler, **kwargs):
 @compiles(MedianFn, Dialects.Trino)
 def _(elements, compiler, **kwargs):
     col = compiler.process(elements.clauses.clauses[0])
+    # if not col.startswith("LENGTH"):
+    #     table_name = elements.clauses.clauses[1].value
+    #     col = f"{table_name}.{col}"
     percentile = elements.clauses.clauses[2].value
     return "IF(count(%s) = 0, NULL, approx_percentile(%s, %.2f))" % (
         col,
