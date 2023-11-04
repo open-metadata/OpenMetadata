@@ -109,6 +109,12 @@ After the migration is finished, you can revert this changes.
 
 # Breaking Changes
 
+### Database connection SSL Configuration
+
+With 1.2.X, the environment variable `DB_USE_SSL` is deprecated in favour of `DB_PARAMS`.
+For Bare Metal and Docker Deployment, Add / Update the variable `DB_PARAMS` to `allowPublicKeyRetrieval=true&useSSL=true&serverTimezone=UTC` to enable ssl security to connect to database.
+For Kubernetes Deployment, `openmetadata.config.database.dbParams` is available to pass the above values as helm values.
+
 ### Version Upgrades
 
 - The OpenMetadata Server is now based on **JDK 17**
