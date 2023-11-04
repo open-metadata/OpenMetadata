@@ -14,36 +14,32 @@ or ping us on [Slack](https://slack.open-metadata.org/) if you would like to pri
 You can check the latest release [here](/releases/all-releases).
 
 
-## 1.1 Release - June 29th, 2023
+## 1.3 Release - Dec 22nd, 2023
 
 {% tilesContainer %}
 
 {% tile title="Entities" %}
-- We will be adding support for NoSQL DB entities and Services with APIs
-- Support for Long Entity Names such as S3 paths
-- Import/Export support at all entities
-- Tag Propagation using Import/Export
-- Thumbs up & down to capture popularity of the Entities
+- support for bringing in API services as Entity
+- support for extending Stored Procedure for other databases
+- support for OpenSearch metadata 
 {% /tile %}
 
 {% tile title="Ingestion" %}
-- ElasticSearch Connector
-- MongoDB Connector
-- SAP HANA Connector
-- Support for manifest file to describe a bucket schema in DataLake
-- Ingestion bug fixes reported from community
+- OpenSearch Connector
+- OpenAPI Connector
+- Include Tags for Athena & Datalake connector
 - Support for Tableau & Looker data models
 {% /tile %}
 
-{% tile title="Alerts & Notifications" %}
-- Durable queue to store ChangeEvents guaranteeing  at-least-once semantics
-- Live BulkActions on ElasticSearch to handle Tag category deletion, owner chagne propagation etc..
-- Support to get notifications  via email when a user is mentioned 
+{% tile title="Data Observablity & Notifications" %}
+- Separate Data Observability and Notifications
+- Improve & simplify setting up alerts for Data Observability
+- Simplify delivery of notifications
 {% /tile %}
 
-{% tile title="Search" %}
-- Enable search for custom properties 
-- Upgrade ElasticSearch client
+{% tile title="Data Quality" %}
+- Overhaul of Resolution Center
+- Impact analysis and resolving test failures 
 {% /tile %}
 
 {% tile title="Security" %}
@@ -51,32 +47,32 @@ You can check the latest release [here](/releases/all-releases).
 {% /tile %}
 
 {% tile title="UI & UX" %}
-- Complete overhaul of OpenMetadata UI 
-- Improved Landing page 
-- Tours to learn and understand the features of OpenMetadata
-{% /tile %}
-
-{% tile title="Data Quality" %}
-- Overhaul of Data Quality landing page to showcase Test suites and summary for the users
-- Table Diff test to compare two tables
-- Number Passed/failed rows for a test 
-- Profiler to capture system level metrics when available
-{% /tile %}
-
-{% tile title="Data Insights" %}
-- Data Insight UI improvements
-- Data Insight report to show most unused  data assets
+- Display custom properties in entity details page
+- Add pipeline panel in table details page to show case the pipeline status responsible to update the table
+- Improve pipeline Details page
+- Pipeline Knowledge Panel
 {% /tile %}
 
 {% tile title="Lineage" %}
-- Support for parsing complex sql queries from community feedback
-- Tableau Custom SQL parsing for Lineage
+- Overhaul of Lineage 
+- Ability to trace E2E lineage
+- Improvements to the Lineage UI
+{% /tile %}
+
+{% tile title="Custom Properties" %}
+- Add additional types for Custom Properties
+- UI support for rich data types
+{% /tile %}
+
+
+{% tile title="APIs & SDK" %}
+- Overhaul of Java Client
 {% /tile %}
 
 {% /tilesContainer %}
 
 
-## 1.2 Release - Oct 13th 2023
+## 1.4 Release - Feb 20th 2024
 
 {% tilesContainer %}
 
@@ -85,7 +81,6 @@ You can check the latest release [here](/releases/all-releases).
 {% /tile %}
 
 {% tile title="Data Quality" %}
-- Suggest automated tests
 - Data quality panel in Data Insights
 {% /tile %}
 
@@ -94,7 +89,6 @@ You can check the latest release [here](/releases/all-releases).
 {% /tile %}
 
 {% tile title="Data Observability" %}
-- Notifications will be grouped into Activity vs. Alert type notifications
 - Data SLAs
 - Impact Analysis
 {% /tile %}
@@ -109,8 +103,12 @@ You can check the latest release [here](/releases/all-releases).
 - Domain only view and allow users to create tags/terms specific to Domains
 {% /tile %}
 
-{% tile title="Glossaries" %}
-- Glossary Term Approval Workflow
+
+{% tile title="Data Quality" %}
+- Overhaul of Data Quality landing page to showcase Test suites and summary for the users
+- Table Diff test to compare two tables
+- Number of Passed/failed rows for a test 
 {% /tile %}
+
 
 {% /tilesContainer %}
