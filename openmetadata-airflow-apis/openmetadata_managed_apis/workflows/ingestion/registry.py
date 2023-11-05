@@ -13,7 +13,9 @@ DAG builder registry.
 
 Add a function for each type from PipelineType
 """
-from openmetadata_managed_apis.workflows.ingestion.application import build_application_dag
+from openmetadata_managed_apis.workflows.ingestion.application import (
+    build_application_dag,
+)
 from openmetadata_managed_apis.workflows.ingestion.data_insight import (
     build_data_insight_dag,
 )

@@ -15,9 +15,7 @@ Base workflow definition.
 import uuid
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Dict, Optional, TypeVar, Union, Any
-
-from pydantic import BaseModel
+from typing import Any, Dict, List, Optional, TypeVar, Union
 
 from metadata.generated.schema.api.services.ingestionPipelines.createIngestionPipeline import (
     CreateIngestionPipelineRequest,
@@ -33,6 +31,8 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
 from metadata.generated.schema.metadataIngestion.workflow import LogLevels
 from metadata.generated.schema.tests.testSuite import ServiceType
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.api.models import StackTraceError
+from metadata.ingestion.api.step import Step
 from metadata.ingestion.ometa.client_utils import create_ometa_client
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.timer.repeated_timer import RepeatedTimer
@@ -44,7 +44,7 @@ from metadata.utils.class_helper import (
 )
 from metadata.utils.helpers import datetime_to_ts
 from metadata.utils.logger import ingestion_logger, set_loggers_level
-from metadata.workflow.workflow_output_handler import get_ingestion_status_timer
+from metadata.workflow.output_handler import report_ingestion_status
 from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
 
 logger = ingestion_logger()
@@ -113,7 +113,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         self.timer.stop()
         self.metadata.close()
 
-        for step in self.steps:
+        for step in self.workflow_steps():
             try:
                 step.close()
             except Exception as exc:
@@ -125,8 +125,8 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         Status timer: It will print the source & sink status every `interval` seconds.
         """
         if not self._timer:
-            self._timer = get_ingestion_status_timer(
-                interval=REPORTS_INTERVAL_SECONDS, logger=logger, workflow=self
+            self._timer = RepeatedTimer(
+                REPORTS_INTERVAL_SECONDS, report_ingestion_status, logger, self
             )
 
         return self._timer
@@ -144,6 +144,22 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
     def execute_internal(self) -> None:
         """Workflow-specific logic to execute safely"""
 
+    @abstractmethod
+    def calculate_success(self) -> float:
+        """Get the success % of the internal execution"""
+
+    @abstractmethod
+    def get_failures(self) -> List[StackTraceError]:
+        """Get the failures to flag whether if the workflow succeeded or not"""
+
+    @abstractmethod
+    def workflow_steps(self) -> List[Step]:
+        """Steps to report status from"""
+
+    @abstractmethod
+    def raise_from_status_internal(self, raise_warnings=False) -> None:
+        """Based on the internal workflow status, raise a WorkflowExecutionError"""
+
     def execute(self) -> None:
         """
         Main entrypoint
@@ -153,7 +169,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
             self.execute_internal()
 
             # If we reach this point, compute the success % and update the associated Ingestion Pipeline status
-            self.update_ingestion_status_at_end()
+            self.update_pipeline_status_at_end()
 
         # Any unhandled exception breaking the workflow should update the status
         except Exception as err:

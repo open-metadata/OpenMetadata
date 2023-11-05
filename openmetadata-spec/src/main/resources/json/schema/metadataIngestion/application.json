@@ -13,6 +13,10 @@
       "$ref": "../type/basic.json#/definitions/componentConfig",
       "description": "Application-specific configuration"
     },
+    "sourcePythonClass": {
+      "description": "Source Python Class Name to run the application",
+      "type": "string"
+    },
     "ingestionPipelineFQN": {
       "description": "Fully qualified name of ingestion pipeline, used to identify the current ingestion pipeline",
       "type": "string"

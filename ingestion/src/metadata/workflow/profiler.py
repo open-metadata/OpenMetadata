@@ -21,7 +21,6 @@ from metadata.profiler.processor.processor import ProfilerProcessor
 from metadata.profiler.source.metadata import OpenMetadataSource
 from metadata.utils.importer import import_sink_class
 from metadata.utils.logger import profiler_logger
-from metadata.workflow.base import BaseWorkflow
 from metadata.workflow.ingestion import IngestionWorkflow
 
 logger = profiler_logger()

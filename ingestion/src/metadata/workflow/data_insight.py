@@ -19,7 +19,6 @@ from metadata.ingestion.api.steps import Sink
 from metadata.utils.importer import import_sink_class
 from metadata.utils.logger import data_insight_logger
 from metadata.utils.time_utils import get_beginning_of_day_timestamp_mill
-from metadata.workflow.base import BaseWorkflow
 from metadata.workflow.ingestion import IngestionWorkflow
 
 logger = data_insight_logger()

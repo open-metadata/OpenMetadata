@@ -15,15 +15,24 @@ import json
 from typing import cast
 
 from airflow import DAG
-from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import IngestionPipeline
-from metadata.generated.schema.metadataIngestion.application import OpenMetadataApplicationConfig
-from metadata.generated.schema.metadataIngestion.applicationPipeline import ApplicationPipeline
+from openmetadata_managed_apis.utils.logger import set_operator_logger
+from openmetadata_managed_apis.workflows.ingestion.common import (
+    build_dag,
+    build_workflow_config_property,
+)
+
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    IngestionPipeline,
+)
+from metadata.generated.schema.metadataIngestion.application import (
+    OpenMetadataApplicationConfig,
+)
+from metadata.generated.schema.metadataIngestion.applicationPipeline import (
+    ApplicationPipeline,
+)
 from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.utils.workflow_output_handler import print_status
 from metadata.workflow.application import ApplicationWorkflow
-
-from openmetadata_managed_apis.utils.logger import set_operator_logger
-from openmetadata_managed_apis.workflows.ingestion.common import build_workflow_config_property, build_dag
 
 
 def application_workflow(application_workflow_config: OpenMetadataApplicationConfig):
@@ -55,7 +64,9 @@ def build_application_workflow_config(
     """
 
     # Here we have an application pipeline, so the Source Config is of type ApplicationPipeline
-    application_pipeline_conf: ApplicationPipeline = cast(ingestion_pipeline.sourceConfig.config, ApplicationPipeline)
+    application_pipeline_conf: ApplicationPipeline = cast(
+        ingestion_pipeline.sourceConfig.config, ApplicationPipeline
+    )
 
     application_workflow_config = OpenMetadataApplicationConfig(
         config=application_pipeline_conf.appConfig,

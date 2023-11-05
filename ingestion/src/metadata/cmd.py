@@ -369,7 +369,8 @@ def get_parser(args=None):
     )
     create_common_config_parser_args(
         sub_parser.add_parser(
-            MetadataCommands.APP.value, help="Workflow for running external applications"
+            MetadataCommands.APP.value,
+            help="Workflow for running external applications",
         )
     )
     create_openmetadata_imports_migration_args(
@@ -426,7 +427,9 @@ def metadata(args=None):  # pylint: disable=too-many-branches
     if config_file:
         path = Path(config_file).expanduser()
     else:
-        raise ValueError("Could not load config file! Please specify the config path with `-c` or `--config`.")
+        raise ValueError(
+            "Could not load config file! Please specify the config path with `-c` or `--config`."
+        )
     if contains_args.get("debug"):
         set_loggers_level(logging.DEBUG)
     elif contains_args.get("log_level"):

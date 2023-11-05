@@ -4,8 +4,10 @@ from logging.handlers import RotatingFileHandler
 from typing import Union
 
 from airflow.configuration import conf
-from metadata.generated.schema.metadataIngestion.application import OpenMetadataApplicationConfig
 
+from metadata.generated.schema.metadataIngestion.application import (
+    OpenMetadataApplicationConfig,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
@@ -60,7 +62,9 @@ def utils_logger():
     return build_logger(Loggers.UTILS.value)
 
 
-def set_operator_logger(workflow_config: Union[OpenMetadataWorkflowConfig, OpenMetadataApplicationConfig]) -> None:
+def set_operator_logger(
+    workflow_config: Union[OpenMetadataWorkflowConfig, OpenMetadataApplicationConfig]
+) -> None:
     """
     Handle logging for the Python Operator that
     will execute the ingestion

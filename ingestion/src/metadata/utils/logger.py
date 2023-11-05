@@ -52,6 +52,7 @@ class Loggers(Enum):
     TEST_SUITE = "TestSuite"
     DATA_INSIGHT = "DataInsight"
     QUERY_RUNNER = "QueryRunner"
+    APP = "App"
 
     @DynamicClassAttribute
     def value(self):
@@ -149,6 +150,14 @@ def great_expectations_logger():
     """
 
     return logging.getLogger(Loggers.GREAT_EXPECTATIONS.value)
+
+
+def app_logger():
+    """
+    Method to get the UTILS logger
+    """
+
+    return logging.getLogger(Loggers.APP.value)
 
 
 def query_runner_logger():

@@ -21,8 +21,9 @@ To be extended by any other workflow:
 """
 import traceback
 from abc import ABC, abstractmethod
-from typing import Tuple, cast
+from typing import List, Tuple, cast
 
+from metadata.config.common import WorkflowExecutionError
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -33,6 +34,7 @@ from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.ingestion.api.models import StackTraceError
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.step import Step
 from metadata.ingestion.api.steps import BulkSink, Processor, Sink, Source, Stage
@@ -43,6 +45,7 @@ from metadata.utils.class_helper import (
 )
 from metadata.utils.logger import ingestion_logger
 from metadata.workflow.base import BaseWorkflow, InvalidWorkflowJSONException
+from metadata.workflow.workflow_status_mixin import SUCCESS_THRESHOLD_VALUE
 
 logger = ingestion_logger()
 
@@ -123,6 +126,37 @@ class IngestionWorkflow(BaseWorkflow, ABC):
         )
         if bulk_sink:
             bulk_sink.run()
+
+    def calculate_success(self) -> float:
+        return self.source.get_status().calculate_success()
+
+    def get_failures(self) -> List[StackTraceError]:
+        return self.source.get_status().failures
+
+    def workflow_steps(self) -> List[Step]:
+        return [self.source] + list(self.steps)
+
+    def raise_from_status_internal(self, raise_warnings=False):
+        """
+        Check the status of all steps
+        """
+        if (
+            self.source.get_status().failures
+            and self.calculate_success() < SUCCESS_THRESHOLD_VALUE
+        ):
+            raise WorkflowExecutionError(
+                "Source reported errors", self.source.get_status()
+            )
+
+        for step in self.steps:
+            if step.status.failures:
+                raise WorkflowExecutionError(
+                    f"{step.__class__.__name__} reported errors", step.get_status()
+                )
+            if raise_warnings and step.status.warnings:
+                raise WorkflowExecutionError(
+                    f"{step.__class__.__name__} reported warnings", step.get_status()
+                )
 
     def _retrieve_service_connection_if_needed(self, service_type: ServiceType) -> None:
         """

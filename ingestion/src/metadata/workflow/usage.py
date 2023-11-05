@@ -21,7 +21,6 @@ from metadata.utils.importer import (
     import_stage_class,
 )
 from metadata.utils.logger import ingestion_logger
-from metadata.workflow.base import BaseWorkflow
 from metadata.workflow.ingestion import IngestionWorkflow
 
 logger = ingestion_logger()
