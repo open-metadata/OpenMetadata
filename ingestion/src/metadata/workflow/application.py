@@ -87,7 +87,7 @@ class ApplicationWorkflow(BaseWorkflow, ABC):
         Method to execute after we have initialized all the internals.
         Here we will load the runner since it needs the `metadata` object
         """
-        runner_class = import_from_module(self.config.sourcePythonClass)
+        runner_class = import_from_module(self.config.appConfig.sourcePythonClass)
         if not issubclass(runner_class, AppRunner):
             raise ValueError(
                 "We need a valid AppRunner to initialize the ApplicationWorkflow!"
@@ -95,12 +95,14 @@ class ApplicationWorkflow(BaseWorkflow, ABC):
 
         try:
             self.runner = runner_class(
-                config=self.config.config.__root__ if self.config.config else None,
+                config=self.config.appConfig.config.__root__
+                if self.config.appConfig.config
+                else None,
                 metadata=self.metadata,
             )
         except Exception as exc:
             logger.error(
-                f"Error trying to init the AppRunner [{self.config.sourcePythonClass}] due to [{exc}]"
+                f"Error trying to init the AppRunner [{self.config.appConfig.sourcePythonClass}] due to [{exc}]"
             )
             raise exc
 

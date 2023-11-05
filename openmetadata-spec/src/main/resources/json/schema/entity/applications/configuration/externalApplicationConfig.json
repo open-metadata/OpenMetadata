@@ -1,0 +1,19 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/configuration/externalApplicationConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ExternalApplicationConfig",
+  "description": "External Application Pipeline Configuration.",
+  "type": "object",
+  "properties": {
+    "config": {
+      "$ref": "../../../type/basic.json#/definitions/componentConfig",
+      "description": "Application-specific configuration"
+    },
+    "sourcePythonClass": {
+      "description": "Source Python Class Name to run the application",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["sourcePythonClass"]
+}

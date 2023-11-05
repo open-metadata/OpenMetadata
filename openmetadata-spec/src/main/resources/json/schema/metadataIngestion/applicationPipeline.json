@@ -18,6 +18,10 @@
       "$ref": "#/definitions/applicationConfigType",
       "default": "Application"
     },
+    "sourcePythonClass": {
+      "description": "Source Python Class Name to run the application",
+      "type": "string"
+    },
     "appConfig": {
       "$ref": "../type/basic.json#/definitions/componentConfig",
       "description": "Application-specific configuration"

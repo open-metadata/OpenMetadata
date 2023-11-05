@@ -207,7 +207,7 @@ def print_workflow_summary(workflow: "BaseWorkflow") -> None:
         )
         log_ansi_encoded_string(message=f"Processed records: {step_summary.records}")
         log_ansi_encoded_string(message=f"Warnings: {step_summary.warnings}")
-        if isinstance(step, Source):
+        if step_summary.filtered:
             log_ansi_encoded_string(message=f"Filtered: {step_summary.filtered}")
         log_ansi_encoded_string(message=f"Errors: {step_summary.errors}")
 

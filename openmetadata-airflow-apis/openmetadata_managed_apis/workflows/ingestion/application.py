@@ -21,6 +21,9 @@ from openmetadata_managed_apis.workflows.ingestion.common import (
     build_workflow_config_property,
 )
 
+from metadata.generated.schema.entity.applications.configuration.externalApplicationConfig import (
+    ExternalApplicationConfig,
+)
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
 )
@@ -31,8 +34,8 @@ from metadata.generated.schema.metadataIngestion.applicationPipeline import (
     ApplicationPipeline,
 )
 from metadata.ingestion.models.encoders import show_secrets_encoder
-from metadata.utils.workflow_output_handler import print_status
 from metadata.workflow.application import ApplicationWorkflow
+from metadata.workflow.application_output_handler import print_status
 
 
 def application_workflow(application_workflow_config: OpenMetadataApplicationConfig):
@@ -69,7 +72,10 @@ def build_application_workflow_config(
     )
 
     application_workflow_config = OpenMetadataApplicationConfig(
-        config=application_pipeline_conf.appConfig,
+        appConfig=ExternalApplicationConfig(
+            sourcePythonClass=application_pipeline_conf.sourcePythonClass,
+            config=application_pipeline_conf.appConfig,
+        ),
         workflowConfig=build_workflow_config_property(ingestion_pipeline),
         ingestionPipelineFQN=ingestion_pipeline.fullyQualifiedName.__root__,
     )
