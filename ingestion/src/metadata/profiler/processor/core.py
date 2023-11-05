@@ -500,9 +500,7 @@ class Profiler(Generic[TMetric]):
                 self.table, self.columns
             )
             upload_sample_data(
-                data=table_data,
-                table_entity=self.profiler_interface.table_entity,
-                ometa_client=self.profiler_interface.ometa_client,
+                data=table_data, profiler_interface=self.profiler_interface
             )
             table_data.rows = table_data.rows[
                 : min(

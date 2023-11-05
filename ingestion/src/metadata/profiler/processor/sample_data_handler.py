@@ -14,20 +14,15 @@ Profiler Processor Step
 
 import traceback
 from datetime import datetime
-from functools import lru_cache, singledispatch
+from functools import singledispatch
 from io import BytesIO
-from typing import Optional
 
 import pandas as pd
 
 from metadata.clients.aws_client import AWSClient
 from metadata.generated.schema.entity.data.table import Table, TableData
-from metadata.generated.schema.entity.services.connections.connectionBasicType import (
-    SampleDataStorageConfig,
-)
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import profiler_logger
 
@@ -45,35 +40,17 @@ def _get_object_key(table: Table, prefix: str, overwrite_data: bool) -> str:
     return f"{path}/{file_name}"
 
 
-@lru_cache(maxsize=1)
-def _get_sample_data_storage_config(
-    ometa_client: OpenMetadata, service_name: str
-) -> Optional[SampleDataStorageConfig]:
-    sample_storage_config = None
-    service_connection: DatabaseService = ometa_client.get_by_name(
-        DatabaseService, fqn=service_name
-    )
-    connection_config = service_connection.connection.config
-    if connection_config and hasattr(connection_config, "sampleDataStorageConfig"):
-        sample_storage_config = connection_config.sampleDataStorageConfig
-    return sample_storage_config
-
-
-def upload_sample_data(
-    data: TableData, table_entity: Table, ometa_client: OpenMetadata
-) -> None:
+def upload_sample_data(data: TableData, profiler_interface: ProfilerInterface) -> None:
     try:
-        service_name = table_entity.service.name
-        sample_storage_config = _get_sample_data_storage_config(
-            ometa_client, service_name
-        )
+
+        sample_storage_config = profiler_interface.storage_config
         if not sample_storage_config:
             return
         df = pd.DataFrame(data=data.rows, columns=[i.__root__ for i in data.columns])
         pq_buffer = BytesIO()
         df.to_parquet(pq_buffer)
         object_key = _get_object_key(
-            table=table_entity,
+            table=profiler_interface.table_entity,
             prefix=sample_storage_config.prefix,
             overwrite_data=sample_storage_config.overwriteData,
         )
@@ -108,3 +85,4 @@ def _(
         Bucket=bucket_name,
         Key=object_key,
     )
+    logger.debug(f"Sample Data Successfully Uploaded to {object_key}")
