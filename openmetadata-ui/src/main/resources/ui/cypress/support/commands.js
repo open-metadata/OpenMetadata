@@ -81,9 +81,9 @@ Cypress.Commands.add('goToHomePage', (doNotNavigate) => {
   interceptURL('GET', '/api/v1/feed*', 'feed');
   interceptURL('GET', '/api/v1/users/*?fields=*', 'userProfile');
   !doNotNavigate && cy.visit('/');
-  cy.get('[data-testid="whats-new-alert-card"]', {
-    timeout: 500, // need to add timeout as alert pop-oup card has an 1s of animation to appear on screen
-  }).should('be.visible');
+  cy.get('[data-testid="whats-new-alert-card"]')
+    .scrollIntoView()
+    .should('be.visible');
   cy.get('[data-testid="close-whats-new-alert"]').click();
   cy.get('[data-testid="whats-new-alert-card"]').should('not.exist');
   //   verifyResponseStatusCode('@feed', 200);
