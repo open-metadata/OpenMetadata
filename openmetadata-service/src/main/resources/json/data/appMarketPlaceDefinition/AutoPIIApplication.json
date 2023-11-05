@@ -4,7 +4,9 @@
   "description": "Use NLP models to automatically tag PII information",
   "features": "Auto tag PII information in your tables' columns",
   "appType": "external",
-  "appScreenshots": ["AutoPIIApplication.png"],
+  "appScreenshots": [
+    "AutoPIIApplication.png"
+  ],
   "developer": "Collate Inc.",
   "developerUrl": "https://www.getcollate.io",
   "privacyPolicyUrl": "https://www.getcollate.io",
@@ -20,9 +22,5 @@
     "config": {
       "confidenceLevel": 80
     }
-  },
-  "appSchedule": {
-    "scheduleType": "Custom",
-    "cronExpression": "0 0 0 * * ?"
   }
 }

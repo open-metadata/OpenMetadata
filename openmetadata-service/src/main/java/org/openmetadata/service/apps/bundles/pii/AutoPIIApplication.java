@@ -27,7 +27,7 @@ import org.openmetadata.service.util.JsonUtils;
 @Slf4j
 public class AutoPIIApplication extends AbstractNativeApplication {
 
-  private static final String INGESTION_PIPELINE_NAME = "metaPilotPipeline";
+  private static final String INGESTION_PIPELINE_NAME = "autoPIIPipeline";
   private static final String SERVICE_NAME = "OpenMetadata";
 
   @Override
