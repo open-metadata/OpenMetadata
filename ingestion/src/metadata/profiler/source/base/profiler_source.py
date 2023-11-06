@@ -222,28 +222,31 @@ class ProfilerSource(ProfilerSourceInterface):
         database_entity = None
         db_service = None
 
-        schema_entity_list = self.ometa_client.es_search_from_fqn(
-            entity_type=DatabaseSchema,
-            fqn_search_string=entity.databaseSchema.fullyQualifiedName,
-            fields="databaseSchemaProfilerConfig",
-        )
-        if schema_entity_list:
-            schema_entity = schema_entity_list[0]
+        if entity.databaseSchema:
+            schema_entity_list = self.ometa_client.es_search_from_fqn(
+                entity_type=DatabaseSchema,
+                fqn_search_string=entity.databaseSchema.fullyQualifiedName,
+                fields="databaseSchemaProfilerConfig",
+            )
+            if schema_entity_list:
+                schema_entity = schema_entity_list[0]
 
-        database_entity_list = self.ometa_client.es_search_from_fqn(
-            entity_type=Database,
-            fqn_search_string=entity.database.fullyQualifiedName,
-            fields="databaseProfilerConfig",
-        )
-        if database_entity_list:
-            database_entity = database_entity_list[0]
+        if entity.database:
+            database_entity_list = self.ometa_client.es_search_from_fqn(
+                entity_type=Database,
+                fqn_search_string=entity.database.fullyQualifiedName,
+                fields="databaseProfilerConfig",
+            )
+            if database_entity_list:
+                database_entity = database_entity_list[0]
 
-        db_service_list = self.ometa_client.es_search_from_fqn(
-            entity_type=DatabaseService,
-            fqn_search_string=entity.service.fullyQualifiedName,
-        )
-        if db_service_list:
-            db_service = db_service_list[0]
+        if entity.service:
+            db_service_list = self.ometa_client.es_search_from_fqn(
+                entity_type=DatabaseService,
+                fqn_search_string=entity.service.fullyQualifiedName,
+            )
+            if db_service_list:
+                db_service = db_service_list[0]
 
         return schema_entity, database_entity, db_service
 
