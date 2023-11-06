@@ -10,11 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Form, FormProps, Input, Modal } from 'antd';
+import { Form, FormProps, Input, Modal, Tooltip } from 'antd';
 
+import { InfoCircleOutlined } from '@ant-design/icons';
 import { isUndefined, omit } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { GRAYED_OUT_COLOR } from '../../../constants/constants';
 import { HEX_COLOR_CODE_REGEX } from '../../../constants/regex.constants';
 import ColorPicker from '../../common/ColorPicker/ColorPicker.component';
 import { StyleModalProps, StyleWithInput } from './StyleModal.interface';
@@ -22,6 +24,7 @@ import { StyleModalProps, StyleWithInput } from './StyleModal.interface';
 const StyleModal = ({ open, onCancel, onSubmit, style }: StyleModalProps) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
+  const popupRef = React.useRef<HTMLElement>(null);
 
   const handleSubmit: FormProps<StyleWithInput>['onFinish'] = (value) => {
     onSubmit(omit(value, 'colorInput'));
@@ -55,7 +58,23 @@ const StyleModal = ({ open, onCancel, onSubmit, style }: StyleModalProps) => {
             form.setFieldValue('color', value.colorInput);
           }
         }}>
-        <Form.Item label={t('label.icon-url')} name="iconURL">
+        <Form.Item
+          label={
+            <>
+              {t('label.icon-url')}
+              <Tooltip
+                align={{ targetOffset: [18, 0] }}
+                placement="topLeft"
+                title={t('message.glossary-url-size-message')}>
+                <InfoCircleOutlined
+                  className="m-x-xss"
+                  data-testid="glossary-url"
+                  style={{ color: GRAYED_OUT_COLOR }}
+                />
+              </Tooltip>
+            </>
+          }
+          name="iconURL">
           <Input
             data-testid="icon-url"
             placeholder={t('label.enter-entity', {
