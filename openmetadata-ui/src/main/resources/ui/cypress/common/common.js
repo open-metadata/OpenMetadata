@@ -982,7 +982,29 @@ export const login = (username, password) => {
   cy.get('.ant-btn').contains('Login').should('be.visible').click();
 };
 
-export const addTeam = (TEAM_DETAILS, index) => {
+export const selectTeamHierarchy = (index) => {
+  if (index > 0) {
+    cy.get('[data-testid="team-type"]')
+      .invoke('text')
+      .then((text) => {
+        cy.log(text);
+        checkTeamTypeOptions(text);
+        cy.log('check type', text);
+        cy.get(
+          `.ant-select-dropdown [title="${getTeamType(text).childTeamType}"]`
+        ).click();
+      });
+  } else {
+    checkTeamTypeOptions('BusinessUnit');
+
+    cy.get(`.ant-select-dropdown [title='BusinessUnit']`)
+      .should('exist')
+      .should('be.visible')
+      .click();
+  }
+};
+
+export const addTeam = (teamDetails, index, isHierarchy) => {
   interceptURL('GET', '/api/v1/teams*', 'addTeam');
   // Fetching the add button and clicking on it
   if (index > 0) {
@@ -994,62 +1016,27 @@ export const addTeam = (TEAM_DETAILS, index) => {
   verifyResponseStatusCode('@addTeam', 200);
 
   // Entering team details
-  cy.get('[data-testid="name"]')
-    .should('exist')
-    .should('be.visible')
-    .type(TEAM_DETAILS.name);
+  cy.get('[data-testid="name"]').type(teamDetails.name);
 
-  cy.get('[data-testid="display-name"]')
-    .should('exist')
-    .should('be.visible')
-    .type(TEAM_DETAILS.name);
+  cy.get('[data-testid="display-name"]').type(teamDetails.name);
 
-  cy.get('[data-testid="email"]')
-    .should('exist')
-    .should('be.visible')
-    .type(TEAM_DETAILS.email);
+  cy.get('[data-testid="email"]').type(teamDetails.email);
 
-  cy.get('[data-testid="team-selector"]')
-    .should('exist')
-    .should('be.visible')
-    .click();
+  cy.get('[data-testid="team-selector"]').click();
 
-  if (index > 0) {
-    cy.get('[data-testid="team-type"]')
-      .invoke('text')
-      .then((text) => {
-        cy.log(text);
-        checkTeamTypeOptions(text);
-        cy.log('check type', text);
-        cy.get(
-          `.ant-select-dropdown [title="${getTeamType(text).childTeamType}"]`
-        )
-          .should('exist')
-          .should('be.visible')
-          .click();
-      });
+  if (isHierarchy) {
+    selectTeamHierarchy(index);
   } else {
-    checkTeamTypeOptions('BusinessUnit');
-
-    cy.get(`.ant-select-dropdown [title='BusinessUnit']`)
-      .should('exist')
-      .should('be.visible')
-      .click();
+    cy.get(`.ant-select-dropdown [title="${teamDetails.teamType}"]`).click();
   }
 
-  cy.get(descriptionBox)
-    .should('exist')
-    .should('be.visible')
-    .type(TEAM_DETAILS.description);
+  cy.get(descriptionBox).type(teamDetails.description);
 
   interceptURL('POST', '/api/v1/teams', 'saveTeam');
   interceptURL('GET', '/api/v1/team*', 'createTeam');
 
   // Saving the created team
-  cy.get('[form="add-team-form"]')
-    .scrollIntoView()
-    .should('be.visible')
-    .click();
+  cy.get('[form="add-team-form"]').scrollIntoView().click();
 
   verifyResponseStatusCode('@saveTeam', 201);
   verifyResponseStatusCode('@createTeam', 200);
