@@ -38,7 +38,7 @@ from metadata.workflow.application import ApplicationWorkflow
 from metadata.workflow.application_output_handler import print_status
 
 
-def application_workflow(application_workflow_config: OpenMetadataApplicationConfig):
+def application_workflow(workflow_config: OpenMetadataApplicationConfig):
     """
     Task that creates and runs the ingestion workflow.
 
@@ -48,9 +48,9 @@ def application_workflow(application_workflow_config: OpenMetadataApplicationCon
     This is the callable used to create the PythonOperator
     """
 
-    set_operator_logger(application_workflow_config)
+    set_operator_logger(workflow_config)
 
-    config = json.loads(application_workflow_config.json(encoder=show_secrets_encoder))
+    config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
     workflow = ApplicationWorkflow.create(config)
 
     workflow.execute()
@@ -67,9 +67,7 @@ def build_application_workflow_config(
     """
 
     # Here we have an application pipeline, so the Source Config is of type ApplicationPipeline
-    application_pipeline_conf: ApplicationPipeline = cast(
-        ingestion_pipeline.sourceConfig.config, ApplicationPipeline
-    )
+    application_pipeline_conf: ApplicationPipeline = ingestion_pipeline.sourceConfig.config
 
     application_workflow_config = OpenMetadataApplicationConfig(
         appConfig=ExternalApplicationConfig(
