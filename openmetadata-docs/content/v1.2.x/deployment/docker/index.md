@@ -118,7 +118,7 @@ For MySQL Configurations, update the below environment variables -
 # Database configuration for MySQL
 DB_DRIVER_CLASS="com.mysql.cj.jdbc.Driver"
 DB_SCHEME="mysql"
-DB_USE_SSL="true"
+DB_PARAMS="allowPublicKeyRetrieval=true&useSSL=true&serverTimezone=UTC"
 DB_USER="<SQL_DATABASE_USERNAME>"
 DB_USER_PASSWORD="<SQL_DATABASE_PASSWORD>"
 DB_HOST="<SQL_DATABASE_ENDPOINT>"
@@ -258,7 +258,7 @@ Once you have the RDS and OpenSearch Services Setup, you can update the environm
 # MySQL Environment Variables
 DB_DRIVER_CLASS='com.mysql.cj.jdbc.Driver'
 DB_SCHEME='mysql'
-DB_USE_SSL='true'
+DB_PARAMS='allowPublicKeyRetrieval=true&useSSL=true&serverTimezone=UTC'
 DB_USER_PASSWORD='<DATABASE_USER_PASSWORD>'
 DB_HOST='<DATABASE_HOST_NAME>'
 DB_USER='<DATABASE_USER_NAME>'
