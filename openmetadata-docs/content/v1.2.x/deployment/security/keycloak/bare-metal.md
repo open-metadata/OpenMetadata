@@ -7,7 +7,7 @@ slug: /deployment/security/keycloak/bare-metal
 
 ## Update conf/openmetadata.yaml
 
-Once the `Client Id` and `Client Secret` are generated add the `Client Id` in `openmetadata.yaml` file in `client_id` field.
+Once the `Client Id` is generated add the `Client Id` in `openmetadata.yaml` file in `client_id` field.
 
 Update the `providerName` config to the name you want to display in the `Sign In` button in the UI. For example, with the
 following configuration with `providerName` set to `KeyCloak`, the users will see `Sign In with KeyCloak SSO` in the `Sign In`
