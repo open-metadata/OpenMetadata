@@ -99,8 +99,8 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   protected void postUpdate(DataProduct original, DataProduct updated) {
     super.postUpdate(original, updated);
     Map<String, EntityReference> assetsMap = new HashMap<>();
-    original.getAssets().forEach(asset -> assetsMap.put(asset.getId().toString(), asset));
-    updated.getAssets().forEach(asset -> assetsMap.put(asset.getId().toString(), asset));
+    listOrEmpty(original.getAssets()).forEach(asset -> assetsMap.put(asset.getId().toString(), asset));
+    listOrEmpty(updated.getAssets()).forEach(asset -> assetsMap.put(asset.getId().toString(), asset));
     for (EntityReference assetRef : assetsMap.values()) {
       EntityInterface asset = Entity.getEntity(assetRef, "*", Include.ALL);
       searchRepository.updateEntity(asset);
