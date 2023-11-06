@@ -224,7 +224,6 @@ const AppDetails = () => {
       } finally {
         setShowReactiveModal(false);
         onBrowseAppsClick();
-        // fetchApplicationList();
       }
     }
   }, [appData]);
