@@ -185,7 +185,7 @@ Below are the environment variables for OpenMetadata Server
 # MySQL Environment Variables
 DB_DRIVER_CLASS='com.mysql.cj.jdbc.Driver'
 DB_SCHEME='mysql'
-DB_USE_SSL='true'
+DB_PARAMS='allowPublicKeyRetrieval=true&useSSL=true&serverTimezone=UTC'
 DB_USER='<YOUR_MYSQL_USER_NAME>'
 DB_USER_PASSWORD='<YOUR_MYSQL_USER_PASSWORD>'
 DB_HOST='<YOUR_MYSQL_HOST_NAME>'
@@ -199,7 +199,7 @@ OM_DATABASE='<YOUR_MYSQL_DATABASE_NAME>'
 # Postgres Environment Variables
 DB_DRIVER_CLASS='org.postgresql.Driver'
 DB_SCHEME='postgresql'
-DB_USE_SSL='true'
+DB_PARAMS='allowPublicKeyRetrieval=true&useSSL=true&serverTimezone=UTC'
 DB_USER='<YOUR_POSTGRES_USER_NAME>'
 DB_USER_PASSWORD='<YOUR_POSTGRES_USER_PASSWORD>'
 DB_HOST='<YOUR_POSTGRES_HOST_NAME>'

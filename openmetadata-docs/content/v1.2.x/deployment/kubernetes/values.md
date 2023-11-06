@@ -45,13 +45,13 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | openmetadata.config.authentication.saml.idp.ssoLoginUrl |  string | `Empty` | SAML_IDP_SSO_LOGIN_URL |
 | openmetadata.config.authentication.saml.idp.idpX509Certificate.secretRef | string | `Empty` | SAML_IDP_CERTIFICATE |
 | openmetadata.config.authentication.saml.idp.idpX509Certificate.secretKey |  string | `Empty` | SAML_IDP_CERTIFICATE | 
-| openmetadata.config.authentication.saml.idp.authorityUrl | string | `http://openmetadata.default.svc.cluster.local:8585/api/v1/saml/login` | SAML_AUTHORITY_URL |
+| openmetadata.config.authentication.saml.idp.authorityUrl | string | `http://openmetadata:8585/api/v1/saml/login` | SAML_AUTHORITY_URL |
 | openmetadata.config.authentication.saml.idp.nameId | string | `urn:oasis:names:tc:SAML:2.0:nameid-format:emailAddress` | SAML_IDP_NAME_ID |
-| openmetadata.config.authentication.saml.sp.entityId | string | `http://openmetadata.default.svc.cluster.local:8585/api/v1/saml/metadata` | SAML_SP_ENTITY_ID |
-| openmetadata.config.authentication.saml.sp.acs | string | `http://openmetadata.default.svc.cluster.local:8585/api/v1/saml/acs` | SAML_SP_ACS |
+| openmetadata.config.authentication.saml.sp.entityId | string | `http://openmetadata:8585/api/v1/saml/metadata` | SAML_SP_ENTITY_ID |
+| openmetadata.config.authentication.saml.sp.acs | string | `http://openmetadata:8585/api/v1/saml/acs` | SAML_SP_ACS |
 | openmetadata.config.authentication.saml.sp.spX509Certificate.secretRef | string | `Empty`  | SAML_SP_CERTIFICATE |
 | openmetadata.config.authentication.saml.sp.spX509Certificate.secretKey | string | `Empty`  | SAML_SP_CERTIFICATE |
-| openmetadata.config.authentication.saml.sp.callback | string | `http://openmetadata.default.svc.cluster.local:8585/saml/callback` | SAML_SP_CALLBACK |
+| openmetadata.config.authentication.saml.sp.callback | string | `http://openmetadata:8585/saml/callback` | SAML_SP_CALLBACK |
 | openmetadata.config.authentication.saml.security.strictMode |  bool | false | SAML_STRICT_MODE |
 | openmetadata.config.authentication.saml.security.tokenValidity | int | 3600 | SAML_SP_TOKEN_VALIDITY |
 | openmetadata.config.authentication.saml.security.sendEncryptedNameId | bool | false | SAML_SEND_ENCRYPTED_NAME_ID |
@@ -77,8 +77,8 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | openmetadata.config.airflow.auth.password.secretKey | string | `openmetadata-airflow-password` | AIRFLOW_PASSWORD |
 | openmetadata.config.airflow.auth.username | string | `admin` | AIRFLOW_USERNAME |
 | openmetadata.config.airflow.enabled | bool | `true` | |
-| openmetadata.config.airflow.host | string | `http://openmetadata-dependencies-web.default.svc.cluster.local:8080` | PIPELINE_SERVICE_CLIENT_ENDPOINT |
-| openmetadata.config.airflow.openmetadata.serverHostApiUrl | string | `http://openmetadata.default.svc.cluster.local:8585/api` | SERVER_HOST_API_URL |
+| openmetadata.config.airflow.host | string | `http://openmetadata-dependencies-web:8080` | PIPELINE_SERVICE_CLIENT_ENDPOINT |
+| openmetadata.config.airflow.openmetadata.serverHostApiUrl | string | `http://openmetadata:8585/api` | SERVER_HOST_API_URL |
 | openmetadata.config.airflow.sslCertificatePath | string | `/no/path` | PIPELINE_SERVICE_CLIENT_SSL_CERT_PATH |
 | openmetadata.config.airflow.verifySsl | string | `no-ssl` | PIPELINE_SERVICE_CLIENT_VERIFY_SSL |
 | openmetadata.config.basicLogin.maxLoginFailAttempts | int | 3 | OM_MAX_FAILED_LOGIN_ATTEMPTS |
@@ -88,8 +88,8 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | openmetadata.config.database.auth.password.secretKey | string | `openmetadata-mysql-password` | DB_USER_PASSWORD |
 | openmetadata.config.database.auth.username | string | `openmetadata_user` | DB_USER|
 | openmetadata.config.database.databaseName | string | `openmetadata_db` | OM_DATABASE |
+| openmetadata.config.database.dbParams| string | `allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC` | DB_PARAMS |
 | openmetadata.config.database.dbScheme| string | `mysql` | DB_SCHEME |
-| openmetadata.config.database.dbUseSSL| bool | `false` | DB_USE_SSL |
 | openmetadata.config.database.driverClass| string | `com.mysql.cj.jdbc.Driver` | DB_DRIVER_CLASS |
 | openmetadata.config.database.host | string | `mysql` | DB_HOST |
 | openmetadata.config.database.port | int | 3306 | DB_PORT |
@@ -100,7 +100,7 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | openmetadata.config.elasticsearch.host | string | `elasticsearch` | ELASTICSEARCH_HOST |
 | openmetadata.config.elasticsearch.keepAliveTimeoutSecs | int | `600` | ELASTICSEARCH_KEEP_ALIVE_TIMEOUT_SECS |
 | openmetadata.config.elasticsearch.port | int | 9200 | ELASTICSEARCH_PORT |
-| openmetadata.config.elasticsearch.searchType | string | `ElasticSearch` | SEARCH_TYPE |
+| openmetadata.config.elasticsearch.searchType | string | `elasticsearch` | SEARCH_TYPE |
 | openmetadata.config.elasticsearch.scheme | string | `http` | ELASTICSEARCH_SCHEME |
 | openmetadata.config.elasticsearch.searchIndexMappingLanguage | string | `EN`| ELASTICSEARCH_INDEX_MAPPING_LANG |
 | openmetadata.config.elasticsearch.trustStore.enabled | bool | `false` | |
@@ -121,18 +121,19 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | openmetadata.config.jwtTokenConfiguration.keyId | string | `Gb389a-9f76-gdjs-a92j-0242bk94356` | JWT_KEY_ID |
 | openmetadata.config.logLevel | string | `INFO` | LOG_LEVEL |
 | openmetadata.config.maskPasswordsApi | bool | `false` | MASK_PASSWORDS_API |
+| openmetadata.config.migrationConfigs.extensionPath | string | `Empty string` | MIGRATION_EXTENSION_PATH |
 | openmetadata.config.openmetadata.adminPort | int | 8586 | SERVER_ADMIN_PORT |
 | openmetadata.config.openmetadata.host | string | `openmetadata` | OPENMETADATA_SERVER_URL |
 | openmetadata.config.openmetadata.port | int | 8585 | SERVER_PORT |
 | openmetadata.config.pipelineServiceClientConfig.auth.password.secretRef | string | `airflow-secrets` | AIRFLOW_PASSWORD |
 | openmetadata.config.pipelineServiceClientConfig.auth.password.secretKey | string | `openmetadata-airflow-password` | AIRFLOW_PASSWORD |
 | openmetadata.config.pipelineServiceClientConfig.auth.username | string | `admin` | AIRFLOW_USERNAME |
-| openmetadata.config.pipelineServiceClientConfig.apiEndpoint | string | `http://openmetadata-dependencies-web.default.svc.cluster.local:8080` | PIPELINE_SERVICE_CLIENT_ENDPOINT |
+| openmetadata.config.pipelineServiceClientConfig.apiEndpoint | string | `http://openmetadata-dependencies-web:8080` | PIPELINE_SERVICE_CLIENT_ENDPOINT |
 | openmetadata.config.pipelineServiceClientConfig.className | string | `org.openmetadata.service.clients.pipeline.airflow.AirflowRESTClient` | PIPELINE_SERVICE_CLIENT_CLASS_NAME |
-| openmetadata.config.pipelineServiceClientConfig.enabled | bool | `true` | |
+| openmetadata.config.pipelineServiceClientConfig.enabled | bool | `true` | PIPELINE_SERVICE_CLIENT_ENABLED |
 | openmetadata.config.pipelineServiceClientConfig.healthCheckInterval | int | `300` | PIPELINE_SERVICE_CLIENT_HEALTH_CHECK_INTERVAL |
 | openmetadata.config.pipelineServiceClientConfig.ingestionIpInfoEnabled | bool | `false` | PIPELINE_SERVICE_IP_INFO_ENABLED |
-| openmetadata.config.pipelineServiceClientConfig.metadataApiEndpoint | string | `http://openmetadata.default.svc.cluster.local:8585/api` | SERVER_HOST_API_URL |
+| openmetadata.config.pipelineServiceClientConfig.metadataApiEndpoint | string | `http://openmetadata:8585/api` | SERVER_HOST_API_URL |
 | openmetadata.config.pipelineServiceClientConfig.sslCertificatePath | string | `/no/path` | PIPELINE_SERVICE_CLIENT_SSL_CERT_PATH |
 | openmetadata.config.pipelineServiceClientConfig.verifySsl | string | `no-ssl` | PIPELINE_SERVICE_CLIENT_VERIFY_SSL | 
 | openmetadata.config.pipelineServiceClientConfig.hostIp | string | `Empty` | PIPELINE_SERVICE_CLIENT_HOST_IP |
@@ -153,6 +154,27 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | openmetadata.config.smtpConfig.supportUrl | string | `https://slack.open-metadata.org` | OM_SUPPORT_URL |
 | openmetadata.config.smtpConfig.transportationStrategy | string | `SMTP_TLS` | SMTP_SERVER_STRATEGY |
 | openmetadata.config.smtpConfig.username | string | `Empty String` | SMTP_SERVER_USERNAME |
+| openmetadata.config.upgradeMigrationConfigs.force | bool | `false` |  |
+| openmetadata.config.upgradeMigrationConfigs.migrationLimitParam | int | `1200` | MIGRATION_LIMIT_PARAM |
+| openmetadata.config.web.contentTypeOptions.enabled | bool | `false` | WEB_CONF_CONTENT_TYPE_OPTIONS_ENABLED |
+| openmetadata.config.web.csp.enabled | bool | `false` | WEB_CONF_XSS_CSP_ENABLED |
+| openmetadata.config.web.csp.policy | string | `default-src 'self` | WEB_CONF_XSS_CSP_POLICY |
+| openmetadata.config.web.csp.reportOnlyPolicy | string | `Empty String` | WEB_CONF_XSS_CSP_REPORT_ONLY_POLICY |
+| openmetadata.config.web.frameOptions.enabled | bool | `false` | WEB_CONF_FRAME_OPTION_ENABLED |
+| openmetadata.config.web.frameOptions.option | string | `SAMEORIGIN` | WEB_CONF_FRAME_OPTION |
+| openmetadata.config.web.frameOptions.origin | string | `Empty String` | WEB_CONF_FRAME_ORIGIN |
+| openmetadata.config.web.hsts.enabled | bool | `false` | WEB_CONF_HSTS_ENABLED |
+| openmetadata.config.web.hsts.includeSubDomains | bool | `true` | WEB_CONF_HSTS_INCLUDE_SUBDOMAINS |
+| openmetadata.config.web.hsts.maxAge | string | `365 days` | WEB_CONF_HSTS_MAX_AGE |
+| openmetadata.config.web.hsts.preload | bool | `true` | WEB_CONF_HSTS_PRELOAD |
+| openmetadata.config.web.uriPath | string | `/api` | WEB_CONF_URI_PATH |
+| openmetadata.config.web.xssProtection.block | bool | `true` | WEB_CONF_XSS_PROTECTION_BLOCK |
+| openmetadata.config.web.xssProtection.enabled | bool | `false` | WEB_CONF_XSS_PROTECTION_ENABLED |
+| openmetadata.config.web.xssProtection.onXss | bool | `true` | WEB_CONF_XSS_PROTECTION_ON |
+| openmetadata.config.web.referrer-policy.enabled | bool | `false` | WEB_CONF_REFERRER_POLICY_ENABLED |
+| openmetadata.config.web.referrer-policy.option | string | `SAME_ORIGIN'` | WEB_CONF_REFERRER_POLICY_OPTION |
+| openmetadata.config.web.permission-policy.enabled | bool | `false` | WEB_CONF_PERMISSION_POLICY_ENABLED |
+| openmetadata.config.web.permission-policy.option | string | `Empty String` | WEB_CONF_PERMISSION_POLICY_OPTION |
 
 {%/table%}
 
@@ -171,7 +193,7 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | fullnameOverride | string | `"openmetadata"` |
 | image.pullPolicy | string | `"Always"` |
 | image.repository | string | `"docker.getcollate.io/openmetadata/server"` |
-| image.tag | string | `0.13.3` |
+| image.tag | string | `1.2.0` |
 | imagePullSecrets | list | `[]` |
 | ingress.annotations | object | `{}` |
 | ingress.className | string | `""` |
@@ -204,7 +226,15 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | serviceAccount.annotations | object | `{}` |
 | serviceAccount.create | bool | `true` |
 | serviceAccount.name | string | `nil` |
+| serviceMonitor.annotations | object | `{}` |
+| serviceMonitor.enabled | bool | `false` |
+| serviceMonitor.interval | string | `30s` |
 | sidecars | list | `[]` |
+| startupProbe.periodSeconds | int | `60` |
+| startupProbe.failureThreshold | int | `5` |
+| startupProbe.httpGet.path | string | `/healthcheck` |
+| startupProbe.httpGet.port | string | `http-admin` |
+| startupProbe.successThreshold | int | `1` |
 | tolerations | list | `[]` |
 | networkPolicy.enabled | bool |`false` |
 
