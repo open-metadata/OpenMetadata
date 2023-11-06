@@ -439,7 +439,7 @@ export const HTTP_CONFIG_SOURCE = {
 
 export const DBT = {
   classification: 'dbtTags',
-  tagName: 'model_tag_one',
+  tagName: 'model_tag_two',
   dbtQuery: 'select * from "dev"."dbt_jaffle"."stg_orders"',
   dbtLineageNodeLabel: 'customers',
   dbtLineageNode: 'dev.dbt_jaffle.stg_customers',
