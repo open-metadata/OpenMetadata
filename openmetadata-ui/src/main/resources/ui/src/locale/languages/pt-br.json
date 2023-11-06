@@ -1541,6 +1541,7 @@
     "test-connection-taking-too-long": "The test connection is taking too long. Please try again.",
     "test-your-connection-before-creating-service": "Teste suas conexões antes de criar o serviço",
     "testing-your-connection-may-take-two-minutes": "Testing your connections may take up-to 2 minutes",
+    "this-action-is-not-allowed-for-deleted-entities": "This action is not allowed for deleted entities.",
     "this-will-pick-in-next-run": "Isso será capturado na próxima execução.",
     "thread-count-message": "Defina o número de threads a serem usados ao calcular as métricas. Se deixado em branco, ele será definido como 5 por padrão.",
     "to-add-new-line": "para adicionar uma nova linha",

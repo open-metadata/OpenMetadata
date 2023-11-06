@@ -1541,6 +1541,7 @@
     "test-connection-taking-too-long": "Тестовое соединение занимает слишком много времени. Пожалуйста, попробуйте еще раз.",
     "test-your-connection-before-creating-service": "Проверьте свои подключения перед созданием сервиса",
     "testing-your-connection-may-take-two-minutes": "Проверка подключений может занять до 2 минут.",
+    "this-action-is-not-allowed-for-deleted-entities": "This action is not allowed for deleted entities.",
     "this-will-pick-in-next-run": "Это будет учтено при следующем запуске.",
     "thread-count-message": "Установите количество потоков, которые будут использоваться при вычислении метрик. Если оставить пустым, по умолчанию будет 5.",
     "to-add-new-line": "чтобы добавить новую строку",

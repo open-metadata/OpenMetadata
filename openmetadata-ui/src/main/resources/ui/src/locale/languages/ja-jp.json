@@ -1541,6 +1541,7 @@
     "test-connection-taking-too-long": "The test connection is taking too long. Please try again.",
     "test-your-connection-before-creating-service": "サービスを作成する前に接続テストをしてください。",
     "testing-your-connection-may-take-two-minutes": "Testing your connections may take up-to 2 minutes",
+    "this-action-is-not-allowed-for-deleted-entities": "This action is not allowed for deleted entities.",
     "this-will-pick-in-next-run": "This will be picked up in the next run.",
     "thread-count-message": "メトリクスの計算に使用するスレッド数を設定します。空白の場合はデフォルト値の5になります。",
     "to-add-new-line": "to add a new line",

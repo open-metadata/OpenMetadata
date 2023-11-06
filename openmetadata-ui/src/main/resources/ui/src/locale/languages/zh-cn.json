@@ -1541,6 +1541,7 @@
     "test-connection-taking-too-long": "连接测试超时，请重新测试",
     "test-your-connection-before-creating-service": "在创建服务之前测试您的连接",
     "testing-your-connection-may-take-two-minutes": "连接测试可能最多需要 2 分钟",
+    "this-action-is-not-allowed-for-deleted-entities": "This action is not allowed for deleted entities.",
     "this-will-pick-in-next-run": "这将在下一次运行中被捕获",
     "thread-count-message": "设置计算指标时要使用的线程数，如果留空，将默认为 5 个线程",
     "to-add-new-line": "添加新行",
