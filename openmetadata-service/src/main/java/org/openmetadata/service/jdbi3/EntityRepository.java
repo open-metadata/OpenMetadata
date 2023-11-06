@@ -2006,7 +2006,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private void updateExperts() {
-      if (!!supportsExperts) {
+      if (!supportsExperts) {
         return;
       }
       List<EntityReference> origExperts = getEntityReferences(original.getExperts());
@@ -2039,9 +2039,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     private static List<EntityReference> getEntityReferences(List<EntityReference> references) {
       // Don't use the inherited entity references in update
-      return references == null || listOrEmpty(references).stream().anyMatch(EntityReference::getInherited)
-          ? null
-          : references;
+      return listOrEmpty(references).stream().anyMatch(r -> Boolean.TRUE.equals(r.getInherited())) ? null : references;
     }
 
     private void updateStyle() {

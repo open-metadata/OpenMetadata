@@ -74,7 +74,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   @Override
   public EntityInterface getParentEntity(Database entity, String fields) {
-    return Entity.getEntity(entity.getService(), fields, Include.NON_DELETED);
+    return Entity.getEntity(entity.getService(), fields, Include.ALL);
   }
 
   public Database setFields(Database database, Fields fields) {
