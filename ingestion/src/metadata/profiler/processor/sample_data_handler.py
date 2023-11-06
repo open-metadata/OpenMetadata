@@ -41,8 +41,10 @@ def _get_object_key(table: Table, prefix: str, overwrite_data: bool) -> str:
 
 
 def upload_sample_data(data: TableData, profiler_interface: ProfilerInterface) -> None:
+    """
+    Upload Sample data to storage config
+    """
     try:
-
         sample_storage_config = profiler_interface.storage_config
         if not sample_storage_config:
             return
@@ -65,6 +67,7 @@ def upload_sample_data(data: TableData, profiler_interface: ProfilerInterface) -
         logger.warning(f"Error uploading the sample data: {err}")
 
 
+# pylint: disable=unused-argument
 @singledispatch
 def upload_to_storage(storage_config, pq_buffer, bucket_name, object_key):
     """

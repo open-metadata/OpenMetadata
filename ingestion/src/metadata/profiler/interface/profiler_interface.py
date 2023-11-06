@@ -81,6 +81,7 @@ class ProfilerProcessorStatus(Status):
         )
 
 
+# pylint: disable=too-many-instance-attributes
 class ProfilerInterface(ABC):
     """Protocol interface for the profiler processor"""
 
@@ -136,6 +137,7 @@ class ProfilerInterface(ABC):
         """Get the sampler"""
         raise NotImplementedError
 
+    # pylint: disable=too-many-locals
     @classmethod
     def create(
         cls,

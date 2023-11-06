@@ -29,6 +29,7 @@ class BigQuerySampler(SQASampler):
     run the query in the whole table.
     """
 
+    # pylint: disable=too-many-arguments
     def __init__(
         self,
         client,
