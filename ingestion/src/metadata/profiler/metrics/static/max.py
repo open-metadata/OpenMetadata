@@ -45,10 +45,13 @@ def _(element, compiler, **kw):
 def _(element, compiler, **kw):
     col = compiler.process(element.clauses, **kw)
     first_clause = element.clauses.clauses[0]
+    # Check if the first clause is an instance of LenFn and its type is not in FLOAT_SET
+    # or if the type of the first clause is date time
     if (
         isinstance(first_clause, LenFn)
         and type(first_clause.clauses.clauses[0].type) not in FLOAT_SET
     ) or is_date_time(first_clause.type):
+        # If the condition is true, return the minimum value of the column
         return f"MAX({col})"
     return f"IF(is_nan(MAX({col})), NULL, MAX({col}))"
 
