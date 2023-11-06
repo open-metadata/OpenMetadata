@@ -360,7 +360,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   @SuppressWarnings("unused")
   public T setInheritedFields(T entity, Fields fields) {
-    return entity;
+    EntityInterface parent = supportsDomain ? getParentEntity(entity, "domain") : null;
+    return parent != null ? inheritDomain(entity, fields, parent) : entity;
   }
 
   /**
@@ -1107,7 +1108,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   @Transaction
-  protected void storeTimeSeries(String fqn, String extension, String jsonSchema, String entityJson, Long timestamp) {
+  protected void storeTimeSeries(String fqn, String extension, String jsonSchema, String entityJson) {
     daoCollection.entityExtensionTimeSeriesDao().insert(fqn, extension, jsonSchema, entityJson);
   }
 
@@ -1249,8 +1250,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  @Transaction
   /** Apply tags {@code tagLabels} to the entity or field identified by {@code targetFQN} */
+  @Transaction
   public void applyTags(List<TagLabel> tagLabels, String targetFQN) {
     for (TagLabel tagLabel : listOrEmpty(tagLabels)) {
       if (tagLabel.getSource() == TagSource.CLASSIFICATION) {
@@ -1548,7 +1549,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public EntityInterface getParentEntity(T entity, String fields) {
-    return null; // Override this method to inherit permissions from the parent entity
+    return null;
   }
 
   public EntityReference getParent(T entity) {
@@ -1572,27 +1573,29 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public T inheritDomain(T entity, Fields fields, EntityInterface parent) {
-    if (fields.contains(FIELD_DOMAIN) && entity.getDomain() == null) {
-      entity.setDomain(parent.getDomain());
+    if (fields.contains(FIELD_DOMAIN) && entity.getDomain() == null && parent != null) {
+      entity.setDomain(parent.getDomain() != null ? parent.getDomain().withInherited(true) : null);
     }
     return entity;
   }
 
   public void inheritOwner(T entity, Fields fields, EntityInterface parent) {
-    if (fields.contains(FIELD_OWNER) && entity.getOwner() == null) {
-      entity.setOwner(parent.getOwner());
+    if (fields.contains(FIELD_OWNER) && entity.getOwner() == null && parent != null) {
+      entity.setOwner(parent.getOwner() != null ? parent.getOwner().withInherited(true) : null);
     }
   }
 
   public void inheritExperts(T entity, Fields fields, EntityInterface parent) {
-    if (fields.contains(FIELD_EXPERTS) && nullOrEmpty(entity.getExperts())) {
+    if (fields.contains(FIELD_EXPERTS) && nullOrEmpty(entity.getExperts()) && parent != null) {
       entity.setExperts(parent.getExperts());
+      listOrEmpty(entity.getExperts()).forEach(expert -> expert.withInherited(true));
     }
   }
 
   public void inheritReviewers(T entity, Fields fields, EntityInterface parent) {
-    if (fields.contains(FIELD_REVIEWERS) && nullOrEmpty(entity.getReviewers())) {
+    if (fields.contains(FIELD_REVIEWERS) && nullOrEmpty(entity.getReviewers()) && parent != null) {
       entity.setReviewers(parent.getReviewers());
+      listOrEmpty(entity.getReviewers()).forEach(reviewer -> reviewer.withInherited(true));
     }
   }
 
@@ -1639,8 +1642,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  @Transaction
   /** Remove owner relationship for a given entity */
+  @Transaction
   private void removeOwner(T entity, EntityReference owner) {
     if (EntityUtil.getId(owner) != null) {
       LOG.info("Removing owner {}:{} for entity {}", owner.getType(), owner.getFullyQualifiedName(), entity.getId());
@@ -1798,7 +1801,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     protected final ChangeDescription changeDescription = new ChangeDescription();
     protected boolean majorVersionChange = false;
     protected final User updatingUser;
-    private boolean entityRestored = false;
     private boolean entityChanged = false;
 
     public EntityUpdater(T original, T updated, Operation operation) {
@@ -1811,8 +1813,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
               : getEntityByName(Entity.USER, updated.getUpdatedBy(), "", NON_DELETED);
     }
 
-    @Transaction
     /** Compare original and updated entities and perform updates. Update the entity version and track changes. */
+    @Transaction
     public final void update() {
       if (operation.isDelete()) { // DELETE Operation
         updateDeleted();
@@ -1827,6 +1829,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateDomain();
         updateDataProducts();
         updateExperts();
+        updateReviewers();
         updateStyle();
         updateLifeCycle();
         entitySpecificUpdate();
@@ -1862,7 +1865,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
         if (Boolean.TRUE.equals(original.getDeleted())) {
           updated.setDeleted(false);
           recordChange(FIELD_DELETED, true, false);
-          entityRestored = true;
         }
       } else {
         recordChange(FIELD_DELETED, original.getDeleted(), updated.getDeleted());
@@ -1879,8 +1881,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private void updateOwner() {
-      EntityReference origOwner = original.getOwner();
-      EntityReference updatedOwner = updated.getOwner();
+      EntityReference origOwner = getEntityReference(original.getOwner());
+      EntityReference updatedOwner = getEntityReference(updated.getOwner());
       if ((operation.isPatch() || updatedOwner != null)
           && recordChange(FIELD_OWNER, origOwner, updatedOwner, true, entityReferenceMatch)) {
         // Update owner for all PATCH operations. For PUT operations, ownership can't be removed
@@ -1962,12 +1964,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private void updateDomain() {
-      if (original.getDomain() == updated.getDomain()) {
+      EntityReference origDomain = getEntityReference(original.getDomain());
+      EntityReference updatedDomain = getEntityReference(updated.getDomain());
+      if (origDomain == updatedDomain) {
         return;
       }
-
-      EntityReference origDomain = original.getDomain();
-      EntityReference updatedDomain = updated.getDomain();
       if ((operation.isPatch() || updatedDomain != null)
           && recordChange(FIELD_DOMAIN, origDomain, updatedDomain, true, entityReferenceMatch)) {
         if (origDomain != null) {
@@ -2005,8 +2006,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private void updateExperts() {
-      List<EntityReference> origExperts = listOrEmpty(original.getExperts());
-      List<EntityReference> updatedExperts = listOrEmpty(updated.getExperts());
+      if (!!supportsExperts) {
+        return;
+      }
+      List<EntityReference> origExperts = getEntityReferences(original.getExperts());
+      List<EntityReference> updatedExperts = getEntityReferences(updated.getExperts());
       updateToRelationships(
           FIELD_EXPERTS,
           entityType,
@@ -2016,6 +2020,28 @@ public abstract class EntityRepository<T extends EntityInterface> {
           origExperts,
           updatedExperts,
           false);
+    }
+
+    private void updateReviewers() {
+      if (!supportsReviewers) {
+        return;
+      }
+      List<EntityReference> origUsers = getEntityReferences(original.getReviewers());
+      List<EntityReference> updatedUsers = getEntityReferences(updated.getReviewers());
+      updateFromRelationships(
+          "reviewers", Entity.USER, origUsers, updatedUsers, Relationship.REVIEWS, entityType, original.getId());
+    }
+
+    private static EntityReference getEntityReference(EntityReference reference) {
+      // Don't use the inherited entity reference in update
+      return reference == null || Boolean.TRUE.equals(reference.getInherited()) ? null : reference;
+    }
+
+    private static List<EntityReference> getEntityReferences(List<EntityReference> references) {
+      // Don't use the inherited entity references in update
+      return references == null || listOrEmpty(references).stream().anyMatch(EntityReference::getInherited)
+          ? null
+          : references;
     }
 
     private void updateStyle() {
@@ -2087,10 +2113,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return !changeDescription.getFieldsAdded().isEmpty()
           || !changeDescription.getFieldsUpdated().isEmpty()
           || !changeDescription.getFieldsDeleted().isEmpty();
-    }
-
-    public boolean isEntityRestored() {
-      return entityRestored;
     }
 
     public final <K> boolean recordChange(String field, K orig, K updated) {

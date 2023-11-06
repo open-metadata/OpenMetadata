@@ -2805,8 +2805,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertReference(expectedOwner, entity.getOwner()); // Inherited owner
     entity = getEntity(entity.getId(), "owner", ADMIN_AUTH_HEADERS);
     assertReference(expectedOwner, entity.getOwner()); // Inherited owner
+    assertTrue(entity.getOwner().getInherited());
     entity = getEntityByName(entity.getFullyQualifiedName(), "owner", ADMIN_AUTH_HEADERS);
     assertReference(expectedOwner, entity.getOwner()); // Inherited owner
+    assertTrue(entity.getOwner().getInherited());
     return entity;
   }
 
@@ -2817,12 +2819,17 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     entity.setOwner(newOwner);
     entity = patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS);
     assertReference(newOwner, entity.getOwner());
-    entity = updateEntity(updateRequest.withOwner(null), OK, ADMIN_AUTH_HEADERS); // Simulate ingestion update
+    assertNull(entity.getOwner().getInherited());
+
+    // Now simulate and ingestion entity update with no owner
+    entity = updateEntity(updateRequest.withOwner(null), OK, ADMIN_AUTH_HEADERS);
     assertReference(newOwner, entity.getOwner()); // Owner remains the same
     entity = getEntity(entity.getId(), "owner", ADMIN_AUTH_HEADERS);
     assertReference(newOwner, entity.getOwner()); // Owner remains the same
+    assertNull(entity.getOwner().getInherited());
     entity = getEntityByName(entity.getFullyQualifiedName(), "owner", ADMIN_AUTH_HEADERS);
     assertReference(newOwner, entity.getOwner()); // Owner remains the same
+    assertNull(entity.getOwner().getInherited());
   }
 
   public T assertDomainInheritance(K createRequest, EntityReference expectedDomain) throws HttpResponseException {
@@ -2830,8 +2837,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertReference(expectedDomain, entity.getDomain()); // Inherited owner
     entity = getEntity(entity.getId(), "domain", ADMIN_AUTH_HEADERS);
     assertReference(expectedDomain, entity.getDomain()); // Inherited owner
+    assertTrue(entity.getDomain().getInherited());
     entity = getEntityByName(entity.getFullyQualifiedName(), "domain", ADMIN_AUTH_HEADERS);
     assertReference(expectedDomain, entity.getDomain()); // Inherited owner
+    assertTrue(entity.getDomain().getInherited());
     return entity;
   }
 
@@ -2842,12 +2851,17 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     entity.setDomain(newDomain);
     entity = patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS);
     assertReference(newDomain, entity.getDomain());
-    entity = updateEntity(updateRequest.withDomain(null), OK, ADMIN_AUTH_HEADERS); // Simulate ingestion update
+    assertNull(entity.getDomain().getInherited());
+
+    // Now simulate and ingestion entity update with no domain
+    entity = updateEntity(updateRequest.withDomain(null), OK, ADMIN_AUTH_HEADERS);
     assertReference(newDomain, entity.getDomain()); // Domain remains the same
     entity = getEntity(entity.getId(), "domain", ADMIN_AUTH_HEADERS);
     assertReference(newDomain, entity.getDomain()); // Domain remains the same
+    assertNull(entity.getDomain().getInherited());
     entity = getEntityByName(entity.getFullyQualifiedName(), "domain", ADMIN_AUTH_HEADERS);
     assertReference(newDomain, entity.getDomain()); // Domain remains the same
+    assertNull(entity.getDomain().getInherited());
   }
 
   public static void assertLifeCycle(LifeCycle expected, LifeCycle actual) {

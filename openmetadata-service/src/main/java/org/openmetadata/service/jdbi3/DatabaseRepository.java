@@ -13,9 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.schema.type.Include.ALL;
-import static org.openmetadata.service.Entity.DATABASE_SERVICE;
-
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -67,12 +64,6 @@ public class DatabaseRepository extends EntityRepository<Database> {
   public void storeRelationships(Database database) {
     EntityReference service = database.getService();
     addRelationship(service.getId(), database.getId(), service.getType(), Entity.DATABASE, Relationship.CONTAINS);
-  }
-
-  @Override
-  public Database setInheritedFields(Database database, Fields fields) {
-    DatabaseService service = Entity.getEntity(DATABASE_SERVICE, database.getService().getId(), "domain", ALL);
-    return inheritDomain(database, fields, service);
   }
 
   private List<EntityReference> getSchemas(Database database) {
