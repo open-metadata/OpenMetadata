@@ -21,6 +21,7 @@ from sqlalchemy.sql.functions import GenericFunction
 from metadata.profiler.metrics.core import CACHE, StaticMetric, _label
 from metadata.profiler.orm.functions.length import LenFn
 from metadata.profiler.orm.registry import (
+    FLOAT_SET,
     Dialects,
     is_concatenable,
     is_date_time,
@@ -42,7 +43,11 @@ def _(element, compiler, **kw):
 @compiles(MinFn, Dialects.Trino)
 def _(element, compiler, **kw):
     col = compiler.process(element.clauses, **kw)
-    if isinstance(element.clauses.clauses[0], LenFn):
+    first_clause = element.clauses.clauses[0]
+    if (
+        isinstance(first_clause, LenFn)
+        and type(first_clause.clauses.clauses[0].type) not in FLOAT_SET
+    ) or is_date_time(first_clause.type):
         return f"MIN({col})"
     return f"IF(is_nan(MIN({col})), NULL, MIN({col}))"
 

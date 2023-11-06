@@ -23,7 +23,13 @@ from sqlalchemy.sql.functions import FunctionElement
 
 from metadata.profiler.metrics.core import CACHE, StaticMetric, _label
 from metadata.profiler.orm.functions.length import LenFn
-from metadata.profiler.orm.registry import Dialects, is_concatenable, is_quantifiable
+from metadata.profiler.orm.registry import (
+    FLOAT_SET,
+    Dialects,
+    is_concatenable,
+    is_date_time,
+    is_quantifiable,
+)
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -58,7 +64,11 @@ def _(element, compiler, **kw):
 @compiles(StdDevFn, Dialects.Trino)
 def _(element, compiler, **kw):
     proc = compiler.process(element.clauses, **kw)
-    if isinstance(element.clauses.clauses[0], LenFn):
+    first_clause = element.clauses.clauses[0]
+    if (
+        isinstance(first_clause, LenFn)
+        and type(first_clause.clauses.clauses[0].type) not in FLOAT_SET
+    ) or is_date_time(first_clause.type):
         return f"STDDEV_POP({proc})"
     return f"IF(is_nan(STDDEV_POP({proc})), NULL, STDDEV_POP({proc}))"
 
