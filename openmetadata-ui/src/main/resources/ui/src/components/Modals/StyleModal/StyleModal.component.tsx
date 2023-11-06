@@ -24,7 +24,6 @@ import { StyleModalProps, StyleWithInput } from './StyleModal.interface';
 const StyleModal = ({ open, onCancel, onSubmit, style }: StyleModalProps) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
-  const popupRef = React.useRef<HTMLElement>(null);
 
   const handleSubmit: FormProps<StyleWithInput>['onFinish'] = (value) => {
     onSubmit(omit(value, 'colorInput'));
@@ -65,10 +64,10 @@ const StyleModal = ({ open, onCancel, onSubmit, style }: StyleModalProps) => {
               <Tooltip
                 align={{ targetOffset: [18, 0] }}
                 placement="topLeft"
-                title={t('message.glossary-url-size-message')}>
+                title={t('message.govern-url-size-message')}>
                 <InfoCircleOutlined
                   className="m-x-xss"
-                  data-testid="glossary-url"
+                  data-testid="glossary-url-helper-icon"
                   style={{ color: GRAYED_OUT_COLOR }}
                 />
               </Tooltip>

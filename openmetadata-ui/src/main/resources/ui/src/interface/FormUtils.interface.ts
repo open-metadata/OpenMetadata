@@ -12,6 +12,7 @@
  */
 
 import { FormItemProps, FormRule } from 'antd';
+import { TooltipPlacement } from 'antd/lib/tooltip';
 import { ReactNode } from 'react';
 import { FormValidationRulesType } from '../enums/form.enum';
 
@@ -47,6 +48,7 @@ export interface FieldProp {
   type: FieldTypes;
   required: boolean;
   id: string;
+  help?: string;
   props?: Record<string, unknown> & { children?: ReactNode };
   formItemProps?: FormItemProps;
   rules?: FormRule[];
@@ -54,4 +56,5 @@ export interface FieldProp {
   placeholder?: string;
   hasSeparator?: boolean;
   formItemLayout?: FormItemLayout;
+  toolTipPlacement?: TooltipPlacement;
 }

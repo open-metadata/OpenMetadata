@@ -136,6 +136,7 @@ const TagsForm = ({
             required: false,
             placeholder: t('label.icon-url'),
             type: FieldTypes.TEXT,
+            help: t('message.govern-url-size-message'),
             props: {
               'data-testid': 'icon-url',
             },
