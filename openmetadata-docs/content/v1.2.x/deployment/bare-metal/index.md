@@ -9,7 +9,7 @@ Requirements This guide assumes you have access to a command-line environment or
 or Mac OS X or PowerShell on Microsoft Windows. This guide also assumes that your command-line environment has access to
 the tar utility. Please review additional requirements listed in the subsections below.
 
-## Java (version 11.0.0 or greater)
+## Java (version 17.0.0 or greater)
 
 OpenMetadata is built using Java, DropWizard, and Jetty.
 
@@ -19,7 +19,7 @@ Type the following command to verify that you have a supported version of the Ja
 java --version
 ```
 
-To install Java or upgrade to Java 11 or greater, see the instructions for your operating system at [How do I install
+To install Java or upgrade to Java 17 or greater, see the instructions for your operating system at [How do I install
 Java?](https://java.com/en/download/help/download_options.html#mac).
 
 ## MySQL (version 8.0.0 or greater)
@@ -185,7 +185,7 @@ Below are the environment variables for OpenMetadata Server
 # MySQL Environment Variables
 DB_DRIVER_CLASS='com.mysql.cj.jdbc.Driver'
 DB_SCHEME='mysql'
-DB_USE_SSL='true'
+DB_PARAMS='allowPublicKeyRetrieval=true&useSSL=true&serverTimezone=UTC'
 DB_USER='<YOUR_MYSQL_USER_NAME>'
 DB_USER_PASSWORD='<YOUR_MYSQL_USER_PASSWORD>'
 DB_HOST='<YOUR_MYSQL_HOST_NAME>'
@@ -199,7 +199,7 @@ OM_DATABASE='<YOUR_MYSQL_DATABASE_NAME>'
 # Postgres Environment Variables
 DB_DRIVER_CLASS='org.postgresql.Driver'
 DB_SCHEME='postgresql'
-DB_USE_SSL='true'
+DB_PARAMS='allowPublicKeyRetrieval=true&useSSL=true&serverTimezone=UTC'
 DB_USER='<YOUR_POSTGRES_USER_NAME>'
 DB_USER_PASSWORD='<YOUR_POSTGRES_USER_PASSWORD>'
 DB_HOST='<YOUR_POSTGRES_HOST_NAME>'

@@ -8,71 +8,25 @@ The **Stage** is an optional component in the workflow. It can be used to store 
 
 ## API
 ```python
-@dataclass  # type: ignore[misc]
-class Stage(Closeable, metaclass=ABCMeta):
-ctx: WorkflowContext
+class Stage(StageStep, ABC):
+    """All Stages must inherit this base class."""
 
-    @classmethod
+    # From the parent - just to showcase
     @abstractmethod
-    def create(cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext) -> "Stage":
-        pass
+    def _run(self, record: Entity) -> Iterable[Either[str]]:
+        """
+        Main entrypoint to execute the step.
 
-    @abstractmethod
-    def stage_record(self, record: Record):
-        pass
-
-    @abstractmethod
-    def get_status(self) -> StageStatus:
-        pass
-
-    @abstractmethod
-    def close(self) -> None:
-        pass
+        Note that the goal of this step is to store the
+        processed data somewhere (e.g., a file). We will
+        return an iterable to keep track of the processed
+        entities / exceptions, but the next step (Bulk Sink)
+        won't read these results. It will directly
+        pick up the file components.
+        """
 ```
 
-**create** method is called during the workflow instantiation and creates an instance of the processor.
-
-**stage_record** this method is called for each record coming down in the workflow chain and can be used to store the record. This method doesn't emit anything for the downstream to process on.
-
-**get_status** to report the status of the stage ex: how many records, failures or warnings etc.
-
-**close** gets called before the workflow stops. Can be used to clean up any connections or other resources.
+**_run** this method is called for each record coming down in the workflow chain and can be used to store the record. This method doesn't emit anything for the downstream to process on.
 
 ## Example
-Example implementation
-
-```python
-class FileStage(Stage):
-config: FileStageConfig
-status: StageStatus
-
-    def __init__(self, ctx: WorkflowContext, config: FileStageConfig, metadata_config: MetadataServerConfig):
-        super().__init__(ctx)
-        self.config = config
-        self.status = StageStatus()
-
-        fpath = pathlib.Path(self.config.filename)
-        self.file = fpath.open("w")
-        self.wrote_something = False
-
-    @classmethod
-    def create(cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext):
-        config = FileStageConfig.parse_obj(config_dict)
-        metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        return cls(ctx, config, metadata_config)
-
-    def stage_record(
-        self,
-        record: TableEntity
-    ) -> None:
-        json_record = json.loads(record.json())
-        self.file.write(json.dumps(json_record))
-        self.file.write("\n")
-        self.status.records_status(record)
-
-    def get_status(self):
-        return self.status
-
-    def close(self):
-        self.file.close()
-```
+[Example implementation](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/stage/table_usage.py#L42)
