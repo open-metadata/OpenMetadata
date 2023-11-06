@@ -24,6 +24,7 @@ from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     handle_query_exception,
 )
 from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.orm.registry import FLOAT_SET
 from metadata.profiler.processor.runner import QueryRunner
 from metadata.utils.logger import profiler_interface_registry_logger
 
@@ -58,15 +59,17 @@ class TrinoProfilerInterface(SQAProfilerInterface):
         if not metrics:
             return None
         try:
+            runner_kwargs = {}
+            if column.type in FLOAT_SET:
+                runner_kwargs = {
+                    "query_filter_": {"filters": [(func.is_nan(column), "eq", False)]}
+                }
             row = runner.select_first_from_sample(
-                *[metric(column).fn() for metric in metrics],
-                query_filter_={
-                    "filters": [(func.is_nan(column), "eq", "False")],
-                },
+                *[metric(column).fn() for metric in metrics], **runner_kwargs
             )
-        except ProgrammingError:
+        except ProgrammingError as err:
             logger.info(
-                f"Skipping window metrics for {runner.table.__tablename__}.{column.name} due to overflow"
+                f"Skipping window metrics for {runner.table.__tablename__}.{column.name} due to {err}"
             )
             return None
 
