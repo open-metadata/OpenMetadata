@@ -23,7 +23,6 @@ import {
   Button,
   Col,
   Dropdown,
-  Modal,
   Row,
   Space,
   Tabs,
@@ -77,6 +76,7 @@ import AppRunsHistory from '../AppRunsHistory/AppRunsHistory.component';
 import AppSchedule from '../AppSchedule/AppSchedule.component';
 import { ApplicationTabs } from '../MarketPlaceAppDetails/MarketPlaceAppDetails.interface';
 import './app-details.less';
+import { AppAction } from './AppDetails.interface';
 
 const AppDetails = () => {
   const { t } = useTranslation();
@@ -86,9 +86,8 @@ const AppDetails = () => {
   const [appData, setAppData] = useState<App>();
   const [showActions, setShowActions] = useState(false);
   const [showDeleteModel, setShowDeleteModel] = useState(false);
-  const [isAppDisableAction, setIsAppDisableAction] = useState(false);
   const [jsonSchema, setJsonSchema] = useState<RJSFSchema>();
-  const [showReactiveModal, setShowReactiveModal] = useState(false);
+  const [action, setAction] = useState<AppAction | null>(null);
 
   const fetchAppDetails = useCallback(async () => {
     setIsLoading(true);
@@ -118,24 +117,46 @@ const AppDetails = () => {
     );
   };
 
+  const handleRestore = useCallback(async () => {
+    if (appData) {
+      try {
+        await restoreApp(appData.id);
+        showSuccessToast(
+          t('message.entity-enabled-success', {
+            entity: t('label.application'),
+          }),
+          2000
+        );
+      } catch (err) {
+        showErrorToast(err as AxiosError);
+      } finally {
+        onBrowseAppsClick();
+      }
+    }
+  }, [appData]);
+
   const onConfirmAction = useCallback(async () => {
     try {
-      await uninstallApp(
-        appData?.fullyQualifiedName ?? '',
-        !isAppDisableAction
-      );
+      if (action === AppAction.ENABLE) {
+        handleRestore();
+      } else {
+        await uninstallApp(
+          appData?.fullyQualifiedName ?? '',
+          action === AppAction.UNINSTALL
+        );
 
-      showSuccessToast(
-        isAppDisableAction
-          ? t('message.app-disabled-successfully')
-          : t('message.app-uninstalled-successfully')
-      );
+        showSuccessToast(
+          action === AppAction.DISABLE
+            ? t('message.app-disabled-successfully')
+            : t('message.app-uninstalled-successfully')
+        );
 
-      onBrowseAppsClick();
+        onBrowseAppsClick();
+      }
     } catch (err) {
       showErrorToast(err as AxiosError);
     }
-  }, [appData, isAppDisableAction]);
+  }, [appData, action]);
 
   const manageButtonContent: ItemType[] = [
     ...(appData?.deleted
@@ -160,7 +181,8 @@ const AppDetails = () => {
             onClick: (e) => {
               e.domEvent.stopPropagation();
               setShowActions(false);
-              setShowReactiveModal(true);
+              setAction(AppAction.ENABLE);
+              setShowDeleteModel(true);
             },
             key: 'restore-button',
           },
@@ -185,7 +207,7 @@ const AppDetails = () => {
             onClick: () => {
               setShowDeleteModel(true);
               setShowActions(false);
-              setIsAppDisableAction(true);
+              setAction(AppAction.DISABLE);
             },
           },
         ]),
@@ -204,29 +226,10 @@ const AppDetails = () => {
       onClick: () => {
         setShowDeleteModel(true);
         setShowActions(false);
-        setIsAppDisableAction(false);
+        setAction(AppAction.UNINSTALL);
       },
     },
   ];
-
-  const handleRestore = useCallback(async () => {
-    if (appData) {
-      try {
-        await restoreApp(appData.id);
-        showSuccessToast(
-          t('message.enable-apps-success', {
-            entity: t('label.application'),
-          }),
-          2000
-        );
-      } catch (err) {
-        showErrorToast(err as AxiosError);
-      } finally {
-        setShowReactiveModal(false);
-        onBrowseAppsClick();
-      }
-    }
-  }, [appData]);
 
   const onConfigSave = async (data: IChangeEvent) => {
     if (appData) {
@@ -383,6 +386,18 @@ const AppDetails = () => {
     ];
   }, [appData, jsonSchema]);
 
+  const actionText = useMemo(() => {
+    if (action === AppAction.ENABLE) {
+      return t('label.enable-lowercase');
+    } else if (action === AppAction.DISABLE) {
+      return t('label.disable-lowercase');
+    } else if (action === AppAction.UNINSTALL) {
+      return t('label.uninstall-lowercase');
+    }
+
+    return '';
+  }, [action]);
+
   useEffect(() => {
     fetchAppDetails();
   }, [fqn]);
@@ -490,9 +505,7 @@ const AppDetails = () => {
 
       <ConfirmationModal
         bodyText={t('message.are-you-sure-action-property', {
-          action: isAppDisableAction
-            ? t('label.disable-lowercase')
-            : t('label.uninstall-lowercase'),
+          action: actionText,
           propertyName: getEntityName(appData),
         })}
         cancelText={t('label.cancel')}
@@ -502,31 +515,6 @@ const AppDetails = () => {
         onCancel={() => setShowDeleteModel(false)}
         onConfirm={onConfirmAction}
       />
-
-      <Modal
-        centered
-        cancelButtonProps={{
-          type: 'link',
-        }}
-        className="reactive-modal"
-        closable={false}
-        data-testid="restore-asset-modal"
-        maskClosable={false}
-        okText={t('label.restore')}
-        open={showReactiveModal}
-        title={t('label.restore-entity', {
-          entity: t('label.application'),
-        })}
-        onCancel={() => {
-          setShowReactiveModal(false);
-        }}
-        onOk={handleRestore}>
-        <Typography.Text data-testid="restore-modal-body">
-          {t('message.are-you-sure-want-to-enable', {
-            entity: appData ? getEntityName(appData) : '',
-          })}
-        </Typography.Text>
-      </Modal>
     </PageLayoutV1>
   );
 };
