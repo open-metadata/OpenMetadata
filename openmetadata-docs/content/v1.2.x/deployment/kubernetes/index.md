@@ -263,7 +263,7 @@ openmetadata:
       port: 3306
       driverClass: com.mysql.cj.jdbc.Driver
       dbScheme: mysql
-      dbUseSSL: true
+      dbParams: "allowPublicKeyRetrieval=true&useSSL=true&serverTimezone=UTC"
       databaseName: <RDS_DATABASE_NAME>
       auth:
         username: <RDS_DATABASE_USERNAME>
