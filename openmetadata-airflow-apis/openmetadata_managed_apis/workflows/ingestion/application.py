@@ -12,7 +12,6 @@
 Generic Workflow entrypoint to execute Applications
 """
 import json
-from typing import cast
 
 from airflow import DAG
 from openmetadata_managed_apis.utils.logger import set_operator_logger
@@ -67,7 +66,9 @@ def build_application_workflow_config(
     """
 
     # Here we have an application pipeline, so the Source Config is of type ApplicationPipeline
-    application_pipeline_conf: ApplicationPipeline = ingestion_pipeline.sourceConfig.config
+    application_pipeline_conf: ApplicationPipeline = (
+        ingestion_pipeline.sourceConfig.config
+    )
 
     application_workflow_config = OpenMetadataApplicationConfig(
         appConfig=ExternalApplicationConfig(

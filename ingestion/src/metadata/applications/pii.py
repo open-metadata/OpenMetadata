@@ -167,6 +167,7 @@ class PIIApp(AppRunner):
                 )
             )
         else:
+            self.status.scanned(table)
             logger.debug(
                 f"Successfully patched tag {column_tags} for {table.fullyQualifiedName.__root__}"
             )
@@ -179,13 +180,12 @@ class PIIApp(AppRunner):
         3. PATCH PII tags when needed
         """
         tables: Iterable[Table] = self.metadata.list_all_entities(
-            entity=Table, fields=["sampleData"]
+            entity=Table, fields=["sampleData", "tags"]
         )
         for table in tables:
             column_tags = self.process_table(table)
             if column_tags:
-                self.status.scanned(table)
-
+                self.patch_columns(table=table, column_tags=column_tags)
             else:
                 self.status.filter(
                     key=table.fullyQualifiedName.__root__, reason="No PII found"
