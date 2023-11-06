@@ -68,7 +68,7 @@ def _(element, compiler, **kw):
         isinstance(first_clause, LenFn)
         and type(first_clause.clauses.clauses[0].type) not in FLOAT_SET
     ) or is_date_time(first_clause.type):
-        # If the condition is true, return the minimum value of the column
+        # If the condition is true, return the mean value of the column
         return f"avg({proc})"
     return f"IF(is_nan(avg({proc})), NULL, avg({proc}))"
 

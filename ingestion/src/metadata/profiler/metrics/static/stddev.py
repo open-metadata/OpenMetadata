@@ -71,7 +71,7 @@ def _(element, compiler, **kw):
         isinstance(first_clause, LenFn)
         and type(first_clause.clauses.clauses[0].type) not in FLOAT_SET
     ) or is_date_time(first_clause.type):
-        # If the condition is true, return the minimum value of the column
+        # If the condition is true, return the stddev value of the column
         return f"STDDEV_POP({proc})"
     return f"IF(is_nan(STDDEV_POP({proc})), NULL, STDDEV_POP({proc}))"
 
