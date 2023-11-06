@@ -299,6 +299,7 @@ export const UserTab = ({
 
       <Modal
         cancelText={t('label.cancel')}
+        data-testid="confirmation-modal"
         okText={t('label.confirm')}
         open={Boolean(deletingUser)}
         title={t('label.removing-user')}
