@@ -16,6 +16,11 @@
 @border-color: #e8e8ed;
 @markdown-bg-color: #f8f8fa;
 @hover-bg: #00000005;
+@callout-bg: #f8f8fa;
+@callout-warning-bg: #fff3dc;
+@callout-info-bg: #d1e9ff;
+@callout-danger-bg: #ff4c3b33;
+@callout-border: #afafc1;
 
 .block-editor-wrapper {
   .om-block-editor > p:last-child {
@@ -367,28 +372,28 @@
   width: 100%;
   display: flex;
   flex-direction: row;
-  background-color: #f8f8fa;
+  background-color: @callout-bg;
   color: @text-color;
   padding: 1rem 1.5rem;
   gap: 0.5rem;
   border-radius: 8px;
-  border-left: 8px solid #afafc1;
+  border-left: 8px solid @callout-border;
   position: relative;
 }
 
 .om-callout-node-warning,
 .om-callout-node-caution {
-  background-color: #fff3dc;
+  background-color: @callout-warning-bg;
   border-left-color: @warning-color;
 }
 .om-callout-node-tip,
 .om-callout-node-info {
-  background-color: #d1e9ff;
+  background-color: @callout-info-bg;
   border-left-color: @info-color;
 }
 
 .om-callout-node-danger {
-  background-color: #ff4c3b33;
+  background-color: @callout-danger-bg;
   border-left-color: @error-color;
 }
 .callout-type-btn.ant-btn.ant-btn-text {
