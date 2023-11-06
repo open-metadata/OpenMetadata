@@ -460,7 +460,6 @@ public class AppResource extends EntityResource<App, AppRepository> {
   }
 
   @POST
-  @Path("/install")
   @Operation(
       operationId = "createApplication",
       summary = "Create a Application",
@@ -751,8 +750,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
         new App()
             .withId(UUID.randomUUID())
             .withName(marketPlaceDefinition.getName())
-            .withDisplayName(marketPlaceDefinition.getDisplayName())
-            .withDescription(marketPlaceDefinition.getDescription())
+            .withDisplayName(createAppRequest.getDisplayName())
+            .withDescription(createAppRequest.getDescription())
             .withOwner(owner)
             .withUpdatedBy(updatedBy)
             .withUpdatedAt(System.currentTimeMillis())

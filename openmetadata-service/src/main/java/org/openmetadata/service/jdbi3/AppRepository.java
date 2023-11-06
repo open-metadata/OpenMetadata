@@ -42,6 +42,7 @@ public class AppRepository extends EntityRepository<App> {
         UPDATE_FIELDS,
         UPDATE_FIELDS);
     supportsSearch = false;
+    quoteFqn = true;
   }
 
   @Override
