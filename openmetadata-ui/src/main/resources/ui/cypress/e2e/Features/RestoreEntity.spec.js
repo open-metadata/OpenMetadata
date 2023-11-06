@@ -19,13 +19,8 @@ import {
 } from '../../common/common';
 import { createEntityTable, hardDeleteService } from '../../common/entityUtils';
 import { DELETE_TERM, MYDATA_SUMMARY_OPTIONS } from '../../constants/constants';
-import {
-  DATABASE_SERVICE,
-  TABLE_DETAILS,
-} from '../../constants/entityConstant';
+import { DATABASE_SERVICE } from '../../constants/entityConstant';
 import { SERVICE_CATEGORIES } from '../../constants/service.constants';
-
-const tableDetails = TABLE_DETAILS;
 
 const ENTITY_TABLE = {
   term: DATABASE_SERVICE.tables.name,
@@ -138,29 +133,29 @@ describe('Restore entity functionality should work properly', () => {
     verifyResponseStatusCode('@nonDeletedTables', 200);
     cy.get('[data-testid="show-deleted"]').click();
     verifyResponseStatusCode('@showDeletedTables', 200);
-
     cy.get('[data-testid="entity-header-display-name"]')
       .contains(ENTITY_TABLE.displayName)
       .click();
 
-    cy.get('[data-testid="entity-header-display-name"]')
-      .contains(ENTITY_TABLE.displayName)
-      .click();
-
-    cy.get('[data-testid="deleted-badge"]').should('exist');
-
+    cy.get('[data-testid="deleted-badge"]').should('be.visible');
+    interceptURL(
+      'GET',
+      '/api/v1/databaseSchemas/name/*?fields=*&include=all',
+      'getDatabaseSchemas'
+    );
     cy.get('[data-testid="breadcrumb"]')
       .scrollIntoView()
       .contains(ENTITY_TABLE.schemaName)
       .click();
-
+    verifyResponseStatusCode('@getDatabaseSchemas', 200);
     interceptURL(
       'GET',
       '/api/v1/tables?databaseSchema=*&include=deleted',
       'queryDeletedTables'
     );
 
-    cy.get('[data-testid="show-deleted"]').click();
+    cy.get('[data-testid="show-deleted"]').scrollIntoView();
+    cy.get('[data-testid="show-deleted"]').click({ waitForAnimations: true });
 
     verifyResponseStatusCode('@queryDeletedTables', 200);
 

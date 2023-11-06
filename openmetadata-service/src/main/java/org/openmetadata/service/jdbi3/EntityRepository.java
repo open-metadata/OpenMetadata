@@ -827,9 +827,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .withCurrentVersion(entity.getVersion())
             .withPreviousVersion(change.getPreviousVersion());
     entity.setChangeDescription(change);
-    if (supportsSearch) {
-      postUpdate(entity, entity);
-    }
+    postUpdate(entity, entity);
     return new PutResponse<>(Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
@@ -874,7 +872,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .withTimestamp(System.currentTimeMillis())
             .withCurrentVersion(originalEntity.getVersion())
             .withPreviousVersion(change.getPreviousVersion());
-
+    postUpdate(originalEntity, originalEntity);
     return new PutResponse<>(Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
