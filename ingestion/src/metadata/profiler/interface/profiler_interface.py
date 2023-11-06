@@ -185,7 +185,11 @@ class ProfilerInterface(ABC):
 
         if not cls.get_profile_query(entity, entity_config):
             profile_sample_config = cls.get_profile_sample_config(
-                entity, schema_profiler_config, database_profiler_config, entity_config, source_config
+                entity,
+                schema_profiler_config,
+                database_profiler_config,
+                entity_config,
+                source_config,
             )
             table_partition_config = cls.get_partition_details(entity, entity_config)
             sample_query = None
@@ -195,7 +199,11 @@ class ProfilerInterface(ABC):
             table_partition_config = None
 
         sample_data_count = cls.get_sample_data_count_config(
-            entity, schema_profiler_config, database_profiler_config, entity_config, source_config
+            entity,
+            schema_profiler_config,
+            database_profiler_config,
+            entity_config,
+            source_config,
         )
         return cls(
             service_connection_config=service_connection_config,
