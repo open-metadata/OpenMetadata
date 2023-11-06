@@ -19,7 +19,9 @@ import static org.openmetadata.service.Entity.FIELD_ASSETS;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
@@ -93,6 +95,18 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     updated.withDomain(original.getDomain()); // Domain can't be changed
   }
 
+  @Override
+  protected void postUpdate(DataProduct original, DataProduct updated) {
+    super.postUpdate(original, updated);
+    Map<String, EntityReference> assetsMap = new HashMap<>();
+    original.getAssets().forEach(asset -> assetsMap.put(asset.getId().toString(), asset));
+    updated.getAssets().forEach(asset -> assetsMap.put(asset.getId().toString(), asset));
+    for (EntityReference assetRef : assetsMap.values()) {
+      EntityInterface asset = Entity.getEntity(assetRef, "*", Include.ALL);
+      searchRepository.updateEntity(asset);
+    }
+  }
+
   public class DataProductUpdater extends EntityUpdater {
     public DataProductUpdater(DataProduct original, DataProduct updated, Operation operation) {
       super(original, updated, operation);
@@ -116,14 +130,10 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       // Remove assets that were deleted
       for (EntityReference asset : deleted) {
         deleteRelationship(original.getId(), DATA_PRODUCT, asset.getId(), asset.getType(), Relationship.HAS);
-        EntityInterface entityInterface = Entity.getEntity(asset, "*", Include.ALL);
-        searchRepository.updateEntity(entityInterface);
       }
       // Add new assets
       for (EntityReference asset : added) {
         addRelationship(original.getId(), asset.getId(), DATA_PRODUCT, asset.getType(), Relationship.HAS, false);
-        EntityInterface entityInterface = Entity.getEntity(asset, "*", Include.ALL);
-        searchRepository.updateEntity(entityInterface);
       }
       updatedToRefs.sort(EntityUtil.compareEntityReference);
       origToRefs.sort(EntityUtil.compareEntityReference);
