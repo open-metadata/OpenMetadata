@@ -2062,26 +2062,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
           .collect(Collectors.toList());
     }
 
-    private void updateReviewers() {
-      if (!supportsReviewers) {
-        return;
-      }
-      List<EntityReference> origUsers = getEntityReferences(original.getReviewers());
-      List<EntityReference> updatedUsers = getEntityReferences(updated.getReviewers());
-      updateFromRelationships(
-          "reviewers", Entity.USER, origUsers, updatedUsers, Relationship.REVIEWS, entityType, original.getId());
-    }
-
-    private static EntityReference getEntityReference(EntityReference reference) {
-      // Don't use the inherited entity reference in update
-      return reference == null || Boolean.TRUE.equals(reference.getInherited()) ? null : reference;
-    }
-
-    private static List<EntityReference> getEntityReferences(List<EntityReference> references) {
-      // Don't use the inherited entity references in update
-      return listOrEmpty(references).stream().anyMatch(r -> Boolean.TRUE.equals(r.getInherited())) ? null : references;
-    }
-
     private void updateStyle() {
       if (!supportsStyle) {
         return;
