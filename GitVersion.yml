@@ -1,0 +1,24 @@
+next-version: 1.3.0
+mode: ContinuousDeployment
+continuous-delivery-fallback-tag: ''
+branches:
+  master:
+    regex: ^dap?[/-]
+    tag: ""
+    increment: Patch
+    is-release-branch: true
+  feature:
+    regex: ^feature?[/-]|^feat?[/-]
+    tag: useBranchName
+    increment: Minor
+    source-branches: ["main", "master"]
+  fix:
+    regex: ^fix[/-]
+    tag: useBranchName
+    increment: Patch
+    source-branches: ["main", "master"]
+  chore:
+    regex: ^chore[/-]
+    tag: useBranchName
+    increment: Patch
+    source-branches: ["main", "master"]

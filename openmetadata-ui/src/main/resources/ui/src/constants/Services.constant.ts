@@ -125,6 +125,7 @@ export const SNOWFLAKE = snowflakes;
 export const ATHENA = athena;
 export const PRESTO = presto;
 export const TRINO = trino;
+export const TRINODAP = trino;
 export const GLUE = glue;
 export const MARIADB = mariadb;
 export const VERTICA = vertica;

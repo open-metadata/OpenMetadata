@@ -1,0 +1,17 @@
+
+stages:
+  - stage: ExtractVersion
+    dependsOn: []
+    jobs:
+      - job: OpenmetadataVersion
+        displayName: Extract Openmetadata Version
+        steps:
+          - script: |
+              export OM_VERSION_MVN=$(python ingestion/setup.py --version | sed 's/\.[^.]*$//' )
+              export OM_VERSION_PY=$(python ingestion/setup.py --version)
+              echo "##vso[task.setvariable variable=OM_VERSION_MVN;isOutput=true]$OM_VERSION_MVN"
+              echo "##vso[task.setvariable variable=OM_VERSION_PY;isOutput=true]$OM_VERSION_PY"
+              echo "OPENMETADATA  PY: $OM_VERSION_PY"
+              echo "OPENMETADATA MVN: $OM_VERSION_MVN"
+            displayName: Extract OM Version
+            name: Version

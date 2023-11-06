@@ -1,0 +1,58 @@
+name: Build and Publish Open Metadata bundle
+
+trigger:
+  branches:
+    include:
+      - 'dap/*'
+      - 'feature/*'
+      - 'feat/*'
+      - 'fix/*'
+      - 'chore/*'
+    exclude:
+      - 'official/*'
+resources:
+  repositories:
+    - repository: templates
+      type: git
+      name: P09304-pipeline-templates
+      ref: refs/heads/main
+
+variables:
+  isMain: $[startsWith(variables['Build.SourceBranch'], 'refs/heads/dap/')]
+  appName: openmetadata
+  artifactFeed: 'IngOne/P09304-incoming-private'
+  outgoingFeedName: P09304-outgoing-public
+  projectName: IngOne
+
+
+pool:
+  vmImage: ubuntu-latest
+
+stages:
+  # Stage name: Version
+  - template: version/version.yaml@templates
+  # Stage name: ExtractOmVersion
+  - template: templates/extract-version.yml
+  # Stage name: BuildMvn
+  - template: templates/build-mvn.yml
+    parameters:
+      omVersion: $(omVersion)
+      artifactFeed: $(artifactFeed)
+      appName: $(appName)
+  # Stage name: BuildPyPi
+  - template: templates/build-pypi.yml
+    parameters:
+      outgoingFeedName: $(outgoingFeedName)
+      projectName: $(projectName)
+  # Stage name: Release
+  - stage: Release
+    dependsOn: [ BuildMvn, BuildPyPi ]
+    displayName: Release
+    condition: eq(variables.isMain, true)
+    jobs:
+    - job: release
+      pool:
+        vmImage: 'ubuntu-latest'
+      steps:
+        - task: git-tag-on-release-task@9
+          displayName: Release

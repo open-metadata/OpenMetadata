@@ -1,0 +1,154 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/trinoDapConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TrinoDapConnection",
+  "description": "Trino Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.TrinoDapConnection",
+  "definitions": {
+    "trinoDapType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["TrinoDap"],
+      "default": "TrinoDap"
+    },
+    "trinoScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": ["trino"],
+      "default": "trino"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/trinoDapType",
+      "default": "TrinoDap"
+    },
+    "scheme": {
+      "title": "Connection Scheme",
+      "description": "SQLAlchemy driver scheme options.",
+      "$ref": "#/definitions/trinoScheme",
+      "default": "trino"
+    },
+    "username": {
+      "title": "Username",
+      "description": "Username to connect to Trino. This user should have privileges to read all the metadata in Trino.",
+      "type": "string"
+    },
+    "authType": {
+      "title": "Auth Configuration Type",
+      "description": "Choose Auth Config Type.",
+      "oneOf": [
+        {
+          "$ref": "./common/basicAuth.json"
+        },
+        {
+          "$ref": "./common/jwtAuth.json"
+        }
+      ]
+    },
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "Host and port of the Trino service.",
+      "type": "string"
+    },
+    "genesisUrl": {
+      "title": "Genesis api Url",
+      "description": "Genesis api Url",
+      "type": "string",
+      "default": "https://dap.ing.net/api/genesis/public/v1"
+    },
+    "genesisDatabaseType": {
+      "title": "Genesis database type",
+      "description": "What kind of metadata should be extracted from DAP Trino",
+      "$ref": "trinodapGenesisDatabasesTypes.json",
+      "default": "DATASOURCES"
+    },
+    "genesisNpaUser": {
+      "title": "Genesis OIDC username",
+      "description": "Genesis OIDC username",
+      "type": "string"
+    },
+    "genesisNpaPassword": {
+      "title": "Genesis OIDC password",
+      "description": "Genesis OIDC password",
+      "type": "string",
+      "format": "password"
+    },
+    "oidcClientId": {
+      "title": "OIDC client ID ",
+      "description": "OIDC client ID",
+      "type": "string"
+    },
+    "oidcClientSecret": {
+      "title": "OIDC client secret",
+      "description": "OIDC client secret",
+      "type": "string",
+      "format": "password"
+    },
+    "oidcTokenEndpoint": {
+      "title": "OIDC token endpoint ",
+      "description": "OIDC token endpoint ",
+      "type": "string",
+      "default": "https://keycloak.dap.ing.net/realms/dap/protocol/openid-connect/token"
+    },
+    "catalog": {
+      "title": "Catalog",
+      "description": "Catalog of the data source.",
+      "type": "string",
+      "default": "hive"
+    },
+    "databaseSchema": {
+      "title": "databaseSchema",
+      "description": "databaseSchema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single databaseSchema. When left blank, OpenMetadata Ingestion attempts to scan all the databaseSchema.",
+      "type": "string"
+    },
+    "proxies": {
+      "title": "Proxies",
+      "description": "Proxies for the connection to Trino data source",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "params": {
+      "title": "URL Parameters",
+      "description": "URL parameters for connection to the Trino data source",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsDBTExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsDBTExtraction"
+    },
+    "supportsProfiler": {
+      "title": "Supports Profiler",
+      "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+    },
+    "supportsDatabase": {
+      "title": "Supports Database",
+      "$ref": "../connectionBasicType.json#/definitions/supportsDatabase"
+    },
+    "supportsQueryComment": {
+      "title": "Supports Query Comment",
+      "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["hostPort", "username","genesisUrl", "genesisNpaUser", "genesisNpaPassword" ]
+}

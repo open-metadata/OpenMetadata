@@ -254,6 +254,10 @@ plugins: Dict[str, Set[str]] = {
     "superset": {},  # uses requests
     "tableau": {VERSIONS["tableau"]},
     "trino": {VERSIONS["trino"]},
+    "trinodap": {
+        VERSIONS["trino"],
+        "requests-oauthlib==1.3.1",
+    },
     "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5"},
     "pii-processor": pii_requirements,
 }

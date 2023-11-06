@@ -1,0 +1,10 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/trinodapGenesisDatabaseTypes.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Genesis Database Type",
+  "javaType": "org.openmetadata.schema.services.connections.database.TrinoDapGenesisDatabaseTypes",
+  "description": "What kind of databases should be extracted from DAP Trino",
+  "type": "string",
+  "enum": ["DATASOURCES", "PROJECTS", "ALL"],
+  "default": "DATASOURCES"
+}
