@@ -23,6 +23,7 @@ import {
   Button,
   Col,
   Dropdown,
+  Modal,
   Row,
   Space,
   Tabs,
@@ -38,6 +39,7 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
+import { ReactComponent as IconRestore } from '../../../assets/svg/ic-restore.svg';
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import PageLayoutV1 from '../../../components/containers/PageLayoutV1';
 import Loader from '../../../components/Loader/Loader';
@@ -53,10 +55,12 @@ import {
   AppType,
   ScheduleTimeline,
 } from '../../../generated/entity/applications/app';
+import { Include } from '../../../generated/type/include';
 import {
   deployApp,
   getApplicationByName,
   patchApplication,
+  restoreApp,
   triggerOnDemandApp,
   uninstallApp,
 } from '../../../rest/applicationAPI';
@@ -84,11 +88,15 @@ const AppDetails = () => {
   const [showDeleteModel, setShowDeleteModel] = useState(false);
   const [isAppDisableAction, setIsAppDisableAction] = useState(false);
   const [jsonSchema, setJsonSchema] = useState<RJSFSchema>();
+  const [showReactiveModal, setShowReactiveModal] = useState(false);
 
   const fetchAppDetails = useCallback(async () => {
     setIsLoading(true);
     try {
-      const data = await getApplicationByName(fqn, ['owner', 'pipelines']);
+      const data = await getApplicationByName(fqn, {
+        fields: 'owner,pipelines',
+        include: Include.All,
+      });
       setAppData(data);
       const schema = await import(
         `../../../utils/ApplicationSchemas/${fqn}.json`
@@ -130,28 +138,57 @@ const AppDetails = () => {
   }, [appData, isAppDisableAction]);
 
   const manageButtonContent: ItemType[] = [
-    {
-      label: (
-        <ManageButtonItemLabel
-          description={t('message.disable-app', {
-            app: getEntityName(appData),
-          })}
-          icon={
-            <StopOutlined
-              style={{ fontSize: '18px', color: DE_ACTIVE_COLOR }}
-            />
-          }
-          id="disable-button"
-          name={t('label.disable')}
-        />
-      ),
-      key: 'disable-button',
-      onClick: (e) => {
-        e.domEvent.stopPropagation();
-        setShowDeleteModel(true);
-        setIsAppDisableAction(true);
-      },
-    },
+    ...(appData?.deleted
+      ? ([
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t('message.restore-action-description', {
+                  entityType: getEntityName(appData),
+                })}
+                icon={
+                  <IconRestore
+                    className="m-t-xss"
+                    name="Restore"
+                    width="18px"
+                  />
+                }
+                id="restore-button"
+                name={t('label.restore')}
+              />
+            ),
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              setShowActions(false);
+              setShowReactiveModal(true);
+            },
+            key: 'restore-button',
+          },
+        ] as ItemType[])
+      : [
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t('message.disable-app', {
+                  app: getEntityName(appData),
+                })}
+                icon={
+                  <StopOutlined
+                    style={{ fontSize: '18px', color: DE_ACTIVE_COLOR }}
+                  />
+                }
+                id="disable-button"
+                name={t('label.disable')}
+              />
+            ),
+            key: 'disable-button',
+            onClick: () => {
+              setShowDeleteModel(true);
+              setShowActions(false);
+              setIsAppDisableAction(true);
+            },
+          },
+        ]),
     {
       label: (
         <ManageButtonItemLabel
@@ -164,13 +201,33 @@ const AppDetails = () => {
         />
       ),
       key: 'uninstall-button',
-      onClick: (e) => {
-        e.domEvent.stopPropagation();
+      onClick: () => {
         setShowDeleteModel(true);
+        setShowActions(false);
         setIsAppDisableAction(false);
       },
     },
   ];
+
+  const handleRestore = useCallback(async () => {
+    if (appData) {
+      try {
+        await restoreApp(appData.id);
+        showSuccessToast(
+          t('message.enable-apps-success', {
+            entity: t('label.application'),
+          }),
+          2000
+        );
+      } catch (err) {
+        showErrorToast(err as AxiosError);
+      } finally {
+        setShowReactiveModal(false);
+        onBrowseAppsClick();
+        // fetchApplicationList();
+      }
+    }
+  }, [appData]);
 
   const onConfigSave = async (data: IChangeEvent) => {
     if (appData) {
@@ -306,7 +363,7 @@ const AppDetails = () => {
         ),
       },
       ...tabConfiguration,
-      ...(appData?.appType === AppType.Internal
+      ...(appData?.appType === AppType.Internal && !appData?.deleted
         ? [
             {
               label: (
@@ -446,6 +503,31 @@ const AppDetails = () => {
         onCancel={() => setShowDeleteModel(false)}
         onConfirm={onConfirmAction}
       />
+
+      <Modal
+        centered
+        cancelButtonProps={{
+          type: 'link',
+        }}
+        className="reactive-modal"
+        closable={false}
+        data-testid="restore-asset-modal"
+        maskClosable={false}
+        okText={t('label.restore')}
+        open={showReactiveModal}
+        title={t('label.restore-entity', {
+          entity: t('label.application'),
+        })}
+        onCancel={() => {
+          setShowReactiveModal(false);
+        }}
+        onOk={handleRestore}>
+        <Typography.Text data-testid="restore-modal-body">
+          {t('message.are-you-sure-want-to-enable', {
+            entity: appData ? getEntityName(appData) : '',
+          })}
+        </Typography.Text>
+      </Modal>
     </PageLayoutV1>
   );
 };
