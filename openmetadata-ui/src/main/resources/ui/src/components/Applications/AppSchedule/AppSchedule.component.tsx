@@ -143,7 +143,9 @@ const AppSchedule = ({
                   <Typography.Text className="right-panel-label">
                     {t('label.schedule-interval')}
                   </Typography.Text>
-                  <Typography.Text className="font-medium">
+                  <Typography.Text
+                    className="font-medium"
+                    data-testid="cron-string">
                     {cronString}
                   </Typography.Text>
                 </Space>
