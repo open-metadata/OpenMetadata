@@ -794,7 +794,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Update the attributes and relationships of an entity
     EntityUpdater entityUpdater = getUpdater(original, updated, Operation.PATCH);
     entityUpdater.update();
-    String change = entityUpdater.fieldsChanged() ? RestUtil.ENTITY_UPDATED : RestUtil.ENTITY_NO_CHANGE;
+    String change = RestUtil.ENTITY_NO_CHANGE;
+    if (entityUpdater.fieldsChanged()) {
+      change = RestUtil.ENTITY_UPDATED;
+      setInheritedFields(original, patchFields); // Restore inherited fields after a change
+    }
     return new PatchResponse<>(Status.OK, withHref(uriInfo, updated), change);
   }
 
@@ -1887,6 +1891,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           && recordChange(FIELD_OWNER, origOwner, updatedOwner, true, entityReferenceMatch)) {
         // Update owner for all PATCH operations. For PUT operations, ownership can't be removed
         EntityRepository.this.updateOwner(original, origOwner, updatedOwner);
+        updated.setOwner(updatedOwner);
       } else {
         updated.setOwner(origOwner);
       }
@@ -1984,6 +1989,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
               original.getFullyQualifiedName());
           addRelationship(updatedDomain.getId(), original.getId(), Entity.DOMAIN, entityType, Relationship.HAS);
         }
+        updated.setDomain(updatedDomain);
       } else {
         updated.setDomain(original.getDomain());
       }
@@ -2020,16 +2026,24 @@ public abstract class EntityRepository<T extends EntityInterface> {
           origExperts,
           updatedExperts,
           false);
+      updated.setExperts(updatedExperts);
     }
 
     private void updateReviewers() {
       if (!supportsReviewers) {
         return;
       }
-      List<EntityReference> origUsers = getEntityReferences(original.getReviewers());
-      List<EntityReference> updatedUsers = getEntityReferences(updated.getReviewers());
+      List<EntityReference> origReviewers = getEntityReferences(original.getReviewers());
+      List<EntityReference> updatedReviewers = getEntityReferences(updated.getReviewers());
       updateFromRelationships(
-          "reviewers", Entity.USER, origUsers, updatedUsers, Relationship.REVIEWS, entityType, original.getId());
+          "reviewers",
+          Entity.USER,
+          origReviewers,
+          updatedReviewers,
+          Relationship.REVIEWS,
+          entityType,
+          original.getId());
+      updated.setReviewers(updatedReviewers);
     }
 
     private static EntityReference getEntityReference(EntityReference reference) {
@@ -2039,7 +2053,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     private static List<EntityReference> getEntityReferences(List<EntityReference> references) {
       // Don't use the inherited entity references in update
-      return listOrEmpty(references).stream().anyMatch(r -> Boolean.TRUE.equals(r.getInherited())) ? null : references;
+      return listOrEmpty(references).stream()
+          .filter(r -> !Boolean.TRUE.equals(r.getInherited()))
+          .collect(Collectors.toList());
     }
 
     private void updateStyle() {
