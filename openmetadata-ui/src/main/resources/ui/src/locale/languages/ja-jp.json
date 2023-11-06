@@ -1394,6 +1394,7 @@
     "no-asset-available": "アセットはありません。",
     "no-closed-task": "終了したタスクはありません",
     "no-config-available": "利用可能な接続の設定はありません。",
+    "no-config-plural": "No Configs.",
     "no-data": "データがありません",
     "no-data-available": "利用できるデータがありません",
     "no-data-available-for-selected-filter": "No data found. Try changing the filters.",

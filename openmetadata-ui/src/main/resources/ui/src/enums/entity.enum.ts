@@ -153,6 +153,7 @@ export enum EntityTabs {
   SEARCH_INDEX_SETTINGS = 'search-index-settings',
   STORED_PROCEDURE = 'stored_procedure',
   CODE = 'code',
+  PROFILER_SETTINGS = 'profiler-settings',
 }
 
 export enum EntityAction {

@@ -1394,6 +1394,7 @@
     "no-asset-available": "No hay activos disponibles.",
     "no-closed-task": "No hay tareas cerradas",
     "no-config-available": "No hay configuraciones de conexión disponibles.",
+    "no-config-plural": "No Configs.",
     "no-data": "No hay datos",
     "no-data-available": "No hay datos disponibles.",
     "no-data-available-for-selected-filter": "No se encontraron datos. Intenta cambiar los filtros.",

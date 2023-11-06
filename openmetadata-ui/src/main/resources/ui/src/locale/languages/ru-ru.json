@@ -1394,6 +1394,7 @@
     "no-asset-available": "Нет доступных объектов данных.",
     "no-closed-task": "Нет закрытых задач",
     "no-config-available": "Нет доступных конфигураций подключения.",
+    "no-config-plural": "No Configs.",
     "no-data": "Нет данных",
     "no-data-available": "Данные недоступны.",
     "no-data-available-for-selected-filter": "Данные не найдены. Попробуйте поменять фильтры.",

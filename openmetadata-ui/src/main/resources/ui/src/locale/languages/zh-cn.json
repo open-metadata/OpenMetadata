@@ -1394,6 +1394,7 @@
     "no-asset-available": "没有可用的资产",
     "no-closed-task": "没有关闭的任务",
     "no-config-available": "没有可用的连接配置",
+    "no-config-plural": "No Configs.",
     "no-data": "没有数据",
     "no-data-available": "没有可用的数据",
     "no-data-available-for-selected-filter": "未找到数据，请尝试更改筛选条件",

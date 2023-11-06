@@ -45,6 +45,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../components/PermissionProvider/PermissionProvider.interface';
+import ProfilerSettings from '../../components/ProfilerSettings/ProfilerSettings';
 import { withActivityFeed } from '../../components/router/withActivityFeed';
 import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
 import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
@@ -703,6 +704,23 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             databaseSchemaPermission.EditCustomFields
           }
           isVersionView={false}
+        />
+      ),
+    },
+    {
+      label: (
+        <TabsLabel
+          id={EntityTabs.PROFILER_SETTINGS}
+          name={t('label.profiler-setting-plural')}
+        />
+      ),
+      key: EntityTabs.PROFILER_SETTINGS,
+      children: isSchemaDetailsLoading ? (
+        <Loader />
+      ) : (
+        <ProfilerSettings
+          entityId={databaseSchemaId}
+          entityType={EntityType.DATABASE_SCHEMA}
         />
       ),
     },

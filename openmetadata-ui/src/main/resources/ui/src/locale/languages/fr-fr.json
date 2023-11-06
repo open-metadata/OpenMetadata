@@ -1394,6 +1394,7 @@
     "no-asset-available": "Aucune ressource disponible",
     "no-closed-task": "Aucune tâche à effectuer",
     "no-config-available": "Aucun paramètre de connexion disponible.",
+    "no-config-plural": "No Configs.",
     "no-data": "Aucune donnée",
     "no-data-available": "Aucune donnée disponible",
     "no-data-available-for-selected-filter": "Aucune donnée trouvée. Essayez de modifier les filtres.",
