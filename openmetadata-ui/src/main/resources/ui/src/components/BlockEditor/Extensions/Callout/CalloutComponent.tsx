@@ -72,7 +72,7 @@ const CalloutComponent: FC<NodeViewProps> = ({
             {CALLOUT_CONTENT[calloutType as keyof typeof CALLOUT_CONTENT]}
           </Button>
         </Popover>
-        <NodeViewContent />
+        <NodeViewContent className="om-callout-node-content" />
       </div>
     </NodeViewWrapper>
   );
