@@ -62,7 +62,6 @@ This policy groups the following permissions:
 
 - `athena` – Allows the principal to run queries on Athena resources.
 - `glue` – Allows principals access to AWS Glue databases, tables, and partitions. This is required so that the principal can use the AWS Glue Data Catalog with Athena.
-- `s3` – Allows the principal to write and read query results from Amazon S3.
 - `lakeformation` – Allows principals to request temporary credentials to access data in a data lake location that is registered with Lake Formation.
 
 And is defined as:
@@ -74,74 +73,15 @@ And is defined as:
         {
             "Effect": "Allow",
             "Action": [
-                "athena:BatchGetQueryExecution",
-                "athena:GetQueryExecution",
-                "athena:GetQueryResults",
-                "athena:GetQueryResultsStream",
-                "athena:ListQueryExecutions",
-                "athena:StartQueryExecution",
-                "athena:StopQueryExecution",
-                "athena:ListWorkGroups",
-                "athena:ListEngineVersions",
-                "athena:GetWorkGroup",
-                "athena:GetDataCatalog",
-                "athena:GetDatabase",
                 "athena:GetTableMetadata",
-                "athena:ListDataCatalogs",
                 "athena:ListDatabases",
-                "athena:ListTableMetadata"
-            ],
-            "Resource": [
-                "*"
-            ]
-        },
-        {
-            "Effect": "Allow",
-            "Action": [
-                "glue:CreateDatabase",
-                "glue:DeleteDatabase",
-                "glue:GetDatabase",
+                "athena:ListTableMetadata",
+                "athena:GetQueryExecution",
+                "athena:StartQueryExecution",
+                "athena:GetQueryResults",
                 "glue:GetDatabases",
-                "glue:UpdateDatabase",
-                "glue:CreateTable",
-                "glue:DeleteTable",
-                "glue:BatchDeleteTable",
-                "glue:UpdateTable",
-                "glue:GetTable",
                 "glue:GetTables",
-                "glue:BatchCreatePartition",
-                "glue:CreatePartition",
-                "glue:DeletePartition",
-                "glue:BatchDeletePartition",
-                "glue:UpdatePartition",
-                "glue:GetPartition",
-                "glue:GetPartitions",
-                "glue:BatchGetPartition"
-            ],
-            "Resource": [
-                "*"
-            ]
-        },
-        {
-            "Effect": "Allow",
-            "Action": [
-                "s3:GetBucketLocation",
-                "s3:GetObject",
-                "s3:ListBucket",
-                "s3:ListBucketMultipartUploads",
-                "s3:ListMultipartUploadParts",
-                "s3:AbortMultipartUpload",
-                "s3:CreateBucket",
-                "s3:PutObject",
-                "s3:PutBucketPublicAccessBlock"
-            ],
-            "Resource": [
-                "arn:aws:s3:::aws-athena-query-results-*"
-            ]
-        },
-        {
-            "Effect": "Allow",
-            "Action": [
+                "glue:GetTable",
                 "lakeformation:GetDataAccess"
             ],
             "Resource": [
@@ -151,6 +91,14 @@ And is defined as:
     ]
 }
 ```
+
+
+{% note %}
+
+If you have external services other than glue and facing permission issues, add the permissions to the list above.
+
+{% /note %}
+
 
 You can find further information on the Athena connector in the [docs](https://docs.open-metadata.org/connectors/database/athena).
 
