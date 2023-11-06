@@ -93,6 +93,10 @@ class TestEntityLink(TestCase):
                 '<#E::table::bigquery_gcp."shop-ify"."raw-product-catalog6">',
                 ["table", 'bigquery_gcp."shop-ify"."raw-product-catalog6"'],
             ),
+            EntityLinkTest(
+                "<#E::table::随机的>",
+                ["table", "随机的"],
+            ),
         ]
         for x in xs:
             x.validate(entity_link.split(x.entitylink), x.split_list)
