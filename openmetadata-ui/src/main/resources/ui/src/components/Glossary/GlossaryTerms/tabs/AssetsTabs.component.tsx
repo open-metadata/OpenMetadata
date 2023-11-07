@@ -302,15 +302,6 @@ const AssetsTabs = forwardRef(
       }));
     }, [filteredAssetMenus, getOptions]);
 
-    // const searchIndexes = useMemo(() => {
-    //   const indexesToFetch = [...ASSETS_INDEXES];
-    //   if (type !== AssetsOfEntity.GLOSSARY) {
-    //     indexesToFetch.push(SearchIndex.GLOSSARY);
-    //   }
-
-    //   return indexesToFetch;
-    // }, [type]);
-
     const fetchCountsByEntity = async () => {
       try {
         setIsCountLoading(true);
