@@ -1149,7 +1149,7 @@
     "action-has-been-done-but-deploy-successfully": "{{action}} avec succès et déployé avec succès",
     "action-has-been-done-but-failed-to-deploy": "{{action}} avec succès, mais n'a pu être déployé",
     "active-users": "Montre le nombre d'utilisateurs actifs.",
-    "add-data-asset-domain": "No data is available in the {{domain}} . Start by adding a service or data asset to the {{domain}}.",
+    "add-data-asset-domain": "Start by adding a service or data asset to the {{domain}}.",
     "add-kpi-message": "Identifiez les Key Performance Indicators (KPI) qui représentent le mieux la santé de votre plateforme. Évaluez vos ressources de données selon la Description, la Propriété et le Rang. Définissez les indicateurs en pourcentage ou en absolu pour suivre vos progrès. Enfin, ajoutez une date de début et de fin pour l'accomplissement de vos objectifs",
     "add-new-service-description": "Choisissez le service que vous souhaitez intégrer à OpenMetadata. Pour ajouter un nouveau service, commencez par sélectionner une catégorie de service (base de données, messagerie, tableau de bord ou pipeline). Dans la liste des services disponibles, sélectionnez celui que vous souhaitez intégrer.",
     "add-policy-message": "Les stratégies sont attribuées aux équipes. Dans OpenMetadata, une police est une collection de règles qui définissent les accès selon certaines conditions. Nous supportons les conditions SpEL (Spring Expression Language). Toutes les opérations supportées par une ressource sont publiées. Utilisez ces opérations pour définir les règles conditionnelles pour les polices. Créez des polices bien définies fondées sur des règles conditionnelles pour construire des contrôles d'accès riches.",

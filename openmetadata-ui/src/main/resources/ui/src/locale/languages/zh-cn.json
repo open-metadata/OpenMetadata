@@ -1149,7 +1149,7 @@
     "action-has-been-done-but-deploy-successfully": "{{action}}已完成并成功部署",
     "action-has-been-done-but-failed-to-deploy": "{{action}}已完成，但未能部署",
     "active-users": "显示活跃用户数量",
-    "add-data-asset-domain": "No data is available in the {{domain}} . Start by adding a service or data asset to the {{domain}}.",
+    "add-data-asset-domain": "Start by adding a service or data asset to the {{domain}}.",
     "add-kpi-message": "确定最能反映数据资产健康状况的关键绩效指标 (KPI)。基于描述信息、所有权和数据分级来审查数据资产。定义您的目标指标（绝对值或百分比），以跟踪您的进展。最后，设置开始和结束日期以实现您的数据目标。",
     "add-new-service-description": "从 OpenMetadata 集成的服务范围中选择要添加新服务。请首先选择服务类别（数据库、消息队列、仪表板或工作流），再从可用服务列表中选择要集成的服务。",
     "add-policy-message": "策略可以被分配给团队。在 OpenMetadata 中，策略是一组规则的集合，基于某些条件定义访问权限。我们支持基于 SpEL（Spring Expression Language）的丰富条件规则，已发布支持实体的所有操作。使用这些细粒度操作权限为每个策略定义条件规则。基于条件规则创建明确定义的策略，以构建丰富的访问控制角色。",

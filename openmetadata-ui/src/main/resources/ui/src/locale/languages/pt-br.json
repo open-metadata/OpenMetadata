@@ -1149,7 +1149,7 @@
     "action-has-been-done-but-deploy-successfully": "foi {{action}} e implantado com sucesso",
     "action-has-been-done-but-failed-to-deploy": "foi {{action}}, mas falhou ao implantar",
     "active-users": "Exibir o número de usuários ativos.",
-    "add-data-asset-domain": "No data is available in the {{domain}} . Start by adding a service or data asset to the {{domain}}.",
+    "add-data-asset-domain": "Start by adding a service or data asset to the {{domain}}.",
     "add-kpi-message": "Identifique os Indicadores-Chave de Desempenho (KPI) que melhor refletem a saúde dos seus ativos de dados. Revise seus ativos de dados com base na Descrição, Propriedade e Nível. Defina suas métricas de destino em valores absolutos ou percentuais para acompanhar seu progresso. Finalmente, defina uma data de início e de término para alcançar seus objetivos de dados.",
     "add-new-service-description": "Escolha entre a variedade de serviços que o OpenMetadata integra. Para adicionar um novo serviço, comece selecionando uma categoria de serviço (Banco de dados, Mensagens, Painel ou Canalização). Na lista de serviços disponíveis, selecione o que você deseja integrar.",
     "add-policy-message": "As políticas são atribuídas às equipes. No OpenMetadata, uma política é uma coleção de regras que definem o acesso com base em determinadas condições. Suportamos condições ricas baseadas em SpEL (Spring Expression Language). Todas as operações suportadas por uma entidade são publicadas. Use essas operações detalhadas para definir as regras condicionais para cada política. Crie políticas bem definidas com base em regras condicionais para construir funções de controle de acesso.",

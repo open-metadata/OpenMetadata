@@ -1149,7 +1149,7 @@
     "action-has-been-done-but-deploy-successfully": "has been {{action}} and deployed successfully",
     "action-has-been-done-but-failed-to-deploy": "has been {{action}}, but failed to deploy",
     "active-users": "アクティブなユーザ数を表示",
-    "add-data-asset-domain": "No data is available in the {{domain}} . Start by adding a service or data asset to the {{domain}}.",
+    "add-data-asset-domain": "Start by adding a service or data asset to the {{domain}}.",
     "add-kpi-message": "Identify the Key Performance Indicators (KPI) that best reflect the health of your data assets. Review your data assets based on Description, Ownership, and Tier. Define your target metrics in absolute or percentage to track your progress. Finally, set a start and end date to achieve your data goals.",
     "add-new-service-description": "Choose from the range of services that OpenMetadata integrates with. To add a new service, start by selecting a Service Category (Database, Messaging, Dashboard, or Pipeline). From the list of available services, select the one you'd want to integrate with.",
     "add-policy-message": "Policies are assigned to teams. In OpenMetadata, a policy is a collection of rules, which define access based on certain conditions. We support rich SpEL (Spring Expression Language) based conditions. All the operations supported by an entity are published. Use these fine grained operations to define the conditional rules for each policy. Create well-defined policies based on conditional rules to build rich access control roles.",
