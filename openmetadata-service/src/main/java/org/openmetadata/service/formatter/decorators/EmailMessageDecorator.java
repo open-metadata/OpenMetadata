@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.formatter.decorators;
 
+import static java.lang.String.format;
 import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 import static org.openmetadata.service.formatter.util.FormatterUtil.getFormattedMessages;
 
@@ -20,6 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.service.ChangeEventConfig;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.subscription.email.EmailMessage;
@@ -74,13 +76,19 @@ public class EmailMessageDecorator implements MessageDecorator<EmailMessage> {
         emailMessage.setEntityUrl(this.getEntityUrl(event.getEntityType(), event.getEntityFullyQualifiedName()));
       }
     }
-    Map<MessageParser.EntityLink, String> messages =
-        getFormattedMessages(this, event.getChangeDescription(), getEntity(event));
     List<String> changeMessage = new ArrayList<>();
-    for (Map.Entry<MessageParser.EntityLink, String> entry : messages.entrySet()) {
-      changeMessage.add(entry.getValue());
+    if (event.getEventType() == EventType.ENTITY_CREATED) {
+      // TODO: get meaningful message
+      changeMessage.add(format("Add new %s", event.getEntityType()));
+    } else {
+      Map<MessageParser.EntityLink, String> messages;
+      messages = getFormattedMessages(this, event.getChangeDescription(), getEntity(event));
+      for (Map.Entry<MessageParser.EntityLink, String> entry : messages.entrySet()) {
+        changeMessage.add(entry.getValue());
+      }
     }
     emailMessage.setChangeMessage(changeMessage);
+    // Map<MessageParser.EntityLink, String>
     return emailMessage;
   }
 }

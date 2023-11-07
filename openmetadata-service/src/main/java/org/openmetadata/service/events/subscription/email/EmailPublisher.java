@@ -17,6 +17,7 @@ import static org.openmetadata.schema.api.events.CreateEventSubscription.Subscri
 import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 import static org.openmetadata.service.util.SubscriptionUtil.buildReceiversListFromActions;
 
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
@@ -67,12 +68,13 @@ public class EmailPublisher extends SubscriptionPublisher {
         Set<String> receivers = buildReceiversList(event);
         EmailMessage emailMessage = emailDecorator.buildMessage(event);
         for (String email : receivers) {
-          EmailUtil.sendChangeEventMail(email, emailMessage);
+          EmailUtil.sendChangeEventMail(email, emailMessage, event);
         }
         setSuccessStatus(System.currentTimeMillis());
       } catch (Exception e) {
         setErrorStatus(System.currentTimeMillis(), 500, e.getMessage());
-        String message = CatalogExceptionMessage.eventPublisherFailedToPublish(EMAIL, event, e.getMessage());
+        String message =
+            CatalogExceptionMessage.eventPublisherFailedToPublish(EMAIL, event, Arrays.toString(e.getStackTrace()));
         LOG.error(message);
         throw new EventPublisherException(message);
       }

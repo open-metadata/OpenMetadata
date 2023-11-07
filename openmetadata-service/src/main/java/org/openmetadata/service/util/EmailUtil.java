@@ -35,6 +35,7 @@ import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.events.scheduled.template.DataInsightDescriptionAndOwnerTemplate;
 import org.openmetadata.service.events.scheduled.template.DataInsightTotalAssetTemplate;
 import org.openmetadata.service.events.subscription.email.EmailMessage;
@@ -70,7 +71,7 @@ public class EmailUtil {
   public static final String ACTION_STATUS_KEY = "actionStatus";
   public static final String ACCOUNT_STATUS_TEMPLATE_FILE = "account-activity-change.ftl";
   private static final String INVITE_SUBJECT = "Welcome to %s";
-  private static final String CHANGE_EVENT_UPDATE = "Change Event Update from %s";
+  private static final String CHANGE_EVENT_UPDATE = "%s";
 
   private static final String TASK_SUBJECT = "%s : Task Assignment Notification";
   public static final String INVITE_RANDOM_PWD = "invite-randompwd.ftl";
@@ -282,13 +283,15 @@ public class EmailUtil {
     }
   }
 
-  public static void sendChangeEventMail(String receiverMail, EmailMessage emailMessaged) {
+  public static void sendChangeEventMail(String receiverMail, EmailMessage emailMessaged, ChangeEvent event) {
     if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
       Map<String, Object> templatePopulator = new HashMap<>();
       templatePopulator.put(EmailUtil.USERNAME, receiverMail.split("@")[0]);
       templatePopulator.put("updatedBy", emailMessaged.getUpdatedBy());
       templatePopulator.put("entityUrl", emailMessaged.getEntityUrl());
       StringBuilder buff = new StringBuilder();
+      String entityName =
+          String.format("%s: %s %s", event.getEventType(), event.getEntityType(), event.getEntityFullyQualifiedName());
       for (String cmessage : emailMessaged.getChangeMessage()) {
         buff.append(cmessage);
         buff.append("\n");
@@ -296,7 +299,7 @@ public class EmailUtil {
       templatePopulator.put("changeMessage", buff.toString());
       try {
         EmailUtil.sendMail(
-            EmailUtil.getChangeEventTemplate(),
+            EmailUtil.getChangeEventTemplate(entityName),
             templatePopulator,
             receiverMail,
             EmailUtil.EMAIL_TEMPLATE_BASEPATH,
@@ -350,8 +353,8 @@ public class EmailUtil {
     return String.format(INVITE_SUBJECT, getSmtpSettings().getEmailingEntity());
   }
 
-  public static String getChangeEventTemplate() {
-    return String.format(CHANGE_EVENT_UPDATE, getSmtpSettings().getEmailingEntity());
+  public static String getChangeEventTemplate(String entityName) {
+    return String.format(CHANGE_EVENT_UPDATE, entityName);
   }
 
   public static String getTaskAssignmentSubject() {
