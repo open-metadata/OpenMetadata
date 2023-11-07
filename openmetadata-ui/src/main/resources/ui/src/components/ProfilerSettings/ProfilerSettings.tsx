@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import React, { FC, useEffect, useState } from 'react';
+import React, { FC, useEffect, useMemo, useState } from 'react';
 
 import Form, { FormProps, IChangeEvent } from '@rjsf/core';
 import validator from '@rjsf/validator-ajv8';
@@ -20,7 +20,10 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../enums/entity.enum';
-import { DatabaseProfilerConfig as ProfilerConfig } from '../../generated/entity/data/database';
+import {
+  DatabaseProfilerConfig as ProfilerConfig,
+  ProfileSampleType,
+} from '../../generated/entity/data/database';
 import profilerSettingsSchema from '../../jsons/profilerSettings.json';
 import {
   getDatabaseProfilerConfig,
@@ -34,6 +37,7 @@ import BooleanFieldTemplate from '../JSONSchemaTemplate/BooleanFieldTemplate';
 import DescriptionFieldTemplate from '../JSONSchemaTemplate/DescriptionFieldTemplate';
 import { FieldErrorTemplate } from '../JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate';
 import Loader from '../Loader/Loader';
+import { CustomRangeWidget } from './CustomRangeWidget';
 import './profiler-settings.less';
 import { ProfilerObjectFieldTemplate } from './ProfilerObjectFieldTemplate';
 
@@ -95,9 +99,24 @@ const ProfilerSettings: FC<ProfilerSettingsProps> = ({
     }
   };
 
-  const uiSchema = {
-    'ui:order': ['profileSampleType', '*'],
+  const handleOnChange = (e: IChangeEvent<ProfilerConfig>) => {
+    if (e.formData) {
+      setProfilerConfig(e.formData);
+    }
   };
+
+  const uiSchema = useMemo(
+    () => ({
+      'ui:order': ['profileSampleType', '*'],
+      profileSample: {
+        'ui:widget':
+          profilerConfig?.profileSampleType === ProfileSampleType.Percentage
+            ? 'range'
+            : 'updown',
+      },
+    }),
+    [profilerConfig]
+  );
 
   useEffect(() => {
     fetchProfilerConfig();
@@ -128,6 +147,8 @@ const ProfilerSettings: FC<ProfilerSettingsProps> = ({
         transformErrors={transformErrors}
         uiSchema={uiSchema}
         validator={validator}
+        widgets={{ RangeWidget: CustomRangeWidget }}
+        onChange={handleOnChange}
         onSubmit={handleUpdate}>
         <div className="d-flex w-full justify-end">
           <Button
