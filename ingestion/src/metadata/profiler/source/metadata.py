@@ -69,7 +69,6 @@ class OpenMetadataSource(Source):
         config: OpenMetadataWorkflowConfig,
         metadata: OpenMetadata,
     ):
-
         super().__init__()
 
         self.config = config
@@ -111,7 +110,6 @@ class OpenMetadataSource(Source):
         self.metadata.health_check()
 
     def _iter(self, *_, **__) -> Iterable[Either[ProfilerSourceAndEntity]]:
-
         for database in self.get_database_entities():
             try:
                 profiler_source = profiler_source_factory.create(
@@ -121,12 +119,13 @@ class OpenMetadataSource(Source):
                     self.metadata,
                 )
                 for entity in self.get_table_entities(database=database):
-                    yield Either(
-                        right=ProfilerSourceAndEntity(
-                            profiler_source=profiler_source,
-                            entity=entity,
+                    if entity.tableType in (TableType.Regular, TableType.Partitioned):
+                        yield Either(
+                            right=ProfilerSourceAndEntity(
+                                profiler_source=profiler_source,
+                                entity=entity,
+                            )
                         )
-                    )
             except Exception as exc:
                 yield Either(
                     left=StackTraceError(

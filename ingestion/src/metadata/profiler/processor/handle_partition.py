@@ -24,6 +24,7 @@ from metadata.generated.schema.entity.data.table import (
 )
 from metadata.profiler.orm.functions.modulo import ModuloFn
 from metadata.profiler.orm.functions.random_num import RandomNumFn
+from metadata.profiler.orm.registry import Dialects
 from metadata.utils.logger import profiler_logger
 from metadata.utils.sqa_utils import (
     build_query_filter,
@@ -111,9 +112,17 @@ class partition_filter_handler:
                     _self.table.__table__.c,
                 )
                 if self.build_sample:
+                    table_sample = (
+                        _self.client.query(_self.table)
+                        .suffix_with(
+                            "TABLESAMPLE SYSTEM (1 PERCENT)",
+                            dialect=Dialects.BigQuery,
+                        )
+                        .subquery()
+                    )
                     return (
                         _self.client.query(
-                            _self.table,
+                            table_sample,
                             (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL),
                         )
                         .filter(partition_filter)
