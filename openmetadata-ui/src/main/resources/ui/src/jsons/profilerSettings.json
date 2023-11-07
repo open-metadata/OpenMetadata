@@ -1,7 +1,7 @@
 {
   "type": "object",
-  "javaType": "org.openmetadata.schema.type.DatabaseProfilerConfig",
-  "description": "This schema defines the type for Database profile config.",
+  "javaType": "org.openmetadata.schema.type.DatabaseSchemaProfilerConfig",
+  "description": "This schema defines the type for Schema profile config.",
   "properties": {
     "profileSample": {
       "description": "Percentage of data or no. of rows we want to execute the profiler and tests on",
@@ -23,9 +23,14 @@
       "title": "Sample Data Rows Count"
     },
     "sampleDataStorageConfig": {
+      "title": "Storage Config for Sample Data",
+      "description": "Storage config to store sample data",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
       "oneOf": [
         {
           "title": "Storage Config for Sample Data",
+          "$schema": "http://json-schema.org/draft-07/schema#",
           "description": "Storage config to store sample data",
           "type": "object",
           "properties": {

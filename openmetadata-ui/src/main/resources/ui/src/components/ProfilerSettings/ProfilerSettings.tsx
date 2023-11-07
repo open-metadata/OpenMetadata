@@ -41,7 +41,7 @@ import { CustomRangeWidget } from './CustomRangeWidget';
 import './profiler-settings.less';
 import { ProfilerObjectFieldTemplate } from './ProfilerObjectFieldTemplate';
 
-interface ProfilerSettingsProps {
+export interface ProfilerSettingsProps {
   entityId: string;
   entityType: EntityType.DATABASE | EntityType.DATABASE_SCHEMA;
 }
@@ -136,6 +136,7 @@ const ProfilerSettings: FC<ProfilerSettingsProps> = ({
           BooleanField: BooleanFieldTemplate,
         }}
         formData={profilerConfig ?? {}}
+        id="profiler-setting-form"
         idSeparator="/"
         schema={profilerSettingsSchema as FormProps['schema']}
         showErrorList={false}
@@ -152,7 +153,7 @@ const ProfilerSettings: FC<ProfilerSettingsProps> = ({
         onSubmit={handleUpdate}>
         <div className="d-flex w-full justify-end">
           <Button
-            data-testid="submit-btn"
+            data-testid="update-btn"
             htmlType="submit"
             loading={isUpdating}
             type="primary">
