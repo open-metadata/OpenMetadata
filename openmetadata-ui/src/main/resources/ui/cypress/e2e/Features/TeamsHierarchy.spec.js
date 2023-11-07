@@ -55,7 +55,7 @@ describe('Add nested teams and test TeamsSelectable', () => {
   it('Add teams', () => {
     verifyResponseStatusCode('@getPermissions', 200);
     teamNames.forEach((teamName, index) => {
-      addTeam(getTeam(teamName), index);
+      addTeam(getTeam(teamName), index, true);
       verifyResponseStatusCode('@getOrganization', 200);
 
       // asserting the added values
