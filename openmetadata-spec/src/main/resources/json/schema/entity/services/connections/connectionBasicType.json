@@ -65,10 +65,9 @@
       "type": "boolean",
       "default": true
     },
-    "sampleDataStorageConfig": {
+    "dataStorageConfig": {
       "description": "Storage config to store sample data",
       "type": "object",
-      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
       "properties": {
         "bucketName": {
           "title": "Bucket Name",
@@ -100,7 +99,22 @@
             }
           ]
         }
-      },
+      }
+    },
+    "sampleDataStorageConfig": {
+      "description": "Storage config to store sample data",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
+      "oneOf": [
+        {
+          "title": "Sample Data Storage Config",
+          "$ref": "#/definitions/dataStorageConfig"
+        },
+        {
+          "title": "No Sample Data Storage Config",
+          "type": "object"
+        }
+      ],
       "additionalProperties": false
     }
   }
