@@ -10,7 +10,7 @@
 #  limitations under the License.
 
 # Build stage
-FROM alpine:3.16 AS build
+FROM alpine:3 AS build
 
 COPY openmetadata-dist/target/openmetadata-*.tar.gz /
 
