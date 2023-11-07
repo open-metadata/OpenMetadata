@@ -10,7 +10,7 @@
 #  limitations under the License.
 """MSSQL source module"""
 import traceback
-from typing import Iterable
+from typing import Iterable, Optional
 
 from sqlalchemy.dialects.mssql.base import MSDialect, ischema_names
 
@@ -70,6 +70,19 @@ class MssqlSource(CommonDbSourceService):
             )
         return cls(config, metadata)
 
+    def get_configured_database(self) -> Optional[str]:
+        if not self.service_connection.ingestAllDatabases:
+            return self.service_connection.database
+        return None
+
+    def get_database_names_raw(self) -> Iterable[str]:
+        results = self.connection.execute(
+            "SELECT name FROM master.sys.databases order by name"
+        )
+        for res in results:
+            row = list(res)
+            yield row[0]
+
     def get_database_names(self) -> Iterable[str]:
 
         if not self.config.serviceConnection.__root__.config.ingestAllDatabases:
@@ -77,12 +90,7 @@ class MssqlSource(CommonDbSourceService):
             self.set_inspector(database_name=configured_db)
             yield configured_db
         else:
-            results = self.connection.execute(
-                "SELECT name FROM master.sys.databases order by name"
-            )
-            for res in results:
-                row = list(res)
-                new_database = row[0]
+            for new_database in self.get_database_names_raw():
                 database_fqn = fqn.build(
                     self.metadata,
                     entity_type=Database,

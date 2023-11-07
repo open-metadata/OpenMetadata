@@ -293,6 +293,15 @@ class VerticaSource(CommonDbSourceService):
             self.engine, VERTICA_SCHEMA_COMMENTS
         )
 
+    def get_configured_database(self) -> Optional[str]:
+        return self.service_connection.database
+
+    def get_database_names_raw(self) -> Iterable[str]:
+        results = self.connection.execute(VERTICA_LIST_DATABASES)
+        for res in results:
+            row = list(res)
+            yield row[0]
+
     def get_database_names(self) -> Iterable[str]:
         configured_db = self.config.serviceConnection.__root__.config.database
         if configured_db:
@@ -300,10 +309,7 @@ class VerticaSource(CommonDbSourceService):
             self.set_schema_description_map()
             yield configured_db
         else:
-            results = self.connection.execute(VERTICA_LIST_DATABASES)
-            for res in results:
-                row = list(res)
-                new_database = row[0]
+            for new_database in self.get_database_names_raw():
                 database_fqn = fqn.build(
                     self.metadata,
                     entity_type=Database,

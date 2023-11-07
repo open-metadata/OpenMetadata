@@ -12,6 +12,7 @@
 Usage Workflow Definition
 """
 
+from metadata.config.common import WorkflowExecutionError
 from metadata.ingestion.api.steps import BulkSink, Processor, Source, Stage
 from metadata.utils.importer import (
     import_bulk_sink_type,
@@ -44,6 +45,10 @@ class UsageWorkflow(BaseWorkflow):
     def _get_source(self) -> Source:
         # Source that we are ingesting, e.g., mysql, looker or kafka
         source_type = self.config.source.type.lower()
+        if not self.config.source.serviceName:
+            raise WorkflowExecutionError(
+                "ServiceName is required field for executing the Metadata Workflow"
+            )
 
         source_class = (
             import_from_module(

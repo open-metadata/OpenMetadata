@@ -421,6 +421,12 @@ class BigquerySource(StoredProcedureMixin, CommonDbSourceService):
         self.engine = inspector_details.engine
         self.inspector = inspector_details.inspector
 
+    def get_configured_database(self) -> Optional[str]:
+        return None
+
+    def get_database_names_raw(self) -> Iterable[str]:
+        yield from self.project_ids
+
     def get_database_names(self) -> Iterable[str]:
         for project_id in self.project_ids:
             database_fqn = fqn.build(

@@ -153,16 +153,24 @@ class RedshiftSource(StoredProcedureMixin, CommonDbSourceService):
             for name, relkind in result
         ]
 
+    def get_configured_database(self) -> Optional[str]:
+        if not self.service_connection.ingestAllDatabases:
+            return self.service_connection.database
+        return None
+
+    def get_database_names_raw(self) -> Iterable[str]:
+        results = self.connection.execute(REDSHIFT_GET_DATABASE_NAMES)
+        for res in results:
+            row = list(res)
+            yield row[0]
+
     def get_database_names(self) -> Iterable[str]:
         if not self.config.serviceConnection.__root__.config.ingestAllDatabases:
             self.inspector = inspect(self.engine)
             self.get_partition_details()
             yield self.config.serviceConnection.__root__.config.database
         else:
-            results = self.connection.execute(REDSHIFT_GET_DATABASE_NAMES)
-            for res in results:
-                row = list(res)
-                new_database = row[0]
+            for new_database in self.get_database_names_raw():
                 database_fqn = fqn.build(
                     self.metadata,
                     entity_type=Database,

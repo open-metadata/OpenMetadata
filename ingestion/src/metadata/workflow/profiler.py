@@ -19,6 +19,7 @@ from metadata.ingestion.source.connections import get_connection, get_test_conne
 from metadata.pii.processor import PIIProcessor
 from metadata.profiler.processor.processor import ProfilerProcessor
 from metadata.profiler.source.metadata import OpenMetadataSource
+from metadata.profiler.source.metadata_ext import OpenMetadataSourceExt
 from metadata.utils.importer import import_sink_class
 from metadata.utils.logger import profiler_logger
 from metadata.workflow.base import BaseWorkflow
@@ -40,8 +41,14 @@ class ProfilerWorkflow(BaseWorkflow):
         # Validate that we can properly reach the source database
         self.test_connection()
 
+    def _get_source_class(self):
+        if self.config.source.serviceName:
+            return OpenMetadataSource
+        return OpenMetadataSourceExt
+
     def set_steps(self):
-        self.source = OpenMetadataSource.create(self.config.dict(), self.metadata)
+        source_class = self._get_source_class()
+        self.source = source_class.create(self.config.dict(), self.metadata)
 
         profiler_processor = self._get_profiler_processor()
         pii_processor = self._get_pii_processor()
