@@ -15,7 +15,7 @@ import React, { FC, useEffect, useMemo, useState } from 'react';
 
 import Form, { FormProps, IChangeEvent } from '@rjsf/core';
 import validator from '@rjsf/validator-ajv8';
-import { Button } from 'antd';
+import { Modal } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
@@ -44,11 +44,15 @@ import { ProfilerObjectFieldTemplate } from './ProfilerObjectFieldTemplate';
 export interface ProfilerSettingsProps {
   entityId: string;
   entityType: EntityType.DATABASE | EntityType.DATABASE_SCHEMA;
+  visible: boolean;
+  onVisibilityChange: (value: boolean) => void;
 }
 
 const ProfilerSettings: FC<ProfilerSettingsProps> = ({
   entityId,
   entityType,
+  visible,
+  onVisibilityChange,
 }) => {
   const { t } = useTranslation();
   const [profilerConfig, setProfilerConfig] = useState<ProfilerConfig>();
@@ -96,6 +100,7 @@ const ProfilerSettings: FC<ProfilerSettingsProps> = ({
       showErrorToast(error as AxiosError);
     } finally {
       setIsUpdating(false);
+      onVisibilityChange(false);
     }
   };
 
@@ -127,11 +132,33 @@ const ProfilerSettings: FC<ProfilerSettingsProps> = ({
   }
 
   return (
-    <div className="max-width-md w-9/10 profiler-settings-form-container">
+    <Modal
+      centered
+      destroyOnClose
+      bodyStyle={{
+        maxHeight: 600,
+        overflowY: 'scroll',
+      }}
+      cancelButtonProps={{
+        type: 'link',
+      }}
+      closable={false}
+      confirmLoading={isUpdating}
+      data-testid="profiler-settings-modal"
+      maskClosable={false}
+      okButtonProps={{
+        form: 'profiler-setting-form',
+        htmlType: 'submit',
+      }}
+      okText={t('label.save')}
+      open={visible}
+      title={t('label.profiler-setting-plural')}
+      width={630}
+      onCancel={() => onVisibilityChange(false)}>
       <Form
         focusOnFirstError
         noHtml5Validate
-        className={classNames('rjsf no-header')}
+        className={classNames('rjsf no-header profiler-settings-form')}
         fields={{
           BooleanField: BooleanFieldTemplate,
         }}
@@ -150,18 +177,9 @@ const ProfilerSettings: FC<ProfilerSettingsProps> = ({
         validator={validator}
         widgets={{ RangeWidget: CustomRangeWidget }}
         onChange={handleOnChange}
-        onSubmit={handleUpdate}>
-        <div className="d-flex w-full justify-end">
-          <Button
-            data-testid="update-btn"
-            htmlType="submit"
-            loading={isUpdating}
-            type="primary">
-            {t('label.update')}
-          </Button>
-        </div>
-      </Form>
-    </div>
+        onSubmit={handleUpdate}
+      />
+    </Modal>
   );
 };
 

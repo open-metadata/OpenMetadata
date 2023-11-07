@@ -134,6 +134,9 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     currentPage: INITIAL_PAGING_VALUE,
   });
 
+  const [updateProfilerSetting, setUpdateProfilerSetting] =
+    useState<boolean>(false);
+
   const decodedDatabaseSchemaFQN = useMemo(
     () => getDecodedFqn(databaseSchemaFQN),
     [databaseSchemaFQN]
@@ -707,23 +710,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         />
       ),
     },
-    {
-      label: (
-        <TabsLabel
-          id={EntityTabs.PROFILER_SETTINGS}
-          name={t('label.profiler-setting-plural')}
-        />
-      ),
-      key: EntityTabs.PROFILER_SETTINGS,
-      children: isSchemaDetailsLoading ? (
-        <Loader />
-      ) : (
-        <ProfilerSettings
-          entityId={databaseSchemaId}
-          entityType={EntityType.DATABASE_SCHEMA}
-        />
-      ),
-    },
   ];
 
   const updateVote = async (data: QueryVote, id: string) => {
@@ -782,6 +768,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                 permissions={databaseSchemaPermission}
                 onDisplayNameUpdate={handleUpdateDisplayName}
                 onOwnerUpdate={handleUpdateOwner}
+                onProfilerSettingUpdate={() => setUpdateProfilerSetting(true)}
                 onRestoreDataAsset={handleRestoreDatabaseSchema}
                 onTierUpdate={handleUpdateTier}
                 onUpdateVote={updateVote}
@@ -812,6 +799,14 @@ const DatabaseSchemaPage: FunctionComponent = () => {
               />
             ) : null}
           </Col>
+          {updateProfilerSetting && (
+            <ProfilerSettings
+              entityId={databaseSchemaId}
+              entityType={EntityType.DATABASE_SCHEMA}
+              visible={updateProfilerSetting}
+              onVisibilityChange={(value) => setUpdateProfilerSetting(value)}
+            />
+          )}
         </Row>
       )}
     </PageLayoutV1>
