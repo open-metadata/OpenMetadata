@@ -23,6 +23,7 @@ import PageLayoutV1 from '../../../components/containers/PageLayoutV1';
 import Loader from '../../../components/Loader/Loader';
 import { ROUTES } from '../../../constants/constants';
 import { AppMarketPlaceDefinition } from '../../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
+import { Include } from '../../../generated/type/include';
 import { getApplicationByName } from '../../../rest/applicationAPI';
 import { getMarketPlaceApplicationByName } from '../../../rest/applicationMarketPlaceAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
@@ -84,7 +85,10 @@ const MarketPlaceAppDetails = () => {
 
   const fetchInstalledAppDetails = useCallback(async () => {
     try {
-      await getApplicationByName(fqn, 'owner');
+      await getApplicationByName(fqn, {
+        fields: 'owner',
+        include: Include.All,
+      });
       setIsInstalled(true);
     } catch (error) {
       setIsInstalled(false);

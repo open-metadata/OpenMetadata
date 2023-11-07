@@ -39,6 +39,7 @@ import {
   PipelineState,
   PipelineStatus,
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
 import {
   getApplicationByName,
@@ -172,7 +173,10 @@ const LogsViewer = () => {
   const fetchAppDetails = useCallback(async () => {
     setIsLoading(true);
     try {
-      const data = await getApplicationByName(ingestionName, 'owner');
+      const data = await getApplicationByName(ingestionName, {
+        fields: 'owner',
+        include: Include.All,
+      });
       setAppData(data);
       fetchLogs();
     } catch (error) {
