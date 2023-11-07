@@ -8,6 +8,7 @@ import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
 import static org.openmetadata.service.Entity.FIELD_PARENT;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.STORAGE_SERVICE;
+import static org.openmetadata.service.Entity.populateEntityFieldTags;
 
 import com.google.common.collect.Lists;
 import java.util.ArrayList;
@@ -54,7 +55,8 @@ public class ContainerRepository extends EntityRepository<Container> {
     setDefaultFields(container);
     container.setParent(fields.contains(FIELD_PARENT) ? getParent(container) : container.getParent());
     if (container.getDataModel() != null) {
-      populateDataModelColumnTags(fields.contains(FIELD_TAGS), container.getDataModel().getColumns());
+      populateDataModelColumnTags(
+          fields.contains(FIELD_TAGS), container.getFullyQualifiedName(), container.getDataModel().getColumns());
     }
     return container;
   }
@@ -65,11 +67,8 @@ public class ContainerRepository extends EntityRepository<Container> {
     return container.withDataModel(fields.contains("dataModel") ? container.getDataModel() : null);
   }
 
-  private void populateDataModelColumnTags(boolean setTags, List<Column> columns) {
-    for (Column c : listOrEmpty(columns)) {
-      c.setTags(setTags ? getTags(c.getFullyQualifiedName()) : null);
-      populateDataModelColumnTags(setTags, c.getChildren());
-    }
+  private void populateDataModelColumnTags(boolean setTags, String fqnPrefix, List<Column> columns) {
+    populateEntityFieldTags(entityType, columns, fqnPrefix, setTags);
   }
 
   private void setDefaultFields(Container container) {
