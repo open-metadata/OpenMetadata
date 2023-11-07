@@ -245,7 +245,7 @@ const RolesListPage = () => {
 
   useEffect(() => {
     fetchRoles();
-  }, []);
+  }, [pageSize]);
 
   return (
     <Row

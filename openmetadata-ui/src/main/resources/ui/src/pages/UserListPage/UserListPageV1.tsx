@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Modal, Row, Space, Switch, Table, Tooltip } from 'antd';
+import { Button, Col, Modal, Row, Space, Switch, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { data } from 'autoprefixer';
 import { AxiosError } from 'axios';
@@ -27,12 +27,13 @@ import FilterTablePlaceHolder from '../../components/common/ErrorWithPlaceholder
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import Searchbar from '../../components/common/SearchBarComponent/SearchBar.component';
+import Table from '../../components/common/Table/Table';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_BASE,
-  pagingObject,
+  PAGE_SIZE_MEDIUM,
   ROUTES,
 } from '../../constants/constants';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
@@ -43,8 +44,8 @@ import { SearchIndex } from '../../enums/search.enum';
 import { CreateUser } from '../../generated/api/teams/createUser';
 import { User } from '../../generated/entity/teams/user';
 import { Include } from '../../generated/type/include';
-import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
+import { usePaging } from '../../hooks/paging/usePaging';
 import { searchData } from '../../rest/miscAPI';
 import { getUsers, updateUser, UsersQueryParams } from '../../rest/userAPI';
 import { getEntityName } from '../../utils/EntityUtils';
@@ -60,42 +61,48 @@ const UserListPageV1 = () => {
   const history = useHistory();
   const location = useLocation();
   const { isAdminUser } = useAuth();
-  const [isAdminPage, setIsAdminPage] = useState<boolean | undefined>(
-    tab === GlobalSettingOptions.ADMINS || undefined
-  );
+  const isAdminPage = useMemo(() => tab === GlobalSettingOptions.ADMINS, [tab]);
 
   const [isDataLoading, setIsDataLoading] = useState<boolean>(true);
   const [showDeletedUser, setShowDeletedUser] = useState<boolean>(false);
   const [userList, setUserList] = useState<User[]>([]);
-  const [paging, setPaging] = useState<Paging>(pagingObject);
+
+  const [selectedUser, setSelectedUser] = useState<User>();
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showReactiveModal, setShowReactiveModal] = useState(false);
+  const showRestore = showDeletedUser && !isDataLoading;
+  const [isLoading, setIsLoading] = useState(false);
   const [searchValue, setSearchValue] = useState<string>('');
-  const [currentPage, setCurrentPage] = useState<number>(INITIAL_PAGING_VALUE);
+  const {
+    currentPage,
+    handlePageChange,
+    handlePageSizeChange,
+    handlePagingChange,
+    pageSize,
+    paging,
+    showPagination,
+  } = usePaging(PAGE_SIZE_MEDIUM);
 
   const initialSetup = () => {
-    setIsAdminPage(tab === GlobalSettingOptions.ADMINS || undefined);
     setIsDataLoading(true);
     setShowDeletedUser(false);
     setSearchValue('');
-    setCurrentPage(INITIAL_PAGING_VALUE);
+    handlePageChange(INITIAL_PAGING_VALUE);
+    handlePageSizeChange(PAGE_SIZE_MEDIUM);
   };
 
   const fetchUsersList = async (params: UsersQueryParams) => {
     setIsDataLoading(true);
     try {
-      const { data, paging } = await getUsers({
+      const { data, paging: userPaging } = await getUsers({
         isBot: false,
         limit: PAGE_SIZE_BASE,
         fields: 'profile,teams,roles',
         ...params,
       });
-      if (data) {
-        setUserList(data);
-        setPaging(paging);
-      } else {
-        throw t('server.entity-fetch-error', {
-          entity: t('label.user'),
-        });
-      }
+
+      setUserList(data);
+      handlePagingChange(userPaging);
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -138,7 +145,7 @@ const UserListPageV1 = () => {
       )
         .then((res) => {
           const data = res.data.hits.hits.map(({ _source }) => _source);
-          setPaging({
+          handlePagingChange({
             total: res.data.hits.total.value,
           });
           resolve(data);
@@ -166,15 +173,15 @@ const UserListPageV1 = () => {
     );
   };
 
-  const handlePagingChange = ({
+  const handleUserPageChange = ({
     cursorType,
     currentPage,
   }: PagingHandlerParams) => {
     if (searchValue) {
-      setCurrentPage(currentPage);
+      handlePageChange(currentPage);
       getSearchedUsers(searchValue, currentPage);
     } else if (cursorType && paging[cursorType]) {
-      setCurrentPage(currentPage);
+      handlePageChange(currentPage);
       fetchUsersList({
         isAdmin: isAdminPage,
         [cursorType]: paging[cursorType],
@@ -184,7 +191,7 @@ const UserListPageV1 = () => {
   };
 
   const handleShowDeletedUserChange = (value: boolean) => {
-    setCurrentPage(INITIAL_PAGING_VALUE);
+    handlePageChange(INITIAL_PAGING_VALUE);
     setSearchValue('');
     setShowDeletedUser(value);
     fetchUsersList({
@@ -195,7 +202,7 @@ const UserListPageV1 = () => {
 
   const handleSearch = (value: string) => {
     setSearchValue(value);
-    setCurrentPage(INITIAL_PAGING_VALUE);
+    handlePageChange(INITIAL_PAGING_VALUE);
     const params = new URLSearchParams({ user: value });
     // This function is called onChange in the search input with debouncing
     // Hence using history.replace instead of history.push to avoid adding multiple routes in history
@@ -232,13 +239,7 @@ const UserListPageV1 = () => {
     } else {
       setIsDataLoading(false);
     }
-  }, [tab]);
-
-  const [selectedUser, setSelectedUser] = useState<User>();
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showReactiveModal, setShowReactiveModal] = useState(false);
-  const showRestore = showDeletedUser && !isDataLoading;
-  const [isLoading, setIsLoading] = useState(false);
+  }, [tab, pageSize]);
 
   const handleAddNewUser = () => {
     history.push(ROUTES.CREATE_USER);
@@ -424,13 +425,14 @@ const UserListPageV1 = () => {
         />
       </Col>
       <Col span={24}>
-        {paging.total > PAGE_SIZE_BASE && (
+        {showPagination && (
           <NextPrevious
             currentPage={currentPage}
             isNumberBased={Boolean(searchValue)}
-            pageSize={PAGE_SIZE_BASE}
+            pageSize={pageSize}
             paging={paging}
-            pagingHandler={handlePagingChange}
+            pagingHandler={handleUserPageChange}
+            onShowSizeChange={handlePageSizeChange}
           />
         )}
       </Col>

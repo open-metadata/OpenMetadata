@@ -264,7 +264,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
           : '--',
       },
     ];
-  }, [profile, tableTests]);
+  }, [profile]);
 
   const tabOptions = [
     {

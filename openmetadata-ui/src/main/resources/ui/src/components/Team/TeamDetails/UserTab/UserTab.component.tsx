@@ -278,7 +278,7 @@ export const UserTab = ({
     }
   };
 
-  if (isEmpty(users) && !searchText) {
+  if (isEmpty(users) && !searchText && !isLoading) {
     return (
       <ErrorPlaceHolder
         button={

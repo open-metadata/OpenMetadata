@@ -134,7 +134,7 @@ const AssetsTabs = forwardRef(
     const fetchAssets = useCallback(
       async ({
         index = activeFilter,
-        page = 1,
+        page = currentPage,
       }: {
         index?: SearchIndex[];
         page?: number;
@@ -177,7 +177,7 @@ const AssetsTabs = forwardRef(
           setIsLoading(false);
         }
       },
-      [activeFilter, currentPage]
+      [activeFilter, currentPage, pageSize]
     );
     const onOpenChange: MenuProps['onOpenChange'] = (keys) => {
       const latestOpenKey = keys.find(
@@ -483,6 +483,7 @@ const AssetsTabs = forwardRef(
         assetErrorPlaceHolder,
         setSelectedCard,
         handlePageChange,
+        showPagination,
         handlePageSizeChange,
       ]
     );
@@ -585,7 +586,7 @@ const AssetsTabs = forwardRef(
         index: isEmpty(activeFilter) ? [SearchIndex.ALL] : activeFilter,
         page: currentPage,
       });
-    }, [activeFilter, currentPage]);
+    }, [activeFilter, currentPage, pageSize]);
 
     useImperativeHandle(ref, () => ({
       refreshAssets() {

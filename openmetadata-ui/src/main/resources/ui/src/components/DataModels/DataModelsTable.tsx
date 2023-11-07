@@ -25,6 +25,7 @@ import {
   getDataModelDetailsPath,
   pagingObject,
 } from '../../constants/constants';
+import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { ServicePageData } from '../../pages/ServiceDetailsPage/ServiceDetailsPage';
@@ -34,7 +35,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import NextPrevious from '../common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../common/NextPrevious/NextPrevious.interface';
 
-const DataModelTable = () => {
+const DataModelTable = ({ showDeleted }: { showDeleted?: boolean }) => {
   const { t } = useTranslation();
   const { fqn } = useParams<{ fqn: string }>();
   const [dataModels, setDataModels] = useState<Array<ServicePageData>>();
@@ -95,6 +96,7 @@ const DataModelTable = () => {
           service: fqn,
           fields: 'owner,tags,followers',
           limit: pageSize,
+          include: showDeleted ? Include.Deleted : Include.NonDeleted,
           ...pagingData,
         });
         setDataModels(data);
@@ -107,7 +109,7 @@ const DataModelTable = () => {
         setIsLoading(false);
       }
     },
-    [fqn, pageSize]
+    [fqn, pageSize, showDeleted]
   );
 
   const handleDataModelPageChange: NextPreviousProps['pagingHandler'] = ({
@@ -122,7 +124,7 @@ const DataModelTable = () => {
 
   useEffect(() => {
     fetchDashboardsDataModel();
-  }, [pageSize]);
+  }, [pageSize, showDeleted]);
 
   return (
     <>
@@ -142,7 +144,7 @@ const DataModelTable = () => {
           size="small"
         />
       </Col>
-      <Col span={24}>
+      <Col className="p-b-sm" span={24}>
         {showPagination && (
           <NextPrevious
             currentPage={currentPage}

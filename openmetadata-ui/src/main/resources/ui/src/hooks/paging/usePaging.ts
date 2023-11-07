@@ -10,22 +10,29 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_BASE,
   pagingObject,
 } from '../../constants/constants';
 import { Paging } from '../../generated/type/paging';
-import { showPagination } from '../../utils/Pagination/PaginationUtils';
 
 export const usePaging = (defaultPageSize = PAGE_SIZE_BASE) => {
   const [paging, setPaging] = useState<Paging>(pagingObject);
   const [currentPage, setCurrentPage] = useState<number>(INITIAL_PAGING_VALUE);
   const [pageSize, setPageSize] = useState(defaultPageSize);
 
+  const handlePageSize = useCallback(
+    (page: number) => {
+      setPageSize(page);
+      setCurrentPage(INITIAL_PAGING_VALUE);
+    },
+    [setPageSize, setCurrentPage]
+  );
+
   const paginationVisible = useMemo(() => {
-    return showPagination(paging) && pageSize !== defaultPageSize;
+    return paging.total > pageSize || pageSize !== defaultPageSize;
   }, [defaultPageSize, paging, pageSize]);
 
   return {
@@ -34,7 +41,7 @@ export const usePaging = (defaultPageSize = PAGE_SIZE_BASE) => {
     currentPage,
     handlePageChange: setCurrentPage,
     pageSize,
-    handlePageSizeChange: setPageSize,
+    handlePageSizeChange: handlePageSize,
     showPagination: paginationVisible,
   };
 };

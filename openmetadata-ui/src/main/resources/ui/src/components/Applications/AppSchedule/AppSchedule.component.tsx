@@ -101,6 +101,7 @@ const AppSchedule = ({
           appData={appData}
           maxRecords={1}
           ref={appRunsHistoryRef}
+          showPagination={false}
         />
       );
     }

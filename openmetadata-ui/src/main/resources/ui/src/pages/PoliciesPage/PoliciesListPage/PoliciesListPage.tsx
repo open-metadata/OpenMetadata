@@ -28,7 +28,7 @@ import Table from '../../../components/common/Table/Table';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../components/PermissionProvider/PermissionProvider.interface';
-import { ROUTES } from '../../../constants/constants';
+import { PAGE_SIZE_MEDIUM, ROUTES } from '../../../constants/constants';
 import {
   NO_PERMISSION_FOR_ACTION,
   NO_PERMISSION_TO_VIEW,
@@ -67,7 +67,7 @@ const PoliciesListPage = () => {
     pageSize,
     handlePageSizeChange,
     showPagination,
-  } = usePaging();
+  } = usePaging(PAGE_SIZE_MEDIUM);
 
   const { permissions } = usePermissionProvider();
 
@@ -225,9 +225,11 @@ const PoliciesListPage = () => {
       setIsLoading(false);
     }
   };
+
   const handleAfterDeleteAction = useCallback(() => {
     fetchPolicies();
   }, [fetchPolicies]);
+
   const handleAddPolicy = () => {
     history.push(ROUTES.ADD_POLICY);
   };

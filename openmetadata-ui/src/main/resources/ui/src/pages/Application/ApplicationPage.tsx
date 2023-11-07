@@ -47,25 +47,28 @@ const ApplicationPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [applicationData, setApplicationData] = useState<App[]>();
 
-  const fetchApplicationList = useCallback(async (pagingOffset?: Paging) => {
-    try {
-      setIsLoading(true);
-      const { data, paging } = await getApplicationList({
-        after: pagingOffset?.after,
-        before: pagingOffset?.before,
-        limit: pageSize,
-      });
+  const fetchApplicationList = useCallback(
+    async (pagingOffset?: Paging) => {
+      try {
+        setIsLoading(true);
+        const { data, paging } = await getApplicationList({
+          after: pagingOffset?.after,
+          before: pagingOffset?.before,
+          limit: pageSize,
+        });
 
-      setApplicationData(data);
-      handlePagingChange(paging);
-    } catch (err) {
-      showErrorToast(err as AxiosError);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+        setApplicationData(data);
+        handlePagingChange(paging);
+      } catch (err) {
+        showErrorToast(err as AxiosError);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [pageSize, handlePagingChange]
+  );
 
-  const handleBotPageChange = ({
+  const handleApplicationPageChange = ({
     currentPage,
     cursorType,
   }: PagingHandlerParams) => {
@@ -74,7 +77,7 @@ const ApplicationPage = () => {
       fetchApplicationList({
         [cursorType]: paging[cursorType],
         total: paging.total,
-      } as Paging);
+      });
   };
 
   const viewAppDetails = (item: App) => {
@@ -100,7 +103,7 @@ const ApplicationPage = () => {
 
   useEffect(() => {
     fetchApplicationList();
-  }, []);
+  }, [pageSize]);
 
   return (
     <>
@@ -155,7 +158,7 @@ const ApplicationPage = () => {
                   currentPage={currentPage}
                   pageSize={pageSize}
                   paging={paging}
-                  pagingHandler={handleBotPageChange}
+                  pagingHandler={handleApplicationPageChange}
                   onShowSizeChange={handlePageSizeChange}
                 />
               )}

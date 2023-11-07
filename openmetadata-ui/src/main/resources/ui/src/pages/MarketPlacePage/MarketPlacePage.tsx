@@ -57,23 +57,26 @@ const MarketPlacePage = () => {
   const [applicationData, setApplicationData] =
     useState<AppMarketPlaceDefinition[]>();
 
-  const fetchApplicationList = useCallback(async (pagingOffset?: Paging) => {
-    try {
-      setIsLoading(true);
-      const { data, paging } = await getMarketPlaceApplicationList({
-        after: pagingOffset?.after,
-        before: pagingOffset?.before,
-        limit: pageSize,
-      });
+  const fetchApplicationList = useCallback(
+    async (pagingOffset?: Paging) => {
+      try {
+        setIsLoading(true);
+        const { data, paging } = await getMarketPlaceApplicationList({
+          after: pagingOffset?.after,
+          before: pagingOffset?.before,
+          limit: pageSize,
+        });
 
-      setApplicationData(data);
-      handlePagingChange(paging);
-    } catch (err) {
-      showErrorToast(err as AxiosError);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+        setApplicationData(data);
+        handlePagingChange(paging);
+      } catch (err) {
+        showErrorToast(err as AxiosError);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [pageSize, handlePagingChange]
+  );
 
   const handleMarketPlacePageChange = ({
     currentPage,
@@ -93,7 +96,7 @@ const MarketPlacePage = () => {
 
   useEffect(() => {
     fetchApplicationList();
-  }, []);
+  }, [pageSize]);
 
   if (isLoading) {
     return <Loader />;

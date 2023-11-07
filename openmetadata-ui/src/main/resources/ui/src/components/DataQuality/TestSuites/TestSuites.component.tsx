@@ -15,7 +15,13 @@ import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isString } from 'lodash';
 import QueryString from 'qs';
-import React, { ReactNode, useEffect, useMemo, useState } from 'react';
+import React, {
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 import { getTableTabPath, ROUTES } from '../../../constants/constants';
@@ -151,23 +157,26 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
     }
   };
 
-  const handleTestSuitesPageChange = ({
-    cursorType,
-    currentPage,
-  }: PagingHandlerParams) => {
-    if (isString(cursorType)) {
-      fetchTestSuites({ [cursorType]: paging?.[cursorType] });
-    }
-    handlePageChange(currentPage);
-  };
+  const handleTestSuitesPageChange = useCallback(
+    ({ cursorType, currentPage }: PagingHandlerParams) => {
+      if (isString(cursorType)) {
+        fetchTestSuites({
+          [cursorType]: paging?.[cursorType],
+          limit: pageSize,
+        });
+      }
+      handlePageChange(currentPage);
+    },
+    [pageSize, paging]
+  );
 
   useEffect(() => {
     if (testSuitePermission?.ViewAll || testSuitePermission?.ViewBasic) {
-      fetchTestSuites();
+      fetchTestSuites({ limit: pageSize });
     } else {
       setIsLoading(false);
     }
-  }, [testSuitePermission]);
+  }, [testSuitePermission, pageSize]);
 
   if (!testSuitePermission?.ViewAll && !testSuitePermission?.ViewBasic) {
     return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;

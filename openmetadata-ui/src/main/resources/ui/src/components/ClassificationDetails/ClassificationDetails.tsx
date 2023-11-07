@@ -17,7 +17,7 @@ import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { capitalize, isUndefined, toString } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as IconTag } from '../../assets/svg/classification.svg';
@@ -34,7 +34,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../components/PermissionProvider/PermissionProvider.interface';
-import { DE_ACTIVE_COLOR, PAGE_SIZE } from '../../constants/constants';
+import { DE_ACTIVE_COLOR } from '../../constants/constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { ProviderType } from '../../generated/api/classification/createClassification';
@@ -124,22 +124,21 @@ function ClassificationDetails({
     setIsTagsLoading(true);
     setTags([]);
     try {
-      const tagsResponse = await getTags({
+      const { data, paging: tagPaging } = await getTags({
         arrQueryFields: ['usageCount'],
         parent: currentClassificationName,
         after: paging?.after,
         before: paging?.before,
-        limit: PAGE_SIZE,
+        limit: pageSize,
       });
-      setTags(tagsResponse.data);
-      handlePagingChange(tagsResponse.paging);
+      setTags(data);
+      handlePagingChange(tagPaging);
     } catch (error) {
       const errMsg = getErrorText(
         error as AxiosError,
         t('server.entity-fetch-error', { entity: t('label.tag-plural') })
       );
       showErrorToast(errMsg);
-      //   setError(errMsg);
       setTags([]);
     } finally {
       setIsTagsLoading(false);
@@ -407,6 +406,12 @@ function ClassificationDetails({
       : '';
   }, [currentClassification, changeDescription]);
 
+  useEffect(() => {
+    if (currentClassification?.fullyQualifiedName) {
+      fetchClassificationChildren(currentClassification.fullyQualifiedName);
+    }
+  }, [currentClassification?.fullyQualifiedName, pageSize]);
+
   return (
     <div className="p-x-md" data-testid="tags-container">
       {currentClassification && (
@@ -547,7 +552,7 @@ function ClassificationDetails({
           size="small"
         />
 
-        {showPagination && (
+        {showPagination && !isTagsLoading && (
           <NextPrevious
             currentPage={currentPage}
             pageSize={pageSize}

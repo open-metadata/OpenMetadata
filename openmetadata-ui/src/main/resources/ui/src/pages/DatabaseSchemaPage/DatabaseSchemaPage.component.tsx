@@ -72,6 +72,7 @@ import {
   updateDatabaseSchemaVotes,
 } from '../../rest/databaseAPI';
 import { getFeedCount, postThread } from '../../rest/feedsAPI';
+import { getStoredProceduresList } from '../../rest/storedProceduresAPI';
 import { getTableList, TableListParams } from '../../rest/tableAPI';
 import {
   getEntityMissingError,
@@ -118,6 +119,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const [showDeletedTables, setShowDeletedTables] = useState<boolean>(false);
   const [currentTablesPage, setCurrentTablesPage] =
     useState<number>(INITIAL_PAGING_VALUE);
+  const [storedProcedureCount, setStoredProcedureCount] = useState(0);
 
   const decodedDatabaseSchemaFQN = useMemo(
     () => getDecodedFqn(databaseSchemaFQN),
@@ -473,6 +475,19 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     }));
   }, []);
 
+  // Fetch stored procedure count to show it in Tab label
+  const fetchStoreProcedureCount = useCallback(async () => {
+    try {
+      const { paging } = await getStoredProceduresList({
+        databaseSchema: decodedDatabaseSchemaFQN,
+        limit: 0,
+      });
+      setStoredProcedureCount(paging.total);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  }, [decodedDatabaseSchemaFQN]);
+
   useEffect(() => {
     fetchDatabaseSchemaPermission();
   }, [databaseSchemaFQN]);
@@ -480,6 +495,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   useEffect(() => {
     if (viewDatabaseSchemaPermission) {
       fetchDatabaseSchemaDetails();
+      fetchStoreProcedureCount();
       getEntityFeedCount();
     }
   }, [viewDatabaseSchemaPermission, databaseSchemaFQN]);
@@ -585,7 +601,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     {
       label: (
         <TabsLabel
-          count={0}
+          count={storedProcedureCount}
           id={EntityTabs.STORED_PROCEDURE}
           isActive={activeTab === EntityTabs.STORED_PROCEDURE}
           name={t('label.stored-procedure-plural')}

@@ -34,6 +34,7 @@ import {
   EventSubscription,
   ProviderType,
 } from '../../generated/events/eventSubscription';
+import { Paging } from '../../generated/type/paging';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getAllAlerts } from '../../rest/alertsAPI';
 import { getEntityName } from '../../utils/EntityUtils';
@@ -57,25 +58,32 @@ const AlertsPage = () => {
     paging,
   } = usePaging();
 
-  const fetchAlerts = useCallback(async (after?: string) => {
-    setLoading(true);
-    try {
-      const { data, paging } = await getAllAlerts({ after });
+  const fetchAlerts = useCallback(
+    async (params?: Partial<Paging>) => {
+      setLoading(true);
+      try {
+        const { data, paging } = await getAllAlerts({
+          after: params?.after,
+          before: params?.before,
+          limit: pageSize,
+        });
 
-      setAlerts(data.filter((d) => d.provider !== ProviderType.System));
-      handlePagingChange(paging);
-    } catch (error) {
-      showErrorToast(
-        t('server.entity-fetch-error', { entity: t('label.alert-plural') })
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+        setAlerts(data.filter((d) => d.provider !== ProviderType.System));
+        handlePagingChange(paging);
+      } catch (error) {
+        showErrorToast(
+          t('server.entity-fetch-error', { entity: t('label.alert-plural') })
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [pageSize]
+  );
 
   useEffect(() => {
     fetchAlerts();
-  }, []);
+  }, [pageSize]);
 
   const handleAlertDelete = useCallback(async () => {
     try {
@@ -89,11 +97,11 @@ const AlertsPage = () => {
   const onPageChange = useCallback(
     ({ cursorType, currentPage }: PagingHandlerParams) => {
       if (cursorType) {
-        fetchAlerts(cursorType + '');
+        fetchAlerts({ [cursorType]: paging[cursorType] });
         handlePageChange(currentPage);
       }
     },
-    []
+    [paging]
   );
 
   const columns = useMemo(

@@ -58,6 +58,7 @@ const StoredProcedureTab = () => {
           fields: 'owner,tags,followers',
           include: showDeleted ? Include.Deleted : Include.NonDeleted,
           ...params,
+          limit: pageSize,
         });
         setStoredProcedure(data);
         handlePagingChange(paging);
@@ -67,7 +68,7 @@ const StoredProcedureTab = () => {
         setIsLoading(false);
       }
     },
-    [fqn]
+    [fqn, pageSize]
   );
 
   const storedProcedurePagingHandler = useCallback(
@@ -81,7 +82,7 @@ const StoredProcedureTab = () => {
       }
       handlePageChange(currentPage);
     },
-    [paging]
+    [paging, handlePageChange]
   );
 
   const tableColumn: ColumnsType<ServicePageData> = useMemo(
@@ -120,7 +121,7 @@ const StoredProcedureTab = () => {
 
   useEffect(() => {
     fetchStoreProcedureDetails();
-  }, [showDeleted]);
+  }, [showDeleted, pageSize]);
 
   return (
     <Row className="p-lg" data-testid="stored-procedure-table" gutter={[0, 16]}>

@@ -14,10 +14,9 @@
 import { Space, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import cronstrue from 'cronstrue';
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import Table from '../../components/common/Table/Table';
-import { PAGE_SIZE } from '../../constants/constants';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getEntityName } from '../../utils/EntityUtils';
@@ -55,19 +54,19 @@ function IngestionListTable({
     handlePageChange,
     handlePageSizeChange,
     showPagination,
-  } = usePaging(PAGE_SIZE);
+  } = usePaging(10);
 
-  const ingestionPagingHandler = ({
-    cursorType,
-    currentPage,
-  }: PagingHandlerParams) => {
-    if (cursorType) {
-      const pagingString = `&${cursorType}=${paging[cursorType]}`;
+  const ingestionPagingHandler = useCallback(
+    ({ cursorType, currentPage }: PagingHandlerParams) => {
+      if (cursorType) {
+        const pagingString = `&${cursorType}=${paging[cursorType]}`;
 
-      onIngestionWorkflowsUpdate(pagingString);
-      handlePageChange(currentPage);
-    }
-  };
+        onIngestionWorkflowsUpdate(pagingString);
+        handlePageChange(currentPage);
+      }
+    },
+    [paging, handlePageChange, onIngestionWorkflowsUpdate]
+  );
 
   const renderNameField = (text: string, record: IngestionPipeline) => {
     return airflowEndpoint ? (

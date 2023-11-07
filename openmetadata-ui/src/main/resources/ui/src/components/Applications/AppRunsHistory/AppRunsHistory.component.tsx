@@ -58,7 +58,10 @@ import {
 } from './AppRunsHistory.interface';
 
 const AppRunsHistory = forwardRef(
-  ({ appData, maxRecords }: AppRunsHistoryProps, ref) => {
+  (
+    { appData, maxRecords, showPagination = true }: AppRunsHistoryProps,
+    ref
+  ) => {
     const { t } = useTranslation();
     const { fqn } = useParams<{ fqn: string }>();
     const [isLoading, setIsLoading] = useState(true);
@@ -74,7 +77,7 @@ const AppRunsHistory = forwardRef(
       handlePagingChange,
       handlePageChange,
       handlePageSizeChange,
-      showPagination,
+      showPagination: paginationVisible,
     } = usePaging();
 
     const history = useHistory();
@@ -253,7 +256,7 @@ const AppRunsHistory = forwardRef(
     }: PagingHandlerParams) => {
       handlePageChange(currentPage);
       fetchAppHistory({
-        offset: currentPage * pageSize,
+        offset: (currentPage - 1) * pageSize,
       } as Paging);
     };
 
@@ -265,7 +268,7 @@ const AppRunsHistory = forwardRef(
 
     useEffect(() => {
       fetchAppHistory();
-    }, [fqn]);
+    }, [fqn, pageSize]);
 
     return (
       <Row gutter={[16, 16]}>
@@ -291,7 +294,7 @@ const AppRunsHistory = forwardRef(
           />
         </Col>
         <Col span={24}>
-          {showPagination && (
+          {showPagination && paginationVisible && (
             <NextPrevious
               isNumberBased
               currentPage={currentPage}

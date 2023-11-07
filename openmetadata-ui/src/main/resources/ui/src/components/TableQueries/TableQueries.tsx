@@ -24,7 +24,6 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../components/PermissionProvider/PermissionProvider.interface';
-import { PAGE_SIZE } from '../../constants/constants';
 import { USAGE_DOCS } from '../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import {
@@ -170,7 +169,7 @@ const TableQueries: FC<TableQueriesProp> = ({
     try {
       const { data: queries, paging } = await getQueriesList({
         ...params,
-        limit: PAGE_SIZE,
+        limit: pageSize,
         entityId: tableId,
         fields: 'owner,votes,tags,queryUsedIn,users',
       });
@@ -230,7 +229,7 @@ const TableQueries: FC<TableQueriesProp> = ({
     } else {
       setIsLoading((pre) => ({ ...pre, page: false }));
     }
-  }, [tableId]);
+  }, [tableId, pageSize]);
 
   const handleAddQueryClick = () => {
     history.push(getAddQueryPath(datasetFQN));
