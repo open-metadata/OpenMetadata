@@ -15,7 +15,7 @@ import { Button, Col, Dropdown, Modal, Row, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import React, { FC, ReactNode, useMemo, useState } from 'react';
+import React, { FC, ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconAnnouncementsBlack } from '../../../../assets/svg/announcements-black.svg';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
@@ -125,6 +125,10 @@ const ManageButton: FC<Props> = ({
     () => editDisplayNamePermission && onEditDisplayName && !deleted,
     [editDisplayNamePermission, onEditDisplayName, deleted]
   );
+
+  const renderDropdownContainer = useCallback((menus) => {
+    return <div data-testid="manage-dropdown-list-container">{menus}</div>;
+  }, []);
 
   const items: ItemType[] = [
     ...(deleted
@@ -246,6 +250,7 @@ const ManageButton: FC<Props> = ({
       {items.length ? (
         <Dropdown
           align={{ targetOffset: [-12, 0] }}
+          dropdownRender={renderDropdownContainer}
           menu={{ items }}
           overlayClassName="manage-dropdown-list-container"
           overlayStyle={{ width: '350px' }}
