@@ -69,6 +69,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
     config: Union[Any, Dict]
     _run_id: Optional[str] = None
     metadata: OpenMetadata
+    metadata_config: OpenMetadataConnection
     service_type: ServiceType
 
     def __init__(
@@ -90,6 +91,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         set_loggers_level(log_level.value)
 
         # We create the ometa client at the workflow level and pass it to the steps
+        self.metadata_config = metadata_config
         self.metadata = create_ometa_client(metadata_config)
 
         self.set_ingestion_pipeline_status(state=PipelineState.running)
