@@ -30,7 +30,6 @@ from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.profiler.metrics.core import MetricTypes
 from metadata.profiler.metrics.registry import Metrics
-from metadata.profiler.processor.sampler.sampler_factory import sampler_factory_
 from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
 from metadata.utils.constants import COMPLEX_COLUMN_SEPARATOR
 from metadata.utils.datalake.datalake_utils import fetch_col_types, fetch_dataframe
@@ -103,6 +102,10 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
 
     def _get_sampler(self):
         """Get dataframe sampler from config"""
+        from metadata.profiler.processor.sampler.sampler_factory import (  # pylint: disable=import-outside-toplevel
+            sampler_factory_,
+        )
+
         return sampler_factory_.create(
             DatalakeConnection.__name__,
             client=self.client,
