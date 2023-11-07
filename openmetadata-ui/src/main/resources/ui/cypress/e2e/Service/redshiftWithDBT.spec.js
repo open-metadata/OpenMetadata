@@ -32,6 +32,10 @@ import {
 } from '../../constants/constants';
 import { REDSHIFT } from '../../constants/service.constants';
 
+const dbtEntityFqn = `${REDSHIFT.serviceName}.${Cypress.env(
+  'redshiftDatabase'
+)}.dbt_jaffle.${REDSHIFT.DBTTable}`;
+
 describe('RedShift Ingestion', () => {
   beforeEach(() => {
     cy.login();
@@ -248,6 +252,7 @@ describe('RedShift Ingestion', () => {
       term: REDSHIFT.DBTTable,
       serviceName: REDSHIFT.serviceName,
       entity: 'tables',
+      entityFqn: dbtEntityFqn,
     });
 
     // Verify tags
