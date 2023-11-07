@@ -54,6 +54,7 @@ jest.mock('../../jsons/profilerSettings.json', () => ({
 const mockProps = {
   entityId: '1ec3eec7-27b3-4169-952f-3822ddfc3a3a',
   entityType: EntityType.DATABASE,
+  visible: true,
 } as ProfilerSettingsProps;
 
 describe('Test profiler setting form', () => {
@@ -63,7 +64,6 @@ describe('Test profiler setting form', () => {
     await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
 
     const form = document.getElementById('profiler-setting-form');
-    const updateBtn = screen.getByTestId('update-btn');
 
     const profileSampleType = document.getElementById('root/profileSampleType');
     const profileSample = document.getElementById('root/profileSample');
@@ -79,7 +79,6 @@ describe('Test profiler setting form', () => {
     );
 
     expect(form).toBeInTheDocument();
-    expect(updateBtn).toBeInTheDocument();
 
     // this correspond to "ROWS"
     expect(profileSampleType).toHaveValue('1');

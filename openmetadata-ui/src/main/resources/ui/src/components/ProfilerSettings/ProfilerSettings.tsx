@@ -127,10 +127,6 @@ const ProfilerSettings: FC<ProfilerSettingsProps> = ({
     fetchProfilerConfig();
   }, [entityId, entityType]);
 
-  if (isLoading) {
-    return <Loader />;
-  }
-
   return (
     <Modal
       centered
@@ -155,30 +151,34 @@ const ProfilerSettings: FC<ProfilerSettingsProps> = ({
       title={t('label.profiler-setting-plural')}
       width={630}
       onCancel={() => onVisibilityChange(false)}>
-      <Form
-        focusOnFirstError
-        noHtml5Validate
-        className={classNames('rjsf no-header profiler-settings-form')}
-        fields={{
-          BooleanField: BooleanFieldTemplate,
-        }}
-        formData={profilerConfig ?? {}}
-        id="profiler-setting-form"
-        idSeparator="/"
-        schema={profilerSettingsSchema as FormProps['schema']}
-        showErrorList={false}
-        templates={{
-          DescriptionFieldTemplate: DescriptionFieldTemplate,
-          FieldErrorTemplate: FieldErrorTemplate,
-          ObjectFieldTemplate: ProfilerObjectFieldTemplate,
-        }}
-        transformErrors={transformErrors}
-        uiSchema={uiSchema}
-        validator={validator}
-        widgets={{ RangeWidget: CustomRangeWidget }}
-        onChange={handleOnChange}
-        onSubmit={handleUpdate}
-      />
+      {isLoading ? (
+        <Loader />
+      ) : (
+        <Form
+          focusOnFirstError
+          noHtml5Validate
+          className={classNames('rjsf no-header profiler-settings-form')}
+          fields={{
+            BooleanField: BooleanFieldTemplate,
+          }}
+          formData={profilerConfig ?? {}}
+          id="profiler-setting-form"
+          idSeparator="/"
+          schema={profilerSettingsSchema as FormProps['schema']}
+          showErrorList={false}
+          templates={{
+            DescriptionFieldTemplate: DescriptionFieldTemplate,
+            FieldErrorTemplate: FieldErrorTemplate,
+            ObjectFieldTemplate: ProfilerObjectFieldTemplate,
+          }}
+          transformErrors={transformErrors}
+          uiSchema={uiSchema}
+          validator={validator}
+          widgets={{ RangeWidget: CustomRangeWidget }}
+          onChange={handleOnChange}
+          onSubmit={handleUpdate}
+        />
+      )}
     </Modal>
   );
 };
