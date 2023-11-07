@@ -119,9 +119,9 @@ The latest version is at the top of the page
 You can use the curl or wget command as well to fetch the docker compose files from your terminal -
 
 ```commandline
-curl -sL https://github.com/open-metadata/OpenMetadata/releases/download/1.2.0-release/docker-compose.yml
+curl -o docker-compose.yml https://github.com/open-metadata/OpenMetadata/releases/download/1.2.0-release/docker-compose.yml
 
-curl -sL https://github.com/open-metadata/OpenMetadata/releases/download/1.2.0-release/docker-compose-postgres.yml
+curl -o docker-compose-postgres.yml https://github.com/open-metadata/OpenMetadata/releases/download/1.2.0-release/docker-compose-postgres.yml
 ```
 
 ```commandline
