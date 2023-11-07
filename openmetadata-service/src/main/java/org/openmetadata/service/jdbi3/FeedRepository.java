@@ -411,6 +411,10 @@ public class FeedRepository {
 
     // Update the thread with the new post
     Thread thread = EntityUtil.validate(id, dao.feedDAO().findById(id), Thread.class);
+
+    // Populate Assignees if type is task
+    populateAssignees(thread);
+
     thread.withUpdatedBy(userName).withUpdatedAt(System.currentTimeMillis());
     FeedUtil.addPost(thread, post);
     dao.feedDAO().update(id, JsonUtils.pojoToJson(thread));
