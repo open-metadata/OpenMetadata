@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
-import { Form, Input, Typography } from 'antd';
+import { Typography } from 'antd';
+import IngestionWorkflowForm from 'components/IngestionWorkflowForm/IngestionWorkflowForm';
+import { LOADING_STATE } from 'enums/common.enum';
 import { isEmpty, isUndefined, omit, trim } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -193,7 +195,7 @@ const AddIngestion = ({
           scheduleInterval: isEmpty(scheduleInterval)
             ? undefined
             : scheduleInterval,
-          retries: extraData.retries,
+          // retries: extraData.retries,
         },
         loggerLevel: workflowData?.enableDebugLog
           ? LogLevels.Debug
