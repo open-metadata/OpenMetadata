@@ -19,7 +19,7 @@ RUN mkdir -p /opt/openmetadata && \
     rm openmetadata-*.tar.gz
 
 # Final stage
-FROM alpine:3.16
+FROM alpine:3
 
 EXPOSE 8585
 
