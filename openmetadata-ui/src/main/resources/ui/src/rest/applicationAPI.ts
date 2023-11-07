@@ -40,7 +40,7 @@ export const getApplicationList = async (params?: ListParams) => {
 export const installApplication = (
   data: CreateAppRequest
 ): Promise<AxiosResponse> => {
-  return APIClient.post(`${BASE_URL}/install`, data);
+  return APIClient.post(`${BASE_URL}`, data);
 };
 
 export const getApplicationByName = async (

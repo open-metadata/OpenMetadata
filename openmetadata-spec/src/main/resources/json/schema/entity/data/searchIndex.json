@@ -80,6 +80,7 @@
     "searchIndexField": {
       "type": "object",
       "javaType": "org.openmetadata.schema.type.SearchIndexField",
+      "javaInterfaces": ["org.openmetadata.schema.FieldInterface"],
       "description": "This schema defines the type for a field in a searchIndex.",
       "properties": {
         "name": {
