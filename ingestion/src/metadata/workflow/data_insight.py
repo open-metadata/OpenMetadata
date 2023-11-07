@@ -11,11 +11,12 @@
 """
 Workflow definition for the data insight
 """
-from metadata.generated.schema.metadataIngestion.workflow import OpenMetadataWorkflowConfig
-
 from metadata.data_insight.processor.kpi.kpi_runner import KpiRunner
 from metadata.data_insight.source.metadata import DataInsightSource
 from metadata.generated.schema.analytics.basic import WebAnalyticEventType
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataWorkflowConfig,
+)
 from metadata.generated.schema.tests.testSuite import ServiceType
 from metadata.ingestion.api.steps import Sink
 from metadata.utils.importer import import_sink_class

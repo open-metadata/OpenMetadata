@@ -17,7 +17,6 @@ from copy import deepcopy
 from unittest.mock import patch
 
 import sqlalchemy as sqa
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from pytest import raises
 from sqlalchemy.orm import declarative_base
 
