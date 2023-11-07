@@ -177,11 +177,11 @@ const DeleteWidgetModal = ({
   );
 
   useEffect(() => {
-    let timeout: NodeJS.Timeout;
+    let timeout: number;
 
     if (visible) {
       // using setTimeout here as directly calling focus() doesn't focus element after first time
-      timeout = setTimeout(() => {
+      timeout = window.setTimeout(() => {
         deleteTextInputRef.current?.focus();
       }, 1);
     }
