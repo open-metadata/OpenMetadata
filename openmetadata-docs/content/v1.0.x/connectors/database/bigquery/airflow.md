@@ -84,6 +84,12 @@ To execute metadata extraction and usage workflow successfully the user or the s
 
 {% /multiTablesWrapper %}
 
+{% note %}
+If the user has `External Tables`, please attach relevant permissions needed for external tables, alongwith the above list of permissions.
+{% /note %}
+
+
+
 {% tilesContainer %}
 {% tile
 icon="manage_accounts"
