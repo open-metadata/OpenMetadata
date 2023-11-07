@@ -34,6 +34,10 @@
       "description": "If true the entity referred to has been soft-deleted.",
       "type": "boolean"
     },
+    "inherited": {
+      "description": "If true the relationship indicated by this entity reference is inherited from the parent entity.",
+      "type": "boolean"
+    },
     "href": {
       "description": "Link to the entity resource.",
       "$ref": "basic.json#/definitions/href"

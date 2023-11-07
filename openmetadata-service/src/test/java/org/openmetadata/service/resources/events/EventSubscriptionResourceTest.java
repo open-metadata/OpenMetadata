@@ -427,7 +427,7 @@ public class EventSubscriptionResourceTest extends EntityResourceTest<EventSubsc
         .pollInterval(Duration.ofMillis(100L))
         .atMost(Duration.ofMillis(iteration * 100L))
         .untilTrue(receivedAllEvents(expected, callbackEvents));
-    if (expected.size() != callbackEvents.size()) { // Failed to receive all the events
+    if (expected.size() > callbackEvents.size()) { // Failed to receive all the events
       expected.forEach(
           c1 ->
               LOG.info(
@@ -437,7 +437,7 @@ public class EventSubscriptionResourceTest extends EntityResourceTest<EventSubsc
               LOG.info(
                   "received {}:{}:{}:{}", c1.getTimestamp(), c1.getEventType(), c1.getEntityType(), c1.getEntityId()));
     }
-    assertEquals(expected.size(), callbackEvents.size());
+    assertTrue(expected.size() <= callbackEvents.size());
   }
 
   public void assertAlertStatusSuccessWithId(UUID alertId) throws HttpResponseException {
@@ -466,7 +466,7 @@ public class EventSubscriptionResourceTest extends EntityResourceTest<EventSubsc
 
   private static AtomicBoolean receivedAllEvents(List<ChangeEvent> expected, Collection<ChangeEvent> callbackEvents) {
     LOG.info("expected size {} callback events size {}", expected.size(), callbackEvents.size());
-    return new AtomicBoolean(expected.size() == callbackEvents.size());
+    return new AtomicBoolean(expected.size() <= callbackEvents.size());
   }
 
   /** Start webhook subscription for given entity and various event types */

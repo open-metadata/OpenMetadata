@@ -185,7 +185,7 @@ public class TeamRepository extends EntityRepository<Team> {
       List<EntityReference> parents = !fields.contains(PARENTS_FIELD) ? getParents(team) : team.getParents();
       if (!nullOrEmpty(parents)) {
         Team parent = Entity.getEntity(TEAM, parents.get(0).getId(), "domain", ALL);
-        team.withDomain(parent.getDomain());
+        inheritDomain(team, fields, parent);
       }
     }
     return team;

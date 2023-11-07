@@ -154,12 +154,6 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   }
 
   @Override
-  public DashboardDataModel setInheritedFields(DashboardDataModel dataModel, Fields fields) {
-    DashboardService dashboardService = Entity.getEntity(dataModel.getService(), "domain", ALL);
-    return inheritDomain(dataModel, fields, dashboardService);
-  }
-
-  @Override
   public DashboardDataModel setFields(DashboardDataModel dashboardDataModel, Fields fields) {
     populateEntityFieldTags(
         entityType,

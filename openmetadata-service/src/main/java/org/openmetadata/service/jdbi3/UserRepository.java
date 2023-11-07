@@ -187,7 +187,7 @@ public class UserRepository extends EntityRepository<User> {
       List<EntityReference> teams = !fields.contains(TEAMS_FIELD) ? getTeams(user) : user.getTeams();
       if (!nullOrEmpty(teams)) {
         Team team = Entity.getEntity(TEAM, teams.get(0).getId(), "domain", ALL);
-        user.withDomain(team.getDomain());
+        inheritDomain(user, fields, team);
       }
     }
     return user;

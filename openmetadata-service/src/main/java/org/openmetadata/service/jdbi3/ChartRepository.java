@@ -13,8 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.schema.type.Include.ALL;
-
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -62,12 +60,6 @@ public class ChartRepository extends EntityRepository<Chart> {
   public void storeRelationships(Chart chart) {
     EntityReference service = chart.getService();
     addRelationship(service.getId(), chart.getId(), service.getType(), Entity.CHART, Relationship.CONTAINS);
-  }
-
-  @Override
-  public Chart setInheritedFields(Chart chart, Fields fields) {
-    DashboardService dashboardService = Entity.getEntity(chart.getService(), "domain", ALL);
-    return inheritDomain(chart, fields, dashboardService);
   }
 
   @Override

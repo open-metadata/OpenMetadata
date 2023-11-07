@@ -299,7 +299,7 @@ public final class EntityUtil {
 
     @Override
     public String toString() {
-      return fieldList.toString();
+      return String.join(",", fieldList);
     }
 
     public boolean contains(String field) {
