@@ -1581,6 +1581,7 @@
     "unable-to-error-elasticsearch": "无法为 Elasticsearch 进行实体索引{{error}}",
     "uninstall-app": "Uninstalling this {{app}} application will remove it from OpenMetaData",
     "update-displayName-entity": "更改{{entity}}的显示名",
+    "update-profiler-settings": "Update profiler setting.",
     "upstream-depth-message": "请选择一个上游深度的值",
     "upstream-depth-tooltip": "显示最多三个上游血缘节点以确定源（父级别）",
     "usage-ingestion-description": "在设置了元数据提取后，可以配置和部署使用率提取。使用率提取工作流从底层数据库获取查询日志和表创建详细信息，并将其提供给 OpenMetadata。一个数据库服务只能有一个使用率统计流水线。请通过定义查询日志持续时间（天）、临时文件位置和结果限制开始提取。",

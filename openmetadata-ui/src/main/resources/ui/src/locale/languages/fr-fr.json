@@ -1581,6 +1581,7 @@
     "unable-to-error-elasticsearch": "Nous ne sommes pas en mesure de {{error}} Elasticsearch pour les index d'entités.",
     "uninstall-app": "Uninstalling this {{app}} application will remove it from OpenMetaData",
     "update-displayName-entity": "Mettre à Jour le Nom d'Affichage de {{entity}}.",
+    "update-profiler-settings": "Update profiler setting.",
     "upstream-depth-message": "Merci de sélectionner une valeur pour la profondeur amont",
     "upstream-depth-tooltip": "Afficher jusqu'à 3 nœuds de lignée en amont pour identifier la source (niveaux parentaux).",
     "usage-ingestion-description": "L'ingestion d'utilisation peut être configurée et déployée après qu'une ingestion de métadonnées a été configurée. Le flux de travail d'ingestion d'utilisation obtient le journal de requêtes et les détails de création de table à partir de la base de données sous-jacente et les transmet à OpenMetadata. Les métadonnées et l'utilisation ne peuvent avoir qu'un seul pipeline pour un service de base de données. Définissez la durée du journal de requêtes (en jours), l'emplacement du fichier de scène et la limite de résultat pour démarrer.",

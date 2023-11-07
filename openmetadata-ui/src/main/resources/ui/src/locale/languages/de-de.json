@@ -1581,6 +1581,7 @@
     "unable-to-error-elasticsearch": "Wir können {{error}} Elasticsearch für Entität-Indizes nicht durchführen.",
     "uninstall-app": "Uninstalling this {{app}} application will remove it from OpenMetaData",
     "update-displayName-entity": "Aktualisieren Sie die Anzeigenamen für das {{entity}}.",
+    "update-profiler-settings": "Update profiler setting.",
     "upstream-depth-message": "Bitte wählen Sie einen Wert für die Upstream-Tiefe aus",
     "upstream-depth-tooltip": "Zeigen Sie bis zu 3 Knoten der Upstream-Lineage an, um die Quelle (Elternebenen) zu identifizieren.",
     "usage-ingestion-description": "Die Nutzungsinhalation kann nach Einrichtung einer Metadateninhalation konfiguriert und bereitgestellt werden. Der Nutzungsinhalationsworkflow erhält die Abfrageprotokolle und Details zur Tabellenerstellung aus der zugrunde liegenden Datenbank und gibt sie an OpenMetadata weiter. Metadaten und Nutzung können nur eine Pipeline für einen Datenbankdienst haben. Legen Sie die Dauer des Abfrageprotokolls (in Tagen), den Speicherort der Staging-Datei und das Ergebnislimit fest, um zu beginnen.",
