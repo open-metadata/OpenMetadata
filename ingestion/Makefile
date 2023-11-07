@@ -27,7 +27,7 @@ install_all:  ## Install the ingestion module with all dependencies
 
 .PHONY: install_apis
 install_apis:  ## Install the REST APIs module to the current environment
-	python -m pip install $(ROOT_DIR)openmetadata-airflow-apis/
+	python -m pip install $(ROOT_DIR)/openmetadata-airflow-apis/
 
 .PHONY: lint
 lint: ## Run pylint on the Python sources to analyze the codebase

@@ -14,6 +14,9 @@ Workflow definition for the data insight
 from metadata.data_insight.processor.kpi.kpi_runner import KpiRunner
 from metadata.data_insight.source.metadata import DataInsightSource
 from metadata.generated.schema.analytics.basic import WebAnalyticEventType
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataWorkflowConfig,
+)
 from metadata.generated.schema.tests.testSuite import ServiceType
 from metadata.ingestion.api.steps import Sink
 from metadata.utils.importer import import_sink_class
@@ -28,6 +31,11 @@ class DataInsightWorkflow(IngestionWorkflow):
     """Data insight ingestion workflow implementation"""
 
     retention_days = 7
+
+    def __init__(self, config: OpenMetadataWorkflowConfig):
+        super().__init__(config)
+
+        self.sink = None
 
     def _retrieve_service_connection_if_needed(self, service_type: ServiceType) -> None:
         """No service connection needed for data insight"""
@@ -58,7 +66,7 @@ class DataInsightWorkflow(IngestionWorkflow):
         """Retrieve sink for data insight workflow"""
         sink_type = "metadata-rest"
         sink_class = import_sink_class(sink_type=sink_type)
-        sink_config = {"api_endpoint": self.metadata_config.hostPort}
+        sink_config = {"api_endpoint": self.metadata.config.hostPort}
         sink: Sink = sink_class.create(sink_config, self.metadata)
         logger.debug(f"Sink type:{self.config.sink.type}, {sink_class} configured")
 

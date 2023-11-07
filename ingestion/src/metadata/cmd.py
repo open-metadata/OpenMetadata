@@ -56,6 +56,17 @@ class MetadataCommands(Enum):
     OPENMETADATA_DAG_CONFIG_MIGRATION = "openmetadata_dag_config_migration"
 
 
+RUN_PATH_METHODS = {
+    MetadataCommands.INGEST.value: run_ingest,
+    MetadataCommands.USAGE.value: run_usage,
+    MetadataCommands.LINEAGE.value: run_lineage,
+    MetadataCommands.INSIGHT.value: run_insight,
+    MetadataCommands.PROFILE.value: run_profiler,
+    MetadataCommands.TEST.value: run_test,
+    MetadataCommands.APP.value: run_app,
+}
+
+
 OM_IMPORTS_MIGRATION = """
     Update DAG files generated after creating workflow in 0.11 and before.
     In 0.12 the airflow managed API package name changed from `openmetadata` to 
@@ -437,20 +448,9 @@ def metadata(args=None):  # pylint: disable=too-many-branches
     else:
         set_loggers_level(logging.INFO)
 
-    if metadata_workflow == MetadataCommands.INGEST.value:
-        run_ingest(config_path=path)
-    if metadata_workflow == MetadataCommands.USAGE.value:
-        run_usage(config_path=path)
-    if metadata_workflow == MetadataCommands.LINEAGE.value:
-        run_lineage(config_path=path)
-    if metadata_workflow == MetadataCommands.INSIGHT.value:
-        run_insight(config_path=path)
-    if metadata_workflow == MetadataCommands.PROFILE.value:
-        run_profiler(config_path=path)
-    if metadata_workflow == MetadataCommands.TEST.value:
-        run_test(config_path=path)
-    if metadata_workflow == MetadataCommands.APP.value:
-        run_app(config_path=path)
+    if metadata_workflow in RUN_PATH_METHODS:
+        RUN_PATH_METHODS[metadata_workflow](path)
+
     if metadata_workflow == MetadataCommands.BACKUP.value:
         run_backup(
             common_backup_obj_instance=BackupRestoreArgs(
