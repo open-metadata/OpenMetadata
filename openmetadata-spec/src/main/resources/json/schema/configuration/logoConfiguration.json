@@ -1,0 +1,19 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/configuration/logoConfiguration.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LogoConfiguration",
+  "description": "This schema defines the Logo Configuration.",
+  "type": "object",
+  "javaType": "org.openmetadata.api.configuration.LogoConfiguration",
+  "properties": {
+    "customLogoUrlPath": {
+    "description": "Login Page Logo Image Url",
+    "type": "string"
+    },
+    "customMonogramUrlPath": {
+    "description": "Navigation Bar Logo Image Url",
+    "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

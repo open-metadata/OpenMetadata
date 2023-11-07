@@ -15,6 +15,7 @@ package org.openmetadata.service.resources.settings;
 
 import static org.openmetadata.schema.settings.SettingsType.CUSTOM_LOGO_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.EMAIL_CONFIGURATION;
+import static org.openmetadata.schema.settings.SettingsType.LOGIN_CONFIGURATION;
 
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
@@ -23,6 +24,7 @@ import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.api.configuration.LogoConfiguration;
+import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
@@ -66,11 +68,27 @@ public class SettingsCache {
     Settings storedCustomLogoConf = systemRepository.getConfigWithKey(CUSTOM_LOGO_CONFIGURATION.toString());
     if (storedCustomLogoConf == null) {
       // Only in case a config doesn't exist in DB we insert it
-      LogoConfiguration logoConfig = applicationConfig.getApplicationConfiguration().getLogoConfig();
-      if (logoConfig != null) {
-        Settings setting = new Settings().withConfigType(CUSTOM_LOGO_CONFIGURATION).withConfigValue(logoConfig);
-        systemRepository.createNewSetting(setting);
-      }
+      Settings setting =
+          new Settings()
+              .withConfigType(CUSTOM_LOGO_CONFIGURATION)
+              .withConfigValue(new LogoConfiguration().withCustomLogoUrlPath("").withCustomMonogramUrlPath(""));
+      systemRepository.createNewSetting(setting);
+    }
+
+    // Initialise Login Configuration
+    // Initialise Logo Setting
+    Settings storedLoginConf = systemRepository.getConfigWithKey(LOGIN_CONFIGURATION.toString());
+    if (storedLoginConf == null) {
+      // Only in case a config doesn't exist in DB we insert it
+      Settings setting =
+          new Settings()
+              .withConfigType(LOGIN_CONFIGURATION)
+              .withConfigValue(
+                  new LoginConfiguration()
+                      .withMaxLoginFailAttempts(3)
+                      .withAccessBlockTime(600)
+                      .withJwtTokenExpiryTime(3600));
+      systemRepository.createNewSetting(setting);
     }
   }
 
