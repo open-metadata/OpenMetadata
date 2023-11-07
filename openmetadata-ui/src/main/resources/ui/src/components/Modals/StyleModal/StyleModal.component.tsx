@@ -10,15 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Form, FormProps, Input, Modal, Tooltip } from 'antd';
+import { Form, FormProps, Input, Modal } from 'antd';
 
-import { InfoCircleOutlined } from '@ant-design/icons';
 import { isUndefined, omit } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { GRAYED_OUT_COLOR } from '../../../constants/constants';
 import { HEX_COLOR_CODE_REGEX } from '../../../constants/regex.constants';
 import ColorPicker from '../../common/ColorPicker/ColorPicker.component';
+import FormItemLabel from '../../Form/FormItemLabel';
 import { StyleModalProps, StyleWithInput } from './StyleModal.interface';
 
 const StyleModal = ({ open, onCancel, onSubmit, style }: StyleModalProps) => {
@@ -59,19 +58,12 @@ const StyleModal = ({ open, onCancel, onSubmit, style }: StyleModalProps) => {
         }}>
         <Form.Item
           label={
-            <>
-              {t('label.icon-url')}
-              <Tooltip
-                align={{ targetOffset: [18, 0] }}
-                placement="topLeft"
-                title={t('message.govern-url-size-message')}>
-                <InfoCircleOutlined
-                  className="m-x-xss"
-                  data-testid="glossary-url-helper-icon"
-                  style={{ color: GRAYED_OUT_COLOR }}
-                />
-              </Tooltip>
-            </>
+            <FormItemLabel
+              align={{ targetOffset: [18, 0] }}
+              helperText={t('message.govern-url-size-message')}
+              label={t('label.icon-url')}
+              placement="topLeft"
+            />
           }
           name="iconURL">
           <Input
