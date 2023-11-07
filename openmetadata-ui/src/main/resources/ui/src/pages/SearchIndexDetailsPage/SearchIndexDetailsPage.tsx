@@ -41,6 +41,7 @@ import {
 } from '../../components/PermissionProvider/PermissionProvider.interface';
 import SampleDataWithMessages from '../../components/SampleDataWithMessages/SampleDataWithMessages';
 import { SourceType } from '../../components/searched-data/SearchedData.interface';
+import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
 import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
@@ -61,6 +62,7 @@ import {
   patchSearchIndexDetails,
   removeFollower,
   restoreSearchIndex,
+  updateSearchIndexVotes,
 } from '../../rest/SearchIndexAPI';
 import {
   addToRecentViewed,
@@ -625,6 +627,19 @@ function SearchIndexDetailsPage() {
     }
   }, [USERId, searchIndexId, getEntityFeedCount]);
 
+  const onUpdateVote = async (data: QueryVote, id: string) => {
+    try {
+      await updateSearchIndexVotes(id, data);
+      const details = await getSearchIndexDetailsByFQN(
+        searchIndexFQN,
+        defaultFields
+      );
+      setSearchIndexDetails(details);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
   const { isFollowing } = useMemo(() => {
     return {
       isFollowing: followers?.some(({ id }) => id === USERId),
@@ -722,6 +737,7 @@ function SearchIndexDetailsPage() {
             onOwnerUpdate={handleUpdateOwner}
             onRestoreDataAsset={handleRestoreSearchIndex}
             onTierUpdate={onTierUpdate}
+            onUpdateVote={onUpdateVote}
             onVersionClick={versionHandler}
           />
         </Col>
