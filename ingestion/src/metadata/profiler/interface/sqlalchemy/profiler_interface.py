@@ -40,7 +40,6 @@ from metadata.profiler.orm.functions.table_metric_construct import (
 )
 from metadata.profiler.orm.registry import Dialects
 from metadata.profiler.processor.runner import QueryRunner
-from metadata.profiler.processor.sampler.sampler_factory import sampler_factory_
 from metadata.utils.custom_thread_pool import CustomThreadPoolExecutor
 from metadata.utils.logger import profiler_interface_registry_logger
 
@@ -108,6 +107,10 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
 
     def _get_sampler(self, **kwargs):
         """get sampler object"""
+        from metadata.profiler.processor.sampler.sampler_factory import (  # pylint: disable=import-outside-toplevel
+            sampler_factory_,
+        )
+
         session = kwargs.get("session")
         table = kwargs["table"]
 

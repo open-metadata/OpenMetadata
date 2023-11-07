@@ -32,7 +32,6 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
 from metadata.mixins.sqalchemy.sqa_mixin import SQAInterfaceMixin
 from metadata.profiler.processor.runner import QueryRunner
-from metadata.profiler.processor.sampler.sampler_factory import sampler_factory_
 from metadata.profiler.processor.sampler.sqlalchemy.sampler import SQASampler
 from metadata.utils.constants import TEN_MIN
 from metadata.utils.importer import import_test_case_class
@@ -119,6 +118,10 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
 
     def _create_sampler(self) -> SQASampler:
         """Create sampler instance"""
+        from metadata.profiler.processor.sampler.sampler_factory import (  # pylint: disable=import-outside-toplevel
+            sampler_factory_,
+        )
+
         return sampler_factory_.create(
             self.service_connection_config.__class__.__name__,
             client=self.session,

@@ -18,7 +18,6 @@ from sqlalchemy import Column, inspect
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
-from metadata.profiler.processor.sampler.sampler_factory import sampler_factory_
 
 
 class BigQueryProfilerInterface(SQAProfilerInterface):
@@ -43,6 +42,10 @@ class BigQueryProfilerInterface(SQAProfilerInterface):
 
     def _get_sampler(self, **kwargs):
         """get sampler object"""
+        from metadata.profiler.processor.sampler.sampler_factory import (  # pylint: disable=import-outside-toplevel
+            sampler_factory_,
+        )
+
         session = kwargs.get("session")
         table = kwargs["table"]
 
