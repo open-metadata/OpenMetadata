@@ -95,7 +95,8 @@
             },
             {
               "title": "OpenMetadata Storage",
-              "type": "object"
+              "type": "object",
+              "additionalProperties": false
             }
           ]
         }
@@ -114,7 +115,8 @@
             },
             {
               "title": "No Sample Data Storage Config",
-              "type": "object"
+              "type": "object",
+              "additionalProperties": false
             }
           ]
         }

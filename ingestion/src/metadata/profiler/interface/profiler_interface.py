@@ -239,6 +239,22 @@ class ProfilerInterface(ABC):
         return None
 
     @staticmethod
+    def _get_sample_storage_config(
+        config: Union[
+            DatabaseSchemaProfilerConfig,
+            DatabaseProfilerConfig,
+            DatabaseAndSchemaConfig,
+        ]
+    ):
+        if (
+            config
+            and config.sampleDataStorageConfig
+            and config.sampleDataStorageConfig.config
+        ):
+            return config.sampleDataStorageConfig.config
+        return None
+
+    @staticmethod
     def get_storage_config_for_table(
         entity: Table,
         schema_profiler_config: Optional[DatabaseSchemaProfilerConfig],
@@ -255,29 +271,26 @@ class ProfilerInterface(ABC):
             if (
                 schema_config.fullyQualifiedName.__root__
                 == entity.databaseSchema.fullyQualifiedName
-                and schema_config.sampleDataStorageConfig
+                and ProfilerInterface._get_sample_storage_config(schema_config)
             ):
-                return schema_config.sampleDataStorageConfig
+                return ProfilerInterface._get_sample_storage_config(schema_config)
 
         for database_config in profiler_config.databaseConfig:
             if (
                 database_config.fullyQualifiedName.__root__
                 == entity.database.fullyQualifiedName
-                and database_config.sampleDataStorageConfig
+                and ProfilerInterface._get_sample_storage_config(schema_config)
             ):
-                return database_config.sampleDataStorageConfig
+                return ProfilerInterface._get_sample_storage_config(schema_config)
 
-        if schema_profiler_config and schema_profiler_config.sampleDataStorageConfig:
-            return schema_profiler_config.sampleDataStorageConfig
+        if ProfilerInterface._get_sample_storage_config(schema_profiler_config):
+            return ProfilerInterface._get_sample_storage_config(schema_profiler_config)
 
-        if (
-            database_profiler_config
-            and database_profiler_config.sampleDataStorageConfig
-        ):
-            return database_profiler_config.sampleDataStorageConfig
+        if ProfilerInterface._get_sample_storage_config(database_profiler_config):
+            return ProfilerInterface._get_sample_storage_config(database_profiler_config)
 
         try:
-            return db_service.connection.config.sampleDataStorageConfig
+            return db_service.connection.config.sampleDataStorageConfig.config
         except AttributeError:
             pass
 

@@ -31,6 +31,7 @@ from metadata.generated.schema.entity.data.table import (
     TableProfilerConfig,
 )
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
+    DataStorageConfig,
     SampleDataStorageConfig,
 )
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
@@ -73,9 +74,11 @@ class ProfilerInterfaceTest(TestCase):
         )
 
         cls.schema_storage_config = SampleDataStorageConfig(
-            bucketName="bucket-a",
-            prefix="prefix-a",
-            storageConfig=AWSCredentials(awsRegion="us-east-2"),
+            config=DataStorageConfig(
+                bucketName="bucket-a",
+                prefix="prefix-a",
+                storageConfig=AWSCredentials(awsRegion="us-east-2"),
+            )
         )
 
         cls.schema_profiler_config = DatabaseSchemaProfilerConfig(
@@ -101,9 +104,11 @@ class ProfilerInterfaceTest(TestCase):
         )
 
         cls.database_storage_config = SampleDataStorageConfig(
-            bucketName="bucket-b",
-            prefix="prefix-b",
-            storageConfig=AWSCredentials(awsRegion="us-east-1"),
+            config=DataStorageConfig(
+                bucketName="bucket-b",
+                prefix="prefix-b",
+                storageConfig=AWSCredentials(awsRegion="us-east-1"),
+            )
         )
 
         cls.database_profiler_config = DatabaseProfilerConfig(
