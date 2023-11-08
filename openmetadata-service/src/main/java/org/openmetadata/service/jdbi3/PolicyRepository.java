@@ -28,7 +28,9 @@ import static org.openmetadata.service.util.EntityUtil.ruleMatch;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
+import javax.ws.rs.BadRequestException;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.policies.Policy;
@@ -158,6 +160,15 @@ public class PolicyRepository extends EntityRepository<Policy> {
     }
 
     private void updateRules(List<Rule> origRules, List<Rule> updatedRules) {
+      // Check if the Rules have unique names
+      if (!nullOrEmpty(updatedRules)) {
+        Set<String> ruleNames = updatedRules.stream().map(Rule::getName).collect(Collectors.toSet());
+
+        if (ruleNames.size() != updatedRules.size()) {
+          throw new BadRequestException("Policy contains duplicate Rules. Please use unique name for Rules.");
+        }
+      }
+
       // Record change description
       List<Rule> deletedRules = new ArrayList<>();
       List<Rule> addedRules = new ArrayList<>();
