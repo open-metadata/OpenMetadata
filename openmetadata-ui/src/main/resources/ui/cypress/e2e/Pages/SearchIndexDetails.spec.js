@@ -257,7 +257,9 @@ describe('Prerequisite for data steward role tests', () => {
 
     cy.get('[data-testid="edit-roles-button"]').click();
 
-    cy.get('[data-testid="inline-edit-container"] #select-role').click();
+    cy.get('[data-testid="inline-edit-container"] #select-role')
+      .click()
+      .type(role.name);
 
     cy.get(`[title=${role.name}]`).click();
 
