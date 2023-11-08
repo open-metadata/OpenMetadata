@@ -75,7 +75,7 @@ public class SettingsCache {
                   new LogoConfiguration()
                       .withCustomLogoUrlPath("")
                       .withCustomMonogramUrlPath("")
-                      .withCustomHeaderLogoUrlPath(""));
+                      .withCustomFaviconUrlPath(""));
       systemRepository.createNewSetting(setting);
     }
 

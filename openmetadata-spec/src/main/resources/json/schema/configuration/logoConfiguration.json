@@ -10,8 +10,8 @@
     "description": "Login Page Logo Image Url",
     "type": "string"
     },
-    "customHeaderLogoUrlPath": {
-      "description": "Header Logo Page Logo Image Url",
+    "customFaviconUrlPath": {
+      "description": "Favicon Page Logo Image Url",
       "type": "string"
     },
     "customMonogramUrlPath": {
