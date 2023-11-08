@@ -114,7 +114,7 @@ class OpenMetadataSourceExt(OpenMetadataSource):
         self._connection = None  # Lazy init as well
 
     def _iter(self, *_, **__) -> Iterable[Either[ProfilerSourceAndEntity]]:
-        for database_name in self.get_database_names() or []:
+        for database_name in self.get_database_names():
             try:
                 database_entity = fqn.search_database_from_es(
                     database_name=database_name,
@@ -126,8 +126,8 @@ class OpenMetadataSourceExt(OpenMetadataSource):
                         f"Database Entity for database `{database_name}` not found"
                     )
                     continue
-                for schema_name in self.get_schema_names() or []:
-                    for table_name in self.get_table_names(schema_name) or []:
+                for schema_name in self.get_schema_names():
+                    for table_name in self.get_table_names(schema_name):
                         table_entity = fqn.search_table_from_es(
                             metadata=self.metadata,
                             database_name=database_name,
