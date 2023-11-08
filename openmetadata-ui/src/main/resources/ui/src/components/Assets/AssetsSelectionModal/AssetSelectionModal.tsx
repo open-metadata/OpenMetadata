@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, List, Modal, Select, Space, Typography } from 'antd';
+import { Button, List, Modal, Space, Typography } from 'antd';
 import { compare } from 'fast-json-patch';
-import { delay, map, startCase } from 'lodash';
+import { delay } from 'lodash';
 import { EntityDetailUnion } from 'Models';
 import VirtualList from 'rc-virtual-list';
 import {
@@ -20,7 +20,6 @@ import {
   UIEventHandler,
   useCallback,
   useEffect,
-  useMemo,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -29,15 +28,18 @@ import { SearchIndex } from '../../../enums/search.enum';
 import { Table } from '../../../generated/entity/data/table';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../generated/entity/domains/domain';
-import { getDataProductByName } from '../../../rest/dataProductAPI';
+import {
+  getDataProductByName,
+  patchDataProduct,
+} from '../../../rest/dataProductAPI';
 import { getDomainByName } from '../../../rest/domainAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import {
   getAPIfromSource,
   getAssetsFields,
-  getAssetsSearchIndex,
   getEntityAPIfromSource,
 } from '../../../utils/Assets/AssetsUtils';
+import { getEntityReferenceFromEntity } from '../../../utils/EntityUtils';
 import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
 import Searchbar from '../../common/searchbar/Searchbar';
 import TableDataCardV2 from '../../common/table-data-card-v2/TableDataCardV2';
@@ -103,7 +105,7 @@ export const AssetSelectionModal = ({
     } else if (type === AssetsOfEntity.DATA_PRODUCT) {
       const data = await getDataProductByName(
         encodeURIComponent(entityFqn),
-        'domain'
+        'domain,assets'
       );
       setActiveEntity(data);
     }
@@ -186,49 +188,91 @@ export const AssetSelectionModal = ({
     }
   };
 
-  const domainAndDataProductsSave = async () => {
+  const dataProductsSave = async () => {
     setIsSaveLoading(true);
-    const entityDetails = [...(selectedItems?.values() ?? [])].map((item) =>
-      getEntityAPIfromSource(item.entityType)(
-        item.fullyQualifiedName,
-        getAssetsFields(type)
-      )
-    );
+    if (!activeEntity) {
+      return;
+    }
 
-    try {
-      const entityDetailsResponse = await Promise.allSettled(entityDetails);
-      const map = new Map();
+    const entities = [...(selectedItems?.values() ?? [])].map((item) => {
+      return getEntityReferenceFromEntity(item, item.entityType);
+    });
 
-      entityDetailsResponse.forEach((response) => {
-        if (response.status === 'fulfilled') {
-          const entity = response.value;
-          entity && map.set(entity.fullyQualifiedName, entity);
-        }
-      });
-      const patchAPIPromises = [...(selectedItems?.values() ?? [])]
-        .map((item) => {
-          if (map.has(item.fullyQualifiedName) && activeEntity) {
-            const entity = map.get(item.fullyQualifiedName);
-            const jsonPatch = getJsonPatchObject(entity);
-            const api = getAPIfromSource(item.entityType);
+    const newEntities = entities.filter((entity) => {
+      const entityKey = entity.id;
 
-            return api(item.id, jsonPatch);
-          }
-
-          return;
-        })
-        .filter(Boolean);
-
-      await Promise.all(patchAPIPromises);
-      await new Promise((resolve) =>
-        delay(() => resolve(''), TIMEOUT_DURATION)
+      return !((activeEntity as DataProduct).assets ?? []).some(
+        (asset) => asset.id === entityKey
       );
+    });
+
+    if (newEntities.length === 0) {
       onSave?.();
-    } catch (_) {
-      // Nothing here
-    } finally {
-      setIsSaveLoading(false);
       onCancel();
+      setIsSaveLoading(false);
+
+      return;
+    }
+
+    const updatedActiveEntity = {
+      ...activeEntity,
+      assets: [...((activeEntity as DataProduct).assets ?? []), ...newEntities],
+    };
+
+    const jsonPatch = compare(activeEntity, updatedActiveEntity);
+    await patchDataProduct(activeEntity.id, jsonPatch);
+    await new Promise((resolve) => delay(() => resolve(''), TIMEOUT_DURATION));
+    onSave?.();
+    onCancel();
+    setIsSaveLoading(false);
+  };
+
+  const domainAndDataProductsSave = async () => {
+    if (type === AssetsOfEntity.DATA_PRODUCT) {
+      dataProductsSave();
+    } else {
+      try {
+        setIsSaveLoading(true);
+        const entityDetails = [...(selectedItems?.values() ?? [])].map((item) =>
+          getEntityAPIfromSource(item.entityType)(
+            item.fullyQualifiedName,
+            getAssetsFields(type)
+          )
+        );
+        const entityDetailsResponse = await Promise.allSettled(entityDetails);
+        const map = new Map();
+
+        entityDetailsResponse.forEach((response) => {
+          if (response.status === 'fulfilled') {
+            const entity = response.value;
+            entity && map.set(entity.fullyQualifiedName, entity);
+          }
+        });
+        const patchAPIPromises = [...(selectedItems?.values() ?? [])]
+          .map((item) => {
+            if (map.has(item.fullyQualifiedName) && activeEntity) {
+              const entity = map.get(item.fullyQualifiedName);
+              const jsonPatch = getJsonPatchObject(entity);
+              const api = getAPIfromSource(item.entityType);
+
+              return api(item.id, jsonPatch);
+            }
+
+            return;
+          })
+          .filter(Boolean);
+
+        await Promise.all(patchAPIPromises);
+        await new Promise((resolve) =>
+          delay(() => resolve(''), TIMEOUT_DURATION)
+        );
+        onSave?.();
+      } catch (_) {
+        // Nothing here
+      } finally {
+        setIsSaveLoading(false);
+        onCancel();
+      }
     }
   };
 
@@ -326,10 +370,6 @@ export const AssetSelectionModal = ({
     ]
   );
 
-  const mapAssetsSearchIndex = useMemo(() => {
-    return getAssetsSearchIndex(type);
-  }, [type]);
-
   return (
     <Modal
       destroyOnClose
@@ -356,20 +396,6 @@ export const AssetSelectionModal = ({
         <Searchbar
           removeMargin
           showClearSearch
-          inputProps={{
-            addonBefore: (
-              <Select
-                bordered={false}
-                options={map(mapAssetsSearchIndex, (value, key) => ({
-                  label: startCase(key),
-                  value: value,
-                }))}
-                style={{ minWidth: '120px' }}
-                value={activeFilter}
-                onChange={setActiveFilter}
-              />
-            ),
-          }}
           placeholder={t('label.search-entity', {
             entity: t('label.asset-plural'),
           })}

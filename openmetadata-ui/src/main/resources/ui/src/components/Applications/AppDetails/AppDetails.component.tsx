@@ -387,15 +387,16 @@ const AppDetails = () => {
   }, [appData, jsonSchema]);
 
   const actionText = useMemo(() => {
-    if (action === AppAction.ENABLE) {
-      return t('label.enable-lowercase');
-    } else if (action === AppAction.DISABLE) {
-      return t('label.disable-lowercase');
-    } else if (action === AppAction.UNINSTALL) {
-      return t('label.uninstall-lowercase');
+    switch (action) {
+      case AppAction.ENABLE:
+        return t('label.enable-lowercase');
+      case AppAction.DISABLE:
+        return t('label.disable-lowercase');
+      case AppAction.UNINSTALL:
+        return t('label.uninstall-lowercase');
+      default:
+        return '';
     }
-
-    return '';
   }, [action]);
 
   useEffect(() => {
