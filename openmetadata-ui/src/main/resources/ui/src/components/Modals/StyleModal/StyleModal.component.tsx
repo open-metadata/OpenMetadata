@@ -17,6 +17,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { HEX_COLOR_CODE_REGEX } from '../../../constants/regex.constants';
 import ColorPicker from '../../common/ColorPicker/ColorPicker.component';
+import FormItemLabel from '../../Form/FormItemLabel';
 import { StyleModalProps, StyleWithInput } from './StyleModal.interface';
 
 const StyleModal = ({ open, onCancel, onSubmit, style }: StyleModalProps) => {
@@ -55,7 +56,16 @@ const StyleModal = ({ open, onCancel, onSubmit, style }: StyleModalProps) => {
             form.setFieldValue('color', value.colorInput);
           }
         }}>
-        <Form.Item label={t('label.icon-url')} name="iconURL">
+        <Form.Item
+          label={
+            <FormItemLabel
+              align={{ targetOffset: [18, 0] }}
+              helperText={t('message.govern-url-size-message')}
+              label={t('label.icon-url')}
+              placement="topLeft"
+            />
+          }
+          name="iconURL">
           <Input
             data-testid="icon-url"
             placeholder={t('label.enter-entity', {

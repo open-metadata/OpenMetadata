@@ -228,11 +228,14 @@ export const getCountBadge = (
   return (
     <span
       className={classNames(
-        'p-x-xss m-x-xss global-border rounded-4 text-xs text-center',
+        'p-x-xss m-x-xss global-border rounded-4 text-center',
         clsBG,
         className
       )}>
-      <span data-testid="filter-count" title={count.toString()}>
+      <span
+        className="text-xs"
+        data-testid="filter-count"
+        title={count.toString()}>
         {count}
       </span>
     </span>
