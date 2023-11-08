@@ -71,7 +71,11 @@ public class SettingsCache {
       Settings setting =
           new Settings()
               .withConfigType(CUSTOM_LOGO_CONFIGURATION)
-              .withConfigValue(new LogoConfiguration().withCustomLogoUrlPath("").withCustomMonogramUrlPath(""));
+              .withConfigValue(
+                  new LogoConfiguration()
+                      .withCustomLogoUrlPath("")
+                      .withCustomMonogramUrlPath("")
+                      .withCustomHeaderLogoUrlPath(""));
       systemRepository.createNewSetting(setting);
     }
 

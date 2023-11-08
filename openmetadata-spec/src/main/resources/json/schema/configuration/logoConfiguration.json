@@ -10,6 +10,10 @@
     "description": "Login Page Logo Image Url",
     "type": "string"
     },
+    "customHeaderLogoUrlPath": {
+      "description": "Header Logo Page Logo Image Url",
+      "type": "string"
+    },
     "customMonogramUrlPath": {
     "description": "Navigation Bar Logo Image Url",
     "type": "string"
