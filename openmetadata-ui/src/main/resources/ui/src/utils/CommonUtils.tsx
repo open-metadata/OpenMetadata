@@ -881,5 +881,5 @@ export const handleSearchFilterOption = (
     label: string;
     value: string;
   }
-) => lowerCase(option?.label ?? option?.value).includes(lowerCase(searchValue));
+) => lowerCase(option?.label).includes(lowerCase(searchValue));
 // Check label while searching anything and filter that options out if found matching
