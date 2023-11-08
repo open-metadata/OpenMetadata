@@ -254,7 +254,7 @@ const EntityInfoDrawer = ({
       default:
         return null;
     }
-  }, [entityDetail, fetchEntityDetail, tags, selectedNode]);
+  }, [entityDetail, fetchEntityDetail, tags, selectedNode, isLoading]);
 
   useEffect(() => {
     fetchEntityDetail(selectedNode);
