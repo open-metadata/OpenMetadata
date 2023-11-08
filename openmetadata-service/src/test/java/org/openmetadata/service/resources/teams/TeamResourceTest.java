@@ -50,6 +50,7 @@ import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_USER_NAME;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
+import static org.openmetadata.service.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.validateEntityReferences;
@@ -531,28 +532,25 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
 
     // Change bu2 parent from Organization to bu1 using PUT operation
     CreateTeam create = createRequest("put2").withTeamType(BUSINESS_UNIT).withParents(List.of(bu1.getId()));
-    ChangeDescription change1 = getChangeDescription(bu2.getVersion());
-    fieldDeleted(change1, "parents", List.of(ORG_TEAM.getEntityReference()));
-    fieldAdded(change1, "parents", List.of(bu1.getEntityReference()));
-    bu2 = updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change1);
+    ChangeDescription change = getChangeDescription(bu2.getVersion());
+    fieldDeleted(change, "parents", List.of(ORG_TEAM.getEntityReference()));
+    fieldAdded(change, "parents", List.of(bu1.getEntityReference()));
+    bu2 = updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    Double version = bu2.getVersion();
 
-    // Remove bu2 parent. Default parent organization replaces it
+    // Remove bu2 parent bu1. Default parent organization replaces it
     create = createRequest("put2").withTeamType(BUSINESS_UNIT).withParents(null);
-    ChangeDescription change2 = getChangeDescription(bu2.getVersion());
-    fieldDeleted(change2, "parents", List.of(bu1.getEntityReference()));
-    fieldAdded(change2, "parents", List.of(ORG_TEAM.getEntityReference()));
-    bu2 = updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change2);
+    change = getChangeDescription(version);
+    fieldDeleted(change, "parents", List.of(bu1.getEntityReference()));
+    fieldAdded(change, "parents", List.of(ORG_TEAM.getEntityReference()));
+    bu2 = updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
-    // Change bu2 parent from Organization to bu1 using PATCH operation
+    // Change bu2 parent from Organization to bu1 using PATCH operation.
+    // Change from this PATCH is combined with the previous PUT resulting in no change
     String json = JsonUtils.pojoToJson(bu2);
-    change1.setPreviousVersion(bu2.getVersion());
+    change = getChangeDescription(version);
     bu2.setParents(List.of(bu1.getEntityReference()));
-    bu2 = patchEntityAndCheck(bu2, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change1);
-
-    json = JsonUtils.pojoToJson(bu2);
-    change2.setPreviousVersion(bu2.getVersion());
-    bu2.setParents(List.of(ORG_TEAM.getEntityReference()));
-    patchEntityAndCheck(bu2, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change2);
+    patchEntityAndCheck(bu2, json, ADMIN_AUTH_HEADERS, NO_CHANGE, null);
   }
 
   @Test
@@ -563,6 +561,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
             .withProfile(PROFILE)
             .withIsJoinable(false);
     Team team = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    Double version = team.getVersion();
     Team child = createWithParents("child", GROUP, team.getEntityReference());
     // Delete child and then patch the parent
     deleteAndCheckEntity(child, ADMIN_AUTH_HEADERS);
@@ -570,16 +569,14 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     // patch the team with isJoinable set to true
     String json = JsonUtils.pojoToJson(team);
     team.setIsJoinable(true);
-    ChangeDescription change = getChangeDescription(team.getVersion());
+    ChangeDescription change = getChangeDescription(version);
     fieldUpdated(change, "isJoinable", false, true);
     team = patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
 
-    // set isJoinable to false and check
+    // set isJoinable to false - change from this PATCH and the previous are consolidated resulting in no change
     json = JsonUtils.pojoToJson(team);
     team.setIsJoinable(false);
-    change = getChangeDescription(team.getVersion());
-    fieldUpdated(change, "isJoinable", true, false);
-    patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, NO_CHANGE, null);
   }
 
   @Test
@@ -603,22 +600,24 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
             .withUsers(users)
             .withDefaultRoles(rolesIds);
     Team team = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    Double version = team.getVersion();
 
     // Remove a user from the team using patch request
     String json = JsonUtils.pojoToJson(team);
     int removeUserIndex = new Random().nextInt(totalUsers);
     EntityReference deletedUser = team.getUsers().get(removeUserIndex);
     team.getUsers().remove(removeUserIndex);
-    ChangeDescription change = getChangeDescription(team.getVersion());
+    ChangeDescription change = getChangeDescription(version);
     fieldDeleted(change, "users", CommonUtil.listOf(deletedUser));
     team = patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
 
-    // Remove a default role from the team using patch request
+    // Remove a default role from the team using patch request - changes from this PATCH and previous are consolidated
     json = JsonUtils.pojoToJson(team);
     int removeDefaultRoleIndex = new Random().nextInt(roles.size());
     EntityReference deletedRole = team.getDefaultRoles().get(removeDefaultRoleIndex);
     team.getDefaultRoles().remove(removeDefaultRoleIndex);
-    change = getChangeDescription(team.getVersion());
+    change = getChangeDescription(version);
+    fieldDeleted(change, "users", CommonUtil.listOf(deletedUser));
     fieldDeleted(change, "defaultRoles", CommonUtil.listOf(deletedRole));
     patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
   }
@@ -654,47 +653,44 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   void patch_teamWithPolicies(TestInfo test) throws IOException {
     CreateTeam create = createRequest(getEntityName(test));
     Team team = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    Double version = team.getVersion();
 
     // Add policies to the team
     String json = JsonUtils.pojoToJson(team);
     team.withPolicies(List.of(POLICY1.getEntityReference(), POLICY2.getEntityReference()));
-    ChangeDescription change = getChangeDescription(team.getVersion());
+    ChangeDescription change = getChangeDescription(version);
     fieldAdded(change, "policies", List.of(POLICY1.getEntityReference(), POLICY2.getEntityReference()));
     team = patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
-    // Remove policies from the team
+    // Remove policies from the team - Change from this PATCH is combined with the previous resulting in no change
     json = JsonUtils.pojoToJson(team);
-    team.withPolicies(null);
-    change = getChangeDescription(team.getVersion());
-    fieldDeleted(change, "policies", List.of(POLICY1.getEntityReference(), POLICY2.getEntityReference()));
-    patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, NO_CHANGE, null);
   }
 
   @Test
   void patch_teamEmail(TestInfo test) throws IOException {
     CreateTeam create = createRequest(getEntityName(test));
     Team team = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    Double version = team.getVersion();
 
-    // Add policies to the team
+    // Add email to the team
     String json = JsonUtils.pojoToJson(team);
     String email = "team.!#$%&’*+/=?^_`{|}~-@openmetadata.org"; // Using all the allowed characters in email username
     team.withEmail(email);
-    ChangeDescription change = getChangeDescription(team.getVersion());
+    ChangeDescription change = getChangeDescription(version);
     fieldAdded(change, "email", email);
     team = patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
-    // Remove policies from the team
+    // Remove email from the team - changes from this PATCH and the previous are consolidated to no change
     json = JsonUtils.pojoToJson(team);
-    team.withEmail(null);
-    change = getChangeDescription(team.getVersion());
-    fieldDeleted(change, "email", email);
-    patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, NO_CHANGE, null);
   }
 
   @Test
   void patch_ProfileWithSubscription(TestInfo test) throws IOException, URISyntaxException {
     CreateTeam create = createRequest(getEntityName(test));
     Team team = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    Double version = team.getVersion();
     Profile profile1 =
         new Profile()
             .withSubscription(
@@ -703,16 +699,14 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     // Add policies to the team
     String json = JsonUtils.pojoToJson(team);
     team.withProfile(profile1);
-    ChangeDescription change = getChangeDescription(team.getVersion());
+    ChangeDescription change = getChangeDescription(version);
     fieldUpdated(change, "profile", PROFILE, profile1);
     team = patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
-    // Remove policies from the team
+    // Remove policies from the team - Change from this PATCH and previous are consolidated to no change
     json = JsonUtils.pojoToJson(team);
     team.withProfile(null);
-    change = getChangeDescription(team.getVersion());
-    fieldDeleted(change, "profile", profile1);
-    patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, NO_CHANGE, null);
   }
 
   @Test

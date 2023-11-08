@@ -54,7 +54,6 @@ import static org.openmetadata.service.util.EntityUtil.getId;
 import static org.openmetadata.service.util.EntityUtil.nextMajorVersion;
 import static org.openmetadata.service.util.EntityUtil.nextVersion;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
-import static org.openmetadata.service.util.EntityUtil.previousVersion;
 import static org.openmetadata.service.util.EntityUtil.tagLabelMatch;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -1833,23 +1832,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       boolean consolidateChanges = consolidateChanges(original, updated, operation);
       // Revert the changes previously made by the user with in a session and consolidate all the changes
       if (consolidateChanges) {
-        Operation operationOld = operation;
-        T updatedOld = updated;
-        T previous = getPreviousVersion(original);
-
-        // Update the entity from original > previous, to revert the previous in session change
-        updated = previous;
-        System.out.format(
-            "XXX reverting to the previous version %s owner %s%n", previous.getVersion(), previous.getOwner());
-        System.out.format(
-            "XXX reverting from current version %s owner %s%n", original.getVersion(), original.getOwner());
-        operation = Operation.PATCH;
-        updateInternal();
-        System.out.println("XXX reverting the previous change done");
-        changeDescription = new ChangeDescription();
-        original = previous;
-        updated = updatedOld;
-        operation = operationOld;
+        revert();
       }
       // Now updated from previous/original to updated one
       updateInternal();
@@ -1857,6 +1840,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // Store the updated entity
       storeUpdate();
       postUpdate(original, updated);
+    }
+
+    @Transaction
+    private void revert() {
+      // Revert from original to previous version to go back to the previous version
+      T updatedOld = updated;
+      T previous = getPreviousVersion(original);
+      updated = previous;
+      updateInternal();
+      changeDescription = new ChangeDescription(); // Discard all the changes related to revert
+
+      // Now update from previous to the latest updated entity
+      original = previous;
+      updated = updatedOld;
     }
 
     /** Compare original and updated entities and perform updates. Update the entity version and track changes. */
@@ -2394,7 +2391,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private T getPreviousVersion(T original) {
-      String extensionName = EntityUtil.getVersionExtension(entityType, previousVersion(original.getVersion()));
+      String extensionName =
+          EntityUtil.getVersionExtension(entityType, original.getChangeDescription().getPreviousVersion());
       String json = daoCollection.entityExtensionDAO().getExtension(original.getId(), extensionName);
       return JsonUtils.readValue(json, entityClass);
     }
@@ -2509,8 +2507,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       boolean updated = recordChange(columnField, origColumn.getPrecision(), updatedColumn.getPrecision());
       if (origColumn.getPrecision() != null
           && updated
-          && updatedColumn.getPrecision() < origColumn.getPrecision()) { // Previously precision was set
-        // The precision was reduced. Treat it as backward-incompatible change
+          && updated
+          && (updatedColumn.getPrecision() == null || updatedColumn.getPrecision() < origColumn.getPrecision())) {
+        // Previously set precision was reduced or removed. Treat it as backward-incompatible change
         majorVersionChange = true;
       }
     }
@@ -2520,8 +2519,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       boolean updated = recordChange(columnField, origColumn.getScale(), updatedColumn.getScale());
       if (origColumn.getScale() != null
           && updated
-          && updatedColumn.getScale() < origColumn.getScale()) { // Previously scale was set
-        // The scale was reduced. Treat it as backward-incompatible change
+          && (updatedColumn.getScale() == null || updatedColumn.getScale() < origColumn.getScale())) {
+        // Previously set scale was reduced or removed. Treat it as backward-incompatible change
         majorVersionChange = true;
       }
     }

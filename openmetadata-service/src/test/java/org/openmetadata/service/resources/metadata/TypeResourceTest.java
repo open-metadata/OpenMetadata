@@ -86,30 +86,33 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
     Type tableEntity = getEntityByName("table", "customProperties", ADMIN_AUTH_HEADERS);
     assertTrue(listOrEmpty(tableEntity.getCustomProperties()).isEmpty());
 
-    // Add a custom property with name intA with type integer
+    // Add a custom property with name intA with type integer with PUT
     CustomProperty fieldA =
         new CustomProperty().withName("intA").withDescription("intA").withPropertyType(INT_TYPE.getEntityReference());
     ChangeDescription change = getChangeDescription(tableEntity.getVersion());
     fieldAdded(change, "customProperties", new ArrayList<>(List.of(fieldA)));
     tableEntity = addCustomPropertyAndCheck(tableEntity.getId(), fieldA, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    Double version = tableEntity.getVersion();
     assertCustomProperties(new ArrayList<>(List.of(fieldA)), tableEntity.getCustomProperties());
 
     // Changing custom property description with PUT
     fieldA.withDescription("updated");
-    change = getChangeDescription(tableEntity.getVersion());
+    change = getChangeDescription(version);
     fieldUpdated(change, EntityUtil.getCustomField(fieldA, "description"), "intA", "updated");
     tableEntity = addCustomPropertyAndCheck(tableEntity.getId(), fieldA, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     assertCustomProperties(new ArrayList<>(List.of(fieldA)), tableEntity.getCustomProperties());
 
     // Changing custom property description with PATCH
+    // Changes from this PATCH is consolidated with the previous changes
     fieldA.withDescription("updated2");
     String json = JsonUtils.pojoToJson(tableEntity);
     tableEntity.setCustomProperties(List.of(fieldA));
-    change = getChangeDescription(tableEntity.getVersion());
-    fieldUpdated(change, EntityUtil.getCustomField(fieldA, "description"), "updated", "updated2");
+    change = getChangeDescription(version);
+    fieldUpdated(change, EntityUtil.getCustomField(fieldA, "description"), "intA", "updated2");
     tableEntity = patchEntityAndCheck(tableEntity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Add a second property with name intB with type integer
+    // Note that since this is PUT operation, the previous changes are not consolidated
     EntityReference typeRef =
         new EntityReference()
             .withType(INT_TYPE.getEntityReference().getType())

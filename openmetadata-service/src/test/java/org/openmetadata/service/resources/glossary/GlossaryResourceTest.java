@@ -29,7 +29,6 @@ import static org.openmetadata.csv.EntityCsvTest.createCsv;
 import static org.openmetadata.csv.EntityCsvTest.getFailedRecord;
 import static org.openmetadata.schema.type.ProviderType.SYSTEM;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
-import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.EntityUtil.getFqn;
 import static org.openmetadata.service.util.EntityUtil.getFqns;
@@ -73,6 +72,7 @@ import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.service.jdbi3.GlossaryRepository.GlossaryCsv;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
@@ -125,26 +125,29 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
   void patch_addDeleteReviewers(TestInfo test) throws IOException {
     CreateGlossary create = createRequest(getEntityName(test), "", "", null);
     Glossary glossary = createEntity(create, ADMIN_AUTH_HEADERS);
+    Double version = glossary.getVersion();
 
     // Add reviewer USER1 in PATCH request
     String origJson = JsonUtils.pojoToJson(glossary);
     glossary.withReviewers(List.of(USER1_REF));
-    ChangeDescription change = getChangeDescription(glossary.getVersion());
+    ChangeDescription change = getChangeDescription(version);
     fieldAdded(change, "reviewers", List.of(USER1_REF));
     glossary = patchEntityAndCheck(glossary, origJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
 
     // Add another reviewer USER2 in PATCH request
+    // Changes from this PATCH is consolidated with the previous changes
     origJson = JsonUtils.pojoToJson(glossary);
     glossary.withReviewers(List.of(USER1_REF, USER2_REF));
-    change = getChangeDescription(glossary.getVersion());
-    fieldAdded(change, "reviewers", List.of(USER2_REF));
+    change = getChangeDescription(version); // PATCH operation update is consolidated in a user session
+    fieldAdded(change, "reviewers", List.of(USER1_REF, USER2_REF));
     glossary = patchEntityAndCheck(glossary, origJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
 
     // Remove a reviewer USER1 in PATCH request
+    // Changes from this PATCH is consolidated with the previous changes
     origJson = JsonUtils.pojoToJson(glossary);
     glossary.withReviewers(List.of(USER2_REF));
-    change = getChangeDescription(glossary.getVersion());
-    fieldDeleted(change, "reviewers", List.of(USER1_REF));
+    change = getChangeDescription(version); // PATCH operation update is consolidated in a user session
+    fieldAdded(change, "reviewers", List.of(USER2_REF));
     patchEntityAndCheck(glossary, origJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
   }
 
@@ -284,10 +287,11 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
       {t1, h, h1, h11, h111} // Diff hierarchy and diff glossary
     };
 
+    // Moving to another glossary term as parent
+    EntityUpdater.setSessionTimeout(0); // To turn off consolidation of changes
     for (int i = 0; i < scenarios.length; i++) {
       GlossaryTerm termToMove = (GlossaryTerm) scenarios[i][0];
 
-      // Moving to another glossary term as parent
       for (int j = 1; j < scenarios[i].length; j++) {
         GlossaryTerm updatedTerm;
 
@@ -320,6 +324,9 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
         () -> glossaryTermResourceTest.moveGlossaryTerm(g.getEntityReference(), t11.getEntityReference(), t1),
         Status.BAD_REQUEST,
         CatalogExceptionMessage.invalidGlossaryTermMove(t1.getFullyQualifiedName(), t11.getFullyQualifiedName()));
+    // Moving to another glossary term as parent
+
+    EntityUpdater.setSessionTimeout(10 * 60 * 100); // Turn consolidation of changes back on
   }
 
   @Test

@@ -426,65 +426,64 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
   void patch_PipelineTasksUpdate_200_ok(TestInfo test) throws IOException {
     CreatePipeline request = createRequest(test).withService(AIRFLOW_REFERENCE.getFullyQualifiedName());
     Pipeline pipeline = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+    Double version = pipeline.getVersion();
 
+    // Add a new task without description or tags
     String origJson = JsonUtils.pojoToJson(pipeline);
-    // Add a task without description
-    ChangeDescription change = getChangeDescription(pipeline.getVersion());
+    ChangeDescription change = getChangeDescription(version);
     List<Task> tasks = new ArrayList<>();
     Task taskEmptyDesc = new Task().withName("taskEmpty").withSourceUrl("http://localhost:0");
     tasks.add(taskEmptyDesc);
     fieldAdded(change, "tasks", tasks);
     fieldUpdated(change, "description", "", "newDescription");
-    // Create new request with all the Tasks
     List<Task> updatedTasks = Stream.concat(TASKS.stream(), tasks.stream()).collect(Collectors.toList());
     pipeline.setTasks(updatedTasks);
     pipeline.setDescription("newDescription");
     pipeline = patchEntityAndCheck(pipeline, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     pipeline = getPipeline(pipeline.getId(), "*", ADMIN_AUTH_HEADERS);
-    // validate tasks
     validateTasks(updatedTasks, pipeline.getTasks());
 
-    // add a description to an existing task
+    // add description and tags to an existing task - taskEmpty
+    // Changes from this PATCH is consolidated with the previous changes
     origJson = JsonUtils.pojoToJson(pipeline);
-    change = getChangeDescription(pipeline.getVersion());
+    change = getChangeDescription(version);
     List<Task> newTasks = new ArrayList<>();
     Task taskWithDesc =
         taskEmptyDesc
             .withDescription("taskDescription")
             .withTags(List.of(USER_ADDRESS_TAG_LABEL, PII_SENSITIVE_TAG_LABEL));
     newTasks.add(taskWithDesc);
-    fieldAdded(change, "tasks.taskEmpty.description", "taskDescription");
-    fieldAdded(change, "tasks.taskEmpty.tags", List.of(USER_ADDRESS_TAG_LABEL, PII_SENSITIVE_TAG_LABEL));
+    fieldAdded(change, "tasks", newTasks);
+    fieldUpdated(change, "description", "", "newDescription");
     List<Task> updatedNewTasks = Stream.concat(TASKS.stream(), newTasks.stream()).collect(Collectors.toList());
     pipeline.setTasks(updatedNewTasks);
     pipeline = patchEntityAndCheck(pipeline, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
-    // update the descriptions of pipeline and task and add tags to tasks
+    // Update the descriptions of pipeline and task and add tags to tasks
+    // Changes from this PATCH is consolidated with the previous changes
     origJson = JsonUtils.pojoToJson(pipeline);
-    change = getChangeDescription(pipeline.getVersion());
+    change = getChangeDescription(version);
     newTasks = new ArrayList<>();
     taskWithDesc = taskEmptyDesc.withDescription("newTaskDescription");
     newTasks.add(taskWithDesc);
-    fieldUpdated(change, "tasks.taskEmpty.description", "taskDescription", "newTaskDescription");
-    fieldUpdated(change, "description", "newDescription", "newDescription2");
-
+    fieldAdded(change, "tasks", tasks);
+    fieldUpdated(change, "description", "", "newDescription2");
     updatedNewTasks = Stream.concat(TASKS.stream(), newTasks.stream()).collect(Collectors.toList());
     pipeline.setTasks(updatedNewTasks);
     pipeline.setDescription("newDescription2");
     pipeline = patchEntityAndCheck(pipeline, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
-    // delete task and pipeline description by setting them to null
+    // Delete task and pipeline description by setting them to null
+    // Changes from this PATCH is consolidated with the previous changes
     origJson = JsonUtils.pojoToJson(pipeline);
-    change = getChangeDescription(pipeline.getVersion());
+    change = getChangeDescription(version);
     newTasks = new ArrayList<>();
     Task taskWithoutDesc = taskEmptyDesc.withDescription(null);
     newTasks.add(taskWithoutDesc);
-    fieldDeleted(change, "tasks.taskEmpty.description", "newTaskDescription");
-    fieldDeleted(change, "description", "newDescription2");
-
     updatedNewTasks = Stream.concat(TASKS.stream(), newTasks.stream()).collect(Collectors.toList());
+    fieldAdded(change, "tasks", newTasks);
     pipeline.setTasks(updatedNewTasks);
-    pipeline.setDescription(null);
+    pipeline.setDescription(""); // Since description started out to be empty, during consolidation, no change
     patchEntityAndCheck(pipeline, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 

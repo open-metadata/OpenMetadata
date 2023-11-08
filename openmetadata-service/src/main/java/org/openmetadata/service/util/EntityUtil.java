@@ -383,10 +383,6 @@ public final class EntityUtil {
     return Math.round((version + 0.1) * 10.0) / 10.0;
   }
 
-  public static Double previousVersion(Double version) {
-    return Math.round((version - 0.1) * 10.0) / 10.0;
-  }
-
   public static Double nextMajorVersion(Double version) {
     return Math.round((version + 1.0) * 10.0) / 10.0;
   }

@@ -59,28 +59,29 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
     fieldAdded(change, FIELD_ASSETS, listOf(topic.getEntityReference()));
     product = updateAndCheckEntity(create, Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
     entityInDataProduct(topic, product, true); // topic is part of data product
+    Double version = product.getVersion();
 
     // Remove asset topic with PUT
     create.withAssets(List.of(TEST_TABLE1.getEntityReference()));
-    change = getChangeDescription(product.getVersion());
+    change = getChangeDescription(version);
     fieldDeleted(change, FIELD_ASSETS, listOf(topic.getEntityReference()));
     product = updateAndCheckEntity(create, Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
     entityInDataProduct(topic, product, false); // topic is not part of data product
 
     // Add topic asset with PATCH
+    // Changes from this PATCH is consolidated with the previous changes resulting in no change
     String json = JsonUtils.pojoToJson(product);
     product.withAssets(List.of(TEST_TABLE1.getEntityReference(), topic.getEntityReference()));
-    change = getChangeDescription(product.getVersion());
-    fieldAdded(change, FIELD_ASSETS, listOf(topic.getEntityReference()));
-    product = patchEntityAndCheck(product, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    product = patchEntityAndCheck(product, json, ADMIN_AUTH_HEADERS, UpdateType.NO_CHANGE, change);
     entityInDataProduct(topic, product, true); // topic is part of data product
 
     // Remove asset topic with PATCH
+    // Changes from this PATCH is consolidated with the previous changes resulting in removal of topic
     json = JsonUtils.pojoToJson(product);
     product.withAssets(List.of(TEST_TABLE1.getEntityReference()));
-    change = getChangeDescription(product.getVersion());
+    change = getChangeDescription(version);
     fieldDeleted(change, FIELD_ASSETS, listOf(topic.getEntityReference()));
-    patchEntityAndCheck(product, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    product = patchEntityAndCheck(product, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
     entityInDataProduct(topic, product, false); // topic is not part of data product
   }
 
@@ -94,24 +95,25 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
     ChangeDescription change = getChangeDescription(product.getVersion());
     fieldAdded(change, "experts", listOf(USER2.getEntityReference()));
     product = updateAndCheckEntity(create, Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    Double version = product.getVersion();
 
     // Remove User2 as expert using PUT
     create.withExperts(List.of(USER1.getFullyQualifiedName()));
-    change = getChangeDescription(product.getVersion());
+    change = getChangeDescription(version);
     fieldDeleted(change, "experts", listOf(USER2.getEntityReference()));
     product = updateAndCheckEntity(create, Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
 
     // Add User2 as expert using PATCH
+    // Changes from this PATCH is consolidated with the previous changes resulting in no change
     String json = JsonUtils.pojoToJson(product);
     product.withExperts(List.of(USER1.getEntityReference(), USER2.getEntityReference()));
-    change = getChangeDescription(product.getVersion());
-    fieldAdded(change, "experts", listOf(USER2.getEntityReference()));
-    product = patchEntityAndCheck(product, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    product = patchEntityAndCheck(product, json, ADMIN_AUTH_HEADERS, UpdateType.NO_CHANGE, null);
 
     // Remove User2 as expert using PATCH
+    // Changes from this PATCH is consolidated with the previous changes resulting in deletion of USER2
     json = JsonUtils.pojoToJson(product);
     product.withExperts(List.of(USER1.getEntityReference()));
-    change = getChangeDescription(product.getVersion());
+    change = getChangeDescription(version);
     fieldDeleted(change, "experts", listOf(USER2.getEntityReference()));
     patchEntityAndCheck(product, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
   }

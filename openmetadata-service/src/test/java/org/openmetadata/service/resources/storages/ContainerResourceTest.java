@@ -211,10 +211,11 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     CreateContainer request =
         createRequest(test).withDataModel(null).withPrefix(null).withFileFormats(null).withNumberOfObjects(null);
     Container container = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+    Double version = container.getVersion();
 
+    // Add dataModel, prefix, fileFormats
     String originalJson = JsonUtils.pojoToJson(container);
-
-    ChangeDescription change = getChangeDescription(container.getVersion());
+    ChangeDescription change = getChangeDescription(version);
     container
         .withDataModel(PARTITIONED_DATA_MODEL)
         .withPrefix("prefix1")
@@ -224,32 +225,33 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     fieldAdded(change, "dataModel", PARTITIONED_DATA_MODEL);
     fieldAdded(change, "prefix", "prefix1");
     fieldAdded(change, "fileFormats", FILE_FORMATS);
-
     container = patchEntityAndCheck(container, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     assertEquals(1.0, container.getSize());
     assertEquals(2.0, container.getNumberOfObjects());
 
     // Update description, chartType and chart url and verify patch
+    // Changes from this PATCH is consolidated with the previous changes
     originalJson = JsonUtils.pojoToJson(container);
-    change = getChangeDescription(container.getVersion());
-    container
-        .withPrefix("prefix2")
-        .withDataModel(
-            new ContainerDataModel().withIsPartitioned(false).withColumns(PARTITIONED_DATA_MODEL.getColumns()))
-        .withFileFormats(List.of(ContainerFileFormat.Gz, ContainerFileFormat.Csv));
+    change = getChangeDescription(version);
+    ContainerDataModel newModel =
+        new ContainerDataModel().withIsPartitioned(false).withColumns(PARTITIONED_DATA_MODEL.getColumns());
+    List<ContainerFileFormat> newFileFormats = List.of(ContainerFileFormat.Gz, ContainerFileFormat.Csv);
+    container.withPrefix("prefix2").withDataModel(newModel).withFileFormats(newFileFormats);
 
-    fieldUpdated(change, "prefix", "prefix1", "prefix2");
-    fieldUpdated(change, "dataModel.partition", true, false);
-    fieldAdded(change, "fileFormats", List.of(ContainerFileFormat.Gz, ContainerFileFormat.Csv));
-    fieldDeleted(change, "fileFormats", List.of(ContainerFileFormat.Parquet));
-
+    fieldAdded(change, "dataModel", newModel);
+    fieldAdded(change, "prefix", "prefix2");
+    fieldAdded(change, "fileFormats", newFileFormats);
     patchEntityAndCheck(container, originalJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
 
+    // Update the container size and number of objects
+    // Changes from this PATCH is consolidated with the previous changes
     originalJson = JsonUtils.pojoToJson(container);
-    change = getChangeDescription(container.getVersion());
+    change = getChangeDescription(version);
+    fieldAdded(change, "dataModel", newModel);
+    fieldAdded(change, "prefix", "prefix2");
+    fieldAdded(change, "fileFormats", newFileFormats);
     container.withSize(2.0).withNumberOfObjects(3.0);
-
-    container = patchEntityAndCheck(container, originalJson, ADMIN_AUTH_HEADERS, NO_CHANGE, change);
+    container = patchEntityAndCheck(container, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     assertEquals(2.0, container.getSize());
     assertEquals(3.0, container.getNumberOfObjects());
   }

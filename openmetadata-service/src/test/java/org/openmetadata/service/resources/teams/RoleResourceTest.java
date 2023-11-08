@@ -107,19 +107,22 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
   @Test
   void patch_rolePolicies(TestInfo test) throws IOException {
     Role role = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+    Double version = role.getVersion();
 
     // Add new DATA_STEWARD_POLICY to role in addition to DATA_CONSUMER_POLICY
     String originalJson = JsonUtils.pojoToJson(role);
     role.getPolicies().addAll(DATA_STEWARD_ROLE.getPolicies());
-    ChangeDescription change = getChangeDescription(role.getVersion());
+    ChangeDescription change = getChangeDescription(version);
     fieldAdded(change, "policies", DATA_STEWARD_ROLE.getPolicies());
     role = patchEntityAndCheck(role, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Remove new DATA_CONSUMER_POLICY
+    // Changes from this PATCH is consolidated with the previous changes
     originalJson = JsonUtils.pojoToJson(role);
     role.setPolicies(DATA_STEWARD_ROLE.getPolicies());
-    change = getChangeDescription(role.getVersion());
+    change = getChangeDescription(version);
     fieldDeleted(change, "policies", DATA_CONSUMER_ROLE.getPolicies());
+    fieldAdded(change, "policies", DATA_STEWARD_ROLE.getPolicies());
     role = patchEntityAndCheck(role, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Remove all the policies. It should be disallowed

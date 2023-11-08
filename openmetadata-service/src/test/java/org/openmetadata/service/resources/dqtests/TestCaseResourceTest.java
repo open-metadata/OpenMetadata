@@ -575,11 +575,12 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     // Table owner should be able to create, update, and delete tests
     Map<String, String> ownerAuthHeaders = authHeaders(USER1_REF.getName());
     TestCase testCase = createAndCheckEntity(createRequest(test), ownerAuthHeaders);
+    Double version = testCase.getVersion();
 
     // Update description with PUT
     String oldDescription = testCase.getDescription();
     String newDescription = "description1";
-    ChangeDescription change = getChangeDescription(testCase.getVersion());
+    ChangeDescription change = getChangeDescription(version);
     fieldUpdated(change, "description", oldDescription, newDescription);
     testCase =
         updateAndCheckEntity(
@@ -590,9 +591,9 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             change);
 
     // Update description with PATCH
-    oldDescription = testCase.getDescription();
+    // Changes from this PATCH is consolidated with the previous changes
     newDescription = "description2";
-    change = getChangeDescription(testCase.getVersion());
+    change = getChangeDescription(version);
     fieldUpdated(change, "description", oldDescription, newDescription);
     String json = JsonUtils.pojoToJson(testCase);
     testCase.setDescription(newDescription);

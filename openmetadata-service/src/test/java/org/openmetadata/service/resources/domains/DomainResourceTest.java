@@ -47,30 +47,31 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
     CreateDomain create = createRequest(getEntityName(test)).withExperts(listOf(USER1.getFullyQualifiedName()));
     Domain domain = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
-    // Add User2 as expert using PUT
+    // Add User2 with existing USER1 as expert using PUT
     create.withExperts(List.of(USER1.getFullyQualifiedName(), USER2.getFullyQualifiedName()));
     ChangeDescription change = getChangeDescription(domain.getVersion());
     fieldAdded(change, "experts", listOf(USER2.getEntityReference()));
     domain = updateAndCheckEntity(create, Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    Double version = domain.getVersion();
 
-    // Remove User2 as expert using PUT
+    // Remove User2 as expert using PUT leaving USER1 as the expert
     create.withExperts(List.of(USER1.getFullyQualifiedName()));
-    change = getChangeDescription(domain.getVersion());
+    change = getChangeDescription(version);
     fieldDeleted(change, "experts", listOf(USER2.getEntityReference()));
     domain = updateAndCheckEntity(create, Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
 
-    // Add User2 as expert using PATCH
+    // Add User2 back as expert using PATCH
+    // Changes from this PATCH is consolidated with the previous change
     String json = JsonUtils.pojoToJson(domain);
     domain.withExperts(List.of(USER1.getEntityReference(), USER2.getEntityReference()));
-    change = getChangeDescription(domain.getVersion());
-    fieldAdded(change, "experts", listOf(USER2.getEntityReference()));
-    domain = patchEntityAndCheck(domain, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    domain = patchEntityAndCheck(domain, json, ADMIN_AUTH_HEADERS, UpdateType.NO_CHANGE, null);
 
     // Remove User2 as expert using PATCH
+    // Changes from this PATCH is consolidated with the previous two changes resulting in deletion of USER2
     json = JsonUtils.pojoToJson(domain);
-    domain.withExperts(List.of(USER1.getEntityReference()));
-    change = getChangeDescription(domain.getVersion());
+    change = getChangeDescription(version);
     fieldDeleted(change, "experts", listOf(USER2.getEntityReference()));
+    domain.withExperts(List.of(USER1.getEntityReference()));
     patchEntityAndCheck(domain, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
   }
 
@@ -78,18 +79,20 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
   void testDomainTypeUpdate(TestInfo test) throws IOException {
     CreateDomain create = createRequest(getEntityName(test)).withExperts(listOf(USER1.getFullyQualifiedName()));
     Domain domain = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    Double version = domain.getVersion();
 
     // Change domain type from AGGREGATE to SOURCE_ALIGNED using PUT
     create.withDomainType(DomainType.SOURCE_ALIGNED);
-    ChangeDescription change = getChangeDescription(domain.getVersion());
+    ChangeDescription change = getChangeDescription(version);
     fieldUpdated(change, "domainType", DomainType.AGGREGATE, DomainType.SOURCE_ALIGNED);
     domain = updateAndCheckEntity(create, Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
 
     // Change domain type from SOURCE_ALIGNED to CONSUMER_ALIGNED using PATCH
+    // Changes from this PATCH is consolidated with the previous changes
     String json = JsonUtils.pojoToJson(domain);
     domain.withDomainType(DomainType.CONSUMER_ALIGNED);
-    change = getChangeDescription(domain.getVersion());
-    fieldUpdated(change, "domainType", DomainType.SOURCE_ALIGNED, DomainType.CONSUMER_ALIGNED);
+    change = getChangeDescription(version);
+    fieldUpdated(change, "domainType", DomainType.AGGREGATE, DomainType.CONSUMER_ALIGNED);
     patchEntityAndCheck(domain, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
   }
 

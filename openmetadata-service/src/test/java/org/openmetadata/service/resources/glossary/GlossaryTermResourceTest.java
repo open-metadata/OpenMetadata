@@ -234,37 +234,36 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   void patch_addDeleteReviewers(TestInfo test) throws IOException {
     CreateGlossaryTerm create = createRequest(getEntityName(test), "", "", null).withReviewers(null).withSynonyms(null);
     GlossaryTerm term = createEntity(create, ADMIN_AUTH_HEADERS);
+    Double version = term.getVersion();
 
     // Add reviewer USER1, synonym1, reference1 in PATCH request
     String origJson = JsonUtils.pojoToJson(term);
     TermReference reference1 = new TermReference().withName("reference1").withEndpoint(URI.create("http://reference1"));
     term.withReviewers(List.of(USER1_REF)).withSynonyms(List.of("synonym1")).withReferences(List.of(reference1));
-    ChangeDescription change = getChangeDescription(term.getVersion());
+    ChangeDescription change = getChangeDescription(version);
     fieldAdded(change, "reviewers", List.of(USER1_REF));
     fieldAdded(change, "synonyms", List.of("synonym1"));
     fieldAdded(change, "references", List.of(reference1));
     term = patchEntityAndCheck(term, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Add reviewer USER2, synonym2, reference2 in PATCH request
+    // Changes from this PATCH is consolidated with the previous changes
     origJson = JsonUtils.pojoToJson(term);
     TermReference reference2 = new TermReference().withName("reference2").withEndpoint(URI.create("http://reference2"));
     term.withReviewers(List.of(USER1_REF, USER2_REF))
         .withSynonyms(List.of("synonym1", "synonym2"))
         .withReferences(List.of(reference1, reference2));
-    change = getChangeDescription(term.getVersion());
-    fieldAdded(change, "reviewers", List.of(USER2_REF));
-    fieldAdded(change, "synonyms", List.of("synonym2"));
-    fieldAdded(change, "references", List.of(reference2));
+    change = getChangeDescription(version);
+    fieldAdded(change, "reviewers", List.of(USER1_REF, USER2_REF));
+    fieldAdded(change, "synonyms", List.of("synonym1", "synonym2"));
+    fieldAdded(change, "references", List.of(reference1, reference2));
     term = patchEntityAndCheck(term, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Remove a reviewer USER1, synonym1, reference1 in PATCH request
+    // Changes from this PATCH is consolidated with the previous changes resulting in no change
     origJson = JsonUtils.pojoToJson(term);
     term.withReviewers(List.of(USER2_REF)).withSynonyms(List.of("synonym2")).withReferences(List.of(reference2));
-    change = getChangeDescription(term.getVersion());
-    fieldDeleted(change, "reviewers", List.of(USER1_REF));
-    fieldDeleted(change, "synonyms", List.of("synonym1"));
-    fieldDeleted(change, "references", List.of(reference1));
-    patchEntityAndCheck(term, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    patchEntityAndCheck(term, origJson, ADMIN_AUTH_HEADERS, NO_CHANGE, change);
   }
 
   @Test
@@ -436,31 +435,29 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
             .withParent(term1.getFullyQualifiedName());
     GlossaryTerm term11 = createEntity(create, ADMIN_AUTH_HEADERS);
 
-    // Apply tags to term11
+    // Apply style to term11
     String json = JsonUtils.pojoToJson(term11);
-    ChangeDescription change = new ChangeDescription();
+    ChangeDescription change = getChangeDescription(term11.getVersion());
     Style style = new Style().withIconURL("http://termIcon").withColor("#9FE2BF");
     fieldAdded(change, "style", style);
     term11.setStyle(style);
     term11 = patchEntityAndCheck(term11, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     assertStyle(style, term11.getStyle());
 
-    // Apply badge to term1
+    // Apply style to term1
     json = JsonUtils.pojoToJson(term1);
-    change = new ChangeDescription();
+    change = getChangeDescription(term1.getVersion());
     style = new Style().withIconURL("http://termIcon1").withColor("#9FE2DF");
     fieldAdded(change, "style", style);
     term1.setStyle(style);
     term1 = patchEntityAndCheck(term1, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     assertStyle(style, term1.getStyle());
 
-    // remove badge to term1
-    change = new ChangeDescription();
-    change.setPreviousVersion(term1.getVersion());
+    // remove style to term1
+    // Changes from this PATCH is consolidated with the previous changes resulting in no change
     json = JsonUtils.pojoToJson(term1);
-    fieldDeleted(change, "style", style);
     term1.setStyle(null);
-    patchEntityAndCheck(term1, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    patchEntityAndCheck(term1, json, ADMIN_AUTH_HEADERS, NO_CHANGE, null);
     term1 = getEntity(term1.getId(), ADMIN_AUTH_HEADERS);
     assertNull(term1.getStyle());
   }

@@ -145,23 +145,23 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
             .withChartType(null);
     Chart chart = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
     String originalJson = JsonUtils.pojoToJson(chart);
+    Double version = chart.getVersion();
 
     // Set url, description and chart type.
-    ChangeDescription change = getChangeDescription(chart.getVersion());
+    ChangeDescription change = getChangeDescription(version);
     chart.withChartType(type1).withSourceUrl("url1").withDescription("desc1");
     fieldAdded(change, "description", "desc1");
     fieldAdded(change, "chartType", type1);
     fieldAdded(change, "sourceUrl", "url1");
-
     chart = patchEntityAndCheck(chart, originalJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
 
     // Update description, chartType and chart url and verify patch
+    // Changes from this PATCH is consolidated with the previous changes
     originalJson = JsonUtils.pojoToJson(chart);
-    change = getChangeDescription(chart.getVersion());
-    fieldUpdated(change, "description", "desc1", "desc2");
-    fieldUpdated(change, "chartType", type1, type2);
-    fieldUpdated(change, "sourceUrl", "url1", "url2");
-
+    change = getChangeDescription(version);
+    fieldAdded(change, "description", "desc2");
+    fieldAdded(change, "chartType", type2);
+    fieldAdded(change, "sourceUrl", "url2");
     chart.withChartType(type2).withSourceUrl("url2").withDescription("desc2");
     patchEntityAndCheck(chart, originalJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
   }

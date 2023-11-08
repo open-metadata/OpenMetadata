@@ -1513,45 +1513,35 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   void patch_tableAttributes_200_ok(TestInfo test) throws IOException {
     // Create table without tableType, and tableConstraints
     Table table = createEntity(createRequest(test).withTableConstraints(null), ADMIN_AUTH_HEADERS);
+    Double version = table.getVersion();
 
     List<TableConstraint> tableConstraints =
         List.of(new TableConstraint().withConstraintType(ConstraintType.UNIQUE).withColumns(List.of(C1)));
 
+    // Add tableType, tableConstraints
     String originalJson = JsonUtils.pojoToJson(table);
-    ChangeDescription change = getChangeDescription(table.getVersion());
-
+    ChangeDescription change = getChangeDescription(version);
     table.withTableType(TableType.Regular).withTableConstraints(tableConstraints);
-
     fieldAdded(change, "tableType", TableType.Regular);
     fieldAdded(change, "tableConstraints", tableConstraints);
-
     table = patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
-    //
     // Replace tableType, tableConstraints
-    //
+    // Changes from this PATCH is consolidated with the previous changes
     List<TableConstraint> tableConstraints1 =
         List.of(new TableConstraint().withConstraintType(ConstraintType.UNIQUE).withColumns(List.of(C2)));
     originalJson = JsonUtils.pojoToJson(table);
-    change = getChangeDescription(table.getVersion());
-
+    change = getChangeDescription(version);
     table.withTableType(TableType.External).withTableConstraints(tableConstraints1);
-
-    fieldUpdated(change, "tableType", TableType.Regular, TableType.External);
-    fieldDeleted(change, "tableConstraints", tableConstraints);
+    fieldAdded(change, "tableType", TableType.External);
     fieldAdded(change, "tableConstraints", tableConstraints1);
-
     table = patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Remove tableType, tableConstraints
+    // Changes from this PATCH is consolidated with the previous changes resulting in no change
     originalJson = JsonUtils.pojoToJson(table);
-    change = getChangeDescription(table.getVersion());
-
     table.withTableType(null).withTableConstraints(null);
-
-    fieldDeleted(change, "tableType", TableType.External);
-    fieldDeleted(change, "tableConstraints", tableConstraints1);
-    patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, NO_CHANGE, null);
   }
 
   @Test
@@ -1563,27 +1553,23 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     columns.add(getColumn(C3, FLOAT, GLOSSARY1_TERM1_LABEL));
 
     Table table = createEntity(createRequest(test).withColumns(columns), ADMIN_AUTH_HEADERS);
+    Double version = table.getVersion();
 
-    // Update the column tags and description
-    ChangeDescription change = getChangeDescription(table.getVersion());
+    // Update the column tags and description with PATCH
+    ChangeDescription change = getChangeDescription(version);
     columns
         .get(0)
         .withDescription("new0") // Set new description
         .withTags(List.of(USER_ADDRESS_TAG_LABEL, GLOSSARY1_TERM1_LABEL));
-    // Column c1 has new description
     fieldAdded(change, build("columns", C1, "description"), "new0");
-    //  Column c1 got new tags
     fieldAdded(change, build("columns", C1, "tags"), List.of(GLOSSARY1_TERM1_LABEL));
-
     columns
         .get(1)
         .withDescription("new1") // Change description
         .withTags(List.of(USER_ADDRESS_TAG_LABEL)); // No change in tags
-    // Column c2 description changed
     fieldUpdated(change, build("columns", C2, "description"), C2, "new1");
 
     columns.get(2).withTags(new ArrayList<>()).withPrecision(10).withScale(3); // Remove tag
-    // Column c3 tags were removed and precision and scale were added
     fieldDeleted(change, build("columns", C3, "tags"), List.of(GLOSSARY1_TERM1_LABEL));
     fieldAdded(change, build("columns", C3, "precision"), 10);
     fieldAdded(change, build("columns", C3, "scale"), 3);
@@ -1594,11 +1580,15 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertColumns(columns, table.getColumns());
 
     // Now reduce the precision and make sure it is a backward incompatible change
-    change = getChangeDescription(table.getVersion());
-    fieldUpdated(change, build("columns", C3, "precision"), 10, 7);
-
+    // Changes from this PATCH is consolidated with the previous changes
+    change = getChangeDescription(version);
+    fieldAdded(change, build("columns", C1, "description"), "new0");
+    fieldAdded(change, build("columns", C1, "tags"), List.of(GLOSSARY1_TERM1_LABEL));
+    fieldUpdated(change, build("columns", C2, "description"), C2, "new1");
+    fieldDeleted(change, build("columns", C3, "tags"), List.of(GLOSSARY1_TERM1_LABEL));
+    fieldAdded(change, build("columns", C3, "precision"), 7); // Change in this patch
+    fieldAdded(change, build("columns", C3, "scale"), 3);
     originalJson = JsonUtils.pojoToJson(table);
-
     columns = table.getColumns();
     columns.get(2).withPrecision(7).withScale(3); // Precision change from 10 to 7. Scale remains the same
     table.setColumns(columns);
@@ -1606,11 +1596,15 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertColumns(columns, table.getColumns());
 
     // Now reduce the scale and make sure it is a backward incompatible change
-    change = getChangeDescription(table.getVersion());
-    fieldUpdated(change, build("columns", C3, "scale"), 3, 1);
-
+    // Changes from this PATCH is consolidated with the previous changes
+    change = getChangeDescription(version);
+    fieldAdded(change, build("columns", C1, "description"), "new0");
+    fieldAdded(change, build("columns", C1, "tags"), List.of(GLOSSARY1_TERM1_LABEL));
+    fieldUpdated(change, build("columns", C2, "description"), C2, "new1");
+    fieldDeleted(change, build("columns", C3, "tags"), List.of(GLOSSARY1_TERM1_LABEL));
+    fieldAdded(change, build("columns", C3, "precision"), 7);
+    fieldAdded(change, build("columns", C3, "scale"), 1); // Change in this patch
     originalJson = JsonUtils.pojoToJson(table);
-
     columns = table.getColumns();
     columns.get(2).withPrecision(7).withScale(1); // Scale change from 10 to 7. Scale remains the same
     table.setColumns(columns);

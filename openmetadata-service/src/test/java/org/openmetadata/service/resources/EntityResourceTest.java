@@ -1076,7 +1076,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     request.withOwner(USER1_REF);
     version = entity.getVersion(); // PUT operation bumps up the version
     change = getChangeDescription(version);
-    fieldAdded(change, FIELD_OWNER, USER1_REF);
+    fieldUpdated(change, FIELD_OWNER, TEAM11_REF, USER1_REF);
     entity = updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     checkOwnerOwns(USER1_REF, entity.getId(), true);
     checkOwnerOwns(TEAM11_REF, entity.getId(), false);
@@ -1498,6 +1498,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // PUT valid custom field intA to the entity type
     TypeResourceTest typeResourceTest = new TypeResourceTest();
     Type entityType = typeResourceTest.getEntityByName(this.entityType, "customProperties", ADMIN_AUTH_HEADERS);
+    Double version = entityType.getVersion();
     CustomProperty fieldA =
         new CustomProperty().withName("intA").withDescription("intA").withPropertyType(INT_TYPE.getEntityReference());
     entityType = typeResourceTest.addAndCheckCustomProperty(entityType.getId(), fieldA, OK, ADMIN_AUTH_HEADERS);
@@ -1511,8 +1512,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
             .withPropertyType(STRING_TYPE.getEntityReference());
 
     String json = JsonUtils.pojoToJson(entityType);
-    ChangeDescription change = getChangeDescription(entityType.getVersion());
-    fieldAdded(change, "customProperties", CommonUtil.listOf(fieldB));
+    ChangeDescription change = getChangeDescription(version); // Patch operation update is consolidated in a session
+    fieldAdded(change, "customProperties", CommonUtil.listOf(fieldA, fieldB));
     entityType.getCustomProperties().add(fieldB);
     entityType = typeResourceTest.patchEntityAndCheck(entityType, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
@@ -1544,12 +1545,13 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     jsonNode.set("intA", mapper.convertValue(1, JsonNode.class));
     K create = createRequest(test).withExtension(jsonNode);
     T entity = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    version = entity.getVersion();
 
     // PUT and update the entity with extension field intA to a new value
     JsonNode intAValue = mapper.convertValue(2, JsonNode.class);
     jsonNode.set("intA", intAValue);
     create = createRequest(test).withExtension(jsonNode).withName(entity.getName());
-    change = getChangeDescription(entity.getVersion());
+    change = getChangeDescription(version);
     fieldUpdated(change, EntityUtil.getExtensionField("intA"), mapper.convertValue(1, JsonNode.class), intAValue);
     entity = updateAndCheckEntity(create, Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
@@ -1558,10 +1560,12 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     JsonNode stringBValue = mapper.convertValue("stringB", JsonNode.class);
     jsonNode.set("stringB", stringBValue);
     entity.setExtension(jsonNode);
-    change = getChangeDescription(entity.getVersion());
+    change = getChangeDescription(version); // Patch operation update is consolidated in a session
+    fieldUpdated(change, EntityUtil.getExtensionField("intA"), mapper.convertValue(1, JsonNode.class), intAValue);
     fieldAdded(change, "extension", List.of(JsonUtils.getObjectNode("stringB", stringBValue)));
     entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     assertEquals(JsonUtils.valueToTree(jsonNode), JsonUtils.valueToTree(entity.getExtension()));
+    version = entity.getVersion();
 
     // PUT and remove field intA from the entity extension - *** for BOT this should be ignored ***
     JsonNode oldNode = JsonUtils.valueToTree(entity.getExtension());
@@ -1572,7 +1576,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertEquals(oldNode, JsonUtils.valueToTree(entity.getExtension())); // Extension remains as is
 
     // PUT and remove field intA from the entity extension (for non-bot this should succeed)
-    change = getChangeDescription(entity.getVersion());
+    change = getChangeDescription(entity.getVersion()); // PUT operation update is not consolidated in a session
     fieldDeleted(change, "extension", List.of(JsonUtils.getObjectNode("intA", intAValue)));
     entity = updateAndCheckEntity(create, Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     assertEquals(JsonUtils.valueToTree(create.getExtension()), JsonUtils.valueToTree(entity.getExtension()));
@@ -1581,8 +1585,11 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     json = JsonUtils.pojoToJson(entity);
     jsonNode.remove("stringB");
     entity.setExtension(jsonNode);
-    change = getChangeDescription(entity.getVersion());
-    fieldDeleted(change, "extension", List.of(JsonUtils.getObjectNode("stringB", stringBValue)));
+    change = getChangeDescription(version); // PATCH operation update is consolidated into a session
+    fieldDeleted(
+        change,
+        "extension",
+        List.of(JsonUtils.getObjectNode("intA", intAValue), JsonUtils.getObjectNode("stringB", stringBValue)));
     entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     assertEquals(JsonUtils.valueToTree(jsonNode), JsonUtils.valueToTree(entity.getExtension()));
 
@@ -2484,7 +2491,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       assertTrue(actualTags.containsAll(expectedTags));
       actualTags.forEach(tagLabel -> assertNotNull(tagLabel.getDescription()));
     } else if (fieldName.startsWith("extension")) { // Custom properties related extension field changes
-      assertEquals(expected.toString(), actual.toString());
+      assertEquals(expected.toString().replace(" ", ""), actual.toString());
     } else if (fieldName.equals("domainType")) { // Custom properties related extension field changes
       assertEquals(expected, DomainType.fromValue(actual.toString()));
     } else if (fieldName.equals("style")) {
