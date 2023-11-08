@@ -108,7 +108,7 @@ function TableSummary({
     } catch (error) {
       // Error
     }
-  }, [entityDetails]);
+  }, [entityDetails, setTableDetails]);
 
   const profilerSummary = useMemo(() => {
     if (!viewProfilerPermission) {
@@ -200,7 +200,18 @@ function TableSummary({
     } else {
       setTablePermissions(mockTablePermission as OperationPermission);
     }
-  }, [entityDetails.fullyQualifiedName, isTourPage, isTableDeleted]);
+  }, [
+    entityDetails,
+    isTourPage,
+    isTableDeleted,
+    fetchProfilerData,
+    fetchAllTests,
+    getEntityPermission,
+  ]);
+
+  useEffect(() => {
+    setTableDetails(entityDetails);
+  }, [entityDetails]);
 
   useEffect(() => {
     init();
