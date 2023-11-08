@@ -339,7 +339,9 @@ const PageNotFound = withSuspenseFallback(
 const EditLoginConfiguration = withSuspenseFallback(
   React.lazy(
     () =>
-      import('../../pages/Configuration/LoginPage/EditLoginConfigurationPage')
+      import(
+        '../../pages/Configuration/EditLoginConfiguration/EditLoginConfigurationPage'
+      )
   )
 );
 

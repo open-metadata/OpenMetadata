@@ -135,7 +135,10 @@ const CustomLogoConfigSettingsPage = withSuspenseFallback(
 
 const LoginConfigurationPage = withSuspenseFallback(
   React.lazy(
-    () => import('../../pages/Configuration/LoginPage/LoginConfigurationPage')
+    () =>
+      import(
+        '../../pages/Configuration/LoginConfigurationDetails/LoginConfigurationPage'
+      )
   )
 );
 

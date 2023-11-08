@@ -81,8 +81,8 @@ const ApplicationConfigProvider: FC<ApplicationConfigProviderProps> = ({
 
   useEffect(() => {
     const faviconHref = isEmpty(applicationConfig.customFaviconUrlPath)
-      ? ''
-      : applicationConfig.customFaviconUrlPath ?? '';
+      ? '/favicon.png'
+      : applicationConfig.customFaviconUrlPath ?? '/favicon.png';
     const link = document.querySelector('link[rel~="icon"]');
 
     if (link) {
