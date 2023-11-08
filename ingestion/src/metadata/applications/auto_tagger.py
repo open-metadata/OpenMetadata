@@ -12,12 +12,16 @@
 PII application
 """
 import traceback
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Iterable, List, Optional
 
+from metadata.generated.schema.entity.applications.configuration.external.autoTaggerAppConfig import (
+    AutoTaggerAppConfig,
+)
 from metadata.generated.schema.entity.data.table import Column, Table, TableData
 from metadata.generated.schema.type.tagLabel import (
     LabelType,
     State,
+    TagFQN,
     TagLabel,
     TagSource,
 )
@@ -35,13 +39,13 @@ logger = app_logger()
 DEFAULT_CONFIDENCE = 80
 
 
-class PIIApp(AppRunner):
+class AutoTaggerApp(AppRunner):
     """
     PII Application
     You can execute it with `metadata app -c <path-to-yaml>`
     with a YAML file like:
 
-    sourcePythonClass: metadata.applications.pii.PIIApp
+    sourcePythonClass: metadata.applications.auto_tagger.AutoTaggerApp
     config:
       confidenceLevel: 80
     workflowConfig:
@@ -53,15 +57,11 @@ class PIIApp(AppRunner):
           jwtToken: "..."
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]], metadata: OpenMetadata):
+    def __init__(self, config: AutoTaggerAppConfig, metadata: OpenMetadata):
         super().__init__(config, metadata)
 
         self._ner_scanner = None
-        self.confidence_threshold = (
-            config.get("confidenceLevel", DEFAULT_CONFIDENCE)
-            if config
-            else DEFAULT_CONFIDENCE
-        )
+        self.confidence_threshold = config.confidenceLevel or DEFAULT_CONFIDENCE
 
     @staticmethod
     def build_column_tag(tag_fqn: str, column_fqn: str) -> ColumnTag:
@@ -69,7 +69,7 @@ class PIIApp(AppRunner):
         Build the tag and run the PATCH
         """
         tag_label = TagLabel(
-            tagFQN=tag_fqn,
+            tagFQN=TagFQN(__root__=tag_fqn),
             source=TagSource.Classification,
             state=State.Suggested,
             labelType=LabelType.Automated,

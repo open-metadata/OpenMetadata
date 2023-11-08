@@ -23,8 +23,8 @@
       "type": "string"
     },
     "appConfig": {
-      "$ref": "../type/basic.json#/definitions/componentConfig",
-      "description": "Application-specific configuration"
+      "$ref": "../entity/applications/configuration/externalApplicationConfig.json#/definitions/appConfig",
+      "description": "External Application configuration"
     }
   },
   "additionalProperties": false

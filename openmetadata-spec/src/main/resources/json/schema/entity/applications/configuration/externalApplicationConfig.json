@@ -4,16 +4,13 @@
   "title": "ExternalApplicationConfig",
   "description": "External Application Pipeline Configuration.",
   "type": "object",
-  "properties": {
-    "config": {
-      "$ref": "../../../type/basic.json#/definitions/componentConfig",
-      "description": "Application-specific configuration"
-    },
-    "sourcePythonClass": {
-      "description": "Source Python Class Name to run the application",
-      "type": "string"
+  "definitions": {
+    "appConfig": {
+      "oneOf": [
+        {
+          "$ref": "./external/autoTaggerAppConfig.json"
+        }
+      ]
     }
-  },
-  "additionalProperties": false,
-  "required": ["sourcePythonClass"]
+  }
 }

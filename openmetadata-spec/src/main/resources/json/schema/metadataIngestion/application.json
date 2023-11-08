@@ -9,8 +9,12 @@
       "$ref": "workflow.json#/definitions/workflowConfig",
       "description": "General Workflow configuration, such as the OpenMetadata server connection and logging level"
     },
+    "sourcePythonClass": {
+      "description": "Source Python Class Name to run the application",
+      "type": "string"
+    },
     "appConfig": {
-      "$ref": "../entity/applications/configuration/externalApplicationConfig.json",
+      "$ref": "../entity/applications/configuration/externalApplicationConfig.json#/definitions/appConfig",
       "description": "External Application configuration"
     },
     "ingestionPipelineFQN": {

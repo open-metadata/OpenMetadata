@@ -1,4 +1,4 @@
-package org.openmetadata.service.apps.bundles.pii;
+package org.openmetadata.service.apps;
 
 import com.cronutils.model.Cron;
 import java.util.List;
@@ -15,7 +15,6 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
@@ -25,16 +24,14 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
-public class AutoPIIApplication extends AbstractNativeApplication {
-
-  private static final String INGESTION_PIPELINE_NAME = "autoPIIPipeline";
+public class ExternalApplicationHandler extends AbstractNativeApplication {
   private static final String SERVICE_NAME = "OpenMetadata";
 
   @Override
   public void init(App app, CollectionDAO dao, SearchRepository searchRepository) {
     super.init(app, dao, searchRepository);
     this.app = app;
-    LOG.info("Data Insights App is initialized");
+    LOG.info(String.format("%s App is initialized", app.getName()));
   }
 
   /**
@@ -53,7 +50,7 @@ public class AutoPIIApplication extends AbstractNativeApplication {
 
     // Check if the Ingestion Pipeline has already been created
     try {
-      String fqn = FullyQualifiedName.add(SERVICE_NAME, INGESTION_PIPELINE_NAME);
+      String fqn = FullyQualifiedName.add(SERVICE_NAME, app.getName());
       IngestionPipeline storedPipeline =
           ingestionPipelineRepository.getByName(null, fqn, ingestionPipelineRepository.getFields("id"));
 
@@ -88,7 +85,7 @@ public class AutoPIIApplication extends AbstractNativeApplication {
 
       CreateIngestionPipeline createPipelineRequest =
           new CreateIngestionPipeline()
-              .withName(INGESTION_PIPELINE_NAME)
+              .withName(app.getName())
               .withDisplayName(app.getDisplayName())
               .withDescription(app.getDescription())
               .withPipelineType(PipelineType.APPLICATION)
@@ -96,7 +93,7 @@ public class AutoPIIApplication extends AbstractNativeApplication {
                   new SourceConfig()
                       .withConfig(
                           new ApplicationPipeline()
-                              .withSourcePythonClass(config.getSourcePythonClass())
+                              .withSourcePythonClass(app.getSourcePythonClass())
                               .withAppConfig(config.getConfig())))
               .withAirflowConfig(new AirflowConfig().withScheduleInterval(cronMapper.map(quartzCron).asString()))
               .withService(service);

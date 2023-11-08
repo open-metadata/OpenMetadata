@@ -12,9 +12,12 @@
 Generic Workflow entrypoint to execute Applications
 """
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 from metadata.config.common import WorkflowExecutionError
+from metadata.generated.schema.entity.applications.configuration.externalApplicationConfig import (
+    AppConfig,
+)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -37,7 +40,9 @@ logger = ingestion_logger()
 class AppRunner(Step, ABC):
     """Class that knows how to execute the Application logic."""
 
-    def __init__(self, config: Optional[Dict[str, Any]], metadata: OpenMetadata):
+    def __init__(
+        self, config: AppConfig.__fields__["__root__"].type_, metadata: OpenMetadata
+    ):
         self.config = config
         self.metadata = metadata
 
@@ -87,7 +92,7 @@ class ApplicationWorkflow(BaseWorkflow, ABC):
         Method to execute after we have initialized all the internals.
         Here we will load the runner since it needs the `metadata` object
         """
-        runner_class = import_from_module(self.config.appConfig.sourcePythonClass)
+        runner_class = import_from_module(self.config.sourcePythonClass)
         if not issubclass(runner_class, AppRunner):
             raise ValueError(
                 "We need a valid AppRunner to initialize the ApplicationWorkflow!"
@@ -95,14 +100,14 @@ class ApplicationWorkflow(BaseWorkflow, ABC):
 
         try:
             self.runner = runner_class(
-                config=self.config.appConfig.config.__root__
-                if self.config.appConfig.config
+                config=self.config.appConfig.__root__
+                if self.config.appConfig
                 else None,
                 metadata=self.metadata,
             )
         except Exception as exc:
             logger.error(
-                f"Error trying to init the AppRunner [{self.config.appConfig.sourcePythonClass}] due to [{exc}]"
+                f"Error trying to init the AppRunner [{self.config.sourcePythonClass}] due to [{exc}]"
             )
             raise exc
 
