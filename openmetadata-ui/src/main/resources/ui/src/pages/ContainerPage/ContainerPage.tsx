@@ -171,27 +171,6 @@ const ContainerPage = () => {
   };
 
   const {
-    hasViewPermission,
-    hasEditDescriptionPermission,
-    hasEditTagsPermission,
-    hasEditCustomFieldsPermission,
-    hasEditLineagePermission,
-  } = useMemo(() => {
-    return {
-      hasViewPermission:
-        containerPermissions.ViewAll || containerPermissions.ViewBasic,
-      hasEditDescriptionPermission:
-        containerPermissions.EditAll || containerPermissions.EditDescription,
-      hasEditTagsPermission:
-        containerPermissions.EditAll || containerPermissions.EditTags,
-      hasEditCustomFieldsPermission:
-        containerPermissions.EditAll || containerPermissions.EditCustomFields,
-      hasEditLineagePermission:
-        containerPermissions.EditAll || containerPermissions.EditLineage,
-    };
-  }, [containerPermissions]);
-
-  const {
     deleted,
     owner,
     description,
@@ -220,6 +199,36 @@ const ContainerPage = () => {
       entityFqn: containerData?.fullyQualifiedName ?? '',
     };
   }, [containerData, currentUser]);
+
+  const {
+    editTagsPermission,
+    editDescriptionPermission,
+    editCustomAttributePermission,
+    editLineagePermission,
+    viewBasicPermission,
+    viewAllPermission,
+  } = useMemo(
+    () => ({
+      editTagsPermission:
+        (containerPermissions.EditTags || containerPermissions.EditAll) &&
+        !deleted,
+      editDescriptionPermission:
+        (containerPermissions.EditDescription ||
+          containerPermissions.EditAll) &&
+        !deleted,
+      editCustomAttributePermission:
+        (containerPermissions.EditAll ||
+          containerPermissions.EditCustomFields) &&
+        !deleted,
+      editLineagePermission:
+        (containerPermissions.EditAll || containerPermissions.EditLineage) &&
+        !deleted,
+      viewBasicPermission:
+        containerPermissions.ViewAll || containerPermissions.ViewBasic,
+      viewAllPermission: containerPermissions.ViewAll,
+    }),
+    [containerPermissions, deleted]
+  );
 
   const isDataModelEmpty = useMemo(
     () => isEmpty(containerData?.dataModel),
@@ -497,7 +506,7 @@ const ContainerPage = () => {
                   entityFqn={decodedContainerName}
                   entityName={entityName}
                   entityType={EntityType.CONTAINER}
-                  hasEditAccess={hasEditDescriptionPermission}
+                  hasEditAccess={editDescriptionPermission}
                   isEdit={isEditDescription}
                   owner={owner}
                   showActions={!deleted}
@@ -517,8 +526,8 @@ const ContainerPage = () => {
                   <ContainerDataModel
                     dataModel={containerData?.dataModel}
                     entityFqn={decodedContainerName}
-                    hasDescriptionEditAccess={hasEditDescriptionPermission}
-                    hasTagEditAccess={hasEditTagsPermission}
+                    hasDescriptionEditAccess={editDescriptionPermission}
+                    hasTagEditAccess={editTagsPermission}
                     isReadOnly={Boolean(deleted)}
                     onThreadLinkSelect={onThreadLinkSelect}
                     onUpdate={handleUpdateDataModel}
@@ -536,7 +545,7 @@ const ContainerPage = () => {
                   entityFqn={decodedContainerName}
                   entityType={EntityType.CONTAINER}
                   permission={
-                    hasEditDescriptionPermission && !containerData?.deleted
+                    editDescriptionPermission && !containerData?.deleted
                   }
                   selectedTags={tags}
                   tagType={TagSource.Classification}
@@ -548,7 +557,7 @@ const ContainerPage = () => {
                   entityFqn={decodedContainerName}
                   entityType={EntityType.CONTAINER}
                   permission={
-                    hasEditDescriptionPermission && !containerData?.deleted
+                    editDescriptionPermission && !containerData?.deleted
                   }
                   selectedTags={tags}
                   tagType={TagSource.Glossary}
@@ -611,7 +620,7 @@ const ContainerPage = () => {
           <EntityLineageComponent
             entity={containerData}
             entityType={EntityType.CONTAINER}
-            hasEditAccess={hasEditLineagePermission}
+            hasEditAccess={editLineagePermission}
           />
         ),
       },
@@ -627,8 +636,8 @@ const ContainerPage = () => {
           <CustomPropertyTable
             entityType={EntityType.CONTAINER}
             handleExtensionUpdate={handleExtensionUpdate}
-            hasEditAccess={hasEditCustomFieldsPermission}
-            hasPermission={containerPermissions.ViewAll}
+            hasEditAccess={editCustomAttributePermission}
+            hasPermission={viewAllPermission}
           />
         ),
       },
@@ -640,11 +649,12 @@ const ContainerPage = () => {
       containerName,
       decodedContainerName,
       entityName,
-      hasEditDescriptionPermission,
-      hasEditTagsPermission,
+      editDescriptionPermission,
+      editTagsPermission,
       isEditDescription,
-      hasEditLineagePermission,
-      hasEditCustomFieldsPermission,
+      editLineagePermission,
+      editCustomAttributePermission,
+      viewAllPermission,
       deleted,
       owner,
       isChildrenLoading,
@@ -675,20 +685,20 @@ const ContainerPage = () => {
 
   // Effects
   useEffect(() => {
-    if (hasViewPermission) {
+    if (viewBasicPermission) {
       fetchContainerDetail(containerName);
     }
-  }, [containerName, hasViewPermission]);
+  }, [containerName, viewBasicPermission]);
 
   useEffect(() => {
     fetchResourcePermission(containerName);
   }, [containerName]);
 
   useEffect(() => {
-    if (hasViewPermission) {
+    if (viewBasicPermission) {
       getEntityFeedCount();
     }
-  }, [containerName, hasViewPermission]);
+  }, [containerName, viewBasicPermission]);
 
   // Rendering
   if (isLoading) {
@@ -703,7 +713,7 @@ const ContainerPage = () => {
     );
   }
 
-  if (!hasViewPermission) {
+  if (!viewBasicPermission) {
     return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
   }
 
