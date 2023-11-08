@@ -18,7 +18,6 @@ from typing import Iterable, Optional
 
 
 class MultiDBSource(ABC):
-
     @abstractmethod
     def get_configured_database(self) -> Optional[str]:
         """
