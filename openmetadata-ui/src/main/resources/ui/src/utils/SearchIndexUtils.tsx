@@ -22,8 +22,8 @@ import { EntityTabs, TabSpecificField } from '../enums/entity.enum';
 import { SearchIndexField } from '../generated/entity/data/searchIndex';
 import { sortTagsCaseInsensitive } from './CommonUtils';
 
-export const defaultFields = `${TabSpecificField.FIELDS},${TabSpecificField.FOLLOWERS},${TabSpecificField.TAGS},
-${TabSpecificField.OWNER},${TabSpecificField.DOMAIN},${TabSpecificField.VOTES}`;
+// eslint-disable-next-line max-len
+export const defaultFields = `${TabSpecificField.FIELDS},${TabSpecificField.FOLLOWERS},${TabSpecificField.TAGS},${TabSpecificField.OWNER},${TabSpecificField.DOMAIN},${TabSpecificField.VOTES}`;
 
 export const makeRow = (column: SearchIndexField) => {
   return {
