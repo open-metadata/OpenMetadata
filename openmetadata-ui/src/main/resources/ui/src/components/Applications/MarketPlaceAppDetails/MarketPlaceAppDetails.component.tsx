@@ -127,6 +127,7 @@ const MarketPlaceAppDetails = () => {
           <Button
             block
             className="m-t-md"
+            data-testid="install-application"
             disabled={isInstalled}
             type="primary"
             onClick={installApp}>

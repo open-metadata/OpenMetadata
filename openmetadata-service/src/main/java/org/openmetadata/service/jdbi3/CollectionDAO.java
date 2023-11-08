@@ -1755,7 +1755,7 @@ public interface CollectionDAO {
         @Define("cond") String cond, @BindMap Map<String, Object> bindings);
 
     @SqlQuery(
-        "SELECT json FROM (SELECT ingestion_pipeline_entity.name, ingestion_pipeline_entity.json FROM ingestion_pipeline_entity <cond>) last_rows_subquery ORDER BY fullyQualifiedName")
+        "SELECT json FROM (SELECT ingestion_pipeline_entity.name, ingestion_pipeline_entity.json FROM ingestion_pipeline_entity <cond>) last_rows_subquery ORDER BY last_rows_subquery.name")
     List<String> listBeforeIngestionPipelineByserviceType(
         @Define("cond") String cond, @BindMap Map<String, Object> bindings);
 
@@ -3316,16 +3316,16 @@ public interface CollectionDAO {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT * FROM (SELECT json, ranked FROM "
-                + "(SELECT id, json, deleted, ROW_NUMBER() OVER(ORDER BY (json ->> '$.testCaseResult.timestamp') DESC) AS ranked FROM <table>) executionTimeSorted "
-                + "<cond> AND ranked < :before "
+                + "(SELECT id, json, deleted, ROW_NUMBER() OVER(ORDER BY (json ->> '$.testCaseResult.timestamp') DESC) AS ranked FROM <table> <cond>) executionTimeSorted "
+                + "WHERE ranked < :before "
                 + "ORDER BY ranked DESC "
                 + "LIMIT :limit) rankedBefore ORDER BY ranked",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT * FROM (SELECT json, ranked FROM "
-                + "(SELECT id, json, deleted, ROW_NUMBER() OVER(ORDER BY (json -> 'testCaseResult'->>'timestamp') DESC NULLS LAST) AS ranked FROM <table>) executionTimeSorted "
-                + "<cond> AND ranked < :before "
+                + "(SELECT id, json, deleted, ROW_NUMBER() OVER(ORDER BY (json -> 'testCaseResult'->>'timestamp') DESC NULLS LAST) AS ranked FROM <table> <cond>) executionTimeSorted "
+                + "WHERE ranked < :before "
                 + "ORDER BY ranked DESC "
                 + "LIMIT :limit) rankedBefore ORDER BY ranked",
         connectionType = POSTGRES)
@@ -3341,16 +3341,16 @@ public interface CollectionDAO {
         value =
             "SELECT json, ranked FROM "
                 + "(SELECT id, json, deleted, ROW_NUMBER() OVER(ORDER BY (json ->> '$.testCaseResult.timestamp') DESC ) AS ranked FROM <table> "
-                + ") executionTimeSorted "
-                + "<cond> AND ranked > :after "
+                + "<cond>) executionTimeSorted "
+                + "WHERE ranked > :after "
                 + "LIMIT :limit",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json, ranked FROM "
                 + "(SELECT id, json, deleted, ROW_NUMBER() OVER(ORDER BY (json->'testCaseResult'->>'timestamp') DESC NULLS LAST) AS ranked FROM <table> "
-                + ") executionTimeSorted "
-                + "<cond> AND ranked > :after "
+                + "<cond>) executionTimeSorted "
+                + "WHERE ranked > :after "
                 + "LIMIT :limit",
         connectionType = POSTGRES)
     @RegisterRowMapper(TestCaseRecordMapper.class)
