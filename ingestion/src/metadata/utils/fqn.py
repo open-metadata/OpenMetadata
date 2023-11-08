@@ -572,6 +572,9 @@ def search_database_from_es(
     fetch_multiple_entities: Optional[bool] = False,
     fields: Optional[str] = None,
 ):
+    """
+    Search Database entity from ES
+    """
 
     if not database_name:
         raise FQNBuildingException(
