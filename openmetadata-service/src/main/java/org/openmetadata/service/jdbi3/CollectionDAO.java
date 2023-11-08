@@ -55,6 +55,7 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.TokenInterface;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.analytics.WebAnalyticEvent;
+import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.auth.EmailVerificationToken;
 import org.openmetadata.schema.auth.PasswordResetToken;
 import org.openmetadata.schema.auth.PersonalAccessToken;
@@ -3620,6 +3621,9 @@ public interface CollectionDAO {
           break;
         case CUSTOM_LOGO_CONFIGURATION:
           value = JsonUtils.readValue(json, LogoConfiguration.class);
+          break;
+        case LOGIN_CONFIGURATION:
+          value = JsonUtils.readValue(json, LoginConfiguration.class);
           break;
         case SLACK_APP_CONFIGURATION:
           value = JsonUtils.readValue(json, String.class);
