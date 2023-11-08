@@ -14,9 +14,6 @@ Workflow definition for the data insight
 from metadata.data_insight.processor.kpi.kpi_runner import KpiRunner
 from metadata.data_insight.source.metadata import DataInsightSource
 from metadata.generated.schema.analytics.basic import WebAnalyticEventType
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataWorkflowConfig,
-)
 from metadata.generated.schema.tests.testSuite import ServiceType
 from metadata.ingestion.api.steps import Sink
 from metadata.utils.importer import import_sink_class
@@ -32,11 +29,6 @@ class DataInsightWorkflow(IngestionWorkflow):
 
     retention_days = 7
 
-    def __init__(self, config: OpenMetadataWorkflowConfig):
-        super().__init__(config)
-
-        self.sink = None
-
     def _retrieve_service_connection_if_needed(self, service_type: ServiceType) -> None:
         """No service connection needed for data insight"""
         return None
@@ -47,7 +39,8 @@ class DataInsightWorkflow(IngestionWorkflow):
         kpi_runner = KpiRunner(self.metadata)
 
         for kpi_result in kpi_runner.run():
-            self.sink.run(kpi_result)
+            # Pick up the sink
+            self.steps[0].run(kpi_result)
 
     def _clean_up_web_analytics_events(self) -> None:
         """
@@ -81,5 +74,5 @@ class DataInsightWorkflow(IngestionWorkflow):
     def set_steps(self):
         self.source = DataInsightSource.create(self.metadata)  # type: ignore
 
-        self.sink = self._get_sink()
-        self.steps = (self.sink,)
+        sink = self._get_sink()
+        self.steps = (sink,)
