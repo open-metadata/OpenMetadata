@@ -25,6 +25,7 @@ import {
   isNull,
   isString,
   isUndefined,
+  toLower,
   toNumber,
 } from 'lodash';
 import {
@@ -871,3 +872,17 @@ export const getUniqueArray = (count: number) =>
   [...Array(count)].map((_, index) => ({
     key: `key${index}`,
   }));
+
+/**
+ * @param searchValue search input
+ * @param option select options list
+ * @returns boolean
+ */
+export const handleSearchFilterOption = (
+  searchValue: string,
+  option?: {
+    label: string;
+    value: string;
+  }
+) => toLower(option?.label).includes(toLower(searchValue));
+// Check label while searching anything and filter that options out if found matching
