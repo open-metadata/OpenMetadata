@@ -47,7 +47,9 @@ class UsageWorkflow(BaseWorkflow):
         source_type = self.config.source.type.lower()
         if not self.config.source.serviceName:
             raise WorkflowExecutionError(
-                "ServiceName is required field for executing the Metadata Workflow"
+                "ServiceName is required field for executing the Usage Workflow. "
+                "You can find more information on how to build the YAML "
+                "configuration here: https://docs.open-metadata.org/connectors"
             )
 
         source_class = (
