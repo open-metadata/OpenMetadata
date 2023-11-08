@@ -96,6 +96,7 @@ const EditLoginConfiguration = () => {
         'data-testid': 'maxLoginFailAttempts',
         size: 'default',
         style: { width: '100%' },
+        autoFocus: true,
       },
       rules: [{ min: 0, type: 'number' }],
     },

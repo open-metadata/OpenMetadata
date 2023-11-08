@@ -95,6 +95,7 @@ const EditCustomLogoConfig = () => {
       id: 'root/customLogoUrlPath',
       props: {
         'data-testid': 'customLogoUrlPath',
+        autoFocus: true,
       },
       rules: [
         {
