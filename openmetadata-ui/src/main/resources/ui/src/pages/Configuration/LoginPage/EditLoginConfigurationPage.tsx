@@ -97,7 +97,7 @@ const EditLoginConfiguration = () => {
         size: 'default',
         style: { width: '100%' },
       },
-      rules: [{ min: 0 }],
+      rules: [{ min: 0, type: 'number' }],
     },
     {
       name: 'accessBlockTime',
@@ -110,7 +110,7 @@ const EditLoginConfiguration = () => {
         size: 'default',
         style: { width: '100%' },
       },
-      rules: [{ min: 0 }],
+      rules: [{ min: 0, type: 'number' }],
     },
     {
       name: 'jwtTokenExpiryTime',
@@ -123,7 +123,7 @@ const EditLoginConfiguration = () => {
         size: 'default',
         style: { width: '100%' },
       },
-      rules: [{ min: 0 }],
+      rules: [{ min: 0, type: 'number' }],
     },
   ];
 
