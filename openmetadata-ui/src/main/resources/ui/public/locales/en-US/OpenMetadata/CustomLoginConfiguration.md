@@ -1,31 +1,31 @@
 # Custom Login Configuration
 
-To change the default settings for login configuration.
+These are the custom option for application login configuration.
 
 $$note
 It might take a few minutes to reflect changes.
 $$
 
-Following configuration is needed to allow OpenMetadata to update logo.
+Following configuration is needed to allow OpenMetadata to update login configurations.
 
 $$section
 
-### Logo URL $(id="customLogoUrlPath")
+### Max Login Fail Attempts $(id="maxLoginFailAttempts")
 
-URL path for the login page logo.
-$$
-
-$$note
-Logo aspect ratio should be 5:2 and Recommended size should be 150 x 60 px
+Failed Login Attempts allowed for user. Default: `3`.
 $$
 
 $$section
 
-### Monogram URL $(id="customMonogramUrlPath")
+### Access Block Time $(id="accessBlockTime")
 
-URL path for the navbar logo.
+Access Block time for user on exceeding failed attempts(in seconds). Default: `600`.
 $$
 
-$$note
-Monogram aspect ratio should be 1:1 and Recommended size should be 30 x 30 px
+$$section
+
+### JWT Token Expiry Time $(id="jwtTokenExpiryTime")
+
+Jwt Token Expiry time for login in seconds. Default: `3600`.
 $$
+
