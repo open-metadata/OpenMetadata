@@ -113,6 +113,8 @@ const AppInstall = () => {
           cronExpression: repeatFrequency,
         },
         name: fqn,
+        description: appData?.description,
+        displayName: appData?.displayName,
       };
       await installApplication(data);
 

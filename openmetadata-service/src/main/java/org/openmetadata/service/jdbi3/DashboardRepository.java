@@ -179,12 +179,6 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   @Override
-  public Dashboard setInheritedFields(Dashboard dashboard, Fields fields) {
-    DashboardService dashboardService = Entity.getEntity(dashboard.getService(), "domain", ALL);
-    return inheritDomain(dashboard, fields, dashboardService);
-  }
-
-  @Override
   public EntityUpdater getUpdater(Dashboard original, Dashboard updated, Operation operation) {
     return new DashboardUpdater(original, updated, operation);
   }
