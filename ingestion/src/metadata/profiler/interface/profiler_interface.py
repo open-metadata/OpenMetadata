@@ -287,7 +287,9 @@ class ProfilerInterface(ABC):
             return ProfilerInterface._get_sample_storage_config(schema_profiler_config)
 
         if ProfilerInterface._get_sample_storage_config(database_profiler_config):
-            return ProfilerInterface._get_sample_storage_config(database_profiler_config)
+            return ProfilerInterface._get_sample_storage_config(
+                database_profiler_config
+            )
 
         try:
             return db_service.connection.config.sampleDataStorageConfig.config
