@@ -23,6 +23,7 @@ import ErrorPlaceHolder from '../../components/common/error-with-placeholder/Err
 import { PagingHandlerParams } from '../../components/common/next-previous/NextPrevious.interface';
 import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import DataAssetsVersionHeader from '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
+import DataProductsContainer from '../../components/DataProductsContainer/DataProductsContainer.component';
 import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from '../../components/Loader/Loader';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
@@ -92,6 +93,8 @@ function DatabaseVersionPage() {
   const [versionList, setVersionList] = useState<EntityHistory>(
     {} as EntityHistory
   );
+
+  const dataProducts = currentVersionData.dataProducts;
 
   const { tier, owner, breadcrumbLinks, changeDescription, deleted, domain } =
     useMemo(
@@ -283,6 +286,11 @@ function DatabaseVersionPage() {
               data-testid="entity-right-panel"
               flex="220px">
               <Space className="w-full" direction="vertical" size="large">
+                <DataProductsContainer
+                  activeDomain={domain}
+                  dataProducts={dataProducts ?? []}
+                  hasPermission={false}
+                />
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
                     displayType={DisplayType.READ_MORE}

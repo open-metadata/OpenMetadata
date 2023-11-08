@@ -59,7 +59,7 @@ export const AssetSelectionModal = ({
   emptyPlaceHolderText,
 }: AssetSelectionModalProps) => {
   const { t } = useTranslation();
-  const TIMEOUT_DURATION = 300;
+  const TIMEOUT_DURATION = 500;
   const [search, setSearch] = useState('');
   const [items, setItems] = useState<SearchedDataProps['data']>([]);
   const [selectedItems, setSelectedItems] =
