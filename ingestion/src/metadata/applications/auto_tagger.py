@@ -32,7 +32,7 @@ from metadata.pii.constants import PII
 from metadata.pii.scanners.column_name_scanner import ColumnNameScanner
 from metadata.pii.scanners.ner_scanner import NERScanner
 from metadata.utils.logger import app_logger
-from metadata.workflow.application import AppRunner
+from metadata.workflow.application import AppRunner, InvalidAppConfiguration
 
 logger = app_logger()
 
@@ -59,6 +59,11 @@ class AutoTaggerApp(AppRunner):
 
     def __init__(self, config: AutoTaggerAppConfig, metadata: OpenMetadata):
         super().__init__(config, metadata)
+
+        if not isinstance(config, AutoTaggerAppConfig):
+            raise InvalidAppConfiguration(
+                f"AutoTagger Runner expects an AutoTaggerAppConfig, we got [{config}]"
+            )
 
         self._ner_scanner = None
         self.confidence_threshold = config.confidenceLevel or DEFAULT_CONFIDENCE

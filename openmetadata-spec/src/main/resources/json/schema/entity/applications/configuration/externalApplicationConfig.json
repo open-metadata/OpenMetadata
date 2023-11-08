@@ -12,5 +12,12 @@
         }
       ]
     }
-  }
+  },
+  "properties": {
+    "config": {
+      "$ref": "#/definitions/appConfig"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["config"]
 }

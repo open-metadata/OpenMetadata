@@ -21,7 +21,7 @@ from openmetadata_managed_apis.workflows.ingestion.common import (
 )
 
 from metadata.generated.schema.entity.applications.configuration.externalApplicationConfig import (
-    ExternalApplicationConfig, AppConfig,
+    AppConfig,
 )
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,

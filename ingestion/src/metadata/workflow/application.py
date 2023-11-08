@@ -37,6 +37,13 @@ from metadata.workflow.workflow_status_mixin import SUCCESS_THRESHOLD_VALUE
 logger = ingestion_logger()
 
 
+class InvalidAppConfiguration(Exception):
+    """
+    To be raised if the config received by the App
+    is not the one expected
+    """
+
+
 class AppRunner(Step, ABC):
     """Class that knows how to execute the Application logic."""
 
