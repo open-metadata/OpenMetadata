@@ -313,40 +313,21 @@ class ProfilerInterface(ABC):
         Returns:
             Optional[dict]: dict
         """
-        if entity_config:
-            return ProfileSampleConfig(
-                profile_sample=entity_config.profileSample,
-                profile_sample_type=entity_config.profileSampleType,
-            )
-
-        try:
-            profile_sample = entity.tableProfilerConfig.profileSample
-        except AttributeError:
-            pass
-        else:
-            if profile_sample:
-                return ProfileSampleConfig(
-                    profile_sample=entity.tableProfilerConfig.profileSample,
-                    profile_sample_type=entity.tableProfilerConfig.profileSampleType,
-                )
-
-        if schema_profiler_config and schema_profiler_config.profileSample:
-            return ProfileSampleConfig(
-                profile_sample=schema_profiler_config.profileSample,
-                profile_sample_type=schema_profiler_config.profileSampleType,
-            )
-
-        if database_profiler_config and database_profiler_config.profileSample:
-            return ProfileSampleConfig(
-                profile_sample=database_profiler_config.profileSample,
-                profile_sample_type=database_profiler_config.profileSampleType,
-            )
-
-        if source_config.profileSample:
-            return ProfileSampleConfig(
-                profile_sample=source_config.profileSample,
-                profile_sample_type=source_config.profileSampleType,
-            )
+        for config in (
+            entity_config,
+            entity.tableProfilerConfig,
+            schema_profiler_config,
+            database_profiler_config,
+            source_config,
+        ):
+            try:
+                if config and config.profileSample:
+                    return ProfileSampleConfig(
+                        profile_sample=config.profileSample,
+                        profile_sample_type=config.profileSampleType,
+                    )
+            except AttributeError:
+                pass
 
         return None
 
@@ -365,17 +346,15 @@ class ProfilerInterface(ABC):
         Returns:
             Optional[int]: int
         """
-        if entity_config and entity_config.sampleDataCount:
-            return entity_config.sampleDataCount
 
-        if entity.tableProfilerConfig and entity.tableProfilerConfig.sampleDataCount:
-            return entity.tableProfilerConfig.sampleDataCount
-
-        if schema_profiler_config and schema_profiler_config.sampleDataCount:
-            return schema_profiler_config.sampleDataCount
-
-        if database_profiler_config and database_profiler_config.sampleDataCount:
-            return database_profiler_config.sampleDataCount
+        for config in (
+            entity_config,
+            entity.tableProfilerConfig,
+            schema_profiler_config,
+            database_profiler_config,
+        ):
+            if config and config.sampleDataCount:
+                return config.sampleDataCount
 
         return source_config.sampleDataCount
 

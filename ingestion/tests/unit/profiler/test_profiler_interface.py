@@ -13,10 +13,6 @@
 from copy import deepcopy
 from unittest import TestCase
 
-from ingestion.build.lib.metadata.profiler.api.models import (
-    ProfileSampleConfig,
-    TableConfig,
-)
 from metadata.generated.schema.entity.data.database import (
     Database,
     DatabaseProfilerConfig,
@@ -39,6 +35,11 @@ from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline
 )
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.profiler.api.models import (
+    DatabaseAndSchemaConfig,
+    ProfileSampleConfig,
+    TableConfig,
+)
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
 
 
@@ -164,7 +165,7 @@ class ProfilerInterfaceTest(TestCase):
             self.database_profiler_config,
         )
 
-    def test_get_storage_config_for_table(self):
+    def test_get_profile_sample_configs(self):
         source_config = DatabaseServiceProfilerPipeline()
 
         expected = ProfileSampleConfig(
@@ -203,8 +204,10 @@ class ProfilerInterfaceTest(TestCase):
             profile_sample=22,
             profile_sample_type=ProfileSampleType.PERCENTAGE,
         )
+        table_copy = deepcopy(self.table)
+        table_copy.tableProfilerConfig = None
         actual = ProfilerInterface.get_profile_sample_config(
-            entity=None,
+            entity=table_copy,
             schema_profiler_config=None,
             database_profiler_config=self.database_profiler_config,
             entity_config=profiler,
@@ -268,3 +271,33 @@ class ProfilerInterfaceTest(TestCase):
             source_config=source_config,
         )
         self.assertEqual(50, actual)
+
+    def test_table_config_casting(self):
+
+        expected = TableConfig(
+            profileSample=200,
+            profileSampleType=ProfileSampleType.PERCENTAGE,
+            sampleDataCount=300,
+            fullyQualifiedName="demo"
+        )
+        schema_config = DatabaseAndSchemaConfig(
+            profileSample=200,
+            profileSampleType=ProfileSampleType.PERCENTAGE,
+            sampleDataCount=300,
+            sampleDataStorageConfig=self.schema_storage_config,
+            fullyQualifiedName="demo"
+        )
+        self.assertEqual(
+            expected, TableConfig.from_database_and_schema_config(schema_config, table_fqn="demo")
+        )
+
+        expected = TableConfig(
+            fullyQualifiedName="demo"
+        )
+        schema_config = DatabaseAndSchemaConfig(
+            sampleDataStorageConfig=self.schema_storage_config,
+            fullyQualifiedName="demo"
+        )
+        self.assertEqual(
+            expected, TableConfig.from_database_and_schema_config(schema_config, table_fqn="demo")
+        )
