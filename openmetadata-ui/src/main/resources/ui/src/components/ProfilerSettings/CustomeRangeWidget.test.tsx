@@ -14,9 +14,7 @@ import { fireEvent, render } from '@testing-library/react';
 import React from 'react';
 
 import { WidgetProps } from '@rjsf/utils';
-import { CustomRangeWidget } from './CustomRangeWidget'; // Adjust the import path as needed
-
-// Mock the WidgetProps
+import { CustomRangeWidget } from './CustomRangeWidget';
 const widgetProps = {
   id: 'custom-range-widget',
   name: 'custom-range',
