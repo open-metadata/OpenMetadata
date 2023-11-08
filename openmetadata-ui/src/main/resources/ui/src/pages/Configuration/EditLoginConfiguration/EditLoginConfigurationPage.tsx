@@ -15,34 +15,35 @@ import { AxiosError } from 'axios';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
-import ServiceDocPanel from '../../components/common/ServiceDocPanel/ServiceDocPanel';
-import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
-import Loader from '../../components/Loader/Loader';
+import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
+import ServiceDocPanel from '../../../components/common/ServiceDocPanel/ServiceDocPanel';
+import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
+import Loader from '../../../components/Loader/Loader';
+import { VALIDATION_MESSAGES } from '../../../constants/constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
-} from '../../constants/GlobalSettings.constants';
+} from '../../../constants/GlobalSettings.constants';
 import {
-  CUSTOM_LOGO_CONFIG_SERVICE_CATEGORY,
+  CUSTOM_LOGIN_CONFIG_SERVICE_CATEGORY,
   OPEN_METADATA,
-} from '../../constants/service-guide.constant';
-import { ServiceCategory } from '../../enums/service.enum';
-import { LogoConfiguration } from '../../generated/configuration/logoConfiguration';
-import { Settings, SettingType } from '../../generated/settings/settings';
-import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
+} from '../../../constants/service-guide.constant';
+import { ServiceCategory } from '../../../enums/service.enum';
+import { LoginConfiguration } from '../../../generated/configuration/loginConfiguration';
+import { Settings, SettingType } from '../../../generated/settings/settings';
+import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import {
-  getSettingsConfigFromConfigType,
+  getLoginConfig,
   updateSettingsConfig,
-} from '../../rest/settingConfigAPI';
-import { generateFormFields } from '../../utils/formUtils';
-import { getSettingPath } from '../../utils/RouterUtils';
-import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+} from '../../../rest/settingConfigAPI';
+import { generateFormFields } from '../../../utils/formUtils';
+import { getSettingPath } from '../../../utils/RouterUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
-const EditCustomLogoConfig = () => {
+const EditLoginConfiguration = () => {
   const { t } = useTranslation();
   const history = useHistory();
-  const [form] = Form.useForm();
+  const [form] = Form.useForm<LoginConfiguration>();
   const [activeField, setActiveField] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [updating, setUpdating] = useState<boolean>(false);
@@ -51,11 +52,9 @@ const EditCustomLogoConfig = () => {
     try {
       setLoading(true);
 
-      const { data } = await getSettingsConfigFromConfigType(
-        SettingType.CustomLogoConfiguration
-      );
+      const data = await getLoginConfig();
 
-      form.setFieldsValue({ ...(data.config_value ?? {}) });
+      form.setFieldsValue({ ...(data ?? {}) });
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -70,15 +69,15 @@ const EditCustomLogoConfig = () => {
         url: getSettingPath(),
       },
       {
-        name: t('label.custom-logo'),
+        name: t('label.login-configuration'),
         url: getSettingPath(
           GlobalSettingsMenuCategory.OPEN_METADATA,
-          GlobalSettingOptions.CUSTOM_LOGO
+          GlobalSettingOptions.LOGIN_CONFIGURATION
         ),
       },
       {
         name: t('label.edit-entity', {
-          entity: t('label.custom-logo-configuration'),
+          entity: t('label.login-configuration'),
         }),
         url: '',
       },
@@ -88,75 +87,60 @@ const EditCustomLogoConfig = () => {
 
   const formFields: FieldProp[] = [
     {
-      name: 'customLogoUrlPath',
-      label: t('label.logo-url'),
-      type: FieldTypes.TEXT,
+      name: 'maxLoginFailAttempts',
+      label: t('label.max-login-fail-attampt-plural'),
+      type: FieldTypes.NUMBER,
       required: false,
-      id: 'root/customLogoUrlPath',
+      id: 'root/maxLoginFailAttempts',
       props: {
-        'data-testid': 'customLogoUrlPath',
+        'data-testid': 'maxLoginFailAttempts',
+        size: 'default',
+        style: { width: '100%' },
         autoFocus: true,
       },
-      rules: [
-        {
-          type: 'url',
-          message: t('message.entity-is-not-valid-url', {
-            entity: t('label.logo-url'),
-          }),
-        },
-      ],
+      rules: [{ min: 0, type: 'number' }],
     },
     {
-      name: 'customMonogramUrlPath',
-      label: t('label.monogram-url'),
-      type: FieldTypes.TEXT,
+      name: 'accessBlockTime',
+      label: t('label.access-block-time'),
+      type: FieldTypes.NUMBER,
       required: false,
-      id: 'root/customMonogramUrlPath',
+      id: 'root/accessBlockTime',
       props: {
-        'data-testid': 'customMonogramUrlPath',
+        'data-testid': 'accessBlockTime',
+        size: 'default',
+        style: { width: '100%' },
       },
-      rules: [
-        {
-          type: 'url',
-          message: t('message.entity-is-not-valid-url', {
-            entity: t('label.monogram-url'),
-          }),
-        },
-      ],
+      rules: [{ min: 0, type: 'number' }],
     },
     {
-      name: 'customFaviconUrlPath',
-      label: t('label.favicon-url'),
-      type: FieldTypes.TEXT,
+      name: 'jwtTokenExpiryTime',
+      label: t('label.jwt-token-expiry-time'),
+      type: FieldTypes.NUMBER,
       required: false,
-      id: 'root/customFaviconUrlPath',
+      id: 'root/jwtTokenExpiryTime',
       props: {
-        'data-testid': 'customFaviconUrlPath',
+        'data-testid': 'jwtTokenExpiryTime',
+        size: 'default',
+        style: { width: '100%' },
       },
-      rules: [
-        {
-          type: 'url',
-          message: t('message.entity-is-not-valid-url', {
-            entity: t('label.favicon-url'),
-          }),
-        },
-      ],
+      rules: [{ min: 0, type: 'number' }],
     },
   ];
 
   const handleGoBack = () => history.goBack();
 
-  const handleSubmit = async (configValues: LogoConfiguration) => {
+  const handleSubmit = async (configValues: LoginConfiguration) => {
     try {
       setUpdating(true);
       const configData = {
-        config_type: SettingType.CustomLogoConfiguration,
+        config_type: SettingType.LoginConfiguration,
         config_value: configValues,
       };
       await updateSettingsConfig(configData as Settings);
       showSuccessToast(
         t('server.update-entity-success', {
-          entity: t('label.custom-logo-configuration'),
+          entity: t('label.login-configuration'),
         })
       );
       handleGoBack();
@@ -167,14 +151,19 @@ const EditCustomLogoConfig = () => {
     }
   };
 
+  useEffect(() => {
+    fetchCustomLogoConfig();
+  }, []);
+
   const firstPanelChildren = (
     <div className="max-width-md w-9/10 service-form-container">
       <TitleBreadcrumb titleLinks={breadcrumb} />
       <Form
         className="m-t-md"
-        data-testid="custom-logo-config-form"
+        data-testid="custom-login-config-form"
         form={form}
         layout="vertical"
+        validateMessages={VALIDATION_MESSAGES}
         onFinish={handleSubmit}
         onFocus={(e) => {
           e.preventDefault();
@@ -208,7 +197,7 @@ const EditCustomLogoConfig = () => {
   const secondPanelChildren = (
     <ServiceDocPanel
       activeField={activeField}
-      serviceName={CUSTOM_LOGO_CONFIG_SERVICE_CATEGORY}
+      serviceName={CUSTOM_LOGIN_CONFIG_SERVICE_CATEGORY}
       serviceType={OPEN_METADATA as ServiceCategory}
     />
   );
@@ -239,4 +228,4 @@ const EditCustomLogoConfig = () => {
   );
 };
 
-export default EditCustomLogoConfig;
+export default EditLoginConfiguration;
