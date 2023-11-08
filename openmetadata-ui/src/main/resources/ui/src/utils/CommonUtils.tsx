@@ -25,7 +25,6 @@ import {
   isNull,
   isString,
   isUndefined,
-  lowerCase,
   toNumber,
 } from 'lodash';
 import {
@@ -881,5 +880,5 @@ export const handleSearchFilterOption = (
     label: string;
     value: string;
   }
-) => lowerCase(option?.label).includes(lowerCase(searchValue));
+) => (option?.label ?? '').toLowerCase().includes(searchValue.toLowerCase());
 // Check label while searching anything and filter that options out if found matching
