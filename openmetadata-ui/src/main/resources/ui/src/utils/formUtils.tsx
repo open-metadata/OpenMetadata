@@ -89,10 +89,10 @@ export const getField = (field: FieldProp) => {
     case FieldTypes.NUMBER:
       fieldElement = (
         <InputNumber
-          {...props}
           id={id}
           placeholder={placeholder}
           size="small"
+          {...props}
         />
       );
 
