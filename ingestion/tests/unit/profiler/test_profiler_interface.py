@@ -278,26 +278,30 @@ class ProfilerInterfaceTest(TestCase):
             profileSample=200,
             profileSampleType=ProfileSampleType.PERCENTAGE,
             sampleDataCount=300,
-            fullyQualifiedName="demo"
+            fullyQualifiedName="demo",
         )
         schema_config = DatabaseAndSchemaConfig(
             profileSample=200,
             profileSampleType=ProfileSampleType.PERCENTAGE,
             sampleDataCount=300,
             sampleDataStorageConfig=self.schema_storage_config,
-            fullyQualifiedName="demo"
+            fullyQualifiedName="demo",
         )
         self.assertEqual(
-            expected, TableConfig.from_database_and_schema_config(schema_config, table_fqn="demo")
+            expected,
+            TableConfig.from_database_and_schema_config(
+                schema_config, table_fqn="demo"
+            ),
         )
 
-        expected = TableConfig(
-            fullyQualifiedName="demo"
-        )
+        expected = TableConfig(fullyQualifiedName="demo")
         schema_config = DatabaseAndSchemaConfig(
             sampleDataStorageConfig=self.schema_storage_config,
-            fullyQualifiedName="demo"
+            fullyQualifiedName="demo",
         )
         self.assertEqual(
-            expected, TableConfig.from_database_and_schema_config(schema_config, table_fqn="demo")
+            expected,
+            TableConfig.from_database_and_schema_config(
+                schema_config, table_fqn="demo"
+            ),
         )
