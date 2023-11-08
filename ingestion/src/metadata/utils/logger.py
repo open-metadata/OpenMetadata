@@ -154,7 +154,7 @@ def great_expectations_logger():
 
 def app_logger():
     """
-    Method to get the UTILS logger
+    Method to get the APP logger
     """
 
     return logging.getLogger(Loggers.APP.value)

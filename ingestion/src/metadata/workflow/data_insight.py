@@ -65,7 +65,7 @@ class DataInsightWorkflow(IngestionWorkflow):
 
         return sink
 
-    def _execute_internal(self):
+    def execute_internal(self):
         """Use parent logic and add step to process KPIs"""
         super().execute_internal()
         self._run_kpi_processor()
