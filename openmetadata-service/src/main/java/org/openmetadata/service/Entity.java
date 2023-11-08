@@ -232,7 +232,6 @@ public final class Entity {
   //
   public static final List<String> ACTIVITY_FEED_EXCLUDED_ENTITIES =
       List.of(
-          USER,
           TEAM,
           ROLE,
           POLICY,
