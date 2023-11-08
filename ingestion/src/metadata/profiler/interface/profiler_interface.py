@@ -279,9 +279,9 @@ class ProfilerInterface(ABC):
             if (
                 database_config.fullyQualifiedName.__root__
                 == entity.database.fullyQualifiedName
-                and ProfilerInterface._get_sample_storage_config(schema_config)
+                and ProfilerInterface._get_sample_storage_config(database_config)
             ):
-                return ProfilerInterface._get_sample_storage_config(schema_config)
+                return ProfilerInterface._get_sample_storage_config(database_config)
 
         if ProfilerInterface._get_sample_storage_config(schema_profiler_config):
             return ProfilerInterface._get_sample_storage_config(schema_profiler_config)
