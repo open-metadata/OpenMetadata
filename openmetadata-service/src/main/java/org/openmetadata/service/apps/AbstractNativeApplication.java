@@ -12,6 +12,7 @@ import com.cronutils.model.Cron;
 import com.cronutils.model.definition.CronDefinitionBuilder;
 import com.cronutils.parser.CronParser;
 import java.util.List;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.AppRuntime;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
@@ -42,10 +43,10 @@ import org.quartz.JobExecutionException;
 @Slf4j
 public class AbstractNativeApplication implements NativeApplication {
   protected CollectionDAO collectionDAO;
-  public App app;
+  private @Getter App app;
   protected SearchRepository searchRepository;
-  public final CronMapper cronMapper = CronMapper.fromQuartzToUnix();
-  public final CronParser cronParser = new CronParser(CronDefinitionBuilder.instanceDefinitionFor(QUARTZ));
+  private final @Getter CronMapper cronMapper = CronMapper.fromQuartzToUnix();
+  private final @Getter CronParser cronParser = new CronParser(CronDefinitionBuilder.instanceDefinitionFor(QUARTZ));
 
   @Override
   public void init(App app, CollectionDAO dao, SearchRepository searchRepository) {
@@ -187,7 +188,7 @@ public class AbstractNativeApplication implements NativeApplication {
     return JsonUtils.convertValue(app.getRuntime(), ScheduledExecutionContext.class);
   }
 
-  public IngestionPipeline getIngestionPipeline(CreateIngestionPipeline create, String botname, String user) {
+  protected IngestionPipeline getIngestionPipeline(CreateIngestionPipeline create, String botname, String user) {
     IngestionPipelineRepository ingestionPipelineRepository =
         (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
     OpenMetadataConnection openMetadataServerConnection =

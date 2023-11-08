@@ -4,7 +4,6 @@ import com.cronutils.model.Cron;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
-import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.applications.configuration.ExternalApplicationConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
@@ -19,20 +18,12 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.MetadataServiceRepository;
-import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class ExternalApplicationHandler extends AbstractNativeApplication {
   private static final String SERVICE_NAME = "OpenMetadata";
-
-  @Override
-  public void init(App app, CollectionDAO dao, SearchRepository searchRepository) {
-    super.init(app, dao, searchRepository);
-    this.app = app;
-    LOG.info(String.format("%s App is initialized", app.getName()));
-  }
 
   /**
    * MetaPilot is an external App that accepts one ApiKey parameter and runs a workflow based on it.
@@ -44,13 +35,13 @@ public class ExternalApplicationHandler extends AbstractNativeApplication {
   public void initializeExternalApp() {
 
     ExternalApplicationConfig config =
-        JsonUtils.convertValue(app.getAppConfiguration(), ExternalApplicationConfig.class);
+        JsonUtils.convertValue(this.getApp().getAppConfiguration(), ExternalApplicationConfig.class);
     IngestionPipelineRepository ingestionPipelineRepository =
         (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
 
     // Check if the Ingestion Pipeline has already been created
     try {
-      String fqn = FullyQualifiedName.add(SERVICE_NAME, app.getName());
+      String fqn = FullyQualifiedName.add(SERVICE_NAME, this.getApp().getName());
       IngestionPipeline storedPipeline =
           ingestionPipelineRepository.getByName(null, fqn, ingestionPipelineRepository.getFields("id"));
 
@@ -58,14 +49,14 @@ public class ExternalApplicationHandler extends AbstractNativeApplication {
       List<CollectionDAO.EntityRelationshipRecord> records =
           collectionDAO
               .relationshipDAO()
-              .findTo(app.getId(), Entity.APPLICATION, Relationship.HAS.ordinal(), Entity.INGESTION_PIPELINE);
+              .findTo(this.getApp().getId(), Entity.APPLICATION, Relationship.HAS.ordinal(), Entity.INGESTION_PIPELINE);
 
       if (records.isEmpty()) {
         // Add Ingestion Pipeline to Application
         collectionDAO
             .relationshipDAO()
             .insert(
-                app.getId(),
+                this.getApp().getId(),
                 storedPipeline.getId(),
                 Entity.APPLICATION,
                 Entity.INGESTION_PIPELINE,
@@ -81,26 +72,27 @@ public class ExternalApplicationHandler extends AbstractNativeApplication {
               .getByName(null, SERVICE_NAME, serviceEntityRepository.getFields("id"))
               .getEntityReference();
 
-      Cron quartzCron = cronParser.parse(app.getAppSchedule().getCronExpression());
+      Cron quartzCron = this.getCronParser().parse(this.getApp().getAppSchedule().getCronExpression());
 
       CreateIngestionPipeline createPipelineRequest =
           new CreateIngestionPipeline()
-              .withName(app.getName())
-              .withDisplayName(app.getDisplayName())
-              .withDescription(app.getDescription())
+              .withName(this.getApp().getName())
+              .withDisplayName(this.getApp().getDisplayName())
+              .withDescription(this.getApp().getDescription())
               .withPipelineType(PipelineType.APPLICATION)
               .withSourceConfig(
                   new SourceConfig()
                       .withConfig(
                           new ApplicationPipeline()
-                              .withSourcePythonClass(app.getSourcePythonClass())
+                              .withSourcePythonClass(this.getApp().getSourcePythonClass())
                               .withAppConfig(config.getConfig())))
-              .withAirflowConfig(new AirflowConfig().withScheduleInterval(cronMapper.map(quartzCron).asString()))
+              .withAirflowConfig(
+                  new AirflowConfig().withScheduleInterval(this.getCronMapper().map(quartzCron).asString()))
               .withService(service);
 
       // Get Pipeline
       IngestionPipeline dataInsightPipeline =
-          getIngestionPipeline(createPipelineRequest, String.format("%sBot", app.getName()), "admin")
+          getIngestionPipeline(createPipelineRequest, String.format("%sBot", this.getApp().getName()), "admin")
               .withProvider(ProviderType.USER);
       ingestionPipelineRepository.setFullyQualifiedName(dataInsightPipeline);
       ingestionPipelineRepository.initializeEntity(dataInsightPipeline);
@@ -109,7 +101,7 @@ public class ExternalApplicationHandler extends AbstractNativeApplication {
       collectionDAO
           .relationshipDAO()
           .insert(
-              app.getId(),
+              this.getApp().getId(),
               dataInsightPipeline.getId(),
               Entity.APPLICATION,
               Entity.INGESTION_PIPELINE,
