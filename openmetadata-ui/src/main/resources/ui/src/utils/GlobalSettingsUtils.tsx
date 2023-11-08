@@ -273,6 +273,12 @@ export const getGlobalSettingsMenuWithPermission = (
           key: 'openMetadata.customLogo',
           icon: <CustomLogoIcon className="w-4 side-panel-icons" />,
         },
+        {
+          label: i18next.t('label.login-configuration'),
+          isProtected: Boolean(isAdminUser),
+          key: 'openMetadata.loginConfiguration',
+          icon: <CustomLogoIcon className="w-4 side-panel-icons" />,
+        },
       ],
     },
     {

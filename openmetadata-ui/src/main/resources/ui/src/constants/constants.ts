@@ -312,6 +312,7 @@ export const ROUTES = {
   EDIT_KPI: `/data-insights/kpi/edit-kpi/${KPI_NAME}`,
 
   SETTINGS_EDIT_CUSTOM_LOGO_CONFIG: `/settings/OpenMetadata/customLogo/edit-custom-logo-configuration`,
+  SETTINGS_EDIT_CUSTOM_LOGIN_CONFIG: `/settings/OpenMetadata/customLogo/edit-custom-login-configuration`,
 
   CUSTOMIZE_PAGE: `/customize-page/:fqn/:pageFqn`,
 };

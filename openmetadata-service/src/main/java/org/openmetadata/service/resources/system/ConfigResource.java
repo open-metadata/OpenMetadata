@@ -23,10 +23,10 @@ import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
-import org.openmetadata.api.configuration.ApplicationConfiguration;
 import org.openmetadata.api.configuration.LogoConfiguration;
 import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
 import org.openmetadata.catalog.type.IdentityProviderConfig;
+import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.settings.SettingsType;
@@ -128,21 +128,19 @@ public class ConfigResource {
   }
 
   @GET
-  @Path(("/applicationConfig"))
+  @Path(("/loginConfig"))
   @Operation(
-      operationId = "getApplicationConfiguration",
-      summary = "Get application configuration",
+      operationId = "getLoginConfiguration",
+      summary = "Get Login configuration",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "Get application configuration",
+            description = "Get Login configuration",
             content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = ApplicationConfiguration.class)))
+                @Content(mediaType = "application/json", schema = @Schema(implementation = LoginConfiguration.class)))
       })
-  public ApplicationConfiguration getApplicationConfiguration() {
-    return openMetadataApplicationConfig.getApplicationConfiguration();
+  public LoginConfiguration getLoginConfiguration() {
+    return SettingsCache.getSetting(SettingsType.LOGIN_CONFIGURATION, LoginConfiguration.class);
   }
 
   @GET

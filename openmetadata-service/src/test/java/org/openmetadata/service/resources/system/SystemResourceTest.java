@@ -179,7 +179,9 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     LogoConfiguration loginConfiguration =
         JsonUtils.convertValue(logoConfigWrapped.getConfigValue(), LogoConfiguration.class);
 
-    Assertions.assertEquals(config.getApplicationConfiguration().getLogoConfig(), loginConfiguration);
+    // Defaults
+    Assertions.assertEquals("", loginConfiguration.getCustomLogoUrlPath());
+    Assertions.assertEquals("", loginConfiguration.getCustomMonogramUrlPath());
   }
 
   @Test
