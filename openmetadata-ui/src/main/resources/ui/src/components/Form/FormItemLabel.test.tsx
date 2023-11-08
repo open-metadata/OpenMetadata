@@ -13,7 +13,7 @@
 
 import { render, screen } from '@testing-library/react';
 import React from 'react';
-import { FormItemLabelProps } from './form.interface';
+import { FormItemLabelProps } from './Form.interface';
 import FormItemLabel from './FormItemLabel';
 
 const mockProps: FormItemLabelProps = {

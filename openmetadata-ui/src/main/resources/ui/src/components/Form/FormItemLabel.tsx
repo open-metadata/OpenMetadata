@@ -15,7 +15,7 @@ import { InfoCircleOutlined } from '@ant-design/icons';
 import { Tooltip } from 'antd';
 import React from 'react';
 import { GRAYED_OUT_COLOR } from '../../constants/constants';
-import { FormItemLabelProps } from './form.interface';
+import { FormItemLabelProps } from './Form.interface';
 
 const FormItemLabel = ({
   label,
