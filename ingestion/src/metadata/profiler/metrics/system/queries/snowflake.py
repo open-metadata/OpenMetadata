@@ -20,12 +20,23 @@ from typing import Optional
 from sqlalchemy.engine.row import Row
 
 from metadata.utils.logger import profiler_logger
-from metadata.utils.profiler_utils import QueryResult, get_identifiers_from_string
+from metadata.utils.profiler_utils import (
+    SnowflakeQueryResult,
+    get_identifiers_from_string,
+)
 
 logger = profiler_logger()
 
 INFORMATION_SCHEMA_QUERY = """
-    SELECT * FROM "SNOWFLAKE"."ACCOUNT_USAGE"."QUERY_HISTORY"
+    SELECT
+        QUERY_ID,
+        QUERY_TEXT,
+        QUERY_TYPE,
+        START_TIME,
+        ROWS_INSERTED,
+        ROWS_UPDATED,
+        ROWS_DELETED
+    FROM "SNOWFLAKE"."ACCOUNT_USAGE"."QUERY_HISTORY"
     WHERE
     start_time>= DATEADD('DAY', -1, CURRENT_TIMESTAMP)
     AND QUERY_TEXT ILIKE '%{tablename}%'
@@ -46,7 +57,7 @@ RESULT_SCAN = """
 
 def get_snowflake_system_queries(
     row: Row, database: str, schema: str
-) -> Optional[QueryResult]:
+) -> Optional[SnowflakeQueryResult]:
     """get snowflake system queries for a specific database and schema. Parsing the query
     is the only reliable way to get the DDL operation as fields in the table are not. If parsing
     fails we'll fall back to regex lookup
@@ -87,7 +98,7 @@ def get_snowflake_system_queries(
             database.lower() == database_name.lower()
             and schema.lower() == schema_name.lower()
         ):
-            return QueryResult(
+            return SnowflakeQueryResult(
                 query_id=dict_row.get("QUERY_ID", dict_row.get("query_id")),
                 database_name=database_name.lower(),
                 schema_name=schema_name.lower(),
@@ -95,6 +106,11 @@ def get_snowflake_system_queries(
                 query_text=query_text,
                 query_type=dict_row.get("QUERY_TYPE", dict_row.get("query_type")),
                 timestamp=dict_row.get("START_TIME", dict_row.get("start_time")),
+                rows_inserted=dict_row.get(
+                    "ROWS_INSERTED", dict_row.get("rows_inserted")
+                ),
+                rows_updated=dict_row.get("ROWS_UPDATED", dict_row.get("rows_updated")),
+                rows_deleted=dict_row.get("ROWS_DELETED", dict_row.get("rows_deleted")),
             )
     except Exception:
         logger.debug(traceback.format_exc())
