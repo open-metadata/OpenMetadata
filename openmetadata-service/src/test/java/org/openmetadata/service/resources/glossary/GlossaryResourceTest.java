@@ -288,7 +288,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     };
 
     // Moving to another glossary term as parent
-    EntityUpdater.setSessionTimeout(0); // To turn off consolidation of changes
+    EntityUpdater.setSessionTimeout(0); // Turn off consolidation of changes in a session
     for (int i = 0; i < scenarios.length; i++) {
       GlossaryTerm termToMove = (GlossaryTerm) scenarios[i][0];
 
@@ -324,9 +324,8 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
         () -> glossaryTermResourceTest.moveGlossaryTerm(g.getEntityReference(), t11.getEntityReference(), t1),
         Status.BAD_REQUEST,
         CatalogExceptionMessage.invalidGlossaryTermMove(t1.getFullyQualifiedName(), t11.getFullyQualifiedName()));
-    // Moving to another glossary term as parent
 
-    EntityUpdater.setSessionTimeout(10 * 60 * 100); // Turn consolidation of changes back on
+    EntityUpdater.setSessionTimeout(10 * 60 * 1000); // Turn consolidation of changes back on
   }
 
   @Test

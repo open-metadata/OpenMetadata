@@ -1847,8 +1847,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // Revert from original to previous version to go back to the previous version
       T updatedOld = updated;
       T previous = getPreviousVersion(original);
+      LOG.debug("In session change consolidation. Reverting to previous version {}", previous.getVersion());
       updated = previous;
       updateInternal();
+      LOG.info("In session change consolidation. Reverting to previous version {} completed", previous.getVersion());
       changeDescription = new ChangeDescription(); // Discard all the changes related to revert
 
       // Now update from previous to the latest updated entity

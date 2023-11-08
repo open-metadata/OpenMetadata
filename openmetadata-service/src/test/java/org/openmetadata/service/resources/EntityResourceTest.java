@@ -164,6 +164,7 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.service.resources.bots.BotResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.domains.DataProductResourceTest;
@@ -1451,41 +1452,48 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   @Test
-  void patch_entityUpdatesInASession(TestInfo test) throws IOException {
-    K create = createRequest(getEntityName(test), "description", null, null);
+  void patch_entityUpdatesOutsideASession(TestInfo test) throws IOException, InterruptedException {
+    if (!supportsOwner) {
+      return;
+    }
+    // Create an entity with user as owner
+    K create = createRequest(getEntityName(test), "description", null, USER1_REF);
     T entity = createEntity(create, ADMIN_AUTH_HEADERS);
     Double previousVersion = entity.getVersion();
 
-    // Update description with a new description and the version changes
+    // Update description with a new description and the version changes as admin
     String json = JsonUtils.pojoToJson(entity);
     entity.setDescription("description1");
     ChangeDescription change = getChangeDescription(previousVersion);
     fieldUpdated(change, "description", "description", "description1");
     entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
-    // Update description with a new description and the version changes
+    // Update description with a new description and the version changes as admin - the changes are consolidated
     json = JsonUtils.pojoToJson(entity);
     entity.setDescription("description2");
     change = getChangeDescription(previousVersion); // New version remains the same
     fieldUpdated(change, "description", "description", "description2");
     entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
-    // Update null displayName with a new displayName - version remains the same.
-    // ChangeDescription includes all the changes so far.
+    // Update displayName with a new displayName - but as USER1
+    // Since the previous change is done by a different user, changes ** are not ** consolidated
     json = JsonUtils.pojoToJson(entity);
     entity.setDisplayName("displayName");
-    change = getChangeDescription(previousVersion); // New version remains the same
-    fieldUpdated(change, "description", "description", "description2");
+    change = getChangeDescription(entity.getVersion()); // Version changes
     fieldAdded(change, "displayName", "displayName");
-    entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    entity = patchEntityAndCheck(entity, json, authHeaders(USER1.getName()), MINOR_UPDATE, change);
 
-    // Delete the displayName - version remains the same.
-    // ChangeDescription includes all the changes so far.
+    // Update displayName to a new displayName
+    // In this test, the user who previously made a change makes the change after session timeout
+    // The changes are not consolidated
+    EntityUpdater.setSessionTimeout(1); // Reduce the session timeout for this test
+    java.lang.Thread.sleep(2);
     json = JsonUtils.pojoToJson(entity);
-    entity.setDisplayName(null);
-    change = getChangeDescription(previousVersion); // New version remains the same
-    fieldUpdated(change, "description", "description", "description2");
-    patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    entity.setDisplayName("displayName1");
+    change = getChangeDescription(entity.getVersion()); // Version changes
+    fieldUpdated(change, "displayName", "displayName", "displayName1");
+    patchEntityAndCheck(entity, json, authHeaders(USER1.getName()), MINOR_UPDATE, change);
+    EntityUpdater.setSessionTimeout(10 * 60 * 10000); // Reset the session timeout back
   }
 
   @Test
