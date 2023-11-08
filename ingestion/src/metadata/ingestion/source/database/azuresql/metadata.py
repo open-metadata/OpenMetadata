@@ -24,12 +24,14 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.azuresql.queries import AZURE_SQL_GET_DATABASES
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.ingestion.source.database.mssql.utils import (
     get_columns,
     get_table_comment,
     get_view_definition,
 )
+from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
@@ -50,7 +52,7 @@ MSDialect.get_all_table_comments = get_all_table_comments
 MSDialect.get_columns = get_columns
 
 
-class AzuresqlSource(CommonDbSourceService):
+class AzuresqlSource(CommonDbSourceService, MultiDBSource):
     """
     Implements the necessary methods to extract
     Database metadata from Azuresql Source
@@ -72,12 +74,7 @@ class AzuresqlSource(CommonDbSourceService):
         return None
 
     def get_database_names_raw(self) -> Iterable[str]:
-        results = self.connection.execute(
-            "SELECT name FROM master.sys.databases order by name"
-        )
-        for res in results:
-            row = list(res)
-            yield row[0]
+        yield from self._execute_database_query(AZURE_SQL_GET_DATABASES)
 
     def get_database_names(self) -> Iterable[str]:
 

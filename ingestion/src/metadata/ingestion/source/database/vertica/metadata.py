@@ -32,6 +32,7 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.ingestion.source.database.vertica.queries import (
     VERTICA_GET_COLUMNS,
     VERTICA_GET_PRIMARY_KEYS,
@@ -262,7 +263,7 @@ VerticaDialect.get_all_table_comments = get_all_table_comments
 VerticaDialect.get_table_comment = get_table_comment
 
 
-class VerticaSource(CommonDbSourceService):
+class VerticaSource(CommonDbSourceService, MultiDBSource):
     """
     Implements the necessary methods to extract
     Database metadata from Vertica Source
@@ -297,10 +298,7 @@ class VerticaSource(CommonDbSourceService):
         return self.service_connection.database
 
     def get_database_names_raw(self) -> Iterable[str]:
-        results = self.connection.execute(VERTICA_LIST_DATABASES)
-        for res in results:
-            row = list(res)
-            yield row[0]
+        yield from self._execute_database_query(VERTICA_LIST_DATABASES)
 
     def get_database_names(self) -> Iterable[str]:
         configured_db = self.config.serviceConnection.__root__.config.database

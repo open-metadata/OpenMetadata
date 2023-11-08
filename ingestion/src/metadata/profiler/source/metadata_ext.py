@@ -9,7 +9,15 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-OpenMetadata source for the profiler
+OpenMetadataExt source for the profiler
+
+This source is used in cases where the service name
+is not provided for the profiler workflow.
+In such situations, the profiler will perform a thorough scan 
+of the entire data source to locate the 
+corresponding table entity in OpenMetadata.
+Subsequently, it will proceed to ingest relevant metrics 
+and sample data for that identified entity.
 """
 import traceback
 from copy import deepcopy

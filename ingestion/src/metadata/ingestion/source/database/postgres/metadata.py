@@ -40,6 +40,7 @@ from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
 )
+from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.ingestion.source.database.postgres.queries import (
     POSTGRES_GET_ALL_TABLE_PG_POLICY,
     POSTGRES_GET_DB_NAMES,
@@ -111,7 +112,7 @@ PGDialect.get_all_view_definitions = get_all_view_definitions
 PGDialect.ischema_names = ischema_names
 
 
-class PostgresSource(CommonDbSourceService):
+class PostgresSource(CommonDbSourceService, MultiDBSource):
     """
     Implements the necessary methods to extract
     Database metadata from Postgres Source
@@ -152,10 +153,7 @@ class PostgresSource(CommonDbSourceService):
         return None
 
     def get_database_names_raw(self) -> Iterable[str]:
-        results = self.connection.execute(POSTGRES_GET_DB_NAMES)
-        for res in results:
-            row = list(res)
-            yield row[0]
+        yield from self._execute_database_query(POSTGRES_GET_DB_NAMES)
 
     def get_database_names(self) -> Iterable[str]:
         if not self.config.serviceConnection.__root__.config.ingestAllDatabases:

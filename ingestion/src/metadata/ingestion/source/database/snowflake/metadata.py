@@ -52,6 +52,7 @@ from metadata.ingestion.source.database.common_db_source import (
 from metadata.ingestion.source.database.life_cycle_query_mixin import (
     LifeCycleQueryMixin,
 )
+from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.ingestion.source.database.snowflake.models import (
     STORED_PROC_LANGUAGE_MAP,
     SnowflakeStoredProcedure,
@@ -122,7 +123,9 @@ SnowflakeDialect.get_foreign_keys = get_foreign_keys
 SnowflakeDialect.get_columns = get_columns
 
 
-class SnowflakeSource(LifeCycleQueryMixin, StoredProcedureMixin, CommonDbSourceService):
+class SnowflakeSource(
+    LifeCycleQueryMixin, StoredProcedureMixin, CommonDbSourceService, MultiDBSource
+):
     """
     Implements the necessary methods to extract
     Database metadata from Snowflake Source

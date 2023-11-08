@@ -44,6 +44,11 @@ class ProfilerWorkflow(BaseWorkflow):
     def _get_source_class(self):
         if self.config.source.serviceName:
             return OpenMetadataSource
+        logger.info(
+            "Database Service name not provided, we will scan all the tables"
+            "available within data source and locate table entity in OpenMetadata"
+            "to ingest profiler data."
+        )
         return OpenMetadataSourceExt
 
     def set_steps(self):
