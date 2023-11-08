@@ -336,6 +336,15 @@ const PageNotFound = withSuspenseFallback(
   React.lazy(() => import('../../pages/page-not-found/PageNotFound'))
 );
 
+const EditLoginConfiguration = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../../pages/Configuration/EditLoginConfiguration/EditLoginConfigurationPage'
+      )
+  )
+);
+
 const AuthenticatedAppRouter: FunctionComponent = () => {
   const { permissions } = usePermissionProvider();
   const { routeElements } = useApplicationConfigContext();
@@ -805,6 +814,12 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={EditCustomLogoConfigPage}
         hasPermission={false}
         path={ROUTES.SETTINGS_EDIT_CUSTOM_LOGO_CONFIG}
+      />
+      <AdminProtectedRoute
+        exact
+        component={EditLoginConfiguration}
+        hasPermission={false}
+        path={ROUTES.SETTINGS_EDIT_CUSTOM_LOGIN_CONFIG}
       />
       <Route exact component={EditRulePage} path={ROUTES.EDIT_POLICY_RULE} />
 
