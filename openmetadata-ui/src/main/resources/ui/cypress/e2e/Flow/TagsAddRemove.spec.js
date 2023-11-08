@@ -129,11 +129,11 @@ describe('Check if tags addition and removal flow working properly from tables',
         `/api/v1/${entityDetails.insideEntity ?? apiEntity}/*`,
         'tagsChange'
       );
-      visitEntityDetailsPage(
-        entityDetails.term,
-        entityDetails.serviceName,
-        entityDetails.entity
-      );
+      visitEntityDetailsPage({
+        term: entityDetails.term,
+        serviceName: entityDetails.serviceName,
+        entity: entityDetails.entity,
+      });
       verifyResponseStatusCode('@getEntityDetail', 200);
       verifyResponseStatusCode('@getEntityPermission', 200);
 
@@ -188,11 +188,11 @@ describe('Check if tags addition and removal flow working properly from tables',
             'getInsideColumnPermission'
           );
         }
-        visitEntityDetailsPage(
-          entityDetails.term,
-          entityDetails.serviceName,
-          entityDetails.entity
-        );
+        visitEntityDetailsPage({
+          term: entityDetails.term,
+          serviceName: entityDetails.serviceName,
+          entity: entityDetails.entity,
+        });
         verifyResponseStatusCode('@getEntityDetail', 200);
         verifyResponseStatusCode('@getEntityPermission', 200);
         if (entityDetails.insideEntity) {

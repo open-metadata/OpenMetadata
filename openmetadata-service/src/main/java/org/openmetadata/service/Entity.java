@@ -15,6 +15,7 @@ package org.openmetadata.service;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.util.EntityUtil.getFlattenedEntityField;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import io.github.classgraph.ClassGraph;
@@ -41,6 +42,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
+import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -61,6 +63,7 @@ import org.openmetadata.service.jdbi3.UsageRepository;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public final class Entity {
@@ -527,6 +530,24 @@ public final class Entity {
     try (ScanResult scanResult = new ClassGraph().enableAnnotationInfo().scan()) {
       ClassInfoList classList = scanResult.getClassesWithAnnotation(Repository.class);
       return classList.loadClasses();
+    }
+  }
+
+  public static <T extends FieldInterface> void populateEntityFieldTags(
+      String entityType, List<T> fields, String fqnPrefix, boolean setTags) {
+    EntityRepository<?> repository = Entity.getEntityRepository(entityType);
+    // Get Flattened Fields
+    List<T> flattenedFields = getFlattenedEntityField(fields);
+
+    // Fetch All tags belonging to Prefix
+    Map<String, List<TagLabel>> allTags = repository.getTagsByPrefix(fqnPrefix);
+    for (T c : listOrEmpty(flattenedFields)) {
+      if (setTags) {
+        List<TagLabel> columnTag = allTags.get(FullyQualifiedName.buildHash(c.getFullyQualifiedName()));
+        c.setTags(columnTag == null ? new ArrayList<>() : columnTag);
+      } else {
+        c.setTags(c.getTags());
+      }
     }
   }
 }

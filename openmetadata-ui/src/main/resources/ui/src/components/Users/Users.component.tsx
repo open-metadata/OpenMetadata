@@ -305,6 +305,7 @@ const Users = ({
                   </Col>
                   <Col className="p-x-sm border-right" span={6}>
                     <UserProfileRoles
+                      isUserAdmin={userData.isAdmin}
                       updateUserDetails={updateUserDetails}
                       userRoles={userData.roles}
                     />

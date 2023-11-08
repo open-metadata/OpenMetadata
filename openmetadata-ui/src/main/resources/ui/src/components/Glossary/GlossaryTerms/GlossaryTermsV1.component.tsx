@@ -312,7 +312,7 @@ const GlossaryTermsV1 = ({
           />
         </Col>
       </Row>
-      {glossaryTerm.fullyQualifiedName && (
+      {glossaryTerm.fullyQualifiedName && assetModalVisible && (
         <AssetSelectionModal
           entityFqn={glossaryTerm.fullyQualifiedName}
           open={assetModalVisible}

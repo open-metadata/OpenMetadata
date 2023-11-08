@@ -109,10 +109,16 @@ After the migration is finished, you can revert this changes.
 
 # Breaking Changes
 
+### Database connection SSL Configuration
+
+With 1.2.X, the environment variable `DB_USE_SSL` is deprecated in favour of `DB_PARAMS`.
+For Bare Metal and Docker Deployment, Add / Update the variable `DB_PARAMS` to `allowPublicKeyRetrieval=true&useSSL=true&serverTimezone=UTC` to enable ssl security to connect to database.
+For Kubernetes Deployment, `openmetadata.config.database.dbParams` is available to pass the above values as helm values.
+
 ### Version Upgrades
 
 - The OpenMetadata Server is now based on **JDK 17**
-- OpenMetadata now supports **Elasticsearch** up to version **8.10.2** and **Opensearch** up to version **2.7**
+- OpenMetadata now **requires** **Elasticsearch** version **8.10.2** and **Opensearch** version **2.7**
 
 There is no direct migration to bump the indexes to the new supported versions. You might see errors like:
 
@@ -197,6 +203,29 @@ If you try to run your workflows externally and start noticing `ImportError`s, y
 
 In 1.1.7 and below you could run the Usage Workflow as `metadata ingest -c <path to yaml>`. Now, the Usage Workflow
 has its own command `metadata usage -c <path to yaml>`.
+
+### Custom Connectors
+
+In 1.2.0 we have reorganized the internals of our Workflow handling to centralize status & exception management. This
+will simplify how you need to take care of status and exceptions on your Custom Connectors code, while helping developers
+to make decisions on those errors that need to be shared in the Workflow.
+
+{% note %}
+
+If you want to take a look at an updated Custom Connector and its changes, you can review the demo [PR](https://github.com/open-metadata/openmetadata-demo/pull/34/files).
+
+{% /note %}
+
+Let's list the changes down:
+1. You don't need to handle the `SourceStatus` anymore. The new basic Workflow class will take care of things for you. Therefore, this import
+  `from metadata.ingestion.api.source import SourceStatus` is deprecated.
+2. The `Source` class is now imported from `from metadata.ingestion.api.steps import Source` (instead of `from metadata.ingestion.api.source import Source`)
+3. We are now initializing the `OpenMetadata` object at the Workflow level (to share it better in each step). Therefore,
+   the source `__init__` method signature is now `def __init__(self, config: WorkflowSource, metadata: OpenMetadata):`. Make sure to store the `self.metadata` object
+   during the `__init__` and don't forget to call `super().__init__()`.
+4. We are updating how the status & exception management happens in the connectors. Now each `yield` result is wrapped by
+   an `Either` (imported from `from metadata.ingestion.api.models import Either`). Your correct data will be `yield`ed in a `right`, while
+   the errors are tracked in a `left`. Read more about the Workflow management [here](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/workflow/README.md).
 
 ### Other Changes
 

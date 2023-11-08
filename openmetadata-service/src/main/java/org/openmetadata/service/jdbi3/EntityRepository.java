@@ -827,9 +827,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .withCurrentVersion(entity.getVersion())
             .withPreviousVersion(change.getPreviousVersion());
     entity.setChangeDescription(change);
-    if (supportsSearch) {
-      postUpdate(entity, entity);
-    }
+    postUpdate(entity, entity);
     return new PutResponse<>(Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
@@ -874,7 +872,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .withTimestamp(System.currentTimeMillis())
             .withCurrentVersion(originalEntity.getVersion())
             .withPreviousVersion(change.getPreviousVersion());
-
+    postUpdate(originalEntity, originalEntity);
     return new PutResponse<>(Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
@@ -1296,6 +1294,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   protected List<TagLabel> getTags(String fqn) {
     return !supportsTags ? null : daoCollection.tagUsageDAO().getTags(fqn);
+  }
+
+  public Map<String, List<TagLabel>> getTagsByPrefix(String prefix) {
+    return !supportsTags ? null : daoCollection.tagUsageDAO().getTagsByPrefix(prefix);
   }
 
   protected List<EntityReference> getFollowers(T entity) {

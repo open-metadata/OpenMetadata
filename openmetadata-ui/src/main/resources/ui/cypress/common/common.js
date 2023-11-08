@@ -326,17 +326,16 @@ export const testServiceCreationAndIngestion = ({
 
   verifyResponseStatusCode('@testConnectionStepDefinition', 200);
 
-  cy.get('[data-testid="test-connection-modal"]').should('exist');
-  cy.get('.ant-modal-footer > .ant-btn-primary')
-    .should('exist')
-    .contains('OK')
-    .click();
-
   verifyResponseStatusCode('@createWorkflow', 201);
   // added extra buffer time as triggerWorkflow API can take up to 2minute to provide result
   verifyResponseStatusCode('@triggerWorkflow', 200, {
     responseTimeout: 120000,
   });
+  cy.get('[data-testid="test-connection-modal"]').should('exist');
+  cy.get('.ant-modal-footer > .ant-btn-primary')
+    .should('exist')
+    .contains('OK')
+    .click();
   verifyResponseStatusCode('@getWorkflow', 200);
   cy.get('[data-testid="messag-text"]').then(($message) => {
     if ($message.text().includes('partially successful')) {
@@ -525,13 +524,14 @@ export const goToAddNewServicePage = (service_type) => {
   cy.get('[data-testid="service-category"]').should('be.visible');
 };
 
-export const visitEntityDetailsPage = (
+export const visitEntityDetailsPage = ({
   term,
   serviceName,
   entity,
   dataTestId,
-  entityType
-) => {
+  entityType,
+  entityFqn,
+}) => {
   if (entity === 'dashboardDataModel') {
     interceptURL(
       'GET',
@@ -557,7 +557,7 @@ export const visitEntityDetailsPage = (
 
   // searching term in search box
   cy.get('[data-testid="searchBox"]').scrollIntoView().should('be.visible');
-  cy.get('[data-testid="searchBox"]').type(term);
+  cy.get('[data-testid="searchBox"]').type(entityFqn ?? term);
   cy.wait('@explorePageSearch').then(() => {
     cy.wait(500);
     cy.get('body').then(($body) => {
@@ -598,11 +598,11 @@ export const visitEntityDetailsPage = (
 // add new tag to entity and its table
 export const addNewTagToEntity = (entityObj, term) => {
   const { name, fqn } = term;
-  visitEntityDetailsPage(
-    entityObj.term,
-    entityObj.serviceName,
-    entityObj.entity
-  );
+  visitEntityDetailsPage({
+    term: entityObj.term,
+    serviceName: entityObj.serviceName,
+    entity: entityObj.entity,
+  });
   cy.wait(500);
   cy.get(
     '[data-testid="classification-tags-0"] [data-testid="entity-tags"] [data-testid="add-tag"]'
@@ -779,7 +779,7 @@ export const toastNotification = (msg, closeToast = true) => {
 
 export const addCustomPropertiesForEntity = (
   propertyName,
-  entityType,
+  customPropertyData,
   customType,
   value,
   entityObj
@@ -841,7 +841,7 @@ export const addCustomPropertiesForEntity = (
   cy.get('[data-testid="propertyType"]').click();
   cy.get(`[title="${customType}"]`).click();
 
-  cy.get(descriptionBox).clear().type(entityType.description);
+  cy.get(descriptionBox).clear().type(customPropertyData.description);
 
   // Check if the property got added
   cy.intercept('/api/v1/metadata/types/name/*?fields=customProperties').as(
@@ -857,11 +857,11 @@ export const addCustomPropertiesForEntity = (
 
   // Checking the added property in Entity
 
-  visitEntityDetailsPage(
-    entityObj.term,
-    entityObj.serviceName,
-    entityObj.entity
-  );
+  visitEntityDetailsPage({
+    term: entityObj.term,
+    serviceName: entityObj.serviceName,
+    entity: entityObj.entity,
+  });
 
   cy.get('[data-testid="custom_properties"]').click();
   cy.get('tbody').should('contain', propertyName);
@@ -876,6 +876,11 @@ export const addCustomPropertiesForEntity = (
 
   cy.get('@editbutton').click();
 
+  interceptURL(
+    'PATCH',
+    `/api/v1/${customPropertyData.entityApiType}/*`,
+    'patchEntity'
+  );
   // Checking for value text box or markdown box
   cy.get('body').then(($body) => {
     if ($body.find('[data-testid="value-input"]').length > 0) {
@@ -892,7 +897,7 @@ export const addCustomPropertiesForEntity = (
       cy.get('[data-testid="save"]').click();
     }
   });
-
+  verifyResponseStatusCode('@patchEntity', 200);
   cy.get(`[data-row-key="${propertyName}"]`).should('contain', value);
 };
 
@@ -1099,7 +1104,8 @@ export const updateDescriptionForIngestedTables = (
   tableName,
   description,
   type,
-  entity
+  entity,
+  entityFqn
 ) => {
   interceptURL(
     'GET',
@@ -1118,7 +1124,7 @@ export const updateDescriptionForIngestedTables = (
     'pipelineStatus'
   );
   // Navigate to ingested table
-  visitEntityDetailsPage(tableName, serviceName, entity);
+  visitEntityDetailsPage({ term: tableName, serviceName, entity, entityFqn });
 
   // update description
   cy.get('[data-testid="edit-description"]')
@@ -1176,7 +1182,7 @@ export const updateDescriptionForIngestedTables = (
   retryIngestionRun();
 
   // Navigate to table name
-  visitEntityDetailsPage(tableName, serviceName, entity);
+  visitEntityDetailsPage({ term: tableName, serviceName, entity, entityFqn });
   cy.get('[data-testid="markdown-parser"]')
     .first()
     .invoke('text')
@@ -1272,13 +1278,12 @@ export const deleteEntity = (
   successMessageEntityName,
   deletionType = 'hard'
 ) => {
-  visitEntityDetailsPage(
-    entityName,
+  visitEntityDetailsPage({
+    term: entityName,
     serviceName,
     entity,
-    undefined,
-    entityType
-  );
+    entityType,
+  });
 
   cy.get('[data-testid="manage-button"]').click();
 
@@ -1483,7 +1488,11 @@ export const addAnnouncement = (value) => {
     'announcementFeed'
   );
 
-  visitEntityDetailsPage(value.term, value.serviceName, value.entity);
+  visitEntityDetailsPage({
+    term: value.term,
+    serviceName: value.serviceName,
+    entity: value.entity,
+  });
   cy.get('[data-testid="manage-button"]').click();
   cy.get('[data-testid="announcement-button"]').click();
 

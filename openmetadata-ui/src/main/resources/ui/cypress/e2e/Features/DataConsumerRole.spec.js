@@ -147,7 +147,11 @@ describe('DataConsumer Edit policy should work properly', () => {
     cy.url().should('eq', `${BASE_URL}/my-data`);
 
     Object.values(ENTITIES).forEach((entity) => {
-      visitEntityDetailsPage(entity.term, entity.serviceName, entity.entity);
+      visitEntityDetailsPage({
+        term: entity.term,
+        serviceName: entity.serviceName,
+        entity: entity.entity,
+      });
       // Check Edit description
       cy.get('[data-testid="edit-description"]')
         .should('be.visible')
@@ -172,11 +176,11 @@ describe('DataConsumer Edit policy should work properly', () => {
     });
 
     // Check if tags is editable for table
-    visitEntityDetailsPage(
-      ENTITIES.table.term,
-      ENTITIES.table.serviceName,
-      ENTITIES.table.entity
-    );
+    visitEntityDetailsPage({
+      term: ENTITIES.table.term,
+      serviceName: ENTITIES.table.serviceName,
+      entity: ENTITIES.table.entity,
+    });
 
     cy.get('[data-testid="add-tag"]')
       .should('be.visible')
@@ -186,11 +190,12 @@ describe('DataConsumer Edit policy should work properly', () => {
     cy.get('[data-testid="tag-selector"]').should('be.visible');
 
     // Check if tags is editable for dashboard
-    visitEntityDetailsPage(
-      ENTITIES.dashboard.term,
-      ENTITIES.dashboard.serviceName,
-      ENTITIES.dashboard.entity
-    );
+
+    visitEntityDetailsPage({
+      term: ENTITIES.dashboard.term,
+      serviceName: ENTITIES.dashboard.serviceName,
+      entity: ENTITIES.dashboard.entity,
+    });
 
     cy.get('[data-testid="add-tag"]')
       .should('be.visible')

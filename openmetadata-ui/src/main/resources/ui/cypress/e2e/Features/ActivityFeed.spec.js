@@ -60,13 +60,12 @@ describe('Activity feed', () => {
     const OWNER = 'admin';
     interceptURL('PATCH', `/api/v1/${value.entity}/*`, 'patchOwner');
 
-    visitEntityDetailsPage(
-      value.term,
-      value.serviceName,
-      value.entity,
-      undefined,
-      value.entityType
-    );
+    visitEntityDetailsPage({
+      term: value.term,
+      serviceName: value.serviceName,
+      entity: value.entity,
+      entityType: value.entityType,
+    });
     verifyResponseStatusCode('@entityPermission', 200);
     verifyResponseStatusCode('@activityFeed', 200);
 
@@ -291,7 +290,11 @@ describe('Activity feed', () => {
     const value = SEARCH_ENTITY_TABLE.table_1;
     interceptURL('GET', `/api/v1/${value.entity}/name/*`, 'getEntityDetails');
 
-    visitEntityDetailsPage(value.term, value.serviceName, value.entity);
+    visitEntityDetailsPage({
+      term: value.term,
+      serviceName: value.serviceName,
+      entity: value.entity,
+    });
 
     cy.get('[data-testid="request-description"]').click();
 
