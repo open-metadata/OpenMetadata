@@ -23,7 +23,7 @@
       "title": "Sample Data Rows Count"
     },
     "sampleDataStorageConfig": {
-      "title": "Storage Config for Sample Data",
+      "title": "S3 Config for Sample Data",
       "description": "Storage config to store sample data",
       "type": "object",
       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
@@ -117,7 +117,8 @@
                     },
                     {
                       "title": "OpenMetadata Storage",
-                      "type": "object"
+                      "type": "object",
+                      "additionalProperties": false
                     }
                   ]
                 }
@@ -125,12 +126,14 @@
             },
             {
               "title": "No Sample Data Storage Config",
-              "type": "object"
+              "type": "object",
+              "additionalProperties": false
             }
           ]
         }
       },
       "additionalProperties": false
     }
-  }
+  },
+  "additionalProperties": false
 }
