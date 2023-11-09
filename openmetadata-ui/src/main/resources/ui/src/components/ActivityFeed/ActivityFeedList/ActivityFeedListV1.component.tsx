@@ -69,7 +69,10 @@ const ActivityFeedListV1 = ({
   }
 
   return isEmpty(entityThread) ? (
-    <div className="h-full p-x-md" data-testid="no-data-placeholder-container">
+    <div
+      className="h-full p-x-md"
+      data-testid="no-data-placeholder-container"
+      id="feedData">
       <ErrorPlaceHolder
         icon={
           isTaskTab ? (
