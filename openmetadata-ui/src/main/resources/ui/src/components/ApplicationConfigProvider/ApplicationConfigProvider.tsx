@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { isEmpty } from 'lodash';
 import React, {
   createContext,
   FC,
@@ -20,11 +21,12 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { LogoConfiguration } from '../../generated/configuration/applicationConfiguration';
+import { LoginConfiguration } from '../../generated/configuration/loginConfiguration';
+import { LogoConfiguration } from '../../generated/configuration/logoConfiguration';
 import { EntityReference } from '../../generated/entity/type';
 import { getCustomLogoConfig } from '../../rest/settingConfigAPI';
 
-interface ContextConfig extends LogoConfiguration {
+interface ContextConfig extends LogoConfiguration, LoginConfiguration {
   routeElements?: ReactNode;
   selectedPersona: EntityReference;
   updateSelectedPersona: (personaFqn: EntityReference) => void;
@@ -66,13 +68,27 @@ const ApplicationConfigProvider: FC<ApplicationConfigProviderProps> = ({
     }
   };
 
-  const updateSelectedPersona = useCallback((persona: EntityReference) => {
-    setSelectedPersona(persona);
-  }, []);
+  const updateSelectedPersona = useCallback(
+    (persona: EntityReference) => {
+      setSelectedPersona(persona);
+    },
+    [setSelectedPersona]
+  );
 
   useEffect(() => {
     fetchApplicationConfig();
   }, []);
+
+  useEffect(() => {
+    const faviconHref = isEmpty(applicationConfig.customFaviconUrlPath)
+      ? '/favicon.png'
+      : applicationConfig.customFaviconUrlPath ?? '/favicon.png';
+    const link = document.querySelector('link[rel~="icon"]');
+
+    if (link) {
+      link.setAttribute('href', faviconHref);
+    }
+  }, [applicationConfig]);
 
   const contextValue = useMemo(
     () => ({

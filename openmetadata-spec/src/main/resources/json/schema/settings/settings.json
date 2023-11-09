@@ -24,6 +24,7 @@
         "slackChat",
         "emailConfiguration",
         "customLogoConfiguration",
+        "loginConfiguration",
         "slackAppConfiguration",
         "slackBot",
         "slackInstaller"

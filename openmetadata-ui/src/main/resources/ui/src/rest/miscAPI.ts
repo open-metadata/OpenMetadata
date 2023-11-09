@@ -16,7 +16,6 @@ import { Edge } from '../components/Entity/EntityLineage/EntityLineage.interface
 import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
 import { SearchIndex } from '../enums/search.enum';
-import { ApplicationConfiguration } from '../generated/configuration/applicationConfiguration';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
 import { PipelineServiceClientConfiguration } from '../generated/configuration/pipelineServiceClientConfiguration';
@@ -59,13 +58,6 @@ export const searchData = <SI extends SearchIndex>(
 export const fetchAuthenticationConfig = async () => {
   const response = await APIClient.get<AuthenticationConfiguration>(
     '/system/config/auth'
-  );
-
-  return response.data;
-};
-export const getApplicationConfig = async () => {
-  const response = await APIClient.get<ApplicationConfiguration>(
-    '/system/config/applicationConfig'
   );
 
   return response.data;

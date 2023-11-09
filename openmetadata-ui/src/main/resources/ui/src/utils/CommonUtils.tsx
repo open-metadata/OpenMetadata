@@ -24,6 +24,7 @@ import {
   isNull,
   isString,
   isUndefined,
+  toLower,
   toNumber,
 } from 'lodash';
 import {
@@ -226,11 +227,14 @@ export const getCountBadge = (
   return (
     <span
       className={classNames(
-        'p-x-xss m-x-xss global-border rounded-4 text-xs text-center',
+        'p-x-xss m-x-xss global-border rounded-4 text-center',
         clsBG,
         className
       )}>
-      <span data-testid="filter-count" title={count.toString()}>
+      <span
+        className="text-xs"
+        data-testid="filter-count"
+        title={count.toString()}>
         {count}
       </span>
     </span>
@@ -857,3 +861,17 @@ export const getUniqueArray = (count: number) =>
   [...Array(count)].map((_, index) => ({
     key: `key${index}`,
   }));
+
+/**
+ * @param searchValue search input
+ * @param option select options list
+ * @returns boolean
+ */
+export const handleSearchFilterOption = (
+  searchValue: string,
+  option?: {
+    label: string;
+    value: string;
+  }
+) => toLower(option?.label).includes(toLower(searchValue));
+// Check label while searching anything and filter that options out if found matching
