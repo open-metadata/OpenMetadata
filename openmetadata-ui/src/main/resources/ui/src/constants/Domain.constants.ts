@@ -11,14 +11,19 @@
  *  limitations under the License.
  */
 
-import { TooltipPlacement, TooltipProps } from 'antd/lib/tooltip';
-import { ReactNode } from 'react';
+import { t } from 'i18next';
 
-export interface FormItemLabelProps {
-  label: ReactNode;
-  helperText?: ReactNode;
-  placement?: TooltipPlacement;
-  overlayClassName?: string;
-  overlayInnerStyle?: React.CSSProperties;
-  align?: TooltipProps['align'];
-}
+export const DOMAIN_TYPE_DATA = [
+  {
+    type: t('label.aggregate'),
+    description: t('message.aggregate-domain-type-description'),
+  },
+  {
+    type: t('label.consumer-aligned'),
+    description: t('message.consumer-aligned-domain-type-description'),
+  },
+  {
+    type: t('label.source-aligned'),
+    description: t('message.source-aligned-domain-type-description'),
+  },
+];

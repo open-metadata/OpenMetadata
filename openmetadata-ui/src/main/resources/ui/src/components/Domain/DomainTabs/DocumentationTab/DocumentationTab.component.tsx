@@ -37,10 +37,14 @@ import {
   ChangeDescription,
   EntityReference,
 } from '../../../../generated/entity/type';
-import { getUserNames } from '../../../../utils/DomainUtils';
+import {
+  domainTypeTooltipDataRender,
+  getUserNames,
+} from '../../../../utils/DomainUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../../utils/EntityVersionUtils';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
+import FormItemLabel from '../../../Form/FormItemLabel';
 import '../../domain.less';
 import {
   DocumentationEntity,
@@ -278,11 +282,20 @@ const DocumentationTab = ({
           {type === DocumentationEntity.DOMAIN && (
             <Col data-testid="domainType" span="24">
               <div className="d-flex items-center m-b-xss">
-                <Typography.Text
-                  className="right-panel-label"
-                  data-testid="domainType-heading-name">
-                  {t('label.domain-type')}
-                </Typography.Text>
+                <Space>
+                  <Typography.Text
+                    className="right-panel-label"
+                    data-testid="domainType-heading-name">
+                    <FormItemLabel
+                      align={{ targetOffset: [18, 0] }}
+                      helperText={domainTypeTooltipDataRender()}
+                      label={t('label.domain-type')}
+                      overlayClassName="domain-type-tooltip-container"
+                      placement="topLeft"
+                    />
+                  </Typography.Text>
+                </Space>
+
                 {editAllPermission && (domain as Domain).domainType && (
                   <Button
                     className="cursor-pointer flex-center m-l-xss"
