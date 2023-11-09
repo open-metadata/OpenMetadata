@@ -156,7 +156,11 @@ export const UserProfileIcon = () => {
       isPersona ? (
         <Typography.Text
           className="more-teams-pill"
-          onClick={() => setShowAllPersona(true)}>
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setShowAllPersona(true);
+          }}>
           {count} {t('label.more')}
         </Typography.Text>
       ) : (
