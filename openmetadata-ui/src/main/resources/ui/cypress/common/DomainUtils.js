@@ -231,7 +231,7 @@ const fillForm = (formObj, type) => {
     .and('be.visible')
     .click();
 
-  cy.get('[data-testid="delete-confirmation-modal"]').should('not.exist');
+  cy.get('[data-testid="delete-modal"]').should('not.exist');
   cy.get('[data-testid="experts-container"]')
     .children()
     .should('have.length', 1);
@@ -284,12 +284,11 @@ export const deleteDomain = (domainObj) => {
   cy.get('.ant-menu-item').contains(domainObj.updatedDisplayName).click();
   cy.get('[data-testid="manage-button"]').click();
   cy.get('[data-testid="delete-button"]').scrollIntoView().click();
-  cy.get('[data-testid="delete-confirmation-modal"]').then(() => {
+  cy.get('[data-testid="delete-modal"]').then(() => {
     cy.get('[role="dialog"]').should('be.visible');
-    cy.get('[data-testid="modal-header"]').should('be.visible');
   });
 
-  cy.get('[data-testid="modal-header"]').should(
+  cy.get('[data-testid="delete-modal"] .ant-modal-title').should(
     'contain',
     `Delete ${domainObj.updatedName}`
   );

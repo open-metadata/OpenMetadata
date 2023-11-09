@@ -21,13 +21,21 @@ const FormItemLabel = ({
   label,
   helperText,
   align,
+  overlayInnerStyle,
+  overlayClassName,
   placement = 'top',
 }: FormItemLabelProps) => {
   return (
     <>
       <span data-testid="form-item-label">{label}</span>
       {helperText && (
-        <Tooltip align={align} placement={placement} title={helperText}>
+        <Tooltip
+          destroyTooltipOnHide
+          align={align}
+          overlayClassName={overlayClassName}
+          overlayInnerStyle={overlayInnerStyle}
+          placement={placement}
+          title={helperText}>
           <InfoCircleOutlined
             className="m-l-xs"
             data-testid="helper-icon"

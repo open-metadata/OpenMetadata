@@ -38,6 +38,7 @@ import ErrorPlaceHolder from '../../components/common/error-with-placeholder/Err
 import { PagingHandlerParams } from '../../components/common/next-previous/NextPrevious.interface';
 import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import DataProductsContainer from '../../components/DataProductsContainer/DataProductsContainer.component';
 import Loader from '../../components/Loader/Loader';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
@@ -624,6 +625,11 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             data-testid="entity-right-panel"
             flex="320px">
             <Space className="w-full" direction="vertical" size="large">
+              <DataProductsContainer
+                activeDomain={databaseSchema?.domain}
+                dataProducts={databaseSchema?.dataProducts ?? []}
+                hasPermission={false}
+              />
               <TagsContainerV2
                 displayType={DisplayType.READ_MORE}
                 entityFqn={decodedDatabaseSchemaFQN}

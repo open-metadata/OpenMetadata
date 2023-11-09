@@ -27,7 +27,7 @@ import {
 } from 'antd';
 import classNames from 'classnames';
 import { t } from 'i18next';
-import { find, isEmpty, isObject } from 'lodash';
+import { isEmpty, isObject } from 'lodash';
 import React, {
   forwardRef,
   useCallback,
@@ -40,7 +40,6 @@ import { useParams } from 'react-router-dom';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/add-placeholder.svg';
 import {
   AssetsFilterOptions,
-  ASSETS_INDEXES,
   ASSET_MENU_KEYS,
   ASSET_SUB_MENU_FILTER,
 } from '../../../../constants/Assets.constants';
@@ -54,7 +53,6 @@ import { getCountBadge, Transi18next } from '../../../../utils/CommonUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import NextPrevious from '../../../common/next-previous/NextPrevious';
 import { PagingHandlerParams } from '../../../common/next-previous/NextPrevious.interface';
-import PageLayoutV1 from '../../../containers/PageLayoutV1';
 import ExploreSearchCard from '../../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import {
   SearchedDataProps,
@@ -62,14 +60,12 @@ import {
 } from '../../../searched-data/SearchedData.interface';
 
 import { FilterOutlined, PlusOutlined } from '@ant-design/icons';
+import { AxiosError } from 'axios';
+import { getEntityTypeFromSearchIndex } from '../../../../utils/SearchUtils';
 import { getEntityIcon } from '../../../../utils/TableUtils';
 import ErrorPlaceHolder from '../../../common/error-with-placeholder/ErrorPlaceHolder';
 import './assets-tabs.less';
-import {
-  AssetsOfEntity,
-  AssetsTabsProps,
-  AssetsViewType,
-} from './AssetsTabs.interface';
+import { AssetsOfEntity, AssetsTabsProps } from './AssetsTabs.interface';
 
 export interface AssetsTabRef {
   refreshAssets: () => void;
@@ -87,7 +83,6 @@ const AssetsTabs = forwardRef(
       queryFilter,
       isEntityDeleted = false,
       type = AssetsOfEntity.GLOSSARY,
-      viewType = AssetsViewType.PILLS,
       noDataPlaceholder,
     }: AssetsTabsProps,
     ref
@@ -286,123 +281,66 @@ const AssetsTabs = forwardRef(
       ]
     );
 
+    const filteredAssetMenus = useMemo(() => {
+      switch (type) {
+        case AssetsOfEntity.DOMAIN:
+          return ASSET_SUB_MENU_FILTER.filter(
+            (item) => item.key !== EntityType.DOMAIN
+          );
+
+        case AssetsOfEntity.GLOSSARY:
+          return ASSET_SUB_MENU_FILTER.filter(
+            (item) => item.key !== EntityType.GOVERN
+          );
+
+        default:
+          return ASSET_SUB_MENU_FILTER;
+      }
+    }, [type]);
+
     const subMenuItems = useMemo(() => {
-      return ASSET_SUB_MENU_FILTER.map((option) => ({
+      return filteredAssetMenus.map((option) => ({
         ...getOptions(option),
         children: option.children.map((item) => getOptions(item, true)),
       }));
-    }, [itemCount, getOptions]);
+    }, [filteredAssetMenus, getOptions]);
 
-    const searchIndexes = useMemo(() => {
-      const indexesToFetch = [...ASSETS_INDEXES];
-      if (type !== AssetsOfEntity.GLOSSARY) {
-        indexesToFetch.push(SearchIndex.GLOSSARY);
-      }
+    const fetchCountsByEntity = async () => {
+      try {
+        setIsCountLoading(true);
+        const res = await searchData(
+          '',
+          0,
+          0,
+          queryParam,
+          '',
+          '',
+          SearchIndex.ALL
+        );
 
-      return indexesToFetch;
-    }, [type]);
-
-    const fetchCountsByEntity = () => {
-      Promise.all(
-        searchIndexes.map((index) =>
-          searchData('', 0, 0, queryParam, '', '', index)
-        )
-      )
-        .then(
-          ([
-            tableResponse,
-            topicResponse,
-            dashboardResponse,
-            pipelineResponse,
-            mlmodelResponse,
-            containerResponse,
-            storedProcedureResponse,
-            dashboardDataModelResponse,
-            databaseResponse,
-            databaseSchemaResponse,
-            searchResponse,
-            databaseServiceResponse,
-            messagingServiceResponse,
-            dashboardServiceResponse,
-            mlmodelServiceResponse,
-            pipelineServiceResponse,
-            storageServiceResponse,
-            searchServiceResponse,
-            domainResponse,
-            dataProductResponse,
-            tagResponse,
-            glossaryResponse,
-          ]) => {
-            const counts = {
-              [EntityType.TABLE]: tableResponse.data.hits.total.value,
-              [EntityType.TOPIC]: topicResponse.data.hits.total.value,
-              [EntityType.DASHBOARD]: dashboardResponse.data.hits.total.value,
-              [EntityType.PIPELINE]: pipelineResponse.data.hits.total.value,
-              [EntityType.MLMODEL]: mlmodelResponse.data.hits.total.value,
-              [EntityType.CONTAINER]: containerResponse.data.hits.total.value,
-              [EntityType.STORED_PROCEDURE]:
-                storedProcedureResponse.data.hits.total.value,
-              [EntityType.DASHBOARD_DATA_MODEL]:
-                dashboardDataModelResponse.data.hits.total.value,
-              [EntityType.DATABASE]: databaseResponse.data.hits.total.value,
-              [EntityType.DATABASE_SCHEMA]:
-                databaseSchemaResponse.data.hits.total.value,
-              [EntityType.SEARCH_INDEX]: searchResponse.data.hits.total.value,
-              [EntityType.DATABASE_SERVICE]:
-                databaseServiceResponse.data.hits.total.value,
-              [EntityType.MESSAGING_SERVICE]:
-                messagingServiceResponse.data.hits.total.value,
-              [EntityType.DASHBOARD_SERVICE]:
-                dashboardServiceResponse.data.hits.total.value,
-              [EntityType.MLMODEL_SERVICE]:
-                mlmodelServiceResponse.data.hits.total.value,
-              [EntityType.PIPELINE_SERVICE]:
-                pipelineServiceResponse.data.hits.total.value,
-              [EntityType.STORAGE_SERVICE]:
-                storageServiceResponse.data.hits.total.value,
-              [EntityType.SEARCH_SERVICE]:
-                searchServiceResponse.data.hits.total.value,
-              [EntityType.DOMAIN]: domainResponse.data.hits.total.value,
-              [EntityType.DATA_PRODUCT]:
-                dataProductResponse.data.hits.total.value,
-              [EntityType.TAG]: tagResponse.data.hits.total.value,
-              [EntityType.GLOSSARY_TERM]:
-                type !== AssetsOfEntity.GLOSSARY
-                  ? glossaryResponse.data.hits.total.value
-                  : 0,
-            };
-
-            setItemCount(counts as Record<EntityType, number>);
-
-            if (viewType !== AssetsViewType.PILLS) {
-              find(counts, (count, key) => {
-                if (count > 0) {
-                  const option = AssetsFilterOptions.find(
-                    (el) => el.key === key
-                  );
-                  if (option) {
-                    handleActiveFilter(option.value);
-                  }
-
-                  return true;
-                }
-
-                return false;
-              });
-            }
+        const buckets = res.data.aggregations[`sterms#index_count`].buckets;
+        const counts: Record<string, number> = {};
+        buckets.forEach((item) => {
+          if (item) {
+            counts[
+              getEntityTypeFromSearchIndex(item?.key) ?? EntityType.TABLE
+            ] = item.doc_count;
           }
-        )
-        .catch((err) => {
-          showErrorToast(err);
-        })
-        .finally(() => setIsCountLoading(false));
+        });
+
+        setItemCount(counts as Record<EntityType, number>);
+      } catch (err) {
+        showErrorToast(err as AxiosError);
+      } finally {
+        setIsCountLoading(false);
+      }
     };
 
     useEffect(() => {
       fetchCountsByEntity();
 
       return () => {
-        onAssetClick && onAssetClick(undefined);
+        onAssetClick?.(undefined);
       };
     }, []);
 
@@ -523,69 +461,53 @@ const AssetsTabs = forwardRef(
     );
 
     const assetsHeader = useMemo(() => {
-      if (viewType === AssetsViewType.PILLS) {
-        return (
-          <div className="w-full d-flex justify-end">
-            <Popover
-              align={{ targetOffset: [0, 10] }}
-              content={
-                <Menu
-                  multiple
-                  items={subMenuItems}
-                  mode="inline"
-                  openKeys={openKeys}
-                  rootClassName="asset-multi-menu-selector"
-                  selectedKeys={activeFilter}
-                  style={{ width: 256, height: 340 }}
-                  onClick={(value) => {
-                    setCurrentPage(1);
-                    handleActiveFilter(value.key as SearchIndex);
-                    setSelectedCard(undefined);
-                  }}
-                  onOpenChange={onOpenChange}
-                />
-              }
-              getPopupContainer={(triggerNode: HTMLElement) =>
-                popupRef.current ?? triggerNode
-              }
-              key="asset-options-popover"
-              open={visible}
-              overlayClassName="ant-popover-asset"
-              placement="bottomRight"
-              showArrow={false}
-              trigger="click"
-              onOpenChange={handleAssetButtonVisibleChange}>
-              {Boolean(assetCount) && (
-                <Badge count={activeFilter.length}>
-                  <Button
-                    ghost
-                    icon={<FilterOutlined />}
-                    ref={popupRef}
-                    style={{ background: 'white' }}
-                    type="primary">
-                    {t('label.filter-plural')}
-                  </Button>
-                </Badge>
-              )}
-            </Popover>
-          </div>
-        );
-      } else {
-        return (
-          <Menu
-            className="p-t-sm"
-            items={tabs}
-            selectedKeys={activeFilter}
-            onClick={(value) => {
-              setCurrentPage(1);
-              setActiveFilter([value.key as SearchIndex]);
-              setSelectedCard(undefined);
-            }}
-          />
-        );
-      }
+      return (
+        <div className="w-full d-flex justify-end">
+          <Popover
+            align={{ targetOffset: [0, 10] }}
+            content={
+              <Menu
+                multiple
+                items={subMenuItems}
+                mode="inline"
+                openKeys={openKeys}
+                rootClassName="asset-multi-menu-selector"
+                selectedKeys={activeFilter}
+                style={{ width: 256, height: 340 }}
+                onClick={(value) => {
+                  setCurrentPage(1);
+                  handleActiveFilter(value.key as SearchIndex);
+                  setSelectedCard(undefined);
+                }}
+                onOpenChange={onOpenChange}
+              />
+            }
+            getPopupContainer={(triggerNode: HTMLElement) =>
+              popupRef.current ?? triggerNode
+            }
+            key="asset-options-popover"
+            open={visible}
+            overlayClassName="ant-popover-asset"
+            placement="bottomRight"
+            showArrow={false}
+            trigger="click"
+            onOpenChange={handleAssetButtonVisibleChange}>
+            {Boolean(assetCount) && (
+              <Badge count={activeFilter.length}>
+                <Button
+                  ghost
+                  icon={<FilterOutlined />}
+                  ref={popupRef}
+                  style={{ background: 'white' }}
+                  type="primary">
+                  {t('label.filter-plural')}
+                </Button>
+              </Badge>
+            )}
+          </Popover>
+        </div>
+      );
     }, [
-      viewType,
       activeFilter,
       isLoading,
       data,
@@ -599,21 +521,13 @@ const AssetsTabs = forwardRef(
     ]);
 
     const layout = useMemo(() => {
-      if (viewType === AssetsViewType.PILLS) {
-        return (
-          <>
-            {assetsHeader}
-            {assetListing}
-          </>
-        );
-      } else {
-        return (
-          <PageLayoutV1 leftPanel={assetsHeader} pageTitle="">
-            {assetListing}
-          </PageLayoutV1>
-        );
-      }
-    }, [viewType, assetsHeader, assetListing, selectedCard]);
+      return (
+        <>
+          {assetsHeader}
+          {assetListing}
+        </>
+      );
+    }, [assetsHeader, assetListing, selectedCard]);
 
     useEffect(() => {
       fetchAssets({
@@ -624,7 +538,10 @@ const AssetsTabs = forwardRef(
 
     useImperativeHandle(ref, () => ({
       refreshAssets() {
-        fetchAssets({});
+        fetchAssets({
+          index: isEmpty(activeFilter) ? [SearchIndex.ALL] : activeFilter,
+          page: currentPage,
+        });
         fetchCountsByEntity();
       },
       closeSummaryPanel() {
@@ -659,10 +576,7 @@ const AssetsTabs = forwardRef(
 
     return (
       <div
-        className={classNames(
-          'assets-tab-container',
-          viewType === AssetsViewType.PILLS ? 'p-md' : ''
-        )}
+        className={classNames('assets-tab-container p-md')}
         data-testid="table-container">
         {layout}
       </div>

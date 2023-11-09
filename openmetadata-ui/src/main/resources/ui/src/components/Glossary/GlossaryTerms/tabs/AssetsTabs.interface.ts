@@ -23,11 +23,6 @@ export enum AssetsOfEntity {
   FOLLOWING = 'FOLLOWING',
 }
 
-export enum AssetsViewType {
-  PILLS = 'PILLS',
-  TABS = 'TABS',
-}
-
 export interface AssetsTabsProps {
   onAddAsset: () => void;
   permissions: OperationPermission;
@@ -36,7 +31,6 @@ export interface AssetsTabsProps {
   isSummaryPanelOpen: boolean;
   isEntityDeleted?: boolean;
   type?: AssetsOfEntity;
-  viewType?: AssetsViewType;
   queryFilter?: string;
   noDataPlaceholder?: boolean | AssetNoDataPlaceholderProps;
 }
