@@ -87,6 +87,7 @@ export const containerVersionMockProps: ContainerVersionProp = {
   isVersionLoading: false,
   owner: mockOwner,
   domain: mockDomain,
+  dataProducts: [],
   tier: mockTier,
   breadCrumbList: [],
   versionList: mockVersionList,

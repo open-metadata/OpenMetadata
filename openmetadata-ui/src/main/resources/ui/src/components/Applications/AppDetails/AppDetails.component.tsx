@@ -387,15 +387,16 @@ const AppDetails = () => {
   }, [appData, jsonSchema]);
 
   const actionText = useMemo(() => {
-    if (action === AppAction.ENABLE) {
-      return t('label.enable-lowercase');
-    } else if (action === AppAction.DISABLE) {
-      return t('label.disable-lowercase');
-    } else if (action === AppAction.UNINSTALL) {
-      return t('label.uninstall-lowercase');
+    switch (action) {
+      case AppAction.ENABLE:
+        return t('label.enable-lowercase');
+      case AppAction.DISABLE:
+        return t('label.disable-lowercase');
+      case AppAction.UNINSTALL:
+        return t('label.uninstall-lowercase');
+      default:
+        return '';
     }
-
-    return '';
   }, [action]);
 
   useEffect(() => {
@@ -441,9 +442,11 @@ const AppDetails = () => {
                 <Button
                   className="glossary-manage-dropdown-button p-x-xs"
                   data-testid="manage-button"
-                  onClick={() => setShowActions(true)}>
-                  <IconDropdown className="anticon self-center manage-dropdown-icon" />
-                </Button>
+                  icon={
+                    <IconDropdown className="vertical-align-inherit manage-dropdown-icon" />
+                  }
+                  onClick={() => setShowActions(true)}
+                />
               </Tooltip>
             </Dropdown>
           </div>

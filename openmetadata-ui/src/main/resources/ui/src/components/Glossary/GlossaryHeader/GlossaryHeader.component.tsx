@@ -556,9 +556,11 @@ const GlossaryHeader = ({
                     <Button
                       className="glossary-manage-dropdown-button tw-px-1.5"
                       data-testid="manage-button"
-                      onClick={() => setShowActions(true)}>
-                      <IconDropdown className="anticon self-center manage-dropdown-icon" />
-                    </Button>
+                      icon={
+                        <IconDropdown className="vertical-align-inherit manage-dropdown-icon" />
+                      }
+                      onClick={() => setShowActions(true)}
+                    />
                   </Tooltip>
                 </Dropdown>
               )}

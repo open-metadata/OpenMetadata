@@ -239,7 +239,6 @@ export const autocomplete: (args: {
         hasMore: false,
       };
     });
-    // }
   };
 };
 

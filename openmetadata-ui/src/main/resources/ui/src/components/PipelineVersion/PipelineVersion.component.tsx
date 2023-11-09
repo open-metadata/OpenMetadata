@@ -40,6 +40,7 @@ import {
 import { getUpdatedPipelineTasks } from '../../utils/PipelineVersionUtils';
 import { getEncodedFqn } from '../../utils/StringsUtils';
 import { getFilterTags } from '../../utils/TableTags/TableTags.utils';
+import DataProductsContainer from '../DataProductsContainer/DataProductsContainer.component';
 import { PipelineVersionProp } from './PipelineVersion.interface';
 
 const PipelineVersion: FC<PipelineVersionProp> = ({
@@ -48,6 +49,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
   isVersionLoading,
   owner,
   domain,
+  dataProducts,
   tier,
   slashedPipelineName,
   versionList,
@@ -210,6 +212,11 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
               data-testid="entity-right-panel"
               flex="220px">
               <Space className="w-full" direction="vertical" size="large">
+                <DataProductsContainer
+                  activeDomain={domain}
+                  dataProducts={dataProducts ?? []}
+                  hasPermission={false}
+                />
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
                     entityType={EntityType.PIPELINE}

@@ -39,6 +39,7 @@ import {
 } from '../../utils/EntityVersionUtils';
 import { getUpdatedSearchIndexFields } from '../../utils/SearchIndexVersionUtils';
 import { getEncodedFqn } from '../../utils/StringsUtils';
+import DataProductsContainer from '../DataProductsContainer/DataProductsContainer.component';
 import { SearchIndexVersionProps } from './SearchIndexVersion.interface';
 
 const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
@@ -47,6 +48,7 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
   isVersionLoading,
   owner,
   domain,
+  dataProducts,
   tier,
   breadCrumbList,
   versionList,
@@ -156,6 +158,11 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
               data-testid="entity-right-panel"
               flex="220px">
               <Space className="w-full" direction="vertical" size="large">
+                <DataProductsContainer
+                  activeDomain={domain}
+                  dataProducts={dataProducts ?? []}
+                  hasPermission={false}
+                />
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
                     entityType={EntityType.SEARCH_INDEX}

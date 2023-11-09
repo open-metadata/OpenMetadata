@@ -101,7 +101,7 @@ const DataProductsPage = () => {
     try {
       const data = await getDataProductByName(
         encodeURIComponent(fqn),
-        'domain,owner,experts'
+        'domain,owner,experts,assets'
       );
       setDataProduct(data);
 

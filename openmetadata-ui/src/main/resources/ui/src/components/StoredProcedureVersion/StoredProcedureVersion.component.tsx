@@ -35,6 +35,7 @@ import {
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
 import { getEncodedFqn } from '../../utils/StringsUtils';
+import DataProductsContainer from '../DataProductsContainer/DataProductsContainer.component';
 import { StoredProcedureVersionProp } from './StoredProcedureVersion.interface';
 const StoredProcedureVersion = ({
   version,
@@ -42,6 +43,7 @@ const StoredProcedureVersion = ({
   isVersionLoading,
   owner,
   domain,
+  dataProducts,
   tier,
   slashedTableName,
   versionList,
@@ -126,6 +128,11 @@ const StoredProcedureVersion = ({
               data-testid="entity-right-panel"
               flex="220px">
               <Space className="w-full" direction="vertical" size="large">
+                <DataProductsContainer
+                  activeDomain={domain}
+                  dataProducts={dataProducts ?? []}
+                  hasPermission={false}
+                />
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
                     entityType={EntityType.STORED_PROCEDURE}

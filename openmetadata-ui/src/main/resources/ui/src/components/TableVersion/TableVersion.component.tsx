@@ -44,6 +44,7 @@ import {
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
 import { getEncodedFqn } from '../../utils/StringsUtils';
+import DataProductsContainer from '../DataProductsContainer/DataProductsContainer.component';
 import { TableVersionProp } from './TableVersion.interface';
 
 const TableVersion: React.FC<TableVersionProp> = ({
@@ -52,6 +53,7 @@ const TableVersion: React.FC<TableVersionProp> = ({
   isVersionLoading,
   owner,
   domain,
+  dataProducts,
   tier,
   slashedTableName,
   versionList,
@@ -183,6 +185,11 @@ const TableVersion: React.FC<TableVersionProp> = ({
               data-testid="entity-right-panel"
               flex="220px">
               <Space className="w-full" direction="vertical" size="large">
+                <DataProductsContainer
+                  activeDomain={domain}
+                  dataProducts={dataProducts ?? []}
+                  hasPermission={false}
+                />
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
                     entityType={EntityType.TABLE}

@@ -419,6 +419,10 @@ export const getServiceCategoryFromEntityType = (
       return ServiceCategory.ML_MODEL_SERVICES;
     case EntityType.STORAGE_SERVICE:
       return ServiceCategory.STORAGE_SERVICES;
+    case EntityType.METADATA_SERVICE:
+      return ServiceCategory.METADATA_SERVICES;
+    case EntityType.SEARCH_SERVICE:
+      return ServiceCategory.SEARCH_SERVICES;
     case EntityType.DATABASE_SERVICE:
     default:
       return ServiceCategory.DATABASE_SERVICES;

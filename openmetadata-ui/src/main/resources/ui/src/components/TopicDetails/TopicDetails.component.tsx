@@ -311,10 +311,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                 <DataProductsContainer
                   activeDomain={topicDetails?.domain}
                   dataProducts={topicDetails?.dataProducts ?? []}
-                  hasPermission={
-                    topicPermissions.EditAll && !topicDetails.deleted
-                  }
-                  onSave={onDataProductsUpdate}
+                  hasPermission={false}
                 />
 
                 <TagsContainerV2

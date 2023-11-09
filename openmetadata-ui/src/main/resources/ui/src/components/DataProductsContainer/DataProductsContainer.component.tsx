@@ -18,7 +18,10 @@ import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as DataProductIcon } from '../../assets/svg/ic-data-product.svg';
 import DataProductSelectForm from '../../components/DataProductSelectForm/DataProductsSelectForm';
 import TagsV1 from '../../components/Tag/TagsV1/TagsV1.component';
-import { DE_ACTIVE_COLOR } from '../../constants/constants';
+import {
+  DE_ACTIVE_COLOR,
+  NO_DATA_PLACEHOLDER,
+} from '../../constants/constants';
 import { TAG_CONSTANT, TAG_START_WITH } from '../../constants/Tag.constants';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../generated/entity/type';
@@ -30,7 +33,7 @@ interface DataProductsContainerProps {
   hasPermission: boolean;
   dataProducts: EntityReference[];
   activeDomain?: EntityReference;
-  onSave: (dataProducts: DataProduct[]) => Promise<void>;
+  onSave?: (dataProducts: DataProduct[]) => Promise<void>;
 }
 
 const DataProductsContainer = ({
@@ -68,7 +71,7 @@ const DataProductsContainer = ({
   );
 
   const handleSave = async (dataProducts: DataProduct[]) => {
-    await onSave(dataProducts);
+    await onSave?.(dataProducts);
     setIsEditMode(false);
   };
 
@@ -97,7 +100,7 @@ const DataProductsContainer = ({
 
   const renderDataProducts = useMemo(() => {
     if (isEmpty(dataProducts)) {
-      return null;
+      return NO_DATA_PLACEHOLDER;
     }
 
     return dataProducts.map((product) => {

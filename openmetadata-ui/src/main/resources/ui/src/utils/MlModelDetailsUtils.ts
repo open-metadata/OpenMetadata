@@ -14,4 +14,4 @@
 import { TabSpecificField } from '../enums/entity.enum';
 
 export const defaultFields = `${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.DOMAIN}, 
-${TabSpecificField.OWNER}, ${TabSpecificField.DASHBOARD} ,${TabSpecificField.VOTES}`;
+${TabSpecificField.OWNER}, ${TabSpecificField.DASHBOARD},${TabSpecificField.DATA_PRODUCTS} ,${TabSpecificField.VOTES}`;

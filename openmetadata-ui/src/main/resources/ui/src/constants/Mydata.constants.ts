@@ -11,12 +11,6 @@
  *  limitations under the License.
  */
 
-import { SearchIndex } from '../enums/search.enum';
-
-export const myDataSearchIndex =
-  // eslint-disable-next-line max-len
-  `${SearchIndex.TABLE},${SearchIndex.TOPIC},${SearchIndex.DASHBOARD},${SearchIndex.PIPELINE},${SearchIndex.MLMODEL},${SearchIndex.STORED_PROCEDURE},${SearchIndex.DASHBOARD_DATA_MODEL},${SearchIndex.DATABASE},${SearchIndex.DATABASE_SCHEMA},${SearchIndex.DATABASE},${SearchIndex.DATABASE_SERVICE},${SearchIndex.MESSAGING_SERVICE},${SearchIndex.PIPELINE_SERVICE},${SearchIndex.SEARCH_SERVICE},${SearchIndex.DASHBOARD_SERVICE},${SearchIndex.ML_MODEL_SERVICE},${SearchIndex.STORAGE_SERVICE},${SearchIndex.SEARCH_INDEX}` as SearchIndex;
-
 export const observerOptions = {
   root: null,
   rootMargin: '0px',

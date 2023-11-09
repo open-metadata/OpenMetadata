@@ -21,6 +21,8 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import ContainerVersion from '../../components/ContainerVersion/ContainerVersion.component';
 import DashboardVersion from '../../components/DashboardVersion/DashboardVersion.component';
 import DataModelVersion from '../../components/DataModelVersion/DataModelVersion.component';
@@ -36,8 +38,6 @@ import SearchIndexVersion from '../../components/SearchIndexVersion/SearchIndexV
 import StoredProcedureVersion from '../../components/StoredProcedureVersion/StoredProcedureVersion.component';
 import TableVersion from '../../components/TableVersion/TableVersion.component';
 import TopicVersion from '../../components/TopicVersion/TopicVersion.component';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import {
   getContainerDetailPath,
   getDashboardDetailsPath,
@@ -64,11 +64,6 @@ import { Topic } from '../../generated/entity/data/topic';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { TagLabel } from '../../generated/type/tagLabel';
 import {
-  getSearchIndexDetailsByFQN,
-  getSearchIndexVersion,
-  getSearchIndexVersions,
-} from '../../rest/SearchIndexAPI';
-import {
   getDashboardByFqn,
   getDashboardVersion,
   getDashboardVersions,
@@ -88,6 +83,11 @@ import {
   getPipelineVersion,
   getPipelineVersions,
 } from '../../rest/pipelineAPI';
+import {
+  getSearchIndexDetailsByFQN,
+  getSearchIndexVersion,
+  getSearchIndexVersions,
+} from '../../rest/SearchIndexAPI';
 import {
   getContainerByName,
   getContainerVersion,
@@ -549,6 +549,7 @@ const EntityVersionPage: FunctionComponent = () => {
           <TableVersion
             backHandler={backHandler}
             currentVersionData={currentVersionData as Table}
+            dataProducts={currentVersionData.dataProducts}
             deleted={currentVersionData.deleted}
             domain={domain}
             entityPermissions={entityPermissions}
@@ -567,6 +568,7 @@ const EntityVersionPage: FunctionComponent = () => {
           <TopicVersion
             backHandler={backHandler}
             currentVersionData={currentVersionData as Topic}
+            dataProducts={currentVersionData.dataProducts}
             deleted={currentVersionData.deleted}
             domain={domain}
             entityPermissions={entityPermissions}
@@ -586,6 +588,7 @@ const EntityVersionPage: FunctionComponent = () => {
           <DashboardVersion
             backHandler={backHandler}
             currentVersionData={currentVersionData as Dashboard}
+            dataProducts={currentVersionData.dataProducts}
             deleted={currentVersionData.deleted}
             domain={domain}
             entityPermissions={entityPermissions}
@@ -605,6 +608,7 @@ const EntityVersionPage: FunctionComponent = () => {
           <PipelineVersion
             backHandler={backHandler}
             currentVersionData={currentVersionData as Pipeline}
+            dataProducts={currentVersionData.dataProducts}
             deleted={currentVersionData.deleted}
             domain={domain}
             entityPermissions={entityPermissions}
@@ -624,6 +628,7 @@ const EntityVersionPage: FunctionComponent = () => {
           <MlModelVersion
             backHandler={backHandler}
             currentVersionData={currentVersionData as Mlmodel}
+            dataProducts={currentVersionData.dataProducts}
             deleted={currentVersionData.deleted}
             domain={domain}
             entityPermissions={entityPermissions}
@@ -643,6 +648,7 @@ const EntityVersionPage: FunctionComponent = () => {
             backHandler={backHandler}
             breadCrumbList={slashedEntityName}
             currentVersionData={currentVersionData as Container}
+            dataProducts={currentVersionData.dataProducts}
             deleted={currentVersionData.deleted}
             domain={domain}
             entityPermissions={entityPermissions}
@@ -661,6 +667,7 @@ const EntityVersionPage: FunctionComponent = () => {
             backHandler={backHandler}
             breadCrumbList={slashedEntityName}
             currentVersionData={currentVersionData as SearchIndex}
+            dataProducts={currentVersionData.dataProducts}
             deleted={currentVersionData.deleted}
             domain={domain}
             entityPermissions={entityPermissions}
@@ -679,6 +686,7 @@ const EntityVersionPage: FunctionComponent = () => {
           <DataModelVersion
             backHandler={backHandler}
             currentVersionData={currentVersionData}
+            dataProducts={currentVersionData.dataProducts}
             deleted={currentVersionData.deleted}
             domain={domain}
             isVersionLoading={isVersionLoading}
@@ -697,6 +705,7 @@ const EntityVersionPage: FunctionComponent = () => {
           <StoredProcedureVersion
             backHandler={backHandler}
             currentVersionData={currentVersionData as StoredProcedure}
+            dataProducts={currentVersionData.dataProducts}
             deleted={currentVersionData.deleted}
             domain={domain}
             entityPermissions={entityPermissions}

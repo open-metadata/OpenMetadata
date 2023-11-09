@@ -37,6 +37,7 @@ import {
 } from '../../utils/EntityVersionUtils';
 import { getEncodedFqn, stringToHTML } from '../../utils/StringsUtils';
 import { getUpdatedMessageSchema } from '../../utils/TopicVersionUtils';
+import DataProductsContainer from '../DataProductsContainer/DataProductsContainer.component';
 import { TopicVersionProp } from './TopicVersion.interface';
 
 const TopicVersion: FC<TopicVersionProp> = ({
@@ -52,6 +53,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
   versionHandler,
   entityPermissions,
   domain,
+  dataProducts,
 }: TopicVersionProp) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -163,6 +165,11 @@ const TopicVersion: FC<TopicVersionProp> = ({
               data-testid="entity-right-panel"
               flex="220px">
               <Space className="w-full" direction="vertical" size="large">
+                <DataProductsContainer
+                  activeDomain={domain}
+                  dataProducts={dataProducts ?? []}
+                  hasPermission={false}
+                />
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
                     entityType={EntityType.TOPIC}

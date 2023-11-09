@@ -160,6 +160,7 @@ export const getEntityAPIfromSource = (
 
 export const getAssetsSearchIndex = (source: AssetsOfEntity) => {
   const commonAssets: Record<string, SearchIndex> = {
+    [EntityType.ALL]: SearchIndex.ALL,
     [EntityType.TABLE]: SearchIndex.TABLE,
     [EntityType.PIPELINE]: SearchIndex.PIPELINE,
     [EntityType.DASHBOARD]: SearchIndex.DASHBOARD,
