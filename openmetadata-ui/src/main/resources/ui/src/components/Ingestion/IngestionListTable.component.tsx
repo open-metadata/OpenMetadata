@@ -14,7 +14,7 @@
 import { Space, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import cronstrue from 'cronstrue';
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import Table from '../../components/common/Table/Table';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -53,8 +53,13 @@ function IngestionListTable({
     pageSize,
     handlePageChange,
     handlePageSizeChange,
+    handlePagingChange,
     showPagination,
   } = usePaging(10);
+
+  useEffect(() => {
+    handlePagingChange(paging);
+  }, [paging]);
 
   const ingestionPagingHandler = useCallback(
     ({ cursorType, currentPage }: PagingHandlerParams) => {

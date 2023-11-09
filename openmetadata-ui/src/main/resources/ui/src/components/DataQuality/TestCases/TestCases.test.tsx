@@ -125,6 +125,7 @@ describe('TestCases component', () => {
 
     expect(mockGetListTestCase).toHaveBeenCalledWith({
       fields: 'testDefinition,testCaseResult,testSuite',
+      limit: 15,
       orderByLastExecutionDate: true,
     });
   });

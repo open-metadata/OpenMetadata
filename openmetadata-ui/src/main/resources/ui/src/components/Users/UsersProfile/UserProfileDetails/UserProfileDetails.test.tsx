@@ -34,19 +34,16 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 
-jest.mock(
-  '../../../../components/authentication/auth-provider/AuthProvider',
-  () => ({
-    useAuthContext: jest.fn(() => ({
-      authConfig: {
-        provider: AuthProvider.Basic,
-      },
-      currentUser: {
-        name: 'test',
-      },
-    })),
-  })
-);
+jest.mock('../../../Auth/AuthProviders/AuthProvider', () => ({
+  useAuthContext: jest.fn(() => ({
+    authConfig: {
+      provider: AuthProvider.Basic,
+    },
+    currentUser: {
+      name: 'test',
+    },
+  })),
+}));
 
 jest.mock('../../../../hooks/authHooks', () => ({
   useAuth: jest.fn().mockReturnValue({ isAdminUser: true }),

@@ -13,7 +13,6 @@
 
 import { Button, Col, Modal, Row, Space, Switch, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { data } from 'autoprefixer';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -361,7 +360,7 @@ const UserListPageV1 = () => {
     [isAdminUser, showDeletedUser]
   );
 
-  if (isEmpty(data) && !showDeletedUser && !isDataLoading && !searchValue) {
+  if (isEmpty(userList) && !showDeletedUser && !isDataLoading && !searchValue) {
     return errorPlaceHolder;
   }
 
