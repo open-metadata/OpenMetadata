@@ -282,19 +282,17 @@ const DocumentationTab = ({
           {type === DocumentationEntity.DOMAIN && (
             <Col data-testid="domainType" span="24">
               <div className="d-flex items-center m-b-xss">
-                <Space>
-                  <Typography.Text
-                    className="right-panel-label"
-                    data-testid="domainType-heading-name">
-                    <FormItemLabel
-                      align={{ targetOffset: [18, 0] }}
-                      helperText={domainTypeTooltipDataRender()}
-                      label={t('label.domain-type')}
-                      overlayClassName="domain-type-tooltip-container"
-                      placement="topLeft"
-                    />
-                  </Typography.Text>
-                </Space>
+                <Typography.Text
+                  className="right-panel-label"
+                  data-testid="domainType-heading-name">
+                  <FormItemLabel
+                    align={{ targetOffset: [18, 0] }}
+                    helperText={domainTypeTooltipDataRender()}
+                    label={t('label.domain-type')}
+                    overlayClassName="domain-type-tooltip-container"
+                    placement="topLeft"
+                  />
+                </Typography.Text>
 
                 {editAllPermission && (domain as Domain).domainType && (
                   <Button

@@ -11,19 +11,19 @@
  *  limitations under the License.
  */
 
-import { t } from 'i18next';
+import i18n from '../utils/i18next/LocalUtil';
 
 export const DOMAIN_TYPE_DATA = [
   {
-    type: t('label.aggregate'),
-    description: t('message.aggregate-domain-type-description'),
+    type: i18n.t('label.aggregate'),
+    description: i18n.t('message.aggregate-domain-type-description'),
   },
   {
-    type: t('label.consumer-aligned'),
-    description: t('message.consumer-aligned-domain-type-description'),
+    type: i18n.t('label.consumer-aligned'),
+    description: i18n.t('message.consumer-aligned-domain-type-description'),
   },
   {
-    type: t('label.source-aligned'),
-    description: t('message.source-aligned-domain-type-description'),
+    type: i18n.t('label.source-aligned'),
+    description: i18n.t('message.source-aligned-domain-type-description'),
   },
 ];
