@@ -1322,6 +1322,47 @@ export const getEntityLinkFromType = (
       return getStoredProcedureDetailPath(fullyQualifiedName);
     case EntityType.SEARCH_INDEX:
       return getSearchIndexTabPath(fullyQualifiedName);
+
+    case EntityType.DATABASE_SERVICE:
+      return getServiceDetailsPath(
+        getEncodedFqn(fullyQualifiedName),
+        ServiceCategory.DATABASE_SERVICES
+      );
+    case EntityType.MESSAGING_SERVICE:
+      return getServiceDetailsPath(
+        getEncodedFqn(fullyQualifiedName),
+        ServiceCategory.MESSAGING_SERVICES
+      );
+    case EntityType.DASHBOARD_SERVICE:
+      return getServiceDetailsPath(
+        getEncodedFqn(fullyQualifiedName),
+        ServiceCategory.DASHBOARD_SERVICES
+      );
+    case EntityType.PIPELINE_SERVICE:
+      return getServiceDetailsPath(
+        getEncodedFqn(fullyQualifiedName),
+        ServiceCategory.PIPELINE_SERVICES
+      );
+    case EntityType.MLMODEL_SERVICE:
+      return getServiceDetailsPath(
+        getEncodedFqn(fullyQualifiedName),
+        ServiceCategory.ML_MODEL_SERVICES
+      );
+    case EntityType.STORAGE_SERVICE:
+      return getServiceDetailsPath(
+        getEncodedFqn(fullyQualifiedName),
+        ServiceCategory.STORAGE_SERVICES
+      );
+    case EntityType.SEARCH_SERVICE:
+      return getServiceDetailsPath(
+        getEncodedFqn(fullyQualifiedName),
+        ServiceCategory.SEARCH_SERVICES
+      );
+    case EntityType.METADATA_SERVICE:
+      return getServiceDetailsPath(
+        getEncodedFqn(fullyQualifiedName),
+        ServiceCategory.METADATA_SERVICES
+      );
     default:
       return '';
   }

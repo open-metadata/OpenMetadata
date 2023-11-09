@@ -23,6 +23,7 @@ export interface PipelineVersionProp {
   isVersionLoading: boolean;
   owner: Pipeline['owner'];
   domain: Pipeline['domain'];
+  dataProducts: Pipeline['dataProducts'];
   tier: TagLabel;
   slashedPipelineName: TitleBreadcrumbProps['titleLinks'];
   versionList: EntityHistory;

@@ -51,8 +51,6 @@ import AssetsTabs, {
   AssetsTabRef,
 } from '../../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import { AssetsOfEntity } from '../../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
-import Loader from '../../../components/Loader/Loader';
-import EntityDeleteModal from '../../../components/Modals/EntityDeleteModal/EntityDeleteModal';
 import EntityNameModal from '../../../components/Modals/EntityNameModal/EntityNameModal.component';
 import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
 import {
@@ -63,7 +61,6 @@ import TabsLabel from '../../../components/TabsLabel/TabsLabel.component';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { DE_ACTIVE_COLOR, ERROR_MESSAGE } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
-import { myDataSearchIndex } from '../../../constants/Mydata.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { CreateDataProduct } from '../../../generated/api/domains/createDataProduct';
@@ -74,10 +71,7 @@ import { ChangeDescription } from '../../../generated/entity/type';
 import { Style } from '../../../generated/type/tagLabel';
 import { addDataProducts } from '../../../rest/dataProductAPI';
 import { searchData } from '../../../rest/miscAPI';
-import {
-  getEntityDeleteMessage,
-  getIsErrorMatch,
-} from '../../../utils/CommonUtils';
+import { getIsErrorMatch } from '../../../utils/CommonUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import Fqn from '../../../utils/Fqn';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
@@ -88,6 +82,7 @@ import {
   getDomainVersionsPath,
 } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
 import AddDataProductModal from '../AddDataProductModal/AddDataProductModal.component';
 import '../domain.less';
@@ -99,7 +94,6 @@ import { DomainDetailsPageProps } from './DomainDetailsPage.interface';
 
 const DomainDetailsPage = ({
   domain,
-  loading,
   onUpdate,
   onDelete,
   isVersionsView = false,
@@ -237,25 +231,27 @@ const DomainDetailsPage = ({
   };
 
   const fetchDataProducts = async () => {
-    try {
-      const res = await searchData(
-        '',
-        1,
-        0,
-        `(domain.fullyQualifiedName:"${domainFqn}")`,
-        '',
-        '',
-        SearchIndex.DATA_PRODUCT
-      );
+    if (!isVersionsView) {
+      try {
+        const res = await searchData(
+          '',
+          1,
+          0,
+          `(domain.fullyQualifiedName:"${domainFqn}")`,
+          '',
+          '',
+          SearchIndex.DATA_PRODUCT
+        );
 
-      setDataProductsCount(res.data.hits.total.value ?? 0);
-    } catch (error) {
-      setDataProductsCount(0);
+        setDataProductsCount(res.data.hits.total.value ?? 0);
+      } catch (error) {
+        setDataProductsCount(0);
+      }
     }
   };
 
   const fetchDomainAssets = async () => {
-    if (fqn) {
+    if (fqn && !isVersionsView) {
       try {
         const res = await searchData(
           '',
@@ -264,7 +260,7 @@ const DomainDetailsPage = ({
           `(domain.fullyQualifiedName:"${fqn}")`,
           '',
           '',
-          myDataSearchIndex
+          SearchIndex.ALL
         );
 
         setAssetCount(res.data.hits.total.value ?? 0);
@@ -329,12 +325,6 @@ const DomainDetailsPage = ({
 
     onUpdate(updatedDetails);
     setIsStyleEditing(false);
-  };
-
-  const handleDelete = () => {
-    const { id } = domain;
-    onDelete(id);
-    setIsDelete(false);
   };
 
   const handleAssetSave = () => {
@@ -511,10 +501,6 @@ const DomainDetailsPage = ({
     fetchDataProducts();
   }, [fqn]);
 
-  if (loading) {
-    return <Loader />;
-  }
-
   return (
     <>
       <Row
@@ -604,9 +590,11 @@ const DomainDetailsPage = ({
                     <Button
                       className="domain-manage-dropdown-button tw-px-1.5"
                       data-testid="manage-button"
-                      onClick={() => setShowActions(true)}>
-                      <IconDropdown className="anticon self-center manage-dropdown-icon" />
-                    </Button>
+                      icon={
+                        <IconDropdown className="vertical-align-inherit manage-dropdown-icon" />
+                      }
+                      onClick={() => setShowActions(true)}
+                    />
                   </Tooltip>
                 </Dropdown>
               )}
@@ -644,14 +632,16 @@ const DomainDetailsPage = ({
         onSave={handleAssetSave}
       />
       {domain && (
-        <EntityDeleteModal
-          bodyText={getEntityDeleteMessage(domain.name, '')}
+        <DeleteWidgetModal
+          afterDeleteAction={() => onDelete(domain.id)}
+          allowSoftDelete={false}
+          entityId={domain.id}
           entityName={domain.name}
-          entityType="Glossary"
-          loadingState="success"
+          entityType={EntityType.DOMAIN}
           visible={isDelete}
-          onCancel={() => setIsDelete(false)}
-          onConfirm={handleDelete}
+          onCancel={() => {
+            setIsDelete(false);
+          }}
         />
       )}
       <EntityNameModal
