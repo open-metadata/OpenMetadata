@@ -1902,7 +1902,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private void updateDeleted() {
       if (operation.isPut() || operation.isPatch()) {
         // Update operation can't set delete attributed to true. This can only be done as part of delete operation
-        if (!Objects.equals(updated.getDeleted(), original.getDeleted()) && Boolean.TRUE.equals(updated.getDeleted())) {
+        if (!Objects.equals(updated.getDeleted(), original.getDeleted())
+            && Boolean.TRUE.equals(updated.getDeleted())
+            && changeDescription != null) {
           throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute(entityType, FIELD_DELETED));
         }
         // PUT or PATCH is restoring the soft-deleted entity

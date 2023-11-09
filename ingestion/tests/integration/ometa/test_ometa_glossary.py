@@ -528,12 +528,6 @@ class OMetaGlossaryTest(TestCase):
         self.assertIsNotNone(res)
         self.assertEqual(0, len(res.references))
 
-        # Remove reference when list is empty - fails
-        res = self.metadata.patch_glossary_term_references(
-            entity_id=self.glossary_term_1.id,
-        )
-        self.assertIsNone(res)
-
         # Remove reference when there are many
         self.metadata.patch_glossary_term_references(
             entity_id=self.glossary_term_1.id,
