@@ -56,7 +56,10 @@ public final class CommonUtil {
   public static List<String> getResources(Pattern pattern) throws IOException {
     ArrayList<String> resources = new ArrayList<>();
     String classPath = System.getProperty("java.class.path", ".");
-    String[] classPathElements = classPath.split(File.pathSeparator);
+    List<String> classPathElements =
+        Arrays.stream(classPath.split(File.pathSeparator))
+            .filter(jarName -> jarName.toLowerCase().contains("openmetadata"))
+            .toList();
 
     for (String element : classPathElements) {
       File file = new File(element);

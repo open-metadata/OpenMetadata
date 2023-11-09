@@ -14,6 +14,7 @@ import { AppMarketPlaceDefinition } from '../../../generated/entity/applications
 
 export interface AppInstallVerifyCardProps {
   appData: AppMarketPlaceDefinition;
+  nextButtonLabel: string;
   onSave: () => void;
   onCancel: () => void;
 }

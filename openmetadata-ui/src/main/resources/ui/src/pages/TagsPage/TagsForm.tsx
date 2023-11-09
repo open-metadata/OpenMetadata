@@ -136,8 +136,10 @@ const TagsForm = ({
             required: false,
             placeholder: t('label.icon-url'),
             type: FieldTypes.TEXT,
+            helperText: t('message.govern-url-size-message'),
             props: {
               'data-testid': 'icon-url',
+              tooltipPlacement: 'right',
             },
           },
           {

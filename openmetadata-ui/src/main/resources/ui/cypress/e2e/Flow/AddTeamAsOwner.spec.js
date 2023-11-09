@@ -30,12 +30,12 @@ const TEAM_DETAILS = {
   ...SEARCH_ENTITY_TABLE.table_1,
 };
 
-describe.skip('Create a team and add that team as a owner of the entity', () => {
+describe('Create a team and add that team as a owner of the entity', () => {
   beforeEach(() => {
     cy.login();
     interceptURL(
       'GET',
-      `/api/v1/search/query?q=*${teamName}***teamType:Group&from=0&size=25&index=team_search_index`,
+      `/api/v1/search/query?q=*teamType:Group&from=0&size=*&index=team_search_index`,
       'waitForTeams'
     );
     interceptURL('PATCH', `/api/v1/tables/*`, 'updateTable');
@@ -48,16 +48,10 @@ describe.skip('Create a team and add that team as a owner of the entity', () => 
   it('Add a group team type and assign it as a owner of the entity', () => {
     interceptURL('GET', '/api/v1/teams/name/*', 'getTeams');
 
-    cy.get('[data-testid="app-bar-item-settings"]')
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="app-bar-item-settings"]').click();
 
     // Clicking on teams
-    cy.get('[data-testid="settings-left-panel"]')
-      .contains('Teams')
-      .should('exist')
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="settings-left-panel"]').contains('Teams').click();
 
     verifyResponseStatusCode('@getTeams', 200);
 
@@ -75,24 +69,20 @@ describe.skip('Create a team and add that team as a owner of the entity', () => 
   });
 
   it('Add newly created group type team as owner, and remove it', () => {
-    visitEntityDetailsPage(
-      TEAM_DETAILS.term,
-      TEAM_DETAILS.serviceName,
-      TEAM_DETAILS.entity
+    visitEntityDetailsPage({
+      term: TEAM_DETAILS.term,
+      serviceName: TEAM_DETAILS.serviceName,
+      entity: TEAM_DETAILS.entity,
+    });
+
+    cy.get('[data-testid="edit-owner"]').click();
+    verifyResponseStatusCode('@waitForTeams', 200);
+    cy.get('[data-testid="owner-select-teams-search-bar"]').type(
+      TEAM_DETAILS.name
     );
 
-    cy.get('[data-testid="edit-owner"]').should('be.visible').click();
-    cy.get('[data-testid="owner-select-teams-search-bar"]')
-      .should('be.visible')
-      .type(TEAM_DETAILS.name);
-
-    verifyResponseStatusCode('@waitForTeams', 200);
-
     // Selecting the team
-    cy.get(`[title="${TEAM_DETAILS.name}"]`)
-      .should('exist')
-      .should('be.visible')
-      .click();
+    cy.get(`[title="${TEAM_DETAILS.name}"]`).click();
 
     verifyResponseStatusCode('@updateTable', 200);
 
@@ -105,20 +95,19 @@ describe.skip('Create a team and add that team as a owner of the entity', () => 
   });
 
   it('Remove newly created group type team as owner', () => {
-    visitEntityDetailsPage(
-      TEAM_DETAILS.term,
-      TEAM_DETAILS.serviceName,
-      TEAM_DETAILS.entity
+    visitEntityDetailsPage({
+      term: TEAM_DETAILS.term,
+      serviceName: TEAM_DETAILS.serviceName,
+      entity: TEAM_DETAILS.entity,
+    });
+
+    cy.get('[data-testid="edit-owner"]').click();
+    verifyResponseStatusCode('@waitForTeams', 200);
+    cy.get('[data-testid="owner-select-teams-search-bar"]').type(
+      TEAM_DETAILS.name
     );
 
-    cy.get('[data-testid="edit-owner"]').should('be.visible').click();
-    cy.get('[data-testid="owner-select-teams-search-bar"]')
-      .should('be.visible')
-      .type(TEAM_DETAILS.name);
-
-    verifyResponseStatusCode('@waitForTeams', 200);
-
-    cy.get('[data-testid="remove-owner"]').should('be.visible').click();
+    cy.get('[data-testid="remove-owner"]').click();
     verifyResponseStatusCode('@updateTable', 200);
     cy.get('[data-testid="owner-link"]').should(
       'not.contain',

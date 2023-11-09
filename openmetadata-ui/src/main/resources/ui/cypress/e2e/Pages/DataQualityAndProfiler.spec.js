@@ -50,11 +50,11 @@ const goToProfilerTab = () => {
     `api/v1/tables/name/${serviceName}.*.${TEAM_ENTITY}?fields=*&include=all`,
     'waitForPageLoad'
   );
-  visitEntityDetailsPage(
-    TEAM_ENTITY,
+  visitEntityDetailsPage({
+    term: TEAM_ENTITY,
     serviceName,
-    MYDATA_SUMMARY_OPTIONS.tables
-  );
+    entity: MYDATA_SUMMARY_OPTIONS.tables,
+  });
   verifyResponseStatusCode('@waitForPageLoad', 200);
 
   cy.get('[data-testid="profiler"]').should('be.visible').click();
@@ -595,7 +595,7 @@ describe('Data Quality and Profiler should work properly', () => {
   it('Profiler matrix and test case graph should visible', () => {
     const { term, entity, serviceName, testCaseName } =
       DATA_QUALITY_SAMPLE_DATA_TABLE;
-    visitEntityDetailsPage(term, serviceName, entity);
+    visitEntityDetailsPage({ term, serviceName, entity });
     cy.get('[data-testid="entity-header-display-name"]')
       .contains(term)
       .should('be.visible');
@@ -650,7 +650,7 @@ describe('Data Quality and Profiler should work properly', () => {
       `api/v1/tables/name/${serviceName}.*.${term}?fields=*&include=all`,
       'waitForPageLoad'
     );
-    visitEntityDetailsPage(term, serviceName, entity);
+    visitEntityDetailsPage({ term, serviceName, entity });
     verifyResponseStatusCode('@waitForPageLoad', 200);
     cy.get('[data-testid="entity-header-display-name"]')
       .should('be.visible')

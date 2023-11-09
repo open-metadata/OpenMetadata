@@ -20,9 +20,14 @@ import { ReactComponent as HeadingIcon } from '../../assets/svg/marketplace-head
 import ApplicationCard from '../../components/Applications/ApplicationCard/ApplicationCard.component';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/next-previous/NextPrevious.interface';
+import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
 import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import PageHeader from '../../components/header/PageHeader.component';
 import Loader from '../../components/Loader/Loader';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { AppMarketPlaceDefinition } from '../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
 import { Paging } from '../../generated/type/paging';
@@ -30,7 +35,10 @@ import { usePaging } from '../../hooks/paging/usePaging';
 import { getMarketPlaceApplicationList } from '../../rest/applicationMarketPlaceAPI';
 import { showPagination } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
-import { getMarketPlaceAppDetailsPath } from '../../utils/RouterUtils';
+import {
+  getMarketPlaceAppDetailsPath,
+  getSettingPath,
+} from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './market-place.less';
 
@@ -95,16 +103,39 @@ const MarketPlacePage = () => {
     <PageLayoutV1
       className="p-0 marketplace-page"
       pageTitle={t('label.market-place')}>
-      <Row gutter={[16, 16]}>
+      <Row className="marketplace-header">
         <Col span={24}>
-          <div className="marketplace-header d-flex items-center justify-between">
-            <PageHeader data={PAGE_HEADERS.APPLICATION} />
-            <HeadingIcon />
-          </div>
+          <TitleBreadcrumb
+            className="p-md"
+            titleLinks={[
+              {
+                name: t('label.application-plural'),
+                url: getSettingPath(
+                  GlobalSettingsMenuCategory.INTEGRATIONS,
+                  GlobalSettingOptions.APPLICATIONS
+                ),
+              },
+              {
+                name: t('label.market-place'),
+                url: '',
+              },
+            ]}
+          />
+        </Col>
+        <Col span={24}>
+          <Row className="marketplace-header-row" justify="center">
+            <Col span={18}>
+              <div className="d-flex items-center justify-between h-full">
+                <PageHeader data={PAGE_HEADERS.APPLICATION} />
+                <HeadingIcon />
+              </div>
+            </Col>
+          </Row>
         </Col>
       </Row>
+
       <Row className="m-t-lg" justify="center">
-        <Col span={20}>
+        <Col span={18}>
           <div className="d-flex flex-wrap gap-3">
             {applicationData?.map((item) => (
               <ApplicationCard
@@ -121,7 +152,7 @@ const MarketPlacePage = () => {
             ))}
           </div>
         </Col>
-        <Col span={20}>
+        <Col span={18}>
           {showPagination(paging) && (
             <NextPrevious
               currentPage={currentPage}

@@ -77,13 +77,12 @@ describe('Add and Remove Owner', () => {
 
   Object.entries(ENTITIES).map(([key, value]) => {
     it(`${key} details page`, () => {
-      visitEntityDetailsPage(
-        value.term,
-        value.serviceName,
-        value.entity,
-        undefined,
-        value.entityType
-      );
+      visitEntityDetailsPage({
+        term: value.term,
+        serviceName: value.serviceName,
+        entity: value.entity,
+        entityType: value.entityType,
+      });
       verifyResponseStatusCode('@entityPermission', 200);
       verifyResponseStatusCode('@activityFeed', 200);
 
@@ -95,14 +94,16 @@ describe('Add and Remove Owner', () => {
     interceptURL('PATCH', '/api/v1/databaseSchemas/*', 'patchOwner');
     interceptURL('GET', '/api/v1/*/name/*', 'schemaDetails');
     const value = ENTITIES.table;
-    visitEntityDetailsPage(value.term, value.serviceName, value.entity);
+    visitEntityDetailsPage({
+      term: value.term,
+      serviceName: value.serviceName,
+      entity: value.entity,
+    });
     verifyResponseStatusCode('@entityPermission', 200);
     verifyResponseStatusCode('@activityFeed', 200);
 
-    cy.get('[data-testid="breadcrumb"]')
-      .should('be.visible')
-      .contains(value.schema)
-      .click();
+    // click to schema in breadcrumb
+    cy.get(':nth-child(3) > .link-title').click();
     verifyResponseStatusCode('@entityPermission', 200);
     verifyResponseStatusCode('@schemaDetails', 200);
     verifyResponseStatusCode('@activityFeed', 200);
@@ -113,14 +114,16 @@ describe('Add and Remove Owner', () => {
     interceptURL('PATCH', '/api/v1/databases/*', 'patchOwner');
     interceptURL('GET', '/api/v1/databases/name/*', 'databaseDetails');
     const value = ENTITIES.table;
-    visitEntityDetailsPage(value.term, value.serviceName, value.entity);
+    visitEntityDetailsPage({
+      term: value.term,
+      serviceName: value.serviceName,
+      entity: value.entity,
+    });
     verifyResponseStatusCode('@entityPermission', 200);
     verifyResponseStatusCode('@activityFeed', 200);
 
-    cy.get('[data-testid="breadcrumb"]')
-      .should('be.visible')
-      .contains(value.database)
-      .click();
+    // click to database in breadcrumb
+    cy.get(':nth-child(2) > .link-title').click();
     verifyResponseStatusCode('@entityPermission', 200);
     verifyResponseStatusCode('@databaseDetails', 200);
     verifyResponseStatusCode('@activityFeed', 200);
@@ -141,14 +144,18 @@ describe('Add and Remove Owner', () => {
     );
     interceptURL('GET', '/api/v1/databases?service=*', 'databases');
     const value = ENTITIES.table;
-    visitEntityDetailsPage(value.term, value.serviceName, value.entity);
+
+    visitEntityDetailsPage({
+      term: value.term,
+      serviceName: value.serviceName,
+      entity: value.entity,
+    });
     verifyResponseStatusCode('@entityPermission', 200);
     verifyResponseStatusCode('@activityFeed', 200);
 
-    cy.get('[data-testid="breadcrumb"]')
-      .should('be.visible')
-      .contains(value.serviceName)
-      .click();
+    // click to service in breadcrumb
+    cy.get(':nth-child(1) > .link-title').click();
+
     verifyResponseStatusCode('@entityPermission', 200);
     verifyResponseStatusCode('@ingestionPipelines', 200);
     verifyResponseStatusCode('@serviceDetails', 200);
@@ -330,13 +337,12 @@ describe('Add and Remove Tier', () => {
 
   Object.entries(ENTITIES).map(([key, value]) => {
     it(`${key} details page`, () => {
-      visitEntityDetailsPage(
-        value.term,
-        value.serviceName,
-        value.entity,
-        undefined,
-        value.entityType
-      );
+      visitEntityDetailsPage({
+        term: value.term,
+        serviceName: value.serviceName,
+        entity: value.entity,
+        entityType: value.entityType,
+      });
       verifyResponseStatusCode('@entityPermission', 200);
       verifyResponseStatusCode('@activityFeed', 200);
 
@@ -347,7 +353,11 @@ describe('Add and Remove Tier', () => {
   it('database details page', () => {
     interceptURL('GET', '/api/v1/databases/name/*', 'databaseDetails');
     const value = ENTITIES.table;
-    visitEntityDetailsPage(value.term, value.serviceName, value.entity);
+    visitEntityDetailsPage({
+      term: value.term,
+      serviceName: value.serviceName,
+      entity: value.entity,
+    });
     verifyResponseStatusCode('@entityPermission', 200);
     verifyResponseStatusCode('@activityFeed', 200);
 

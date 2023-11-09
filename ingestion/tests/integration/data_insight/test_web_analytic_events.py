@@ -31,8 +31,8 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
     OpenMetadataConnection,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.helpers import datetime_to_ts
 from metadata.utils.time_utils import (
-    datetime_to_timestamp,
     get_beginning_of_day_timestamp_mill,
     get_end_of_day_timestamp_mill,
 )
@@ -122,7 +122,7 @@ class WebAnalyticsEndpointsTests(unittest.TestCase):
 
         for delta in range(7):
             delta = timedelta(days=delta, milliseconds=randint(100, 999))
-            tmsp = datetime_to_timestamp(datetime.utcnow() - delta, milliseconds=True)
+            tmsp = datetime_to_ts(datetime.utcnow() - delta)
 
             user_id = uuid.uuid4()
             session_id = uuid.uuid4()

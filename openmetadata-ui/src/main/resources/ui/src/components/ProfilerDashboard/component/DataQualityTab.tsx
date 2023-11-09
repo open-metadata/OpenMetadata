@@ -55,10 +55,7 @@ import {
 import { getEntityName } from '../../../utils/EntityUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getEncodedFqn, replacePlus } from '../../../utils/StringsUtils';
-import {
-  getEntityFqnFromEntityLink,
-  getTableExpandableConfig,
-} from '../../../utils/TableUtils';
+import { getEntityFqnFromEntityLink } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
 import {
@@ -407,7 +404,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           data-testid="test-case-table"
           dataSource={sortedData}
           expandable={{
-            ...getTableExpandableConfig<TestCase>(),
             expandRowByClick: true,
             rowExpandable: () => true,
             expandedRowRender: (recode) => <TestSummary data={recode} />,

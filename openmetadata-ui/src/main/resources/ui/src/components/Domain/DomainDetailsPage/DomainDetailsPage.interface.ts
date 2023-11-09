@@ -14,7 +14,6 @@ import { Domain } from '../../../generated/entity/domains/domain';
 
 export interface DomainDetailsPageProps {
   domain: Domain;
-  loading: boolean;
   onUpdate: (value: Domain) => Promise<void>;
   onDelete: (id: string) => void;
   isVersionsView?: boolean;

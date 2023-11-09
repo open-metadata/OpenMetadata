@@ -595,7 +595,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     // Task can be resolved by the User2 to whom the task is assigned
     resolveTask(taskId, resolveTask, USER2_AUTH_HEADERS);
 
-    Table table = TABLE_RESOURCE_TEST.getEntity(TABLE.getId(), "tags", USER_AUTH_HEADERS);
+    Table table = TABLE_RESOURCE_TEST.getEntity(TABLE.getId(), "tags,columns", USER_AUTH_HEADERS);
     List<TagLabel> tags = EntityUtil.getColumn(table, C1).getTags();
     assertEquals(USER_ADDRESS_TAG_LABEL.getTagFQN(), tags.get(0).getTagFQN());
 

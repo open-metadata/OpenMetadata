@@ -116,7 +116,11 @@ export const updateAssets = (domainObj) => {
   cy.contains('Adding a new Asset is easy, just give it a spin!').should(
     'be.visible'
   );
-  visitEntityDetailsPage(entity.term, entity.serviceName, entity.entity);
+  visitEntityDetailsPage({
+    term: entity.term,
+    serviceName: entity.serviceName,
+    entity: entity.entity,
+  });
 
   cy.get('[data-testid="add-domain"]').click();
 
@@ -131,6 +135,10 @@ export const updateAssets = (domainObj) => {
     .click();
 
   cy.get('[data-testid="domain-link"]').should('contain', domainObj.name);
+
+  cy.get('[data-testid="app-bar-item-domain"]')
+    .should('be.visible')
+    .click({ force: true });
 
   goToAssetsTab(domainObj);
 
@@ -147,18 +155,26 @@ export const removeAssets = (domainObj) => {
   verifyResponseStatusCode('@assetTab', 200);
 
   interceptURL('GET', '/api/v1/domain*', 'domains');
-  interceptURL('PATCH', '/api/v1/table/*', 'patchDomain');
+  interceptURL('PATCH', '/api/v1/tables/*', 'patchDomain');
 
   cy.get('[data-testid="entity-header-display-name"]')
     .contains(entity.term)
     .click();
 
-  visitEntityDetailsPage(entity.term, entity.serviceName, entity.entity);
+  visitEntityDetailsPage({
+    term: entity.term,
+    serviceName: entity.serviceName,
+    entity: entity.entity,
+  });
 
   cy.get('[data-testid="add-domain"]').click();
   verifyResponseStatusCode('@domains', 200);
   cy.get('[data-testid="remove-owner"]').click();
   verifyResponseStatusCode('@patchDomain', 200);
+
+  cy.get('[data-testid="app-bar-item-domain"]')
+    .should('be.visible')
+    .click({ force: true });
 
   goToAssetsTab(domainObj);
   cy.contains('Adding a new Asset is easy, just give it a spin!').should(
@@ -215,7 +231,7 @@ const fillForm = (formObj, type) => {
     .and('be.visible')
     .click();
 
-  cy.get('[data-testid="delete-confirmation-modal"]').should('not.exist');
+  cy.get('[data-testid="delete-modal"]').should('not.exist');
   cy.get('[data-testid="experts-container"]')
     .children()
     .should('have.length', 1);
@@ -268,12 +284,11 @@ export const deleteDomain = (domainObj) => {
   cy.get('.ant-menu-item').contains(domainObj.updatedDisplayName).click();
   cy.get('[data-testid="manage-button"]').click();
   cy.get('[data-testid="delete-button"]').scrollIntoView().click();
-  cy.get('[data-testid="delete-confirmation-modal"]').then(() => {
+  cy.get('[data-testid="delete-modal"]').then(() => {
     cy.get('[role="dialog"]').should('be.visible');
-    cy.get('[data-testid="modal-header"]').should('be.visible');
   });
 
-  cy.get('[data-testid="modal-header"]').should(
+  cy.get('[data-testid="delete-modal"] .ant-modal-title').should(
     'contain',
     `Delete ${domainObj.updatedName}`
   );

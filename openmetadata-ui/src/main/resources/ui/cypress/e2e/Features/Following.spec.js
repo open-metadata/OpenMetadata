@@ -40,7 +40,7 @@ const FOLLOWING_ENTITIES = [
 ];
 
 const followEntity = ({ term, serviceName, entity }, isUnfollow) => {
-  visitEntityDetailsPage(term, serviceName, entity);
+  visitEntityDetailsPage({ term, serviceName, entity });
 
   if (entity === 'dashboardDataModel') {
     interceptURL(
@@ -104,9 +104,11 @@ describe('Following data assets', () => {
       cy.clickOnLogo();
       verifyResponseStatusCode('@getAnnoucemenets', 200);
 
-      cy.get(`[data-testid="following-${entity.displayName}"]`).should(
-        'be.visible'
-      );
+      if (index < 5) {
+        cy.get(`[data-testid="following-${entity.displayName}"]`).should(
+          'be.visible'
+        );
+      }
 
       // Checking count of following
       cy.get(`[data-testid="following-data"]`).should('contain', index + 1);

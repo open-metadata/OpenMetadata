@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-// / <reference types="Cypress" />
+// eslint-disable-next-line spaced-comment
+/// <reference types="Cypress" />
 
 import {
   addOwner,
@@ -117,7 +118,9 @@ Object.entries(ENTITY_DETAILS_FOR_VERSION_TEST).map(
           .scrollIntoView()
           .should('be.visible');
 
-        cy.get(`[data-testid="diff-added"]`)
+        cy.get(
+          `[data-testid="asset-description-container"] [data-testid="diff-added"]`
+        )
           .scrollIntoView()
           .should('be.visible');
 
@@ -141,23 +144,24 @@ Object.entries(ENTITY_DETAILS_FOR_VERSION_TEST).map(
             .should('be.visible');
 
           cy.get(`[data-testid="diff-removed"]`)
+            .contains(entityDetails.entityChildRemovedDescription)
             .scrollIntoView()
             .should('be.visible');
 
           cy.get(`[data-testid="diff-added"]`)
+            .contains(entityDetails.entityChildAddedDescription)
             .scrollIntoView()
             .should('be.visible');
         }
       });
 
       it(`${entityType} version page should show removed tags changes properly`, () => {
-        visitEntityDetailsPage(
-          entityDetails.name,
-          entityDetails.serviceName,
-          entityDetails.entity,
-          undefined,
-          entityType
-        );
+        visitEntityDetailsPage({
+          term: entityDetails.name,
+          serviceName: entityDetails.serviceName,
+          entity: entityDetails.entity,
+          entityType: entityType,
+        });
 
         cy.get(
           '[data-testid="entity-right-panel"]  [data-testid="edit-button"]'
@@ -187,13 +191,12 @@ Object.entries(ENTITY_DETAILS_FOR_VERSION_TEST).map(
       });
 
       it(`${entityType} version page should show owner changes properly`, () => {
-        visitEntityDetailsPage(
-          entityDetails.name,
-          entityDetails.serviceName,
-          entityDetails.entity,
-          undefined,
-          entityType
-        );
+        visitEntityDetailsPage({
+          term: entityDetails.name,
+          serviceName: entityDetails.serviceName,
+          entity: entityDetails.entity,
+          entityType: entityType,
+        });
 
         cy.get('[data-testid="version-button"]').as('versionButton');
 
@@ -249,13 +252,12 @@ Object.entries(ENTITY_DETAILS_FOR_VERSION_TEST).map(
       });
 
       it(`${entityType} version page should show tier changes properly`, () => {
-        visitEntityDetailsPage(
-          entityDetails.name,
-          entityDetails.serviceName,
-          entityDetails.entity,
-          undefined,
-          entityType
-        );
+        visitEntityDetailsPage({
+          term: entityDetails.name,
+          serviceName: entityDetails.serviceName,
+          entity: entityDetails.entity,
+          entityType: entityType,
+        });
 
         cy.get('[data-testid="version-button"]').as('versionButton');
 

@@ -15,7 +15,10 @@ import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingWithoutTotal, RestoreRequestType } from 'Models';
 import { QueryVote } from '../components/TableQueries/TableQueries.interface';
-import { Database } from '../generated/entity/data/database';
+import {
+  Database,
+  DatabaseProfilerConfig as ProfilerConfig,
+} from '../generated/entity/data/database';
 import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { Include } from '../generated/type/include';
@@ -217,4 +220,46 @@ export const updateDatabaseVotes = async (id: string, data: QueryVote) => {
   );
 
   return response.data;
+};
+
+export const getDatabaseProfilerConfig = async (databaseId: string) => {
+  const response = await APIClient.get<Database>(
+    `/databases/${databaseId}/databaseProfilerConfig`
+  );
+
+  return response.data['databaseProfilerConfig'];
+};
+
+export const putDatabaseProfileConfig = async (
+  databaseId: string,
+  data: ProfilerConfig
+) => {
+  const response = await APIClient.put<ProfilerConfig, AxiosResponse<Database>>(
+    `/databases/${databaseId}/databaseProfilerConfig`,
+    data
+  );
+
+  return response.data['databaseProfilerConfig'];
+};
+
+export const getDatabaseSchemaProfilerConfig = async (
+  databaseSchemaId: string
+) => {
+  const response = await APIClient.get<DatabaseSchema>(
+    `/databaseSchemas/${databaseSchemaId}/databaseSchemaProfilerConfig`
+  );
+
+  return response.data['databaseSchemaProfilerConfig'];
+};
+
+export const putDatabaseSchemaProfileConfig = async (
+  databaseSchemaId: string,
+  data: ProfilerConfig
+) => {
+  const response = await APIClient.put<
+    ProfilerConfig,
+    AxiosResponse<DatabaseSchema>
+  >(`/databaseSchemas/${databaseSchemaId}/databaseSchemaProfilerConfig`, data);
+
+  return response.data['databaseSchemaProfilerConfig'];
 };

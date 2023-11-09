@@ -16,6 +16,7 @@ import { useTranslation } from 'react-i18next';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
+import RichTextEditorPreviewer from '../../../common/rich-text-editor/RichTextEditorPreviewer';
 import SummaryPanelSkeleton from '../../../Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 
 interface DataProductSummaryProps {
@@ -48,6 +49,32 @@ const DataProductSummary = ({
             </Typography.Text>
           </Col>
         </Row>
+        <Divider className="m-y-xs" />
+
+        <Row className="m-md" gutter={[0, 8]}>
+          <Col span={24}>
+            <Typography.Text
+              className="summary-panel-section-title"
+              data-testid="description-header">
+              {t('label.description')}
+            </Typography.Text>
+          </Col>
+          <Col span={24}>
+            <div>
+              {entityDetails.description?.trim() ? (
+                <RichTextEditorPreviewer
+                  markdown={entityDetails.description}
+                  maxLength={80}
+                />
+              ) : (
+                <Typography className="text-grey-body">
+                  {t('label.no-data-found')}
+                </Typography>
+              )}
+            </div>
+          </Col>
+        </Row>
+
         <Divider className="m-y-xs" />
 
         <Row className="m-md m-t-0" gutter={[0, 8]}>

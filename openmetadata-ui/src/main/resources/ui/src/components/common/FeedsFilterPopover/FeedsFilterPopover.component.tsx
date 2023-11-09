@@ -10,12 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { FilterOutlined } from '@ant-design/icons';
 import { Button, Checkbox, List, Popover, Space, Typography } from 'antd';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import AppState from '../../../AppState';
+import { ReactComponent as FilterIcon } from '../../../assets/svg/ic-feeds-filter.svg';
 import { FeedFilter } from '../../../enums/mydata.enum';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import './feeds-filter-popover.less';
 import { FeedsFilterPopoverProps } from './FeedsFilterPopover.interface';
 
@@ -24,10 +24,7 @@ const FeedsFilterPopover = ({
   onUpdate,
 }: FeedsFilterPopoverProps) => {
   const { t } = useTranslation();
-  const currentUser = useMemo(
-    () => AppState.getCurrentUserDetails(),
-    [AppState.userDetails, AppState.nonSecureUserDetails]
-  );
+  const { currentUser } = useAuthContext();
   const [popupVisible, setPopupVisible] = useState(false);
   const [selectedFilter, setSelectedFilter] =
     useState<FeedFilter>(defaultFilter);
@@ -126,7 +123,7 @@ const FeedsFilterPopover = ({
       showArrow={false}
       trigger="click"
       onOpenChange={setPopupVisible}>
-      <Button icon={<FilterOutlined />}>{t('label.filter-plural')}</Button>
+      <Button className="flex-center" icon={<FilterIcon height={16} />} />
     </Popover>
   );
 };

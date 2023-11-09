@@ -3,12 +3,21 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "CreateApp",
   "javaType": "org.openmetadata.schema.entity.app.CreateApp",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
   "description": "This schema defines the create applications request for Open-Metadata.",
   "type": "object",
   "properties": {
     "name": {
       "description": "Name of the Application.",
       "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name for the application.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the Application.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "owner": {
       "description": "Owner of this workflow.",
@@ -27,6 +36,5 @@
       "$ref": "./app.json#/definitions/appSchedule"
     }
   },
-  "required": ["appConfiguration", "appSchedule"],
   "additionalProperties": false
 }

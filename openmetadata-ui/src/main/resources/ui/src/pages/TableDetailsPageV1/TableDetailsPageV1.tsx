@@ -22,6 +22,7 @@ import { useHistory, useParams } from 'react-router-dom';
 import { useActivityFeedProvider } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
+import { useAuthContext } from '../../components/authentication/auth-provider/AuthProvider';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../components/common/description/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
@@ -61,7 +62,6 @@ import {
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
 import { JoinedWith, Table } from '../../generated/entity/data/table';
-import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { TagLabel, TagSource } from '../../generated/type/tagLabel';
 import { postThread } from '../../rest/feedsAPI';
@@ -76,17 +76,13 @@ import {
 } from '../../rest/tableAPI';
 import {
   addToRecentViewed,
-  getCurrentUserId,
   getFeedCounts,
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
   sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import { defaultFields } from '../../utils/DatasetDetailsUtils';
-import {
-  getEntityName,
-  getEntityReferenceFromEntity,
-} from '../../utils/EntityUtils';
+import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getDecodedFqn } from '../../utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
@@ -100,12 +96,13 @@ import TableConstraints from './TableConstraints/TableConstraints';
 const TableDetailsPageV1 = () => {
   const { isTourOpen, activeTabForTourDatasetPage, isTourPage } =
     useTourProvider();
+  const { currentUser } = useAuthContext();
   const [tableDetails, setTableDetails] = useState<Table>();
   const { fqn: datasetFQN, tab: activeTab = EntityTabs.SCHEMA } =
     useParams<{ fqn: string; tab: EntityTabs }>();
   const { t } = useTranslation();
   const history = useHistory();
-  const USERId = getCurrentUserId();
+  const USERId = currentUser?.id ?? '';
   const [feedCount, setFeedCount] = useState<number>(0);
   const [isEdit, setIsEdit] = useState(false);
   const [threadLink, setThreadLink] = useState<string>('');
@@ -425,19 +422,6 @@ const TableDetailsPageV1 = () => {
       }));
   };
 
-  const onDataProductsUpdate = async (updatedData: DataProduct[]) => {
-    const dataProductsEntity = updatedData?.map((item) => {
-      return getEntityReferenceFromEntity(item, EntityType.DATA_PRODUCT);
-    });
-
-    const updatedTableDetails = {
-      ...tableDetails,
-      dataProducts: dataProductsEntity,
-    };
-
-    await onTableUpdate(updatedTableDetails as Table, 'dataProducts');
-  };
-
   const schemaTab = useMemo(
     () => (
       <Row
@@ -482,6 +466,7 @@ const TableDetailsPageV1 = () => {
               isReadOnly={tableDetails?.deleted}
               joins={tableDetails?.joins?.columnJoins || []}
               tableConstraints={tableDetails?.tableConstraints}
+              tablePartitioned={tableDetails?.tablePartition}
               onThreadLinkSelect={onThreadLinkSelect}
               onUpdate={onColumnsUpdate}
             />
@@ -499,8 +484,7 @@ const TableDetailsPageV1 = () => {
             <DataProductsContainer
               activeDomain={tableDetails?.domain}
               dataProducts={tableDetails?.dataProducts ?? []}
-              hasPermission={tablePermissions.EditAll && !tableDetails?.deleted}
-              onSave={onDataProductsUpdate}
+              hasPermission={false}
             />
 
             <TagsContainerV2

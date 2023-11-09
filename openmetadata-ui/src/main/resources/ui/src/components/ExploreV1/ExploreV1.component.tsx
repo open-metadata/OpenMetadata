@@ -76,7 +76,6 @@ const ExploreV1: React.FC<ExploreProps> = ({
   quickFilters,
 }) => {
   const { t } = useTranslation();
-  // const { tab } = useParams<{ tab: string }>();
   const [selectedQuickFilters, setSelectedQuickFilters] = useState<
     ExploreQuickFilterField[]
   >([] as ExploreQuickFilterField[]);
@@ -239,8 +238,10 @@ const ExploreV1: React.FC<ExploreProps> = ({
                 rootClassName="left-container"
                 selectedKeys={[activeTabKey]}
                 onClick={(info) => {
-                  info && onChangeSearchIndex(info.key as ExploreSearchIndex);
-                  setShowSummaryPanel(false);
+                  if (info && info.key !== activeTabKey) {
+                    onChangeSearchIndex(info.key as ExploreSearchIndex);
+                    setShowSummaryPanel(false);
+                  }
                 }}
               />
             </Sider>

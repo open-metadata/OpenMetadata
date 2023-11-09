@@ -26,7 +26,8 @@
         "DomoDashboard",
         "QuickSight",
         "QlikSense",
-        "Lightdash"
+        "Lightdash",
+        "Mstr"
       ],
       "javaEnums": [
         {
@@ -64,6 +65,9 @@
         },
         {
           "name": "Lightdash"
+        },
+        {
+          "name": "Mstr"
         }
       ]
     },
@@ -113,6 +117,9 @@
             },
             {
               "$ref": "./connections/dashboard/lightdashConnection.json"
+            },
+            {
+              "$ref": "./connections/dashboard/mstrConnection.json"
             }
           ]
         }
@@ -192,6 +199,10 @@
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
       "default": false
+    },
+    "dataProducts" : {
+      "description": "List of data products this entity is part of.",
+      "$ref" : "../../type/entityReferenceList.json"
     },
     "domain" : {
       "description": "Domain the Dashboard service belongs to.",

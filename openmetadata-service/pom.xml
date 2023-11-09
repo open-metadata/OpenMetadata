@@ -15,10 +15,11 @@
     <sonar.junit.reportPaths>${project.basedir}/target/surefire-reports</sonar.junit.reportPaths>
     <sonar.coverage.jacoco.xmlReportPaths>${project.basedir}/target/site/jacoco-aggregate/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
     <sonar.tests>${project.basedir}/src/test/java</sonar.tests>
-    <org.testcontainers.version>1.19.0</org.testcontainers.version>
-    <awssdk.version>2.20.143</awssdk.version>
-    <expiring.map.version>0.5.10</expiring.map.version>
+    <org.testcontainers.version>1.19.1</org.testcontainers.version>
+    <awssdk.version>2.21.16</awssdk.version>
+    <expiring.map.version>0.5.11</expiring.map.version>
     <java.saml>2.9.0</java.saml>
+    <xmlsec.version>2.2.6</xmlsec.version>
     <quartz.version>2.3.2</quartz.version>
   </properties>
 
@@ -89,7 +90,7 @@
     <dependency>
       <groupId>ru.vyarus.guicey</groupId>
       <artifactId>guicey-jdbi3</artifactId>
-      <version>5.9.1</version>
+      <version>5.9.2</version>
     </dependency>
     <dependency>
       <groupId>com.smoketurner</groupId>
@@ -389,7 +390,7 @@
     <dependency>
       <groupId>org.eclipse.jetty.websocket</groupId>
       <artifactId>websocket-server</artifactId>
-      <version>9.4.52.v20230823</version>
+      <version>9.4.53.v20231009</version>
     </dependency>
     <dependency>
       <groupId>org.springframework</groupId>
@@ -446,7 +447,16 @@
           <groupId>com.fasterxml.woodstox</groupId>
           <artifactId>woodstox-core</artifactId>
         </exclusion>
+        <exclusion>
+          <groupId>org.apache.santurario</groupId>
+          <artifactId>xmlsec</artifactId>
+        </exclusion>
       </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.santuario</groupId>
+      <artifactId>xmlsec</artifactId>
+      <version>${xmlsec.version}</version>
     </dependency>
     <dependency>
       <groupId>org.quartz-scheduler</groupId>
@@ -459,17 +469,22 @@
       <version>${woodstox.version}</version>
     </dependency>
     <dependency>
+      <groupId>com.cronutils</groupId>
+      <artifactId>cron-utils</artifactId>
+      <version>9.2.0</version>
+    </dependency>
+    <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
-      <version>32.0.1-jre</version>
+      <version>32.1.3-jre</version>
       <scope>compile</scope>
     </dependency>
-      <dependency>
-          <groupId>org.junit.platform</groupId>
-          <artifactId>junit-platform-commons</artifactId>
-          <version>1.9.3</version>
-          <scope>test</scope>
-      </dependency>
+    <dependency>
+      <groupId>org.junit.platform</groupId>
+      <artifactId>junit-platform-commons</artifactId>
+      <version>1.9.3</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <profiles>
@@ -567,7 +582,7 @@
                     </includes>
                     <systemPropertyVariables>
                       <jdbcContainerClassName>org.testcontainers.containers.PostgreSQLContainer</jdbcContainerClassName>
-                      <jdbcContainerImage>postgres:12.10</jdbcContainerImage>
+                      <jdbcContainerImage>postgres:15</jdbcContainerImage>
                     </systemPropertyVariables>
                   </configuration>
                 </execution>
@@ -664,7 +679,7 @@
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>buildnumber-maven-plugin</artifactId>
-        <version>1.4</version>
+        <version>3.0.0</version>
         <configuration>
           <doCheck>false</doCheck>
           <doUpdate>false</doUpdate>
@@ -712,7 +727,7 @@
                 <name>Apache 2.0</name>
               </license>
             </info>
-            <descriptionFile>../openmetadata-docs/content/v1.2.x-SNAPSHOT/main-concepts/metadata-standard/apis.md</descriptionFile>
+            <descriptionFile>../openmetadata-docs/content/v1.2.x/main-concepts/metadata-standard/apis.md</descriptionFile>
           </swaggerConfig>
         </configuration>
         <executions>

@@ -22,6 +22,7 @@ import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.Entity.getEntity;
+import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.util.LambdaExceptionUtil.ignoringComparator;
 import static org.openmetadata.service.util.LambdaExceptionUtil.rethrowFunction;
 
@@ -88,9 +89,9 @@ import org.openmetadata.service.util.ResultList;
 public class TableRepository extends EntityRepository<Table> {
 
   // Table fields that can be patched in a PATCH request
-  static final String PATCH_FIELDS = "tableConstraints,tablePartition";
+  static final String PATCH_FIELDS = "tableConstraints,tablePartition,columns";
   // Table fields that can be updated in a PUT request
-  static final String UPDATE_FIELDS = "tableConstraints,tablePartition,dataModel,sourceUrl";
+  static final String UPDATE_FIELDS = "tableConstraints,tablePartition,dataModel,sourceUrl,columns";
 
   public static final String FIELD_RELATION_COLUMN_TYPE = "table.columns.column";
   public static final String FIELD_RELATION_TABLE_TYPE = "table";
@@ -126,7 +127,11 @@ public class TableRepository extends EntityRepository<Table> {
               ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), table.getId())
               : table.getUsageSummary());
     }
-    getColumnTags(fields.contains(FIELD_TAGS), table.getColumns());
+    if (fields.contains(COLUMN_FIELD)) {
+      // We'll get column tags only if we are getting the column fields
+      populateEntityFieldTags(
+          entityType, table.getColumns(), table.getFullyQualifiedName(), fields.contains(FIELD_TAGS));
+    }
     table.setJoins(fields.contains("joins") ? getJoins(table) : table.getJoins());
     table.setTableProfilerConfig(
         fields.contains(TABLE_PROFILER_CONFIG) ? getTableProfilerConfig(table) : table.getTableProfilerConfig());
@@ -250,7 +255,7 @@ public class TableRepository extends EntityRepository<Table> {
 
     // Set the column tags. Will be used to mask the sample data
     if (!authorizePII) {
-      getColumnTags(true, table.getColumns());
+      populateEntityFieldTags(entityType, table.getColumns(), table.getFullyQualifiedName(), true);
       table.setTags(getTags(table));
       return PIIMasker.getSampleData(table);
     }
@@ -483,7 +488,7 @@ public class TableRepository extends EntityRepository<Table> {
 
     // Set the column tags. Will be used to hide the data
     if (!authorizePII) {
-      getColumnTags(true, table.getColumns());
+      populateEntityFieldTags(entityType, table.getColumns(), table.getFullyQualifiedName(), true);
       return PIIMasker.getTableProfile(table);
     }
 
@@ -798,14 +803,6 @@ public class TableRepository extends EntityRepository<Table> {
       }
     }
     return childrenColumn;
-  }
-
-  // TODO duplicated code
-  private void getColumnTags(boolean setTags, List<Column> columns) {
-    for (Column c : listOrEmpty(columns)) {
-      c.setTags(setTags ? getTags(c.getFullyQualifiedName()) : c.getTags());
-      getColumnTags(setTags, c.getChildren());
-    }
   }
 
   private void validateTableFQN(String fqn) {

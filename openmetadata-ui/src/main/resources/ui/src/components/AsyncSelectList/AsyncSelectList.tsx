@@ -20,7 +20,7 @@ import {
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
-import { debounce, isEmpty, isUndefined } from 'lodash';
+import { debounce, isEmpty, isUndefined, pick } from 'lodash';
 import { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import React, { FC, useCallback, useMemo, useRef, useState } from 'react';
 import Loader from '../../components/Loader/Loader';
@@ -153,6 +153,17 @@ const AsyncSelectList: FC<AsyncSelectListProps> = ({
 
     const { label, onClose } = data;
     const tagLabel = getTagDisplay(label as string);
+    const tag = {
+      tagFQN: selectedTag?.data.fullyQualifiedName,
+      ...pick(
+        selectedTag?.data,
+        'description',
+        'displayName',
+        'name',
+        'style',
+        'tagFQN'
+      ),
+    } as TagLabel;
 
     const onPreventMouseDown = (event: React.MouseEvent<HTMLSpanElement>) => {
       event.preventDefault();
@@ -177,7 +188,7 @@ const AsyncSelectList: FC<AsyncSelectListProps> = ({
     return (
       <TagsV1
         startWith={TAG_START_WITH.SOURCE_ICON}
-        tag={selectedTag?.data as TagLabel}
+        tag={tag}
         tagProps={tagProps}
       />
     );
@@ -189,7 +200,13 @@ const AsyncSelectList: FC<AsyncSelectListProps> = ({
         (option) => option.value === value
       );
 
-      return data ?? { value, label: value };
+      return (
+        data ?? {
+          value,
+          label: value,
+          data: initialData?.find((item) => item.value === value)?.data,
+        }
+      );
     });
     selectedTagsRef.current = selectedValues;
     onChange?.(selectedValues);

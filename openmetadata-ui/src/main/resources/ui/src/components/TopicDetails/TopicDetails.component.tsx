@@ -42,7 +42,7 @@ import { ThreadType } from '../../generated/entity/feed/thread';
 import { TagLabel } from '../../generated/type/schema';
 import { TagSource } from '../../generated/type/tagLabel';
 import { restoreTopic } from '../../rest/topicsAPI';
-import { getCurrentUserId, getFeedCounts } from '../../utils/CommonUtils';
+import { getFeedCounts } from '../../utils/CommonUtils';
 import {
   getEntityName,
   getEntityReferenceFromEntity,
@@ -52,6 +52,7 @@ import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
+import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
 import { TopicDetailsProps } from './TopicDetails.interface';
 import TopicSchemaFields from './TopicSchema/TopicSchema';
@@ -70,6 +71,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   onUpdateVote,
 }: TopicDetailsProps) => {
   const { t } = useTranslation();
+  const { currentUser } = useAuthContext();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const { fqn: topicFQN, tab: activeTab = EntityTabs.SCHEMA } =
     useParams<{ fqn: string; tab: EntityTabs }>();
@@ -103,10 +105,10 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
 
   const { isFollowing } = useMemo(
     () => ({
-      isFollowing: followers?.some(({ id }) => id === getCurrentUserId()),
+      isFollowing: followers?.some(({ id }) => id === currentUser?.id),
       followersCount: followers?.length ?? 0,
     }),
-    [followers]
+    [followers, currentUser]
   );
 
   const followTopic = async () =>
@@ -309,10 +311,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                 <DataProductsContainer
                   activeDomain={topicDetails?.domain}
                   dataProducts={topicDetails?.dataProducts ?? []}
-                  hasPermission={
-                    topicPermissions.EditAll && !topicDetails.deleted
-                  }
-                  onSave={onDataProductsUpdate}
+                  hasPermission={false}
                 />
 
                 <TagsContainerV2

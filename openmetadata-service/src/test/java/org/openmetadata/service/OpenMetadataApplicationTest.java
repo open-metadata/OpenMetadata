@@ -89,6 +89,7 @@ public abstract class OpenMetadataApplicationTest {
     if (CommonUtil.nullOrEmpty(elasticSearchContainerImage)) {
       elasticSearchContainerImage = ELASTIC_SEARCH_CONTAINER_IMAGE;
     }
+    OpenMetadataApplicationConfig config = new OpenMetadataApplicationConfig();
     // The system properties are provided by maven-surefire for testing with mysql and postgres
     LOG.info("Using test container class {} and image {}", jdbcContainerClassName, jdbcContainerImage);
 
@@ -131,14 +132,18 @@ public abstract class OpenMetadataApplicationTest {
 
     ConfigOverride[] configOverridesArray = configOverrides.toArray(new ConfigOverride[0]);
     APP = new DropwizardAppExtension<>(OpenMetadataApplication.class, CONFIG_PATH, configOverridesArray);
-
     // Run System Migrations
     jdbi = Jdbi.create(sqlContainer.getJdbcUrl(), sqlContainer.getUsername(), sqlContainer.getPassword());
     jdbi.installPlugin(new SqlObjectPlugin());
     jdbi.getConfig(SqlObjects.class)
         .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(sqlContainer.getDriverClassName()));
     validateAndRunSystemDataMigrations(
-        jdbi, ConnectionType.from(sqlContainer.getDriverClassName()), nativeMigrationScripsLocation, null, false);
+        jdbi,
+        config,
+        ConnectionType.from(sqlContainer.getDriverClassName()),
+        nativeMigrationScripsLocation,
+        null,
+        false);
     APP.before();
     createClient();
   }

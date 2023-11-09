@@ -19,18 +19,14 @@ import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg'
 import {
   DE_ACTIVE_COLOR,
   ICON_DIMENSION,
+  NO_DATA_PLACEHOLDER,
 } from '../../../../constants/constants';
-import {
-  TAG_CONSTANT,
-  TAG_START_WITH,
-} from '../../../../constants/Tag.constants';
 import {
   SUBSCRIPTION_WEBHOOK,
   SUBSCRIPTION_WEBHOOK_OPTIONS,
 } from '../../../../constants/Teams.constants';
 import { Webhook } from '../../../../generated/type/profile';
 import { getWebhookIcon } from '../../../../utils/TeamUtils';
-import TagsV1 from '../../../Tag/TagsV1/TagsV1.component';
 import { SubscriptionWebhook, TeamsSubscriptionProps } from '../team.interface';
 
 const TeamsSubscription = ({
@@ -46,7 +42,14 @@ const TeamsSubscription = ({
   const getWebhookIconByKey = useCallback((item: SUBSCRIPTION_WEBHOOK) => {
     const Icon = getWebhookIcon(item);
 
-    return <Icon data-testid={`${item}-icon`} height={20} width={20} />;
+    return (
+      <Icon
+        className="align-middle"
+        data-testid={`${item}-icon`}
+        height={20}
+        width={20}
+      />
+    );
   }, []);
 
   // Watchers
@@ -54,12 +57,9 @@ const TeamsSubscription = ({
 
   const cellItem = useCallback(
     (key: string, value: Webhook) => (
-      <Space align="start">
+      <Typography.Link href={value.endpoint} target="_blank">
         {getWebhookIconByKey(key as SUBSCRIPTION_WEBHOOK)}
-        <Typography.Text className="text-xs text-grey-muted">
-          {value.endpoint}
-        </Typography.Text>
-      </Space>
+      </Typography.Link>
     ),
     []
   );
@@ -67,14 +67,36 @@ const TeamsSubscription = ({
   const subscriptionRenderElement = useMemo(() => {
     const webhook = Object.entries(subscription ?? {})?.[0];
 
-    return isEmpty(subscription) && hasEditPermission ? (
-      <div onClick={() => setEditSubscription(true)}>
-        <TagsV1 startWith={TAG_START_WITH.PLUS} tag={TAG_CONSTANT} />
-      </div>
-    ) : (
-      cellItem(webhook[0], webhook[1])
-    );
-  }, [subscription]);
+    if (isEmpty(subscription)) {
+      if (hasEditPermission) {
+        return (
+          <div className="flex-center gap-2">
+            <Typography.Text
+              className="font-medium"
+              data-testid="subscription-no-data">
+              {t('label.none')}
+            </Typography.Text>
+            <EditIcon
+              className="cursor-pointer"
+              color={DE_ACTIVE_COLOR}
+              width={14}
+              onClick={() => setEditSubscription(true)}
+            />
+          </div>
+        );
+      }
+
+      return (
+        <Typography.Text
+          className="font-medium"
+          data-testid="subscription-no-data">
+          {NO_DATA_PLACEHOLDER}
+        </Typography.Text>
+      );
+    }
+
+    return cellItem(webhook[0], webhook[1]);
+  }, [subscription, hasEditPermission, setEditSubscription]);
 
   const handleSave = async (values: SubscriptionWebhook) => {
     setIsLoading(true);
@@ -106,7 +128,7 @@ const TeamsSubscription = ({
   }, [subscription, editSubscription]);
 
   return (
-    <Space align="start" data-testid="teams-subscription">
+    <Space align="center" data-testid="teams-subscription">
       <Typography.Text className="right-panel-label font-normal">
         {`${t('label.subscription')} :`}
       </Typography.Text>

@@ -162,10 +162,12 @@ export const PAGE_HEADERS = {
   },
   APPLICATION: {
     header: i18n.t('label.extend-open-meta-data'),
-    subHeader: i18n.t('message.tools-to-improve-workflow'),
+    subHeader: i18n.t('message.application-to-improve-data'),
   },
   CUSTOM_PAGE: {
-    header: i18n.t('label.customize-landing-page'),
+    header: i18n.t('label.customize-entity', {
+      entity: i18n.t('label.landing-page'),
+    }),
     subHeader: i18n.t('message.page-sub-header-for-customize-landing-page'),
   },
 };

@@ -38,6 +38,7 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
+import { ReactComponent as IconRestore } from '../../../assets/svg/ic-restore.svg';
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import PageLayoutV1 from '../../../components/containers/PageLayoutV1';
 import Loader from '../../../components/Loader/Loader';
@@ -50,11 +51,15 @@ import {
 import { ServiceCategory } from '../../../enums/service.enum';
 import {
   App,
+  AppType,
   ScheduleTimeline,
 } from '../../../generated/entity/applications/app';
+import { Include } from '../../../generated/type/include';
 import {
+  deployApp,
   getApplicationByName,
   patchApplication,
+  restoreApp,
   triggerOnDemandApp,
   uninstallApp,
 } from '../../../rest/applicationAPI';
@@ -71,6 +76,7 @@ import AppRunsHistory from '../AppRunsHistory/AppRunsHistory.component';
 import AppSchedule from '../AppSchedule/AppSchedule.component';
 import { ApplicationTabs } from '../MarketPlaceAppDetails/MarketPlaceAppDetails.interface';
 import './app-details.less';
+import { AppAction } from './AppDetails.interface';
 
 const AppDetails = () => {
   const { t } = useTranslation();
@@ -80,13 +86,16 @@ const AppDetails = () => {
   const [appData, setAppData] = useState<App>();
   const [showActions, setShowActions] = useState(false);
   const [showDeleteModel, setShowDeleteModel] = useState(false);
-  const [isAppDisableAction, setIsAppDisableAction] = useState(false);
   const [jsonSchema, setJsonSchema] = useState<RJSFSchema>();
+  const [action, setAction] = useState<AppAction | null>(null);
 
   const fetchAppDetails = useCallback(async () => {
     setIsLoading(true);
     try {
-      const data = await getApplicationByName(fqn, 'owner');
+      const data = await getApplicationByName(fqn, {
+        fields: 'owner,pipelines',
+        include: Include.All,
+      });
       setAppData(data);
       const schema = await import(
         `../../../utils/ApplicationSchemas/${fqn}.json`
@@ -108,48 +117,100 @@ const AppDetails = () => {
     );
   };
 
+  const handleRestore = useCallback(async () => {
+    if (appData) {
+      try {
+        await restoreApp(appData.id);
+        showSuccessToast(
+          t('message.entity-enabled-success', {
+            entity: t('label.application'),
+          }),
+          2000
+        );
+      } catch (err) {
+        showErrorToast(err as AxiosError);
+      } finally {
+        onBrowseAppsClick();
+      }
+    }
+  }, [appData]);
+
   const onConfirmAction = useCallback(async () => {
     try {
-      await uninstallApp(
-        appData?.fullyQualifiedName ?? '',
-        !isAppDisableAction
-      );
+      if (action === AppAction.ENABLE) {
+        handleRestore();
+      } else {
+        await uninstallApp(
+          appData?.fullyQualifiedName ?? '',
+          action === AppAction.UNINSTALL
+        );
 
-      showSuccessToast(
-        isAppDisableAction
-          ? t('message.app-disabled-successfully')
-          : t('message.app-uninstalled-successfully')
-      );
+        showSuccessToast(
+          action === AppAction.DISABLE
+            ? t('message.app-disabled-successfully')
+            : t('message.app-uninstalled-successfully')
+        );
 
-      onBrowseAppsClick();
+        onBrowseAppsClick();
+      }
     } catch (err) {
       showErrorToast(err as AxiosError);
     }
-  }, [appData, isAppDisableAction]);
+  }, [appData, action]);
 
   const manageButtonContent: ItemType[] = [
-    {
-      label: (
-        <ManageButtonItemLabel
-          description={t('message.disable-app', {
-            app: getEntityName(appData),
-          })}
-          icon={
-            <StopOutlined
-              style={{ fontSize: '18px', color: DE_ACTIVE_COLOR }}
-            />
-          }
-          id="disable-button"
-          name={t('label.disable')}
-        />
-      ),
-      key: 'disable-button',
-      onClick: (e) => {
-        e.domEvent.stopPropagation();
-        setShowDeleteModel(true);
-        setIsAppDisableAction(true);
-      },
-    },
+    ...(appData?.deleted
+      ? ([
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t('message.restore-action-description', {
+                  entityType: getEntityName(appData),
+                })}
+                icon={
+                  <IconRestore
+                    className="m-t-xss"
+                    name="Restore"
+                    width="18px"
+                  />
+                }
+                id="restore-button"
+                name={t('label.restore')}
+              />
+            ),
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              setShowActions(false);
+              setAction(AppAction.ENABLE);
+              setShowDeleteModel(true);
+            },
+            key: 'restore-button',
+          },
+        ] as ItemType[])
+      : [
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t('message.disable-app', {
+                  app: getEntityName(appData),
+                })}
+                icon={
+                  <StopOutlined
+                    style={{ fontSize: '18px', color: DE_ACTIVE_COLOR }}
+                  />
+                }
+                id="disable-button"
+                name={t('label.disable')}
+              />
+            ),
+            key: 'disable-button',
+            onClick: () => {
+              setShowDeleteModel(true);
+              setShowActions(false);
+              setAction(AppAction.DISABLE);
+            },
+          },
+        ]),
     {
       label: (
         <ManageButtonItemLabel
@@ -162,10 +223,10 @@ const AppDetails = () => {
         />
       ),
       key: 'uninstall-button',
-      onClick: (e) => {
-        e.domEvent.stopPropagation();
+      onClick: () => {
         setShowDeleteModel(true);
-        setIsAppDisableAction(false);
+        setShowActions(false);
+        setAction(AppAction.UNINSTALL);
       },
     },
   ];
@@ -223,13 +284,66 @@ const AppDetails = () => {
   const onDemandTrigger = async () => {
     try {
       await triggerOnDemandApp(appData?.fullyQualifiedName ?? '');
-      showSuccessToast(t('message.application-trigger-successfully'));
+      showSuccessToast(
+        t('message.application-action-successfully', {
+          action: t('label.triggered-lowercase'),
+        })
+      );
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const onDeployTrigger = async () => {
+    try {
+      await deployApp(appData?.fullyQualifiedName ?? '');
+      showSuccessToast(
+        t('message.application-action-successfully', {
+          action: t('label.deploy'),
+        })
+      );
+      fetchAppDetails();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
   };
 
   const tabs = useMemo(() => {
+    const tabConfiguration =
+      appData?.appConfiguration &&
+      appData.appType === AppType.Internal &&
+      jsonSchema
+        ? [
+            {
+              label: (
+                <TabsLabel
+                  id={ApplicationTabs.CONFIGURATION}
+                  name={t('label.configuration')}
+                />
+              ),
+              key: ApplicationTabs.CONFIGURATION,
+              children: (
+                <div>
+                  <FormBuilder
+                    disableTestConnection
+                    useSelectWidget
+                    cancelText={t('label.back')}
+                    formData={appData.appConfiguration}
+                    okText={t('label.submit')}
+                    schema={jsonSchema}
+                    serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
+                    serviceType=""
+                    showTestConnection={false}
+                    validator={validator}
+                    onCancel={noop}
+                    onSubmit={onConfigSave}
+                  />
+                </div>
+              ),
+            },
+          ]
+        : [];
+
     return [
       {
         label: (
@@ -243,54 +357,47 @@ const AppDetails = () => {
                 appData={appData}
                 onCancel={onBrowseAppsClick}
                 onDemandTrigger={onDemandTrigger}
+                onDeployTrigger={onDeployTrigger}
                 onSave={onAppScheduleSave}
               />
             )}
           </div>
         ),
       },
-      {
-        label: (
-          <TabsLabel
-            id={ApplicationTabs.CONFIGURATION}
-            name={t('label.configuration')}
-          />
-        ),
-        key: ApplicationTabs.CONFIGURATION,
-        children: (
-          <div>
-            {jsonSchema && appData && (
-              <FormBuilder
-                disableTestConnection
-                useSelectWidget
-                cancelText={t('label.back')}
-                formData={appData.appConfiguration}
-                okText={t('label.submit')}
-                schema={jsonSchema}
-                serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
-                serviceType=""
-                showTestConnection={false}
-                validator={validator}
-                onCancel={noop}
-                onSubmit={onConfigSave}
-              />
-            )}
-          </div>
-        ),
-      },
-      {
-        label: (
-          <TabsLabel id={ApplicationTabs.HISTORY} name={t('label.history')} />
-        ),
-        key: ApplicationTabs.HISTORY,
-        children: (
-          <div className="p-y-md">
-            <AppRunsHistory />
-          </div>
-        ),
-      },
+      ...tabConfiguration,
+      ...(appData?.appType === AppType.Internal && !appData?.deleted
+        ? [
+            {
+              label: (
+                <TabsLabel
+                  id={ApplicationTabs.HISTORY}
+                  name={t('label.history')}
+                />
+              ),
+              key: ApplicationTabs.HISTORY,
+              children: (
+                <div className="p-y-md">
+                  <AppRunsHistory appData={appData} />
+                </div>
+              ),
+            },
+          ]
+        : []),
     ];
   }, [appData, jsonSchema]);
+
+  const actionText = useMemo(() => {
+    switch (action) {
+      case AppAction.ENABLE:
+        return t('label.enable-lowercase');
+      case AppAction.DISABLE:
+        return t('label.disable-lowercase');
+      case AppAction.UNINSTALL:
+        return t('label.uninstall-lowercase');
+      default:
+        return '';
+    }
+  }, [action]);
 
   useEffect(() => {
     fetchAppDetails();
@@ -335,9 +442,11 @@ const AppDetails = () => {
                 <Button
                   className="glossary-manage-dropdown-button p-x-xs"
                   data-testid="manage-button"
-                  onClick={() => setShowActions(true)}>
-                  <IconDropdown className="anticon self-center manage-dropdown-icon" />
-                </Button>
+                  icon={
+                    <IconDropdown className="vertical-align-inherit manage-dropdown-icon" />
+                  }
+                  onClick={() => setShowActions(true)}
+                />
               </Tooltip>
             </Dropdown>
           </div>
@@ -399,9 +508,7 @@ const AppDetails = () => {
 
       <ConfirmationModal
         bodyText={t('message.are-you-sure-action-property', {
-          action: isAppDisableAction
-            ? t('label.disable-lowercase')
-            : t('label.uninstall-lowercase'),
+          action: actionText,
           propertyName: getEntityName(appData),
         })}
         cancelText={t('label.cancel')}

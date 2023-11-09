@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Divider, Space, Typography } from 'antd';
 import { isEmpty } from 'lodash';
-import React, { ReactNode } from 'react';
+import React, { Fragment, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
 import {
@@ -19,6 +20,7 @@ import {
   getUserPath,
   NO_DATA_PLACEHOLDER,
 } from '../constants/constants';
+import { DOMAIN_TYPE_DATA } from '../constants/Domain.constants';
 import { EntityField } from '../constants/Feeds.constants';
 import { DataProduct } from '../generated/entity/domains/dataProduct';
 import { Domain } from '../generated/entity/domains/domain';
@@ -44,6 +46,7 @@ export const getOwner = (
           id={owner?.id || ''}
           name={owner?.name ?? ''}
           textClass="text-xs"
+          type="circle"
           width="20"
         />
         <Link
@@ -109,3 +112,41 @@ export const getUserNames = (
 
   return getOwner(hasPermission, getEntityName(entity.owner), entity.owner);
 };
+
+export const getQueryFilterToIncludeDomain = (fqn: string) => ({
+  query: {
+    bool: {
+      must: [
+        {
+          bool: {
+            must: [
+              {
+                term: {
+                  'domain.fullyQualifiedName': fqn,
+                },
+              },
+            ],
+          },
+        },
+      ],
+    },
+  },
+});
+
+// Domain type description which will be shown in tooltip
+export const domainTypeTooltipDataRender = () => (
+  <Space direction="vertical" size="middle">
+    {DOMAIN_TYPE_DATA.map(({ type, description }, index) => (
+      <Fragment key={type}>
+        <Space direction="vertical" size={0}>
+          <Typography.Text>{`${type} :`}</Typography.Text>
+          <Typography.Paragraph className="m-0 text-grey-muted">
+            {description}
+          </Typography.Paragraph>
+        </Space>
+
+        {index !== 2 && <Divider className="m-0" />}
+      </Fragment>
+    ))}
+  </Space>
+);

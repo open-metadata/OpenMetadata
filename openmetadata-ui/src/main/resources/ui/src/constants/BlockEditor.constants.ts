@@ -11,81 +11,8 @@
  *  limitations under the License.
  */
 import { EditorOptions } from '@tiptap/core';
-import LinkExtension from '@tiptap/extension-link';
-import Placeholder from '@tiptap/extension-placeholder';
-import TaskItem from '@tiptap/extension-task-item';
-import TaskList from '@tiptap/extension-task-list';
-import StarterKit from '@tiptap/starter-kit';
-import DiffView from '../components/BlockEditor/Extensions/diffView';
-import { Hashtag } from '../components/BlockEditor/Extensions/hashtag';
-import { hashtagSuggestion } from '../components/BlockEditor/Extensions/hashtag/hashtagSuggestion';
-import { Image } from '../components/BlockEditor/Extensions/image';
-import { Mention } from '../components/BlockEditor/Extensions/mention';
-import { mentionSuggestion } from '../components/BlockEditor/Extensions/mention/mentionSuggestions';
-import slashCommand from '../components/BlockEditor/Extensions/slashCommand';
-import { getSuggestionItems } from '../components/BlockEditor/Extensions/slashCommand/items';
-import renderItems from '../components/BlockEditor/Extensions/slashCommand/renderItems';
 
 export const EDITOR_OPTIONS: Partial<EditorOptions> = {
-  extensions: [
-    StarterKit.configure({
-      heading: {
-        levels: [1, 2, 3],
-      },
-    }),
-    Placeholder.configure({
-      showOnlyWhenEditable: true,
-      includeChildren: true,
-      showOnlyCurrent: false,
-      emptyEditorClass: 'is-editor-empty',
-      emptyNodeClass: 'is-node-empty',
-      placeholder: ({ editor: coreEditor }) => {
-        if (coreEditor.isDestroyed) {
-          return '';
-        }
-
-        return 'Type "/" for commands...';
-      },
-    }),
-    LinkExtension.configure({
-      autolink: false,
-      openOnClick: false,
-      linkOnPaste: true,
-      HTMLAttributes: {
-        rel: 'noopener noreferrer nofollow',
-        target: '_blank',
-      },
-      validate: (href) => /^https?:\/\//.test(href),
-    }),
-    slashCommand.configure({
-      slashSuggestion: {
-        items: getSuggestionItems,
-        render: renderItems,
-      },
-    }),
-    TaskList.configure({
-      HTMLAttributes: {
-        class: 'om-task-list',
-      },
-    }),
-    TaskItem.configure({
-      HTMLAttributes: {
-        class: 'om-task-item',
-      },
-    }),
-    Mention.configure({
-      suggestion: mentionSuggestion(),
-    }),
-    Hashtag.configure({
-      suggestion: hashtagSuggestion(),
-    }),
-    DiffView,
-    Image.configure({
-      allowBase64: true,
-      inline: true,
-    }),
-  ],
-
   enableInputRules: [
     'blockquote',
     'bold',
@@ -97,6 +24,8 @@ export const EDITOR_OPTIONS: Partial<EditorOptions> = {
     'listItem',
     'orderedList',
     'strike',
+    'image',
+    'taskItem',
   ],
   parseOptions: {
     preserveWhitespace: 'full',
@@ -105,3 +34,17 @@ export const EDITOR_OPTIONS: Partial<EditorOptions> = {
 
 export const IMAGE_INPUT_REGEX =
   /(?:^|\s)(!\[(.+|:?)]\((\S+)(?:(?:\s+)["'](\S+)["'])?\))$/;
+
+export const CLICKABLE_NODES = [
+  'IMG',
+  'P',
+  'A',
+  'BUTTON',
+  'INPUT',
+  'SELECT',
+  'TEXTAREA',
+  'svg',
+  'IFRAME',
+];
+
+export const DROP_CURSOR_COLOR = '#ebf6fe';

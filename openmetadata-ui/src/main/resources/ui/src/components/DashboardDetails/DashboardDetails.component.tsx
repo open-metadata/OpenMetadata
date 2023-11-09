@@ -45,16 +45,12 @@ import {
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Dashboard } from '../../generated/entity/data/dashboard';
-import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { TagSource } from '../../generated/type/schema';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { restoreDashboard } from '../../rest/dashboardAPI';
-import { getCurrentUserId, getFeedCounts } from '../../utils/CommonUtils';
-import {
-  getEntityName,
-  getEntityReferenceFromEntity,
-} from '../../utils/EntityUtils';
+import { getFeedCounts } from '../../utils/CommonUtils';
+import { getEntityName } from '../../utils/EntityUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getDecodedFqn } from '../../utils/StringsUtils';
@@ -66,6 +62,7 @@ import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
+import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
@@ -92,6 +89,7 @@ const DashboardDetails = ({
   handleToggleDelete,
 }: DashboardDetailsProps) => {
   const { t } = useTranslation();
+  const { currentUser } = useAuthContext();
   const history = useHistory();
   const { fqn: dashboardFQN, tab: activeTab = EntityTabs.DETAILS } =
     useParams<{ fqn: string; tab: EntityTabs }>();
@@ -141,9 +139,9 @@ const DashboardDetails = ({
 
   const { isFollowing } = useMemo(() => {
     return {
-      isFollowing: followers?.some(({ id }) => id === getCurrentUserId()),
+      isFollowing: followers?.some(({ id }) => id === currentUser?.id),
     };
-  }, [followers]);
+  }, [followers, currentUser]);
 
   const { getEntityPermission } = usePermissionProvider();
 
@@ -270,19 +268,6 @@ const DashboardDetails = ({
       tags: tierTag,
     };
     await onDashboardUpdate(updatedDashboard, 'tags');
-  };
-
-  const onDataProductsUpdate = async (updatedData: DataProduct[]) => {
-    const dataProductsEntity = updatedData?.map((item) => {
-      return getEntityReferenceFromEntity(item, EntityType.DATA_PRODUCT);
-    });
-
-    const updatedDashboard = {
-      ...dashboardDetails,
-      dataProducts: dataProductsEntity,
-    };
-
-    await onDashboardUpdate(updatedDashboard, 'dataProducts');
   };
 
   const onUpdateDisplayName = async (data: EntityName) => {
@@ -618,10 +603,7 @@ const DashboardDetails = ({
                 <DataProductsContainer
                   activeDomain={dashboardDetails?.domain}
                   dataProducts={dashboardDetails?.dataProducts ?? []}
-                  hasPermission={
-                    dashboardPermissions.EditAll && !dashboardDetails.deleted
-                  }
-                  onSave={onDataProductsUpdate}
+                  hasPermission={false}
                 />
 
                 <TagsContainerV2

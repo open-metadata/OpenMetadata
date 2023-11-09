@@ -22,7 +22,6 @@ import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
-import org.openmetadata.api.configuration.ApplicationConfiguration;
 import org.openmetadata.api.configuration.ChangeEventConfiguration;
 import org.openmetadata.schema.api.configuration.events.EventHandlerConfiguration;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
@@ -77,9 +76,6 @@ public class OpenMetadataApplicationConfig extends Configuration {
   @NotNull
   @Valid
   private HealthConfiguration healthConfiguration = new HealthConfiguration();
-
-  @JsonProperty("applicationConfig")
-  private ApplicationConfiguration applicationConfiguration = new ApplicationConfiguration();
 
   @JsonProperty("secretsManagerConfiguration")
   private SecretsManagerConfiguration secretsManagerConfiguration;

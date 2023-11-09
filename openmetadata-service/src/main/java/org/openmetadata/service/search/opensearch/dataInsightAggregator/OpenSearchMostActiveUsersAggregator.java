@@ -16,12 +16,12 @@ public class OpenSearchMostActiveUsersAggregator
 
   @Override
   protected Double getSumValue(Sum key) {
-    return key.getValue();
+    return key != null ? key.getValue() : 0.0;
   }
 
   @Override
   protected Long getMaxValue(Max key) {
-    return (long) key.getValue();
+    return key != null ? (long) key.getValue() : 0;
   }
 
   @Override

@@ -44,7 +44,11 @@ describe('Query Entity', () => {
     );
     interceptURL('GET', '/api/v1/queries?*', 'fetchQuery');
     interceptURL('POST', '/api/v1/queries', 'createQuery');
-    visitEntityDetailsPage(DATA.term, DATA.serviceName, DATA.entity);
+    visitEntityDetailsPage({
+      term: DATA.term,
+      serviceName: DATA.serviceName,
+      entity: DATA.entity,
+    });
     cy.get('[data-testid="table_queries"]').click();
     verifyResponseStatusCode('@fetchQuery', 200);
 
@@ -76,7 +80,11 @@ describe('Query Entity', () => {
       '/api/v1/search/query?q=*&from=0&size=15&index=table_search_index',
       'explorePageSearch'
     );
-    visitEntityDetailsPage(DATA.term, DATA.serviceName, DATA.entity);
+    visitEntityDetailsPage({
+      term: DATA.term,
+      serviceName: DATA.serviceName,
+      entity: DATA.entity,
+    });
     cy.get('[data-testid="table_queries"]').click();
     verifyResponseStatusCode('@fetchQuery', 200);
 
@@ -120,7 +128,11 @@ describe('Query Entity', () => {
       '/api/v1/search/query?q=*&from=0&size=15&index=table_search_index',
       'explorePageSearch'
     );
-    visitEntityDetailsPage(DATA.term, DATA.serviceName, DATA.entity);
+    visitEntityDetailsPage({
+      term: DATA.term,
+      serviceName: DATA.serviceName,
+      entity: DATA.entity,
+    });
     cy.get('[data-testid="table_queries"]').click();
     verifyResponseStatusCode('@fetchQuery', 200);
 
@@ -147,7 +159,12 @@ describe('Query Entity', () => {
       '/api/v1/search/query?q=*&from=0&size=15&index=table_search_index',
       'explorePageSearch'
     );
-    visitEntityDetailsPage(DATA.term, DATA.serviceName, DATA.entity);
+
+    visitEntityDetailsPage({
+      term: DATA.term,
+      serviceName: DATA.serviceName,
+      entity: DATA.entity,
+    });
     cy.get('[data-testid="table_queries"]').click();
     verifyResponseStatusCode('@fetchQuery', 200);
     cy.get('[data-testid="query-entity-expand-button"]').click();

@@ -32,6 +32,7 @@ import {
 } from '../../../enums/common.enum';
 import { Transi18next } from '../../../utils/CommonUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
+import { useDomainProvider } from '../../Domain/DomainProvider/DomainProvider';
 import ErrorPlaceHolder from './ErrorPlaceHolder';
 
 type Props = {
@@ -72,6 +73,7 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query }: Props) => {
   const { tab } = useParams<{ tab: string }>();
   const { t } = useTranslation();
   const history = useHistory();
+  const { activeDomain } = useDomainProvider();
 
   const isQuery = useMemo(
     () =>
@@ -97,9 +99,16 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query }: Props) => {
             }
           />
         ) : (
-          <ErrorPlaceHolder>
+          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
             <Typography.Paragraph style={{ marginBottom: '0' }}>
-              {t('message.add-service-connection')}
+              {t('message.no-data-available-entity', {
+                entity: activeDomain,
+              })}
+            </Typography.Paragraph>
+            <Typography.Paragraph style={{ marginBottom: '0' }}>
+              {t('message.add-data-asset-domain', {
+                domain: activeDomain,
+              })}
             </Typography.Paragraph>
             <Typography.Paragraph>
               <Transi18next
