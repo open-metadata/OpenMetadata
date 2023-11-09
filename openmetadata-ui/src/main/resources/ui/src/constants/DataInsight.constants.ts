@@ -37,6 +37,8 @@ export const DI_STRUCTURE = {
   rightRowGutter: [8, 0] as RowProps['gutter'],
 };
 
+export const GRAPH_HEIGHT = 500;
+
 export const DATA_INSIGHT_GRAPH_COLORS = [
   '#E7B85D',
   '#416BB3',

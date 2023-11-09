@@ -34,6 +34,7 @@ import {
 import {
   BAR_CHART_MARGIN,
   DI_STRUCTURE,
+  GRAPH_HEIGHT,
   TOTAL_ENTITY_CHART_COLOR,
 } from '../../constants/DataInsight.constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
@@ -176,7 +177,7 @@ const TierInsight: FC<Props> = ({ chartFilter, selectedDays, tierTags }) => {
           />
           <ResponsiveContainer
             debounce={1}
-            height={500}
+            height={GRAPH_HEIGHT}
             id={`${DataInsightChartType.TotalEntitiesByTier}-graph`}>
             <LineChart data={data} margin={BAR_CHART_MARGIN}>
               <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} vertical={false} />

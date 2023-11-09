@@ -34,6 +34,7 @@ import {
 import {
   BAR_CHART_MARGIN,
   DI_STRUCTURE,
+  GRAPH_HEIGHT,
   TOTAL_ENTITY_CHART_COLOR,
 } from '../../constants/DataInsight.constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
@@ -193,7 +194,7 @@ const DescriptionInsight: FC<Props> = ({
           <ResponsiveContainer
             className="m-t-lg"
             debounce={1}
-            height={500}
+            height={GRAPH_HEIGHT}
             id={`${dataInsightChartName}-graph`}>
             <LineChart data={data} margin={BAR_CHART_MARGIN}>
               <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} vertical={false} />
