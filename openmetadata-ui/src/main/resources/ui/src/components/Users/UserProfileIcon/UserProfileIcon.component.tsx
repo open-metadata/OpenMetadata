@@ -54,7 +54,7 @@ const renderLimitedListMenuItem = ({
   sizeLimit = 2,
   readMoreKey,
 }: ListMenuItemProps) => {
-  const remaningCount =
+  const remainingCount =
     listItems.length ?? 0 > sizeLimit
       ? (listItems.length ?? sizeLimit) - sizeLimit
       : 0;
@@ -69,9 +69,9 @@ const renderLimitedListMenuItem = ({
           key: item.id,
         })) ?? []),
         ...[
-          remaningCount > 0
+          remainingCount > 0
             ? {
-                label: readMoreLabelRenderer(remaningCount),
+                label: readMoreLabelRenderer(remainingCount),
                 key: readMoreKey ?? 'more-item',
               }
             : null,
@@ -89,6 +89,7 @@ export const UserProfileIcon = () => {
     () => currentUser?.profile?.images?.image512,
     [currentUser]
   );
+  const [showAllPersona, setShowAllPersona] = useState<boolean>(false);
 
   const handleOnImageError = useCallback(() => {
     setIsImgUrlValid(false);
@@ -151,13 +152,20 @@ export const UserProfileIcon = () => {
   );
 
   const readMoreTeamRenderer = useCallback(
-    (count) => (
-      <Link
-        className="more-teams-pill"
-        to={getUserPath(currentUser?.name as string)}>
-        {count} {t('label.more')}
-      </Link>
-    ),
+    (count: number, isPersona?: boolean) =>
+      isPersona ? (
+        <Typography.Text
+          className="more-teams-pill"
+          onClick={() => setShowAllPersona(true)}>
+          {count} {t('label.more')}
+        </Typography.Text>
+      ) : (
+        <Link
+          className="more-teams-pill"
+          to={getUserPath(currentUser?.name as string)}>
+          {count} {t('label.more')}
+        </Link>
+      ),
     [currentUser]
   );
 
@@ -226,8 +234,9 @@ export const UserProfileIcon = () => {
         children: renderLimitedListMenuItem({
           listItems: personas ?? [],
           readMoreKey: 'more-persona',
+          sizeLimit: showAllPersona ? personas?.length : 2,
           labelRenderer: personaLabelRenderer,
-          readMoreLabelRenderer: readMoreTeamRenderer,
+          readMoreLabelRenderer: (count) => readMoreTeamRenderer(count, true),
         }),
         label: (
           <span className="text-grey-muted text-xs">
@@ -271,7 +280,15 @@ export const UserProfileIcon = () => {
         type: 'group',
       },
     ],
-    [currentUser, userName, selectedPersona, teams, roles, personas]
+    [
+      currentUser,
+      userName,
+      selectedPersona,
+      teams,
+      roles,
+      personas,
+      showAllPersona,
+    ]
   );
 
   useEffect(() => {
