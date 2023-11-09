@@ -1882,12 +1882,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     updateLifeCycle(json, entity, lifeCycle, lifeCycle);
 
     // set createdAt to older time, this shouldn't be overriding
-    EntityUpdater.setSessionTimeout(0); // Turn off consolidating changes in a session for this test
     json = JsonUtils.pojoToJson(entity);
     AccessDetails createdOld = new AccessDetails().withTimestamp(1695059400L).withAccessedByAProcess("test12");
     LifeCycle lifeCycle1 = new LifeCycle().withAccessed(accessed).withUpdated(updated).withCreated(createdOld);
     updateLifeCycle(json, entity, lifeCycle1, lifeCycle);
-    EntityUpdater.setSessionTimeout(10 * 60 * 10000); // Reset the session timeout back
   }
 
   private T updateLifeCycle(String json, T entity, LifeCycle newLifeCycle, LifeCycle expectedLifeCycle)

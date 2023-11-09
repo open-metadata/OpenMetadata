@@ -1835,6 +1835,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         revert();
       }
       // Now updated from previous/original to updated one
+      changeDescription = new ChangeDescription();
       updateInternal();
 
       // Store the updated entity
@@ -1851,11 +1852,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
       updated = previous;
       updateInternal();
       LOG.info("In session change consolidation. Reverting to previous version {} completed", previous.getVersion());
-      changeDescription = new ChangeDescription(); // Discard all the changes related to revert
 
-      // Now update from previous to the latest updated entity
-      original = previous;
+      // Now go from original to updated
       updated = updatedOld;
+      updateInternal();
+
+      // Finally, go from previous to the latest updated entity to consolidate changes
+      original = previous;
     }
 
     /** Compare original and updated entities and perform updates. Update the entity version and track changes. */
@@ -2136,6 +2139,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     public final boolean updateVersion(Double oldVersion) {
+      if (changeDescription == null) {
+        return false;
+      }
       Double newVersion = oldVersion;
       if (majorVersionChange) {
         newVersion = nextMajorVersion(oldVersion);
@@ -2157,6 +2163,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     public boolean fieldsChanged() {
+      if (changeDescription == null) {
+        return false;
+      }
       return !changeDescription.getFieldsAdded().isEmpty()
           || !changeDescription.getFieldsUpdated().isEmpty()
           || !changeDescription.getFieldsDeleted().isEmpty();
@@ -2177,7 +2186,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     public final <K> boolean recordChange(
         String field, K orig, K updated, boolean jsonValue, BiPredicate<K, K> typeMatch, boolean updateVersion) {
-      if (orig == updated) {
+      if (orig == updated || changeDescription == null) {
         return false;
       }
       if (!updateVersion && entityChanged) {
