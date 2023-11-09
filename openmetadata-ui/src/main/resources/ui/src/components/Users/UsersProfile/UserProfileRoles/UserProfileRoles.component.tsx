@@ -29,6 +29,7 @@ import {
 import { Role } from '../../../../generated/entity/teams/role';
 import { useAuth } from '../../../../hooks/authHooks';
 import { getRoles } from '../../../../rest/rolesAPIV1';
+import { handleSearchFilterOption } from '../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { UserProfileRolesProps } from './UserProfileRoles.interface';
@@ -172,6 +173,8 @@ const UserProfileRoles = ({
               showSearch
               aria-label="Select roles"
               className="w-full"
+              data-testid="select-user-roles"
+              filterOption={handleSearchFilterOption}
               id="select-role"
               loading={isRolesLoading}
               maxTagCount={4}

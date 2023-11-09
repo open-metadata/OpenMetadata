@@ -135,6 +135,15 @@ const CustomLogoConfigSettingsPage = withSuspenseFallback(
   )
 );
 
+const LoginConfigurationPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../../pages/Configuration/LoginConfigurationDetails/LoginConfigurationPage'
+      )
+  )
+);
+
 const ApplicationPageV1 = withSuspenseFallback(
   React.lazy(() => import('../../pages/Application/ApplicationPage'))
 );
@@ -276,6 +285,15 @@ const GlobalSettingRouter = () => {
         path={getSettingPath(
           GlobalSettingsMenuCategory.OPEN_METADATA,
           GlobalSettingOptions.CUSTOM_LOGO
+        )}
+      />
+      <AdminProtectedRoute
+        exact
+        component={LoginConfigurationPage}
+        hasPermission={false}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.OPEN_METADATA,
+          GlobalSettingOptions.LOGIN_CONFIGURATION
         )}
       />
       <AdminProtectedRoute

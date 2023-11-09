@@ -29,3 +29,14 @@ $$
 $$note
 Monogram aspect ratio should be 1:1 and Recommended size should be 30 x 30 px
 $$
+
+$$section
+
+### Fav Icon URL $(id="customFaviconUrlPath")
+
+URL path for favicon.
+$$
+
+$$note
+Favicon aspect ratio should be 1:1 and Recommended size should be 16 x 16 px
+$$
