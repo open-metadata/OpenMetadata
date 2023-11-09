@@ -199,6 +199,8 @@ export const getField = (field: FieldProp) => {
             align={props.tooltipAlign as TooltipProps['align']}
             helperText={helperText}
             label={label}
+            overlayClassName={props.overlayClassName as string}
+            overlayInnerStyle={props.overlayInnerStyle as React.CSSProperties}
             placement={props.tooltipPlacement as TooltipPlacement}
           />
         }
