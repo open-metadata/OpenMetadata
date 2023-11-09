@@ -157,7 +157,6 @@ export const UserProfileIcon = () => {
         <Typography.Text
           className="more-teams-pill"
           onClick={(e) => {
-            e.preventDefault();
             e.stopPropagation();
             setShowAllPersona(true);
           }}>
