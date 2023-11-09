@@ -222,6 +222,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
                 key=sample_key,
                 bucket_name=bucket_name,
                 file_extension=SupportedTypes(metadata_entry.structureFormat),
+                separator=metadata_entry.separator,
             ),
         )
         columns = []
