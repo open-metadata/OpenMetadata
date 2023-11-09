@@ -77,6 +77,7 @@ const AppRunsHistory = forwardRef(
       handlePagingChange,
       handlePageChange,
       handlePageSizeChange,
+      showPagination: paginationVisible,
     } = usePaging();
 
     const history = useHistory();
@@ -255,7 +256,7 @@ const AppRunsHistory = forwardRef(
     }: PagingHandlerParams) => {
       handlePageChange(currentPage);
       fetchAppHistory({
-        offset: currentPage * pageSize,
+        offset: (currentPage - 1) * pageSize,
       } as Paging);
     };
 
@@ -267,10 +268,10 @@ const AppRunsHistory = forwardRef(
 
     useEffect(() => {
       fetchAppHistory();
-    }, [fqn]);
+    }, [fqn, pageSize]);
 
     return (
-      <Row>
+      <Row gutter={[16, 16]}>
         <Col span={24}>
           <Table
             bordered
@@ -292,18 +293,16 @@ const AppRunsHistory = forwardRef(
             size="small"
           />
         </Col>
-        <Col span={20}>
-          {paging.total > pageSize && showPagination && (
-            <div className="p-y-md">
-              <NextPrevious
-                isNumberBased
-                currentPage={currentPage}
-                pageSize={pageSize}
-                paging={paging}
-                pagingHandler={handleAppHistoryPageChange}
-                onShowSizeChange={handlePageSizeChange}
-              />
-            </div>
+        <Col span={24}>
+          {showPagination && paginationVisible && (
+            <NextPrevious
+              isNumberBased
+              currentPage={currentPage}
+              pageSize={pageSize}
+              paging={paging}
+              pagingHandler={handleAppHistoryPageChange}
+              onShowSizeChange={handlePageSizeChange}
+            />
           )}
         </Col>
       </Row>

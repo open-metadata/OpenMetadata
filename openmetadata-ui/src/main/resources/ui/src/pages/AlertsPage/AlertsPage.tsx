@@ -23,7 +23,6 @@ import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import Table from '../../components/common/Table/Table';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
-import { PAGE_SIZE_MEDIUM } from '../../constants/constants';
 import { ALERTS_DOCS } from '../../constants/docs.constants';
 import {
   GlobalSettingOptions,
@@ -36,8 +35,8 @@ import {
   ProviderType,
 } from '../../generated/events/eventSubscription';
 import { Paging } from '../../generated/type/paging';
+import { usePaging } from '../../hooks/paging/usePaging';
 import { getAllAlerts } from '../../rest/alertsAPI';
-import { showPagination } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
@@ -48,31 +47,43 @@ const AlertsPage = () => {
   const history = useHistory();
   const [loading, setLoading] = useState(true);
   const [alerts, setAlerts] = useState<EventSubscription[]>([]);
-  const [alertsPaging, setAlertsPaging] = useState<Paging>({
-    total: 0,
-  } as Paging);
-  const [currentPage, setCurrentPage] = useState(0);
   const [selectedAlert, setSelectedAlert] = useState<EventSubscription>();
+  const {
+    pageSize,
+    currentPage,
+    handlePageChange,
+    handlePageSizeChange,
+    handlePagingChange,
+    showPagination,
+    paging,
+  } = usePaging();
 
-  const fetchAlerts = useCallback(async (after?: string) => {
-    setLoading(true);
-    try {
-      const { data, paging } = await getAllAlerts({ after });
+  const fetchAlerts = useCallback(
+    async (params?: Partial<Paging>) => {
+      setLoading(true);
+      try {
+        const { data, paging } = await getAllAlerts({
+          after: params?.after,
+          before: params?.before,
+          limit: pageSize,
+        });
 
-      setAlerts(data.filter((d) => d.provider !== ProviderType.System));
-      setAlertsPaging(paging);
-    } catch (error) {
-      showErrorToast(
-        t('server.entity-fetch-error', { entity: t('label.alert-plural') })
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+        setAlerts(data.filter((d) => d.provider !== ProviderType.System));
+        handlePagingChange(paging);
+      } catch (error) {
+        showErrorToast(
+          t('server.entity-fetch-error', { entity: t('label.alert-plural') })
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [pageSize]
+  );
 
   useEffect(() => {
     fetchAlerts();
-  }, []);
+  }, [pageSize]);
 
   const handleAlertDelete = useCallback(async () => {
     try {
@@ -86,11 +97,11 @@ const AlertsPage = () => {
   const onPageChange = useCallback(
     ({ cursorType, currentPage }: PagingHandlerParams) => {
       if (cursorType) {
-        fetchAlerts(cursorType + '');
-        setCurrentPage(currentPage);
+        fetchAlerts({ [cursorType]: paging[cursorType] });
+        handlePageChange(currentPage);
       }
     },
-    []
+    [paging]
   );
 
   const columns = useMemo(
@@ -220,12 +231,13 @@ const AlertsPage = () => {
           />
         </Col>
         <Col span={24}>
-          {showPagination(alertsPaging) && (
+          {showPagination && (
             <NextPrevious
               currentPage={currentPage}
-              pageSize={PAGE_SIZE_MEDIUM}
-              paging={alertsPaging}
+              pageSize={pageSize}
+              paging={paging}
               pagingHandler={onPageChange}
+              onShowSizeChange={handlePageSizeChange}
             />
           )}
 

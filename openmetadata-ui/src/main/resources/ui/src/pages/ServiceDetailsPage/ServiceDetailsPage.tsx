@@ -185,7 +185,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const [isIngestionPipelineLoading, setIsIngestionPipelineLoading] =
     useState(false);
   const [isServiceLoading, setIsServiceLoading] = useState(true);
-  const [dataModel, setDataModel] = useState<Array<ServicePageData>>([]);
   const [dataModelPaging, setDataModelPaging] = useState<Paging>(pagingObject);
   const [paging, setPaging] = useState<Paging>(pagingObject);
   const [ingestionPipelines, setIngestionPipelines] = useState<
@@ -194,7 +193,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const [serviceList] = useState<Array<DatabaseService>>([]);
   const [ingestionPaging, setIngestionPaging] = useState<Paging>({} as Paging);
   const [showDeleted, setShowDeleted] = useState<boolean>(false);
-  const [dataModelCurrentPage, setDataModelCurrentPage] = useState(1);
   const [airflowEndpoint, setAirflowEndpoint] = useState<string>();
   const [connectionDetails, setConnectionDetails] = useState<ConfigData>();
   const [servicePermission, setServicePermission] =
@@ -466,24 +464,21 @@ const ServiceDetailsPage: FunctionComponent = () => {
     [decodedServiceFQN, include]
   );
 
+  // Fetch Data Model count to show it in tab label
   const fetchDashboardsDataModel = useCallback(
     async (params?: ListDataModelParams) => {
       try {
         setIsServiceLoading(true);
-        const { data, paging: resPaging } = await getDataModels({
+        const { paging: resPaging } = await getDataModels({
           service: decodedServiceFQN,
           fields: 'owner,tags,followers',
           include,
           ...params,
         });
-        setDataModel(data);
         setDataModelPaging(resPaging);
       } catch (error) {
         showErrorToast(error as AxiosError);
-        setData([]);
         setPaging(pagingObject);
-      } finally {
-        setIsServiceLoading(false);
       }
     },
     [decodedServiceFQN, include]
@@ -550,7 +545,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   );
 
   const getOtherDetails = useCallback(
-    async (paging?: PagingWithoutTotal, isDataModel?: boolean) => {
+    async (paging?: PagingWithoutTotal) => {
       try {
         setIsServiceLoading(true);
         switch (serviceCategory) {
@@ -565,11 +560,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
             break;
           }
           case ServiceCategory.DASHBOARD_SERVICES: {
-            if (isDataModel) {
-              await fetchDashboardsDataModel({ ...paging });
-            } else {
-              await fetchDashboards(paging);
-            }
+            await fetchDashboards(paging);
 
             break;
           }
@@ -607,7 +598,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
       serviceCategory,
       fetchDatabases,
       fetchTopics,
-      fetchDashboardsDataModel,
       fetchDashboards,
       fetchPipeLines,
       fetchMlModal,
@@ -635,15 +625,12 @@ const ServiceDetailsPage: FunctionComponent = () => {
   }, [serviceCategory, serviceFQN, getOtherDetails, isMetadataService]);
 
   useEffect(() => {
-    getOtherDetails(undefined, activeTab === EntityTabs.DATA_Model);
+    getOtherDetails();
   }, [activeTab, showDeleted]);
 
   useEffect(() => {
     // fetch count for data modal tab, its need only when its dashboard page and data modal tab is not active
-    if (
-      serviceCategory === ServiceCategory.DASHBOARD_SERVICES &&
-      activeTab !== EntityTabs.DATA_Model
-    ) {
+    if (serviceCategory === ServiceCategory.DASHBOARD_SERVICES) {
       fetchDashboardsDataModel({ limit: 0 });
     }
   }, []);
@@ -773,22 +760,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
     [saveUpdatedServiceData, serviceDetails]
   );
 
-  const dataModelPagingHandler = useCallback(
-    ({ cursorType, currentPage }: PagingHandlerParams) => {
-      if (cursorType) {
-        getOtherDetails(
-          {
-            [cursorType]: dataModelPaging[cursorType],
-          },
-          true
-        );
-
-        setDataModelCurrentPage(currentPage);
-      }
-    },
-    [getOtherDetails, dataModelPaging]
-  );
-
   const afterDeleteAction = useCallback(() => history.push('/'), []);
 
   const afterDomainUpdateAction = useCallback((data) => {
@@ -818,23 +789,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
           </Row>
         </Col>
 
-        <DataModelTable
-          currentPage={dataModelCurrentPage}
-          data={dataModel}
-          isLoading={isServiceLoading}
-          paging={dataModelPaging}
-          pagingHandler={dataModelPagingHandler}
-        />
+        <DataModelTable showDeleted={showDeleted} />
       </Row>
     ),
-    [
-      showDeleted,
-      dataModel,
-      isServiceLoading,
-      dataModelPaging,
-      dataModelPagingHandler,
-      dataModelCurrentPage,
-    ]
+    [showDeleted]
   );
 
   const ingestionTab = useMemo(

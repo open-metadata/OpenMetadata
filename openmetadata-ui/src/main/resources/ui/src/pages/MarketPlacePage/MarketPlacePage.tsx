@@ -33,7 +33,6 @@ import { AppMarketPlaceDefinition } from '../../generated/entity/applications/ma
 import { Paging } from '../../generated/type/paging';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getMarketPlaceApplicationList } from '../../rest/applicationMarketPlaceAPI';
-import { showPagination } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import {
   getMarketPlaceAppDetailsPath,
@@ -51,29 +50,33 @@ const MarketPlacePage = () => {
     handlePagingChange,
     handlePageChange,
     handlePageSizeChange,
+    showPagination,
   } = usePaging();
   const history = useHistory();
   const [isLoading, setIsLoading] = useState(true);
   const [applicationData, setApplicationData] =
     useState<AppMarketPlaceDefinition[]>();
 
-  const fetchApplicationList = useCallback(async (pagingOffset?: Paging) => {
-    try {
-      setIsLoading(true);
-      const { data, paging } = await getMarketPlaceApplicationList({
-        after: pagingOffset?.after,
-        before: pagingOffset?.before,
-        limit: pageSize,
-      });
+  const fetchApplicationList = useCallback(
+    async (pagingOffset?: Paging) => {
+      try {
+        setIsLoading(true);
+        const { data, paging } = await getMarketPlaceApplicationList({
+          after: pagingOffset?.after,
+          before: pagingOffset?.before,
+          limit: pageSize,
+        });
 
-      setApplicationData(data);
-      handlePagingChange(paging);
-    } catch (err) {
-      showErrorToast(err as AxiosError);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+        setApplicationData(data);
+        handlePagingChange(paging);
+      } catch (err) {
+        showErrorToast(err as AxiosError);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [pageSize, handlePagingChange]
+  );
 
   const handleMarketPlacePageChange = ({
     currentPage,
@@ -93,7 +96,7 @@ const MarketPlacePage = () => {
 
   useEffect(() => {
     fetchApplicationList();
-  }, []);
+  }, [pageSize]);
 
   if (isLoading) {
     return <Loader />;
@@ -153,7 +156,7 @@ const MarketPlacePage = () => {
           </div>
         </Col>
         <Col span={18}>
-          {showPagination(paging) && (
+          {showPagination && (
             <NextPrevious
               currentPage={currentPage}
               pageSize={pageSize}

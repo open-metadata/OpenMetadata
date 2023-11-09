@@ -13,18 +13,14 @@
 
 import { Operation } from 'fast-json-patch';
 import { FormErrorData } from 'Models';
-import { NextPreviousProps } from '../components/common/NextPrevious/NextPrevious.interface';
-import { OperationPermission } from '../components/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
-import { EntityType } from '../enums/entity.enum';
-import { UserType } from '../enums/user.enum';
-import { Team } from '../generated/entity/teams/team';
-import {
-  EntityReference as UserTeams,
-  User,
-} from '../generated/entity/teams/user';
-import { EntityReference } from '../generated/type/entityReference';
-import { Paging } from '../generated/type/paging';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { EntityType } from '../../../enums/entity.enum';
+import { UserType } from '../../../enums/user.enum';
+import { Team } from '../../../generated/entity/teams/team';
+import { User } from '../../../generated/entity/teams/user';
+import { EntityReference } from '../../../generated/entity/type';
+import { Paging } from '../../../generated/type/paging';
+import { OperationPermission } from '../../PermissionProvider/PermissionProvider.interface';
 
 export type TeamDeleteType = {
   team: Team | undefined;
@@ -52,7 +48,6 @@ export interface TeamsAndUsersProps {
   userPaging: Paging;
   currentTeamUserPage: number;
   currentUserPage: number;
-  teamUsersSearchText: string;
   isDescriptionEditable: boolean;
   isRightPannelLoading: boolean;
   errorNewTeamData: FormErrorData | undefined;
@@ -82,8 +77,8 @@ export interface TeamsAndUsersProps {
   handleJoinTeamClick: (id: string, data: Operation[]) => void;
   handleLeaveTeamClick: (id: string, data: Operation[]) => Promise<void>;
   isAddingUsers: boolean;
-  getUniqueUserList: () => Array<UserTeams>;
-  addUsersToTeam: (data: Array<UserTeams>) => void;
+  getUniqueUserList: () => Array<EntityReference>;
+  addUsersToTeam: (data: Array<EntityReference>) => void;
   handleAddUser: (data: boolean) => void;
   removeUserFromTeam: (id: string) => Promise<void>;
   handleUserSearchTerm: (value: string) => void;
@@ -96,10 +91,6 @@ export interface TeamDetailsProp {
   assetsCount: number;
   currentTeam: Team;
   teams?: Team[];
-  currentTeamUsers: User[];
-  teamUserPaging: Paging;
-  currentTeamUserPage: number;
-  teamUsersSearchText: string;
   isDescriptionEditable: boolean;
   isTeamMemberLoading: number;
   isFetchingAdvancedDetails: boolean;
@@ -108,10 +99,7 @@ export interface TeamDetailsProp {
   handleAddTeam: (value: boolean) => void;
   descriptionHandler: (value: boolean) => void;
   onDescriptionUpdate: (value: string) => Promise<void>;
-  handleTeamUsersSearchAction: (text: string) => void;
   updateTeamHandler: (data: Team, fetchTeam?: boolean) => Promise<void>;
-  handleCurrentUserPage: (value?: number) => void;
-  teamUserPagingHandler: NextPreviousProps['pagingHandler'];
   handleAddUser: (data: Array<EntityReference>) => void;
   afterDeleteAction: () => void;
   removeUserFromTeam: (id: string) => Promise<void>;

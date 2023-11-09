@@ -260,8 +260,6 @@ describe('Tests for DatabaseSchemaPage', () => {
 
     expect(getStoredProceduresList).toHaveBeenCalledWith({
       databaseSchema: mockParams.fqn,
-      fields: 'owner,tags,followers',
-      include: 'non-deleted',
       limit: 0,
     });
   });

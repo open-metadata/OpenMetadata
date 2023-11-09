@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { FilterOutlined } from '@ant-design/icons';
 import {
   Badge,
   Button,
@@ -42,14 +43,16 @@ import {
   ASSET_MENU_KEYS,
   ASSET_SUB_MENU_FILTER,
 } from '../../../../constants/Assets.constants';
-import { PAGE_SIZE } from '../../../../constants/constants';
 import { GLOSSARIES_DOCS } from '../../../../constants/docs.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
+import { usePaging } from '../../../../hooks/paging/usePaging';
 import { searchData } from '../../../../rest/miscAPI';
 import { getCountBadge } from '../../../../utils/CommonUtils';
+import { getEntityIcon } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 import ExploreSearchCard from '../../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
@@ -58,10 +61,6 @@ import {
   SearchedDataProps,
   SourceType,
 } from '../../../SearchedData/SearchedData.interface';
-
-import { FilterOutlined } from '@ant-design/icons';
-import { getEntityIcon } from '../../../../utils/TableUtils';
-import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import './assets-tabs.less';
 import {
   AssetsOfEntity,
@@ -97,8 +96,16 @@ const AssetsTabs = forwardRef(
     const { fqn } = useParams<{ fqn: string }>();
     const [isLoading, setIsLoading] = useState(true);
     const [data, setData] = useState<SearchedDataProps['data']>([]);
-    const [total, setTotal] = useState<number>(0);
-    const [currentPage, setCurrentPage] = useState<number>(1);
+    const {
+      currentPage,
+      pageSize,
+      paging,
+      handlePageChange,
+      handlePageSizeChange,
+      handlePagingChange,
+      showPagination,
+    } = usePaging();
+
     const [selectedCard, setSelectedCard] = useState<SourceType>();
     const [visible, setVisible] = useState<boolean>(false);
     const [openKeys, setOpenKeys] = useState<EntityType[]>([]);
@@ -127,7 +134,7 @@ const AssetsTabs = forwardRef(
     const fetchAssets = useCallback(
       async ({
         index = activeFilter,
-        page = 1,
+        page = currentPage,
       }: {
         index?: SearchIndex[];
         page?: number;
@@ -137,7 +144,7 @@ const AssetsTabs = forwardRef(
           const res = await searchData(
             '',
             page,
-            PAGE_SIZE,
+            pageSize,
             queryParam,
             '',
             '',
@@ -154,7 +161,7 @@ const AssetsTabs = forwardRef(
           )?.label;
 
           // Update states
-          setTotal(totalCount);
+          handlePagingChange({ total: totalCount });
           entityType &&
             setItemCount((prevCount) => ({
               ...prevCount,
@@ -170,7 +177,7 @@ const AssetsTabs = forwardRef(
           setIsLoading(false);
         }
       },
-      [activeFilter, currentPage]
+      [activeFilter, currentPage, pageSize]
     );
     const onOpenChange: MenuProps['onOpenChange'] = (keys) => {
       const latestOpenKey = keys.find(
@@ -276,7 +283,7 @@ const AssetsTabs = forwardRef(
       },
       [
         getEntityIcon,
-        setCurrentPage,
+        handlePageChange,
         handleActiveFilter,
         setSelectedCard,
         activeFilter,
@@ -452,15 +459,16 @@ const AssetsTabs = forwardRef(
                 source={_source}
               />
             ))}
-            {total > PAGE_SIZE && data.length > 0 && (
+            {showPagination && (
               <NextPrevious
                 isNumberBased
                 currentPage={currentPage}
-                pageSize={PAGE_SIZE}
-                paging={{ total }}
+                pageSize={pageSize}
+                paging={paging}
                 pagingHandler={({ currentPage }: PagingHandlerParams) =>
-                  setCurrentPage(currentPage)
+                  handlePageChange(currentPage)
                 }
+                onShowSizeChange={handlePageSizeChange}
               />
             )}
           </div>
@@ -469,12 +477,14 @@ const AssetsTabs = forwardRef(
         ),
       [
         data,
-        total,
+        paging,
         currentPage,
         selectedCard,
         assetErrorPlaceHolder,
         setSelectedCard,
-        setCurrentPage,
+        handlePageChange,
+        showPagination,
+        handlePageSizeChange,
       ]
     );
 
@@ -494,7 +504,7 @@ const AssetsTabs = forwardRef(
                   selectedKeys={activeFilter}
                   style={{ width: 256, height: 340 }}
                   onClick={(value) => {
-                    setCurrentPage(1);
+                    handlePageChange(1);
                     handleActiveFilter(value.key as SearchIndex);
                     setSelectedCard(undefined);
                   }}
@@ -533,7 +543,7 @@ const AssetsTabs = forwardRef(
             items={tabs}
             selectedKeys={activeFilter}
             onClick={(value) => {
-              setCurrentPage(1);
+              handlePageChange(1);
               setActiveFilter([value.key as SearchIndex]);
               setSelectedCard(undefined);
             }}
@@ -576,7 +586,7 @@ const AssetsTabs = forwardRef(
         index: isEmpty(activeFilter) ? [SearchIndex.ALL] : activeFilter,
         page: currentPage,
       });
-    }, [activeFilter, currentPage]);
+    }, [activeFilter, currentPage, pageSize]);
 
     useImperativeHandle(ref, () => ({
       refreshAssets() {

@@ -28,7 +28,6 @@ import {
   deployIngestionPipelineById,
   getIngestionPipelines,
 } from '../../../rest/ingestionPipelineAPI';
-import { showPagination } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityTypeFromServiceCategory } from '../../../utils/ServiceUtils';
 import { FilterIcon } from '../../../utils/TableUtils';
@@ -66,6 +65,7 @@ export const IngestionPipelineList = ({
     handlePagingChange,
     pageSize,
     handlePageSizeChange,
+    showPagination,
   } = usePaging();
 
   const { t } = useTranslation();
@@ -289,7 +289,7 @@ export const IngestionPipelineList = ({
         />
       </Col>
       <Col span={24}>
-        {showPagination(paging) && (
+        {showPagination && (
           <NextPrevious
             currentPage={currentPage}
             pageSize={pageSize}

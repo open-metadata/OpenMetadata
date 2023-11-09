@@ -33,7 +33,7 @@ import { TestCaseStatusModal } from '../../../components/DataQuality/TestCaseSta
 import ConfirmationModal from '../../../components/Modals/ConfirmationModal/ConfirmationModal';
 import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../components/PermissionProvider/PermissionProvider.interface';
-import { getTableTabPath, PAGE_SIZE } from '../../../constants/constants';
+import { getTableTabPath } from '../../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { TestCaseStatus } from '../../../generated/configuration/testResultNotificationConfiguration';
 import { Operation } from '../../../generated/entity/policies/policy';
@@ -75,6 +75,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   removeFromTestSuite,
   showTableColumn = true,
   afterDeleteAction,
+  showPagination,
 }) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
@@ -418,15 +419,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         />
       </Col>
       <Col span={24}>
-        {!isUndefined(pagingData) && pagingData.paging.total > PAGE_SIZE && (
-          <NextPrevious
-            currentPage={pagingData.currentPage}
-            isNumberBased={pagingData.isNumberBased}
-            pageSize={PAGE_SIZE}
-            paging={pagingData.paging}
-            pagingHandler={pagingData.onPagingClick}
-          />
-        )}
+        {pagingData && showPagination && <NextPrevious {...pagingData} />}
       </Col>
       <Col>
         <EditTestCaseModal

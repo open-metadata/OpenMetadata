@@ -19,7 +19,6 @@ import {
 } from '../../generated/entity/data/table';
 import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
-import { Paging } from '../../generated/type/paging';
 import { ListTestCaseParams } from '../../rest/testAPI';
 import { NextPreviousProps } from '../common/NextPrevious/NextPrevious.interface';
 import { DateRangeObject } from './component/TestSummary';
@@ -106,15 +105,11 @@ export interface DataQualityTabProps {
   showTableColumn?: boolean;
   isLoading?: boolean;
   onTestCaseResultUpdate?: (data: TestCase) => void;
-  pagingData?: {
-    paging: Paging;
-    currentPage: number;
-    onPagingClick: NextPreviousProps['pagingHandler'];
-    isNumberBased?: boolean;
-  };
+  pagingData?: NextPreviousProps;
   removeFromTestSuite?: {
     testSuite: TestSuite;
   };
+  showPagination?: boolean;
 }
 
 export interface TestSummaryProps {

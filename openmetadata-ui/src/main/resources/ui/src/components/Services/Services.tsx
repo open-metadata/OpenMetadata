@@ -40,7 +40,7 @@ import { usePaging } from '../../hooks/paging/usePaging';
 import { DatabaseServiceSearchSource } from '../../interface/search.interface';
 import { ServicesType } from '../../interface/service.interface';
 import { getServices, searchService } from '../../rest/serviceAPI';
-import { getServiceLogo, showPagination } from '../../utils/CommonUtils';
+import { getServiceLogo } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { getAddServicePath } from '../../utils/RouterUtils';
@@ -82,6 +82,7 @@ const Services = ({ serviceName }: ServicesProps) => {
     handlePageChange,
     pageSize,
     handlePageSizeChange,
+    showPagination,
   } = usePaging();
   const { permissions } = usePermissionProvider();
 
@@ -464,7 +465,7 @@ const Services = ({ serviceName }: ServicesProps) => {
         />
       </Col>
       <Col span={24}>
-        {showPagination(paging) && (
+        {showPagination && (
           <NextPrevious
             currentPage={currentPage}
             pageSize={pageSize}

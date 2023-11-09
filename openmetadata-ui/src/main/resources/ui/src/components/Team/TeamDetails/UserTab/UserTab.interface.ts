@@ -12,21 +12,11 @@
  */
 import { OperationPermission } from '../../../../components/PermissionProvider/PermissionProvider.interface';
 import { Team } from '../../../../generated/entity/teams/team';
-import { User } from '../../../../generated/entity/teams/user';
 import { EntityReference } from '../../../../generated/type/entityReference';
-import { Paging } from '../../../../generated/type/paging';
-import { NextPreviousProps } from '../../../common/NextPrevious/NextPrevious.interface';
 
 export interface UserTabProps {
-  users: User[];
-  searchText: string;
-  isLoading: number;
   permission: OperationPermission;
   currentTeam: Team;
-  onSearchUsers: (text: string) => void;
   onAddUser: (data: EntityReference[]) => void;
-  paging: Paging;
-  onChangePaging: NextPreviousProps['pagingHandler'];
-  currentPage: number;
   onRemoveUser: (id: string) => Promise<void>;
 }

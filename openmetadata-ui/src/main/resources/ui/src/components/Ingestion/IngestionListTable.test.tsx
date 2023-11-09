@@ -72,7 +72,7 @@ describe('IngestionListTable tests', () => {
       <IngestionListTable
         {...mockIngestionListTableProps}
         paging={{
-          total: 16,
+          total: 26,
           after: 'after',
         }}
       />
