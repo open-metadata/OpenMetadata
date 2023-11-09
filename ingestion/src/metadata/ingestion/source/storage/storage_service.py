@@ -190,6 +190,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
                 structureFormat=entry.structureFormat,
                 isPartitioned=entry.isPartitioned,
                 partitionColumns=entry.partitionColumns,
+                separator=entry.separator,
             )
             for entry in manifest.entries
             if entry.containerName == container_name
