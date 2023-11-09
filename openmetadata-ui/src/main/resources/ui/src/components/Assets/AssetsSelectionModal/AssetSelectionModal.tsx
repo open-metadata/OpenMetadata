@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { Button, List, Modal, Space, Typography } from 'antd';
+import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { delay } from 'lodash';
 import { EntityDetailUnion } from 'Models';
 import VirtualList from 'rc-virtual-list';
 import {
@@ -40,6 +40,7 @@ import {
   getEntityAPIfromSource,
 } from '../../../utils/Assets/AssetsUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
 import Searchbar from '../../common/searchbar/Searchbar';
 import TableDataCardV2 from '../../common/table-data-card-v2/TableDataCardV2';
@@ -59,7 +60,7 @@ export const AssetSelectionModal = ({
   emptyPlaceHolderText,
 }: AssetSelectionModalProps) => {
   const { t } = useTranslation();
-  const TIMEOUT_DURATION = 500;
+  const ES_UPDATE_DELAY = 500;
   const [search, setSearch] = useState('');
   const [items, setItems] = useState<SearchedDataProps['data']>([]);
   const [selectedItems, setSelectedItems] =
@@ -189,42 +190,54 @@ export const AssetSelectionModal = ({
   };
 
   const dataProductsSave = async () => {
-    setIsSaveLoading(true);
-    if (!activeEntity) {
-      return;
-    }
+    try {
+      setIsSaveLoading(true);
+      if (!activeEntity) {
+        return;
+      }
 
-    const entities = [...(selectedItems?.values() ?? [])].map((item) => {
-      return getEntityReferenceFromEntity(item, item.entityType);
-    });
+      const entities = [...(selectedItems?.values() ?? [])].map((item) => {
+        return getEntityReferenceFromEntity(item, item.entityType);
+      });
 
-    const newEntities = entities.filter((entity) => {
-      const entityKey = entity.id;
+      const newEntities = entities.filter((entity) => {
+        const entityKey = entity.id;
 
-      return !((activeEntity as DataProduct).assets ?? []).some(
-        (asset) => asset.id === entityKey
-      );
-    });
+        return !((activeEntity as DataProduct).assets ?? []).some(
+          (asset) => asset.id === entityKey
+        );
+      });
 
-    if (newEntities.length === 0) {
-      onSave?.();
-      onCancel();
+      if (newEntities.length === 0) {
+        onSave?.();
+        onCancel();
+        setIsSaveLoading(false);
+
+        return;
+      }
+
+      const updatedActiveEntity = {
+        ...activeEntity,
+        assets: [
+          ...((activeEntity as DataProduct).assets ?? []),
+          ...newEntities,
+        ],
+      };
+
+      const jsonPatch = compare(activeEntity, updatedActiveEntity);
+      await patchDataProduct(activeEntity.id, jsonPatch);
+      await new Promise((resolve) => {
+        setTimeout(() => {
+          resolve('');
+          onSave?.();
+        }, ES_UPDATE_DELAY);
+      });
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    } finally {
       setIsSaveLoading(false);
-
-      return;
+      onCancel();
     }
-
-    const updatedActiveEntity = {
-      ...activeEntity,
-      assets: [...((activeEntity as DataProduct).assets ?? []), ...newEntities],
-    };
-
-    const jsonPatch = compare(activeEntity, updatedActiveEntity);
-    await patchDataProduct(activeEntity.id, jsonPatch);
-    await new Promise((resolve) => delay(() => resolve(''), TIMEOUT_DURATION));
-    onSave?.();
-    onCancel();
-    setIsSaveLoading(false);
   };
 
   const domainAndDataProductsSave = async () => {
@@ -263,12 +276,14 @@ export const AssetSelectionModal = ({
           .filter(Boolean);
 
         await Promise.all(patchAPIPromises);
-        await new Promise((resolve) =>
-          delay(() => resolve(''), TIMEOUT_DURATION)
-        );
-        onSave?.();
-      } catch (_) {
-        // Nothing here
+        await new Promise((resolve) => {
+          setTimeout(() => {
+            resolve('');
+            onSave?.();
+          }, ES_UPDATE_DELAY);
+        });
+      } catch (err) {
+        showErrorToast(err as AxiosError);
       } finally {
         setIsSaveLoading(false);
         onCancel();
@@ -321,12 +336,14 @@ export const AssetSelectionModal = ({
         .filter(Boolean);
 
       await Promise.all(patchAPIPromises);
-      await new Promise((resolve) =>
-        delay(() => resolve(''), TIMEOUT_DURATION)
-      );
-      onSave?.();
-    } catch (_) {
-      // Nothing here
+      await new Promise((resolve) => {
+        setTimeout(() => {
+          resolve('');
+          onSave?.();
+        }, ES_UPDATE_DELAY);
+      });
+    } catch (err) {
+      showErrorToast(err as AxiosError);
     } finally {
       setIsSaveLoading(false);
       onCancel();

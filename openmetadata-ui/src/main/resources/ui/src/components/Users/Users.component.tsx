@@ -23,8 +23,8 @@ import ActivityFeedProvider from '../../components/ActivityFeed/ActivityFeedProv
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
 import { getUserPath, ROUTES } from '../../constants/constants';
-import { MY_DATA_SEARCH_Index } from '../../constants/Mydata.constants';
 import { EntityType } from '../../enums/entity.enum';
+import { SearchIndex } from '../../enums/search.enum';
 import { EntityReference } from '../../generated/entity/type';
 import { useAuth } from '../../hooks/authHooks';
 import { searchData } from '../../rest/miscAPI';
@@ -82,15 +82,7 @@ const Users = ({
 
   const fetchAssetsCount = async (query: string) => {
     try {
-      const res = await searchData(
-        '',
-        1,
-        0,
-        query,
-        '',
-        '',
-        MY_DATA_SEARCH_Index
-      );
+      const res = await searchData('', 1, 0, query, '', '', SearchIndex.ALL);
 
       setAssetCount(res.data.hits.total.value ?? 0);
     } catch (error) {

@@ -35,7 +35,6 @@ import {
   PAGE_SIZE_BASE,
   pagingObject,
 } from '../../constants/constants';
-import { MY_DATA_SEARCH_Index } from '../../constants/Mydata.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { CreateTeam, TeamType } from '../../generated/api/teams/createTeam';
@@ -270,7 +269,7 @@ const TeamsPage = () => {
           `owner.id:${selectedTeam.id}`,
           '',
           '',
-          MY_DATA_SEARCH_Index
+          SearchIndex.ALL
         );
         const total = res?.data?.hits?.total.value ?? 0;
         setAssets(total);

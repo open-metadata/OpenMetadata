@@ -11,10 +11,6 @@
  *  limitations under the License.
  */
 
-import { SearchIndex } from '../enums/search.enum';
-
-export const MY_DATA_SEARCH_Index = SearchIndex.ALL;
-
 export const observerOptions = {
   root: null,
   rootMargin: '0px',

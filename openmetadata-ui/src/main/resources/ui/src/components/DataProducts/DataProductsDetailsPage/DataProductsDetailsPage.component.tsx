@@ -55,8 +55,8 @@ import {
 import TabsLabel from '../../../components/TabsLabel/TabsLabel.component';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
-import { MY_DATA_SEARCH_Index } from '../../../constants/Mydata.constants';
 import { EntityType } from '../../../enums/entity.enum';
+import { SearchIndex } from '../../../enums/search.enum';
 import {
   ChangeDescription,
   DataProduct,
@@ -211,7 +211,7 @@ const DataProductsDetailsPage = ({
           `(dataProducts.fullyQualifiedName:"${fqn}")`,
           '',
           '',
-          MY_DATA_SEARCH_Index
+          SearchIndex.ALL
         );
 
         setAssetCount(res.data.hits.total.value ?? 0);

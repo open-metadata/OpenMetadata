@@ -61,7 +61,6 @@ import TabsLabel from '../../../components/TabsLabel/TabsLabel.component';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { DE_ACTIVE_COLOR, ERROR_MESSAGE } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
-import { MY_DATA_SEARCH_Index } from '../../../constants/Mydata.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { CreateDataProduct } from '../../../generated/api/domains/createDataProduct';
@@ -261,7 +260,7 @@ const DomainDetailsPage = ({
           `(domain.fullyQualifiedName:"${fqn}")`,
           '',
           '',
-          MY_DATA_SEARCH_Index
+          SearchIndex.ALL
         );
 
         setAssetCount(res.data.hits.total.value ?? 0);

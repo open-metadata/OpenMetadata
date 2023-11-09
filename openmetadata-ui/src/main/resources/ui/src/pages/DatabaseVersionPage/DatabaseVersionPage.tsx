@@ -94,8 +94,6 @@ function DatabaseVersionPage() {
     {} as EntityHistory
   );
 
-  const dataProducts = currentVersionData.dataProducts;
-
   const { tier, owner, breadcrumbLinks, changeDescription, deleted, domain } =
     useMemo(
       () =>
@@ -288,7 +286,7 @@ function DatabaseVersionPage() {
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   activeDomain={domain}
-                  dataProducts={dataProducts ?? []}
+                  dataProducts={currentVersionData.dataProducts ?? []}
                   hasPermission={false}
                 />
                 {Object.keys(TagSource).map((tagType) => (

@@ -114,8 +114,6 @@ function DatabaseSchemaVersionPage() {
       [currentVersionData]
     );
 
-  const dataProducts = currentVersionData.dataProducts;
-
   const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
     useMemo(
       () =>
@@ -261,7 +259,7 @@ function DatabaseSchemaVersionPage() {
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   activeDomain={domain}
-                  dataProducts={dataProducts ?? []}
+                  dataProducts={currentVersionData.dataProducts ?? []}
                   hasPermission={false}
                 />
                 {Object.keys(TagSource).map((tagType) => (
