@@ -2094,10 +2094,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private void updateStyle() {
-      if (!supportsStyle) {
-        return;
+      if (supportsStyle) {
+        recordChange(FIELD_STYLE, original.getStyle(), updated.getStyle(), true);
       }
-      recordChange(FIELD_STYLE, original.getStyle(), updated.getStyle(), true);
     }
 
     private void updateLifeCycle() {
@@ -2107,31 +2106,33 @@ public abstract class EntityRepository<T extends EntityInterface> {
       LifeCycle origLifeCycle = original.getLifeCycle();
       LifeCycle updatedLifeCycle = updated.getLifeCycle();
 
-      if (origLifeCycle == updatedLifeCycle || updatedLifeCycle == null) return;
-
-      if (origLifeCycle == null) {
-        origLifeCycle = new LifeCycle();
+      if (operation == Operation.PUT && updatedLifeCycle == null) {
+        updatedLifeCycle = origLifeCycle;
+        updated.setLifeCycle(origLifeCycle);
       }
 
-      if (origLifeCycle.getCreated() != null
-          && (updatedLifeCycle.getCreated() == null
-              || updatedLifeCycle.getCreated().getTimestamp() < origLifeCycle.getCreated().getTimestamp())) {
-        updatedLifeCycle.setCreated(origLifeCycle.getCreated());
-      }
+      if (origLifeCycle == updatedLifeCycle) return;
 
-      if (origLifeCycle.getAccessed() != null
-          && (updatedLifeCycle.getAccessed() == null
-              || updatedLifeCycle.getAccessed().getTimestamp() < origLifeCycle.getAccessed().getTimestamp())) {
-        updatedLifeCycle.setAccessed(origLifeCycle.getAccessed());
-      }
+      if (origLifeCycle != null && updatedLifeCycle != null) {
+        if (origLifeCycle.getCreated() != null
+            && (updatedLifeCycle.getCreated() == null
+                || updatedLifeCycle.getCreated().getTimestamp() < origLifeCycle.getCreated().getTimestamp())) {
+          updatedLifeCycle.setCreated(origLifeCycle.getCreated());
+        }
 
-      if (origLifeCycle.getUpdated() != null
-          && (updatedLifeCycle.getUpdated() == null
-              || updatedLifeCycle.getUpdated().getTimestamp() < origLifeCycle.getUpdated().getTimestamp())) {
-        updatedLifeCycle.setUpdated(origLifeCycle.getUpdated());
-      }
+        if (origLifeCycle.getAccessed() != null
+            && (updatedLifeCycle.getAccessed() == null
+                || updatedLifeCycle.getAccessed().getTimestamp() < origLifeCycle.getAccessed().getTimestamp())) {
+          updatedLifeCycle.setAccessed(origLifeCycle.getAccessed());
+        }
 
-      recordChange(FIELD_STYLE, origLifeCycle, updatedLifeCycle, true);
+        if (origLifeCycle.getUpdated() != null
+            && (updatedLifeCycle.getUpdated() == null
+                || updatedLifeCycle.getUpdated().getTimestamp() < origLifeCycle.getUpdated().getTimestamp())) {
+          updatedLifeCycle.setUpdated(origLifeCycle.getUpdated());
+        }
+      }
+      recordChange(FIELD_LIFE_CYCLE, origLifeCycle, updatedLifeCycle, true);
     }
 
     public final boolean updateVersion(Double oldVersion) {

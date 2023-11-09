@@ -1860,41 +1860,44 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     if (!supportsLifeCycle) {
       return;
     }
-    LifeCycle lifeCycle =
-        new LifeCycle().withAccessed(new AccessDetails().withTimestamp(1695059900L).withAccessedBy(USER1_REF));
-    T entity =
-        createEntity(
-            createRequest(getEntityName(test), "description", null, null).withLifeCycle(lifeCycle), ADMIN_AUTH_HEADERS);
-    assertLifeCycle(lifeCycle, entity.getLifeCycle());
-    T entity1 = getEntity(entity.getId(), "lifeCycle", ADMIN_AUTH_HEADERS);
-    assertLifeCycle(lifeCycle, entity1.getLifeCycle());
+    // Create an entity without lifeCycle
+    T entity = createEntity(createRequest(getEntityName(test), "description", null, null), ADMIN_AUTH_HEADERS);
 
+    // Add lifeCycle using PATCH request
     String json = JsonUtils.pojoToJson(entity);
-    lifeCycle.setCreated(new AccessDetails().withTimestamp(1695059500L).withAccessedBy(USER2_REF));
-    entity.setLifeCycle(lifeCycle);
+    AccessDetails accessed = new AccessDetails().withTimestamp(1695059900L).withAccessedBy(USER2_REF);
+    LifeCycle lifeCycle = new LifeCycle().withAccessed(accessed);
+    entity = updateLifeCycle(json, entity, lifeCycle, lifeCycle);
+
+    // Update lifeCycle using PATCH request
+    AccessDetails created = new AccessDetails().withTimestamp(1695059500L).withAccessedBy(USER2_REF);
+    json = JsonUtils.pojoToJson(entity);
+    lifeCycle.withCreated(created);
+    updateLifeCycle(json, entity, lifeCycle, lifeCycle);
+
+    // Update lifeCycle
+    AccessDetails updated = new AccessDetails().withTimestamp(1695059910L).withAccessedByAProcess("test");
+    json = JsonUtils.pojoToJson(entity);
+    lifeCycle.setUpdated(updated);
+    updateLifeCycle(json, entity, lifeCycle, lifeCycle);
+
+    // set createdAt to older time, this shouldn't be overriding
+    EntityUpdater.setSessionTimeout(0); // Turn off consolidating changes in a session for this test
+    json = JsonUtils.pojoToJson(entity);
+    AccessDetails createdOld = new AccessDetails().withTimestamp(1695059400L).withAccessedByAProcess("test12");
+    LifeCycle lifeCycle1 = new LifeCycle().withAccessed(accessed).withUpdated(updated).withCreated(createdOld);
+    updateLifeCycle(json, entity, lifeCycle1, lifeCycle);
+    EntityUpdater.setSessionTimeout(10 * 60 * 10000); // Reset the session timeout back
+  }
+
+  private T updateLifeCycle(String json, T entity, LifeCycle newLifeCycle, LifeCycle expectedLifeCycle)
+      throws HttpResponseException {
+    entity.setLifeCycle(newLifeCycle);
     T patchEntity = patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS);
-    assertLifeCycle(lifeCycle, patchEntity.getLifeCycle());
-    entity1 = getEntity(entity.getId(), "lifeCycle", ADMIN_AUTH_HEADERS);
-    assertLifeCycle(lifeCycle, entity1.getLifeCycle());
-
-    json = JsonUtils.pojoToJson(entity1);
-    lifeCycle.setUpdated(new AccessDetails().withTimestamp(1695059910L).withAccessedByAProcess("test"));
-    entity1.setLifeCycle(lifeCycle);
-    patchEntity = patchEntity(entity1.getId(), json, entity1, ADMIN_AUTH_HEADERS);
-    assertLifeCycle(lifeCycle, patchEntity.getLifeCycle());
-    entity1 = getEntity(patchEntity.getId(), "lifeCycle", ADMIN_AUTH_HEADERS);
-    assertLifeCycle(lifeCycle, entity1.getLifeCycle());
-
-    // set createdAt to older time , this shouldn't be overriding
-    LifeCycle lifeCycle1 =
-        new LifeCycle().withCreated(new AccessDetails().withTimestamp(1695059400L).withAccessedByAProcess("test12"));
-    json = JsonUtils.pojoToJson(entity1);
-    entity1.setLifeCycle(lifeCycle1);
-    patchEntity = patchEntity(entity1.getId(), json, entity1, ADMIN_AUTH_HEADERS);
-    // check against the older lifecycle, the contents should be unmodified
-    assertLifeCycle(lifeCycle, patchEntity.getLifeCycle());
-    entity1 = getEntity(patchEntity.getId(), "lifeCycle", ADMIN_AUTH_HEADERS);
-    assertLifeCycle(lifeCycle, entity1.getLifeCycle());
+    assertLifeCycle(expectedLifeCycle, patchEntity.getLifeCycle());
+    T entity1 = getEntity(entity.getId(), "lifeCycle", ADMIN_AUTH_HEADERS);
+    assertLifeCycle(expectedLifeCycle, entity1.getLifeCycle());
+    return patchEntity;
   }
 
   private static List<NamedXContentRegistry.Entry> getDefaultNamedXContents() {
@@ -2683,15 +2686,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
   }
 
-  protected void assertEntityReference(EntityReference expected, EntityReference actual) {
-    assertEquals(expected.getId(), actual.getId());
-    assertEquals(expected.getName(), actual.getName());
-    assertEquals(expected.getDescription(), actual.getDescription());
-    assertEquals(expected.getType(), actual.getType());
-    assertEquals(expected.getDisplayName(), actual.getDisplayName());
-    assertEquals(expected.getDeleted(), actual.getDeleted());
-  }
-
   protected void assertEntityReferencesContain(List<EntityReference> list, EntityReference reference) {
     assertFalse(listOrEmpty(list).isEmpty());
     EntityReference actual =
@@ -2900,33 +2894,33 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static void assertLifeCycle(LifeCycle expected, LifeCycle actual) {
     if (expected == null) {
       assertNull(actual);
-    } else {
-      if (expected.getAccessed() != null) {
-        assertEquals(expected.getAccessed().getTimestamp(), actual.getAccessed().getTimestamp());
-        if (expected.getAccessed().getAccessedBy() != null) {
-          assertReference(
-              expected.getAccessed().getAccessedBy(),
-              JsonUtils.convertValue(actual.getAccessed().getAccessedBy(), EntityReference.class));
-        }
-        assertEquals(expected.getAccessed().getAccessedByAProcess(), actual.getAccessed().getAccessedByAProcess());
+      return;
+    }
+    if (expected.getAccessed() != null) {
+      assertEquals(expected.getAccessed().getTimestamp(), actual.getAccessed().getTimestamp());
+      if (expected.getAccessed().getAccessedBy() != null) {
+        assertReference(
+            expected.getAccessed().getAccessedBy(),
+            JsonUtils.convertValue(actual.getAccessed().getAccessedBy(), EntityReference.class));
       }
-      if (expected.getCreated() != null) {
-        assertEquals(expected.getCreated().getTimestamp(), actual.getCreated().getTimestamp());
-        if (expected.getCreated().getAccessedBy() != null) {
-          assertReference(
-              expected.getCreated().getAccessedBy(),
-              JsonUtils.convertValue(actual.getCreated().getAccessedBy(), EntityReference.class));
-        }
-        assertEquals(expected.getCreated().getAccessedByAProcess(), actual.getCreated().getAccessedByAProcess());
+      assertEquals(expected.getAccessed().getAccessedByAProcess(), actual.getAccessed().getAccessedByAProcess());
+    }
+    if (expected.getCreated() != null) {
+      assertEquals(expected.getCreated().getTimestamp(), actual.getCreated().getTimestamp());
+      if (expected.getCreated().getAccessedBy() != null) {
+        assertReference(
+            expected.getCreated().getAccessedBy(),
+            JsonUtils.convertValue(actual.getCreated().getAccessedBy(), EntityReference.class));
       }
-      if (expected.getUpdated() != null) {
-        assertEquals(expected.getUpdated().getTimestamp(), actual.getUpdated().getTimestamp());
-        if (expected.getUpdated().getAccessedBy() != null) {
-          assertReference(
-              expected.getUpdated().getAccessedBy(),
-              JsonUtils.convertValue(actual.getUpdated().getAccessedBy(), EntityReference.class));
-          assertEquals(expected.getUpdated().getAccessedByAProcess(), actual.getUpdated().getAccessedByAProcess());
-        }
+      assertEquals(expected.getCreated().getAccessedByAProcess(), actual.getCreated().getAccessedByAProcess());
+    }
+    if (expected.getUpdated() != null) {
+      assertEquals(expected.getUpdated().getTimestamp(), actual.getUpdated().getTimestamp());
+      if (expected.getUpdated().getAccessedBy() != null) {
+        assertReference(
+            expected.getUpdated().getAccessedBy(),
+            JsonUtils.convertValue(actual.getUpdated().getAccessedBy(), EntityReference.class));
+        assertEquals(expected.getUpdated().getAccessedByAProcess(), actual.getUpdated().getAccessedByAProcess());
       }
     }
   }
