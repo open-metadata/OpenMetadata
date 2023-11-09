@@ -505,3 +505,60 @@ class OMetaGlossaryTest(TestCase):
         self.assertIsNotNone(res)
         self.assertEqual(3, len(res.synonyms))
         self.assertEqual("GT1S2", model_str(res.synonyms[1]))
+<<<<<<< HEAD
+=======
+
+    def test_patch_glossary_term_references(self):
+        """
+        Update GlossaryTerm references via PATCH
+        """
+
+        if OMetaGlossaryTest.glossary_entity_id is None:
+            glossary: Glossary = self.metadata.create_or_update(self.create_glossary)
+            OMetaGlossaryTest.glossary_entity_id = glossary.id
+        if self.glossary_term_1 is None:
+            OMetaGlossaryTest.glossary_term_1 = self.metadata.create_or_update(
+                self.create_glossary_term_1
+            )
+
+        # Add reference
+        res: GlossaryTerm = self.metadata.patch_glossary_term_references(
+            entity_id=self.glossary_term_1.id,
+            reference_name="GT1S1",
+            reference_endpoint="https://www.getcollate.io",
+        )
+        self.assertIsNotNone(res)
+        self.assertEqual(1, len(res.references))
+        self.assertEqual("GT1S1", res.references[0].name)
+
+        # Remove reference
+        res = self.metadata.patch_glossary_term_references(
+            entity_id=self.glossary_term_1.id,
+        )
+        self.assertIsNotNone(res)
+        self.assertEqual(0, len(res.references))
+
+        # Remove reference when there are many
+        self.metadata.patch_glossary_term_references(
+            entity_id=self.glossary_term_1.id,
+            reference_name="GT1S1",
+            reference_endpoint="https://www.getcollate.io",
+        )
+        self.metadata.patch_glossary_term_references(
+            entity_id=self.glossary_term_1.id,
+            reference_name="GT1S2",
+            reference_endpoint="https://open-metadata.org/",
+        )
+        self.metadata.patch_glossary_term_references(
+            entity_id=self.glossary_term_1.id,
+            reference_name="GT1S3",
+            reference_endpoint="https://github.com/open-metadata/OpenMetadata",
+        )
+
+        res = self.metadata.patch_glossary_term_references(
+            entity_id=self.glossary_term_1.id,
+        )
+        self.assertIsNotNone(res)
+        self.assertEqual(2, len(res.references))
+        self.assertEqual("GT1S2", res.references[1].name)
+>>>>>>> 05ee9daa65 (Fix python test failures)
