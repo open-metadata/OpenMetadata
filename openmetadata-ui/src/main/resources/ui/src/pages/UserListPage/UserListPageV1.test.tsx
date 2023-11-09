@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { render } from '@testing-library/react';
+import { fireEvent, render } from '@testing-library/react';
 import React from 'react';
+import { act } from 'react-test-renderer';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
 import { getUsers } from '../../rest/userAPI';
 import { MOCK_USER_DATA } from './MockUserPageData';
@@ -64,9 +65,56 @@ jest.mock('../../components/Loader/Loader', () => {
 });
 
 describe('Test UserListPage component', () => {
-  it('should render without crashing', async () => {
-    render(<UserListPageV1 />);
+  it('users api should called on initial load', async () => {
+    const { findByTestId } = render(<UserListPageV1 />);
+
+    const deletedSwitch = await findByTestId('show-deleted');
+
+    expect(deletedSwitch).toBeInTheDocument();
+    expect(deletedSwitch).not.toBeChecked();
 
     expect(getUsers).toHaveBeenCalled();
+  });
+
+  it('should call getUser with deleted flag on clicking showDeleted switch', async () => {
+    const { findByTestId } = render(<UserListPageV1 />);
+
+    expect(getUsers).toHaveBeenCalledWith({
+      fields: 'profile,teams,roles',
+      isAdmin: undefined,
+      isBot: false,
+      limit: 15,
+    });
+
+    const deletedSwitch = await findByTestId('show-deleted');
+
+    expect(deletedSwitch).toBeInTheDocument();
+
+    act(() => {
+      fireEvent.click(deletedSwitch);
+    });
+
+    expect(getUsers).toHaveBeenCalledWith({
+      fields: 'profile,teams,roles',
+      include: 'deleted',
+      isAdmin: false,
+      isBot: false,
+      limit: 15,
+    });
+  });
+
+  it('should render searchbar', async () => {
+    const { findByTestId } = render(<UserListPageV1 />);
+
+    expect(getUsers).toHaveBeenCalledWith({
+      fields: 'profile,teams,roles',
+      isAdmin: undefined,
+      isBot: false,
+      limit: 15,
+    });
+
+    const searchBar = await findByTestId('search-bar-container');
+
+    expect(searchBar).toBeInTheDocument();
   });
 });
