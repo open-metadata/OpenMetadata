@@ -96,7 +96,7 @@ class SampleTest(TestCase):
         SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
     ):
         sqa_profiler_interface = SQAProfilerInterface(
-            sqlite_conn, None, table_entity, None, None, None, None, 5, 43200
+            sqlite_conn, None, table_entity, None, None, None, None, None, 5, 43200
         )
     engine = sqa_profiler_interface.session.get_bind()
     session = sqa_profiler_interface.session
@@ -163,6 +163,7 @@ class SampleTest(TestCase):
                 self.sqlite_conn,
                 None,
                 self.table_entity,
+                None,
                 ProfileSampleConfig(profile_sample=50.0),
                 None,
                 None,
@@ -207,6 +208,7 @@ class SampleTest(TestCase):
                     self.sqlite_conn,
                     None,
                     self.table_entity,
+                    None,
                     ProfileSampleConfig(profile_sample=50),
                     None,
                     None,
@@ -243,6 +245,7 @@ class SampleTest(TestCase):
                     self.sqlite_conn,
                     None,
                     self.table_entity,
+                    None,
                     ProfileSampleConfig(profile_sample=50),
                     None,
                     None,

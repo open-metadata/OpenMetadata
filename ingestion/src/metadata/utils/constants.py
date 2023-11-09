@@ -45,3 +45,5 @@ QUERY_WITH_DBT = '/* {"app": "dbt"'
 AUTHORIZATION_HEADER = "Authorization"
 
 NO_ACCESS_TOKEN = "no_token"
+
+SAMPLE_DATA_DEFAULT_COUNT = 50

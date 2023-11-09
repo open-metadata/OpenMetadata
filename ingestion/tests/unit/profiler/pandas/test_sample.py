@@ -124,6 +124,7 @@ class DatalakeSampleTest(TestCase):
         cls.datalake_profiler_interface = PandasProfilerInterface(
             entity=cls.table_entity,
             service_connection_config=None,
+            storage_config=None,
             ometa_client=None,
             thread_count=None,
             profile_sample_config=ProfileSampleConfig(profile_sample=50.0),
@@ -162,6 +163,7 @@ class DatalakeSampleTest(TestCase):
         datalake_profiler_interface = PandasProfilerInterface(
             entity=self.table_entity,
             service_connection_config=None,
+            storage_config=None,
             ometa_client=None,
             thread_count=None,
             profile_sample_config=ProfileSampleConfig(profile_sample=50.0),

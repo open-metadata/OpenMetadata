@@ -126,6 +126,7 @@ export const DataAssetsHeader = ({
   onRestoreDataAsset,
   onDisplayNameUpdate,
   afterDomainUpdateAction,
+  onProfilerSettingUpdate,
 }: DataAssetsHeaderProps) => {
   const { currentUser } = useAuthContext();
   const USER_ID = currentUser?.id ?? '';
@@ -471,6 +472,7 @@ export const DataAssetsHeader = ({
                       : undefined
                   }
                   onEditDisplayName={onDisplayNameUpdate}
+                  onProfilerSettingUpdate={onProfilerSettingUpdate}
                   onRestoreEntity={onRestoreDataAsset}
                 />
               </ButtonGroup>

@@ -90,7 +90,7 @@ class ProfilerTest(TestCase):
         SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
     ):
         sqa_profiler_interface = SQAProfilerInterface(
-            sqlite_conn, None, table_entity, None, None, None, None, 5, 43200
+            sqlite_conn, None, table_entity, None, None, None, None, None, 5, 43200
         )
 
     @classmethod
@@ -241,6 +241,7 @@ class ProfilerTest(TestCase):
                 self.sqlite_conn,
                 None,
                 self.table_entity,
+                None,
                 None,
                 None,
                 None,

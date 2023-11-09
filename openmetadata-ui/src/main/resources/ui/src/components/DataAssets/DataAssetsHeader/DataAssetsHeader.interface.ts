@@ -98,6 +98,7 @@ export type DataAssetsHeaderProps = {
   onFollowClick?: () => Promise<void>;
   onRestoreDataAsset: () => Promise<void>;
   onDisplayNameUpdate: (data: EntityName) => Promise<void>;
+  onProfilerSettingUpdate?: () => void;
   onUpdateVote?: (data: QueryVote, id: string) => Promise<void>;
 } & (
   | DataAssetTable

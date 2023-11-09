@@ -91,6 +91,7 @@ export interface ProfilerSettingModalState {
   data: TableProfilerConfig | undefined;
   sqlQuery: string;
   profileSample: number | undefined;
+  sampleDataCount?: number;
   excludeCol: string[];
   includeCol: ColumnProfilerConfig[];
   enablePartition: boolean;
