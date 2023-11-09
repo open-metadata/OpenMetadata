@@ -230,6 +230,7 @@ const TableQueries: FC<TableQueriesProp> = ({
       });
     } else {
       setIsLoading((pre) => ({ ...pre, page: false, query: false }));
+      setIsError(QUERY_PAGE_ERROR_STATE);
     }
   }, [tableId, isTableDeleted]);
 

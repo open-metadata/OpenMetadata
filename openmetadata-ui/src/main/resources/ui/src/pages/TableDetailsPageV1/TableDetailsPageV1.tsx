@@ -498,7 +498,7 @@ const TableDetailsPageV1 = () => {
               hasEditAccess={editDescriptionPermission}
               isEdit={isEdit}
               owner={tableDetails?.owner}
-              showActions={!tableDetails?.deleted}
+              showActions={!deleted}
               onCancel={onCancel}
               onDescriptionEdit={onDescriptionEdit}
               onDescriptionUpdate={onDescriptionUpdate}
@@ -514,7 +514,7 @@ const TableDetailsPageV1 = () => {
               entityFqn={decodedTableFQN}
               hasDescriptionEditAccess={editDescriptionPermission}
               hasTagEditAccess={editTagsPermission}
-              isReadOnly={tableDetails?.deleted}
+              isReadOnly={deleted}
               joins={tableDetails?.joins?.columnJoins ?? []}
               tableConstraints={tableDetails?.tableConstraints}
               tablePartitioned={tableDetails?.tablePartition}
@@ -621,7 +621,7 @@ const TableDetailsPageV1 = () => {
             <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
           ) : (
             <SampleDataTableComponent
-              isTableDeleted={tableDetails?.deleted}
+              isTableDeleted={deleted}
               ownerId={tableDetails?.owner?.id ?? ''}
               permissions={tablePermissions}
               tableId={tableDetails?.id ?? ''}
@@ -642,7 +642,7 @@ const TableDetailsPageV1 = () => {
           <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
         ) : (
           <TableQueries
-            isTableDeleted={tableDetails?.deleted}
+            isTableDeleted={deleted}
             tableId={tableDetails?.id ?? ''}
           />
         ),
@@ -660,7 +660,7 @@ const TableDetailsPageV1 = () => {
             <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
           ) : (
             <TableProfilerV1
-              isTableDeleted={tableDetails?.deleted}
+              isTableDeleted={deleted}
               permissions={tablePermissions}
             />
           ),
@@ -670,7 +670,7 @@ const TableDetailsPageV1 = () => {
         key: EntityTabs.LINEAGE,
         children: (
           <EntityLineageComponent
-            deleted={tableDetails?.deleted}
+            deleted={deleted}
             entity={tableDetails as SourceType}
             entityType={EntityType.TABLE}
             hasEditAccess={editLineagePermission}
@@ -742,6 +742,7 @@ const TableDetailsPageV1 = () => {
     tablePermissions,
     activeTab,
     schemaTab,
+    deleted,
     tableDetails,
     feedCount,
     entityName,

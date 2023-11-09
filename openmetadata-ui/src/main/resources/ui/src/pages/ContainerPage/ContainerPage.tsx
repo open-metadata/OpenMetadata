@@ -618,6 +618,7 @@ const ContainerPage = () => {
         key: EntityTabs.LINEAGE,
         children: (
           <EntityLineageComponent
+            deleted={deleted}
             entity={containerData}
             entityType={EntityType.CONTAINER}
             hasEditAccess={editLineagePermission}
