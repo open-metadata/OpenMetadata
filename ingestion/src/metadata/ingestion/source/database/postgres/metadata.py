@@ -13,7 +13,7 @@ Postgres source module
 """
 import traceback
 from collections import namedtuple
-from typing import Iterable, Tuple
+from typing import Iterable, Optional, Tuple
 
 from sqlalchemy import sql
 from sqlalchemy.dialects.postgresql.base import PGDialect, ischema_names
@@ -40,6 +40,7 @@ from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
 )
+from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.ingestion.source.database.postgres.queries import (
     POSTGRES_GET_ALL_TABLE_PG_POLICY,
     POSTGRES_GET_DB_NAMES,
@@ -111,7 +112,7 @@ PGDialect.get_all_view_definitions = get_all_view_definitions
 PGDialect.ischema_names = ischema_names
 
 
-class PostgresSource(CommonDbSourceService):
+class PostgresSource(CommonDbSourceService, MultiDBSource):
     """
     Implements the necessary methods to extract
     Database metadata from Postgres Source
@@ -146,16 +147,21 @@ class PostgresSource(CommonDbSourceService):
             for name, relkind in result
         ]
 
+    def get_configured_database(self) -> Optional[str]:
+        if not self.service_connection.ingestAllDatabases:
+            return self.service_connection.database
+        return None
+
+    def get_database_names_raw(self) -> Iterable[str]:
+        yield from self._execute_database_query(POSTGRES_GET_DB_NAMES)
+
     def get_database_names(self) -> Iterable[str]:
         if not self.config.serviceConnection.__root__.config.ingestAllDatabases:
             configured_db = self.config.serviceConnection.__root__.config.database
             self.set_inspector(database_name=configured_db)
             yield configured_db
         else:
-            results = self.connection.execute(POSTGRES_GET_DB_NAMES)
-            for res in results:
-                row = list(res)
-                new_database = row[0]
+            for new_database in self.get_database_names_raw():
                 database_fqn = fqn.build(
                     self.metadata,
                     entity_type=Database,

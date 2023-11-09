@@ -531,12 +531,12 @@ def build_es_fqn_search_string(
     Returns:
         FQN search string
     """
-    if not service_name or not table_name:
+    if not table_name:
         raise FQNBuildingException(
-            f"Service Name and Table Name should be informed, but got service=`{service_name}`, table=`{table_name}`"
+            f"Table Name should be informed, but got table=`{table_name}`"
         )
     fqn_search_string = _build(
-        service_name, database_name or "*", schema_name or "*", table_name
+        service_name or "*", database_name or "*", schema_name or "*", table_name
     )
     return fqn_search_string
 
@@ -548,6 +548,7 @@ def search_table_from_es(
     service_name: str,
     table_name: str,
     fetch_multiple_entities: bool = False,
+    fields: Optional[str] = None,
 ):
     fqn_search_string = build_es_fqn_search_string(
         database_name, schema_name, service_name, table_name
@@ -556,6 +557,36 @@ def search_table_from_es(
     es_result = metadata.es_search_from_fqn(
         entity_type=Table,
         fqn_search_string=fqn_search_string,
+        fields=fields,
+    )
+
+    return get_entity_from_es_result(
+        entity_list=es_result, fetch_multiple_entities=fetch_multiple_entities
+    )
+
+
+def search_database_from_es(
+    metadata: OpenMetadata,
+    database_name: str,
+    service_name: Optional[str],
+    fetch_multiple_entities: Optional[bool] = False,
+    fields: Optional[str] = None,
+):
+    """
+    Search Database entity from ES
+    """
+
+    if not database_name:
+        raise FQNBuildingException(
+            f"Database Name should be informed, but got database=`{database_name}`"
+        )
+
+    fqn_search_string = _build(service_name or "*", database_name)
+
+    es_result = metadata.es_search_from_fqn(
+        entity_type=Database,
+        fqn_search_string=fqn_search_string,
+        fields=fields,
     )
 
     return get_entity_from_es_result(
