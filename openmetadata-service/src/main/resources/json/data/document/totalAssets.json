@@ -1,6 +1,6 @@
 {
   "name": "TotalAssets",
-  "displayName": "Total Assets KnowledgePanel",
+  "displayName": "Total Assets",
   "description": "Total Assets KnowledgePanel shows Data Asset growth across the organization.",
   "entityType": "KnowledgePanel",
   "fullyQualifiedName": "KnowledgePanel.TotalAssets",

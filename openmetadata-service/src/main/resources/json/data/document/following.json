@@ -1,6 +1,6 @@
 {
   "name": "Following",
-  "displayName": "Following KnowledgePanel",
+  "displayName": "Following",
   "description": "Following KnowledgePanel shows all the Assets that the User is Following.",
   "entityType": "KnowledgePanel",
   "fullyQualifiedName": "KnowledgePanel.Following",
