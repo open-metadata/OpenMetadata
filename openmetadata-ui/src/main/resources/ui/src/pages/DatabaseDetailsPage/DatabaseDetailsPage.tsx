@@ -48,6 +48,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../components/PermissionProvider/PermissionProvider.interface';
+import ProfilerSettings from '../../components/ProfilerSettings/ProfilerSettings';
 import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
 import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
@@ -135,6 +136,9 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const [threadLink, setThreadLink] = useState<string>('');
   const [currentPage, setCurrentPage] = useState(INITIAL_PAGING_VALUE);
+
+  const [updateProfilerSetting, setUpdateProfilerSetting] =
+    useState<boolean>(false);
 
   const history = useHistory();
   const isMounting = useRef(true);
@@ -823,6 +827,7 @@ const DatabaseDetails: FunctionComponent = () => {
               permissions={databasePermission}
               onDisplayNameUpdate={handleUpdateDisplayName}
               onOwnerUpdate={handleUpdateOwner}
+              onProfilerSettingUpdate={() => setUpdateProfilerSetting(true)}
               onRestoreDataAsset={handleRestoreDatabase}
               onTierUpdate={handleUpdateTier}
               onUpdateVote={updateVote}
@@ -850,6 +855,14 @@ const DatabaseDetails: FunctionComponent = () => {
               onCancel={onThreadPanelClose}
             />
           ) : null}
+          {updateProfilerSetting && (
+            <ProfilerSettings
+              entityId={database.id ?? ''}
+              entityType={EntityType.DATABASE}
+              visible={updateProfilerSetting}
+              onVisibilityChange={(value) => setUpdateProfilerSetting(value)}
+            />
+          )}
         </Row>
       )}
     </PageLayoutV1>
