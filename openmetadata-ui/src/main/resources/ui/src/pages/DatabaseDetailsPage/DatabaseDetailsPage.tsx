@@ -39,6 +39,7 @@ import { PagingHandlerParams } from '../../components/common/next-previous/NextP
 import Searchbar from '../../components/common/searchbar/Searchbar';
 import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import DataProductsContainer from '../../components/DataProductsContainer/DataProductsContainer.component';
 import Loader from '../../components/Loader/Loader';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
@@ -46,6 +47,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../components/PermissionProvider/PermissionProvider.interface';
+import ProfilerSettings from '../../components/ProfilerSettings/ProfilerSettings';
 import { withActivityFeed } from '../../components/router/withActivityFeed';
 import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
 import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
@@ -134,6 +136,9 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const [threadLink, setThreadLink] = useState<string>('');
   const [currentPage, setCurrentPage] = useState(INITIAL_PAGING_VALUE);
+
+  const [updateProfilerSetting, setUpdateProfilerSetting] =
+    useState<boolean>(false);
 
   const history = useHistory();
   const isMounting = useRef(true);
@@ -683,6 +688,11 @@ const DatabaseDetails: FunctionComponent = () => {
               data-testid="entity-right-panel"
               flex="320px">
               <Space className="w-full" direction="vertical" size="large">
+                <DataProductsContainer
+                  activeDomain={database?.domain}
+                  dataProducts={database?.dataProducts ?? []}
+                  hasPermission={false}
+                />
                 <TagsContainerV2
                   displayType={DisplayType.READ_MORE}
                   entityFqn={decodedDatabaseFQN}
@@ -817,6 +827,7 @@ const DatabaseDetails: FunctionComponent = () => {
               permissions={databasePermission}
               onDisplayNameUpdate={handleUpdateDisplayName}
               onOwnerUpdate={handleUpdateOwner}
+              onProfilerSettingUpdate={() => setUpdateProfilerSetting(true)}
               onRestoreDataAsset={handleRestoreDatabase}
               onTierUpdate={handleUpdateTier}
               onUpdateVote={updateVote}
@@ -844,6 +855,14 @@ const DatabaseDetails: FunctionComponent = () => {
               onCancel={onThreadPanelClose}
             />
           ) : null}
+          {updateProfilerSetting && (
+            <ProfilerSettings
+              entityId={database.id ?? ''}
+              entityType={EntityType.DATABASE}
+              visible={updateProfilerSetting}
+              onVisibilityChange={(value) => setUpdateProfilerSetting(value)}
+            />
+          )}
         </Row>
       )}
     </PageLayoutV1>
