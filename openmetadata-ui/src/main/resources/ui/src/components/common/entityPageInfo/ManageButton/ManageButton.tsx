@@ -21,6 +21,7 @@ import { ReactComponent as IconAnnouncementsBlack } from '../../../../assets/svg
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore.svg';
+import { ReactComponent as IconSetting } from '../../../../assets/svg/ic-settings-gray.svg';
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 import { ManageButtonItemLabel } from '../../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import EntityNameModal from '../../../../components/Modals/EntityNameModal/EntityNameModal.component';
@@ -58,6 +59,7 @@ interface Props {
   successMessage?: string;
   deleteButtonDescription?: string;
   deleteOptions?: DeleteOption[];
+  onProfilerSettingUpdate?: () => void;
 }
 
 const ManageButton: FC<Props> = ({
@@ -84,12 +86,21 @@ const ManageButton: FC<Props> = ({
   successMessage,
   deleteButtonDescription,
   deleteOptions,
+  onProfilerSettingUpdate,
 }) => {
   const { t } = useTranslation();
   const [isDelete, setIsDelete] = useState<boolean>(false);
   const [isEntityRestoring, setIsEntityRestoring] = useState<boolean>(false);
   const [showReactiveModal, setShowReactiveModal] = useState(false);
   const [isDisplayNameEditing, setIsDisplayNameEditing] = useState(false);
+
+  const isProfilerSupported = useMemo(
+    () =>
+      [EntityType.DATABASE, EntityType.DATABASE_SCHEMA].includes(
+        entityType as EntityType
+      ) && !deleted,
+    [entityType, deleted]
+  );
 
   const handleRestore = async () => {
     try {
@@ -211,6 +222,34 @@ const ManageButton: FC<Props> = ({
         ] as ItemType[])
       : []),
     ...(extraDropdownContent ?? []),
+    ...(isProfilerSupported
+      ? ([
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={
+                  deleteButtonDescription ??
+                  t('message.update-profiler-settings')
+                }
+                icon={
+                  <IconSetting
+                    className="m-t-xss"
+                    {...DROPDOWN_ICON_SIZE_PROPS}
+                    name="Profiler Settings"
+                  />
+                }
+                id="profiler-setting-button"
+                name={t('label.profiler-setting-plural')}
+              />
+            ),
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              onProfilerSettingUpdate?.();
+            },
+            key: 'profiler-setting-button',
+          },
+        ] as ItemType[])
+      : []),
     ...(canDelete
       ? ([
           {

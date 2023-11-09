@@ -45,6 +45,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../components/PermissionProvider/PermissionProvider.interface';
+import ProfilerSettings from '../../components/ProfilerSettings/ProfilerSettings';
 import { withActivityFeed } from '../../components/router/withActivityFeed';
 import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
 import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
@@ -132,6 +133,9 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     paging: pagingObject,
     currentPage: INITIAL_PAGING_VALUE,
   });
+
+  const [updateProfilerSetting, setUpdateProfilerSetting] =
+    useState<boolean>(false);
 
   const decodedDatabaseSchemaFQN = useMemo(
     () => getDecodedFqn(databaseSchemaFQN),
@@ -762,6 +766,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                 permissions={databaseSchemaPermission}
                 onDisplayNameUpdate={handleUpdateDisplayName}
                 onOwnerUpdate={handleUpdateOwner}
+                onProfilerSettingUpdate={() => setUpdateProfilerSetting(true)}
                 onRestoreDataAsset={handleRestoreDatabaseSchema}
                 onTierUpdate={handleUpdateTier}
                 onUpdateVote={updateVote}
@@ -792,6 +797,14 @@ const DatabaseSchemaPage: FunctionComponent = () => {
               />
             ) : null}
           </Col>
+          {updateProfilerSetting && (
+            <ProfilerSettings
+              entityId={databaseSchemaId}
+              entityType={EntityType.DATABASE_SCHEMA}
+              visible={updateProfilerSetting}
+              onVisibilityChange={(value) => setUpdateProfilerSetting(value)}
+            />
+          )}
         </Row>
       )}
     </PageLayoutV1>

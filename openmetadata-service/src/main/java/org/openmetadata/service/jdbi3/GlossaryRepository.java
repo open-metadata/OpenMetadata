@@ -274,21 +274,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     @Transaction
     @Override
     public void entitySpecificUpdate() {
-      updateReviewers(original, updated);
       updateName(original, updated);
-    }
-
-    private void updateReviewers(Glossary origGlossary, Glossary updatedGlossary) {
-      List<EntityReference> origUsers = listOrEmpty(origGlossary.getReviewers());
-      List<EntityReference> updatedUsers = listOrEmpty(updatedGlossary.getReviewers());
-      updateFromRelationships(
-          "reviewers",
-          Entity.USER,
-          origUsers,
-          updatedUsers,
-          Relationship.REVIEWS,
-          Entity.GLOSSARY,
-          origGlossary.getId());
     }
 
     public void updateName(Glossary original, Glossary updated) {
