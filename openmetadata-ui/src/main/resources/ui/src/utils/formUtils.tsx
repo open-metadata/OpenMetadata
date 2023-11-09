@@ -19,7 +19,9 @@ import {
   InputNumber,
   Select,
   Switch,
+  TooltipProps,
 } from 'antd';
+import { TooltipPlacement } from 'antd/lib/tooltip';
 import classNames from 'classnames';
 import { compact, startCase } from 'lodash';
 import React, { Fragment, ReactNode } from 'react';
@@ -34,6 +36,7 @@ import { UserSelectableList } from '../components/common/UserSelectableList/User
 import { UserSelectableListProps } from '../components/common/UserSelectableList/UserSelectableList.interface';
 import { UserTeamSelectableList } from '../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { UserSelectDropdownProps } from '../components/common/UserTeamSelectableList/UserTeamSelectableList.interface';
+import FormItemLabel from '../components/Form/FormItemLabel';
 import SliderWithInput from '../components/SliderWithInput/SliderWithInput';
 import { SliderWithInputProps } from '../components/SliderWithInput/SliderWithInput.interface';
 import { FieldProp, FieldTypes } from '../interface/FormUtils.interface';
@@ -47,6 +50,7 @@ export const getField = (field: FieldProp) => {
     label,
     name,
     type,
+    helperText,
     required,
     props = {},
     rules = [],
@@ -89,10 +93,10 @@ export const getField = (field: FieldProp) => {
     case FieldTypes.NUMBER:
       fieldElement = (
         <InputNumber
-          {...props}
           id={id}
           placeholder={placeholder}
           size="small"
+          {...props}
         />
       );
 
@@ -190,7 +194,14 @@ export const getField = (field: FieldProp) => {
         })}
         id={id}
         key={id}
-        label={label}
+        label={
+          <FormItemLabel
+            align={props.tooltipAlign as TooltipProps['align']}
+            helperText={helperText}
+            label={label}
+            placement={props.tooltipPlacement as TooltipPlacement}
+          />
+        }
         name={name}
         rules={fieldRules}
         {...internalFormItemProps}
