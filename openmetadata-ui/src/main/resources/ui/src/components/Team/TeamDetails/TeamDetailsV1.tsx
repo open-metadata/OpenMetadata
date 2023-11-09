@@ -555,6 +555,9 @@ const TeamDetailsV1 = ({
               key: 'restore-team-dropdown',
             },
           ]
+        : []),
+      ...(isTeamDeleted
+        ? []
         : [
             {
               label: (
