@@ -35,7 +35,15 @@ class ProfilerSourceInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def create_profiler_interface(self, entity, config) -> ProfilerInterface:
+    def create_profiler_interface(
+        self,
+        entity,
+        config,
+        profiler_config,
+        schema_entity,
+        database_entity,
+        db_service,
+    ) -> ProfilerInterface:
         """Create the profiler interface"""
         raise NotImplementedError
 
