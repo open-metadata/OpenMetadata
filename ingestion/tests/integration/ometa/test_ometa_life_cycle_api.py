@@ -210,6 +210,9 @@ class OMetaLifeCycleTest(TestCase):
 
         entity = self.create_table(name="test_update_life_cycle")
 
+        # We PATCH twice and review the results
+        self.metadata.patch_life_cycle(entity=entity, life_cycle=self.life_cycle)
+
         new_accessed = AccessDetails(
             timestamp=1694015100000,
             accessedBy=self.updated_user_ref,
@@ -220,10 +223,13 @@ class OMetaLifeCycleTest(TestCase):
             accessedBy=self.updated_user_ref,
         )
 
-        # We PATCH twice and review the results
-        self.metadata.patch_life_cycle(entity=entity, life_cycle=self.life_cycle)
+        updated_entity = self.metadata.get_by_name(
+            entity=Table,
+            fqn="test-service-lifecycle.test-db.test-schema.test_update_life_cycle",
+            fields=["lifeCycle"],
+        )
         self.metadata.patch_life_cycle(
-            entity=entity,
+            entity=updated_entity,
             life_cycle=LifeCycle(accessed=new_accessed, updated=new_updated),
         )
 
