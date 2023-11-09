@@ -162,9 +162,6 @@ services:
       #changeEventConfig
       OM_URI: ${OM_URI:- "http://localhost:8585"}
 
-      #extensionConfiguration
-      MIGRATION_EXTENSION_PATH: ${MIGRATION_EXTENSION_PATH:-""}
-
       # Heap OPTS Configurations
       OPENMETADATA_HEAP_OPTS: ${OPENMETADATA_HEAP_OPTS:--Xmx1G -Xms1G}
       # Mask passwords values in UI
@@ -309,9 +306,6 @@ services:
 
       #changeEventConfig
       OM_URI: ${OM_URI:- "http://localhost:8585"}
-
-      #extensionConfiguration
-      MIGRATION_EXTENSION_PATH: ${MIGRATION_EXTENSION_PATH:-""}
 
       # Heap OPTS Configurations
       OPENMETADATA_HEAP_OPTS: ${OPENMETADATA_HEAP_OPTS:--Xmx1G -Xms1G}
