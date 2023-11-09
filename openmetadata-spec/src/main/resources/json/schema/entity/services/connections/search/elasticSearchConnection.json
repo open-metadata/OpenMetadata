@@ -11,40 +11,6 @@
       "type": "string",
       "enum": ["ElasticSearch"],
       "default": "ElasticSearch"
-    },
-    "basicAuthentication": {
-      "title": "Basic Authentication",
-      "properties": {
-        "username": {
-          "title": "Username",
-          "description": "Elastic Search Username for Login",
-          "type": "string"
-        },
-        "password": {
-          "title": "Password",
-          "description": "Elastic Search Password for Login",
-          "type": "string",
-          "format": "password"
-        }
-      },
-      "type": "object"
-    },
-    "apiAuthentication": {
-      "title": "API Key Authentication",
-      "type": "object",
-      "properties": {
-        "apiKey": {
-          "title": "API Key",
-          "description": "Elastic Search API Key for API Authentication",
-          "type": "string",
-          "format": "password"
-        },
-        "apiKeyId": {
-          "title": "API Key ID",
-          "description": "Elastic Search API Key ID for API Authentication",
-          "type": "string"
-        } 
-      }
     }
   },
   "properties": {
@@ -65,10 +31,10 @@
       "description": "Choose Auth Config Type.",
       "oneOf": [
         {
-          "$ref": "#/definitions/basicAuthentication"
+          "$ref": "./elasticSearch/basicAuth.json"
         },
         {
-          "$ref": "#/definitions/apiAuthentication"
+          "$ref": "./elasticSearch/apiAuth.json"
         }
       ]
     },
