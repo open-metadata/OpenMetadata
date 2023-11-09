@@ -26,7 +26,7 @@ import {
 
 const updatedDescription = 'This is updated description';
 
-const teamName = 'team-group-test-430116' ?? `team-ct-test-${uuid()}`;
+const teamName = `team-ct-test-${uuid()}`;
 const TEAM_DETAILS = {
   name: teamName,
   updatedName: `${teamName}-updated`,
@@ -255,6 +255,8 @@ describe('Teams flow should work properly', () => {
     cy.get('[data-testid="inactive-link"]')
       .should('be.visible')
       .should('contain', TEAM_DETAILS.updatedName);
+
+    cy.get('[role="tablist"] [data-icon="right"]').click();
 
     // Click on edit description button
     cy.get('[data-testid="edit-description"]')

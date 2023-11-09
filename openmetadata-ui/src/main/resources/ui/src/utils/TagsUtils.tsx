@@ -295,19 +295,22 @@ export const tagRender = (customTagProps: CustomTagProps) => {
   );
 };
 
+type ResultType = {
+  label: string;
+  value: string;
+  data: Tag;
+};
+
 export const fetchTagsElasticSearch = async (
   searchText: string,
-  page: number
+  page: number,
+  filterClassifications?: string[]
 ): Promise<{
-  data: {
-    label: string;
-    value: string;
-    data: Tag;
-  }[];
+  data: ResultType[];
   paging: Paging;
 }> => {
   const res = await searchQuery({
-    query: searchText,
+    query: `*${searchText}*`,
     filters: 'disabled:false',
     pageNumber: page,
     pageSize: PAGE_SIZE,
@@ -316,11 +319,20 @@ export const fetchTagsElasticSearch = async (
   });
 
   return {
-    data: res.hits.hits.map(({ _source }) => ({
-      label: _source.fullyQualifiedName ?? '',
-      value: _source.fullyQualifiedName ?? '',
-      data: _source,
-    })),
+    data: res.hits.hits.reduce((result: ResultType[], { _source }) => {
+      const classificationName =
+        _source.classification?.fullyQualifiedName ?? '';
+
+      if (!filterClassifications?.includes(classificationName)) {
+        result.push({
+          label: _source.fullyQualifiedName ?? '',
+          value: _source.fullyQualifiedName ?? '',
+          data: _source,
+        });
+      }
+
+      return result;
+    }, []),
     paging: {
       total: res.hits.total.value,
     },

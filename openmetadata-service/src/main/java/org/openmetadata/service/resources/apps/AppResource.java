@@ -1,5 +1,6 @@
 package org.openmetadata.service.resources.apps;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.APPLICATION;
 import static org.openmetadata.service.Entity.BOT;
@@ -15,16 +16,20 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
+import javax.ws.rs.BadRequestException;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
+import javax.ws.rs.InternalServerErrorException;
 import javax.ws.rs.PATCH;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
@@ -39,6 +44,7 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
@@ -46,9 +52,14 @@ import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.AppType;
 import org.openmetadata.schema.entity.app.CreateApp;
 import org.openmetadata.schema.entity.app.ScheduleType;
+import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
+import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.sdk.PipelineServiceClient;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -57,11 +68,17 @@ import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.secrets.SecretsManager;
+import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
@@ -80,6 +97,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
   private PipelineServiceClient pipelineServiceClient;
   static final String FIELDS = "owner";
   private SearchRepository searchRepository;
+
+  private final Authorizer authorizer;
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
@@ -132,6 +151,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
 
   public AppResource(Authorizer authorizer) {
     super(Entity.APPLICATION, authorizer);
+    this.authorizer = authorizer;
   }
 
   public static class AppList extends ResultList<App> {
@@ -187,7 +207,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
   }
 
   @GET
-  @Path("/name/{name}/runs")
+  @Path("/name/{name}/status")
   @Operation(
       operationId = "listAppRunRecords",
       summary = "List App Run Records",
@@ -201,7 +221,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
             description = "List of Installed Applications Runs",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = AppRunList.class)))
       })
-  public ResultList<AppRunRecord> listAppRuns(
+  public Response listAppRuns(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the App", schema = @Schema(type = "string")) @PathParam("name") String name,
@@ -216,9 +236,78 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @QueryParam("offset")
           @Min(0)
           @Max(1000000)
-          int offset) {
-    App installation = repository.getByName(uriInfo, name, repository.getFields("id"));
-    return repository.listAppRuns(installation.getId(), limitParam, offset);
+          int offset,
+      @Parameter(
+              description = "Filter pipeline status after the given start timestamp",
+              schema = @Schema(type = "number"))
+          @QueryParam("startTs")
+          Long startTs,
+      @Parameter(
+              description = "Filter pipeline status before the given end timestamp",
+              schema = @Schema(type = "number"))
+          @QueryParam("endTs")
+          Long endTs) {
+    App installation = repository.getByName(uriInfo, name, repository.getFields("id,pipelines"));
+    if (installation.getAppType().equals(AppType.Internal)) {
+      return Response.status(Response.Status.OK)
+          .entity(repository.listAppRuns(installation.getId(), limitParam, offset))
+          .build();
+    } else {
+      if (!installation.getPipelines().isEmpty()) {
+        EntityReference pipelineRef = installation.getPipelines().get(0);
+        IngestionPipelineRepository ingestionPipelineRepository =
+            (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+        IngestionPipeline ingestionPipeline =
+            ingestionPipelineRepository.get(
+                uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNER));
+        return Response.ok(
+                ingestionPipelineRepository.listPipelineStatus(
+                    ingestionPipeline.getFullyQualifiedName(), startTs, endTs),
+                MediaType.APPLICATION_JSON_TYPE)
+            .build();
+      } else {
+        throw new RuntimeException("App does not have an associated pipeline.");
+      }
+    }
+  }
+
+  @GET
+  @Path("/name/{name}/logs")
+  @Operation(
+      summary = "Retrieve all logs from last ingestion pipeline run for the application",
+      description = "Get all logs from last ingestion pipeline run by `Id`.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "JSON object with the task instance name of the ingestion on each key and log in the value",
+            content = @Content(mediaType = "application/json")),
+        @ApiResponse(responseCode = "404", description = "Logs for instance {id} is not found")
+      })
+  public Response getLastLogs(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the App", schema = @Schema(type = "string")) @PathParam("name") String name,
+      @Parameter(description = "Returns log chunk after this cursor", schema = @Schema(type = "string"))
+          @QueryParam("after")
+          @DefaultValue("")
+          String after) {
+    App installation = repository.getByName(uriInfo, name, repository.getFields("id,pipelines"));
+    if (installation.getAppType().equals(AppType.Internal)) {
+      return Response.status(Response.Status.OK).entity(repository.getLatestAppRuns(installation.getId())).build();
+    } else {
+      if (!installation.getPipelines().isEmpty()) {
+        EntityReference pipelineRef = installation.getPipelines().get(0);
+        IngestionPipelineRepository ingestionPipelineRepository =
+            (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+        IngestionPipeline ingestionPipeline =
+            ingestionPipelineRepository.get(
+                uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNER));
+        return Response.ok(
+                pipelineServiceClient.getLastIngestionLogs(ingestionPipeline, after), MediaType.APPLICATION_JSON_TYPE)
+            .build();
+      }
+    }
+    throw new BadRequestException("Failed to Get Logs for the Installation.");
   }
 
   @GET
@@ -233,12 +322,34 @@ public class AppResource extends EntityResource<App, AppRepository> {
             description = "List of Installed Applications Runs",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = AppRunRecord.class)))
       })
-  public AppRunRecord listLatestAppRun(
+  public Response listLatestAppRun(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the App", schema = @Schema(type = "string")) @PathParam("name") String name) {
-    App installation = repository.getByName(uriInfo, name, repository.getFields("id"));
-    return repository.getLatestAppRuns(installation.getId());
+      @Parameter(description = "Name of the App", schema = @Schema(type = "string")) @PathParam("name") String name,
+      @Parameter(description = "Returns log chunk after this cursor", schema = @Schema(type = "string"))
+          @QueryParam("after")
+          @DefaultValue("")
+          String after) {
+    App installation = repository.getByName(uriInfo, name, repository.getFields("id,pipelines"));
+    if (installation.getAppType().equals(AppType.Internal)) {
+      return Response.status(Response.Status.OK).entity(repository.getLatestAppRuns(installation.getId())).build();
+    } else {
+      if (!installation.getPipelines().isEmpty()) {
+        EntityReference pipelineRef = installation.getPipelines().get(0);
+        IngestionPipelineRepository ingestionPipelineRepository =
+            (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+        IngestionPipeline ingestionPipeline =
+            ingestionPipelineRepository.get(
+                uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNER));
+        PipelineStatus latestPipelineStatus = ingestionPipelineRepository.getLatestPipelineStatus(ingestionPipeline);
+        Map<String, String> lastIngestionLogs = pipelineServiceClient.getLastIngestionLogs(ingestionPipeline, after);
+        Map<String, Object> appRun = new HashMap<>();
+        appRun.put("pipelineStatus", latestPipelineStatus);
+        appRun.put("lastIngestionLogs", lastIngestionLogs);
+        return Response.ok(appRun, MediaType.APPLICATION_JSON_TYPE).build();
+      }
+    }
+    throw new BadRequestException("Failed to Get Logs for the Installation.");
   }
 
   @GET
@@ -349,7 +460,6 @@ public class AppResource extends EntityResource<App, AppRepository> {
   }
 
   @POST
-  @Path("/install")
   @Operation(
       operationId = "createApplication",
       summary = "Create a Application",
@@ -443,7 +553,11 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @DefaultValue("false")
           boolean hardDelete,
       @Parameter(description = "Name of the App", schema = @Schema(type = "string")) @PathParam("name") String name) {
-    return deleteByName(uriInfo, securityContext, name, true, hardDelete);
+    Response response = deleteByName(uriInfo, securityContext, name, true, hardDelete);
+    if (response.getStatus() == Response.Status.OK.getStatusCode()) {
+      deleteApp(securityContext, (App) response.getEntity(), hardDelete);
+    }
+    return response;
   }
 
   @DELETE
@@ -464,7 +578,11 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @DefaultValue("false")
           boolean hardDelete,
       @Parameter(description = "Id of the App", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
-    return delete(uriInfo, securityContext, id, true, hardDelete);
+    Response response = delete(uriInfo, securityContext, id, true, hardDelete);
+    if (response.getStatus() == Response.Status.OK.getStatusCode()) {
+      deleteApp(securityContext, (App) response.getEntity(), hardDelete);
+    }
+    return response;
   }
 
   @PUT
@@ -481,7 +599,14 @@ public class AppResource extends EntityResource<App, AppRepository> {
       })
   public Response restoreApp(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    Response response = restoreEntity(uriInfo, securityContext, restore.getId());
+    if (response.getStatus() == Response.Status.OK.getStatusCode()) {
+      App app = (App) response.getEntity();
+      if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
+        ApplicationHandler.scheduleApplication(app, Entity.getCollectionDAO(), searchRepository);
+      }
+    }
+    return response;
   }
 
   @POST
@@ -503,8 +628,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Context SecurityContext securityContext) {
     App app = repository.getByName(uriInfo, name, new EntityUtil.Fields(repository.getAllowedFields()));
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
-      ApplicationHandler.scheduleApplication(app, Entity.getCollectionDAO(), searchRepository);
-      Response.status(Response.Status.OK).entity("App Scheduled to Scheduler successfully.");
+      ApplicationHandler.scheduleApplication(app, repository.getDaoCollection(), searchRepository);
+      return Response.status(Response.Status.OK).entity("App is Scheduled.").build();
     }
     throw new IllegalArgumentException("App is not of schedule type Scheduled.");
   }
@@ -526,15 +651,95 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the App", schema = @Schema(type = "string")) @PathParam("name") String name) {
-    EntityUtil.Fields fields = getFields(String.format("%s,%s", FIELD_OWNER, "bot"));
+    EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNER));
     App app = repository.getByName(uriInfo, name, fields);
     if (app.getAppType().equals(AppType.Internal)) {
       ApplicationHandler.triggerApplicationOnDemand(app, Entity.getCollectionDAO(), searchRepository);
       return Response.status(Response.Status.OK).entity("Application Triggered").build();
     } else {
-      app.setOpenMetadataServerConnection(
-          new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, app.getBot().getName()).build());
-      return Response.status(Response.Status.OK).entity(pipelineServiceClient.runApplicationFlow(app)).build();
+      if (!app.getPipelines().isEmpty()) {
+        EntityReference pipelineRef = app.getPipelines().get(0);
+        IngestionPipelineRepository ingestionPipelineRepository =
+            (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+
+        IngestionPipeline ingestionPipeline =
+            ingestionPipelineRepository.get(
+                uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNER));
+        ingestionPipeline.setOpenMetadataServerConnection(
+            new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, app.getBot().getName()).build());
+        decryptOrNullify(securityContext, ingestionPipeline, app.getBot().getName(), true);
+        ServiceEntityInterface service = Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
+        PipelineServiceClientResponse response = pipelineServiceClient.runPipeline(ingestionPipeline, service);
+        return Response.status(response.getCode()).entity(response).build();
+      }
+    }
+    throw new BadRequestException("Failed to trigger application.");
+  }
+
+  @POST
+  @Path("/deploy/{name}")
+  @Operation(
+      operationId = "deployApplicationToQuartzOrIngestion",
+      summary = "Deploy App to Quartz or Ingestion",
+      description = "Deploy App to Quartz or Ingestion.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Application trigger status code",
+            content = @Content(mediaType = "application/json")),
+        @ApiResponse(responseCode = "404", description = "Application for instance {id} is not found")
+      })
+  public Response deployApplicationFlow(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the App", schema = @Schema(type = "string")) @PathParam("name") String name) {
+    EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNER));
+    App app = repository.getByName(uriInfo, name, fields);
+    if (app.getAppType().equals(AppType.Internal)) {
+      ApplicationHandler.scheduleApplication(app, Entity.getCollectionDAO(), searchRepository);
+      return Response.status(Response.Status.OK).entity("Application Deployed").build();
+    } else {
+      if (!app.getPipelines().isEmpty()) {
+        EntityReference pipelineRef = app.getPipelines().get(0);
+        IngestionPipelineRepository ingestionPipelineRepository =
+            (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+
+        IngestionPipeline ingestionPipeline =
+            ingestionPipelineRepository.get(
+                uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNER));
+
+        ingestionPipeline.setOpenMetadataServerConnection(
+            new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, app.getBot().getName()).build());
+        decryptOrNullify(securityContext, ingestionPipeline, app.getBot().getName(), true);
+        ServiceEntityInterface service = Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
+        PipelineServiceClientResponse status = pipelineServiceClient.deployPipeline(ingestionPipeline, service);
+        if (status.getCode() == 200) {
+          ingestionPipelineRepository.createOrUpdate(uriInfo, ingestionPipeline);
+        }
+        return Response.status(status.getCode()).entity(status).build();
+      }
+    }
+    throw new BadRequestException("Failed to trigger application.");
+  }
+
+  private void decryptOrNullify(
+      SecurityContext securityContext, IngestionPipeline ingestionPipeline, String botname, boolean forceNotMask) {
+    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+    try {
+      authorizer.authorize(
+          securityContext,
+          new OperationContext(entityType, MetadataOperation.VIEW_ALL),
+          getResourceContextById(ingestionPipeline.getId()));
+    } catch (AuthorizationException e) {
+      ingestionPipeline.getSourceConfig().setConfig(null);
+    }
+    secretsManager.decryptIngestionPipeline(ingestionPipeline);
+    OpenMetadataConnection openMetadataServerConnection =
+        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, botname).build();
+    ingestionPipeline.setOpenMetadataServerConnection(
+        secretsManager.encryptOpenMetadataConnection(openMetadataServerConnection, false));
+    if (authorizer.shouldMaskPasswords(securityContext) && !forceNotMask) {
+      EntityMaskerFactory.getEntityMasker().maskIngestionPipeline(ingestionPipeline);
     }
   }
 
@@ -545,8 +750,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
         new App()
             .withId(UUID.randomUUID())
             .withName(marketPlaceDefinition.getName())
-            .withDisplayName(marketPlaceDefinition.getDisplayName())
-            .withDescription(marketPlaceDefinition.getDescription())
+            .withDisplayName(createAppRequest.getDisplayName())
+            .withDescription(createAppRequest.getDescription())
             .withOwner(owner)
             .withUpdatedBy(updatedBy)
             .withUpdatedAt(System.currentTimeMillis())
@@ -562,6 +767,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
             .withPermission(marketPlaceDefinition.getPermission())
             .withAppSchedule(createAppRequest.getAppSchedule())
             .withAppLogoUrl(marketPlaceDefinition.getAppLogoUrl())
+            .withAppScreenshots(marketPlaceDefinition.getAppScreenshots())
             .withFeatures(marketPlaceDefinition.getFeatures());
 
     // validate Bot if provided
@@ -575,6 +781,39 @@ public class AppResource extends EntityResource<App, AppRepository> {
       app.setBot(Entity.getEntityReferenceByName(BOT, botName, Include.NON_DELETED));
     } else {
       app.setBot(repository.createNewAppBot(app));
+    }
+  }
+
+  private void deleteApp(SecurityContext securityContext, App installedApp, boolean hardDelete) {
+    if (installedApp.getAppType().equals(AppType.Internal)) {
+      try {
+        AppScheduler.getInstance().deleteScheduledApplication(installedApp);
+      } catch (SchedulerException ex) {
+        LOG.error("Failed in delete Application from Scheduler.", ex);
+        throw new InternalServerErrorException("Failed in Delete App from Scheduler.");
+      }
+    } else {
+      App app = repository.getByName(null, installedApp.getName(), repository.getFields("bot,pipelines"));
+      if (!nullOrEmpty(app.getPipelines())) {
+        EntityReference pipelineRef = app.getPipelines().get(0);
+        IngestionPipelineRepository ingestionPipelineRepository =
+            (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+
+        IngestionPipeline ingestionPipeline =
+            ingestionPipelineRepository.get(
+                null, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNER));
+
+        if (hardDelete) {
+          // Remove the Pipeline in case of Delete
+          if (!nullOrEmpty(app.getPipelines())) {
+            pipelineServiceClient.deletePipeline(ingestionPipeline);
+          }
+        } else {
+          // Just Kill Running ingestion
+          decryptOrNullify(securityContext, ingestionPipeline, app.getBot().getName(), true);
+          pipelineServiceClient.killIngestion(ingestionPipeline);
+        }
+      }
     }
   }
 }

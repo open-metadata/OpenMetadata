@@ -38,7 +38,7 @@ import org.openmetadata.schema.dataInsight.type.TotalEntitiesByTier;
 import org.openmetadata.schema.dataInsight.type.TotalEntitiesByType;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppSchedule;
-import org.openmetadata.schema.entity.app.DataInsightAppConfig;
+import org.openmetadata.schema.entity.app.DataInsightsReportAppConfig;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
@@ -77,8 +77,8 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     long scheduleTime = currentTime - getTimeFromSchedule(scheduleConfiguration, jobExecutionContext);
     int numberOfDaysChange = getNumberOfDays(scheduleConfiguration);
     try {
-      DataInsightAppConfig insightAlertConfig =
-          JsonUtils.convertValue(app.getAppConfiguration(), DataInsightAppConfig.class);
+      DataInsightsReportAppConfig insightAlertConfig =
+          JsonUtils.convertValue(app.getAppConfiguration(), DataInsightsReportAppConfig.class);
       // Send to Admins
       if (Boolean.TRUE.equals(insightAlertConfig.getSendToAdmins())) {
         sendToAdmins(searchRepository.getSearchClient(), scheduleTime, currentTime, numberOfDaysChange);
@@ -111,22 +111,27 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
             emails.add(user.getEmail());
           }
         }
-        DataInsightTotalAssetTemplate totalAssetTemplate =
-            createTotalAssetTemplate(searchClient, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
-        DataInsightDescriptionAndOwnerTemplate descriptionTemplate =
-            createDescriptionTemplate(searchClient, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
-        DataInsightDescriptionAndOwnerTemplate ownershipTemplate =
-            createOwnershipTemplate(searchClient, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
-        DataInsightDescriptionAndOwnerTemplate tierTemplate =
-            createTierTemplate(searchClient, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
-        EmailUtil.sendDataInsightEmailNotificationToUser(
-            emails,
-            totalAssetTemplate,
-            descriptionTemplate,
-            ownershipTemplate,
-            tierTemplate,
-            EmailUtil.getDataInsightReportSubject(),
-            EmailUtil.DATA_INSIGHT_REPORT_TEMPLATE);
+
+        try {
+          DataInsightTotalAssetTemplate totalAssetTemplate =
+              createTotalAssetTemplate(searchClient, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
+          DataInsightDescriptionAndOwnerTemplate descriptionTemplate =
+              createDescriptionTemplate(searchClient, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
+          DataInsightDescriptionAndOwnerTemplate ownershipTemplate =
+              createOwnershipTemplate(searchClient, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
+          DataInsightDescriptionAndOwnerTemplate tierTemplate =
+              createTierTemplate(searchClient, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
+          EmailUtil.sendDataInsightEmailNotificationToUser(
+              emails,
+              totalAssetTemplate,
+              descriptionTemplate,
+              ownershipTemplate,
+              tierTemplate,
+              EmailUtil.getDataInsightReportSubject(),
+              EmailUtil.DATA_INSIGHT_REPORT_TEMPLATE);
+        } catch (Exception ex) {
+          LOG.error("[DataInsightReport] Failed for Team: {}, Reason : {}", team.getName(), ex.getMessage());
+        }
       }
     }
   }
@@ -135,23 +140,27 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
       throws ParseException, IOException, TemplateException {
     // Get Admins
     Set<String> emailList = getAdminsData(CreateEventSubscription.SubscriptionType.DATA_INSIGHT);
-
-    DataInsightTotalAssetTemplate totalAssetTemplate =
-        createTotalAssetTemplate(searchClient, null, scheduleTime, currentTime, numberOfDaysChange);
-    DataInsightDescriptionAndOwnerTemplate descriptionTemplate =
-        createDescriptionTemplate(searchClient, null, scheduleTime, currentTime, numberOfDaysChange);
-    DataInsightDescriptionAndOwnerTemplate ownershipTemplate =
-        createOwnershipTemplate(searchClient, null, scheduleTime, currentTime, numberOfDaysChange);
-    DataInsightDescriptionAndOwnerTemplate tierTemplate =
-        createTierTemplate(searchClient, null, scheduleTime, currentTime, numberOfDaysChange);
-    EmailUtil.sendDataInsightEmailNotificationToUser(
-        emailList,
-        totalAssetTemplate,
-        descriptionTemplate,
-        ownershipTemplate,
-        tierTemplate,
-        EmailUtil.getDataInsightReportSubject(),
-        EmailUtil.DATA_INSIGHT_REPORT_TEMPLATE);
+    try {
+      // Build Insights Report
+      DataInsightTotalAssetTemplate totalAssetTemplate =
+          createTotalAssetTemplate(searchClient, null, scheduleTime, currentTime, numberOfDaysChange);
+      DataInsightDescriptionAndOwnerTemplate descriptionTemplate =
+          createDescriptionTemplate(searchClient, null, scheduleTime, currentTime, numberOfDaysChange);
+      DataInsightDescriptionAndOwnerTemplate ownershipTemplate =
+          createOwnershipTemplate(searchClient, null, scheduleTime, currentTime, numberOfDaysChange);
+      DataInsightDescriptionAndOwnerTemplate tierTemplate =
+          createTierTemplate(searchClient, null, scheduleTime, currentTime, numberOfDaysChange);
+      EmailUtil.sendDataInsightEmailNotificationToUser(
+          emailList,
+          totalAssetTemplate,
+          descriptionTemplate,
+          ownershipTemplate,
+          tierTemplate,
+          EmailUtil.getDataInsightReportSubject(),
+          EmailUtil.DATA_INSIGHT_REPORT_TEMPLATE);
+    } catch (Exception ex) {
+      LOG.error("[DataInsightReport] Failed for Admin, Reason : {}", ex.getMessage(), ex);
+    }
   }
 
   private List<Kpi> getAvailableKpi() {

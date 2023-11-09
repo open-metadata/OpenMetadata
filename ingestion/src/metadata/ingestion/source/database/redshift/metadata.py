@@ -14,7 +14,7 @@ Redshift source ingestion
 
 import re
 import traceback
-from typing import Iterable, List, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple
 
 from sqlalchemy import inspect, sql
 from sqlalchemy.dialects.postgresql.base import PGDialect
@@ -50,6 +50,7 @@ from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
 )
+from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.ingestion.source.database.redshift.models import RedshiftStoredProcedure
 from metadata.ingestion.source.database.redshift.queries import (
     REDSHIFT_GET_ALL_RELATION_INFO,
@@ -101,7 +102,7 @@ RedshiftDialect._get_all_relation_info = (  # pylint: disable=protected-access
 )
 
 
-class RedshiftSource(StoredProcedureMixin, CommonDbSourceService):
+class RedshiftSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource):
     """
     Implements the necessary methods to extract
     Database metadata from Redshift Source
@@ -153,16 +154,21 @@ class RedshiftSource(StoredProcedureMixin, CommonDbSourceService):
             for name, relkind in result
         ]
 
+    def get_configured_database(self) -> Optional[str]:
+        if not self.service_connection.ingestAllDatabases:
+            return self.service_connection.database
+        return None
+
+    def get_database_names_raw(self) -> Iterable[str]:
+        yield from self._execute_database_query(REDSHIFT_GET_DATABASE_NAMES)
+
     def get_database_names(self) -> Iterable[str]:
         if not self.config.serviceConnection.__root__.config.ingestAllDatabases:
             self.inspector = inspect(self.engine)
             self.get_partition_details()
             yield self.config.serviceConnection.__root__.config.database
         else:
-            results = self.connection.execute(REDSHIFT_GET_DATABASE_NAMES)
-            for res in results:
-                row = list(res)
-                new_database = row[0]
+            for new_database in self.get_database_names_raw():
                 database_fqn = fqn.build(
                     self.metadata,
                     entity_type=Database,
@@ -271,27 +277,19 @@ class RedshiftSource(StoredProcedureMixin, CommonDbSourceService):
                 )
             )
 
-    def get_stored_procedure_queries(self) -> Iterable[QueryByProcedure]:
+    def get_stored_procedure_queries_dict(self) -> Dict[str, List[QueryByProcedure]]:
         """
-        Pick the stored procedure name from the context
-        and return the list of associated queries
+        Return the dictionary associating stored procedures to the
+        queries they triggered
         """
-        # Only process if we actually have yield a stored procedure
-        if self.context.stored_procedure:
-            start, _ = get_start_and_end(self.source_config.queryLogDuration)
-            query = REDSHIFT_GET_STORED_PROCEDURE_QUERIES.format(
-                start_date=start,
-                database_name=self.context.database.name.__root__,
-            )
+        start, _ = get_start_and_end(self.source_config.queryLogDuration)
+        query = REDSHIFT_GET_STORED_PROCEDURE_QUERIES.format(
+            start_date=start,
+            database_name=self.context.database.name.__root__,
+        )
 
-            queries_dict = self.procedure_queries_dict(
-                query=query,
-                schema_name=self.context.database_schema.name.__root__,
-                database_name=self.context.database.name.__root__,
-            )
+        queries_dict = self.procedure_queries_dict(
+            query=query,
+        )
 
-            for query_by_procedure in (
-                queries_dict.get(self.context.stored_procedure.name.__root__.lower())
-                or []
-            ):
-                yield query_by_procedure
+        return queries_dict

@@ -22,7 +22,6 @@ import { getPartialNameFromFQN } from '../utils/CommonUtils';
 import i18n from '../utils/i18next/LocalUtil';
 import { getSettingPath } from '../utils/RouterUtils';
 import { getEncodedFqn } from '../utils/StringsUtils';
-import { FQN_SEPARATOR_CHAR } from './char.constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -41,6 +40,7 @@ export const GRAYED_OUT_COLOR = '#CCCCCC';
 export const GREEN_COLOR = '#28A745';
 export const GREEN_COLOR_OPACITY_30 = '#28A74530';
 export const BORDER_COLOR = '#0000001a';
+export const BLACK_COLOR = '#000000';
 
 export const DEFAULT_CHART_OPACITY = 1;
 export const HOVER_CHART_OPACITY = 0.3;
@@ -50,7 +50,7 @@ export const LOGGED_IN_USER_STORAGE_KEY = 'loggedInUsers';
 export const ACTIVE_DOMAIN_STORAGE_KEY = 'activeDomain';
 export const DEFAULT_DOMAIN_VALUE = 'All Domains';
 
-export const USER_DATA_SIZE = 4;
+export const USER_DATA_SIZE = 5;
 export const INITIAL_PAGING_VALUE = 1;
 export const JSON_TAB_SIZE = 2;
 export const PAGE_SIZE = 10;
@@ -119,14 +119,6 @@ export const pagingObject = { after: '', before: '', total: 0 };
 
 export const ONLY_NUMBER_REGEX = /^[0-9\b]+$/;
 
-export const tiers = [
-  { key: `Tier${FQN_SEPARATOR_CHAR}Tier1`, doc_count: 0 },
-  { key: `Tier${FQN_SEPARATOR_CHAR}Tier2`, doc_count: 0 },
-  { key: `Tier${FQN_SEPARATOR_CHAR}Tier3`, doc_count: 0 },
-  { key: `Tier${FQN_SEPARATOR_CHAR}Tier4`, doc_count: 0 },
-  { key: `Tier${FQN_SEPARATOR_CHAR}Tier5`, doc_count: 0 },
-];
-
 export const globalSearchOptions = [
   { value: '', label: t('label.all') },
   { value: SearchIndex.TABLE, label: t('label.table') },
@@ -142,22 +134,7 @@ export const globalSearchOptions = [
   { value: SearchIndex.SEARCH_INDEX, label: t('label.search-index') },
 ];
 
-export const versionTypes = [
-  { name: t('label.all'), value: 'all' },
-  { name: t('label.major'), value: 'major' },
-  { name: t('label.minor'), value: 'minor' },
-];
-
 export const DESCRIPTIONLENGTH = 100;
-
-export const visibleFilters = [
-  'service',
-  'tier',
-  'tags',
-  'database',
-  'databaseschema',
-  'servicename',
-];
 
 export const CHART_WIDGET_DAYS_DURATION = 14;
 
@@ -335,6 +312,7 @@ export const ROUTES = {
   EDIT_KPI: `/data-insights/kpi/edit-kpi/${KPI_NAME}`,
 
   SETTINGS_EDIT_CUSTOM_LOGO_CONFIG: `/settings/OpenMetadata/customLogo/edit-custom-logo-configuration`,
+  SETTINGS_EDIT_CUSTOM_LOGIN_CONFIG: `/settings/OpenMetadata/customLogo/edit-custom-login-configuration`,
 
   CUSTOMIZE_PAGE: `/customize-page/:fqn/:pageFqn`,
 };
@@ -779,11 +757,6 @@ export const getKpiPath = (kpiName: string) => {
   return path;
 };
 
-export const TIMEOUT = {
-  USER_LIST: 60000, // 60 seconds for user retrieval
-  TOAST_DELAY: 5000, // 5 seconds timeout for toaster autohide delay
-};
-
 export const configOptions = {
   headers: { 'Content-type': 'application/json-patch+json' },
 };
@@ -840,3 +813,5 @@ export const ICON_DIMENSION = {
 export const COMMON_ICON_STYLES: CSSProperties = {
   verticalAlign: 'middle',
 };
+
+export const KNOWLEDGE_CENTER_CLASSIFICATION = 'KnowledgeCenter';

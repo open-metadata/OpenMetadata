@@ -141,10 +141,7 @@ const MarketPlaceAppDetails = withSuspenseFallback(
 );
 
 const AppInstallPage = withSuspenseFallback(
-  React.lazy(
-    () =>
-      import('../../components/Applications/AppInstall/AppInstall.component')
-  )
+  React.lazy(() => import('../../pages/AppInstall/AppInstall.component'))
 );
 
 const EditConnectionFormPage = withSuspenseFallback(
@@ -337,6 +334,15 @@ const AddQueryPage = withSuspenseFallback(
 
 const PageNotFound = withSuspenseFallback(
   React.lazy(() => import('../../pages/page-not-found/PageNotFound'))
+);
+
+const EditLoginConfiguration = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../../pages/Configuration/EditLoginConfiguration/EditLoginConfigurationPage'
+      )
+  )
 );
 
 const AuthenticatedAppRouter: FunctionComponent = () => {
@@ -808,6 +814,12 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={EditCustomLogoConfigPage}
         hasPermission={false}
         path={ROUTES.SETTINGS_EDIT_CUSTOM_LOGO_CONFIG}
+      />
+      <AdminProtectedRoute
+        exact
+        component={EditLoginConfiguration}
+        hasPermission={false}
+        path={ROUTES.SETTINGS_EDIT_CUSTOM_LOGIN_CONFIG}
       />
       <Route exact component={EditRulePage} path={ROUTES.EDIT_POLICY_RULE} />
 

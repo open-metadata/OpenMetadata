@@ -43,4 +43,5 @@ export interface GlossaryTermForm {
   mutuallyExclusive: boolean;
   tags: TagLabel[];
   owner: EntityReference;
+  style: GlossaryTerm['style'];
 }

@@ -90,9 +90,14 @@ import {
   getTableFQNFromColumnFQN,
   sortTagsCaseInsensitive,
 } from './CommonUtils';
-import { getGlossaryPath, getSettingPath } from './RouterUtils';
+import {
+  getDataProductsDetailsPath,
+  getDomainDetailsPath,
+  getGlossaryPath,
+  getSettingPath,
+} from './RouterUtils';
 import { getSearchIndexDetailsPath } from './SearchIndexUtils';
-import { serviceTypeLogo } from './ServiceUtils';
+import serviceUtilClassBase from './ServiceUtilClassBase';
 import { getDecodedFqn, ordinalize } from './StringsUtils';
 import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
 
@@ -286,6 +291,14 @@ export const getEntityLink = (
     case SearchIndex.SEARCH_INDEX:
       return getSearchIndexDetailsPath(fullyQualifiedName);
 
+    case EntityType.DOMAIN:
+    case SearchIndex.DOMAIN:
+      return getDomainDetailsPath(fullyQualifiedName);
+
+    case EntityType.DATA_PRODUCT:
+    case SearchIndex.DATA_PRODUCT:
+      return getDataProductsDetailsPath(fullyQualifiedName);
+
     case SearchIndex.TABLE:
     case EntityType.TABLE:
     default:
@@ -311,7 +324,7 @@ export const getServiceIcon = (source: SourceType) => {
       <img
         alt="service-icon"
         className="inline h-7"
-        src={serviceTypeLogo(source.serviceType || '')}
+        src={serviceUtilClassBase.getServiceTypeLogo(source.serviceType || '')}
       />
     );
   }
@@ -321,26 +334,31 @@ export const getEntityIcon = (indexType: string) => {
   switch (indexType) {
     case SearchIndex.TOPIC:
     case EntityType.TOPIC:
+    case EntityType.MESSAGING_SERVICE:
     case SearchIndex.MESSAGING_SERVICE:
       return <TopicIcon />;
 
     case SearchIndex.DASHBOARD:
     case EntityType.DASHBOARD:
+    case EntityType.DASHBOARD_SERVICE:
     case SearchIndex.DASHBOARD_SERVICE:
       return <DashboardIcon />;
 
     case SearchIndex.MLMODEL:
     case EntityType.MLMODEL:
+    case EntityType.MLMODEL_SERVICE:
     case SearchIndex.ML_MODEL_SERVICE:
       return <MlModelIcon />;
 
     case SearchIndex.PIPELINE:
     case EntityType.PIPELINE:
+    case EntityType.PIPELINE_SERVICE:
     case SearchIndex.PIPELINE_SERVICE:
       return <PipelineIcon />;
 
     case SearchIndex.CONTAINER:
     case EntityType.CONTAINER:
+    case EntityType.STORAGE_SERVICE:
     case SearchIndex.STORAGE_SERVICE:
       return <ContainerIcon />;
 

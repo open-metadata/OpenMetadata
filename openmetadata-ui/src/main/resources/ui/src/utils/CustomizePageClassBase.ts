@@ -15,9 +15,11 @@ import { FC } from 'react';
 import ActivityFeedImg from '../assets/img/activity-feed.png';
 import AnnouncementImg from '../assets/img/announcement.png';
 import FollowingImg from '../assets/img/following.png';
+import KPISmallImg from '../assets/img/kpi-small.png';
 import KPIImg from '../assets/img/kpi.png';
 import MyDataImg from '../assets/img/my-data.png';
 import RecentViewsImg from '../assets/img/recent-views.png';
+import TotalAssetsMediumImg from '../assets/img/total-assets-medium.png';
 import TotalAssetsImg from '../assets/img/total-assets.png';
 import KPIWidget from '../components/KPIWidget/KPIWidget.component';
 import { MyDataWidget } from '../components/MyData/MyDataWidget/MyDataWidget.component';
@@ -27,9 +29,9 @@ import AnnouncementsWidget, {
 import FollowingWidget, {
   FollowingWidgetProps,
 } from '../components/MyData/RightSidebar/FollowingWidget';
-import RecentlyViewed from '../components/recently-viewed/RecentlyViewed';
 import TotalDataAssetsWidget from '../components/TotalDataAssetsWidget/TotalDataAssetsWidget.component';
 import FeedsWidget from '../components/Widgets/FeedsWidget/FeedsWidget.component';
+import RecentlyViewed from '../components/Widgets/RecentlyViewed/RecentlyViewed';
 import {
   LandingPageWidgetKeys,
   WidgetWidths,
@@ -43,49 +45,19 @@ class CustomizePageClassBase {
   defaultWidgetHeight = 3;
   landingPageWidgetMargin = 16;
   landingPageRowHeight = 100;
-  landingPageRightContainerEditHeight = 16;
   landingPageMaxGridSize = 3;
-  landingPageRightContainerMaxGridSize = 1;
 
   landingPageWidgetDefaultHeights: Record<string, number> = {
-    activityFeed: 5,
-    rightSidebar: 11.5,
-    announcements: 3.1,
-    following: 2.4,
-    recentlyViewed: 2.1,
-    myData: 3.1,
-    kpi: 3.1,
-    totalAssets: 3.1,
+    activityFeed: 6,
+    announcements: 3,
+    following: 3,
+    recentlyViewed: 3,
+    myData: 3,
+    kpi: 3,
+    totalAssets: 3,
   };
 
-  rightPanelDefaultLayout: Array<WidgetConfig> = [
-    {
-      h: this.landingPageWidgetDefaultHeights.announcements,
-      i: LandingPageWidgetKeys.ANNOUNCEMENTS,
-      w: 1,
-      x: 0,
-      y: 0,
-      static: false,
-    },
-    {
-      h: this.landingPageWidgetDefaultHeights.following,
-      i: LandingPageWidgetKeys.FOLLOWING,
-      w: 1,
-      x: 0,
-      y: 1.5,
-      static: false,
-    },
-    {
-      h: this.landingPageWidgetDefaultHeights.recentlyViewed,
-      i: LandingPageWidgetKeys.RECENTLY_VIEWED,
-      w: 1,
-      x: 0,
-      y: 3,
-      static: false,
-    },
-  ];
-
-  landingPageDefaultLayout: Array<WidgetConfig> = [
+  defaultLayout: Array<WidgetConfig> = [
     {
       h: this.landingPageWidgetDefaultHeights.activityFeed,
       i: LandingPageWidgetKeys.ACTIVITY_FEED,
@@ -93,19 +65,6 @@ class CustomizePageClassBase {
       x: 0,
       y: 0,
       static: false,
-    },
-    {
-      h: this.landingPageWidgetDefaultHeights.rightSidebar,
-      i: LandingPageWidgetKeys.RIGHT_PANEL,
-      w: 1,
-      x: 3,
-      y: 0,
-      data: {
-        page: {
-          layout: this.rightPanelDefaultLayout,
-        },
-      },
-      static: true,
     },
     {
       h: this.landingPageWidgetDefaultHeights.myData,
@@ -128,17 +87,37 @@ class CustomizePageClassBase {
       i: LandingPageWidgetKeys.TOTAL_DATA_ASSETS,
       w: 3,
       x: 0,
-      y: 9.1,
+      y: 9,
+      static: false,
+    },
+    {
+      h: this.landingPageWidgetDefaultHeights.announcements,
+      i: LandingPageWidgetKeys.ANNOUNCEMENTS,
+      w: 1,
+      x: 3,
+      y: 0,
+      static: false,
+    },
+    {
+      h: this.landingPageWidgetDefaultHeights.following,
+      i: LandingPageWidgetKeys.FOLLOWING,
+      w: 1,
+      x: 3,
+      y: 1.5,
+      static: false,
+    },
+    {
+      h: this.landingPageWidgetDefaultHeights.recentlyViewed,
+      i: LandingPageWidgetKeys.RECENTLY_VIEWED,
+      w: 1,
+      x: 3,
+      y: 3,
       static: false,
     },
   ];
 
-  protected updateRightPanelDefaultLayout(layout: Array<WidgetConfig>) {
-    this.rightPanelDefaultLayout = layout;
-  }
-
-  protected updateLandingPageDefaultLayout(layout: Array<WidgetConfig>) {
-    this.landingPageDefaultLayout = layout;
+  protected updateDefaultLayoutLayout(layout: Array<WidgetConfig>) {
+    this.defaultLayout = layout;
   }
 
   protected updateLandingPageWidgetDefaultHeights(obj: Record<string, number>) {
@@ -198,14 +177,14 @@ class CustomizePageClassBase {
       }
       case LandingPageWidgetKeys.KPI: {
         if (size === WidgetWidths.small) {
-          return '';
+          return KPISmallImg;
         }
 
         return KPIImg;
       }
       case LandingPageWidgetKeys.TOTAL_DATA_ASSETS: {
         if (size === WidgetWidths.medium) {
-          return '';
+          return TotalAssetsMediumImg;
         }
 
         return TotalAssetsImg;
@@ -229,8 +208,6 @@ class CustomizePageClassBase {
     switch (widgetName) {
       case 'ActivityFeed':
         return this.landingPageWidgetDefaultHeights.activityFeed;
-      case 'RightSidebar':
-        return this.landingPageWidgetDefaultHeights.rightSidebar;
       case 'Announcements':
         return this.landingPageWidgetDefaultHeights.announcements;
       case 'Following':

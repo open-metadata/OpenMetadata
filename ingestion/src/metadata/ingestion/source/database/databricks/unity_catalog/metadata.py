@@ -13,7 +13,7 @@ Databricks Unity Catalog Source source methods.
 """
 import json
 import traceback
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 from databricks.sdk.service.catalog import ColumnInfo
 from databricks.sdk.service.catalog import TableConstraint as DBTableConstraint
@@ -53,10 +53,7 @@ from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
-from metadata.ingestion.source.database.database_service import (
-    DatabaseServiceSource,
-    QueryByProcedure,
-)
+from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.databricks.connection import get_connection
 from metadata.ingestion.source.database.databricks.models import (
     ColumnJson,
@@ -64,6 +61,7 @@ from metadata.ingestion.source.database.databricks.models import (
     ForeignConstrains,
     Type,
 )
+from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
 from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
 from metadata.utils.db_utils import get_view_lineage
@@ -462,7 +460,7 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
             parsed_string = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
                 column.type_text.lower()
             )
-            parsed_string["name"] = column.name[:64]
+            parsed_string["name"] = column.name[:256]
             parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
             parsed_string["description"] = column.comment
             parsed_column = Column(**parsed_string)
@@ -500,15 +498,11 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
     def get_stored_procedure_queries(self) -> Iterable[QueryByProcedure]:
         """Not Implemented"""
 
-    def yield_procedure_query(
-        self, query_by_procedure: QueryByProcedure
-    ) -> Iterable[Either[CreateQueryRequest]]:
-        """Not implemented"""
-
-    def yield_procedure_lineage(
-        self, query_by_procedure: QueryByProcedure
-    ) -> Iterable[Either[AddLineageRequest]]:
-        """Not implemented"""
+    def yield_procedure_lineage_and_queries(
+        self,
+    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
+        """Not Implemented"""
+        yield from []
 
     def close(self):
         """Nothing to close"""

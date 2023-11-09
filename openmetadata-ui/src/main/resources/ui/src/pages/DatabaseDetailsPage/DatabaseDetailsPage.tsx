@@ -29,9 +29,7 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { default as appState } from '../../AppState';
-import ActivityFeedProvider, {
-  useActivityFeedProvider,
-} from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { useActivityFeedProvider } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
@@ -41,6 +39,7 @@ import { PagingHandlerParams } from '../../components/common/next-previous/NextP
 import Searchbar from '../../components/common/searchbar/Searchbar';
 import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import DataProductsContainer from '../../components/DataProductsContainer/DataProductsContainer.component';
 import Loader from '../../components/Loader/Loader';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
@@ -48,6 +47,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../components/PermissionProvider/PermissionProvider.interface';
+import ProfilerSettings from '../../components/ProfilerSettings/ProfilerSettings';
 import { withActivityFeed } from '../../components/router/withActivityFeed';
 import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
 import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
@@ -82,7 +82,10 @@ import {
 } from '../../rest/databaseAPI';
 import { getFeedCount, postThread } from '../../rest/feedsAPI';
 import { searchQuery } from '../../rest/searchAPI';
-import { getEntityMissingError } from '../../utils/CommonUtils';
+import {
+  getEntityMissingError,
+  sortTagsCaseInsensitive,
+} from '../../utils/CommonUtils';
 import { getDatabaseSchemaTable } from '../../utils/DatabaseDetails.utils';
 import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
@@ -133,6 +136,9 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const [threadLink, setThreadLink] = useState<string>('');
   const [currentPage, setCurrentPage] = useState(INITIAL_PAGING_VALUE);
+
+  const [updateProfilerSetting, setUpdateProfilerSetting] =
+    useState<boolean>(false);
 
   const history = useHistory();
   const isMounting = useRef(true);
@@ -361,11 +367,20 @@ const DatabaseDetails: FunctionComponent = () => {
     }
   };
 
-  const settingsUpdateHandler = async (data: Database) => {
+  const settingsUpdateHandler = async (
+    data: Database,
+    key?: keyof Database
+  ) => {
     try {
       const res = await saveUpdatedDatabaseData(data);
 
-      setDatabase(res);
+      setDatabase(() => {
+        if (key === 'tags') {
+          return { ...res, tags: sortTagsCaseInsensitive(res.tags ?? []) };
+        }
+
+        return res;
+      });
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -477,7 +492,7 @@ const DatabaseDetails: FunctionComponent = () => {
     if (selectedTags) {
       const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
       const updatedTable = { ...database, tags: updatedTags };
-      await settingsUpdateHandler(updatedTable as Database);
+      await settingsUpdateHandler(updatedTable as Database, 'tags');
     }
   };
 
@@ -673,6 +688,11 @@ const DatabaseDetails: FunctionComponent = () => {
               data-testid="entity-right-panel"
               flex="320px">
               <Space className="w-full" direction="vertical" size="large">
+                <DataProductsContainer
+                  activeDomain={database?.domain}
+                  dataProducts={database?.dataProducts ?? []}
+                  hasPermission={false}
+                />
                 <TagsContainerV2
                   displayType={DisplayType.READ_MORE}
                   entityFqn={decodedDatabaseFQN}
@@ -709,14 +729,12 @@ const DatabaseDetails: FunctionComponent = () => {
         ),
         key: EntityTabs.ACTIVITY_FEED,
         children: (
-          <ActivityFeedProvider>
-            <ActivityFeedTab
-              entityType={EntityType.DATABASE}
-              fqn={database?.fullyQualifiedName ?? ''}
-              onFeedUpdate={getEntityFeedCount}
-              onUpdateEntityDetails={getDetailsByFQN}
-            />
-          </ActivityFeedProvider>
+          <ActivityFeedTab
+            entityType={EntityType.DATABASE}
+            fqn={database?.fullyQualifiedName ?? ''}
+            onFeedUpdate={getEntityFeedCount}
+            onUpdateEntityDetails={getDetailsByFQN}
+          />
         ),
       },
 
@@ -809,6 +827,7 @@ const DatabaseDetails: FunctionComponent = () => {
               permissions={databasePermission}
               onDisplayNameUpdate={handleUpdateDisplayName}
               onOwnerUpdate={handleUpdateOwner}
+              onProfilerSettingUpdate={() => setUpdateProfilerSetting(true)}
               onRestoreDataAsset={handleRestoreDatabase}
               onTierUpdate={handleUpdateTier}
               onUpdateVote={updateVote}
@@ -836,6 +855,14 @@ const DatabaseDetails: FunctionComponent = () => {
               onCancel={onThreadPanelClose}
             />
           ) : null}
+          {updateProfilerSetting && (
+            <ProfilerSettings
+              entityId={database.id ?? ''}
+              entityType={EntityType.DATABASE}
+              visible={updateProfilerSetting}
+              onVisibilityChange={(value) => setUpdateProfilerSetting(value)}
+            />
+          )}
         </Row>
       )}
     </PageLayoutV1>

@@ -58,8 +58,7 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
         webAnalyticEventData.getEventType().value(),
         WEB_ANALYTICS_EVENT_DATA_EXTENSION,
         "webAnalyticEventData",
-        JsonUtils.pojoToJson(webAnalyticEventData),
-        webAnalyticEventData.getTimestamp());
+        JsonUtils.pojoToJson(webAnalyticEventData));
     return Response.ok(webAnalyticEventData).build();
   }
 

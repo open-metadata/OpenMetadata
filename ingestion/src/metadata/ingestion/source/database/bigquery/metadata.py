@@ -13,7 +13,7 @@ We require Taxonomy Admin permissions to fetch all Policy Tags
 """
 import os
 import traceback
-from typing import Iterable, List, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple
 
 from google import auth
 from google.cloud.datacatalog_v1 import PolicyTagManagerClient
@@ -68,6 +68,7 @@ from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
 )
+from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.ingestion.source.database.stored_procedures_mixin import (
     QueryByProcedure,
     StoredProcedureMixin,
@@ -190,7 +191,7 @@ BigQueryDialect._build_formatted_table_id = (  # pylint: disable=protected-acces
 )
 
 
-class BigquerySource(StoredProcedureMixin, CommonDbSourceService):
+class BigquerySource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource):
     """
     Implements the necessary methods to extract
     Database metadata from Bigquery Source
@@ -421,6 +422,12 @@ class BigquerySource(StoredProcedureMixin, CommonDbSourceService):
         self.engine = inspector_details.engine
         self.inspector = inspector_details.inspector
 
+    def get_configured_database(self) -> Optional[str]:
+        return None
+
+    def get_database_names_raw(self) -> Iterable[str]:
+        yield from self.project_ids
+
     def get_database_names(self) -> Iterable[str]:
         for project_id in self.project_ids:
             database_fqn = fqn.build(
@@ -622,26 +629,18 @@ class BigquerySource(StoredProcedureMixin, CommonDbSourceService):
                 )
             )
 
-    def get_stored_procedure_queries(self) -> Iterable[QueryByProcedure]:
+    def get_stored_procedure_queries_dict(self) -> Dict[str, List[QueryByProcedure]]:
         """
         Pick the stored procedure name from the context
         and return the list of associated queries
         """
-        # Only process if we actually have yield a stored procedure
-        if self.context.stored_procedure:
-            start, _ = get_start_and_end(self.source_config.queryLogDuration)
-            query = BIGQUERY_GET_STORED_PROCEDURE_QUERIES.format(
-                start_date=start,
-                region=self.service_connection.usageLocation,
-            )
-            queries_dict = self.procedure_queries_dict(
-                query=query,
-                schema_name=self.context.database_schema.name.__root__,
-                database_name=self.context.database.name.__root__,
-            )
+        start, _ = get_start_and_end(self.source_config.queryLogDuration)
+        query = BIGQUERY_GET_STORED_PROCEDURE_QUERIES.format(
+            start_date=start,
+            region=self.service_connection.usageLocation,
+        )
+        queries_dict = self.procedure_queries_dict(
+            query=query,
+        )
 
-            for query_by_procedure in (
-                queries_dict.get(self.context.stored_procedure.name.__root__.lower())
-                or []
-            ):
-                yield query_by_procedure
+        return queries_dict

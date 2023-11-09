@@ -20,11 +20,13 @@ import { useHistory, useParams } from 'react-router-dom';
 import { useActivityFeedProvider } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
+import { useAuthContext } from '../../components/authentication/auth-provider/AuthProvider';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../components/common/description/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import DataProductsContainer from '../../components/DataProductsContainer/DataProductsContainer.component';
 import EntityLineageComponent from '../../components/Entity/EntityLineage/EntityLineage.component';
 import Loader from '../../components/Loader/Loader';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
@@ -68,7 +70,6 @@ import {
 } from '../../rest/storedProceduresAPI';
 import {
   addToRecentViewed,
-  getCurrentUserId,
   getFeedCounts,
   sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
@@ -82,7 +83,8 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const StoredProcedurePage = () => {
   const { t } = useTranslation();
-  const USER_ID = getCurrentUserId();
+  const { currentUser } = useAuthContext();
+  const USER_ID = currentUser?.id ?? '';
   const history = useHistory();
   const { fqn: storedProcedureFQN, tab: activeTab = EntityTabs.CODE } =
     useParams<{ fqn: string; tab: string }>();
@@ -522,6 +524,11 @@ const StoredProcedurePage = () => {
               data-testid="entity-right-panel"
               flex="320px">
               <Space className="w-full" direction="vertical" size="large">
+                <DataProductsContainer
+                  activeDomain={storedProcedure?.domain}
+                  dataProducts={storedProcedure?.dataProducts ?? []}
+                  hasPermission={false}
+                />
                 <TagsContainerV2
                   displayType={DisplayType.READ_MORE}
                   entityFqn={decodedStoredProcedureFQN}

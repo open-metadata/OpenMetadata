@@ -19,6 +19,7 @@ import {
   MenuProps,
   Row,
   Space,
+  Tooltip,
   Typography,
 } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
@@ -30,7 +31,6 @@ import { isEmpty, isEqual, isUndefined, noop } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import AppState from '../../../AppState';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/ic-close-task.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
@@ -68,6 +68,7 @@ import {
   TASK_ACTION_LIST,
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import './task-tab.less';
 import { TaskTabProps } from './TaskTab.interface';
 
@@ -78,6 +79,7 @@ export const TaskTab = ({
   ...rest
 }: TaskTabProps) => {
   const [assigneesForm] = useForm();
+  const { currentUser } = useAuthContext();
   const updatedAssignees = Form.useWatch('assignees', assigneesForm);
 
   const { task: taskDetails } = taskThread;
@@ -103,12 +105,6 @@ export const TaskTab = ({
         type: assignee.type,
       })) ?? [],
     [taskDetails]
-  );
-
-  // get current user details
-  const currentUser = useMemo(
-    () => AppState.getCurrentUserDetails(),
-    [AppState.userDetails, AppState.nonSecureUserDetails]
   );
 
   const taskField = useMemo(() => {
@@ -165,6 +161,10 @@ export const TaskTab = ({
       .then(() => {
         showSuccessToast(t('server.task-resolved-successfully'));
         rest.onAfterClose?.();
+
+        if (isTaskGlossaryApproval) {
+          rest.onUpdateEntityDetails?.();
+        }
       })
       .catch((err: AxiosError) => showErrorToast(err));
   };
@@ -255,34 +255,53 @@ export const TaskTab = ({
       .then(() => {
         showSuccessToast(t('server.task-closed-successfully'));
         rest.onAfterClose?.();
+
+        if (isTaskGlossaryApproval) {
+          rest.onUpdateEntityDetails?.();
+        }
       })
       .catch((err: AxiosError) => showErrorToast(err));
   };
 
   const approvalWorkflowActions = useMemo(() => {
+    const hasApprovalAccess = isAssignee || Boolean(isPartOfAssigneeTeam);
+
     return (
       <Space
         className="m-t-sm items-end w-full"
         data-testid="task-cta-buttons"
         size="small">
-        {(isCreator || hasEditAccess) && (
-          <>
-            <Button data-testid="reject-task" onClick={onTaskReject}>
-              {t('label.reject')}
-            </Button>
-            {hasEditAccess && (
-              <Button
-                data-testid="approve-task"
-                type="primary"
-                onClick={onTaskResolve}>
-                {t('label.approve')}
-              </Button>
-            )}
-          </>
-        )}
+        <Tooltip
+          title={
+            !hasApprovalAccess
+              ? t('message.only-reviewers-can-approve-or-reject')
+              : ''
+          }>
+          <Button
+            data-testid="reject-task"
+            disabled={!hasApprovalAccess}
+            onClick={onTaskReject}>
+            {t('label.reject')}
+          </Button>
+        </Tooltip>
+
+        <Tooltip
+          title={
+            !hasApprovalAccess
+              ? t('message.only-reviewers-can-approve-or-reject')
+              : ''
+          }>
+          <Button
+            data-testid="approve-task"
+            disabled={!hasApprovalAccess}
+            type="primary"
+            onClick={onTaskResolve}>
+            {t('label.approve')}
+          </Button>
+        </Tooltip>
       </Space>
     );
-  }, [taskDetails, onTaskResolve, hasEditAccess, isCreator]);
+  }, [taskDetails, onTaskResolve, isAssignee, isPartOfAssigneeTeam]);
 
   const actionButtons = useMemo(() => {
     if (isTaskClosed) {

@@ -179,6 +179,8 @@ information in AWS CloudTrail logs to determine who took actions with a role.
 
 Find more information about [Source Identity](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html#:~:text=Required%3A%20No-,SourceIdentity,-The%20source%20identity).
 
+{% /codeInfo %}
+
 {% codeInfo srNumber=4 %}
 
 
@@ -657,9 +659,19 @@ processor:
     #           - ...
     #     partitionConfig:
     #       enablePartitioning: <set to true to use partitioning>
-    #       partitionColumnName: <partition column name. Must be a timestamp or datetime/date field type>
+    #       partitionColumnName: <partition column name>
+    #       partitionIntervalType: <TIME-UNIT, INTEGER-RANGE, INGESTION-TIME, COLUMN-VALUE>
+    #       Pick one of the variation shown below
+    #       ----'TIME-UNIT' or 'INGESTION-TIME'-------
     #       partitionInterval: <partition interval>
     #       partitionIntervalUnit: <YEAR, MONTH, DAY, HOUR>
+    #       ------------'INTEGER-RANGE'---------------
+    #       partitionIntegerRangeStart: <integer>
+    #       partitionIntegerRangeEnd: <integer>
+    #       -----------'COLUMN-VALUE'----------------
+    #       partitionValues:
+    #         - <value>
+    #         - <value>
 
 ```
 

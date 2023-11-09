@@ -77,8 +77,6 @@ const ExplorePageV1: FunctionComponent = () => {
   const [advancesSearchQuickFilters, setAdvancedSearchQuickFilters] =
     useState<QueryFilterInterface>();
 
-  const [sortValue, setSortValue] = useState<string>(INITIAL_SORT_FIELD);
-
   const [sortOrder, setSortOrder] = useState<SORT_ORDER>(SORT_ORDER.DESC);
 
   const [searchHitCounts, setSearchHitCounts] = useState<SearchHitCounts>();
@@ -87,24 +85,38 @@ const ExplorePageV1: FunctionComponent = () => {
 
   const { queryFilter } = useAdvanceSearch();
 
-  const parsedSearch = useMemo(
-    () =>
-      Qs.parse(
-        location.search.startsWith('?')
-          ? location.search.substring(1)
-          : location.search
-      ),
-    [location.search]
-  );
+  const [parsedSearch, searchQueryParam, sortValue] = useMemo(() => {
+    const parsedSearch = Qs.parse(
+      location.search.startsWith('?')
+        ? location.search.substring(1)
+        : location.search
+    );
 
-  const searchQueryParam = useMemo(
-    () => (isString(parsedSearch.search) ? parsedSearch.search : ''),
-    [location.search]
-  );
+    const searchQueryParam = isString(parsedSearch.search)
+      ? parsedSearch.search
+      : '';
+
+    const sortValue = isString(parsedSearch.sort)
+      ? parsedSearch.sort
+      : INITIAL_SORT_FIELD;
+
+    return [parsedSearch, searchQueryParam, sortValue];
+  }, [location.search]);
 
   const handlePageChange: ExploreProps['onChangePage'] = (page, size) => {
     history.push({
       search: Qs.stringify({ ...parsedSearch, page, size: size ?? PAGE_SIZE }),
+    });
+  };
+
+  const handleSortValueChange = (page: number, sortVal: string) => {
+    history.push({
+      search: Qs.stringify({
+        ...parsedSearch,
+        page,
+        size: size ?? PAGE_SIZE,
+        sort: sortVal,
+      }),
     });
   };
 
@@ -152,6 +164,7 @@ const ExplorePageV1: FunctionComponent = () => {
           getExplorePath({
             tab: tabsInfo[nSearchIndex].path,
             extraParameters: {
+              sort: searchQueryParam ? '_score' : INITIAL_SORT_FIELD,
               page: '1',
               quickFilter: commonQuickFilters
                 ? JSON.stringify(commonQuickFilters)
@@ -161,7 +174,7 @@ const ExplorePageV1: FunctionComponent = () => {
           })
         );
       },
-      [commonQuickFilters]
+      [commonQuickFilters, searchQueryParam]
     );
 
   const handleQuickFilterChange = useCallback(
@@ -186,20 +199,18 @@ const ExplorePageV1: FunctionComponent = () => {
   };
 
   const searchIndex = useMemo(() => {
-    if (searchHitCounts) {
-      const tabInfo = Object.entries(tabsInfo).find(
-        ([, tabInfo]) => tabInfo.path === tab
-      );
-      if (isNil(tabInfo)) {
-        const activeKey = findActiveSearchIndex(searchHitCounts);
+    const tabInfo = Object.entries(tabsInfo).find(
+      ([, tabInfo]) => tabInfo.path === tab
+    );
+    if (searchHitCounts && isNil(tabInfo)) {
+      const activeKey = findActiveSearchIndex(searchHitCounts);
 
-        return activeKey ? activeKey : SearchIndex.TABLE;
-      }
-
-      return tabInfo[0] as ExploreSearchIndex;
+      return activeKey ?? SearchIndex.TABLE;
     }
 
-    return SearchIndex.TABLE;
+    return !isNil(tabInfo)
+      ? (tabInfo[0] as ExploreSearchIndex)
+      : SearchIndex.TABLE;
   }, [tab, searchHitCounts]);
 
   const tabItems = useMemo(() => {
@@ -297,19 +308,13 @@ const ExplorePageV1: FunctionComponent = () => {
       queryFilter as unknown as QueryFilterInterface
     );
 
-    let newSortValue = sortValue;
-    if (searchQueryParam !== '') {
-      newSortValue = '_score';
-      setSortValue(newSortValue);
-    }
-
     setIsLoading(true);
     Promise.all([
       searchQuery({
         query: escapeESReservedCharacters(searchQueryParam),
         searchIndex,
         queryFilter: combinedQueryFilter,
-        sortField: newSortValue,
+        sortField: sortValue,
         sortOrder,
         pageNumber: page,
         pageSize: size,
@@ -320,63 +325,26 @@ const ExplorePageV1: FunctionComponent = () => {
           setSearchResults(res);
           setUpdatedAggregations(res.aggregations);
         }),
-      Promise.all(
-        [
-          SearchIndex.TABLE,
-          SearchIndex.TOPIC,
-          SearchIndex.DASHBOARD,
-          SearchIndex.PIPELINE,
-          SearchIndex.MLMODEL,
-          SearchIndex.CONTAINER,
-          SearchIndex.STORED_PROCEDURE,
-          SearchIndex.DASHBOARD_DATA_MODEL,
-          SearchIndex.GLOSSARY,
-          SearchIndex.TAG,
-          SearchIndex.SEARCH_INDEX,
-        ].map((index) =>
-          searchQuery({
-            query: escapeESReservedCharacters(searchQueryParam),
-            pageNumber: 0,
-            pageSize: 0,
-            queryFilter: combinedQueryFilter,
-            searchIndex: index,
-            includeDeleted: showDeleted,
-            trackTotalHits: true,
-            fetchSource: false,
-            filters: index === SearchIndex.TAG ? 'disabled:false' : '',
-          })
-        )
-      ).then(
-        ([
-          tableResponse,
-          topicResponse,
-          dashboardResponse,
-          pipelineResponse,
-          mlmodelResponse,
-          containerResponse,
-          storeProcedureResponse,
-          dataModelResponse,
-          glossaryResponse,
-          tagsResponse,
-          searchIndexResponse,
-        ]) => {
-          setSearchHitCounts({
-            [SearchIndex.TABLE]: tableResponse.hits.total.value,
-            [SearchIndex.TOPIC]: topicResponse.hits.total.value,
-            [SearchIndex.DASHBOARD]: dashboardResponse.hits.total.value,
-            [SearchIndex.PIPELINE]: pipelineResponse.hits.total.value,
-            [SearchIndex.MLMODEL]: mlmodelResponse.hits.total.value,
-            [SearchIndex.CONTAINER]: containerResponse.hits.total.value,
-            [SearchIndex.STORED_PROCEDURE]:
-              storeProcedureResponse.hits.total.value,
-            [SearchIndex.DASHBOARD_DATA_MODEL]:
-              dataModelResponse.hits.total.value,
-            [SearchIndex.GLOSSARY]: glossaryResponse.hits.total.value,
-            [SearchIndex.TAG]: tagsResponse.hits.total.value,
-            [SearchIndex.SEARCH_INDEX]: searchIndexResponse.hits.total.value,
-          });
-        }
-      ),
+      searchQuery({
+        query: escapeESReservedCharacters(searchQueryParam),
+        pageNumber: 0,
+        pageSize: 0,
+        queryFilter: combinedQueryFilter,
+        searchIndex: SearchIndex.ALL,
+        includeDeleted: showDeleted,
+        trackTotalHits: true,
+        fetchSource: false,
+        filters: '',
+      }).then((res) => {
+        const buckets = res.aggregations[`index_count`].buckets;
+        const counts: Record<string, number> = {};
+        buckets.forEach((item) => {
+          if (item) {
+            counts[item.key ?? ''] = item.doc_count;
+          }
+        });
+        setSearchHitCounts(counts as SearchHitCounts);
+      }),
     ])
       .catch((err) => {
         showErrorToast(err);
@@ -440,9 +408,8 @@ const ExplorePageV1: FunctionComponent = () => {
         handlePageChange(1);
         setSortOrder(sort);
       }}
-      onChangeSortValue={(sort) => {
-        handlePageChange(1);
-        setSortValue(sort);
+      onChangeSortValue={(sortVal) => {
+        handleSortValueChange(1, sortVal);
       }}
     />
   );

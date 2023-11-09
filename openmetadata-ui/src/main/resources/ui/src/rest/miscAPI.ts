@@ -16,7 +16,6 @@ import { Edge } from '../components/Entity/EntityLineage/EntityLineage.interface
 import { ExploreSearchIndex } from '../components/Explore/explore.interface';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
 import { SearchIndex } from '../enums/search.enum';
-import { ApplicationConfiguration } from '../generated/configuration/applicationConfiguration';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
 import { PipelineServiceClientConfiguration } from '../generated/configuration/pipelineServiceClientConfiguration';
@@ -25,7 +24,6 @@ import {
   RawSuggestResponse,
   SearchResponse,
 } from '../interface/search.interface';
-import { getCurrentUserId } from '../utils/CommonUtils';
 import { getSearchAPIQueryParams } from '../utils/SearchUtils';
 import APIClient from './index';
 
@@ -57,24 +55,9 @@ export const searchData = <SI extends SearchIndex>(
   });
 };
 
-export const getOwnershipCount = (
-  ownership: string
-): Promise<AxiosResponse> => {
-  return APIClient.get(
-    `/search/query?q=${ownership}:${getCurrentUserId()}&from=${0}&size=${0}`
-  );
-};
-
 export const fetchAuthenticationConfig = async () => {
   const response = await APIClient.get<AuthenticationConfiguration>(
     '/system/config/auth'
-  );
-
-  return response.data;
-};
-export const getApplicationConfig = async () => {
-  const response = await APIClient.get<ApplicationConfiguration>(
-    '/system/config/applicationConfig'
   );
 
   return response.data;

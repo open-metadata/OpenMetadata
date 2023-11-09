@@ -19,7 +19,7 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
-import static org.openmetadata.service.Entity.MESSAGING_SERVICE;
+import static org.openmetadata.service.Entity.populateEntityFieldTags;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -111,17 +111,14 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   @Override
-  public Topic setInheritedFields(Topic topic, Fields fields) {
-    // If topic does not have domain, then inherit it from parent messaging service
-    MessagingService service = Entity.getEntity(MESSAGING_SERVICE, topic.getService().getId(), "domain", ALL);
-    return inheritDomain(topic, fields, service);
-  }
-
-  @Override
   public Topic setFields(Topic topic, Fields fields) {
     topic.setService(getContainer(topic.getId()));
     if (topic.getMessageSchema() != null) {
-      getFieldTags(fields.contains(FIELD_TAGS), topic.getMessageSchema().getSchemaFields());
+      populateEntityFieldTags(
+          entityType,
+          topic.getMessageSchema().getSchemaFields(),
+          topic.getFullyQualifiedName(),
+          fields.contains(FIELD_TAGS));
     }
     return topic;
   }
@@ -155,7 +152,8 @@ public class TopicRepository extends EntityRepository<Topic> {
 
     // Set the fields tags. Will be used to mask the sample data
     if (!authorizePII) {
-      getFieldTags(true, topic.getMessageSchema().getSchemaFields());
+      populateEntityFieldTags(
+          entityType, topic.getMessageSchema().getSchemaFields(), topic.getFullyQualifiedName(), true);
       topic.setTags(getTags(topic));
       return PIIMasker.getSampleData(topic);
     }
@@ -183,15 +181,6 @@ public class TopicRepository extends EntityRepository<Topic> {
             setFieldFQN(fieldFqn, c.getChildren());
           }
         });
-  }
-
-  private void getFieldTags(boolean setTags, List<Field> fields) {
-    for (Field f : listOrEmpty(fields)) {
-      if (f.getTags() == null) {
-        f.setTags(setTags ? getTags(f.getFullyQualifiedName()) : null);
-        getFieldTags(setTags, f.getChildren());
-      }
-    }
   }
 
   private void addDerivedFieldTags(List<Field> fields) {

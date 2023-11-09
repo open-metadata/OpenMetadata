@@ -248,3 +248,29 @@ CREATE TABLE IF NOT EXISTS apps_extension_time_series (
     json JSON NOT NULL,
 	timestamp BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.timestamp') NOT NULL
 );  
+
+-- Adding back the COLLATE queries from 1.1.5 to keep the correct VARCHAR length
+ALTER TABLE glossary_term_entity MODIFY fqnHash VARCHAR(756) COLLATE ascii_bin;
+
+-- We don't have an ID, so we'll create a temp SERIAL number and use it for deletion
+ALTER TABLE entity_extension_time_series ADD COLUMN temp SERIAL;
+WITH CTE AS (
+  SELECT temp, ROW_NUMBER() OVER (PARTITION BY entityFQNHash, extension, timestamp ORDER BY entityFQNHash) RN FROM entity_extension_time_series)
+DELETE FROM entity_extension_time_series WHERE temp in (SELECT temp FROM CTE WHERE RN > 1);
+ALTER TABLE entity_extension_time_series DROP COLUMN temp;
+
+ALTER TABLE entity_extension_time_series MODIFY COLUMN entityFQNHash VARCHAR(768) COLLATE ascii_bin, MODIFY COLUMN jsonSchema VARCHAR(256) COLLATE ascii_bin, MODIFY COLUMN extension VARCHAR(256) COLLATE ascii_bin,
+    ADD CONSTRAINT entity_extension_time_series_constraint UNIQUE (entityFQNHash, extension, timestamp);
+
+-- Airflow pipeline status set to millis
+UPDATE entity_extension_time_series ts
+JOIN pipeline_entity p
+  ON ts.entityFQNHash  = p.fqnHash
+SET ts.json = JSON_INSERT(
+    JSON_REMOVE(ts.json, '$.timestamp'),
+    '$.timestamp',
+    JSON_EXTRACT(ts.json, '$.timestamp') * 1000
+ )
+WHERE ts.extension = 'pipeline.pipelineStatus'
+  AND JSON_EXTRACT(p.json, '$.serviceType') in ('Airflow', 'GluePipeline', 'Airbyte', 'Dagster', 'DomoPipeline')
+;

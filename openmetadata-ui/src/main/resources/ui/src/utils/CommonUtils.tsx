@@ -25,6 +25,7 @@ import {
   isNull,
   isString,
   isUndefined,
+  toLower,
   toNumber,
 } from 'lodash';
 import {
@@ -67,7 +68,6 @@ import {
 import { UrlEntityCharRegEx } from '../constants/regex.constants';
 import { SIZE } from '../enums/common.enum';
 import { EntityTabs, EntityType, FqnPart } from '../enums/entity.enum';
-import { ThreadType } from '../generated/entity/feed/thread';
 import { PipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { EntityReference } from '../generated/entity/teams/user';
 import { Paging } from '../generated/type/paging';
@@ -77,7 +77,7 @@ import { getEntityFeedLink, getTitleCase } from './EntityUtils';
 import Fqn from './Fqn';
 import { history } from './HistoryUtils';
 import { getSearchIndexTabPath } from './SearchIndexUtils';
-import { serviceTypeLogo } from './ServiceUtils';
+import serviceUtilClassBase from './ServiceUtilClassBase';
 import { getEncodedFqn } from './StringsUtils';
 import { TASK_ENTITIES } from './TasksUtils';
 import { showErrorToast } from './ToastUtils';
@@ -188,12 +188,6 @@ export const getTableFQNFromColumnFQN = (columnFQN: string): string => {
   );
 };
 
-export const getCurrentUserId = (): string => {
-  const currentUser = AppState.getCurrentUserDetails();
-
-  return currentUser?.id || '';
-};
-
 export const pluralize = (count: number, noun: string, suffix = 's') => {
   const countString = count.toLocaleString();
   if (count !== 1 && count !== 0 && !noun.endsWith(suffix)) {
@@ -235,11 +229,14 @@ export const getCountBadge = (
   return (
     <span
       className={classNames(
-        'p-x-xss m-x-xss global-border rounded-4 text-xs text-center',
+        'p-x-xss m-x-xss global-border rounded-4 text-center',
         clsBG,
         className
       )}>
-      <span data-testid="filter-count" title={count.toString()}>
+      <span
+        className="text-xs"
+        data-testid="filter-count"
+        title={count.toString()}>
         {count}
       </span>
     </span>
@@ -333,7 +330,7 @@ export const addToRecentViewed = (eData: RecentlyViewedData): void => {
       .sort(arraySorterByKey<RecentlyViewedData>('timestamp', true));
     arrData.unshift(entityData);
 
-    if (arrData.length > 5) {
+    if (arrData.length > 8) {
       arrData.pop();
     }
     recentlyViewed.data = arrData;
@@ -380,7 +377,7 @@ export const getServiceLogo = (
   serviceType: string,
   className = ''
 ): JSX.Element | null => {
-  const logo = serviceTypeLogo(serviceType);
+  const logo = serviceUtilClassBase.getServiceTypeLogo(serviceType);
 
   if (!isNull(logo)) {
     return <img alt="" className={className} src={logo} />;
@@ -527,10 +524,7 @@ export const getFeedCounts = (
   conversationCallback: (value: React.SetStateAction<number>) => void
 ) => {
   // To get conversation count
-  getFeedCount(
-    getEntityFeedLink(entityType, entityFQN),
-    ThreadType.Conversation
-  )
+  getFeedCount(getEntityFeedLink(entityType, entityFQN))
     .then((res) => {
       if (res) {
         conversationCallback(res.totalCount);
@@ -878,3 +872,17 @@ export const getUniqueArray = (count: number) =>
   [...Array(count)].map((_, index) => ({
     key: `key${index}`,
   }));
+
+/**
+ * @param searchValue search input
+ * @param option select options list
+ * @returns boolean
+ */
+export const handleSearchFilterOption = (
+  searchValue: string,
+  option?: {
+    label: string;
+    value: string;
+  }
+) => toLower(option?.label).includes(toLower(searchValue));
+// Check label while searching anything and filter that options out if found matching

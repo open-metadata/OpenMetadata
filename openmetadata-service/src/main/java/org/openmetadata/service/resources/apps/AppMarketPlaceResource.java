@@ -1,5 +1,8 @@
 package org.openmetadata.service.resources.apps;
 
+import static org.openmetadata.service.Entity.APPLICATION;
+import static org.openmetadata.service.jdbi3.EntityRepository.getEntitiesFromSeedData;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -9,6 +12,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -32,6 +36,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.app.AppType;
@@ -55,12 +60,13 @@ import org.openmetadata.service.util.ResultList;
 @Tag(name = "Apps", description = "Apps marketplace holds to application available for Open-metadata")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "appsMarketPlace", order = 8)
+@Collection(name = "apps/marketplace", order = 8)
 @Slf4j
 public class AppMarketPlaceResource extends EntityResource<AppMarketPlaceDefinition, AppMarketPlaceRepository> {
   public static final String COLLECTION_PATH = "/v1/apps/marketplace/";
   private PipelineServiceClient pipelineServiceClient;
-  static final String FIELDS = "owner";
+
+  static final String FIELDS = "owner,tags";
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
@@ -69,7 +75,17 @@ public class AppMarketPlaceResource extends EntityResource<AppMarketPlaceDefinit
           PipelineServiceClientFactory.createPipelineServiceClient(config.getPipelineServiceClientConfiguration());
 
       // Initialize Default Installed Applications
-      this.repository.initSeedDataFromResources();
+      List<CreateAppMarketPlaceDefinitionReq> createAppMarketPlaceDefinitionReqs =
+          getEntitiesFromSeedData(
+              APPLICATION,
+              String.format(".*json/data/%s/.*\\.json$", entityType),
+              CreateAppMarketPlaceDefinitionReq.class);
+      for (CreateAppMarketPlaceDefinitionReq definitionReq : createAppMarketPlaceDefinitionReqs) {
+        AppMarketPlaceDefinition definition = getApplicationDefinition(definitionReq, "admin");
+        // Update Fully Qualified Name
+        repository.setFullyQualifiedName(definition);
+        this.repository.createOrUpdate(null, definition);
+      }
     } catch (Exception ex) {
       LOG.error("Failed in initializing App MarketPlace Resource", ex);
     }
@@ -351,6 +367,26 @@ public class AppMarketPlaceResource extends EntityResource<AppMarketPlaceDefinit
     return delete(uriInfo, securityContext, id, true, hardDelete);
   }
 
+  @PUT
+  @Path("/restore")
+  @Operation(
+      operationId = "restore",
+      summary = "Restore a soft deleted KPI",
+      description = "Restore a soft deleted App.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully restored the App. ",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = AppMarketPlaceDefinition.class)))
+      })
+  public Response restoreApp(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
+    return restoreEntity(uriInfo, securityContext, restore.getId());
+  }
+
   private AppMarketPlaceDefinition getApplicationDefinition(
       CreateAppMarketPlaceDefinitionReq create, String updatedBy) {
     AppMarketPlaceDefinition app =
@@ -367,6 +403,7 @@ public class AppMarketPlaceResource extends EntityResource<AppMarketPlaceDefinit
             .withAppConfiguration(create.getAppConfiguration())
             .withPermission(create.getPermission())
             .withAppLogoUrl(create.getAppLogoUrl())
+            .withAppScreenshots(create.getAppScreenshots())
             .withFeatures(create.getFeatures());
 
     // Validate App

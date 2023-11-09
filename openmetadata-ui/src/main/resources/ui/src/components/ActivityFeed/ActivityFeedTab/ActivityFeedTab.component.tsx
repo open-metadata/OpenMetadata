@@ -23,7 +23,6 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import AppState from '../../../AppState';
 import { ReactComponent as AllActivityIcon } from '../../../assets/svg/all-activity-v2.svg';
 import { ReactComponent as CheckIcon } from '../../../assets/svg/ic-check.svg';
 import { ReactComponent as MentionIcon } from '../../../assets/svg/ic-mentions.svg';
@@ -48,9 +47,10 @@ import {
   ENTITY_LINK_SEPARATOR,
   getEntityFeedLink,
 } from '../../../utils/EntityUtils';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import Loader from '../../Loader/Loader';
 import { TaskTab } from '../../Task/TaskTab/TaskTab.component';
-import '../../Widgets/FeedsWidget/feeds-widget.less';
+import '../../Widgets/FeedsWidget/FeedsWidget.less';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import ActivityFeedListV1 from '../ActivityFeedList/ActivityFeedListV1.component';
 import FeedPanelBodyV1 from '../ActivityFeedPanel/FeedPanelBodyV1';
@@ -72,10 +72,7 @@ export const ActivityFeedTab = ({
 }: ActivityFeedTabProps) => {
   const history = useHistory();
   const { t } = useTranslation();
-  const currentUser = useMemo(
-    () => AppState.getCurrentUserDetails(),
-    [AppState.userDetails, AppState.nonSecureUserDetails]
-  );
+  const { currentUser } = useAuthContext();
   const [elementRef, isInView] = useElementInView({
     ...observerOptions,
     root: document.querySelector('#center-container'),
@@ -200,12 +197,10 @@ export const ActivityFeedTab = ({
   }, [fqn]);
 
   const { feedFilter, threadType } = useMemo(() => {
-    let filter;
-    if (!isUserEntity) {
-      filter = currentUser?.isAdmin
-        ? FeedFilter.ALL
-        : FeedFilter.OWNER_OR_FOLLOWS;
-    }
+    const currentFilter = currentUser?.isAdmin
+      ? FeedFilter.ALL
+      : FeedFilter.OWNER_OR_FOLLOWS;
+    const filter = isUserEntity ? currentFilter : undefined;
 
     return {
       threadType:
@@ -378,7 +373,7 @@ export const ActivityFeedTab = ({
               }}>
               {' '}
               <CheckIcon className="m-r-xss" width={14} /> {closedTasks}{' '}
-              {t('label.close')}
+              {t('label.closed')}
             </Typography.Text>
           </div>
         )}

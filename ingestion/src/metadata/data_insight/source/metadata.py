@@ -123,7 +123,7 @@ class DataInsightSource(Source):
                 processor = cast(DataProcessor, processor)
                 processor.pre_hook() if processor.pre_hook else None  # pylint: disable=expression-not-assigned
 
-                for data in producer.fetch_data():
+                for data in producer.fetch_data(fields=["owner", "tags"]):
                     processor.refine(data)
 
                 processor.post_hook() if processor.post_hook else None  # pylint: disable=expression-not-assigned

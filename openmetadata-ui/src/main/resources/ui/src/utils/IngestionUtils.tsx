@@ -40,10 +40,8 @@ import { Connection as MetadataConnection } from '../generated/entity/services/m
 import { DataObj, ServicesType } from '../interface/service.interface';
 import { Transi18next } from './CommonUtils';
 import { getSettingPath, getSettingsPathWithFqn } from './RouterUtils';
-import {
-  getServiceRouteFromServiceType,
-  serviceTypeLogo,
-} from './ServiceUtils';
+import serviceUtilClassBase from './ServiceUtilClassBase';
+import { getServiceRouteFromServiceType } from './ServiceUtils';
 
 export const getIngestionHeadingName = (
   ingestionType: string,
@@ -114,7 +112,9 @@ export const getBreadCrumbsArray = (
         {
           name: serviceData?.name || '',
           url: getServiceDetailsPath(serviceFQN, serviceCategory, 'ingestions'),
-          imgSrc: serviceTypeLogo(serviceData?.serviceType || ''),
+          imgSrc: serviceUtilClassBase.getServiceTypeLogo(
+            serviceData?.serviceType || ''
+          ),
           activeTitle: true,
         },
       ]

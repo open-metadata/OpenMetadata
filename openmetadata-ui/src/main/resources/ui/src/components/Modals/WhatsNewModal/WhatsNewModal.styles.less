@@ -21,6 +21,11 @@
     display: flex;
     align-items: center;
   }
+
+  img[alt='Collate'] {
+    margin: 0 4px !important;
+    vertical-align: middle;
+  }
 }
 .whats-new-modal-button-container {
   display: inline-flex;
@@ -32,27 +37,96 @@
   background: @white;
 }
 
+@keyframes scrollIn {
+  to {
+    bottom: 24px;
+  }
+}
+
 .whats-new-alert-container {
   position: fixed;
-  bottom: 24px;
+  bottom: -100%;
   right: 30px;
   z-index: 1;
+  background: @white;
+  animation: scrollIn 2s normal forwards ease-in-out;
+  animation-delay: 1s;
 
   .ant-card {
+    position: relative;
     width: 338px;
-  }
-  .ant-card-body {
-    background-color: @primary-color;
-    border-radius: @border-radius-base;
+    box-shadow: 0 0 20px rgba(117, 117, 117, 0.3);
+    padding: 12px;
+    border-radius: 14px;
+    border: 1px solid @primary-color;
+    background: linear-gradient(
+      0.9turn,
+      rgba(9, 80, 197, 0.2),
+      rgba(255, 255, 255) 40%
+    );
+    overflow: hidden;
   }
 
   .whats-new-alert-header {
-    color: @white;
+    color: @primary-color;
     font-weight: 600;
     font-size: 16px;
   }
-  .whats-new-alert-description {
-    color: @white;
+
+  .whats-new-alert-content {
+    .whats-new-alert-sub-header {
+      color: @black;
+      font-weight: 500;
+      font-size: 12px;
+    }
+
+    .whats-new-alert-content-icon-container {
+      padding: 0 4px;
+      border-radius: 4px;
+
+      .whats-new-alert-content-icon {
+        color: @primary-color;
+        vertical-align: middle;
+        width: 15px;
+        height: 15px;
+      }
+    }
+
+    .whats-new-alert-content-icon-arrow {
+      display: none;
+      width: 16px;
+      height: 16px;
+      color: @text-grey-muted;
+    }
+
+    &:hover {
+      .whats-new-alert-sub-header {
+        text-decoration: underline;
+        color: @primary-color;
+      }
+
+      .whats-new-alert-content-icon-container {
+        background-color: rgba(9, 80, 197, 0.1);
+        transition: 0.3s ease-in-out;
+      }
+
+      .whats-new-alert-content-icon-arrow {
+        display: block;
+      }
+    }
+  }
+
+  .update-icon-container {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    transform: translate(35%, 45%) scaleX(-1);
+    opacity: 0.1;
+
+    .update-icon {
+      transform: rotate(180deg);
+      width: 160px;
+    }
   }
 }
 
@@ -75,5 +149,14 @@
       width: 10px;
       border-radius: 50%;
     }
+  }
+}
+.ant-modal-body > .ant-row > .whats-new-version-timeline {
+  display: flex;
+  align-items: baseline;
+}
+.log-title {
+  .markdown-parser .toastui-editor-contents p:first-child {
+    font-size: 16px;
   }
 }
