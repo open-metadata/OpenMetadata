@@ -18,7 +18,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
@@ -44,18 +43,6 @@ public class TableIndex implements ColumnIndex {
   }
 
   public Map<String, Object> buildESDoc() {
-    table
-        .getDatabaseSchema()
-        .setDisplayName(
-            CommonUtil.nullOrEmpty(table.getDatabaseSchema().getDisplayName())
-                ? table.getDatabaseSchema().getName()
-                : table.getDatabaseSchema().getDisplayName());
-    table
-        .getDatabase()
-        .setDisplayName(
-            CommonUtil.nullOrEmpty(table.getDatabase().getDisplayName())
-                ? table.getDatabase().getName()
-                : table.getDatabase().getDisplayName());
     Map<String, Object> doc = JsonUtils.getMap(table);
     List<SearchSuggest> suggest = new ArrayList<>();
     List<SearchSuggest> columnSuggest = new ArrayList<>();
@@ -87,7 +74,6 @@ public class TableIndex implements ColumnIndex {
     List<TagLabel> flattenedTagList =
         tagsWithChildren.stream().flatMap(List::stream).collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
     doc.put("displayName", table.getDisplayName() != null ? table.getDisplayName() : table.getName());
-    doc.put("service", getServiceWithDisplayName(table.getService()));
     doc.put("tags", flattenedTagList);
     doc.put("tier", parseTags.getTierTag());
     doc.put("followers", SearchIndexUtils.parseFollowers(table.getFollowers()));
@@ -102,8 +88,11 @@ public class TableIndex implements ColumnIndex {
     doc.put("database_suggest", databaseSuggest);
     doc.put("entityType", Entity.TABLE);
     doc.put("serviceType", table.getServiceType());
-    doc.put("owner", getOwnerWithDisplayName(table.getOwner()));
-    doc.put("domain", getDomainWithDisplayName(table.getDomain()));
+    doc.put("owner", getEntityWithDisplayName(table.getOwner()));
+    doc.put("service", getEntityWithDisplayName(table.getService()));
+    doc.put("domain", getEntityWithDisplayName(table.getDomain()));
+    doc.put("database", getEntityWithDisplayName(table.getDatabase()));
+    doc.put("databaseSchema", getEntityWithDisplayName(table.getDatabaseSchema()));
     return doc;
   }
 

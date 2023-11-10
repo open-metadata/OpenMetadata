@@ -24,30 +24,13 @@ public interface SearchIndex {
     return fqnParts;
   }
 
-  default EntityReference getOwnerWithDisplayName(EntityReference owner) {
-    if (owner == null) {
+  default EntityReference getEntityWithDisplayName(EntityReference entity) {
+    if (entity == null) {
       return null;
     }
-    EntityReference cloneOwner = JsonUtils.deepCopy(owner, EntityReference.class);
-    cloneOwner.setDisplayName(
-        CommonUtil.nullOrEmpty(cloneOwner.getDisplayName()) ? cloneOwner.getName() : cloneOwner.getDisplayName());
-    return cloneOwner;
-  }
-
-  default EntityReference getDomainWithDisplayName(EntityReference domain) {
-    if (domain == null) {
-      return null;
-    }
-    EntityReference cloneDomain = JsonUtils.deepCopy(domain, EntityReference.class);
-    cloneDomain.setDisplayName(
-        CommonUtil.nullOrEmpty(cloneDomain.getDisplayName()) ? cloneDomain.getName() : cloneDomain.getDisplayName());
-    return cloneDomain;
-  }
-
-  default EntityReference getServiceWithDisplayName(EntityReference service) {
-    EntityReference cloneService = JsonUtils.deepCopy(service, EntityReference.class);
-    cloneService.setDisplayName(
-        CommonUtil.nullOrEmpty(cloneService.getDisplayName()) ? cloneService.getName() : cloneService.getDisplayName());
-    return cloneService;
+    EntityReference cloneEntity = JsonUtils.deepCopy(entity, EntityReference.class);
+    cloneEntity.setDisplayName(
+        CommonUtil.nullOrEmpty(cloneEntity.getDisplayName()) ? cloneEntity.getName() : cloneEntity.getDisplayName());
+    return cloneEntity;
   }
 }

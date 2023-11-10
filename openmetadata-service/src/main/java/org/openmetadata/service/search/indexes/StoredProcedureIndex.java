@@ -45,9 +45,9 @@ public class StoredProcedureIndex implements SearchIndex {
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.STORED_PROCEDURE, storedProcedure));
     doc.put("tags", parseTags.getTags());
     doc.put("tier", parseTags.getTierTag());
-    doc.put("owner", getOwnerWithDisplayName(storedProcedure.getOwner()));
-    doc.put("service", getServiceWithDisplayName(storedProcedure.getService()));
-    doc.put("domain", getDomainWithDisplayName(storedProcedure.getDomain()));
+    doc.put("owner", getEntityWithDisplayName(storedProcedure.getOwner()));
+    doc.put("service", getEntityWithDisplayName(storedProcedure.getService()));
+    doc.put("domain", getEntityWithDisplayName(storedProcedure.getDomain()));
     return doc;
   }
 

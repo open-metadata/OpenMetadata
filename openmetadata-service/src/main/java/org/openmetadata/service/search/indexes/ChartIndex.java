@@ -32,8 +32,8 @@ public class ChartIndex implements SearchIndex {
             chart.getFullyQualifiedName(), suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.CHART);
-    doc.put("owner", getOwnerWithDisplayName(chart.getOwner()));
-    doc.put("domain", getDomainWithDisplayName(chart.getDomain()));
+    doc.put("owner", getEntityWithDisplayName(chart.getOwner()));
+    doc.put("domain", getEntityWithDisplayName(chart.getDomain()));
     return doc;
   }
 }

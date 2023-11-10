@@ -33,8 +33,8 @@ public class MessagingServiceIndex implements SearchIndex {
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.MESSAGING_SERVICE);
-    doc.put("owner", getOwnerWithDisplayName(messagingService.getOwner()));
-    doc.put("domain", getDomainWithDisplayName(messagingService.getDomain()));
+    doc.put("owner", getEntityWithDisplayName(messagingService.getOwner()));
+    doc.put("domain", getEntityWithDisplayName(messagingService.getDomain()));
     return doc;
   }
 }

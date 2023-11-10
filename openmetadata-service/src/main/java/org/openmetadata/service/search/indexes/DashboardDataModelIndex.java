@@ -72,9 +72,9 @@ public class DashboardDataModelIndex implements ColumnIndex {
             dashboardDataModel.getFullyQualifiedName(),
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("tier", parseTags.getTierTag());
-    doc.put("owner", getOwnerWithDisplayName(dashboardDataModel.getOwner()));
-    doc.put("service", getServiceWithDisplayName(dashboardDataModel.getService()));
-    doc.put("domain", getDomainWithDisplayName(dashboardDataModel.getDomain()));
+    doc.put("owner", getEntityWithDisplayName(dashboardDataModel.getOwner()));
+    doc.put("service", getEntityWithDisplayName(dashboardDataModel.getService()));
+    doc.put("domain", getEntityWithDisplayName(dashboardDataModel.getDomain()));
     return doc;
   }
 

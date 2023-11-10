@@ -33,7 +33,7 @@ public class StorageServiceIndex implements SearchIndex {
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.STORAGE_SERVICE);
-    doc.put("owner", getOwnerWithDisplayName(storageService.getOwner()));
+    doc.put("owner", getEntityWithDisplayName(storageService.getOwner()));
     return doc;
   }
 }

@@ -43,8 +43,8 @@ public class GlossaryTermIndex implements SearchIndex {
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.GLOSSARY_TERM);
-    doc.put("owner", getOwnerWithDisplayName(glossaryTerm.getOwner()));
-    doc.put("domain", getDomainWithDisplayName(glossaryTerm.getDomain()));
+    doc.put("owner", getEntityWithDisplayName(glossaryTerm.getOwner()));
+    doc.put("domain", getEntityWithDisplayName(glossaryTerm.getDomain()));
     return doc;
   }
 

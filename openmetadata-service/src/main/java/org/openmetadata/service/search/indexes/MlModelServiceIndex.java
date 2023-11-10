@@ -33,7 +33,7 @@ public class MlModelServiceIndex implements SearchIndex {
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.MLMODEL_SERVICE);
-    doc.put("owner", getOwnerWithDisplayName(mlModelService.getOwner()));
+    doc.put("owner", getEntityWithDisplayName(mlModelService.getOwner()));
     return doc;
   }
 }

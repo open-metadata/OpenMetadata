@@ -77,9 +77,9 @@ public class ContainerIndex implements ColumnIndex {
         getFQNParts(
             container.getFullyQualifiedName(),
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
-    doc.put("owner", getOwnerWithDisplayName(container.getOwner()));
-    doc.put("service", getServiceWithDisplayName(container.getService()));
-    doc.put("domain", getDomainWithDisplayName(container.getDomain()));
+    doc.put("owner", getEntityWithDisplayName(container.getOwner()));
+    doc.put("service", getEntityWithDisplayName(container.getService()));
+    doc.put("domain", getEntityWithDisplayName(container.getDomain()));
     return doc;
   }
 

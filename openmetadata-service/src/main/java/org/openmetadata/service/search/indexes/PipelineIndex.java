@@ -59,9 +59,9 @@ public class PipelineIndex implements SearchIndex {
         getFQNParts(
             pipeline.getFullyQualifiedName(),
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
-    doc.put("owner", getOwnerWithDisplayName(pipeline.getOwner()));
-    doc.put("service", getServiceWithDisplayName(pipeline.getService()));
-    doc.put("domain", getDomainWithDisplayName(pipeline.getDomain()));
+    doc.put("owner", getEntityWithDisplayName(pipeline.getOwner()));
+    doc.put("service", getEntityWithDisplayName(pipeline.getService()));
+    doc.put("domain", getEntityWithDisplayName(pipeline.getDomain()));
     return doc;
   }
 

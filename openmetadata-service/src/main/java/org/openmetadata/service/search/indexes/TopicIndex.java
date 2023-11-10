@@ -84,9 +84,9 @@ public class TopicIndex implements SearchIndex {
         "fqnParts",
         getFQNParts(
             topic.getFullyQualifiedName(), suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
-    doc.put("owner", getOwnerWithDisplayName(topic.getOwner()));
-    doc.put("service", getServiceWithDisplayName(topic.getService()));
-    doc.put("domain", getDomainWithDisplayName(topic.getDomain()));
+    doc.put("owner", getEntityWithDisplayName(topic.getOwner()));
+    doc.put("service", getEntityWithDisplayName(topic.getService()));
+    doc.put("domain", getEntityWithDisplayName(topic.getDomain()));
     return doc;
   }
 
