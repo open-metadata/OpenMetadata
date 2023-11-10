@@ -124,7 +124,7 @@ caption="Data Asset Preview in Lineage Tab"
 
 ## Custom Properties Tab
 
-OpenMetadata uses a schema-first approach. We also support custom properties for all types of data assets. Organizations can extend the attributes as required to capture custom metadata. The Custom Properties tab shows up for all types of data assets. User can add or edit the custom property values for the data assets from this tab. Learn [How to Create a Custom Property for a Data Asset](/how-to-guides/user-guide-for-data-stewards/overview-data-assets/custom)
+OpenMetadata uses a schema-first approach. We also support custom properties for all types of data assets. Organizations can extend the attributes as required to capture custom metadata. The Custom Properties tab shows up for all types of data assets. User can add or edit the custom property values for the data assets from this tab. Learn [How to Create a Custom Property for a Data Asset](/how-to-guides/guide-for-data-users/custom)
 
 {% image
 src="/images/v1.1/how-to-guides/discovery/custom3.png"

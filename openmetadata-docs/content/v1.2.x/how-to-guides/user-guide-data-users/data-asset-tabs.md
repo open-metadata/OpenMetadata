@@ -1,7 +1,17 @@
 ---
-title: Data Asset Tabs
-slug: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/tabs
+title: Overview of Data Assets
+slug: /how-to-guides/guide-for-data-users/data-asset-tabs
 ---
+
+# Overview of Data Assets
+
+OpenMetadata displays a single-pane view for each of the data assets. In the detailed view of a data asset, the **Source, Owner (Team/User), Tier, Type, Usage, Description** are displayed on the top panel. Further, there are separate tabs each for Schema, Activity Feeds & Tasks, Sample Data, Queries, Profiler & Data Quality, Lineage, Custom Properties, Config, Details, Features, Children, and Executions based on the type of data asset selected.
+
+{% image
+src="/images/v1.1/how-to-guides/discovery/asset1.png"
+alt="Overview of Data Assets"
+caption="Overview of Data Assets"
+/%}
 
 # Data Asset Tabs
 
@@ -100,7 +110,7 @@ caption="Data Asset Preview in Lineage Tab"
 
 ## Custom Properties Tab
 
-OpenMetadata uses a schema-first approach. We also support custom properties for all types of data assets. Organizations can extend the attributes as required to capture custom metadata. The Custom Properties tab shows up for all types of data assets. User can add or edit the custom property values for the data assets from this tab. Learn [How to Create a Custom Property for a Data Asset](/how-to-guides/user-guide-for-data-stewards/overview-data-assets/custom)
+OpenMetadata uses a schema-first approach. We also support custom properties for all types of data assets. Organizations can extend the attributes as required to capture custom metadata. The Custom Properties tab shows up for all types of data assets. User can add or edit the custom property values for the data assets from this tab. Learn [How to Create a Custom Property for a Data Asset](/how-to-guides/guide-for-data-users/custom)
 
 {% image
 src="/images/v1.1/how-to-guides/discovery/custom3.png"
@@ -168,3 +178,12 @@ src="/images/v1.1/how-to-guides/discovery/vh.png"
 alt="Version History and Other Details"
 caption="Version History and Other Details"
 /%}
+
+{%inlineCallout
+  color="violet-70"
+  bold="How to Add Description using Markdown"
+  icon="MdArrowForward"
+  align="right"
+  href="/how-to-guides/guide-for-data-users/description"%}
+  Describe your data assets using Markdown
+{%/inlineCallout%}

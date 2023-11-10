@@ -1,6 +1,6 @@
 ---
 title: How to Add Tags
-slug: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/tags
+slug: /how-to-guides/guide-for-data-users/tags
 ---
 
 # How to Add Tags
@@ -67,3 +67,11 @@ caption="Column Data provides information"
 /%}
 
 You can read more about [Auto PII Tagging](https://docs.open-metadata.org/v1.1.x/connectors/ingestion/auto_tagging) here.
+
+{%inlineCallout
+  color="violet-70"
+  bold="How to Request for Tags"
+  icon="MdArrowForward"
+  href="/how-to-guides/guide-for-data-users/request-tags"%}
+  Request for tags and discuss about the same, all within OpenMetadata.
+{%/inlineCallout%}

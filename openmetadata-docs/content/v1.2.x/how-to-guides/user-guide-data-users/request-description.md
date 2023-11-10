@@ -1,6 +1,6 @@
 ---
-title: Request for Description
-slug: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/request-description
+title: How to Request for Description
+slug: /how-to-guides/guide-for-data-users/request-description
 ---
 
 # How to Request for Description
@@ -64,3 +64,11 @@ src="/images/v1.1/how-to-guides/user-guide-for-data-stewards/desc8.png"
 alt="Conversation: Reply, React, Edit or Delete"
 caption="Conversation: Reply, React, Edit or Delete"
 /%}
+
+{%inlineCallout
+  color="violet-70"
+  bold="How to Assign or Change Data Ownership"
+  icon="MdArrowForward"
+  href="/how-to-guides/guide-for-data-users/data-ownership"%}
+  Learn how to assign or change data owners
+{%/inlineCallout%}
