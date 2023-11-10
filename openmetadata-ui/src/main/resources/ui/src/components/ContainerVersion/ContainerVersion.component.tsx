@@ -151,9 +151,9 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
               <Row gutter={[0, 16]}>
                 <Col span={24}>
                   <DescriptionV1
-                    isVersionView
                     description={description}
                     entityType={EntityType.CONTAINER}
+                    showActions={false}
                   />
                 </Col>
                 <Col span={24}>

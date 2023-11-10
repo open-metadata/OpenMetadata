@@ -126,7 +126,7 @@ const CustomEntityDetailV1 = () => {
         setIsButtonLoading(false);
       }
     },
-    [selectedEntityTypeDetail.id]
+    [selectedEntityTypeDetail]
   );
 
   const customPageHeader = useMemo(() => {

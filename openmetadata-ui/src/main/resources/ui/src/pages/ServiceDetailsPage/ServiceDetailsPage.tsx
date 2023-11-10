@@ -99,7 +99,11 @@ import { fetchAirflowConfig } from '../../rest/miscAPI';
 import { getMlModels } from '../../rest/mlModelAPI';
 import { getPipelines } from '../../rest/pipelineAPI';
 import { getSearchIndexes } from '../../rest/SearchIndexAPI';
-import { getServiceByFQN, patchService } from '../../rest/serviceAPI';
+import {
+  getServiceByFQN,
+  patchService,
+  restoreService,
+} from '../../rest/serviceAPI';
 import { getContainers } from '../../rest/storageAPI';
 import { getTopics } from '../../rest/topicsAPI';
 import {
@@ -120,7 +124,7 @@ import {
 } from '../../utils/ServiceUtils';
 import { getDecodedFqn } from '../../utils/StringsUtils';
 import { updateTierTag } from '../../utils/TagsUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ServiceMainTabContent from './ServiceMainTabContent';
 
 export type ServicePageData =
@@ -612,7 +616,8 @@ const ServiceDetailsPage: FunctionComponent = () => {
       const response = await getServiceByFQN(
         serviceCategory,
         serviceFQN,
-        `owner,tags,${isMetadataService ? '' : 'domain'}`
+        `owner,tags,${isMetadataService ? '' : 'domain'}`,
+        Include.All
       );
       setServiceDetails(response);
       setConnectionDetails(response.connection?.config as DashboardConnection);
@@ -759,8 +764,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
     },
     [saveUpdatedServiceData, serviceDetails]
   );
-
-  const afterDeleteAction = useCallback(() => history.push('/'), []);
 
   const afterDomainUpdateAction = useCallback((data) => {
     const updatedData = data as ServicesType;
@@ -943,6 +946,42 @@ const ServiceDetailsPage: FunctionComponent = () => {
     [paging, getOtherDetails]
   );
 
+  const handleToggleDelete = () => {
+    setServiceDetails((prev) => {
+      if (!prev) {
+        return prev;
+      }
+
+      return { ...prev, deleted: !prev?.deleted };
+    });
+  };
+
+  const afterDeleteAction = useCallback(
+    (isSoftDelete?: boolean) =>
+      isSoftDelete ? handleToggleDelete() : history.push('/'),
+    [handleToggleDelete]
+  );
+
+  const handleRestoreService = useCallback(async () => {
+    try {
+      await restoreService(serviceCategory, serviceDetails.id);
+      showSuccessToast(
+        t('message.restore-entities-success', {
+          entity: t('label.service'),
+        }),
+        2000
+      );
+      handleToggleDelete();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('message.restore-entities-error', {
+          entity: t('label.service'),
+        })
+      );
+    }
+  }, [serviceCategory, serviceDetails]);
+
   const tabs: TabsProps['items'] = useMemo(() => {
     const tabs = [];
     const userOwnsService =
@@ -1077,14 +1116,13 @@ const ServiceDetailsPage: FunctionComponent = () => {
               isRecursiveDelete
               afterDeleteAction={afterDeleteAction}
               afterDomainUpdateAction={afterDomainUpdateAction}
-              allowSoftDelete={false}
               dataAsset={serviceDetails}
               entityType={entityType}
               permissions={servicePermission}
               showDomain={!isMetadataService}
               onDisplayNameUpdate={handleUpdateDisplayName}
               onOwnerUpdate={handleUpdateOwner}
-              onRestoreDataAsset={() => Promise.resolve()}
+              onRestoreDataAsset={handleRestoreService}
               onTierUpdate={handleUpdateTier}
               onVersionClick={versionHandler}
             />

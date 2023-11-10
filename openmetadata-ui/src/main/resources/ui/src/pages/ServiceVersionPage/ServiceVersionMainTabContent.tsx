@@ -63,11 +63,11 @@ function ServiceVersionMainTabContent({
         <Row gutter={[16, 16]}>
           <Col data-testid="description-container" span={24}>
             <DescriptionV1
-              isVersionView
               description={description}
               entityFqn={serviceFQN}
               entityName={serviceName}
               entityType={entityType}
+              showActions={false}
             />
           </Col>
 
