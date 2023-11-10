@@ -31,4 +31,5 @@ export interface ExploreSearchCardProps {
   showTags?: boolean;
   openEntityInNewPage?: boolean;
   hideBreadcrumbs?: boolean;
+  actionPopoverContent?: React.ReactNode;
 }
