@@ -211,7 +211,7 @@ const DatabaseDetails: FunctionComponent = () => {
     setSchemaDataLoading(true);
     try {
       const response = await searchQuery({
-        query: `*${searchValue}*`,
+        query: `(name.keyword:*${searchValue}*) OR (description.keyword:*${searchValue}*)`,
         pageNumber,
         pageSize: PAGE_SIZE,
         queryFilter: {
