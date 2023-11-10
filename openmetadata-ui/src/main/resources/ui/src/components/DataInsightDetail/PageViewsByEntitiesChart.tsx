@@ -18,8 +18,6 @@ import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   CartesianGrid,
-  Legend,
-  LegendProps,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -27,7 +25,6 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import PageHeader from '../../components/header/PageHeader.component';
 import {
   DEFAULT_CHART_OPACITY,
   GRAPH_BACKGROUND_COLOR,
@@ -36,6 +33,7 @@ import {
 import {
   BAR_CHART_MARGIN,
   DI_STRUCTURE,
+  GRAPH_HEIGHT,
   TOTAL_ENTITY_CHART_COLOR,
 } from '../../constants/DataInsight.constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
@@ -43,14 +41,14 @@ import { DataInsightChartType } from '../../generated/dataInsight/dataInsightCha
 import { PageViewsByEntities } from '../../generated/dataInsight/type/pageViewsByEntities';
 import { ChartFilter } from '../../interface/data-insight.interface';
 import { getAggregateChartData } from '../../rest/DataInsightAPI';
-import { updateActiveChartFilter } from '../../utils/ChartUtils';
 import {
   CustomTooltip,
   getGraphDataByEntityType,
-  renderLegend,
+  sortEntityByValue,
 } from '../../utils/DataInsightUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import './DataInsightDetail.less';
+import PageHeader from '../PageHeader/PageHeader.component';
+import './data-insight-detail.less';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
 import TotalEntityInsightSummary from './TotalEntityInsightSummary.component';
 
@@ -63,7 +61,7 @@ const PageViewsByEntitiesChart: FC<Props> = ({ chartFilter, selectedDays }) => {
   const [pageViewsByEntities, setPageViewsByEntities] =
     useState<PageViewsByEntities[]>();
 
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
   const [activeMouseHoverKey, setActiveMouseHoverKey] = useState('');
 
@@ -74,6 +72,9 @@ const PageViewsByEntitiesChart: FC<Props> = ({ chartFilter, selectedDays }) => {
         DataInsightChartType.PageViewsByEntities
       );
     }, [pageViewsByEntities]);
+  const sortedEntitiesByValue = useMemo(() => {
+    return sortEntityByValue(entities, latestData);
+  }, [entities, latestData]);
 
   const { t } = useTranslation();
 
@@ -95,97 +96,89 @@ const PageViewsByEntitiesChart: FC<Props> = ({ chartFilter, selectedDays }) => {
     }
   };
 
-  const handleLegendClick: LegendProps['onClick'] = (event) => {
-    setActiveKeys((prevActiveKeys) =>
-      updateActiveChartFilter(event.dataKey, prevActiveKeys)
-    );
-  };
-
-  const handleLegendMouseEnter: LegendProps['onMouseEnter'] = (event) => {
-    setActiveMouseHoverKey(event.dataKey);
-  };
-  const handleLegendMouseLeave: LegendProps['onMouseLeave'] = () => {
-    setActiveMouseHoverKey('');
-  };
-
   useEffect(() => {
     fetchPageViewsByEntities();
   }, [chartFilter]);
+
+  if (isLoading || data.length === 0) {
+    return (
+      <Card
+        className="data-insight-card"
+        loading={isLoading}
+        title={
+          <PageHeader
+            data={{
+              header: t('label.page-views-by-data-asset-plural'),
+              subHeader: t('message.data-insight-page-views'),
+            }}
+          />
+        }>
+        <EmptyGraphPlaceholder />
+      </Card>
+    );
+  }
 
   return (
     <Card
       className="data-insight-card"
       data-testid="entity-page-views-card"
       id={DataInsightChartType.PageViewsByEntities}
-      loading={isLoading}
-      title={
-        <PageHeader
-          data={{
-            header: t('label.page-views-by-data-asset-plural'),
-            subHeader: t('message.data-insight-page-views'),
-          }}
-        />
-      }>
-      {data.length ? (
-        <Row gutter={DI_STRUCTURE.rowContainerGutter}>
-          <Col span={DI_STRUCTURE.leftContainerSpan}>
-            <ResponsiveContainer debounce={1} minHeight={400}>
-              <LineChart data={data} margin={BAR_CHART_MARGIN}>
-                <CartesianGrid
-                  stroke={GRAPH_BACKGROUND_COLOR}
-                  vertical={false}
-                />
-                <XAxis dataKey="timestamp" />
-                <YAxis />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend
-                  align="left"
-                  content={(props) =>
-                    renderLegend(props as LegendProps, activeKeys)
+      loading={isLoading}>
+      <Row gutter={DI_STRUCTURE.rowContainerGutter}>
+        <Col span={DI_STRUCTURE.leftContainerSpan}>
+          <PageHeader
+            data={{
+              header: t('label.page-views-by-data-asset-plural'),
+              subHeader: t('message.data-insight-page-views'),
+            }}
+          />
+          <ResponsiveContainer debounce={1} height={GRAPH_HEIGHT}>
+            <LineChart data={data} margin={BAR_CHART_MARGIN}>
+              <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} vertical={false} />
+              <XAxis dataKey="timestamp" />
+              <YAxis />
+              <Tooltip
+                content={<CustomTooltip />}
+                wrapperStyle={{ pointerEvents: 'auto' }}
+              />
+
+              {entities.map((entity, i) => (
+                <Line
+                  dataKey={entity}
+                  hide={
+                    activeKeys.length && entity !== activeMouseHoverKey
+                      ? !activeKeys.includes(entity)
+                      : false
                   }
-                  layout="horizontal"
-                  verticalAlign="top"
-                  wrapperStyle={{ left: '0px', top: '0px' }}
-                  onClick={handleLegendClick}
-                  onMouseEnter={handleLegendMouseEnter}
-                  onMouseLeave={handleLegendMouseLeave}
+                  key={entity}
+                  stroke={TOTAL_ENTITY_CHART_COLOR[i]}
+                  strokeOpacity={
+                    isEmpty(activeMouseHoverKey) ||
+                    entity === activeMouseHoverKey
+                      ? DEFAULT_CHART_OPACITY
+                      : HOVER_CHART_OPACITY
+                  }
+                  type="monotone"
                 />
-                {entities.map((entity, i) => (
-                  <Line
-                    dataKey={entity}
-                    hide={
-                      activeKeys.length && entity !== activeMouseHoverKey
-                        ? !activeKeys.includes(entity)
-                        : false
-                    }
-                    key={entity}
-                    stroke={TOTAL_ENTITY_CHART_COLOR[i]}
-                    strokeOpacity={
-                      isEmpty(activeMouseHoverKey) ||
-                      entity === activeMouseHoverKey
-                        ? DEFAULT_CHART_OPACITY
-                        : HOVER_CHART_OPACITY
-                    }
-                    type="monotone"
-                  />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
-          </Col>
-          <Col span={DI_STRUCTURE.rightContainerSpan}>
-            <TotalEntityInsightSummary
-              entities={entities}
-              gutter={DI_STRUCTURE.rightRowGutter}
-              latestData={latestData}
-              relativePercentage={relativePercentage}
-              selectedDays={selectedDays}
-              total={total}
-            />
-          </Col>
-        </Row>
-      ) : (
-        <EmptyGraphPlaceholder />
-      )}
+              ))}
+            </LineChart>
+          </ResponsiveContainer>
+        </Col>
+        <Col span={DI_STRUCTURE.rightContainerSpan}>
+          <TotalEntityInsightSummary
+            allowFilter
+            activeKeys={activeKeys}
+            entities={sortedEntitiesByValue}
+            gutter={DI_STRUCTURE.rightRowGutter}
+            latestData={latestData}
+            relativePercentage={relativePercentage}
+            selectedDays={selectedDays}
+            total={total}
+            onActiveKeyMouseHover={(entity) => setActiveMouseHoverKey(entity)}
+            onActiveKeysUpdate={(entities) => setActiveKeys(entities)}
+          />
+        </Col>
+      </Row>
     </Card>
   );
 };

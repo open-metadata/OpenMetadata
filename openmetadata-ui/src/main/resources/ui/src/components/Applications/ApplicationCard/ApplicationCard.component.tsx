@@ -16,7 +16,7 @@ import classNames from 'classnames';
 import { kebabCase } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
+import RichTextEditorPreviewer from '../../../components/common/RichTextEditor/RichTextEditorPreviewer';
 import AppLogo from '../AppLogo/AppLogo.component';
 import { ApplicationCardProps } from './ApplicationCard.interface';
 
@@ -39,7 +39,7 @@ const ApplicationCard = ({
         className,
         'application-card card-body-border-none'
       )}
-      data-testid={`${kebabCase(title)}-card`}>
+      data-testid={`${kebabCase(appName)}-card`}>
       <div className="d-flex items-center gap-3">
         <div className="application-logo">
           <AppLogo appName={appName} />

@@ -17,9 +17,9 @@ import { observer } from 'mobx-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
-import PageLayoutV1 from '../../components/containers/PageLayoutV1';
+import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import CreateUserComponent from '../../components/CreateUser/CreateUser.component';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
   ERROR_MESSAGE,
   getBotsPagePath,

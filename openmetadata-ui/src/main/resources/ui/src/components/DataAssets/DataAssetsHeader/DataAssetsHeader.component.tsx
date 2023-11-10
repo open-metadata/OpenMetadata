@@ -27,12 +27,8 @@ import { ReactComponent as StarIcon } from '../../../assets/svg/ic-star.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { DomainLabel } from '../../../components/common/DomainLabel/DomainLabel.component';
-import AnnouncementCard from '../../../components/common/entityPageInfo/AnnouncementCard/AnnouncementCard';
-import AnnouncementDrawer from '../../../components/common/entityPageInfo/AnnouncementDrawer/AnnouncementDrawer';
-import ManageButton from '../../../components/common/entityPageInfo/ManageButton/ManageButton';
 import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import TierCard from '../../../components/common/TierCard/TierCard';
-import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { useTourProvider } from '../../../components/TourProvider/TourProvider';
 import Voting from '../../../components/Voting/Voting.component';
@@ -59,7 +55,11 @@ import {
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { getTierTags } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
+import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
+import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
+import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import {
   DataAssetHeaderInfo,
   DataAssetsHeaderProps,
@@ -369,7 +369,7 @@ export const DataAssetsHeader = ({
                 />
                 <Divider className="self-center m-x-sm" type="vertical" />
                 <TierCard currentTier={tier?.tagFQN} updateTier={onTierUpdate}>
-                  <Space>
+                  <Space data-testid="header-tier-container">
                     {tier ? (
                       <span className="font-medium text-xs" data-testid="Tier">
                         {getEntityName(tier)}

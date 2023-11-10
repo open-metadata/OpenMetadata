@@ -18,10 +18,10 @@ import { EntityTags, ServiceTypes } from 'Models';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
-import DescriptionV1 from '../../components/common/description/DescriptionV1';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import NextPrevious from '../../components/common/next-previous/NextPrevious';
-import { NextPreviousProps } from '../../components/common/next-previous/NextPrevious.interface';
+import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
+import { NextPreviousProps } from '../../components/common/NextPrevious/NextPrevious.interface';
 import DataProductsContainer from '../../components/DataProductsContainer/DataProductsContainer.component';
 import Loader from '../../components/Loader/Loader';
 import { OperationPermission } from '../../components/PermissionProvider/PermissionProvider.interface';
@@ -67,7 +67,7 @@ function ServiceMainTabContent({
   currentPage,
   serviceDetails,
   saveUpdatedServiceData,
-}: ServiceMainTabContentProps) {
+}: Readonly<ServiceMainTabContentProps>) {
   const { t } = useTranslation();
   const { fqn: serviceFQN, serviceCategory } = useParams<{
     fqn: string;
@@ -138,8 +138,15 @@ function ServiceMainTabContent({
     [serviceCategory]
   );
 
-  const editTagsPermission = useMemo(
-    () => servicePermission.EditTags || servicePermission.EditAll,
+  const { editTagsPermission, editDescriptionPermission } = useMemo(
+    () => ({
+      editTagsPermission:
+        (servicePermission.EditTags || servicePermission.EditAll) &&
+        !serviceDetails.deleted,
+      editDescriptionPermission:
+        (servicePermission.EditDescription || servicePermission.EditAll) &&
+        !serviceDetails.deleted,
+    }),
     [servicePermission, serviceDetails]
   );
 
@@ -153,10 +160,9 @@ function ServiceMainTabContent({
               entityFqn={serviceFQN}
               entityName={serviceName}
               entityType={entityType}
-              hasEditAccess={
-                servicePermission.EditDescription || servicePermission.EditAll
-              }
+              hasEditAccess={editDescriptionPermission}
               isEdit={isEdit}
+              showActions={!serviceDetails.deleted}
               showCommentsIcon={false}
               onCancel={onCancel}
               onDescriptionEdit={onDescriptionEdit}

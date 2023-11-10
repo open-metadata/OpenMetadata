@@ -35,8 +35,8 @@ import { EntityReference } from '../../../generated/entity/type';
 import { getEntityName } from '../../../utils/EntityUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
 import { useApplicationConfigContext } from '../../ApplicationConfigProvider/ApplicationConfigProvider';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
-import Avatar from '../../common/avatar/Avatar';
+import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+import Avatar from '../../common/AvatarComponent/Avatar';
 import './user-profile-icon.less';
 
 type ListMenuItemProps = {

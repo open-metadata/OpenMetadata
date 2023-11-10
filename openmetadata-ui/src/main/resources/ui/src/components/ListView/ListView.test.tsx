@@ -21,9 +21,12 @@ jest.mock('../../components/common/Table/Table', () => {
   return jest.fn(() => <p>Table</p>);
 });
 
-jest.mock('../../components/common/searchbar/Searchbar', () => {
-  return jest.fn().mockImplementation(() => <p>Searchbar</p>);
-});
+jest.mock(
+  '../../components/common/SearchBarComponent/SearchBar.component',
+  () => {
+    return jest.fn().mockImplementation(() => <p>Searchbar</p>);
+  }
+);
 
 describe('ListView component', () => {
   it('should render toggle button for card and table', async () => {
