@@ -335,7 +335,10 @@ class OMetaGlossaryTest(TestCase):
                 self.create_glossary_term_2
             )
         elif self.glossary_term_2.parent is not None:
-            self.metadata.patch_glossary_term_parent(entity_id=self.glossary_term_2.id)
+            dest_glossary_term_2 = deepcopy(self.glossary_term_2)
+            dest_glossary_term_2.parent = EntityReference(id=self.glossary_term_1.id, type='glossaryTerm')
+            self.metadata.patch(entity=GlossaryTerm, source=self.glossary_term_2, destination=dest_glossary_term_2)
+
         if self.glossary_term_3 is None:
             OMetaGlossaryTest.glossary_term_3 = self.metadata.create_or_update(
                 self.create_glossary_term_3
