@@ -33,9 +33,7 @@ public class ClassificationIndex implements SearchIndex {
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.CLASSIFICATION);
-    if (classification.getOwner() != null) {
-      doc.put("owner", getOwnerWithDisplayName(classification.getOwner()));
-    }
+    doc.put("owner", getOwnerWithDisplayName(classification.getOwner()));
     return doc;
   }
 }

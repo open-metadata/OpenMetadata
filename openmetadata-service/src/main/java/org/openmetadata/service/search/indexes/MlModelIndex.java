@@ -48,12 +48,9 @@ public class MlModelIndex implements SearchIndex {
         getFQNParts(
             mlModel.getFullyQualifiedName(),
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
-    if (mlModel.getOwner() != null) {
-      doc.put("owner", getOwnerWithDisplayName(mlModel.getOwner()));
-    }
-    if (mlModel.getDomain() != null) {
-      doc.put("domain", getDomainWithDisplayName(mlModel.getDomain()));
-    }
+    doc.put("owner", getOwnerWithDisplayName(mlModel.getOwner()));
+    doc.put("service", getServiceWithDisplayName(mlModel.getService()));
+    doc.put("domain", getDomainWithDisplayName(mlModel.getDomain()));
     return doc;
   }
 

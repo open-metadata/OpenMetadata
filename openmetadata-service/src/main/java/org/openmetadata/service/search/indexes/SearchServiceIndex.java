@@ -33,9 +33,7 @@ public class SearchServiceIndex implements SearchIndex {
         getFQNParts(
             searchService.getFullyQualifiedName(),
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
-    if (searchService.getOwner() != null) {
-      doc.put("owner", getOwnerWithDisplayName(searchService.getOwner()));
-    }
+    doc.put("owner", getOwnerWithDisplayName(searchService.getOwner()));
     return doc;
   }
 }

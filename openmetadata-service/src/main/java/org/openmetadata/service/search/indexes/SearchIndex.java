@@ -25,6 +25,9 @@ public interface SearchIndex {
   }
 
   default EntityReference getOwnerWithDisplayName(EntityReference owner) {
+    if (owner == null) {
+      return null;
+    }
     EntityReference cloneOwner = JsonUtils.deepCopy(owner, EntityReference.class);
     cloneOwner.setDisplayName(
         CommonUtil.nullOrEmpty(cloneOwner.getDisplayName()) ? cloneOwner.getName() : cloneOwner.getDisplayName());
@@ -32,9 +35,19 @@ public interface SearchIndex {
   }
 
   default EntityReference getDomainWithDisplayName(EntityReference domain) {
+    if (domain == null) {
+      return null;
+    }
     EntityReference cloneDomain = JsonUtils.deepCopy(domain, EntityReference.class);
     cloneDomain.setDisplayName(
         CommonUtil.nullOrEmpty(cloneDomain.getDisplayName()) ? cloneDomain.getName() : cloneDomain.getDisplayName());
     return cloneDomain;
+  }
+
+  default EntityReference getServiceWithDisplayName(EntityReference service) {
+    EntityReference cloneService = JsonUtils.deepCopy(service, EntityReference.class);
+    cloneService.setDisplayName(
+        CommonUtil.nullOrEmpty(cloneService.getDisplayName()) ? cloneService.getName() : cloneService.getDisplayName());
+    return cloneService;
   }
 }
