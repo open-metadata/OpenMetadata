@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Button, Col, Row, Tooltip, Typography } from 'antd';
-import Table, { ColumnsType, TableProps } from 'antd/lib/table';
+import { ColumnsType, TableProps } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import cronstrue from 'cronstrue';
 import { isNil, map, startCase } from 'lodash';
@@ -36,6 +36,7 @@ import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder
 import ErrorPlaceHolderIngestion from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion';
 import NextPrevious from '../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
+import Table from '../../common/Table/Table';
 import Loader from '../../Loader/Loader';
 import { ColumnFilter } from '../../Table/ColumnFilter/ColumnFilter.component';
 import { IngestionRecentRuns } from '../IngestionRecentRun/IngestionRecentRuns.component';

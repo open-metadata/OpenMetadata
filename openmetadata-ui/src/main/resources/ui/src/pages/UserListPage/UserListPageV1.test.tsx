@@ -81,9 +81,9 @@ describe('Test UserListPage component', () => {
 
     expect(getUsers).toHaveBeenCalledWith({
       fields: 'profile,teams,roles',
-      isAdmin: undefined,
+      isAdmin: false,
       isBot: false,
-      limit: 15,
+      limit: 25,
     });
 
     const deletedSwitch = await findByTestId('show-deleted');
@@ -99,7 +99,7 @@ describe('Test UserListPage component', () => {
       include: 'deleted',
       isAdmin: false,
       isBot: false,
-      limit: 15,
+      limit: 25,
     });
   });
 
@@ -108,9 +108,9 @@ describe('Test UserListPage component', () => {
 
     expect(getUsers).toHaveBeenCalledWith({
       fields: 'profile,teams,roles',
-      isAdmin: undefined,
+      isAdmin: false,
       isBot: false,
-      limit: 15,
+      limit: 25,
     });
 
     const searchBar = await findByTestId('search-bar-container');

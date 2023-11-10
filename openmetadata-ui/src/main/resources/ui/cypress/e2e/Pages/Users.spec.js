@@ -66,7 +66,7 @@ describe('Users flow should work properly', () => {
   it('Search for bot user', () => {
     interceptURL(
       'GET',
-      `/api/v1/search/query?q=*${searchBotText}***isBot:false&from=0&size=15&index=user_search_index`,
+      `/api/v1/search/query?q=*${searchBotText}***isBot:false&from=0&size=25&index=user_search_index`,
       'searchUser'
     );
     cy.get('[data-testid="searchbar"]')

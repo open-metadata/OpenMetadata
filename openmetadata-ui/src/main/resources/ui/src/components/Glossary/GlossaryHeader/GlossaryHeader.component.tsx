@@ -168,7 +168,7 @@ const GlossaryHeader = ({
     if ((selectedData as GlossaryTerm).style?.iconURL) {
       return (
         <img
-          className="align-middle"
+          className="align-middle object-contain"
           data-testid="icon"
           height={36}
           src={(selectedData as GlossaryTerm).style?.iconURL}

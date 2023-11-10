@@ -326,11 +326,18 @@ const TableDetailsPageV1 = () => {
           };
         }
 
-        return {
+        const updatedObj = {
           ...previous,
           version: res.version,
           [key]: res[key],
         };
+
+        // If operation was to remove let's remove the key itself
+        if (res[key] === undefined) {
+          delete updatedObj[key];
+        }
+
+        return updatedObj;
       });
       getEntityFeedCount();
     } catch (error) {

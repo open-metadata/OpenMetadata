@@ -31,7 +31,6 @@ import PageHeader from '../../components/PageHeader/PageHeader.component';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import {
   INITIAL_PAGING_VALUE,
-  PAGE_SIZE_BASE,
   PAGE_SIZE_MEDIUM,
   ROUTES,
 } from '../../constants/constants';
@@ -95,7 +94,6 @@ const UserListPageV1 = () => {
     try {
       const { data, paging: userPaging } = await getUsers({
         isBot: false,
-        limit: PAGE_SIZE_BASE,
         fields: 'profile,teams,roles',
         ...params,
       });
@@ -117,6 +115,7 @@ const UserListPageV1 = () => {
     fetchUsersList({
       isAdmin: isAdminPage,
       include: showDeletedUser ? Include.Deleted : Include.NonDeleted,
+      limit: pageSize,
     });
   };
 
@@ -135,7 +134,7 @@ const UserListPageV1 = () => {
       searchData(
         text,
         currentPage,
-        PAGE_SIZE_BASE,
+        pageSize,
         filters,
         '',
         '',
@@ -185,6 +184,7 @@ const UserListPageV1 = () => {
         isAdmin: isAdminPage,
         [cursorType]: paging[cursorType],
         include: showDeletedUser ? Include.Deleted : Include.NonDeleted,
+        limit: pageSize,
       });
     }
   };
@@ -196,6 +196,7 @@ const UserListPageV1 = () => {
     fetchUsersList({
       isAdmin: isAdminPage,
       include: value ? Include.Deleted : Include.NonDeleted,
+      limit: pageSize,
     });
   };
 
@@ -232,7 +233,8 @@ const UserListPageV1 = () => {
         setIsDataLoading(false);
       } else {
         fetchUsersList({
-          isAdmin: tab === GlobalSettingOptions.ADMINS || undefined,
+          isAdmin: tab === GlobalSettingOptions.ADMINS,
+          limit: pageSize,
         });
       }
     } else {

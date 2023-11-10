@@ -1153,8 +1153,8 @@ const TeamDetailsV1 = ({
         <Col className="m-t-sm" span={24}>
           <Tabs
             destroyInactiveTabPane
+            activeKey={currentTab}
             className="entity-details-page-tabs"
-            defaultActiveKey={currentTab}
             items={tabs}
             onChange={updateActiveTab}
           />

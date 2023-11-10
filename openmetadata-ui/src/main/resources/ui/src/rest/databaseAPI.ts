@@ -23,6 +23,7 @@ import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
+import { ListParams } from '../interface/API.interface';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
@@ -106,28 +107,33 @@ export const patchDatabaseSchemaDetails = async (
   return response.data;
 };
 
-export const getDatabaseSchemas = async (
-  databaseName: string,
-  paging?: string,
-  arrQueryFields?: string | string[],
-  include: Include = Include.NonDeleted
-) => {
-  const url = `${getURLWithQueryFields(
-    `/databaseSchemas`,
-    arrQueryFields
-  )}&database=${databaseName}${paging ? paging : ''}`;
-
+export const getDatabaseSchemas = async ({
+  include = Include.NonDeleted,
+  databaseName,
+  after,
+  before,
+  limit,
+  fields,
+}: {
+  databaseName: string;
+} & ListParams) => {
   const response = await APIClient.get<{
     data: DatabaseSchema[];
     paging: Paging;
-  }>(url, {
+  }>('/databaseSchemas', {
     params: {
+      fields,
+      database: databaseName,
       include,
+      after,
+      before,
+      limit,
     },
   });
 
   return response.data;
 };
+
 export const getDatabaseSchemaDetailsByFQN = async (
   databaseSchemaName: string,
   arrQueryFields?: string | string[],

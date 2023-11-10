@@ -138,7 +138,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           if (source.style?.iconURL) {
             return (
               <img
-                className="align-middle m-r-xs"
+                className="align-middle m-r-xs object-contain"
                 data-testid="icon"
                 height={24}
                 src={source.style.iconURL}

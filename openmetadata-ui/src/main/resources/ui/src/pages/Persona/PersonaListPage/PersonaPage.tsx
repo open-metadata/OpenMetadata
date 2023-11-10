@@ -131,22 +131,21 @@ export const PersonaPage = () => {
         </Space>
       </Col>
 
-      {isLoading &&
-        [1, 2, 3].map((key) => (
-          <Col key={key} span={8}>
-            <Card>
-              <Skeleton active paragraph title />
-            </Card>
-          </Col>
-        ))}
+      {isLoading
+        ? [1, 2, 3].map((key) => (
+            <Col key={key} span={8}>
+              <Card>
+                <Skeleton active paragraph title />
+              </Card>
+            </Col>
+          ))
+        : persona?.map((persona) => (
+            <Col key={persona.id} span={8}>
+              <PersonaDetailsCard persona={persona} />
+            </Col>
+          ))}
 
       {isEmpty(persona) && !isLoading && errorPlaceHolder}
-
-      {persona?.map((persona) => (
-        <Col key={persona.id} span={8}>
-          <PersonaDetailsCard persona={persona} />
-        </Col>
-      ))}
 
       {showPagination && (
         <Col span={24}>

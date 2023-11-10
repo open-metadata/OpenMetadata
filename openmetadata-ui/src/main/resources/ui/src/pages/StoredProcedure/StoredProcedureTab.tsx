@@ -55,7 +55,6 @@ const StoredProcedureTab = () => {
         setIsLoading(true);
         const { data, paging } = await getStoredProceduresList({
           databaseSchema: fqn,
-          fields: 'owner,tags,followers',
           include: showDeleted ? Include.Deleted : Include.NonDeleted,
           ...params,
           limit: pageSize,

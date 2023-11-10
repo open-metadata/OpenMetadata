@@ -36,6 +36,7 @@ const AddDataProductModal = ({
 
   return (
     <Modal
+      centered
       cancelText={t('label.cancel')}
       className="add-data-product-modal"
       closable={false}
