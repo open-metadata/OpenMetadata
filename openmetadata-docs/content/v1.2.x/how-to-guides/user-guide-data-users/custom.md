@@ -1,6 +1,6 @@
 ---
 title: How to Create a Custom Property for a Data Asset
-slug: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/custom
+slug: /how-to-guides/guide-for-data-users/custom
 ---
 
 # How to Create a Custom Property for a Data Asset
@@ -37,3 +37,11 @@ src="/images/v1.1/how-to-guides/discovery/custom3.png"
 alt="Enter the Value for a Custom Property"
 caption="Enter the Value for a Custom Property"
 /%}
+
+{%inlineCallout
+  color="violet-70"
+  bold="Overview of Announcements"
+  icon="MdArrowForward"
+  href="/how-to-guides/guide-for-data-users/announcements"%}
+  Learn more about the announcements in OpenMetadata
+{%/inlineCallout%}

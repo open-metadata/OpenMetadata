@@ -1,6 +1,6 @@
 ---
 title: How to Assign or Change Data Ownership
-slug: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/data-ownership
+slug: /how-to-guides/guide-for-data-users/data-ownership
 ---
 
 # How to Assign or Change Data Ownership
@@ -47,3 +47,11 @@ OpenMetadata supports Owner Propagation and the owner will be propagated based o
 ## Team Ownership is Preffered
 
 OpenMetadata is a data collaboration platform. We highly recommend Team Ownership of data assets, because individual users will only have part of the context about the data asset in question. Assigning team ownership will give access to all the members of a particular team. Only teams of the type ‘**Groups**’ can own data assets.
+
+{%inlineCallout
+  color="violet-70"
+  bold="How to Follow a Data Asset"
+  icon="MdArrowForward"
+  href="/how-to-guides/guide-for-data-users/follow-data-asset"%}
+  Learn how to follow data assets
+{%/inlineCallout%}
