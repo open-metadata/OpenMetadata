@@ -75,6 +75,7 @@ import {
 } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import CmdKIcon from '../common/CmdKIcon/CmdKIcon.component';
+import GithubStarModal from '../Modals/GithubStarModal/GithubStarModal.component';
 import WhatsNewModal from '../Modals/WhatsNewModal/WhatsNewModal';
 import NotificationBox from '../NotificationBox/NotificationBox.component';
 import { UserProfileIcon } from '../Users/UserProfileIcon/UserProfileIcon.component';
@@ -519,6 +520,8 @@ const NavBar = ({
         onCancel={handleModalCancel}
       />
       <WhatsNewAlert />
+
+      <GithubStarModal />
     </>
   );
 };
