@@ -13,7 +13,7 @@
 
 import { render, screen } from '@testing-library/react';
 import React from 'react';
-import { POLICY_DATA } from '../policies.mock';
+import { POLICY_DATA } from '../PoliciesData.mock';
 import EditRulePage from './EditRulePage';
 
 jest.mock('react-router-dom', () => ({
@@ -31,7 +31,7 @@ jest.mock('../../../rest/rolesAPIV1', () => ({
 }));
 
 jest.mock(
-  '../../../components/common/title-breadcrumb/title-breadcrumb.component',
+  '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
   () =>
     jest.fn().mockReturnValue(<div data-testid="breadcrumb">BreadCrumb</div>)
 );
@@ -40,7 +40,7 @@ jest.mock('../../../components/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>)
 );
 
-jest.mock('../../../components/containers/PageLayoutV1', () =>
+jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () =>
   jest.fn().mockImplementation(({ children }) => <div>{children}</div>)
 );
 

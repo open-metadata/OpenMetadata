@@ -13,7 +13,7 @@
 
 import { render, screen } from '@testing-library/react';
 import React from 'react';
-import { POLICY_DATA } from '../policies.mock';
+import { POLICY_DATA } from '../PoliciesData.mock';
 import PoliciesDetailPage from './PoliciesDetailPage';
 
 jest.mock('react-router-dom', () => ({
@@ -35,24 +35,24 @@ jest.mock('../../../rest/teamsAPI', () => ({
   patchTeamDetail: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('../../../components/common/description/Description', () =>
+jest.mock('../../../components/common/EntityDescription/Description', () =>
   jest
     .fn()
     .mockReturnValue(<div data-testid="description-data">Description</div>)
 );
 
 jest.mock(
-  '../../../components/common/error-with-placeholder/ErrorPlaceHolder',
+  '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
   () => jest.fn().mockReturnValue(<div>ErrorPlaceholder</div>)
 );
 
 jest.mock(
-  '../../../components/common/rich-text-editor/RichTextEditorPreviewer',
+  '../../../components/common/RichTextEditor/RichTextEditorPreviewer',
   () => jest.fn().mockReturnValue(<div data-testid="previewer">Previewer</div>)
 );
 
 jest.mock(
-  '../../../components/common/title-breadcrumb/title-breadcrumb.component',
+  '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
   () =>
     jest.fn().mockReturnValue(<div data-testid="breadcrumb">BreadCrumb</div>)
 );

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { SearchedDataProps } from '../../searched-data/SearchedData.interface';
+import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 
 export interface ExploreSearchCardProps {
   id: string;

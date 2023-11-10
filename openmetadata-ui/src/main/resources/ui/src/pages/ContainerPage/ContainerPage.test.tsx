@@ -57,7 +57,7 @@ jest.mock(
   }
 );
 
-jest.mock('../../components/common/description/Description', () => {
+jest.mock('../../components/common/EntityDescription/Description', () => {
   return jest
     .fn()
     .mockReturnValue(<div data-testid="description">Description</div>);
@@ -74,7 +74,7 @@ jest.mock('../../components/FeedEditor/FeedEditor', () => {
 });
 
 jest.mock(
-  '../../components/common/error-with-placeholder/ErrorPlaceHolder',
+  '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
   () => {
     return jest
       .fn()

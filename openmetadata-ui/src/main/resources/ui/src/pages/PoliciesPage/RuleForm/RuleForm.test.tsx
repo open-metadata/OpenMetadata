@@ -23,7 +23,7 @@ jest.mock('../../../rest/rolesAPIV1', () => ({
   validateRuleCondition: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('../../../components/common/rich-text-editor/RichTextEditor', () =>
+jest.mock('../../../components/common/RichTextEditor/RichTextEditor', () =>
   jest.fn().mockReturnValue(<div data-testid="editor">Editor</div>)
 );
 

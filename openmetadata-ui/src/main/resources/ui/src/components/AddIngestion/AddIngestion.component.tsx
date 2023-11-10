@@ -29,8 +29,8 @@ import { IngestionPipeline } from '../../generated/entity/services/ingestionPipe
 import { IngestionWorkflowData } from '../../interface/service.interface';
 import { getIngestionFrequency } from '../../utils/CommonUtils';
 import { getIngestionName } from '../../utils/ServiceUtils';
-import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
-import SuccessScreen from '../common/success-screen/SuccessScreen';
+import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
+import SuccessScreen from '../common/SuccessScreen/SuccessScreen';
 import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
 import DeployIngestionLoaderModal from '../Modals/DeployIngestionLoaderModal/DeployIngestionLoaderModal';
 import {

@@ -24,7 +24,7 @@ import { WebStorageStateStore } from 'oidc-client';
 import {
   AuthenticationConfigurationWithScope,
   UserProfile,
-} from '../components/authentication/auth-provider/AuthProvider.interface';
+} from '../components/Auth/AuthProviders/AuthProvider.interface';
 import { oidcTokenKey, ROUTES } from '../constants/constants';
 import { EMAIL_REG_EX } from '../constants/regex.constants';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';

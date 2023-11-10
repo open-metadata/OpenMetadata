@@ -84,7 +84,7 @@ import { getAddDataQualityTableTestPath } from '../../utils/RouterUtils';
 import { bytesToSize, getDecodedFqn } from '../../utils/StringsUtils';
 import { generateEntityLink } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import PageHeader from '../header/PageHeader.component';
+import PageHeader from '../PageHeader/PageHeader.component';
 import { TableProfilerTab } from '../ProfilerDashboard/profilerDashboard.interface';
 import ColumnPickerMenu from './Component/ColumnPickerMenu';
 import ColumnProfileTable from './Component/ColumnProfileTable';
@@ -92,12 +92,12 @@ import ColumnSummary from './Component/ColumnSummary';
 import ProfilerSettingsModal from './Component/ProfilerSettingsModal';
 import TableProfilerChart from './Component/TableProfilerChart';
 import { QualityTab } from './QualityTab/QualityTab.component';
+import './table-profiler.less';
 import {
   OverallTableSummeryType,
   TableProfilerProps,
   TableTestsType,
 } from './TableProfiler.interface';
-import './tableProfiler.less';
 
 const TableProfilerV1: FC<TableProfilerProps> = ({
   isTableDeleted,
@@ -264,7 +264,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
           : '--',
       },
     ];
-  }, [profile, tableTests]);
+  }, [profile]);
 
   const tabOptions = [
     {

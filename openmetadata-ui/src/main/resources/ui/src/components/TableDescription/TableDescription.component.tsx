@@ -15,7 +15,7 @@ import { Space } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
-import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
+import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
 import { DE_ACTIVE_COLOR } from '../../constants/constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import EntityTasks from '../../pages/TasksPage/EntityTasks/EntityTasks.component';

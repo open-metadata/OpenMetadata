@@ -15,7 +15,7 @@ import { Button, Form, Input, Space } from 'antd';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import RichTextEditor from '../../../components/common/rich-text-editor/RichTextEditor';
+import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
 import Loader from '../../../components/Loader/Loader';
 import {
   PAGE_SIZE_MEDIUM,
@@ -26,7 +26,7 @@ import { TestSuite } from '../../../generated/tests/testSuite';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import { getListTestSuites } from '../../../rest/testAPI';
 import { getDataQualityPagePath } from '../../../utils/RouterUtils';
-import { AddTestSuiteFormProps } from '../TestSuiteStepper/testSuite.interface';
+import { AddTestSuiteFormProps } from '../TestSuiteStepper/TestSuiteStepper.interface';
 
 const AddTestSuiteForm: React.FC<AddTestSuiteFormProps> = ({
   onSubmit,

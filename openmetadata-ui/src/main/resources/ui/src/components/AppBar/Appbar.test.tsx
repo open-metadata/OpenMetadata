@@ -27,7 +27,7 @@ jest.mock('../../hooks/authHooks', () => ({
   },
 }));
 
-jest.mock('../authentication/auth-provider/AuthProvider', () => {
+jest.mock('../Auth/AuthProviders/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({
       isAuthDisabled: false,
@@ -39,7 +39,7 @@ jest.mock('../authentication/auth-provider/AuthProvider', () => {
   };
 });
 
-jest.mock('../nav-bar/NavBar', () => {
+jest.mock('../NavBar/NavBar', () => {
   return jest.fn().mockReturnValue(<p>NavBar</p>);
 });
 

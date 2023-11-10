@@ -23,7 +23,7 @@ import {
   getEntityOverview,
 } from '../../../../utils/EntityUtils';
 import SummaryTagsDescription from '../../../common/SummaryTagsDescription/SummaryTagsDescription.component';
-import SchemaEditor from '../../../schema-editor/SchemaEditor';
+import SchemaEditor from '../../../SchemaEditor/SchemaEditor';
 import SummaryPanelSkeleton from '../../../Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import CommonEntitySummaryInfo from '../CommonEntitySummaryInfo/CommonEntitySummaryInfo';
 import { StoredProcedureSummaryProps } from './StoredProcedureSummary.interface';

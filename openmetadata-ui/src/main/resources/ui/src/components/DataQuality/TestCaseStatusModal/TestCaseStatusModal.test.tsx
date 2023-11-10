@@ -23,7 +23,7 @@ const mockProps: TestCaseStatusModalProps = {
   onSubmit: jest.fn().mockImplementation(() => Promise.resolve()),
 };
 
-jest.mock('../../../components/common/rich-text-editor/RichTextEditor', () => {
+jest.mock('../../../components/common/RichTextEditor/RichTextEditor', () => {
   return forwardRef(jest.fn().mockReturnValue(<div>RichTextEditor</div>));
 });
 jest.mock('../../../generated/tests/testCase', () => ({

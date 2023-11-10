@@ -16,7 +16,7 @@ import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
-import './AppliedFilterText.less';
+import './applied-filter-text.less';
 
 interface AppliedFilterTextProps {
   filterText: string;

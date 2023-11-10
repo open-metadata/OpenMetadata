@@ -21,13 +21,13 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import PageLayoutV1 from '../../components/containers/PageLayoutV1';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import ContainerVersion from '../../components/ContainerVersion/ContainerVersion.component';
 import DashboardVersion from '../../components/DashboardVersion/DashboardVersion.component';
 import DataModelVersion from '../../components/DataModelVersion/DataModelVersion.component';
 import Loader from '../../components/Loader/Loader';
 import MlModelVersion from '../../components/MlModelVersion/MlModelVersion.component';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,

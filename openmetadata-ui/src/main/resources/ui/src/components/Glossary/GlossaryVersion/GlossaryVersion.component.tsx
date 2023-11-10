@@ -30,8 +30,8 @@ import {
   getGlossaryVersionsPath,
 } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import PageLayoutV1 from '../../containers/PageLayoutV1';
 import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
+import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import GlossaryV1Component from '../GlossaryV1.component';
 
 interface GlossaryVersionProps {

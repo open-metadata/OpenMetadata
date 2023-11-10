@@ -132,7 +132,7 @@ jest.mock('../../hooks/authHooks', () => {
   };
 });
 
-jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
+jest.mock('../common/RichTextEditor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });
 
@@ -141,7 +141,7 @@ jest.mock('../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor', () => ({
 }));
 
 jest.mock(
-  '../../components/common/error-with-placeholder/FilterTablePlaceHolder',
+  '../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder',
   () => {
     return jest.fn().mockReturnValue(<p>FilterTablePlaceHolder</p>);
   }

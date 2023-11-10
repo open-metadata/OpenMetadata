@@ -211,7 +211,7 @@ jest.mock('../../../utils/ToastUtils', () => ({
 }));
 
 jest.mock(
-  '../../../components/common/title-breadcrumb/title-breadcrumb.component',
+  '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
   () => jest.fn().mockImplementation(() => <div>BreadCrumb.component</div>)
 );
 

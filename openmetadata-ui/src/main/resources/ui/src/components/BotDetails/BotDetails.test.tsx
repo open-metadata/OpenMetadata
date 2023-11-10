@@ -110,7 +110,7 @@ jest.mock('../../rest/userAPI', () => {
   };
 });
 
-jest.mock('../common/description/Description', () => {
+jest.mock('../common/EntityDescription/Description', () => {
   return jest.fn().mockReturnValue(<p>Description Component</p>);
 });
 
@@ -122,7 +122,7 @@ jest.mock('./AuthMechanismForm', () =>
     )
 );
 
-jest.mock('../containers/PageLayoutV1', () =>
+jest.mock('../PageLayoutV1/PageLayoutV1', () =>
   jest
     .fn()
     .mockImplementation(({ children, leftPanel, rightPanel, header }) => (

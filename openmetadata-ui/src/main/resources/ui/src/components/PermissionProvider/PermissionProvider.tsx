@@ -36,7 +36,7 @@ import {
   getOperationPermissions,
   getUIPermission,
 } from '../../utils/PermissionsUtils';
-import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
+import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
 import {
   EntityPermissionMap,
   PermissionContextType,

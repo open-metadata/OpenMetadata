@@ -26,7 +26,6 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import PageHeader from '../../components/header/PageHeader.component';
 import { GRAPH_BACKGROUND_COLOR } from '../../constants/constants';
 import {
   BAR_CHART_MARGIN,
@@ -45,8 +44,9 @@ import {
   renderLegend,
 } from '../../utils/DataInsightUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import PageHeader from '../PageHeader/PageHeader.component';
 import CustomStatistic from './CustomStatistic';
-import './DataInsightDetail.less';
+import './data-insight-detail.less';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
 
 interface Props {

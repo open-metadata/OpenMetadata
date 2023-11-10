@@ -16,7 +16,7 @@ import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as PlusIcon } from '../../../../assets/svg/plus-primary.svg';
-import DescriptionV1 from '../../../../components/common/description/DescriptionV1';
+import DescriptionV1 from '../../../../components/common/EntityDescription/DescriptionV1';
 import { UserSelectableList } from '../../../../components/common/UserSelectableList/UserSelectableList.component';
 import { UserTeamSelectableList } from '../../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import DomainExperts from '../../../../components/Domain/DomainExperts/DomainExperts.component';

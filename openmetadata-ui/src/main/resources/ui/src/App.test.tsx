@@ -14,14 +14,14 @@
 import { render } from '@testing-library/react';
 import React from 'react';
 import App from './App';
-import { AuthContext } from './components/authentication/auth-provider/AuthProvider';
-import { IAuthContext } from './components/authentication/auth-provider/AuthProvider.interface';
+import { AuthContext } from './components/Auth/AuthProviders/AuthProvider';
+import { IAuthContext } from './components/Auth/AuthProviders/AuthProvider.interface';
 
-jest.mock('./components/router/AppRouter', () => {
+jest.mock('./components/AppRouter/AppRouter', () => {
   return jest.fn().mockReturnValue(<p>AppRouter</p>);
 });
 
-jest.mock('./components/authentication/auth-provider/AuthProvider', () => {
+jest.mock('./components/Auth/AuthProviders/AuthProvider', () => {
   return {
     AuthProvider: jest
       .fn()

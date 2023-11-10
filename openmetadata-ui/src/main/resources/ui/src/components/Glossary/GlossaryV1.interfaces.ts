@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import { LoadingState } from 'Models';
-import { EntityDetailsObjectInterface } from '../../components/Explore/explore.interface';
 import { VotingDataProps } from '../../components/Voting/voting.interface';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
+import { EntityDetailsObjectInterface } from '../Explore/ExplorePage.interface';
 
 export type GlossaryV1Props = {
   deleteStatus: LoadingState;

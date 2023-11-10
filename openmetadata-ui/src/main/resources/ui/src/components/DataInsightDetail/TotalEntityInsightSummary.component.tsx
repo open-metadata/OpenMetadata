@@ -19,7 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { TOTAL_ENTITY_CHART_COLOR } from '../../constants/DataInsight.constants';
 import { updateActiveChartFilter } from '../../utils/ChartUtils';
 import { sortEntityByValue } from '../../utils/DataInsightUtils';
-import Searchbar from '../common/searchbar/Searchbar';
+import Searchbar from '../common/SearchBarComponent/SearchBar.component';
 import CustomStatistic from './CustomStatistic';
 import EntitySummaryProgressBar from './EntitySummaryProgressBar.component';
 

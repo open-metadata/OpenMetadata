@@ -29,7 +29,7 @@ jest.mock('./GlossaryTermReferences', () => {
   return jest.fn().mockReturnValue(<p>GlossaryTermReferences</p>);
 });
 
-jest.mock('../../../common/description/DescriptionV1', () => {
+jest.mock('../../../common/EntityDescription/DescriptionV1', () => {
   return jest.fn().mockReturnValue(<p>Description</p>);
 });
 

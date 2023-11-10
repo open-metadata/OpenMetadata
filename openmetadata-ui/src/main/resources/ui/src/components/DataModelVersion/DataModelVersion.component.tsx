@@ -16,7 +16,7 @@ import classNames from 'classnames';
 import { cloneDeep } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import DescriptionV1 from '../../components/common/description/DescriptionV1';
+import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import DataAssetsVersionHeader from '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import TabsLabel from '../../components/TabsLabel/TabsLabel.component';

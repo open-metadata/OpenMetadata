@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { NextPreviousProps } from '../../components/common/next-previous/NextPrevious.interface';
+import { NextPreviousProps } from '../../components/common/NextPrevious/NextPrevious.interface';
 import { Paging } from '../../generated/type/paging';
 import { ServicePageData } from '../../pages/ServiceDetailsPage/ServiceDetailsPage';
 

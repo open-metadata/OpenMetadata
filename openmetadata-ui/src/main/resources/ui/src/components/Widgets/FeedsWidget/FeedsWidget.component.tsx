@@ -31,9 +31,9 @@ import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizableP
 import { getFeedsWithFilter } from '../../../rest/feedsAPI';
 import { getCountBadge, getEntityDetailLink } from '../../../utils/CommonUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import FeedsFilterPopover from '../../common/FeedsFilterPopover/FeedsFilterPopover.component';
-import './FeedsWidget.less';
+import './feeds-widget.less';
 
 const FeedsWidget = ({
   isEditView = false,

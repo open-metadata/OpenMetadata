@@ -19,7 +19,7 @@ import { ServiceTypes } from 'Models';
 import React from 'react';
 import { Link } from 'react-router-dom';
 import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
-import RichTextEditorPreviewer from '../components/common/rich-text-editor/RichTextEditorPreviewer';
+import RichTextEditorPreviewer from '../components/common/RichTextEditor/RichTextEditorPreviewer';
 import TagsViewer from '../components/Tag/TagsViewer/TagsViewer';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { ServiceCategory } from '../enums/service.enum';

@@ -34,10 +34,10 @@ import {
   getDomainPath,
 } from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
-import PageLayoutV1 from '../../containers/PageLayoutV1';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from '../../Loader/Loader';
+import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import DataProductsDetailsPage from '../DataProductsDetailsPage/DataProductsDetailsPage.component';
 
 const DataProductsPage = () => {

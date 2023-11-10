@@ -26,7 +26,7 @@ import {
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityIcon, getEntityLink } from '../../../utils/TableUtils';
 import EntityListSkeleton from '../../Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
-import './RecentlyViewed.less';
+import './recently-viewed.less';
 
 const RecentlyViewed = ({
   isEditView,

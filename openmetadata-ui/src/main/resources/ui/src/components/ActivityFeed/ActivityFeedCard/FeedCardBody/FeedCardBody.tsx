@@ -21,7 +21,7 @@ import {
   getFrontEndFormat,
   MarkdownToHTMLConverter,
 } from '../../../../utils/FeedUtils';
-import RichTextEditorPreviewer from '../../../common/rich-text-editor/RichTextEditorPreviewer';
+import RichTextEditorPreviewer from '../../../common/RichTextEditor/RichTextEditorPreviewer';
 import Reactions from '../../../Reactions/Reactions';
 import ActivityFeedEditor from '../../ActivityFeedEditor/ActivityFeedEditor';
 import { FeedBodyProp } from '../ActivityFeedCard.interface';

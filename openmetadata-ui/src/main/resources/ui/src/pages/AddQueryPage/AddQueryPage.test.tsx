@@ -30,15 +30,15 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({ fqn: MOCK_TABLE.fullyQualifiedName }),
 }));
 jest.mock(
-  '../../components/common/title-breadcrumb/title-breadcrumb.component',
+  '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
   () => {
     return jest.fn().mockImplementation(() => <div>TitleBreadcrumb</div>);
   }
 );
-jest.mock('../../components/schema-editor/SchemaEditor', () => {
+jest.mock('../../components/SchemaEditor/SchemaEditor', () => {
   return jest.fn().mockImplementation(() => <div>SchemaEditor</div>);
 });
-jest.mock('../../components/common/rich-text-editor/RichTextEditor', () => {
+jest.mock('../../components/common/RichTextEditor/RichTextEditor', () => {
   return jest.fn().mockImplementation(() => <div>RichTextEditor</div>);
 });
 jest.mock('../../components/AsyncSelect/AsyncSelect', () => ({

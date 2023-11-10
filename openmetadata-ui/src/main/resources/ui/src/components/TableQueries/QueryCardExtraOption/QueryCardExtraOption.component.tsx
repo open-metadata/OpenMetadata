@@ -28,7 +28,7 @@ import { AxiosError } from 'axios';
 import ConfirmationModal from '../../../components/Modals/ConfirmationModal/ConfirmationModal';
 import { deleteQuery } from '../../../rest/queryAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import './query-card-extra-option.style.less';
 
 const QueryCardExtraOption = ({

@@ -14,7 +14,7 @@
 /* eslint-disable max-len */
 
 import React from 'react';
-import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
+import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
 
 type Props = {
   data: { [name: string]: string };

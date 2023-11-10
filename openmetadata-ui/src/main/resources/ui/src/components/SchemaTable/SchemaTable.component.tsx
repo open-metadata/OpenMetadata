@@ -30,7 +30,7 @@ import { EntityTags, TagFilterOptions } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
-import FilterTablePlaceHolder from '../../components/common/error-with-placeholder/FilterTablePlaceHolder';
+import FilterTablePlaceHolder from '../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import EntityNameModal from '../../components/Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import { ColumnFilter } from '../../components/Table/ColumnFilter/ColumnFilter.component';

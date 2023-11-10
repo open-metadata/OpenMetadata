@@ -20,8 +20,6 @@ import RightPanel from '../../../components/AddDataQualityTest/components/RightP
 import { getRightPanelForAddTestSuitePage } from '../../../components/AddDataQualityTest/rightPanelData';
 import { AddTestCaseList } from '../../../components/AddTestCaseList/AddTestCaseList.component';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
-import SuccessScreen from '../../../components/common/success-screen/SuccessScreen';
-import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
 import IngestionStepper from '../../../components/IngestionStepper/IngestionStepper.component';
 import { HTTP_STATUS_CODE } from '../../../constants/auth.constants';
 import {
@@ -38,7 +36,9 @@ import {
 import { getTestSuitePath } from '../../../utils/RouterUtils';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+import SuccessScreen from '../../common/SuccessScreen/SuccessScreen';
+import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import AddTestSuiteForm from '../AddTestSuiteForm/AddTestSuiteForm';
 
 const TestSuiteStepper = () => {

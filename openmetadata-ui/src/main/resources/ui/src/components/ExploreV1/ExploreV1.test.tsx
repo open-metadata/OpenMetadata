@@ -13,12 +13,12 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
+import { SearchIndex } from '../../enums/search.enum';
 import {
   MOCK_EXPLORE_SEARCH_RESULTS,
   MOCK_EXPLORE_TAB_ITEMS,
-} from '../../components/Explore/exlore.mock';
-import { ExploreSearchIndex } from '../../components/Explore/explore.interface';
-import { SearchIndex } from '../../enums/search.enum';
+} from '../Explore/Explore.mock';
+import { ExploreSearchIndex } from '../Explore/ExplorePage.interface';
 import ExploreV1 from './ExploreV1.component';
 
 jest.mock('react-router-dom', () => ({
@@ -29,7 +29,7 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
-jest.mock('../../components/containers/PageLayoutV1', () => {
+jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
 

@@ -22,7 +22,7 @@ import { EntityType } from '../../enums/entity.enum';
 import { MlFeature } from '../../generated/entity/data/mlmodel';
 import { TagSource } from '../../generated/type/schema';
 import { createTagObject } from '../../utils/TagsUtils';
-import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
+import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { MlModelFeaturesListProp } from './MlModel.interface';
 import SourceList from './SourceList.component';

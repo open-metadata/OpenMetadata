@@ -22,7 +22,7 @@ import {
 } from '../../../mocks/TestSuite.mock';
 import ParameterForm from './ParameterForm';
 
-jest.mock('../../../components/schema-editor/SchemaEditor', () => {
+jest.mock('../../../components/SchemaEditor/SchemaEditor', () => {
   return jest.fn().mockReturnValue(<div>SchemaEditor</div>);
 });
 

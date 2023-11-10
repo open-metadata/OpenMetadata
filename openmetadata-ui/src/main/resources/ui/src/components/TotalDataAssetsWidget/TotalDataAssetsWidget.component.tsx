@@ -47,11 +47,11 @@ import {
   getEpochMillisForPastDays,
 } from '../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import '../DataInsightDetail/DataInsightDetail.less';
+import '../DataInsightDetail/data-insight-detail.less';
 import { EmptyGraphPlaceholder } from '../DataInsightDetail/EmptyGraphPlaceholder';
 import TotalEntityInsightSummary from '../DataInsightDetail/TotalEntityInsightSummary.component';
+import './total-data-assets-widget.less';
 import { TotalDataAssetsWidgetProps } from './TotalDataAssetsWidget.interface';
-import './TotalDataAssetsWidget.less';
 
 const TotalDataAssetsWidget = ({
   isEditView = false,

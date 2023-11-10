@@ -34,7 +34,7 @@ import { useClipboard } from '../../hooks/useClipBoard';
 import { customFormatDateTime } from '../../utils/date-time/DateTimeUtils';
 import { parseSearchParams } from '../../utils/Query/QueryUtils';
 import { getQueryPath } from '../../utils/RouterUtils';
-import SchemaEditor from '../schema-editor/SchemaEditor';
+import SchemaEditor from '../SchemaEditor/SchemaEditor';
 import QueryCardExtraOption from './QueryCardExtraOption/QueryCardExtraOption.component';
 import QueryUsedByOtherTable from './QueryUsedByOtherTable/QueryUsedByOtherTable.component';
 import './table-queries.style.less';

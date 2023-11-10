@@ -41,11 +41,11 @@ jest.mock('../../../components/common/DeleteWidget/DeleteWidgetModal', () =>
 );
 
 jest.mock(
-  '../../../components/common/rich-text-editor/RichTextEditorPreviewer',
+  '../../../components/common/RichTextEditor/RichTextEditorPreviewer',
   () => jest.fn().mockReturnValue(<div data-testid="previewer">Previewer</div>)
 );
 
-jest.mock('../../../components/common/next-previous/NextPrevious', () =>
+jest.mock('../../../components/common/NextPrevious/NextPrevious', () =>
   jest.fn().mockReturnValue(<div>NextPrevious</div>)
 );
 jest.mock('../../../utils/EntityUtils', () => ({

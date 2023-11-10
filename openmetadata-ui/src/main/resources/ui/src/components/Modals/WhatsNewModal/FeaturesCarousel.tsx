@@ -14,7 +14,7 @@
 import { Carousel } from 'antd';
 import { uniqueId } from 'lodash';
 import React from 'react';
-import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
+import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
 import { FeaturesCarouselProps } from './FeaturesCarousel.interface';
 
 const FeaturesCarousel = ({ data }: FeaturesCarouselProps) => {

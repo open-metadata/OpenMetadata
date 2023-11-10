@@ -15,7 +15,7 @@ import { OperationPermission } from '../../components/PermissionProvider/Permiss
 import { Table } from '../../generated/entity/data/table';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { TagLabel } from '../../generated/type/tagLabel';
-import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
+import { TitleBreadcrumbProps } from '../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 
 export interface TableVersionProp {
   version: string;

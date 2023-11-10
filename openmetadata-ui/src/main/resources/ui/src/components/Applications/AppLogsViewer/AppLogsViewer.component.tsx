@@ -18,7 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { LazyLog } from 'react-lazylog';
 import { ReactComponent as IconSuccessBadge } from '../../../assets/svg/success-badge.svg';
 import { formatDateTimeWithTimezone } from '../../../utils/date-time/DateTimeUtils';
-import CopyToClipboardButton from '../../buttons/CopyToClipboardButton/CopyToClipboardButton';
+import CopyToClipboardButton from '../../CopyToClipboardButton/CopyToClipboardButton';
 import { AppLogsViewerProps, JobStats } from './AppLogsViewer.interface';
 
 const AppLogsViewer = ({ data }: AppLogsViewerProps) => {

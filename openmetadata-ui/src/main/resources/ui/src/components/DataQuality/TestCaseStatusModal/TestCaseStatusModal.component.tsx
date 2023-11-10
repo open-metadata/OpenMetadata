@@ -14,7 +14,7 @@ import { Form, Modal, Select } from 'antd';
 import { startCase } from 'lodash';
 import React, { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import RichTextEditor from '../../../components/common/rich-text-editor/RichTextEditor';
+import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor.interface';
 import {
   TestCaseFailureReason,
@@ -22,7 +22,7 @@ import {
   TestCaseFailureStatusType,
 } from '../../../generated/tests/testCase';
 import { getCurrentMillis } from '../../../utils/date-time/DateTimeUtils';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import { TestCaseStatusModalProps } from './TestCaseStatusModal.interface';
 
 export const TestCaseStatusModal = ({

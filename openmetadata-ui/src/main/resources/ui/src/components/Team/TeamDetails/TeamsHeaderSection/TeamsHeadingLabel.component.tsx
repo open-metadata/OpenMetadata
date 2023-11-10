@@ -22,7 +22,7 @@ import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg'
 import { Team } from '../../../../generated/entity/teams/team';
 import { useAuth } from '../../../../hooks/authHooks';
 import { hasEditAccess } from '../../../../utils/CommonUtils';
-import { useAuthContext } from '../../../authentication/auth-provider/AuthProvider';
+import { useAuthContext } from '../../../Auth/AuthProviders/AuthProvider';
 import { TeamsHeadingLabelProps } from '../team.interface';
 
 const TeamsHeadingLabel = ({

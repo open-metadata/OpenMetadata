@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
-import { EntityDetailsObjectInterface } from '../../Explore/explore.interface';
+import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
 import { OperationPermission } from '../../PermissionProvider/PermissionProvider.interface';
 import { VotingDataProps } from '../../Voting/voting.interface';
 

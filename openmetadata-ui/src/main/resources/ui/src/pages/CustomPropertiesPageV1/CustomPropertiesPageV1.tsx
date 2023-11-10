@@ -24,15 +24,15 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { CustomPropertyTable } from '../../components/CustomEntityDetail/CustomPropertyTable';
-import PageHeader from '../../components/header/PageHeader.component';
+import PageHeader from '../../components/PageHeader/PageHeader.component';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
 } from '../../components/PermissionProvider/PermissionProvider.interface';
-import SchemaEditor from '../../components/schema-editor/SchemaEditor';
+import SchemaEditor from '../../components/SchemaEditor/SchemaEditor';
 import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
 import {
   ENTITY_PATH,
@@ -44,7 +44,7 @@ import { Type } from '../../generated/entity/type';
 import { getTypeByFQN, updateType } from '../../rest/metadataTypeAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import './CustomPropertiesPageV1.less';
+import './custom-properties-pageV1.less';
 
 const CustomEntityDetailV1 = () => {
   const { t } = useTranslation();

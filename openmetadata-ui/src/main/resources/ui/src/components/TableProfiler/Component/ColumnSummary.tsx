@@ -13,7 +13,7 @@
 import { Space, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import React, { FC } from 'react';
-import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
+import RichTextEditorPreviewer from '../../../components/common/RichTextEditor/RichTextEditorPreviewer';
 import TagsViewer from '../../../components/Tag/TagsViewer/TagsViewer';
 import { Column } from '../../../generated/entity/data/container';
 import { getEntityName } from '../../../utils/EntityUtils';

@@ -24,13 +24,12 @@ import { ReactComponent as ExternalLinkIcon } from '../../assets/svg/external-li
 import { useActivityFeedProvider } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
-import DescriptionV1 from '../../components/common/description/DescriptionV1';
-import PageLayoutV1 from '../../components/containers/PageLayoutV1';
+import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import EntityLineageComponent from '../../components/Entity/EntityLineage/EntityLineage.component';
 import ExecutionsTab from '../../components/Execution/Execution.component';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
-import { withActivityFeed } from '../../components/router/withActivityFeed';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { ColumnFilter } from '../../components/Table/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../components/TableDescription/TableDescription.component';
 import TableTags from '../../components/TableTags/TableTags.component';
@@ -72,7 +71,8 @@ import {
 import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
-import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
+import { withActivityFeed } from '../AppRouter/withActivityFeed';
+import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
 import DataProductsContainer from '../DataProductsContainer/DataProductsContainer.component';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';

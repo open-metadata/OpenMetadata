@@ -12,7 +12,7 @@
  */
 
 import React, { FC, ReactNode, useContext, useState } from 'react';
-import { ExploreSearchIndex } from '../../components/Explore/explore.interface';
+import { ExploreSearchIndex } from '../Explore/ExplorePage.interface';
 import { GlobalSearchContextType } from './GlobalSearchProvider.interface';
 
 export const GlobalSearchContext = React.createContext(

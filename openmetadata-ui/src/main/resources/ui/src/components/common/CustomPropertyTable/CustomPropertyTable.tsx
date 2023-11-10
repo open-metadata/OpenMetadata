@@ -40,7 +40,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../PermissionProvider/PermissionProvider.interface';
-import ErrorPlaceHolder from '../error-with-placeholder/ErrorPlaceHolder';
+import ErrorPlaceHolder from '../ErrorWithPlaceholder/ErrorPlaceHolder';
 import Table from '../Table/Table';
 import {
   CustomPropertyProps,

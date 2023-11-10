@@ -16,10 +16,10 @@ import classNames from 'classnames';
 import { t } from 'i18next';
 import { clone } from 'lodash';
 import React, { FC, useEffect, useState } from 'react';
-import SchemaEditor from '../../schema-editor/SchemaEditor';
+import SchemaEditor from '../../SchemaEditor/SchemaEditor';
 import CloseIcon from '../CloseIcon.component';
+import './schema-modal.less';
 import { SchemaModalProp } from './SchemaModal.interface';
-import './SchemaModal.style.less';
 
 const SchemaModal: FC<SchemaModalProp> = ({
   className,

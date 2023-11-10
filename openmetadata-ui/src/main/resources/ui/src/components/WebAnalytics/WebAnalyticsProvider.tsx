@@ -14,7 +14,7 @@
 import React, { ReactNode } from 'react';
 import { AnalyticsProvider } from 'use-analytics';
 import { getAnalyticInstance } from '../../utils/WebAnalyticsUtils';
-import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
+import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
 
 interface WebAnalyticsProps {
   children: ReactNode;

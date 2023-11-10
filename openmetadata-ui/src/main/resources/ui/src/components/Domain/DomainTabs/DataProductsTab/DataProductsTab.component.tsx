@@ -29,12 +29,12 @@ import { SearchIndex } from '../../../../enums/search.enum';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import { searchData } from '../../../../rest/miscAPI';
 import { formatDataProductResponse } from '../../../../utils/APIUtils';
-import ErrorPlaceHolder from '../../../common/error-with-placeholder/ErrorPlaceHolder';
-import PageLayoutV1 from '../../../containers/PageLayoutV1';
+import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import EntitySummaryPanel from '../../../Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import ExploreSearchCard from '../../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import Loader from '../../../Loader/Loader';
-import { SourceType } from '../../../searched-data/SearchedData.interface';
+import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
+import { SourceType } from '../../../SearchedData/SearchedData.interface';
 import { DataProductsTabProps } from './DataProductsTab.interface';
 
 const DataProductsTab = forwardRef(

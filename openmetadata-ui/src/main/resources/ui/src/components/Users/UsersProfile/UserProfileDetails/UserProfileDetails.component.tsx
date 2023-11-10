@@ -17,7 +17,6 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
-import { useAuthContext } from '../../../../components/authentication/auth-provider/AuthProvider';
 import InlineEdit from '../../../../components/InlineEdit/InlineEdit.component';
 import ChangePasswordForm from '../../../../components/Users/ChangePasswordForm';
 import {
@@ -35,6 +34,7 @@ import { useAuth } from '../../../../hooks/authHooks';
 import { changePassword } from '../../../../rest/auth-API';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
+import { useAuthContext } from '../../../Auth/AuthProviders/AuthProvider';
 import Chip from '../../../common/Chip/Chip.component';
 import { PersonaSelectableList } from '../../../Persona/PersonaSelectableList/PersonaSelectableList.component';
 import UserProfileImage from '../UserProfileImage/UserProfileImage.component';

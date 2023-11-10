@@ -17,9 +17,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
-import { useAuthContext } from '../../../components/authentication/auth-provider/AuthProvider';
-import PageHeader from '../../../components/header/PageHeader.component';
+import { useAuthContext } from '../../../components/Auth/AuthProviders/AuthProvider';
 import Loader from '../../../components/Loader/Loader';
+import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import {
   GRAYED_OUT_COLOR,
   NO_DATA_PLACEHOLDER,

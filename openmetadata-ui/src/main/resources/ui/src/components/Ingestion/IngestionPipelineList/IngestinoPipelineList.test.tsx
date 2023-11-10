@@ -19,12 +19,9 @@ import { IngestionPipelineList } from './IngestionPipelineList.component';
 const mockGetIngestinoPipelines = jest.fn();
 const mockBulkDeployPipelines = jest.fn();
 
-jest.mock(
-  '../../common/error-with-placeholder/ErrorPlaceHolderIngestion',
-  () => {
-    return jest.fn().mockImplementation(() => <p>Airflow not available</p>);
-  }
-);
+jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion', () => {
+  return jest.fn().mockImplementation(() => <p>Airflow not available</p>);
+});
 
 jest.mock('../../../hooks/useAirflowStatus', () => ({
   ...jest.requireActual('../../../hooks/useAirflowStatus'),

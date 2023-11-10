@@ -16,10 +16,10 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { searchData } from '../../../../rest/miscAPI';
-import TableDataCardV2 from '../../../common/table-data-card-v2/TableDataCardV2';
-import { SourceType } from '../../../searched-data/SearchedData.interface';
+import TableDataCardV2 from '../../../common/TableDataCardV2/TableDataCardV2';
+import { SourceType } from '../../../SearchedData/SearchedData.interface';
 import SummaryPanelSkeleton from '../../../Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
-import { EntityUnion } from '../../explore.interface';
+import { EntityUnion } from '../../ExplorePage.interface';
 import { TagsSummaryProps } from './TagsSummary.interface';
 
 function TagsSummary({ entityDetails, isLoading }: TagsSummaryProps) {

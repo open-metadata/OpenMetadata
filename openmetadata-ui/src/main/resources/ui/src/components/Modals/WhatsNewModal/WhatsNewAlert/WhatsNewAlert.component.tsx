@@ -22,10 +22,9 @@ import { ReactComponent as PlayIcon } from '../../../../assets/svg/ic-play-butto
 import { ReactComponent as StarIcon } from '../../../../assets/svg/ic-star.svg';
 import { BLACK_COLOR, ROUTES } from '../../../../constants/constants';
 import { useAuth } from '../../../../hooks/authHooks';
+import { getReleaseVersionExpiry } from '../../../../utils/WhatsNewModal.util';
 import { COOKIE_VERSION, LATEST_VERSION_ID, WHATS_NEW } from '../whatsNewData';
 import WhatsNewModal from '../WhatsNewModal';
-import '../WhatsNewModal.styles.less';
-import { getReleaseVersionExpiry } from '../WhatsNewModal.util';
 
 const cookieStorage = new CookieStorage();
 

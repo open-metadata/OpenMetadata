@@ -21,7 +21,7 @@ import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizableP
 import FeedCardBodyV1 from '../../ActivityFeed/ActivityFeedCard/FeedCardBody/FeedCardBodyV1';
 import FeedCardHeaderV1 from '../../ActivityFeed/ActivityFeedCard/FeedCardHeader/FeedCardHeaderV1';
 import Loader from '../../Loader/Loader';
-import './AnnouncementsWidget.less';
+import './announcements-widget.less';
 
 export interface AnnouncementsWidgetProps extends WidgetCommonProps {
   isAnnouncementLoading?: boolean;

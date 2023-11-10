@@ -13,7 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { Edge } from '../components/Entity/EntityLineage/EntityLineage.interface';
-import { ExploreSearchIndex } from '../components/Explore/explore.interface';
+import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
 import { SearchIndex } from '../enums/search.enum';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';

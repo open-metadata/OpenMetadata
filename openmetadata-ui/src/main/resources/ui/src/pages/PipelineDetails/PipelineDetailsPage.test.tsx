@@ -45,7 +45,7 @@ jest.mock('../../components/PipelineDetails/PipelineDetails.component', () => {
 });
 
 jest.mock(
-  '../../components/common/error-with-placeholder/ErrorPlaceHolder',
+  '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
   () => {
     return jest.fn().mockReturnValue(<div>ErrorPlaceHolder.component</div>);
   }

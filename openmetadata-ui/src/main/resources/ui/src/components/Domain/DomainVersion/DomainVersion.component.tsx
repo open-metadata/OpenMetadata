@@ -26,10 +26,10 @@ import {
   getDomainVersionsPath,
 } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
-import PageLayoutV1 from '../../containers/PageLayoutV1';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from '../../Loader/Loader';
+import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import DomainDetailsPage from '../DomainDetailsPage/DomainDetailsPage.component';
 
 const DomainVersion = () => {

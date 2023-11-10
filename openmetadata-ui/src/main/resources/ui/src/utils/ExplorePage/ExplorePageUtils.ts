@@ -17,7 +17,7 @@ import { Aggregations, Bucket } from '../../interface/search.interface';
 import {
   QueryFieldInterface,
   QueryFilterInterface,
-} from '../../pages/explore/ExplorePage.interface';
+} from '../../pages/ExplorePage/ExplorePage.interface';
 
 export const getQueryFiltersArray = (
   field: QueryFilterFieldsEnum,

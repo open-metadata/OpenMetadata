@@ -46,7 +46,7 @@ jest.mock('./PropertyValue', () => ({
   PropertyValue: jest.fn().mockReturnValue(<div>PropertyValue</div>),
 }));
 
-jest.mock('../error-with-placeholder/ErrorPlaceHolder', () => {
+jest.mock('../ErrorWithPlaceholder/ErrorPlaceHolder', () => {
   return jest.fn().mockReturnValue(<div>ErrorPlaceHolder.component</div>);
 });
 

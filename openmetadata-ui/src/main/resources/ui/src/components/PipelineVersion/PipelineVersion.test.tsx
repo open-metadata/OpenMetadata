@@ -37,7 +37,7 @@ jest.mock('../../components/Tag/TagsContainerV2/TagsContainerV2', () =>
 );
 
 jest.mock(
-  '../../components/common/rich-text-editor/RichTextEditorPreviewer',
+  '../../components/common/RichTextEditor/RichTextEditorPreviewer',
   () => jest.fn().mockImplementation(() => <div>RichTextEditorPreviewer</div>)
 );
 
@@ -54,13 +54,12 @@ jest.mock(
   })
 );
 
-jest.mock('../../components/common/description/DescriptionV1', () =>
+jest.mock('../../components/common/EntityDescription/DescriptionV1', () =>
   jest.fn().mockImplementation(() => <div>DescriptionV1</div>)
 );
 
-jest.mock(
-  '../../components/common/error-with-placeholder/ErrorPlaceHolder',
-  () => jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
+jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
+  jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
 );
 
 jest.mock(

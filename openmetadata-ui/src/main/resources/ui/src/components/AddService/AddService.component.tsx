@@ -41,10 +41,10 @@ import {
 import { getEncodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import AddIngestion from '../AddIngestion/AddIngestion.component';
-import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
+import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
 import ServiceDocPanel from '../common/ServiceDocPanel/ServiceDocPanel';
-import SuccessScreen from '../common/success-screen/SuccessScreen';
-import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
+import SuccessScreen from '../common/SuccessScreen/SuccessScreen';
+import TitleBreadcrumb from '../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
 import ConnectionConfigForm from '../ServiceConfig/ConnectionConfigForm';
 import { AddServiceProps, ServiceConfig } from './AddService.interface';

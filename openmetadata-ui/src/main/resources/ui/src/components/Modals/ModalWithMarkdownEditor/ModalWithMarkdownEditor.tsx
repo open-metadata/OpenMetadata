@@ -16,13 +16,13 @@ import { AxiosError } from 'axios';
 import React, { FunctionComponent, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
+import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
 import Loader from '../../Loader/Loader';
+import './modal-with-markdown-editor.less';
 import {
   EditorContentRef,
   ModalWithMarkdownEditorProps,
 } from './ModalWithMarkdownEditor.interface';
-import './ModalWithMarkdownEditor.style.less';
 
 export const ModalWithMarkdownEditor: FunctionComponent<ModalWithMarkdownEditorProps> =
   ({

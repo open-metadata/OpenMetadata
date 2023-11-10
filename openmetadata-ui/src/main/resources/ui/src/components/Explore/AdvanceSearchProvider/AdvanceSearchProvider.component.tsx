@@ -40,7 +40,7 @@ import { elasticSearchFormat } from '../../../utils/QueryBuilderElasticsearchFor
 import { getEntityTypeFromSearchIndex } from '../../../utils/SearchUtils';
 import Loader from '../../Loader/Loader';
 import { AdvancedSearchModal } from '../AdvanceSearchModal.component';
-import { ExploreSearchIndex, UrlParams } from '../explore.interface';
+import { ExploreSearchIndex, UrlParams } from '../ExplorePage.interface';
 import {
   AdvanceSearchContext,
   AdvanceSearchProviderProps,

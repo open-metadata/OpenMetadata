@@ -19,7 +19,7 @@ import { Link } from 'react-router-dom';
 import { EntityType } from '../../enums/entity.enum';
 import { MlFeature } from '../../generated/entity/data/mlmodel';
 import { getEntityLink } from '../../utils/TableUtils';
-import './SourceList.style.less';
+import './source-list.less';
 
 const SourceList = ({ feature }: { feature: MlFeature }) => {
   const { t } = useTranslation();

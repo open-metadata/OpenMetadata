@@ -18,8 +18,8 @@ import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/add-placeholder.svg';
 import { SIZE } from '../../../enums/common.enum';
+import './empty-widget-placeholder.less';
 import { EmptyWidgetPlaceholderProps } from './EmptyWidgetPlaceholder.interface';
-import './EmptyWidgetPlaceholder.less';
 
 function EmptyWidgetPlaceholder({
   iconHeight = SIZE.MEDIUM,
