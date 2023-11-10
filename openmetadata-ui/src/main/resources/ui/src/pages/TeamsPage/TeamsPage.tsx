@@ -29,6 +29,7 @@ import {
 import TeamDetailsV1 from '../../components/Team/TeamDetails/TeamDetailsV1';
 import { HTTP_STATUS_CODE } from '../../constants/auth.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { SearchIndex } from '../../enums/search.enum';
 import { CreateTeam, TeamType } from '../../generated/api/teams/createTeam';
 import { EntityReference } from '../../generated/entity/data/table';
 import { Team } from '../../generated/entity/teams/team';
