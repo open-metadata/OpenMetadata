@@ -28,7 +28,7 @@ jest.mock('../../hooks/useImage', () =>
   jest.fn().mockReturnValue({ image: null })
 );
 
-jest.mock('../authentication/auth-provider/AuthProvider', () => ({
+jest.mock('../Auth/AuthProviders/AuthProvider', () => ({
   useAuthContext: jest.fn(() => ({
     currentUser: mockUserData,
   })),

@@ -60,7 +60,7 @@ import {
   SelectedEdge,
   SelectedNode,
 } from '../components/Entity/EntityLineage/EntityLineage.interface';
-import { ExploreSearchIndex } from '../components/Explore/explore.interface';
+import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
 import Loader from '../components/Loader/Loader';
 import {
   getContainerDetailPath,

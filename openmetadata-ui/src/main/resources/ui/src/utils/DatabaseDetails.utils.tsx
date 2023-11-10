@@ -16,10 +16,10 @@ import { ColumnsType } from 'antd/lib/table';
 import { t } from 'i18next';
 import React from 'react';
 import { Link } from 'react-router-dom';
-import ErrorPlaceHolder from '../components/common/error-with-placeholder/ErrorPlaceHolder';
-import NextPrevious from '../components/common/next-previous/NextPrevious';
-import { NextPreviousProps } from '../components/common/next-previous/NextPrevious.interface';
-import RichTextEditorPreviewer from '../components/common/rich-text-editor/RichTextEditorPreviewer';
+import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NextPrevious from '../components/common/NextPrevious/NextPrevious';
+import { NextPreviousProps } from '../components/common/NextPrevious/NextPrevious.interface';
+import RichTextEditorPreviewer from '../components/common/RichTextEditor/RichTextEditorPreviewer';
 import Table from '../components/common/Table/Table';
 import {
   getDatabaseSchemaDetailsPath,

@@ -41,12 +41,12 @@ import {
 } from '../../../utils/Assets/AssetsUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
-import Searchbar from '../../common/searchbar/Searchbar';
-import TableDataCardV2 from '../../common/table-data-card-v2/TableDataCardV2';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
+import TableDataCardV2 from '../../common/TableDataCardV2/TableDataCardV2';
 import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import Loader from '../../Loader/Loader';
-import { SearchedDataProps } from '../../searched-data/SearchedData.interface';
+import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 import './asset-selection-model.style.less';
 import { AssetSelectionModalProps } from './AssetSelectionModal.interface';
 

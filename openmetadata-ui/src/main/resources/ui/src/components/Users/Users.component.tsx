@@ -30,20 +30,20 @@ import { useAuth } from '../../hooks/authHooks';
 import { searchData } from '../../rest/miscAPI';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
+import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
 import Chip from '../common/Chip/Chip.component';
-import DescriptionV1 from '../common/description/DescriptionV1';
-import PageLayoutV1 from '../containers/PageLayoutV1';
+import DescriptionV1 from '../common/EntityDescription/DescriptionV1';
 import EntitySummaryPanel from '../Explore/EntitySummaryPanel/EntitySummaryPanel.component';
-import { EntityDetailsObjectInterface } from '../Explore/explore.interface';
+import { EntityDetailsObjectInterface } from '../Explore/ExplorePage.interface';
 import AssetsTabs from '../Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import {
   AssetNoDataPlaceholderProps,
   AssetsOfEntity,
 } from '../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
+import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
 import { PersonaSelectableList } from '../Persona/PersonaSelectableList/PersonaSelectableList.component';
 import { Props, UserPageTabs } from './Users.interface';
-import './Users.style.less';
+import './users.less';
 import UserProfileDetails from './UsersProfile/UserProfileDetails/UserProfileDetails.component';
 import UserProfileInheritedRoles from './UsersProfile/UserProfileInheritedRoles/UserProfileInheritedRoles.component';
 import UserProfileRoles from './UsersProfile/UserProfileRoles/UserProfileRoles.component';
