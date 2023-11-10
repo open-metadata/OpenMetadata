@@ -99,6 +99,7 @@ const GithubStarModal = () => {
         <Modal
           centered
           destroyOnClose
+          keyboard
           open
           className="github-star-popup-modal"
           closeIcon={
@@ -113,7 +114,8 @@ const GithubStarModal = () => {
           data-testid="github-star-popup-modal"
           footer={null}
           maskClosable={false}
-          width={440}>
+          width={440}
+          onCancel={() => setShowGithubStarPopup(false)}>
           <Card
             className="github-star-popup-card"
             data-testid="github-star-popup-card">
