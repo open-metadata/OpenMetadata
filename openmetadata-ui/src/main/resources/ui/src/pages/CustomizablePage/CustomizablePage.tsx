@@ -79,7 +79,7 @@ export const CustomizablePage = () => {
       const pageLayoutFQN = `${EntityType.PERSONA}.${personaFQN}.${EntityType.PAGE}.${pageFqn}`;
       try {
         setIsLoading(true);
-        const pageData = await getDocumentByFQN(pageLayoutFQN);
+        const pageData = await getDocumentByFQN(getDecodedFqn(pageLayoutFQN));
 
         setPage(pageData);
         setEditedPage(pageData);
@@ -144,9 +144,7 @@ export const CustomizablePage = () => {
   }, [personaFQN, pageFqn]);
 
   useEffect(() => {
-    if (!isUndefined(personaDetails)) {
-      fetchDocument();
-    }
+    fetchDocument();
   }, [personaDetails]);
 
   if (isLoading || isPersonaLoading) {
