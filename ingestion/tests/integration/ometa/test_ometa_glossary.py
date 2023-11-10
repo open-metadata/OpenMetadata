@@ -23,7 +23,10 @@ from metadata.generated.schema.api.data.createGlossaryTerm import (
 )
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.glossary import Glossary
-from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
+from metadata.generated.schema.entity.data.glossaryTerm import (
+    GlossaryTerm,
+    TermReference,
+)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -366,9 +369,10 @@ class OMetaGlossaryTest(TestCase):
         """
         Update reviewers via PATCH
         """
-        if OMetaGlossaryTest.glossary_entity_id is None:
+        if OMetaGlossaryTest.glossary is None:
             glossary: Glossary = self.metadata.create_or_update(self.create_glossary)
             OMetaGlossaryTest.glossary_entity_id = glossary.id
+            self.glossary = glossary
         if self.glossary_term_1 is None:
             OMetaGlossaryTest.glossary_term_1 = self.metadata.create_or_update(
                 self.create_glossary_term_1
@@ -376,10 +380,8 @@ class OMetaGlossaryTest(TestCase):
         # Add Glossary Reviewer
         dest_glossary = deepcopy(self.glossary)
         if dest_glossary.reviewers is None:
-            dest_glossary.reviewers = list()
-        dest_glossary.reviewers.__root__.append(
-            EntityReference(id=self.user_1.id, type=GlossaryTerm)
-        )
+            dest_glossary.reviewers = []
+        dest_glossary.reviewers.append(EntityReference(id=self.user_1.id, type="user"))
         res_glossary: Glossary = self.metadata.patch(
             entity=Glossary, source=self.glossary, destination=dest_glossary
         )
@@ -389,22 +391,26 @@ class OMetaGlossaryTest(TestCase):
         self.assertEqual(self.user_1.id, res_glossary.reviewers[0].id)
 
         # Remove only Glossary reviewer
-        dest_glossary.reviewers.__root__.pop()
+        dest_glossary = deepcopy(res_glossary)
+        dest_glossary.reviewers.pop(0)
         res_glossary: Glossary = self.metadata.patch(
-            entity=Glossary, source=self.glossary, destination=dest_glossary
+            entity=Glossary, source=res_glossary, destination=dest_glossary
         )
         self.assertIsNotNone(res_glossary)
         self.assertEqual(0, len(res_glossary.reviewers))
-
-        # Add 3 reviewers to the Glossary
-        if dest_glossary.reviewers is None:
-            dest_glossary.reviewers.__root__ = list()
-
+        dest_glossary = deepcopy(res_glossary)
+        dest_glossary.reviewers.append(EntityReference(id=self.user_1.id, type="user"))
+        dest_glossary.reviewers.append(EntityReference(id=self.user_2.id, type="user"))
+        dest_glossary.reviewers.append(EntityReference(id=self.user_3.id, type="user"))
+        res_glossary: Glossary = self.metadata.patch(
+            entity=Glossary, source=res_glossary, destination=dest_glossary
+        )
         # Remove one Glossary reviewer when there are many
         # delete self.user_3
-        dest_glossary.reviewers.__root__.pop(2)
+        dest_glossary = deepcopy(res_glossary)
+        dest_glossary.reviewers.pop(2)
         res_glossary: Glossary = self.metadata.patch(
-            entity=Glossary, source=self.glossary, destination=dest_glossary
+            entity=Glossary, source=res_glossary, destination=dest_glossary
         )
         self.assertIsNotNone(res_glossary)
         self.assertEqual(2, len(res_glossary.reviewers))
@@ -414,42 +420,26 @@ class OMetaGlossaryTest(TestCase):
         # Add GlossaryTerm Reviewer
         dest_glossary_term_1 = deepcopy(self.glossary_term_1)
         dest_glossary_term_1.reviewers.__root__.append(
-            EntityReference(id=self.user_1.id, type=GlossaryTerm)
+            EntityReference(id=self.user_1.id, type="user")
         )
         res_glossary_term: GlossaryTerm = self.metadata.patch(
             entity=GlossaryTerm,
             source=self.glossary_term_1,
             destination=dest_glossary_term_1,
         )
+
         self.assertIsNotNone(res_glossary_term)
         self.assertEqual(1, len(res_glossary_term.reviewers.__root__))
         self.assertEqual(self.user_1.id, res_glossary_term.reviewers.__root__[0].id)
-
-        #
-        # TODO: The way these tests perform patch is incorrect because it hand codes the patch operations
-        #
-
-        # TODO: this test is also incorrect. When the only reviewer of glossary term is removed, it should inherit
-        # reviewers from the glossary
-        # Remove User1 as GlossaryTerm reviewer
-        res_glossary_term = self.metadata.patch(
-            entity=GlossaryTerm,
-            source=self.glossary_term_1,
-            destination=dest_glossary_term_1,
-        )
-        self.assertIsNotNone(res_glossary_term)
-        # TODO: There should be reviewers inherited from the glossary. For some reason this is zero
-        self.assertEqual(0, len(res_glossary_term.reviewers.__root__))
-
-        # We remove the last glossary Term reviewer (inherited)
+        dest_glossary_term_1 = deepcopy(res_glossary_term)
         dest_glossary_term_1.reviewers.__root__.pop(0)
         res_glossary_term = self.metadata.patch(
             entity=GlossaryTerm,
-            source=self.glossary_term_1,
+            source=res_glossary_term,
             destination=dest_glossary_term_1,
         )
         self.assertIsNotNone(res_glossary_term)
-        self.assertEquals(0, len(res_glossary_term.reviewers.__root__))
+        self.assertEqual(0, len(res_glossary_term.reviewers.__root__))
 
     def test_patch_glossary_term_synonyms(self):
         """
@@ -505,8 +495,6 @@ class OMetaGlossaryTest(TestCase):
         self.assertIsNotNone(res)
         self.assertEqual(3, len(res.synonyms))
         self.assertEqual("GT1S2", model_str(res.synonyms[1]))
-<<<<<<< HEAD
-=======
 
     def test_patch_glossary_term_references(self):
         """
@@ -516,49 +504,54 @@ class OMetaGlossaryTest(TestCase):
         if OMetaGlossaryTest.glossary_entity_id is None:
             glossary: Glossary = self.metadata.create_or_update(self.create_glossary)
             OMetaGlossaryTest.glossary_entity_id = glossary.id
+            self.glossary = glossary
         if self.glossary_term_1 is None:
             OMetaGlossaryTest.glossary_term_1 = self.metadata.create_or_update(
                 self.create_glossary_term_1
             )
 
+        dest_glossary_term_1 = deepcopy(self.glossary_term_1)
+        if dest_glossary_term_1.references is None:
+            dest_glossary_term_1.references = []
+        dest_glossary_term_1.references.append(
+            TermReference(name="GT1S1", endpoint="https://www.getcollate.io")
+        )
         # Add reference
-        res: GlossaryTerm = self.metadata.patch_glossary_term_references(
-            entity_id=self.glossary_term_1.id,
-            reference_name="GT1S1",
-            reference_endpoint="https://www.getcollate.io",
+        res: GlossaryTerm = self.metadata.patch(
+            entity=GlossaryTerm,
+            source=self.glossary_term_1,
+            destination=dest_glossary_term_1,
         )
         self.assertIsNotNone(res)
         self.assertEqual(1, len(res.references))
         self.assertEqual("GT1S1", res.references[0].name)
 
         # Remove reference
-        res = self.metadata.patch_glossary_term_references(
-            entity_id=self.glossary_term_1.id,
+        dest_glossary_term_1 = deepcopy(res)
+        dest_glossary_term_1.references.pop(0)
+        res: GlossaryTerm = self.metadata.patch(
+            entity=GlossaryTerm, source=res, destination=dest_glossary_term_1
         )
         self.assertIsNotNone(res)
         self.assertEqual(0, len(res.references))
 
         # Remove reference when there are many
-        self.metadata.patch_glossary_term_references(
-            entity_id=self.glossary_term_1.id,
-            reference_name="GT1S1",
-            reference_endpoint="https://www.getcollate.io",
+        dest_glossary_term_1 = deepcopy(res)
+        dest_glossary_term_1.references.append(
+            TermReference(name="GT1S1", endpoint="https://www.getcollate.io")
         )
-        self.metadata.patch_glossary_term_references(
-            entity_id=self.glossary_term_1.id,
-            reference_name="GT1S2",
-            reference_endpoint="https://open-metadata.org/",
+        dest_glossary_term_1.references.append(
+            TermReference(name="GT1S2", endpoint="https://open-metadata.org/")
         )
-        self.metadata.patch_glossary_term_references(
-            entity_id=self.glossary_term_1.id,
-            reference_name="GT1S3",
-            reference_endpoint="https://github.com/open-metadata/OpenMetadata",
+        dest_glossary_term_1.references.append(
+            TermReference(
+                name="GT1S3", endpoint="https://github.com/open-metadata/OpenMetadata"
+            )
         )
 
-        res = self.metadata.patch_glossary_term_references(
-            entity_id=self.glossary_term_1.id,
+        res: GlossaryTerm = self.metadata.patch(
+            entity=GlossaryTerm, source=res, destination=dest_glossary_term_1
         )
         self.assertIsNotNone(res)
-        self.assertEqual(2, len(res.references))
+        self.assertEqual(3, len(res.references))
         self.assertEqual("GT1S2", res.references[1].name)
->>>>>>> 05ee9daa65 (Fix python test failures)

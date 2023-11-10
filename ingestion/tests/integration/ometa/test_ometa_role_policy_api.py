@@ -380,9 +380,7 @@ class OMetaRolePolicyTest(TestCase):
         # Add rule
 
         res: Policy = self.metadata.patch(
-            entity=Policy,
-            source=policy,
-            destination=dest_policy
+            entity=Policy, source=policy, destination=dest_policy
         )
         self.assertIsNotNone(res)
         self.assertEqual(len(res.rules.__root__), 3)
@@ -390,11 +388,7 @@ class OMetaRolePolicyTest(TestCase):
         dest_policy = deepcopy(res)
         dest_policy.rules.__root__.pop(2)
         # Remove last rule
-        res = self.metadata.patch(
-            entity=Policy,
-            source=res,
-            destination=dest_policy
-        )
+        res = self.metadata.patch(entity=Policy, source=res, destination=dest_policy)
         self.assertIsNotNone(res)
         self.assertEqual(len(res.rules.__root__), 2)
         self.assertEqual(res.rules.__root__[1].name, self.rule_2.name)
@@ -402,16 +396,12 @@ class OMetaRolePolicyTest(TestCase):
         dest_policy.rules.__root__.append(self.rule_3)
         # Remove rule with fewer operations
         res: Policy = self.metadata.patch(
-            entity=Policy,
-            source=policy,
-            destination=dest_policy
+            entity=Policy, source=policy, destination=dest_policy
         )
         dest_policy = deepcopy(res)
         dest_policy.rules.__root__.remove(self.rule_2)
         res: Policy = self.metadata.patch(
-            entity=Policy,
-            source=res,
-            destination=dest_policy
+            entity=Policy, source=res, destination=dest_policy
         )
         self.assertIsNotNone(res)
         self.assertEqual(len(res.rules.__root__), 2)
@@ -425,11 +415,7 @@ class OMetaRolePolicyTest(TestCase):
         policy = self.metadata.create_or_update(self.create_policy)
         dest_policy = deepcopy(policy)
         dest_policy.rules.__root__.remove(self.rule_1)
-        res = self.metadata.patch(
-            entity=Policy,
-            source=res,
-            destination=dest_policy
-        )
+        res = self.metadata.patch(entity=Policy, source=res, destination=dest_policy)
         self.assertIsNotNone(res)
         self.assertEqual(len(res.rules.__root__), 1)
         self.assertEqual(res.rules.__root__[0].name, self.rule_2.name)
@@ -443,11 +429,7 @@ class OMetaRolePolicyTest(TestCase):
         dest_policy = deepcopy(res)
         dest_policy.rules.__root__.remove(self.rule_2)
         # Try to remove the only rule - Fails
-        res = self.metadata.patch(
-            entity=Policy,
-            source=res,
-            destination=dest_policy
-        )
+        res = self.metadata.patch(entity=Policy, source=res, destination=dest_policy)
         self.assertIsNone(res)
 
     def test_role_create(self):
