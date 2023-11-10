@@ -42,7 +42,8 @@ def upload_sample_data(data: TableData, profiler_interface: ProfilerInterface) -
     """
     Upload Sample data to storage config
     """
-    import pandas as pd # pylint: disable=import-outside-toplevel
+    import pandas as pd  # pylint: disable=import-outside-toplevel
+
     try:
         sample_storage_config = profiler_interface.storage_config
         if not sample_storage_config:
