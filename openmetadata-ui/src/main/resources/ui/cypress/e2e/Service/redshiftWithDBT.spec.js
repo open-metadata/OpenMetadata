@@ -217,7 +217,7 @@ describe('RedShift Ingestion', () => {
     // Verify DBT tags
     interceptURL(
       'GET',
-      `/api/v1/tags?fields=usageCount&parent=${DBT.classification}&limit=10`,
+      `/api/v1/tags?*parent=${DBT.classification}*`,
       'getTagList'
     );
     cy.get('[data-testid="governance"]')
