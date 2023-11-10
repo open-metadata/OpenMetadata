@@ -64,9 +64,9 @@ OpenMetadata is an all-in-one platform for data discovery, lineage, data quality
     icon="administration"
 /%}
 {% tile
-    title="Guide for Data Stewards"
+    title="Guide for Data Users"
     description="Get to know the basics of OpenMetadata and about the data assets that you can explore in the all-in-one platform."
-    link="/how-to-guides/user-guide-for-data-stewards"
+    link="/how-to-guides/guide-for-data-users"
     icon="steward"
 /%}
 {% /tilesContainer %}

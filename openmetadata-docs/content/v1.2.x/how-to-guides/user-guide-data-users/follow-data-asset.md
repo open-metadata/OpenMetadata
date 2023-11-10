@@ -1,6 +1,6 @@
 ---
 title: How to Follow a Data Asset
-slug: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/follow-data-asset
+slug: /how-to-guides/guide-for-data-users/follow-data-asset
 ---
 
 # How to Follow a Data Asset
@@ -41,3 +41,11 @@ src="/images/v1.1/how-to-guides/user-guide-for-data-stewards/profile1.png"
 alt="Profile Page: Following Tab"
 caption="Profile Page: Following Tab"
 /%}
+
+{%inlineCallout
+  color="violet-70"
+  bold="How to Add Tags"
+  icon="MdArrowForward"
+  href="/how-to-guides/guide-for-data-users/tags"%}
+  Add tags to data assets and learn about auto-PII classification.
+{%/inlineCallout%}

@@ -36,3 +36,11 @@ src="/images/v1.1/how-to-guides/teams-and-users/add-team3.png"
 alt="select-team-type"
 caption="New Team Created"
 /%}
+
+{%inlineCallout
+  color="violet-70"
+  bold="How to Invite Users to OpenMetadata"
+  icon="MdArrowForward"
+  href="/how-to-guides/quick-start-guide-for-admins/teams-and-users/invite-users"%}
+  Data is a team game. Admins can invite other users.
+{%/inlineCallout%}

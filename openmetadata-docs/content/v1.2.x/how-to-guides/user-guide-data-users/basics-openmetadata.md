@@ -1,6 +1,6 @@
 ---
 title: Understanding the Basics of OpenMetadata
-slug: /how-to-guides/user-guide-for-data-stewards/basics-openmetadata
+slug: /how-to-guides/guide-for-data-users/basics-openmetadata
 ---
 
 # Understanding the Basics of OpenMetadata
@@ -64,8 +64,8 @@ alt="Announcements, Following, and Recent Views"
 caption="Announcements, Following, and Recent Views"
 /%}
 
-- **Announcements:** View all the recent announcements about the data assets you own or follow. Learn [How to Add an Announcement](/how-to-guides/user-guide-for-data-stewards/overview-data-assets/add-announcement).
-- **Following:** View all the data assets that you are following. [Learn How to Follow a Data Asset](/how-to-guides/user-guide-for-data-stewards/overview-data-assets/follow-data-asset).
+- **Announcements:** View all the recent announcements about the data assets you own or follow. Learn [How to Add an Announcement](/how-to-guides/guide-for-data-users/add-announcement).
+- **Following:** View all the data assets that you are following. [Learn How to Follow a Data Asset](/how-to-guides/guide-for-data-users/follow-data-asset).
 - **Recent Views:** Displays all the recently viewed data.
 
 {%inlineCallout
@@ -73,6 +73,6 @@ caption="Announcements, Following, and Recent Views"
   bold="Overview of Data Assets"
   icon="MdArrowForward"
   align="right"
-  href="/how-to-guides/user-guide-for-data-stewards/overview-data-assets"%}
+  href="/how-to-guides/guide-for-data-users/data-asset-tabs"%}
   Know it all about data assets.
 {%/inlineCallout%}

@@ -40,3 +40,11 @@ caption="Add User to the Team"
 /%}
 
 It's that simple to add users to teams!
+
+{%inlineCallout
+  color="violet-70"
+  bold="How to Change the Team Type"
+  icon="MdArrowForward"
+  href="/how-to-guides/quick-start-guide-for-admins/teams-and-users/change-team-type"%}
+  Change the team type to change the hierarchy.
+{%/inlineCallout%}

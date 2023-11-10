@@ -1,6 +1,6 @@
 ---
 title: How to Request for Tags
-slug: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/request-tags
+slug: /how-to-guides/guide-for-data-users/request-tags
 ---
 
 # How to Request for Tags
@@ -64,3 +64,11 @@ src="/images/v1.1/how-to-guides/governance/ct3.png"
 alt="Conversation: Reply, React, Edit or Delete"
 caption="Conversation: Reply, React, Edit or Delete"
 /%}
+
+{%inlineCallout
+  color="violet-70"
+  bold="How to Add Glossary Terms"
+  icon="MdArrowForward"
+  href="/how-to-guides/guide-for-data-users/glossary"%}
+  Add glossary terms to data assets making it easier for data discovery
+{%/inlineCallout%}

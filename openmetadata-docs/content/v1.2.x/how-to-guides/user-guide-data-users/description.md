@@ -1,6 +1,6 @@
 ---
 title: How to Add Description using Markdown
-slug: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/description
+slug: /how-to-guides/guide-for-data-users/description
 ---
 
 # How to Add Description using Markdown
@@ -31,3 +31,11 @@ src="/images/v1.1/how-to-guides/user-guide-for-data-stewards/desc2.png"
 alt="Add or Edit the Data Asset Description"
 caption="Add or Edit the Data Asset Description"
 /%}
+
+{%inlineCallout
+  color="violet-70"
+  bold="How to Request for Description"
+  icon="MdArrowForward"
+  href="/how-to-guides/guide-for-data-users/request-description"%}
+  Request for a description and discuss the same within OpenMetadata
+{%/inlineCallout%}

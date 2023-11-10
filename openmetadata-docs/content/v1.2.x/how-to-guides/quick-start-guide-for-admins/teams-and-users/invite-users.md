@@ -32,3 +32,11 @@ src="/images/v1.1/how-to-guides/teams-and-users/add-user2.png"
 alt="Add User"
 caption="Invite User"
 /%}
+
+{%inlineCallout
+  color="violet-70"
+  bold="How to Add Users to Teams"
+  icon="MdArrowForward"
+  href="/how-to-guides/quick-start-guide-for-admins/teams-and-users/add-users"%}
+  Add users to the relevant teams or sub teams.
+{%/inlineCallout%}

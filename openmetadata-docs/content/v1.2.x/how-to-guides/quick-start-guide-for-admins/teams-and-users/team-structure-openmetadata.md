@@ -28,3 +28,11 @@ src="/images/v1.1/how-to-guides/teams-and-users/teams.png"
 alt="team-structure"
 caption="Team Hierarchy in OpenMetadata"
 /%}
+
+{%inlineCallout
+  color="violet-70"
+  bold="How to Add a Team"
+  icon="MdArrowForward"
+  href="/how-to-guides/quick-start-guide-for-admins/teams-and-users/add-team"%}
+  Creating a Team in OpenMetadata is easy for different team types.
+{%/inlineCallout%}
