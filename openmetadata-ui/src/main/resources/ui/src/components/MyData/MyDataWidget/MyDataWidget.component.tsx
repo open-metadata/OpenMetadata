@@ -17,12 +17,14 @@ import { observer } from 'mobx-react';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { ReactComponent as MyDataEmptyIcon } from '../../../assets/svg/my-data-no-data-placeholder.svg';
 import {
   getUserPath,
   INITIAL_PAGING_VALUE,
   PAGE_SIZE,
   ROUTES,
 } from '../../../constants/constants';
+import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { searchData } from '../../../rest/miscAPI';
@@ -30,6 +32,7 @@ import { Transi18next } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityIcon, getEntityLink } from '../../../utils/TableUtils';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 import EntityListSkeleton from '../../Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
 import './my-data-widget.less';
@@ -127,12 +130,20 @@ const MyDataWidgetInternal = ({
         loading={Boolean(isLoading)}>
         {isEmpty(data) ? (
           <div className="flex-center h-full">
-            <span className="text-center">
-              <Transi18next
-                i18nKey="message.no-owned-data"
-                renderElement={<Link to={ROUTES.EXPLORE} />}
-              />
-            </span>
+            <ErrorPlaceHolder
+              icon={
+                <MyDataEmptyIcon height={SIZE.X_SMALL} width={SIZE.X_SMALL} />
+              }
+              type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+              <Typography.Paragraph
+                className="tw-max-w-md"
+                style={{ marginBottom: '0' }}>
+                <Transi18next
+                  i18nKey="message.no-owned-data"
+                  renderElement={<Link to={ROUTES.EXPLORE} />}
+                />
+              </Typography.Paragraph>
+            </ErrorPlaceHolder>
           </div>
         ) : (
           <div className="entity-list-body">
