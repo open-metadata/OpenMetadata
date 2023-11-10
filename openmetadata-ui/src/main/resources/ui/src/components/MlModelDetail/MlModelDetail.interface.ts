@@ -24,7 +24,7 @@ export interface MlModelDetailProp extends HTMLAttributes<HTMLDivElement> {
   followMlModelHandler: () => Promise<void>;
   unFollowMlModelHandler: () => Promise<void>;
   descriptionUpdateHandler: (updatedMlModel: Mlmodel) => Promise<void>;
-  tagUpdateHandler: (updatedMlModel: Mlmodel) => void;
+  tagUpdateHandler: (updatedMlModel: Mlmodel) => Promise<void>;
   updateMlModelFeatures: (updatedMlModel: Mlmodel) => Promise<void>;
   settingsUpdateHandler: (updatedMlModel: Mlmodel) => Promise<void>;
   versionHandler: () => void;

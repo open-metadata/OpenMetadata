@@ -42,6 +42,7 @@ import {
 } from '../../components/PermissionProvider/PermissionProvider.interface';
 import SampleDataWithMessages from '../../components/SampleDataWithMessages/SampleDataWithMessages';
 import { SourceType } from '../../components/searched-data/SearchedData.interface';
+import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
 import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
@@ -62,6 +63,7 @@ import {
   patchSearchIndexDetails,
   removeFollower,
   restoreSearchIndex,
+  updateSearchIndexVotes,
 } from '../../rest/SearchIndexAPI';
 import {
   addToRecentViewed,
@@ -147,6 +149,7 @@ function SearchIndexDetailsPage() {
     followers = [],
     description,
     entityName,
+    deleted,
     id: searchIndexId = '',
   } = useMemo(() => {
     if (searchIndexDetails) {
@@ -166,6 +169,37 @@ function SearchIndexDetailsPage() {
       entityName: string;
     };
   }, [searchIndexDetails, searchIndexDetails?.tags]);
+
+  const {
+    editTagsPermission,
+    editDescriptionPermission,
+    editCustomAttributePermission,
+    editLineagePermission,
+    viewSampleDataPermission,
+    viewAllPermission,
+  } = useMemo(
+    () => ({
+      editTagsPermission:
+        (searchIndexPermissions.EditTags || searchIndexPermissions.EditAll) &&
+        !deleted,
+      editDescriptionPermission:
+        (searchIndexPermissions.EditDescription ||
+          searchIndexPermissions.EditAll) &&
+        !deleted,
+      editCustomAttributePermission:
+        (searchIndexPermissions.EditAll ||
+          searchIndexPermissions.EditCustomFields) &&
+        !deleted,
+      editLineagePermission:
+        (searchIndexPermissions.EditAll ||
+          searchIndexPermissions.EditLineage) &&
+        !deleted,
+      viewSampleDataPermission:
+        searchIndexPermissions.ViewAll || searchIndexPermissions.ViewSampleData,
+      viewAllPermission: searchIndexPermissions.ViewAll,
+    }),
+    [searchIndexPermissions, deleted]
+  );
 
   const fetchResourcePermission = useCallback(
     async (entityFQN) => {
@@ -335,13 +369,10 @@ function SearchIndexDetailsPage() {
               entityFqn={decodedSearchIndexFQN}
               entityName={entityName}
               entityType={EntityType.SEARCH_INDEX}
-              hasEditAccess={
-                searchIndexPermissions.EditAll ||
-                searchIndexPermissions.EditDescription
-              }
+              hasEditAccess={editDescriptionPermission}
               isEdit={isEdit}
-              isReadOnly={searchIndexDetails?.deleted}
               owner={searchIndexDetails?.owner}
+              showActions={!searchIndexDetails?.deleted}
               onCancel={onCancel}
               onDescriptionEdit={onDescriptionEdit}
               onDescriptionUpdate={onDescriptionUpdate}
@@ -350,14 +381,8 @@ function SearchIndexDetailsPage() {
             <SearchIndexFieldsTab
               entityFqn={decodedSearchIndexFQN}
               fields={searchIndexDetails?.fields ?? []}
-              hasDescriptionEditAccess={
-                searchIndexPermissions.EditAll ||
-                searchIndexPermissions.EditDescription
-              }
-              hasTagEditAccess={
-                searchIndexPermissions.EditAll ||
-                searchIndexPermissions.EditTags
-              }
+              hasDescriptionEditAccess={editDescriptionPermission}
+              hasTagEditAccess={editTagsPermission}
               isReadOnly={searchIndexDetails?.deleted}
               onThreadLinkSelect={onThreadLinkSelect}
               onUpdate={onFieldsUpdate}
@@ -378,11 +403,7 @@ function SearchIndexDetailsPage() {
               displayType={DisplayType.READ_MORE}
               entityFqn={decodedSearchIndexFQN}
               entityType={EntityType.SEARCH_INDEX}
-              permission={
-                (searchIndexPermissions.EditAll ||
-                  searchIndexPermissions.EditTags) &&
-                !searchIndexDetails?.deleted
-              }
+              permission={editTagsPermission}
               selectedTags={searchIndexTags}
               tagType={TagSource.Classification}
               onSelectionChange={handleTagSelection}
@@ -393,11 +414,7 @@ function SearchIndexDetailsPage() {
               displayType={DisplayType.READ_MORE}
               entityFqn={decodedSearchIndexFQN}
               entityType={EntityType.SEARCH_INDEX}
-              permission={
-                (searchIndexPermissions.EditAll ||
-                  searchIndexPermissions.EditTags) &&
-                !searchIndexDetails?.deleted
-              }
+              permission={editTagsPermission}
               selectedTags={searchIndexTags}
               tagType={TagSource.Glossary}
               onSelectionChange={handleTagSelection}
@@ -410,9 +427,10 @@ function SearchIndexDetailsPage() {
     [
       isEdit,
       searchIndexDetails,
-      searchIndexPermissions,
       onDescriptionEdit,
       onDescriptionUpdate,
+      editTagsPermission,
+      editDescriptionPermission,
     ]
   );
 
@@ -455,10 +473,7 @@ function SearchIndexDetailsPage() {
           />
         ),
         key: EntityTabs.SAMPLE_DATA,
-        children: !(
-          searchIndexPermissions.ViewAll ||
-          searchIndexPermissions.ViewSampleData
-        ) ? (
+        children: !viewSampleDataPermission ? (
           <div className="m-t-xlg">
             <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
           </div>
@@ -477,10 +492,7 @@ function SearchIndexDetailsPage() {
             deleted={searchIndexDetails?.deleted}
             entity={searchIndexDetails as SourceType}
             entityType={EntityType.SEARCH_INDEX}
-            hasEditAccess={
-              searchIndexPermissions.EditAll ||
-              searchIndexPermissions.EditLineage
-            }
+            hasEditAccess={editLineagePermission}
           />
         ),
       },
@@ -511,11 +523,8 @@ function SearchIndexDetailsPage() {
           <CustomPropertyTable
             entityType={EntityType.SEARCH_INDEX}
             handleExtensionUpdate={onExtensionUpdate}
-            hasEditAccess={
-              searchIndexPermissions.EditAll ||
-              searchIndexPermissions.EditCustomFields
-            }
-            hasPermission={searchIndexPermissions.ViewAll}
+            hasEditAccess={editCustomAttributePermission}
+            hasPermission={viewAllPermission}
           />
         ),
       },
@@ -524,13 +533,16 @@ function SearchIndexDetailsPage() {
     return allTabs;
   }, [
     fieldsTab,
-    searchIndexPermissions,
     activeTab,
     searchIndexDetails,
     feedCount,
     entityName,
     onExtensionUpdate,
     getEntityFeedCount,
+    viewSampleDataPermission,
+    editLineagePermission,
+    editCustomAttributePermission,
+    viewAllPermission,
   ]);
 
   const onTierUpdate = useCallback(
@@ -631,6 +643,19 @@ function SearchIndexDetailsPage() {
     }
   }, [USERId, searchIndexId, getEntityFeedCount]);
 
+  const onUpdateVote = async (data: QueryVote, id: string) => {
+    try {
+      await updateSearchIndexVotes(id, data);
+      const details = await getSearchIndexDetailsByFQN(
+        searchIndexFQN,
+        defaultFields
+      );
+      setSearchIndexDetails(details);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
   const { isFollowing } = useMemo(() => {
     return {
       isFollowing: followers?.some(({ id }) => id === USERId),
@@ -728,6 +753,7 @@ function SearchIndexDetailsPage() {
             onOwnerUpdate={handleUpdateOwner}
             onRestoreDataAsset={handleRestoreSearchIndex}
             onTierUpdate={onTierUpdate}
+            onUpdateVote={onUpdateVote}
             onVersionClick={versionHandler}
           />
         </Col>

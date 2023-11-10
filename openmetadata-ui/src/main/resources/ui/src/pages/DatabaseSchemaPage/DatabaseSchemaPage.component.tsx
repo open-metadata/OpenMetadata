@@ -345,34 +345,26 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   );
 
   const handleUpdateOwner = useCallback(
-    (owner: DatabaseSchema['owner']) => {
-      const updatedData = {
-        ...databaseSchema,
-        owner: owner ? { ...databaseSchema?.owner, ...owner } : undefined,
-      };
+    async (owner: DatabaseSchema['owner']) => {
+      try {
+        const updatedData = {
+          ...databaseSchema,
+          owner: owner ? { ...databaseSchema?.owner, ...owner } : undefined,
+        };
 
-      return new Promise<void>((_, reject) => {
-        saveUpdatedDatabaseSchemaData(updatedData as DatabaseSchema)
-          .then((res) => {
-            if (res) {
-              setDatabaseSchema(res);
-              reject();
-            } else {
-              reject();
+        const response = await saveUpdatedDatabaseSchemaData(
+          updatedData as DatabaseSchema
+        );
 
-              throw t('server.unexpected-response');
-            }
+        setDatabaseSchema(response);
+      } catch (error) {
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-updating-error', {
+            entity: t('label.database-schema'),
           })
-          .catch((err: AxiosError) => {
-            showErrorToast(
-              err,
-              t('server.entity-updating-error', {
-                entity: t('label.database-schema'),
-              })
-            );
-            reject();
-          });
-      });
+        );
+      }
     },
     [databaseSchema, databaseSchema?.owner]
   );
@@ -563,18 +555,27 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     appState.inPageSearchText = '';
   }, []);
 
-  const editTagsPermission = useMemo(
-    () =>
-      (databaseSchemaPermission.EditTags || databaseSchemaPermission.EditAll) &&
-      !databaseSchema?.deleted,
-    [databaseSchemaPermission, databaseSchema]
-  );
-
-  const editDescriptionPermission = useMemo(
-    () =>
-      (databaseSchemaPermission.EditDescription ||
-        databaseSchemaPermission.EditAll) &&
-      !databaseSchema.deleted,
+  const {
+    editTagsPermission,
+    editDescriptionPermission,
+    editCustomAttributePermission,
+    viewAllPermission,
+  } = useMemo(
+    () => ({
+      editTagsPermission:
+        (databaseSchemaPermission.EditTags ||
+          databaseSchemaPermission.EditAll) &&
+        !databaseSchema.deleted,
+      editDescriptionPermission:
+        (databaseSchemaPermission.EditDescription ||
+          databaseSchemaPermission.EditAll) &&
+        !databaseSchema.deleted,
+      editCustomAttributePermission:
+        (databaseSchemaPermission.EditAll ||
+          databaseSchemaPermission.EditCustomFields) &&
+        !databaseSchema.deleted,
+      viewAllPermission: databaseSchemaPermission.ViewAll,
+    }),
     [databaseSchemaPermission, databaseSchema]
   );
 
@@ -707,11 +708,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           className=""
           entityType={EntityType.DATABASE_SCHEMA}
           handleExtensionUpdate={handelExtentionUpdate}
-          hasEditAccess={databaseSchemaPermission.ViewAll}
-          hasPermission={
-            databaseSchemaPermission.EditAll ||
-            databaseSchemaPermission.EditCustomFields
-          }
+          hasEditAccess={editCustomAttributePermission}
+          hasPermission={viewAllPermission}
           isVersionView={false}
         />
       ),

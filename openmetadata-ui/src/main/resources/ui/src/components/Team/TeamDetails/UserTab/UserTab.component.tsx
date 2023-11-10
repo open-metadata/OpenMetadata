@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, Col, Row, Space, Tooltip } from 'antd';
+import { Button, Col, Modal, Row, Space, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import classNames from 'classnames';
 import { isEmpty, orderBy } from 'lodash';
 import QueryString from 'qs';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -30,7 +31,6 @@ import Searchbar from '../../../../components/common/searchbar/Searchbar';
 import Table from '../../../../components/common/Table/Table';
 import { UserSelectableList } from '../../../../components/common/UserSelectableList/UserSelectableList.component';
 import { useEntityExportModalProvider } from '../../../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
-import ConfirmationModal from '../../../../components/Modals/ConfirmationModal/ConfirmationModal';
 import { commonUserDetailColumns } from '../../../../components/Users/Users.util';
 import { PAGE_SIZE_MEDIUM } from '../../../../constants/constants';
 import {
@@ -70,8 +70,13 @@ export const UserTab = ({
     setDeletingUser(user);
   };
 
+  const isTeamDeleted = useMemo(
+    () => currentTeam.deleted ?? false,
+    [currentTeam]
+  );
+
   const columns: ColumnsType<User> = useMemo(() => {
-    return [
+    const tabColumns: ColumnsType<User> = [
       ...commonUserDetailColumns(),
       {
         title: t('label.action-plural'),
@@ -104,7 +109,11 @@ export const UserTab = ({
         ),
       },
     ];
-  }, [handleRemoveClick, permission]);
+
+    return tabColumns.filter((column) =>
+      column.key === 'actions' ? !isTeamDeleted : true
+    );
+  }, [handleRemoveClick, permission, isTeamDeleted]);
 
   const sortedUser = useMemo(() => orderBy(users, ['name'], 'asc'), [users]);
 
@@ -175,6 +184,16 @@ export const UserTab = ({
     }
   };
 
+  const addUserButtonTitle = useMemo(() => {
+    if (isTeamDeleted) {
+      return t('message.this-action-is-not-allowed-for-deleted-entities');
+    }
+
+    return permission.EditAll
+      ? t('label.add-new-entity', { entity: t('label.user') })
+      : t('message.no-permission-for-action');
+  }, [permission, isTeamDeleted]);
+
   if (isEmpty(users) && !searchText && isLoading <= 0) {
     return (
       <ErrorPlaceHolder
@@ -184,25 +203,27 @@ export const UserTab = ({
               hasPermission
               selectedUsers={currentTeam.users ?? []}
               onUpdate={onAddUser}>
-              <Button
-                ghost
-                className="p-x-lg"
-                data-testid="add-new-user"
-                icon={<PlusOutlined />}
-                title={
-                  permission.EditAll
-                    ? t('label.add-new-entity', { entity: t('label.user') })
-                    : t('message.no-permission-for-action')
-                }
-                type="primary">
-                {t('label.add')}
-              </Button>
+              <Tooltip placement="topRight" title={addUserButtonTitle}>
+                <Button
+                  ghost
+                  className={classNames({
+                    'p-x-lg': permission.EditAll && !isTeamDeleted,
+                  })}
+                  data-testid="add-new-user"
+                  disabled={!permission.EditAll || isTeamDeleted}
+                  icon={<PlusOutlined />}
+                  type="primary">
+                  {t('label.add')}
+                </Button>
+              </Tooltip>
             </UserSelectableList>
-            <ManageButton
-              canDelete={false}
-              entityName={currentTeam.name}
-              extraDropdownContent={IMPORT_EXPORT_MENU_ITEM}
-            />
+            {!isTeamDeleted && (
+              <ManageButton
+                canDelete={false}
+                entityName={currentTeam.name}
+                extraDropdownContent={IMPORT_EXPORT_MENU_ITEM}
+              />
+            )}
           </Space>
         }
         className="mt-0-important"
@@ -228,25 +249,27 @@ export const UserTab = ({
               onSearch={onSearchUsers}
             />
           </Col>
-          <Col>
-            <Space>
-              {users.length > 0 && permission.EditAll && (
-                <UserSelectableList
-                  hasPermission
-                  selectedUsers={currentTeam.users ?? []}
-                  onUpdate={onAddUser}>
-                  <Button data-testid="add-new-user" type="primary">
-                    {t('label.add-entity', { entity: t('label.user') })}
-                  </Button>
-                </UserSelectableList>
-              )}
-              <ManageButton
-                canDelete={false}
-                entityName={currentTeam.name}
-                extraDropdownContent={IMPORT_EXPORT_MENU_ITEM}
-              />
-            </Space>
-          </Col>
+          {!currentTeam.deleted && (
+            <Col>
+              <Space>
+                {users.length > 0 && permission.EditAll && (
+                  <UserSelectableList
+                    hasPermission
+                    selectedUsers={currentTeam.users ?? []}
+                    onUpdate={onAddUser}>
+                    <Button data-testid="add-new-user" type="primary">
+                      {t('label.add-entity', { entity: t('label.user') })}
+                    </Button>
+                  </UserSelectableList>
+                )}
+                <ManageButton
+                  canDelete={false}
+                  entityName={currentTeam.name}
+                  extraDropdownContent={IMPORT_EXPORT_MENU_ITEM}
+                />
+              </Space>
+            </Col>
+          )}
         </Row>
       </Col>
       <Col span={24}>
@@ -274,19 +297,20 @@ export const UserTab = ({
         )}
       </Col>
 
-      <ConfirmationModal
-        bodyText={t('message.are-you-sure-want-to-text', {
+      <Modal
+        cancelText={t('label.cancel')}
+        data-testid="confirmation-modal"
+        okText={t('label.confirm')}
+        open={Boolean(deletingUser)}
+        title={t('label.removing-user')}
+        onCancel={() => setDeletingUser(undefined)}
+        onOk={handleRemoveUser}>
+        {t('message.are-you-sure-want-to-text', {
           text: t('label.remove-entity', {
             entity: getEntityName(deletingUser),
           }),
         })}
-        cancelText={t('label.cancel')}
-        confirmText={t('label.confirm')}
-        header={t('label.removing-user')}
-        visible={Boolean(deletingUser)}
-        onCancel={() => setDeletingUser(undefined)}
-        onConfirm={handleRemoveUser}
-      />
+      </Modal>
     </Row>
   );
 };

@@ -64,7 +64,7 @@ const TeamsPage = () => {
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { fqn } = useParams<{ fqn: string }>();
   const [currentFqn, setCurrentFqn] = useState<string>('');
-  const [allTeam, setAllTeam] = useState<Team[]>([]);
+  const [childTeams, setChildTeams] = useState<Team[]>([]);
   const [selectedTeam, setSelectedTeam] = useState<Team>({} as Team);
   const [users, setUsers] = useState<User[]>([]);
   const [userPaging, setUserPaging] = useState<Paging>(pagingObject);
@@ -164,7 +164,7 @@ const TeamsPage = () => {
         children: team.childrenCount && team.childrenCount > 0 ? [] : undefined,
       }));
 
-      setAllTeam(modifiedTeams);
+      setChildTeams(modifiedTeams);
       setFetchAllTeamAdvancedDetails(true);
     } catch (error) {
       showErrorToast(error as AxiosError, t('server.unexpected-response'));
@@ -194,11 +194,11 @@ const TeamsPage = () => {
       }));
 
       if (updateChildNode) {
-        const allTeamsData = cloneDeep(allTeam);
+        const allTeamsData = cloneDeep(childTeams);
         updateTeamsHierarchy(allTeamsData, parentTeam || '', modifiedTeams);
-        setAllTeam(allTeamsData);
+        setChildTeams(allTeamsData);
       } else {
-        setAllTeam(modifiedTeams);
+        setChildTeams(modifiedTeams);
       }
     } catch (error) {
       showErrorToast(error as AxiosError, t('server.unexpected-response'));
@@ -553,8 +553,31 @@ const TeamsPage = () => {
     }
   };
 
-  const afterDeleteAction = () => {
-    history.push(getSettingPath(getTeamsWithFqnPath(TeamType.Organization)));
+  const handleToggleDelete = () => {
+    setSelectedTeam((prev) => {
+      if (!prev) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        deleted: !prev?.deleted,
+      };
+    });
+    setChildTeams((prev) =>
+      prev.map((currTeam) => ({
+        ...currTeam,
+        deleted: !currTeam?.deleted,
+      }))
+    );
+  };
+
+  const afterDeleteAction = (isSoftDelete?: boolean) => {
+    isSoftDelete
+      ? handleToggleDelete()
+      : history.push(
+          getSettingPath(getTeamsWithFqnPath(TeamType.Organization))
+        );
   };
 
   const toggleShowDeletedTeam = () => {
@@ -612,7 +635,7 @@ const TeamsPage = () => {
       <TeamDetailsV1
         afterDeleteAction={afterDeleteAction}
         assetsCount={assets}
-        childTeams={allTeam}
+        childTeams={childTeams}
         currentTeam={selectedTeam}
         currentTeamUserPage={currentUserPage}
         currentTeamUsers={users}

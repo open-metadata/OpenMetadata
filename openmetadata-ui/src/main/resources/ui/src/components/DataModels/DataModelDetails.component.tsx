@@ -82,21 +82,6 @@ const DataModelDetails = ({
     [dashboardDataModelFQN]
   );
 
-  const {
-    hasEditDescriptionPermission,
-    hasEditTagsPermission,
-    hasEditLineagePermission,
-  } = useMemo(() => {
-    return {
-      hasEditDescriptionPermission:
-        dataModelPermissions.EditAll || dataModelPermissions.EditDescription,
-      hasEditTagsPermission:
-        dataModelPermissions.EditAll || dataModelPermissions.EditTags,
-      hasEditLineagePermission:
-        dataModelPermissions.EditAll || dataModelPermissions.EditLineage,
-    };
-  }, [dataModelPermissions]);
-
   const { deleted, owner, description, version, entityName, tags } =
     useMemo(() => {
       return {
@@ -105,7 +90,7 @@ const DataModelDetails = ({
         description: dataModelData?.description,
         version: dataModelData?.version,
         entityName: getEntityName(dataModelData),
-        tags: getTagsWithoutTier(dataModelData.tags || []),
+        tags: getTagsWithoutTier(dataModelData.tags ?? []),
       };
     }, [dataModelData]);
 
@@ -190,9 +175,28 @@ const DataModelDetails = ({
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) =>
-      isSoftDelete ? handleToggleDelete : history.push('/'),
+      isSoftDelete ? handleToggleDelete() : history.push('/'),
     []
   );
+
+  const {
+    editDescriptionPermission,
+    editTagsPermission,
+    editLineagePermission,
+  } = useMemo(() => {
+    return {
+      editDescriptionPermission:
+        (dataModelPermissions.EditAll ||
+          dataModelPermissions.EditDescription) &&
+        !deleted,
+      editTagsPermission:
+        (dataModelPermissions.EditAll || dataModelPermissions.EditTags) &&
+        !deleted,
+      editLineagePermission:
+        (dataModelPermissions.EditAll || dataModelPermissions.EditLineage) &&
+        !deleted,
+    };
+  }, [dataModelPermissions, deleted]);
 
   const modelComponent = useMemo(() => {
     return (
@@ -204,10 +208,10 @@ const DataModelDetails = ({
               entityFqn={decodedDataModelFQN}
               entityName={entityName}
               entityType={EntityType.DASHBOARD_DATA_MODEL}
-              hasEditAccess={hasEditDescriptionPermission}
+              hasEditAccess={editDescriptionPermission}
               isEdit={isEditDescription}
-              isReadOnly={deleted}
               owner={owner}
+              showActions={!deleted}
               onCancel={() => setIsEditDescription(false)}
               onDescriptionEdit={() => setIsEditDescription(true)}
               onDescriptionUpdate={handleUpdateDescription}
@@ -216,8 +220,8 @@ const DataModelDetails = ({
             <ModelTab
               data={dataModelData?.columns || []}
               entityFqn={decodedDataModelFQN}
-              hasEditDescriptionPermission={hasEditDescriptionPermission}
-              hasEditTagsPermission={hasEditTagsPermission}
+              hasEditDescriptionPermission={editDescriptionPermission}
+              hasEditTagsPermission={editTagsPermission}
               isReadOnly={Boolean(deleted)}
               onThreadLinkSelect={onThreadLinkSelect}
               onUpdate={handleColumnUpdateDataModel}
@@ -238,7 +242,7 @@ const DataModelDetails = ({
               displayType={DisplayType.READ_MORE}
               entityFqn={decodedDataModelFQN}
               entityType={EntityType.DASHBOARD_DATA_MODEL}
-              permission={hasEditTagsPermission && !dataModelData.deleted}
+              permission={editTagsPermission}
               selectedTags={tags}
               tagType={TagSource.Classification}
               onSelectionChange={handleTagSelection}
@@ -248,7 +252,7 @@ const DataModelDetails = ({
               displayType={DisplayType.READ_MORE}
               entityFqn={decodedDataModelFQN}
               entityType={EntityType.DASHBOARD_DATA_MODEL}
-              permission={hasEditTagsPermission && !dataModelData.deleted}
+              permission={editTagsPermission}
               selectedTags={tags}
               tagType={TagSource.Glossary}
               onSelectionChange={handleTagSelection}
@@ -263,9 +267,9 @@ const DataModelDetails = ({
     dataModelData,
     description,
     dashboardDataModelFQN,
-    hasEditTagsPermission,
+    editTagsPermission,
     deleted,
-    hasEditDescriptionPermission,
+    editDescriptionPermission,
     isEditDescription,
     entityName,
     handleTagSelection,
@@ -348,19 +352,27 @@ const DataModelDetails = ({
             deleted={deleted}
             entity={dataModelData as SourceType}
             entityType={EntityType.DASHBOARD_DATA_MODEL}
-            hasEditAccess={hasEditLineagePermission}
+            hasEditAccess={editLineagePermission}
           />
         ),
       },
     ];
 
     return allTabs;
-  }, [feedCount, dataModelData?.sql, modelComponent]);
+  }, [
+    feedCount,
+    dataModelData?.sql,
+    modelComponent,
+    deleted,
+    editLineagePermission,
+  ]);
 
   return (
     <PageLayoutV1
       className="bg-white"
-      pageTitle="Data Model Details"
+      pageTitle={t('label.entity-detail-plural', {
+        entity: t('label.data-model'),
+      })}
       title="Data Model Details">
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
