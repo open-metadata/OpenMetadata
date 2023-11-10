@@ -233,7 +233,7 @@ const UserListPageV1 = () => {
         setIsDataLoading(false);
       } else {
         fetchUsersList({
-          isAdmin: tab === GlobalSettingOptions.ADMINS ?? false,
+          isAdmin: tab === GlobalSettingOptions.ADMINS,
           limit: pageSize,
         });
       }
