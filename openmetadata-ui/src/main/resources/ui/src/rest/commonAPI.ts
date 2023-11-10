@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,5 +11,18 @@
  *  limitations under the License.
  */
 
-export const getReleaseVersionExpiry = () =>
-  new Date(Date.now() + 60 * 60 * 24 * 31 * 1000);
+import axios from 'axios';
+
+// type created based on used data, you can add types as per your requirement and api response
+export interface RepositoryData {
+  stargazers_count: number;
+}
+
+// api will provide us the OpenMetadata Repository Data
+export const getRepositoryData = async () => {
+  const response = await axios.get(
+    'https://api.github.com/repos/open-metadata/OpenMetadata'
+  );
+
+  return response.data as RepositoryData;
+};
