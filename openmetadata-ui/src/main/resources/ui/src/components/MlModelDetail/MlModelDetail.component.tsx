@@ -119,11 +119,11 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     }
   }, [mlModelDetail.id]);
 
-  const { mlModelTags, isFollowing, tier } = useMemo(() => {
+  const { mlModelTags, isFollowing, tier, deleted } = useMemo(() => {
     return {
       ...mlModelDetail,
       tier: getTierTags(mlModelDetail.tags ?? []),
-      mlModelTags: getTagsWithoutTier(mlModelDetail.tags || []),
+      mlModelTags: getTagsWithoutTier(mlModelDetail.tags ?? []),
       entityName: getEntityName(mlModelDetail),
       isFollowing: mlModelDetail.followers?.some(
         ({ id }: { id: string }) => id === currentUser?.id
@@ -346,8 +346,32 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) =>
-      isSoftDelete ? handleToggleDelete : history.push('/'),
+      isSoftDelete ? handleToggleDelete() : history.push('/'),
     []
+  );
+
+  const {
+    editTagsPermission,
+    editDescriptionPermission,
+    editCustomAttributePermission,
+    editLineagePermission,
+    viewAllPermission,
+  } = useMemo(
+    () => ({
+      editTagsPermission:
+        (mlModelPermissions.EditTags || mlModelPermissions.EditAll) && !deleted,
+      editDescriptionPermission:
+        (mlModelPermissions.EditDescription || mlModelPermissions.EditAll) &&
+        !deleted,
+      editCustomAttributePermission:
+        (mlModelPermissions.EditAll || mlModelPermissions.EditCustomFields) &&
+        !deleted,
+      editLineagePermission:
+        (mlModelPermissions.EditAll || mlModelPermissions.EditLineage) &&
+        !deleted,
+      viewAllPermission: mlModelPermissions.ViewAll,
+    }),
+    [mlModelPermissions, deleted]
   );
 
   const tabs = useMemo(
@@ -370,13 +394,10 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                   entityFqn={decodedMlModelFqn}
                   entityName={mlModelDetail.name}
                   entityType={EntityType.MLMODEL}
-                  hasEditAccess={
-                    mlModelPermissions.EditAll ||
-                    mlModelPermissions.EditDescription
-                  }
+                  hasEditAccess={editDescriptionPermission}
                   isEdit={isEdit}
-                  isReadOnly={mlModelDetail.deleted}
                   owner={mlModelDetail.owner}
+                  showActions={!deleted}
                   onCancel={onCancel}
                   onDescriptionEdit={onDescriptionEdit}
                   onDescriptionUpdate={onDescriptionUpdate}
@@ -406,11 +427,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                   displayType={DisplayType.READ_MORE}
                   entityFqn={decodedMlModelFqn}
                   entityType={EntityType.MLMODEL}
-                  permission={
-                    (mlModelPermissions.EditAll ||
-                      mlModelPermissions.EditTags) &&
-                    !mlModelDetail.deleted
-                  }
+                  permission={editTagsPermission}
                   selectedTags={mlModelTags}
                   tagType={TagSource.Classification}
                   onSelectionChange={handleTagSelection}
@@ -421,11 +438,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                   displayType={DisplayType.READ_MORE}
                   entityFqn={decodedMlModelFqn}
                   entityType={EntityType.MLMODEL}
-                  permission={
-                    (mlModelPermissions.EditAll ||
-                      mlModelPermissions.EditTags) &&
-                    !mlModelDetail.deleted
-                  }
+                  permission={editTagsPermission}
                   selectedTags={mlModelTags}
                   tagType={TagSource.Glossary}
                   onSelectionChange={handleTagSelection}
@@ -472,11 +485,10 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         key: EntityTabs.LINEAGE,
         children: (
           <EntityLineageComponent
+            deleted={deleted}
             entity={mlModelDetail}
             entityType={EntityType.MLMODEL}
-            hasEditAccess={
-              mlModelPermissions.EditAll || mlModelPermissions.EditLineage
-            }
+            hasEditAccess={editLineagePermission}
           />
         ),
       },
@@ -492,10 +504,8 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           <CustomPropertyTable
             entityType={EntityType.MLMODEL}
             handleExtensionUpdate={onExtensionUpdate}
-            hasEditAccess={
-              mlModelPermissions.EditAll || mlModelPermissions.EditCustomFields
-            }
-            hasPermission={mlModelPermissions.ViewAll}
+            hasEditAccess={editCustomAttributePermission}
+            hasPermission={viewAllPermission}
           />
         ),
       },
@@ -515,14 +525,21 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       onDescriptionUpdate,
       onDescriptionEdit,
       getEntityFieldThreadCounts,
+      deleted,
+      editTagsPermission,
+      editDescriptionPermission,
+      editCustomAttributePermission,
+      editLineagePermission,
+      viewAllPermission,
     ]
   );
 
   return (
     <PageLayoutV1
       className="bg-white"
-      pageTitle="Table details"
-      title="Table details">
+      pageTitle={t('label.entity-detail-plural', {
+        entity: t('label.ml-model'),
+      })}>
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader

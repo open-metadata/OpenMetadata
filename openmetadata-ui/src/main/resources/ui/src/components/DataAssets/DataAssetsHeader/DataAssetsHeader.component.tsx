@@ -369,7 +369,7 @@ export const DataAssetsHeader = ({
                 />
                 <Divider className="self-center m-x-sm" type="vertical" />
                 <TierCard currentTier={tier?.tagFQN} updateTier={onTierUpdate}>
-                  <Space>
+                  <Space data-testid="header-tier-container">
                     {tier ? (
                       <span className="font-medium text-xs" data-testid="Tier">
                         {getEntityName(tier)}

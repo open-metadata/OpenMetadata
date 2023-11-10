@@ -12,11 +12,6 @@
  */
 
 import {
-  PagingWithoutTotal,
-  ServiceTypes,
-  ServicesUpdateRequest,
-} from 'Models';
-import {
   Button,
   Col,
   Row,
@@ -28,8 +23,13 @@ import {
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
-import { Operation, compare } from 'fast-json-patch';
+import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined, toString } from 'lodash';
+import {
+  PagingWithoutTotal,
+  ServicesUpdateRequest,
+  ServiceTypes,
+} from 'Models';
 import React, {
   FunctionComponent,
   useCallback,
@@ -40,6 +40,10 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
+import AirflowMessageBanner from '../../components/common/AirflowMessageBanner/AirflowMessageBanner';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
+import TestConnection from '../../components/common/TestConnection/TestConnection';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import DataModelTable from '../../components/DataModels/DataModelsTable';
 import Ingestion from '../../components/Ingestion/Ingestion.component';
@@ -50,16 +54,12 @@ import { usePermissionProvider } from '../../components/PermissionProvider/Permi
 import { OperationPermission } from '../../components/PermissionProvider/PermissionProvider.interface';
 import ServiceConnectionDetails from '../../components/ServiceConnectionDetails/ServiceConnectionDetails.component';
 import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
-import AirflowMessageBanner from '../../components/common/AirflowMessageBanner/AirflowMessageBanner';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
-import TestConnection from '../../components/common/TestConnection/TestConnection';
-import { OPEN_METADATA } from '../../constants/Services.constant';
 import {
-  INITIAL_PAGING_VALUE,
   getServiceDetailsPath,
+  INITIAL_PAGING_VALUE,
   pagingObject,
 } from '../../constants/constants';
+import { OPEN_METADATA } from '../../constants/Services.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -82,11 +82,10 @@ import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
 import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
-import { getSearchIndexes } from '../../rest/SearchIndexAPI';
 import {
-  ListDataModelParams,
   getDashboards,
   getDataModels,
+  ListDataModelParams,
 } from '../../rest/dashboardAPI';
 import { getDatabases } from '../../rest/databaseAPI';
 import {
@@ -99,6 +98,7 @@ import {
 import { fetchAirflowConfig } from '../../rest/miscAPI';
 import { getMlModels } from '../../rest/mlModelAPI';
 import { getPipelines } from '../../rest/pipelineAPI';
+import { getSearchIndexes } from '../../rest/SearchIndexAPI';
 import {
   getServiceByFQN,
   patchService,
@@ -631,7 +631,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   useEffect(() => {
     getOtherDetails();
-  }, [activeTab, showDeleted]);
+  }, [activeTab, showDeleted, serviceDetails.deleted]);
 
   useEffect(() => {
     // fetch count for data modal tab, its need only when its dashboard page and data modal tab is not active

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { FilterOutlined } from '@ant-design/icons';
 import {
   Badge,
   Button,
@@ -23,6 +22,7 @@ import {
   Row,
   Skeleton,
   Space,
+  Tooltip,
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
@@ -38,6 +38,7 @@ import React, {
   useState,
 } from 'react';
 import { useParams } from 'react-router-dom';
+import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/add-placeholder.svg';
 import {
   AssetsFilterOptions,
   ASSET_MENU_KEYS,
@@ -49,7 +50,7 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import { searchData } from '../../../../rest/miscAPI';
-import { getCountBadge } from '../../../../utils/CommonUtils';
+import { getCountBadge, Transi18next } from '../../../../utils/CommonUtils';
 import { getEntityTypeFromSearchIndex } from '../../../../utils/SearchUtils';
 import { getEntityIcon } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -61,6 +62,8 @@ import {
   SearchedDataProps,
   SourceType,
 } from '../../../SearchedData/SearchedData.interface';
+
+import { FilterOutlined, PlusOutlined } from '@ant-design/icons';
 import './assets-tabs.less';
 import { AssetsOfEntity, AssetsTabsProps } from './AssetsTabs.interface';
 
@@ -78,6 +81,7 @@ const AssetsTabs = forwardRef(
       onAddAsset,
       assetCount,
       queryFilter,
+      isEntityDeleted = false,
       type = AssetsOfEntity.GLOSSARY,
       noDataPlaceholder,
     }: AssetsTabsProps,
@@ -369,15 +373,56 @@ const AssetsTabs = forwardRef(
       } else {
         return (
           <ErrorPlaceHolder
-            doc={GLOSSARIES_DOCS}
-            heading={t('label.asset')}
-            permission={permissions.Create}
-            type={ERROR_PLACEHOLDER_TYPE.CREATE}
-            onClick={onAddAsset}
-          />
+            icon={<AddPlaceHolderIcon className="h-32 w-32" />}
+            type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+            <Typography.Paragraph style={{ marginBottom: '0' }}>
+              {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
+                entity: t('label.asset'),
+              })}
+            </Typography.Paragraph>
+            <Typography.Paragraph>
+              <Transi18next
+                i18nKey="message.refer-to-our-doc"
+                renderElement={
+                  <a
+                    href={GLOSSARIES_DOCS}
+                    rel="noreferrer"
+                    style={{ color: '#1890ff' }}
+                    target="_blank"
+                  />
+                }
+                values={{
+                  doc: t('label.doc-plural-lowercase'),
+                }}
+              />
+            </Typography.Paragraph>
+            <Tooltip
+              placement="top"
+              title={
+                isEntityDeleted
+                  ? t('message.this-action-is-not-allowed-for-deleted-entities')
+                  : t('label.add')
+              }>
+              <Button
+                ghost
+                data-testid="add-placeholder-button"
+                disabled={isEntityDeleted}
+                icon={<PlusOutlined />}
+                type="primary"
+                onClick={onAddAsset}>
+                {t('label.add')}
+              </Button>
+            </Tooltip>
+          </ErrorPlaceHolder>
         );
       }
-    }, [activeFilter, noDataPlaceholder, permissions, onAddAsset]);
+    }, [
+      activeFilter,
+      noDataPlaceholder,
+      permissions,
+      onAddAsset,
+      isEntityDeleted,
+    ]);
 
     const assetListing = useMemo(
       () =>

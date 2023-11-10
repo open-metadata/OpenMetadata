@@ -101,7 +101,7 @@ export interface TeamDetailsProp {
   onDescriptionUpdate: (value: string) => Promise<void>;
   updateTeamHandler: (data: Team, fetchTeam?: boolean) => Promise<void>;
   handleAddUser: (data: Array<EntityReference>) => void;
-  afterDeleteAction: () => void;
+  afterDeleteAction: (isSoftDeleted?: boolean) => void;
   removeUserFromTeam: (id: string) => Promise<void>;
   handleJoinTeamClick: (id: string, data: Operation[]) => void;
   handleLeaveTeamClick: (id: string, data: Operation[]) => Promise<void>;
