@@ -13,7 +13,7 @@
 
 import { Button, Col, Modal, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, isNil, isUndefined, uniqBy } from 'lodash';
+import { isEmpty, isNil, uniqBy } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import RGL, { Layout, WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
@@ -302,7 +302,7 @@ function CustomizeMyData({
                     />
                   }
                   values={{
-                    persona: isUndefined(personaDetails)
+                    persona: isNil(personaDetails)
                       ? decodedPersonaFQN
                       : getEntityName(personaDetails),
                   }}
