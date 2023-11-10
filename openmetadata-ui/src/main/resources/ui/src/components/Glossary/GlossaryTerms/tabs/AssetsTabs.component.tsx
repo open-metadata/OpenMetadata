@@ -470,7 +470,8 @@ const AssetsTabs = forwardRef(
               <ExploreSearchCard
                 showEntityIcon
                 actionPopoverContent={
-                  type === AssetsOfEntity.DATA_PRODUCT ? (
+                  type === AssetsOfEntity.DATA_PRODUCT &&
+                  permissions.EditAll ? (
                     <Button
                       className="p-0 flex-center"
                       data-testid="delete-tag"
@@ -520,6 +521,7 @@ const AssetsTabs = forwardRef(
       [
         type,
         data,
+        permissions,
         paging,
         currentPage,
         selectedCard,
