@@ -40,6 +40,7 @@ import {
   BAR_CHART_MARGIN,
   DATA_INSIGHT_GRAPH_COLORS,
   DI_STRUCTURE,
+  GRAPH_HEIGHT,
 } from '../../constants/DataInsight.constants';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../enums/common.enum';
 import {
@@ -214,8 +215,8 @@ const KPIChart: FC<Props> = ({
               <Col span={DI_STRUCTURE.leftContainerSpan}>
                 <ResponsiveContainer
                   debounce={1}
-                  id="kpi-chart"
-                  minHeight={400}>
+                  height={GRAPH_HEIGHT}
+                  id="kpi-chart">
                   <LineChart data={graphData} margin={BAR_CHART_MARGIN}>
                     <CartesianGrid
                       stroke={GRAPH_BACKGROUND_COLOR}
