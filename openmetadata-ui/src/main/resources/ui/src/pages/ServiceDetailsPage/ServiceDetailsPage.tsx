@@ -611,7 +611,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
       );
       setServiceDetails(response);
       setConnectionDetails(response.connection?.config as DashboardConnection);
-      await getOtherDetails();
     } catch (error) {
       // Error
     } finally {

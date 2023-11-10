@@ -15,7 +15,6 @@ import { AxiosError } from 'axios';
 import QueryString from 'qs';
 import React, { ReactNode, useEffect, useMemo, useState } from 'react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
-import { PAGE_SIZE } from '../../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { TestCase } from '../../../generated/tests/testCase';
@@ -128,7 +127,7 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
     try {
       const response = await searchQuery({
         pageNumber: page,
-        pageSize: PAGE_SIZE,
+        pageSize: pageSize,
         searchIndex: SearchIndex.TEST_CASE,
         query: searchValue,
         fetchSource: false,
@@ -155,6 +154,7 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
       }, [] as TestCase[]);
 
       setTestCase(testSuites);
+      handlePageChange(page);
       handlePagingChange({ total: response.hits.total.value ?? 0 });
     } catch (error) {
       setTestCase([]);
