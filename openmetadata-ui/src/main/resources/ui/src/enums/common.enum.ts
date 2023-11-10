@@ -12,6 +12,7 @@
  */
 
 export enum SIZE {
+  X_SMALL = '40',
   SMALL = '60',
   MEDIUM = '86',
   LARGE = '126',

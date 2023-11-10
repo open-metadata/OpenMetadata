@@ -31,8 +31,10 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { ReactComponent as TotalDataAssetsEmptyIcon } from '../../assets/svg/data-insight-no-data-placeholder.svg';
 import { CHART_WIDGET_DAYS_DURATION } from '../../constants/constants';
 import { TOTAL_ENTITY_CHART_COLOR } from '../../constants/DataInsight.constants';
+import { SIZE } from '../../enums/common.enum';
 import { WidgetWidths } from '../../enums/CustomizablePage.enum';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import {
@@ -134,7 +136,14 @@ const TotalDataAssetsWidget = ({
             </Typography.Text>
           </Col>
           <Col className="h-95" span={24}>
-            <EmptyGraphPlaceholder />
+            <EmptyGraphPlaceholder
+              icon={
+                <TotalDataAssetsEmptyIcon
+                  height={SIZE.X_SMALL}
+                  width={SIZE.X_SMALL}
+                />
+              }
+            />
           </Col>
         </Row>
       ) : (
