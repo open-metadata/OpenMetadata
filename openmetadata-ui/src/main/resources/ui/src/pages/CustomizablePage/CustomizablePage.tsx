@@ -69,6 +69,9 @@ export const CustomizablePage = () => {
       const response = await getPersonaByName(personaFQN);
 
       setPersonaDetails(response);
+    } catch {
+      // No error handling needed
+      // No data placeholder will be shown in case of failure
     } finally {
       setIsPersonaLoading(false);
     }
