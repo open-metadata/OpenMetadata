@@ -466,7 +466,7 @@ describe('Data Quality and Profiler should work properly', () => {
     const testCaseName = 'column_value_max_to_be_between';
     interceptURL(
       'GET',
-      '/api/v1/dataQuality/testSuites?fields=*&testSuiteType=logical',
+      '/api/v1/dataQuality/testSuites?*testSuiteType=logical*',
       'testSuite'
     );
     interceptURL(
