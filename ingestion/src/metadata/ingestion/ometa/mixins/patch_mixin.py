@@ -123,6 +123,12 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             Updated Entity
         """
         try:
+            # remove change descriptions from entities
+            if source.changeDescription is not None:
+                source.changeDescription = None
+            if destination.changeDescription is not None:
+                destination.changeDescription = None
+
             # Get the difference between source and destination
             patch = jsonpatch.make_patch(
                 json.loads(source.json(exclude_unset=True, exclude_none=True)),

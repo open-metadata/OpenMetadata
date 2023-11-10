@@ -168,7 +168,7 @@ class OMetaLifeCycleTest(TestCase):
 
         res = self.create_table(name="test_create")
 
-        self.assertEqual(res.name, "test_create")
+        self.assertEqual(res.name.__root__, "test_create")
         self.assertEqual(res.databaseSchema.id, self.create_schema_entity.id)
         self.assertEqual(res.owner, None)
 
