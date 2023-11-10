@@ -1,3 +1,4 @@
+/* eslint-disable no-case-declarations */
 /*
  *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -52,6 +53,7 @@ import { GLOSSARIES_DOCS } from '../../../../constants/docs.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
+import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../../generated/entity/domains/domain';
 import { usePaging } from '../../../../hooks/paging/usePaging';
@@ -60,7 +62,12 @@ import {
   patchDataProduct,
 } from '../../../../rest/dataProductAPI';
 import { getDomainByName } from '../../../../rest/domainAPI';
+import { getGlossaryTermByFQN } from '../../../../rest/glossaryAPI';
 import { searchData } from '../../../../rest/miscAPI';
+import {
+  removeGlossaryTermAssets,
+  updateDomainAssets,
+} from '../../../../utils/Assets/AssetsUtils';
 import { getCountBadge, Transi18next } from '../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getEntityTypeFromSearchIndex } from '../../../../utils/SearchUtils';
@@ -118,13 +125,25 @@ const AssetsTabs = forwardRef(
       showPagination,
     } = usePaging();
 
+    const isRemovable = useMemo(
+      () =>
+        [
+          AssetsOfEntity.DATA_PRODUCT,
+          AssetsOfEntity.DOMAIN,
+          AssetsOfEntity.GLOSSARY,
+        ].includes(type),
+      [type]
+    );
+
     const [selectedCard, setSelectedCard] = useState<SourceType>();
     const [visible, setVisible] = useState<boolean>(false);
     const [openKeys, setOpenKeys] = useState<EntityType[]>([]);
     const [isCountLoading, setIsCountLoading] = useState<boolean>(true);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [assetToDelete, setAssetToDelete] = useState<SourceType>();
-    const [activeEntity, setActiveEntity] = useState<Domain | DataProduct>();
+    const [activeEntity, setActiveEntity] = useState<
+      Domain | DataProduct | GlossaryTerm
+    >();
 
     const queryParam = useMemo(() => {
       switch (type) {
@@ -217,19 +236,26 @@ const AssetsTabs = forwardRef(
     };
 
     const fetchCurrentEntity = useCallback(async () => {
-      if (type === AssetsOfEntity.DOMAIN) {
-        const data = await getDomainByName(
-          encodeURIComponent(entityFqn ?? ''),
-          ''
-        );
-        setActiveEntity(data);
-      } else if (type === AssetsOfEntity.DATA_PRODUCT) {
-        const data = await getDataProductByName(
-          encodeURIComponent(entityFqn ?? ''),
-          'domain,assets'
-        );
-        setActiveEntity(data);
+      let data;
+      const fqn = encodeURIComponent(entityFqn ?? '');
+      switch (type) {
+        case AssetsOfEntity.DOMAIN:
+          data = await getDomainByName(fqn, '');
+
+          break;
+        case AssetsOfEntity.DATA_PRODUCT:
+          data = await getDataProductByName(fqn, 'domain,assets');
+
+          break;
+        case AssetsOfEntity.GLOSSARY:
+          data = await getGlossaryTermByFQN(fqn);
+
+          break;
+        default:
+          break;
       }
+
+      setActiveEntity(data);
     }, [type, entityFqn]);
 
     const tabs = useMemo(() => {
@@ -320,6 +346,11 @@ const AssetsTabs = forwardRef(
         activeFilter,
       ]
     );
+
+    const onExploreCardDelete = useCallback((source: SourceType) => {
+      setAssetToDelete(source);
+      setShowDeleteModal(true);
+    }, []);
 
     const filteredAssetMenus = useMemo(() => {
       switch (type) {
@@ -470,8 +501,7 @@ const AssetsTabs = forwardRef(
               <ExploreSearchCard
                 showEntityIcon
                 actionPopoverContent={
-                  type === AssetsOfEntity.DATA_PRODUCT &&
-                  permissions.EditAll ? (
+                  isRemovable && permissions.EditAll ? (
                     <Button
                       className="p-0 flex-center"
                       data-testid="delete-tag"
@@ -484,10 +514,7 @@ const AssetsTabs = forwardRef(
                       }
                       size="small"
                       type="text"
-                      onClick={() => {
-                        setAssetToDelete(_source);
-                        setShowDeleteModal(true);
-                      }}
+                      onClick={() => onExploreCardDelete(_source)}
                     />
                   ) : null
                 }
@@ -608,35 +635,58 @@ const AssetsTabs = forwardRef(
       }
 
       try {
-        if (type === AssetsOfEntity.DATA_PRODUCT) {
-          const updatedAssets = (
-            (activeEntity as DataProduct)?.assets ?? []
-          )?.filter((asset) => asset.id !== assetToDelete?.id);
-          const updatedEntity = {
-            ...activeEntity,
-            assets: updatedAssets,
-          };
-          const jsonPatch = compare(activeEntity, updatedEntity);
-          const res = await patchDataProduct(
-            (activeEntity as DataProduct).id,
-            jsonPatch
-          );
-          setActiveEntity(res);
-          await new Promise((resolve) => {
-            setTimeout(() => {
-              resolve('');
-            }, ES_UPDATE_DELAY);
-          });
-        } else {
-          // Handle other entity types here. Convert to Switch when other are added
+        let updatedEntity;
+        switch (type) {
+          case AssetsOfEntity.DATA_PRODUCT:
+            const updatedAssets = (
+              (activeEntity as DataProduct)?.assets ?? []
+            ).filter((asset) => asset.id !== assetToDelete?.id);
+            updatedEntity = {
+              ...activeEntity,
+              assets: updatedAssets,
+            };
+            const jsonPatch = compare(activeEntity, updatedEntity);
+            const res = await patchDataProduct(
+              (activeEntity as DataProduct).id,
+              jsonPatch
+            );
+            setActiveEntity(res);
+
+            break;
+
+          case AssetsOfEntity.DOMAIN:
+          case AssetsOfEntity.GLOSSARY:
+            const selectedItemMap = new Map();
+            selectedItemMap.set(assetToDelete?.id, assetToDelete);
+
+            if (type === AssetsOfEntity.DOMAIN) {
+              await updateDomainAssets(undefined, type, selectedItemMap);
+            } else if (type === AssetsOfEntity.GLOSSARY) {
+              await removeGlossaryTermAssets(
+                entityFqn ?? '',
+                type,
+                selectedItemMap
+              );
+            }
+
+            break;
+          default:
+            // Handle other entity types here
+            break;
         }
+
+        await new Promise((resolve) => {
+          setTimeout(() => {
+            resolve('');
+          }, ES_UPDATE_DELAY);
+        });
       } catch (err) {
         showErrorToast(err as AxiosError);
       } finally {
         setShowDeleteModal(false);
         onRemoveAsset?.();
       }
-    }, [type, activeEntity, assetToDelete]);
+    }, [type, activeEntity, assetToDelete, entityFqn]);
 
     useEffect(() => {
       fetchAssets({

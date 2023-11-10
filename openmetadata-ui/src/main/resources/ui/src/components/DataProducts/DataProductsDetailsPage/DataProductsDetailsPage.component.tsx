@@ -431,6 +431,7 @@ const DataProductsDetailsPage = ({
     previewAsset,
     dataProduct,
     isVersionsView,
+    handleAssetSave,
     assetCount,
     activeTab,
   ]);

@@ -473,12 +473,14 @@ const DomainDetailsPage = ({
                   rightPanelWidth={400}>
                   <AssetsTabs
                     assetCount={assetCount}
+                    entityFqn={domainFqn}
                     isSummaryPanelOpen={false}
                     permissions={domainPermission}
                     ref={assetTabRef}
                     type={AssetsOfEntity.DOMAIN}
                     onAddAsset={() => setAssetModelVisible(true)}
                     onAssetClick={handleAssetClick}
+                    onRemoveAsset={handleAssetSave}
                   />
                 </PageLayoutV1>
               ),
@@ -491,6 +493,7 @@ const DomainDetailsPage = ({
     domainPermission,
     previewAsset,
     handleAssetClick,
+    handleAssetSave,
     assetCount,
     dataProductsCount,
     activeTab,
