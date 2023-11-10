@@ -156,3 +156,21 @@
     }
   }
 }
+
+.entity-summary-container {
+  cursor: pointer;
+  &:hover {
+    background: @grey-1;
+  }
+  .non-active-details {
+    .entity-summary-name,
+    .entity-summary-value {
+      color: @grey-3;
+    }
+  }
+}
+
+.chart-card-right-panel-container {
+  max-height: 375px;
+  overflow-y: auto;
+}

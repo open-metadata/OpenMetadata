@@ -37,6 +37,7 @@ jest.mock('../../utils/DataInsightUtils', () => ({
   getGraphDataByEntityType: jest
     .fn()
     .mockImplementation(() => DUMMY_GRAPH_DATA),
+  sortEntityByValue: jest.fn().mockImplementation((entities) => entities),
 }));
 jest.mock('./EntitySummaryProgressBar.component', () => {
   return jest.fn().mockImplementation(({ label, entity }) => (
@@ -59,18 +60,18 @@ jest.mock('react-i18next', () => ({
 describe('Test DescriptionInsight Component', () => {
   it('Should render the graph', async () => {
     await act(async () => {
-      const { container } = render(<OwnerInsight {...mockProps} />);
-      const card = screen.getByTestId('entity-summary-card-percentage');
-
-      const graph = queryByAttribute(
-        'id',
-        container,
-        `${mockProps.dataInsightChartName}-graph`
-      );
-
-      expect(card).toBeInTheDocument();
-      expect(graph).toBeInTheDocument();
+      render(<OwnerInsight {...mockProps} />);
     });
+    const card = await screen.findByTestId('entity-summary-card-percentage');
+
+    const graph = queryByAttribute(
+      'id',
+      card,
+      `${mockProps.dataInsightChartName}-graph`
+    );
+
+    expect(card).toBeInTheDocument();
+    expect(graph).toBeInTheDocument();
   });
 
   it('Should render the graph and progress bar even if one entity dont have values', async () => {
@@ -78,21 +79,21 @@ describe('Test DescriptionInsight Component', () => {
       () => DUMMY_GRAPH_DATA_WITH_MISSING_ENTITY
     );
     await act(async () => {
-      const { container } = render(<OwnerInsight {...mockProps} />);
-      const card = screen.getByTestId('entity-summary-card-percentage');
-
-      const graph = queryByAttribute(
-        'id',
-        container,
-        `${mockProps.dataInsightChartName}-graph`
-      );
-      const missingEntityValue = await screen.findByTestId('Table');
-
-      expect(card).toBeInTheDocument();
-      expect(graph).toBeInTheDocument();
-      expect(missingEntityValue).toBeInTheDocument();
-      expect(missingEntityValue.textContent).toBe('0');
+      render(<OwnerInsight {...mockProps} />);
     });
+    const card = await screen.findByTestId('entity-summary-card-percentage');
+
+    const graph = queryByAttribute(
+      'id',
+      card,
+      `${mockProps.dataInsightChartName}-graph`
+    );
+    const missingEntityValue = await screen.findByTestId('Table');
+
+    expect(card).toBeInTheDocument();
+    expect(graph).toBeInTheDocument();
+    expect(missingEntityValue).toBeInTheDocument();
+    expect(missingEntityValue.textContent).toBe('0');
   });
 
   it('Should fetch data based on dataInsightChartName props', async () => {

@@ -46,7 +46,7 @@ describe('Data Insight settings page should work properly', () => {
       'triggerPipeline'
     );
     cy.get(
-      '[data-testid="data-insights-card"] [data-testid="config-btn"]'
+      '[data-testid="data-insights-application-card"] [data-testid="config-btn"]'
     ).click();
     verifyResponseStatusCode('@getDataInsightDetails', 200);
     cy.get('[data-testid="deploy-button"]').click();
@@ -67,7 +67,7 @@ describe('Data Insight settings page should work properly', () => {
     );
     interceptURL('PATCH', '/api/v1/apps/*', 'updateApplication');
     cy.get(
-      '[data-testid="data-insights-card"] [data-testid="config-btn"]'
+      '[data-testid="data-insights-application-card"] [data-testid="config-btn"]'
     ).click();
     verifyResponseStatusCode('@getDataInsightDetails', 200);
     cy.get('[data-testid="edit-button"]').click();
@@ -93,7 +93,7 @@ describe('Data Insight settings page should work properly', () => {
       'deleteApplication'
     );
     cy.get(
-      '[data-testid="data-insights-card"] [data-testid="config-btn"]'
+      '[data-testid="data-insights-application-card"] [data-testid="config-btn"]'
     ).click();
     verifyResponseStatusCode('@getDataInsightDetails', 200);
     cy.get('[data-testid="manage-button"]').click();
@@ -101,16 +101,18 @@ describe('Data Insight settings page should work properly', () => {
     cy.get('[data-testid="save-button"]').click();
     verifyResponseStatusCode('@deleteApplication', 200);
     verifyResponseStatusCode('@getApplications', 200);
-    cy.get('[data-testid="data-insights-card"]').should('not.exist');
+    cy.get('[data-testid="data-insights-application-card"]').should(
+      'not.exist'
+    );
   });
 
   it('Install application', () => {
     interceptURL('GET', '/api/v1/apps/marketplace?limit=*', 'getMarketPlace');
-    interceptURL('POST', '/api/v1/apps/install', 'installApplication');
+    interceptURL('POST', '/api/v1/apps', 'installApplication');
     cy.get('[data-testid="add-application"]').click();
     verifyResponseStatusCode('@getMarketPlace', 200);
     cy.get(
-      '[data-testid="data-insights-card"] [data-testid="config-btn"]'
+      '[data-testid="data-insights-application-card"] [data-testid="config-btn"]'
     ).click();
     cy.get('[data-testid="install-application"]').click();
     cy.get('[data-testid="save-button"]').click();
@@ -119,6 +121,8 @@ describe('Data Insight settings page should work properly', () => {
     cy.get('[data-testid="deploy-button"]').click();
     verifyResponseStatusCode('@installApplication', 201);
     verifyResponseStatusCode('@getApplications', 200);
-    cy.get('[data-testid="data-insights-card"]').should('be.visible');
+    cy.get('[data-testid="data-insights-application-card"]').should(
+      'be.visible'
+    );
   });
 });
