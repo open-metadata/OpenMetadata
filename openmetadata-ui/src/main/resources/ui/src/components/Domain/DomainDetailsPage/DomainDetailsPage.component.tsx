@@ -72,6 +72,7 @@ import { Style } from '../../../generated/type/tagLabel';
 import { addDataProducts } from '../../../rest/dataProductAPI';
 import { searchData } from '../../../rest/miscAPI';
 import { getIsErrorMatch } from '../../../utils/CommonUtils';
+import { getQueryFilterToExcludeDomainTerms } from '../../../utils/DomainUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import Fqn from '../../../utils/Fqn';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
@@ -627,6 +628,7 @@ const DomainDetailsPage = ({
       <AssetSelectionModal
         entityFqn={domainFqn}
         open={assetModalVisible}
+        queryFilter={getQueryFilterToExcludeDomainTerms(domainFqn)}
         type={AssetsOfEntity.DOMAIN}
         onCancel={() => setAssetModelVisible(false)}
         onSave={handleAssetSave}

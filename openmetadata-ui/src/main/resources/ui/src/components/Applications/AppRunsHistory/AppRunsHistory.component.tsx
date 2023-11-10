@@ -211,21 +211,25 @@ const AppRunsHistory = forwardRef(
 
           if (isExternalApp) {
             const currentTime = Date.now();
-            const oneDayAgo = getEpochMillisForPastDays(1);
+            // past 30 days
+            const startDay = getEpochMillisForPastDays(30);
 
             const { data } = await getApplicationRuns(fqn, {
-              startTs: oneDayAgo,
+              startTs: startDay,
               endTs: currentTime,
             });
 
             setAppRunsHistoryData(
-              data.map((item) => ({
-                ...item,
-                status: getStatusFromPipelineState(
-                  (item as PipelineStatus).pipelineState ?? PipelineState.Failed
-                ),
-                id: (item as PipelineStatus).runId ?? '',
-              }))
+              data
+                .map((item) => ({
+                  ...item,
+                  status: getStatusFromPipelineState(
+                    (item as PipelineStatus).pipelineState ??
+                      PipelineState.Failed
+                  ),
+                  id: (item as PipelineStatus).runId ?? '',
+                }))
+                .slice(0, maxRecords)
             );
           } else {
             const { data, paging } = await getApplicationRuns(fqn, {
@@ -247,7 +251,7 @@ const AppRunsHistory = forwardRef(
           setIsLoading(false);
         }
       },
-      [fqn, pageSize, maxRecords]
+      [fqn, pageSize, maxRecords, appData]
     );
 
     const handleAppHistoryPageChange = ({

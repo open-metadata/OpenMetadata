@@ -43,7 +43,7 @@ import {
   ASSET_MENU_KEYS,
   ASSET_SUB_MENU_FILTER,
 } from '../../../../constants/Assets.constants';
-import { PAGE_SIZE } from '../../../../constants/constants';
+import { ES_UPDATE_DELAY, PAGE_SIZE } from '../../../../constants/constants';
 import { GLOSSARIES_DOCS } from '../../../../constants/docs.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { EntityType } from '../../../../enums/entity.enum';
@@ -61,9 +61,20 @@ import {
 
 import { FilterOutlined, PlusOutlined } from '@ant-design/icons';
 import { AxiosError } from 'axios';
+import { compare } from 'fast-json-patch';
+import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
+import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
+import { Domain } from '../../../../generated/entity/domains/domain';
+import {
+  getDataProductByName,
+  patchDataProduct,
+} from '../../../../rest/dataProductAPI';
+import { getDomainByName } from '../../../../rest/domainAPI';
+import { getEntityName } from '../../../../utils/EntityUtils';
 import { getEntityTypeFromSearchIndex } from '../../../../utils/SearchUtils';
 import { getEntityIcon } from '../../../../utils/TableUtils';
 import ErrorPlaceHolder from '../../../common/error-with-placeholder/ErrorPlaceHolder';
+import ConfirmationModal from '../../../Modals/ConfirmationModal/ConfirmationModal';
 import './assets-tabs.less';
 import { AssetsOfEntity, AssetsTabsProps } from './AssetsTabs.interface';
 
@@ -79,11 +90,13 @@ const AssetsTabs = forwardRef(
       onAssetClick,
       isSummaryPanelOpen,
       onAddAsset,
+      onRemoveAsset,
       assetCount,
       queryFilter,
       isEntityDeleted = false,
       type = AssetsOfEntity.GLOSSARY,
       noDataPlaceholder,
+      entityFqn,
     }: AssetsTabsProps,
     ref
   ) => {
@@ -101,6 +114,9 @@ const AssetsTabs = forwardRef(
     const [visible, setVisible] = useState<boolean>(false);
     const [openKeys, setOpenKeys] = useState<EntityType[]>([]);
     const [isCountLoading, setIsCountLoading] = useState<boolean>(true);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [assetToDelete, setAssetToDelete] = useState<SourceType>();
+    const [activeEntity, setActiveEntity] = useState<Domain | DataProduct>();
 
     const queryParam = useMemo(() => {
       switch (type) {
@@ -191,6 +207,22 @@ const AssetsTabs = forwardRef(
         setActiveFilter((prev) => [...prev, key]);
       }
     };
+
+    const fetchCurrentEntity = useCallback(async () => {
+      if (type === AssetsOfEntity.DOMAIN) {
+        const data = await getDomainByName(
+          encodeURIComponent(entityFqn ?? ''),
+          ''
+        );
+        setActiveEntity(data);
+      } else if (type === AssetsOfEntity.DATA_PRODUCT) {
+        const data = await getDataProductByName(
+          encodeURIComponent(entityFqn ?? ''),
+          'domain,assets'
+        );
+        setActiveEntity(data);
+      }
+    }, [type, entityFqn]);
 
     const tabs = useMemo(() => {
       return AssetsFilterOptions.map((option) => {
@@ -344,6 +376,12 @@ const AssetsTabs = forwardRef(
       };
     }, []);
 
+    useEffect(() => {
+      if (entityFqn) {
+        fetchCurrentEntity();
+      }
+    }, [entityFqn]);
+
     const assetErrorPlaceHolder = useMemo(() => {
       if (!isEmpty(activeFilter)) {
         return (
@@ -419,17 +457,38 @@ const AssetsTabs = forwardRef(
     const assetListing = useMemo(
       () =>
         data.length ? (
-          <div className="assets-data-container">
-            {data.map(({ _source, _id = '' }, index) => (
+          <div className="assets-data-container p-t-sm">
+            {data.map(({ _source, _id = '' }) => (
               <ExploreSearchCard
                 showEntityIcon
+                actionPopoverContent={
+                  type === AssetsOfEntity.DATA_PRODUCT ? (
+                    <Button
+                      className="p-0 flex-center"
+                      data-testid="delete-tag"
+                      icon={
+                        <DeleteIcon
+                          data-testid="delete-icon"
+                          name="Delete"
+                          width={16}
+                        />
+                      }
+                      size="small"
+                      type="text"
+                      onClick={() => {
+                        setAssetToDelete(_source);
+                        setShowDeleteModal(true);
+                      }}
+                    />
+                  ) : null
+                }
                 className={classNames(
                   'm-b-sm cursor-pointer',
                   selectedCard?.id === _source.id ? 'highlight-card' : ''
                 )}
                 handleSummaryPanelDisplay={setSelectedCard}
                 id={_id}
-                key={index}
+                key={'assets_' + _id}
                 showTags={false}
                 source={_source}
               />
@@ -450,6 +509,7 @@ const AssetsTabs = forwardRef(
           <div className="m-t-xlg">{assetErrorPlaceHolder}</div>
         ),
       [
+        type,
         data,
         total,
         currentPage,
@@ -529,6 +589,42 @@ const AssetsTabs = forwardRef(
       );
     }, [assetsHeader, assetListing, selectedCard]);
 
+    const onAssetRemove = useCallback(async () => {
+      if (!activeEntity) {
+        return;
+      }
+
+      try {
+        if (type === AssetsOfEntity.DATA_PRODUCT) {
+          const updatedAssets = (
+            (activeEntity as DataProduct)?.assets ?? []
+          )?.filter((asset) => asset.id !== assetToDelete?.id);
+          const updatedEntity = {
+            ...activeEntity,
+            assets: updatedAssets,
+          };
+          const jsonPatch = compare(activeEntity, updatedEntity);
+          const res = await patchDataProduct(
+            (activeEntity as DataProduct).id,
+            jsonPatch
+          );
+          setActiveEntity(res);
+          await new Promise((resolve) => {
+            setTimeout(() => {
+              resolve('');
+            }, ES_UPDATE_DELAY);
+          });
+        } else {
+          // Handle other entity types here. Convert to Switch when other are added
+        }
+      } catch (err) {
+        showErrorToast(err as AxiosError);
+      } finally {
+        setShowDeleteModal(false);
+        onRemoveAsset?.();
+      }
+    }, [type, activeEntity, assetToDelete]);
+
     useEffect(() => {
       fetchAssets({
         index: isEmpty(activeFilter) ? [SearchIndex.ALL] : activeFilter,
@@ -579,6 +675,20 @@ const AssetsTabs = forwardRef(
         className={classNames('assets-tab-container p-md')}
         data-testid="table-container">
         {layout}
+        <ConfirmationModal
+          bodyText={t('message.are-you-sure-action-property', {
+            propertyName: getEntityName(assetToDelete),
+            action: t('label.remove-lowecase'),
+          })}
+          cancelText={t('label.cancel')}
+          confirmText={t('label.delete')}
+          header={t('label.remove-entity', {
+            entity: getEntityName(assetToDelete) + '?',
+          })}
+          visible={showDeleteModal}
+          onCancel={() => setShowDeleteModal(false)}
+          onConfirm={onAssetRemove}
+        />
       </div>
     );
   }
