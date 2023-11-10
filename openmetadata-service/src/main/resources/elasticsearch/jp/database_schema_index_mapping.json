@@ -315,7 +315,8 @@
             }
           },
           "fullyQualifiedName": {
-            "type": "text"
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
           },
           "description": {
             "type": "text"
