@@ -119,6 +119,8 @@ export const pagingObject = { after: '', before: '', total: 0 };
 
 export const ONLY_NUMBER_REGEX = /^[0-9\b]+$/;
 
+export const ES_UPDATE_DELAY = 500;
+
 export const globalSearchOptions = [
   { value: '', label: t('label.all') },
   { value: SearchIndex.TABLE, label: t('label.table') },

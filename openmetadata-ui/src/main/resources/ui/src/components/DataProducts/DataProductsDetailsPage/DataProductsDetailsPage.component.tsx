@@ -411,12 +411,14 @@ const DataProductsDetailsPage = ({
                   rightPanelWidth={400}>
                   <AssetsTabs
                     assetCount={assetCount}
+                    entityFqn={dataProduct.fullyQualifiedName}
                     isSummaryPanelOpen={false}
                     permissions={dataProductPermission}
                     ref={assetTabRef}
                     type={AssetsOfEntity.DATA_PRODUCT}
                     onAddAsset={() => setAssetModelVisible(true)}
                     onAssetClick={handleAssetClick}
+                    onRemoveAsset={handleAssetSave}
                   />
                 </PageLayoutV1>
               ),
@@ -429,6 +431,7 @@ const DataProductsDetailsPage = ({
     previewAsset,
     dataProduct,
     isVersionsView,
+    handleAssetSave,
     assetCount,
     activeTab,
   ]);
@@ -571,7 +574,8 @@ const DataProductsDetailsPage = ({
         entityFqn={dataProductFqn}
         open={assetModalVisible}
         queryFilter={getQueryFilterToIncludeDomain(
-          dataProduct.domain?.fullyQualifiedName ?? ''
+          dataProduct.domain?.fullyQualifiedName ?? '',
+          dataProduct.fullyQualifiedName ?? ''
         )}
         type={AssetsOfEntity.DATA_PRODUCT}
         onCancel={() => setAssetModelVisible(false)}

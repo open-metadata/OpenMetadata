@@ -365,7 +365,7 @@ const AppDetails = () => {
         ),
       },
       ...tabConfiguration,
-      ...(appData?.appType === AppType.Internal && !appData?.deleted
+      ...(!appData?.deleted
         ? [
             {
               label: (
