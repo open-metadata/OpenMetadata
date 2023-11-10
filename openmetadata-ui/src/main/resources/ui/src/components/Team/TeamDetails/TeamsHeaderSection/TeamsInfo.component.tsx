@@ -24,7 +24,7 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { Team, TeamType } from '../../../../generated/entity/teams/team';
 import { EntityReference } from '../../../../generated/entity/type';
 import { useAuth } from '../../../../hooks/authHooks';
-import { useAuthContext } from '../../../authentication/auth-provider/AuthProvider';
+import { useAuthContext } from '../../../Auth/AuthProviders/AuthProvider';
 import { DomainLabel } from '../../../common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import TeamTypeSelect from '../../../common/TeamTypeSelect/TeamTypeSelect.component';

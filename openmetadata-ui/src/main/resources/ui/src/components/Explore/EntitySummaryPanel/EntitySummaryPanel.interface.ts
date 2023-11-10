@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { EntityDetailsObjectInterface } from '../explore.interface';
+import { EntityDetailsObjectInterface } from '../ExplorePage.interface';
 
 export interface EntitySummaryPanelProps {
   entityDetails: EntityDetailsObjectInterface;

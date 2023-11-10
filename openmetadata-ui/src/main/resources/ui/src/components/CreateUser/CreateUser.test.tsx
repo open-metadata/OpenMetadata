@@ -21,7 +21,7 @@ jest.mock('../TeamsSelectable/TeamsSelectable', () => {
   return jest.fn().mockReturnValue(<p>TeamsSelectable component</p>);
 });
 
-jest.mock('../common/rich-text-editor/RichTextEditor', () => {
+jest.mock('../common/RichTextEditor/RichTextEditor', () => {
   return forwardRef(
     jest.fn().mockImplementation(({ initialValue }, ref) => {
       return <div ref={ref}>{initialValue}MarkdownWithPreview component</div>;

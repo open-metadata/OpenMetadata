@@ -21,8 +21,8 @@ import { EntityReference } from '../../../../generated/entity/type';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import Fqn from '../../../../utils/Fqn';
 import { getEntityIcon } from '../../../../utils/TableUtils';
-import ErrorPlaceHolder from '../../../common/error-with-placeholder/ErrorPlaceHolder';
-import '../../../FeedEditor/FeedEditor.css';
+import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import '../../../FeedEditor/feed-editor.less';
 import './add-pipeline-modal.less';
 
 interface AddPipeLineModalType {

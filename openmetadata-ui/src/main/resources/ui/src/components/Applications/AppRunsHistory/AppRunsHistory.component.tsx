@@ -45,9 +45,9 @@ import {
 } from '../../../utils/date-time/DateTimeUtils';
 import { getLogsViewerPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
-import NextPrevious from '../../common/next-previous/NextPrevious';
-import { PagingHandlerParams } from '../../common/next-previous/NextPrevious.interface';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NextPrevious from '../../common/NextPrevious/NextPrevious';
+import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import StatusBadge from '../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../common/StatusBadge/StatusBadge.interface';
 import Table from '../../common/Table/Table';
@@ -77,6 +77,7 @@ const AppRunsHistory = forwardRef(
       handlePagingChange,
       handlePageChange,
       handlePageSizeChange,
+      showPagination: paginationVisible,
     } = usePaging();
 
     const history = useHistory();
@@ -259,7 +260,7 @@ const AppRunsHistory = forwardRef(
     }: PagingHandlerParams) => {
       handlePageChange(currentPage);
       fetchAppHistory({
-        offset: currentPage * pageSize,
+        offset: (currentPage - 1) * pageSize,
       } as Paging);
     };
 
@@ -271,10 +272,10 @@ const AppRunsHistory = forwardRef(
 
     useEffect(() => {
       fetchAppHistory();
-    }, [fqn]);
+    }, [fqn, pageSize]);
 
     return (
-      <Row>
+      <Row gutter={[16, 16]}>
         <Col span={24}>
           <Table
             bordered
@@ -296,18 +297,16 @@ const AppRunsHistory = forwardRef(
             size="small"
           />
         </Col>
-        <Col span={20}>
-          {paging.total > pageSize && showPagination && (
-            <div className="p-y-md">
-              <NextPrevious
-                isNumberBased
-                currentPage={currentPage}
-                pageSize={pageSize}
-                paging={paging}
-                pagingHandler={handleAppHistoryPageChange}
-                onShowSizeChange={handlePageSizeChange}
-              />
-            </div>
+        <Col span={24}>
+          {showPagination && paginationVisible && (
+            <NextPrevious
+              isNumberBased
+              currentPage={currentPage}
+              pageSize={pageSize}
+              paging={paging}
+              pagingHandler={handleAppHistoryPageChange}
+              onShowSizeChange={handlePageSizeChange}
+            />
           )}
         </Col>
       </Row>

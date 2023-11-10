@@ -97,11 +97,11 @@ jest.mock('./GlossaryTerms/GlossaryTermsV1.component', () => {
   return jest.fn().mockReturnValue(<>Glossary-Term component</>);
 });
 
-jest.mock('../common/title-breadcrumb/title-breadcrumb.component', () => {
+jest.mock('../common/TitleBreadcrumb/TitleBreadcrumb.component', () => {
   return jest.fn().mockReturnValue(<>TitleBreadcrumb</>);
 });
 
-jest.mock('../common/title-breadcrumb/title-breadcrumb.component', () =>
+jest.mock('../common/TitleBreadcrumb/TitleBreadcrumb.component', () =>
   jest.fn().mockReturnValue(<div>Breadcrumb</div>)
 );
 
