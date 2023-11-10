@@ -39,6 +39,7 @@ from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
+from metadata.utils import fqn
 
 
 class OMetaGlossaryTest(TestCase):
@@ -527,11 +528,21 @@ class OMetaGlossaryTest(TestCase):
         self.assertEqual("GT1S1", res.references[0].name)
 
         # Remove reference
-        dest_glossary_term_1 = deepcopy(res)
-        dest_glossary_term_1.references.pop(0)
-        res: GlossaryTerm = self.metadata.patch(
-            entity=GlossaryTerm, source=res, destination=dest_glossary_term_1
+        dest_glossary_term_1_noref = deepcopy(res)
+        dest_glossary_term_1_noref.references = []
+
+        self.metadata.patch(
+            entity=GlossaryTerm, source=res, destination=dest_glossary_term_1_noref
         )
+
+        res: GlossaryTerm = self.metadata.get_by_name(
+            entity=GlossaryTerm,
+            fqn=fqn._build(
+                self.create_glossary.name.__root__,
+                self.create_glossary_term_1.name.__root__,
+            ),
+        )
+
         self.assertIsNotNone(res)
         self.assertEqual(0, len(res.references))
 
