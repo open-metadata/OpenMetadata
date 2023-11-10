@@ -39,6 +39,7 @@ import {
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
 import { getEncodedFqn } from '../../utils/StringsUtils';
+import DataProductsContainer from '../DataProductsContainer/DataProductsContainer.component';
 import Loader from '../Loader/Loader';
 import { DataModelVersionProp } from './DataModelVersion.interface';
 
@@ -48,6 +49,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
   isVersionLoading,
   owner,
   domain,
+  dataProducts,
   tier,
   slashedDataModelName,
   versionList,
@@ -142,6 +144,11 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
               data-testid="entity-right-panel"
               flex="220px">
               <Space className="w-full" direction="vertical" size="large">
+                <DataProductsContainer
+                  activeDomain={domain}
+                  dataProducts={dataProducts ?? []}
+                  hasPermission={false}
+                />
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
                     entityType={EntityType.DASHBOARD_DATA_MODEL}

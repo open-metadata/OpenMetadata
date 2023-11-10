@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { PagingResponse } from 'Models';
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
+import { PagingResponse } from 'Models';
 import { CreateDomain } from '../generated/api/domains/createDomain';
 import { Domain } from '../generated/entity/domains/domain';
 import { EntityHistory } from '../generated/type/entityHistory';
@@ -52,10 +52,6 @@ export const patchDomains = async (id: string, patch: Operation[]) => {
   );
 
   return response.data;
-};
-
-export const deleteDomain = (id: string) => {
-  return APIClient.delete(`/domains/${id}`);
 };
 
 export const getDomainByName = async (

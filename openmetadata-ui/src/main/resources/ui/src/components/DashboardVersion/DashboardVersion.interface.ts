@@ -23,6 +23,7 @@ export interface DashboardVersionProp {
   isVersionLoading: boolean;
   owner: Dashboard['owner'];
   domain: Dashboard['domain'];
+  dataProducts: Dashboard['dataProducts'];
   tier: TagLabel;
   slashedDashboardName: TitleBreadcrumbProps['titleLinks'];
   versionList: EntityHistory;

@@ -59,6 +59,7 @@ export enum EntityType {
   PAGE = 'Page',
   knowledgePanels = 'KnowLedgePanels',
   GOVERN = 'govern',
+  ALL = 'all',
 }
 
 export enum AssetsType {
