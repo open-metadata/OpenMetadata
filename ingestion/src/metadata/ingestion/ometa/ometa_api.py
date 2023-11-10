@@ -239,6 +239,7 @@ class OpenMetadata(
             .replace("searchindex", "searchIndex")
             .replace("storedprocedure", "storedProcedure")
             .replace("ingestionpipeline", "ingestionPipeline")
+            .replace("dataproduct", "dataProduct")
         )
         class_path = ".".join(
             filter(

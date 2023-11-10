@@ -25,6 +25,7 @@ from metadata.generated.schema.entity.automations.workflow import (
 )
 from metadata.generated.schema.entity.automations.workflow import WorkflowStatus
 from metadata.generated.schema.entity.data.table import Column, Table, TableConstraint
+from metadata.generated.schema.entity.domains.domain import Domain
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
@@ -485,7 +486,9 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
                 f"Error trying to PATCH status for automation workflow [{model_str(automation_workflow)}]: {exc}"
             )
 
-    def patch_life_cycle(self, entity: Entity, life_cycle: LifeCycle) -> None:
+    def patch_life_cycle(
+        self, entity: Entity, life_cycle: LifeCycle
+    ) -> Optional[Entity]:
         """
         Patch life cycle data for a entity
 
@@ -495,9 +498,27 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         try:
             destination = entity.copy(deep=True)
             destination.lifeCycle = life_cycle
-            self.patch(entity=type(entity), source=entity, destination=destination)
+            return self.patch(
+                entity=type(entity), source=entity, destination=destination
+            )
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
                 f"Error trying to Patch life cycle data for {entity.fullyQualifiedName.__root__}: {exc}"
             )
+            return None
+
+    def patch_domain(self, entity: Entity, domain: Domain) -> Optional[Entity]:
+        """Patch domain data for an Entity"""
+        try:
+            destination: Entity = entity.copy(deep=True)
+            destination.domain = EntityReference(id=domain.id, type="domain")
+            return self.patch(
+                entity=type(entity), source=entity, destination=destination
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error trying to Patch Domain for {entity.fullyQualifiedName.__root__}: {exc}"
+            )
+            return None
