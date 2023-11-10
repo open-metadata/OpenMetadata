@@ -21,6 +21,8 @@ from metadata.generated.schema.entity.policies.accessControl.rule import Rule
 from metadata.generated.schema.entity.policies.policy import Policy
 from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.type import basic
+from metadata.utils.deprecation import deprecated
+
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.mixins.patch_mixin_utils import (
     OMetaPatchMixinBase,
@@ -129,6 +131,10 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
             ]
         return data
 
+    @deprecated(
+        message="Use metadata.patch instead as the new standard method that will create the jsonpatch dynamically",
+        release="1.3",
+    )
     def patch_role_policy(
         self,
         entity_id: Union[str, basic.Uuid],
@@ -261,6 +267,10 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
 
         return None
 
+    @deprecated(
+        message="Use metadata.patch instead as the new standard method that will create the jsonpatch dynamically",
+        release="1.3",
+    )
     def patch_policy_rule(
         self,
         entity_id: Union[str, basic.Uuid],
