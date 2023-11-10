@@ -109,11 +109,14 @@ const DeleteWidgetModal = ({
   }, []);
 
   const handleOnEntityDeleteCancel = useCallback(() => {
-    setEntityDeleteState(ENTITY_DELETE_STATE);
+    setEntityDeleteState({
+      ...ENTITY_DELETE_STATE,
+      softDelete: allowSoftDelete,
+    });
     setName('');
     setValue(allowSoftDelete ? DeleteType.SOFT_DELETE : DeleteType.HARD_DELETE);
     onCancel();
-  }, [onCancel]);
+  }, [onCancel, allowSoftDelete]);
 
   const handleOnEntityDeleteConfirm = useCallback(async () => {
     try {
