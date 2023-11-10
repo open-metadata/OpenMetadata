@@ -43,7 +43,7 @@ import { ReactComponent as MlModelIcon } from '../assets/svg/mlmodal.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/pipeline-grey.svg';
 import { ReactComponent as TableIcon } from '../assets/svg/table-grey.svg';
 import { ReactComponent as TopicIcon } from '../assets/svg/topic-grey.svg';
-import ErrorPlaceHolder from '../components/common/error-with-placeholder/ErrorPlaceHolder';
+import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { CustomEdge } from '../components/Entity/EntityLineage/CustomEdge.component';
 import CustomNodeV1 from '../components/Entity/EntityLineage/CustomNodeV1.component';
 import {
