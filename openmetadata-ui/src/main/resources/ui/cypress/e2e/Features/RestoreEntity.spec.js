@@ -17,11 +17,47 @@ import {
   verifyResponseStatusCode,
   visitEntityDetailsPage,
 } from '../../common/common';
-import { DELETE_TERM, SEARCH_ENTITY_TABLE } from '../../constants/constants';
+import { createEntityTable, hardDeleteService } from '../../common/entityUtils';
+import { DELETE_TERM, MYDATA_SUMMARY_OPTIONS } from '../../constants/constants';
+import { DATABASE_SERVICE } from '../../constants/entityConstant';
+import { SERVICE_CATEGORIES } from '../../constants/service.constants';
 
-const ENTITY_TABLE = SEARCH_ENTITY_TABLE.table_3;
+const ENTITY_TABLE = {
+  term: DATABASE_SERVICE.tables.name,
+  displayName: DATABASE_SERVICE.tables.name,
+  entity: MYDATA_SUMMARY_OPTIONS.tables,
+  serviceName: DATABASE_SERVICE.service.name,
+  schemaName: DATABASE_SERVICE.schema.name,
+  entityType: 'Table',
+};
 
 describe('Restore entity functionality should work properly', () => {
+  before(() => {
+    cy.login();
+    cy.getAllLocalStorage().then((data) => {
+      const token = Object.values(data)[0].oidcIdToken;
+
+      createEntityTable({
+        token,
+        ...DATABASE_SERVICE,
+        tables: [DATABASE_SERVICE.tables],
+      });
+    });
+  });
+
+  after(() => {
+    cy.login();
+    cy.getAllLocalStorage().then((data) => {
+      const token = Object.values(data)[0].oidcIdToken;
+
+      hardDeleteService({
+        token,
+        serviceFqn: ENTITY_TABLE.serviceName,
+        serviceType: SERVICE_CATEGORIES.DATABASE_SERVICES,
+      });
+    });
+  });
+
   beforeEach(() => {
     cy.login();
     interceptURL(
@@ -37,11 +73,11 @@ describe('Restore entity functionality should work properly', () => {
   });
 
   it('Soft Delete entity table', () => {
-    visitEntityDetailsPage(
-      ENTITY_TABLE.term,
-      ENTITY_TABLE.serviceName,
-      ENTITY_TABLE.entity
-    );
+    visitEntityDetailsPage({
+      term: ENTITY_TABLE.term,
+      serviceName: ENTITY_TABLE.serviceName,
+      entity: ENTITY_TABLE.entity,
+    });
 
     cy.get('[data-testid="manage-button"]').click();
 
@@ -78,7 +114,7 @@ describe('Restore entity functionality should work properly', () => {
     verifyResponseStatusCode('@showDeletedTables', 200);
 
     cy.get('[data-testid="entity-header-display-name"]')
-      .contains('raw_product_catalog')
+      .contains(ENTITY_TABLE.displayName)
       .click();
 
     cy.get('[data-testid="entity-header-display-name"]').should(
@@ -97,29 +133,29 @@ describe('Restore entity functionality should work properly', () => {
     verifyResponseStatusCode('@nonDeletedTables', 200);
     cy.get('[data-testid="show-deleted"]').click();
     verifyResponseStatusCode('@showDeletedTables', 200);
-
-    cy.get('[data-testid="entity-header-display-name"]')
-      .contains('raw_product_catalog')
-      .click();
-
     cy.get('[data-testid="entity-header-display-name"]')
       .contains(ENTITY_TABLE.displayName)
       .click();
 
-    cy.get('[data-testid="deleted-badge"]').should('exist');
-
+    cy.get('[data-testid="deleted-badge"]').should('be.visible');
+    interceptURL(
+      'GET',
+      '/api/v1/databaseSchemas/name/*?fields=*&include=all',
+      'getDatabaseSchemas'
+    );
     cy.get('[data-testid="breadcrumb"]')
       .scrollIntoView()
       .contains(ENTITY_TABLE.schemaName)
       .click();
-
+    verifyResponseStatusCode('@getDatabaseSchemas', 200);
     interceptURL(
       'GET',
-      '/api/v1/tables?databaseSchema=sample_data.ecommerce_db.shopify&include=deleted',
+      '/api/v1/tables?databaseSchema=*&include=deleted',
       'queryDeletedTables'
     );
 
-    cy.get('[data-testid="show-deleted"]').click();
+    cy.get('[data-testid="show-deleted"]').scrollIntoView();
+    cy.get('[data-testid="show-deleted"]').click({ waitForAnimations: true });
 
     verifyResponseStatusCode('@queryDeletedTables', 200);
 
@@ -143,7 +179,7 @@ describe('Restore entity functionality should work properly', () => {
     verifyResponseStatusCode('@showDeletedTables', 200);
 
     cy.get('[data-testid="entity-header-display-name"]')
-      .contains('raw_product_catalog')
+      .contains(ENTITY_TABLE.displayName)
       .click();
 
     cy.get('[data-testid="entity-header-display-name"]').should(

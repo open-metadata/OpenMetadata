@@ -38,6 +38,7 @@ import ErrorPlaceHolder from '../../components/common/error-with-placeholder/Err
 import { PagingHandlerParams } from '../../components/common/next-previous/NextPrevious.interface';
 import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import DataProductsContainer from '../../components/DataProductsContainer/DataProductsContainer.component';
 import Loader from '../../components/Loader/Loader';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
@@ -45,6 +46,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../components/PermissionProvider/PermissionProvider.interface';
+import ProfilerSettings from '../../components/ProfilerSettings/ProfilerSettings';
 import { withActivityFeed } from '../../components/router/withActivityFeed';
 import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
 import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
@@ -132,6 +134,9 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     paging: pagingObject,
     currentPage: INITIAL_PAGING_VALUE,
   });
+
+  const [updateProfilerSetting, setUpdateProfilerSetting] =
+    useState<boolean>(false);
 
   const decodedDatabaseSchemaFQN = useMemo(
     () => getDecodedFqn(databaseSchemaFQN),
@@ -619,6 +624,11 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             data-testid="entity-right-panel"
             flex="320px">
             <Space className="w-full" direction="vertical" size="large">
+              <DataProductsContainer
+                activeDomain={databaseSchema?.domain}
+                dataProducts={databaseSchema?.dataProducts ?? []}
+                hasPermission={false}
+              />
               <TagsContainerV2
                 displayType={DisplayType.READ_MORE}
                 entityFqn={decodedDatabaseSchemaFQN}
@@ -764,6 +774,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                 permissions={databaseSchemaPermission}
                 onDisplayNameUpdate={handleUpdateDisplayName}
                 onOwnerUpdate={handleUpdateOwner}
+                onProfilerSettingUpdate={() => setUpdateProfilerSetting(true)}
                 onRestoreDataAsset={handleRestoreDatabaseSchema}
                 onTierUpdate={handleUpdateTier}
                 onUpdateVote={updateVote}
@@ -794,6 +805,14 @@ const DatabaseSchemaPage: FunctionComponent = () => {
               />
             ) : null}
           </Col>
+          {updateProfilerSetting && (
+            <ProfilerSettings
+              entityId={databaseSchemaId}
+              entityType={EntityType.DATABASE_SCHEMA}
+              visible={updateProfilerSetting}
+              onVisibilityChange={(value) => setUpdateProfilerSetting(value)}
+            />
+          )}
         </Row>
       )}
     </PageLayoutV1>

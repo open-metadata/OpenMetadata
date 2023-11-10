@@ -38,6 +38,7 @@ import {
   ZOOM_SLIDER_STEP,
   ZOOM_TRANSITION_DURATION,
 } from '../../../constants/Lineage.constants';
+import { handleSearchFilterOption } from '../../../utils/CommonUtils';
 import { getLoadingStatusValue } from '../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
@@ -99,16 +100,6 @@ const CustomControls: FC<ControlProps> = ({
   const onFitViewHandler = useCallback(() => {
     fitView?.(fitViewParams);
   }, [fitView, fitViewParams]);
-
-  const handleSearchFilterOption = (
-    input: string,
-    option?: {
-      label: string;
-      value: string;
-    }
-  ) => {
-    return (option?.label || '').toLowerCase().includes(input.toLowerCase());
-  };
 
   const onRangeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const zoomValue = parseFloat(event.target.value);

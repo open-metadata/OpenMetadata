@@ -12,6 +12,7 @@ Ingestion is a simple python framework to ingest the metadata from various sourc
 Please look at our framework [APIs](https://github.com/open-metadata/OpenMetadata/tree/main/ingestion/src/metadata/ingestion/api).
 
 ## Workflow
+
 [workflow](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/api/workflow.py) is a simple orchestration job that runs the components in an Order.
 
 A workflow consists of [Source](/sdk/python/build-connector/source) and [Sink](/sdk/python/build-connector/sink). It also provides support for [Stage](/sdk/python/build-connector/stage) and [BulkSink](/sdk/python/build-connector/bulk-sink).
@@ -25,6 +26,36 @@ Workflow execution happens in a serial fashion.
 5. The above steps are repeated for each record emitted from the **source**.
 
 In the cases where we need aggregation over the records, we can use the **stage** to write to a file or other store. Use the file written to in **stage** and pass it to **bulk sink** to publish to external services such as **OpenMetadata** or **Elasticsearch**.
+
+Each `Step` comes from this generic definition:
+
+```python
+class Step(ABC, Closeable):
+    """All Workflow steps must inherit this base class."""
+
+    status: Status
+
+    def __init__(self):
+        self.status = Status()
+
+    @classmethod
+    @abstractmethod
+    def create(cls, config_dict: dict, metadata: OpenMetadata) -> "Step":
+        pass
+
+    def get_status(self) -> Status:
+        return self.status
+
+    @abstractmethod
+    def close(self) -> None:
+        pass
+```
+
+so we always need to inform the methods:
+- `create` to initialize the actual step.
+- `close` in case there's any connection that needs to be terminated.
+
+On top of this, you can find further notes on each specific step in the links below:
 
 {% inlineCalloutContainer %}
   {% inlineCallout
@@ -56,3 +87,5 @@ In the cases where we need aggregation over the records, we can use the **stage*
     It can be used to bulk update the records generated in a workflow.
   {% /inlineCallout %}
 {% /inlineCalloutContainer %}
+
+Read more about the Workflow management [here](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/workflow/README.md).

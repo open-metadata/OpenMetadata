@@ -119,9 +119,9 @@ The latest version is at the top of the page
 You can use the curl or wget command as well to fetch the docker compose files from your terminal -
 
 ```commandline
-curl -sL https://github.com/open-metadata/OpenMetadata/releases/download/1.2.0-release/docker-compose.yml
+curl -sL -o docker-compose.yml https://github.com/open-metadata/OpenMetadata/releases/download/1.2.0-release/docker-compose.yml
 
-curl -sL https://github.com/open-metadata/OpenMetadata/releases/download/1.2.0-release/docker-compose-postgres.yml
+curl -sL -o docker-compose-postgres.yml https://github.com/open-metadata/OpenMetadata/releases/download/1.2.0-release/docker-compose-postgres.yml
 ```
 
 ```commandline
@@ -258,3 +258,19 @@ installation.
 2. Visit the [Connectors](/connectors) documentation to see what services you can integrate with
    OpenMetadata.
 3. Visit the [API](/swagger.html) documentation and explore the rich set of OpenMetadata APIs.
+
+
+### Volume Permissions: Operation not permitted
+
+If you are running on Windows (WSL2) and see permissions errors when starting the databases (either MySQL or Postgres), e.g.,
+
+```
+openmetadata_postgresql     | chmod: changing permissions of '/var/lib/postgresql/data': Operation not permitted
+```
+
+You can try to update the `/etc/wsl.conf` file from the WSL2 machine to add:
+
+```
+[automount]
+options = "metadata,case=force"
+```

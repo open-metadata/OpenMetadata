@@ -41,6 +41,7 @@ import {
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
 import { getEncodedFqn } from '../../utils/StringsUtils';
+import DataProductsContainer from '../DataProductsContainer/DataProductsContainer.component';
 import { DashboardVersionProp } from './DashboardVersion.interface';
 
 const DashboardVersion: FC<DashboardVersionProp> = ({
@@ -56,6 +57,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
   versionHandler,
   entityPermissions,
   domain,
+  dataProducts,
 }: DashboardVersionProp) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -199,6 +201,11 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
               data-testid="entity-right-panel"
               flex="220px">
               <Space className="w-full" direction="vertical" size="large">
+                <DataProductsContainer
+                  activeDomain={domain}
+                  dataProducts={dataProducts ?? []}
+                  hasPermission={false}
+                />
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
                     entityType={EntityType.DASHBOARD}

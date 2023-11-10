@@ -40,6 +40,7 @@ export const GRAYED_OUT_COLOR = '#CCCCCC';
 export const GREEN_COLOR = '#28A745';
 export const GREEN_COLOR_OPACITY_30 = '#28A74530';
 export const BORDER_COLOR = '#0000001a';
+export const BLACK_COLOR = '#000000';
 
 export const DEFAULT_CHART_OPACITY = 1;
 export const HOVER_CHART_OPACITY = 0.3;
@@ -49,7 +50,7 @@ export const LOGGED_IN_USER_STORAGE_KEY = 'loggedInUsers';
 export const ACTIVE_DOMAIN_STORAGE_KEY = 'activeDomain';
 export const DEFAULT_DOMAIN_VALUE = 'All Domains';
 
-export const USER_DATA_SIZE = 4;
+export const USER_DATA_SIZE = 5;
 export const INITIAL_PAGING_VALUE = 1;
 export const JSON_TAB_SIZE = 2;
 export const PAGE_SIZE = 10;
@@ -311,6 +312,7 @@ export const ROUTES = {
   EDIT_KPI: `/data-insights/kpi/edit-kpi/${KPI_NAME}`,
 
   SETTINGS_EDIT_CUSTOM_LOGO_CONFIG: `/settings/OpenMetadata/customLogo/edit-custom-logo-configuration`,
+  SETTINGS_EDIT_CUSTOM_LOGIN_CONFIG: `/settings/OpenMetadata/customLogo/edit-custom-login-configuration`,
 
   CUSTOMIZE_PAGE: `/customize-page/:fqn/:pageFqn`,
 };

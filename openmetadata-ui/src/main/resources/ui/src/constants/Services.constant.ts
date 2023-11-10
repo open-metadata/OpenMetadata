@@ -49,12 +49,12 @@ import mode from '../assets/img/service-icon-mode.png';
 import mongodb from '../assets/img/service-icon-mongodb.png';
 import msAzure from '../assets/img/service-icon-ms-azure.png';
 import mssql from '../assets/img/service-icon-mssql.png';
+import mstr from '../assets/img/service-icon-mstr.png';
 import nifi from '../assets/img/service-icon-nifi.png';
 import oracle from '../assets/img/service-icon-oracle.png';
 import pinot from '../assets/img/service-icon-pinot.png';
 import postgres from '../assets/img/service-icon-post.png';
 import powerbi from '../assets/img/service-icon-power-bi.png';
-import mstr from '../assets/img/service-icon-mstr.png';
 import prefect from '../assets/img/service-icon-prefect.png';
 import presto from '../assets/img/service-icon-presto.png';
 import pulsar from '../assets/img/service-icon-pulsar.png';
@@ -408,6 +408,7 @@ export const ADVANCED_PROPERTIES = [
   'connectionArguments',
   'connectionOptions',
   'scheme',
+  'sampleDataStorageConfig',
 ];
 
 export const PIPELINE_SERVICE_PLATFORM = 'Airflow';

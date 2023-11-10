@@ -62,7 +62,6 @@ import {
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
 import { JoinedWith, Table } from '../../generated/entity/data/table';
-import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { TagLabel, TagSource } from '../../generated/type/tagLabel';
 import { postThread } from '../../rest/feedsAPI';
@@ -83,10 +82,7 @@ import {
   sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import { defaultFields } from '../../utils/DatasetDetailsUtils';
-import {
-  getEntityName,
-  getEntityReferenceFromEntity,
-} from '../../utils/EntityUtils';
+import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getDecodedFqn } from '../../utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
@@ -426,19 +422,6 @@ const TableDetailsPageV1 = () => {
       }));
   };
 
-  const onDataProductsUpdate = async (updatedData: DataProduct[]) => {
-    const dataProductsEntity = updatedData?.map((item) => {
-      return getEntityReferenceFromEntity(item, EntityType.DATA_PRODUCT);
-    });
-
-    const updatedTableDetails = {
-      ...tableDetails,
-      dataProducts: dataProductsEntity,
-    };
-
-    await onTableUpdate(updatedTableDetails as Table, 'dataProducts');
-  };
-
   const schemaTab = useMemo(
     () => (
       <Row
@@ -483,6 +466,7 @@ const TableDetailsPageV1 = () => {
               isReadOnly={tableDetails?.deleted}
               joins={tableDetails?.joins?.columnJoins || []}
               tableConstraints={tableDetails?.tableConstraints}
+              tablePartitioned={tableDetails?.tablePartition}
               onThreadLinkSelect={onThreadLinkSelect}
               onUpdate={onColumnsUpdate}
             />
@@ -500,8 +484,7 @@ const TableDetailsPageV1 = () => {
             <DataProductsContainer
               activeDomain={tableDetails?.domain}
               dataProducts={tableDetails?.dataProducts ?? []}
-              hasPermission={tablePermissions.EditAll && !tableDetails?.deleted}
-              onSave={onDataProductsUpdate}
+              hasPermission={false}
             />
 
             <TagsContainerV2
