@@ -27,8 +27,8 @@ import {
   TEXT_GREY_MUTED,
 } from '../../../constants/constants';
 import { getRepositoryData } from '../../../rest/commonAPI';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
-import { getReleaseVersionExpiry } from '../WhatsNewModal/WhatsNewModal.util';
+import { getReleaseVersionExpiry } from '../../../utils/WhatsNewModal.util';
+import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import './github-star-modal.style.less';
 
 const cookieStorage = new CookieStorage();
