@@ -549,6 +549,7 @@ const EntityVersionPage: FunctionComponent = () => {
           <TableVersion
             backHandler={backHandler}
             currentVersionData={currentVersionData as Table}
+            dataProducts={currentVersionData.dataProducts}
             deleted={currentVersionData.deleted}
             domain={domain}
             entityPermissions={entityPermissions}
@@ -567,6 +568,7 @@ const EntityVersionPage: FunctionComponent = () => {
           <TopicVersion
             backHandler={backHandler}
             currentVersionData={currentVersionData as Topic}
+            dataProducts={currentVersionData.dataProducts}
             deleted={currentVersionData.deleted}
             domain={domain}
             entityPermissions={entityPermissions}
@@ -586,6 +588,7 @@ const EntityVersionPage: FunctionComponent = () => {
           <DashboardVersion
             backHandler={backHandler}
             currentVersionData={currentVersionData as Dashboard}
+            dataProducts={currentVersionData.dataProducts}
             deleted={currentVersionData.deleted}
             domain={domain}
             entityPermissions={entityPermissions}
@@ -605,6 +608,7 @@ const EntityVersionPage: FunctionComponent = () => {
           <PipelineVersion
             backHandler={backHandler}
             currentVersionData={currentVersionData as Pipeline}
+            dataProducts={currentVersionData.dataProducts}
             deleted={currentVersionData.deleted}
             domain={domain}
             entityPermissions={entityPermissions}
@@ -624,6 +628,7 @@ const EntityVersionPage: FunctionComponent = () => {
           <MlModelVersion
             backHandler={backHandler}
             currentVersionData={currentVersionData as Mlmodel}
+            dataProducts={currentVersionData.dataProducts}
             deleted={currentVersionData.deleted}
             domain={domain}
             entityPermissions={entityPermissions}
@@ -643,6 +648,7 @@ const EntityVersionPage: FunctionComponent = () => {
             backHandler={backHandler}
             breadCrumbList={slashedEntityName}
             currentVersionData={currentVersionData as Container}
+            dataProducts={currentVersionData.dataProducts}
             deleted={currentVersionData.deleted}
             domain={domain}
             entityPermissions={entityPermissions}
@@ -661,6 +667,7 @@ const EntityVersionPage: FunctionComponent = () => {
             backHandler={backHandler}
             breadCrumbList={slashedEntityName}
             currentVersionData={currentVersionData as SearchIndex}
+            dataProducts={currentVersionData.dataProducts}
             deleted={currentVersionData.deleted}
             domain={domain}
             entityPermissions={entityPermissions}
@@ -679,6 +686,7 @@ const EntityVersionPage: FunctionComponent = () => {
           <DataModelVersion
             backHandler={backHandler}
             currentVersionData={currentVersionData}
+            dataProducts={currentVersionData.dataProducts}
             deleted={currentVersionData.deleted}
             domain={domain}
             isVersionLoading={isVersionLoading}
@@ -697,6 +705,7 @@ const EntityVersionPage: FunctionComponent = () => {
           <StoredProcedureVersion
             backHandler={backHandler}
             currentVersionData={currentVersionData as StoredProcedure}
+            dataProducts={currentVersionData.dataProducts}
             deleted={currentVersionData.deleted}
             domain={domain}
             entityPermissions={entityPermissions}

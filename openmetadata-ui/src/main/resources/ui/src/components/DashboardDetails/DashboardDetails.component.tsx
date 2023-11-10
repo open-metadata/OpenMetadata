@@ -45,16 +45,12 @@ import {
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Dashboard } from '../../generated/entity/data/dashboard';
-import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { TagSource } from '../../generated/type/schema';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { restoreDashboard } from '../../rest/dashboardAPI';
 import { getFeedCounts } from '../../utils/CommonUtils';
-import {
-  getEntityName,
-  getEntityReferenceFromEntity,
-} from '../../utils/EntityUtils';
+import { getEntityName } from '../../utils/EntityUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getDecodedFqn } from '../../utils/StringsUtils';
@@ -272,19 +268,6 @@ const DashboardDetails = ({
       tags: tierTag,
     };
     await onDashboardUpdate(updatedDashboard, 'tags');
-  };
-
-  const onDataProductsUpdate = async (updatedData: DataProduct[]) => {
-    const dataProductsEntity = updatedData?.map((item) => {
-      return getEntityReferenceFromEntity(item, EntityType.DATA_PRODUCT);
-    });
-
-    const updatedDashboard = {
-      ...dashboardDetails,
-      dataProducts: dataProductsEntity,
-    };
-
-    await onDashboardUpdate(updatedDashboard, 'dataProducts');
   };
 
   const onUpdateDisplayName = async (data: EntityName) => {
@@ -620,10 +603,7 @@ const DashboardDetails = ({
                 <DataProductsContainer
                   activeDomain={dashboardDetails?.domain}
                   dataProducts={dashboardDetails?.dataProducts ?? []}
-                  hasPermission={
-                    dashboardPermissions.EditAll && !dashboardDetails.deleted
-                  }
-                  onSave={onDataProductsUpdate}
+                  hasPermission={false}
                 />
 
                 <TagsContainerV2

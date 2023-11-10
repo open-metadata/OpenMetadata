@@ -123,7 +123,7 @@ const DataModelsPage = () => {
     try {
       const response = await getDataModelsByName(
         dashboardDataModelFQN,
-        'owner,tags,followers,votes',
+        'owner,tags,followers,votes,domain,dataProducts',
         Include.All
       );
       setDataModelData(response);
@@ -293,7 +293,7 @@ const DataModelsPage = () => {
       await updateDataModelVotes(id, data);
       const details = await getDataModelsByName(
         dashboardDataModelFQN,
-        'owner,tags,followers,votes',
+        'owner,tags,followers,votes,domain,dataProducts',
         Include.All
       );
       setDataModelData(details);

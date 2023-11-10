@@ -45,6 +45,7 @@ import { getDecodedFqn } from '../../utils/StringsUtils';
 import { getTagsWithoutTier } from '../../utils/TableUtils';
 import { createTagObject } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import DataProductsContainer from '../DataProductsContainer/DataProductsContainer.component';
 import SchemaEditor from '../SchemaEditor/SchemaEditor';
 import { SourceType } from '../SearchedData/SearchedData.interface';
 import { DataModelDetailsProps } from './DataModelDetails.interface';
@@ -228,6 +229,11 @@ const DataModelDetails = ({
           data-testid="entity-right-panel"
           flex="320px">
           <Space className="w-full" direction="vertical" size="large">
+            <DataProductsContainer
+              activeDomain={dataModelData?.domain}
+              dataProducts={dataModelData?.dataProducts ?? []}
+              hasPermission={false}
+            />
             <TagsContainerV2
               displayType={DisplayType.READ_MORE}
               entityFqn={decodedDataModelFQN}

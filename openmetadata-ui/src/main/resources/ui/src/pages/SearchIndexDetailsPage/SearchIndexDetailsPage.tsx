@@ -30,6 +30,7 @@ import DescriptionV1 from '../../components/common/EntityDescription/Description
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import QueryViewer from '../../components/common/QueryViewer/QueryViewer.component';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import DataProductsContainer from '../../components/DataProductsContainer/DataProductsContainer.component';
 import EntityLineageComponent from '../../components/Entity/EntityLineage/EntityLineage.component';
 import Loader from '../../components/Loader/Loader';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
@@ -368,6 +369,11 @@ function SearchIndexDetailsPage() {
           data-testid="entity-right-panel"
           flex="320px">
           <Space className="w-full" direction="vertical" size="large">
+            <DataProductsContainer
+              activeDomain={searchIndexDetails?.domain}
+              dataProducts={searchIndexDetails?.dataProducts ?? []}
+              hasPermission={false}
+            />
             <TagsContainerV2
               displayType={DisplayType.READ_MORE}
               entityFqn={decodedSearchIndexFQN}

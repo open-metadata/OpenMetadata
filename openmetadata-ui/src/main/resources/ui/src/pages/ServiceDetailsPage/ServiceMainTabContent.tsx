@@ -22,11 +22,14 @@ import DescriptionV1 from '../../components/common/EntityDescription/Description
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../../components/common/NextPrevious/NextPrevious.interface';
+import DataProductsContainer from '../../components/DataProductsContainer/DataProductsContainer.component';
 import Loader from '../../components/Loader/Loader';
 import { OperationPermission } from '../../components/PermissionProvider/PermissionProvider.interface';
 import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
 import { PAGE_SIZE } from '../../constants/constants';
+import { EntityType } from '../../enums/entity.enum';
+import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { Paging } from '../../generated/type/paging';
 import { TagSource } from '../../generated/type/tagLabel';
 import { ServicesType } from '../../interface/service.interface';
@@ -210,6 +213,16 @@ function ServiceMainTabContent({
         data-testid="entity-right-panel"
         flex="320px">
         <Space className="w-full" direction="vertical" size="large">
+          {entityType !== EntityType.METADATA_SERVICE && (
+            <DataProductsContainer
+              activeDomain={(serviceDetails as DatabaseService)?.domain}
+              dataProducts={
+                (serviceDetails as DatabaseService)?.dataProducts ?? []
+              }
+              hasPermission={false}
+            />
+          )}
+
           <TagsContainerV2
             displayType={DisplayType.READ_MORE}
             entityFqn={serviceFQN}

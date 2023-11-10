@@ -54,8 +54,8 @@ import {
 import TabsLabel from '../../../components/TabsLabel/TabsLabel.component';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
-import { myDataSearchIndex } from '../../../constants/Mydata.constants';
 import { EntityType } from '../../../enums/entity.enum';
+import { SearchIndex } from '../../../enums/search.enum';
 import {
   ChangeDescription,
   DataProduct,
@@ -211,7 +211,7 @@ const DataProductsDetailsPage = ({
           `(dataProducts.fullyQualifiedName:"${fqn}")`,
           '',
           '',
-          myDataSearchIndex
+          SearchIndex.ALL
         );
 
         setAssetCount(res.data.hits.total.value ?? 0);
@@ -520,9 +520,11 @@ const DataProductsDetailsPage = ({
                     <Button
                       className="domain-manage-dropdown-button tw-px-1.5"
                       data-testid="manage-button"
-                      onClick={() => setShowActions(true)}>
-                      <IconDropdown className="anticon self-center manage-dropdown-icon" />
-                    </Button>
+                      icon={
+                        <IconDropdown className="vertical-align-inherit manage-dropdown-icon" />
+                      }
+                      onClick={() => setShowActions(true)}
+                    />
                   </Tooltip>
                 </Dropdown>
               )}

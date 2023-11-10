@@ -913,7 +913,8 @@ public class ElasticSearchClient implements SearchClient {
             AggregationBuilders.terms(DOMAIN_DISPLAY_NAME_KEYWORD)
                 .field(DOMAIN_DISPLAY_NAME_KEYWORD)
                 .size(MAX_AGGREGATE_SIZE))
-        .aggregation(AggregationBuilders.terms(ES_TAG_FQN_FIELD).field(ES_TAG_FQN_FIELD));
+        .aggregation(AggregationBuilders.terms(ES_TAG_FQN_FIELD).field(ES_TAG_FQN_FIELD))
+        .aggregation(AggregationBuilders.terms("index_count").field("_index").size(MAX_AGGREGATE_SIZE));
 
     return builder;
   }

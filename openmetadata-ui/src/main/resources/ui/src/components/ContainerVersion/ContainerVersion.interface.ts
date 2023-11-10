@@ -22,6 +22,7 @@ export interface ContainerVersionProp {
   isVersionLoading: boolean;
   owner: Container['owner'];
   domain: Container['domain'];
+  dataProducts: Container['dataProducts'];
   tier: TagLabel;
   breadCrumbList: TitleBreadcrumbProps['titleLinks'];
   versionList: EntityHistory;

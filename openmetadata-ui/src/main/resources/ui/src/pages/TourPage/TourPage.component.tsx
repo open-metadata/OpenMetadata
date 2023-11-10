@@ -12,7 +12,7 @@
  */
 
 import { observer } from 'mobx-react';
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import Tour from '../../components/AppTour/Tour';
 import { useTourProvider } from '../../components/TourProvider/TourProvider';
 import { TOUR_SEARCH_TERM } from '../../constants/constants';
@@ -39,8 +39,8 @@ const TourPage = () => {
     updateIsTourOpen(true);
   }, []);
 
-  const getCurrentPage = (page: CurrentTourPageType) => {
-    switch (page) {
+  const currentPageComponent = useMemo(() => {
+    switch (currentTourPage) {
       case CurrentTourPageType.MY_DATA_PAGE:
         return <MyDataPageV1 />;
 
@@ -53,7 +53,7 @@ const TourPage = () => {
       default:
         return;
     }
-  };
+  }, [currentTourPage]);
 
   return (
     <>
@@ -65,7 +65,7 @@ const TourPage = () => {
           updateTourPage,
         })}
       />
-      {getCurrentPage(currentTourPage)}
+      {currentPageComponent}
     </>
   );
 };

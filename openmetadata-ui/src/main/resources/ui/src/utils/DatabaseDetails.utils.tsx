@@ -33,7 +33,7 @@ import { Paging } from '../generated/type/paging';
 import { getEntityName } from '../utils/EntityUtils';
 import { getUsagePercentile } from '../utils/TableUtils';
 
-export const DatabaseFields = `${TabSpecificField.TAGS}, ${TabSpecificField.OWNER}, ${TabSpecificField.DOMAIN}`;
+export const DatabaseFields = `${TabSpecificField.TAGS}, ${TabSpecificField.OWNER}, ${TabSpecificField.DOMAIN},${TabSpecificField.DATA_PRODUCTS}`;
 
 export const schemaTableColumns: ColumnsType<DatabaseSchema> = [
   {

@@ -12,7 +12,7 @@
  */
 import { AxiosError } from 'axios';
 import { noop, toString } from 'lodash';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { EntityHistory } from '../../../generated/type/entityHistory';
@@ -26,14 +26,16 @@ import {
   getDomainVersionsPath,
 } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
+import Loader from '../../Loader/Loader';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import DomainDetailsPage from '../DomainDetailsPage/DomainDetailsPage.component';
 
 const DomainVersion = () => {
   const history = useHistory();
   const { fqn, version } = useParams<{ fqn: string; version: string }>();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [domain, setDomain] = useState<Domain>();
   const [versionList, setVersionList] = useState<EntityHistory>(
     {} as EntityHistory
@@ -66,7 +68,7 @@ const DomainVersion = () => {
     } finally {
       setLoading(false);
     }
-  }, [domain]);
+  }, [domain, version]);
 
   const fetchDomainData = useCallback(async () => {
     try {
@@ -87,28 +89,38 @@ const DomainVersion = () => {
     history.push(path);
   };
 
+  const domainPageRender = useMemo(() => {
+    if (loading) {
+      return <Loader />;
+    } else if (!selectedData) {
+      return <ErrorPlaceHolder />;
+    } else {
+      return (
+        <DomainDetailsPage
+          isVersionsView
+          domain={selectedData}
+          onDelete={noop}
+          onUpdate={() => Promise.resolve()}
+        />
+      );
+    }
+  }, [loading, selectedData]);
+
   useEffect(() => {
     fetchDomainData();
-  }, [fqn, version]);
+  }, [fqn]);
 
   useEffect(() => {
     fetchVersionsInfo();
-    fetchActiveVersion();
   }, [domain]);
+
+  useEffect(() => {
+    fetchActiveVersion();
+  }, [domain, version]);
 
   return (
     <PageLayoutV1 pageTitle="Domain version">
-      <div className="version-data page-container p-0">
-        {selectedData && (
-          <DomainDetailsPage
-            isVersionsView
-            domain={selectedData}
-            loading={loading}
-            onDelete={noop}
-            onUpdate={() => Promise.resolve()}
-          />
-        )}
-      </div>
+      <div className="version-data page-container p-0">{domainPageRender}</div>
       <EntityVersionTimeLine
         currentVersion={toString(version)}
         versionHandler={onVersionChange}
