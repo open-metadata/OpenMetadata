@@ -23,7 +23,7 @@ import { TopicSampleData } from '../../generated/entity/data/topic';
 import { getSampleDataBySearchIndexId } from '../../rest/SearchIndexAPI';
 import { getSampleDataByTopicId } from '../../rest/topicsAPI';
 import { Transi18next } from '../../utils/CommonUtils';
-import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
+import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import MessageCard from './MessageCard';
 
 const SampleDataWithMessages: FC<{

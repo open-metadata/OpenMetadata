@@ -42,7 +42,7 @@ import {
 } from '../../utils/CommonUtils';
 import { getIngestionName } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import SuccessScreen from '../common/success-screen/SuccessScreen';
+import SuccessScreen from '../common/SuccessScreen/SuccessScreen';
 import DeployIngestionLoaderModal from '../Modals/DeployIngestionLoaderModal/DeployIngestionLoaderModal';
 import { TestSuiteIngestionProps } from './AddDataQualityTest.interface';
 import TestSuiteScheduler from './components/TestSuiteScheduler';

@@ -19,9 +19,9 @@ import { Link } from 'react-router-dom';
 import { getUserPath } from '../../../constants/constants';
 import { EntityReference } from '../../../generated/entity/type';
 import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import { EntityListWithV1 } from '../../Entity/EntityList/EntityList';
-import './FollowingWidget.less';
+import './following-widget.less';
 
 export interface FollowingWidgetProps extends WidgetCommonProps {
   followedData: EntityReference[];

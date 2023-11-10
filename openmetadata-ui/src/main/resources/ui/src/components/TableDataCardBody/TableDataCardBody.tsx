@@ -16,7 +16,7 @@ import { ExtraInfo } from 'Models';
 import React, { FunctionComponent } from 'react';
 import { useTranslation } from 'react-i18next';
 import EntitySummaryDetails from '../../components/common/EntitySummaryDetails/EntitySummaryDetails';
-import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
+import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
 import TagsViewer from '../../components/Tag/TagsViewer/TagsViewer';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { getTagValue } from '../../utils/CommonUtils';
