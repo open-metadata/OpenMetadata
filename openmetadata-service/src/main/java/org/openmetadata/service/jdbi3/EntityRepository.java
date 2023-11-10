@@ -1846,7 +1846,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     @Transaction
     private void revert() {
       // Revert from original to previous version to go back to the previous version
-      //set changeDescription to null
+      // set changeDescription to null
       changeDescription = null;
       T updatedOld = updated;
       T previous = getPreviousVersion(original);
