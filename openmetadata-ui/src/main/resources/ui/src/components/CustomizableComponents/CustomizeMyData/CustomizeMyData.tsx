@@ -44,6 +44,7 @@ import {
   getWidgetFromKey,
 } from '../../../utils/CustomizableLandingPageUtils';
 import customizePageClassBase from '../../../utils/CustomizePageClassBase';
+import { getEntityName } from '../../../utils/EntityUtils';
 import {
   getPersonaDetailsPath,
   getSettingPath,
@@ -60,6 +61,7 @@ import { CustomizeMyDataProps } from './CustomizeMyData.interface';
 const ReactGridLayout = WidthProvider(RGL);
 
 function CustomizeMyData({
+  personaDetails,
   initialPageData,
   onSaveLayout,
   handlePageDataChange,
@@ -300,7 +302,9 @@ function CustomizeMyData({
                     />
                   }
                   values={{
-                    persona: decodedPersonaFQN,
+                    persona: isNil(personaDetails)
+                      ? decodedPersonaFQN
+                      : getEntityName(personaDetails),
                   }}
                 />
               </Typography.Title>

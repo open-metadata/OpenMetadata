@@ -12,8 +12,10 @@
  */
 
 import { Document } from '../../../generated/entity/docStore/document';
+import { Persona } from '../../../generated/entity/teams/persona';
 
 export interface CustomizeMyDataProps {
+  personaDetails?: Persona;
   initialPageData: Document;
   onSaveLayout: () => Promise<void>;
   handlePageDataChange: (newPageData: Document) => void;
