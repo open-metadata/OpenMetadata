@@ -32,6 +32,7 @@ import {
   BAR_CHART_MARGIN,
   DATA_INSIGHT_GRAPH_COLORS,
   DI_STRUCTURE,
+  GRAPH_HEIGHT,
 } from '../../constants/DataInsight.constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
@@ -106,7 +107,7 @@ const DailyActiveUsersChart: FC<Props> = ({ chartFilter, selectedDays }) => {
       {dailyActiveUsers.length ? (
         <Row gutter={DI_STRUCTURE.rowContainerGutter}>
           <Col span={DI_STRUCTURE.leftContainerSpan}>
-            <ResponsiveContainer debounce={1} minHeight={400}>
+            <ResponsiveContainer debounce={1} height={GRAPH_HEIGHT}>
               <LineChart data={data} margin={BAR_CHART_MARGIN}>
                 <CartesianGrid
                   stroke={GRAPH_BACKGROUND_COLOR}
