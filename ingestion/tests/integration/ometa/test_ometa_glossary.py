@@ -280,7 +280,7 @@ class OMetaGlossaryTest(TestCase):
 
         dest_glossary_term_3 = deepcopy(self.glossary_term_3)
         dest_glossary_term_3.parent = EntityReference(
-            name=self.glossary_term_2.fullyQualifiedName, type=GlossaryTerm
+            id=self.glossary_term_2.id, type="glossaryTerm"
         )
 
         # Add parent
@@ -294,7 +294,7 @@ class OMetaGlossaryTest(TestCase):
 
         # Move parent
         dest_glossary_term_3.parent = EntityReference(
-            name=self.glossary_term_1.fullyQualifiedName, type=GlossaryTerm
+            id=self.glossary_term_1.id, type="glossaryTerm"
         )
         res: GlossaryTerm = self.metadata.patch(
             entity=GlossaryTerm,
@@ -304,12 +304,12 @@ class OMetaGlossaryTest(TestCase):
 
         self.assertIsNotNone(res)
         self.assertEqual(self.glossary_term_1.id, res.parent.id)
-
+        dest_glossary_term_3 = deepcopy(res)
         # Delete parent
         dest_glossary_term_3.parent = None
         res: GlossaryTerm = self.metadata.patch(
             entity=GlossaryTerm,
-            source=self.glossary_term_3,
+            source=res,
             destination=dest_glossary_term_3,
         )
         self.assertIsNotNone(res)
@@ -347,8 +347,11 @@ class OMetaGlossaryTest(TestCase):
 
         # Add related term
         dest_glossary_term_1 = deepcopy(self.glossary_term_1)
-        dest_glossary_term_1.relatedTerms.__root__.append(
-            EntityReference(id=self.glossary_term_2.id, type=GlossaryTerm)
+        dest_glossary_term_1.relatedTerms = []
+        if dest_glossary_term_1.relatedTerms is not None:
+            dest_glossary_term_1.relatedTerms = []
+        dest_glossary_term_1.relatedTerms.append(
+            EntityReference(id=self.glossary_term_2.id, type="glossaryTerm")
         )
         res: GlossaryTerm = self.metadata.patch(
             entity=GlossaryTerm,
@@ -372,6 +375,8 @@ class OMetaGlossaryTest(TestCase):
             )
         # Add Glossary Reviewer
         dest_glossary = deepcopy(self.glossary)
+        if dest_glossary.reviewers is None:
+            dest_glossary.reviewers = list()
         dest_glossary.reviewers.__root__.append(
             EntityReference(id=self.user_1.id, type=GlossaryTerm)
         )
@@ -461,7 +466,9 @@ class OMetaGlossaryTest(TestCase):
         if dest_glossary_term_1.synonyms is None:
             dest_glossary_term_1.synonyms = list()
 
-        dest_glossary_term_1.synonyms.append(EntityName("GT1S1"))
+        if dest_glossary_term_1.synonyms is None:
+            dest_glossary_term_1.synonyms = []
+        dest_glossary_term_1.synonyms.append(EntityName(__root__="GT1S1"))
 
         # Add GlossaryTerm synonym
         res: GlossaryTerm = self.metadata.patch(
@@ -475,24 +482,26 @@ class OMetaGlossaryTest(TestCase):
         self.glossary_term_1 = self.metadata.get_by_id(
             entity=GlossaryTerm, entity_id=self.glossary_term_1.id, fields=["*"]
         )
+        dest_glossary_term_1 = deepcopy(res)
         # Remove GlossaryTerm synonym
-        dest_glossary_term_1.synonyms.pop()
+        dest_glossary_term_1.synonyms.pop(0)
         res = self.metadata.patch(
             entity=GlossaryTerm,
-            source=self.glossary_term_1,
+            source=res,
             destination=dest_glossary_term_1,
         )
         self.assertIsNotNone(res)
         self.assertEqual(0, len(res.synonyms))
+        dest_glossary_term_1 = deepcopy(res)
+        dest_glossary_term_1.synonyms.append(EntityName(__root__="GT1S1"))
+        dest_glossary_term_1.synonyms.append(EntityName(__root__="GT1S2"))
+        dest_glossary_term_1.synonyms.append(EntityName(__root__="GT1S3"))
 
-        dest_glossary_term_1.synonyms.append(EntityName("GT1S1"))
-        dest_glossary_term_1.synonyms.append(EntityName("GT1S2"))
-        dest_glossary_term_1.synonyms.append(EntityName("GT1S3"))
         res: GlossaryTerm = self.metadata.patch(
             entity=GlossaryTerm,
-            source=self.glossary_term_1,
+            source=res,
             destination=dest_glossary_term_1,
         )
         self.assertIsNotNone(res)
-        self.assertEqual(2, len(res.synonyms))
+        self.assertEqual(3, len(res.synonyms))
         self.assertEqual("GT1S2", model_str(res.synonyms[1]))
