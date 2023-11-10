@@ -67,6 +67,25 @@ class TestDataFrameReader(TestCase):
             list(df_list[0].columns), ["transaction_id", "transaction_value"]
         )
 
+    def test_dsv_reader_with_separator(self):
+        key = ROOT_PATH / "transactions_separator.csv"
+
+        df_list = fetch_dataframe(
+            config_source=LocalConfig(),
+            client=None,
+            file_fqn=DatalakeTableSchemaWrapper(
+                key=str(key), bucket_name="unused", separator=";"
+            ),
+        )
+
+        self.assertIsNotNone(df_list)
+        self.assertTrue(len(df_list))
+
+        self.assertEquals(df_list[0].shape, (5, 2))
+        self.assertEquals(
+            list(df_list[0].columns), ["transaction_id", "transaction_value"]
+        )
+
     def test_json_reader(self):
         key = ROOT_PATH / "employees.json"
 
