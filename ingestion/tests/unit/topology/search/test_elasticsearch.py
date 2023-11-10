@@ -149,49 +149,37 @@ EXPECTED_RESULT = CreateSearchIndexRequest(
     searchIndexSettings=MOCK_SETTINGS,
     service="es_source",
     fields=[
-        SearchIndexField(
-            name="href",
-            dataType=DataType.TEXT,
-        ),
-        SearchIndexField(
-            name="name",
-            dataType=DataType.TEXT,
-        ),
+        SearchIndexField(name="href", dataType=DataType.TEXT, dataTypeDisplay="text"),
+        SearchIndexField(name="name", dataType=DataType.TEXT, dataTypeDisplay="text"),
         SearchIndexField(
             name="owner",
             dataType=DataType.OBJECT,
             children=[
                 SearchIndexField(
-                    name="deleted",
-                    dataType=DataType.TEXT,
+                    name="deleted", dataType=DataType.TEXT, dataTypeDisplay="text"
                 ),
                 SearchIndexField(
-                    name="description",
-                    dataType=DataType.TEXT,
+                    name="description", dataType=DataType.TEXT, dataTypeDisplay="text"
                 ),
                 SearchIndexField(
-                    name="displayName",
-                    dataType=DataType.TEXT,
+                    name="displayName", dataType=DataType.TEXT, dataTypeDisplay="text"
                 ),
                 SearchIndexField(
                     name="fullyQualifiedName",
                     dataType=DataType.TEXT,
+                    dataTypeDisplay="text",
                 ),
                 SearchIndexField(
-                    name="href",
-                    dataType=DataType.TEXT,
+                    name="href", dataType=DataType.TEXT, dataTypeDisplay="text"
                 ),
                 SearchIndexField(
-                    name="id",
-                    dataType=DataType.TEXT,
+                    name="id", dataType=DataType.TEXT, dataTypeDisplay="text"
                 ),
                 SearchIndexField(
-                    name="name",
-                    dataType=DataType.KEYWORD,
+                    name="name", dataType=DataType.KEYWORD, dataTypeDisplay="keyword"
                 ),
                 SearchIndexField(
-                    name="type",
-                    dataType=DataType.KEYWORD,
+                    name="type", dataType=DataType.KEYWORD, dataTypeDisplay="keyword"
                 ),
             ],
         ),
