@@ -118,7 +118,7 @@ For Kubernetes Deployment, `openmetadata.config.database.dbParams` is available 
 ### Version Upgrades
 
 - The OpenMetadata Server is now based on **JDK 17**
-- OpenMetadata now **requires** **Elasticsearch** version **8.10.2** and **Opensearch** version **2.7**
+- OpenMetadata now **requires** **Elasticsearch** version **8.10.2** or **Opensearch** version **2.7**
 
 There is no direct migration to bump the indexes to the new supported versions. You might see errors like:
 

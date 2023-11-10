@@ -49,6 +49,7 @@ def parse_es_index_mapping(mapping: dict) -> Optional[List[SearchIndexField]]:
                 SearchIndexField(
                     name=key,
                     dataType=data_type,
+                    dataTypeDisplay=value.get("type"),
                     description=value.get("description"),
                     children=parse_es_index_mapping(value)
                     if value.get("properties")
