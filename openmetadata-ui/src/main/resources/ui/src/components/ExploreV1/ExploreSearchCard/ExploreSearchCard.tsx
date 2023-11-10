@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Typography } from 'antd';
+import { Button, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isString, startCase, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
@@ -37,7 +37,7 @@ import {
   getServiceIcon,
   getUsagePercentile,
 } from '../../../utils/TableUtils';
-import TitleBreadcrumb from '../../common/title-breadcrumb/title-breadcrumb.component';
+import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import TableDataCardBody from '../../TableDataCardBody/TableDataCardBody';
 import { useTourProvider } from '../../TourProvider/TourProvider';
 import './explore-search-card.less';
@@ -58,6 +58,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       showTags = true,
       openEntityInNewPage,
       hideBreadcrumbs = false,
+      actionPopoverContent,
     },
     ref
   ) => {
@@ -245,6 +246,9 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             ))}
           </div>
         ) : null}
+        {actionPopoverContent && (
+          <Space className="explore-card-actions">{actionPopoverContent}</Space>
+        )}
       </div>
     );
   }

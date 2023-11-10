@@ -22,7 +22,7 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../../utils/EntityVersionUtils';
-import DescriptionV1 from '../../../common/description/DescriptionV1';
+import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
 import { OperationPermission } from '../../../PermissionProvider/PermissionProvider.interface';
 import TagsInput from '../../../TagsInput/TagsInput.component';
 import GlossaryDetailsRightPanel from '../../GlossaryDetailsRightPanel/GlossaryDetailsRightPanel.component';

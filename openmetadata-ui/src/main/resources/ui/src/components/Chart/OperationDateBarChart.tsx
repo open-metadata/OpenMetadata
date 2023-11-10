@@ -28,7 +28,7 @@ import {
 import { GRAPH_BACKGROUND_COLOR } from '../../constants/constants';
 import { updateActiveChartFilter } from '../../utils/ChartUtils';
 import { formatNumberWithComma } from '../../utils/CommonUtils';
-import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
+import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { CustomBarChartProps } from './Chart.interface';
 
 const OperationDateBarChart = ({

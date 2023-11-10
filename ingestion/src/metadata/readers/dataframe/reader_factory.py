@@ -21,7 +21,11 @@ from typing import Any, Optional
 
 from metadata.readers.dataframe.avro import AvroDataFrameReader
 from metadata.readers.dataframe.base import DataFrameReader
-from metadata.readers.dataframe.dsv import CSVDataFrameReader, TSVDataFrameReader
+from metadata.readers.dataframe.dsv import (
+    CSVDataFrameReader,
+    TSVDataFrameReader,
+    get_dsv_reader_by_separator,
+)
 from metadata.readers.dataframe.json import JSONDataFrameReader
 from metadata.readers.dataframe.parquet import ParquetDataFrameReader
 from metadata.readers.models import ConfigSource
@@ -52,11 +56,20 @@ DF_READER_MAP = {
 
 
 def get_df_reader(
-    type_: SupportedTypes, config_source: ConfigSource, client: Optional[Any]
+    type_: SupportedTypes,
+    config_source: ConfigSource,
+    client: Optional[Any],
+    separator: Optional[str] = None,
 ) -> DataFrameReader:
     """
     Load the File Reader based on the Config Source
     """
+    # If we have a DSV file, build a reader dynamically based on the received separator
+    if type_ in {SupportedTypes.CSV, SupportedTypes.TSV} and separator:
+        return get_dsv_reader_by_separator(separator=separator)(
+            config_source=config_source, client=client
+        )
+
     if type_.value in DF_READER_MAP:
         return DF_READER_MAP[type_.value](config_source=config_source, client=client)
 

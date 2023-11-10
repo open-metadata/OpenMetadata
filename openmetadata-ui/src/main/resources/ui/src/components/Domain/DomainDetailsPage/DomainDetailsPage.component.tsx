@@ -43,15 +43,14 @@ import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
 import { AssetSelectionModal } from '../../../components/Assets/AssetsSelectionModal/AssetSelectionModal';
 import { ManageButtonItemLabel } from '../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
-import PageLayoutV1 from '../../../components/containers/PageLayoutV1';
 import { EntityHeader } from '../../../components/Entity/EntityHeader/EntityHeader.component';
 import EntitySummaryPanel from '../../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
-import { EntityDetailsObjectInterface } from '../../../components/Explore/explore.interface';
 import AssetsTabs, {
   AssetsTabRef,
 } from '../../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import { AssetsOfEntity } from '../../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import EntityNameModal from '../../../components/Modals/EntityNameModal/EntityNameModal.component';
+import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -72,6 +71,7 @@ import { Style } from '../../../generated/type/tagLabel';
 import { addDataProducts } from '../../../rest/dataProductAPI';
 import { searchData } from '../../../rest/miscAPI';
 import { getIsErrorMatch } from '../../../utils/CommonUtils';
+import { getQueryFilterToExcludeDomainTerms } from '../../../utils/DomainUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import Fqn from '../../../utils/Fqn';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
@@ -83,6 +83,7 @@ import {
 } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
+import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
 import AddDataProductModal from '../AddDataProductModal/AddDataProductModal.component';
 import '../domain.less';
@@ -472,12 +473,14 @@ const DomainDetailsPage = ({
                   rightPanelWidth={400}>
                   <AssetsTabs
                     assetCount={assetCount}
+                    entityFqn={domainFqn}
                     isSummaryPanelOpen={false}
                     permissions={domainPermission}
                     ref={assetTabRef}
                     type={AssetsOfEntity.DOMAIN}
                     onAddAsset={() => setAssetModelVisible(true)}
                     onAssetClick={handleAssetClick}
+                    onRemoveAsset={handleAssetSave}
                   />
                 </PageLayoutV1>
               ),
@@ -490,6 +493,7 @@ const DomainDetailsPage = ({
     domainPermission,
     previewAsset,
     handleAssetClick,
+    handleAssetSave,
     assetCount,
     dataProductsCount,
     activeTab,
@@ -627,6 +631,7 @@ const DomainDetailsPage = ({
       <AssetSelectionModal
         entityFqn={domainFqn}
         open={assetModalVisible}
+        queryFilter={getQueryFilterToExcludeDomainTerms(domainFqn)}
         type={AssetsOfEntity.DOMAIN}
         onCancel={() => setAssetModelVisible(false)}
         onSave={handleAssetSave}

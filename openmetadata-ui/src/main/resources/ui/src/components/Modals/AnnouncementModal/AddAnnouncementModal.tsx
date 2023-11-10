@@ -25,9 +25,9 @@ import { postThread } from '../../../rest/feedsAPI';
 import { getTimeZone } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
-import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
-import './AnnouncementModal.less';
+import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
+import './announcement-modal.less';
 
 interface Props {
   open: boolean;

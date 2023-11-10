@@ -19,7 +19,7 @@ import { Link } from 'react-router-dom';
 import { ReactComponent as IconDisableTag } from '../assets/svg/disable-tag.svg';
 import { ReactComponent as EditIcon } from '../assets/svg/edit-new.svg';
 import { ManageButtonItemLabel } from '../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
-import RichTextEditorPreviewer from '../components/common/rich-text-editor/RichTextEditorPreviewer';
+import RichTextEditorPreviewer from '../components/common/RichTextEditor/RichTextEditorPreviewer';
 import { OperationPermission } from '../components/PermissionProvider/PermissionProvider.interface';
 import { DE_ACTIVE_COLOR, NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { ProviderType } from '../generated/entity/bot';

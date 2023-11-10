@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { EntityDetailsObjectInterface } from '../../../Explore/explore.interface';
+import { EntityDetailsObjectInterface } from '../../../Explore/ExplorePage.interface';
 import { OperationPermission } from '../../../PermissionProvider/PermissionProvider.interface';
 
 export enum AssetsOfEntity {
@@ -25,6 +25,8 @@ export enum AssetsOfEntity {
 
 export interface AssetsTabsProps {
   onAddAsset: () => void;
+  onRemoveAsset?: () => void;
+  entityFqn?: string;
   permissions: OperationPermission;
   assetCount: number;
   onAssetClick?: (asset?: EntityDetailsObjectInterface) => void;
