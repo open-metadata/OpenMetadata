@@ -195,6 +195,7 @@ jest.mock('../../utils/TableUtils', () => ({
   getUsagePercentile: jest.fn().mockReturnValue('Medium - 45th pctile'),
   getTierTags: jest.fn().mockImplementation(() => ({})),
   getTagsWithoutTier: jest.fn().mockImplementation(() => []),
+  getTableExpandableConfig: jest.fn().mockReturnValue({}),
 }));
 
 jest.mock('../../components/common/NextPrevious/NextPrevious', () => {
@@ -266,15 +267,18 @@ jest.mock(
   })
 );
 
-jest.mock('../../utils/DatabaseDetails.utils', () => ({
-  getDatabaseSchemaTable: jest
-    .fn()
-    .mockReturnValue(<>testDatabaseSchemaTable</>),
-}));
-
 jest.mock('../../components/AppRouter/withActivityFeed', () => ({
   withActivityFeed: jest.fn().mockImplementation((Some) => Some),
 }));
+
+jest.mock(
+  '../../components/Database/DatabaseSchema/DatabaseSchemaTable/DatabaseSchemaTable',
+  () => ({
+    DatabaseSchemaTable: jest
+      .fn()
+      .mockImplementation(() => <>testDatabaseSchemaTable</>),
+  })
+);
 
 describe('Test DatabaseDetails page', () => {
   it('Component should render', async () => {
