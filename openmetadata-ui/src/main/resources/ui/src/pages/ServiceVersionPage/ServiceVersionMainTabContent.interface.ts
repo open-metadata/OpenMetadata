@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { NextPreviousProps } from '../../components/common/next-previous/NextPrevious.interface';
+import { NextPreviousProps } from '../../components/common/NextPrevious/NextPrevious.interface';
 import { EntityType } from '../../enums/entity.enum';
 import { ChangeDescription } from '../../generated/entity/type';
 import { Paging } from '../../generated/type/paging';

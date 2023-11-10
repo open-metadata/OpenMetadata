@@ -10,15 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon, { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Input, Space, Tooltip, Typography } from 'antd';
+import Icon, {
+  CheckOutlined,
+  CloseOutlined,
+  ExclamationCircleFilled,
+} from '@ant-design/icons';
+import { Button, Col, Input, Space, Tooltip, Typography } from 'antd';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { Team } from '../../../../generated/entity/teams/team';
 import { useAuth } from '../../../../hooks/authHooks';
 import { hasEditAccess } from '../../../../utils/CommonUtils';
-import { useAuthContext } from '../../../authentication/auth-provider/AuthProvider';
+import { useAuthContext } from '../../../Auth/AuthProviders/AuthProvider';
 import { TeamsHeadingLabelProps } from '../team.interface';
 
 const TeamsHeadingLabel = ({
@@ -96,37 +100,47 @@ const TeamsHeadingLabel = ({
           </Space>
         </Space>
       ) : (
-        <Space align="baseline">
-          <Typography.Title
-            className="m-b-0 w-max-200"
-            data-testid="team-heading"
-            ellipsis={{ tooltip: true }}
-            level={5}>
-            {heading}
-          </Typography.Title>
-          {(hasAccess || isCurrentTeamOwner) && (
-            <Tooltip
-              placement="right"
-              title={
-                hasEditDisplayNamePermission
-                  ? t('label.edit-entity', {
-                      entity: t('label.display-name'),
-                    })
-                  : t('message.no-permission-for-action')
-              }>
-              <Icon
-                className="align-middle"
-                component={EditIcon}
-                data-testid="edit-team-name"
-                disabled={!hasEditDisplayNamePermission}
-                style={{ fontSize: '16px' }}
-                onClick={() => setIsHeadingEditing(true)}
-              />
-            </Tooltip>
+        <Space align="center">
+          <Space align="baseline">
+            <Typography.Title
+              className="m-b-0 w-max-200"
+              data-testid="team-heading"
+              ellipsis={{ tooltip: true }}
+              level={5}>
+              {heading}
+            </Typography.Title>
+            {(hasAccess || isCurrentTeamOwner) && !currentTeam.deleted && (
+              <Tooltip
+                placement="right"
+                title={
+                  hasEditDisplayNamePermission
+                    ? t('label.edit-entity', {
+                        entity: t('label.display-name'),
+                      })
+                    : t('message.no-permission-for-action')
+                }>
+                <Icon
+                  className="align-middle"
+                  component={EditIcon}
+                  data-testid="edit-team-name"
+                  disabled={!hasEditDisplayNamePermission}
+                  style={{ fontSize: '16px' }}
+                  onClick={() => setIsHeadingEditing(true)}
+                />
+              </Tooltip>
+            )}
+          </Space>
+          {currentTeam.deleted && (
+            <Col className="text-xs">
+              <div className="deleted-badge-button" data-testid="deleted-badge">
+                <ExclamationCircleFilled className="m-r-xss font-medium text-xs" />
+                {t('label.deleted')}
+              </div>
+            </Col>
           )}
         </Space>
       ),
-    [heading, isHeadingEditing, hasEditDisplayNamePermission]
+    [heading, isHeadingEditing, hasEditDisplayNamePermission, currentTeam]
   );
 
   useEffect(() => {

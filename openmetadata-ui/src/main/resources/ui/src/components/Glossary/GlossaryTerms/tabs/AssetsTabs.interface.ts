@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { EntityDetailsObjectInterface } from '../../../Explore/explore.interface';
+import { EntityDetailsObjectInterface } from '../../../Explore/ExplorePage.interface';
 import { OperationPermission } from '../../../PermissionProvider/PermissionProvider.interface';
 
 export enum AssetsOfEntity {
@@ -29,6 +29,7 @@ export interface AssetsTabsProps {
   assetCount: number;
   onAssetClick?: (asset?: EntityDetailsObjectInterface) => void;
   isSummaryPanelOpen: boolean;
+  isEntityDeleted?: boolean;
   type?: AssetsOfEntity;
   queryFilter?: string;
   noDataPlaceholder?: boolean | AssetNoDataPlaceholderProps;

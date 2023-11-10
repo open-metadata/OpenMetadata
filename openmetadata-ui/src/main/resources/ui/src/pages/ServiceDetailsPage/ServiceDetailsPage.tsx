@@ -41,15 +41,15 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import AirflowMessageBanner from '../../components/common/AirflowMessageBanner/AirflowMessageBanner';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import { PagingHandlerParams } from '../../components/common/next-previous/NextPrevious.interface';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import TestConnection from '../../components/common/TestConnection/TestConnection';
-import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import DataModelTable from '../../components/DataModels/DataModelsTable';
 import Ingestion from '../../components/Ingestion/Ingestion.component';
 import Loader from '../../components/Loader/Loader';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../components/PermissionProvider/PermissionProvider.interface';
 import ServiceConnectionDetails from '../../components/ServiceConnectionDetails/ServiceConnectionDetails.component';
@@ -99,7 +99,11 @@ import { fetchAirflowConfig } from '../../rest/miscAPI';
 import { getMlModels } from '../../rest/mlModelAPI';
 import { getPipelines } from '../../rest/pipelineAPI';
 import { getSearchIndexes } from '../../rest/SearchIndexAPI';
-import { getServiceByFQN, patchService } from '../../rest/serviceAPI';
+import {
+  getServiceByFQN,
+  patchService,
+  restoreService,
+} from '../../rest/serviceAPI';
 import { getContainers } from '../../rest/storageAPI';
 import { getTopics } from '../../rest/topicsAPI';
 import {
@@ -120,7 +124,7 @@ import {
 } from '../../utils/ServiceUtils';
 import { getDecodedFqn } from '../../utils/StringsUtils';
 import { updateTierTag } from '../../utils/TagsUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ServiceMainTabContent from './ServiceMainTabContent';
 
 export type ServicePageData =
@@ -185,7 +189,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const [isIngestionPipelineLoading, setIsIngestionPipelineLoading] =
     useState(false);
   const [isServiceLoading, setIsServiceLoading] = useState(true);
-  const [dataModel, setDataModel] = useState<Array<ServicePageData>>([]);
   const [dataModelPaging, setDataModelPaging] = useState<Paging>(pagingObject);
   const [paging, setPaging] = useState<Paging>(pagingObject);
   const [ingestionPipelines, setIngestionPipelines] = useState<
@@ -194,7 +197,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const [serviceList] = useState<Array<DatabaseService>>([]);
   const [ingestionPaging, setIngestionPaging] = useState<Paging>({} as Paging);
   const [showDeleted, setShowDeleted] = useState<boolean>(false);
-  const [dataModelCurrentPage, setDataModelCurrentPage] = useState(1);
   const [airflowEndpoint, setAirflowEndpoint] = useState<string>();
   const [connectionDetails, setConnectionDetails] = useState<ConfigData>();
   const [servicePermission, setServicePermission] =
@@ -466,24 +468,21 @@ const ServiceDetailsPage: FunctionComponent = () => {
     [decodedServiceFQN, include]
   );
 
+  // Fetch Data Model count to show it in tab label
   const fetchDashboardsDataModel = useCallback(
     async (params?: ListDataModelParams) => {
       try {
         setIsServiceLoading(true);
-        const { data, paging: resPaging } = await getDataModels({
+        const { paging: resPaging } = await getDataModels({
           service: decodedServiceFQN,
           fields: 'owner,tags,followers',
           include,
           ...params,
         });
-        setDataModel(data);
         setDataModelPaging(resPaging);
       } catch (error) {
         showErrorToast(error as AxiosError);
-        setData([]);
         setPaging(pagingObject);
-      } finally {
-        setIsServiceLoading(false);
       }
     },
     [decodedServiceFQN, include]
@@ -550,7 +549,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   );
 
   const getOtherDetails = useCallback(
-    async (paging?: PagingWithoutTotal, isDataModel?: boolean) => {
+    async (paging?: PagingWithoutTotal) => {
       try {
         setIsServiceLoading(true);
         switch (serviceCategory) {
@@ -565,11 +564,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
             break;
           }
           case ServiceCategory.DASHBOARD_SERVICES: {
-            if (isDataModel) {
-              await fetchDashboardsDataModel({ ...paging });
-            } else {
-              await fetchDashboards(paging);
-            }
+            await fetchDashboards(paging);
 
             break;
           }
@@ -607,7 +602,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
       serviceCategory,
       fetchDatabases,
       fetchTopics,
-      fetchDashboardsDataModel,
       fetchDashboards,
       fetchPipeLines,
       fetchMlModal,
@@ -622,7 +616,8 @@ const ServiceDetailsPage: FunctionComponent = () => {
       const response = await getServiceByFQN(
         serviceCategory,
         serviceFQN,
-        `owner,tags,${isMetadataService ? '' : 'domain'}`
+        `owner,tags,${isMetadataService ? '' : 'domain'}`,
+        Include.All
       );
       setServiceDetails(response);
       setConnectionDetails(response.connection?.config as DashboardConnection);
@@ -635,15 +630,12 @@ const ServiceDetailsPage: FunctionComponent = () => {
   }, [serviceCategory, serviceFQN, getOtherDetails, isMetadataService]);
 
   useEffect(() => {
-    getOtherDetails(undefined, activeTab === EntityTabs.DATA_Model);
+    getOtherDetails();
   }, [activeTab, showDeleted]);
 
   useEffect(() => {
     // fetch count for data modal tab, its need only when its dashboard page and data modal tab is not active
-    if (
-      serviceCategory === ServiceCategory.DASHBOARD_SERVICES &&
-      activeTab !== EntityTabs.DATA_Model
-    ) {
+    if (serviceCategory === ServiceCategory.DASHBOARD_SERVICES) {
       fetchDashboardsDataModel({ limit: 0 });
     }
   }, []);
@@ -773,24 +765,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
     [saveUpdatedServiceData, serviceDetails]
   );
 
-  const dataModelPagingHandler = useCallback(
-    ({ cursorType, currentPage }: PagingHandlerParams) => {
-      if (cursorType) {
-        getOtherDetails(
-          {
-            [cursorType]: dataModelPaging[cursorType],
-          },
-          true
-        );
-
-        setDataModelCurrentPage(currentPage);
-      }
-    },
-    [getOtherDetails, dataModelPaging]
-  );
-
-  const afterDeleteAction = useCallback(() => history.push('/'), []);
-
   const afterDomainUpdateAction = useCallback((data) => {
     const updatedData = data as ServicesType;
 
@@ -818,23 +792,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
           </Row>
         </Col>
 
-        <DataModelTable
-          currentPage={dataModelCurrentPage}
-          data={dataModel}
-          isLoading={isServiceLoading}
-          paging={dataModelPaging}
-          pagingHandler={dataModelPagingHandler}
-        />
+        <DataModelTable showDeleted={showDeleted} />
       </Row>
     ),
-    [
-      showDeleted,
-      dataModel,
-      isServiceLoading,
-      dataModelPaging,
-      dataModelPagingHandler,
-      dataModelCurrentPage,
-    ]
+    [showDeleted]
   );
 
   const ingestionTab = useMemo(
@@ -985,6 +946,42 @@ const ServiceDetailsPage: FunctionComponent = () => {
     [paging, getOtherDetails]
   );
 
+  const handleToggleDelete = () => {
+    setServiceDetails((prev) => {
+      if (!prev) {
+        return prev;
+      }
+
+      return { ...prev, deleted: !prev?.deleted };
+    });
+  };
+
+  const afterDeleteAction = useCallback(
+    (isSoftDelete?: boolean) =>
+      isSoftDelete ? handleToggleDelete() : history.push('/'),
+    [handleToggleDelete]
+  );
+
+  const handleRestoreService = useCallback(async () => {
+    try {
+      await restoreService(serviceCategory, serviceDetails.id);
+      showSuccessToast(
+        t('message.restore-entities-success', {
+          entity: t('label.service'),
+        }),
+        2000
+      );
+      handleToggleDelete();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('message.restore-entities-error', {
+          entity: t('label.service'),
+        })
+      );
+    }
+  }, [serviceCategory, serviceDetails]);
+
   const tabs: TabsProps['items'] = useMemo(() => {
     const tabs = [];
     const userOwnsService =
@@ -1119,14 +1116,13 @@ const ServiceDetailsPage: FunctionComponent = () => {
               isRecursiveDelete
               afterDeleteAction={afterDeleteAction}
               afterDomainUpdateAction={afterDomainUpdateAction}
-              allowSoftDelete={false}
               dataAsset={serviceDetails}
               entityType={entityType}
               permissions={servicePermission}
               showDomain={!isMetadataService}
               onDisplayNameUpdate={handleUpdateDisplayName}
               onOwnerUpdate={handleUpdateOwner}
-              onRestoreDataAsset={() => Promise.resolve()}
+              onRestoreDataAsset={handleRestoreService}
               onTierUpdate={handleUpdateTier}
               onVersionClick={versionHandler}
             />

@@ -39,7 +39,6 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import SchemaEditor from '../../../components/schema-editor/SchemaEditor';
 import {
   DEFAULT_INCLUDE_PROFILE,
   INTERVAL_TYPE_OPTIONS,
@@ -63,13 +62,14 @@ import {
 import { reducerWithoutAction } from '../../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import SchemaEditor from '../../SchemaEditor/SchemaEditor';
 import SliderWithInput from '../../SliderWithInput/SliderWithInput';
+import '../table-profiler.less';
 import {
   ProfilerForm,
   ProfilerSettingModalState,
   ProfilerSettingsModalProps,
 } from '../TableProfiler.interface';
-import '../tableProfiler.less';
 
 const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   tableId,

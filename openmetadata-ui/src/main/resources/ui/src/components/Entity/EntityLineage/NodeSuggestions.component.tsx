@@ -36,7 +36,7 @@ import {
 } from '../../../utils/EntityLineageUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { ExploreSearchIndex } from '../../Explore/explore.interface';
+import { ExploreSearchIndex } from '../../Explore/ExplorePage.interface';
 import './node-suggestion.less';
 
 interface EntitySuggestionProps extends HTMLAttributes<HTMLDivElement> {

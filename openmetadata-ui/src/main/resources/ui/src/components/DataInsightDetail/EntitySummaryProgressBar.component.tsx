@@ -11,11 +11,14 @@
  *  limitations under the License.
  */
 import { Col, Progress, Row, Typography } from 'antd';
+import classNames from 'classnames';
 import { round } from 'lodash';
 import React, { ReactNode } from 'react';
+import { GRAYED_OUT_COLOR } from '../../constants/constants';
 
 type EntitySummaryProgressBarProps = {
   pluralize?: boolean;
+  isActive?: boolean;
   progress: number;
   entity: string;
   latestData: Record<string, number>;
@@ -24,6 +27,7 @@ type EntitySummaryProgressBarProps = {
 };
 
 const EntitySummaryProgressBar = ({
+  isActive = true,
   pluralize = true,
   entity,
   latestData,
@@ -36,16 +40,24 @@ const EntitySummaryProgressBar = ({
   };
 
   return (
-    <Row className="m-b-xs" data-testid="entity-summary-container">
+    <Row
+      className={classNames({
+        'non-active-details': !isActive,
+      })}
+      data-testid="entity-summary-container">
       <Col
         className="d-flex justify-between items-center text-xs"
         md={12}
         sm={24}>
-        <Typography.Paragraph className="m-b-0" data-testid="entity-name">
+        <Typography.Paragraph
+          className="m-b-0 entity-summary-name break-all"
+          data-testid="entity-name">
           {pluralize ? pluralizeName(entity) : entity}
         </Typography.Paragraph>
 
-        <Typography.Paragraph className="m-b-0" data-testid="entity-value">
+        <Typography.Paragraph
+          className="m-b-0 entity-summary-value"
+          data-testid="entity-value">
           {label ?? round(latestData[entity] || 0, 2)}
         </Typography.Paragraph>
       </Col>
@@ -56,7 +68,7 @@ const EntitySummaryProgressBar = ({
           percent={progress}
           showInfo={false}
           size="small"
-          strokeColor={strokeColor}
+          strokeColor={isActive ? strokeColor : GRAYED_OUT_COLOR}
         />
       </Col>
     </Row>

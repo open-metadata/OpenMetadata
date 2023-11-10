@@ -20,7 +20,7 @@ import { REACTION_LIST } from '../../constants/reactions.constant';
 import { ReactionOperation } from '../../enums/reactions.enum';
 import { Reaction, ReactionType } from '../../generated/type/reaction';
 import useImage from '../../hooks/useImage';
-import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
+import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
 
 interface EmojiProps {
   reaction: ReactionType;

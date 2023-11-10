@@ -43,16 +43,16 @@ import {
 } from '../../rest/tableAPI';
 import { getEntityDeleteMessage, Transi18next } from '../../utils/CommonUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
-import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
+import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
+import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../Loader/Loader';
 import { RowData } from './RowData';
+import './sample-data-table.less';
 import {
   SampleData,
   SampleDataProps,
   SampleDataType,
-} from './sample.interface';
-import './SampleDataTable.style.less';
+} from './SampleData.interface';
 
 const SampleDataTable = ({
   isTableDeleted,

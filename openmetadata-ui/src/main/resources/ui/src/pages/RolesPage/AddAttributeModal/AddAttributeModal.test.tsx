@@ -27,7 +27,7 @@ jest.mock('../../../rest/rolesAPIV1', () => ({
 }));
 
 jest.mock(
-  '../../../components/common/rich-text-editor/RichTextEditorPreviewer',
+  '../../../components/common/RichTextEditor/RichTextEditorPreviewer',
   () => jest.fn().mockReturnValue(<div data-testid="previewer">Previewer</div>)
 );
 

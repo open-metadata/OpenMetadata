@@ -29,10 +29,10 @@ import { searchData } from '../../../rest/miscAPI';
 import { Transi18next } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityIcon, getEntityLink } from '../../../utils/TableUtils';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
-import { SourceType } from '../../searched-data/SearchedData.interface';
+import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+import { SourceType } from '../../SearchedData/SearchedData.interface';
 import EntityListSkeleton from '../../Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
-import './MyDataWidget.less';
+import './my-data-widget.less';
 
 const MyDataWidgetInternal = ({
   isEditView = false,
