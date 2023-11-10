@@ -16,8 +16,8 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router-dom';
 import { ReactComponent as CloseIcon } from '../../../assets/svg/close.svg';
-import { ReactComponent as StarIcon } from '../../../assets/svg/ic-star-filled.svg';
 import { ReactComponent as StarGithubIcon } from '../../../assets/svg/ic-star-github.svg';
+import { ReactComponent as StarIcon } from '../../../assets/svg/ic-start-filled-github.svg';
 
 import Icon from '@ant-design/icons/lib/components/Icon';
 import ButtonGroup from 'antd/lib/button/button-group';
