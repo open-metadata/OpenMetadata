@@ -181,6 +181,8 @@ site_menu:
   - category: Deployment / Enable Secrets Manager / How to add a new implementation
     url: /deployment/secrets-manager/how-to-add-a-new-implementation
 
+  - category: Deployment / How to enable AWS RDS IAM Auth
+    url: /deployment/rds-iam-auth
   - category: Deployment / Server Configuration Reference
     url: /deployment/configuration
 
