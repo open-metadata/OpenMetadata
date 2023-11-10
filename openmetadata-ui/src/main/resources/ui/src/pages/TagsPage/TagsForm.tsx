@@ -95,7 +95,14 @@ const TagsForm = ({
           pattern: ENTITY_NAME_REGEX,
           message: t('message.entity-name-validation'),
         },
-        { type: 'string', min: 2, max: 64 },
+        {
+          type: 'string',
+          min: 2,
+          max: 64,
+          message: t('message.entity-size-must-be-between-2-and-64', {
+            entity: t('label.name'),
+          }),
+        },
       ],
       props: {
         'data-testid': 'name',

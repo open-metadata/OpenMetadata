@@ -114,7 +114,7 @@ Object.entries(SERVICE_DETAILS_FOR_VERSION_TEST).map(
 
           interceptURL(
             'GET',
-            `/api/v1/services/${serviceDetails.serviceCategory}/name/${serviceDetails.serviceName}`,
+            `/api/v1/services/${serviceDetails.serviceCategory}/name/${serviceDetails.serviceName}?*`,
             `getServiceDetails`
           );
           interceptURL(
@@ -206,7 +206,7 @@ Object.entries(SERVICE_DETAILS_FOR_VERSION_TEST).map(
 
         interceptURL(
           'GET',
-          `/api/v1/services/${serviceDetails.serviceCategory}/name/${serviceDetails.serviceName}`,
+          `/api/v1/services/${serviceDetails.serviceCategory}/name/${serviceDetails.serviceName}?*`,
           `get${serviceType}Details`
         );
         interceptURL(
@@ -266,7 +266,7 @@ Object.entries(SERVICE_DETAILS_FOR_VERSION_TEST).map(
 
         interceptURL(
           'GET',
-          `/api/v1/services/${serviceDetails.serviceCategory}/name/${serviceDetails.serviceName}`,
+          `/api/v1/services/${serviceDetails.serviceCategory}/name/${serviceDetails.serviceName}?*`,
           `get${serviceType}Details`
         );
         interceptURL(

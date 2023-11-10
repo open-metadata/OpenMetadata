@@ -77,9 +77,10 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
-        render: (_, record) => {
+        render: (name, record) => {
           return record.executable ? (
             <Link
+              data-testid={name}
               to={{
                 pathname: getTableTabPath(
                   encodeURIComponent(
@@ -96,6 +97,7 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
             </Link>
           ) : (
             <Link
+              data-testid={name}
               to={getTestSuitePath(
                 encodeURIComponent(record.fullyQualifiedName ?? record.name)
               )}>

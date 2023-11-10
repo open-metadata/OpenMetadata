@@ -10,6 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+import {
+  DATABASE_DETAILS,
+  DATABASE_SERVICE_DETAILS,
+  SCHEMA_DETAILS,
+} from '../constants/entityConstant';
+import { uuid } from './common';
+
 /**
  * create full hierarchy of database service (service > database > schema > tables)
  */
@@ -111,4 +119,26 @@ export const hardDeleteService = ({ serviceFqn, token, serviceType }) => {
       expect(response.status).to.eq(200);
     });
   });
+};
+
+export const generateRandomTable = () => {
+  const id = uuid();
+  const name = `cypress-table-${id}`;
+
+  const table = {
+    name,
+    description: `cypress-table-description-${id}`,
+    displayName: name,
+    columns: [
+      {
+        name: `cypress-column-${id}`,
+        description: `cypress-column-description-${id}`,
+        dataType: 'NUMERIC',
+        dataTypeDisplay: 'numeric',
+      },
+    ],
+    databaseSchema: `${DATABASE_SERVICE_DETAILS.name}.${DATABASE_DETAILS.name}.${SCHEMA_DETAILS.name}`,
+  };
+
+  return table;
 };
