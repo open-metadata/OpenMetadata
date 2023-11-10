@@ -54,7 +54,7 @@ public class TableIndex implements ColumnIndex {
         .getDatabase()
         .setDisplayName(
             CommonUtil.nullOrEmpty(table.getDatabase().getDisplayName())
-                ? table.getDatabaseSchema().getName()
+                ? table.getDatabase().getName()
                 : table.getDatabase().getDisplayName());
     Map<String, Object> doc = JsonUtils.getMap(table);
     List<SearchSuggest> suggest = new ArrayList<>();
