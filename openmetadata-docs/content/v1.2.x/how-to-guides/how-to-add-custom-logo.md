@@ -1,5 +1,5 @@
 ---
-title: How to change the Login Page Nav Bar Logo and Favicon
+title: How to change the Login Page & Nav Bar Logo and Favicon
 slug: /how-to-guides/how-to-add-custom-logo
 ---
 
