@@ -266,12 +266,6 @@ jest.mock(
   })
 );
 
-jest.mock('../../utils/DatabaseDetails.utils', () => ({
-  getDatabaseSchemaTable: jest
-    .fn()
-    .mockReturnValue(<>testDatabaseSchemaTable</>),
-}));
-
 jest.mock('../../components/AppRouter/withActivityFeed', () => ({
   withActivityFeed: jest.fn().mockImplementation((Some) => Some),
 }));

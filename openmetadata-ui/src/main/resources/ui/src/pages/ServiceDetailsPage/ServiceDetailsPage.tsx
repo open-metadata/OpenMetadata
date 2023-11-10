@@ -11,17 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Button,
-  Col,
-  Row,
-  Space,
-  Switch,
-  Tabs,
-  TabsProps,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Button, Col, Row, Space, Tabs, TabsProps, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined, toString } from 'lodash';
@@ -774,30 +764,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
     }));
   }, []);
 
-  const dataModalTab = useMemo(
-    () => (
-      <Row gutter={[0, 16]}>
-        <Col className="p-t-sm p-x-lg" span={24}>
-          <Row justify="end">
-            <Col>
-              <Switch
-                checked={showDeleted}
-                data-testid="show-deleted"
-                onClick={setShowDeleted}
-              />
-              <Typography.Text className="m-l-xs">
-                {t('label.deleted')}
-              </Typography.Text>{' '}
-            </Col>
-          </Row>
-        </Col>
-
-        <DataModelTable showDeleted={showDeleted} />
-      </Row>
-    ),
-    [showDeleted]
-  );
-
   const ingestionTab = useMemo(
     () => (
       <Row>
@@ -1024,7 +990,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         name: t('label.data-model'),
         key: EntityTabs.DATA_Model,
         count: dataModelPaging.total,
-        children: dataModalTab,
+        children: <DataModelTable />,
       });
     }
 
@@ -1073,7 +1039,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     getOtherDetails,
     saveUpdatedServiceData,
     dataModelPaging,
-    dataModalTab,
+
     ingestionPaging,
     ingestionTab,
     testConnectionTab,

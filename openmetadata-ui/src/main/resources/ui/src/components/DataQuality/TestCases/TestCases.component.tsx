@@ -67,6 +67,7 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
     handlePageSizeChange,
     paging,
     handlePagingChange,
+    showPagination,
   } = usePaging();
 
   const handleSearchParam = (
@@ -232,6 +233,7 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
           afterDeleteAction={fetchTestCases}
           isLoading={isLoading}
           pagingData={pagingData}
+          showPagination={showPagination}
           testCases={testCase}
           onTestCaseResultUpdate={handleStatusSubmit}
           onTestUpdate={handleTestCaseUpdate}
