@@ -52,7 +52,7 @@ import { ReactComponent as IconNotNullLineThrough } from '../assets/svg/icon-not
 import { ReactComponent as IconNotNull } from '../assets/svg/icon-not-null.svg';
 import { ReactComponent as IconUniqueLineThrough } from '../assets/svg/icon-unique-line-through.svg';
 import { ReactComponent as IconUnique } from '../assets/svg/icon-unique.svg';
-import { SourceType } from '../components/searched-data/SearchedData.interface';
+import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   DE_ACTIVE_COLOR,
@@ -158,38 +158,34 @@ export const getConstraintIcon = ({
 }) => {
   let title: string, icon: SvgComponent, dataTestId: string;
   switch (constraint) {
-    case ConstraintTypes.PRIMARY_KEY:
-      {
-        title = t('label.primary-key');
-        icon = isConstraintDeleted ? IconKeyLineThrough : IconKey;
-        dataTestId = 'primary-key';
-      }
+    case ConstraintTypes.PRIMARY_KEY: {
+      title = t('label.primary-key');
+      icon = isConstraintDeleted ? IconKeyLineThrough : IconKey;
+      dataTestId = 'primary-key';
 
       break;
-    case ConstraintTypes.UNIQUE:
-      {
-        title = t('label.unique');
-        icon = isConstraintDeleted ? IconUniqueLineThrough : IconUnique;
-        dataTestId = 'unique';
-      }
+    }
+    case ConstraintTypes.UNIQUE: {
+      title = t('label.unique');
+      icon = isConstraintDeleted ? IconUniqueLineThrough : IconUnique;
+      dataTestId = 'unique';
 
       break;
-    case ConstraintTypes.NOT_NULL:
-      {
-        title = t('label.not-null');
-        icon = isConstraintDeleted ? IconNotNullLineThrough : IconNotNull;
-        dataTestId = 'not-null';
-      }
+    }
+    case ConstraintTypes.NOT_NULL: {
+      title = t('label.not-null');
+      icon = isConstraintDeleted ? IconNotNullLineThrough : IconNotNull;
+      dataTestId = 'not-null';
 
       break;
-    case ConstraintTypes.FOREIGN_KEY:
-      {
-        title = t('label.foreign-key');
-        icon = isConstraintDeleted ? IconForeignKeyLineThrough : IconForeignKey;
-        dataTestId = 'foreign-key';
-      }
+    }
+    case ConstraintTypes.FOREIGN_KEY: {
+      title = t('label.foreign-key');
+      icon = isConstraintDeleted ? IconForeignKeyLineThrough : IconForeignKey;
+      dataTestId = 'foreign-key';
 
       break;
+    }
     default:
       return null;
   }
@@ -324,7 +320,7 @@ export const getServiceIcon = (source: SourceType) => {
       <img
         alt="service-icon"
         className="inline h-7"
-        src={serviceUtilClassBase.getServiceTypeLogo(source.serviceType || '')}
+        src={serviceUtilClassBase.getServiceTypeLogo(source.serviceType ?? '')}
       />
     );
   }
@@ -405,11 +401,11 @@ export const getEntityIcon = (indexType: string) => {
 
 export const makeRow = <T extends Column | SearchIndexField>(column: T) => {
   return {
-    description: column.description || '',
+    description: column.description ?? '',
     // Sorting tags as the response of PATCH request does not return the sorted order
     // of tags, but is stored in sorted manner in the database
     // which leads to wrong PATCH payload sent after further tags removal
-    tags: sortTagsCaseInsensitive(column.tags || []),
+    tags: sortTagsCaseInsensitive(column.tags ?? []),
     key: column?.name,
     ...column,
   };
@@ -551,7 +547,7 @@ export const prepareConstraintIcon = ({
   const columnConstraintEl = columnConstraint
     ? getConstraintIcon({
         constraint: columnConstraint,
-        className: iconClassName || 'm-r-xs',
+        className: iconClassName ?? 'm-r-xs',
         width: iconWidth,
         isConstraintAdded: isColumnConstraintAdded,
         isConstraintDeleted: isColumnConstraintDeleted,
@@ -563,7 +559,7 @@ export const prepareConstraintIcon = ({
     ? filteredTableConstraints.map((tableConstraint) =>
         getConstraintIcon({
           constraint: tableConstraint.constraintType,
-          className: iconClassName || 'm-r-xs',
+          className: iconClassName ?? 'm-r-xs',
           width: iconWidth,
           isConstraintAdded: isTableConstraintAdded,
           isConstraintDeleted: isTableConstraintDeleted,
@@ -700,3 +696,11 @@ export const updateFieldTags = <T extends TableFieldsInfoCommonEntities>(
 export const FilterIcon = (filtered: boolean) => (
   <FilterOutlined style={{ color: filtered ? PRIMERY_COLOR : undefined }} />
 );
+
+export const getFilterIcon = (dataTestId: string) => (filtered: boolean) =>
+  (
+    <FilterOutlined
+      data-testid={dataTestId}
+      style={{ color: filtered ? PRIMERY_COLOR : undefined }}
+    />
+  );

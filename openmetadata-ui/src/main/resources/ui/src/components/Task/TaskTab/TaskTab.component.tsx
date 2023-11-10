@@ -68,7 +68,7 @@ import {
   TASK_ACTION_LIST,
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import './task-tab.less';
 import { TaskTabProps } from './TaskTab.interface';
 

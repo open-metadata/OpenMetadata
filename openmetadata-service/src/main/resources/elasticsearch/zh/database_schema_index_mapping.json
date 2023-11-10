@@ -38,7 +38,8 @@
           "fields": {
             "keyword": {
               "type": "keyword",
-              "ignore_above": 256
+              "ignore_above": 256,
+              "normalizer": "lowercase_normalizer"
             }
           }
         },
@@ -290,7 +291,8 @@
               }
             },
             "fullyQualifiedName": {
-              "type": "text"
+              "type": "keyword",
+              "normalizer": "lowercase_normalizer"
             },
             "description": {
               "type": "text"

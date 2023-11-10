@@ -32,7 +32,7 @@ jest.mock('../../AppState', () => ({
   },
 }));
 
-jest.mock('../authentication/auth-provider/AuthProvider', () => {
+jest.mock('../Auth/AuthProviders/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({
       isAuthDisabled: false,
@@ -68,7 +68,7 @@ jest.mock('../../pages/SignUp/SignUpPage', () =>
   jest.fn().mockReturnValue(<p>SignUpPage</p>)
 );
 
-jest.mock('../../components/router/AuthenticatedAppRouter', () =>
+jest.mock('../../components/AppRouter/AuthenticatedAppRouter', () =>
   jest.fn().mockReturnValue(<p>AuthenticatedAppRouter</p>)
 );
 

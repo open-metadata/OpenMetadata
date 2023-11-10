@@ -51,6 +51,7 @@ export interface TeamsInfoProps {
   childTeamsCount: number;
   currentTeam: Team;
   entityPermissions: OperationPermission;
+  isTeamDeleted: boolean;
   updateTeamHandler: (data: Team) => Promise<void>;
 }
 

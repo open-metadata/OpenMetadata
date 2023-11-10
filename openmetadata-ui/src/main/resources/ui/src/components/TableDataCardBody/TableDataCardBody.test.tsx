@@ -17,7 +17,7 @@ import { TAG_CONSTANT } from '../../constants/Tag.constants';
 import TableDataCardBody from './TableDataCardBody';
 
 jest.mock(
-  '../../components/common/rich-text-editor/RichTextEditorPreviewer',
+  '../../components/common/RichTextEditor/RichTextEditorPreviewer',
   () => {
     return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
   }

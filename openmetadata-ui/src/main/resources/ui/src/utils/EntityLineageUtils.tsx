@@ -43,6 +43,7 @@ import { ReactComponent as MlModelIcon } from '../assets/svg/mlmodal.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/pipeline-grey.svg';
 import { ReactComponent as TableIcon } from '../assets/svg/table-grey.svg';
 import { ReactComponent as TopicIcon } from '../assets/svg/topic-grey.svg';
+import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { CustomEdge } from '../components/Entity/EntityLineage/CustomEdge.component';
 import CustomNodeV1 from '../components/Entity/EntityLineage/CustomNodeV1.component';
 import {
@@ -60,7 +61,7 @@ import {
   SelectedEdge,
   SelectedNode,
 } from '../components/Entity/EntityLineage/EntityLineage.interface';
-import { ExploreSearchIndex } from '../components/Explore/explore.interface';
+import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
 import Loader from '../components/Loader/Loader';
 import {
   getContainerDetailPath,
@@ -78,6 +79,7 @@ import {
   NODE_WIDTH,
   ZOOM_VALUE,
 } from '../constants/Lineage.constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import {
   EntityLineageDirection,
   EntityLineageNodeType,
@@ -397,10 +399,12 @@ export const getLineageData = (
 
 export const getDeletedLineagePlaceholder = () => {
   return (
-    <div className="m-t-md m-l-md global-border rounded-4 flex-center p-8 font-medium">
-      <span>
-        {t('message.lineage-data-is-not-available-for-deleted-entities')}
-      </span>
+    <div className="flex-center font-medium mt-24" data-testid="no-queries">
+      <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+        {t('message.field-data-is-not-available-for-deleted-entities', {
+          field: t('label.lineage'),
+        })}
+      </ErrorPlaceHolder>
     </div>
   );
 };

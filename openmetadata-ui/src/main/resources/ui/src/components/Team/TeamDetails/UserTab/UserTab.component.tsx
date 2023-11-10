@@ -11,53 +11,59 @@
  *  limitations under the License.
  */
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, Col, Row, Space, Tooltip } from 'antd';
+import { Button, Col, Modal, Row, Space, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import classNames from 'classnames';
 import { isEmpty, orderBy } from 'lodash';
 import QueryString from 'qs';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as ExportIcon } from '../../../../assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from '../../../../assets/svg/ic-import.svg';
 import { ReactComponent as IconRemove } from '../../../../assets/svg/ic-remove.svg';
-import ManageButton from '../../../../components/common/entityPageInfo/ManageButton/ManageButton';
-import ErrorPlaceHolder from '../../../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import FilterTablePlaceHolder from '../../../../components/common/error-with-placeholder/FilterTablePlaceHolder';
+import ErrorPlaceHolder from '../../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import FilterTablePlaceHolder from '../../../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { ManageButtonItemLabel } from '../../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
-import NextPrevious from '../../../../components/common/next-previous/NextPrevious';
-import Searchbar from '../../../../components/common/searchbar/Searchbar';
 import Table from '../../../../components/common/Table/Table';
 import { UserSelectableList } from '../../../../components/common/UserSelectableList/UserSelectableList.component';
 import { useEntityExportModalProvider } from '../../../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
-import ConfirmationModal from '../../../../components/Modals/ConfirmationModal/ConfirmationModal';
-import { commonUserDetailColumns } from '../../../../components/Users/Users.util';
-import { PAGE_SIZE_MEDIUM } from '../../../../constants/constants';
+import {
+  INITIAL_PAGING_VALUE,
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_MEDIUM,
+} from '../../../../constants/constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../../constants/GlobalSettings.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { EntityAction } from '../../../../enums/entity.enum';
+import { SearchIndex } from '../../../../enums/search.enum';
 import { User } from '../../../../generated/entity/teams/user';
 import { EntityReference } from '../../../../generated/entity/type';
-import { ImportType } from '../../../../pages/teams/ImportTeamsPage/ImportTeamsPage.interface';
+import { Paging } from '../../../../generated/type/paging';
+import { usePaging } from '../../../../hooks/paging/usePaging';
+import { SearchResponse } from '../../../../interface/search.interface';
+import { ImportType } from '../../../../pages/TeamsPage/ImportTeamsPage/ImportTeamsPage.interface';
+import { searchData } from '../../../../rest/miscAPI';
 import { exportUserOfTeam } from '../../../../rest/teamsAPI';
+import { getUsers } from '../../../../rest/userAPI';
+import { formatUsersResponse } from '../../../../utils/APIUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getSettingsPathWithFqn } from '../../../../utils/RouterUtils';
+import { getDecodedFqn, getEncodedFqn } from '../../../../utils/StringsUtils';
+import { commonUserDetailColumns } from '../../../../utils/Users.util';
+import ManageButton from '../../../common/EntityPageInfos/ManageButton/ManageButton';
+import NextPrevious from '../../../common/NextPrevious/NextPrevious';
+import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
+import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
 import { UserTabProps } from './UserTab.interface';
 
 export const UserTab = ({
-  users,
-  searchText,
-  isLoading,
   permission,
   currentTeam,
-  onSearchUsers,
   onAddUser,
-  paging,
-  onChangePaging,
-  currentPage,
   onRemoveUser,
 }: UserTabProps) => {
   const { t } = useTranslation();
@@ -69,9 +75,111 @@ export const UserTab = ({
     const user = currentTeam.users?.find((u) => u.id === id);
     setDeletingUser(user);
   };
+  const [isLoading, setIsLoading] = useState(true);
+  const [users, setUsers] = useState<User[]>([]);
+  const [searchText, setSearchText] = useState('');
+  const {
+    currentPage,
+    pageSize,
+    paging,
+    handlePageChange,
+    handlePageSizeChange,
+    handlePagingChange,
+    showPagination,
+  } = usePaging(PAGE_SIZE_MEDIUM);
+
+  /**
+   * Make API call to fetch current team user data
+   */
+  const getCurrentTeamUsers = (team: string, paging: Partial<Paging> = {}) => {
+    setIsLoading(true);
+    getUsers({
+      fields: 'teams,roles',
+      limit: PAGE_SIZE_BASE,
+      team: getDecodedFqn(team),
+      ...paging,
+    })
+      .then((res) => {
+        if (res.data) {
+          setUsers(res.data);
+          handlePagingChange(res.paging);
+        }
+      })
+      .catch(() => {
+        setUsers([]);
+        handlePagingChange({ total: 0 });
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  };
+
+  const searchUsers = (text: string, currentPage: number) => {
+    setIsLoading(true);
+    searchData(
+      text,
+      currentPage,
+      PAGE_SIZE_BASE,
+      `(teams.id:${currentTeam?.id})`,
+      '',
+      '',
+      SearchIndex.USER
+    )
+      .then((res) => {
+        const data = formatUsersResponse(
+          (res.data as SearchResponse<SearchIndex.USER>).hits.hits
+        );
+        setUsers(data);
+        handlePagingChange({
+          total: res.data.hits.total.value,
+        });
+      })
+      .catch(() => {
+        setUsers([]);
+      })
+      .finally(() => setIsLoading(false));
+  };
+
+  const userPagingHandler = ({
+    cursorType,
+    currentPage,
+  }: PagingHandlerParams) => {
+    if (searchText) {
+      handlePageChange(currentPage);
+      searchUsers(searchText, currentPage);
+    } else if (cursorType) {
+      handlePageChange(currentPage);
+      getCurrentTeamUsers(currentTeam.name, {
+        [cursorType]: paging[cursorType],
+      });
+    }
+  };
+
+  const handleCurrentUserPage = (value?: number) => {
+    handlePageChange(value ?? INITIAL_PAGING_VALUE);
+  };
+
+  const handleUsersSearchAction = (text: string) => {
+    setSearchText(text);
+    handleCurrentUserPage(INITIAL_PAGING_VALUE);
+    if (text) {
+      searchUsers(text, INITIAL_PAGING_VALUE);
+    } else {
+      getCurrentTeamUsers(currentTeam.name);
+    }
+  };
+
+  useEffect(() => {
+    getCurrentTeamUsers(getEncodedFqn(currentTeam.name));
+  }, [currentTeam]);
+
+  const isTeamDeleted = useMemo(
+    () => currentTeam.deleted ?? false,
+    [currentTeam]
+  );
 
   const columns: ColumnsType<User> = useMemo(() => {
-    return [
+    const tabColumns: ColumnsType<User> = [
       ...commonUserDetailColumns(),
       {
         title: t('label.action-plural'),
@@ -104,7 +212,11 @@ export const UserTab = ({
         ),
       },
     ];
-  }, [handleRemoveClick, permission]);
+
+    return tabColumns.filter((column) =>
+      column.key === 'actions' ? !isTeamDeleted : true
+    );
+  }, [handleRemoveClick, permission, isTeamDeleted]);
 
   const sortedUser = useMemo(() => orderBy(users, ['name'], 'asc'), [users]);
 
@@ -175,7 +287,17 @@ export const UserTab = ({
     }
   };
 
-  if (isEmpty(users) && !searchText && isLoading <= 0) {
+  const addUserButtonTitle = useMemo(() => {
+    if (isTeamDeleted) {
+      return t('message.this-action-is-not-allowed-for-deleted-entities');
+    }
+
+    return permission.EditAll
+      ? t('label.add-new-entity', { entity: t('label.user') })
+      : t('message.no-permission-for-action');
+  }, [permission, isTeamDeleted]);
+
+  if (isEmpty(users) && !searchText && !isLoading) {
     return (
       <ErrorPlaceHolder
         button={
@@ -184,25 +306,27 @@ export const UserTab = ({
               hasPermission
               selectedUsers={currentTeam.users ?? []}
               onUpdate={onAddUser}>
-              <Button
-                ghost
-                className="p-x-lg"
-                data-testid="add-new-user"
-                icon={<PlusOutlined />}
-                title={
-                  permission.EditAll
-                    ? t('label.add-new-entity', { entity: t('label.user') })
-                    : t('message.no-permission-for-action')
-                }
-                type="primary">
-                {t('label.add')}
-              </Button>
+              <Tooltip placement="topRight" title={addUserButtonTitle}>
+                <Button
+                  ghost
+                  className={classNames({
+                    'p-x-lg': permission.EditAll && !isTeamDeleted,
+                  })}
+                  data-testid="add-new-user"
+                  disabled={!permission.EditAll || isTeamDeleted}
+                  icon={<PlusOutlined />}
+                  type="primary">
+                  {t('label.add')}
+                </Button>
+              </Tooltip>
             </UserSelectableList>
-            <ManageButton
-              canDelete={false}
-              entityName={currentTeam.name}
-              extraDropdownContent={IMPORT_EXPORT_MENU_ITEM}
-            />
+            {!isTeamDeleted && (
+              <ManageButton
+                canDelete={false}
+                entityName={currentTeam.name}
+                extraDropdownContent={IMPORT_EXPORT_MENU_ITEM}
+              />
+            )}
           </Space>
         }
         className="mt-0-important"
@@ -225,28 +349,30 @@ export const UserTab = ({
               })}
               searchValue={searchText}
               typingInterval={500}
-              onSearch={onSearchUsers}
+              onSearch={handleUsersSearchAction}
             />
           </Col>
-          <Col>
-            <Space>
-              {users.length > 0 && permission.EditAll && (
-                <UserSelectableList
-                  hasPermission
-                  selectedUsers={currentTeam.users ?? []}
-                  onUpdate={onAddUser}>
-                  <Button data-testid="add-new-user" type="primary">
-                    {t('label.add-entity', { entity: t('label.user') })}
-                  </Button>
-                </UserSelectableList>
-              )}
-              <ManageButton
-                canDelete={false}
-                entityName={currentTeam.name}
-                extraDropdownContent={IMPORT_EXPORT_MENU_ITEM}
-              />
-            </Space>
-          </Col>
+          {!currentTeam.deleted && (
+            <Col>
+              <Space>
+                {users.length > 0 && permission.EditAll && (
+                  <UserSelectableList
+                    hasPermission
+                    selectedUsers={currentTeam.users ?? []}
+                    onUpdate={onAddUser}>
+                    <Button data-testid="add-new-user" type="primary">
+                      {t('label.add-entity', { entity: t('label.user') })}
+                    </Button>
+                  </UserSelectableList>
+                )}
+                <ManageButton
+                  canDelete={false}
+                  entityName={currentTeam.name}
+                  extraDropdownContent={IMPORT_EXPORT_MENU_ITEM}
+                />
+              </Space>
+            </Col>
+          )}
         </Row>
       </Col>
       <Col span={24}>
@@ -255,7 +381,7 @@ export const UserTab = ({
           className="teams-list-table"
           columns={columns}
           dataSource={sortedUser}
-          loading={isLoading > 0}
+          loading={isLoading}
           locale={{
             emptyText: <FilterTablePlaceHolder />,
           }}
@@ -263,30 +389,32 @@ export const UserTab = ({
           rowKey="name"
           size="small"
         />
-        {paging.total > PAGE_SIZE_MEDIUM && (
+        {showPagination && (
           <NextPrevious
             currentPage={currentPage}
             isNumberBased={Boolean(searchText)}
-            pageSize={PAGE_SIZE_MEDIUM}
+            pageSize={pageSize}
             paging={paging}
-            pagingHandler={onChangePaging}
+            pagingHandler={userPagingHandler}
+            onShowSizeChange={handlePageSizeChange}
           />
         )}
       </Col>
 
-      <ConfirmationModal
-        bodyText={t('message.are-you-sure-want-to-text', {
+      <Modal
+        cancelText={t('label.cancel')}
+        data-testid="confirmation-modal"
+        okText={t('label.confirm')}
+        open={Boolean(deletingUser)}
+        title={t('label.removing-user')}
+        onCancel={() => setDeletingUser(undefined)}
+        onOk={handleRemoveUser}>
+        {t('message.are-you-sure-want-to-text', {
           text: t('label.remove-entity', {
             entity: getEntityName(deletingUser),
           }),
         })}
-        cancelText={t('label.cancel')}
-        confirmText={t('label.confirm')}
-        header={t('label.removing-user')}
-        visible={Boolean(deletingUser)}
-        onCancel={() => setDeletingUser(undefined)}
-        onConfirm={handleRemoveUser}
-      />
+      </Modal>
     </Row>
   );
 };

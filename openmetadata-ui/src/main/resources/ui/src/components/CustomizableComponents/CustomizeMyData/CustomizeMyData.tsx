@@ -52,11 +52,11 @@ import {
 import { getDecodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ActivityFeedProvider from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
-import PageLayoutV1 from '../../containers/PageLayoutV1';
+import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import AddWidgetModal from '../AddWidgetModal/AddWidgetModal';
+import './customize-my-data.less';
 import { CustomizeMyDataProps } from './CustomizeMyData.interface';
-import './CustomizeMyData.less';
 
 const ReactGridLayout = WidthProvider(RGL);
 

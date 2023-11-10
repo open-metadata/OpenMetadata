@@ -26,7 +26,7 @@ import {
   Reaction as ReactionProp,
   ReactionType,
 } from '../../generated/type/reaction';
-import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
+import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
 import Emoji from './Emoji';
 import Reaction from './Reaction';
 import './reactions.less';

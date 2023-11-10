@@ -20,7 +20,7 @@ const mockOnSave = jest.fn();
 const mockOnCancel = jest.fn();
 const mockValue = 'Test value';
 
-jest.mock('../../common/rich-text-editor/RichTextEditor', () => {
+jest.mock('../../common/RichTextEditor/RichTextEditor', () => {
   return forwardRef(
     jest.fn().mockImplementation(({ initialValue }, ref) => {
       return <div ref={ref}>{initialValue}MarkdownWithPreview component</div>;
