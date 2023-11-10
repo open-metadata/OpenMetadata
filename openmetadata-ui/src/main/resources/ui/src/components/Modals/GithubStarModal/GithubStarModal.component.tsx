@@ -15,9 +15,9 @@ import { CookieStorage } from 'cookie-storage';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router-dom';
-import StarGif from '../../../assets/gif/star.gif';
 import { ReactComponent as CloseIcon } from '../../../assets/svg/close.svg';
-import { ReactComponent as StarIcon } from '../../../assets/svg/ic-star-github.svg';
+import { ReactComponent as StarIcon } from '../../../assets/svg/ic-star-filled.svg';
+import { ReactComponent as StarGithubIcon } from '../../../assets/svg/ic-star-github.svg';
 
 import Icon from '@ant-design/icons/lib/components/Icon';
 import ButtonGroup from 'antd/lib/button/button-group';
@@ -55,7 +55,7 @@ const GithubStarModal = () => {
 
   const usernameExistsInCookie = useMemo(
     () => Boolean(cookieStorage.getItem(userCookieName)),
-    [userCookieName, loggedInUserName]
+    [userCookieName]
   );
 
   const fetchOpenMetaData = async () => {
@@ -117,11 +117,7 @@ const GithubStarModal = () => {
           <Card
             className="github-star-popup-card"
             data-testid="github-star-popup-card">
-            <img
-              alt="star-open-metadata"
-              className="github-star-icon"
-              src={StarGif}
-            />
+            <StarIcon className="github-star-icon" />
 
             <Typography.Text className="github-star-popup-header">
               {t('label.star-us-on-github')}
@@ -140,7 +136,7 @@ const GithubStarModal = () => {
                 }}>
                 <Button
                   className="github-star-button github-modal-action-button"
-                  icon={<Icon component={StarIcon} size={12} />}>
+                  icon={<Icon component={StarGithubIcon} size={12} />}>
                   {t('label.star')}
                 </Button>
               </Link>
