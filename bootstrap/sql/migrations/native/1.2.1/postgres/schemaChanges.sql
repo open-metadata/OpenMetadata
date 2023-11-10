@@ -9,3 +9,14 @@ SET json = jsonb_set(
 )
 WHERE json #>> '{pipelineType}' = 'metadata'
 AND json #>> '{sourceConfig,config,type}' = 'DatabaseMetadata';
+
+
+--update the timestamps to millis for dbt test results
+UPDATE data_quality_data_time_series dqdts
+SET json = jsonb_set(
+	dqdts.json::jsonb,
+	'{timestamp}',
+	to_jsonb(((dqdts.json ->> 'timestamp')::bigint)*1000)
+)
+WHERE dqdts.extension = 'testCase.testCaseResult'
+  AND (json->>'timestamp') ~ '^[0-9]{10}$';
