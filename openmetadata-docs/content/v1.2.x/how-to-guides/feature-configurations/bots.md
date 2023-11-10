@@ -3,53 +3,50 @@ title: How to set up bots
 slug: /how-to-guides/feature-configurations/bots
 ---
 
-# How to set up bots when SSO is configured
+# How to set up a bot
 
-In the 0.12.1 version, `AIRFLOW_AUTH_PROVIDER` and `OM_AUTH_AIRFLOW_{AUTH_PROVIDER}` parameters are not needed to configure
-how the ingestion is performed from Airflow when our OpenMetadata server is secured. This can be achieved directly from UI
-through the _Bots_ configuration in the settings page.
-
-By default, `ingestion-bot` is going to be the default account used for any ingestion pipeline deployed from the UI. To set 
-up the `ingestion-bot` from UI. Go to `Settings` > `Bots`. In the following example we are going to show how to configure it
-for Google SSO, but it can apply to any SSO.
-
-- Click on `ingestion-bot`:
-{% image
-src="/images/v1.1/how-to-guides/feature-configurations/bots/click-bot.png"
-alt="click-bot"
-caption="Click on 'ingestion-bot'" /%}
-
-
-- In case you are configuring a bot with an SSO service account for the first time, please revoke first the default auto 
-generated JWT Token by clicking the "**Revoke**" button:
+The default account for any ingestion pipeline deployed from the UI is `ingestion-bot`. To configure `ingestion-bot` from the UI, go to the settings page, scroll down to the Integration section, and access the `Bots` tab.
 
 {% image
-src="/images/v1.1/how-to-guides/feature-configurations/bots/revoke-jwt-token.png"
-alt="revoke-jwt-toke"
-caption="Revoke JWT Token" /%}
+src="/images/v1.2/how-to-guides/feature-configurations/bots/bot-listing.png"
+alt="bot-listing"
+/%}
 
+You can either create a new bot or update the existing `ingestion-bot`.
 
-- Then, click on "**Generate New Token**":
+### Update `ingestion-bot`
 
-{% image
-src="/images/v1.1/how-to-guides/feature-configurations/bots/generate-new-token.png"
-alt="generate-new-token"
-caption="Generate New Token to edit" /%}
+Click on `ingestion-bot` and you will be redirected to it's details page, there you can
 
-
-- Select your configured SSO from the list. In this case, `Google SSO`.
-
-{% image src="/images/v1.1/how-to-guides/feature-configurations/bots/select-google-sso.png"
-alt="select-google-sso"
-caption="Select 'Google SSO'" /%}
-
-- Configure it with your SSO values. Ensure that the account email of your SSO matches the service account name of the 
-bot.
+- Revoke the token if already present
+- Copy the generated token
 
 {% image
-src="/images/v1.1/how-to-guides/feature-configurations/bots/configure-bot.png"
-alt="configure-bot"
-caption="Configure the ingestion-bot with your SSO values" /%}
+src="/images/v1.2/how-to-guides/feature-configurations/bots/bot-token-page.png"
+alt="bot-listing"
+/%}
+
+- Generate new token
+
+{% image
+src="/images/v1.2/how-to-guides/feature-configurations/bots/generate-new-token.png"
+alt="generate new token"
+/%}
+
+{% image
+src="/images/v1.2/how-to-guides/feature-configurations/bots/bot-token-generate.png"
+alt="token generate page"
+/%}
+
+### Create a new bot
+
+Click the `Add bot` button, and you will be directed to the bot creation page. Fill in the required details and then click on the `Create` button.
+
+{% image
+src="/images/v1.2/how-to-guides/feature-configurations/bots/create-bot.png"
+alt="create bot"
+/%}
+
 
 ### Notes:
 
