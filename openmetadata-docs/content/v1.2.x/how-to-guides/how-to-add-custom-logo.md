@@ -1,45 +1,34 @@
 ---
-title: How to change the Login Page and Nav Bar Logo
+title: How to change the Login Page Nav Bar Logo and Favicon
 slug: /how-to-guides/how-to-add-custom-logo
 ---
 
-# How to add a custom logo for the application
+# How to add a custom logo and favicon for the application
 
-To change the Logo for the application, we need to update logo at two locations.
+OpenMetadata allows you to customize the logo and favicons, in this guide we will see how to add custom logo and favicon.
 
-1. Login Page
-
-{% image
-src="/images/v1.1/how-to-guides/login-Page-Logo.png"
-alt="loginPage-image"
-/%}
-
-2. Navigation Bar
+1. Visit the setting page and then scroll down to OpenMetadata section and navigate to `Custom Logo` settings and click on the `Edit` button.
 
 {% image
-src="/images/v1.1/how-to-guides/nav-Bar-Logo.png"
-alt="navBar-image"
+src="/images/v1.2/how-to-guides/custom-logo/custom-logo-setting.png"
+alt="custom-logo-setting"
 /%}
 
+2. Once you click on the `Edit` button you will be redirected to edit form page, put the values and click on save button.
 
-### Step 1: Get the image size as per the following formats.
+{% image
+src="/images/v1.2/how-to-guides/custom-logo/custom-logo-form.png"
+alt="custom-logo-form"
+/%}
 
-- Monogram aspect ratio should be 1:1 and Recommended size should be 30 x 30 px
-- Logo aspect ratio should be 5:2 and Recommended size should be 150 x 60 px
+3. After saving the changes refresh the page and you will see updated logos and favicon.
 
-### Step 2: Configure 'openmetadata.yaml' or the corresponding environment variables
+{% image
+src="/images/v1.2/how-to-guides/custom-logo/custom-logo-application.png"
+alt="custom-logo-application"
+/%}
 
-```yaml
-applicationConfig:
-  logoConfig:
-    customLogoUrlPath: ${OM_CUSTOM_LOGO_URL_PATH:-""} #login page logo
-    customMonogramUrlPath: ${OM_CUSTOM_MONOGRAM_URL_PATH:-""} #nav bar logo
-```
-
-1. `customLogoUrlPath`
-
-   - URL path for the login page logo.
-
-2. `customMonogramUrlPath`
-
-   - URL path for the navbar logo.
+{% image
+src="/images/v1.2/how-to-guides/custom-logo/custom-logo-login-page.png"
+alt="custom-logo-login-page"
+/%}
