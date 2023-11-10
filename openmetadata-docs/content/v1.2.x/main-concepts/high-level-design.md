@@ -56,7 +56,7 @@ What we achieve is three views from the same source:
 
 - Java Classes for the API,
 - Python Classes for the Ingestion Framework and
-- Javascript Classes for the UI,
+- TypeScript Types for the UI,
 
 each of them modeled after a single source of truth. Thanks to this approach we can be sure that it does not matter at
 which point we zoom in throughout the whole process, we are always going to find a univocal well-defined Entity.
