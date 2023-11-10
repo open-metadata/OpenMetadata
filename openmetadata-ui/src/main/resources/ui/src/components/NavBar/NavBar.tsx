@@ -74,6 +74,7 @@ import BrandImage from '../common/BrandImage/BrandImage';
 import CmdKIcon from '../common/CmdKIcon/CmdKIcon.component';
 import { useDomainProvider } from '../Domain/DomainProvider/DomainProvider';
 import { useGlobalSearchProvider } from '../GlobalSearchProvider/GlobalSearchProvider';
+import GithubStarModal from '../Modals/GithubStarModal/GithubStarModal.component';
 import WhatsNewAlert from '../Modals/WhatsNewModal/WhatsNewAlert/WhatsNewAlert.component';
 import WhatsNewModal from '../Modals/WhatsNewModal/WhatsNewModal';
 import NotificationBox from '../NotificationBox/NotificationBox.component';
@@ -519,6 +520,8 @@ const NavBar = ({
         onCancel={handleModalCancel}
       />
       <WhatsNewAlert />
+
+      <GithubStarModal />
     </>
   );
 };
