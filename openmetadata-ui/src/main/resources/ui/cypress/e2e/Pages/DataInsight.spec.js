@@ -116,7 +116,7 @@ describe('Data Insight feature', () => {
     interceptURL('GET', '/api/v1/apps?limit=*', 'apps');
     interceptURL(
       'GET',
-      '/api/v1/apps/name/DataInsightsApplication?fields=owner,pipelines',
+      '/api/v1/apps/name/DataInsightsApplication?*',
       'dataInsightsApplication'
     );
     interceptURL(
@@ -133,7 +133,7 @@ describe('Data Insight feature', () => {
     cy.get('[data-menu-id*="integrations.apps"]').scrollIntoView().click();
     verifyResponseStatusCode('@apps', 200);
     cy.get(
-      '[data-testid="data-insights-card"] [data-testid="config-btn"]'
+      '[data-testid="data-insights-application-card"] [data-testid="config-btn"]'
     ).click();
     verifyResponseStatusCode('@dataInsightsApplication', 200);
     cy.get('[data-testid="deploy-button"]').click();

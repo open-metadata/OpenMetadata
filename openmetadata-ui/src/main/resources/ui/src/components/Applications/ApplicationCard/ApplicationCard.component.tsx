@@ -39,7 +39,7 @@ const ApplicationCard = ({
         className,
         'application-card card-body-border-none'
       )}
-      data-testid={`${kebabCase(title)}-card`}>
+      data-testid={`${kebabCase(appName)}-card`}>
       <div className="d-flex items-center gap-3">
         <div className="application-logo">
           <AppLogo appName={appName} />
