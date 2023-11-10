@@ -14,6 +14,7 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse, PagingWithoutTotal, RestoreRequestType } from 'Models';
+import { QueryVote } from '../components/TableQueries/TableQueries.interface';
 import {
   EntityReference,
   SearchIndex,
@@ -120,6 +121,15 @@ export const removeFollower = async (searchIndexId: string, userId: string) => {
 export const getSampleDataBySearchIndexId = async (id: string) => {
   const response = await APIClient.get<SearchIndex>(
     `/searchIndexes/${id}/sampleData`
+  );
+
+  return response.data;
+};
+
+export const updateSearchIndexVotes = async (id: string, data: QueryVote) => {
+  const response = await APIClient.put<QueryVote, AxiosResponse<SearchIndex>>(
+    `/searchIndexes/${id}/vote`,
+    data
   );
 
   return response.data;

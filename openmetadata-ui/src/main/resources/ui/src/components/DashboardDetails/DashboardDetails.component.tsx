@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { FilterOutlined } from '@ant-design/icons';
 import { Col, Row, Space, Table, Tabs, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
@@ -38,10 +37,7 @@ import TableTags from '../../components/TableTags/TableTags.component';
 import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
-import {
-  getDashboardDetailsPath,
-  PRIMERY_COLOR,
-} from '../../constants/constants';
+import { getDashboardDetailsPath } from '../../constants/constants';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Dashboard } from '../../generated/entity/data/dashboard';
@@ -58,7 +54,11 @@ import {
   getAllTags,
   searchTagInData,
 } from '../../utils/TableTags/TableTags.utils';
-import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
+import {
+  getFilterIcon,
+  getTagsWithoutTier,
+  getTierTags,
+} from '../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
@@ -400,7 +400,7 @@ const DashboardDetails = ({
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) =>
-      isSoftDelete ? handleToggleDelete : history.push('/'),
+      isSoftDelete ? handleToggleDelete() : history.push('/'),
     []
   );
 
@@ -482,12 +482,7 @@ const DashboardDetails = ({
         key: 'tags',
         accessor: 'tags',
         width: 300,
-        filterIcon: (filtered: boolean) => (
-          <FilterOutlined
-            data-testid="tag-filter"
-            style={{ color: filtered ? PRIMERY_COLOR : undefined }}
-          />
-        ),
+        filterIcon: getFilterIcon('tag-filter'),
         render: (tags: TagLabel[], record: ChartType, index: number) => {
           return (
             <TableTags<ChartType>
@@ -514,12 +509,7 @@ const DashboardDetails = ({
         key: 'glossary',
         accessor: 'tags',
         width: 300,
-        filterIcon: (filtered: boolean) => (
-          <FilterOutlined
-            data-testid="glossary-filter"
-            style={{ color: filtered ? PRIMERY_COLOR : undefined }}
-          />
-        ),
+        filterIcon: getFilterIcon('glossary-filter'),
         render: (tags: TagLabel[], record: ChartType, index: number) => (
           <TableTags<ChartType>
             entityFqn={decodedDashboardFQN}
@@ -550,6 +540,35 @@ const DashboardDetails = ({
     ]
   );
 
+  const {
+    editTagsPermission,
+    editDescriptionPermission,
+    editCustomAttributePermission,
+    editAllPermission,
+    editLineagePermission,
+    viewAllPermission,
+  } = useMemo(
+    () => ({
+      editTagsPermission:
+        (dashboardPermissions.EditTags || dashboardPermissions.EditAll) &&
+        !deleted,
+      editDescriptionPermission:
+        (dashboardPermissions.EditDescription ||
+          dashboardPermissions.EditAll) &&
+        !deleted,
+      editCustomAttributePermission:
+        (dashboardPermissions.EditAll ||
+          dashboardPermissions.EditCustomFields) &&
+        !deleted,
+      editAllPermission: dashboardPermissions.EditAll && !deleted,
+      editLineagePermission:
+        (dashboardPermissions.EditAll || dashboardPermissions.EditLineage) &&
+        !deleted,
+      viewAllPermission: dashboardPermissions.ViewAll,
+    }),
+    [dashboardPermissions, deleted]
+  );
+
   const tabs = useMemo(
     () => [
       {
@@ -566,13 +585,10 @@ const DashboardDetails = ({
                   entityFqn={decodedDashboardFQN}
                   entityName={entityName}
                   entityType={EntityType.DASHBOARD}
-                  hasEditAccess={
-                    dashboardPermissions.EditAll ||
-                    dashboardPermissions.EditDescription
-                  }
+                  hasEditAccess={editDescriptionPermission}
                   isEdit={isEdit}
-                  isReadOnly={dashboardDetails.deleted}
                   owner={dashboardDetails.owner}
+                  showActions={!deleted}
                   onCancel={onCancel}
                   onDescriptionEdit={onDescriptionEdit}
                   onDescriptionUpdate={onDescriptionUpdate}
@@ -610,11 +626,7 @@ const DashboardDetails = ({
                   displayType={DisplayType.READ_MORE}
                   entityFqn={decodedDashboardFQN}
                   entityType={EntityType.DASHBOARD}
-                  permission={
-                    (dashboardPermissions.EditAll ||
-                      dashboardPermissions.EditTags) &&
-                    !dashboardDetails.deleted
-                  }
+                  permission={editTagsPermission}
                   selectedTags={dashboardTags}
                   tagType={TagSource.Classification}
                   onSelectionChange={handleTagSelection}
@@ -625,11 +637,7 @@ const DashboardDetails = ({
                   displayType={DisplayType.READ_MORE}
                   entityFqn={decodedDashboardFQN}
                   entityType={EntityType.DASHBOARD}
-                  permission={
-                    (dashboardPermissions.EditAll ||
-                      dashboardPermissions.EditTags) &&
-                    !dashboardDetails.deleted
-                  }
+                  permission={editTagsPermission}
                   selectedTags={dashboardTags}
                   tagType={TagSource.Glossary}
                   onSelectionChange={handleTagSelection}
@@ -664,11 +672,10 @@ const DashboardDetails = ({
         key: EntityTabs.LINEAGE,
         children: (
           <EntityLineageComponent
+            deleted={deleted}
             entity={dashboardDetails}
             entityType={EntityType.DASHBOARD}
-            hasEditAccess={
-              dashboardPermissions.EditAll || dashboardPermissions.EditLineage
-            }
+            hasEditAccess={editLineagePermission}
           />
         ),
       },
@@ -684,11 +691,8 @@ const DashboardDetails = ({
           <CustomPropertyTable
             entityType={EntityType.DASHBOARD}
             handleExtensionUpdate={onExtensionUpdate}
-            hasEditAccess={
-              dashboardPermissions.EditAll ||
-              dashboardPermissions.EditCustomFields
-            }
-            hasPermission={dashboardPermissions.ViewAll}
+            hasEditAccess={editCustomAttributePermission}
+            hasPermission={viewAllPermission}
           />
         ),
       },
@@ -700,8 +704,8 @@ const DashboardDetails = ({
       tableColumn,
       dashboardDetails,
       charts,
+      deleted,
       entityName,
-      dashboardPermissions,
       dashboardTags,
       getEntityFieldThreadCounts,
       onCancel,
@@ -709,13 +713,21 @@ const DashboardDetails = ({
       onDescriptionUpdate,
       onThreadLinkSelect,
       handleTagSelection,
+      editTagsPermission,
+      editLineagePermission,
+      editDescriptionPermission,
+      editCustomAttributePermission,
+      editAllPermission,
+      viewAllPermission,
     ]
   );
 
   return (
     <PageLayoutV1
       className="bg-white"
-      pageTitle="Table details"
+      pageTitle={t('label.entity-detail-plural', {
+        entity: t('label.dashboard'),
+      })}
       title="Table details">
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
@@ -753,7 +765,7 @@ const DashboardDetails = ({
           placeholder={t('label.enter-field-description', {
             field: t('label.chart'),
           })}
-          value={editChart.chart.description || ''}
+          value={editChart.chart.description ?? ''}
           visible={Boolean(editChart)}
           onCancel={closeEditChartModal}
           onSave={onChartUpdate}

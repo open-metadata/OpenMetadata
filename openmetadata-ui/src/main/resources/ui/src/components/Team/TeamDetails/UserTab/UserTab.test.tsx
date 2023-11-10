@@ -64,16 +64,6 @@ jest.mock(
   }
 );
 jest.mock(
-  '../../../../components/Modals/ConfirmationModal/ConfirmationModal',
-  () => {
-    return jest.fn().mockImplementation(({ onConfirm }) => (
-      <div data-testid="confirmation-modal">
-        <button onClick={onConfirm}>confirm</button>
-      </div>
-    ));
-  }
-);
-jest.mock(
   '../../../../components/common/UserSelectableList/UserSelectableList.component',
   () => ({
     UserSelectableList: jest
@@ -151,7 +141,7 @@ describe('UserTab', () => {
       fireEvent.click(removeBtn);
     });
     const confirmationModal = await screen.findByTestId('confirmation-modal');
-    const confirmBtn = await findByText(confirmationModal, 'confirm');
+    const confirmBtn = await findByText(confirmationModal, 'label.confirm');
 
     expect(confirmationModal).toBeInTheDocument();
     expect(confirmBtn).toBeInTheDocument();

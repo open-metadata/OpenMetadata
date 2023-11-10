@@ -29,6 +29,7 @@ export interface AssetsTabsProps {
   assetCount: number;
   onAssetClick?: (asset?: EntityDetailsObjectInterface) => void;
   isSummaryPanelOpen: boolean;
+  isEntityDeleted?: boolean;
   type?: AssetsOfEntity;
   queryFilter?: string;
   noDataPlaceholder?: boolean | AssetNoDataPlaceholderProps;

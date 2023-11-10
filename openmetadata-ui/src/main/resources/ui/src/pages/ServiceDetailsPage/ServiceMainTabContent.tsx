@@ -67,7 +67,7 @@ function ServiceMainTabContent({
   currentPage,
   serviceDetails,
   saveUpdatedServiceData,
-}: ServiceMainTabContentProps) {
+}: Readonly<ServiceMainTabContentProps>) {
   const { t } = useTranslation();
   const { fqn: serviceFQN, serviceCategory } = useParams<{
     fqn: string;
@@ -138,8 +138,15 @@ function ServiceMainTabContent({
     [serviceCategory]
   );
 
-  const editTagsPermission = useMemo(
-    () => servicePermission.EditTags || servicePermission.EditAll,
+  const { editTagsPermission, editDescriptionPermission } = useMemo(
+    () => ({
+      editTagsPermission:
+        (servicePermission.EditTags || servicePermission.EditAll) &&
+        !serviceDetails.deleted,
+      editDescriptionPermission:
+        (servicePermission.EditDescription || servicePermission.EditAll) &&
+        !serviceDetails.deleted,
+    }),
     [servicePermission, serviceDetails]
   );
 
@@ -153,10 +160,9 @@ function ServiceMainTabContent({
               entityFqn={serviceFQN}
               entityName={serviceName}
               entityType={entityType}
-              hasEditAccess={
-                servicePermission.EditDescription || servicePermission.EditAll
-              }
+              hasEditAccess={editDescriptionPermission}
               isEdit={isEdit}
+              showActions={!serviceDetails.deleted}
               showCommentsIcon={false}
               onCancel={onCancel}
               onDescriptionEdit={onDescriptionEdit}

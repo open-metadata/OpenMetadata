@@ -38,6 +38,7 @@ const TeamsInfo = ({
   entityPermissions,
   currentTeam,
   updateTeamHandler,
+  isTeamDeleted,
 }: TeamsInfoProps) => {
   const { t } = useTranslation();
 
@@ -56,17 +57,19 @@ const TeamsInfo = ({
 
   const { hasEditPermission, hasAccess } = useMemo(
     () => ({
-      hasEditPermission: entityPermissions.EditAll,
-      hasAccess: isAuthDisabled || isAdminUser,
+      hasEditPermission: entityPermissions.EditAll && !isTeamDeleted,
+      hasAccess: isAuthDisabled || (isAdminUser && !isTeamDeleted),
     }),
 
-    [entityPermissions]
+    [entityPermissions, isTeamDeleted]
   );
 
   const hasEditSubscriptionPermission = useMemo(
     () =>
-      entityPermissions.EditAll || currentTeam.owner?.id === currentUser?.id,
-    [entityPermissions, currentTeam, currentUser]
+      (entityPermissions.EditAll ||
+        currentTeam.owner?.id === currentUser?.id) &&
+      !isTeamDeleted,
+    [entityPermissions, currentTeam, currentUser, isTeamDeleted]
   );
 
   const onEmailSave = async (data: { email: string }) => {

@@ -1597,8 +1597,10 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   };
 
   useEffect(() => {
-    fetchLineageData(lineageConfig);
-  }, []);
+    if (!entity?.deleted) {
+      fetchLineageData(lineageConfig);
+    }
+  }, [entity?.deleted]);
 
   useEffect(() => {
     if (!entityLineage) {

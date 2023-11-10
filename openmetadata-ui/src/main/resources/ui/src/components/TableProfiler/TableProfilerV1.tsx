@@ -577,7 +577,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
                     handleDateRangeChange={handleDateRangeChange}
                   />
                 )}
-                {!isEmpty(activeColumnFqn) && (
+                {!isEmpty(activeColumnFqn) && !isTableDeleted && (
                   <ColumnPickerMenu
                     activeColumnFqn={activeColumnFqn}
                     columns={columns}
@@ -585,7 +585,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
                   />
                 )}
 
-                {editTest && (
+                {editTest && !isTableDeleted && (
                   <Dropdown
                     menu={{
                       items: addButtonContent,
@@ -603,7 +603,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
                   </Dropdown>
                 )}
 
-                {editDataProfile && !isDataQuality && (
+                {editDataProfile && !isDataQuality && !isTableDeleted && (
                   <Tooltip
                     placement="topRight"
                     title={t('label.setting-plural')}>

@@ -171,37 +171,27 @@ const DatabaseDetails: FunctionComponent = () => {
     }
   };
 
-  const fetchDatabaseSchemas = (pagingObj?: string) => {
-    return new Promise<void>((resolve, reject) => {
-      setSchemaDataLoading(true);
-      getDatabaseSchemas(
+  const fetchDatabaseSchemas = async (pagingObj?: string) => {
+    try {
+      const response = await getDatabaseSchemas(
         databaseFQN,
         pagingObj,
         ['owner', 'usageSummary'],
         showDeletedSchemas ? Include.Deleted : Include.NonDeleted
-      )
-        .then((res) => {
-          if (res.data) {
-            setSchemaData(res.data);
-            setSchemaPaging(res.paging);
-            setSchemaInstanceCount(res.paging.total);
-          } else {
-            setSchemaData([]);
-            setSchemaPaging(pagingObject);
+      );
+      if (response.data) {
+        setSchemaData(response.data);
+        setSchemaPaging(response.paging);
+        setSchemaInstanceCount(response.paging.total);
+      } else {
+        setSchemaData([]);
+        setSchemaPaging(pagingObject);
 
-            throw t('server.unexpected-response');
-          }
-          resolve();
-        })
-        .catch(() => {
-          // Error
-
-          reject();
-        })
-        .finally(() => {
-          setSchemaDataLoading(false);
-        });
-    });
+        throw t('server.unexpected-response');
+      }
+    } finally {
+      setSchemaDataLoading(false);
+    }
   };
 
   const searchSchema = async (
@@ -582,23 +572,30 @@ const DatabaseDetails: FunctionComponent = () => {
       );
   }, [currentVersion, databaseFQN]);
 
-  const editTagsPermission = useMemo(
-    () =>
-      (databasePermission.EditTags || databasePermission.EditAll) &&
-      !database.deleted,
-    [databasePermission, database]
-  );
-
-  const editDescriptionPermission = useMemo(
-    () =>
-      (databasePermission.EditDescription || databasePermission.EditAll) &&
-      !database.deleted,
+  const {
+    editTagsPermission,
+    editDescriptionPermission,
+    editCustomAttributePermission,
+    viewAllPermission,
+  } = useMemo(
+    () => ({
+      editTagsPermission:
+        (databasePermission.EditTags || databasePermission.EditAll) &&
+        !database.deleted,
+      editDescriptionPermission:
+        (databasePermission.EditDescription || databasePermission.EditAll) &&
+        !database.deleted,
+      editCustomAttributePermission:
+        (databasePermission.EditAll || databasePermission.EditCustomFields) &&
+        !database.deleted,
+      viewAllPermission: databasePermission.ViewAll,
+    }),
     [databasePermission, database]
   );
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) =>
-      isSoftDelete ? handleToggleDelete : history.push('/'),
+      isSoftDelete ? handleToggleDelete() : history.push('/'),
     []
   );
 
@@ -648,7 +645,7 @@ const DatabaseDetails: FunctionComponent = () => {
                     entityType={EntityType.DATABASE}
                     hasEditAccess={editDescriptionPermission}
                     isEdit={isEdit}
-                    isReadOnly={database.deleted}
+                    showActions={!database.deleted}
                     onCancel={onCancel}
                     onDescriptionEdit={onDescriptionEdit}
                     onDescriptionUpdate={onDescriptionUpdate}
@@ -750,10 +747,8 @@ const DatabaseDetails: FunctionComponent = () => {
           <CustomPropertyTable
             entityType={EntityType.DATABASE}
             handleExtensionUpdate={settingsUpdateHandler}
-            hasEditAccess={databasePermission.ViewAll}
-            hasPermission={
-              databasePermission.EditAll || databasePermission.EditCustomFields
-            }
+            hasEditAccess={editCustomAttributePermission}
+            hasPermission={viewAllPermission}
             isVersionView={false}
           />
         ),
@@ -775,6 +770,8 @@ const DatabaseDetails: FunctionComponent = () => {
       showDeletedSchemas,
       editTagsPermission,
       editDescriptionPermission,
+      editCustomAttributePermission,
+      viewAllPermission,
       handleShowDeletedSchemas,
     ]
   );

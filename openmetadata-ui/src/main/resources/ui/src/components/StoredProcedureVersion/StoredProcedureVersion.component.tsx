@@ -116,9 +116,9 @@ const StoredProcedureVersion = ({
               <Row gutter={[0, 16]}>
                 <Col span={24}>
                   <DescriptionV1
-                    isVersionView
                     description={description}
                     entityType={EntityType.STORED_PROCEDURE}
+                    showActions={false}
                   />
                 </Col>
               </Row>

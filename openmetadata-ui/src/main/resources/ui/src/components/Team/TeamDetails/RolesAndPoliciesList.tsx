@@ -32,15 +32,17 @@ const ListEntities = ({
   type,
   onDelete,
   hasAccess,
+  isTeamDeleted,
 }: {
   list: EntityReference[];
   type: EntityType;
   onDelete: (record: EntityReference) => void;
   hasAccess: boolean;
+  isTeamDeleted: boolean;
 }) => {
   const { t } = useTranslation();
   const columns: ColumnsType<EntityReference> = useMemo(() => {
-    return [
+    const tabColumns: ColumnsType<EntityReference> = [
       {
         title: t('label.name'),
         dataIndex: 'name',
@@ -106,7 +108,11 @@ const ListEntities = ({
         },
       },
     ];
-  }, []);
+
+    return tabColumns.filter((column) =>
+      column.key === 'actions' ? !isTeamDeleted : true
+    );
+  }, [isTeamDeleted]);
 
   return (
     <Table

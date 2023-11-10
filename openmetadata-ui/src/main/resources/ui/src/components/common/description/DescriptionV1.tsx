@@ -14,7 +14,7 @@
 import Icon from '@ant-design/icons';
 import { Card, Space, Tooltip, Typography } from 'antd';
 import { t } from 'i18next';
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useHistory } from 'react-router';
 import { ReactComponent as CommentIcon } from '../../../assets/svg/comment.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -50,7 +50,7 @@ interface Props {
   onSuggest?: (value: string) => void;
   onEntityFieldSelect?: (value: string) => void;
   wrapInCard?: boolean;
-  isVersionView?: boolean;
+  showActions?: boolean;
   showCommentsIcon?: boolean;
   reduceDescription?: boolean;
 }
@@ -68,124 +68,129 @@ const DescriptionV1 = ({
   entityType,
   entityFqn,
   wrapInCard = false,
-  isVersionView,
+  showActions = true,
   showCommentsIcon = true,
   reduceDescription,
 }: Props) => {
   const history = useHistory();
 
-  const handleRequestDescription = () => {
+  const handleRequestDescription = useCallback(() => {
     history.push(
       getRequestDescriptionPath(entityType as string, entityFqn as string)
     );
-  };
+  }, [entityType, entityFqn]);
 
-  const handleUpdateDescription = () => {
+  const handleUpdateDescription = useCallback(() => {
     history.push(
       getUpdateDescriptionPath(entityType as string, entityFqn as string)
     );
-  };
+  }, [entityType, entityFqn]);
 
   const entityLink = useMemo(
     () => getEntityFeedLink(entityType, entityFqn, EntityField.DESCRIPTION),
     [entityType, entityFqn]
   );
 
-  const editButton = () => {
-    const extraIcons = showCommentsIcon && (
-      <Icon
-        component={CommentIcon}
-        data-testid="description-thread"
-        style={{ color: DE_ACTIVE_COLOR }}
-        width={20}
-        onClick={() => {
-          onThreadLinkSelect?.(entityLink);
-        }}
-      />
-    );
+  const taskActionButton = useMemo(() => {
+    const hasDescription = Boolean(description.trim());
 
-    const taskAction = () => {
-      const hasDescription = Boolean(description.trim());
+    const isTaskEntity = TASK_ENTITIES.includes(entityType as EntityType);
 
-      const isTaskEntity = TASK_ENTITIES.includes(entityType as EntityType);
+    if (!isTaskEntity) {
+      return null;
+    }
 
-      if (!isTaskEntity) {
-        return null;
-      }
-
-      return (
-        <Tooltip
-          title={
-            hasDescription
-              ? t('message.request-update-description')
-              : t('message.request-description')
-          }>
-          <Icon
-            component={RequestIcon}
-            data-testid="request-description"
-            style={{ color: DE_ACTIVE_COLOR }}
-            onClick={
-              hasDescription
-                ? handleUpdateDescription
-                : handleRequestDescription
-            }
-          />
-        </Tooltip>
-      );
-    };
-
-    return !isReadOnly && hasEditAccess ? (
-      <Space className="w-full" size={12}>
+    return (
+      <Tooltip
+        title={
+          hasDescription
+            ? t('message.request-update-description')
+            : t('message.request-description')
+        }>
         <Icon
-          component={EditIcon}
-          data-testid="edit-description"
+          component={RequestIcon}
+          data-testid="request-description"
           style={{ color: DE_ACTIVE_COLOR }}
-          onClick={onDescriptionEdit}
+          onClick={
+            hasDescription ? handleUpdateDescription : handleRequestDescription
+          }
         />
-        {taskAction()}
-        {extraIcons}
-      </Space>
-    ) : (
-      <Space>
-        {taskAction()} {extraIcons}
-      </Space>
+      </Tooltip>
     );
-  };
+  }, [
+    description,
+    entityType,
+    handleUpdateDescription,
+    handleRequestDescription,
+  ]);
+
+  const actionButtons = useMemo(
+    () => (
+      <Space size={12}>
+        {!isReadOnly && hasEditAccess && (
+          <Icon
+            component={EditIcon}
+            data-testid="edit-description"
+            style={{ color: DE_ACTIVE_COLOR }}
+            onClick={onDescriptionEdit}
+          />
+        )}
+        {taskActionButton}
+        {showCommentsIcon && (
+          <Icon
+            component={CommentIcon}
+            data-testid="description-thread"
+            style={{ color: DE_ACTIVE_COLOR }}
+            width={20}
+            onClick={() => {
+              onThreadLinkSelect?.(entityLink);
+            }}
+          />
+        )}
+      </Space>
+    ),
+    [
+      isReadOnly,
+      hasEditAccess,
+      onDescriptionEdit,
+      taskActionButton,
+      showCommentsIcon,
+      onThreadLinkSelect,
+    ]
+  );
 
   const content = (
-    <>
-      <Space
-        className="schema-description d-flex"
-        data-testid="asset-description-container"
-        direction="vertical"
-        size={16}>
-        <Space size="middle">
-          <Text className="right-panel-label">{t('label.description')}</Text>
-          {!isVersionView && editButton()}
-        </Space>
-        <div>
-          {description?.trim() ? (
-            <RichTextEditorPreviewer
-              className={reduceDescription ? 'max-two-lines' : ''}
-              enableSeeMoreVariant={!removeBlur}
-              markdown={description}
-            />
-          ) : (
-            <span>{t('label.no-description')}</span>
-          )}
-          <ModalWithMarkdownEditor
-            header={t('label.edit-description-for', { entityName })}
-            placeholder={t('label.enter-entity', {
-              entity: t('label.description'),
-            })}
-            value={description}
-            visible={Boolean(isEdit)}
-            onCancel={onCancel}
-            onSave={onDescriptionUpdate}
-          />
-        </div>
+    <Space
+      className="schema-description d-flex"
+      data-testid="asset-description-container"
+      direction="vertical"
+      size={16}>
+      <Space size="middle">
+        <Text className="right-panel-label">{t('label.description')}</Text>
+        {showActions && actionButtons}
       </Space>
-    </>
+      <div>
+        {description.trim() ? (
+          <RichTextEditorPreviewer
+            className={reduceDescription ? 'max-two-lines' : ''}
+            enableSeeMoreVariant={!removeBlur}
+            markdown={description}
+          />
+        ) : (
+          <span>{t('label.no-description')}</span>
+        )}
+        <ModalWithMarkdownEditor
+          header={t('label.edit-description-for', { entityName })}
+          placeholder={t('label.enter-entity', {
+            entity: t('label.description'),
+          })}
+          value={description}
+          visible={Boolean(isEdit)}
+          onCancel={onCancel}
+          onSave={onDescriptionUpdate}
+        />
+      </div>
+    </Space>
   );
 
   return wrapInCard ? <Card>{content}</Card> : content;

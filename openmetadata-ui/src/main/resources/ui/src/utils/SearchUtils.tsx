@@ -36,6 +36,7 @@ import {
 import { EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { getPartialNameFromTableFQN } from './CommonUtils';
+import { getEntityName } from './EntityUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import { escapeESReservedCharacters } from './StringsUtils';
 import { getEntityLink } from './TableUtils';
@@ -188,7 +189,7 @@ export const getSuggestionElement = (
   const displayText =
     database && schema
       ? `${database}${FQN_SEPARATOR_CHAR}${schema}${FQN_SEPARATOR_CHAR}${name}`
-      : name;
+      : getEntityName(suggestion);
 
   const retn = (
     <Button

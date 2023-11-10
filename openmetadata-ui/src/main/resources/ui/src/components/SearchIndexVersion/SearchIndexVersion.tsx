@@ -135,9 +135,9 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
               <Row gutter={[0, 16]}>
                 <Col span={24}>
                   <DescriptionV1
-                    isVersionView
                     description={description}
                     entityType={EntityType.SEARCH_INDEX}
+                    showActions={false}
                   />
                 </Col>
                 <Col span={24}>
