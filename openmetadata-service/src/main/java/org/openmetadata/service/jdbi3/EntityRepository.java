@@ -1836,7 +1836,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       // Now updated from previous/original to updated one
       changeDescription = new ChangeDescription();
-      updateInternal();
+      updateInternal(false);
 
       // Store the updated entity
       storeUpdate();
@@ -1847,17 +1847,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private void revert() {
       // Revert from original to previous version to go back to the previous version
       // set changeDescription to null
-      changeDescription = null;
       T updatedOld = updated;
       T previous = getPreviousVersion(original);
       LOG.debug("In session change consolidation. Reverting to previous version {}", previous.getVersion());
       updated = previous;
-      updateInternal();
+      updateInternal(true);
       LOG.info("In session change consolidation. Reverting to previous version {} completed", previous.getVersion());
 
       // Now go from original to updated
       updated = updatedOld;
-      updateInternal();
+      updateInternal(true);
 
       // Finally, go from previous to the latest updated entity to consolidate changes
       original = previous;
@@ -1865,12 +1864,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     /** Compare original and updated entities and perform updates. Update the entity version and track changes. */
     @Transaction
-    private void updateInternal() {
+    private void updateInternal(boolean revert) {
       if (operation.isDelete()) { // Soft DELETE Operation
-        updateDeleted();
+        updateDeleted(revert);
       } else { // PUT or PATCH operations
         updated.setId(original.getId());
-        updateDeleted();
+        updateDeleted(revert);
         updateDescription();
         updateDisplayName();
         updateOwner();
@@ -1901,12 +1900,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
       recordChange(FIELD_DESCRIPTION, original.getDescription(), updated.getDescription());
     }
 
-    private void updateDeleted() {
+    private void updateDeleted(boolean revert) {
       if (operation.isPut() || operation.isPatch()) {
         // Update operation can't set delete attributed to true. This can only be done as part of delete operation
         if (!Objects.equals(updated.getDeleted(), original.getDeleted())
             && Boolean.TRUE.equals(updated.getDeleted())
-            && changeDescription != null) {
+            && !revert) {
           throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute(entityType, FIELD_DELETED));
         }
         // PUT or PATCH is restoring the soft-deleted entity
