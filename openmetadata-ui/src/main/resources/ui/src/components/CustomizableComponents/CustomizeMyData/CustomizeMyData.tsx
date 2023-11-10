@@ -13,7 +13,7 @@
 
 import { Button, Col, Modal, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, isNil, uniqBy } from 'lodash';
+import { isEmpty, isNil, isUndefined, uniqBy } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import RGL, { Layout, WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
@@ -44,6 +44,7 @@ import {
   getWidgetFromKey,
 } from '../../../utils/CustomizableLandingPageUtils';
 import customizePageClassBase from '../../../utils/CustomizePageClassBase';
+import { getEntityName } from '../../../utils/EntityUtils';
 import {
   getPersonaDetailsPath,
   getSettingPath,
@@ -60,6 +61,7 @@ import './CustomizeMyData.less';
 const ReactGridLayout = WidthProvider(RGL);
 
 function CustomizeMyData({
+  personaDetails,
   initialPageData,
   onSaveLayout,
   handlePageDataChange,
@@ -300,7 +302,9 @@ function CustomizeMyData({
                     />
                   }
                   values={{
-                    persona: decodedPersonaFQN,
+                    persona: isUndefined(personaDetails)
+                      ? decodedPersonaFQN
+                      : getEntityName(personaDetails),
                   }}
                 />
               </Typography.Title>
