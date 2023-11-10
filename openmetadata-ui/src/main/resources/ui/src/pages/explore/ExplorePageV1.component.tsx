@@ -325,66 +325,26 @@ const ExplorePageV1: FunctionComponent = () => {
           setSearchResults(res);
           setUpdatedAggregations(res.aggregations);
         }),
-      Promise.all(
-        [
-          SearchIndex.DATA_PRODUCT,
-          SearchIndex.TABLE,
-          SearchIndex.TOPIC,
-          SearchIndex.DASHBOARD,
-          SearchIndex.PIPELINE,
-          SearchIndex.MLMODEL,
-          SearchIndex.CONTAINER,
-          SearchIndex.STORED_PROCEDURE,
-          SearchIndex.DASHBOARD_DATA_MODEL,
-          SearchIndex.GLOSSARY,
-          SearchIndex.TAG,
-          SearchIndex.SEARCH_INDEX,
-        ].map((index) =>
-          searchQuery({
-            query: escapeESReservedCharacters(searchQueryParam),
-            pageNumber: 0,
-            pageSize: 0,
-            queryFilter: combinedQueryFilter,
-            searchIndex: index,
-            includeDeleted: showDeleted,
-            trackTotalHits: true,
-            fetchSource: false,
-            filters: index === SearchIndex.TAG ? 'disabled:false' : '',
-          })
-        )
-      ).then(
-        ([
-          dataProductResponse,
-          tableResponse,
-          topicResponse,
-          dashboardResponse,
-          pipelineResponse,
-          mlmodelResponse,
-          containerResponse,
-          storeProcedureResponse,
-          dataModelResponse,
-          glossaryResponse,
-          tagsResponse,
-          searchIndexResponse,
-        ]) => {
-          setSearchHitCounts({
-            [SearchIndex.DATA_PRODUCT]: dataProductResponse.hits.total.value,
-            [SearchIndex.TABLE]: tableResponse.hits.total.value,
-            [SearchIndex.TOPIC]: topicResponse.hits.total.value,
-            [SearchIndex.DASHBOARD]: dashboardResponse.hits.total.value,
-            [SearchIndex.PIPELINE]: pipelineResponse.hits.total.value,
-            [SearchIndex.MLMODEL]: mlmodelResponse.hits.total.value,
-            [SearchIndex.CONTAINER]: containerResponse.hits.total.value,
-            [SearchIndex.STORED_PROCEDURE]:
-              storeProcedureResponse.hits.total.value,
-            [SearchIndex.DASHBOARD_DATA_MODEL]:
-              dataModelResponse.hits.total.value,
-            [SearchIndex.GLOSSARY]: glossaryResponse.hits.total.value,
-            [SearchIndex.TAG]: tagsResponse.hits.total.value,
-            [SearchIndex.SEARCH_INDEX]: searchIndexResponse.hits.total.value,
-          });
-        }
-      ),
+      searchQuery({
+        query: escapeESReservedCharacters(searchQueryParam),
+        pageNumber: 0,
+        pageSize: 0,
+        queryFilter: combinedQueryFilter,
+        searchIndex: SearchIndex.ALL,
+        includeDeleted: showDeleted,
+        trackTotalHits: true,
+        fetchSource: false,
+        filters: '',
+      }).then((res) => {
+        const buckets = res.aggregations[`index_count`].buckets;
+        const counts: Record<string, number> = {};
+        buckets.forEach((item) => {
+          if (item) {
+            counts[item.key ?? ''] = item.doc_count;
+          }
+        });
+        setSearchHitCounts(counts as SearchHitCounts);
+      }),
     ])
       .catch((err) => {
         showErrorToast(err);

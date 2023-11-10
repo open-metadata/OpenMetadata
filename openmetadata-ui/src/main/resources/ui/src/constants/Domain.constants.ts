@@ -10,11 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Domain } from '../../../generated/entity/domains/domain';
 
-export interface DomainDetailsPageProps {
-  domain: Domain;
-  onUpdate: (value: Domain) => Promise<void>;
-  onDelete: (id: string) => void;
-  isVersionsView?: boolean;
-}
+import i18n from '../utils/i18next/LocalUtil';
+
+export const DOMAIN_TYPE_DATA = [
+  {
+    type: i18n.t('label.aggregate'),
+    description: i18n.t('message.aggregate-domain-type-description'),
+  },
+  {
+    type: i18n.t('label.consumer-aligned'),
+    description: i18n.t('message.consumer-aligned-domain-type-description'),
+  },
+  {
+    type: i18n.t('label.source-aligned'),
+    description: i18n.t('message.source-aligned-domain-type-description'),
+  },
+];
