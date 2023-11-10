@@ -17,10 +17,10 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import ApplicationCard from '../../components/Applications/ApplicationCard/ApplicationCard.component';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import NextPrevious from '../../components/common/next-previous/NextPrevious';
-import { PagingHandlerParams } from '../../components/common/next-previous/NextPrevious.interface';
-import PageHeader from '../../components/header/PageHeader.component';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
+import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
+import PageHeader from '../../components/PageHeader/PageHeader.component';
 import { ROUTES } from '../../constants/constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
@@ -29,7 +29,6 @@ import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getApplicationList } from '../../rest/applicationAPI';
-import { showPagination } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getApplicationDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -43,6 +42,7 @@ const ApplicationPage = () => {
     handlePagingChange,
     handlePageChange,
     handlePageSizeChange,
+    showPagination,
   } = usePaging();
   const history = useHistory();
   const [isLoading, setIsLoading] = useState(true);
@@ -68,10 +68,10 @@ const ApplicationPage = () => {
         setIsLoading(false);
       }
     },
-    []
+    [pageSize, handlePagingChange]
   );
 
-  const handleBotPageChange = ({
+  const handleApplicationPageChange = ({
     currentPage,
     cursorType,
   }: PagingHandlerParams) => {
@@ -80,7 +80,7 @@ const ApplicationPage = () => {
       fetchApplicationList(showDisabled, {
         [cursorType]: paging[cursorType],
         total: paging.total,
-      } as Paging);
+      });
   };
 
   const viewAppDetails = (item: App) => {
@@ -118,7 +118,7 @@ const ApplicationPage = () => {
 
   useEffect(() => {
     fetchApplicationList();
-  }, []);
+  }, [pageSize]);
 
   return (
     <>
@@ -179,12 +179,12 @@ const ApplicationPage = () => {
               </div>
             </Col>
             <Col span={24}>
-              {showPagination(paging) && (
+              {showPagination && (
                 <NextPrevious
                   currentPage={currentPage}
                   pageSize={pageSize}
                   paging={paging}
-                  pagingHandler={handleBotPageChange}
+                  pagingHandler={handleApplicationPageChange}
                   onShowSizeChange={handlePageSizeChange}
                 />
               )}

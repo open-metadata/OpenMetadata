@@ -28,10 +28,9 @@ import { cloneDeep, groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import ErrorPlaceHolder from '../../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
+import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import RichTextEditorPreviewer from '../../../components/common/RichTextEditor/RichTextEditorPreviewer';
 import { ModalWithMarkdownEditor } from '../../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import SchemaEditor from '../../../components/schema-editor/SchemaEditor';
 import { ColumnFilter } from '../../../components/Table/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../../components/TableDescription/TableDescription.component';
 import TableTags from '../../../components/TableTags/TableTags.component';
@@ -53,6 +52,7 @@ import {
   updateFieldDescription,
   updateFieldTags,
 } from '../../../utils/TableUtils';
+import SchemaEditor from '../../SchemaEditor/SchemaEditor';
 import {
   SchemaViewType,
   TopicSchemaFieldsProps,

@@ -55,7 +55,7 @@ jest.mock('../../../components/AddDataQualityTest/TestSuiteIngestion', () => {
   return jest.fn().mockReturnValue(<div>TestSuiteIngestion</div>);
 });
 
-jest.mock('../../../components/common/success-screen/SuccessScreen', () => {
+jest.mock('../../../components/common/SuccessScreen/SuccessScreen', () => {
   return jest.fn().mockReturnValue(<div>SuccessScreen</div>);
 });
 
@@ -76,13 +76,13 @@ jest.mock('../../../components/common/ResizablePanels/ResizablePanels', () =>
 );
 
 jest.mock(
-  '../../../components/common/title-breadcrumb/title-breadcrumb.component',
+  '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
   () => {
     return jest.fn().mockReturnValue(<div>Title Breadcrumb</div>);
   }
 );
 
-jest.mock('../../../components/containers/PageLayoutV1', () =>
+jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () =>
   jest.fn().mockImplementation(({ children, leftPanel, rightPanel }) => (
     <div>
       {leftPanel}

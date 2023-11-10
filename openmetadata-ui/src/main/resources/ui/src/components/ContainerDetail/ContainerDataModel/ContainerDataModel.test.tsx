@@ -109,7 +109,7 @@ jest.mock('../../../utils/ContainerDetailUtils', () => ({
 }));
 
 jest.mock(
-  '../../../components/common/rich-text-editor/RichTextEditorPreviewer',
+  '../../../components/common/RichTextEditor/RichTextEditorPreviewer',
   () =>
     jest
       .fn()
@@ -136,7 +136,7 @@ jest.mock('../../../components/TableTags/TableTags.component', () =>
 );
 
 jest.mock(
-  '../../../components/common/error-with-placeholder/ErrorPlaceHolder',
+  '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
   () =>
     jest
       .fn()

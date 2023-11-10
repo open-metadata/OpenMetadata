@@ -17,8 +17,8 @@ import { cloneDeep, isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import Loader from '../../components/Loader/Loader';
-import { withActivityFeed } from '../../components/router/withActivityFeed';
 import { HTTP_STATUS_CODE } from '../../constants/auth.constants';
 import {
   API_RES_MAX_SIZE,
@@ -48,7 +48,7 @@ import GlossaryDetails from './GlossaryDetails/GlossaryDetails.component';
 import GlossaryTermModal from './GlossaryTermModal/GlossaryTermModal.component';
 import GlossaryTermsV1 from './GlossaryTerms/GlossaryTermsV1.component';
 import { GlossaryV1Props } from './GlossaryV1.interfaces';
-import './GlossaryV1.style.less';
+import './glossaryV1.less';
 import ImportGlossary from './ImportGlossary/ImportGlossary';
 
 const GlossaryV1 = ({

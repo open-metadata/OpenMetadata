@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { EntityDetailsObjectInterface } from '../../../Explore/explore.interface';
+import { EntityDetailsObjectInterface } from '../../../Explore/ExplorePage.interface';
 import { OperationPermission } from '../../../PermissionProvider/PermissionProvider.interface';
 
 export enum AssetsOfEntity {
