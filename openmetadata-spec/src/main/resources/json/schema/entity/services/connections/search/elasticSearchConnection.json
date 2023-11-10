@@ -38,10 +38,9 @@
         }
       ]
     },
-    "caCert": {
-      "title": "Client Certificate Path",
-      "description": "Path to CA Cert File",
-      "type": "string"
+    "sslConfig": {
+      "title": "SSL Config",
+      "$ref": "../common/sslConfig.json"
     },
     "connectionTimeoutSecs": {
       "title": "Connection Timeout in Seconds",
