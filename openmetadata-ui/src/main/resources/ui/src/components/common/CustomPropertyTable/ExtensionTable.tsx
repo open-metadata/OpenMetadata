@@ -15,7 +15,7 @@ import { ColumnsType } from 'antd/lib/table';
 import { isString, map } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
+import RichTextEditorPreviewer from '../RichTextEditor/RichTextEditorPreviewer';
 import {
   ExtentionEntities,
   ExtentionEntitiesKeys,

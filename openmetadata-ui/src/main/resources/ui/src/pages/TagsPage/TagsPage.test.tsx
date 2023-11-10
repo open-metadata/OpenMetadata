@@ -231,7 +231,7 @@ jest.mock('../../utils/TagsUtils', () => ({
     .mockImplementation(() => <a href="/">Usage Count</a>),
 }));
 
-jest.mock('../../components/containers/PageLayoutV1', () =>
+jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
   jest
     .fn()
     .mockImplementation(
@@ -251,7 +251,7 @@ jest.mock('../../components/containers/PageLayoutV1', () =>
 );
 
 jest.mock(
-  '../../components/common/rich-text-editor/RichTextEditorPreviewer',
+  '../../components/common/RichTextEditor/RichTextEditorPreviewer',
   () => {
     return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
   }
@@ -276,7 +276,7 @@ jest.mock('../../components/Modals/FormModal', () => {
     .mockReturnValue(<p data-testid="modal-container">FormModal</p>);
 });
 
-jest.mock('../../components/common/description/Description', () => {
+jest.mock('../../components/common/EntityDescription/Description', () => {
   return jest.fn().mockReturnValue(<p>DescriptionComponent</p>);
 });
 

@@ -36,12 +36,12 @@ import {
   EntityServiceUnion,
   EntityUnion,
   EntityWithServices,
-} from '../components/Explore/explore.interface';
+} from '../components/Explore/ExplorePage.interface';
 import { ResourceEntity } from '../components/PermissionProvider/PermissionProvider.interface';
 import {
   SearchedDataProps,
   SourceType,
-} from '../components/searched-data/SearchedData.interface';
+} from '../components/SearchedData/SearchedData.interface';
 import { QueryVoteType } from '../components/TableQueries/TableQueries.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {

@@ -16,7 +16,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { AuthProvider } from '../../../../generated/settings/settings';
 import { useAuth } from '../../../../hooks/authHooks';
 import { USER_DATA } from '../../../../mocks/User.mock';
-import { useAuthContext } from '../../../authentication/auth-provider/AuthProvider';
+import { useAuthContext } from '../../../Auth/AuthProviders/AuthProvider';
 import UserProfileDetails from './UserProfileDetails.component';
 import { UserProfileDetailsProps } from './UserProfileDetails.interface';
 
@@ -34,19 +34,16 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 
-jest.mock(
-  '../../../../components/authentication/auth-provider/AuthProvider',
-  () => ({
-    useAuthContext: jest.fn(() => ({
-      authConfig: {
-        provider: AuthProvider.Basic,
-      },
-      currentUser: {
-        name: 'test',
-      },
-    })),
-  })
-);
+jest.mock('../../../Auth/AuthProviders/AuthProvider', () => ({
+  useAuthContext: jest.fn(() => ({
+    authConfig: {
+      provider: AuthProvider.Basic,
+    },
+    currentUser: {
+      name: 'test',
+    },
+  })),
+}));
 
 jest.mock('../../../../hooks/authHooks', () => ({
   useAuth: jest.fn().mockReturnValue({ isAdminUser: true }),

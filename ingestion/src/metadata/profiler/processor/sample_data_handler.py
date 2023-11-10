@@ -17,8 +17,6 @@ from datetime import datetime
 from functools import singledispatch
 from io import BytesIO
 
-import pandas as pd
-
 from metadata.clients.aws_client import AWSClient
 from metadata.generated.schema.entity.data.table import Table, TableData
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
@@ -44,6 +42,8 @@ def upload_sample_data(data: TableData, profiler_interface: ProfilerInterface) -
     """
     Upload Sample data to storage config
     """
+    import pandas as pd  # pylint: disable=import-outside-toplevel
+
     try:
         sample_storage_config = profiler_interface.storage_config
         if not sample_storage_config:

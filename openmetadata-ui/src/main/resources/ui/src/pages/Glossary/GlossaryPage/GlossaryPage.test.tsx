@@ -98,7 +98,7 @@ jest.mock('../../../rest/glossaryAPI', () => ({
     .mockImplementation(() => Promise.resolve({ data: MOCK_GLOSSARY })),
 }));
 
-jest.mock('../../../components/containers/PageLayoutV1', () =>
+jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () =>
   jest.fn().mockImplementation(({ children, leftPanel, rightPanel }) => (
     <div>
       {leftPanel}

@@ -29,9 +29,9 @@ import {
 } from '../../../interface/FormUtils.interface';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { generateFormFields, getField } from '../../../utils/formUtils';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
-import TitleBreadcrumb from '../../common/title-breadcrumb/title-breadcrumb.component';
+import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { UserTag } from '../../common/UserTag/UserTag.component';
 import { UserTagSize } from '../../common/UserTag/UserTag.interface';
 import { AddGlossaryProps } from './AddGlossary.interface';

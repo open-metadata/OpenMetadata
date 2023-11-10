@@ -15,7 +15,6 @@ import VirtualList from 'rc-virtual-list';
 import React, { UIEventHandler, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import Searchbar from '../../components/common/searchbar/Searchbar';
 import Loader from '../../components/Loader/Loader';
 import { getTableTabPath, PAGE_SIZE } from '../../constants/constants';
 import { SearchIndex } from '../../enums/search.enum';
@@ -29,6 +28,7 @@ import { getNameFromFQN } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { replacePlus } from '../../utils/StringsUtils';
 import { getEntityFqnFromEntityLink } from '../../utils/TableUtils';
+import Searchbar from '../common/SearchBarComponent/SearchBar.component';
 import { AddTestCaseModalProps } from './AddTestCaseList.interface';
 
 // Todo: need to help from backend guys for ES query
