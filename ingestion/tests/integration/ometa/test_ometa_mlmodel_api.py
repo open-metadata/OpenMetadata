@@ -62,6 +62,7 @@ from metadata.generated.schema.entity.services.mlmodelService import (
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
+from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
@@ -366,6 +367,24 @@ class OMetaModelTest(TestCase):
         # Lineage will be created just by ingesting the model.
         # Alternatively, we could manually send lineage via `add_mlmodel_lineage`
         # E.g., lineage = self.metadata.add_mlmodel_lineage(model=res)
+        lineage = self.metadata.get_lineage_by_id(
+            entity=MlModel, entity_id=str(res.id.__root__)
+        )
+
+        nodes = {node["id"] for node in lineage["nodes"]}
+        assert nodes == {str(table1_entity.id.__root__), str(table2_entity.id.__root__)}
+
+        # If we delete the lineage, the `add_mlmodel_lineage` will take care of it too
+        for edge in lineage.get("upstreamEdges") or []:
+            self.metadata.delete_lineage_edge(
+                edge=EntitiesEdge(
+                    fromEntity=EntityReference(id=edge["fromEntity"], type="table"),
+                    toEntity=EntityReference(id=edge["toEntity"], type="mlmodel"),
+                )
+            )
+
+        self.metadata.add_mlmodel_lineage(model=res)
+
         lineage = self.metadata.get_lineage_by_id(
             entity=MlModel, entity_id=str(res.id.__root__)
         )
