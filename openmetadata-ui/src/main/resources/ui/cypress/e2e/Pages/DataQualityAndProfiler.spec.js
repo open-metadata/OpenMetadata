@@ -28,6 +28,7 @@ import {
   verifyResponseStatusCode,
   visitEntityDetailsPage,
 } from '../../common/common';
+import { searchServiceFromSettingPage } from '../../common/serviceUtils';
 import {
   API_SERVICE,
   DATA_QUALITY_SAMPLE_DATA_TABLE,
@@ -58,6 +59,33 @@ const goToProfilerTab = () => {
   verifyResponseStatusCode('@waitForPageLoad', 200);
 
   cy.get('[data-testid="profiler"]').should('be.visible').click();
+};
+const clickOnTestSuite = (testSuiteName) => {
+  cy.get('[data-testid="test-suite-container"]').then(($body) => {
+    if ($body.find(`[data-testid="${testSuiteName}"]`).length) {
+      cy.get(`[data-testid="${testSuiteName}"]`).scrollIntoView().click();
+    } else {
+      if ($body.find('[data-testid="next"]').length) {
+        cy.get('[data-testid="next"]').click();
+        verifyResponseStatusCode('@testSuite', 200);
+        clickOnTestSuite(testSuiteName);
+      } else {
+        throw new Error('Test Suite not found');
+      }
+    }
+  });
+};
+const visitTestSuiteDetailsPage = (testSuiteName) => {
+  interceptURL(
+    'GET',
+    '/api/v1/dataQuality/testSuites?*testSuiteType=logical*',
+    'testSuite'
+  );
+  interceptURL('GET', '/api/v1/dataQuality/testCases?fields=*', 'testCase');
+  cy.get('[data-testid="app-bar-item-data-quality"]').click();
+  cy.get('[data-testid="by-test-suites"]').click();
+  verifyResponseStatusCode('@testSuite', 200);
+  clickOnTestSuite(testSuiteName);
 };
 
 describe('Data Quality and Profiler should work properly', () => {
@@ -108,6 +136,7 @@ describe('Data Quality and Profiler should work properly', () => {
       '/api/v1/system/config/pipeline-service-client',
       'airflow'
     );
+    searchServiceFromSettingPage(serviceName);
     cy.get(`[data-testid="service-name-${serviceName}"]`)
       .should('exist')
       .click();
@@ -474,23 +503,14 @@ describe('Data Quality and Profiler should work properly', () => {
       '/api/v1/search/query?q=*&index=test_case_search_index*',
       'searchTestCase'
     );
-    interceptURL(
-      'GET',
-      '/api/v1/dataQuality/testSuites?fields=*&testSuiteType=logical',
-      'testSuite'
-    );
     interceptURL('GET', '/api/v1/dataQuality/testCases?fields=*', 'testCase');
     interceptURL(
       'PUT',
       '/api/v1/dataQuality/testCases/logicalTestCases',
       'putTestCase'
     );
-    cy.get('[data-testid="app-bar-item-data-quality"]').click();
-    cy.get('[data-testid="by-test-suites"]').click();
-    verifyResponseStatusCode('@testSuite', 200);
-    cy.get('[data-testid="test-suite-container"]')
-      .contains(NEW_TEST_SUITE.name)
-      .click();
+
+    visitTestSuiteDetailsPage(NEW_TEST_SUITE.name);
 
     cy.get('[data-testid="add-test-case-btn"]').click();
     verifyResponseStatusCode('@testCase', 200);
@@ -506,11 +526,6 @@ describe('Data Quality and Profiler should work properly', () => {
   });
 
   it('Remove test case from logical test suite', () => {
-    interceptURL(
-      'GET',
-      '/api/v1/dataQuality/testSuites?fields=*&testSuiteType=logical',
-      'testSuite'
-    );
     interceptURL('GET', '/api/v1/dataQuality/testCases?fields=*', 'testCase');
     interceptURL(
       'GET',
@@ -522,12 +537,7 @@ describe('Data Quality and Profiler should work properly', () => {
       '/api/v1/dataQuality/testCases/logicalTestCases/*/*',
       'removeTestCase'
     );
-    cy.get('[data-testid="app-bar-item-data-quality"]').click();
-    cy.get('[data-testid="by-test-suites"]').click();
-    verifyResponseStatusCode('@testSuite', 200);
-    cy.get('[data-testid="test-suite-container"]')
-      .contains(NEW_TEST_SUITE.name)
-      .click();
+    visitTestSuiteDetailsPage(NEW_TEST_SUITE.name);
     verifyResponseStatusCode('@testSuitePermission', 200);
     verifyResponseStatusCode('@testCase', 200);
 
@@ -541,17 +551,7 @@ describe('Data Quality and Profiler should work properly', () => {
   });
 
   it('Delete test suite', () => {
-    interceptURL(
-      'GET',
-      '/api/v1/dataQuality/testSuites?fields=*&testSuiteType=logical',
-      'testSuite'
-    );
-    cy.get('[data-testid="app-bar-item-data-quality"]').click();
-    cy.get('[data-testid="by-test-suites"]').click();
-    verifyResponseStatusCode('@testSuite', 200);
-    cy.get('[data-testid="test-suite-container"]')
-      .contains(NEW_TEST_SUITE.name)
-      .click();
+    visitTestSuiteDetailsPage(NEW_TEST_SUITE.name);
 
     cy.get('[data-testid="manage-button"]').should('be.visible').click();
 
