@@ -10,19 +10,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Affix, Button, Card, Space, Typography } from 'antd';
+import { Button, Card, Modal, Skeleton, Typography } from 'antd';
 import { CookieStorage } from 'cookie-storage';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
+import StarGif from '../../../assets/gif/star.gif';
 import { ReactComponent as CloseIcon } from '../../../assets/svg/close.svg';
+import { ReactComponent as StarIcon } from '../../../assets/svg/ic-star-github.svg';
+
+import Icon from '@ant-design/icons/lib/components/Icon';
+import ButtonGroup from 'antd/lib/button/button-group';
 import {
-  BLACK_COLOR,
   ROUTES,
   STAR_OMD_USER,
+  TEXT_GREY_MUTED,
 } from '../../../constants/constants';
+import { getRepositoryData } from '../../../rest/commonAPI';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { getReleaseVersionExpiry } from '../WhatsNewModal/WhatsNewModal.util';
+import './github-star-modal.style.less';
 
 const cookieStorage = new CookieStorage();
 
@@ -31,6 +38,8 @@ const GithubStarModal = () => {
   const location = useLocation();
   const { currentUser } = useAuthContext();
   const [showGithubStarPopup, setShowGithubStarPopup] = useState(false);
+  const [starredCount, setStarredCount] = useState<number>(0);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const loggedInUserName = useMemo(() => currentUser?.name, [currentUser]);
 
@@ -49,9 +58,21 @@ const GithubStarModal = () => {
     [userCookieName, loggedInUserName]
   );
 
+  const fetchOpenMetaData = async () => {
+    try {
+      const res = await getRepositoryData();
+      setStarredCount(res.stargazers_count);
+    } catch (err) {
+      // Error
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const updateGithubPopup = useCallback(
     (show: boolean) => {
       if (loggedInUserName && show) {
+        fetchOpenMetaData();
         cookieStorage.setItem(userCookieName, 'true', {
           expires: getReleaseVersionExpiry(),
         });
@@ -75,24 +96,72 @@ const GithubStarModal = () => {
   return (
     <>
       {showGithubStarPopup && isHomePage && (
-        <Affix className="whats-new-alert-container">
-          <Card className="cursor-pointer" data-testid="whats-new-alert-card">
-            <Space align="start" className="d-flex justify-between">
-              <Typography.Text className="whats-new-alert-header">
-                {t('label.open-metadata-updated')}
-              </Typography.Text>
-              <Button
-                className="flex-center m--t-xss"
-                data-testid="close-whats-new-alert"
-                icon={<CloseIcon color={BLACK_COLOR} height={12} width={12} />}
-                type="text"
-                onClick={() => setShowGithubStarPopup(false)}
-              />
-            </Space>
+        <Modal
+          centered
+          destroyOnClose
+          open
+          className="github-star-popup-modal"
+          closeIcon={
+            <CloseIcon
+              color={TEXT_GREY_MUTED}
+              data-testid="github-star-popup-close-button"
+              height={12}
+              width={12}
+              onClick={() => setShowGithubStarPopup(false)}
+            />
+          }
+          data-testid="github-star-popup-modal"
+          footer={null}
+          maskClosable={false}
+          width={440}>
+          <Card
+            className="github-star-popup-card"
+            data-testid="github-star-popup-card">
+            <img
+              alt="star-open-metadata"
+              className="github-star-icon"
+              src={StarGif}
+            />
 
-            <Typography.Text>{t('label.star-github')}</Typography.Text>
+            <Typography.Text className="github-star-popup-header">
+              {t('label.star-us-on-github')}
+            </Typography.Text>
+
+            <Typography.Paragraph className="github-star-popup-description">
+              {t('message.star-on-github-description')}
+            </Typography.Paragraph>
+
+            <ButtonGroup className="github-action-button-group">
+              <Link
+                component={Typography.Link}
+                target="_blank"
+                to={{
+                  pathname: 'https://github.com/open-metadata/OpenMetadata',
+                }}>
+                <Button
+                  className="github-star-button github-modal-action-button"
+                  icon={<Icon component={StarIcon} size={12} />}>
+                  {t('label.star')}
+                </Button>
+              </Link>
+
+              <Link
+                component={Typography.Link}
+                target="_blank"
+                to={{
+                  pathname: 'https://github.com/open-metadata/OpenMetadata',
+                }}>
+                <Button className="github-modal-action-button">
+                  {isLoading ? (
+                    <Skeleton.Button active size="small" />
+                  ) : (
+                    starredCount
+                  )}
+                </Button>
+              </Link>
+            </ButtonGroup>
           </Card>
-        </Affix>
+        </Modal>
       )}
     </>
   );
