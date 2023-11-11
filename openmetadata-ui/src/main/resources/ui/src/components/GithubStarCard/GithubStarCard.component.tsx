@@ -17,13 +17,15 @@ import { CookieStorage } from 'cookie-storage';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router-dom';
-import { ReactComponent as StarGithubIcon } from '../../../assets/svg/ic-star-github.svg';
-import { ReactComponent as StarIcon } from '../../../assets/svg/ic-start-filled-github.svg';
-import { ROUTES, STAR_OMD_USER } from '../../../constants/constants';
-import { getRepositoryData } from '../../../rest/commonAPI';
-import { getReleaseVersionExpiry } from '../../../utils/WhatsNewModal.util';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
-import './github-star-modal.style.less';
+import { ReactComponent as StarGithubIcon } from '../../assets/svg/ic-star-github.svg';
+import { ReactComponent as StarIcon } from '../../assets/svg/ic-start-filled-github.svg';
+import { ROUTES, STAR_OMD_USER } from '../../constants/constants';
+import { OMD_REPOSITORY_LINK } from '../../constants/docs.constants';
+import { getRepositoryData } from '../../rest/commonAPI';
+import { getReleaseVersionExpiry } from '../../utils/WhatsNewModal.util';
+import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
+import { COOKIE_VERSION } from '../Modals/WhatsNewModal/whatsNewData';
+import './github-star-card.style.less';
 
 const cookieStorage = new CookieStorage();
 
@@ -36,6 +38,11 @@ const GithubStarCard = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const loggedInUserName = useMemo(() => currentUser?.name, [currentUser]);
+
+  const isWhatNewAlertVisible = useMemo(
+    () => cookieStorage.getItem(COOKIE_VERSION) !== 'true',
+    [cookieStorage]
+  );
 
   const userCookieName = useMemo(
     () => `${STAR_OMD_USER}_${loggedInUserName}`,
@@ -88,7 +95,14 @@ const GithubStarCard = () => {
   }, [usernameExistsInCookie, updateGithubPopup]);
 
   return showGithubStarPopup && isHomePage ? (
-    <Affix className="github-star-popup-card">
+    <Affix
+      className={`github-star-popup-card 
+      ${
+        isWhatNewAlertVisible
+          ? 'github-star-popup-card-with-alert'
+          : 'github-star-popup-card-without-alert'
+      }
+      `}>
       <Card data-testid="github-star-popup-card">
         <StarIcon className="github-star-icon" />
 
@@ -105,7 +119,7 @@ const GithubStarCard = () => {
             component={Typography.Link}
             target="_blank"
             to={{
-              pathname: 'https://github.com/open-metadata/OpenMetadata',
+              pathname: OMD_REPOSITORY_LINK,
             }}>
             <Button
               className="github-star-button github-modal-action-button"
@@ -118,7 +132,7 @@ const GithubStarCard = () => {
             component={Typography.Link}
             target="_blank"
             to={{
-              pathname: 'https://github.com/open-metadata/OpenMetadata',
+              pathname: OMD_REPOSITORY_LINK,
             }}>
             <Button className="github-modal-action-button">
               {isLoading ? (

@@ -11,26 +11,16 @@
  *  limitations under the License.
  */
 
-@import (reference) url('../../../styles/variables.less');
-
-@keyframes scrollIn {
-  to {
-    bottom: 24px;
-  }
-}
+@import (reference) url('../../styles/variables.less');
 
 .github-star-popup-card {
   border: none;
   text-align: center;
-
   position: fixed;
+  right: 30px;
   bottom: -100%;
-  right: 16px;
   z-index: 1;
-
   background: #fff;
-  animation: scrollIn 2s normal forwards ease-in-out;
-  animation-delay: 1s;
 
   .ant-card {
     position: relative;
@@ -65,11 +55,6 @@
     border: @global-border;
     overflow: hidden;
 
-    .github-star-button {
-      background: linear-gradient(0.5turn, rgba(0, 0, 0, 0.2), transparent);
-      border-right: @global-border !important;
-    }
-
     .github-modal-action-button {
       border: none;
 
@@ -82,5 +67,36 @@
         border: none;
       }
     }
+
+    .github-star-button {
+      background: linear-gradient(0.5turn, rgba(0, 0, 0, 0.2), transparent);
+      border-right: @global-border;
+
+      &:hover {
+        border-right: @global-border;
+      }
+    }
+  }
+}
+
+.github-star-popup-card-with-alert {
+  animation: scrollInWithAlert 2s normal forwards ease-in-out;
+  animation-delay: 1s;
+}
+
+.github-star-popup-card-without-alert {
+  animation: scrollInWithoutAlert 2s normal forwards ease-in-out;
+  animation-delay: 1s;
+}
+
+@keyframes scrollInWithAlert {
+  to {
+    bottom: 200px;
+  }
+}
+
+@keyframes scrollInWithoutAlert {
+  to {
+    bottom: 24px;
   }
 }
