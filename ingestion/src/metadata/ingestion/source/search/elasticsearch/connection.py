@@ -101,6 +101,9 @@ def _handle_ssl_context_by_path(ssl_config: SslConfig):
 
 
 def get_ssl_context(ssl_config: SslConfig) -> ssl.SSLContext:
+    """
+    Method to get SSL Context
+    """
     ca_cert = False
     client_cert = None
     private_key = None
@@ -132,7 +135,7 @@ def get_ssl_context(ssl_config: SslConfig) -> ssl.SSLContext:
         )
         return ssl_context
 
-    return ssl._create_unverified_context()
+    return ssl._create_unverified_context()  # pylint: disable=protected-access
 
 
 def get_connection(connection: ElasticsearchConnection) -> Elasticsearch:
