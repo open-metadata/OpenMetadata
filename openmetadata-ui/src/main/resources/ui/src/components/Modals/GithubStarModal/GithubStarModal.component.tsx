@@ -10,22 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Card, Modal, Skeleton, Typography } from 'antd';
+import Icon from '@ant-design/icons/lib/components/Icon';
+import { Affix, Button, Card, Skeleton, Typography } from 'antd';
+import ButtonGroup from 'antd/lib/button/button-group';
 import { CookieStorage } from 'cookie-storage';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router-dom';
-import { ReactComponent as CloseIcon } from '../../../assets/svg/close.svg';
 import { ReactComponent as StarGithubIcon } from '../../../assets/svg/ic-star-github.svg';
 import { ReactComponent as StarIcon } from '../../../assets/svg/ic-start-filled-github.svg';
-
-import Icon from '@ant-design/icons/lib/components/Icon';
-import ButtonGroup from 'antd/lib/button/button-group';
-import {
-  ROUTES,
-  STAR_OMD_USER,
-  TEXT_GREY_MUTED,
-} from '../../../constants/constants';
+import { ROUTES, STAR_OMD_USER } from '../../../constants/constants';
 import { getRepositoryData } from '../../../rest/commonAPI';
 import { getReleaseVersionExpiry } from '../../../utils/WhatsNewModal.util';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
@@ -33,7 +27,7 @@ import './github-star-modal.style.less';
 
 const cookieStorage = new CookieStorage();
 
-const GithubStarModal = () => {
+const GithubStarCard = () => {
   const { t } = useTranslation();
   const location = useLocation();
   const { currentUser } = useAuthContext();
@@ -93,76 +87,51 @@ const GithubStarModal = () => {
     return () => setShowGithubStarPopup(false);
   }, [usernameExistsInCookie, updateGithubPopup]);
 
-  return (
-    <>
-      {showGithubStarPopup && isHomePage && (
-        <Modal
-          centered
-          destroyOnClose
-          keyboard
-          open
-          className="github-star-popup-modal"
-          closeIcon={
-            <CloseIcon
-              color={TEXT_GREY_MUTED}
-              data-testid="github-star-popup-close-button"
-              height={12}
-              width={12}
-              onClick={() => setShowGithubStarPopup(false)}
-            />
-          }
-          data-testid="github-star-popup-modal"
-          footer={null}
-          maskClosable={false}
-          width={440}
-          onCancel={() => setShowGithubStarPopup(false)}>
-          <Card
-            className="github-star-popup-card"
-            data-testid="github-star-popup-card">
-            <StarIcon className="github-star-icon" />
+  return showGithubStarPopup && isHomePage ? (
+    <Affix className="github-star-popup-card">
+      <Card data-testid="github-star-popup-card">
+        <StarIcon className="github-star-icon" />
 
-            <Typography.Text className="github-star-popup-header">
-              {t('label.star-us-on-github')}
-            </Typography.Text>
+        <Typography.Text className="github-star-popup-header">
+          {t('label.star-us-on-github')}
+        </Typography.Text>
 
-            <Typography.Paragraph className="github-star-popup-description">
-              {t('message.star-on-github-description')}
-            </Typography.Paragraph>
+        <Typography.Paragraph className="github-star-popup-description">
+          {t('message.star-on-github-description')}
+        </Typography.Paragraph>
 
-            <ButtonGroup className="github-action-button-group">
-              <Link
-                component={Typography.Link}
-                target="_blank"
-                to={{
-                  pathname: 'https://github.com/open-metadata/OpenMetadata',
-                }}>
-                <Button
-                  className="github-star-button github-modal-action-button"
-                  icon={<Icon component={StarGithubIcon} size={12} />}>
-                  {t('label.star')}
-                </Button>
-              </Link>
+        <ButtonGroup className="github-action-button-group">
+          <Link
+            component={Typography.Link}
+            target="_blank"
+            to={{
+              pathname: 'https://github.com/open-metadata/OpenMetadata',
+            }}>
+            <Button
+              className="github-star-button github-modal-action-button"
+              icon={<Icon component={StarGithubIcon} size={12} />}>
+              {t('label.star')}
+            </Button>
+          </Link>
 
-              <Link
-                component={Typography.Link}
-                target="_blank"
-                to={{
-                  pathname: 'https://github.com/open-metadata/OpenMetadata',
-                }}>
-                <Button className="github-modal-action-button">
-                  {isLoading ? (
-                    <Skeleton.Button active size="small" />
-                  ) : (
-                    starredCount
-                  )}
-                </Button>
-              </Link>
-            </ButtonGroup>
-          </Card>
-        </Modal>
-      )}
-    </>
-  );
+          <Link
+            component={Typography.Link}
+            target="_blank"
+            to={{
+              pathname: 'https://github.com/open-metadata/OpenMetadata',
+            }}>
+            <Button className="github-modal-action-button">
+              {isLoading ? (
+                <Skeleton.Button active size="small" />
+              ) : (
+                starredCount
+              )}
+            </Button>
+          </Link>
+        </ButtonGroup>
+      </Card>
+    </Affix>
+  ) : null;
 };
 
-export default GithubStarModal;
+export default GithubStarCard;

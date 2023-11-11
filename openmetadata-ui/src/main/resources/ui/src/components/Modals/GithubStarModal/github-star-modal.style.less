@@ -13,52 +13,73 @@
 
 @import (reference) url('../../../styles/variables.less');
 
-.github-star-popup-modal {
-  .github-star-popup-card {
-    border: none;
-    text-align: center;
+@keyframes scrollIn {
+  to {
+    bottom: 24px;
+  }
+}
 
-    .github-star-icon {
-      display: block;
-      margin: 24px auto;
-      width: 50px;
-      color: @yellow-2;
+.github-star-popup-card {
+  border: none;
+  text-align: center;
+
+  position: fixed;
+  bottom: -100%;
+  right: 16px;
+  z-index: 1;
+
+  background: #fff;
+  animation: scrollIn 2s normal forwards ease-in-out;
+  animation-delay: 1s;
+
+  .ant-card {
+    position: relative;
+    width: 342px;
+    overflow: hidden;
+    border-radius: 14px;
+    box-shadow: @box-shadow-base;
+  }
+
+  .github-star-icon {
+    display: block;
+    margin: 16px auto;
+    width: 50px;
+    color: @yellow-2;
+  }
+
+  .github-star-popup-header {
+    color: @primary-color;
+    font-size: 20px;
+    font-weight: 500;
+  }
+
+  .github-star-popup-description {
+    margin-top: 10px;
+    color: @text-grey-muted;
+    font-size: 14px;
+    font-weight: 400;
+  }
+
+  .github-action-button-group {
+    border-radius: 4px;
+    border: @global-border;
+    overflow: hidden;
+
+    .github-star-button {
+      background: linear-gradient(0.5turn, rgba(0, 0, 0, 0.2), transparent);
+      border-right: @global-border !important;
     }
 
-    .github-star-popup-header {
-      color: @primary-color;
-      font-size: 20px;
-      font-weight: 500;
-    }
+    .github-modal-action-button {
+      border: none;
 
-    .github-star-popup-description {
-      margin-top: 10px;
-      color: @text-grey-muted;
-      font-size: 14px;
-      font-weight: 400;
-    }
-
-    .github-action-button-group {
-      border-radius: 4px;
-      border: @global-border;
-      overflow: hidden;
-
-      .github-star-button {
-        background: linear-gradient(0.5turn, rgba(0, 0, 0, 0.2), transparent);
-        border-right: @global-border !important;
-      }
-
-      .github-modal-action-button {
+      &:hover {
+        color: initial;
         border: none;
-
-        &:hover {
-          color: initial;
-          border: none;
-        }
-        &:focus {
-          color: initial;
-          border: none;
-        }
+      }
+      &:focus {
+        color: initial;
+        border: none;
       }
     }
   }
