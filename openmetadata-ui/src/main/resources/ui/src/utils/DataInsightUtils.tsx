@@ -13,7 +13,6 @@
 
 import { Card, Typography } from 'antd';
 import { RangePickerProps } from 'antd/lib/date-picker';
-import { SearchDropdownOption } from 'components/SearchDropdown/SearchDropdown.interface';
 import { t } from 'i18next';
 import {
   first,
@@ -26,6 +25,7 @@ import {
   omit,
   round,
   sortBy,
+  startCase,
   sumBy,
   toNumber,
 } from 'lodash';
@@ -33,6 +33,7 @@ import moment from 'moment';
 import React from 'react';
 import { ListItem } from 'react-awesome-query-builder';
 import { LegendProps, Surface } from 'recharts';
+import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
 import {
   GRAYED_OUT_COLOR,
   PLACEHOLDER_ROUTE_TAB,
@@ -40,7 +41,6 @@ import {
 } from '../constants/constants';
 import {
   ENTITIES_SUMMARY_LIST,
-  TIER_DATA,
   WEB_SUMMARY_LIST,
 } from '../constants/DataInsight.constants';
 import { KpiTargetType } from '../generated/api/dataInsight/kpi/createKpiRequest';
@@ -54,6 +54,7 @@ import { TotalEntitiesByTier } from '../generated/dataInsight/type/totalEntities
 import {
   ChartValue,
   DataInsightChartTooltipProps,
+  DataInsightTabs,
 } from '../interface/data-insight.interface';
 import { pluralize } from './CommonUtils';
 import { customFormatDateTime, formatDate } from './date-time/DateTimeUtils';
@@ -69,7 +70,7 @@ const checkIsPercentageGraph = (dataInsightChartType: DataInsightChartType) =>
 export const renderLegend = (
   legendData: LegendProps,
   activeKeys = [] as string[],
-  isTier = false
+  valueFormatter?: (value: string) => string
 ) => {
   const { payload = [] } = legendData;
 
@@ -103,9 +104,7 @@ export const renderLegend = (
               />
             </Surface>
             <span style={{ color: isActive ? 'inherit' : GRAYED_OUT_COLOR }}>
-              {isTier
-                ? TIER_DATA[entry.value as keyof typeof TIER_DATA]
-                : entry.value}
+              {valueFormatter ? valueFormatter(entry.value) : entry.value}
             </span>
           </li>
         );
@@ -114,7 +113,7 @@ export const renderLegend = (
   );
 };
 
-const getEntryFormattedValue = (
+export const getEntryFormattedValue = (
   value: number | string | undefined,
   dataKey: number | string | undefined,
   kpiTooltipRecord: DataInsightChartTooltipProps['kpiTooltipRecord'],
@@ -142,7 +141,7 @@ const getEntryFormattedValue = (
     } else if (isInteger(value)) {
       return `${value}${suffix}`;
     } else {
-      return `${value.toFixed(2)}${suffix}`;
+      return `${round(value, 2)}${suffix}`;
     }
   } else {
     return '';
@@ -154,8 +153,8 @@ export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
     active,
     payload = [],
     isPercentage,
+    valueFormatter,
     kpiTooltipRecord,
-    isTier,
   } = props;
 
   if (active && payload && payload.length) {
@@ -165,28 +164,30 @@ export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
       <Card
         className="custom-data-insight-tooltip"
         title={<Typography.Title level={5}>{timestamp}</Typography.Title>}>
-        {payload.map((entry, index) => (
-          <li
-            className="d-flex items-center justify-between gap-6 p-b-xss text-sm"
-            key={`item-${index}`}>
-            <span className="flex items-center text-grey-muted">
-              <Surface className="mr-2" height={12} version="1.1" width={12}>
-                <rect fill={entry.color} height="14" rx="2" width="14" />
-              </Surface>
-              {isTier
-                ? TIER_DATA[entry.dataKey as keyof typeof TIER_DATA]
-                : entry.dataKey}
-            </span>
-            <span className="font-medium">
-              {getEntryFormattedValue(
-                entry.value,
-                entry.dataKey,
-                kpiTooltipRecord,
-                isPercentage
-              )}
-            </span>
-          </li>
-        ))}
+        <ul className="custom-data-insight-tooltip-container">
+          {payload.map((entry, index) => (
+            <li
+              className="d-flex items-center justify-between gap-6 p-b-xss text-sm"
+              key={`item-${index}`}>
+              <span className="flex items-center text-grey-muted">
+                <Surface className="mr-2" height={12} version="1.1" width={12}>
+                  <rect fill={entry.color} height="14" rx="2" width="14" />
+                </Surface>
+                {startCase(entry.dataKey as string)}
+              </span>
+              <span className="font-medium">
+                {valueFormatter
+                  ? valueFormatter(entry.value)
+                  : getEntryFormattedValue(
+                      entry.value,
+                      entry.dataKey,
+                      kpiTooltipRecord,
+                      isPercentage
+                    )}
+              </span>
+            </li>
+          ))}
+        </ul>
       </Card>
     );
   }
@@ -668,5 +669,37 @@ export const getKpiResultFeedback = (day: number, isTargetMet: boolean) => {
   }
 };
 
-export const getDataInsightPathWithFqn = (fqn: string) =>
-  ROUTES.DATA_INSIGHT_WITH_TAB.replace(PLACEHOLDER_ROUTE_TAB, fqn);
+export const getDataInsightPathWithFqn = (tab = DataInsightTabs.DATA_ASSETS) =>
+  ROUTES.DATA_INSIGHT_WITH_TAB.replace(PLACEHOLDER_ROUTE_TAB, tab);
+
+export const getOptionalDataInsightTabFlag = (tab: DataInsightTabs) => {
+  return {
+    showDataInsightSummary:
+      tab === DataInsightTabs.APP_ANALYTICS ||
+      tab === DataInsightTabs.DATA_ASSETS,
+    showKpiChart:
+      tab === DataInsightTabs.KPIS || tab === DataInsightTabs.DATA_ASSETS,
+  };
+};
+
+export const sortEntityByValue = (
+  entities: string[],
+  latestData: Record<string, number>
+) => {
+  const entityValues = entities.map((entity) => ({
+    entity,
+    value: latestData[entity] ?? 0,
+  }));
+
+  // Sort the entities based on their values in descending order
+  entityValues.sort((a, b) => b.value - a.value);
+
+  // Extract the sorted entities without their values
+  return entityValues.map((entity) => entity.entity);
+};
+
+export const getRandomHexColor = () => {
+  const randomColor = Math.floor(Math.random() * 16777215).toString(16);
+
+  return `#${randomColor}`;
+};

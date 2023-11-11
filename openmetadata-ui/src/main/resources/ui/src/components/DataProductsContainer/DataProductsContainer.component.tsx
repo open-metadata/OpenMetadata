@@ -11,26 +11,29 @@
  *  limitations under the License.
  */
 import { Col, Row, Space, Tag, Typography } from 'antd';
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import { ReactComponent as DataProductIcon } from 'assets/svg/ic-data-product.svg';
-import DataProductSelectForm from 'components/DataProductSelectForm/DataProductsSelectForm';
-import TagsV1 from 'components/Tag/TagsV1/TagsV1.component';
-import { DE_ACTIVE_COLOR } from 'constants/constants';
-import { TAG_CONSTANT, TAG_START_WITH } from 'constants/Tag.constants';
-import { DataProduct } from 'generated/entity/domains/dataProduct';
-import { EntityReference } from 'generated/entity/type';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { fetchDataProductsElasticSearch } from 'rest/dataProductAPI';
-import { getEntityName } from 'utils/EntityUtils';
+import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
+import { ReactComponent as DataProductIcon } from '../../assets/svg/ic-data-product.svg';
+import DataProductSelectForm from '../../components/DataProductSelectForm/DataProductsSelectForm';
+import TagsV1 from '../../components/Tag/TagsV1/TagsV1.component';
+import {
+  DE_ACTIVE_COLOR,
+  NO_DATA_PLACEHOLDER,
+} from '../../constants/constants';
+import { TAG_CONSTANT, TAG_START_WITH } from '../../constants/Tag.constants';
+import { DataProduct } from '../../generated/entity/domains/dataProduct';
+import { EntityReference } from '../../generated/entity/type';
+import { fetchDataProductsElasticSearch } from '../../rest/dataProductAPI';
+import { getEntityName } from '../../utils/EntityUtils';
 
 interface DataProductsContainerProps {
   showHeader?: boolean;
   hasPermission: boolean;
   dataProducts: EntityReference[];
   activeDomain?: EntityReference;
-  onSave: (dataProducts: DataProduct[]) => Promise<void>;
+  onSave?: (dataProducts: DataProduct[]) => Promise<void>;
 }
 
 const DataProductsContainer = ({
@@ -50,8 +53,16 @@ const DataProductsContainer = ({
   const fetchAPI = useCallback(
     (searchValue: string, page: number) => {
       let searchText = searchValue;
-      if (activeDomain) {
-        searchText += ` AND domain.fullyQualifiedName:${activeDomain.name}`;
+      const domainText = activeDomain
+        ? `(domain.fullyQualifiedName:"${activeDomain.name}")`
+        : '';
+
+      if (!isEmpty(searchText)) {
+        searchText = `${searchText} ${
+          !isEmpty(domainText) ? `AND ${domainText}` : ''
+        } `;
+      } else {
+        searchText = domainText;
       }
 
       return fetchDataProductsElasticSearch(searchText, page);
@@ -60,7 +71,7 @@ const DataProductsContainer = ({
   );
 
   const handleSave = async (dataProducts: DataProduct[]) => {
-    await onSave(dataProducts);
+    await onSave?.(dataProducts);
     setIsEditMode(false);
   };
 
@@ -89,7 +100,7 @@ const DataProductsContainer = ({
 
   const renderDataProducts = useMemo(() => {
     if (isEmpty(dataProducts)) {
-      return null;
+      return NO_DATA_PLACEHOLDER;
     }
 
     return dataProducts.map((product) => {

@@ -1,0 +1,126 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/greenplumConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GreenplumConnection",
+  "description": "Greenplum Database Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.GreenplumConnection",
+  "definitions": {
+    "greenplumType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "Greenplum"
+      ],
+      "default": "Greenplum"
+    },
+    "greenplumScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": [
+        "postgresql+psycopg2"
+      ],
+      "default": "postgresql+psycopg2"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/greenplumType",
+      "default": "Greenplum"
+    },
+    "scheme": {
+      "title": "Connection Scheme",
+      "description": "SQLAlchemy driver scheme options.",
+      "$ref": "#/definitions/greenplumScheme",
+      "default": "postgresql+psycopg2"
+    },
+    "username": {
+      "title": "Username",
+      "description": "Username to connect to Greenplum. This user should have privileges to read all the metadata in Greenplum.",
+      "type": "string"
+    },
+    "authType": {
+      "title": "Auth Configuration Type",
+      "description": "Choose Auth Config Type.",
+      "oneOf": [
+        {
+          "$ref": "./common/basicAuth.json"
+        },
+        {
+          "$ref": "./common/iamAuthConfig.json"
+        }
+      ]
+    },
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "Host and port of the source service.",
+      "type": "string"
+    },
+    "database": {
+      "title": "Database",
+      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank, OpenMetadata Ingestion attempts to scan all the databases.",
+      "type": "string"
+    },
+    "sslMode": {
+      "title": "SSL Mode",
+      "description": "SSL Mode to connect to Greenplum database.",
+      "enum": [
+        "disable",
+        "allow",
+        "prefer",
+        "require",
+        "verify-ca",
+        "verify-full"
+      ],
+      "default": "disable"
+    },
+    "sslConfig": {
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
+    },
+    "ingestAllDatabases": {
+      "title": "Ingest All Databases",
+      "description": "Ingest data from all databases in Greenplum. You can use databaseFilterPattern on top of this.",
+      "type": "boolean",
+      "default": false
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsDBTExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsDBTExtraction"
+    },
+    "supportsProfiler": {
+      "title": "Supports Profiler",
+      "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+    },
+    "supportsDatabase": {
+      "title": "Supports Database",
+      "$ref": "../connectionBasicType.json#/definitions/supportsDatabase"
+    },
+    "supportsQueryComment": {
+      "title": "Supports Query Comment",
+      "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
+    },
+    "sampleDataStorageConfig": {
+      "title": "S3 Config for Sample Data",
+      "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "hostPort",
+    "username",
+    "database"
+  ]
+}

@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import { ROUTES } from 'constants/constants';
 import React from 'react';
 import { MemoryRouter, Switch } from 'react-router-dom';
+import { ROUTES } from '../../constants/constants';
 import AppContainer from './AppContainer';
 
 jest.mock('../../AppState', () => ({
@@ -32,7 +32,7 @@ jest.mock('../../AppState', () => ({
   },
 }));
 
-jest.mock('../authentication/auth-provider/AuthProvider', () => {
+jest.mock('../Auth/AuthProviders/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({
       isAuthDisabled: false,
@@ -56,19 +56,19 @@ jest.mock('../../hooks/authHooks', () => ({
   },
 }));
 
-jest.mock('components/MyData/LeftSidebar/LeftSidebar.component', () =>
+jest.mock('../../components/MyData/LeftSidebar/LeftSidebar.component', () =>
   jest.fn().mockReturnValue(<p>Sidebar</p>)
 );
 
-jest.mock('components/AppBar/Appbar', () =>
+jest.mock('../../components/AppBar/Appbar', () =>
   jest.fn().mockReturnValue(<p>Appbar</p>)
 );
 
-jest.mock('pages/SignUp/SignUpPage', () =>
+jest.mock('../../pages/SignUp/SignUpPage', () =>
   jest.fn().mockReturnValue(<p>SignUpPage</p>)
 );
 
-jest.mock('components/router/AuthenticatedAppRouter', () =>
+jest.mock('../../components/AppRouter/AuthenticatedAppRouter', () =>
   jest.fn().mockReturnValue(<p>AuthenticatedAppRouter</p>)
 );
 

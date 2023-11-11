@@ -11,10 +11,8 @@
  *  limitations under the License.
  */
 
-import Loader from 'components/Loader/Loader';
 import { CookieStorage } from 'cookie-storage';
 import { isEmpty } from 'lodash';
-import { observer } from 'mobx-react';
 import React, {
   createContext,
   FC,
@@ -25,22 +23,20 @@ import React, {
   useState,
 } from 'react';
 import { useHistory } from 'react-router-dom';
+import Loader from '../../components/Loader/Loader';
+import { REDIRECT_PATHNAME } from '../../constants/constants';
 import {
   getEntityPermissionByFqn,
   getEntityPermissionById,
   getLoggedInUserPermissions,
   getResourcePermission,
-} from 'rest/permissionAPI';
-import AppState from '../../AppState';
-import { REDIRECT_PATHNAME } from '../../constants/constants';
-import {
-  getUrlPathnameExpiryAfterRoute,
-  isProtectedRoute,
-} from '../../utils/AuthProvider.util';
+} from '../../rest/permissionAPI';
+import { getUrlPathnameExpiryAfterRoute } from '../../utils/AuthProvider.util';
 import {
   getOperationPermissions,
   getUIPermission,
 } from '../../utils/PermissionsUtils';
+import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
 import {
   EntityPermissionMap,
   PermissionContextType,
@@ -67,6 +63,7 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
   const [permissions, setPermissions] = useState<UIPermission>(
     {} as UIPermission
   );
+  const { currentUser } = useAuthContext();
   const cookieStorage = new CookieStorage();
   const history = useHistory();
   const [loading, setLoading] = useState(false);
@@ -77,11 +74,6 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
   const [resourcesPermission, setResourcesPermission] = useState<UIPermission>(
     {} as UIPermission
   );
-
-  // Update current user details of AppState change
-  const currentUser = useMemo(() => {
-    return AppState.getCurrentUserDetails();
-  }, [AppState.userDetails, AppState.nonSecureUserDetails]);
 
   const redirectToStoredPath = useCallback(() => {
     const urlPathname = cookieStorage.getItem(REDIRECT_PATHNAME);
@@ -181,7 +173,7 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
     /**
      * Only fetch permissions if current user is present
      */
-    if (isProtectedRoute(location.pathname) && !isEmpty(currentUser)) {
+    if (!isEmpty(currentUser)) {
       fetchLoggedInUserPermissions();
     }
     if (isEmpty(currentUser)) {
@@ -213,4 +205,4 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
 
 export const usePermissionProvider = () => useContext(PermissionContext);
 
-export default observer(PermissionProvider);
+export default PermissionProvider;

@@ -12,11 +12,11 @@
  */
 
 import classNames from 'classnames';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
-import { EntityType } from 'enums/entity.enum';
 import React, { ReactNode } from 'react';
-import { getEntityLinkFromType } from 'utils/EntityUtils';
+import { EntityType } from '../../../enums/entity.enum';
+import { getEntityLinkFromType } from '../../../utils/EntityUtils';
+import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import EntityHeaderTitle from '../EntityHeaderTitle/EntityHeaderTitle.component';
 
 interface Props {
@@ -33,6 +33,7 @@ interface Props {
   openEntityInNewPage?: boolean;
   gutter?: 'default' | 'large';
   serviceName: string;
+  titleColor?: string;
   badge?: React.ReactNode;
 }
 
@@ -46,6 +47,7 @@ export const EntityHeader = ({
   gutter = 'default',
   serviceName,
   badge,
+  titleColor,
 }: Props) => {
   return (
     <div className="w-full">
@@ -60,6 +62,7 @@ export const EntityHeader = ({
 
       <EntityHeaderTitle
         badge={badge}
+        color={titleColor}
         deleted={entityData.deleted}
         displayName={entityData.displayName}
         icon={icon}

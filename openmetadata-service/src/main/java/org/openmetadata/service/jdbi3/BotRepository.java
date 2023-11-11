@@ -14,6 +14,7 @@
 package org.openmetadata.service.jdbi3;
 
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
@@ -27,8 +28,9 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 public class BotRepository extends EntityRepository<Bot> {
   static final String BOT_UPDATE_FIELDS = "botUser";
 
-  public BotRepository(CollectionDAO dao) {
-    super(BotResource.COLLECTION_PATH, Entity.BOT, Bot.class, dao.botDAO(), dao, "", BOT_UPDATE_FIELDS);
+  public BotRepository() {
+    super(
+        BotResource.COLLECTION_PATH, Entity.BOT, Bot.class, Entity.getCollectionDAO().botDAO(), "", BOT_UPDATE_FIELDS);
     quoteFqn = true;
   }
 
@@ -83,6 +85,7 @@ public class BotRepository extends EntityRepository<Bot> {
       super(original, updated, operation);
     }
 
+    @Transaction
     @Override
     public void entitySpecificUpdate() {
       updateUser(original, updated);

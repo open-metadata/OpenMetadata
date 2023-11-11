@@ -129,7 +129,7 @@ def _(connection: PostgresConnection):
 
     # import required to load sqlalchemy plugin
     # pylint: disable=import-outside-toplevel,unused-import
-    from metadata.ingestion.source.database.hive.metastore_dialects.postgres import (
+    from metadata.ingestion.source.database.hive.metastore_dialects.postgres import (  # nopycln: import
         HivePostgresMetaStoreDialect,
     )
 
@@ -156,7 +156,7 @@ def _(connection: MysqlConnection):
 
     # import required to load sqlalchemy plugin
     # pylint: disable=import-outside-toplevel,unused-import
-    from metadata.ingestion.source.database.hive.metastore_dialects.mysql import (
+    from metadata.ingestion.source.database.hive.metastore_dialects.mysql import (  # nopycln: import
         HiveMysqlMetaStoreDialect,
     )
 

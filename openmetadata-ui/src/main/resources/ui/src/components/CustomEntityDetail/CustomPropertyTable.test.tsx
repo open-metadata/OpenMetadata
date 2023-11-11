@@ -21,12 +21,15 @@ import {
 import React from 'react';
 import { CustomPropertyTable } from './CustomPropertyTable';
 
-jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
+jest.mock('../common/RichTextEditor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreview</p>);
 });
-jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () => {
-  return jest.fn().mockReturnValue(<p>ErrorPlaceHolder</p>);
-});
+jest.mock(
+  '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
+  () => {
+    return jest.fn().mockReturnValue(<p>ErrorPlaceHolder</p>);
+  }
+);
 
 const mockUpdateEntityType = jest.fn();
 const mockProperties = [

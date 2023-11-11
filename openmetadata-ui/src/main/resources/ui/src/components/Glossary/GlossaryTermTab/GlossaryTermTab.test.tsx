@@ -19,9 +19,12 @@ import {
   getByText,
   render,
 } from '@testing-library/react';
-import { mockedGlossaryTerms, MOCK_PERMISSIONS } from 'mocks/Glossary.mock';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import {
+  mockedGlossaryTerms,
+  MOCK_PERMISSIONS,
+} from '../../../mocks/Glossary.mock';
 import GlossaryTermTab from './GlossaryTermTab.component';
 
 const mockOnAddGlossaryTerm = jest.fn();
@@ -44,20 +47,20 @@ const mockProps2 = {
   childGlossaryTerms: mockedGlossaryTerms,
 };
 
-jest.mock('rest/glossaryAPI', () => ({
+jest.mock('../../../rest/glossaryAPI', () => ({
   getGlossaryTerms: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: mockedGlossaryTerms })),
   patchGlossaryTerm: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
-jest.mock('components/common/rich-text-editor/RichTextEditorPreviewer', () =>
+jest.mock('../../common/RichTextEditor/RichTextEditorPreviewer', () =>
   jest
     .fn()
     .mockImplementation(({ markdown }) => (
       <p data-testid="description">{markdown}</p>
     ))
 );
-jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () =>
+jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
   jest
     .fn()
     .mockImplementation(({ onClick }) => (
@@ -65,11 +68,11 @@ jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () =>
     ))
 );
 
-jest.mock('components/Loader/Loader', () =>
+jest.mock('../../Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div>Loader</div>)
 );
 
-jest.mock('components/common/OwnerLabel/OwnerLabel.component', () => ({
+jest.mock('../../common/OwnerLabel/OwnerLabel.component', () => ({
   OwnerLabel: jest.fn().mockImplementation(() => <div>OwnerLabel</div>),
 }));
 
@@ -104,7 +107,7 @@ describe('Test GlossaryTermTab component', () => {
 
     expect(getAllByText(container, 'OwnerLabel')).toHaveLength(2);
 
-    expect(getAllByTestId(container, 'add-classification')).toHaveLength(2);
+    expect(getAllByTestId(container, 'add-classification')).toHaveLength(1);
     expect(getAllByTestId(container, 'edit-button')).toHaveLength(2);
   });
 });

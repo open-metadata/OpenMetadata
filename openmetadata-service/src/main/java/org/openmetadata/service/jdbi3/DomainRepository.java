@@ -18,6 +18,7 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DOMAIN;
 
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.type.EntityReference;
@@ -32,8 +33,14 @@ import org.openmetadata.service.util.FullyQualifiedName;
 public class DomainRepository extends EntityRepository<Domain> {
   private static final String UPDATE_FIELDS = "parent,children,experts";
 
-  public DomainRepository(CollectionDAO dao) {
-    super(DomainResource.COLLECTION_PATH, DOMAIN, Domain.class, dao.domainDAO(), dao, UPDATE_FIELDS, UPDATE_FIELDS);
+  public DomainRepository() {
+    super(
+        DomainResource.COLLECTION_PATH,
+        DOMAIN,
+        Domain.class,
+        Entity.getCollectionDAO().domainDAO(),
+        UPDATE_FIELDS,
+        UPDATE_FIELDS);
     supportsSearch = true;
   }
 
@@ -115,6 +122,7 @@ public class DomainRepository extends EntityRepository<Domain> {
       super(original, updated, operation);
     }
 
+    @Transaction
     @Override
     public void entitySpecificUpdate() {
       recordChange("domainType", original.getDomainType(), updated.getDomainType());

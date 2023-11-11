@@ -107,7 +107,6 @@ UPDATE dashboard_service_entity
 SET json = jsonb_set(
   json::jsonb #- '{connection,config,sandboxDomain}',
   '{connection,config,instanceDomain}',
-    json JSONB NOT NULL,
   (json #> '{connection,config,sandboxDomain}')::jsonb,
   true
 )
@@ -196,3 +195,96 @@ CREATE TABLE IF NOT EXISTS doc_store (
   UNIQUE (fqnHash)
 );
 CREATE INDEX page_name_index ON doc_store USING btree (name);
+-- Remove Mark All Deleted Field
+UPDATE ingestion_pipeline_entity
+SET json = json::jsonb #- '{sourceConfig,config,markAllDeletedTables}'
+WHERE json #>> '{pipelineType}' = 'metadata';
+
+
+-- update entityReportData from pascale to camel case
+UPDATE report_data_time_series
+SET json = jsonb_set(
+  json::jsonb #- '{reportDataType}',
+  '{reportDataType}',
+  '"entityReportData"',
+  true
+),
+entityFQNHash = MD5('entityReportData')
+WHERE json #>> '{reportDataType}' = 'EntityReportData';
+
+-- update webAnalyticEntityViewReportData from pascale to camel case
+UPDATE report_data_time_series
+SET json = jsonb_set(
+  json::jsonb #- '{reportDataType}',
+  '{reportDataType}',
+  '"webAnalyticEntityViewReportData"',
+  true
+),
+entityFQNHash = MD5('webAnalyticEntityViewReportData')
+WHERE json #>> '{reportDataType}' = 'WebAnalyticEntityViewReportData';
+
+-- update webAnalyticUserActivityReportData from pascale to camel case
+UPDATE report_data_time_series
+SET json = jsonb_set(
+  json::jsonb #- '{reportDataType}',
+  '{reportDataType}',
+  '"webAnalyticUserActivityReportData"',
+  true
+),
+entityFQNHash = MD5('webAnalyticUserActivityReportData')
+WHERE json #>> '{reportDataType}' = 'WebAnalyticUserActivityReportData';
+
+CREATE TABLE IF NOT EXISTS installed_apps (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+    nameHash VARCHAR(256) NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
+    json JSONB NOT NULL,
+    updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
+    deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
+    PRIMARY KEY (id),
+    UNIQUE (nameHash)
+    );
+
+CREATE TABLE IF NOT EXISTS apps_marketplace (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+    nameHash VARCHAR(256) NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
+    json JSONB NOT NULL,
+    updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
+    deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
+    PRIMARY KEY (id),
+    UNIQUE (nameHash)
+    );
+   
+CREATE TABLE IF NOT EXISTS apps_extension_time_series (
+    appId VARCHAR(36) GENERATED ALWAYS AS (json ->> 'appId') STORED NOT NULL,      
+    json JSONB NOT NULL,
+    timestamp BIGINT GENERATED ALWAYS AS ((json ->> 'timestamp')::bigint) STORED NOT NULL
+);  
+
+
+-- Adding back the PK queries from 1.1.5 to keep the correct VARCHAR length
+-- We don't have an ID, so we'll create a temp SERIAL number and use it for deletion
+ALTER TABLE entity_extension_time_series ADD COLUMN temp SERIAL;
+WITH CTE AS (
+  SELECT temp, ROW_NUMBER() OVER (PARTITION BY entityFQNHash, extension, timestamp ORDER BY entityFQNHash) RN FROM entity_extension_time_series)
+DELETE FROM entity_extension_time_series WHERE temp in (SELECT temp FROM CTE WHERE RN > 1);
+ALTER TABLE entity_extension_time_series DROP COLUMN temp;
+
+ALTER TABLE entity_extension_time_series ALTER COLUMN entityFQNHash TYPE VARCHAR(768), ALTER COLUMN jsonSchema TYPE VARCHAR(256) , ALTER COLUMN extension TYPE VARCHAR(256),
+    ADD CONSTRAINT entity_extension_time_series_constraint UNIQUE (entityFQNHash, extension, timestamp);
+
+-- Airflow pipeline status set to millis
+UPDATE entity_extension_time_series ts
+SET json = jsonb_set(
+	ts.json,
+	'{timestamp}',
+	to_jsonb(cast(ts.json #> '{timestamp}' as int8) *1000)
+)
+FROM pipeline_entity p
+WHERE ts.entityFQNHash  = p.fqnHash
+  and ts.extension = 'pipeline.pipelineStatus'
+  AND p.json #>> '{serviceType}' in ('Airflow', 'GluePipeline', 'Airbyte', 'Dagster', 'DomoPipeline')
+;

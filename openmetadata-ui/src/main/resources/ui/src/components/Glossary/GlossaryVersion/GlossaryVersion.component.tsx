@@ -11,28 +11,29 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import EntityVersionTimeLine from 'components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
-import GlossaryV1 from 'components/Glossary/GlossaryV1.component';
-import { LOADING_STATE } from 'enums/common.enum';
-import { Glossary } from 'generated/entity/data/glossary';
-import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
-import { EntityHistory } from 'generated/type/entityHistory';
 import { noop, toString } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
+import { LOADING_STATE } from '../../../enums/common.enum';
+import { Glossary } from '../../../generated/entity/data/glossary';
+import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
+import { EntityHistory } from '../../../generated/type/entityHistory';
 import {
   getGlossaryTermsVersion,
   getGlossaryTermsVersionsList,
   getGlossaryVersion,
   getGlossaryVersionsList,
-} from 'rest/glossaryAPI';
+} from '../../../rest/glossaryAPI';
 import {
   getGlossaryPath,
   getGlossaryTermsVersionsPath,
   getGlossaryVersionsPath,
-} from 'utils/RouterUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+} from '../../../utils/RouterUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
+import Loader from '../../Loader/Loader';
+import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
+import GlossaryV1Component from '../GlossaryV1.component';
 
 interface GlossaryVersionProps {
   isGlossary?: boolean;
@@ -49,6 +50,7 @@ const GlossaryVersion = ({ isGlossary = false }: GlossaryVersionProps) => {
     {} as EntityHistory
   );
   const [selectedData, setSelectedData] = useState<Glossary | GlossaryTerm>();
+  const [isVersionLoading, setIsVersionLoading] = useState<boolean>(true);
 
   const fetchVersionsInfo = async () => {
     try {
@@ -63,6 +65,7 @@ const GlossaryVersion = ({ isGlossary = false }: GlossaryVersionProps) => {
   };
 
   const fetchActiveVersion = async () => {
+    setIsVersionLoading(true);
     try {
       const res = isGlossary
         ? await getGlossaryVersion(glossaryName, version)
@@ -71,6 +74,8 @@ const GlossaryVersion = ({ isGlossary = false }: GlossaryVersionProps) => {
       setSelectedData(res);
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsVersionLoading(false);
     }
   };
 
@@ -88,6 +93,9 @@ const GlossaryVersion = ({ isGlossary = false }: GlossaryVersionProps) => {
 
   useEffect(() => {
     fetchVersionsInfo();
+  }, [glossaryName]);
+
+  useEffect(() => {
     fetchActiveVersion();
   }, [glossaryName, version]);
 
@@ -95,17 +103,21 @@ const GlossaryVersion = ({ isGlossary = false }: GlossaryVersionProps) => {
     <PageLayoutV1 pageTitle="Glossary version">
       <div className="version-data">
         {/* TODO: Need to implement version component for Glossary */}
-        <GlossaryV1
-          isVersionsView
-          deleteStatus={LOADING_STATE.INITIAL}
-          isGlossaryActive={isGlossary}
-          isSummaryPanelOpen={false}
-          selectedData={selectedData as Glossary}
-          updateGlossary={() => Promise.resolve()}
-          onGlossaryDelete={noop}
-          onGlossaryTermDelete={noop}
-          onGlossaryTermUpdate={() => Promise.resolve()}
-        />
+        {isVersionLoading ? (
+          <Loader />
+        ) : (
+          <GlossaryV1Component
+            isVersionsView
+            deleteStatus={LOADING_STATE.INITIAL}
+            isGlossaryActive={isGlossary}
+            isSummaryPanelOpen={false}
+            selectedData={selectedData as Glossary}
+            updateGlossary={() => Promise.resolve()}
+            onGlossaryDelete={noop}
+            onGlossaryTermDelete={noop}
+            onGlossaryTermUpdate={() => Promise.resolve()}
+          />
+        )}
       </div>
       <EntityVersionTimeLine
         currentVersion={toString(version)}

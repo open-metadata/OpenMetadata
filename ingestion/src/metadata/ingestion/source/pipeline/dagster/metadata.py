@@ -22,9 +22,6 @@ from metadata.generated.schema.entity.data.pipeline import (
     Task,
     TaskStatus,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.services.connections.pipeline.dagsterConnection import (
     DagsterConnection,
 )
@@ -36,6 +33,7 @@ from metadata.ingestion.api.step import WorkflowFatalError
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.dagster.models import (
     DagsterPipeline,
     RunStepStats,
@@ -45,6 +43,7 @@ from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceS
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
+from metadata.utils.time_utils import convert_timestamp_to_milliseconds
 
 logger = ingestion_logger()
 
@@ -64,14 +63,14 @@ class DagsterSource(PipelineServiceSource):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: DagsterConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, DagsterConnection):
             raise InvalidSourceException(
                 f"Expected DagsterConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def _get_downstream_tasks(self, job: SolidHandle) -> Optional[List[str]]:
         """Method to get downstream tasks"""
@@ -163,8 +162,12 @@ class DagsterSource(PipelineServiceSource):
                 executionStatus=STATUS_MAP.get(
                     run.status.lower(), StatusType.Pending.value
                 ),
-                startTime=round(run.startTime) if run.startTime else None,
-                endTime=round(run.endTime) if run.endTime else None,
+                startTime=round(convert_timestamp_to_milliseconds(run.startTime))
+                if run.startTime
+                else None,
+                endTime=round(convert_timestamp_to_milliseconds(run.endTime))
+                if run.endTime
+                else None,
             )
 
             pipeline_status = PipelineStatus(
@@ -172,7 +175,9 @@ class DagsterSource(PipelineServiceSource):
                 executionStatus=STATUS_MAP.get(
                     run.status.lower(), StatusType.Pending.value
                 ),
-                timestamp=round(run.endTime) if run.endTime else None,
+                timestamp=round(convert_timestamp_to_milliseconds(run.endTime))
+                if run.endTime
+                else None,
             )
             pipeline_status_yield = OMetaPipelineStatus(
                 pipeline_fqn=self.context.pipeline.fullyQualifiedName.__root__,

@@ -11,20 +11,15 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Row, Typography } from 'antd';
-import EntityListSkeleton from 'components/Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
-import { EntityReference } from 'generated/entity/type';
-import React, { Fragment, FunctionComponent } from 'react';
+import { Button, Col, Row, Typography } from 'antd';
+import { isEmpty } from 'lodash';
+import React, { FunctionComponent } from 'react';
 import { Link } from 'react-router-dom';
-import { getEntityName } from 'utils/EntityUtils';
-import { getEntityIcon, getEntityLink } from 'utils/TableUtils';
+import { EntityReference } from '../../../generated/entity/type';
+import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityIcon, getEntityLink } from '../../../utils/TableUtils';
+import EntityListSkeleton from '../../Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
 import './entity.less';
-interface Prop {
-  entityList: Array<EntityReference>;
-  headerText: string | JSX.Element;
-  noDataPlaceholder: JSX.Element;
-  testIDText: string;
-}
 
 interface AntdEntityListProp {
   loading?: boolean;
@@ -34,117 +29,6 @@ interface AntdEntityListProp {
   noDataPlaceholder: JSX.Element;
   testIDText: string;
 }
-
-const { Text } = Typography;
-
-const EntityList: FunctionComponent<Prop> = ({
-  entityList = [],
-  headerText,
-  noDataPlaceholder,
-  testIDText,
-}: Prop) => {
-  return (
-    <Fragment>
-      <Text className="font-semibold" type="secondary">
-        {headerText}
-      </Text>
-      {entityList.length
-        ? entityList.map((item, index) => {
-            return (
-              <div
-                className="flex items-center justify-between m-b-xs"
-                data-testid={`${testIDText}-${getEntityName(
-                  item as unknown as EntityReference
-                )}`}
-                key={index}>
-                <div className="flex">
-                  {getEntityIcon(item.type || '')}
-                  <Link
-                    className="font-medium"
-                    to={getEntityLink(
-                      item.type || '',
-                      item.fullyQualifiedName as string
-                    )}>
-                    <Button
-                      className="entity-button"
-                      title={getEntityName(item as unknown as EntityReference)}
-                      type="text">
-                      {getEntityName(item as unknown as EntityReference)}
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-            );
-          })
-        : noDataPlaceholder}
-    </Fragment>
-  );
-};
-
-export const EntityListWithAntd: FunctionComponent<AntdEntityListProp> = ({
-  entityList = [],
-  headerText,
-  headerTextLabel,
-  noDataPlaceholder,
-  testIDText,
-  loading,
-}: AntdEntityListProp) => {
-  return (
-    <Card className="panel-shadow-color">
-      <EntityListSkeleton
-        dataLength={entityList.length !== 0 ? entityList.length : 5}
-        loading={Boolean(loading)}>
-        <>
-          <Row className="p-b-sm" justify="space-between">
-            <Col>
-              <Typography.Text className="common-left-panel-card-heading">
-                {headerTextLabel}
-              </Typography.Text>
-            </Col>
-            <Col>
-              <Typography.Text>{headerText}</Typography.Text>
-            </Col>
-          </Row>
-          {entityList.length
-            ? entityList.map((item, index) => {
-                return (
-                  <div
-                    className="flex items-center justify-between"
-                    data-testid={`${testIDText}-${getEntityName(
-                      item as unknown as EntityReference
-                    )}`}
-                    key={index}>
-                    <div className="flex items-center">
-                      {getEntityIcon(item.type || '')}
-                      <Link
-                        className="font-medium"
-                        to={getEntityLink(
-                          item.type || '',
-                          item.fullyQualifiedName as string
-                        )}>
-                        <Button
-                          className="entity-button"
-                          title={getEntityName(
-                            item as unknown as EntityReference
-                          )}
-                          type="text">
-                          <Typography.Text
-                            className="w-48 text-left"
-                            ellipsis={{ tooltip: true }}>
-                            {getEntityName(item as unknown as EntityReference)}
-                          </Typography.Text>
-                        </Button>
-                      </Link>
-                    </div>
-                  </div>
-                );
-              })
-            : noDataPlaceholder}
-        </>
-      </EntityListSkeleton>
-    </Card>
-  );
-};
 
 export const EntityListWithV1: FunctionComponent<AntdEntityListProp> = ({
   entityList = [],
@@ -161,7 +45,7 @@ export const EntityListWithV1: FunctionComponent<AntdEntityListProp> = ({
       <>
         <Row className="m-b-xs" justify="space-between">
           <Col>
-            <Typography.Text className="right-panel-label">
+            <Typography.Text className="font-medium">
               {headerTextLabel}
             </Typography.Text>
           </Col>
@@ -169,50 +53,50 @@ export const EntityListWithV1: FunctionComponent<AntdEntityListProp> = ({
             <Typography.Text>{headerText}</Typography.Text>
           </Col>
         </Row>
-        <div className="entity-list-body">
-          {entityList.length
-            ? entityList.map((item) => {
-                return (
-                  <div
-                    className="right-panel-list-item flex items-center justify-between"
-                    data-testid={`${testIDText}-${getEntityName(
-                      item as unknown as EntityReference
-                    )}`}
-                    key={item.id}>
-                    <div className="flex items-center">
-                      <Link
-                        className="font-medium"
-                        to={getEntityLink(
-                          item.type || '',
-                          item.fullyQualifiedName ?? ''
-                        )}>
-                        <Button
-                          className="entity-button flex-center p-0 m--ml-1"
-                          icon={
-                            <div className="entity-button-icon m-r-xs">
-                              {getEntityIcon(item.type || '')}
-                            </div>
-                          }
-                          title={getEntityName(
-                            item as unknown as EntityReference
-                          )}
-                          type="text">
-                          <Typography.Text
-                            className="w-72 text-left text-xs"
-                            ellipsis={{ tooltip: true }}>
-                            {getEntityName(item as unknown as EntityReference)}
-                          </Typography.Text>
-                        </Button>
-                      </Link>
-                    </div>
+        {isEmpty(entityList) ? (
+          <div className="flex-center h-full">{noDataPlaceholder}</div>
+        ) : (
+          <div className="entity-list-body">
+            {entityList.map((item) => {
+              return (
+                <div
+                  className="right-panel-list-item flex items-center justify-between"
+                  data-testid={`${testIDText}-${getEntityName(
+                    item as unknown as EntityReference
+                  )}`}
+                  key={item.id}>
+                  <div className="flex items-center">
+                    <Link
+                      className="font-medium"
+                      to={getEntityLink(
+                        item.type || '',
+                        item.fullyQualifiedName ?? ''
+                      )}>
+                      <Button
+                        className="entity-button flex-center p-0 m--ml-1"
+                        icon={
+                          <div className="entity-button-icon m-r-xs">
+                            {getEntityIcon(item.type || '')}
+                          </div>
+                        }
+                        title={getEntityName(
+                          item as unknown as EntityReference
+                        )}
+                        type="text">
+                        <Typography.Text
+                          className="w-72 text-left text-xs"
+                          ellipsis={{ tooltip: true }}>
+                          {getEntityName(item as unknown as EntityReference)}
+                        </Typography.Text>
+                      </Button>
+                    </Link>
                   </div>
-                );
-              })
-            : noDataPlaceholder}
-        </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </>
     </EntityListSkeleton>
   );
 };
-
-export default EntityList;

@@ -38,6 +38,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.csv.CsvUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
@@ -65,13 +66,12 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   private static final String UPDATE_FIELDS = "";
   private static final String PATCH_FIELDS = "";
 
-  public GlossaryRepository(CollectionDAO dao) {
+  public GlossaryRepository() {
     super(
         GlossaryResource.COLLECTION_PATH,
         Entity.GLOSSARY,
         Glossary.class,
-        dao.glossaryDAO(),
-        dao,
+        Entity.getCollectionDAO().glossaryDAO(),
         PATCH_FIELDS,
         UPDATE_FIELDS);
     quoteFqn = true;
@@ -271,23 +271,10 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       super(original, updated, operation);
     }
 
+    @Transaction
     @Override
     public void entitySpecificUpdate() {
-      updateReviewers(original, updated);
       updateName(original, updated);
-    }
-
-    private void updateReviewers(Glossary origGlossary, Glossary updatedGlossary) {
-      List<EntityReference> origUsers = listOrEmpty(origGlossary.getReviewers());
-      List<EntityReference> updatedUsers = listOrEmpty(updatedGlossary.getReviewers());
-      updateFromRelationships(
-          "reviewers",
-          Entity.USER,
-          origUsers,
-          updatedUsers,
-          Relationship.REVIEWS,
-          Entity.GLOSSARY,
-          origGlossary.getId());
     }
 
     public void updateName(Glossary original, Glossary updated) {

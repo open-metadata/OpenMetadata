@@ -17,10 +17,13 @@ import static org.openmetadata.schema.type.Include.ALL;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.type.DatabaseSchemaProfilerConfig;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
@@ -29,16 +32,21 @@ import org.openmetadata.service.resources.databases.DatabaseSchemaResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
-  public DatabaseSchemaRepository(CollectionDAO dao) {
+
+  public static final String DATABASE_SCHEMA_PROFILER_CONFIG_EXTENSION = "databaseSchema.databaseSchemaProfilerConfig";
+
+  public static final String DATABASE_SCHEMA_PROFILER_CONFIG = "databaseSchemaProfilerConfig";
+
+  public DatabaseSchemaRepository() {
     super(
         DatabaseSchemaResource.COLLECTION_PATH,
         Entity.DATABASE_SCHEMA,
         DatabaseSchema.class,
-        dao.databaseSchemaDAO(),
-        dao,
+        Entity.getCollectionDAO().databaseSchemaDAO(),
         "",
         "");
     supportsSearch = true;
@@ -82,12 +90,18 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   public DatabaseSchema setFields(DatabaseSchema schema, Fields fields) {
     setDefaultFields(schema);
     schema.setTables(fields.contains("tables") ? getTables(schema) : null);
+    schema.setDatabaseSchemaProfilerConfig(
+        fields.contains(DATABASE_SCHEMA_PROFILER_CONFIG)
+            ? getDatabaseSchemaProfilerConfig(schema)
+            : schema.getDatabaseSchemaProfilerConfig());
     return schema.withUsageSummary(
         fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), schema.getId()) : null);
   }
 
   public DatabaseSchema clearFields(DatabaseSchema schema, Fields fields) {
     schema.setTables(fields.contains("tables") ? schema.getTables() : null);
+    schema.setDatabaseSchemaProfilerConfig(
+        fields.contains(DATABASE_SCHEMA_PROFILER_CONFIG) ? schema.getDatabaseSchemaProfilerConfig() : null);
     return schema.withUsageSummary(fields.contains("usageSummary") ? schema.getUsageSummary() : null);
   }
 
@@ -141,10 +155,50 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
       super(original, updated, operation);
     }
 
+    @Transaction
     @Override
     public void entitySpecificUpdate() {
       recordChange("retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod());
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
     }
+  }
+
+  public DatabaseSchema addDatabaseSchemaProfilerConfig(
+      UUID databaseSchemaId, DatabaseSchemaProfilerConfig databaseSchemaProfilerConfig) {
+    // Validate the request content
+    DatabaseSchema databaseSchema = dao.findEntityById(databaseSchemaId);
+
+    if (databaseSchemaProfilerConfig.getProfileSampleType() != null
+        && databaseSchemaProfilerConfig.getProfileSample() != null) {
+      EntityUtil.validateProfileSample(
+          databaseSchemaProfilerConfig.getProfileSampleType().toString(),
+          databaseSchemaProfilerConfig.getProfileSample());
+    }
+
+    daoCollection
+        .entityExtensionDAO()
+        .insert(
+            databaseSchemaId,
+            DATABASE_SCHEMA_PROFILER_CONFIG_EXTENSION,
+            DATABASE_SCHEMA_PROFILER_CONFIG,
+            JsonUtils.pojoToJson(databaseSchemaProfilerConfig));
+    clearFields(databaseSchema, Fields.EMPTY_FIELDS);
+    return databaseSchema.withDatabaseSchemaProfilerConfig(databaseSchemaProfilerConfig);
+  }
+
+  public DatabaseSchemaProfilerConfig getDatabaseSchemaProfilerConfig(DatabaseSchema databaseSchema) {
+    return JsonUtils.readValue(
+        daoCollection
+            .entityExtensionDAO()
+            .getExtension(databaseSchema.getId(), DATABASE_SCHEMA_PROFILER_CONFIG_EXTENSION),
+        DatabaseSchemaProfilerConfig.class);
+  }
+
+  public DatabaseSchema deleteDatabaseSchemaProfilerConfig(UUID databaseSchemaId) {
+    // Validate the request content
+    DatabaseSchema database = dao.findEntityById(databaseSchemaId);
+    daoCollection.entityExtensionDAO().delete(databaseSchemaId, DATABASE_SCHEMA_PROFILER_CONFIG_EXTENSION);
+    setFieldsInternal(database, Fields.EMPTY_FIELDS);
+    return database;
   }
 }

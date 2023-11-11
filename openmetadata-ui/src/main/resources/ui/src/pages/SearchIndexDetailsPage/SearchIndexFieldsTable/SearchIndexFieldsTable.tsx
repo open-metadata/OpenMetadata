@@ -13,24 +13,27 @@
 
 import { Space, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
-import Table from 'components/common/Table/Table';
-import { ModalWithMarkdownEditor } from 'components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import TableDescription from 'components/TableDescription/TableDescription.component';
-import TableTags from 'components/TableTags/TableTags.component';
-import { NO_DATA_PLACEHOLDER } from 'constants/constants';
-import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
-import { EntityType } from 'enums/entity.enum';
-import { SearchIndexField } from 'generated/entity/data/searchIndex';
-import { TagSource } from 'generated/type/schema';
-import { TagLabel } from 'generated/type/tagLabel';
-import { cloneDeep, isEmpty, isUndefined, map, toLower } from 'lodash';
-import { EntityTags, TagOption } from 'Models';
+import { cloneDeep, isEmpty, isUndefined, toLower } from 'lodash';
+import { EntityTags } from 'Models';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getEntityName } from 'utils/EntityUtils';
-import { makeData } from 'utils/SearchIndexUtils';
-import { updateFieldDescription, updateFieldTags } from 'utils/TableUtils';
+import FilterTablePlaceHolder from '../../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
+import Table from '../../../components/common/Table/Table';
+import { ModalWithMarkdownEditor } from '../../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import TableDescription from '../../../components/TableDescription/TableDescription.component';
+import TableTags from '../../../components/TableTags/TableTags.component';
+import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
+import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
+import { EntityType } from '../../../enums/entity.enum';
+import { SearchIndexField } from '../../../generated/entity/data/searchIndex';
+import { TagSource } from '../../../generated/type/schema';
+import { TagLabel } from '../../../generated/type/tagLabel';
+import { getEntityName } from '../../../utils/EntityUtils';
+import { makeData } from '../../../utils/SearchIndexUtils';
+import {
+  updateFieldDescription,
+  updateFieldTags,
+} from '../../../utils/TableUtils';
 import {
   SearchIndexCellRendered,
   SearchIndexFieldsTableProps,
@@ -84,15 +87,11 @@ const SearchIndexFieldsTable = ({
     selectedTags: EntityTags[],
     editFieldTag: SearchIndexField
   ) => {
-    const newSelectedTags: TagOption[] = map(selectedTags, (tag) => ({
-      fqn: tag.tagFQN,
-      source: tag.source,
-    }));
-    if (newSelectedTags && editFieldTag) {
+    if (selectedTags && editFieldTag) {
       const fields = cloneDeep(searchIndexFields);
       updateFieldTags<SearchIndexField>(
         editFieldTag.fullyQualifiedName ?? '',
-        newSelectedTags,
+        selectedTags,
         fields
       );
       await onUpdate(fields);
@@ -112,7 +111,7 @@ const SearchIndexFieldsTable = ({
   > = useCallback(
     (dataTypeDisplay, record) => {
       const displayValue = isEmpty(dataTypeDisplay)
-        ? record.name
+        ? record.dataType
         : dataTypeDisplay;
 
       if (isEmpty(displayValue)) {
@@ -120,7 +119,7 @@ const SearchIndexFieldsTable = ({
       }
 
       return (
-        <>
+        <div data-testid={`${record.name}-data-type`}>
           {isReadOnly ||
           (displayValue && displayValue.length < 25 && !isReadOnly) ? (
             toLower(displayValue)
@@ -131,7 +130,7 @@ const SearchIndexFieldsTable = ({
               </Typography.Text>
             </Tooltip>
           )}
-        </>
+        </div>
       );
     },
     [isReadOnly]

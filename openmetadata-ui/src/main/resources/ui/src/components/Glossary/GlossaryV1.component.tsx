@@ -12,28 +12,28 @@
  */
 
 import { AxiosError } from 'axios';
-import Loader from 'components/Loader/Loader';
-import { withActivityFeed } from 'components/router/withActivityFeed';
-import { HTTP_STATUS_CODE } from 'constants/auth.constants';
-import {
-  API_RES_MAX_SIZE,
-  getGlossaryTermDetailsPath,
-} from 'constants/constants';
-import { EntityAction } from 'enums/entity.enum';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty } from 'lodash';
-import { VERSION_VIEW_GLOSSARY_PERMISSION } from 'mocks/Glossary.mock';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
+import Loader from '../../components/Loader/Loader';
+import { HTTP_STATUS_CODE } from '../../constants/auth.constants';
+import {
+  API_RES_MAX_SIZE,
+  getGlossaryTermDetailsPath,
+} from '../../constants/constants';
+import { EntityAction } from '../../enums/entity.enum';
+import { Glossary } from '../../generated/entity/data/glossary';
+import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
+import { VERSION_VIEW_GLOSSARY_PERMISSION } from '../../mocks/Glossary.mock';
 import {
   addGlossaryTerm,
   getGlossaryTerms,
   ListGlossaryTermsParams,
   patchGlossaryTerm,
-} from 'rest/glossaryAPI';
-import { Glossary } from '../../generated/entity/data/glossary';
-import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
+} from '../../rest/glossaryAPI';
 import { getEntityDeleteMessage } from '../../utils/CommonUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -48,7 +48,7 @@ import GlossaryDetails from './GlossaryDetails/GlossaryDetails.component';
 import GlossaryTermModal from './GlossaryTermModal/GlossaryTermModal.component';
 import GlossaryTermsV1 from './GlossaryTerms/GlossaryTermsV1.component';
 import { GlossaryV1Props } from './GlossaryV1.interfaces';
-import './GlossaryV1.style.less';
+import './glossaryV1.less';
 import ImportGlossary from './ImportGlossary/ImportGlossary';
 
 const GlossaryV1 = ({
@@ -63,6 +63,7 @@ const GlossaryV1 = ({
   isVersionsView,
   onAssetClick,
   isSummaryPanelOpen,
+  refreshActiveGlossaryTerm,
 }: GlossaryV1Props) => {
   const { t } = useTranslation();
   const { action, tab } =
@@ -265,9 +266,11 @@ const GlossaryV1 = ({
           reviewers,
           owner,
           relatedTerms,
+          style,
         } = formData || {};
 
         newTermData.name = name;
+        newTermData.style = style;
         newTermData.displayName = displayName;
         newTermData.description = description;
         newTermData.synonyms = synonyms;
@@ -336,6 +339,7 @@ const GlossaryV1 = ({
             isSummaryPanelOpen={isSummaryPanelOpen}
             isVersionView={isVersionsView}
             permissions={glossaryTermPermission}
+            refreshActiveGlossaryTerm={refreshActiveGlossaryTerm}
             refreshGlossaryTerms={() => loadGlossaryTerms(true)}
             termsLoading={isTermsLoading}
             updateVote={updateVote}

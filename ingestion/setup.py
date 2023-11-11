@@ -46,6 +46,20 @@ VERSIONS = {
     "packaging": "packaging==21.3",
     "azure-storage-blob": "azure-storage-blob~=12.14",
     "azure-identity": "azure-identity~=1.12",
+    "sqlalchemy-databricks": "sqlalchemy-databricks~=0.1",
+    "databricks-sdk": "databricks-sdk~=0.1",
+    "google": "google>=3.0.0",
+    "trino": "trino[sqlalchemy]",
+    "spacy": "spacy==3.5.0",
+    "looker-sdk": "looker-sdk>=22.20.0",
+    "lkml": "lkml~=1.3",
+    "tableau": "tableau-api-lib~=0.1",
+    "pyhive": "pyhive~=0.7",
+    "mongo": "pymongo~=4.3",
+    "redshift": "sqlalchemy-redshift==0.8.12",
+    "snowflake": "snowflake-sqlalchemy~=1.4",
+    "elasticsearch8": "elasticsearch8~=8.9.0",
+    "giturlparse": "giturlparse",
 }
 
 COMMONS = {
@@ -57,7 +71,7 @@ COMMONS = {
     },
     "hive": {
         "presto-types-parser>=0.0.2",
-        "pyhive~=0.6",
+        VERSIONS["pyhive"],
     },
     "kafka": {
         VERSIONS["avro"],
@@ -74,7 +88,7 @@ COMMONS = {
 
 # required library for pii tagging
 pii_requirements = {
-    "spacy==3.5.0",
+    VERSIONS["spacy"],
     VERSIONS["pandas"],
     "presidio-analyzer==2.2.32",
 }
@@ -87,9 +101,8 @@ base_requirements = {
     "chardet==4.0.0",
     "croniter~=1.3.0",
     "cryptography",
-    "commonregex",
     "email-validator>=1.0.3",
-    "google>=3.0.0",
+    VERSIONS["google"],
     "google-auth>=1.33.0",
     VERSIONS["grpc-tools"],  # Used in sample data
     "idna<3,>=2.5",
@@ -120,7 +133,7 @@ base_requirements = {
 plugins: Dict[str, Set[str]] = {
     "airflow": {VERSIONS["airflow"]},  # Same as ingestion container. For development.
     "amundsen": {VERSIONS["neo4j"]},
-    "athena": {"pyathena==2.25.2"},
+    "athena": {"pyathena==3.0.8"},
     "atlas": {},
     "azuresql": {VERSIONS["pyodbc"]},
     "azure-sso": {VERSIONS["msal"]},
@@ -148,7 +161,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["azure-identity"],
     },
     "db2": {"ibm-db-sa~=0.3"},
-    "databricks": {"sqlalchemy-databricks~=0.1", "databricks-sdk~=0.1"},
+    "databricks": {VERSIONS["sqlalchemy-databricks"], VERSIONS["databricks-sdk"]},
     "datalake-azure": {
         VERSIONS["azure-storage-blob"],
         VERSIONS["azure-identity"],
@@ -175,7 +188,7 @@ plugins: Dict[str, Set[str]] = {
     "dynamodb": {VERSIONS["boto3"]},
     "elasticsearch": {
         "elasticsearch==7.13.1",
-        "elasticsearch8~=8.9.0",
+        VERSIONS["elasticsearch8"],
     },  # also requires requests-aws4auth which is in base
     "glue": {VERSIONS["boto3"]},
     "great-expectations": {VERSIONS["great-expectations"]},
@@ -196,9 +209,14 @@ plugins: Dict[str, Set[str]] = {
     "kafka": {*COMMONS["kafka"]},
     "kinesis": {VERSIONS["boto3"]},
     "ldap-users": {"ldap3==2.9.1"},
-    "looker": {"looker-sdk>=22.20.0", "lkml~=1.3"},
+    "looker": {
+        VERSIONS["looker-sdk"],
+        VERSIONS["lkml"],
+        "gitpython~=3.1.34",
+        VERSIONS["giturlparse"],
+    },
     "mlflow": {"mlflow-skinny>=2.3.0", "alembic~=1.10.2"},
-    "mongo": {"pymongo~=4.3", VERSIONS["pandas"]},
+    "mongo": {VERSIONS["mongo"], VERSIONS["pandas"]},
     "couchbase": {"couchbase~=4.1"},
     "mssql": {"sqlalchemy-pytds~=0.3"},
     "mssql-odbc": {VERSIONS["pyodbc"]},
@@ -217,13 +235,13 @@ plugins: Dict[str, Set[str]] = {
     "powerbi": {VERSIONS["msal"]},
     "qliksense": {"websocket-client~=1.6.1"},
     "presto": {*COMMONS["hive"]},
-    "pymssql": {"pymssql==2.2.5"},
+    "pymssql": {"pymssql~=2.2.0"},
     "quicksight": {VERSIONS["boto3"]},
     "redash": {VERSIONS["packaging"]},
     "redpanda": {*COMMONS["kafka"]},
     "redshift": {
         # Going higher has memory and performance issues
-        "sqlalchemy-redshift==0.8.12",
+        VERSIONS["redshift"],
         "psycopg2-binary",
         VERSIONS["geoalchemy2"],
     },
@@ -232,22 +250,22 @@ plugins: Dict[str, Set[str]] = {
     "sap-hana": {"hdbcli", "sqlalchemy-hana"},
     "singlestore": {VERSIONS["pymysql"]},
     "sklearn": {VERSIONS["scikit-learn"]},
-    "snowflake": {"snowflake-sqlalchemy~=1.4"},
+    "snowflake": {VERSIONS["snowflake"]},
     "superset": {},  # uses requests
-    "tableau": {"tableau-api-lib~=0.1"},
-    "trino": {"trino[sqlalchemy]"},
+    "tableau": {VERSIONS["tableau"]},
+    "trino": {VERSIONS["trino"]},
     "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5"},
     "pii-processor": pii_requirements,
 }
 
 dev = {
     "black==22.3.0",
-    "datamodel-code-generator==0.15.0",
+    "datamodel-code-generator==0.22.0",
     "docker",
     "isort",
     "pre-commit",
     "pycln",
-    "pylint",
+    "pylint~=3.0.0",
     "twine",
 }
 
@@ -263,6 +281,23 @@ test = {
     "pytest-order",
     # install dbt dependency
     "dbt-artifacts-parser",
+    VERSIONS["sqlalchemy-databricks"],
+    VERSIONS["databricks-sdk"],
+    VERSIONS["google"],
+    VERSIONS["scikit-learn"],
+    VERSIONS["pyarrow"],
+    VERSIONS["trino"],
+    VERSIONS["spacy"],
+    VERSIONS["pydomo"],
+    VERSIONS["looker-sdk"],
+    VERSIONS["lkml"],
+    VERSIONS["tableau"],
+    VERSIONS["pyhive"],
+    VERSIONS["mongo"],
+    VERSIONS["redshift"],
+    VERSIONS["snowflake"],
+    VERSIONS["elasticsearch8"],
+    VERSIONS["giturlparse"],
 }
 
 e2e_test = {
@@ -312,13 +347,7 @@ setup(
                 *[
                     requirements
                     for plugin, requirements in plugins.items()
-                    if plugin
-                    not in {
-                        "airflow",
-                        "db2",
-                        "great-expectations",
-                        "pymssql",  # pymssql build is failing ref issue: https://github.com/pymssql/pymssql/issues/826
-                    }
+                    if plugin not in {"airflow", "db2", "great-expectations"}
                 ]
             )
         ),

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { PopoverProps } from 'antd';
-import { EntityReference } from 'generated/entity/teams/user';
 import { ReactNode } from 'react';
+import { EntityReference } from '../../../generated/entity/teams/user';
 
 export type UserSelectableListProps =
   | {

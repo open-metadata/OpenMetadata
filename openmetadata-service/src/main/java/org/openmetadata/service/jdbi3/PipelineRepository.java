@@ -18,11 +18,11 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.CONTAINER;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
-import static org.openmetadata.service.Entity.PIPELINE_SERVICE;
 import static org.openmetadata.service.util.EntityUtil.taskMatch;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.Pipeline;
@@ -54,13 +54,12 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   private static final String PIPELINE_PATCH_FIELDS = "tasks";
   public static final String PIPELINE_STATUS_EXTENSION = "pipeline.pipelineStatus";
 
-  public PipelineRepository(CollectionDAO dao) {
+  public PipelineRepository() {
     super(
         PipelineResource.COLLECTION_PATH,
         Entity.PIPELINE,
         Pipeline.class,
-        dao.pipelineDAO(),
-        dao,
+        Entity.getCollectionDAO().pipelineDAO(),
         PIPELINE_PATCH_FIELDS,
         PIPELINE_UPDATE_FIELDS);
     supportsSearch = true;
@@ -155,13 +154,25 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       validateTask(pipeline, taskStatus.getName());
     }
 
-    storeTimeSeries(
-        pipeline.getFullyQualifiedName(),
-        PIPELINE_STATUS_EXTENSION,
-        "pipelineStatus",
-        JsonUtils.pojoToJson(pipelineStatus),
-        pipelineStatus.getTimestamp());
-
+    // Pipeline status is from the pipeline execution. There is no gurantee that it is unique as it is unrelated to
+    // workflow execution. We should bring back the old behavior for this one.
+    String storedPipelineStatus =
+        getExtensionAtTimestamp(fqn, PIPELINE_STATUS_EXTENSION, pipelineStatus.getTimestamp());
+    if (storedPipelineStatus != null) {
+      daoCollection
+          .entityExtensionTimeSeriesDao()
+          .update(
+              pipeline.getFullyQualifiedName(),
+              PIPELINE_STATUS_EXTENSION,
+              JsonUtils.pojoToJson(pipelineStatus),
+              pipelineStatus.getTimestamp());
+    } else {
+      storeTimeSeries(
+          pipeline.getFullyQualifiedName(),
+          PIPELINE_STATUS_EXTENSION,
+          "pipelineStatus",
+          JsonUtils.pojoToJson(pipelineStatus));
+    }
     return pipeline.withPipelineStatus(pipelineStatus);
   }
 
@@ -231,13 +242,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   public void storeRelationships(Pipeline pipeline) {
     EntityReference service = pipeline.getService();
     addRelationship(service.getId(), pipeline.getId(), service.getType(), Entity.PIPELINE, Relationship.CONTAINS);
-  }
-
-  @Override
-  public Pipeline setInheritedFields(Pipeline pipeline, Fields fields) {
-    // If pipeline does not have domain, then inherit it from parent Pipeline service
-    PipelineService service = Entity.getEntity(PIPELINE_SERVICE, pipeline.getService().getId(), "domain", ALL);
-    return inheritDomain(pipeline, fields, service);
   }
 
   @Override
@@ -329,6 +333,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       super(original, updated, operation);
     }
 
+    @Transaction
     @Override
     public void entitySpecificUpdate() {
       updateTasks(original, updated);

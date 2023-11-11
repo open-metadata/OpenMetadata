@@ -25,15 +25,20 @@ import {
 } from './CommonUtils.mock';
 
 import { AxiosError } from 'axios';
+import { cloneDeep } from 'lodash';
 import {
   getDayCron,
   getHourCron,
-} from 'components/common/CronEditor/CronEditor.constant';
-import { ERROR_MESSAGE } from 'constants/constants';
-import { EntityTabs, EntityType } from 'enums/entity.enum';
-import { PipelineType } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
-import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';
-import { cloneDeep } from 'lodash';
+} from '../components/common/CronEditor/CronEditor.constant';
+import { ERROR_MESSAGE } from '../constants/constants';
+import { EntityTabs, EntityType } from '../enums/entity.enum';
+import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import {
+  LabelType,
+  State,
+  TagLabel,
+  TagSource,
+} from '../generated/type/tagLabel';
 import {
   digitFormatter,
   getBase64EncodedString,
@@ -238,11 +243,12 @@ describe('Tests for CommonUtils', () => {
     });
 
     it('should reduce color opacity by the given value', () => {
-      expect(reduceColorOpacity('#0000FF', 0)).toBe('#0000FFFF');
-      expect(reduceColorOpacity('#00FF00', 0.25)).toBe('#00FF0040');
-      expect(reduceColorOpacity('#FF0000', 0.5)).toBe('#FF000080');
-      expect(reduceColorOpacity('#FF0000', 0.75)).toBe('#FF0000BF');
-      expect(reduceColorOpacity('#FF0000', -0.5)).toBe('#FF00000');
+      expect(reduceColorOpacity('#0000FF', 0)).toBe('rgba(0, 0, 255, 0)');
+      expect(reduceColorOpacity('#00FF00', 0.25)).toBe('rgba(0, 255, 0, 0.25)');
+      expect(reduceColorOpacity('#FF0000', 0.5)).toBe('rgba(255, 0, 0, 0.5)');
+      expect(reduceColorOpacity('#FF0000', 0.75)).toBe('rgba(255, 0, 0, 0.75)');
+      expect(reduceColorOpacity('#FF0000', -0.5)).toBe('rgba(255, 0, 0, -0.5)');
+      expect(reduceColorOpacity('#FF0000', 0.05)).toBe('rgba(255, 0, 0, 0.05)');
     });
 
     it('should return base64 encoded string for input text', () => {

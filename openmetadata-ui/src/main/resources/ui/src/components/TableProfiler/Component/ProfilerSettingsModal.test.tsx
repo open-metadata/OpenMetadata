@@ -23,7 +23,7 @@ import { MOCK_TABLE } from '../../../mocks/TableData.mock';
 import { ProfilerSettingsModalProps } from '../TableProfiler.interface';
 import ProfilerSettingsModal from './ProfilerSettingsModal';
 
-jest.mock('rest/tableAPI', () => ({
+jest.mock('../../../rest/tableAPI', () => ({
   getTableProfilerConfig: jest
     .fn()
     .mockImplementation(() => Promise.resolve(MOCK_TABLE)),
@@ -57,6 +57,9 @@ describe('Test ProfilerSettingsModal component', () => {
     );
     const intervalType = await screen.findByTestId('interval-type');
     const columnName = await screen.findByTestId('column-name');
+    const sampleDataCount = await screen.findByTestId(
+      'sample-data-count-input'
+    );
 
     expect(modal).toBeInTheDocument();
     expect(sampleContainer).toBeInTheDocument();
@@ -66,6 +69,7 @@ describe('Test ProfilerSettingsModal component', () => {
     expect(partitionSwitch).toBeInTheDocument();
     expect(intervalType).toBeInTheDocument();
     expect(columnName).toBeInTheDocument();
+    expect(sampleDataCount).toBeInTheDocument();
   });
 
   it('Interval Type and Column Name field should be disabled, when partition switch is off', async () => {

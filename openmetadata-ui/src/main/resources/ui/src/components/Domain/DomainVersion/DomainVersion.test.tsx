@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import { act, render, screen } from '@testing-library/react';
-import { MOCK_DOMAIN } from 'mocks/Domains.mock';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { MOCK_DOMAIN } from '../../../mocks/Domains.mock';
 import DomainVersion from './DomainVersion.component';
 
 /* eslint-disable max-len */
@@ -85,7 +85,7 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
-jest.mock('rest/domainAPI', () => ({
+jest.mock('../../../rest/domainAPI', () => ({
   getDomainVersionsList: jest
     .fn()
     .mockImplementation(() => Promise.resolve(MOCK_VERSIONS_LIST)),
@@ -98,13 +98,13 @@ jest.mock('rest/domainAPI', () => ({
 }));
 
 jest.mock(
-  'components/Domain/DomainDetailsPage/DomainDetailsPage.component',
+  '../../../components/Domain/DomainDetailsPage/DomainDetailsPage.component',
   () => {
     return jest.fn().mockReturnValue(<>Domain component</>);
   }
 );
 
-jest.mock('components/containers/PageLayoutV1', () => {
+jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
 

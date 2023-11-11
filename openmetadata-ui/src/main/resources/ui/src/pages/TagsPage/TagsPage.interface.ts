@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { Classification } from 'generated/entity/classification/classification';
-import { Tag } from 'generated/entity/classification/tag';
 import { LoadingState } from 'Models';
+import { Classification } from '../../generated/entity/classification/classification';
+import { Tag } from '../../generated/entity/classification/tag';
 
 export type DeleteTagDetailsType = {
   id: string;
@@ -33,6 +33,8 @@ export interface SubmitProps {
   description: string;
   displayName: string;
   mutuallyExclusive?: boolean;
+  iconURL?: string;
+  color?: string;
 }
 
 export interface RenameFormProps {

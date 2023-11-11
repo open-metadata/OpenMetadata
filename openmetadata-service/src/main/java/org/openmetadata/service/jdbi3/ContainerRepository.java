@@ -8,10 +8,12 @@ import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
 import static org.openmetadata.service.Entity.FIELD_PARENT;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.STORAGE_SERVICE;
+import static org.openmetadata.service.Entity.populateEntityFieldTags;
 
 import com.google.common.collect.Lists;
 import java.util.ArrayList;
 import java.util.List;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.Container;
@@ -37,13 +39,12 @@ public class ContainerRepository extends EntityRepository<Container> {
   private static final String CONTAINER_UPDATE_FIELDS = "dataModel";
   private static final String CONTAINER_PATCH_FIELDS = "dataModel";
 
-  public ContainerRepository(CollectionDAO dao) {
+  public ContainerRepository() {
     super(
         ContainerResource.COLLECTION_PATH,
         Entity.CONTAINER,
         Container.class,
-        dao.containerDAO(),
-        dao,
+        Entity.getCollectionDAO().containerDAO(),
         CONTAINER_PATCH_FIELDS,
         CONTAINER_UPDATE_FIELDS);
     supportsSearch = true;
@@ -54,7 +55,8 @@ public class ContainerRepository extends EntityRepository<Container> {
     setDefaultFields(container);
     container.setParent(fields.contains(FIELD_PARENT) ? getParent(container) : container.getParent());
     if (container.getDataModel() != null) {
-      populateDataModelColumnTags(fields.contains(FIELD_TAGS), container.getDataModel().getColumns());
+      populateDataModelColumnTags(
+          fields.contains(FIELD_TAGS), container.getFullyQualifiedName(), container.getDataModel().getColumns());
     }
     return container;
   }
@@ -65,11 +67,8 @@ public class ContainerRepository extends EntityRepository<Container> {
     return container.withDataModel(fields.contains("dataModel") ? container.getDataModel() : null);
   }
 
-  private void populateDataModelColumnTags(boolean setTags, List<Column> columns) {
-    for (Column c : listOrEmpty(columns)) {
-      c.setTags(setTags ? getTags(c.getFullyQualifiedName()) : null);
-      populateDataModelColumnTags(setTags, c.getChildren());
-    }
+  private void populateDataModelColumnTags(boolean setTags, String fqnPrefix, List<Column> columns) {
+    populateEntityFieldTags(entityType, columns, fqnPrefix, setTags);
   }
 
   private void setDefaultFields(Container container) {
@@ -293,6 +292,7 @@ public class ContainerRepository extends EntityRepository<Container> {
       super(original, updated, operation);
     }
 
+    @Transaction
     @Override
     public void entitySpecificUpdate() {
       updateDataModel(original, updated);

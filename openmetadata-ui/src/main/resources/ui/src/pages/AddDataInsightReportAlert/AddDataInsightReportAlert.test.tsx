@@ -14,14 +14,14 @@ import { act, getByTitle, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { updateAlert } from 'rest/alertsAPI';
+import { updateAlert } from '../../rest/alertsAPI';
 import AddDataInsightReportAlert from './AddDataInsightReportAlert';
 
 let fqn = '';
 const mockPush = jest.fn();
 const mockBack = jest.fn();
 
-jest.mock('components/common/rich-text-editor/RichTextEditor', () => {
+jest.mock('../../components/common/RichTextEditor/RichTextEditor', () => {
   return jest.fn().mockImplementation(({ initialValue }) => (
     <div data-testid="editor">
       <textarea data-testid="description" value={initialValue} />
@@ -67,8 +67,8 @@ const MOCK_DATA_INSIGHTS_ALERT_DATA = {
   provider: 'system',
 };
 
-jest.mock('rest/alertsAPI', () => ({
-  ...jest.requireActual('rest/alertsAPI'),
+jest.mock('../../rest/alertsAPI', () => ({
+  ...jest.requireActual('../../rest/alertsAPI'),
   updateAlert: jest.fn().mockImplementation(() => Promise.resolve()),
   createAlert: jest.fn().mockImplementation(() => Promise.resolve()),
   getAlertsFromId: jest
@@ -76,7 +76,7 @@ jest.mock('rest/alertsAPI', () => ({
     .mockImplementation(() => Promise.resolve(MOCK_DATA_INSIGHTS_ALERT_DATA)),
 }));
 
-jest.mock('utils/Alerts/AlertsUtil', () => ({
+jest.mock('../../utils/Alerts/AlertsUtil', () => ({
   StyledCard: jest.fn().mockReturnValue(<div>StyleCard</div>),
 }));
 

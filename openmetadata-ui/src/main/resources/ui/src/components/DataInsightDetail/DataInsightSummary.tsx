@@ -13,13 +13,10 @@
 
 import { Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { SummaryCard } from 'components/common/SummaryCard/SummaryCard.component';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
-import { getAggregateChartData } from 'rest/DataInsightAPI';
-import { getTeamByName } from 'rest/teamsAPI';
-import { getEntityName } from 'utils/EntityUtils';
+import { SummaryCard } from '../../components/common/SummaryCard/SummaryCard.component';
 import { getUserPath } from '../../constants/constants';
 import {
   ENTITIES_CHARTS,
@@ -36,14 +33,17 @@ import {
   ChartFilter,
   DataInsightTabs,
 } from '../../interface/data-insight.interface';
+import { getAggregateChartData } from '../../rest/DataInsightAPI';
+import { getTeamByName } from '../../rest/teamsAPI';
 import {
   getEntitiesChartSummary,
   getWebChartSummary,
 } from '../../utils/DataInsightUtils';
+import { getEntityName } from '../../utils/EntityUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import UserPopOverCard from '../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
-import './DataInsightDetail.less';
+import './data-insight-detail.less';
 
 interface Props {
   chartFilter: ChartFilter;

@@ -12,9 +12,12 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import { mockedGlossaryTerms, MOCK_ASSETS_DATA } from 'mocks/Glossary.mock';
 import React from 'react';
+import {
+  mockedGlossaryTerms,
+  MOCK_ASSETS_DATA,
+} from '../../../mocks/Glossary.mock';
+import { OperationPermission } from '../../PermissionProvider/PermissionProvider.interface';
 import GlossaryTerms from './GlossaryTermsV1.component';
 
 jest.mock('react-router-dom', () => ({
@@ -27,7 +30,7 @@ jest.mock('react-router-dom', () => ({
 }));
 
 jest.mock(
-  'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component',
+  '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component',
   () => ({
     ActivityFeedTab: jest
       .fn()
@@ -35,7 +38,7 @@ jest.mock(
   })
 );
 
-jest.mock('rest/miscAPI', () => ({
+jest.mock('../../../rest/miscAPI', () => ({
   searchData: jest
     .fn()
     .mockImplementation(() => Promise.resolve(MOCK_ASSETS_DATA)),
@@ -53,10 +56,10 @@ jest.mock('./tabs/GlossaryTermReferences', () =>
 jest.mock('./tabs/AssetsTabs.component', () =>
   jest.fn().mockReturnValue(<div>AssetsTabs</div>)
 );
-jest.mock('components/Glossary/GlossaryTermTab/GlossaryTermTab.component', () =>
+jest.mock('../GlossaryTermTab/GlossaryTermTab.component', () =>
   jest.fn().mockReturnValue(<div>GlossaryTermTab</div>)
 );
-jest.mock('components/Glossary/GlossaryHeader/GlossaryHeader.component', () =>
+jest.mock('../GlossaryHeader/GlossaryHeader.component', () =>
   jest.fn().mockReturnValue(<div>GlossaryHeader.component</div>)
 );
 
@@ -77,6 +80,7 @@ const mockProps = {
   onRelatedTermClick: jest.fn(),
   handleGlossaryTermDelete: jest.fn(),
   refreshGlossaryTerms: jest.fn(),
+  refreshActiveGlossaryTerm: jest.fn(),
   onAddGlossaryTerm: jest.fn(),
   onEditGlossaryTerm: jest.fn(),
 };

@@ -19,6 +19,7 @@ from metadata.ingestion.source.connections import get_connection, get_test_conne
 from metadata.pii.processor import PIIProcessor
 from metadata.profiler.processor.processor import ProfilerProcessor
 from metadata.profiler.source.metadata import OpenMetadataSource
+from metadata.profiler.source.metadata_ext import OpenMetadataSourceExt
 from metadata.utils.importer import import_sink_class
 from metadata.utils.logger import profiler_logger
 from metadata.workflow.base import BaseWorkflow
@@ -37,12 +38,22 @@ class ProfilerWorkflow(BaseWorkflow):
     def __init__(self, config: OpenMetadataWorkflowConfig):
         super().__init__(config)
 
+        # Validate that we can properly reach the source database
         self.test_connection()
 
-    def set_steps(self):
-        self.source = OpenMetadataSource.create(
-            self.config.dict(), self.metadata_config
+    def _get_source_class(self):
+        if self.config.source.serviceName:
+            return OpenMetadataSource
+        logger.info(
+            "Database Service name not provided, we will scan all the tables"
+            "available within data source and locate table entity in OpenMetadata"
+            "to ingest profiler data."
         )
+        return OpenMetadataSourceExt
+
+    def set_steps(self):
+        source_class = self._get_source_class()
+        self.source = source_class.create(self.config.dict(), self.metadata)
 
         profiler_processor = self._get_profiler_processor()
         pii_processor = self._get_pii_processor()
@@ -60,13 +71,13 @@ class ProfilerWorkflow(BaseWorkflow):
         sink_type = self.config.sink.type
         sink_class = import_sink_class(sink_type=sink_type)
         sink_config = self.config.sink.dict().get("config", {})
-        sink: Sink = sink_class.create(sink_config, self.metadata_config)
+        sink: Sink = sink_class.create(sink_config, self.metadata)
         logger.debug(f"Sink type:{self.config.sink.type}, {sink_class} configured")
 
         return sink
 
     def _get_profiler_processor(self) -> Processor:
-        return ProfilerProcessor.create(self.config.dict(), self.metadata_config)
+        return ProfilerProcessor.create(self.config.dict(), self.metadata)
 
     def _get_pii_processor(self) -> Processor:
-        return PIIProcessor.create(self.config.dict(), self.metadata_config)
+        return PIIProcessor.create(self.config.dict(), self.metadata)

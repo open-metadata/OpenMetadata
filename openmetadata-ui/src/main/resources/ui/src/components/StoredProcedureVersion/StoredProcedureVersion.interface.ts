@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import { StoredProcedure } from 'generated/entity/data/storedProcedure';
+import { OperationPermission } from '../../components/PermissionProvider/PermissionProvider.interface';
+import { StoredProcedure } from '../../generated/entity/data/storedProcedure';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { TagLabel } from '../../generated/type/tagLabel';
-import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
+import { TitleBreadcrumbProps } from '../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 
 export interface StoredProcedureVersionProp {
   version: string;
@@ -23,9 +23,9 @@ export interface StoredProcedureVersionProp {
   isVersionLoading: boolean;
   owner: StoredProcedure['owner'];
   domain: StoredProcedure['domain'];
+  dataProducts: StoredProcedure['dataProducts'];
   tier: TagLabel;
   slashedTableName: TitleBreadcrumbProps['titleLinks'];
-  storedProcedureFQN: string;
   versionList: EntityHistory;
   deleted?: boolean;
   backHandler: () => void;

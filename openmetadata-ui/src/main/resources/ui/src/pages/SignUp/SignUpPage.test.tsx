@@ -12,15 +12,15 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import AppState from 'AppState';
 import React from 'react';
-import { createUser } from 'rest/userAPI';
-import { getImages } from 'utils/CommonUtils';
+import AppState from '../../AppState';
+import { createUser } from '../../rest/userAPI';
+import { getImages } from '../../utils/CommonUtils';
 import {
   mockChangedFormData,
   mockCreateUser,
   mockFormData,
-} from './mocks/signup.mock';
+} from './mocks/SignupData.mock';
 import SignUp from './SignUpPage';
 
 let letExpectedUserName = {
@@ -36,17 +36,17 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
-jest.mock('components/authentication/auth-provider/AuthProvider', () => ({
+jest.mock('../../components/Auth/AuthProviders/AuthProvider', () => ({
   useAuthContext: jest.fn(() => ({
     setIsSigningIn: jest.fn(),
   })),
 }));
 
-jest.mock('components/TeamsSelectable/TeamsSelectable', () =>
+jest.mock('../../components/TeamsSelectable/TeamsSelectable', () =>
   jest.fn().mockImplementation(() => <div>TeamSelectable</div>)
 );
 
-jest.mock('rest/userAPI', () => ({
+jest.mock('../../rest/userAPI', () => ({
   createUser: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockCreateUser)),
@@ -76,7 +76,7 @@ jest.mock('../../utils/CommonUtils', () => ({
   Transi18next: jest.fn().mockReturnValue('text'),
 }));
 
-jest.mock('utils/AuthProvider.util', () => ({
+jest.mock('../../utils/AuthProvider.util', () => ({
   getNameFromUserData: jest.fn().mockImplementation(() => letExpectedUserName),
 }));
 

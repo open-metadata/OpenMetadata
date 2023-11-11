@@ -10,34 +10,35 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
-import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import { QueryVote } from 'components/TableQueries/TableQueries.interface';
-import { EntityType } from 'enums/entity.enum';
-import { Container } from 'generated/entity/data/container';
-import { Dashboard } from 'generated/entity/data/dashboard';
-import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
-import { Database } from 'generated/entity/data/database';
-import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
-import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
-import { Mlmodel } from 'generated/entity/data/mlmodel';
-import { Pipeline } from 'generated/entity/data/pipeline';
-import { SearchIndex } from 'generated/entity/data/searchIndex';
-import { StoredProcedure } from 'generated/entity/data/storedProcedure';
-import { Table } from 'generated/entity/data/table';
-import { Topic } from 'generated/entity/data/topic';
-import { DashboardService } from 'generated/entity/services/dashboardService';
-import { DatabaseService } from 'generated/entity/services/databaseService';
-import { MessagingService } from 'generated/entity/services/messagingService';
-import { MetadataService } from 'generated/entity/services/metadataService';
-import { MlmodelService } from 'generated/entity/services/mlmodelService';
-import { PipelineService } from 'generated/entity/services/pipelineService';
-import { SearchService } from 'generated/entity/services/searchService';
-import { StorageService } from 'generated/entity/services/storageService';
-import { EntityReference } from 'generated/entity/type';
-import { ServicesType } from 'interface/service.interface';
 import { ReactNode } from 'react';
+import { EntityName } from '../../../components/Modals/EntityNameModal/EntityNameModal.interface';
+import { OperationPermission } from '../../../components/PermissionProvider/PermissionProvider.interface';
+import { QueryVote } from '../../../components/TableQueries/TableQueries.interface';
+import { EntityType } from '../../../enums/entity.enum';
+import { Tag } from '../../../generated/entity/classification/tag';
+import { Container } from '../../../generated/entity/data/container';
+import { Dashboard } from '../../../generated/entity/data/dashboard';
+import { DashboardDataModel } from '../../../generated/entity/data/dashboardDataModel';
+import { Database } from '../../../generated/entity/data/database';
+import { DatabaseSchema } from '../../../generated/entity/data/databaseSchema';
+import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
+import { Mlmodel } from '../../../generated/entity/data/mlmodel';
+import { Pipeline } from '../../../generated/entity/data/pipeline';
+import { SearchIndex } from '../../../generated/entity/data/searchIndex';
+import { StoredProcedure } from '../../../generated/entity/data/storedProcedure';
+import { Table } from '../../../generated/entity/data/table';
+import { Topic } from '../../../generated/entity/data/topic';
+import { DashboardService } from '../../../generated/entity/services/dashboardService';
+import { DatabaseService } from '../../../generated/entity/services/databaseService';
+import { MessagingService } from '../../../generated/entity/services/messagingService';
+import { MetadataService } from '../../../generated/entity/services/metadataService';
+import { MlmodelService } from '../../../generated/entity/services/mlmodelService';
+import { PipelineService } from '../../../generated/entity/services/pipelineService';
+import { SearchService } from '../../../generated/entity/services/searchService';
+import { StorageService } from '../../../generated/entity/services/storageService';
+import { EntityReference } from '../../../generated/entity/type';
+import { ServicesType } from '../../../interface/service.interface';
+import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 
 export type DataAssetsType =
   | Table
@@ -91,12 +92,13 @@ export type DataAssetsHeaderProps = {
   isRecursiveDelete?: boolean;
   afterDomainUpdateAction?: (asset: DataAssetWithDomains) => void;
   afterDeleteAction?: (isSoftDelete?: boolean) => void;
-  onTierUpdate: (tier?: string) => Promise<void>;
+  onTierUpdate: (tier?: Tag) => Promise<void>;
   onOwnerUpdate: (owner?: EntityReference) => Promise<void>;
   onVersionClick?: () => void;
   onFollowClick?: () => Promise<void>;
   onRestoreDataAsset: () => Promise<void>;
   onDisplayNameUpdate: (data: EntityName) => Promise<void>;
+  onProfilerSettingUpdate?: () => void;
   onUpdateVote?: (data: QueryVote, id: string) => Promise<void>;
 } & (
   | DataAssetTable

@@ -12,19 +12,19 @@
  */
 
 import { Col, Divider, Row, Typography } from 'antd';
-import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
-import SchemaEditor from 'components/schema-editor/SchemaEditor';
-import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
-import { CSMode } from 'enums/codemirror.enum';
-import { ExplorePageTabs } from 'enums/Explore.enum';
-import { StoredProcedureCodeObject } from 'generated/entity/data/storedProcedure';
 import { isObject } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { CSMode } from '../../../../enums/codemirror.enum';
+import { ExplorePageTabs } from '../../../../enums/Explore.enum';
+import { StoredProcedureCodeObject } from '../../../../generated/entity/data/storedProcedure';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
-} from 'utils/EntityUtils';
+} from '../../../../utils/EntityUtils';
+import SummaryTagsDescription from '../../../common/SummaryTagsDescription/SummaryTagsDescription.component';
+import SchemaEditor from '../../../SchemaEditor/SchemaEditor';
+import SummaryPanelSkeleton from '../../../Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import CommonEntitySummaryInfo from '../CommonEntitySummaryInfo/CommonEntitySummaryInfo';
 import { StoredProcedureSummaryProps } from './StoredProcedureSummary.interface';
 
@@ -57,7 +57,7 @@ const StoredProcedureSummary = ({
 
         <SummaryTagsDescription
           entityDetail={entityDetails}
-          tags={tags ?? []}
+          tags={tags ?? entityDetails.tags ?? []}
         />
         <Divider className="m-y-xs" />
 

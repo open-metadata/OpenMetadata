@@ -28,7 +28,7 @@ const addTags = (tag) => {
   cy.get('[data-testid="tag-selector"]').click().type(tagName);
 
   cy.get(`.ant-select-dropdown [data-testid='tag-${tag}']`).click();
-  cy.get('[data-testid="tag-selector"] > .ant-select-selector').contains(tag);
+  cy.get(`[data-testid="selected-tag-${tag}"]`).should('exist');
 };
 const verifyTagFilter = ({ entity, tag }) => {
   if (!['mlmodels', 'dashboardDataModel'].includes(entity)) {
@@ -60,13 +60,15 @@ const checkTags = (tag, checkForParentEntity) => {
       '[data-testid="entity-right-panel"]  [data-testid="tags-container"] [data-testid="entity-tags"] '
     )
       .scrollIntoView()
-      .contains(tag);
+      .find(`[data-testid="tag-${tag}"]`)
+      .should('exist');
   } else {
     cy.get(
       '[data-testid="classification-tags-0"]  [data-testid="tags-container"] [data-testid="entity-tags"] '
     )
       .scrollIntoView()
-      .contains(tag);
+      .find(`[data-testid="tag-${tag}"]`)
+      .should('exist');
   }
 };
 
@@ -127,11 +129,11 @@ describe('Check if tags addition and removal flow working properly from tables',
         `/api/v1/${entityDetails.insideEntity ?? apiEntity}/*`,
         'tagsChange'
       );
-      visitEntityDetailsPage(
-        entityDetails.term,
-        entityDetails.serviceName,
-        apiEntity
-      );
+      visitEntityDetailsPage({
+        term: entityDetails.term,
+        serviceName: entityDetails.serviceName,
+        entity: entityDetails.entity,
+      });
       verifyResponseStatusCode('@getEntityDetail', 200);
       verifyResponseStatusCode('@getEntityPermission', 200);
 
@@ -161,7 +163,7 @@ describe('Check if tags addition and removal flow working properly from tables',
     });
 
     it(`Adding & removing tags to the ${entityDetails.entity} entity schema table`, () => {
-      if (entityDetails.entity !== 'storedProcedures') {
+      if (!['containers', 'storedProcedures'].includes(entityDetails.entity)) {
         interceptURL(
           'GET',
           `/api/v1/${apiEntity}/name/*?fields=*`,
@@ -186,11 +188,11 @@ describe('Check if tags addition and removal flow working properly from tables',
             'getInsideColumnPermission'
           );
         }
-        visitEntityDetailsPage(
-          entityDetails.term,
-          entityDetails.serviceName,
-          apiEntity
-        );
+        visitEntityDetailsPage({
+          term: entityDetails.term,
+          serviceName: entityDetails.serviceName,
+          entity: entityDetails.entity,
+        });
         verifyResponseStatusCode('@getEntityDetail', 200);
         verifyResponseStatusCode('@getEntityPermission', 200);
         if (entityDetails.insideEntity) {

@@ -18,8 +18,8 @@ import {
   waitForElementToBeRemoved,
 } from '@testing-library/react';
 import React from 'react';
-import { getTypeByFQN } from 'rest/metadataTypeAPI';
 import { EntityType } from '../../../enums/entity.enum';
+import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
 import { CustomPropertyTable } from './CustomPropertyTable';
 
 const mockCustomProperties = [
@@ -46,15 +46,15 @@ jest.mock('./PropertyValue', () => ({
   PropertyValue: jest.fn().mockReturnValue(<div>PropertyValue</div>),
 }));
 
-jest.mock('../error-with-placeholder/ErrorPlaceHolder', () => {
+jest.mock('../ErrorWithPlaceholder/ErrorPlaceHolder', () => {
   return jest.fn().mockReturnValue(<div>ErrorPlaceHolder.component</div>);
 });
 
-jest.mock('components/Loader/Loader', () => {
+jest.mock('../../../components/Loader/Loader', () => {
   return jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>);
 });
 
-jest.mock('rest/metadataTypeAPI', () => ({
+jest.mock('../../../rest/metadataTypeAPI', () => ({
   getTypeByFQN: jest.fn().mockImplementation(() =>
     Promise.resolve({
       customProperties: mockCustomProperties,
@@ -62,7 +62,7 @@ jest.mock('rest/metadataTypeAPI', () => ({
   ),
 }));
 
-jest.mock('components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../../components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     getEntityPermissionByFqn: jest.fn().mockReturnValue({
       Create: true,
@@ -87,7 +87,7 @@ jest.mock('react-router-dom', () => ({
   })),
 }));
 
-jest.mock('utils/CustomProperties/CustomProperty.utils', () => ({
+jest.mock('../../../utils/CustomProperties/CustomProperty.utils', () => ({
   getEntityExtentionDetailsFromEntityType: jest.fn(),
 }));
 

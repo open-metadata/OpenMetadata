@@ -13,28 +13,28 @@
 
 import { Col, Row, Space, Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
-import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
-import DescriptionV1 from 'components/common/description/DescriptionV1';
-import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
-import EntityVersionTimeLine from 'components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
-import Loader from 'components/Loader/Loader';
-import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
-import VersionTable from 'components/VersionTable/VersionTable.component';
-import { getVersionPathWithTab } from 'constants/constants';
-import { EntityField } from 'constants/Feeds.constants';
-import { TagSource } from 'generated/type/tagLabel';
 import { cloneDeep, toString } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
+import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
+import DataAssetsVersionHeader from '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
+import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
+import Loader from '../../components/Loader/Loader';
+import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
+import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
+import VersionTable from '../../components/VersionTable/VersionTable.component';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import { getVersionPathWithTab } from '../../constants/constants';
+import { EntityField } from '../../constants/Feeds.constants';
 import { EntityTabs, EntityType, FqnPart } from '../../enums/entity.enum';
 import {
   ChangeDescription,
   Column,
   ColumnJoins,
 } from '../../generated/entity/data/table';
+import { TagSource } from '../../generated/type/tagLabel';
 import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
 import {
   getColumnsDataWithVersionChanges,
@@ -43,6 +43,8 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
+import { getEncodedFqn } from '../../utils/StringsUtils';
+import DataProductsContainer from '../DataProductsContainer/DataProductsContainer.component';
 import { TableVersionProp } from './TableVersion.interface';
 
 const TableVersion: React.FC<TableVersionProp> = ({
@@ -51,9 +53,9 @@ const TableVersion: React.FC<TableVersionProp> = ({
   isVersionLoading,
   owner,
   domain,
+  dataProducts,
   tier,
   slashedTableName,
-  datasetFQN,
   versionList,
   deleted = false,
   backHandler,
@@ -65,6 +67,11 @@ const TableVersion: React.FC<TableVersionProp> = ({
   const { tab } = useParams<{ tab: EntityTabs }>();
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
+  );
+
+  const encodedFQN = useMemo(
+    () => getEncodedFqn(currentVersionData.fullyQualifiedName ?? ''),
+    [currentVersionData.fullyQualifiedName]
   );
 
   const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
@@ -89,7 +96,7 @@ const TableVersion: React.FC<TableVersionProp> = ({
     history.push(
       getVersionPathWithTab(
         EntityType.TABLE,
-        datasetFQN,
+        encodedFQN,
         String(version),
         activeKey
       )
@@ -150,9 +157,9 @@ const TableVersion: React.FC<TableVersionProp> = ({
               <Row gutter={[0, 16]}>
                 <Col span={24}>
                   <DescriptionV1
-                    isVersionView
                     description={description}
                     entityType={EntityType.TABLE}
+                    showActions={false}
                   />
                 </Col>
                 <Col span={24}>
@@ -160,7 +167,7 @@ const TableVersion: React.FC<TableVersionProp> = ({
                     addedColumnConstraintDiffs={addedColumnConstraintDiffs}
                     addedTableConstraintDiffs={addedTableConstraintDiffs}
                     columnName={getPartialNameFromTableFQN(
-                      datasetFQN,
+                      encodedFQN,
                       [FqnPart.Column],
                       FQN_SEPARATOR_CHAR
                     )}
@@ -178,9 +185,13 @@ const TableVersion: React.FC<TableVersionProp> = ({
               data-testid="entity-right-panel"
               flex="220px">
               <Space className="w-full" direction="vertical" size="large">
+                <DataProductsContainer
+                  activeDomain={domain}
+                  dataProducts={dataProducts ?? []}
+                  hasPermission={false}
+                />
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
-                    entityFqn={datasetFQN}
                     entityType={EntityType.TABLE}
                     key={tagType}
                     permission={false}
@@ -214,7 +225,7 @@ const TableVersion: React.FC<TableVersionProp> = ({
     ],
     [
       description,
-      datasetFQN,
+      encodedFQN,
       columns,
       deletedColumnConstraintDiffs,
       deletedTableConstraintDiffs,

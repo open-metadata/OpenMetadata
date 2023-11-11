@@ -108,7 +108,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   }
 
   @Override
-  public void upgrade() throws IOException {
+  public void upgrade() {
     // 1.2.0 upgrade only - Add Create operation to OrganizationPolicy Owner Rule
     try {
       Policy organizationPolicy = repository.findByName("OrganizationPolicy", Include.NON_DELETED);
@@ -453,7 +453,8 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   }
 
   private Policy getPolicy(CreatePolicy create, String user) {
-    Policy policy = copy(new Policy(), create, user).withRules(create.getRules()).withEnabled(create.getEnabled());
+    Policy policy =
+        repository.copy(new Policy(), create, user).withRules(create.getRules()).withEnabled(create.getEnabled());
     if (create.getLocation() != null) {
       policy = policy.withLocation(new EntityReference().withId(create.getLocation()));
     }

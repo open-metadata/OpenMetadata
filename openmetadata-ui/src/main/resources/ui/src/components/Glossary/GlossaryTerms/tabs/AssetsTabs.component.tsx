@@ -1,3 +1,4 @@
+/* eslint-disable no-case-declarations */
 /*
  *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,29 +12,26 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Menu, Row, Skeleton, Space } from 'antd';
-import type { ButtonType } from 'antd/lib/button';
+import { FilterOutlined, PlusOutlined } from '@ant-design/icons';
+import {
+  Badge,
+  Button,
+  Checkbox,
+  Col,
+  Menu,
+  MenuProps,
+  Popover,
+  Row,
+  Skeleton,
+  Space,
+  Tooltip,
+  Typography,
+} from 'antd';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import NextPrevious from 'components/common/next-previous/NextPrevious';
-import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import ExploreSearchCard from 'components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
-import {
-  SearchedDataProps,
-  SourceType,
-} from 'components/searched-data/SearchedData.interface';
-import {
-  AssetsFilterOptions,
-  ASSETS_INDEXES,
-} from 'constants/Assets.constants';
-import { PAGE_SIZE } from 'constants/constants';
-import { GLOSSARIES_DOCS } from 'constants/docs.constants';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { EntityType } from 'enums/entity.enum';
-import { SearchIndex } from 'enums/search.enum';
+import { compare } from 'fast-json-patch';
 import { t } from 'i18next';
-import { find, startCase } from 'lodash';
+import { isEmpty, isObject } from 'lodash';
 import React, {
   forwardRef,
   useCallback,
@@ -43,15 +41,49 @@ import React, {
   useState,
 } from 'react';
 import { useParams } from 'react-router-dom';
-import { searchData } from 'rest/miscAPI';
-import { getCountBadge } from 'utils/CommonUtils';
-import { showErrorToast } from 'utils/ToastUtils';
-import './assets-tabs.less';
+import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/add-placeholder.svg';
+import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
 import {
-  AssetsOfEntity,
-  AssetsTabsProps,
-  AssetsViewType,
-} from './AssetsTabs.interface';
+  AssetsFilterOptions,
+  ASSET_MENU_KEYS,
+  ASSET_SUB_MENU_FILTER,
+} from '../../../../constants/Assets.constants';
+import { ES_UPDATE_DELAY } from '../../../../constants/constants';
+import { GLOSSARIES_DOCS } from '../../../../constants/docs.constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
+import { EntityType } from '../../../../enums/entity.enum';
+import { SearchIndex } from '../../../../enums/search.enum';
+import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
+import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
+import { Domain } from '../../../../generated/entity/domains/domain';
+import { usePaging } from '../../../../hooks/paging/usePaging';
+import {
+  getDataProductByName,
+  patchDataProduct,
+} from '../../../../rest/dataProductAPI';
+import { getDomainByName } from '../../../../rest/domainAPI';
+import { getGlossaryTermByFQN } from '../../../../rest/glossaryAPI';
+import { searchData } from '../../../../rest/miscAPI';
+import {
+  removeGlossaryTermAssets,
+  updateDomainAssets,
+} from '../../../../utils/Assets/AssetsUtils';
+import { getCountBadge, Transi18next } from '../../../../utils/CommonUtils';
+import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityTypeFromSearchIndex } from '../../../../utils/SearchUtils';
+import { getEntityIcon } from '../../../../utils/TableUtils';
+import { showErrorToast } from '../../../../utils/ToastUtils';
+import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NextPrevious from '../../../common/NextPrevious/NextPrevious';
+import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
+import ExploreSearchCard from '../../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
+import ConfirmationModal from '../../../Modals/ConfirmationModal/ConfirmationModal';
+import {
+  SearchedDataProps,
+  SourceType,
+} from '../../../SearchedData/SearchedData.interface';
+import './assets-tabs.less';
+import { AssetsOfEntity, AssetsTabsProps } from './AssetsTabs.interface';
 
 export interface AssetsTabRef {
   refreshAssets: () => void;
@@ -65,146 +97,80 @@ const AssetsTabs = forwardRef(
       onAssetClick,
       isSummaryPanelOpen,
       onAddAsset,
+      onRemoveAsset,
+      assetCount,
+      queryFilter,
+      isEntityDeleted = false,
       type = AssetsOfEntity.GLOSSARY,
-      viewType = AssetsViewType.PILLS,
+      noDataPlaceholder,
+      entityFqn,
     }: AssetsTabsProps,
     ref
   ) => {
-    const [itemCount, setItemCount] = useState<Record<EntityType, number>>({
-      table: 0,
-      pipeline: 0,
-      mlmodel: 0,
-      container: 0,
-      topic: 0,
-      dashboard: 0,
-      glossaryTerm: 0,
-    } as Record<EntityType, number>);
-    const [activeFilter, setActiveFilter] = useState<SearchIndex>(
-      SearchIndex.TABLE
+    const popupRef = React.useRef<HTMLElement>(null);
+    const [itemCount, setItemCount] = useState<Record<EntityType, number>>(
+      {} as Record<EntityType, number>
     );
+    const [activeFilter, setActiveFilter] = useState<SearchIndex[]>([]);
     const { fqn } = useParams<{ fqn: string }>();
     const [isLoading, setIsLoading] = useState(true);
     const [data, setData] = useState<SearchedDataProps['data']>([]);
-    const [total, setTotal] = useState<number>(0);
-    const [currentPage, setCurrentPage] = useState<number>(1);
+    const {
+      currentPage,
+      pageSize,
+      paging,
+      handlePageChange,
+      handlePageSizeChange,
+      handlePagingChange,
+      showPagination,
+    } = usePaging();
+
+    const isRemovable = useMemo(
+      () =>
+        [
+          AssetsOfEntity.DATA_PRODUCT,
+          AssetsOfEntity.DOMAIN,
+          AssetsOfEntity.GLOSSARY,
+        ].includes(type),
+      [type]
+    );
+
     const [selectedCard, setSelectedCard] = useState<SourceType>();
-
-    const tabs = useMemo(() => {
-      return AssetsFilterOptions.map((option) => {
-        return {
-          label: (
-            <div className="d-flex justify-between">
-              <Space align="center" size="small">
-                {option.label}
-              </Space>
-
-              <span>
-                {getCountBadge(
-                  itemCount[option.key],
-                  '',
-                  activeFilter === option.value
-                )}
-              </span>
-            </div>
-          ),
-          key: option.value,
-          value: option.value,
-        };
-      });
-    }, [itemCount]);
+    const [visible, setVisible] = useState<boolean>(false);
+    const [openKeys, setOpenKeys] = useState<EntityType[]>([]);
+    const [isCountLoading, setIsCountLoading] = useState<boolean>(true);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [assetToDelete, setAssetToDelete] = useState<SourceType>();
+    const [activeEntity, setActiveEntity] = useState<
+      Domain | DataProduct | GlossaryTerm
+    >();
 
     const queryParam = useMemo(() => {
-      if (type === AssetsOfEntity.DOMAIN) {
-        return `(domain.fullyQualifiedName:"${fqn}")`;
-      } else if (type === AssetsOfEntity.DATA_PRODUCT) {
-        return `(dataProducts.fullyQualifiedName:"${fqn}")`;
-      } else if (type === AssetsOfEntity.TEAM) {
-        return `(owner.fullyQualifiedName:"${fqn}")`;
-      } else {
-        return `(tags.tagFQN:"${fqn}")`;
+      switch (type) {
+        case AssetsOfEntity.DOMAIN:
+          return `(domain.fullyQualifiedName:"${fqn}")`;
+
+        case AssetsOfEntity.DATA_PRODUCT:
+          return `(dataProducts.fullyQualifiedName:"${fqn}")`;
+
+        case AssetsOfEntity.TEAM:
+          return `(owner.fullyQualifiedName:"${fqn}")`;
+
+        case AssetsOfEntity.MY_DATA:
+        case AssetsOfEntity.FOLLOWING:
+          return queryFilter ?? '';
+
+        default:
+          return `(tags.tagFQN:"${fqn}")`;
       }
     }, [type, fqn]);
-
-    const searchIndexes = useMemo(() => {
-      const indexesToFetch = [...ASSETS_INDEXES];
-      if (type !== AssetsOfEntity.GLOSSARY) {
-        indexesToFetch.push(SearchIndex.GLOSSARY);
-      }
-
-      return indexesToFetch;
-    }, [type]);
-
-    const fetchCountsByEntity = () => {
-      Promise.all(
-        searchIndexes.map((index) =>
-          searchData('', 0, 0, queryParam, '', '', index)
-        )
-      )
-        .then(
-          ([
-            tableResponse,
-            topicResponse,
-            dashboardResponse,
-            pipelineResponse,
-            mlmodelResponse,
-            containerResponse,
-            storedProcedureResponse,
-            dashboardDataModelResponse,
-            glossaryResponse,
-          ]) => {
-            const counts = {
-              [EntityType.TABLE]: tableResponse.data.hits.total.value,
-              [EntityType.TOPIC]: topicResponse.data.hits.total.value,
-              [EntityType.DASHBOARD]: dashboardResponse.data.hits.total.value,
-              [EntityType.PIPELINE]: pipelineResponse.data.hits.total.value,
-              [EntityType.MLMODEL]: mlmodelResponse.data.hits.total.value,
-              [EntityType.CONTAINER]: containerResponse.data.hits.total.value,
-              [EntityType.STORED_PROCEDURE]:
-                storedProcedureResponse.data.hits.total.value,
-              [EntityType.DASHBOARD_DATA_MODEL]:
-                dashboardDataModelResponse.data.hits.total.value,
-              [EntityType.GLOSSARY_TERM]:
-                type !== AssetsOfEntity.GLOSSARY
-                  ? glossaryResponse.data.hits.total.value
-                  : 0,
-            };
-
-            setItemCount(counts as Record<EntityType, number>);
-
-            find(counts, (count, key) => {
-              if (count > 0) {
-                const option = AssetsFilterOptions.find((el) => el.key === key);
-                if (option) {
-                  setActiveFilter(option.value);
-                }
-
-                return true;
-              }
-
-              return false;
-            });
-          }
-        )
-        .catch((err) => {
-          showErrorToast(err);
-        })
-        .finally(() => setIsLoading(false));
-    };
-
-    useEffect(() => {
-      fetchCountsByEntity();
-
-      return () => {
-        onAssetClick && onAssetClick(undefined);
-      };
-    }, []);
 
     const fetchAssets = useCallback(
       async ({
         index = activeFilter,
-        page = 1,
+        page = currentPage,
       }: {
-        index?: SearchIndex;
+        index?: SearchIndex[];
         page?: number;
       }) => {
         try {
@@ -212,7 +178,7 @@ const AssetsTabs = forwardRef(
           const res = await searchData(
             '',
             page,
-            PAGE_SIZE,
+            pageSize,
             queryParam,
             '',
             '',
@@ -224,12 +190,12 @@ const AssetsTabs = forwardRef(
           const hits = res?.data?.hits?.hits;
 
           // Find EntityType for selected searchIndex
-          const entityType = AssetsFilterOptions.find(
-            (f) => f.value === activeFilter
+          const entityType = AssetsFilterOptions.find((f) =>
+            activeFilter.includes(f.value)
           )?.label;
 
           // Update states
-          setTotal(totalCount);
+          handlePagingChange({ total: totalCount });
           entityType &&
             setItemCount((prevCount) => ({
               ...prevCount,
@@ -245,135 +211,496 @@ const AssetsTabs = forwardRef(
           setIsLoading(false);
         }
       },
-      [activeFilter, currentPage]
+      [activeFilter, currentPage, pageSize]
     );
+    const onOpenChange: MenuProps['onOpenChange'] = (keys) => {
+      const latestOpenKey = keys.find(
+        (key) => openKeys.indexOf(key as EntityType) === -1
+      );
+      if (ASSET_MENU_KEYS.indexOf(latestOpenKey as EntityType) === -1) {
+        setOpenKeys(keys as EntityType[]);
+      } else {
+        setOpenKeys(latestOpenKey ? [latestOpenKey as EntityType] : []);
+      }
+    };
 
-    const assetListing = useMemo(() => {
-      if (isLoading) {
-        return (
-          <Row gutter={[0, 16]}>
-            <Col span={24}>
-              <Skeleton />
-            </Col>
-            <Col span={24}>
-              <Skeleton />
-            </Col>
-          </Row>
-        );
+    const handleAssetButtonVisibleChange = (newVisible: boolean) =>
+      setVisible(newVisible);
+
+    const handleActiveFilter = (key: SearchIndex) => {
+      if (activeFilter.includes(key)) {
+        setActiveFilter((prev) => prev.filter((item) => item !== key));
+      } else {
+        setActiveFilter((prev) => [...prev, key]);
+      }
+    };
+
+    const fetchCurrentEntity = useCallback(async () => {
+      let data;
+      const fqn = encodeURIComponent(entityFqn ?? '');
+      switch (type) {
+        case AssetsOfEntity.DOMAIN:
+          data = await getDomainByName(fqn, '');
+
+          break;
+        case AssetsOfEntity.DATA_PRODUCT:
+          data = await getDataProductByName(fqn, 'domain,assets');
+
+          break;
+        case AssetsOfEntity.GLOSSARY:
+          data = await getGlossaryTermByFQN(fqn);
+
+          break;
+        default:
+          break;
       }
 
-      return data.length ? (
-        <div className="assets-data-container">
-          {data.map(({ _source, _id = '' }, index) => (
-            <ExploreSearchCard
-              className={classNames(
-                'm-b-sm cursor-pointer',
-                selectedCard?.id === _source.id ? 'highlight-card' : ''
-              )}
-              handleSummaryPanelDisplay={setSelectedCard}
-              id={_id}
-              key={index}
-              showTags={false}
-              source={_source}
-            />
-          ))}
-          {total > PAGE_SIZE && data.length > 0 && (
-            <NextPrevious
-              isNumberBased
-              currentPage={currentPage}
-              pageSize={PAGE_SIZE}
-              paging={{ total }}
-              pagingHandler={({ currentPage }: PagingHandlerParams) =>
-                setCurrentPage(currentPage)
-              }
-            />
-          )}
-        </div>
-      ) : (
-        <div className="m-t-xlg">
-          <ErrorPlaceHolder
-            doc={GLOSSARIES_DOCS}
-            heading={t('label.asset')}
-            permission={permissions.Create}
-            type={ERROR_PLACEHOLDER_TYPE.CREATE}
-            onClick={onAddAsset}
-          />
-        </div>
-      );
-    }, [data, isLoading, total, currentPage, selectedCard, setSelectedCard]);
+      setActiveEntity(data);
+    }, [type, entityFqn]);
 
-    const assetsHeader = useMemo(() => {
-      if (viewType === AssetsViewType.PILLS) {
-        return AssetsFilterOptions.map((option) => {
-          const buttonStyle =
-            activeFilter === option.value
-              ? {
-                  ghost: true,
-                  type: 'primary' as ButtonType,
-                  style: { background: 'white' },
-                }
-              : {};
+    const tabs = useMemo(() => {
+      return AssetsFilterOptions.map((option) => {
+        return {
+          label: (
+            <div className="d-flex justify-between">
+              <Space align="center" size="small">
+                {option.label}
+              </Space>
 
-          return itemCount[option.key] > 0 ? (
-            <Button
-              {...buttonStyle}
-              className="m-r-sm m-b-sm"
-              key={option.value}
-              onClick={() => {
-                setCurrentPage(1);
-                setActiveFilter(option.value);
-              }}>
-              {startCase(option.label)}{' '}
-              <span className="p-l-xs">
+              <span>
                 {getCountBadge(
                   itemCount[option.key],
                   '',
-                  activeFilter === option.value
+                  activeFilter.includes(option.value)
                 )}
               </span>
-            </Button>
-          ) : null;
-        });
-      } else {
-        return (
-          <Menu
-            className="p-t-sm"
-            items={tabs}
-            selectedKeys={[activeFilter]}
-            onClick={(value) => {
-              setCurrentPage(1);
-              setActiveFilter(value.key as SearchIndex);
-              setSelectedCard(undefined);
-            }}
-          />
-        );
-      }
-    }, [viewType, activeFilter, currentPage, tabs, itemCount]);
+            </div>
+          ),
+          key: option.value,
+          value: option.value,
+        };
+      });
+    }, [activeFilter, itemCount]);
 
-    const layout = useMemo(() => {
-      if (viewType === AssetsViewType.PILLS) {
-        return (
-          <>
-            {assetsHeader}
-            {assetListing}
-          </>
-        );
-      } else {
-        return (
-          <PageLayoutV1 leftPanel={assetsHeader} pageTitle="">
-            {assetListing}
-          </PageLayoutV1>
-        );
+    const getAssetMenuCount = useCallback(
+      (key: EntityType) =>
+        ASSET_SUB_MENU_FILTER.find((item) => item.key === key)
+          ?.children.map((item) => itemCount[item.value] ?? 0)
+          ?.reduce((acc, cv) => acc + cv, 0),
+      [itemCount]
+    );
+
+    const getOptions = useCallback(
+      (
+        option: {
+          label: string;
+          key: EntityType | SearchIndex;
+          value?: EntityType;
+        },
+        isChildren?: boolean
+      ) => {
+        const assetCount = isChildren
+          ? itemCount[option.value as EntityType]
+          : getAssetMenuCount(option.key as EntityType);
+
+        return {
+          label: isChildren ? (
+            <div className="w-full d-flex justify-between">
+              <div className="w-full d-flex items-center justify-between p-r-xss">
+                <span className="d-flex items-center">
+                  <span className="m-r-xs w-4 d-flex">
+                    {getEntityIcon(option.key)}
+                  </span>
+
+                  <Typography.Text
+                    className="asset-sub-menu-title text-color-inherit"
+                    ellipsis={{ tooltip: true }}>
+                    {option.label}
+                  </Typography.Text>
+                </span>
+
+                <span>
+                  {getCountBadge(assetCount, 'asset-badge-container')}
+                </span>
+              </div>
+              <Checkbox
+                checked={activeFilter.includes(option.key as SearchIndex)}
+                className="asset-sub-menu-checkbox"
+              />
+            </div>
+          ) : (
+            <div className="d-flex justify-between">
+              <span>{option.label}</span>
+              <span>{getCountBadge(assetCount, 'asset-badge-container')}</span>
+            </div>
+          ),
+          key: option.key,
+          value: option.key,
+        };
+      },
+      [
+        getEntityIcon,
+        handlePageChange,
+        handleActiveFilter,
+        setSelectedCard,
+        activeFilter,
+      ]
+    );
+
+    const onExploreCardDelete = useCallback((source: SourceType) => {
+      setAssetToDelete(source);
+      setShowDeleteModal(true);
+    }, []);
+
+    const filteredAssetMenus = useMemo(() => {
+      switch (type) {
+        case AssetsOfEntity.DOMAIN:
+          return ASSET_SUB_MENU_FILTER.filter(
+            (item) => item.key !== EntityType.DOMAIN
+          );
+
+        case AssetsOfEntity.GLOSSARY:
+          return ASSET_SUB_MENU_FILTER.filter(
+            (item) => item.key !== EntityType.GOVERN
+          );
+
+        default:
+          return ASSET_SUB_MENU_FILTER;
       }
-    }, [viewType, assetsHeader, assetListing, selectedCard]);
+    }, [type]);
+
+    const subMenuItems = useMemo(() => {
+      return filteredAssetMenus.map((option) => ({
+        ...getOptions(option),
+        children: option.children.map((item) => getOptions(item, true)),
+      }));
+    }, [filteredAssetMenus, getOptions]);
+
+    const fetchCountsByEntity = async () => {
+      try {
+        setIsCountLoading(true);
+        const res = await searchData(
+          '',
+          0,
+          0,
+          queryParam,
+          '',
+          '',
+          SearchIndex.ALL
+        );
+
+        const buckets = res.data.aggregations[`sterms#index_count`].buckets;
+        const counts: Record<string, number> = {};
+        buckets.forEach((item) => {
+          if (item) {
+            counts[
+              getEntityTypeFromSearchIndex(item?.key) ?? EntityType.TABLE
+            ] = item.doc_count;
+          }
+        });
+
+        setItemCount(counts as Record<EntityType, number>);
+      } catch (err) {
+        showErrorToast(err as AxiosError);
+      } finally {
+        setIsCountLoading(false);
+      }
+    };
 
     useEffect(() => {
-      fetchAssets({ index: activeFilter, page: currentPage });
-    }, [activeFilter, currentPage]);
+      fetchCountsByEntity();
+
+      return () => {
+        onAssetClick?.(undefined);
+      };
+    }, []);
+
+    useEffect(() => {
+      if (entityFqn) {
+        fetchCurrentEntity();
+      }
+    }, [entityFqn]);
+
+    const assetErrorPlaceHolder = useMemo(() => {
+      if (!isEmpty(activeFilter)) {
+        return (
+          <ErrorPlaceHolder
+            heading={t('label.asset')}
+            type={ERROR_PLACEHOLDER_TYPE.FILTER}
+          />
+        );
+      } else if (noDataPlaceholder) {
+        return (
+          <ErrorPlaceHolder>
+            {isObject(noDataPlaceholder) && (
+              <Typography.Paragraph>
+                {noDataPlaceholder.message}
+              </Typography.Paragraph>
+            )}
+          </ErrorPlaceHolder>
+        );
+      } else {
+        return (
+          <ErrorPlaceHolder
+            icon={<AddPlaceHolderIcon className="h-32 w-32" />}
+            type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+            <Typography.Paragraph style={{ marginBottom: '0' }}>
+              {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
+                entity: t('label.asset'),
+              })}
+            </Typography.Paragraph>
+            <Typography.Paragraph>
+              <Transi18next
+                i18nKey="message.refer-to-our-doc"
+                renderElement={
+                  <a
+                    href={GLOSSARIES_DOCS}
+                    rel="noreferrer"
+                    style={{ color: '#1890ff' }}
+                    target="_blank"
+                  />
+                }
+                values={{
+                  doc: t('label.doc-plural-lowercase'),
+                }}
+              />
+            </Typography.Paragraph>
+            <Tooltip
+              placement="top"
+              title={
+                isEntityDeleted
+                  ? t('message.this-action-is-not-allowed-for-deleted-entities')
+                  : t('label.add')
+              }>
+              <Button
+                ghost
+                data-testid="add-placeholder-button"
+                disabled={isEntityDeleted}
+                icon={<PlusOutlined />}
+                type="primary"
+                onClick={onAddAsset}>
+                {t('label.add')}
+              </Button>
+            </Tooltip>
+          </ErrorPlaceHolder>
+        );
+      }
+    }, [
+      activeFilter,
+      noDataPlaceholder,
+      permissions,
+      onAddAsset,
+      isEntityDeleted,
+    ]);
+
+    const assetListing = useMemo(
+      () =>
+        data.length ? (
+          <div className="assets-data-container p-t-sm">
+            {data.map(({ _source, _id = '' }) => (
+              <ExploreSearchCard
+                showEntityIcon
+                actionPopoverContent={
+                  isRemovable && permissions.EditAll ? (
+                    <Button
+                      className="p-0 flex-center"
+                      data-testid="delete-tag"
+                      icon={
+                        <DeleteIcon
+                          data-testid="delete-icon"
+                          name="Delete"
+                          width={16}
+                        />
+                      }
+                      size="small"
+                      type="text"
+                      onClick={() => onExploreCardDelete(_source)}
+                    />
+                  ) : null
+                }
+                className={classNames(
+                  'm-b-sm cursor-pointer',
+                  selectedCard?.id === _source.id ? 'highlight-card' : ''
+                )}
+                handleSummaryPanelDisplay={setSelectedCard}
+                id={_id}
+                key={'assets_' + _id}
+                showTags={false}
+                source={_source}
+              />
+            ))}
+            {showPagination && (
+              <NextPrevious
+                isNumberBased
+                currentPage={currentPage}
+                pageSize={pageSize}
+                paging={paging}
+                pagingHandler={({ currentPage }: PagingHandlerParams) =>
+                  handlePageChange(currentPage)
+                }
+                onShowSizeChange={handlePageSizeChange}
+              />
+            )}
+          </div>
+        ) : (
+          <div className="m-t-xlg">{assetErrorPlaceHolder}</div>
+        ),
+      [
+        type,
+        data,
+        permissions,
+        paging,
+        currentPage,
+        selectedCard,
+        assetErrorPlaceHolder,
+        setSelectedCard,
+        handlePageChange,
+        showPagination,
+        handlePageSizeChange,
+      ]
+    );
+
+    const assetsHeader = useMemo(() => {
+      return (
+        <div className="w-full d-flex justify-end">
+          <Popover
+            align={{ targetOffset: [0, 10] }}
+            content={
+              <Menu
+                multiple
+                items={subMenuItems}
+                mode="inline"
+                openKeys={openKeys}
+                rootClassName="asset-multi-menu-selector"
+                selectedKeys={activeFilter}
+                style={{ width: 256, height: 340 }}
+                onClick={(value) => {
+                  handlePageChange(1);
+                  handleActiveFilter(value.key as SearchIndex);
+                  setSelectedCard(undefined);
+                }}
+                onOpenChange={onOpenChange}
+              />
+            }
+            getPopupContainer={(triggerNode: HTMLElement) =>
+              popupRef.current ?? triggerNode
+            }
+            key="asset-options-popover"
+            open={visible}
+            overlayClassName="ant-popover-asset"
+            placement="bottomRight"
+            showArrow={false}
+            trigger="click"
+            onOpenChange={handleAssetButtonVisibleChange}>
+            {Boolean(assetCount) && (
+              <Badge count={activeFilter.length}>
+                <Button
+                  ghost
+                  icon={<FilterOutlined />}
+                  ref={popupRef}
+                  style={{ background: 'white' }}
+                  type="primary">
+                  {t('label.filter-plural')}
+                </Button>
+              </Badge>
+            )}
+          </Popover>
+        </div>
+      );
+    }, [
+      activeFilter,
+      isLoading,
+      data,
+      openKeys,
+      visible,
+      currentPage,
+      tabs,
+      itemCount,
+      onOpenChange,
+      handleAssetButtonVisibleChange,
+    ]);
+
+    const layout = useMemo(() => {
+      return (
+        <>
+          {assetsHeader}
+          {assetListing}
+        </>
+      );
+    }, [assetsHeader, assetListing, selectedCard]);
+
+    const onAssetRemove = useCallback(async () => {
+      if (!activeEntity) {
+        return;
+      }
+
+      try {
+        let updatedEntity;
+        switch (type) {
+          case AssetsOfEntity.DATA_PRODUCT:
+            const updatedAssets = (
+              (activeEntity as DataProduct)?.assets ?? []
+            ).filter((asset) => asset.id !== assetToDelete?.id);
+            updatedEntity = {
+              ...activeEntity,
+              assets: updatedAssets,
+            };
+            const jsonPatch = compare(activeEntity, updatedEntity);
+            const res = await patchDataProduct(
+              (activeEntity as DataProduct).id,
+              jsonPatch
+            );
+            setActiveEntity(res);
+
+            break;
+
+          case AssetsOfEntity.DOMAIN:
+          case AssetsOfEntity.GLOSSARY:
+            const selectedItemMap = new Map();
+            selectedItemMap.set(assetToDelete?.id, assetToDelete);
+
+            if (type === AssetsOfEntity.DOMAIN) {
+              await updateDomainAssets(undefined, type, selectedItemMap);
+            } else if (type === AssetsOfEntity.GLOSSARY) {
+              await removeGlossaryTermAssets(
+                entityFqn ?? '',
+                type,
+                selectedItemMap
+              );
+            }
+
+            break;
+          default:
+            // Handle other entity types here
+            break;
+        }
+
+        await new Promise((resolve) => {
+          setTimeout(() => {
+            resolve('');
+          }, ES_UPDATE_DELAY);
+        });
+      } catch (err) {
+        showErrorToast(err as AxiosError);
+      } finally {
+        setShowDeleteModal(false);
+        onRemoveAsset?.();
+      }
+    }, [type, activeEntity, assetToDelete, entityFqn]);
+
+    useEffect(() => {
+      fetchAssets({
+        index: isEmpty(activeFilter) ? [SearchIndex.ALL] : activeFilter,
+        page: currentPage,
+      });
+    }, [activeFilter, currentPage, pageSize]);
 
     useImperativeHandle(ref, () => ({
       refreshAssets() {
-        fetchAssets({});
+        fetchAssets({
+          index: isEmpty(activeFilter) ? [SearchIndex.ALL] : activeFilter,
+          page: currentPage,
+        });
         fetchCountsByEntity();
       },
       closeSummaryPanel() {
@@ -393,14 +720,38 @@ const AssetsTabs = forwardRef(
       }
     }, [isSummaryPanelOpen]);
 
+    if (isLoading || isCountLoading) {
+      return (
+        <Row className="p-lg" gutter={[0, 16]}>
+          <Col span={24}>
+            <Skeleton />
+          </Col>
+          <Col span={24}>
+            <Skeleton />
+          </Col>
+        </Row>
+      );
+    }
+
     return (
       <div
-        className={classNames(
-          'assets-tab-container',
-          viewType === AssetsViewType.PILLS ? 'p-md' : ''
-        )}
+        className={classNames('assets-tab-container p-md')}
         data-testid="table-container">
         {layout}
+        <ConfirmationModal
+          bodyText={t('message.are-you-sure-action-property', {
+            propertyName: getEntityName(assetToDelete),
+            action: t('label.remove-lowecase'),
+          })}
+          cancelText={t('label.cancel')}
+          confirmText={t('label.delete')}
+          header={t('label.remove-entity', {
+            entity: getEntityName(assetToDelete) + '?',
+          })}
+          visible={showDeleteModal}
+          onCancel={() => setShowDeleteModal(false)}
+          onConfirm={onAssetRemove}
+        />
       </div>
     );
   }

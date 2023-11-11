@@ -117,7 +117,7 @@ class MysqlCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     @staticmethod
     def expected_filtered_table_includes() -> int:
-        return 59
+        return 63
 
     @staticmethod
     def expected_filtered_table_excludes() -> int:
@@ -125,4 +125,4 @@ class MysqlCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     @staticmethod
     def expected_filtered_mix() -> int:
-        return 59
+        return 63

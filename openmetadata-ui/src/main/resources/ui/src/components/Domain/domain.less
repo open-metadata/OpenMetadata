@@ -48,9 +48,6 @@
       padding-top: 4px;
     }
   }
-  .summary-panel-container {
-    border-left: 1px solid @border-color;
-  }
 }
 
 .domain-form-container .toastui-editor,
@@ -58,5 +55,16 @@
   min-height: 150px !important; // overriding inline style
   .ProseMirror {
     min-height: 150px;
+  }
+}
+
+.ant-tooltip.domain-type-tooltip-container {
+  max-width: 750px;
+  .ant-tooltip-arrow-content::before {
+    background: @white;
+  }
+  .ant-tooltip-inner {
+    background: @white;
+    padding: 20px;
   }
 }

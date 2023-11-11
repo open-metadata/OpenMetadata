@@ -34,6 +34,14 @@ export const MYDATA_SUMMARY_OPTIONS = {
   tags: 'tags',
   storedProcedures: 'storedProcedures',
   dataModel: 'dashboardDataModel',
+  searchIndexes: 'searchIndexes',
+};
+export const EXPLORE_PAGE_TABS = {
+  mlmodels: 'ml models',
+  storedProcedures: 'stored procedures',
+  dataProducts: 'data products',
+  dataModel: 'dashboard data model',
+  searchIndexes: 'search indexes',
 };
 
 export const SEARCH_INDEX = {
@@ -42,6 +50,7 @@ export const SEARCH_INDEX = {
   dashboards: 'dashboard_search_index',
   pipelines: 'pipeline_search_index',
   mlmodels: 'mlmodel_search_index',
+  containers: 'container_search_index',
 };
 
 export const DATA_QUALITY_SAMPLE_DATA_TABLE = {
@@ -288,6 +297,8 @@ export const NEW_TAG = {
   renamedName: 'CypressTag-1',
   fqn: `${NEW_CLASSIFICATION.name}.CypressTag`,
   description: 'This is the CypressTag',
+  color: '#FF5733',
+  icon: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAF8AAACFCAMAAAAKN9SOAAAAA1BMVEXmGSCqexgYAAAAI0lEQVRoge3BMQEAAADCoPVPbQwfoAAAAAAAAAAAAAAAAHgaMeAAAUWJHZ4AAAAASUVORK5CYII=',
 };
 
 export const NEW_GLOSSARY = {
@@ -334,12 +345,16 @@ export const NEW_GLOSSARY_1_TERMS = {
     description: 'This is the Features',
     synonyms: 'data,collect,time',
     fullyQualifiedName: 'Cypress Product%Glossary.Features%Term',
+    color: '#FF5733',
+    icon: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAF8AAACFCAMAAAAKN9SOAAAAA1BMVEXmGSCqexgYAAAAI0lEQVRoge3BMQEAAADCoPVPbQwfoAAAAAAAAAAAAAAAAHgaMeAAAUWJHZ4AAAAASUVORK5CYII=',
   },
   term_2: {
     name: 'Uses',
     description: 'This is the Uses',
     synonyms: 'home,business,adventure',
     fullyQualifiedName: 'Cypress Product%Glossary.Uses',
+    color: '#50C878',
+    icon: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKEAAAB5CAMAAABm4rHGAAAAA1BMVEUA7gBnh+O4AAAAKUlEQVR4nO3BAQEAAACCIP+vbkhAAQAAAAAAAAAAAAAAAAAAAAAAAL8GTJIAAVDbVToAAAAASUVORK5CYII=',
   },
 };
 
@@ -358,6 +373,7 @@ export const SERVICE_TYPE = {
   MLModels: 'ML Models',
   Storage: 'Storage',
   StoredProcedure: 'StoredProcedure',
+  Search: 'Search',
 };
 
 export const ENTITIES = {
@@ -368,6 +384,7 @@ export const ENTITIES = {
     stringValue: 'This is string propery',
     markdownValue: 'This is markdown value',
     entityObj: SEARCH_ENTITY_TABLE.table_1,
+    entityApiType: 'tables',
   },
   entity_topic: {
     name: 'topic',
@@ -376,6 +393,7 @@ export const ENTITIES = {
     stringValue: 'This is string propery',
     markdownValue: 'This is markdown value',
     entityObj: SEARCH_ENTITY_TOPIC.topic_1,
+    entityApiType: 'topics',
   },
   // commenting the dashboard test for not, need to make changes in dynamic data-test side
   //   entity_dashboard: {
@@ -385,6 +403,7 @@ export const ENTITIES = {
   //     stringValue: 'This is string propery',
   //     markdownValue: 'This is markdown value',
   //     entityObj: SEARCH_ENTITY_DASHBOARD.dashboard_1,
+  // entityApiType: "dashboards"
   //   },
   entity_pipeline: {
     name: 'pipeline',
@@ -393,6 +412,7 @@ export const ENTITIES = {
     stringValue: 'This is string propery',
     markdownValue: 'This is markdown value',
     entityObj: SEARCH_ENTITY_PIPELINE.pipeline_1,
+    entityApiType: 'pipelines',
   },
 };
 
@@ -419,7 +439,7 @@ export const HTTP_CONFIG_SOURCE = {
 
 export const DBT = {
   classification: 'dbtTags',
-  tagName: 'model_tag_one',
+  tagName: 'model_tag_two',
   dbtQuery: 'select * from "dev"."dbt_jaffle"."stg_orders"',
   dbtLineageNodeLabel: 'customers',
   dbtLineageNode: 'dev.dbt_jaffle.stg_customers',
@@ -504,7 +524,7 @@ export const DOMAIN_1 = {
   updatedDescription:
     'This is the updated description for Cypress for testing domain creation',
   experts: 'Aaron Johnson',
-  owner: 'Aaron Singh',
+  owner: 'Alex Pollard',
   updatedOwner: 'Aaron Johnson',
   domainType: 'Source-aligned',
   dataProducts: [
@@ -530,7 +550,7 @@ export const DOMAIN_2 = {
   updatedName: 'Cypress.Domain.New',
   updatedDisplayName: 'Cypress.Domain.New',
   description: 'This is the Cypress for testing domain creation',
-  experts: 'Aaron Singh',
-  owner: 'Aaron Singh',
+  experts: 'Alex Pollard',
+  owner: 'Alex Pollard',
   domainType: 'Source-aligned',
 };

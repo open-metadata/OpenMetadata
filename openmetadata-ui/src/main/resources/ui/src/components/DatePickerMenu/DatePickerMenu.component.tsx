@@ -14,41 +14,81 @@
 import { CloseCircleOutlined } from '@ant-design/icons';
 import { Button, DatePicker, Dropdown, MenuProps, Space } from 'antd';
 import { RangePickerProps } from 'antd/lib/date-picker';
-import { DateRangeObject } from 'components/ProfilerDashboard/component/TestSummary';
+import { isUndefined } from 'lodash';
+import { DateFilterType } from 'Models';
+import { MenuInfo } from 'rc-menu/lib/interface';
+import React, { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+
+import { ReactComponent as DropdownIcon } from '../../assets/svg/DropDown.svg';
+import { DateRangeObject } from '../../components/ProfilerDashboard/component/TestSummary';
 import {
   DEFAULT_SELECTED_RANGE,
   PROFILER_FILTER_RANGE,
-} from 'constants/profiler.constant';
-import { isUndefined } from 'lodash';
-import { MenuInfo } from 'rc-menu/lib/interface';
-import React, { useState } from 'react';
-import { useTranslation } from 'react-i18next';
+} from '../../constants/profiler.constant';
 import {
   getCurrentMillis,
   getEpochMillisForPastDays,
-} from 'utils/date-time/DateTimeUtils';
-import { getDaysCount, getTimestampLabel } from 'utils/DatePickerMenuUtils';
-import { ReactComponent as DropdownIcon } from '../../assets/svg/DropDown.svg';
-import './DatePickerMenu.style.less';
+} from '../../utils/date-time/DateTimeUtils';
+import {
+  getDaysCount,
+  getTimestampLabel,
+} from '../../utils/DatePickerMenuUtils';
+import './date-picker-menu.less';
 
 interface DatePickerMenuProps {
   showSelectedCustomRange?: boolean;
   handleDateRangeChange: (value: DateRangeObject, days?: number) => void;
+  options?: DateFilterType;
+  defaultValue?: string;
+  allowCustomRange?: boolean;
 }
 
 function DatePickerMenu({
   showSelectedCustomRange,
   handleDateRangeChange,
+  options,
+  defaultValue,
+  allowCustomRange = true,
 }: DatePickerMenuProps) {
+  const { menuOptions, defaultOptions } = useMemo(() => {
+    let defaultOptions = DEFAULT_SELECTED_RANGE;
+
+    if (defaultValue) {
+      if (options && !isUndefined(options[defaultValue]?.title)) {
+        defaultOptions = {
+          title: options[defaultValue].title,
+          key: defaultValue,
+          days: options[defaultValue].days,
+        };
+      } else if (
+        !isUndefined(
+          PROFILER_FILTER_RANGE[defaultValue as keyof DateFilterType]?.title
+        )
+      ) {
+        defaultOptions = {
+          title: PROFILER_FILTER_RANGE[defaultValue].title,
+          key: defaultValue,
+          days: PROFILER_FILTER_RANGE[defaultValue].days,
+        };
+      }
+    }
+
+    return {
+      menuOptions: options ?? PROFILER_FILTER_RANGE,
+      defaultOptions,
+    };
+  }, [options]);
+
   const { t } = useTranslation();
   // State to display the label for selected range value
   const [selectedTimeRange, setSelectedTimeRange] = useState<string>(
-    DEFAULT_SELECTED_RANGE.title
+    defaultOptions.title
   );
   // state to determine the selected value to highlight in the dropdown
-  const [selectedTimeRangeKey, setSelectedTimeRangeKey] = useState<
-    keyof typeof PROFILER_FILTER_RANGE
-  >(DEFAULT_SELECTED_RANGE.key as keyof typeof PROFILER_FILTER_RANGE);
+  const [selectedTimeRangeKey, setSelectedTimeRangeKey] = useState<string>(
+    defaultOptions.key
+  );
 
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
 
@@ -70,62 +110,61 @@ function DatePickerMenu({
       );
 
       setSelectedTimeRange(selectedRangeLabel);
-      setSelectedTimeRangeKey(
-        'customRange' as keyof typeof PROFILER_FILTER_RANGE
-      );
+      setSelectedTimeRangeKey('customRange');
       setIsMenuOpen(false);
       handleDateRangeChange({ startTs, endTs }, daysCount);
     }
   };
 
   const handleOptionClick = ({ key }: MenuInfo) => {
-    const filterRange =
-      PROFILER_FILTER_RANGE[key as keyof typeof PROFILER_FILTER_RANGE];
+    const filterRange = menuOptions[key];
     if (isUndefined(filterRange)) {
       return;
     }
 
     const selectedNumberOfDays = filterRange.days;
-    const keyString = key as keyof typeof PROFILER_FILTER_RANGE;
     const startTs = getEpochMillisForPastDays(selectedNumberOfDays);
 
     const endTs = getCurrentMillis();
 
-    setSelectedTimeRange(PROFILER_FILTER_RANGE[keyString].title);
-    setSelectedTimeRangeKey(keyString);
+    setSelectedTimeRange(menuOptions[key].title);
+    setSelectedTimeRangeKey(key);
     setIsMenuOpen(false);
 
     handleDateRangeChange({ startTs, endTs }, selectedNumberOfDays);
   };
 
   const getMenuItems = () => {
-    const items: MenuProps['items'] = Object.entries(PROFILER_FILTER_RANGE).map(
+    const items: MenuProps['items'] = Object.entries(menuOptions).map(
       ([key, value]) => ({
         label: value.title,
         key,
       })
     );
-    items.push({
-      label: t('label.custom-range'),
-      key: 'customRange',
-      children: [
-        {
-          label: (
-            <DatePicker.RangePicker
-              bordered={false}
-              clearIcon={<CloseCircleOutlined />}
-              format={(value) => value.utc().format('YYYY-MM-DD')}
-              open={isMenuOpen}
-              placement="bottomRight"
-              suffixIcon={null}
-              onChange={handleCustomDateChange}
-            />
-          ),
-          key: 'datePicker',
-        },
-      ],
-      popupClassName: 'date-picker-sub-menu-popup',
-    });
+    {
+      allowCustomRange &&
+        items.push({
+          label: t('label.custom-range'),
+          key: 'customRange',
+          children: [
+            {
+              label: (
+                <DatePicker.RangePicker
+                  bordered={false}
+                  clearIcon={<CloseCircleOutlined />}
+                  format={(value) => value.utc().format('YYYY-MM-DD')}
+                  open={isMenuOpen}
+                  placement="bottomRight"
+                  suffixIcon={null}
+                  onChange={handleCustomDateChange}
+                />
+              ),
+              key: 'datePicker',
+            },
+          ],
+          popupClassName: 'date-picker-sub-menu-popup',
+        });
+    }
 
     return items;
   };
@@ -148,7 +187,7 @@ function DatePickerMenu({
         <Button>
           <Space align="center" size={8}>
             {selectedTimeRange}
-            <DropdownIcon height={14} width={14} />
+            <DropdownIcon className="align-middle" height={14} width={14} />
           </Space>
         </Button>
       </Dropdown>

@@ -20,7 +20,10 @@ export type FormValidationRules = Record<
   Array<string>
 >;
 
-export type FormItemLayout = 'horizontal' | 'vertical';
+export enum FormItemLayout {
+  HORIZONATAL = 'horizontal',
+  VERTICAL = 'vertical',
+}
 
 export enum FieldTypes {
   TEXT = 'text',
@@ -35,6 +38,7 @@ export enum FieldTypes {
   TAG_SUGGESTION = 'tag_suggestion',
   USER_TEAM_SELECT = 'user_team_select',
   USER_MULTI_SELECT = 'user_multi_select',
+  COLOR_PICKER = 'color_picker',
 }
 
 export interface FieldProp {
@@ -46,7 +50,7 @@ export interface FieldProp {
   props?: Record<string, unknown> & { children?: ReactNode };
   formItemProps?: FormItemProps;
   rules?: FormRule[];
-  helperText?: string;
+  helperText?: ReactNode;
   placeholder?: string;
   hasSeparator?: boolean;
   formItemLayout?: FormItemLayout;

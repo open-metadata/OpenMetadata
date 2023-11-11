@@ -15,11 +15,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.ParseTags;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
-public class SearchEntityIndex implements ElasticSearchIndex {
+public class SearchEntityIndex implements SearchIndex {
 
   final org.openmetadata.schema.entity.data.SearchIndex searchIndex;
 
@@ -42,6 +43,9 @@ public class SearchEntityIndex implements ElasticSearchIndex {
         getFQNParts(
             searchIndex.getFullyQualifiedName(),
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+    ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.SEARCH_INDEX, searchIndex));
+    doc.put("tags", parseTags.getTags());
+    doc.put("tier", parseTags.getTierTag());
     if (searchIndex.getOwner() != null) {
       doc.put("owner", getOwnerWithDisplayName(searchIndex.getOwner()));
     }

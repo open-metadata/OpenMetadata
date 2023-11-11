@@ -28,18 +28,26 @@ class Status(BaseModel):
     Class to handle status
     """
 
-    source_start_time = time.time()
+    source_start_time: Any
 
     records: List[Any] = Field(default_factory=list)
     warnings: List[Any] = Field(default_factory=list)
     filtered: List[Dict[str, str]] = Field(default_factory=list)
     failures: List[StackTraceError] = Field(default_factory=list)
 
+    def __init__(self, **data):
+        super().__init__(**data)
+        self.source_start_time = time.time()
+
     def scanned(self, record: Any) -> None:
         """
-        Clean up the status results we want to show
+        Clean up the status results we want to show.
+
+        We allow to not consider specific records that
+        are not worth keeping record of.
         """
-        self.records.append(get_log_name(record))
+        if log_name := get_log_name(record):
+            self.records.append(log_name)
 
     def warning(self, key: str, reason: str) -> None:
         self.warnings.append({key: reason})

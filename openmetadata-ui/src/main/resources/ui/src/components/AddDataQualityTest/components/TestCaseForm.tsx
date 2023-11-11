@@ -13,18 +13,16 @@
 
 import { Button, Form, FormProps, Input, Select, Space } from 'antd';
 import { AxiosError } from 'axios';
-import { ENTITY_NAME_REGEX } from 'constants/regex.constants';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { CreateTestCase } from 'generated/api/tests/createTestCase';
 import { t } from 'i18next';
 import { isEmpty, snakeCase } from 'lodash';
 import Qs from 'qs';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { getListTestCase, getListTestDefinitions } from 'rest/testAPI';
-import { getEntityName } from 'utils/EntityUtils';
 import { PAGE_SIZE_LARGE } from '../../../constants/constants';
+import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
 import { ProfilerDashboardType } from '../../../enums/table.enum';
+import { CreateTestCase } from '../../../generated/api/tests/createTestCase';
 import {
   TestCase,
   TestCaseParameterValue,
@@ -35,12 +33,14 @@ import {
   TestDefinition,
   TestPlatform,
 } from '../../../generated/tests/testDefinition';
+import { getListTestCase, getListTestDefinitions } from '../../../rest/testAPI';
 import { replaceAllSpacialCharWith_ } from '../../../utils/CommonUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { getDecodedFqn } from '../../../utils/StringsUtils';
 import { generateEntityLink } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
-import { EditorContentRef } from '../../common/rich-text-editor/RichTextEditor.interface';
+import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
+import { EditorContentRef } from '../../common/RichTextEditor/RichTextEditor.interface';
 import { TestCaseFormProps } from '../AddDataQualityTest.interface';
 import ParameterForm from './ParameterForm';
 

@@ -12,13 +12,13 @@
  */
 import { queryByAttribute, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import React from 'react';
 import {
   MOCK_SQL_TEST_CASE,
   MOCK_TEST_CASE,
   MOCK_TEST_CASE_RESULT,
-} from 'mocks/TestSuite.mock';
-import React from 'react';
-import { getListTestCaseResults } from 'rest/testAPI';
+} from '../../../mocks/TestSuite.mock';
+import { getListTestCaseResults } from '../../../rest/testAPI';
 import { TestSummaryProps } from '../profilerDashboard.interface';
 import TestSummary from './TestSummary';
 
@@ -30,7 +30,7 @@ const mockHistory = {
   goBack: jest.fn(),
 };
 
-jest.mock('rest/testAPI', () => {
+jest.mock('../../../rest/testAPI', () => {
   return {
     getListTestCaseResults: jest
       .fn()
@@ -46,12 +46,12 @@ jest.mock('react-router-dom', () => {
   };
 });
 
-jest.mock('components/DatePickerMenu/DatePickerMenu.component', () => {
+jest.mock('../../../components/DatePickerMenu/DatePickerMenu.component', () => {
   return jest
     .fn()
     .mockImplementation(() => <div>DatePickerMenu.component</div>);
 });
-jest.mock('../../common/error-with-placeholder/ErrorPlaceHolder', () => {
+jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
   return jest
     .fn()
     .mockImplementation(() => <div>ErrorPlaceHolder.component</div>);
@@ -59,7 +59,7 @@ jest.mock('../../common/error-with-placeholder/ErrorPlaceHolder', () => {
 jest.mock('../../Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader.component</div>);
 });
-jest.mock('../../schema-editor/SchemaEditor', () => {
+jest.mock('../../SchemaEditor/SchemaEditor', () => {
   return jest.fn().mockImplementation(() => <div>SchemaEditor.component</div>);
 });
 

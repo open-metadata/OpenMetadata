@@ -13,22 +13,23 @@
 
 import { Button, Card, Form, FormProps, Input, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
-import { UserProfile } from 'components/authentication/auth-provider/AuthProvider.interface';
-import TeamsSelectable from 'components/TeamsSelectable/TeamsSelectable';
 import { CookieStorage } from 'cookie-storage';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { createUser } from 'rest/userAPI';
-import { getNameFromUserData } from 'utils/AuthProvider.util';
 import appState from '../../AppState';
-import { ReactComponent as OMDLogo } from '../../assets/svg/logo-monogram.svg';
+import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
+import { UserProfile } from '../../components/Auth/AuthProviders/AuthProvider.interface';
+import TeamsSelectable from '../../components/TeamsSelectable/TeamsSelectable';
 import {
   REDIRECT_PATHNAME,
   ROUTES,
   VALIDATION_MESSAGES,
 } from '../../constants/constants';
+import { EntityReference } from '../../generated/entity/type';
+import { createUser } from '../../rest/userAPI';
+import { getNameFromUserData } from '../../utils/AuthProvider.util';
+import brandImageClassBase from '../../utils/BrandImage/BrandImageClassBase';
 import { getImages, Transi18next } from '../../utils/CommonUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -41,9 +42,11 @@ const SignUp = () => {
     setIsSigningIn,
     jwtPrincipalClaims = [],
     authorizerConfig,
+    updateCurrentUser,
   } = useAuthContext();
 
   const [loading, setLoading] = useState<boolean>(false);
+  const OMDLogo = useMemo(() => brandImageClassBase.getMonogram().svg, []);
 
   const handleCreateNewUser: FormProps['onFinish'] = async (data) => {
     setLoading(true);
@@ -51,11 +54,12 @@ const SignUp = () => {
     try {
       const res = await createUser({
         ...data,
+        teams: (data.teams as EntityReference[])?.map((t) => t.id),
         profile: {
           images: getImages(appState.newUser.picture ?? ''),
         },
       });
-
+      updateCurrentUser(res);
       appState.updateUserDetails(res);
       cookieStorage.removeItem(REDIRECT_PATHNAME);
       setIsSigningIn(false);
@@ -123,6 +127,7 @@ const SignUp = () => {
               },
             ]}>
             <Input
+              autoFocus
               data-testid="full-name-input"
               placeholder={t('label.your-entity', {
                 entity: t('label.full-name'),

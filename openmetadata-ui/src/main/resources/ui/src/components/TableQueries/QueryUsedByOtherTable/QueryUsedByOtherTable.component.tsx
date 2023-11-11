@@ -12,21 +12,21 @@
  */
 import { Popover, Space, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
-import { AsyncSelect } from 'components/AsyncSelect/AsyncSelect';
-import Loader from 'components/Loader/Loader';
-import {
-  getTableDetailsPath,
-  INITIAL_PAGING_VALUE,
-  PAGE_SIZE_MEDIUM,
-} from 'constants/constants';
-import { QUERY_USED_BY_TABLE_VIEW_CAP } from 'constants/Query.constant';
-import { SearchIndex } from 'enums/search.enum';
 import { isArray, isUndefined, slice, uniqBy } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { searchData } from 'rest/miscAPI';
-import { getEntityName } from 'utils/EntityUtils';
+import { AsyncSelect } from '../../../components/AsyncSelect/AsyncSelect';
+import Loader from '../../../components/Loader/Loader';
+import {
+  getTableDetailsPath,
+  INITIAL_PAGING_VALUE,
+  PAGE_SIZE_MEDIUM,
+} from '../../../constants/constants';
+import { QUERY_USED_BY_TABLE_VIEW_CAP } from '../../../constants/Query.constant';
+import { SearchIndex } from '../../../enums/search.enum';
+import { searchData } from '../../../rest/miscAPI';
+import { getEntityName } from '../../../utils/EntityUtils';
 import {
   QueryUsedByOtherTableProps,
   QueryUsedByTable,

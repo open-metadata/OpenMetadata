@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { UserPageTabs } from 'components/Users/Users.interface';
-import i18n from 'utils/i18next/LocalUtil';
+import { UserPageTabs } from '../components/Users/Users.interface';
+import i18n from '../utils/i18next/LocalUtil';
 
 export const getUserCurrentTab = (tab: string) => {
   let currentTab = 1;

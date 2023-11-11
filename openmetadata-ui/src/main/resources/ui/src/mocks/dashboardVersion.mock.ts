@@ -12,10 +12,10 @@
  */
 /* eslint-disable max-len */
 
-import { Dashboard } from 'generated/entity/data/dashboard';
-import { DashboardServiceType } from 'generated/entity/services/dashboardService';
-import { VersionData } from 'pages/EntityVersionPage/EntityVersionPage.component';
 import { DashboardVersionProp } from '../components/DashboardVersion/DashboardVersion.interface';
+import { Dashboard } from '../generated/entity/data/dashboard';
+import { DashboardServiceType } from '../generated/entity/services/dashboardService';
+import { VersionData } from '../pages/EntityVersionPage/EntityVersionPage.component';
 import { ENTITY_PERMISSIONS } from './Permissions.mock';
 import {
   mockBackHandler,
@@ -90,6 +90,7 @@ export const dashboardVersionProps: DashboardVersionProp = {
   isVersionLoading: false,
   owner: mockOwner,
   domain: mockDomain,
+  dataProducts: [],
   tier: mockTier,
   slashedDashboardName: [
     {

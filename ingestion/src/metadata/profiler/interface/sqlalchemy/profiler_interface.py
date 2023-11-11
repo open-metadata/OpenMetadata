@@ -20,10 +20,10 @@ import threading
 import traceback
 from collections import defaultdict
 from datetime import datetime, timezone
-from typing import Dict, List
+from typing import Dict, List, Optional
 
-from sqlalchemy import Column
-from sqlalchemy.exc import ProgrammingError
+from sqlalchemy import Column, inspect
+from sqlalchemy.exc import ProgrammingError, ResourceClosedError
 from sqlalchemy.orm import scoped_session
 
 from metadata.generated.schema.entity.data.table import TableData
@@ -38,8 +38,9 @@ from metadata.profiler.metrics.static.sum import Sum
 from metadata.profiler.orm.functions.table_metric_construct import (
     table_metric_construct_factory,
 )
+from metadata.profiler.orm.registry import Dialects
 from metadata.profiler.processor.runner import QueryRunner
-from metadata.profiler.processor.sampler.sampler_factory import sampler_factory_
+from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 from metadata.utils.custom_thread_pool import CustomThreadPoolExecutor
 from metadata.utils.logger import profiler_interface_registry_logger
 
@@ -72,6 +73,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         service_connection_config,
         ometa_client,
         entity,
+        storage_config,
         profile_sample_config,
         source_config,
         sample_query,
@@ -79,6 +81,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         thread_count: int = 5,
         timeout_seconds: int = 43200,
         sqa_metadata=None,
+        sample_data_count: Optional[int] = SAMPLE_DATA_DEFAULT_COUNT,
         **kwargs,
     ):
         """Instantiate SQA Interface object"""
@@ -87,12 +90,14 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             service_connection_config,
             ometa_client,
             entity,
+            storage_config,
             profile_sample_config,
             source_config,
             sample_query,
             table_partition_config,
             thread_count,
             timeout_seconds,
+            sample_data_count,
         )
 
         self._table = self._convert_table_to_orm_object(sqa_metadata)
@@ -107,6 +112,10 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
 
     def _get_sampler(self, **kwargs):
         """get sampler object"""
+        from metadata.profiler.processor.sampler.sampler_factory import (  # pylint: disable=import-outside-toplevel
+            sampler_factory_,
+        )
+
         session = kwargs.get("session")
         table = kwargs["table"]
 
@@ -117,6 +126,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             profile_sample_config=self.profile_sample_config,
             partition_details=self.partition_details,
             profile_sample_query=self.profile_query,
+            sample_data_count=self.sample_data_count,
         )
 
     def _session_factory(self) -> scoped_session:
@@ -218,16 +228,9 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             )
             return dict(row)
         except ProgrammingError as exc:
-            if exc.orig and exc.orig.errno in OVERFLOW_ERROR_CODES.get(
-                session.bind.dialect.name
-            ):
-                logger.info(
-                    f"Computing metrics without sum for {runner.table.__tablename__}.{column.name}"
-                )
-                return self._compute_static_metrics_wo_sum(
-                    metrics, runner, session, column
-                )
-
+            return self._programming_error_static_metric(
+                runner, column, exc, session, metrics
+            )
         except Exception as exc:
             msg = f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
             handle_query_exception(msg, exc, session)
@@ -265,6 +268,15 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
 
             row = runner.select_first_from_query(metric_query)
             return dict(row)
+        except ResourceClosedError as exc:
+            # if the query returns no results, we will get a ResourceClosedError from Druid
+            if (
+                # pylint: disable=protected-access
+                runner._session.get_bind().dialect.name
+                != Dialects.Druid
+            ):
+                msg = f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
+                handle_query_exception(msg, exc, session)
         except Exception as exc:
             msg = f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
             handle_query_exception(msg, exc, session)
@@ -296,14 +308,9 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 *[metric(column).fn() for metric in metrics],
             )
         except ProgrammingError as exc:
-            if exc.orig and exc.orig.errno in OVERFLOW_ERROR_CODES.get(
-                session.bind.dialect.name
-            ):
-                logger.info(
-                    f"Skipping window metrics for {runner.table.__tablename__}.{column.name} due to overflow"
-                )
-                return None
-
+            logger.info(
+                f"Skipping metrics for {runner.table.__tablename__}.{column.name} due to {exc}"
+            )
         except Exception as exc:
             msg = f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
             handle_query_exception(msg, exc, session)
@@ -466,7 +473,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
 
         return profile_results
 
-    def fetch_sample_data(self, table) -> TableData:
+    def fetch_sample_data(self, table, columns) -> TableData:
         """Fetch sample data from database
 
         Args:
@@ -479,7 +486,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             table=table,
         )
 
-        return sampler.fetch_sample_data()
+        return sampler.fetch_sample_data(columns)
 
     def get_composed_metrics(
         self, column: Column, metric: Metrics, column_results: Dict
@@ -522,6 +529,18 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             logger.warning(f"Unexpected exception computing metrics: {exc}")
             self.session.rollback()
             return None
+
+    def _programming_error_static_metric(self, runner, column, exc, _, __):
+        """
+        Override Programming Error for Static Metrics
+        """
+        logger.error(
+            f"Skipping metrics due to {exc} for {runner.table.__tablename__}.{column.name}"
+        )
+
+    def get_columns(self):
+        """get columns from entity"""
+        return list(inspect(self.table).c)
 
     def close(self):
         """Clean up session"""

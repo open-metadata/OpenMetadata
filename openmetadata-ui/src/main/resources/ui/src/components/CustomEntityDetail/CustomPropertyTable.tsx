@@ -12,19 +12,19 @@
  */
 import { Button, Space, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import Table from 'components/common/Table/Table';
-import { CUSTOM_PROPERTIES_DOCS } from 'constants/docs.constants';
-import { ERROR_PLACEHOLDER_TYPE, OPERATION } from 'enums/common.enum';
 import { isEmpty } from 'lodash';
 import React, { FC, Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getEntityName } from 'utils/EntityUtils';
 import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Table from '../../components/common/Table/Table';
+import { CUSTOM_PROPERTIES_DOCS } from '../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
+import { ERROR_PLACEHOLDER_TYPE, OPERATION } from '../../enums/common.enum';
 import { CustomProperty } from '../../generated/entity/type';
-import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
+import { getEntityName } from '../../utils/EntityUtils';
+import RichTextEditorPreviewer from '../common/RichTextEditor/RichTextEditorPreviewer';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { CustomPropertyTableProp } from './CustomPropertyTable.interface';

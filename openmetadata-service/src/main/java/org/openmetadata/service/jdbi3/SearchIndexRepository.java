@@ -20,7 +20,6 @@ import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
-import static org.openmetadata.service.Entity.SEARCH_SERVICE;
 import static org.openmetadata.service.util.EntityUtil.getSearchIndexField;
 
 import java.util.ArrayList;
@@ -30,11 +29,13 @@ import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.SearchIndex;
 import org.openmetadata.schema.entity.services.SearchService;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.SearchIndexField;
 import org.openmetadata.schema.type.TagLabel;
@@ -54,9 +55,14 @@ import org.openmetadata.service.util.JsonUtils;
 
 public class SearchIndexRepository extends EntityRepository<SearchIndex> {
 
-  public SearchIndexRepository(CollectionDAO dao) {
+  public SearchIndexRepository() {
     super(
-        SearchIndexResource.COLLECTION_PATH, Entity.SEARCH_INDEX, SearchIndex.class, dao.searchIndexDAO(), dao, "", "");
+        SearchIndexResource.COLLECTION_PATH,
+        Entity.SEARCH_INDEX,
+        SearchIndex.class,
+        Entity.getCollectionDAO().searchIndexDAO(),
+        "",
+        "");
     supportsSearch = true;
   }
 
@@ -107,13 +113,6 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
   @Override
   public void storeRelationships(SearchIndex searchIndex) {
     setService(searchIndex, searchIndex.getService());
-  }
-
-  @Override
-  public SearchIndex setInheritedFields(SearchIndex searchIndex, Fields fields) {
-    // If searchIndex does not have domain, then inherit it from parent messaging service
-    SearchService service = Entity.getEntity(SEARCH_SERVICE, searchIndex.getService().getId(), "domain", ALL);
-    return inheritDomain(searchIndex, fields, service);
   }
 
   @Override
@@ -258,6 +257,11 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
   }
 
   @Override
+  public EntityInterface getParentEntity(SearchIndex entity, String fields) {
+    return Entity.getEntity(entity.getService(), fields, Include.NON_DELETED);
+  }
+
+  @Override
   public List<TagLabel> getAllTags(EntityInterface entity) {
     List<TagLabel> allTags = new ArrayList<>();
     SearchIndex searchIndex = (SearchIndex) entity;
@@ -372,6 +376,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
       super(original, updated, operation);
     }
 
+    @Transaction
     @Override
     public void entitySpecificUpdate() {
       if (updated.getFields() != null) {

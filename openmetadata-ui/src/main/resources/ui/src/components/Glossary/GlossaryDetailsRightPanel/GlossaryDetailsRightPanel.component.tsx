@@ -11,37 +11,42 @@
  *  limitations under the License.
  */
 import { Button, Col, Row, Space, Typography } from 'antd';
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import { ReactComponent as PlusIcon } from 'assets/svg/plus-primary.svg';
-import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
-import { UserSelectableList } from 'components/common/UserSelectableList/UserSelectableList.component';
-import { UserTeamSelectableList } from 'components/common/UserTeamSelectableList/UserTeamSelectableList.component';
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import TagButton from 'components/TagButton/TagButton.component';
-import TagsInput from 'components/TagsInput/TagsInput.component';
+import { t } from 'i18next';
+import { cloneDeep, includes, isEmpty, isEqual } from 'lodash';
+import React, { ReactNode, useCallback, useMemo } from 'react';
+import { Link } from 'react-router-dom';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
+import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
+import { UserSelectableList } from '../../../components/common/UserSelectableList/UserSelectableList.component';
+import { UserTeamSelectableList } from '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
+import { OperationPermission } from '../../../components/PermissionProvider/PermissionProvider.interface';
+import TagButton from '../../../components/TagButton/TagButton.component';
+import TagsInput from '../../../components/TagsInput/TagsInput.component';
 import {
   DE_ACTIVE_COLOR,
   getTeamAndUserDetailsPath,
   getUserPath,
   NO_DATA_PLACEHOLDER,
-} from 'constants/constants';
-import { EntityField } from 'constants/Feeds.constants';
-import { Glossary } from 'generated/entity/data/glossary';
-import { GlossaryTerm, TagLabel } from 'generated/entity/data/glossaryTerm';
-import { ChangeDescription } from 'generated/entity/type';
-import { EntityReference } from 'generated/type/entityReference';
-import { t } from 'i18next';
-import { cloneDeep, includes, isEmpty, isEqual } from 'lodash';
-import React, { ReactNode, useCallback, useMemo } from 'react';
-import { Link } from 'react-router-dom';
-import { getEntityName } from 'utils/EntityUtils';
+} from '../../../constants/constants';
+import { EntityField } from '../../../constants/Feeds.constants';
+import { EntityType } from '../../../enums/entity.enum';
+import { Glossary } from '../../../generated/entity/data/glossary';
+import {
+  GlossaryTerm,
+  TagLabel,
+} from '../../../generated/entity/data/glossaryTerm';
+import { ChangeDescription } from '../../../generated/entity/type';
+import { EntityReference } from '../../../generated/type/entityReference';
+import { getEntityName } from '../../../utils/EntityUtils';
 import {
   getChangedEntityNewValue,
   getChangedEntityOldValue,
   getDiffByFieldName,
   getDiffValue,
   getEntityVersionTags,
-} from 'utils/EntityVersionUtils';
+} from '../../../utils/EntityVersionUtils';
+import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
 import GlossaryReviewers from './GlossaryReviewers';
 
 type Props = {
@@ -112,6 +117,7 @@ const GlossaryDetailsRightPanel = ({
               id={owner?.id || ''}
               name={owner?.name ?? ''}
               textClass="text-xs"
+              type="circle"
               width="20"
             />
             <Link
@@ -196,6 +202,18 @@ const GlossaryDetailsRightPanel = ({
 
   return (
     <Row gutter={[0, 40]}>
+      <Col span={24}>
+        <DomainLabel
+          showDomainHeading
+          domain={selectedData.domain}
+          entityFqn={selectedData.fullyQualifiedName ?? ''}
+          entityId={selectedData.id ?? ''}
+          entityType={
+            isGlossary ? EntityType.GLOSSARY : EntityType.GLOSSARY_TERM
+          }
+          hasPermission={permissions.EditAll}
+        />
+      </Col>
       <Col data-testid="glossary-owner-name" span="24">
         <div className="d-flex items-center m-b-xs">
           <Typography.Text className="right-panel-label">

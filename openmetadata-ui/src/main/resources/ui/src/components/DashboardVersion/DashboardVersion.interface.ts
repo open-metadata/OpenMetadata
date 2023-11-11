@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../components/PermissionProvider/PermissionProvider.interface';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { TagLabel } from '../../generated/type/tagLabel';
-import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
+import { TitleBreadcrumbProps } from '../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 
 export interface DashboardVersionProp {
   version: string;
@@ -23,6 +23,7 @@ export interface DashboardVersionProp {
   isVersionLoading: boolean;
   owner: Dashboard['owner'];
   domain: Dashboard['domain'];
+  dataProducts: Dashboard['dataProducts'];
   tier: TagLabel;
   slashedDashboardName: TitleBreadcrumbProps['titleLinks'];
   versionList: EntityHistory;

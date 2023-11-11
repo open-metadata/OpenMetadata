@@ -16,7 +16,6 @@ package org.openmetadata.service.events;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 import static org.openmetadata.service.formatter.util.FormatterUtil.getChangeEventFromResponseContext;
-import static org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider.getWrappedInstanceForDaoClass;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
@@ -56,9 +55,9 @@ public class ChangeEventHandler implements EventHandler {
     SecurityContext securityContext = requestContext.getSecurityContext();
     String loggedInUserName = securityContext.getUserPrincipal().getName();
     try {
-      CollectionDAO collectionDAO = (CollectionDAO) getWrappedInstanceForDaoClass(CollectionDAO.class);
+      CollectionDAO collectionDAO = Entity.getCollectionDAO();
       CollectionDAO.ChangeEventDAO changeEventDAO = collectionDAO.changeEventDAO();
-      FeedRepository feedRepository = new FeedRepository(collectionDAO);
+      FeedRepository feedRepository = new FeedRepository();
       if (responseContext.getEntity() != null && responseContext.getEntity().getClass().equals(Thread.class)) {
         // we should move this to Email Application notifications instead of processing it here.
         notificationHandler.processNotifications(responseContext);

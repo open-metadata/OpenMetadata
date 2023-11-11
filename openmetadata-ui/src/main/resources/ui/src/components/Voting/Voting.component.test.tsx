@@ -12,8 +12,8 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import { QueryVoteType } from 'components/TableQueries/TableQueries.interface';
 import React from 'react';
+import { QueryVoteType } from '../../components/TableQueries/TableQueries.interface';
 import Voting from './Voting.component';
 import { VotingProps } from './voting.interface';
 

@@ -50,16 +50,14 @@ import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
-import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.schema.type.EntityHistory;
-import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.*;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/databaseSchemas")
@@ -405,8 +403,78 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
+  @PUT
+  @Path("/{id}/databaseSchemaProfilerConfig")
+  @Operation(
+      operationId = "addDataProfilerConfig",
+      summary = "Add databaseSchema profile config",
+      description = "Add databaseSchema profile config to the table.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully updated the DatabaseSchema ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseSchema.class)))
+      })
+  public DatabaseSchema addDataProfilerConfig(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the databaseSchema", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Valid DatabaseSchemaProfilerConfig databaseSchemaProfilerConfig) {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    DatabaseSchema databaseSchema = repository.addDatabaseSchemaProfilerConfig(id, databaseSchemaProfilerConfig);
+    return addHref(uriInfo, databaseSchema);
+  }
+
+  @GET
+  @Path("/{id}/databaseSchemaProfilerConfig")
+  @Operation(
+      operationId = "getDataProfilerConfig",
+      summary = "Get databaseSchema profile config",
+      description = "Get databaseSchema profile config to the table.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully updated the DatabaseSchema ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseSchema.class)))
+      })
+  public DatabaseSchema getDataProfilerConfig(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the databaseSchema", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    DatabaseSchema databaseSchema = repository.find(id, Include.NON_DELETED);
+    return addHref(
+        uriInfo,
+        databaseSchema.withDatabaseSchemaProfilerConfig(repository.getDatabaseSchemaProfilerConfig(databaseSchema)));
+  }
+
+  @DELETE
+  @Path("/{id}/databaseSchemaProfilerConfig")
+  @Operation(
+      operationId = "delete DataProfilerConfig",
+      summary = "Delete database profiler config",
+      description = "delete database profile config to the database.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully deleted the Database profiler config",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseSchema.class)))
+      })
+  public DatabaseSchema deleteDataProfilerConfig(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    DatabaseSchema databaseSchema = repository.deleteDatabaseSchemaProfilerConfig(id);
+    return addHref(uriInfo, databaseSchema);
+  }
+
   private DatabaseSchema getDatabaseSchema(CreateDatabaseSchema create, String user) {
-    return copy(new DatabaseSchema(), create, user)
+    return repository
+        .copy(new DatabaseSchema(), create, user)
         .withDatabase(getEntityReference(Entity.DATABASE, create.getDatabase()))
         .withTags(create.getTags())
         .withSourceUrl(create.getSourceUrl())

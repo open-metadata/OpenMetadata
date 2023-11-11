@@ -13,7 +13,6 @@
 
 import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
-import { DataQualityPageTabs } from 'pages/DataQuality/DataQualityPage.interface';
 import {
   getServiceDetailsPath,
   INGESTION_NAME,
@@ -41,6 +40,7 @@ import {
 import { arrServiceTypes } from '../constants/Services.constant';
 import { EntityAction } from '../enums/entity.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
 import { getEncodedFqn } from './StringsUtils';
 
@@ -168,6 +168,28 @@ export const getGlossaryPath = (fqn?: string) => {
   }
 
   return path;
+};
+
+export const getApplicationDetailsPath = (fqn: string) => {
+  let path = ROUTES.SETTINGS_WITH_TAB_FQN;
+
+  path = path
+    .replace(
+      PLACEHOLDER_SETTING_CATEGORY,
+      GlobalSettingsMenuCategory.INTEGRATIONS
+    )
+    .replace(PLACEHOLDER_ROUTE_TAB, GlobalSettingOptions.APPLICATIONS)
+    .replace(PLACEHOLDER_ROUTE_FQN, fqn);
+
+  return path;
+};
+
+export const getMarketPlaceAppDetailsPath = (fqn: string) => {
+  return ROUTES.MARKETPLACE_APP_DETAILS.replace(PLACEHOLDER_ROUTE_FQN, fqn);
+};
+
+export const getAppInstallPath = (fqn: string) => {
+  return ROUTES.MARKETPLACE_APP_INSTALL.replace(PLACEHOLDER_ROUTE_FQN, fqn);
 };
 
 export const getSettingPath = (
@@ -562,6 +584,17 @@ export const getClassificationVersionsPath = (
   path = path
     .replace(PLACEHOLDER_ROUTE_FQN, classificationFQN)
     .replace(PLACEHOLDER_ROUTE_VERSION, version);
+
+  return path;
+};
+
+export const getPersonaDetailsPath = (fqn: string) => {
+  let path = ROUTES.SETTINGS_WITH_TAB_FQN;
+
+  path = path
+    .replace(PLACEHOLDER_SETTING_CATEGORY, GlobalSettingsMenuCategory.MEMBERS)
+    .replace(PLACEHOLDER_ROUTE_TAB, GlobalSettingOptions.PERSONA)
+    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
 
   return path;
 };

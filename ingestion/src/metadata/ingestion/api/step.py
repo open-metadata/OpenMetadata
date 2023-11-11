@@ -11,16 +11,15 @@
 """
 Each of the ingestion steps: Source, Sink, Stage,...
 """
+import inspect
 import traceback
 from abc import ABC, abstractmethod
 from typing import Iterable, Optional
 
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.ingestion.api.closeable import Closeable
 from metadata.ingestion.api.models import Either, Entity, StackTraceError
 from metadata.ingestion.api.status import Status
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -44,9 +43,7 @@ class Step(ABC, Closeable):
 
     @classmethod
     @abstractmethod
-    def create(
-        cls, config_dict: dict, metadata_config: OpenMetadataConnection
-    ) -> "Step":
+    def create(cls, config_dict: dict, metadata: OpenMetadata) -> "Step":
         pass
 
     def get_status(self) -> Status:
@@ -72,16 +69,30 @@ class ReturnStep(Step, ABC):
         """
         try:
             result: Either = self._run(record)
-            if result.left is not None:
-                self.status.failed(result.left)
-                return None
+            if result:
+                if result.left is not None:
+                    self.status.failed(result.left)
+                    return None
 
-            if result.right is not None:
-                self.status.scanned(result.right)
-                return result.right
+                if result.right is not None:
+                    self.status.scanned(result.right)
+                    return result.right
         except WorkflowFatalError as err:
             logger.error(f"Fatal error running step [{self}]: [{err}]")
             raise err
+        except AttributeError as exc:
+            error = (
+                f"Object type defined in `def _run()` "
+                f"{inspect.getsourcefile(self._run)} is not an Either: [{exc}]"
+            )
+            logger.warning(error)
+            self.status.failed(
+                StackTraceError(
+                    name="Not an Either",
+                    error=error,
+                    stack_trace=traceback.format_exc(),
+                )
+            )
         except Exception as exc:
             error = f"Unhandled exception during workflow processing: [{exc}]"
             logger.warning(error)
@@ -124,6 +135,19 @@ class StageStep(Step, ABC):
         except WorkflowFatalError as err:
             logger.error(f"Fatal error running step [{self}]: [{err}]")
             raise err
+        except AttributeError as exc:
+            error = (
+                f"Object type defined in `def _run()` "
+                f"{inspect.getsourcefile(self._run)} is not an Either: [{exc}]"
+            )
+            logger.warning(error)
+            self.status.failed(
+                StackTraceError(
+                    name="Not an Either",
+                    error=error,
+                    stack_trace=traceback.format_exc(),
+                )
+            )
         except Exception as exc:
             error = f"Unhandled exception during workflow processing: [{exc}]"
             logger.warning(error)
@@ -160,6 +184,19 @@ class IterStep(Step, ABC):
         except WorkflowFatalError as err:
             logger.error(f"Fatal error running step [{self}]: [{err}]")
             raise err
+        except AttributeError as exc:
+            error = (
+                f"Object type defined in `def _iter()` "
+                f"{inspect.getsourcefile(self._iter)} is not an Either: [{exc}]"
+            )
+            logger.warning(error)
+            self.status.failed(
+                StackTraceError(
+                    name="Not an Either",
+                    error=error,
+                    stack_trace=traceback.format_exc(),
+                )
+            )
         except Exception as exc:
             error = f"Encountered exception running step [{self}]: [{exc}]"
             logger.warning(error)

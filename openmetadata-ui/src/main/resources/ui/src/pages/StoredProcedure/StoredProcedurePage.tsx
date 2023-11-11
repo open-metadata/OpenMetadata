@@ -12,48 +12,54 @@
  */
 import { Card, Col, Row, Space, Tabs } from 'antd';
 import { AxiosError } from 'axios';
-import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
-import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
-import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
-import DescriptionV1 from 'components/common/description/DescriptionV1';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import EntityLineageComponent from 'components/Entity/EntityLineage/EntityLineage.component';
-import Loader from 'components/Loader/Loader';
-import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from 'components/PermissionProvider/PermissionProvider.interface';
-import { withActivityFeed } from 'components/router/withActivityFeed';
-import SchemaEditor from 'components/schema-editor/SchemaEditor';
-import { SourceType } from 'components/searched-data/SearchedData.interface';
-import { QueryVote } from 'components/TableQueries/TableQueries.interface';
-import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
-import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
-import {
-  getStoredProcedureDetailPath,
-  getVersionPath,
-} from 'constants/constants';
-import { CSMode } from 'enums/codemirror.enum';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { compare } from 'fast-json-patch';
-import { CreateThread, ThreadType } from 'generated/api/feed/createThread';
-import {
-  StoredProcedure,
-  StoredProcedureCodeObject,
-} from 'generated/entity/data/storedProcedure';
-import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';
 import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { postThread } from 'rest/feedsAPI';
+import { useActivityFeedProvider } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
+import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
+import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
+import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
+import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import DataProductsContainer from '../../components/DataProductsContainer/DataProductsContainer.component';
+import EntityLineageComponent from '../../components/Entity/EntityLineage/EntityLineage.component';
+import Loader from '../../components/Loader/Loader';
+import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../components/PermissionProvider/PermissionProvider.interface';
+import SchemaEditor from '../../components/SchemaEditor/SchemaEditor';
+import { SourceType } from '../../components/SearchedData/SearchedData.interface';
+import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
+import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
+import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
+import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
+import {
+  getStoredProcedureDetailPath,
+  getVersionPath,
+} from '../../constants/constants';
+import { CSMode } from '../../enums/codemirror.enum';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import {
+  CreateThread,
+  ThreadType,
+} from '../../generated/api/feed/createThread';
+import { Tag } from '../../generated/entity/classification/tag';
+import {
+  StoredProcedure,
+  StoredProcedureCodeObject,
+} from '../../generated/entity/data/storedProcedure';
+import { TagLabel, TagSource } from '../../generated/type/tagLabel';
+import { postThread } from '../../rest/feedsAPI';
 import {
   addStoredProceduresFollower,
   getStoredProceduresDetailsByFQN,
@@ -61,22 +67,24 @@ import {
   removeStoredProceduresFollower,
   restoreStoredProcedures,
   updateStoredProcedureVotes,
-} from 'rest/storedProceduresAPI';
+} from '../../rest/storedProceduresAPI';
 import {
   addToRecentViewed,
-  getCurrentUserId,
   getFeedCounts,
   sortTagsCaseInsensitive,
-} from 'utils/CommonUtils';
-import { getEntityName } from 'utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import { STORED_PROCEDURE_DEFAULT_FIELDS } from 'utils/StoredProceduresUtils';
-import { getTagsWithoutTier, getTierTags } from 'utils/TableUtils';
-import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
+} from '../../utils/CommonUtils';
+import { getEntityName } from '../../utils/EntityUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { STORED_PROCEDURE_DEFAULT_FIELDS } from '../../utils/StoredProceduresUtils';
+import { getDecodedFqn } from '../../utils/StringsUtils';
+import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
+import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const StoredProcedurePage = () => {
   const { t } = useTranslation();
-  const USER_ID = getCurrentUserId();
+  const { currentUser } = useAuthContext();
+  const USER_ID = currentUser?.id ?? '';
   const history = useHistory();
   const { fqn: storedProcedureFQN, tab: activeTab = EntityTabs.CODE } =
     useParams<{ fqn: string; tab: string }>();
@@ -95,6 +103,11 @@ const StoredProcedurePage = () => {
 
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
+  );
+
+  const decodedStoredProcedureFQN = useMemo(
+    () => getDecodedFqn(storedProcedureFQN),
+    [storedProcedureFQN]
   );
 
   const {
@@ -150,7 +163,7 @@ const StoredProcedurePage = () => {
   const getEntityFeedCount = () => {
     getFeedCounts(
       EntityType.STORED_PROCEDURE,
-      storedProcedureFQN,
+      decodedStoredProcedureFQN,
       setFeedCount
     );
   };
@@ -350,18 +363,9 @@ const StoredProcedurePage = () => {
   };
 
   const onTierUpdate = useCallback(
-    async (newTier?: string) => {
+    async (newTier?: Tag) => {
       if (storedProcedure) {
-        const tierTag: StoredProcedure['tags'] = newTier
-          ? [
-              ...getTagsWithoutTier(tags ?? []),
-              {
-                tagFQN: newTier,
-                labelType: LabelType.Manual,
-                state: State.Confirmed,
-              },
-            ]
-          : getTagsWithoutTier(tags ?? []);
+        const tierTag: StoredProcedure['tags'] = updateTierTag(tags, newTier);
         const updatedDetails = {
           ...storedProcedure,
           tags: tierTag,
@@ -390,7 +394,9 @@ const StoredProcedurePage = () => {
 
   const handleTabChange = (activeKey: EntityTabs) => {
     if (activeKey !== activeTab) {
-      history.push(getStoredProcedureDetailPath(storedProcedureFQN, activeKey));
+      history.push(
+        getStoredProcedureDetailPath(decodedStoredProcedureFQN, activeKey)
+      );
     }
   };
 
@@ -427,12 +433,7 @@ const StoredProcedurePage = () => {
   };
 
   const handleTagSelection = async (selectedTags: EntityTags[]) => {
-    const updatedTags: TagLabel[] | undefined = selectedTags?.map((tag) => ({
-      source: tag.source,
-      tagFQN: tag.tagFQN,
-      labelType: LabelType.Manual,
-      state: State.Confirmed,
-    }));
+    const updatedTags: TagLabel[] | undefined = createTagObject(selectedTags);
 
     if (updatedTags && storedProcedure) {
       const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
@@ -470,6 +471,39 @@ const StoredProcedurePage = () => {
     [saveUpdatedStoredProceduresData, storedProcedure]
   );
 
+  const {
+    editTagsPermission,
+    editDescriptionPermission,
+    editCustomAttributePermission,
+    editLineagePermission,
+    viewAllPermission,
+    viewBasicPermission,
+  } = useMemo(
+    () => ({
+      editTagsPermission:
+        (storedProcedurePermissions.EditTags ||
+          storedProcedurePermissions.EditAll) &&
+        !storedProcedure?.deleted,
+      editDescriptionPermission:
+        (storedProcedurePermissions.EditDescription ||
+          storedProcedurePermissions.EditAll) &&
+        !storedProcedure?.deleted,
+      editCustomAttributePermission:
+        (storedProcedurePermissions.EditAll ||
+          storedProcedurePermissions.EditCustomFields) &&
+        !storedProcedure?.deleted,
+      editLineagePermission:
+        (storedProcedurePermissions.EditAll ||
+          storedProcedurePermissions.EditLineage) &&
+        !storedProcedure?.deleted,
+      viewAllPermission: storedProcedurePermissions.ViewAll,
+      viewBasicPermission:
+        storedProcedurePermissions.ViewAll ||
+        storedProcedurePermissions.ViewBasic,
+    }),
+    [storedProcedurePermissions, storedProcedure]
+  );
+
   const tabs = useMemo(
     () => [
       {
@@ -489,16 +523,13 @@ const StoredProcedurePage = () => {
               <div className="d-flex flex-col gap-4">
                 <DescriptionV1
                   description={description}
-                  entityFqn={storedProcedureFQN}
+                  entityFqn={decodedStoredProcedureFQN}
                   entityName={entityName}
                   entityType={EntityType.STORED_PROCEDURE}
-                  hasEditAccess={
-                    storedProcedurePermissions.EditAll ||
-                    storedProcedurePermissions.EditDescription
-                  }
+                  hasEditAccess={editDescriptionPermission}
                   isEdit={isEdit}
-                  isReadOnly={deleted}
                   owner={owner}
+                  showActions={!deleted}
                   onCancel={onCancel}
                   onDescriptionEdit={onDescriptionEdit}
                   onDescriptionUpdate={onDescriptionUpdate}
@@ -523,15 +554,16 @@ const StoredProcedurePage = () => {
               data-testid="entity-right-panel"
               flex="320px">
               <Space className="w-full" direction="vertical" size="large">
+                <DataProductsContainer
+                  activeDomain={storedProcedure?.domain}
+                  dataProducts={storedProcedure?.dataProducts ?? []}
+                  hasPermission={false}
+                />
                 <TagsContainerV2
                   displayType={DisplayType.READ_MORE}
-                  entityFqn={storedProcedureFQN}
+                  entityFqn={decodedStoredProcedureFQN}
                   entityType={EntityType.STORED_PROCEDURE}
-                  permission={
-                    (storedProcedurePermissions.EditAll ||
-                      storedProcedurePermissions.EditTags) &&
-                    !deleted
-                  }
+                  permission={editTagsPermission}
                   selectedTags={tags}
                   tagType={TagSource.Classification}
                   onSelectionChange={handleTagSelection}
@@ -540,13 +572,9 @@ const StoredProcedurePage = () => {
 
                 <TagsContainerV2
                   displayType={DisplayType.READ_MORE}
-                  entityFqn={storedProcedureFQN}
+                  entityFqn={decodedStoredProcedureFQN}
                   entityType={EntityType.STORED_PROCEDURE}
-                  permission={
-                    (storedProcedurePermissions.EditAll ||
-                      storedProcedurePermissions.EditTags) &&
-                    !deleted
-                  }
+                  permission={editTagsPermission}
                   selectedTags={tags}
                   tagType={TagSource.Glossary}
                   onSelectionChange={handleTagSelection}
@@ -584,10 +612,7 @@ const StoredProcedurePage = () => {
             deleted={deleted}
             entity={storedProcedure as SourceType}
             entityType={EntityType.STORED_PROCEDURE}
-            hasEditAccess={
-              storedProcedurePermissions.EditAll ||
-              storedProcedurePermissions.EditLineage
-            }
+            hasEditAccess={editLineagePermission}
           />
         ),
       },
@@ -603,11 +628,8 @@ const StoredProcedurePage = () => {
           <CustomPropertyTable
             entityType={EntityType.STORED_PROCEDURE}
             handleExtensionUpdate={onExtensionUpdate}
-            hasEditAccess={
-              storedProcedurePermissions.EditAll ||
-              storedProcedurePermissions.EditCustomFields
-            }
-            hasPermission={storedProcedurePermissions.ViewAll}
+            hasEditAccess={editCustomAttributePermission}
+            hasPermission={viewAllPermission}
           />
         ),
       },
@@ -623,8 +645,12 @@ const StoredProcedurePage = () => {
       entityName,
       description,
       storedProcedure,
-      storedProcedureFQN,
-      storedProcedurePermissions,
+      decodedStoredProcedureFQN,
+      editTagsPermission,
+      editLineagePermission,
+      editDescriptionPermission,
+      editCustomAttributePermission,
+      viewAllPermission,
     ]
   );
 
@@ -648,10 +674,7 @@ const StoredProcedurePage = () => {
   }, [storedProcedureFQN]);
 
   useEffect(() => {
-    if (
-      storedProcedurePermissions.ViewAll ||
-      storedProcedurePermissions.ViewBasic
-    ) {
+    if (viewBasicPermission) {
       fetchStoredProcedureDetails();
       getEntityFeedCount();
     }
@@ -661,11 +684,7 @@ const StoredProcedurePage = () => {
     return <Loader />;
   }
 
-  if (
-    !(
-      storedProcedurePermissions.ViewAll || storedProcedurePermissions.ViewBasic
-    )
-  ) {
+  if (!viewBasicPermission) {
     return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
   }
 
@@ -676,7 +695,9 @@ const StoredProcedurePage = () => {
   return (
     <PageLayoutV1
       className="bg-white"
-      pageTitle={t('label.stored-procedure-plural')}>
+      pageTitle={t('label.entity-detail-plural', {
+        entity: t('label.stored-procedure'),
+      })}>
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
           <DataAssetsHeader

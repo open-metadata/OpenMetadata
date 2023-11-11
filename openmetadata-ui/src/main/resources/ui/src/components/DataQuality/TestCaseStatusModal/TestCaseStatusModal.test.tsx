@@ -12,8 +12,8 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { TestCaseFailureStatusType } from 'generated/tests/testCase';
 import React, { forwardRef } from 'react';
+import { TestCaseFailureStatusType } from '../../../generated/tests/testCase';
 import { TestCaseStatusModal } from './TestCaseStatusModal.component';
 import { TestCaseStatusModalProps } from './TestCaseStatusModal.interface';
 
@@ -23,11 +23,11 @@ const mockProps: TestCaseStatusModalProps = {
   onSubmit: jest.fn().mockImplementation(() => Promise.resolve()),
 };
 
-jest.mock('components/common/rich-text-editor/RichTextEditor', () => {
+jest.mock('../../../components/common/RichTextEditor/RichTextEditor', () => {
   return forwardRef(jest.fn().mockReturnValue(<div>RichTextEditor</div>));
 });
-jest.mock('generated/tests/testCase', () => ({
-  ...jest.requireActual('generated/tests/testCase'),
+jest.mock('../../../generated/tests/testCase', () => ({
+  ...jest.requireActual('../../../generated/tests/testCase'),
   TestCaseFailureStatusType: {
     ACK: 'Ack',
     New: 'New',

@@ -22,7 +22,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.io.IOException;
 import java.util.List;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -109,8 +108,7 @@ public class LineageResource {
           @Min(0)
           @Max(3)
           @QueryParam("downstreamDepth")
-          int downStreamDepth)
-      throws IOException {
+          int downStreamDepth) {
     return addHref(uriInfo, dao.get(entity, id, upstreamDepth, downStreamDepth));
   }
 
@@ -153,8 +151,7 @@ public class LineageResource {
           @Min(0)
           @Max(3)
           @QueryParam("downstreamDepth")
-          int downStreamDepth)
-      throws IOException {
+          int downStreamDepth) {
     return addHref(uriInfo, dao.getByName(entity, fqn, upstreamDepth, downStreamDepth));
   }
 
@@ -168,8 +165,7 @@ public class LineageResource {
         @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
       })
   public Response addLineage(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid AddLineage addLineage)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid AddLineage addLineage) {
     authorizer.authorize(
         securityContext,
         new OperationContext(LINEAGE_FIELD, MetadataOperation.EDIT_LINEAGE),
@@ -206,8 +202,7 @@ public class LineageResource {
           @PathParam("toEntity")
           String toEntity,
       @Parameter(description = "Entity id", required = true, schema = @Schema(type = "string")) @PathParam("toId")
-          String toId)
-      throws IOException {
+          String toId) {
     authorizer.authorize(
         securityContext,
         new OperationContext(LINEAGE_FIELD, MetadataOperation.EDIT_LINEAGE),

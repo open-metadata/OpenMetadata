@@ -14,53 +14,46 @@
 import { Badge, Button, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import ClassificationDetails from 'components/ClassificationDetails/ClassificationDetails';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import LeftPanelCard from 'components/common/LeftPanelCard/LeftPanelCard';
-import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import Loader from 'components/Loader/Loader';
-import EntityDeleteModal from 'components/Modals/EntityDeleteModal/EntityDeleteModal';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from 'components/PermissionProvider/PermissionProvider.interface';
-import TagsLeftPanelSkeleton from 'components/Skeleton/Tags/TagsLeftPanelSkeleton.component';
-import { HTTP_STATUS_CODE } from 'constants/auth.constants';
-import { LOADING_STATE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
-import {
-  CreateTag,
-  ProviderType,
-} from 'generated/api/classification/createTag';
-import { isUndefined } from 'lodash';
+import { isUndefined, omit } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { ReactComponent as PlusIcon } from '../../assets/svg/plus-primary.svg';
+import ClassificationDetails from '../../components/ClassificationDetails/ClassificationDetails';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import LeftPanelCard from '../../components/common/LeftPanelCard/LeftPanelCard';
+import Loader from '../../components/Loader/Loader';
+import EntityDeleteModal from '../../components/Modals/EntityDeleteModal/EntityDeleteModal';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../components/PermissionProvider/PermissionProvider.interface';
+import TagsLeftPanelSkeleton from '../../components/Skeleton/Tags/TagsLeftPanelSkeleton.component';
+import { HTTP_STATUS_CODE } from '../../constants/auth.constants';
+import { TIER_CATEGORY } from '../../constants/constants';
+import { LOADING_STATE } from '../../enums/common.enum';
+import { CreateClassification } from '../../generated/api/classification/createClassification';
+import {
+  CreateTag,
+  ProviderType,
+} from '../../generated/api/classification/createTag';
+import { Classification } from '../../generated/entity/classification/classification';
+import { Tag } from '../../generated/entity/classification/tag';
+import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import {
   createClassification,
   createTag,
   deleteTag,
   getAllClassifications,
   getClassificationByName,
-  getTags,
   patchClassification,
   patchTag,
-} from 'rest/tagAPI';
-import { getEntityName } from 'utils/EntityUtils';
-import { ReactComponent as PlusIcon } from '../../assets/svg/plus-primary.svg';
-import {
-  INITIAL_PAGING_VALUE,
-  PAGE_SIZE,
-  TIER_CATEGORY,
-} from '../../constants/constants';
-import { CreateClassification } from '../../generated/api/classification/createClassification';
-import { Classification } from '../../generated/entity/classification/classification';
-import { Tag } from '../../generated/entity/classification/tag';
-import { Operation } from '../../generated/entity/policies/accessControl/rule';
-import { Paging } from '../../generated/type/paging';
+} from '../../rest/tagAPI';
 import { getCountBadge, getEntityDeleteMessage } from '../../utils/CommonUtils';
+import { getEntityName } from '../../utils/EntityUtils';
 import {
   checkPermission,
   DEFAULT_ENTITY_PERMISSION,
@@ -96,12 +89,7 @@ const TagsPage = () => {
   });
   const [classificationPermissions, setClassificationPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
-  const [currentClassificationName, setCurrentClassificationName] =
-    useState<string>('');
-  const [tags, setTags] = useState<Tag[]>();
-  const [paging, setPaging] = useState<Paging>({} as Paging);
-  const [currentPage, setCurrentPage] = useState<number>(INITIAL_PAGING_VALUE);
-  const [isTagsLoading, setIsTagsLoading] = useState(false);
+
   const [isButtonLoading, setIsButtonLoading] = useState<boolean>(false);
 
   const { t } = useTranslation();
@@ -140,35 +128,6 @@ const TagsPage = () => {
     }
   };
 
-  const fetchClassificationChildren = async (
-    currentClassificationName: string,
-    paging?: Paging
-  ) => {
-    setIsTagsLoading(true);
-    setTags([]);
-    try {
-      const tagsResponse = await getTags({
-        arrQueryFields: ['usageCount'],
-        parent: currentClassificationName,
-        after: paging?.after,
-        before: paging?.before,
-        limit: PAGE_SIZE,
-      });
-      setTags(tagsResponse.data);
-      setPaging(tagsResponse.paging);
-    } catch (error) {
-      const errMsg = getErrorText(
-        error as AxiosError,
-        t('server.entity-fetch-error', { entity: t('label.tag-plural') })
-      );
-      showErrorToast(errMsg);
-      setError(errMsg);
-      setTags([]);
-    } finally {
-      setIsTagsLoading(false);
-    }
-  };
-
   const fetchClassifications = async (setCurrent?: boolean) => {
     setIsLoading(true);
 
@@ -177,7 +136,6 @@ const TagsPage = () => {
       setClassifications(response.data);
       if (setCurrent && response.data.length) {
         setCurrentClassification(response.data[0]);
-        setCurrentClassificationName(response.data[0].fullyQualifiedName ?? '');
 
         history.push(getTagPath(response.data[0].fullyQualifiedName));
       }
@@ -217,9 +175,7 @@ const TagsPage = () => {
             })
           );
           setCurrentClassification(currentClassification);
-          setCurrentClassificationName(
-            currentClassification.fullyQualifiedName ?? ''
-          );
+
           setIsLoading(false);
         } else {
           showErrorToast(t('server.unexpected-response'));
@@ -317,9 +273,6 @@ const TagsPage = () => {
 
                 return item;
               })
-            );
-            fetchClassificationChildren(
-              currentClassification?.fullyQualifiedName ?? ''
             );
           }
         } else {
@@ -435,10 +388,6 @@ const TagsPage = () => {
           return data;
         });
       });
-
-      fetchClassificationChildren(
-        currentClassification?.fullyQualifiedName ?? ''
-      );
     } catch (error) {
       if (
         (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
@@ -468,16 +417,7 @@ const TagsPage = () => {
       setIsButtonLoading(true);
       const patchData = compare(editTag, updatedData);
       try {
-        const response = await patchTag(editTag.id ?? '', patchData);
-        setTags((prev) =>
-          prev?.map((item) => {
-            if (item.id === editTag.id) {
-              return { ...item, ...response };
-            }
-
-            return item;
-          })
-        );
+        await patchTag(editTag.id ?? '', patchData);
       } catch (error) {
         if (
           (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
@@ -562,39 +502,22 @@ const TagsPage = () => {
     fetchClassifications(!tagCategoryName);
   }, []);
 
-  useEffect(() => {
-    currentClassification &&
-      fetchClassificationChildren(
-        currentClassification?.fullyQualifiedName ?? ''
-      );
-  }, [currentClassification?.fullyQualifiedName]);
-
   const onClickClassifications = (category: Classification) => {
     setCurrentClassification(category);
-    setCurrentClassificationName(category.fullyQualifiedName ?? '');
+
     history.push(getTagPath(category.fullyQualifiedName));
   };
 
-  const handlePageChange = useCallback(
-    ({ cursorType, currentPage }: PagingHandlerParams) => {
-      if (cursorType) {
-        const pagination = {
-          [cursorType]: paging[cursorType],
-          total: paging.total,
-        } as Paging;
-
-        setCurrentPage(currentPage);
-        fetchClassificationChildren(currentClassificationName, pagination);
-      }
-    },
-    [fetchClassificationChildren, paging, currentClassificationName]
-  );
-
   const handleAddTagSubmit = (data: SubmitProps) => {
+    const updatedData = omit(data, 'color', 'iconURL');
+    const style = {
+      color: data.color,
+      iconURL: data.iconURL,
+    };
     if (editTag) {
-      handleUpdatePrimaryTag({ ...editTag, ...data });
+      handleUpdatePrimaryTag({ ...editTag, ...updatedData, style });
     } else {
-      handleCreatePrimaryTag(data);
+      handleCreatePrimaryTag({ ...updatedData, style });
     }
   };
 
@@ -623,15 +546,19 @@ const TagsPage = () => {
                   className=" text-primary"
                   data-testid="add-classification"
                   disabled={!createClassificationPermission}
-                  icon={<PlusIcon className="anticon" />}
                   onClick={() => {
                     setIsAddingClassification((prevState) => !prevState);
                   }}>
-                  <span>
-                    {t('label.add-entity', {
-                      entity: t('label.classification'),
-                    })}
-                  </span>
+                  <div className="d-flex items-center justify-center">
+                    <PlusIcon className="anticon" />
+                    <Typography.Text
+                      className="p-l-xss"
+                      ellipsis={{ tooltip: true }}>
+                      {t('label.add-entity', {
+                        entity: t('label.classification'),
+                      })}
+                    </Typography.Text>
+                  </div>
                 </Button>
               </Tooltip>
             </Space>
@@ -782,7 +709,6 @@ const TagsPage = () => {
         <ClassificationDetails
           classificationPermissions={classificationPermissions}
           currentClassification={currentClassification}
-          currentPage={currentPage}
           deleteTags={deleteTags}
           disableEditButton={disableEditButton}
           handleActionDeleteTag={handleActionDeleteTag}
@@ -791,12 +717,8 @@ const TagsPage = () => {
           handleCancelEditDescription={handleCancelEditDescription}
           handleEditDescriptionClick={handleEditDescriptionClick}
           handleEditTagClick={handleEditTagClick}
-          handlePageChange={handlePageChange}
           handleUpdateClassification={handleUpdateClassification}
           isEditClassification={isEditClassification}
-          isTagsLoading={isTagsLoading}
-          paging={paging}
-          tags={tags}
         />
       )}
 

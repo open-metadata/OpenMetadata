@@ -13,22 +13,21 @@
 
 import { DatePicker, Form, Input, Modal, Space } from 'antd';
 import { AxiosError } from 'axios';
-import { VALIDATION_MESSAGES } from 'constants/constants';
-import { observer } from 'mobx-react';
 import { Moment } from 'moment';
-import React, { FC, useMemo, useState } from 'react';
+import React, { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { postThread } from 'rest/feedsAPI';
-import { getTimeZone } from 'utils/date-time/DateTimeUtils';
-import AppState from '../../../AppState';
+import { VALIDATION_MESSAGES } from '../../../constants/constants';
 import {
   CreateThread,
   ThreadType,
 } from '../../../generated/api/feed/createThread';
+import { postThread } from '../../../rest/feedsAPI';
+import { getTimeZone } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
-import './AnnouncementModal.less';
+import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
+import './announcement-modal.less';
 
 interface Props {
   open: boolean;
@@ -50,11 +49,7 @@ const AddAnnouncementModal: FC<Props> = ({
   entityType,
   entityFQN,
 }) => {
-  // get current user details
-  const currentUser = useMemo(
-    () => AppState.getCurrentUserDetails(),
-    [AppState.userDetails, AppState.nonSecureUserDetails]
-  );
+  const { currentUser } = useAuthContext();
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -75,7 +70,7 @@ const AddAnnouncementModal: FC<Props> = ({
       const announcementData: CreateThread = {
         from: currentUser?.name as string,
         message: title,
-        about: getEntityFeedLink(entityType, encodeURIComponent(entityFQN)),
+        about: getEntityFeedLink(entityType, entityFQN),
         announcementDetails: {
           description,
           startTime: startTimeMs,
@@ -178,4 +173,4 @@ const AddAnnouncementModal: FC<Props> = ({
   );
 };
 
-export default observer(AddAnnouncementModal);
+export default AddAnnouncementModal;

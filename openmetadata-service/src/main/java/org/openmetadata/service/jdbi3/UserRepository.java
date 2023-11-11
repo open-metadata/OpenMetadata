@@ -37,6 +37,7 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
@@ -77,8 +78,14 @@ public class UserRepository extends EntityRepository<User> {
       "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona";
   private volatile EntityReference organization;
 
-  public UserRepository(CollectionDAO dao) {
-    super(UserResource.COLLECTION_PATH, USER, User.class, dao.userDAO(), dao, USER_PATCH_FIELDS, USER_UPDATE_FIELDS);
+  public UserRepository() {
+    super(
+        UserResource.COLLECTION_PATH,
+        USER,
+        User.class,
+        Entity.getCollectionDAO().userDAO(),
+        USER_PATCH_FIELDS,
+        USER_UPDATE_FIELDS);
     this.quoteFqn = true;
     supportsSearch = true;
   }
@@ -180,7 +187,7 @@ public class UserRepository extends EntityRepository<User> {
       List<EntityReference> teams = !fields.contains(TEAMS_FIELD) ? getTeams(user) : user.getTeams();
       if (!nullOrEmpty(teams)) {
         Team team = Entity.getEntity(TEAM, teams.get(0).getId(), "domain", ALL);
-        user.withDomain(team.getDomain());
+        inheritDomain(user, fields, team);
       }
     }
     return user;
@@ -492,6 +499,7 @@ public class UserRepository extends EntityRepository<User> {
       super(original, updated, operation);
     }
 
+    @Transaction
     @Override
     public void entitySpecificUpdate() {
       updateRoles(original, updated);

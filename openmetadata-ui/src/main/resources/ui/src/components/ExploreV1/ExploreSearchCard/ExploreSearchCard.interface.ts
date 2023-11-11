@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { SearchedDataProps } from 'components/searched-data/SearchedData.interface';
+
+import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 
 export interface ExploreSearchCardProps {
   id: string;
@@ -24,9 +25,11 @@ export interface ExploreSearchCardProps {
     details: SearchedDataProps['data'][number]['_source'],
     entityType: string
   ) => void;
+  showEntityIcon?: boolean;
   checked?: boolean;
   showCheckboxes?: boolean;
   showTags?: boolean;
   openEntityInNewPage?: boolean;
   hideBreadcrumbs?: boolean;
+  actionPopoverContent?: React.ReactNode;
 }

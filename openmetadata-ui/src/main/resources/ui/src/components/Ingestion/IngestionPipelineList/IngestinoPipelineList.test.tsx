@@ -11,34 +11,31 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import { ServiceCategory } from 'enums/service.enum';
-import { useAirflowStatus } from 'hooks/useAirflowStatus';
 import React from 'react';
+import { ServiceCategory } from '../../../enums/service.enum';
+import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
 import { IngestionPipelineList } from './IngestionPipelineList.component';
 
 const mockGetIngestinoPipelines = jest.fn();
 const mockBulkDeployPipelines = jest.fn();
 
-jest.mock(
-  'components/common/error-with-placeholder/ErrorPlaceHolderIngestion',
-  () => {
-    return jest.fn().mockImplementation(() => <p>Airflow not available</p>);
-  }
-);
+jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion', () => {
+  return jest.fn().mockImplementation(() => <p>Airflow not available</p>);
+});
 
-jest.mock('hooks/useAirflowStatus', () => ({
-  ...jest.requireActual('hooks/useAirflowStatus'),
+jest.mock('../../../hooks/useAirflowStatus', () => ({
+  ...jest.requireActual('../../../hooks/useAirflowStatus'),
   useAirflowStatus: jest.fn().mockImplementation(() => ({
     isAirflowAvailable: false,
     isFetchingStatus: true,
   })),
 }));
 
-jest.mock('components/Loader/Loader', () => {
+jest.mock('../../../components/Loader/Loader', () => {
   return jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>);
 });
 
-jest.mock('rest/ingestionPipelineAPI', () => ({
+jest.mock('../../../rest/ingestionPipelineAPI', () => ({
   deployIngestionPipelineById: mockBulkDeployPipelines,
   getIngestionPipelines: mockGetIngestinoPipelines,
 }));

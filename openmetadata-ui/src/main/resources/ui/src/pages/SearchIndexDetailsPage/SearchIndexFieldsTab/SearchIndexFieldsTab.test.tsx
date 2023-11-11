@@ -14,9 +14,9 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ExpandableConfig } from 'antd/lib/table/interface';
-import { SearchIndexField } from 'generated/entity/data/searchIndex';
-import { MOCK_SEARCH_INDEX_FIELDS } from 'mocks/SearchIndex.mock';
 import React from 'react';
+import { SearchIndexField } from '../../../generated/entity/data/searchIndex';
+import { MOCK_SEARCH_INDEX_FIELDS } from '../../../mocks/SearchIndex.mock';
 import SearchIndexFieldsTab from './SearchIndexFieldsTab';
 import { SearchIndexFieldsTabProps } from './SearchIndexFieldsTab.interface';
 
@@ -33,15 +33,17 @@ const mockProps: SearchIndexFieldsTabProps = {
   entityFqn: 'search_service.search_index_fqn',
 };
 
-jest.mock('components/common/searchbar/Searchbar', () =>
-  jest
-    .fn()
-    .mockImplementation(({ onSearch }) => (
-      <div onClick={() => onSearch('name')}>testSearchBar</div>
-    ))
+jest.mock(
+  '../../../components/common/SearchBarComponent/SearchBar.component',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ onSearch }) => (
+        <div onClick={() => onSearch('name')}>testSearchBar</div>
+      ))
 );
 
-jest.mock('components/ToggleExpandButton/ToggleExpandButton', () =>
+jest.mock('../../../components/ToggleExpandButton/ToggleExpandButton', () =>
   jest
     .fn()
     .mockImplementation(({ toggleExpandAll }) => (

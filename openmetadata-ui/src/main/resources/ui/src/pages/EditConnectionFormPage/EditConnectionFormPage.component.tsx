@@ -13,30 +13,30 @@
 
 import { Card, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
-import ServiceDocPanel from 'components/common/ServiceDocPanel/ServiceDocPanel';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
-import Loader from 'components/Loader/Loader';
-import ServiceConfig from 'components/ServiceConfig/ServiceConfig';
 import { isEmpty, startCase } from 'lodash';
 import { ServicesData, ServicesUpdateRequest, ServiceTypes } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
-import { getServiceByFQN, updateService } from 'rest/serviceAPI';
-import { getEntityName } from 'utils/EntityUtils';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
+import ServiceDocPanel from '../../components/common/ServiceDocPanel/ServiceDocPanel';
+import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import Loader from '../../components/Loader/Loader';
+import ServiceConfig from '../../components/ServiceConfig/ServiceConfig';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { OPEN_METADATA } from '../../constants/Services.constant';
 import { ServiceCategory } from '../../enums/service.enum';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
+import { getServiceByFQN, updateService } from '../../rest/serviceAPI';
 import { getEntityMissingError } from '../../utils/CommonUtils';
+import { getEntityName } from '../../utils/EntityUtils';
 import { getPathByServiceFQN, getSettingPath } from '../../utils/RouterUtils';
+import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import {
   getServiceRouteFromServiceType,
   getServiceType,
-  serviceTypeLogo,
 } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -103,7 +103,7 @@ function EditConnectionFormPage() {
         },
         {
           name: getEntityName(response),
-          imgSrc: serviceTypeLogo(response.serviceType),
+          imgSrc: serviceUtilClassBase.getServiceTypeLogo(response.serviceType),
           url: getPathByServiceFQN(serviceCategory, serviceFQN),
         },
         {

@@ -15,21 +15,22 @@ import { CheckOutlined } from '@ant-design/icons';
 import Form, { FormProps, IChangeEvent } from '@rjsf/core';
 import { Button } from 'antd';
 import classNames from 'classnames';
-import { ArrayFieldTemplate } from 'components/JSONSchemaTemplate/ArrayFieldTemplate';
-import DescriptionFieldTemplate from 'components/JSONSchemaTemplate/DescriptionFieldTemplate';
-import { FieldErrorTemplate } from 'components/JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate';
-import { ObjectFieldTemplate } from 'components/JSONSchemaTemplate/ObjectFieldTemplate';
-import PasswordWidget from 'components/JsonSchemaWidgets/PasswordWidget';
-import { ServiceCategory } from 'enums/service.enum';
-import { useAirflowStatus } from 'hooks/useAirflowStatus';
 import { t } from 'i18next';
 import { isEmpty, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
-import { getPipelineServiceHostIp } from 'rest/ingestionPipelineAPI';
-import { transformErrors } from 'utils/formUtils';
+import { ServiceCategory } from '../../../enums/service.enum';
+import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
 import { ConfigData } from '../../../interface/service.interface';
+import { getPipelineServiceHostIp } from '../../../rest/ingestionPipelineAPI';
+import { transformErrors } from '../../../utils/formUtils';
 import { formatFormDataForRender } from '../../../utils/JSONSchemaFormUtils';
+import { ArrayFieldTemplate } from '../../JSONSchemaTemplate/ArrayFieldTemplate';
+import DescriptionFieldTemplate from '../../JSONSchemaTemplate/DescriptionFieldTemplate';
+import { FieldErrorTemplate } from '../../JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate';
+import { ObjectFieldTemplate } from '../../JSONSchemaTemplate/ObjectFieldTemplate';
+import MultiSelectWidget from '../../JsonSchemaWidgets/MultiSelectWidget';
+import PasswordWidget from '../../JsonSchemaWidgets/PasswordWidget';
 import Loader from '../../Loader/Loader';
 import TestConnection from '../TestConnection/TestConnection';
 
@@ -43,6 +44,8 @@ interface Props extends FormProps {
   showFormHeader?: boolean;
   status?: LoadingState;
   onCancel?: () => void;
+  showTestConnection?: boolean;
+  useSelectWidget?: boolean;
 }
 
 const FormBuilder: FunctionComponent<Props> = ({
@@ -60,6 +63,8 @@ const FormBuilder: FunctionComponent<Props> = ({
   serviceCategory,
   serviceType,
   serviceName,
+  showTestConnection = true,
+  useSelectWidget = false,
   ...props
 }: Props) => {
   const { isAirflowAvailable } = useAirflowStatus();
@@ -70,6 +75,11 @@ const FormBuilder: FunctionComponent<Props> = ({
   );
 
   const [hostIp, setHostIp] = useState<string>();
+
+  const widgets = {
+    PasswordWidget: PasswordWidget,
+    ...(useSelectWidget && { SelectWidget: MultiSelectWidget }),
+  };
 
   const fetchHostIp = async () => {
     try {
@@ -128,7 +138,7 @@ const FormBuilder: FunctionComponent<Props> = ({
       }}
       transformErrors={transformErrors}
       uiSchema={uiSchema}
-      widgets={{ PasswordWidget: PasswordWidget }}
+      widgets={widgets}
       onChange={handleFormChange}
       onFocus={onFocus}
       onSubmit={onSubmit}
@@ -147,7 +157,8 @@ const FormBuilder: FunctionComponent<Props> = ({
           </div>
         </div>
       )}
-      {!isEmpty(schema) &&
+      {showTestConnection &&
+        !isEmpty(schema) &&
         !isUndefined(localFormData) &&
         isAirflowAvailable && (
           <TestConnection

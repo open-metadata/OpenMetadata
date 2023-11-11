@@ -13,7 +13,7 @@ Databricks Unity Catalog Source source methods.
 """
 import json
 import traceback
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 from databricks.sdk.service.catalog import ColumnInfo
 from databricks.sdk.service.catalog import TableConstraint as DBTableConstraint
@@ -41,9 +41,6 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
     DatabricksConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
@@ -56,10 +53,7 @@ from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
-from metadata.ingestion.source.database.database_service import (
-    DatabaseServiceSource,
-    QueryByProcedure,
-)
+from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.databricks.connection import get_connection
 from metadata.ingestion.source.database.databricks.models import (
     ColumnJson,
@@ -67,6 +61,7 @@ from metadata.ingestion.source.database.databricks.models import (
     ForeignConstrains,
     Type,
 )
+from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
 from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
 from metadata.utils.db_utils import get_view_lineage
@@ -76,11 +71,13 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-# pylint: disable=invalid-name,not-callable
+# pylint: disable=not-callable
 @classmethod
-def from_dict(cls, d: Dict[str, any]) -> "TableConstraintList":
+def from_dict(cls, dct: Dict[str, Any]) -> "TableConstraintList":
     return cls(
-        table_constraints=[DBTableConstraint.from_dict(constraint) for constraint in d]
+        table_constraints=[
+            DBTableConstraint.from_dict(constraint) for constraint in dct
+        ]
     )
 
 
@@ -94,15 +91,14 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
     the unity catalog source
     """
 
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__()
         self.config = config
         self.source_config: DatabaseServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
         self.context.table_views = []
-        self.metadata_config = metadata_config
-        self.metadata = OpenMetadata(metadata_config)
+        self.metadata = metadata
         self.service_connection: DatabricksConnection = (
             self.config.serviceConnection.__root__.config
         )
@@ -112,14 +108,14 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
         self.test_connection()
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: DatabricksConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, DatabricksConnection):
             raise InvalidSourceException(
                 f"Expected DatabricksConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def get_database_names(self) -> Iterable[str]:
         """
@@ -464,7 +460,7 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
             parsed_string = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
                 column.type_text.lower()
             )
-            parsed_string["name"] = column.name[:64]
+            parsed_string["name"] = column.name[:256]
             parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
             parsed_string["description"] = column.comment
             parsed_column = Column(**parsed_string)
@@ -502,15 +498,11 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
     def get_stored_procedure_queries(self) -> Iterable[QueryByProcedure]:
         """Not Implemented"""
 
-    def yield_procedure_query(
-        self, query_by_procedure: QueryByProcedure
-    ) -> Iterable[Either[CreateQueryRequest]]:
-        """Not implemented"""
-
-    def yield_procedure_lineage(
-        self, query_by_procedure: QueryByProcedure
-    ) -> Iterable[Either[AddLineageRequest]]:
-        """Not implemented"""
+    def yield_procedure_lineage_and_queries(
+        self,
+    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
+        """Not Implemented"""
+        yield from []
 
     def close(self):
         """Nothing to close"""

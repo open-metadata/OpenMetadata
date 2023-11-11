@@ -11,14 +11,15 @@
  *  limitations under the License.
  */
 
-import { ExploreSearchIndex } from 'components/Explore/explore.interface';
-import { SortingField } from 'components/Explore/SortingDropDown';
-import i18n from 'utils/i18next/LocalUtil';
+import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
+import { SortingField } from '../components/Explore/SortingDropDown';
 import { SearchIndex } from '../enums/search.enum';
+import i18n from '../utils/i18next/LocalUtil';
 import { Icons } from '../utils/SvgUtils';
 
 export const INITIAL_SORT_FIELD = 'updatedAt';
 export const INITIAL_SORT_ORDER = 'desc';
+export const TIER_FQN_KEY = 'tier.tagFQN';
 
 export const initialFilterQS = 'initialFilter';
 export const searchFilterQS = 'searchFilter';
@@ -111,6 +112,12 @@ export const tabsInfo: { [K in ExploreSearchIndex]: ExploreTabInfo } = {
     sortField: INITIAL_SORT_FIELD,
     path: 'containers',
   },
+  [SearchIndex.SEARCH_INDEX]: {
+    label: i18n.t('label.search-index-plural'),
+    sortingFields: entitySortingFields,
+    sortField: INITIAL_SORT_FIELD,
+    path: 'searchIndexes',
+  },
   [SearchIndex.GLOSSARY]: {
     label: i18n.t('label.glossary-plural'),
     sortingFields: entitySortingFields,
@@ -123,11 +130,11 @@ export const tabsInfo: { [K in ExploreSearchIndex]: ExploreTabInfo } = {
     sortField: INITIAL_SORT_FIELD,
     path: 'tags',
   },
-  [SearchIndex.SEARCH_INDEX]: {
-    label: i18n.t('label.search-index-plural'),
-    sortingFields: entitySortingFields,
+  [SearchIndex.DATA_PRODUCT]: {
+    label: i18n.t('label.data-product-plural'),
+    sortingFields: tableSortingFields,
     sortField: INITIAL_SORT_FIELD,
-    path: 'searchIndexes',
+    path: 'dataProducts',
   },
 };
 

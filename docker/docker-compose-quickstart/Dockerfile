@@ -10,7 +10,7 @@
 #  limitations under the License.
 
 # Build stage
-FROM alpine:3.15 AS build
+FROM alpine:3 AS build
 ARG RI_VERSION="1.2.0"
 ENV RELEASE_URL="https://github.com/open-metadata/OpenMetadata/releases/download/${RI_VERSION}-release/openmetadata-${RI_VERSION}.tar.gz"
 
@@ -20,7 +20,7 @@ RUN mkdir -p /opt/openmetadata && \
     rm openmetadata-*.tar.gz
 
 # Final stage
-FROM alpine:3.15
+FROM alpine:3
 ARG RI_VERSION="1.2.0"
 ARG BUILD_DATE
 ARG COMMIT_ID
@@ -37,8 +37,13 @@ LABEL org.open-metadata.commit-id=$COMMIT_ID
 EXPOSE 8585 8586
 COPY docker/openmetadata-start.sh ./
 COPY --from=build /opt/openmetadata /opt/openmetadata
-RUN apk add --update --no-cache bash openjdk11-jre && \
+RUN apk add --update --no-cache bash openjdk17-jre && \
     chmod 777 openmetadata-start.sh
+
+RUN adduser -D openmetadata
+RUN chown -R openmetadata:openmetadata /opt/openmetadata
+USER openmetadata
+
 WORKDIR /opt/openmetadata
 ENTRYPOINT [ "/bin/bash" ]
 CMD ["/openmetadata-start.sh"]

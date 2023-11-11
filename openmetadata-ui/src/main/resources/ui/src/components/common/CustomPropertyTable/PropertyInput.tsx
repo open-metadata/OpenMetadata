@@ -12,8 +12,8 @@
  */
 
 import { Input } from 'antd';
-import InlineEdit from 'components/InlineEdit/InlineEdit.component';
 import React, { ChangeEvent, FC, useState } from 'react';
+import InlineEdit from '../../../components/InlineEdit/InlineEdit.component';
 
 export interface PropertyInputProps {
   value: string | number;

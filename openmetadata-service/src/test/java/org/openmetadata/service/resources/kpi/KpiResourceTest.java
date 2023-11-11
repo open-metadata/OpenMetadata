@@ -39,7 +39,7 @@ import org.openmetadata.schema.type.DataInsightChartDataType;
 import org.openmetadata.schema.type.DataReportIndex;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
-import org.openmetadata.service.resources.dataInsight.DataInsightChartResourceTest;
+import org.openmetadata.service.resources.datainsight.DataInsightChartResourceTest;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 

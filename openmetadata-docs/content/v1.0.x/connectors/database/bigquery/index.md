@@ -87,12 +87,19 @@ To execute metadata extraction and usage workflow successfully the user or the s
 | 5    | resourcemanager.projects.get  | Metadata Ingestion      |
 | 6    | bigquery.jobs.create          | Metadata Ingestion      |
 | 7    | bigquery.jobs.listAll         | Metadata Ingestion      |
-| 8    | datacatalog.taxonomies.get    | Fetch Policy Tags       |
-| 9    | datacatalog.taxonomies.list   | Fetch Policy Tags       |
-| 10   | bigquery.readsessions.create  | Bigquery Usage & Lineage Workflow |
-| 11   | bigquery.readsessions.getData | Bigquery Usage & Lineage Workflow |
+| 8    | bigquery.routines.get         | Stored Procedure        |
+| 9    | bigquery.routines.list        | Stored Procedure        |
+| 10   | datacatalog.taxonomies.get    | Fetch Policy Tags       |
+| 11   | datacatalog.taxonomies.list   | Fetch Policy Tags       |
+| 12   | bigquery.readsessions.create  | Bigquery Usage & Lineage Workflow |
+| 13   | bigquery.readsessions.getData | Bigquery Usage & Lineage Workflow |
 
 {% /multiTablesWrapper %}
+
+{% note %}
+If the user has `External Tables`, please attach relevant permissions needed for external tables, alongwith the above list of permissions.
+{% /note %}
+
 
 {% tilesContainer %}
 {% tile
@@ -102,6 +109,13 @@ description="Checkout this documentation on how to create a custom role and assi
 link="/connectors/database/bigquery/roles"
   / %}
 {% /tilesContainer %}
+
+{% note %}
+If you are using BigQuery and have sharded tables, you might want to consider using partitioned tables instead. Partitioned tables allow you to efficiently query data by date or other criteria, without having to manage multiple tables. Partitioned tables also have lower storage and query costs than sharded tables. 
+You can learn more about the benefits of partitioned tables [here](https://cloud.google.com/bigquery/docs/partitioned-tables#dt_partition_shard). 
+If you want to convert your existing sharded tables to partitioned tables, you can follow the steps in this [guide](https://cloud.google.com/bigquery/docs/creating-partitioned-tables#convert-date-sharded-tables).
+This will help you simplify your data management and optimize your performance in BigQuery.
+{% /note %}
 
 ## Metadata Ingestion
 

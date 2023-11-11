@@ -41,6 +41,7 @@ from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.tests.testCase import TestCase
+from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.dispatch import class_register
 from metadata.utils.elasticsearch import get_entity_from_es_result
@@ -66,11 +67,11 @@ class SplitTestCaseFqn(BaseModel):
     test_case: Optional[str]
 
 
-def split(s: str) -> List[str]:  # pylint: disable=invalid-name
+def split(str_: str) -> List[str]:
     """
     Equivalent of Java's FullyQualifiedName#split
     """
-    lexer = FqnLexer(InputStream(s))
+    lexer = FqnLexer(InputStream(str_))
     stream = CommonTokenStream(lexer)
     parser = FqnParser(stream)
     parser._errHandler = BailErrorStrategy()  # pylint: disable=protected-access
@@ -81,12 +82,15 @@ def split(s: str) -> List[str]:  # pylint: disable=invalid-name
     return splitter.split()
 
 
-def _build(*args) -> str:
+def _build(*args, quote: bool = True) -> str:
     """
     Equivalent of Java's FullyQualifiedName#build
     """
-    quoted = [quote_name(name) for name in args]
-    return FQN_SEPARATOR.join(quoted)
+    if quote:
+        quoted = [quote_name(name) for name in args]
+        return FQN_SEPARATOR.join(quoted)
+
+    return FQN_SEPARATOR.join(args)
 
 
 def unquote_name(name: str) -> str:
@@ -253,6 +257,16 @@ def _(
             f"Args should be informed, but got service=`{service_name}`, mlmodel=`{mlmodel_name}``"
         )
     return _build(service_name, mlmodel_name)
+
+
+@fqn_build_registry.add(TestSuite)
+def _(_: Optional[OpenMetadata], *, table_fqn: str) -> str:
+    """
+    We don't need to quote since this comes from a table FQN.
+    We're replicating the backend logic of the FQN generation in the TestSuiteRepository
+    for executable test suites.
+    """
+    return _build(table_fqn, "testSuite", quote=False)
 
 
 @fqn_build_registry.add(Topic)
@@ -517,12 +531,12 @@ def build_es_fqn_search_string(
     Returns:
         FQN search string
     """
-    if not service_name or not table_name:
+    if not table_name:
         raise FQNBuildingException(
-            f"Service Name and Table Name should be informed, but got service=`{service_name}`, table=`{table_name}`"
+            f"Table Name should be informed, but got table=`{table_name}`"
         )
     fqn_search_string = _build(
-        service_name, database_name or "*", schema_name or "*", table_name
+        service_name or "*", database_name or "*", schema_name or "*", table_name
     )
     return fqn_search_string
 
@@ -534,6 +548,7 @@ def search_table_from_es(
     service_name: str,
     table_name: str,
     fetch_multiple_entities: bool = False,
+    fields: Optional[str] = None,
 ):
     fqn_search_string = build_es_fqn_search_string(
         database_name, schema_name, service_name, table_name
@@ -542,6 +557,36 @@ def search_table_from_es(
     es_result = metadata.es_search_from_fqn(
         entity_type=Table,
         fqn_search_string=fqn_search_string,
+        fields=fields,
+    )
+
+    return get_entity_from_es_result(
+        entity_list=es_result, fetch_multiple_entities=fetch_multiple_entities
+    )
+
+
+def search_database_from_es(
+    metadata: OpenMetadata,
+    database_name: str,
+    service_name: Optional[str],
+    fetch_multiple_entities: Optional[bool] = False,
+    fields: Optional[str] = None,
+):
+    """
+    Search Database entity from ES
+    """
+
+    if not database_name:
+        raise FQNBuildingException(
+            f"Database Name should be informed, but got database=`{database_name}`"
+        )
+
+    fqn_search_string = _build(service_name or "*", database_name)
+
+    es_result = metadata.es_search_from_fqn(
+        entity_type=Database,
+        fqn_search_string=fqn_search_string,
+        fields=fields,
     )
 
     return get_entity_from_es_result(

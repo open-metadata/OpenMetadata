@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { DOMAINS_LIST } from 'mocks/Domains.mock';
 import React from 'react';
+import { DOMAINS_LIST } from '../../../mocks/Domains.mock';
 import DomainLeftPanel from './DomainLeftPanel.component';
 
 const mockHistory = {
@@ -25,7 +25,7 @@ jest.mock('react-router-dom', () => ({
     fqn: 'DomainFqn',
   }),
 }));
-jest.mock('components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../../components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     getEntityPermission: jest.fn().mockReturnValue({
       Create: true,
@@ -59,11 +59,11 @@ jest.mock('components/PermissionProvider/PermissionProvider', () => ({
   }),
 }));
 
-jest.mock('utils/PermissionsUtils', () => ({
+jest.mock('../../../utils/PermissionsUtils', () => ({
   checkPermission: jest.fn().mockReturnValue(true),
 }));
 
-jest.mock('components/common/LeftPanelCard/LeftPanelCard', () => {
+jest.mock('../../../components/common/LeftPanelCard/LeftPanelCard', () => {
   return jest
     .fn()
     .mockImplementation(({ children }) => (

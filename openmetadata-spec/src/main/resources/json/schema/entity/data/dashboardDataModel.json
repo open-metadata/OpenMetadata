@@ -89,6 +89,10 @@
       "$ref": "../../type/entityReference.json",
       "default": null
     },
+    "dataProducts" : {
+      "description": "List of data products this entity is part of.",
+      "$ref" : "../../type/entityReferenceList.json"
+    },
     "tags": {
       "description": "Tags for this data model.",
       "type": "array",

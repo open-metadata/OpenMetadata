@@ -67,7 +67,7 @@ const mockTriggerIngestion = jest
   .fn()
   .mockImplementation(() => Promise.resolve());
 
-jest.mock('../common/searchbar/Searchbar', () => {
+jest.mock('../common/SearchBarComponent/SearchBar.component', () => {
   return jest.fn().mockImplementation(() => <div>Searchbar</div>);
 });
 
@@ -88,7 +88,7 @@ jest.mock('./IngestionRecentRun/IngestionRecentRuns.component', () => ({
     .mockImplementation(() => <p>IngestionRecentRuns</p>),
 }));
 
-jest.mock('components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     getEntityPermissionByFqn: jest.fn().mockReturnValue({
       Create: true,

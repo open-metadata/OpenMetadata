@@ -173,6 +173,9 @@ describe('Tags page should work', () => {
       .type(NEW_TAG.displayName);
     cy.get(descriptionBox).should('be.visible').type(NEW_TAG.description);
 
+    cy.get('[data-testid="icon-url"]').scrollIntoView().type(NEW_TAG.icon);
+    cy.get('[data-testid="color-input"]').scrollIntoView().type(NEW_TAG.color);
+
     interceptURL('POST', '/api/v1/tags', 'createTag');
     submitForm();
 
@@ -203,7 +206,11 @@ describe('Tags page should work', () => {
     const entity = SEARCH_ENTITY_TABLE.table_3;
     const tag = 'Sensitive';
 
-    visitEntityDetailsPage(entity.term, entity.serviceName, entity.entity);
+    visitEntityDetailsPage({
+      term: entity.term,
+      serviceName: entity.serviceName,
+      entity: entity.entity,
+    });
 
     cy.get('[data-testid="breadcrumb-link"]')
       .should('be.visible')
@@ -268,7 +275,11 @@ describe('Tags page should work', () => {
     const tag = 'Personal';
     const assignee = 'admin';
 
-    visitEntityDetailsPage(entity.term, entity.serviceName, entity.entity);
+    visitEntityDetailsPage({
+      term: entity.term,
+      serviceName: entity.serviceName,
+      entity: entity.entity,
+    });
 
     cy.get('[data-testid="breadcrumb-link"]')
       .should('be.visible')
@@ -288,7 +299,9 @@ describe('Tags page should work', () => {
     )
       .click()
       .type(assignee);
-    cy.get('.ant-select-item-option-content').contains(assignee).click();
+    cy.get(`[data-testid="assignee-option-${assignee}"]`)
+      .scrollIntoView()
+      .click();
 
     // click outside the select box
     cy.clickOutside();

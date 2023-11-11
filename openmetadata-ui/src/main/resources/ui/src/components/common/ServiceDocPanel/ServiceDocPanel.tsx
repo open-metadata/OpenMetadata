@@ -11,19 +11,19 @@
  *  limitations under the License.
  */
 import { Col, Row } from 'antd';
-import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
-import Loader from 'components/Loader/Loader';
-import {
-  ENDS_WITH_NUMBER_REGEX,
-  ONEOF_ANYOF_ALLOF_REGEX,
-} from 'constants/regex.constants';
-import { PipelineType } from 'generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { first, last } from 'lodash';
 import React, { FC, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { fetchMarkdownFile } from 'rest/miscAPI';
-import { SupportedLocales } from 'utils/i18next/i18nextUtil';
-import './ServiceDocPanel.less';
+import {
+  ENDS_WITH_NUMBER_REGEX,
+  ONEOF_ANYOF_ALLOF_REGEX,
+} from '../../../constants/regex.constants';
+import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { fetchMarkdownFile } from '../../../rest/miscAPI';
+import { SupportedLocales } from '../../../utils/i18next/i18nextUtil';
+import Loader from '../../Loader/Loader';
+import RichTextEditorPreviewer from '../RichTextEditor/RichTextEditorPreviewer';
+import './service-doc-panel.less';
 
 interface ServiceDocPanelProp {
   serviceName: string;

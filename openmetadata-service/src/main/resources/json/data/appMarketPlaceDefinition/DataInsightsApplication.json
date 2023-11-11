@@ -1,0 +1,46 @@
+{
+  "name": "DataInsightsApplication",
+  "displayName": "Data Insights",
+  "description": "**Data Insights: A Revolutionary Tool for Metadata Analysis and Data Management**\n\n**Comprehensive Data Analytics:** Dive deep into the world of data with our advanced analytics, crafted to transform raw metadata into valuable insights. The application meticulously processes collected metadata, ensuring every bit of information is utilized to its full potential.\n**Growth Trend Identification:** Stay ahead of the curve by tracking the expansion of your data assets over time. Our application provides a visual and quantitative analysis of your data’s growth rate, helping you make informed decisions for resource allocation and future planning.\n**Detailed Asset Descriptions and Ownership:** Gain clarity on your data landscape with extensive descriptions and clear ownership details for each data asset. Our tool not only lists the data assets but also enriches them with metadata, ensuring that you have a comprehensive understanding of what each dataset entails and who is responsible for it.\n**OpenMetadata Integration:** Experience seamless integration with OpenMetadata, one of the leading metadata platforms. Our application taps into the power of OpenMetadata to fetch, analyze, and visualize usage patterns, ensuring that you are leveraging OpenMetadata to its full potential.\n**User Interaction Tracking:** Discover which data assets are capturing the attention of your users. Our tool keeps track of user interactions, pinpointing the most viewed and utilized data assets. This feature is invaluable for identifying popular datasets, helping you to understand user preferences and trends.\n**Actionable Insights for Data Governance:** Beyond analytics, our application serves as a tool for robust data governance. By providing insights into data asset utilization, ownership, and growth, it empowers organizations to enforce better data management practices, ensuring data quality and integrity.\nUser-Friendly Interface: Navigate through a wealth of data with ease, thanks to our intuitive and user-friendly interface. Even if you are not a data expert, our application provides a straightforward experience, making data analytics accessible to everyone.\n**Real-Time Analytics:** Stay up-to-date with real-time analytics and insights. Our application ensures that you are always in the loop, providing timely and accurate data to support your decision-making processes.\n**Customizable Reports:** Tailor the analytics to suit your needs. With customizable reports, you can focus on the metrics that matter the most to your organization, ensuring that the insights you receive are relevant and actionable.\nSecure and Reliable: Trust in the reliability and security of our application. We prioritize the safety of your data, implementing robust security measures to protect your metadata and insights.\nData Insights stands out as a pivotal tool for organizations aiming to optimize their data management practices, ensuring that every piece of data is a stepping stone towards informed decisions and enhanced data governance.",  
+  "features": "Run Ingestion Framework Data Insight Module.",
+  "appType": "external",
+  "appScreenshots": ["DataInsightsPic1.png"],
+  "developer": "Collate Inc.",
+  "developerUrl": "https://www.getcollate.io",
+  "privacyPolicyUrl": "https://www.getcollate.io",
+  "supportEmail": "support@getcollate.io",
+  "scheduleType": "Scheduled",
+  "permission": "All",
+  "className": "org.openmetadata.service.apps.bundles.insights.DataInsightsApp",
+  "runtime": {
+    "enabled": "true"
+  },
+  "appConfiguration": {
+    "name": "OpenMetadata_dataInsight",
+    "displayName": "OpenMetadata_dataInsight",
+    "description": "OpenMetadata DataInsight Pipeline",
+    "pipelineType": "dataInsight",
+    "sourceConfig": {
+      "config": {
+        "type": "MetadataToElasticSearch"
+      }
+    },
+    "airflowConfig": {
+      "pausePipeline": false,
+      "concurrency": 1,
+      "pipelineTimezone": "UTC",
+      "retries": 3,
+      "retryDelay": 300,
+      "pipelineCatchup": false,
+      "scheduleInterval": "0 0 * * *",
+      "maxActiveRuns": 1,
+      "workflowDefaultView": "tree",
+      "workflowDefaultViewOrientation": "LR"
+    },
+    "loggerLevel": "INFO",
+    "service": {
+      "name": "OpenMetadata",
+      "type": "Metadata"
+    }
+  }
+}

@@ -28,8 +28,11 @@ from metadata.generated.schema.entity.data.table import (
     Table,
     TableData,
 )
+from metadata.generated.schema.entity.services.connections.connectionBasicType import (
+    SampleDataStorageConfig,
+)
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
-from metadata.generated.schema.type.tagLabel import TagLabel
+from metadata.ingestion.models.table_metadata import ColumnTag
 from metadata.profiler.processor.models import ProfilerDef
 
 
@@ -40,15 +43,39 @@ class ColumnConfig(ConfigModel):
     includeColumns: Optional[List[ColumnProfilerConfig]]
 
 
-class TableConfig(ConfigModel):
-    """table profile config"""
+class BaseProfileConfig(ConfigModel):
+    """base profile config"""
 
     fullyQualifiedName: FullyQualifiedEntityName
     profileSample: Optional[Union[float, int]] = None
     profileSampleType: Optional[ProfileSampleType] = None
+    sampleDataCount: Optional[int] = 100
+
+
+class TableConfig(BaseProfileConfig):
+    """table profile config"""
+
     profileQuery: Optional[str] = None
     partitionConfig: Optional[PartitionProfilerConfig]
     columnConfig: Optional[ColumnConfig]
+
+    @classmethod
+    def from_database_and_schema_config(
+        cls, config: "DatabaseAndSchemaConfig", table_fqn: str
+    ):
+        table_config = TableConfig(
+            fullyQualifiedName=table_fqn,
+            profileSample=config.profileSample,
+            profileSampleType=config.profileSampleType,
+            sampleDataCount=config.sampleDataCount,
+        )
+        return table_config
+
+
+class DatabaseAndSchemaConfig(BaseProfileConfig):
+    """schema profile config"""
+
+    sampleDataStorageConfig: Optional[SampleDataStorageConfig] = None
 
 
 class ProfileSampleConfig(ConfigModel):
@@ -66,13 +93,8 @@ class ProfilerProcessorConfig(ConfigModel):
 
     profiler: Optional[ProfilerDef] = None
     tableConfig: Optional[List[TableConfig]] = None
-
-
-class PatchColumnTagResponse(ConfigModel):
-    """Used to patch a tag to a column"""
-
-    column_fqn: str
-    tag_label: TagLabel
+    schemaConfig: Optional[List[DatabaseAndSchemaConfig]] = []
+    databaseConfig: Optional[List[DatabaseAndSchemaConfig]] = []
 
 
 class ProfilerResponse(ConfigModel):
@@ -86,7 +108,7 @@ class ProfilerResponse(ConfigModel):
     table: Table
     profile: CreateTableProfileRequest
     sample_data: Optional[TableData] = None
-    column_tags: Optional[List[PatchColumnTagResponse]] = None
+    column_tags: Optional[List[ColumnTag]] = None
 
     def __str__(self):
         """Return the table name being processed"""

@@ -29,9 +29,6 @@ import { Col, Row } from 'antd/lib/grid';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import 'codemirror/addon/fold/foldgutter.css';
-import SchemaEditor from 'components/schema-editor/SchemaEditor';
-import { CSMode } from 'enums/codemirror.enum';
-import { PartitionIntervalType } from 'generated/api/data/createTable';
 import { isEmpty, isEqual, isNil, isUndefined, pick, startCase } from 'lodash';
 import React, {
   Reducer,
@@ -42,7 +39,6 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getTableProfilerConfig, putTableProfileConfig } from 'rest/tableAPI';
 import {
   DEFAULT_INCLUDE_PROFILE,
   INTERVAL_TYPE_OPTIONS,
@@ -53,20 +49,27 @@ import {
   SUPPORTED_COLUMN_DATA_TYPE_FOR_INTERVAL,
   TIME_BASED_PARTITION,
 } from '../../../constants/profiler.constant';
+import { CSMode } from '../../../enums/codemirror.enum';
+import { PartitionIntervalType } from '../../../generated/api/data/createTable';
 import {
   ProfileSampleType,
   TableProfilerConfig,
 } from '../../../generated/entity/data/table';
+import {
+  getTableProfilerConfig,
+  putTableProfileConfig,
+} from '../../../rest/tableAPI';
 import { reducerWithoutAction } from '../../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import SchemaEditor from '../../SchemaEditor/SchemaEditor';
 import SliderWithInput from '../../SliderWithInput/SliderWithInput';
+import '../table-profiler.less';
 import {
   ProfilerForm,
   ProfilerSettingModalState,
   ProfilerSettingsModalProps,
 } from '../TableProfiler.interface';
-import '../tableProfiler.less';
 
 const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   tableId,
@@ -84,6 +87,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       data: undefined,
       sqlQuery: '',
       profileSample: 100,
+      sampleDataCount: 50,
       excludeCol: [],
       includeCol: DEFAULT_INCLUDE_PROFILE,
       enablePartition: false,
@@ -157,6 +161,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       profileSample,
       profileSampleType,
       excludeColumns,
+      sampleDataCount,
     } = tableProfilerConfig;
     handleStateChange({
       sqlQuery: profileQuery ?? '',
@@ -164,6 +169,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       excludeCol: excludeColumns ?? [],
       selectedProfileSampleType:
         profileSampleType ?? ProfileSampleType.Percentage,
+      sampleDataCount,
     });
 
     const profileSampleTypeCheck =
@@ -259,8 +265,12 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       } = state;
 
       setIsLoading(true);
-      const { profileSamplePercentage, profileSampleRows, profileSampleType } =
-        data;
+      const {
+        profileSamplePercentage,
+        profileSampleRows,
+        profileSampleType,
+        sampleDataCount,
+      } = data;
 
       const profileConfig: TableProfilerConfig = {
         excludeColumns: excludeCol.length > 0 ? excludeCol : undefined,
@@ -285,6 +295,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
               enablePartitioning: enablePartition,
             }
           : undefined,
+        sampleDataCount,
       };
       try {
         const data = await putTableProfileConfig(tableId, profileConfig);
@@ -422,6 +433,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
             initialValues={{
               profileSampleType: state?.selectedProfileSampleType,
               profileSamplePercentage: state?.profileSample || 100,
+              sampleDataCount: state.sampleDataCount,
             }}
             layout="vertical">
             <Form.Item
@@ -469,6 +481,19 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                 />
               </Form.Item>
             )}
+            <Form.Item
+              className="m-b-0"
+              label={t('label.sample-data-count')}
+              name="sampleDataCount">
+              <InputNumber
+                className="w-full"
+                data-testid="sample-data-count-input"
+                min={0}
+                placeholder={t('label.please-enter-value', {
+                  name: t('label.sample-data-count-lowercase'),
+                })}
+              />
+            </Form.Item>
           </Form>
         </Col>
         <Col data-testid="sql-editor-container" span={24}>

@@ -19,7 +19,6 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
-import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
 import static org.openmetadata.service.Entity.GLOSSARY;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidGlossaryTermMove;
@@ -36,6 +35,7 @@ import java.util.UUID;
 import javax.json.JsonPatch;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.api.feed.CloseTask;
@@ -73,13 +73,12 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   private static final String UPDATE_FIELDS = "references,relatedTerms,synonyms";
   private static final String PATCH_FIELDS = "references,relatedTerms,synonyms";
 
-  public GlossaryTermRepository(CollectionDAO dao) {
+  public GlossaryTermRepository() {
     super(
         GlossaryTermResource.COLLECTION_PATH,
         GLOSSARY_TERM,
         GlossaryTerm.class,
-        dao.glossaryTermDAO(),
-        dao,
+        Entity.getCollectionDAO().glossaryTermDAO(),
         PATCH_FIELDS,
         UPDATE_FIELDS);
     supportsSearch = true;
@@ -100,12 +99,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   @Override
   public GlossaryTerm setInheritedFields(GlossaryTerm glossaryTerm, Fields fields) {
-    EntityInterface parent;
-    if (glossaryTerm.getParent() != null) {
-      parent = get(null, glossaryTerm.getParent().getId(), getFields("owner,reviewers,domain"));
-    } else {
-      parent = Entity.getEntity(glossaryTerm.getGlossary(), "owner,reviewers,domain", ALL);
-    }
+    EntityInterface parent = getParentEntity(glossaryTerm, "owner,domain,reviewers");
     inheritOwner(glossaryTerm, fields, parent);
     inheritDomain(glossaryTerm, fields, parent);
     inheritReviewers(glossaryTerm, fields, parent);
@@ -190,7 +184,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   public void setFullyQualifiedName(GlossaryTerm entity) {
     // Validate parent
     if (entity.getParent() == null) { // Glossary term at the root of the glossary
-      entity.setFullyQualifiedName(FullyQualifiedName.build(entity.getGlossary().getName(), entity.getName()));
+      entity.setFullyQualifiedName(
+          FullyQualifiedName.build(entity.getGlossary().getFullyQualifiedName(), entity.getName()));
     } else { // Glossary term that is a child of another glossary term
       EntityReference parent = entity.getParent();
       entity.setFullyQualifiedName(FullyQualifiedName.add(parent.getFullyQualifiedName(), entity.getName()));
@@ -368,6 +363,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       super(original, updated, operation);
     }
 
+    @Transaction
     @Override
     public void entitySpecificUpdate() {
       validateParent();
@@ -375,7 +371,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       updateSynonyms(original, updated);
       updateReferences(original, updated);
       updateRelatedTerms(original, updated);
-      updateReviewers(original, updated);
       updateName(original, updated);
       updateParent(original, updated);
     }
@@ -431,19 +426,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
           origRelated,
           updatedRelated,
           true);
-    }
-
-    private void updateReviewers(GlossaryTerm origTerm, GlossaryTerm updatedTerm) {
-      List<EntityReference> origReviewers = listOrEmpty(origTerm.getReviewers());
-      List<EntityReference> updatedReviewers = listOrEmpty(updatedTerm.getReviewers());
-      updateFromRelationships(
-          FIELD_REVIEWERS,
-          Entity.USER,
-          origReviewers,
-          updatedReviewers,
-          Relationship.REVIEWS,
-          GLOSSARY_TERM,
-          origTerm.getId());
     }
 
     public void updateName(GlossaryTerm original, GlossaryTerm updated) {

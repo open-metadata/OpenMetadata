@@ -13,54 +13,50 @@
 
 import { Col, Row, Space, Tabs } from 'antd';
 import classNames from 'classnames';
-import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
-import DescriptionV1 from 'components/common/description/DescriptionV1';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
-import EntityVersionTimeLine from 'components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
-import Loader from 'components/Loader/Loader';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from 'components/PermissionProvider/PermissionProvider.interface';
-import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
-import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
-import {
-  getDatabaseDetailsPath,
-  getVersionPathWithTab,
-  INITIAL_PAGING_VALUE,
-  pagingObject,
-} from 'constants/constants';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { EntityTabs, EntityType } from 'enums/entity.enum';
-import { Database } from 'generated/entity/data/database';
-import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
-import { ChangeDescription } from 'generated/entity/type';
-import { EntityHistory } from 'generated/type/entityHistory';
-import { Paging } from 'generated/type/paging';
-import { TagSource } from 'generated/type/tagLabel';
 import { isEmpty, toString } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
+import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import DataAssetsVersionHeader from '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
+import { DatabaseSchemaTable } from '../../components/Database/DatabaseSchema/DatabaseSchemaTable/DatabaseSchemaTable';
+import DataProductsContainer from '../../components/DataProductsContainer/DataProductsContainer.component';
+import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
+import Loader from '../../components/Loader/Loader';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../components/PermissionProvider/PermissionProvider.interface';
+import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
+import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
+import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
+import {
+  getDatabaseDetailsPath,
+  getVersionPathWithTab,
+} from '../../constants/constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import { Database } from '../../generated/entity/data/database';
+import { ChangeDescription } from '../../generated/entity/type';
+import { EntityHistory } from '../../generated/type/entityHistory';
+import { TagSource } from '../../generated/type/tagLabel';
 import {
   getDatabaseDetailsByFQN,
-  getDatabaseSchemas,
   getDatabaseVersionData,
   getDatabaseVersions,
-} from 'rest/databaseAPI';
-import { getDatabaseSchemaTable } from 'utils/DatabaseDetails.utils';
-import { getEntityName } from 'utils/EntityUtils';
+} from '../../rest/databaseAPI';
+import { getEntityName } from '../../utils/EntityUtils';
 import {
   getBasicEntityInfoFromVersionData,
   getCommonDiffsFromVersionData,
   getCommonExtraInfoForVersionDetails,
-} from 'utils/EntityVersionUtils';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
+} from '../../utils/EntityVersionUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getDecodedFqn } from '../../utils/StringsUtils';
 
 function DatabaseVersionPage() {
   const { t } = useTranslation();
@@ -75,15 +71,13 @@ function DatabaseVersionPage() {
     version: string;
     tab: EntityTabs;
   }>();
-  const [paging, setPaging] = useState<Paging>(pagingObject);
-  const [currentPage, setCurrentPage] = useState(INITIAL_PAGING_VALUE);
-  const [schemaData, setSchemaData] = useState<DatabaseSchema[]>([]);
+
   const [servicePermissions, setServicePermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isVersionDataLoading, setIsVersionDataLoading] =
     useState<boolean>(true);
-  const [isSchemaDataLoading, setIsSchemaDataLoading] = useState<boolean>(true);
+
   const [databaseId, setDatabaseId] = useState<string>('');
   const [currentVersionData, setCurrentVersionData] = useState<Database>(
     {} as Database
@@ -105,6 +99,11 @@ function DatabaseVersionPage() {
   const viewVersionPermission = useMemo(
     () => servicePermissions.ViewAll || servicePermissions.ViewBasic,
     [servicePermissions]
+  );
+
+  const decodedEntityFQN = useMemo(
+    () => getDecodedFqn(databaseFQN),
+    [databaseFQN]
   );
 
   const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
@@ -164,40 +163,6 @@ function DatabaseVersionPage() {
     [viewVersionPermission, version]
   );
 
-  const fetchDatabaseSchemas = useCallback(
-    async (pagingObj?: string) => {
-      setIsSchemaDataLoading(true);
-      try {
-        const response = await getDatabaseSchemas(databaseFQN, pagingObj, [
-          'owner',
-          'usageSummary',
-        ]);
-        setSchemaData(response.data);
-        setPaging(response.paging);
-      } catch {
-        setSchemaData([]);
-        setPaging(pagingObject);
-      } finally {
-        setIsSchemaDataLoading(false);
-      }
-    },
-    [databaseFQN]
-  );
-
-  const databaseSchemaPagingHandler = useCallback(
-    ({ cursorType, currentPage }: PagingHandlerParams) => {
-      if (cursorType) {
-        const pagingString = `&${cursorType}=${paging[cursorType]}`;
-        setIsSchemaDataLoading(true);
-        fetchDatabaseSchemas(pagingString).finally(() => {
-          setIsSchemaDataLoading(false);
-        });
-        setCurrentPage(currentPage);
-      }
-    },
-    [paging, fetchDatabaseSchemas]
-  );
-
   const { versionHandler, backHandler } = useMemo(
     () => ({
       versionHandler: (newVersion = version) => {
@@ -211,10 +176,10 @@ function DatabaseVersionPage() {
         );
       },
       backHandler: () => {
-        history.push(getDatabaseDetailsPath(databaseFQN));
+        history.push(getDatabaseDetailsPath(decodedEntityFQN));
       },
     }),
-    [databaseFQN, tab]
+    [databaseFQN, decodedEntityFQN, tab]
   );
 
   const handleTabChange = (activeKey: string) => {
@@ -233,24 +198,6 @@ function DatabaseVersionPage() {
     [currentVersionData, changeDescription]
   );
 
-  const databaseTable = useMemo(
-    () =>
-      getDatabaseSchemaTable(
-        schemaData,
-        isSchemaDataLoading,
-        paging,
-        currentPage,
-        databaseSchemaPagingHandler
-      ),
-    [
-      schemaData,
-      isSchemaDataLoading,
-      paging,
-      currentPage,
-      databaseSchemaPagingHandler,
-    ]
-  );
-
   const tabs = useMemo(
     () => [
       {
@@ -264,13 +211,14 @@ function DatabaseVersionPage() {
               <Row gutter={[16, 16]}>
                 <Col data-testid="description-container" span={24}>
                   <DescriptionV1
-                    isVersionView
                     description={description}
-                    entityFqn={databaseFQN}
                     entityType={EntityType.DATABASE}
+                    showActions={false}
                   />
                 </Col>
-                {databaseTable}
+                <Col span={24}>
+                  <DatabaseSchemaTable />
+                </Col>
               </Row>
             </Col>
             <Col
@@ -278,10 +226,14 @@ function DatabaseVersionPage() {
               data-testid="entity-right-panel"
               flex="220px">
               <Space className="w-full" direction="vertical" size="large">
+                <DataProductsContainer
+                  activeDomain={domain}
+                  dataProducts={currentVersionData.dataProducts ?? []}
+                  hasPermission={false}
+                />
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
                     displayType={DisplayType.READ_MORE}
-                    entityFqn={databaseFQN}
                     entityType={EntityType.DATABASE}
                     key={tagType}
                     permission={false}
@@ -315,7 +267,7 @@ function DatabaseVersionPage() {
         ),
       },
     ],
-    [tags, description, databaseFQN, databaseTable]
+    [tags, description]
   );
 
   const versionComponent = useMemo(() => {
@@ -406,12 +358,6 @@ function DatabaseVersionPage() {
       fetchCurrentVersionData(databaseId);
     }
   }, [version, databaseId]);
-
-  useEffect(() => {
-    if (!isEmpty(currentVersionData)) {
-      fetchDatabaseSchemas();
-    }
-  }, [currentVersionData]);
 
   return (
     <PageLayoutV1

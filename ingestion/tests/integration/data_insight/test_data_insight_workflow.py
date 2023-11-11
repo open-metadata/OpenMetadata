@@ -26,7 +26,7 @@ from time import sleep
 import pytest
 import requests
 
-from metadata.data_insight.api.workflow import DataInsightWorkflow
+from metadata.data_insight.processor.kpi.kpi_runner import KpiRunner
 from metadata.generated.schema.analytics.basic import WebAnalyticEventType
 from metadata.generated.schema.analytics.reportData import ReportDataType
 from metadata.generated.schema.analytics.webAnalyticEventData import (
@@ -63,6 +63,7 @@ from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.parser import ParsingConfigurationError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.workflow.data_insight import DataInsightWorkflow
 
 data_insight_config = {
     "source": {
@@ -216,7 +217,7 @@ class DataInsightWorkflowTests(unittest.TestCase):
             DataInsightWorkflow.create(insight)
 
     def test_execute_method(self):
-        """test method excution"""
+        """test method execution"""
         workflow: DataInsightWorkflow = DataInsightWorkflow.create(data_insight_config)
         workflow.execute()
 
@@ -252,21 +253,21 @@ class DataInsightWorkflowTests(unittest.TestCase):
         report_data = self.metadata.get_data_insight_report_data(
             self.start_ts,
             self.end_ts,
-            ReportDataType.EntityReportData.value,
+            ReportDataType.entityReportData.value,
         )
         assert report_data.get("data")
 
         web_entity_analytics = self.metadata.get_data_insight_report_data(
             self.start_ts,
             self.end_ts,
-            ReportDataType.WebAnalyticEntityViewReportData.value,
+            ReportDataType.webAnalyticEntityViewReportData.value,
         )
         assert web_entity_analytics.get("data")
 
         web_user_analytics = self.metadata.get_data_insight_report_data(
             self.start_ts,
             self.end_ts,
-            ReportDataType.WebAnalyticUserActivityReportData.value,
+            ReportDataType.webAnalyticUserActivityReportData.value,
         )
         assert web_user_analytics.get("data")
 
@@ -313,14 +314,19 @@ class DataInsightWorkflowTests(unittest.TestCase):
         assert resp.data
         assert isinstance(resp.data[0], PageViewsByEntities)
 
+        # test data insight KPIs have been computed and can be retrieved
+        # --------------------------------------------------------------
+        kpi_result = self.metadata.get_kpi_result(
+            "CompletedDescription__test_execute_method", self.start_ts, self.end_ts
+        )
+        assert kpi_result
+
     def test_get_kpis(self):
         """test Kpis are returned as expected"""
         # TO DO: Add KPI creation step and deletion (setUp + tearDown)
 
-        workflow: DataInsightWorkflow = DataInsightWorkflow.create(data_insight_config)
-
-        kpis = workflow._get_kpis()
-
+        kpi_runner = KpiRunner(self.metadata)
+        kpis = kpi_runner.get_kpis()
         assert kpis
 
     def test_write_kpi_result(self):

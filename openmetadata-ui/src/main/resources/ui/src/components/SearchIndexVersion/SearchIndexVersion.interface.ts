@@ -10,11 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import { SearchIndex } from 'generated/entity/data/searchIndex';
+import { OperationPermission } from '../../components/PermissionProvider/PermissionProvider.interface';
+import { SearchIndex } from '../../generated/entity/data/searchIndex';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { TagLabel } from '../../generated/type/tagLabel';
-import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
+import { TitleBreadcrumbProps } from '../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 
 export interface SearchIndexVersionProps {
   version: string;
@@ -22,9 +22,9 @@ export interface SearchIndexVersionProps {
   isVersionLoading: boolean;
   owner: SearchIndex['owner'];
   domain: SearchIndex['domain'];
+  dataProducts: SearchIndex['dataProducts'];
   tier: TagLabel;
   breadCrumbList: TitleBreadcrumbProps['titleLinks'];
-  searchIndexFQN: string;
   versionList: EntityHistory;
   deleted?: boolean;
   backHandler: () => void;

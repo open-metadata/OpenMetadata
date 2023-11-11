@@ -29,7 +29,7 @@ import {
   deleteTag,
   getAllClassifications,
   updateClassification,
-} from 'rest/tagAPI';
+} from '../../rest/tagAPI';
 import { getClassifications } from '../../utils/TagsUtils';
 import TagsPage from './TagsPage';
 import {
@@ -158,7 +158,7 @@ const mockCategory = [
   },
 ];
 
-jest.mock('components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     getEntityPermission: jest.fn().mockReturnValue({
       Create: true,
@@ -202,7 +202,7 @@ jest.mock('../../utils/PermissionsUtils', () => ({
   },
 }));
 
-jest.mock('rest/tagAPI', () => ({
+jest.mock('../../rest/tagAPI', () => ({
   createTag: jest.fn(),
   createClassification: jest.fn(),
   updateTag: jest.fn(),
@@ -231,7 +231,7 @@ jest.mock('../../utils/TagsUtils', () => ({
     .mockImplementation(() => <a href="/">Usage Count</a>),
 }));
 
-jest.mock('components/containers/PageLayoutV1', () =>
+jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
   jest
     .fn()
     .mockImplementation(
@@ -250,11 +250,14 @@ jest.mock('components/containers/PageLayoutV1', () =>
     )
 );
 
-jest.mock('components/common/rich-text-editor/RichTextEditorPreviewer', () => {
-  return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
-});
+jest.mock(
+  '../../components/common/RichTextEditor/RichTextEditorPreviewer',
+  () => {
+    return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
+  }
+);
 
-jest.mock('components/Modals/EntityDeleteModal/EntityDeleteModal', () => {
+jest.mock('../../components/Modals/EntityDeleteModal/EntityDeleteModal', () => {
   return jest.fn().mockImplementation(({ onCancel, onConfirm }) => (
     <div data-testid="confirmation-modal">
       <button data-testid="cancel-modal" onClick={onCancel}>
@@ -267,13 +270,13 @@ jest.mock('components/Modals/EntityDeleteModal/EntityDeleteModal', () => {
   ));
 });
 
-jest.mock('components/Modals/FormModal', () => {
+jest.mock('../../components/Modals/FormModal', () => {
   return jest
     .fn()
     .mockReturnValue(<p data-testid="modal-container">FormModal</p>);
 });
 
-jest.mock('components/common/description/Description', () => {
+jest.mock('../../components/common/EntityDescription/Description', () => {
   return jest.fn().mockReturnValue(<p>DescriptionComponent</p>);
 });
 

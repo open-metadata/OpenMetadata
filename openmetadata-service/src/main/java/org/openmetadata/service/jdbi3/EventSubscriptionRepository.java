@@ -22,6 +22,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
@@ -42,13 +43,12 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   static final String ALERT_PATCH_FIELDS = "trigger,enabled,batchSize,timeout";
   static final String ALERT_UPDATE_FIELDS = "trigger,enabled,batchSize,timeout,filteringRules";
 
-  public EventSubscriptionRepository(CollectionDAO dao) {
+  public EventSubscriptionRepository() {
     super(
         EventSubscriptionResource.COLLECTION_PATH,
         Entity.EVENT_SUBSCRIPTION,
         EventSubscription.class,
-        dao.eventSubscriptionDAO(),
-        dao,
+        Entity.getCollectionDAO().eventSubscriptionDAO(),
         ALERT_PATCH_FIELDS,
         ALERT_UPDATE_FIELDS);
   }
@@ -102,6 +102,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     return subscriptionPublisherMap.get(id);
   }
 
+  @Transaction
   public void addSubscriptionPublisher(EventSubscription eventSubscription) {
     switch (eventSubscription.getAlertType()) {
       case CHANGE_EVENT:
@@ -134,6 +135,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     return new SubscriptionStatus().withStatus(status).withTimestamp(System.currentTimeMillis());
   }
 
+  @Transaction
   @SneakyThrows
   public void updateEventSubscription(EventSubscription eventSubscription) {
     switch (eventSubscription.getAlertType()) {
@@ -166,6 +168,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     }
   }
 
+  @Transaction
   public void removeProcessorForEventSubscription(UUID id, SubscriptionStatus reasonForRemoval)
       throws InterruptedException {
     SubscriptionPublisher publisher = subscriptionPublisherMap.get(id);
@@ -178,6 +181,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     }
   }
 
+  @Transaction
   public void deleteEventSubscriptionPublisher(EventSubscription deletedEntity)
       throws InterruptedException, SchedulerException {
     switch (deletedEntity.getAlertType()) {

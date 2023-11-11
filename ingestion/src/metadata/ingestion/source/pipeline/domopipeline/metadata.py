@@ -23,9 +23,6 @@ from metadata.generated.schema.entity.data.pipeline import (
     Task,
     TaskStatus,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.services.connections.pipeline.domoPipelineConnection import (
     DomoPipelineConnection,
 )
@@ -35,9 +32,11 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.time_utils import convert_timestamp_to_milliseconds
 
 logger = ingestion_logger()
 
@@ -55,14 +54,14 @@ class DomopipelineSource(PipelineServiceSource):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config = WorkflowSource.parse_obj(config_dict)
         connection: DomoPipelineConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, DomoPipelineConnection):
             raise InvalidSourceException(
                 f"Expected DomoPipelineConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def get_pipeline_name(self, pipeline_details) -> str:
         return pipeline_details["name"]
@@ -129,8 +128,16 @@ class DomopipelineSource(PipelineServiceSource):
         runs = self.connection.get_runs(pipeline_id)
         try:
             for run in runs or []:
-                start_time = run["beginTime"] // 1000 if run.get("beginTime") else None
-                end_time = run["endTime"] // 1000 if run.get("endTime") else None
+                start_time = (
+                    convert_timestamp_to_milliseconds(run["beginTime"])
+                    if run.get("beginTime")
+                    else None
+                )
+                end_time = (
+                    convert_timestamp_to_milliseconds(run["endTime"])
+                    if run.get("endTime")
+                    else None
+                )
                 run_state = run.get("state", "Pending")
 
                 task_status = TaskStatus(

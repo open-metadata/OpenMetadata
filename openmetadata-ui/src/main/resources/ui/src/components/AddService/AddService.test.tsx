@@ -24,7 +24,7 @@ jest.mock('../AddIngestion/AddIngestion.component', () => () => (
   <>AddIngestion</>
 ));
 
-jest.mock('../common/title-breadcrumb/title-breadcrumb.component', () => () => (
+jest.mock('../common/TitleBreadcrumb/TitleBreadcrumb.component', () => () => (
   <>TitleBreadcrumb.component</>
 ));
 
@@ -40,7 +40,7 @@ jest.mock('../common/ServiceDocPanel/ServiceDocPanel', () => {
   return jest.fn().mockReturnValue(<div>ServiceDocPanel</div>);
 });
 
-jest.mock('components/common/ResizablePanels/ResizablePanels', () =>
+jest.mock('../../components/common/ResizablePanels/ResizablePanels', () =>
   jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
     <>
       <div>{firstPanel.children}</div>

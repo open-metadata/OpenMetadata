@@ -14,20 +14,26 @@
 import { PlusOutlined } from '@ant-design/icons';
 import { Button, Form, Space, Typography } from 'antd';
 import { FormProps, useForm } from 'antd/lib/form/Form';
-import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
-import { UserTag } from 'components/common/UserTag/UserTag.component';
-import { UserTagSize } from 'components/common/UserTag/UserTag.interface';
-import { ENTITY_NAME_REGEX } from 'constants/regex.constants';
-import { EntityReference } from 'generated/type/entityLineage';
-import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
 import { toString } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { getEntityName } from 'utils/EntityUtils';
-import { generateFormFields, getField } from 'utils/formUtils';
-import { CreateGlossary } from '../../../generated/api/data/createGlossary';
-import { getCurrentUserId } from '../../../utils/CommonUtils';
-import TitleBreadcrumb from '../../common/title-breadcrumb/title-breadcrumb.component';
+import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
+import {
+  CreateGlossary,
+  EntityReference,
+} from '../../../generated/api/data/createGlossary';
+import {
+  FieldProp,
+  FieldTypes,
+  FormItemLayout,
+} from '../../../interface/FormUtils.interface';
+import { getEntityName } from '../../../utils/EntityUtils';
+import { generateFormFields, getField } from '../../../utils/formUtils';
+import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
+import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { UserTag } from '../../common/UserTag/UserTag.component';
+import { UserTagSize } from '../../common/UserTag/UserTag.interface';
 import { AddGlossaryProps } from './AddGlossary.interface';
 
 const AddGlossary = ({
@@ -40,6 +46,7 @@ const AddGlossary = ({
 }: AddGlossaryProps) => {
   const { t } = useTranslation();
   const [form] = useForm();
+  const { currentUser } = useAuthContext();
 
   const selectedOwner = Form.useWatch<EntityReference | undefined>(
     'owner',
@@ -60,7 +67,7 @@ const AddGlossary = ({
     } = formData;
 
     const selectedOwner = owner ?? {
-      id: getCurrentUserId(),
+      id: currentUser?.id,
       type: 'user',
     };
     const data: CreateGlossary = {
@@ -160,7 +167,7 @@ const AddGlossary = ({
         'data-testid': 'mutually-exclusive-button',
       },
       id: 'root/mutuallyExclusive',
-      formItemLayout: 'horizontal',
+      formItemLayout: FormItemLayout.HORIZONATAL,
     },
   ];
 
@@ -181,7 +188,7 @@ const AddGlossary = ({
         />
       ),
     },
-    formItemLayout: 'horizontal',
+    formItemLayout: FormItemLayout.HORIZONATAL,
     formItemProps: {
       valuePropName: 'owner',
       trigger: 'onUpdate',
@@ -206,7 +213,7 @@ const AddGlossary = ({
         />
       ),
     },
-    formItemLayout: 'horizontal',
+    formItemLayout: FormItemLayout.HORIZONATAL,
     formItemProps: {
       valuePropName: 'selectedUsers',
       trigger: 'onUpdate',

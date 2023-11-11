@@ -14,66 +14,66 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Col, Row, Space, Switch, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ColumnsType } from 'antd/lib/table';
-import { ReactComponent as IconTag } from 'assets/svg/classification.svg';
-import { ReactComponent as LockIcon } from 'assets/svg/closed-lock.svg';
-import { ReactComponent as VersionIcon } from 'assets/svg/ic-version.svg';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import AppBadge from 'components/common/Badge/Badge.component';
-import Description from 'components/common/description/Description';
-import ManageButton from 'components/common/entityPageInfo/ManageButton/ManageButton';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import NextPrevious from 'components/common/next-previous/NextPrevious';
-import { NextPreviousProps } from 'components/common/next-previous/NextPrevious.interface';
-import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
-import Table from 'components/common/Table/Table';
-import EntityHeaderTitle from 'components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import { capitalize, isUndefined, toString } from 'lodash';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useHistory, useParams } from 'react-router-dom';
+import { ReactComponent as IconTag } from '../../assets/svg/classification.svg';
+import { ReactComponent as LockIcon } from '../../assets/svg/closed-lock.svg';
+import { ReactComponent as VersionIcon } from '../../assets/svg/ic-version.svg';
+import AppBadge from '../../components/common/Badge/Badge.component';
+import Description from '../../components/common/EntityDescription/Description';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
+import Table from '../../components/common/Table/Table';
+import EntityHeaderTitle from '../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
-} from 'components/PermissionProvider/PermissionProvider.interface';
-import { DE_ACTIVE_COLOR, PAGE_SIZE } from 'constants/constants';
-import { EntityField } from 'constants/Feeds.constants';
-import { EntityType } from 'enums/entity.enum';
-import { ProviderType } from 'generated/api/classification/createClassification';
+} from '../../components/PermissionProvider/PermissionProvider.interface';
+import { DE_ACTIVE_COLOR } from '../../constants/constants';
+import { EntityField } from '../../constants/Feeds.constants';
+import { EntityType } from '../../enums/entity.enum';
+import { ProviderType } from '../../generated/api/classification/createClassification';
 import {
   ChangeDescription,
   Classification,
-} from 'generated/entity/classification/classification';
-import { Tag } from 'generated/entity/classification/tag';
-import { Operation } from 'generated/entity/policies/policy';
-import { Paging } from 'generated/type/paging';
-import { capitalize, isUndefined, toString } from 'lodash';
-import { DeleteTagsType } from 'pages/TagsPage/TagsPage.interface';
-import React, { useCallback, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+} from '../../generated/entity/classification/classification';
+import { Tag } from '../../generated/entity/classification/tag';
+import { Operation } from '../../generated/entity/policies/policy';
+import { Paging } from '../../generated/type/paging';
+import { usePaging } from '../../hooks/paging/usePaging';
+import { DeleteTagsType } from '../../pages/TagsPage/TagsPage.interface';
+import { getTags } from '../../rest/tagAPI';
 import {
   getClassificationExtraDropdownContent,
   getTagsTableColumn,
-} from 'utils/ClassificationUtils';
+} from '../../utils/ClassificationUtils';
 import {
   getEntityVersionByField,
   getMutuallyExclusiveDiff,
-} from 'utils/EntityVersionUtils';
-import { checkPermission } from 'utils/PermissionsUtils';
+} from '../../utils/EntityVersionUtils';
+import { checkPermission } from '../../utils/PermissionsUtils';
 import {
   getClassificationDetailsPath,
   getClassificationVersionsPath,
-} from 'utils/RouterUtils';
+} from '../../utils/RouterUtils';
+import { getErrorText } from '../../utils/StringsUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
+import ManageButton from '../common/EntityPageInfos/ManageButton/ManageButton';
+import NextPrevious from '../common/NextPrevious/NextPrevious';
+import { NextPreviousProps } from '../common/NextPrevious/NextPrevious.interface';
 
 export interface ClassificationDetailsProps {
-  paging: Paging;
-  isTagsLoading: boolean;
-  currentPage: number;
   classificationPermissions: OperationPermission;
   isVersionView?: boolean;
   currentClassification?: Classification;
   deleteTags?: DeleteTagsType;
-  tags?: Tag[];
   isEditClassification?: boolean;
   disableEditButton?: boolean;
-  handlePageChange: NextPreviousProps['pagingHandler'];
   handleAfterDeleteAction?: () => void;
   handleEditTagClick?: (selectedTag: Tag) => void;
   handleActionDeleteTag?: (record: Tag) => void;
@@ -89,19 +89,14 @@ function ClassificationDetails({
   currentClassification,
   handleAfterDeleteAction,
   isEditClassification,
-  isTagsLoading,
   classificationPermissions,
   handleUpdateClassification,
   handleEditTagClick,
   deleteTags,
-  tags,
   handleActionDeleteTag,
   handleAddNewTagClick,
   handleEditDescriptionClick,
   handleCancelEditDescription,
-  paging,
-  currentPage,
-  handlePageChange,
   disableEditButton,
   isVersionView = false,
 }: ClassificationDetailsProps) {
@@ -109,6 +104,61 @@ function ClassificationDetails({
   const { t } = useTranslation();
   const { fqn: tagCategoryName } = useParams<{ fqn: string }>();
   const history = useHistory();
+  const [tags, setTags] = useState<Tag[]>([]);
+  const [isTagsLoading, setIsTagsLoading] = useState(false);
+
+  const {
+    currentPage,
+    paging,
+    pageSize,
+    handlePageChange,
+    handlePageSizeChange,
+    handlePagingChange,
+    showPagination,
+  } = usePaging();
+
+  const fetchClassificationChildren = async (
+    currentClassificationName: string,
+    paging?: Partial<Paging>
+  ) => {
+    setIsTagsLoading(true);
+    setTags([]);
+    try {
+      const { data, paging: tagPaging } = await getTags({
+        arrQueryFields: ['usageCount'],
+        parent: currentClassificationName,
+        after: paging?.after,
+        before: paging?.before,
+        limit: pageSize,
+      });
+      setTags(data);
+      handlePagingChange(tagPaging);
+    } catch (error) {
+      const errMsg = getErrorText(
+        error as AxiosError,
+        t('server.entity-fetch-error', { entity: t('label.tag-plural') })
+      );
+      showErrorToast(errMsg);
+      setTags([]);
+    } finally {
+      setIsTagsLoading(false);
+    }
+  };
+
+  const handleTagsPageChange: NextPreviousProps['pagingHandler'] = ({
+    currentPage,
+    cursorType,
+  }) => {
+    if (cursorType) {
+      fetchClassificationChildren(
+        currentClassification?.fullyQualifiedName ?? '',
+        {
+          [cursorType]: paging[cursorType],
+        }
+      );
+    }
+    handlePageChange(currentPage);
+  };
 
   const currentVersion = useMemo(
     () => currentClassification?.version ?? '0.1',
@@ -356,6 +406,12 @@ function ClassificationDetails({
       : '';
   }, [currentClassification, changeDescription]);
 
+  useEffect(() => {
+    if (currentClassification?.fullyQualifiedName) {
+      fetchClassificationChildren(currentClassification.fullyQualifiedName);
+    }
+  }, [currentClassification?.fullyQualifiedName, pageSize]);
+
   return (
     <div className="p-x-md" data-testid="tags-container">
       {currentClassification && (
@@ -496,12 +552,13 @@ function ClassificationDetails({
           size="small"
         />
 
-        {paging.total > PAGE_SIZE && (
+        {showPagination && !isTagsLoading && (
           <NextPrevious
             currentPage={currentPage}
-            pageSize={PAGE_SIZE}
+            pageSize={pageSize}
             paging={paging}
-            pagingHandler={handlePageChange}
+            pagingHandler={handleTagsPageChange}
+            onShowSizeChange={handlePageSizeChange}
           />
         )}
       </Space>

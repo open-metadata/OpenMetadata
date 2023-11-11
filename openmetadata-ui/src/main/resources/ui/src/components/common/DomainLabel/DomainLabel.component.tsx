@@ -11,23 +11,25 @@
  *  limitations under the License.
  */
 import { Space, Typography } from 'antd';
-import { ReactComponent as DomainIcon } from 'assets/svg/ic-domain.svg';
 import { AxiosError } from 'axios';
-import { AssetsUnion } from 'components/Assets/AssetsSelectionModal/AssetSelectionModal.interface';
-import { DE_ACTIVE_COLOR } from 'constants/constants';
+import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { EntityReference } from 'generated/entity/type';
 import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
+import { AssetsUnion } from '../../../components/Assets/AssetsSelectionModal/AssetSelectionModal.interface';
+import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { EntityReference } from '../../../generated/entity/type';
 import {
   getAPIfromSource,
   getEntityAPIfromSource,
-} from 'utils/Assets/AssetsUtils';
-import { getEntityName } from 'utils/EntityUtils';
-import { getDomainPath } from 'utils/RouterUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+} from '../../../utils/Assets/AssetsUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
+import { getDomainPath } from '../../../utils/RouterUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import { DataAssetWithDomains } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import DomainSelectableList from '../DomainSelectableList/DomainSelectableList.component';
 import { DomainLabelProps } from './DomainLabel.interface';
 
@@ -39,6 +41,7 @@ export const DomainLabel = ({
   entityType,
   entityFqn,
   entityId,
+  showDomainHeading = false,
 }: DomainLabelProps) => {
   const { t } = useTranslation();
   const [activeDomain, setActiveDomain] = useState<EntityReference>();
@@ -63,7 +66,8 @@ export const DomainLabel = ({
 
           // update the domain details here
           setActiveDomain(res.domain);
-          !isUndefined(afterDomainUpdateAction) && afterDomainUpdateAction(res);
+          !isUndefined(afterDomainUpdateAction) &&
+            afterDomainUpdateAction(res as DataAssetWithDomains);
         }
       } catch (err) {
         // Handle errors as needed
@@ -77,9 +81,74 @@ export const DomainLabel = ({
     setActiveDomain(domain);
   }, [domain]);
 
-  const label = useMemo(() => {
+  const domainLink = useMemo(() => {
+    if (activeDomain || domainDisplayName) {
+      return (
+        <Link
+          className={classNames(
+            'text-primary no-underline domain-link',
+            !showDomainHeading ? 'font-medium text-xs' : ''
+          )}
+          data-testid="domain-link"
+          to={getDomainPath(activeDomain?.fullyQualifiedName)}>
+          {isUndefined(domainDisplayName)
+            ? getEntityName(activeDomain)
+            : domainDisplayName}
+        </Link>
+      );
+    } else {
+      return (
+        <Typography.Text
+          className={classNames(
+            'domain-link',
+            !showDomainHeading ? 'font-medium text-xs' : ''
+          )}
+          data-testid="no-domain-text">
+          {t('label.no-entity', { entity: t('label.domain') })}
+        </Typography.Text>
+      );
+    }
+  }, [activeDomain, domainDisplayName]);
+
+  const selectableList = useMemo(() => {
     return (
-      <Space>
+      hasPermission && (
+        <DomainSelectableList
+          hasPermission={Boolean(hasPermission)}
+          selectedDomain={activeDomain}
+          onUpdate={handleDomainSave}
+        />
+      )
+    );
+  }, [hasPermission, activeDomain]);
+
+  const label = useMemo(() => {
+    if (showDomainHeading) {
+      return (
+        <>
+          <div className="d-flex items-center m-b-xs">
+            <Typography.Text className="right-panel-label m-r-xss">
+              {t('label.domain')}
+            </Typography.Text>
+            {selectableList}
+          </div>
+
+          <Space>
+            <DomainIcon
+              className="d-flex"
+              color={DE_ACTIVE_COLOR}
+              height={16}
+              name="folder"
+              width={16}
+            />
+            {domainLink}
+          </Space>
+        </>
+      );
+    }
+
+    return (
+      <Space data-testid="header-domain-container">
         <Typography.Text className="self-center text-xs whitespace-nowrap">
           <DomainIcon
             className="d-flex"
@@ -89,33 +158,12 @@ export const DomainLabel = ({
             width={16}
           />
         </Typography.Text>
-        {activeDomain || domainDisplayName ? (
-          <Link
-            className="text-primary font-medium text-xs no-underline"
-            data-testid="domain-link"
-            to={getDomainPath(activeDomain?.fullyQualifiedName)}>
-            {isUndefined(domainDisplayName)
-              ? getEntityName(activeDomain)
-              : domainDisplayName}
-          </Link>
-        ) : (
-          <Typography.Text
-            className="font-medium text-xs"
-            data-testid="no-domain-text">
-            {t('label.no-entity', { entity: t('label.domain') })}
-          </Typography.Text>
-        )}
+        {domainLink}
 
-        {hasPermission && (
-          <DomainSelectableList
-            hasPermission={Boolean(hasPermission)}
-            selectedDomain={activeDomain}
-            onUpdate={handleDomainSave}
-          />
-        )}
+        {selectableList}
       </Space>
     );
-  }, [activeDomain, hasPermission]);
+  }, [activeDomain, hasPermission, selectableList]);
 
   return label;
 };

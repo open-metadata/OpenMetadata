@@ -130,6 +130,7 @@ database:
 migrationConfiguration:
   flywayPath: "./bootstrap/sql/migrations/flyway"
   nativePath: "./bootstrap/sql/migrations/native"
+  extensionPath: ""
 
 # Authorizer Configuration
 authorizerConfiguration:
@@ -242,6 +243,7 @@ eventHandlerConfiguration:
     - "org.openmetadata.service.events.WebAnalyticEventHandler"
 
 pipelineServiceClientConfiguration:
+  enabled: ${PIPELINE_SERVICE_CLIENT_ENABLED:-true}
   # If we don't need this, set "org.openmetadata.service.clients.pipeline.noop.NoopClient"
   className: ${PIPELINE_SERVICE_CLIENT_CLASS_NAME:-"org.openmetadata.service.clients.pipeline.airflow.AirflowRESTClient"}
   apiEndpoint: ${PIPELINE_SERVICE_CLIENT_ENDPOINT:-http://localhost:8080}
@@ -305,16 +307,6 @@ email:
   password: ${SMTP_SERVER_PWD:-""}
   transportationStrategy: ${SMTP_SERVER_STRATEGY:-"SMTP_TLS"}
 
-applicationConfig:
-  logoConfig:
-    customLogoUrlPath: ${OM_CUSTOM_LOGO_URL_PATH:-""} #login page logo
-    customMonogramUrlPath: ${OM_CUSTOM_MONOGRAM_URL_PATH:-""} #nav bar logo
-  loginConfig:
-    maxLoginFailAttempts: ${OM_MAX_FAILED_LOGIN_ATTEMPTS:-3}
-    accessBlockTime: ${OM_LOGIN_ACCESS_BLOCK_TIME:-600}
-    jwtTokenExpiryTime: ${OM_JWT_EXPIRY_TIME:-3600}
-
-
 web:
   uriPath: ${WEB_CONF_URI_PATH:-"/api"}
   hsts:
@@ -347,6 +339,3 @@ web:
 changeEventConfig:
   omUri: ${OM_URI:- "http://localhost:8585"} #openmetadata in om uri for eg http://localhost:8585
 
-extensionConfiguration:
-  resourcePackage: ${OM_RESOURCE_PACKAGES:-[]}
-  extensions: ${OM_EXTENSIONS:-[]}

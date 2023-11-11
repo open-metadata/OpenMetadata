@@ -12,6 +12,7 @@
 Usage Workflow Definition
 """
 
+from metadata.config.common import WorkflowExecutionError
 from metadata.ingestion.api.steps import BulkSink, Processor, Source, Stage
 from metadata.utils.importer import (
     import_bulk_sink_type,
@@ -44,6 +45,12 @@ class UsageWorkflow(BaseWorkflow):
     def _get_source(self) -> Source:
         # Source that we are ingesting, e.g., mysql, looker or kafka
         source_type = self.config.source.type.lower()
+        if not self.config.source.serviceName:
+            raise WorkflowExecutionError(
+                "ServiceName is required field for executing the Usage Workflow. "
+                "You can find more information on how to build the YAML "
+                "configuration here: https://docs.open-metadata.org/connectors"
+            )
 
         source_class = (
             import_from_module(
@@ -55,9 +62,7 @@ class UsageWorkflow(BaseWorkflow):
             )
         )
 
-        source: Source = source_class.create(
-            self.config.source.dict(), self.metadata_config
-        )
+        source: Source = source_class.create(self.config.source.dict(), self.metadata)
         logger.debug(f"Source type:{source_type},{source_class} configured")
         source.prepare()
         logger.debug(f"Source type:{source_type},{source_class}  prepared")
@@ -85,7 +90,7 @@ class UsageWorkflow(BaseWorkflow):
         stage_type = self.config.stage.type
         stage_class = import_stage_class(stage_type=stage_type)
         stage_config = self.config.stage.dict().get("config", {})
-        stage: Stage = stage_class.create(stage_config, self.metadata_config)
+        stage: Stage = stage_class.create(stage_config, self.metadata)
         logger.debug(f"Stage Type: {stage_type}, {stage_class} configured")
 
         return stage
@@ -95,9 +100,7 @@ class UsageWorkflow(BaseWorkflow):
         bulk_sink_type = self.config.bulkSink.type
         bulk_sink_class = import_bulk_sink_type(bulk_sink_type=bulk_sink_type)
         bulk_sink_config = self.config.bulkSink.dict().get("config", {})
-        bulk_sink: BulkSink = bulk_sink_class.create(
-            bulk_sink_config, self.metadata_config
-        )
+        bulk_sink: BulkSink = bulk_sink_class.create(bulk_sink_config, self.metadata)
         logger.info(
             f"BulkSink type:{self.config.bulkSink.type},{bulk_sink_class} configured"
         )

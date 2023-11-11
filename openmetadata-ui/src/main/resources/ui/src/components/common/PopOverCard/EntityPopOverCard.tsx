@@ -12,10 +12,6 @@
  */
 
 import { Popover } from 'antd';
-import { EntityUnion } from 'components/Explore/explore.interface';
-import ExploreSearchCard from 'components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
-import Loader from 'components/Loader/Loader';
-import { Include } from 'generated/type/include';
 import React, {
   FC,
   HTMLAttributes,
@@ -23,27 +19,34 @@ import React, {
   useEffect,
   useState,
 } from 'react';
-import { getDashboardByFqn } from 'rest/dashboardAPI';
-import {
-  getDatabaseDetailsByFQN,
-  getDatabaseSchemaDetailsByFQN,
-} from 'rest/databaseAPI';
-import { getDataModelDetailsByFQN } from 'rest/dataModelsAPI';
-import { getDataProductByName } from 'rest/dataProductAPI';
-import { getDomainByName } from 'rest/domainAPI';
-import { getGlossariesByName, getGlossaryTermByFQN } from 'rest/glossaryAPI';
-import { getMlModelByFQN } from 'rest/mlModelAPI';
-import { getPipelineByFqn } from 'rest/pipelineAPI';
-import { getContainerByFQN } from 'rest/storageAPI';
-import { getStoredProceduresDetailsByFQN } from 'rest/storedProceduresAPI';
-import { getTableDetailsByFQN } from 'rest/tableAPI';
-import { getTopicByFqn } from 'rest/topicsAPI';
-import { getTableFQNFromColumnFQN } from 'utils/CommonUtils';
-import { getEntityName } from 'utils/EntityUtils';
-import { getDecodedFqn, getEncodedFqn } from 'utils/StringsUtils';
 import AppState from '../../../AppState';
 import { EntityType } from '../../../enums/entity.enum';
 import { Table } from '../../../generated/entity/data/table';
+import { Include } from '../../../generated/type/include';
+import { getDashboardByFqn } from '../../../rest/dashboardAPI';
+import {
+  getDatabaseDetailsByFQN,
+  getDatabaseSchemaDetailsByFQN,
+} from '../../../rest/databaseAPI';
+import { getDataModelDetailsByFQN } from '../../../rest/dataModelsAPI';
+import { getDataProductByName } from '../../../rest/dataProductAPI';
+import { getDomainByName } from '../../../rest/domainAPI';
+import {
+  getGlossariesByName,
+  getGlossaryTermByFQN,
+} from '../../../rest/glossaryAPI';
+import { getMlModelByFQN } from '../../../rest/mlModelAPI';
+import { getPipelineByFqn } from '../../../rest/pipelineAPI';
+import { getContainerByFQN } from '../../../rest/storageAPI';
+import { getStoredProceduresDetailsByFQN } from '../../../rest/storedProceduresAPI';
+import { getTableDetailsByFQN } from '../../../rest/tableAPI';
+import { getTopicByFqn } from '../../../rest/topicsAPI';
+import { getTableFQNFromColumnFQN } from '../../../utils/CommonUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
+import { getDecodedFqn, getEncodedFqn } from '../../../utils/StringsUtils';
+import { EntityUnion } from '../../Explore/ExplorePage.interface';
+import ExploreSearchCard from '../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
+import Loader from '../../Loader/Loader';
 import './popover-card.less';
 
 interface Props extends HTMLAttributes<HTMLDivElement> {

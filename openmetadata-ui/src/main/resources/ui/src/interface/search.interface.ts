@@ -11,34 +11,36 @@
  *  limitations under the License.
  */
 
-import { Container } from 'generated/entity/data/container';
-import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
-import { Database } from 'generated/entity/data/database';
-import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
-import { Query } from 'generated/entity/data/query';
-import { SearchIndex as SearchIndexEntity } from 'generated/entity/data/searchIndex';
-import { StoredProcedure } from 'generated/entity/data/storedProcedure';
-import { DataProduct } from 'generated/entity/domains/dataProduct';
-import { Domain } from 'generated/entity/domains/domain';
-import { DashboardService } from 'generated/entity/services/dashboardService';
-import { DatabaseService } from 'generated/entity/services/databaseService';
-import { MessagingService } from 'generated/entity/services/messagingService';
-import { MlmodelService } from 'generated/entity/services/mlmodelService';
-import { PipelineService } from 'generated/entity/services/pipelineService';
-import { SearchService } from 'generated/entity/services/searchService';
-import { TestCase } from 'generated/tests/testCase';
-import { TestSuite } from 'generated/tests/testSuite';
+import { DataInsightIndex } from '../enums/DataInsight.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { Tag } from '../generated/entity/classification/tag';
+import { Container } from '../generated/entity/data/container';
 import { Dashboard } from '../generated/entity/data/dashboard';
+import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
+import { Database } from '../generated/entity/data/database';
+import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import { Mlmodel } from '../generated/entity/data/mlmodel';
 import { Pipeline } from '../generated/entity/data/pipeline';
+import { Query } from '../generated/entity/data/query';
+import { SearchIndex as SearchIndexEntity } from '../generated/entity/data/searchIndex';
+import { StoredProcedure } from '../generated/entity/data/storedProcedure';
 import { Table } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
+import { DataProduct } from '../generated/entity/domains/dataProduct';
+import { Domain } from '../generated/entity/domains/domain';
+import { DashboardService } from '../generated/entity/services/dashboardService';
+import { DatabaseService } from '../generated/entity/services/databaseService';
+import { MessagingService } from '../generated/entity/services/messagingService';
+import { MlmodelService } from '../generated/entity/services/mlmodelService';
+import { PipelineService } from '../generated/entity/services/pipelineService';
+import { SearchService } from '../generated/entity/services/searchService';
 import { Team } from '../generated/entity/teams/team';
 import { User } from '../generated/entity/teams/user';
+import { TestCase } from '../generated/tests/testCase';
+import { TestSuite } from '../generated/tests/testSuite';
 import { TagLabel } from '../generated/type/tagLabel';
+import { AggregatedCostAnalysisReportDataSearchSource } from './data-insight.interface';
 
 /**
  * The `keyof` operator, when applied to a union type, expands to the keys are common for
@@ -138,6 +140,10 @@ export interface SearchServiceSearchSource
   extends SearchSourceBase,
     SearchService {}
 
+export interface StorageServiceSearchSource
+  extends SearchSourceBase,
+    SearchService {}
+
 export type ExploreSearchSource =
   | TableSearchSource
   | DashboardSearchSource
@@ -161,10 +167,13 @@ export type ExploreSearchSource =
   | MlModelServiceSearchSource
   | MessagingServiceSearchSource
   | SearchServiceSearchSource
+  | StorageServiceSearchSource
   | DomainSearchSource
   | SearchIndexSearchSource;
 
 export type SearchIndexSearchSourceMapping = {
+  [SearchIndex.ALL]: TableSearchSource;
+  [SearchIndex.DATA_ASSET]: TableSearchSource;
   [SearchIndex.TABLE]: TableSearchSource;
   [SearchIndex.MLMODEL]: MlmodelSearchSource;
   [SearchIndex.PIPELINE]: PipelineSearchSource;
@@ -180,11 +189,12 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.DATABASE_SCHEMA]: DataBaseSchemaSearchSource;
   [SearchIndex.DATABASE]: DatabaseSearchSource;
   [SearchIndex.DATABASE_SERVICE]: DatabaseServiceSearchSource;
-  [SearchIndex.DASHBOARD_SERCVICE]: DashboardServiceSearchSource;
+  [SearchIndex.DASHBOARD_SERVICE]: DashboardServiceSearchSource;
   [SearchIndex.PIPELINE_SERVICE]: PipelineServiceSearchSource;
   [SearchIndex.ML_MODEL_SERVICE]: MlModelServiceSearchSource;
   [SearchIndex.MESSAGING_SERVICE]: MessagingServiceSearchSource;
   [SearchIndex.SEARCH_SERVICE]: SearchServiceSearchSource;
+  [SearchIndex.STORAGE_SERVICE]: StorageServiceSearchSource;
   [SearchIndex.DOMAIN]: DomainSearchSource;
   [SearchIndex.SEARCH_INDEX]: SearchIndexSearchSource;
   [SearchIndex.STORED_PROCEDURE]: StoredProcedureSearchSource;
@@ -246,7 +256,7 @@ export type SuggestRequest<
     }
 );
 
-export interface SearchHitBody<SI extends SearchIndex, T> {
+export interface SearchHitBody<SI extends SearchIndex | DataInsightIndex, T> {
   _index: SI;
   _type?: string;
   _id?: string;
@@ -289,6 +299,22 @@ export interface SearchResponse<
 }
 
 export type Aggregations = Record<string, { buckets: Bucket[] }>;
+
+export type DataInsightSearchResponse = {
+  took?: number;
+  timed_out?: boolean;
+  hits: {
+    total: {
+      value: number;
+      relation?: string;
+    };
+    hits: SearchHitBody<
+      DataInsightIndex,
+      AggregatedCostAnalysisReportDataSearchSource
+    >[];
+  };
+  aggregations: Aggregations;
+};
 
 /**
  * Because we are using an older version of typescript-eslint, defining

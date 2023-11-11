@@ -12,10 +12,10 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import { Column } from 'generated/entity/data/container';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { Table } from '../../generated/entity/data/table';
+import { Column } from '../../generated/entity/data/container';
+import { Table, TablePartition } from '../../generated/entity/data/table';
 import EntityTableV1 from './SchemaTable.component';
 
 const onEntityFieldSelect = jest.fn();
@@ -78,6 +78,7 @@ const mockEntityTableProp = {
   columnName: '',
   hasTagEditAccess: true,
   tableConstraints: mockTableConstraints,
+  tablePartitioned: {} as TablePartition,
   onEntityFieldSelect,
   onThreadLinkSelect,
   onUpdate,
@@ -131,7 +132,7 @@ jest.mock('../../hooks/authHooks', () => {
   };
 });
 
-jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
+jest.mock('../common/RichTextEditor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });
 
@@ -140,7 +141,7 @@ jest.mock('../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor', () => ({
 }));
 
 jest.mock(
-  'components/common/error-with-placeholder/FilterTablePlaceHolder',
+  '../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder',
   () => {
     return jest.fn().mockReturnValue(<p>FilterTablePlaceHolder</p>);
   }
@@ -156,17 +157,20 @@ jest.mock('../../utils/GlossaryUtils', () => ({
   getGlossaryTermHierarchy: jest.fn().mockReturnValue([]),
 }));
 
-jest.mock('components/TableTags/TableTags.component', () => {
+jest.mock('../../components/TableTags/TableTags.component', () => {
   return jest.fn().mockReturnValue(<p>TableTags</p>);
 });
 
-jest.mock('components/TableDescription/TableDescription.component', () => {
-  return jest.fn().mockReturnValue(<p>TableDescription</p>);
-});
+jest.mock(
+  '../../components/TableDescription/TableDescription.component',
+  () => {
+    return jest.fn().mockReturnValue(<p>TableDescription</p>);
+  }
+);
 
 const mockTableScrollValue = jest.fn();
 
-jest.mock('constants/Table.constants', () => ({
+jest.mock('../../constants/Table.constants', () => ({
   get TABLE_SCROLL_VALUE() {
     return mockTableScrollValue();
   },
@@ -218,7 +222,7 @@ describe('Test EntityTable Component', () => {
       wrapper: MemoryRouter,
     });
 
-    const columnNames = await screen.findAllByTestId('column-display-name');
+    const columnNames = await screen.findAllByTestId('column-name');
 
     expect(columnNames).toHaveLength(3);
 
@@ -241,12 +245,12 @@ describe('Test EntityTable Component', () => {
     const columnDisplayName = await screen.findAllByTestId(
       'column-display-name'
     );
-    const columnName = await screen.findByTestId('column-name');
+    const columnName = await screen.findAllByTestId('column-name');
 
     expect(columnDisplayName[0]).toBeInTheDocument();
-    expect(columnName).toBeInTheDocument();
+    expect(columnName[0]).toBeInTheDocument();
 
     expect(columnDisplayName[0].textContent).toBe('Comments');
-    expect(columnName.textContent).toBe('comments');
+    expect(columnName[0].textContent).toBe('comments');
   });
 });

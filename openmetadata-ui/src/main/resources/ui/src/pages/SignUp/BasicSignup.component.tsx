@@ -12,19 +12,19 @@
  */
 
 import { Button, Divider, Form, Input, Typography } from 'antd';
-import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
-import { useBasicAuth } from 'components/authentication/auth-provider/basic-auth.provider';
-import BrandImage from 'components/common/BrandImage/BrandImage';
-import { AuthProvider } from 'generated/settings/settings';
 import { isEmpty } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import loginBG from '../../assets/img/login-bg.png';
+import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
+import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
+import BrandImage from '../../components/common/BrandImage/BrandImage';
 import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { passwordRegex } from '../../constants/regex.constants';
-import LoginCarousel from '../login/LoginCarousel';
-import './../login/login.style.less';
+import { AuthProvider } from '../../generated/settings/settings';
+import LoginCarousel from '../LoginPage/LoginCarousel';
+import './../LoginPage/login.style.less';
 
 interface SignUpFormData {
   firstName: string;
@@ -70,7 +70,7 @@ const BasicSignUp = () => {
       <div className="d-flex flex-grow" data-testid="signin-page">
         <div className="w-5/12">
           <div className="mt-4 text-center flex-center flex-col">
-            <BrandImage height="auto" width={152} />
+            <BrandImage height="auto" width={200} />
             <Typography.Text className="mt-8 w-80 text-xl font-medium text-grey-muted">
               {t('message.om-description')}
             </Typography.Text>
@@ -90,6 +90,7 @@ const BasicSignUp = () => {
                     name="firstName"
                     rules={[{ whitespace: true, required: true }]}>
                     <Input
+                      autoFocus
                       placeholder={t('label.enter-entity-name', {
                         entity: t('label.first-lowercase'),
                       })}

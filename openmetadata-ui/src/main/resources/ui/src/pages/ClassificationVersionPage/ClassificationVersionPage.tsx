@@ -11,39 +11,34 @@
  *  limitations under the License.
  */
 
-import ClassificationDetails from 'components/ClassificationDetails/ClassificationDetails';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import EntityVersionTimeLine from 'components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
-import Loader from 'components/Loader/Loader';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from 'components/PermissionProvider/PermissionProvider.interface';
-import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-import { INITIAL_PAGING_VALUE, PAGE_SIZE } from 'constants/constants';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { Classification } from 'generated/entity/classification/classification';
-import { Tag } from 'generated/entity/classification/tag';
-import { EntityHistory } from 'generated/type/entityHistory';
-import { Paging } from 'generated/type/paging';
 import { isEmpty, toString } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import ClassificationDetails from '../../components/ClassificationDetails/ClassificationDetails';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
+import Loader from '../../components/Loader/Loader';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../components/PermissionProvider/PermissionProvider.interface';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { Classification } from '../../generated/entity/classification/classification';
+import { EntityHistory } from '../../generated/type/entityHistory';
 import {
   getClassificationByName,
   getClassificationVersionData,
   getClassificationVersionsList,
-  getTags,
-} from 'rest/tagAPI';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
+} from '../../rest/tagAPI';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
   getClassificationDetailsPath,
   getClassificationVersionsPath,
-} from 'utils/RouterUtils';
+} from '../../utils/RouterUtils';
 
 function ClassificationVersionPage() {
   const { t } = useTranslation();
@@ -55,13 +50,10 @@ function ClassificationVersionPage() {
     {} as Classification
   );
   const [classificationId, setClassificationId] = useState<string>('');
-  const [tags, setTags] = useState<Tag[]>();
+
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [classificationPermissions, setClassificationPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
-  const [paging, setPaging] = useState<Paging>({} as Paging);
-  const [currentPage, setCurrentPage] = useState<number>(INITIAL_PAGING_VALUE);
-  const [isTagsLoading, setIsTagsLoading] = useState(false);
   const [isVersionDataLoading, setIsVersionDataLoading] =
     useState<boolean>(true);
   const [versionList, setVersionList] = useState<EntityHistory>(
@@ -124,44 +116,6 @@ function ClassificationVersionPage() {
     [viewVersionPermission, version]
   );
 
-  const fetchClassificationChildren = async (
-    currentClassificationName: string,
-    paging?: Paging
-  ) => {
-    setIsTagsLoading(true);
-    setTags([]);
-    try {
-      const tagsResponse = await getTags({
-        arrQueryFields: ['usageCount'],
-        parent: currentClassificationName,
-        after: paging?.after,
-        before: paging?.before,
-        limit: PAGE_SIZE,
-      });
-      setTags(tagsResponse.data);
-      setPaging(tagsResponse.paging);
-    } catch (error) {
-      setTags([]);
-    } finally {
-      setIsTagsLoading(false);
-    }
-  };
-
-  const handlePageChange = useCallback(
-    ({ cursorType, currentPage }: PagingHandlerParams) => {
-      if (cursorType) {
-        const pagination = {
-          [cursorType]: paging[cursorType as keyof Paging] as string,
-          total: paging.total,
-        } as Paging;
-
-        setCurrentPage(currentPage);
-        fetchClassificationChildren(classificationName, pagination);
-      }
-    },
-    [fetchClassificationChildren, paging, classificationName]
-  );
-
   const versionHandler = useCallback(
     (newVersion = version) => {
       history.push(
@@ -193,12 +147,6 @@ function ClassificationVersionPage() {
     }
   }, [version, classificationId]);
 
-  useEffect(() => {
-    if (!isEmpty(currentVersionData)) {
-      fetchClassificationChildren(classificationName);
-    }
-  }, [currentVersionData]);
-
   const versionComponent = () => {
     if (isLoading) {
       return <Loader />;
@@ -218,11 +166,6 @@ function ClassificationVersionPage() {
               isVersionView
               classificationPermissions={classificationPermissions}
               currentClassification={currentVersionData}
-              currentPage={currentPage}
-              handlePageChange={handlePageChange}
-              isTagsLoading={isTagsLoading}
-              paging={paging}
-              tags={tags}
             />
           )}
         </div>

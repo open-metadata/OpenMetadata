@@ -16,7 +16,9 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.service.Entity.DOCUMENT;
 
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entities.docStore.Document;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.docstore.DocStoreResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
@@ -25,13 +27,12 @@ public class DocumentRepository extends EntityRepository<Document> {
   static final String DOCUMENT_UPDATE_FIELDS = "data";
   static final String DOCUMENT_PATCH_FIELDS = "data";
 
-  public DocumentRepository(CollectionDAO dao) {
+  public DocumentRepository() {
     super(
         DocStoreResource.COLLECTION_PATH,
         DOCUMENT,
         Document.class,
-        dao.docStoreDAO(),
-        dao,
+        Entity.getCollectionDAO().docStoreDAO(),
         DOCUMENT_UPDATE_FIELDS,
         DOCUMENT_PATCH_FIELDS);
     supportsSearch = false;
@@ -84,6 +85,7 @@ public class DocumentRepository extends EntityRepository<Document> {
       super(original, updated, operation);
     }
 
+    @Transaction
     @Override
     public void entitySpecificUpdate() {
       recordChange("data", original.getData(), updated.getData(), true);

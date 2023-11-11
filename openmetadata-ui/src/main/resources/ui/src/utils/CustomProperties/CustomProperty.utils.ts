@@ -13,21 +13,22 @@
 import {
   ExtentionEntities,
   ExtentionEntitiesKeys,
-} from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
-import { EntityType, TabSpecificField } from 'enums/entity.enum';
-import { getDashboardByFqn } from 'rest/dashboardAPI';
+} from '../../components/common/CustomPropertyTable/CustomPropertyTable.interface';
+import { EntityType, TabSpecificField } from '../../enums/entity.enum';
+import { SearchIndex } from '../../enums/search.enum';
+import { getDashboardByFqn } from '../../rest/dashboardAPI';
 import {
   getDatabaseDetailsByFQN,
   getDatabaseSchemaDetailsByFQN,
-} from 'rest/databaseAPI';
-import { getGlossaryTermByFQN } from 'rest/glossaryAPI';
-import { getMlModelByFQN } from 'rest/mlModelAPI';
-import { getPipelineByFqn } from 'rest/pipelineAPI';
-import { getSearchIndexDetailsByFQN } from 'rest/SearchIndexAPI';
-import { getContainerByFQN } from 'rest/storageAPI';
-import { getStoredProceduresDetailsByFQN } from 'rest/storedProceduresAPI';
-import { getTableDetailsByFQN } from 'rest/tableAPI';
-import { getTopicByFqn } from 'rest/topicsAPI';
+} from '../../rest/databaseAPI';
+import { getGlossaryTermByFQN } from '../../rest/glossaryAPI';
+import { getMlModelByFQN } from '../../rest/mlModelAPI';
+import { getPipelineByFqn } from '../../rest/pipelineAPI';
+import { getSearchIndexDetailsByFQN } from '../../rest/SearchIndexAPI';
+import { getContainerByFQN } from '../../rest/storageAPI';
+import { getStoredProceduresDetailsByFQN } from '../../rest/storedProceduresAPI';
+import { getTableDetailsByFQN } from '../../rest/tableAPI';
+import { getTopicByFqn } from '../../rest/topicsAPI';
 
 export const getEntityExtentionDetailsFromEntityType = <
   T extends ExtentionEntitiesKeys
@@ -63,3 +64,17 @@ export const getEntityExtentionDetailsFromEntityType = <
       console.error(`Custom properties for Entity: ${type} not supported yet.`);
   }
 };
+
+export const EntitiesSupportedCustomProperties: string[] = [
+  SearchIndex.DATABASE,
+  SearchIndex.DATABASE_SCHEMA,
+  SearchIndex.TABLE,
+  SearchIndex.STORED_PROCEDURE,
+  SearchIndex.DASHBOARD,
+  SearchIndex.PIPELINE,
+  SearchIndex.TOPIC,
+  SearchIndex.CONTAINER,
+  SearchIndex.MLMODEL,
+  SearchIndex.SEARCH_INDEX,
+  SearchIndex.GLOSSARY,
+];

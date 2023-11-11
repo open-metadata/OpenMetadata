@@ -15,8 +15,12 @@ package org.openmetadata.service;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.util.EntityUtil.getFlattenedEntityField;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import io.github.classgraph.ClassGraph;
+import io.github.classgraph.ClassInfoList;
+import io.github.classgraph.ScanResult;
 import java.lang.reflect.Modifier;
 import java.net.URI;
 import java.util.ArrayList;
@@ -28,7 +32,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import javax.ws.rs.core.UriInfo;
@@ -36,8 +39,10 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
+import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -56,13 +61,14 @@ import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UsageRepository;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.EntityUtil.Fields;
-import org.reflections.Reflections;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public final class Entity {
   private static volatile boolean initializedRepositories = false;
-  @Getter private static volatile CollectionDAO collectionDAO;
+  @Getter @Setter private static CollectionDAO collectionDAO;
   public static final String SEPARATOR = "."; // Fully qualified name separator
 
   // Canonical entity name to corresponding EntityRepository map
@@ -76,6 +82,7 @@ public final class Entity {
   @Getter @Setter private static UsageRepository usageRepository;
   @Getter @Setter private static SystemRepository systemRepository;
   @Getter @Setter private static ChangeEventRepository changeEventRepository;
+  @Getter @Setter private static SearchRepository searchRepository;
 
   // List of all the entities
   private static final List<String> ENTITY_LIST = new ArrayList<>();
@@ -104,6 +111,8 @@ public final class Entity {
 
   public static final String FIELD_LIFE_CYCLE = "lifeCycle";
 
+  public static final String FIELD_DISABLED = "disabled";
+
   //
   // Service entities
   //
@@ -127,6 +136,8 @@ public final class Entity {
   public static final String DASHBOARD_DATA_MODEL = "dashboardDataModel";
   public static final String PIPELINE = "pipeline";
   public static final String CHART = "chart";
+  public static final String APPLICATION = "app";
+  public static final String APP_MARKET_PLACE_DEF = "appMarketPlaceDefinition";
   public static final String REPORT = "report";
   public static final String TOPIC = "topic";
   public static final String SEARCH_INDEX = "searchIndex";
@@ -181,11 +192,11 @@ public final class Entity {
 
   //
   // Time series entities
-  public static final String ENTITY_REPORT_DATA = "EntityReportData";
-  public static final String WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA = "WebAnalyticEntityViewReportData";
-  public static final String WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA = "WebAnalyticUserActivityReportData";
-  public static final String RAW_COST_ANALYSIS_REPORT_DATA = "RawCostAnalysisReportData";
-  public static final String AGGREGATED_COST_ANALYSIS_REPORT_DATA = "AggregatedCostAnalysisReportData";
+  public static final String ENTITY_REPORT_DATA = "entityReportData";
+  public static final String WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA = "webAnalyticEntityViewReportData";
+  public static final String WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA = "webAnalyticUserActivityReportData";
+  public static final String RAW_COST_ANALYSIS_REPORT_DATA = "rawCostAnalysisReportData";
+  public static final String AGGREGATED_COST_ANALYSIS_REPORT_DATA = "aggregatedCostAnalysisReportData";
 
   //
   // Reserved names in OpenMetadata
@@ -221,7 +232,6 @@ public final class Entity {
   //
   public static final List<String> ACTIVITY_FEED_EXCLUDED_ENTITIES =
       List.of(
-          USER,
           TEAM,
           ROLE,
           POLICY,
@@ -237,21 +247,26 @@ public final class Entity {
 
   private Entity() {}
 
-  public static void initializeRepositories(CollectionDAO collectionDAO) {
+  public static void initializeRepositories(OpenMetadataApplicationConfig config, Jdbi jdbi) {
     if (!initializedRepositories) {
-      Entity.collectionDAO = collectionDAO;
-      tokenRepository = new TokenRepository(collectionDAO);
-      // Check Collection DAO
-      Objects.requireNonNull(collectionDAO, "CollectionDAO must not be null");
-      Set<Class<?>> repositories = getRepositories();
+      tokenRepository = new TokenRepository();
+      List<Class<?>> repositories = getRepositories();
       for (Class<?> clz : repositories) {
         if (Modifier.isAbstract(clz.getModifiers())) {
           continue; // Don't instantiate abstract classes
         }
         try {
-          clz.getDeclaredConstructor(CollectionDAO.class).newInstance(collectionDAO);
+          clz.getDeclaredConstructor().newInstance();
         } catch (Exception e) {
-          LOG.warn("Exception encountered", e);
+          try {
+            clz.getDeclaredConstructor(OpenMetadataApplicationConfig.class).newInstance(config);
+          } catch (Exception ex) {
+            try {
+              clz.getDeclaredConstructor(Jdbi.class).newInstance(jdbi);
+            } catch (Exception exception) {
+              LOG.warn("Exception encountered", exception);
+            }
+          }
         }
       }
       initializedRepositories = true;
@@ -260,6 +275,8 @@ public final class Entity {
 
   public static void cleanup() {
     initializedRepositories = false;
+    collectionDAO = null;
+    searchRepository = null;
     ENTITY_REPOSITORY_MAP.clear();
   }
 
@@ -375,7 +392,6 @@ public final class Entity {
     return getEntity(entityType, id, fields, include, true);
   }
 
-  // TODO remove throwing IOException
   /** Retrieve the entity using id from given entity reference and fields */
   public static <T> T getEntityByName(
       String entityType, String fqn, String fields, Include include, boolean fromCache) {
@@ -509,9 +525,28 @@ public final class Entity {
   }
 
   /** Compile a list of REST collections based on Resource classes marked with {@code Repository} annotation */
-  private static Set<Class<?>> getRepositories() {
-    // Get classes marked with @Repository annotation
-    Reflections reflections = new Reflections("org.openmetadata.service.jdbi3");
-    return reflections.getTypesAnnotatedWith(Repository.class);
+  private static List<Class<?>> getRepositories() {
+    try (ScanResult scanResult = new ClassGraph().enableAnnotationInfo().scan()) {
+      ClassInfoList classList = scanResult.getClassesWithAnnotation(Repository.class);
+      return classList.loadClasses();
+    }
+  }
+
+  public static <T extends FieldInterface> void populateEntityFieldTags(
+      String entityType, List<T> fields, String fqnPrefix, boolean setTags) {
+    EntityRepository<?> repository = Entity.getEntityRepository(entityType);
+    // Get Flattened Fields
+    List<T> flattenedFields = getFlattenedEntityField(fields);
+
+    // Fetch All tags belonging to Prefix
+    Map<String, List<TagLabel>> allTags = repository.getTagsByPrefix(fqnPrefix);
+    for (T c : listOrEmpty(flattenedFields)) {
+      if (setTags) {
+        List<TagLabel> columnTag = allTags.get(FullyQualifiedName.buildHash(c.getFullyQualifiedName()));
+        c.setTags(columnTag == null ? new ArrayList<>() : columnTag);
+      } else {
+        c.setTags(c.getTags());
+      }
+    }
   }
 }

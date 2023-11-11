@@ -6,6 +6,7 @@ import javax.json.JsonValue;
 import javax.ws.rs.core.Response;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.api.configuration.SlackAppConfiguration;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.settings.Settings;
@@ -28,8 +29,8 @@ public class SystemRepository {
   public static final String INTERNAL_SERVER_ERROR_WITH_REASON = "Internal Server Error. Reason :";
   private final SystemDAO dao;
 
-  public SystemRepository(CollectionDAO dao) {
-    this.dao = dao.systemDAO();
+  public SystemRepository() {
+    this.dao = Entity.getCollectionDAO().systemDAO();
     Entity.setSystemRepository(this);
   }
 
@@ -99,6 +100,7 @@ public class SystemRepository {
     return null;
   }
 
+  @Transaction
   public Response createOrUpdate(Settings setting) {
     Settings oldValue = getConfigWithKey(setting.getConfigType().toString());
     try {

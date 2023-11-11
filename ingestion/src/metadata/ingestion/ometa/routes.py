@@ -46,6 +46,10 @@ from metadata.generated.schema.api.data.createStoredProcedure import (
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
+from metadata.generated.schema.api.domains.createDataProduct import (
+    CreateDataProductRequest,
+)
+from metadata.generated.schema.api.domains.createDomain import CreateDomainRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.policies.createPolicy import CreatePolicyRequest
 from metadata.generated.schema.api.services.createDashboardService import (
@@ -71,6 +75,9 @@ from metadata.generated.schema.api.services.createSearchService import (
 )
 from metadata.generated.schema.api.services.createStorageService import (
     CreateStorageServiceRequest,
+)
+from metadata.generated.schema.api.services.ingestionPipelines.createIngestionPipeline import (
+    CreateIngestionPipelineRequest,
 )
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
@@ -104,6 +111,8 @@ from metadata.generated.schema.entity.data.searchIndex import SearchIndex
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
+from metadata.generated.schema.entity.domains.dataProduct import DataProduct
+from metadata.generated.schema.entity.domains.domain import Domain
 from metadata.generated.schema.entity.policies.policy import Policy
 from metadata.generated.schema.entity.services.connections.testConnectionDefinition import (
     TestConnectionDefinition,
@@ -198,6 +207,7 @@ ROUTES = {
     SearchService.__name__: "/services/searchServices",
     CreateSearchServiceRequest.__name__: "/services/searchServices",
     IngestionPipeline.__name__: "/services/ingestionPipelines",
+    CreateIngestionPipelineRequest.__name__: "/services/ingestionPipelines",
     TestConnectionDefinition.__name__: "/services/testConnectionDefinitions",
     # Data Quality
     TestDefinition.__name__: "/dataQuality/testDefinitions",
@@ -210,4 +220,9 @@ ROUTES = {
     WebAnalyticEventData.__name__: "/analytics/web/events/collect",
     DataInsightChart.__name__: "/analytics/dataInsights/charts",
     Kpi.__name__: "/kpi",
+    # Domains & Data Products
+    Domain.__name__: "/domains",
+    CreateDomainRequest.__name__: "/domains",
+    DataProduct.__name__: "/dataProducts",
+    CreateDataProductRequest.__name__: "/dataProducts",
 }

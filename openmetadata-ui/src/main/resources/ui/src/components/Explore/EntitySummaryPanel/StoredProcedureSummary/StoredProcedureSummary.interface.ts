@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { StoredProcedure } from 'generated/entity/data/storedProcedure';
-import { TagLabel } from 'generated/type/tagLabel';
-import { DRAWER_NAVIGATION_OPTIONS } from 'utils/EntityUtils';
+import { StoredProcedure } from '../../../../generated/entity/data/storedProcedure';
+import { TagLabel } from '../../../../generated/type/tagLabel';
+import { DRAWER_NAVIGATION_OPTIONS } from '../../../../utils/EntityUtils';
 
 export interface StoredProcedureSummaryProps {
   entityDetails: StoredProcedure;

@@ -14,40 +14,43 @@
 import { SearchOutlined } from '@ant-design/icons';
 import { Badge } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
-import { ReactComponent as AdminIcon } from 'assets/svg/admin.svg';
-import { ReactComponent as AllActivityIcon } from 'assets/svg/all-activity.svg';
-import { ReactComponent as BotIcon } from 'assets/svg/bot-profile.svg';
-import { ReactComponent as DashboardIcon } from 'assets/svg/dashboard-grey.svg';
-import { ReactComponent as DataInsightIcon } from 'assets/svg/data-insight.svg';
-import { ReactComponent as ElasticSearchIcon } from 'assets/svg/elasticsearch.svg';
-import { ReactComponent as EmailSettingsIcon } from 'assets/svg/email-settings.svg';
-import { ReactComponent as GlossaryIcon } from 'assets/svg/glossary.svg';
-import { ReactComponent as BellIcon } from 'assets/svg/ic-alert-bell.svg';
-import { ReactComponent as CustomLogoIcon } from 'assets/svg/ic-custom-logo.svg';
-import { ReactComponent as DataInsightReportIcon } from 'assets/svg/ic-data-insight-report.svg';
-import { ReactComponent as DatabaseIcon } from 'assets/svg/ic-database.svg';
-import { ReactComponent as SchemaIcon } from 'assets/svg/ic-schema.svg';
-import { ReactComponent as StorageIcon } from 'assets/svg/ic-storage.svg';
-import { ReactComponent as StoredProcedureIcon } from 'assets/svg/ic-stored-procedure.svg';
-import { ReactComponent as RolesIcon } from 'assets/svg/icon-role-grey.svg';
-import { ReactComponent as OMLogo } from 'assets/svg/metadata.svg';
-import { ReactComponent as MlModelIcon } from 'assets/svg/mlmodal.svg';
-import { ReactComponent as PipelineIcon } from 'assets/svg/pipeline-grey.svg';
-import { ReactComponent as PoliciesIcon } from 'assets/svg/policies.svg';
-import { ReactComponent as TableIcon } from 'assets/svg/table-grey.svg';
-import { ReactComponent as TeamsIcon } from 'assets/svg/teams-grey.svg';
-import { ReactComponent as TopicIcon } from 'assets/svg/topic-grey.svg';
-import { ReactComponent as UsersIcon } from 'assets/svg/user.svg';
 import classNames from 'classnames';
+import i18next from 'i18next';
+import React, { ReactNode } from 'react';
+import { ReactComponent as AdminIcon } from '../assets/svg/admin.svg';
+import { ReactComponent as AllActivityIcon } from '../assets/svg/all-activity.svg';
+import { ReactComponent as AppIcon } from '../assets/svg/application.svg';
+import { ReactComponent as BotIcon } from '../assets/svg/bot-profile.svg';
+import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-grey.svg';
+import { ReactComponent as EmailSettingsIcon } from '../assets/svg/email-settings.svg';
+import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
+import { ReactComponent as BellIcon } from '../assets/svg/ic-alert-bell.svg';
+import { ReactComponent as CustomDashboardLogoIcon } from '../assets/svg/ic-custom-dashboard-logo.svg';
+import { ReactComponent as CustomLogoIcon } from '../assets/svg/ic-custom-logo.svg';
+import { ReactComponent as DataInsightReportIcon } from '../assets/svg/ic-data-insight-report.svg';
+import { ReactComponent as DatabaseIcon } from '../assets/svg/ic-database.svg';
+import { ReactComponent as PersonasIcon } from '../assets/svg/ic-personas.svg';
+import { ReactComponent as SchemaIcon } from '../assets/svg/ic-schema.svg';
+import { ReactComponent as StorageIcon } from '../assets/svg/ic-storage.svg';
+import { ReactComponent as StoredProcedureIcon } from '../assets/svg/ic-stored-procedure.svg';
+import { ReactComponent as RolesIcon } from '../assets/svg/icon-role-grey.svg';
+import { ReactComponent as OMLogo } from '../assets/svg/metadata.svg';
+import { ReactComponent as MlModelIcon } from '../assets/svg/mlmodal.svg';
+import { ReactComponent as PipelineIcon } from '../assets/svg/pipeline-grey.svg';
+import { ReactComponent as PoliciesIcon } from '../assets/svg/policies.svg';
+import { ReactComponent as TableIcon } from '../assets/svg/table-grey.svg';
+import { ReactComponent as TeamsIcon } from '../assets/svg/teams-grey.svg';
+import { ReactComponent as TopicIcon } from '../assets/svg/topic-grey.svg';
+import { ReactComponent as UsersIcon } from '../assets/svg/user.svg';
 import {
   ResourceEntity,
   UIPermission,
-} from 'components/PermissionProvider/PermissionProvider.interface';
-import { GlobalSettingOptions } from 'constants/GlobalSettings.constants';
-import { EntityType } from 'enums/entity.enum';
-import i18next from 'i18next';
-import React, { ReactNode } from 'react';
-import { userPermissions } from 'utils/PermissionsUtils';
+} from '../components/PermissionProvider/PermissionProvider.interface';
+import { PLACEHOLDER_ROUTE_FQN, ROUTES } from '../constants/constants';
+import { GlobalSettingOptions } from '../constants/GlobalSettings.constants';
+import { EntityType } from '../enums/entity.enum';
+import { userPermissions } from '../utils/PermissionsUtils';
+import { getEncodedFqn } from './StringsUtils';
 
 export interface MenuListItem {
   label: string;
@@ -97,6 +100,13 @@ export const getGlobalSettingsMenuWithPermission = (
           ),
           key: 'members.admins',
           icon: <AdminIcon className="side-panel-icons" />,
+        },
+
+        {
+          label: i18next.t('label.persona-plural'),
+          isProtected: Boolean(isAdminUser),
+          key: 'members.persona',
+          icon: <PersonasIcon className="side-panel-icons" />,
         },
       ],
     },
@@ -168,15 +178,6 @@ export const getGlobalSettingsMenuWithPermission = (
           icon: <MlModelIcon className="side-panel-icons" />,
         },
         {
-          label: i18next.t('label.metadata'),
-          isProtected: userPermissions.hasViewPermissions(
-            ResourceEntity.METADATA_SERVICE,
-            permissions
-          ),
-          key: 'services.metadata',
-          icon: <OMLogo className="side-panel-icons w-4 h-4" />,
-        },
-        {
           label: i18next.t('label.storage-plural'),
           isProtected: userPermissions.hasViewPermissions(
             ResourceEntity.STORAGE_SERVICE,
@@ -193,6 +194,34 @@ export const getGlobalSettingsMenuWithPermission = (
           ),
           key: 'services.search',
           icon: <SearchOutlined className="side-panel-icons w-4 h-4" />,
+        },
+        {
+          label: i18next.t('label.metadata'),
+          isProtected: userPermissions.hasViewPermissions(
+            ResourceEntity.METADATA_SERVICE,
+            permissions
+          ),
+          key: 'services.metadata',
+          icon: <OMLogo className="side-panel-icons w-4 h-4" />,
+        },
+      ],
+    },
+
+    {
+      category: i18next.t('label.integration-plural'),
+      key: 'integrations',
+      items: [
+        {
+          label: i18next.t('label.application-plural'),
+          isProtected: Boolean(isAdminUser),
+          key: 'integrations.apps',
+          icon: <AppIcon className="side-panel-icons" />,
+        },
+        {
+          label: i18next.t('label.bot-plural'),
+          isProtected: Boolean(isAdminUser),
+          key: 'integrations.bots',
+          icon: <BotIcon className="w-4 side-panel-icons" />,
         },
       ],
     },
@@ -217,6 +246,38 @@ export const getGlobalSettingsMenuWithPermission = (
           isProtected: Boolean(isAdminUser),
           key: 'notifications.dataInsightReport',
           icon: <DataInsightReportIcon className="side-panel-icons" />,
+        },
+      ],
+    },
+    {
+      category: i18next.t('label.open-metadata'),
+      key: 'openMetadata',
+      items: [
+        {
+          label: i18next.t('label.customize-entity', {
+            entity: i18next.t('label.landing-page'),
+          }),
+          isProtected: Boolean(isAdminUser),
+          key: 'openMetadata.customizeLandingPage',
+          icon: <CustomDashboardLogoIcon className="w-4 side-panel-icons" />,
+        },
+        {
+          label: i18next.t('label.email'),
+          isProtected: Boolean(isAdminUser),
+          key: 'openMetadata.email',
+          icon: <EmailSettingsIcon className="w-4 side-panel-icons" />,
+        },
+        {
+          label: i18next.t('label.custom-logo'),
+          isProtected: Boolean(isAdminUser),
+          key: 'openMetadata.customLogo',
+          icon: <CustomLogoIcon className="w-4 side-panel-icons" />,
+        },
+        {
+          label: i18next.t('label.login-configuration'),
+          isProtected: Boolean(isAdminUser),
+          key: 'openMetadata.loginConfiguration',
+          icon: <CustomLogoIcon className="w-4 side-panel-icons" />,
         },
       ],
     },
@@ -289,48 +350,6 @@ export const getGlobalSettingsMenuWithPermission = (
           isProtected: Boolean(isAdminUser),
           key: 'customAttributes.glossaryTerm',
           icon: <GlossaryIcon className="side-panel-icons" />,
-        },
-      ],
-    },
-    {
-      category: i18next.t('label.open-metadata'),
-      key: 'openMetadata',
-      items: [
-        {
-          label: i18next.t('label.search'),
-          isProtected: Boolean(isAdminUser),
-          key: 'openMetadata.search',
-          icon: <ElasticSearchIcon className="w-4 side-panel-icons" />,
-        },
-        {
-          label: i18next.t('label.data-insight'),
-          isProtected: Boolean(isAdminUser),
-          key: 'openMetadata.dataInsight',
-          icon: <DataInsightIcon className="w-4 side-panel-icons" />,
-        },
-        {
-          label: i18next.t('label.email'),
-          isProtected: Boolean(isAdminUser),
-          key: 'openMetadata.email',
-          icon: <EmailSettingsIcon className="w-4 side-panel-icons" />,
-        },
-        {
-          label: i18next.t('label.custom-logo'),
-          isProtected: Boolean(isAdminUser),
-          key: 'openMetadata.customLogo',
-          icon: <CustomLogoIcon className="w-4 side-panel-icons" />,
-        },
-      ],
-    },
-    {
-      category: i18next.t('label.integration-plural'),
-      key: 'integrations',
-      items: [
-        {
-          label: i18next.t('label.bot-plural'),
-          isProtected: Boolean(isAdminUser),
-          key: 'integrations.bots',
-          icon: <BotIcon className="w-4 side-panel-icons" />,
         },
       ],
     },
@@ -420,4 +439,12 @@ export const getSettingOptionByEntityType = (entityType: EntityType) => {
     default:
       return GlobalSettingOptions.TABLES;
   }
+};
+
+export const getCustomizePagePath = (personaFqn: string, pageFqn: string) => {
+  const path = ROUTES.CUSTOMIZE_PAGE;
+
+  return path
+    .replaceAll(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(personaFqn))
+    .replace(':pageFqn', pageFqn);
 };

@@ -21,6 +21,8 @@ need to bring information about:
 
 - **dataPath**: Where we can find the data. This should be a path relative to the top-level container.
 - **structureFormat**: What is the format of the data we are going to find. This information will be used to read the data.
+- **separator**: Optionally, for delimiter-separated formats such as CSV, you can specify the separator to use when reading the file.
+  If you don't, we will use `,` for CSV and `/t` for TSV files.
 
 After ingesting this container, we will bring in the schema of the data in the `dataPath`.
 
@@ -66,7 +68,8 @@ Again, this information will be added on top of the inferred schema from the dat
 ```json {% srNumber=2 %}
         {
             "dataPath": "transactions",
-            "structureFormat": "csv"
+            "structureFormat": "csv",
+            "separator": ","
         },
 ```
 ```json {% srNumber=3 %}
@@ -110,3 +113,31 @@ Again, this information will be added on top of the inferred schema from the dat
     ]
 }
 ```
+
+{% /codeBlock %}
+
+{% /codePreview %}
+
+
+### Global Manifest
+
+You can also manage a **single** manifest file to centralize the ingestion process for any container. In that case,
+you will need to add a `containerName` entry to the structure above. For example:
+
+```yaml
+{
+  "entries": [
+    {
+      "dataPath": "transactions",
+      "structureFormat": "csv",
+      "isPartitioned": false,
+      "containerName": "collate-demo-storage"
+    }
+  ]
+}
+```
+
+You can also keep local manifests in each container, but if possible, we will always try to pick up the global manifest
+during the ingestion.
+
+We will look for a file named `openmetadata_storage_manifest.json`.

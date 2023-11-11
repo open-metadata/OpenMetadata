@@ -15,27 +15,15 @@ import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
 import Card from 'antd/lib/card/Card';
 import { ColumnsType, TableProps } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import NextPrevious from 'components/common/next-previous/NextPrevious';
-import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
-import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
-import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
-import { ListView } from 'components/ListView/ListView.component';
-import { ColumnFilter } from 'components/Table/ColumnFilter/ColumnFilter.component';
-import { getServiceDetailsPath, pagingObject } from 'constants/constants';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { SearchIndex } from 'enums/search.enum';
-import { EntityReference } from 'generated/entity/type';
-import { usePaging } from 'hooks/paging/usePaging';
-import { DatabaseServiceSearchSource } from 'interface/search.interface';
 import { isEmpty, map, startCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
-import { getServices, searchService } from 'rest/serviceAPI';
-import { getServiceLogo, showPagination } from 'utils/CommonUtils';
-import { getEntityName } from 'utils/EntityUtils';
-import { FilterIcon } from 'utils/TableUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
+import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
+import { ListView } from '../../components/ListView/ListView.component';
+import { ColumnFilter } from '../../components/Table/ColumnFilter/ColumnFilter.component';
+import { getServiceDetailsPath, pagingObject } from '../../constants/constants';
 import { CONNECTORS_DOCS } from '../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
@@ -43,9 +31,17 @@ import {
   OPEN_METADATA,
   servicesDisplayName,
 } from '../../constants/Services.constant';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { SearchIndex } from '../../enums/search.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { Operation } from '../../generated/entity/policies/policy';
+import { EntityReference } from '../../generated/entity/type';
+import { usePaging } from '../../hooks/paging/usePaging';
+import { DatabaseServiceSearchSource } from '../../interface/search.interface';
 import { ServicesType } from '../../interface/service.interface';
+import { getServices, searchService } from '../../rest/serviceAPI';
+import { getServiceLogo } from '../../utils/CommonUtils';
+import { getEntityName } from '../../utils/EntityUtils';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { getAddServicePath } from '../../utils/RouterUtils';
 import {
@@ -53,9 +49,13 @@ import {
   getResourceEntityFromServiceCategory,
   getServiceTypesFromServiceCategory,
 } from '../../utils/ServiceUtils';
-import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
-import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
-import PageHeader from '../header/PageHeader.component';
+import { FilterIcon } from '../../utils/TableUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
+import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
+import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NextPrevious from '../common/NextPrevious/NextPrevious';
+import { PagingHandlerParams } from '../common/NextPrevious/NextPrevious.interface';
+import PageHeader from '../PageHeader/PageHeader.component';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 
 interface ServicesProps {
@@ -82,6 +82,7 @@ const Services = ({ serviceName }: ServicesProps) => {
     handlePageChange,
     pageSize,
     handlePageSizeChange,
+    showPagination,
   } = usePaging();
   const { permissions } = usePermissionProvider();
 
@@ -93,13 +94,17 @@ const Services = ({ serviceName }: ServicesProps) => {
       case ServiceCategory.DATABASE_SERVICES:
         return SearchIndex.DATABASE_SERVICE;
       case ServiceCategory.DASHBOARD_SERVICES:
-        return SearchIndex.DASHBOARD_SERCVICE;
+        return SearchIndex.DASHBOARD_SERVICE;
       case ServiceCategory.MESSAGING_SERVICES:
         return SearchIndex.MESSAGING_SERVICE;
       case ServiceCategory.PIPELINE_SERVICES:
         return SearchIndex.PIPELINE_SERVICE;
       case ServiceCategory.ML_MODEL_SERVICES:
         return SearchIndex.ML_MODEL_SERVICE;
+      case ServiceCategory.STORAGE_SERVICES:
+        return SearchIndex.STORAGE_SERVICE;
+      case ServiceCategory.SEARCH_SERVICES:
+        return SearchIndex.SEARCH_SERVICE;
     }
 
     return SearchIndex.DATABASE_SERVICE;
@@ -224,7 +229,7 @@ const Services = ({ serviceName }: ServicesProps) => {
     ) {
       return (
         <ErrorPlaceHolder
-          className="mt-24"
+          className="p-lg"
           doc={CONNECTORS_DOCS}
           heading={servicesDisplayName[serviceName]}
           permission={addServicePermission}
@@ -335,7 +340,7 @@ const Services = ({ serviceName }: ServicesProps) => {
                     serviceName
                   )}>
                   <Typography.Text
-                    className="text-base text-grey-body font-medium truncate w-48"
+                    className="text-base text-grey-body font-medium truncate w-48 d-inline-block"
                     data-testid={`service-name-${service.name}`}
                     title={getEntityName(service)}>
                     {getEntityName(service)}
@@ -460,7 +465,7 @@ const Services = ({ serviceName }: ServicesProps) => {
         />
       </Col>
       <Col span={24}>
-        {showPagination(paging) && (
+        {showPagination && (
           <NextPrevious
             currentPage={currentPage}
             pageSize={pageSize}

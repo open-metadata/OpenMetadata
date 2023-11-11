@@ -13,25 +13,17 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { CreateDomain } from 'generated/api/domains/createDomain';
-import { Domain } from 'generated/entity/domains/domain';
-import { EntityHistory } from 'generated/type/entityHistory';
-import { Include } from 'generated/type/include';
 import { PagingResponse } from 'Models';
-import { getURLWithQueryFields } from 'utils/APIUtils';
+import { CreateDomain } from '../generated/api/domains/createDomain';
+import { Domain } from '../generated/entity/domains/domain';
+import { EntityHistory } from '../generated/type/entityHistory';
+import { ListParams } from '../interface/API.interface';
+import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
-
-type Params = {
-  fields?: string;
-  limit?: number;
-  before?: string;
-  after?: string;
-  include?: Include;
-};
 
 const BASE_URL = '/domains';
 
-export const getDomainList = async (params?: Params) => {
+export const getDomainList = async (params?: ListParams) => {
   const response = await APIClient.get<PagingResponse<Domain[]>>(BASE_URL, {
     params,
   });
@@ -60,10 +52,6 @@ export const patchDomains = async (id: string, patch: Operation[]) => {
   );
 
   return response.data;
-};
-
-export const deleteDomain = (id: string) => {
-  return APIClient.delete(`/domains/${id}`);
 };
 
 export const getDomainByName = async (

@@ -25,18 +25,8 @@ import {
   Tooltip,
 } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
-import { ReactComponent as DropDownIcon } from 'assets/svg/DropDown.svg';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { SummaryCard } from 'components/common/SummaryCard/SummaryCard.component';
-import { SummaryCardProps } from 'components/common/SummaryCard/SummaryCard.interface';
-import DatePickerMenu from 'components/DatePickerMenu/DatePickerMenu.component';
-import { DateRangeObject } from 'components/ProfilerDashboard/component/TestSummary';
-import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import { useTourProvider } from 'components/TourProvider/TourProvider';
-import { mockDatasetData } from 'constants/mockTourData.constants';
-import { TabSpecificField } from 'enums/entity.enum';
-import { Column } from 'generated/entity/data/container';
 import {
   filter,
   find,
@@ -59,32 +49,42 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
-import {
-  getLatestTableProfileByFqn,
-  getTableDetailsByFQN,
-} from 'rest/tableAPI';
-import { getListTestCase, ListTestCaseParams } from 'rest/testAPI';
-import { bytesToSize, getDecodedFqn } from 'utils/StringsUtils';
 import { ReactComponent as ColumnProfileIcon } from '../../assets/svg/column-profile.svg';
 import { ReactComponent as DataQualityIcon } from '../../assets/svg/data-quality.svg';
+import { ReactComponent as DropDownIcon } from '../../assets/svg/DropDown.svg';
 import { ReactComponent as SettingIcon } from '../../assets/svg/ic-settings-primery.svg';
 import { ReactComponent as NoDataIcon } from '../../assets/svg/no-data-icon.svg';
 import { ReactComponent as TableProfileIcon } from '../../assets/svg/table-profile.svg';
+import { SummaryCard } from '../../components/common/SummaryCard/SummaryCard.component';
+import { SummaryCardProps } from '../../components/common/SummaryCard/SummaryCard.interface';
+import DatePickerMenu from '../../components/DatePickerMenu/DatePickerMenu.component';
+import { DateRangeObject } from '../../components/ProfilerDashboard/component/TestSummary';
+import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
+import { useTourProvider } from '../../components/TourProvider/TourProvider';
 import { API_RES_MAX_SIZE } from '../../constants/constants';
+import { mockDatasetData } from '../../constants/mockTourData.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import {
   DEFAULT_RANGE_DATA,
   INITIAL_TEST_RESULT_SUMMARY,
 } from '../../constants/profiler.constant';
+import { TabSpecificField } from '../../enums/entity.enum';
 import { ProfilerDashboardType } from '../../enums/table.enum';
+import { Column } from '../../generated/entity/data/container';
 import { ProfileSampleType, Table } from '../../generated/entity/data/table';
 import { TestCase, TestCaseStatus } from '../../generated/tests/testCase';
 import { EntityType as TestType } from '../../generated/tests/testDefinition';
+import {
+  getLatestTableProfileByFqn,
+  getTableDetailsByFQN,
+} from '../../rest/tableAPI';
+import { getListTestCase, ListTestCaseParams } from '../../rest/testAPI';
 import { updateTestResults } from '../../utils/DataQualityAndProfilerUtils';
 import { getAddDataQualityTableTestPath } from '../../utils/RouterUtils';
+import { bytesToSize, getDecodedFqn } from '../../utils/StringsUtils';
 import { generateEntityLink } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import PageHeader from '../header/PageHeader.component';
+import PageHeader from '../PageHeader/PageHeader.component';
 import { TableProfilerTab } from '../ProfilerDashboard/profilerDashboard.interface';
 import ColumnPickerMenu from './Component/ColumnPickerMenu';
 import ColumnProfileTable from './Component/ColumnProfileTable';
@@ -92,12 +92,12 @@ import ColumnSummary from './Component/ColumnSummary';
 import ProfilerSettingsModal from './Component/ProfilerSettingsModal';
 import TableProfilerChart from './Component/TableProfilerChart';
 import { QualityTab } from './QualityTab/QualityTab.component';
+import './table-profiler.less';
 import {
   OverallTableSummeryType,
   TableProfilerProps,
   TableTestsType,
 } from './TableProfiler.interface';
-import './tableProfiler.less';
 
 const TableProfilerV1: FC<TableProfilerProps> = ({
   isTableDeleted,
@@ -142,6 +142,8 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
   const [dateRangeObject, setDateRangeObject] =
     useState<DateRangeObject>(DEFAULT_RANGE_DATA);
   const [testSuite, setTestSuite] = useState<Table['testSuite']>();
+  const [isTestsLoading, setIsTestsLoading] = useState(false);
+  const [isProfilerDataLoading, setIsProfilerDataLoading] = useState(false);
 
   const isColumnProfile = activeTab === TableProfilerTab.COLUMN_PROFILE;
   const isDataQuality = activeTab === TableProfilerTab.DATA_QUALITY;
@@ -262,7 +264,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
           : '--',
       },
     ];
-  }, [profile, tableTests]);
+  }, [profile]);
 
   const tabOptions = [
     {
@@ -377,7 +379,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
   };
 
   const fetchAllTests = async (params?: ListTestCaseParams) => {
-    setIsLoading(true);
+    setIsTestsLoading(true);
     try {
       const { data } = await getListTestCase({
         ...params,
@@ -391,23 +393,21 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
-      setIsLoading(false);
+      setIsTestsLoading(false);
     }
   };
 
-  const handleTestUpdate = useCallback(
-    (testCase?: TestCase) => {
-      if (isUndefined(testCase)) {
-        return;
-      }
-      const updatedTests = allTests.current.map((test) => {
-        return testCase.id === test.id ? { ...test, ...testCase } : test;
-      });
-      splitTableAndColumnTest(updatedTests);
-      allTests.current = updatedTests;
-    },
-    [allTests.current]
-  );
+  const handleTestUpdate = useCallback((testCase?: TestCase) => {
+    if (isUndefined(testCase)) {
+      return;
+    }
+    const updatedTests = allTests.current.map((test) => {
+      return testCase.id === test.id ? { ...test, ...testCase } : test;
+    });
+    splitTableAndColumnTest(updatedTests);
+    allTests.current = updatedTests;
+  }, []);
+
   const handleTestCaseStatusChange = (value: string) => {
     if (value !== selectedTestCaseStatus) {
       setSelectedTestCaseStatus(value);
@@ -420,7 +420,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
     }
   };
 
-  const getFilterTestCase = () => {
+  const filteredTestCase = useMemo(() => {
     let tests: TestCase[] = [];
     if (selectedTestType === TestType.Table) {
       tests = tableTests.tests;
@@ -435,21 +435,21 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
         selectedTestCaseStatus === '' ||
         data.testCaseResult?.testCaseStatus === selectedTestCaseStatus
     );
-  };
+  }, [tableTests, columnTests, selectedTestCaseStatus]);
 
   const fetchLatestProfilerData = async () => {
     // As we are encoding the fqn in API function to apply all over the application
     // and the datasetFQN comes form url parameter which is already encoded,
     // we are decoding FQN below to avoid double encoding in the API function
     const decodedDatasetFQN = decodeURIComponent(datasetFQN);
-    setIsLoading(true);
+    setIsProfilerDataLoading(true);
     try {
       const response = await getLatestTableProfileByFqn(decodedDatasetFQN);
       setTable(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
-      setIsLoading(false);
+      setIsProfilerDataLoading(false);
     }
   };
 
@@ -493,6 +493,8 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
   useEffect(() => {
     if (isDataQuality && isUndefined(testSuite)) {
       fetchTestSuiteDetails();
+    } else {
+      setIsLoading(false);
     }
   }, [isDataQuality, testSuite]);
 
@@ -503,7 +505,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
     if (fetchTest) {
       fetchAllTests();
     }
-  }, [viewTest, isTourOpen, isTableProfile, allTests]);
+  }, [viewTest, isTourOpen, isTableProfile]);
 
   useEffect(() => {
     const fetchProfiler =
@@ -575,7 +577,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
                     handleDateRangeChange={handleDateRangeChange}
                   />
                 )}
-                {!isEmpty(activeColumnFqn) && (
+                {!isEmpty(activeColumnFqn) && !isTableDeleted && (
                   <ColumnPickerMenu
                     activeColumnFqn={activeColumnFqn}
                     columns={columns}
@@ -583,7 +585,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
                   />
                 )}
 
-                {editTest && (
+                {editTest && !isTableDeleted && (
                   <Dropdown
                     menu={{
                       items: addButtonContent,
@@ -601,7 +603,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
                   </Dropdown>
                 )}
 
-                {editDataProfile && !isDataQuality && (
+                {editDataProfile && !isDataQuality && !isTableDeleted && (
                   <Tooltip
                     placement="topRight"
                     title={t('label.setting-plural')}>
@@ -689,16 +691,16 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
               }))}
               dateRangeObject={dateRangeObject}
               hasEditAccess={editTest}
-              isLoading={isLoading}
+              isLoading={isProfilerDataLoading || isLoading}
             />
           )}
 
           {isDataQuality && (
             <QualityTab
               afterDeleteAction={fetchAllTests}
-              isLoading={isLoading}
+              isLoading={isTestsLoading || isLoading}
               showTableColumn={false}
-              testCases={getFilterTestCase()}
+              testCases={filteredTestCase}
               testSuite={testSuite}
               onTestCaseResultUpdate={handleResultUpdate}
               onTestUpdate={handleTestUpdate}

@@ -12,6 +12,17 @@
  */
 import { interceptURL, verifyResponseStatusCode } from './common';
 
+export const searchServiceFromSettingPage = (service) => {
+  interceptURL(
+    'GET',
+    'api/v1/search/query?q=*&from=0&size=15&index=*',
+    'searchService'
+  );
+  cy.get('[data-testid="searchbar"]').type(service);
+
+  verifyResponseStatusCode('@searchService', 200);
+};
+
 export const visitServiceDetailsPage = (service, verifyHeader = true) => {
   // Click on settings page
   interceptURL(
@@ -30,15 +41,9 @@ export const visitServiceDetailsPage = (service, verifyHeader = true) => {
     .should('be.visible')
     .click();
 
-  cy.wait('@getServices').then((interception) => {
-    const responseBody = interception.response.body;
-    // check if service name is received on the first page otherwise, click on Next button
-    const item = responseBody.data.find((item) => item.name === service.name);
-    if (!item && responseBody.paging.after) {
-      cy.get('[data-testid="next"]').click();
-      verifyResponseStatusCode('@getServices', 200);
-    }
-  });
+  cy.wait('@getServices');
+
+  searchServiceFromSettingPage(service.name);
 
   // click on created service
   cy.get(`[data-testid="service-name-${service.name}"]`)

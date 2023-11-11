@@ -29,7 +29,8 @@ import javax.ws.rs.client.WebTarget;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
-import org.openmetadata.api.configuration.ApplicationConfiguration;
+import org.openmetadata.api.configuration.LogoConfiguration;
+import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -88,12 +89,23 @@ class ConfigResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  void get_application_configs_200_OK() throws IOException {
-    WebTarget target = getConfigResource("applicationConfig");
-    ApplicationConfiguration applicationConfiguration =
-        TestUtils.get(target, ApplicationConfiguration.class, TEST_AUTH_HEADERS);
-    assertEquals(config.getApplicationConfiguration().getLogoConfig(), applicationConfiguration.getLogoConfig());
-    assertEquals(config.getApplicationConfiguration().getLoginConfig(), applicationConfiguration.getLoginConfig());
+  void get_Custom_Logo_Configuration_200_OK() throws IOException {
+    // Test Against Default Values
+    WebTarget target = getConfigResource("customLogoConfiguration");
+    LogoConfiguration logoConfiguration = TestUtils.get(target, LogoConfiguration.class, TEST_AUTH_HEADERS);
+
+    assertEquals("", logoConfiguration.getCustomLogoUrlPath());
+    assertEquals("", logoConfiguration.getCustomMonogramUrlPath());
+  }
+
+  @Test
+  void get_Login_Configuration_200_OK() throws IOException {
+    // Test Against Default Values
+    WebTarget target = getConfigResource("loginConfig");
+    LoginConfiguration loginConfiguration = TestUtils.get(target, LoginConfiguration.class, TEST_AUTH_HEADERS);
+    assertEquals(3, loginConfiguration.getMaxLoginFailAttempts());
+    assertEquals(600, loginConfiguration.getAccessBlockTime());
+    assertEquals(3600, loginConfiguration.getJwtTokenExpiryTime());
   }
 
   @Test

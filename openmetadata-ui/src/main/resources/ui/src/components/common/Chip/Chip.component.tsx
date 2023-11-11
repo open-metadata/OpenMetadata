@@ -10,12 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Popover, Space, Tag, Typography } from 'antd';
-import { USER_DATA_SIZE } from 'constants/constants';
-import { EntityReference } from 'generated/entity/type';
+import { Col, Popover, Row, Space, Tag, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
-import { getEntityName } from 'utils/EntityUtils';
+import {
+  NO_DATA_PLACEHOLDER,
+  USER_DATA_SIZE,
+} from '../../../constants/constants';
+import { EntityReference } from '../../../generated/entity/type';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { ChipProps } from './Chip.interface';
 
 const Chip = ({
@@ -32,17 +35,15 @@ const Chip = ({
   );
 
   const getChipElement = (item: EntityReference) => (
-    <Space
-      align="center"
-      className="w-full m-b-xs"
+    <Col
+      className="d-flex gap-1 items-center"
       data-testid={item.name}
-      key={item.name}
-      size={6}>
-      <div className="m-t-xss">{icon}</div>
-      <Typography.Text className="w-56 text-left" ellipsis={{ tooltip: true }}>
+      key={item.name}>
+      {icon}
+      <Typography.Text className="text-left">
         {getEntityName(item)}
       </Typography.Text>
-    </Space>
+    </Col>
   );
 
   useEffect(() => {
@@ -51,14 +52,18 @@ const Chip = ({
 
   if (isEmpty(data) && showNoDataPlaceholder) {
     return (
-      <Typography.Paragraph className="text-grey-muted">
-        {noDataPlaceholder}
+      <Typography.Paragraph className="text-grey-muted m-b-0">
+        {noDataPlaceholder ?? NO_DATA_PLACEHOLDER}
       </Typography.Paragraph>
     );
   }
 
   return (
-    <Space wrap data-testid="chip-container" size={4}>
+    <Row
+      wrap
+      className="align-middle"
+      data-testid="chip-container"
+      gutter={[20, 6]}>
       {data.slice(0, USER_DATA_SIZE).map(getChipElement)}
       {hasMoreElement && (
         <Popover
@@ -75,7 +80,7 @@ const Chip = ({
           } more`}</Tag>
         </Popover>
       )}
-    </Space>
+    </Row>
   );
 };
 

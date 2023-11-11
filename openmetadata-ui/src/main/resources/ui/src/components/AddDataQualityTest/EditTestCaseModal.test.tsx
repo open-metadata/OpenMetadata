@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import React, { forwardRef } from 'react';
 import {
   MOCK_TEST_CASE,
   MOCK_TEST_DEFINITION_COLUMN_VALUES_TO_MATCH_REGEX,
-} from 'mocks/TestSuite.mock';
-import React, { forwardRef } from 'react';
+} from '../../mocks/TestSuite.mock';
 import { EditTestCaseModalProps } from './AddDataQualityTest.interface';
 import EditTestCaseModal from './EditTestCaseModal';
 
@@ -26,7 +26,7 @@ const mockProps: EditTestCaseModalProps = {
   onUpdate: jest.fn(),
 };
 
-jest.mock('../common/rich-text-editor/RichTextEditor', () => {
+jest.mock('../common/RichTextEditor/RichTextEditor', () => {
   return forwardRef(
     jest.fn().mockImplementation(() => <div>RichTextEditor.component</div>)
   );
@@ -34,7 +34,7 @@ jest.mock('../common/rich-text-editor/RichTextEditor', () => {
 jest.mock('./components/ParameterForm', () => {
   return jest.fn().mockImplementation(() => <div>ParameterForm.component</div>);
 });
-jest.mock('rest/testAPI', () => {
+jest.mock('../../rest/testAPI', () => {
   return {
     getTestDefinitionById: jest
       .fn()

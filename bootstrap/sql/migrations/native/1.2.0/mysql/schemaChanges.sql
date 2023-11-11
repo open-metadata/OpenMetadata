@@ -186,4 +186,91 @@ CREATE TABLE IF NOT EXISTS doc_store (
     INDEX doc_store_name_index(name)
 );
 
+-- Remove Mark All Deleted Field
+UPDATE ingestion_pipeline_entity
+SET json = JSON_REMOVE(json, '$.sourceConfig.config.markAllDeletedTables')
+WHERE JSON_EXTRACT(json, '$.pipelineType') = 'metadata';
 
+
+-- update entityReportData from pascale to camel case
+UPDATE report_data_time_series
+SET json = JSON_INSERT(
+    JSON_REMOVE(json, '$.reportDataType'),
+    '$.reportDataType',
+    'entityReportData'),
+    entityFQNHash = MD5('entityReportData')
+WHERE JSON_EXTRACT(json, '$.reportDataType') = 'EntityReportData';
+
+-- update webAnalyticEntityViewReportData from pascale to camel case
+UPDATE report_data_time_series
+SET json = JSON_INSERT(
+    JSON_REMOVE(json, '$.reportDataType'),
+    '$.reportDataType',
+    'webAnalyticEntityViewReportData'),
+    entityFQNHash = MD5('webAnalyticEntityViewReportData')
+WHERE JSON_EXTRACT(json, '$.reportDataType') = 'WebAnalyticEntityViewReportData';
+
+-- update webAnalyticUserActivityReportData from pascale to camel case
+UPDATE report_data_time_series
+SET json = JSON_INSERT(
+    JSON_REMOVE(json, '$.reportDataType'),
+    '$.reportDataType',
+    'webAnalyticUserActivityReportData'),
+    entityFQNHash = MD5('webAnalyticUserActivityReportData')
+WHERE JSON_EXTRACT(json, '$.reportDataType') = 'WebAnalyticUserActivityReportData';
+
+CREATE TABLE IF NOT EXISTS installed_apps (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+    nameHash VARCHAR(256)  NOT NULL COLLATE ascii_bin,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
+    json JSON NOT NULL,
+    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
+    deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
+    PRIMARY KEY (id),
+    UNIQUE (nameHash)
+    );
+   
+CREATE TABLE IF NOT EXISTS apps_marketplace (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+    nameHash VARCHAR(256)  NOT NULL COLLATE ascii_bin,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
+    json JSON NOT NULL,
+    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
+    deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
+    PRIMARY KEY (id),
+    UNIQUE (nameHash)
+    );
+   
+CREATE TABLE IF NOT EXISTS apps_extension_time_series (
+    appId VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.appId') STORED NOT NULL,      
+    json JSON NOT NULL,
+	timestamp BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.timestamp') NOT NULL
+);  
+
+-- Adding back the COLLATE queries from 1.1.5 to keep the correct VARCHAR length
+ALTER TABLE glossary_term_entity MODIFY fqnHash VARCHAR(756) COLLATE ascii_bin;
+
+-- We don't have an ID, so we'll create a temp SERIAL number and use it for deletion
+ALTER TABLE entity_extension_time_series ADD COLUMN temp SERIAL;
+WITH CTE AS (
+  SELECT temp, ROW_NUMBER() OVER (PARTITION BY entityFQNHash, extension, timestamp ORDER BY entityFQNHash) RN FROM entity_extension_time_series)
+DELETE FROM entity_extension_time_series WHERE temp in (SELECT temp FROM CTE WHERE RN > 1);
+ALTER TABLE entity_extension_time_series DROP COLUMN temp;
+
+ALTER TABLE entity_extension_time_series MODIFY COLUMN entityFQNHash VARCHAR(768) COLLATE ascii_bin, MODIFY COLUMN jsonSchema VARCHAR(256) COLLATE ascii_bin, MODIFY COLUMN extension VARCHAR(256) COLLATE ascii_bin,
+    ADD CONSTRAINT entity_extension_time_series_constraint UNIQUE (entityFQNHash, extension, timestamp);
+
+-- Airflow pipeline status set to millis
+UPDATE entity_extension_time_series ts
+JOIN pipeline_entity p
+  ON ts.entityFQNHash  = p.fqnHash
+SET ts.json = JSON_INSERT(
+    JSON_REMOVE(ts.json, '$.timestamp'),
+    '$.timestamp',
+    JSON_EXTRACT(ts.json, '$.timestamp') * 1000
+ )
+WHERE ts.extension = 'pipeline.pipelineStatus'
+  AND JSON_EXTRACT(p.json, '$.serviceType') in ('Airflow', 'GluePipeline', 'Airbyte', 'Dagster', 'DomoPipeline')
+;

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { DateRangeObject } from 'components/ProfilerDashboard/component/TestSummary';
+import { DateRangeObject } from '../../components/ProfilerDashboard/component/TestSummary';
 import { SystemProfile } from '../../generated/api/data/createTableProfile';
 import {
   Column,
@@ -91,6 +91,7 @@ export interface ProfilerSettingModalState {
   data: TableProfilerConfig | undefined;
   sqlQuery: string;
   profileSample: number | undefined;
+  sampleDataCount?: number;
   excludeCol: string[];
   includeCol: ColumnProfilerConfig[];
   enablePartition: boolean;

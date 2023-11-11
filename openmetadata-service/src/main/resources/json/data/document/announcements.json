@@ -1,0 +1,10 @@
+{
+  "name": "Announcements",
+  "displayName": "Announcements",
+  "description": "Announcements KnowledgePanel shows the Announcements from teams,users published on Data Assets.",
+  "entityType": "KnowledgePanel",
+  "fullyQualifiedName": "KnowledgePanel.Announcements",
+  "data": {
+    "gridSizes": ["small"]
+  }
+}

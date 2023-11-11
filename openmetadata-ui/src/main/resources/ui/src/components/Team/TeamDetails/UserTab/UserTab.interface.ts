@@ -10,23 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { NextPreviousProps } from 'components/common/next-previous/NextPrevious.interface';
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import { Team } from 'generated/entity/teams/team';
-import { User } from 'generated/entity/teams/user';
-import { EntityReference } from 'generated/type/entityReference';
-import { Paging } from 'generated/type/paging';
+import { OperationPermission } from '../../../../components/PermissionProvider/PermissionProvider.interface';
+import { Team } from '../../../../generated/entity/teams/team';
+import { EntityReference } from '../../../../generated/type/entityReference';
 
 export interface UserTabProps {
-  users: User[];
-  searchText: string;
-  isLoading: number;
   permission: OperationPermission;
   currentTeam: Team;
-  onSearchUsers: (text: string) => void;
   onAddUser: (data: EntityReference[]) => void;
-  paging: Paging;
-  onChangePaging: NextPreviousProps['pagingHandler'];
-  currentPage: number;
   onRemoveUser: (id: string) => Promise<void>;
 }

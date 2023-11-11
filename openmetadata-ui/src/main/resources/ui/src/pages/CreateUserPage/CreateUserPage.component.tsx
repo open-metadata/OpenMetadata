@@ -12,18 +12,14 @@
  */
 
 import { AxiosError } from 'axios';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import CreateUserComponent from 'components/CreateUser/CreateUser.component';
 import _ from 'lodash';
 import { observer } from 'mobx-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { createBotWithPut } from 'rest/botsAPI';
-import { getRoles } from 'rest/rolesAPIV1';
-import { createUser, createUserWithPut, getBotByName } from 'rest/userAPI';
-import { getIsErrorMatch } from 'utils/CommonUtils';
+import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import CreateUserComponent from '../../components/CreateUser/CreateUser.component';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
   ERROR_MESSAGE,
   getBotsPagePath,
@@ -36,6 +32,14 @@ import {
 } from '../../constants/GlobalSettings.constants';
 import { CreateUser } from '../../generated/api/teams/createUser';
 import { Role } from '../../generated/entity/teams/role';
+import { createBotWithPut } from '../../rest/botsAPI';
+import { getRoles } from '../../rest/rolesAPIV1';
+import {
+  createUser,
+  createUserWithPut,
+  getBotByName,
+} from '../../rest/userAPI';
+import { getIsErrorMatch } from '../../utils/CommonUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 

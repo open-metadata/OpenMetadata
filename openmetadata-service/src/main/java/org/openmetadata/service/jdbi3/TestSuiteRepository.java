@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.UUID;
 import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestCase;
@@ -32,13 +33,12 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   private static final String UPDATE_FIELDS = "tests";
   private static final String PATCH_FIELDS = "tests";
 
-  public TestSuiteRepository(CollectionDAO dao) {
+  public TestSuiteRepository() {
     super(
         TestSuiteResource.COLLECTION_PATH,
         TEST_SUITE,
         TestSuite.class,
-        dao.testSuiteDAO(),
-        dao,
+        Entity.getCollectionDAO().testSuiteDAO(),
         PATCH_FIELDS,
         UPDATE_FIELDS);
     quoteFqn = false;
@@ -199,6 +199,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
       super(original, updated, operation);
     }
 
+    @Transaction
     @Override
     public void entitySpecificUpdate() {
       List<EntityReference> origTests = listOrEmpty(original.getTests());

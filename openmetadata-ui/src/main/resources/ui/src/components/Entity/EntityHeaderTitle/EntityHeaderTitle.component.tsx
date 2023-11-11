@@ -12,13 +12,14 @@
  */
 import { ExclamationCircleFilled } from '@ant-design/icons';
 import { Badge, Col, Row, Typography } from 'antd';
-import { ReactComponent as IconExternalLink } from 'assets/svg/external-link-grey.svg';
-import { ROUTES } from 'constants/constants';
 import { isEmpty } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router-dom';
-import { stringToHTML } from 'utils/StringsUtils';
+import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-link-grey.svg';
+import { TEXT_COLOR } from '../../../constants/Color.constants';
+import { ROUTES } from '../../../constants/constants';
+import { stringToHTML } from '../../../utils/StringsUtils';
 import { EntityHeaderTitleProps } from './EntityHeaderTitle.interface';
 
 const EntityHeaderTitle = ({
@@ -32,6 +33,7 @@ const EntityHeaderTitle = ({
   badge,
   isDisabled,
   className,
+  color,
 }: EntityHeaderTitleProps) => {
   const { t } = useTranslation();
   const location = useLocation();
@@ -63,7 +65,8 @@ const EntityHeaderTitle = ({
         <Typography.Text
           className="m-b-0 d-block entity-header-display-name text-lg font-semibold"
           data-testid="entity-header-display-name"
-          ellipsis={{ tooltip: true }}>
+          ellipsis={{ tooltip: true }}
+          style={{ color: color ?? TEXT_COLOR }}>
           {stringToHTML(displayName || name)}
           {openEntityInNewPage && (
             <IconExternalLink

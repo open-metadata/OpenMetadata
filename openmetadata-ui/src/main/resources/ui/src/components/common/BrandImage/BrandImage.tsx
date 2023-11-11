@@ -10,10 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import MonoGram from 'assets/svg/logo-monogram.svg';
-import Logo from 'assets/svg/logo.svg';
-import { useApplicationConfigProvider } from 'components/ApplicationConfigProvider/ApplicationConfigProvider';
-import React, { FC } from 'react';
+import React, { FC, useMemo } from 'react';
+import { useApplicationConfigContext } from '../../../components/ApplicationConfigProvider/ApplicationConfigProvider';
+import brandImageClassBase from '../../../utils/BrandImage/BrandImageClassBase';
 
 interface BrandImageProps {
   dataTestId?: string;
@@ -32,8 +31,16 @@ const BrandImage: FC<BrandImageProps> = ({
   className,
   isMonoGram = false,
 }) => {
+  const { MonoGram, Logo } = useMemo(
+    () => ({
+      MonoGram: brandImageClassBase.getMonogram().src,
+      Logo: brandImageClassBase.getLogo().src,
+    }),
+    []
+  );
+
   const { customLogoUrlPath = '', customMonogramUrlPath = '' } =
-    useApplicationConfigProvider();
+    useApplicationConfigContext();
 
   const logoSource = isMonoGram
     ? customMonogramUrlPath || MonoGram

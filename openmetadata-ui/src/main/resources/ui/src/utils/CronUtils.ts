@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { isEmpty, toNumber } from 'lodash';
 import {
   combinations,
   getDayCron,
@@ -21,7 +22,7 @@ import {
   getYearCron,
   SELECTED_PERIOD_OPTIONS,
   toDisplay,
-} from 'components/common/CronEditor/CronEditor.constant';
+} from '../components/common/CronEditor/CronEditor.constant';
 import {
   Combination,
   CronType,
@@ -29,8 +30,36 @@ import {
   SelectedYearOption,
   StateValue,
   ToDisplay,
-} from 'components/common/CronEditor/CronEditor.interface';
-import { isEmpty, toNumber } from 'lodash';
+} from '../components/common/CronEditor/CronEditor.interface';
+
+export const getQuartzCronExpression = (state: StateValue) => {
+  const {
+    selectedPeriod,
+    selectedMinOption,
+    selectedHourOption,
+    selectedDayOption,
+    selectedWeekOption,
+    selectedMonthOption,
+    selectedYearOption,
+  } = state;
+
+  switch (selectedPeriod) {
+    case 'minute':
+      return `0 0/${selectedMinOption.min} * * * ?`;
+    case 'hour':
+      return `0 ${selectedHourOption.min} * * * ?`;
+    case 'day':
+      return `0 ${selectedDayOption.min} ${selectedDayOption.hour} * * ?`;
+    case 'week':
+      return `0 ${selectedWeekOption.min} ${selectedWeekOption.hour} ? * ${selectedWeekOption.dow}`;
+    case 'month':
+      return `0 ${selectedMonthOption.min} ${selectedMonthOption.hour} ${selectedMonthOption.dom} * ?`;
+    case 'year':
+      return `0 ${selectedYearOption.min} ${selectedYearOption.hour} ${selectedYearOption.dom} ${selectedYearOption.mon} ?`;
+    default:
+      return null;
+  }
+};
 
 export const getCron = (state: StateValue) => {
   const {

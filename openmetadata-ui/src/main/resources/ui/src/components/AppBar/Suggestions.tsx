@@ -13,24 +13,24 @@
 
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
-import Loader from 'components/Loader/Loader';
-import { PAGE_SIZE_BASE } from 'constants/constants';
-import { ALL_EXPLORE_SEARCH_INDEX } from 'constants/explore.constants';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import Loader from '../../components/Loader/Loader';
+import { PAGE_SIZE_BASE } from '../../constants/constants';
+import { ALL_EXPLORE_SEARCH_INDEX } from '../../constants/explore.constants';
+import { SearchIndex } from '../../enums/search.enum';
 import {
   ContainerSearchSource,
   DashboardDataModelSearchSource,
   StoredProcedureSearchSource,
-} from 'interface/search.interface';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { searchData } from 'rest/miscAPI';
-import { Transi18next } from 'utils/CommonUtils';
+} from '../../interface/search.interface';
+import { searchData } from '../../rest/miscAPI';
+import { Transi18next } from '../../utils/CommonUtils';
 import {
   filterOptionsByIndex,
   getGroupLabel,
   getSuggestionElement,
-} from 'utils/SearchUtils';
-import { SearchIndex } from '../../enums/search.enum';
+} from '../../utils/SearchUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
   DashboardSource,
@@ -44,6 +44,7 @@ import {
   TagSource,
   TopicSource,
 } from '../GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
+import { useTourProvider } from '../TourProvider/TourProvider';
 
 type SuggestionProp = {
   searchText: string;
@@ -58,6 +59,7 @@ const Suggestions = ({
   searchCriteria,
 }: SuggestionProp) => {
   const { t } = useTranslation();
+  const { isTourOpen } = useTourProvider();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [options, setOptions] = useState<Array<Option>>([]);
   const [tableSuggestions, setTableSuggestions] = useState<TableSource[]>([]);
@@ -210,8 +212,10 @@ const Suggestions = ({
   }, [searchText, searchCriteria]);
 
   useEffect(() => {
-    if (!isMounting.current && searchText) {
+    if (!isMounting.current && searchText && !isTourOpen) {
       fetchSearchData();
+    } else {
+      setIsLoading(false);
     }
   }, [searchText, searchCriteria]);
 
@@ -224,7 +228,7 @@ const Suggestions = ({
     return <Loader />;
   }
 
-  if (options.length === 0) {
+  if (options.length === 0 && !isTourOpen) {
     return (
       <Typography.Text>
         <Transi18next

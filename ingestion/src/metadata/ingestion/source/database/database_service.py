@@ -12,7 +12,7 @@
 Base class for ingesting database services
 """
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, List, Optional, Set, Tuple
+from typing import Any, Iterable, List, Optional, Set, Tuple, Union
 
 from pydantic import BaseModel
 from sqlalchemy.engine import Inspector
@@ -32,7 +32,6 @@ from metadata.generated.schema.api.services.createDatabaseService import (
 )
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.query import Query
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
 from metadata.generated.schema.entity.data.table import (
     Column,
@@ -56,7 +55,6 @@ from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
-from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.topology import (
@@ -66,7 +64,6 @@ from metadata.ingestion.models.topology import (
     create_source_context,
 )
 from metadata.ingestion.source.connections import get_test_connection_fn
-from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_schema
 from metadata.utils.logger import ingestion_logger
@@ -105,7 +102,10 @@ class DatabaseServiceTopology(ServiceTopology):
             ),
         ],
         children=["database"],
-        post_process=["yield_view_lineage"],
+        # Note how we have `yield_view_lineage` and `yield_stored_procedure_lineage`
+        # as post_processed. This is because we cannot ensure proper lineage processing
+        # until we have finished ingesting all the metadata from the source.
+        post_process=["yield_view_lineage", "yield_procedure_lineage_and_queries"],
     )
     database = TopologyNode(
         producer="get_database_names",
@@ -167,26 +167,10 @@ class DatabaseServiceTopology(ServiceTopology):
         stages=[
             NodeStage(
                 type_=StoredProcedure,
-                context="stored_procedure",
+                context="stored_procedures",
                 processor="yield_stored_procedure",
                 consumer=["database_service", "database", "database_schema"],
-            ),
-        ],
-        children=["stored_procedure_queries"],
-    )
-    stored_procedure_queries = TopologyNode(
-        producer="get_stored_procedure_queries",
-        stages=[
-            NodeStage(
-                type_=AddLineageRequest,
-                processor="yield_procedure_lineage",
-                context="stored_procedure_query_lineage",  # Used to flag if the query has had processed lineage
-                nullable=True,
-            ),
-            NodeStage(
-                type_=Query,
-                processor="yield_procedure_query",
-                nullable=True,
+                cache_all=True,
             ),
         ],
     )
@@ -340,20 +324,10 @@ class DatabaseServiceSource(
         """Process the stored procedure information"""
 
     @abstractmethod
-    def get_stored_procedure_queries(self) -> Iterable[QueryByProcedure]:
-        """List the queries associated to a stored procedure"""
-
-    @abstractmethod
-    def yield_procedure_query(
-        self, query_by_procedure: QueryByProcedure
-    ) -> Iterable[Either[CreateQueryRequest]]:
-        """Process the stored procedure query"""
-
-    @abstractmethod
-    def yield_procedure_lineage(
-        self, query_by_procedure: QueryByProcedure
-    ) -> Iterable[Either[AddLineageRequest]]:
-        """Add procedure lineage from its query"""
+    def yield_procedure_lineage_and_queries(
+        self,
+    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
+        """Extracts the lineage information from Stored Procedures"""
 
     def get_raw_database_schema_names(self) -> Iterable[str]:
         """
@@ -429,39 +403,6 @@ class DatabaseServiceSource(
 
         self.database_source_state.add(table_fqn)
 
-    def fetch_all_schema_and_delete_tables(self) -> Iterable[Either[DeleteEntity]]:
-        """
-        Fetch all schemas and delete tables
-        """
-        database_fqn = fqn.build(
-            self.metadata,
-            entity_type=Database,
-            service_name=self.config.serviceName,
-            database_name=self.context.database.name.__root__,
-        )
-        schema_list = self.metadata.list_all_entities(
-            entity=DatabaseSchema, params={"database": database_fqn}
-        )
-        for schema in schema_list:
-            yield from delete_entity_from_source(
-                metadata=self.metadata,
-                entity_type=Table,
-                entity_source_state=self.database_source_state,
-                mark_deleted_entity=self.source_config.markDeletedTables,
-                params={"databaseSchema": schema.fullyQualifiedName.__root__},
-            )
-
-        # Delete the schema
-        yield from delete_entity_from_source(
-            metadata=self.metadata,
-            entity_type=DatabaseSchema,
-            entity_source_state=list(
-                self._get_filtered_schema_names(return_fqn=True, add_to_status=False)
-            ),
-            mark_deleted_entity=self.source_config.markDeletedTables,
-            params={"database": database_fqn},
-        )
-
     def _get_filtered_schema_names(
         self, return_fqn: bool = False, add_to_status: bool = True
     ) -> Iterable[str]:
@@ -490,24 +431,18 @@ class DatabaseServiceSource(
             logger.info(
                 f"Mark Deleted Tables set to True. Processing database [{self.context.database.name.__root__}]"
             )
-            # If markAllDeletedTables is True, all tables Which are not in FilterPattern will be deleted
-            if self.source_config.markAllDeletedTables:
-                yield from self.fetch_all_schema_and_delete_tables()
+            schema_fqn_list = self._get_filtered_schema_names(
+                return_fqn=True, add_to_status=False
+            )
 
-            # If markAllDeletedTables is False (Default), Only delete tables which are deleted from the datasource
-            else:
-                schema_fqn_list = self._get_filtered_schema_names(
-                    return_fqn=True, add_to_status=False
+            for schema_fqn in schema_fqn_list:
+                yield from delete_entity_from_source(
+                    metadata=self.metadata,
+                    entity_type=Table,
+                    entity_source_state=self.database_source_state,
+                    mark_deleted_entity=self.source_config.markDeletedTables,
+                    params={"database": schema_fqn},
                 )
-
-                for schema_fqn in schema_fqn_list:
-                    yield from delete_entity_from_source(
-                        metadata=self.metadata,
-                        entity_type=Table,
-                        entity_source_state=self.database_source_state,
-                        mark_deleted_entity=self.source_config.markDeletedTables,
-                        params={"database": schema_fqn},
-                    )
 
     def yield_life_cycle_data(self, _) -> Iterable[Either[OMetaLifeCycleData]]:
         """

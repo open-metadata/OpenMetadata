@@ -25,6 +25,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -53,6 +54,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.DocumentRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
@@ -87,6 +89,12 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
 
   public static class DocumentList extends ResultList<Document> {
     /* Required for serde */
+  }
+
+  @Override
+  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+    // Load any existing rules from database, before loading seed data.
+    repository.initSeedDataFromResources();
   }
 
   @GET
@@ -332,7 +340,8 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
   }
 
   private Document getDocument(CreateDocument cd, String user) {
-    return copy(new Document(), cd, user)
+    return repository
+        .copy(new Document(), cd, user)
         .withFullyQualifiedName(cd.getFullyQualifiedName())
         .withData(cd.getData())
         .withEntityType(cd.getEntityType());

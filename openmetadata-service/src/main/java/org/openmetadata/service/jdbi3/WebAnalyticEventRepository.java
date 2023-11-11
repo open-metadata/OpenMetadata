@@ -8,6 +8,7 @@ import javax.ws.rs.core.Response;
 import org.openmetadata.schema.analytics.WebAnalyticEvent;
 import org.openmetadata.schema.analytics.WebAnalyticEventData;
 import org.openmetadata.schema.analytics.type.WebAnalyticEventType;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
@@ -16,8 +17,14 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
   public static final String COLLECTION_PATH = "/v1/analytics/web/events";
   private static final String WEB_ANALYTICS_EVENT_DATA_EXTENSION = "webAnalyticEvent.webAnalyticEventData";
 
-  public WebAnalyticEventRepository(CollectionDAO dao) {
-    super(COLLECTION_PATH, WEB_ANALYTIC_EVENT, WebAnalyticEvent.class, dao.webAnalyticEventDAO(), dao, "", "");
+  public WebAnalyticEventRepository() {
+    super(
+        COLLECTION_PATH,
+        WEB_ANALYTIC_EVENT,
+        WebAnalyticEvent.class,
+        Entity.getCollectionDAO().webAnalyticEventDAO(),
+        "",
+        "");
   }
 
   @Override
@@ -51,8 +58,7 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
         webAnalyticEventData.getEventType().value(),
         WEB_ANALYTICS_EVENT_DATA_EXTENSION,
         "webAnalyticEventData",
-        JsonUtils.pojoToJson(webAnalyticEventData),
-        webAnalyticEventData.getTimestamp());
+        JsonUtils.pojoToJson(webAnalyticEventData));
     return Response.ok(webAnalyticEventData).build();
   }
 

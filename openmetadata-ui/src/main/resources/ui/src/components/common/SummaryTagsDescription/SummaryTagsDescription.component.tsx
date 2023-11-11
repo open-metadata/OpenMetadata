@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 import { Col, Divider, Row, Typography } from 'antd';
-import { EntityUnion } from 'components/Explore/explore.interface';
-import TagsViewer from 'components/Tag/TagsViewer/TagsViewer';
-import { TagLabel } from 'generated/type/tagLabel';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
+import TagsViewer from '../../../components/Tag/TagsViewer/TagsViewer';
+import { TagLabel } from '../../../generated/type/tagLabel';
+import { EntityUnion } from '../../Explore/ExplorePage.interface';
+import RichTextEditorPreviewer from '../RichTextEditor/RichTextEditorPreviewer';
 
 const SummaryTagsDescription = ({
   tags,
@@ -40,7 +40,7 @@ const SummaryTagsDescription = ({
         <Col span={24}>
           {tags.length > 0 ? (
             <Row>
-              <Col span={23}>
+              <Col className="d-flex flex-wrap" span={23}>
                 <TagsViewer sizeCap={-1} tags={tags} />
               </Col>
             </Row>

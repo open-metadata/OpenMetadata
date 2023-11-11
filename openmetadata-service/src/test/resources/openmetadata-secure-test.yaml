@@ -22,8 +22,7 @@ server:
   adminConnectors:
     - type: http
       port: 0
-  requestLog:
-    type: external
+
 
 # Above configuration for running http is fine for dev and testing.
 # For production setup, where UI app will hit apis through DPS it 
@@ -106,6 +105,7 @@ database:
 migrationConfiguration:
   flywayPath: "../bootstrap/sql/migrations/flyway"
   nativePath: "../bootstrap/sql/migrations/native"
+  extensionPath: ""
 
 #elasticsearch:
 #  host: localhost
@@ -196,21 +196,6 @@ eventHandlerConfiguration:
     - "org.openmetadata.service.events.AuditEventHandler"
     - "org.openmetadata.service.events.ChangeEventHandler"
 
-elasticsearch:
-  searchType:  "elasticsearch"
-  host: localhost
-  port: 9200
-  scheme: http
-  username: ""
-  password: ""
-  truststorePath: ""
-  truststorePassword: ""
-  connectionTimeoutSecs: 5
-  socketTimeoutSecs: 60
-  keepAliveTimeoutSecs: 600
-  batchSize: 10
-  searchIndexMappingLanguage: EN
-
 pipelineServiceClientConfiguration:
   className: "org.openmetadata.service.clients.pipeline.airflow.AirflowRESTClient"
   metadataApiEndpoint: http://localhost:8585/api
@@ -238,13 +223,3 @@ email:
   username: ""
   password: ""
   transportationStrategy: "SMTP_TLS"
-
-applicationConfig:
-  logoConfig:
-    customLogoUrlPath: ""
-    customMonogramUrlPath: ""
-  loginConfig:
-    maxLoginFailAttempts: 3
-    accessBlockTime: 600
-    jwtTokenExpiryTime: 3600
-  

@@ -12,90 +12,21 @@
  */
 
 import { AxiosError } from 'axios';
-import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { EntityType } from 'enums/entity.enum';
-import { SearchIndex } from 'enums/search.enum';
-import { StorageServiceType } from 'generated/entity/data/container';
-import { SearchServiceType } from 'generated/entity/services/searchService';
 import { t } from 'i18next';
 import { ServiceTypes } from 'Models';
 import React from 'react';
-import { getEntityCount } from 'rest/miscAPI';
+import { ResourceEntity } from '../components/PermissionProvider/PermissionProvider.interface';
 import { GlobalSettingOptions } from '../constants/GlobalSettings.constants';
 import {
-  AIRBYTE,
-  AIRFLOW,
-  AMAZON_S3,
-  AMUNDSEN,
-  ATHENA,
-  ATLAS,
-  AZURESQL,
-  BIGQUERY,
-  CLICKHOUSE,
-  COUCHBASE,
-  CUSTOM_STORAGE_DEFAULT,
-  DAGSTER,
-  DASHBOARD_DEFAULT,
-  DATABASE_DEFAULT,
-  DATABRICK,
-  DATALAKE,
-  DEFAULT_SERVICE,
-  DELTALAKE,
-  DOMO,
-  DRUID,
-  DYNAMODB,
-  ELASTIC_SEARCH,
-  FIVETRAN,
-  GLUE,
-  HIVE,
-  IBMDB2,
-  IMPALA,
-  KAFKA,
-  KINESIS,
-  LIGHT_DASH,
-  LOGO,
-  LOOKER,
-  MARIADB,
-  METABASE,
-  MLFLOW,
-  ML_MODEL_DEFAULT,
-  MODE,
-  MONGODB,
-  MSSQL,
-  MYSQL,
-  NIFI,
-  OPEN_SEARCH,
-  ORACLE,
-  PINOT,
-  PIPELINE_DEFAULT,
-  POSTGRES,
-  POWERBI,
-  PRESTO,
-  QLIK_SENSE,
-  QUICKSIGHT,
-  REDASH,
-  REDPANDA,
-  REDSHIFT,
-  SAGEMAKER,
-  SALESFORCE,
-  SAP_HANA,
-  SCIKIT,
-  serviceTypes,
   SERVICE_TYPES_ENUM,
   SERVICE_TYPE_MAP,
-  SINGLESTORE,
-  SNOWFLAKE,
-  SPLINE,
-  SQLITE,
-  SUPERSET,
-  TABLEAU,
-  TOPIC_DEFAULT,
-  TRINO,
-  VERTICA,
 } from '../constants/Services.constant';
 import { PROMISE_STATE } from '../enums/common.enum';
+import { EntityType } from '../enums/entity.enum';
+import { SearchIndex } from '../enums/search.enum';
 import { ServiceCategory } from '../enums/service.enum';
+import { StorageServiceType } from '../generated/entity/data/container';
 import { Database } from '../generated/entity/data/database';
 import { MlModelServiceType } from '../generated/entity/data/mlmodel';
 import {
@@ -108,13 +39,13 @@ import {
   MessagingService,
   MessagingServiceType,
 } from '../generated/entity/services/messagingService';
-import { MetadataServiceType } from '../generated/entity/services/metadataService';
 import { MlmodelService } from '../generated/entity/services/mlmodelService';
 import {
   PipelineService,
   PipelineServiceType,
 } from '../generated/entity/services/pipelineService';
 import { ServicesType } from '../interface/service.interface';
+import { getEntityCount } from '../rest/miscAPI';
 import {
   getEntityDeleteMessage,
   pluralize,
@@ -125,219 +56,6 @@ import { getBrokers } from './MessagingServiceUtils';
 import { getEncodedFqn } from './StringsUtils';
 import { getEntityLink } from './TableUtils';
 import { showErrorToast } from './ToastUtils';
-
-export const serviceTypeLogo = (type: string) => {
-  switch (type) {
-    case DatabaseServiceType.Mysql:
-      return MYSQL;
-
-    case DatabaseServiceType.Redshift:
-      return REDSHIFT;
-
-    case DatabaseServiceType.BigQuery:
-      return BIGQUERY;
-
-    case DatabaseServiceType.Hive:
-      return HIVE;
-
-    case DatabaseServiceType.Impala:
-      return IMPALA;
-
-    case DatabaseServiceType.Postgres:
-      return POSTGRES;
-
-    case DatabaseServiceType.Oracle:
-      return ORACLE;
-
-    case DatabaseServiceType.Snowflake:
-      return SNOWFLAKE;
-
-    case DatabaseServiceType.Mssql:
-      return MSSQL;
-
-    case DatabaseServiceType.Athena:
-      return ATHENA;
-
-    case DatabaseServiceType.Presto:
-      return PRESTO;
-
-    case DatabaseServiceType.Trino:
-      return TRINO;
-
-    case DatabaseServiceType.Glue:
-      return GLUE;
-
-    case DatabaseServiceType.DomoDatabase:
-      return DOMO;
-
-    case DatabaseServiceType.MariaDB:
-      return MARIADB;
-
-    case DatabaseServiceType.Vertica:
-      return VERTICA;
-
-    case DatabaseServiceType.AzureSQL:
-      return AZURESQL;
-
-    case DatabaseServiceType.Clickhouse:
-      return CLICKHOUSE;
-
-    case DatabaseServiceType.Databricks:
-      return DATABRICK;
-
-    case DatabaseServiceType.Db2:
-      return IBMDB2;
-
-    case DatabaseServiceType.Druid:
-      return DRUID;
-
-    case DatabaseServiceType.DynamoDB:
-      return DYNAMODB;
-
-    case DatabaseServiceType.SingleStore:
-      return SINGLESTORE;
-
-    case DatabaseServiceType.SQLite:
-      return SQLITE;
-
-    case DatabaseServiceType.Salesforce:
-      return SALESFORCE;
-
-    case DatabaseServiceType.SapHana:
-      return SAP_HANA;
-
-    case DatabaseServiceType.DeltaLake:
-      return DELTALAKE;
-
-    case DatabaseServiceType.PinotDB:
-      return PINOT;
-
-    case DatabaseServiceType.Datalake:
-      return DATALAKE;
-
-    case DatabaseServiceType.MongoDB:
-      return MONGODB;
-
-    case DatabaseServiceType.Couchbase:
-      return COUCHBASE;
-
-    case MessagingServiceType.Kafka:
-      return KAFKA;
-
-    case MessagingServiceType.Redpanda:
-      return REDPANDA;
-
-    case MessagingServiceType.Kinesis:
-      return KINESIS;
-
-    case DashboardServiceType.Superset:
-      return SUPERSET;
-
-    case DashboardServiceType.Looker:
-      return LOOKER;
-
-    case DashboardServiceType.Tableau:
-      return TABLEAU;
-
-    case DashboardServiceType.Redash:
-      return REDASH;
-
-    case DashboardServiceType.Metabase:
-      return METABASE;
-
-    case DashboardServiceType.PowerBI:
-      return POWERBI;
-
-    case DashboardServiceType.QuickSight:
-      return QUICKSIGHT;
-
-    case DashboardServiceType.DomoDashboard:
-      return DOMO;
-
-    case DashboardServiceType.Mode:
-      return MODE;
-
-    case DashboardServiceType.QlikSense:
-      return QLIK_SENSE;
-
-    case DashboardServiceType.Lightdash:
-      return LIGHT_DASH;
-
-    case PipelineServiceType.Airflow:
-      return AIRFLOW;
-
-    case PipelineServiceType.Airbyte:
-      return AIRBYTE;
-
-    case PipelineServiceType.Dagster:
-      return DAGSTER;
-
-    case PipelineServiceType.Fivetran:
-      return FIVETRAN;
-
-    case PipelineServiceType.GluePipeline:
-      return GLUE;
-
-    case PipelineServiceType.Spline:
-      return SPLINE;
-
-    case PipelineServiceType.Nifi:
-      return NIFI;
-
-    case PipelineServiceType.DomoPipeline:
-      return DOMO;
-
-    case PipelineServiceType.DatabricksPipeline:
-      return DATABRICK;
-
-    case MlModelServiceType.Mlflow:
-      return MLFLOW;
-
-    case MlModelServiceType.Sklearn:
-      return SCIKIT;
-    case MlModelServiceType.SageMaker:
-      return SAGEMAKER;
-
-    case MetadataServiceType.Amundsen:
-      return AMUNDSEN;
-
-    case MetadataServiceType.Atlas:
-      return ATLAS;
-
-    case MetadataServiceType.OpenMetadata:
-      return LOGO;
-
-    case StorageServiceType.S3:
-      return AMAZON_S3;
-
-    case SearchServiceType.ElasticSearch:
-      return ELASTIC_SEARCH;
-
-    case SearchServiceType.OpenSearch:
-      return OPEN_SEARCH;
-
-    default: {
-      let logo;
-      if (serviceTypes.messagingServices.includes(type)) {
-        logo = TOPIC_DEFAULT;
-      } else if (serviceTypes.dashboardServices.includes(type)) {
-        logo = DASHBOARD_DEFAULT;
-      } else if (serviceTypes.pipelineServices.includes(type)) {
-        logo = PIPELINE_DEFAULT;
-      } else if (serviceTypes.databaseServices.includes(type)) {
-        logo = DATABASE_DEFAULT;
-      } else if (serviceTypes.mlmodelServices.includes(type)) {
-        logo = ML_MODEL_DEFAULT;
-      } else if (serviceTypes.storageServices.includes(type)) {
-        logo = CUSTOM_STORAGE_DEFAULT;
-      } else {
-        logo = DEFAULT_SERVICE;
-      }
-
-      return logo;
-    }
-  }
-};
 
 export const getFormattedGuideText = (
   text: string,
@@ -701,6 +419,10 @@ export const getServiceCategoryFromEntityType = (
       return ServiceCategory.ML_MODEL_SERVICES;
     case EntityType.STORAGE_SERVICE:
       return ServiceCategory.STORAGE_SERVICES;
+    case EntityType.METADATA_SERVICE:
+      return ServiceCategory.METADATA_SERVICES;
+    case EntityType.SEARCH_SERVICE:
+      return ServiceCategory.SEARCH_SERVICES;
     case EntityType.DATABASE_SERVICE:
     default:
       return ServiceCategory.DATABASE_SERVICES;

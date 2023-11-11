@@ -13,54 +13,57 @@
 
 import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
-import { ReactComponent as IconCheckMark } from 'assets/svg/ic-check-mark.svg';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import EditTestCaseModal from 'components/AddDataQualityTest/EditTestCaseModal';
-import AppBadge from 'components/common/Badge/Badge.component';
-import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
-import { StatusBox } from 'components/common/LastRunGraph/LastRunGraph.component';
-import NextPrevious from 'components/common/next-previous/NextPrevious';
-import Table from 'components/common/Table/Table';
-import { TestCaseStatusModal } from 'components/DataQuality/TestCaseStatusModal/TestCaseStatusModal.component';
-import ConfirmationModal from 'components/Modals/ConfirmationModal/ConfirmationModal';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import { compare } from 'fast-json-patch';
-import { TestCaseStatus } from 'generated/configuration/testResultNotificationConfiguration';
-import { Operation } from 'generated/entity/policies/policy';
 import { isUndefined, sortBy } from 'lodash';
 import QueryString from 'qs';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { patchTestCaseResult, removeTestCaseFromTestSuite } from 'rest/testAPI';
-import { formatDate, formatDateTime } from 'utils/date-time/DateTimeUtils';
-import { getEntityName } from 'utils/EntityUtils';
-import { checkPermission } from 'utils/PermissionsUtils';
-import { getEncodedFqn, replacePlus } from 'utils/StringsUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as IconCheckMark } from '../../../assets/svg/ic-check-mark.svg';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
-import { getTableTabPath, PAGE_SIZE } from '../../../constants/constants';
+import EditTestCaseModal from '../../../components/AddDataQualityTest/EditTestCaseModal';
+import AppBadge from '../../../components/common/Badge/Badge.component';
+import FilterTablePlaceHolder from '../../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
+import { StatusBox } from '../../../components/common/LastRunGraph/LastRunGraph.component';
+import Table from '../../../components/common/Table/Table';
+import { TestCaseStatusModal } from '../../../components/DataQuality/TestCaseStatusModal/TestCaseStatusModal.component';
+import ConfirmationModal from '../../../components/Modals/ConfirmationModal/ConfirmationModal';
+import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../components/PermissionProvider/PermissionProvider.interface';
+import { getTableTabPath } from '../../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
+import { TestCaseStatus } from '../../../generated/configuration/testResultNotificationConfiguration';
+import { Operation } from '../../../generated/entity/policies/policy';
 import {
   TestCase,
   TestCaseFailureStatus,
   TestCaseResult,
 } from '../../../generated/tests/testCase';
+import {
+  patchTestCaseResult,
+  removeTestCaseFromTestSuite,
+} from '../../../rest/testAPI';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
 import {
-  getEntityFqnFromEntityLink,
-  getTableExpandableConfig,
-} from '../../../utils/TableUtils';
+  formatDate,
+  formatDateTime,
+} from '../../../utils/date-time/DateTimeUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
+import { checkPermission } from '../../../utils/PermissionsUtils';
+import { getEncodedFqn, replacePlus } from '../../../utils/StringsUtils';
+import { getEntityFqnFromEntityLink } from '../../../utils/TableUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
+import NextPrevious from '../../common/NextPrevious/NextPrevious';
 import {
   DataQualityTabProps,
   TableProfilerTab,
   TestCaseAction,
 } from '../profilerDashboard.interface';
-import './DataQualityTab.style.less';
+import './data-quality-tab.less';
 import TestSummary from './TestSummary';
 
 const DataQualityTab: React.FC<DataQualityTabProps> = ({
@@ -72,6 +75,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   removeFromTestSuite,
   showTableColumn = true,
   afterDeleteAction,
+  showPagination,
 }) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
@@ -401,7 +405,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           data-testid="test-case-table"
           dataSource={sortedData}
           expandable={{
-            ...getTableExpandableConfig<TestCase>(),
             expandRowByClick: true,
             rowExpandable: () => true,
             expandedRowRender: (recode) => <TestSummary data={recode} />,
@@ -416,15 +419,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         />
       </Col>
       <Col span={24}>
-        {!isUndefined(pagingData) && pagingData.paging.total > PAGE_SIZE && (
-          <NextPrevious
-            currentPage={pagingData.currentPage}
-            isNumberBased={pagingData.isNumberBased}
-            pageSize={PAGE_SIZE}
-            paging={pagingData.paging}
-            pagingHandler={pagingData.onPagingClick}
-          />
-        )}
+        {pagingData && showPagination && <NextPrevious {...pagingData} />}
       </Col>
       <Col>
         <EditTestCaseModal

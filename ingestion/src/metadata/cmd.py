@@ -13,9 +13,9 @@ This module defines the CLI commands for OpenMetada
 """
 import argparse
 import logging
-import pathlib
 from enum import Enum
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from pathlib import Path
 
 from metadata.__version__ import get_metadata_version
 from metadata.cli.backup import UploadDestinationType, run_backup
@@ -100,7 +100,7 @@ def create_common_config_parser_args(parser: argparse.ArgumentParser):
         "-c",
         "--config",
         help="path to the config file",
-        type=pathlib.Path,
+        type=Path,
         required=True,
     )
 
@@ -110,7 +110,7 @@ def create_openmetadata_imports_migration_args(parser: argparse.ArgumentParser):
         "-d",
         "--dir-path",
         default="/opt/airflow/dags",
-        type=pathlib.Path,
+        type=Path,
         help="Path to the DAG folder. Default to `/opt/airflow/dags`",
     )
 
@@ -126,7 +126,7 @@ def create_openmetadata_dag_config_migration_args(parser: argparse.ArgumentParse
         "-d",
         "--dir-path",
         default="/opt/airflow/dag_generated_configs",
-        type=pathlib.Path,
+        type=Path,
         help="Path to the DAG folder. Default to `/opt/airflow/dag_generated_configs`",
     )
 
@@ -164,14 +164,14 @@ def docker_args(parser: argparse.ArgumentParser):
         "-f",
         "--file-path",
         help="Path to Local docker-compose.yml",
-        type=pathlib.Path,
+        type=Path,
         required=False,
     )
     parser.add_argument(
         "-env-file",
         "--env-file-path",
         help="Path to env file containing the environment variables",
-        type=pathlib.Path,
+        type=Path,
         required=False,
     )
     parser.add_argument(
@@ -233,7 +233,12 @@ def backup_args(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--output",
         help="Local path to store the backup",
-        type=pathlib.Path,
+        type=Path,
+        default=None,
+    )
+    parser.add_argument(
+        "--filename",
+        help="Filename to store the backup",
         default=None,
     )
     parser.add_argument(
@@ -259,7 +264,7 @@ def backup_args(parser: argparse.ArgumentParser):
 
 def restore_args(parser: argparse.ArgumentParser):
     """
-    Addtional Parser Arguments for Restore
+    Additional Parser Arguments for Restore
     """
     parser.add_argument(
         "-H",
@@ -298,7 +303,7 @@ def restore_args(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--input",
         help="Local backup file path for restore",
-        type=pathlib.Path,
+        type=Path,
         required=True,
     )
 
@@ -411,6 +416,8 @@ def metadata(args=None):  # pylint: disable=too-many-branches
     contains_args = vars(get_parser(args))
     metadata_workflow = contains_args.get("command")
     config_file = contains_args.get("config")
+    if config_file:
+        path = Path(config_file).expanduser()
     if contains_args.get("debug"):
         set_loggers_level(logging.DEBUG)
     elif contains_args.get("log_level"):
@@ -419,17 +426,17 @@ def metadata(args=None):  # pylint: disable=too-many-branches
         set_loggers_level(logging.INFO)
 
     if metadata_workflow == MetadataCommands.INGEST.value:
-        run_ingest(config_path=config_file)
+        run_ingest(config_path=path)
     if metadata_workflow == MetadataCommands.USAGE.value:
-        run_usage(config_path=config_file)
+        run_usage(config_path=path)
     if metadata_workflow == MetadataCommands.LINEAGE.value:
-        run_lineage(config_path=config_file)
+        run_lineage(config_path=path)
     if metadata_workflow == MetadataCommands.INSIGHT.value:
-        run_insight(config_path=config_file)
+        run_insight(config_path=path)
     if metadata_workflow == MetadataCommands.PROFILE.value:
-        run_profiler(config_path=config_file)
+        run_profiler(config_path=path)
     if metadata_workflow == MetadataCommands.TEST.value:
-        run_test(config_path=config_file)
+        run_test(config_path=path)
     if metadata_workflow == MetadataCommands.BACKUP.value:
         run_backup(
             common_backup_obj_instance=BackupRestoreArgs(
@@ -443,6 +450,7 @@ def metadata(args=None):  # pylint: disable=too-many-branches
                 schema=contains_args.get("schema"),
             ),
             output=contains_args.get("output"),
+            filename=contains_args.get("filename"),
             upload_destination_type=contains_args.get("upload_destination_type"),
             upload=contains_args.get("upload"),
         )

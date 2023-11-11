@@ -490,7 +490,8 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
   }
 
   private SearchIndex getSearchIndex(CreateSearchIndex create, String user) {
-    return copy(new SearchIndex(), create, user)
+    return repository
+        .copy(new SearchIndex(), create, user)
         .withService(getEntityReference(Entity.SEARCH_SERVICE, create.getService()))
         .withFields(create.getFields())
         .withSearchIndexSettings(create.getSearchIndexSettings())

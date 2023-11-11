@@ -10,11 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityDetailsObjectInterface } from 'components/Explore/explore.interface';
-import { VotingDataProps } from 'components/Voting/voting.interface';
 import { LoadingState } from 'Models';
+import { VotingDataProps } from '../../components/Voting/voting.interface';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
+import { EntityDetailsObjectInterface } from '../Explore/ExplorePage.interface';
 
 export type GlossaryV1Props = {
   deleteStatus: LoadingState;
@@ -29,4 +29,5 @@ export type GlossaryV1Props = {
   onAssetClick?: (asset?: EntityDetailsObjectInterface) => void;
   isSummaryPanelOpen: boolean;
   updateVote?: (data: VotingDataProps) => Promise<void>;
+  refreshActiveGlossaryTerm?: () => void;
 };

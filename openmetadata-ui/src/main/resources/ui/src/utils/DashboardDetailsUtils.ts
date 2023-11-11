@@ -12,10 +12,10 @@
  */
 
 import { AxiosError } from 'axios';
-import { ChartType } from 'pages/DashboardDetailsPage/DashboardDetailsPage.component';
-import { getChartById } from 'rest/chartAPI';
 import { TabSpecificField } from '../enums/entity.enum';
 import { Dashboard } from '../generated/entity/data/dashboard';
+import { ChartType } from '../pages/DashboardDetailsPage/DashboardDetailsPage.component';
+import { getChartById } from '../rest/chartAPI';
 import { sortTagsCaseInsensitive } from './CommonUtils';
 
 export const defaultFields = `${TabSpecificField.DOMAIN},${TabSpecificField.OWNER}, ${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.CHARTS},

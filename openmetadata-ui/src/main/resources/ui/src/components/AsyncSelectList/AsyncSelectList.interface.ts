@@ -11,19 +11,25 @@
  *  limitations under the License.
  */
 
-import { Paging } from 'generated/type/paging';
+import { DefaultOptionType } from 'antd/lib/select';
+import { Tag } from '../../generated/entity/classification/tag';
+import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
+import { Paging } from '../../generated/type/paging';
 
 export type SelectOption = {
   label: string;
   value: string;
+  data?: Tag | GlossaryTerm;
 };
 
 export interface AsyncSelectListProps {
   mode?: 'multiple';
+  className?: string;
   placeholder?: string;
   debounceTimeout?: number;
   defaultValue?: string[];
-  onChange?: (newValue: string | string[]) => void;
+  initialData?: SelectOption[];
+  onChange?: (option: DefaultOptionType | DefaultOptionType[]) => void;
   fetchOptions: (
     search: string,
     page: number

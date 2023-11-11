@@ -13,14 +13,14 @@
 
 import Icon from '@ant-design/icons';
 import { Typography } from 'antd';
-import { ReactComponent as EditIconComponent } from 'assets/svg/edit-new.svg';
 import { t } from 'i18next';
 import { isUndefined, toNumber } from 'lodash';
 import React, { FC, Fragment, useState } from 'react';
+import { ReactComponent as EditIconComponent } from '../../../assets/svg/edit-new.svg';
 import { Table } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
+import RichTextEditorPreviewer from '../RichTextEditor/RichTextEditorPreviewer';
 import { PropertyInput } from './PropertyInput';
 
 interface Props {

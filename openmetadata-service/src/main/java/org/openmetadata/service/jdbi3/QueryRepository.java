@@ -9,6 +9,7 @@ import java.util.*;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 import lombok.SneakyThrows;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.User;
@@ -32,13 +33,12 @@ public class QueryRepository extends EntityRepository<Query> {
   private static final String QUERY_PATCH_FIELDS = "users,query,queryUsedIn,processedLineage";
   private static final String QUERY_UPDATE_FIELDS = "users,queryUsedIn,processedLineage";
 
-  public QueryRepository(CollectionDAO dao) {
+  public QueryRepository() {
     super(
         QueryResource.COLLECTION_PATH,
         Entity.QUERY,
         Query.class,
-        dao.queryDAO(),
-        dao,
+        Entity.getCollectionDAO().queryDAO(),
         QUERY_PATCH_FIELDS,
         QUERY_UPDATE_FIELDS);
     supportsSearch = true;
@@ -215,6 +215,7 @@ public class QueryRepository extends EntityRepository<Query> {
       super(original, updated, operation);
     }
 
+    @Transaction
     @Override
     public void entitySpecificUpdate() {
       updateFromRelationships(

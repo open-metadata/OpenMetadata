@@ -13,33 +13,32 @@
 import { Button, Col, Row, Tooltip, Typography } from 'antd';
 import { ColumnsType, TableProps } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import ErrorPlaceHolderIngestion from 'components/common/error-with-placeholder/ErrorPlaceHolderIngestion';
-import NextPrevious from 'components/common/next-previous/NextPrevious';
-import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
-import Table from 'components/common/Table/Table';
-import Loader from 'components/Loader/Loader';
-import { ColumnFilter } from 'components/Table/ColumnFilter/ColumnFilter.component';
 import cronstrue from 'cronstrue';
-import { ServiceCategory } from 'enums/service.enum';
-import {
-  IngestionPipeline,
-  PipelineType,
-} from 'generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { usePaging } from 'hooks/paging/usePaging';
-import { useAirflowStatus } from 'hooks/useAirflowStatus';
 import { isNil, map, startCase } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ServiceCategory } from '../../../enums/service.enum';
+import {
+  IngestionPipeline,
+  PipelineType,
+} from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { usePaging } from '../../../hooks/paging/usePaging';
+import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
 import {
   deployIngestionPipelineById,
   getIngestionPipelines,
-} from 'rest/ingestionPipelineAPI';
-import { showPagination } from 'utils/CommonUtils';
-import { getEntityName } from 'utils/EntityUtils';
-import { getEntityTypeFromServiceCategory } from 'utils/ServiceUtils';
-import { FilterIcon } from 'utils/TableUtils';
-import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
+} from '../../../rest/ingestionPipelineAPI';
+import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityTypeFromServiceCategory } from '../../../utils/ServiceUtils';
+import { FilterIcon } from '../../../utils/TableUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import ErrorPlaceHolderIngestion from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion';
+import NextPrevious from '../../common/NextPrevious/NextPrevious';
+import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
+import Table from '../../common/Table/Table';
+import Loader from '../../Loader/Loader';
+import { ColumnFilter } from '../../Table/ColumnFilter/ColumnFilter.component';
 import { IngestionRecentRuns } from '../IngestionRecentRun/IngestionRecentRuns.component';
 
 export const IngestionPipelineList = ({
@@ -67,6 +66,7 @@ export const IngestionPipelineList = ({
     handlePagingChange,
     pageSize,
     handlePageSizeChange,
+    showPagination,
   } = usePaging();
 
   const { t } = useTranslation();
@@ -290,7 +290,7 @@ export const IngestionPipelineList = ({
         />
       </Col>
       <Col span={24}>
-        {showPagination(paging) && (
+        {showPagination && (
           <NextPrevious
             currentPage={currentPage}
             pageSize={pageSize}

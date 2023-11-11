@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import IconFlatDoc from 'assets/svg/ic-flat-doc.svg';
 import { omit } from 'lodash';
 import React, { FunctionComponent } from 'react';
 import IconAuth0 from '../assets/img/icon-auth0.png';
@@ -90,6 +89,7 @@ import IconExclamationCircle from '../assets/svg/ic-exclamation-circle.svg';
 import IconExplore from '../assets/svg/ic-explore.svg';
 import IconFeed from '../assets/svg/ic-feed.svg';
 import IconFilter from '../assets/svg/ic-filter.svg';
+import IconFlatDoc from '../assets/svg/ic-flat-doc.svg';
 import IconFolderPrimary from '../assets/svg/ic-folder-primary.svg';
 import IconFolder from '../assets/svg/ic-folder.svg';
 import IconGrowthArrow from '../assets/svg/ic-growth-arrow.svg';
@@ -115,7 +115,6 @@ import IconSettingGray from '../assets/svg/ic-settings-gray.svg';
 import IconSettingPrimery from '../assets/svg/ic-settings-primery.svg';
 import IconSettings from '../assets/svg/ic-settings.svg';
 import IconSQLBuilder from '../assets/svg/ic-sql-builder.svg';
-import IconStarPrimary from '../assets/svg/ic-star-primary.svg';
 import IconStar from '../assets/svg/ic-star.svg';
 import IconContainer from '../assets/svg/ic-storage.svg';
 import IconStore from '../assets/svg/ic-store.svg';
@@ -1017,10 +1016,7 @@ const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
       IconComponent = IconStar;
 
       break;
-    case Icons.STAR_PRIMARY:
-      IconComponent = IconStarPrimary;
 
-      break;
     case Icons.MENTIONS:
       IconComponent = IconMentions;
 

@@ -10,7 +10,7 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
-public class StorageServiceIndex implements ElasticSearchIndex {
+public class StorageServiceIndex implements SearchIndex {
 
   final StorageService storageService;
 
@@ -32,7 +32,7 @@ public class StorageServiceIndex implements ElasticSearchIndex {
             storageService.getFullyQualifiedName(),
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
-    doc.put("entityType", Entity.METADATA_SERVICE);
+    doc.put("entityType", Entity.STORAGE_SERVICE);
     if (storageService.getOwner() != null) {
       doc.put("owner", getOwnerWithDisplayName(storageService.getOwner()));
     }

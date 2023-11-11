@@ -11,15 +11,15 @@
  *  limitations under the License.
  */
 
-import { SearchedDataProps } from 'components/searched-data/SearchedData.interface';
-import { SearchIndex } from 'enums/search.enum';
-import { DashboardServiceType } from 'generated/entity/data/dashboard';
+import { SearchIndex } from '../../../enums/search.enum';
+import { DashboardServiceType } from '../../../generated/entity/data/dashboard';
 import {
   DashboardSearchSource,
   PipelineSearchSource,
   TableSearchSource,
   TopicSearchSource,
-} from 'interface/search.interface';
+} from '../../../interface/search.interface';
+import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 
 export const mockUserData = {
   id: 'd6764107-e8b4-4748-b256-c86fecc66064',

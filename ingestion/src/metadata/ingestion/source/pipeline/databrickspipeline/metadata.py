@@ -26,9 +26,6 @@ from metadata.generated.schema.entity.data.pipeline import (
     Task,
     TaskStatus,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.services.connections.pipeline.databricksPipelineConnection import (
     DatabricksPipelineConnection,
 )
@@ -38,8 +35,10 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.time_utils import convert_timestamp_to_milliseconds
 
 logger = ingestion_logger()
 
@@ -64,7 +63,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: DatabricksPipelineConnection = (
@@ -74,7 +73,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
             raise InvalidSourceException(
                 f"Expected DatabricksPipelineConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def get_pipelines_list(self) -> Iterable[dict]:
         for workflow in self.client.list_jobs():
@@ -201,14 +200,20 @@ class DatabrickspipelineSource(PipelineServiceSource):
                                     task_run["state"].get("result_state"),
                                     StatusType.Failed,
                                 ),
-                                startTime=task_run["start_time"],
-                                endTime=task_run["end_time"],
+                                startTime=convert_timestamp_to_milliseconds(
+                                    task_run["start_time"]
+                                ),
+                                endTime=convert_timestamp_to_milliseconds(
+                                    task_run["end_time"]
+                                ),
                                 logLink=task_run["run_page_url"],
                             )
                         )
                         pipeline_status = PipelineStatus(
                             taskStatus=task_status,
-                            timestamp=attempt["start_time"],
+                            timestamp=convert_timestamp_to_milliseconds(
+                                attempt["start_time"]
+                            ),
                             executionStatus=STATUS_MAP.get(
                                 attempt["state"].get("result_state"),
                                 StatusType.Failed,

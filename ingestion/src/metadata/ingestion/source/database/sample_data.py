@@ -23,7 +23,7 @@ from typing import Any, Dict, Iterable, List, Optional, Union
 
 from pydantic import ValidationError
 
-from metadata.generated.schema.analytics.reportData import ReportData
+from metadata.generated.schema.analytics.reportData import ReportData, ReportDataType
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createContainer import CreateContainerRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -65,7 +65,10 @@ from metadata.generated.schema.entity.data.mlmodel import (
     MlStore,
 )
 from metadata.generated.schema.entity.data.pipeline import Pipeline, PipelineStatus
-from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureCode
+from metadata.generated.schema.entity.data.storedProcedure import (
+    StoredProcedure,
+    StoredProcedureCode,
+)
 from metadata.generated.schema.entity.data.table import (
     ColumnProfile,
     SystemProfile,
@@ -77,9 +80,6 @@ from metadata.generated.schema.entity.data.topic import Topic, TopicSampleData
 from metadata.generated.schema.entity.policies.policy import Policy
 from metadata.generated.schema.entity.services.connections.database.customDatabaseConnection import (
     CustomDatabaseConnection,
-)
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
 )
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
@@ -142,8 +142,7 @@ class InvalidSampleDataException(Exception):
     """
 
 
-def get_lineage_entity_ref(edge, metadata_config) -> Optional[EntityReference]:
-    metadata = OpenMetadata(metadata_config)
+def get_lineage_entity_ref(edge, metadata: OpenMetadata) -> Optional[EntityReference]:
     edge_fqn = edge["fqn"]
     if edge["type"] == "table":
         table = metadata.get_by_name(entity=Table, fqn=edge_fqn)
@@ -181,12 +180,11 @@ class SampleDataSource(
     python objects to be sent to the Sink.
     """
 
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__()
         self.config = config
         self.service_connection = config.serviceConnection.__root__.config
-        self.metadata_config = metadata_config
-        self.metadata = OpenMetadata(metadata_config)
+        self.metadata = metadata
         self.list_policies = []
 
         sample_data_folder = self.service_connection.connectionOptions.__root__.get(
@@ -526,7 +524,7 @@ class SampleDataSource(
         )
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: CustomDatabaseConnection = config.serviceConnection.__root__.config
@@ -534,7 +532,7 @@ class SampleDataSource(
             raise InvalidSourceException(
                 f"Expected CustomDatabaseConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def prepare(self):
         """Nothing to prepare"""
@@ -774,6 +772,44 @@ class SampleDataSource(
             )
 
             yield Either(right=stored_procedure)
+
+        # Create table and stored procedure lineage
+        for lineage_entities in self.stored_procedures["lineage"]:
+
+            from_table = self.metadata.get_by_name(
+                entity=Table, fqn=lineage_entities["from_table_fqn"]
+            )
+            stored_procedure_entity = self.metadata.get_by_name(
+                entity=StoredProcedure, fqn=lineage_entities["stored_procedure_fqn"]
+            )
+            to_table = self.metadata.get_by_name(
+                entity=Table, fqn=lineage_entities["to_table_fqn"]
+            )
+            yield Either(
+                right=AddLineageRequest(
+                    edge=EntitiesEdge(
+                        fromEntity=EntityReference(
+                            id=from_table.id.__root__, type="table"
+                        ),
+                        toEntity=EntityReference(
+                            id=stored_procedure_entity.id.__root__,
+                            type="storedProcedure",
+                        ),
+                    )
+                )
+            )
+
+            yield Either(
+                right=AddLineageRequest(
+                    edge=EntitiesEdge(
+                        fromEntity=EntityReference(
+                            id=stored_procedure_entity.id.__root__,
+                            type="storedProcedure",
+                        ),
+                        toEntity=EntityReference(id=to_table.id.__root__, type="table"),
+                    )
+                )
+            )
 
     def ingest_topics(self) -> Iterable[CreateTopicRequest]:
         """
@@ -1021,11 +1057,9 @@ class SampleDataSource(
 
     def ingest_lineage(self) -> Iterable[Either[AddLineageRequest]]:
         for edge in self.lineage:
-            from_entity_ref = get_lineage_entity_ref(edge["from"], self.metadata_config)
-            to_entity_ref = get_lineage_entity_ref(edge["to"], self.metadata_config)
-            edge_entity_ref = get_lineage_entity_ref(
-                edge["edge_meta"], self.metadata_config
-            )
+            from_entity_ref = get_lineage_entity_ref(edge["from"], self.metadata)
+            to_entity_ref = get_lineage_entity_ref(edge["to"], self.metadata)
+            edge_entity_ref = get_lineage_entity_ref(edge["edge_meta"], self.metadata)
             lineage_details = (
                 LineageDetails(pipeline=edge_entity_ref, sqlQuery=edge.get("sql_query"))
                 if edge_entity_ref
@@ -1389,9 +1423,16 @@ class SampleDataSource(
         """Iterate over all the data insights and ingest them"""
         data: Dict[str, List] = self.data_insight_data["reports"]
 
-        for _, report_data in data.items():
+        for report_type, report_data in data.items():
             i = 0
             for report_datum in report_data:
+                if report_type == ReportDataType.rawCostAnalysisReportData.value:
+                    start_ts = int(
+                        (datetime.utcnow() - timedelta(days=60)).timestamp() * 1000
+                    )
+                    end_ts = int(datetime.utcnow().timestamp() * 1000)
+                    tmstp = random.randint(start_ts, end_ts)
+                    report_datum["data"]["lifeCycle"]["accessed"]["timestamp"] = tmstp
                 record = OMetaDataInsightSample(
                     record=ReportData(
                         id=report_datum["id"],

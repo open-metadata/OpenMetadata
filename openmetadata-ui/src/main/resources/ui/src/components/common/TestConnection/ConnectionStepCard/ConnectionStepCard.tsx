@@ -12,17 +12,17 @@
  */
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { Collapse, Divider, Space, Tooltip, Typography } from 'antd';
-import { ReactComponent as AttentionIcon } from 'assets/svg/attention.svg';
-import { ReactComponent as FailIcon } from 'assets/svg/fail-badge.svg';
-import { ReactComponent as SuccessIcon } from 'assets/svg/success-badge.svg';
 import classNames from 'classnames';
-import { TestConnectionStepResult } from 'generated/entity/automations/workflow';
-import { TestConnectionStep } from 'generated/entity/services/connections/testConnectionDefinition';
 import { isUndefined } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { requiredField } from 'utils/CommonUtils';
-import './ConnectionStepCard.less';
+import { ReactComponent as AttentionIcon } from '../../../../assets/svg/attention.svg';
+import { ReactComponent as FailIcon } from '../../../../assets/svg/fail-badge.svg';
+import { ReactComponent as SuccessIcon } from '../../../../assets/svg/success-badge.svg';
+import { TestConnectionStepResult } from '../../../../generated/entity/automations/workflow';
+import { TestConnectionStep } from '../../../../generated/entity/services/connections/testConnectionDefinition';
+import { requiredField } from '../../../../utils/CommonUtils';
+import './connection-step-card.less';
 
 const { Panel } = Collapse;
 

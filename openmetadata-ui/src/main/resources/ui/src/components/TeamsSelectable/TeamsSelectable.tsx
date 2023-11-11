@@ -15,9 +15,10 @@ import { Alert, TreeSelect } from 'antd';
 import { BaseOptionType } from 'antd/lib/select';
 import { t } from 'i18next';
 import React, { useEffect, useMemo, useState } from 'react';
-import { getTeamsHierarchy } from 'rest/teamsAPI';
-import { getEntityName } from 'utils/EntityUtils';
 import { TeamHierarchy } from '../../generated/entity/teams/teamHierarchy';
+import { EntityReference } from '../../generated/entity/type';
+import { getTeamsHierarchy } from '../../rest/teamsAPI';
+import { getEntityName } from '../../utils/EntityUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { TeamsSelectableProps } from './TeamsSelectable.interface';
 
@@ -31,18 +32,22 @@ const TeamsSelectable = ({
   selectedTeams,
   maxValueCount,
 }: TeamsSelectableProps) => {
-  const [value, setValue] = useState<Array<string>>();
   const [noTeam, setNoTeam] = useState<boolean>(false);
   const [teams, setTeams] = useState<Array<TeamHierarchy>>([]);
 
-  const onChange = (newValue: string[]) => {
-    onSelectionChange && onSelectionChange(newValue);
-    setValue(newValue);
+  const onChange = (newValue: { label: string; value: string }[]) => {
+    onSelectionChange &&
+      onSelectionChange(
+        newValue.map(
+          (val) =>
+            ({
+              id: val.value,
+              displayName: val.label,
+              type: 'team',
+            } as EntityReference)
+        )
+      );
   };
-
-  useEffect(() => {
-    setValue(selectedTeams ?? []);
-  }, [selectedTeams]);
 
   const loadOptions = () => {
     getTeamsHierarchy(filterJoinable)
@@ -84,10 +89,18 @@ const TeamsSelectable = ({
     });
   }, [teams]);
 
+  const selectedTeamsInternal = useMemo(() => {
+    return selectedTeams?.map((selectedTeam) => ({
+      label: getEntityName(selectedTeam),
+      value: selectedTeam.id,
+    }));
+  }, [selectedTeams]);
+
   return (
     <>
       <TreeSelect
         allowClear
+        labelInValue
         multiple
         showSearch
         treeDefaultExpandAll
@@ -100,7 +113,7 @@ const TeamsSelectable = ({
         treeData={teamsTree}
         treeLine={{ showLeafIcon }}
         treeNodeFilterProp="title"
-        value={value}
+        value={selectedTeamsInternal}
         onChange={onChange}
       />
       {noTeam && (

@@ -12,14 +12,18 @@
  */
 
 import { AxiosResponse } from 'axios';
-import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import { Operation } from 'fast-json-patch';
-import { EntityHistory } from 'generated/type/entityHistory';
-import { Include } from 'generated/type/include';
 import { PagingWithoutTotal, RestoreRequestType } from 'Models';
-import { Database } from '../generated/entity/data/database';
+import { QueryVote } from '../components/TableQueries/TableQueries.interface';
+import {
+  Database,
+  DatabaseProfilerConfig as ProfilerConfig,
+} from '../generated/entity/data/database';
 import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
+import { EntityHistory } from '../generated/type/entityHistory';
+import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
+import { ListParams } from '../interface/API.interface';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
@@ -103,28 +107,33 @@ export const patchDatabaseSchemaDetails = async (
   return response.data;
 };
 
-export const getDatabaseSchemas = async (
-  databaseName: string,
-  paging?: string,
-  arrQueryFields?: string | string[],
-  include: Include = Include.NonDeleted
-) => {
-  const url = `${getURLWithQueryFields(
-    `/databaseSchemas`,
-    arrQueryFields
-  )}&database=${databaseName}${paging ? paging : ''}`;
-
+export const getDatabaseSchemas = async ({
+  include = Include.NonDeleted,
+  databaseName,
+  after,
+  before,
+  limit,
+  fields,
+}: {
+  databaseName: string;
+} & ListParams) => {
   const response = await APIClient.get<{
     data: DatabaseSchema[];
     paging: Paging;
-  }>(url, {
+  }>('/databaseSchemas', {
     params: {
+      fields,
+      database: databaseName,
       include,
+      after,
+      before,
+      limit,
     },
   });
 
   return response.data;
 };
+
 export const getDatabaseSchemaDetailsByFQN = async (
   databaseSchemaName: string,
   arrQueryFields?: string | string[],
@@ -217,4 +226,46 @@ export const updateDatabaseVotes = async (id: string, data: QueryVote) => {
   );
 
   return response.data;
+};
+
+export const getDatabaseProfilerConfig = async (databaseId: string) => {
+  const response = await APIClient.get<Database>(
+    `/databases/${databaseId}/databaseProfilerConfig`
+  );
+
+  return response.data['databaseProfilerConfig'];
+};
+
+export const putDatabaseProfileConfig = async (
+  databaseId: string,
+  data: ProfilerConfig
+) => {
+  const response = await APIClient.put<ProfilerConfig, AxiosResponse<Database>>(
+    `/databases/${databaseId}/databaseProfilerConfig`,
+    data
+  );
+
+  return response.data['databaseProfilerConfig'];
+};
+
+export const getDatabaseSchemaProfilerConfig = async (
+  databaseSchemaId: string
+) => {
+  const response = await APIClient.get<DatabaseSchema>(
+    `/databaseSchemas/${databaseSchemaId}/databaseSchemaProfilerConfig`
+  );
+
+  return response.data['databaseSchemaProfilerConfig'];
+};
+
+export const putDatabaseSchemaProfileConfig = async (
+  databaseSchemaId: string,
+  data: ProfilerConfig
+) => {
+  const response = await APIClient.put<
+    ProfilerConfig,
+    AxiosResponse<DatabaseSchema>
+  >(`/databaseSchemas/${databaseSchemaId}/databaseSchemaProfilerConfig`, data);
+
+  return response.data['databaseSchemaProfilerConfig'];
 };

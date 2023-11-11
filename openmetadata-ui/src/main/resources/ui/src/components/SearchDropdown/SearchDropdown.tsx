@@ -37,17 +37,18 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DropDown } from '../../assets/svg/DropDown.svg';
+import { tabsInfo } from '../../constants/explore.constants';
 import {
   generateSearchDropdownLabel,
   getSearchDropdownLabels,
   getSelectedOptionLabelString,
 } from '../../utils/AdvancedSearchUtils';
 import Loader from '../Loader/Loader';
+import './search-dropdown.less';
 import {
   SearchDropdownOption,
   SearchDropdownProps,
 } from './SearchDropdown.interface';
-import './SearchDropdown.less';
 
 const SearchDropdown: FC<SearchDropdownProps> = ({
   isSuggestionsLoading,
@@ -61,6 +62,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   onChange,
   onGetInitialOptions,
   onSearch,
+  index,
 }) => {
   const { t } = useTranslation();
 
@@ -170,6 +172,8 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
 
   const getDropdownBody = useCallback(
     (menuNode: ReactNode) => {
+      const entityLabel = index && tabsInfo[index]?.label;
+      const isDomainKey = searchKey.startsWith('domain');
       if (isSuggestionsLoading) {
         return (
           <Row align="middle" className="p-y-sm" justify="center">
@@ -185,12 +189,18 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
       ) : (
         <Row align="middle" className="m-y-sm" justify="center">
           <Col>
-            <Typography.Text>{t('message.no-data-available')}</Typography.Text>
+            <Typography.Text className="m-x-sm">
+              {isDomainKey && entityLabel
+                ? t('message.no-domain-assigned-to-entity', {
+                    entity: entityLabel,
+                  })
+                : t('message.no-data-available')}
+            </Typography.Text>
           </Col>
         </Row>
       );
     },
-    [isSuggestionsLoading, options, selectedOptions]
+    [isSuggestionsLoading, options, selectedOptions, index, searchKey]
   );
 
   const dropdownCardComponent = useCallback(

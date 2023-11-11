@@ -41,10 +41,11 @@ services:
 
   elasticsearch:
     container_name: openmetadata_elasticsearch
-    image: docker.elastic.co/elasticsearch/elasticsearch:7.16.3
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.10.2
     environment:
       - discovery.type=single-node
       - ES_JAVA_OPTS=-Xms1024m -Xmx1024m
+      - xpack.security.enabled=false
     networks:
       - app_net
     ports:
@@ -98,7 +99,7 @@ services:
       #Database configuration for postgresql
       DB_DRIVER_CLASS: ${DB_DRIVER_CLASS:-org.postgresql.Driver}
       DB_SCHEME: ${DB_SCHEME:-postgresql}
-      DB_USE_SSL: ${DB_USE_SSL:-false}
+      DB_PARAMS: ${DB_PARAMS:-"allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC"}
       DB_USER: ${DB_USER:-openmetadata_user}
       DB_USER_PASSWORD: ${DB_USER_PASSWORD:-openmetadata_password}
       DB_HOST: ${DB_HOST:-postgresql}
@@ -126,6 +127,7 @@ services:
       EVENT_MONITOR_LATENCY: ${EVENT_MONITOR_LATENCY:-[]}
 
       #pipelineServiceClientConfiguration
+      PIPELINE_SERVICE_CLIENT_ENABLED: ${PIPELINE_SERVICE_CLIENT_ENABLED:-true}
       PIPELINE_SERVICE_CLIENT_CLASS_NAME: ${PIPELINE_SERVICE_CLIENT_CLASS_NAME:-"org.openmetadata.service.clients.pipeline.airflow.AirflowRESTClient"}
       PIPELINE_SERVICE_IP_INFO_ENABLED: ${PIPELINE_SERVICE_IP_INFO_ENABLED:-false}
       PIPELINE_SERVICE_CLIENT_HOST_IP: ${PIPELINE_SERVICE_CLIENT_HOST_IP:-""}
@@ -160,18 +162,8 @@ services:
       #changeEventConfig
       OM_URI: ${OM_URI:- "http://localhost:8585"}
 
-      #extensionConfiguration
-      OM_RESOURCE_PACKAGES: ${OM_RESOURCE_PACKAGES:-[]}
-      OM_EXTENSIONS: ${OM_EXTENSIONS:-[]}
-
       # Heap OPTS Configurations
       OPENMETADATA_HEAP_OPTS: ${OPENMETADATA_HEAP_OPTS:--Xmx1G -Xms1G}
-      # Application Config
-      OM_CUSTOM_LOGO_URL_PATH: ${OM_CUSTOM_LOGO_URL_PATH:-""}
-      OM_CUSTOM_MONOGRAM_URL_PATH: ${OM_CUSTOM_MONOGRAM_URL_PATH:-""}
-      OM_MAX_FAILED_LOGIN_ATTEMPTS: ${OM_MAX_FAILED_LOGIN_ATTEMPTS:-3}
-      OM_LOGIN_ACCESS_BLOCK_TIME: ${OM_LOGIN_ACCESS_BLOCK_TIME:-600}
-      OM_JWT_EXPIRY_TIME: ${OM_JWT_EXPIRY_TIME:-3600}
       # Mask passwords values in UI
       MASK_PASSWORDS_API: ${MASK_PASSWORDS_API:-false}
 
@@ -252,7 +244,7 @@ services:
       #Database configuration for postgresql
       DB_DRIVER_CLASS: ${DB_DRIVER_CLASS:-org.postgresql.Driver}
       DB_SCHEME: ${DB_SCHEME:-postgresql}
-      DB_USE_SSL: ${DB_USE_SSL:-false}
+      DB_PARAMS: ${DB_PARAMS:-"allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC"}
       DB_USER: ${DB_USER:-openmetadata_user}
       DB_USER_PASSWORD: ${DB_USER_PASSWORD:-openmetadata_password}
       DB_HOST: ${DB_HOST:-postgresql}
@@ -280,6 +272,7 @@ services:
       EVENT_MONITOR_LATENCY: ${EVENT_MONITOR_LATENCY:-[]}
 
       #pipelineServiceClientConfiguration
+      PIPELINE_SERVICE_CLIENT_ENABLED: ${PIPELINE_SERVICE_CLIENT_ENABLED:-true}
       PIPELINE_SERVICE_CLIENT_CLASS_NAME: ${PIPELINE_SERVICE_CLIENT_CLASS_NAME:-"org.openmetadata.service.clients.pipeline.airflow.AirflowRESTClient"}
       PIPELINE_SERVICE_IP_INFO_ENABLED: ${PIPELINE_SERVICE_IP_INFO_ENABLED:-false}
       PIPELINE_SERVICE_CLIENT_HOST_IP: ${PIPELINE_SERVICE_CLIENT_HOST_IP:-""}
@@ -314,18 +307,8 @@ services:
       #changeEventConfig
       OM_URI: ${OM_URI:- "http://localhost:8585"}
 
-      #extensionConfiguration
-      OM_RESOURCE_PACKAGES: ${OM_RESOURCE_PACKAGES:-[]}
-      OM_EXTENSIONS: ${OM_EXTENSIONS:-[]}
-
       # Heap OPTS Configurations
       OPENMETADATA_HEAP_OPTS: ${OPENMETADATA_HEAP_OPTS:--Xmx1G -Xms1G}
-      # Application Config
-      OM_CUSTOM_LOGO_URL_PATH: ${OM_CUSTOM_LOGO_URL_PATH:-""}
-      OM_CUSTOM_MONOGRAM_URL_PATH: ${OM_CUSTOM_MONOGRAM_URL_PATH:-""}
-      OM_MAX_FAILED_LOGIN_ATTEMPTS: ${OM_MAX_FAILED_LOGIN_ATTEMPTS:-3}
-      OM_LOGIN_ACCESS_BLOCK_TIME: ${OM_LOGIN_ACCESS_BLOCK_TIME:-600}
-      OM_JWT_EXPIRY_TIME: ${OM_JWT_EXPIRY_TIME:-3600}
       # Mask passwords values in UI
       MASK_PASSWORDS_API: ${MASK_PASSWORDS_API:-false}
       

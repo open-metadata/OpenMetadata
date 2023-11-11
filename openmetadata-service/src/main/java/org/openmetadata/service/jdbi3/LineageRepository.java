@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.ColumnsEntityInterface;
 import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.entity.data.Table;
@@ -36,8 +37,8 @@ import org.openmetadata.service.util.JsonUtils;
 public class LineageRepository {
   private final CollectionDAO dao;
 
-  public LineageRepository(CollectionDAO dao) {
-    this.dao = dao;
+  public LineageRepository() {
+    this.dao = Entity.getCollectionDAO();
     Entity.setLineageRepository(this);
   }
 
@@ -51,6 +52,7 @@ public class LineageRepository {
     return getLineage(ref, upstreamDepth, downstreamDepth);
   }
 
+  @Transaction
   public void addLineage(AddLineage addLineage) {
     // Validate from entity
     EntityReference from = addLineage.getEdge().getFromEntity();
@@ -119,6 +121,7 @@ public class LineageRepository {
         || !(to.getType().equals(Entity.TABLE) || to.getType().equals(Entity.DASHBOARD_DATA_MODEL));
   }
 
+  @Transaction
   public boolean deleteLineage(String fromEntity, String fromId, String toEntity, String toId) {
     // Validate from entity
     EntityReference from = Entity.getEntityReferenceById(fromEntity, UUID.fromString(fromId), Include.NON_DELETED);

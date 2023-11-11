@@ -10,7 +10,7 @@
       "description": "Failure details are set only when `status` is not `success`.",
       "type": "object",
       "properties": {
-        "context" : {
+        "context": {
           "description": "Additional Context for Failure.",
           "type": "string"
         },
@@ -56,16 +56,16 @@
       "type": "object",
       "properties": {
         "sourceStats": {
-          "$ref" : "#/definitions/stepStats"
+          "$ref": "#/definitions/stepStats"
         },
         "processorStats": {
-          "$ref" : "#/definitions/stepStats"
+          "$ref": "#/definitions/stepStats"
         },
         "sinkStats": {
-          "$ref" : "#/definitions/stepStats"
+          "$ref": "#/definitions/stepStats"
         },
         "jobStats": {
-          "$ref" : "#/definitions/stepStats"
+          "$ref": "#/definitions/stepStats"
         }
       },
       "additionalProperties": false
@@ -88,31 +88,11 @@
     }
   },
   "properties": {
-    "id": {
-      "description": "Unique identifier of the Job.",
-      "$ref": "../type/basic.json#/definitions/uuid"
-    },
     "name": {
       "description": "Name of the result",
       "type": "string"
     },
-    "startedBy": {
-      "description": "Job started by",
-      "type": "string"
-    },
-    "publisherType": {
-      "$ref": "#/definitions/publisherType"
-    },
-    "runMode": {
-      "$ref": "#/definitions/runMode"
-    },
     "timestamp": {
-      "$ref": "../type/basic.json#/definitions/timestamp"
-    },
-    "startTime": {
-      "$ref": "../type/basic.json#/definitions/timestamp"
-    },
-    "endTime": {
       "$ref": "../type/basic.json#/definitions/timestamp"
     },
     "status": {
@@ -137,17 +117,17 @@
           "$ref": "#/definitions/failureDetails",
           "default": null
         },
-        "processorError" : {
+        "processorError": {
           "type": "object",
           "$ref": "#/definitions/failureDetails",
           "default": null
         },
-        "sinkError" : {
+        "sinkError": {
           "type": "object",
           "$ref": "#/definitions/failureDetails",
           "default": null
         },
-        "jobError" : {
+        "jobError": {
           "type": "object",
           "$ref": "#/definitions/failureDetails",
           "default": null
@@ -183,6 +163,9 @@
       "type": "string"
     }
   },
-  "required": ["id", "runMode", "timestamp", "status"],
+  "required": [
+    "timestamp",
+    "status"
+  ],
   "additionalProperties": false
 }

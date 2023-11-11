@@ -13,10 +13,9 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.schema.type.Include.ALL;
-
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.services.DashboardService;
@@ -30,8 +29,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class ChartRepository extends EntityRepository<Chart> {
-  public ChartRepository(CollectionDAO dao) {
-    super(ChartResource.COLLECTION_PATH, Entity.CHART, Chart.class, dao.chartDAO(), dao, "", "");
+  public ChartRepository() {
+    super(ChartResource.COLLECTION_PATH, Entity.CHART, Chart.class, Entity.getCollectionDAO().chartDAO(), "", "");
     supportsSearch = true;
   }
 
@@ -61,12 +60,6 @@ public class ChartRepository extends EntityRepository<Chart> {
   public void storeRelationships(Chart chart) {
     EntityReference service = chart.getService();
     addRelationship(service.getId(), chart.getId(), service.getType(), Entity.CHART, Relationship.CONTAINS);
-  }
-
-  @Override
-  public Chart setInheritedFields(Chart chart, Fields fields) {
-    DashboardService dashboardService = Entity.getEntity(chart.getService(), "domain", ALL);
-    return inheritDomain(chart, fields, dashboardService);
   }
 
   @Override
@@ -104,6 +97,7 @@ public class ChartRepository extends EntityRepository<Chart> {
       super(chart, updated, operation);
     }
 
+    @Transaction
     @Override
     public void entitySpecificUpdate() {
       recordChange("chartType", original.getChartType(), updated.getChartType());

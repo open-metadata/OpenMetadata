@@ -12,11 +12,11 @@
  */
 
 import { DefaultOptionType } from 'antd/lib/select';
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import { SearchDropdownOption } from 'components/SearchDropdown/SearchDropdown.interface';
-import { Query } from 'generated/entity/data/query';
-import { EntityReference } from 'generated/type/entityReference';
 import { HTMLAttributes } from 'react';
+import { OperationPermission } from '../../components/PermissionProvider/PermissionProvider.interface';
+import { SearchDropdownOption } from '../../components/SearchDropdown/SearchDropdown.interface';
+import { Query } from '../../generated/entity/data/query';
+import { EntityReference } from '../../generated/type/entityReference';
 
 export enum QueryVoteType {
   'votedUp' = 'votedUp',

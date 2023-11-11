@@ -14,7 +14,6 @@
 package org.openmetadata.service.jdbi3;
 
 import static java.util.stream.Collectors.groupingBy;
-import static java.util.stream.Collectors.toUnmodifiableList;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
@@ -23,6 +22,7 @@ import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.Entity.getEntity;
+import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.util.LambdaExceptionUtil.ignoringComparator;
 import static org.openmetadata.service.util.LambdaExceptionUtil.rethrowFunction;
 
@@ -42,6 +42,7 @@ import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.CreateTableProfile;
@@ -88,9 +89,9 @@ import org.openmetadata.service.util.ResultList;
 public class TableRepository extends EntityRepository<Table> {
 
   // Table fields that can be patched in a PATCH request
-  static final String PATCH_FIELDS = "tableConstraints,tablePartition";
+  static final String PATCH_FIELDS = "tableConstraints,tablePartition,columns";
   // Table fields that can be updated in a PUT request
-  static final String UPDATE_FIELDS = "tableConstraints,tablePartition,dataModel,sourceUrl";
+  static final String UPDATE_FIELDS = "tableConstraints,tablePartition,dataModel,sourceUrl,columns";
 
   public static final String FIELD_RELATION_COLUMN_TYPE = "table.columns.column";
   public static final String FIELD_RELATION_TABLE_TYPE = "table";
@@ -106,13 +107,12 @@ public class TableRepository extends EntityRepository<Table> {
 
   public static final String COLUMN_FIELD = "columns";
 
-  public TableRepository(CollectionDAO daoCollection) {
+  public TableRepository() {
     super(
         TableResource.COLLECTION_PATH,
         TABLE,
         Table.class,
-        daoCollection.tableDAO(),
-        daoCollection,
+        Entity.getCollectionDAO().tableDAO(),
         PATCH_FIELDS,
         UPDATE_FIELDS);
     supportsSearch = true;
@@ -127,7 +127,11 @@ public class TableRepository extends EntityRepository<Table> {
               ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), table.getId())
               : table.getUsageSummary());
     }
-    getColumnTags(fields.contains(FIELD_TAGS), table.getColumns());
+    if (fields.contains(COLUMN_FIELD)) {
+      // We'll get column tags only if we are getting the column fields
+      populateEntityFieldTags(
+          entityType, table.getColumns(), table.getFullyQualifiedName(), fields.contains(FIELD_TAGS));
+    }
     table.setJoins(fields.contains("joins") ? getJoins(table) : table.getJoins());
     table.setTableProfilerConfig(
         fields.contains(TABLE_PROFILER_CONFIG) ? getTableProfilerConfig(table) : table.getTableProfilerConfig());
@@ -181,6 +185,7 @@ public class TableRepository extends EntityRepository<Table> {
     ColumnUtil.setColumnFQN(table.getFullyQualifiedName(), table.getColumns());
   }
 
+  @Transaction
   public Table addJoins(UUID tableId, TableJoins joins) {
     // Validate the request content
     Table table = dao.findEntityById(tableId);
@@ -212,6 +217,7 @@ public class TableRepository extends EntityRepository<Table> {
     return table.withJoins(getJoins(table));
   }
 
+  @Transaction
   public Table addSampleData(UUID tableId, TableData tableData) {
     // Validate the request content
     Table table = dao.findEntityById(tableId);
@@ -249,7 +255,7 @@ public class TableRepository extends EntityRepository<Table> {
 
     // Set the column tags. Will be used to mask the sample data
     if (!authorizePII) {
-      getColumnTags(true, table.getColumns());
+      populateEntityFieldTags(entityType, table.getColumns(), table.getFullyQualifiedName(), true);
       table.setTags(getTags(table));
       return PIIMasker.getSampleData(table);
     }
@@ -257,6 +263,7 @@ public class TableRepository extends EntityRepository<Table> {
     return table;
   }
 
+  @Transaction
   public Table deleteSampleData(UUID tableId) {
     // Validate the request content
     Table table = dao.findEntityById(tableId);
@@ -286,6 +293,7 @@ public class TableRepository extends EntityRepository<Table> {
         .orElse(null);
   }
 
+  @Transaction
   public Table addTableProfilerConfig(UUID tableId, TableProfilerConfig tableProfilerConfig) {
     // Validate the request content
     Table table = dao.findEntityById(tableId);
@@ -315,6 +323,7 @@ public class TableRepository extends EntityRepository<Table> {
     return table.withTableProfilerConfig(tableProfilerConfig);
   }
 
+  @Transaction
   public Table deleteTableProfilerConfig(UUID tableId) {
     // Validate the request content
     Table table = dao.findEntityById(tableId);
@@ -479,7 +488,7 @@ public class TableRepository extends EntityRepository<Table> {
 
     // Set the column tags. Will be used to hide the data
     if (!authorizePII) {
-      getColumnTags(true, table.getColumns());
+      populateEntityFieldTags(entityType, table.getColumns(), table.getFullyQualifiedName(), true);
       return PIIMasker.getTableProfile(table);
     }
 
@@ -559,6 +568,21 @@ public class TableRepository extends EntityRepository<Table> {
 
   public Table addDataModel(UUID tableId, DataModel dataModel) {
     Table table = dao.findEntityById(tableId);
+
+    // Update the sql fields only if correct value is present
+    if (dataModel.getRawSql() == null || dataModel.getRawSql().isBlank()) {
+      if (table.getDataModel() != null
+          && (table.getDataModel().getRawSql() != null && !table.getDataModel().getRawSql().isBlank())) {
+        dataModel.setRawSql(table.getDataModel().getRawSql());
+      }
+    }
+
+    if (dataModel.getSql() == null || dataModel.getSql().isBlank()) {
+      if (table.getDataModel() != null
+          && (table.getDataModel().getSql() != null || !table.getDataModel().getSql().isBlank())) {
+        dataModel.setSql(table.getDataModel().getSql());
+      }
+    }
     table.withDataModel(dataModel);
 
     // Carry forward the table owner from the model to table entity, if empty
@@ -781,14 +805,6 @@ public class TableRepository extends EntityRepository<Table> {
     return childrenColumn;
   }
 
-  // TODO duplicated code
-  private void getColumnTags(boolean setTags, List<Column> columns) {
-    for (Column c : listOrEmpty(columns)) {
-      c.setTags(setTags ? getTags(c.getFullyQualifiedName()) : c.getTags());
-      getColumnTags(setTags, c.getChildren());
-    }
-  }
-
   private void validateTableFQN(String fqn) {
     try {
       dao.existsByName(fqn);
@@ -928,7 +944,7 @@ public class TableRepository extends EntityRepository<Table> {
                 Relationship.JOINED_WITH.ordinal())
             .stream()
             .map(rethrowFunction(er -> Pair.of(er.getMiddle(), JsonUtils.readObjects(er.getRight(), DailyCount.class))))
-            .collect(toUnmodifiableList());
+            .toList();
 
     return entityRelations.stream()
         .map(
@@ -956,7 +972,7 @@ public class TableRepository extends EntityRepository<Table> {
                             FullyQualifiedName.getColumnName(er.getLeft()),
                             er.getMiddle(),
                             JsonUtils.readObjects(er.getRight(), DailyCount.class))))
-            .collect(toUnmodifiableList());
+            .toList();
 
     return entityRelations.stream()
         .collect(groupingBy(Triple::getLeft))
@@ -977,8 +993,8 @@ public class TableRepository extends EntityRepository<Table> {
                                                 .filter(inLast30Days())
                                                 .mapToInt(DailyCount::getCount)
                                                 .sum()))
-                            .collect(toUnmodifiableList())))
-        .collect(toUnmodifiableList());
+                            .toList()))
+        .toList();
   }
 
   private Predicate<DailyCount> inLast30Days() {

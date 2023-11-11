@@ -11,22 +11,25 @@
  *  limitations under the License.
  */
 import { Space } from 'antd';
-import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
-import { getUserPath, NO_DATA_PLACEHOLDER } from 'constants/constants';
-import { EntityField } from 'constants/Feeds.constants';
-import { EntityChangeOperations } from 'enums/VersionPage.enum';
-import { ChangeDescription, EntityReference } from 'generated/entity/type';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { getEntityName } from 'utils/EntityUtils';
+import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
+import { getUserPath, NO_DATA_PLACEHOLDER } from '../../../constants/constants';
+import { EntityField } from '../../../constants/Feeds.constants';
+import { EntityChangeOperations } from '../../../enums/VersionPage.enum';
+import {
+  ChangeDescription,
+  EntityReference,
+} from '../../../generated/entity/type';
+import { getEntityName } from '../../../utils/EntityUtils';
 import {
   getAddedDiffElement,
   getChangedEntityNewValue,
   getChangedEntityOldValue,
   getDiffByFieldName,
   getRemovedDiffElement,
-} from 'utils/EntityVersionUtils';
+} from '../../../utils/EntityVersionUtils';
 import { DomainExpertsProps } from './DomainExperts.interface';
 
 function DomainExperts({
@@ -62,6 +65,7 @@ function DomainExperts({
             id={expert.id}
             name={expert.name ?? ''}
             textClass="text-xs"
+            type="circle"
             width="20"
           />
           <Link to={getUserPath(expert.name ?? '')}>
@@ -119,7 +123,7 @@ function DomainExperts({
 
   if (!isEmpty(entity.experts) && !isUndefined(entity.experts)) {
     return (
-      <Space wrap data-testid="domain-expert-name-heading" size={6}>
+      <Space wrap data-testid="domain-expert-name-heading" size={8}>
         {entity.experts.map((expert) =>
           getExpert(expert, EntityChangeOperations.NORMAL)
         )}

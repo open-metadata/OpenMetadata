@@ -11,12 +11,13 @@
  *  limitations under the License.
  */
 
+import { MlModelVersionProp } from '../components/MlModelVersion/MlModelVersion.interface';
 import {
   FeatureSourceDataType,
   FeatureType,
   MlModelServiceType,
-} from 'generated/entity/data/mlmodel';
-import { ENTITY_PERMISSIONS } from 'mocks/Permissions.mock';
+} from '../generated/entity/data/mlmodel';
+import { ENTITY_PERMISSIONS } from '../mocks/Permissions.mock';
 import {
   mockBackHandler,
   mockDomain,
@@ -24,8 +25,7 @@ import {
   mockTier,
   mockVersionHandler,
   mockVersionList,
-} from 'mocks/VersionCommon.mock';
-import { MlModelVersionProp } from '../components/MlModelVersion/MlModelVersion.interface';
+} from '../mocks/VersionCommon.mock';
 
 export const mockMlModelDetails = {
   id: '68b51299-dfd1-48ce-a00e-9611da93e7a3',
@@ -173,6 +173,7 @@ export const mlModelVersionMockProps: MlModelVersionProp = {
   isVersionLoading: false,
   owner: mockOwner,
   domain: mockDomain,
+  dataProducts: [],
   tier: mockTier,
   slashedMlModelName: [],
   versionList: mockVersionList,

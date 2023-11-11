@@ -15,10 +15,8 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DASHBOARD;
 import static org.openmetadata.service.Entity.MLMODEL;
-import static org.openmetadata.service.Entity.MLMODEL_SERVICE;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.mlFeatureMatch;
 import static org.openmetadata.service.util.EntityUtil.mlHyperParameterMatch;
@@ -26,6 +24,7 @@ import static org.openmetadata.service.util.EntityUtil.mlHyperParameterMatch;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.MlModel;
@@ -54,13 +53,12 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   private static final String MODEL_UPDATE_FIELDS = "dashboard";
   private static final String MODEL_PATCH_FIELDS = "dashboard";
 
-  public MlModelRepository(CollectionDAO dao) {
+  public MlModelRepository() {
     super(
         MlModelResource.COLLECTION_PATH,
         Entity.MLMODEL,
         MlModel.class,
-        dao.mlModelDAO(),
-        dao,
+        Entity.getCollectionDAO().mlModelDAO(),
         MODEL_PATCH_FIELDS,
         MODEL_UPDATE_FIELDS);
     supportsSearch = true;
@@ -192,13 +190,6 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     setMlFeatureSourcesLineage(mlModel);
   }
 
-  @Override
-  public MlModel setInheritedFields(MlModel mlModel, Fields fields) {
-    // If mlModel does not have domain, then inherit it from parent MLModel service
-    MlModelService service = Entity.getEntity(MLMODEL_SERVICE, mlModel.getService().getId(), "domain", ALL);
-    return inheritDomain(mlModel, fields, service);
-  }
-
   /**
    * If we have the properties MLFeatures -> MlFeatureSources and the feature sources have properly informed the Data
    * Source EntityRef, then we will automatically build the lineage between tables and ML Model.
@@ -326,6 +317,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
       super(original, updated, operation);
     }
 
+    @Transaction
     @Override
     public void entitySpecificUpdate() {
       updateAlgorithm(original, updated);

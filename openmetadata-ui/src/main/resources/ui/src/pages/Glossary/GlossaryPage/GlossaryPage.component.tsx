@@ -12,26 +12,29 @@
  */
 
 import { AxiosError } from 'axios';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import EntitySummaryPanel from 'components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
-import { EntityDetailsObjectInterface } from 'components/Explore/explore.interface';
-import GlossaryV1 from 'components/Glossary/GlossaryV1.component';
-import Loader from 'components/Loader/Loader';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
-import { VotingDataProps } from 'components/Voting/voting.interface';
-import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-import { PAGE_SIZE_LARGE, ROUTES } from 'constants/constants';
-import { GLOSSARIES_DOCS } from 'constants/docs.constants';
-import { ERROR_PLACEHOLDER_TYPE, LOADING_STATE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
-import { Glossary } from 'generated/entity/data/glossary';
-import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
-import { Operation } from 'generated/entity/policies/policy';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import EntitySummaryPanel from '../../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
+import { EntityDetailsObjectInterface } from '../../../components/Explore/ExplorePage.interface';
+import GlossaryV1 from '../../../components/Glossary/GlossaryV1.component';
+import Loader from '../../../components/Loader/Loader';
+import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
+import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../components/PermissionProvider/PermissionProvider.interface';
+import { VotingDataProps } from '../../../components/Voting/voting.interface';
+import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
+import { PAGE_SIZE_LARGE, ROUTES } from '../../../constants/constants';
+import { GLOSSARIES_DOCS } from '../../../constants/docs.constants';
+import {
+  ERROR_PLACEHOLDER_TYPE,
+  LOADING_STATE,
+} from '../../../enums/common.enum';
+import { Glossary } from '../../../generated/entity/data/glossary';
+import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
+import { Operation } from '../../../generated/entity/policies/policy';
 import {
   deleteGlossary,
   deleteGlossaryTerm,
@@ -41,11 +44,11 @@ import {
   patchGlossaryTerm,
   updateGlossaryTermVotes,
   updateGlossaryVotes,
-} from 'rest/glossaryAPI';
-import { checkPermission } from 'utils/PermissionsUtils';
-import { getGlossaryPath } from 'utils/RouterUtils';
-import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
+} from '../../../rest/glossaryAPI';
 import Fqn from '../../../utils/Fqn';
+import { checkPermission } from '../../../utils/PermissionsUtils';
+import { getGlossaryPath } from '../../../utils/RouterUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import GlossaryLeftPanel from '../GlossaryLeftPanel/GlossaryLeftPanel.component';
 
 const GlossaryPage = () => {
@@ -120,7 +123,7 @@ const GlossaryPage = () => {
     setIsLoading(true);
     try {
       const { data } = await getGlossariesList({
-        fields: 'owner,tags,reviewers,votes',
+        fields: 'owner,tags,reviewers,votes,domain',
         limit: PAGE_SIZE_LARGE,
       });
       setGlossaries(data);
@@ -140,7 +143,7 @@ const GlossaryPage = () => {
     try {
       const response = await getGlossaryTermByFQN(
         glossaryFqn,
-        'relatedTerms,reviewers,tags,owner,children,votes'
+        'relatedTerms,reviewers,tags,owner,children,votes,domain'
       );
       setSelectedData(response);
     } catch (error) {
@@ -353,6 +356,7 @@ const GlossaryPage = () => {
           isGlossaryActive={isGlossaryActive}
           isSummaryPanelOpen={Boolean(previewAsset)}
           isVersionsView={false}
+          refreshActiveGlossaryTerm={fetchGlossaryTermDetails}
           selectedData={selectedData as Glossary}
           updateGlossary={updateGlossary}
           updateVote={updateVote}

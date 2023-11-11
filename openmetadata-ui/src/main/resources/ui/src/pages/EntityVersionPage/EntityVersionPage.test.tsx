@@ -12,9 +12,9 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import { ENTITY_PERMISSIONS } from 'mocks/Permissions.mock';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { ENTITY_PERMISSIONS } from '../../mocks/Permissions.mock';
 import EntityVersionPage from './EntityVersionPage.component';
 
 let mockParams = {
@@ -28,67 +28,76 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 
-jest.mock('components/TableVersion/TableVersion.component', () => {
+jest.mock('../../components/TableVersion/TableVersion.component', () => {
   return jest.fn().mockReturnValue(<div>TableVersion component</div>);
 });
-jest.mock('components/DashboardVersion/DashboardVersion.component', () => {
-  return jest.fn().mockReturnValue(<div>DashboardVersion component</div>);
-});
-jest.mock('components/PipelineVersion/PipelineVersion.component', () => {
+jest.mock(
+  '../../components/DashboardVersion/DashboardVersion.component',
+  () => {
+    return jest.fn().mockReturnValue(<div>DashboardVersion component</div>);
+  }
+);
+jest.mock('../../components/PipelineVersion/PipelineVersion.component', () => {
   return jest.fn().mockReturnValue(<div>PipelineVersion component</div>);
 });
-jest.mock('components/TopicVersion/TopicVersion.component', () => {
+jest.mock('../../components/TopicVersion/TopicVersion.component', () => {
   return jest.fn().mockReturnValue(<div>TopicVersion component</div>);
 });
-jest.mock('components/MlModelVersion/MlModelVersion.component', () => {
+jest.mock('../../components/MlModelVersion/MlModelVersion.component', () => {
   return jest.fn().mockReturnValue(<div>MlModelVersion component</div>);
 });
-jest.mock('components/ContainerVersion/ContainerVersion.component', () => {
-  return jest.fn().mockReturnValue(<div>ContainerVersion component</div>);
-});
+jest.mock(
+  '../../components/ContainerVersion/ContainerVersion.component',
+  () => {
+    return jest.fn().mockReturnValue(<div>ContainerVersion component</div>);
+  }
+);
 
-jest.mock('components/DataModelVersion/DataModelVersion.component', () => {
-  return jest.fn().mockReturnValue(<div>DataModelVersion component</div>);
-});
+jest.mock(
+  '../../components/DataModelVersion/DataModelVersion.component',
+  () => {
+    return jest.fn().mockReturnValue(<div>DataModelVersion component</div>);
+  }
+);
 
-jest.mock('rest/dashboardAPI', () => ({
+jest.mock('../../rest/dashboardAPI', () => ({
   getDashboardByFqn: jest.fn().mockImplementation(() => Promise.resolve({})),
   getDashboardVersion: jest.fn().mockImplementation(() => Promise.resolve({})),
   getDashboardVersions: jest.fn().mockImplementation(() => Promise.resolve({})),
 }));
-jest.mock('rest/pipelineAPI', () => ({
+jest.mock('../../rest/pipelineAPI', () => ({
   getPipelineByFqn: jest.fn().mockImplementation(() => Promise.resolve({})),
   getPipelineVersion: jest.fn().mockImplementation(() => Promise.resolve({})),
   getPipelineVersions: jest.fn().mockImplementation(() => Promise.resolve({})),
 }));
-jest.mock('rest/tableAPI', () => ({
+jest.mock('../../rest/tableAPI', () => ({
   getTableDetailsByFQN: jest.fn().mockImplementation(() => Promise.resolve({})),
   getTableVersion: jest.fn().mockImplementation(() => Promise.resolve({})),
   getTableVersions: jest.fn().mockImplementation(() => Promise.resolve({})),
 }));
-jest.mock('rest/topicsAPI', () => ({
+jest.mock('../../rest/topicsAPI', () => ({
   getTopicByFqn: jest.fn().mockImplementation(() => Promise.resolve({})),
   getTopicVersion: jest.fn().mockImplementation(() => Promise.resolve({})),
   getTopicVersions: jest.fn().mockImplementation(() => Promise.resolve({})),
 }));
 
-jest.mock('rest/mlModelAPI', () => ({
+jest.mock('../../rest/mlModelAPI', () => ({
   getMlModelByFQN: jest.fn().mockImplementation(() => Promise.resolve({})),
   getMlModelVersion: jest.fn().mockImplementation(() => Promise.resolve({})),
   getMlModelVersions: jest.fn().mockImplementation(() => Promise.resolve({})),
 }));
 
-jest.mock('rest/storageAPI', () => ({
+jest.mock('../../rest/storageAPI', () => ({
   getContainerByName: jest.fn().mockImplementation(() => Promise.resolve({})),
   getContainerVersion: jest.fn().mockImplementation(() => Promise.resolve({})),
   getContainerVersions: jest.fn().mockImplementation(() => Promise.resolve({})),
 }));
 
-jest.mock('components/containers/PageLayoutV1', () =>
+jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
   jest.fn().mockImplementation(({ children }) => <div>{children}</div>)
 );
 
-jest.mock('rest/dataModelsAPI', () => ({
+jest.mock('../../rest/dataModelsAPI', () => ({
   getDataModelDetailsByFQN: jest
     .fn()
     .mockImplementation(() => Promise.resolve({})),
@@ -98,7 +107,7 @@ jest.mock('rest/dataModelsAPI', () => ({
     .mockImplementation(() => Promise.resolve({})),
 }));
 
-jest.mock('components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     getEntityPermissionByFqn: jest
       .fn()

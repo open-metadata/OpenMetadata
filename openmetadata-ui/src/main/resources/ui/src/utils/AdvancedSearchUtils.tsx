@@ -13,9 +13,27 @@
 
 import Icon, { CloseCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import { Button, Checkbox, MenuProps, Space, Typography } from 'antd';
-import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
-import { SearchDropdownOption } from 'components/SearchDropdown/SearchDropdown.interface';
 import i18next from 'i18next';
+import { isArray, isEmpty } from 'lodash';
+import React from 'react';
+import { RenderSettings } from 'react-awesome-query-builder';
+import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
+import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
+import {
+  COMMON_DROPDOWN_ITEMS,
+  CONTAINER_DROPDOWN_ITEMS,
+  DASHBOARD_DATA_MODEL_TYPE,
+  DASHBOARD_DROPDOWN_ITEMS,
+  DATA_PRODUCT_DROPDOWN_ITEMS,
+  GLOSSARY_DROPDOWN_ITEMS,
+  PIPELINE_DROPDOWN_ITEMS,
+  SEARCH_INDEX_DROPDOWN_ITEMS,
+  TABLE_DROPDOWN_ITEMS,
+  TAG_DROPDOWN_ITEMS,
+  TOPIC_DROPDOWN_ITEMS,
+} from '../constants/AdvancedSearch.constants';
+import { AdvancedFields } from '../enums/AdvancedSearch.enum';
+import { SearchIndex } from '../enums/search.enum';
 import {
   Bucket,
   ContainerSearchSource,
@@ -26,25 +44,8 @@ import {
   SuggestOption,
   TableSearchSource,
   TopicSearchSource,
-} from 'interface/search.interface';
-import { isArray, isEmpty } from 'lodash';
-import React from 'react';
-import { RenderSettings } from 'react-awesome-query-builder';
-import { getCountBadge } from 'utils/CommonUtils';
-import {
-  COMMON_DROPDOWN_ITEMS,
-  CONTAINER_DROPDOWN_ITEMS,
-  DASHBOARD_DATA_MODEL_TYPE,
-  DASHBOARD_DROPDOWN_ITEMS,
-  GLOSSARY_DROPDOWN_ITEMS,
-  PIPELINE_DROPDOWN_ITEMS,
-  SEARCH_INDEX_DROPDOWN_ITEMS,
-  TABLE_DROPDOWN_ITEMS,
-  TAG_DROPDOWN_ITEMS,
-  TOPIC_DROPDOWN_ITEMS,
-} from '../constants/AdvancedSearch.constants';
-import { AdvancedFields } from '../enums/AdvancedSearch.enum';
-import { SearchIndex } from '../enums/search.enum';
+} from '../interface/search.interface';
+import { getCountBadge } from '../utils/CommonUtils';
 import { getEntityName } from './EntityUtils';
 import SVGIcons, { Icons } from './SvgUtils';
 
@@ -79,6 +80,8 @@ export const getDropDownItems = (index: string) => {
       return [...GLOSSARY_DROPDOWN_ITEMS];
     case SearchIndex.TAG:
       return [...TAG_DROPDOWN_ITEMS];
+    case SearchIndex.DATA_PRODUCT:
+      return [...DATA_PRODUCT_DROPDOWN_ITEMS];
 
     default:
       return [];

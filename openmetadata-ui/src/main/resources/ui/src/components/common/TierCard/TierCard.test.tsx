@@ -49,7 +49,7 @@ const mockProps = {
   children: <div>Child</div>,
 };
 
-jest.mock('rest/tagAPI', () => ({
+jest.mock('../../../rest/tagAPI', () => ({
   getTags: jest.fn().mockImplementation(() => mockGetTags()),
 }));
 
@@ -79,7 +79,7 @@ jest.mock('antd', () => ({
     }),
 }));
 
-jest.mock('../rich-text-editor/RichTextEditorPreviewer', () => {
+jest.mock('../RichTextEditor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<div>RichTextEditorPreviewer</div>);
 });
 

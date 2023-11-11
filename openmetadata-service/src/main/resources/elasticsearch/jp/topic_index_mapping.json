@@ -49,7 +49,8 @@
         "fields": {
           "keyword": {
             "type": "keyword",
-            "ignore_above": 256
+            "ignore_above": 256,
+            "normalizer": "lowercase_normalizer"
           },
           "ngram": {
             "type": "text",
@@ -237,6 +238,9 @@
           }
         }
       },
+      "fieldNames": {
+        "type": "keyword"
+      },
       "cleanupPolicies": {
         "type": "keyword"
       },
@@ -285,6 +289,9 @@
             "type": "text"
           }
         }
+      },
+      "extension": {
+        "type": "object"
       },
       "dataProducts": {
         "properties": {

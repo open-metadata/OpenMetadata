@@ -12,13 +12,7 @@
  */
 import { ItemType, MenuItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
-import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
-import {
-  ACTIVE_DOMAIN_STORAGE_KEY,
-  DEFAULT_DOMAIN_VALUE,
-  PAGE_SIZE_LARGE,
-} from 'constants/constants';
-import { Domain } from 'generated/entity/domains/domain';
+import { isEmpty } from 'lodash';
 import React, {
   FC,
   ReactNode,
@@ -28,8 +22,16 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getDomainList } from 'rest/domainAPI';
-import { showErrorToast } from 'utils/ToastUtils';
+import {
+  ACTIVE_DOMAIN_STORAGE_KEY,
+  DEFAULT_DOMAIN_VALUE,
+  PAGE_SIZE_LARGE,
+} from '../../../constants/constants';
+import { Domain } from '../../../generated/entity/domains/domain';
+import { getDomainList } from '../../../rest/domainAPI';
+import { getEntityName } from '../../../utils/EntityUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import { usePermissionProvider } from '../../PermissionProvider/PermissionProvider';
 import { DomainContextType } from './DomainProvider.interface';
 
 export const DomainContext = React.createContext({} as DomainContextType);
@@ -42,7 +44,7 @@ const DomainProvider: FC<Props> = ({ children }: Props) => {
   const { t } = useTranslation();
   const [domains, setDomains] = useState<Domain[]>([]);
   const [domainLoading, setDomainLoading] = useState(false);
-  const { isAuthenticated } = useAuthContext();
+  const { permissions } = usePermissionProvider();
   const localStorageData =
     localStorage.getItem(ACTIVE_DOMAIN_STORAGE_KEY) ?? DEFAULT_DOMAIN_VALUE;
 
@@ -55,7 +57,7 @@ const DomainProvider: FC<Props> = ({ children }: Props) => {
     ];
     domains.forEach((domain: Domain) => {
       options.push({
-        label: domain.displayName ?? domain.name,
+        label: getEntityName(domain),
         key: domain.fullyQualifiedName ?? '',
       });
     });
@@ -121,10 +123,10 @@ const DomainProvider: FC<Props> = ({ children }: Props) => {
   ]);
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (!isEmpty(permissions)) {
       fetchDomainList();
     }
-  }, [isAuthenticated]);
+  }, [permissions]);
 
   return (
     <DomainContext.Provider value={domainContextObj}>

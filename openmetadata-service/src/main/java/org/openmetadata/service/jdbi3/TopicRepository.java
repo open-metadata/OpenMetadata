@@ -19,7 +19,7 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
-import static org.openmetadata.service.Entity.MESSAGING_SERVICE;
+import static org.openmetadata.service.Entity.populateEntityFieldTags;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -30,6 +30,7 @@ import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.Topic;
@@ -55,17 +56,18 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 
 public class TopicRepository extends EntityRepository<Topic> {
+
+  public TopicRepository() {
+    super(TopicResource.COLLECTION_PATH, Entity.TOPIC, Topic.class, Entity.getCollectionDAO().topicDAO(), "", "");
+    supportsSearch = true;
+  }
+
   @Override
   public void setFullyQualifiedName(Topic topic) {
     topic.setFullyQualifiedName(FullyQualifiedName.add(topic.getService().getFullyQualifiedName(), topic.getName()));
     if (topic.getMessageSchema() != null) {
       setFieldFQN(topic.getFullyQualifiedName(), topic.getMessageSchema().getSchemaFields());
     }
-  }
-
-  public TopicRepository(CollectionDAO dao) {
-    super(TopicResource.COLLECTION_PATH, Entity.TOPIC, Topic.class, dao.topicDAO(), dao, "", "");
-    supportsSearch = true;
   }
 
   @Override
@@ -109,17 +111,14 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   @Override
-  public Topic setInheritedFields(Topic topic, Fields fields) {
-    // If topic does not have domain, then inherit it from parent messaging service
-    MessagingService service = Entity.getEntity(MESSAGING_SERVICE, topic.getService().getId(), "domain", ALL);
-    return inheritDomain(topic, fields, service);
-  }
-
-  @Override
   public Topic setFields(Topic topic, Fields fields) {
     topic.setService(getContainer(topic.getId()));
     if (topic.getMessageSchema() != null) {
-      getFieldTags(fields.contains(FIELD_TAGS), topic.getMessageSchema().getSchemaFields());
+      populateEntityFieldTags(
+          entityType,
+          topic.getMessageSchema().getSchemaFields(),
+          topic.getFullyQualifiedName(),
+          fields.contains(FIELD_TAGS));
     }
     return topic;
   }
@@ -153,7 +152,8 @@ public class TopicRepository extends EntityRepository<Topic> {
 
     // Set the fields tags. Will be used to mask the sample data
     if (!authorizePII) {
-      getFieldTags(true, topic.getMessageSchema().getSchemaFields());
+      populateEntityFieldTags(
+          entityType, topic.getMessageSchema().getSchemaFields(), topic.getFullyQualifiedName(), true);
       topic.setTags(getTags(topic));
       return PIIMasker.getSampleData(topic);
     }
@@ -181,15 +181,6 @@ public class TopicRepository extends EntityRepository<Topic> {
             setFieldFQN(fieldFqn, c.getChildren());
           }
         });
-  }
-
-  private void getFieldTags(boolean setTags, List<Field> fields) {
-    for (Field f : listOrEmpty(fields)) {
-      if (f.getTags() == null) {
-        f.setTags(setTags ? getTags(f.getFullyQualifiedName()) : null);
-        getFieldTags(setTags, f.getChildren());
-      }
-    }
   }
 
   private void addDerivedFieldTags(List<Field> fields) {
@@ -384,6 +375,7 @@ public class TopicRepository extends EntityRepository<Topic> {
       super(original, updated, operation);
     }
 
+    @Transaction
     @Override
     public void entitySpecificUpdate() {
       recordChange("maximumMessageSize", original.getMaximumMessageSize(), updated.getMaximumMessageSize());

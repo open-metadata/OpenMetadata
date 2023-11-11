@@ -12,23 +12,24 @@
  */
 
 import { AxiosError } from 'axios';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import Loader from 'components/Loader/Loader';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
-import { ROUTES } from 'constants/constants';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
-import { Domain } from 'generated/entity/domains/domain';
-import { Operation } from 'generated/entity/policies/policy';
+import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { deleteDomain, getDomainByName, patchDomains } from 'rest/domainAPI';
-import { checkPermission } from 'utils/PermissionsUtils';
-import { getDomainPath } from 'utils/RouterUtils';
-import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../components/Loader/Loader';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
+import { ROUTES } from '../../constants/constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { Domain } from '../../generated/entity/domains/domain';
+import { Operation } from '../../generated/entity/policies/policy';
+import { getDomainByName, patchDomains } from '../../rest/domainAPI';
+import { checkPermission } from '../../utils/PermissionsUtils';
+import { getDomainPath } from '../../utils/RouterUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import './domain.less';
 import DomainDetailsPage from './DomainDetailsPage/DomainDetailsPage.component';
 import DomainsLeftPanel from './DomainLeftPanel/DomainLeftPanel.component';
@@ -39,8 +40,8 @@ const DomainPage = () => {
   const { fqn } = useParams<{ fqn: string }>();
   const history = useHistory();
   const { permissions } = usePermissionProvider();
-  const { domains, refreshDomains, updateDomains } = useDomainProvider();
-  const [isLoading, setIsLoading] = useState(false);
+  const { domains, refreshDomains, updateDomains, domainLoading } =
+    useDomainProvider();
   const [isMainContentLoading, setIsMainContentLoading] = useState(true);
   const [activeDomain, setActiveDomain] = useState<Domain>();
   const domainFqn = fqn ? decodeURIComponent(fqn) : null;
@@ -95,33 +96,13 @@ const DomainPage = () => {
   };
 
   const handleDomainDelete = (id: string) => {
-    deleteDomain(id)
-      .then(() => {
-        showSuccessToast(
-          t('server.entity-deleted-successfully', {
-            entity: t('label.domain'),
-          })
-        );
-        setIsLoading(true);
-        // check if the domain available
-        const updatedDomains = domains.filter((item) => item.id !== id);
-        const domainPath =
-          updatedDomains.length > 0
-            ? getDomainPath(updatedDomains[0].fullyQualifiedName)
-            : getDomainPath();
+    const updatedDomains = domains.find((item) => item.id !== id);
+    const domainPath = updatedDomains
+      ? getDomainPath(updatedDomains.fullyQualifiedName)
+      : getDomainPath();
 
-        history.push(domainPath);
-        refreshDomains();
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          t('server.delete-entity-error', {
-            entity: t('label.domain'),
-          })
-        );
-      })
-      .finally(() => setIsLoading(false));
+    refreshDomains();
+    history.push(domainPath);
   };
 
   const fetchDomainByName = async (fqn: string) => {
@@ -139,19 +120,40 @@ const DomainPage = () => {
     }
   };
 
-  useEffect(() => {
-    if (domainFqn) {
-      fetchDomainByName(domainFqn);
+  const domainPageRender = useMemo(() => {
+    if (isMainContentLoading) {
+      return <Loader />;
+    } else if (!activeDomain) {
+      return <ErrorPlaceHolder />;
+    } else {
+      return (
+        <DomainDetailsPage
+          domain={activeDomain}
+          onDelete={handleDomainDelete}
+          onUpdate={handleDomainUpdate}
+        />
+      );
     }
-  }, [domainFqn]);
+  }, [
+    isMainContentLoading,
+    activeDomain,
+    handleDomainUpdate,
+    handleDomainDelete,
+  ]);
 
   useEffect(() => {
-    if (domains.length > 0 && !domainFqn) {
+    if (domainFqn && domains.length > 0) {
+      fetchDomainByName(domainFqn);
+    }
+  }, [domainFqn, domains]);
+
+  useEffect(() => {
+    if (domains.length > 0 && !domainFqn && !domainLoading) {
       history.push(getDomainPath(domains[0].fullyQualifiedName));
     }
   }, [domains, domainFqn]);
 
-  if (isLoading) {
+  if (domainLoading) {
     return <Loader />;
   }
 
@@ -164,7 +166,7 @@ const DomainPage = () => {
     );
   }
 
-  if (domains.length === 0 && !isLoading) {
+  if (isEmpty(domains)) {
     return (
       <ErrorPlaceHolder
         buttonId="add-domain"
@@ -174,10 +176,11 @@ const DomainPage = () => {
         type={
           createDomainPermission
             ? ERROR_PLACEHOLDER_TYPE.CREATE
-            : ERROR_PLACEHOLDER_TYPE.NO_DATA
+            : ERROR_PLACEHOLDER_TYPE.CUSTOM
         }
-        onClick={handleAddDomainClick}
-      />
+        onClick={handleAddDomainClick}>
+        {t('message.domains-not-configured')}
+      </ErrorPlaceHolder>
     );
   }
 
@@ -186,14 +189,7 @@ const DomainPage = () => {
       className="domain-parent-page-layout"
       leftPanel={<DomainsLeftPanel domains={domains} />}
       pageTitle={t('label.domain')}>
-      {activeDomain && (
-        <DomainDetailsPage
-          domain={activeDomain}
-          loading={isMainContentLoading}
-          onDelete={handleDomainDelete}
-          onUpdate={handleDomainUpdate}
-        />
-      )}
+      {domainPageRender}
     </PageLayoutV1>
   );
 };

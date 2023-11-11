@@ -11,21 +11,15 @@
  *  limitations under the License.
  */
 
-import { SearchedDataProps } from 'components/searched-data/SearchedData.interface';
 import { User } from '../../generated/entity/teams/user';
 
 export interface Props {
   userData: User;
-  followingEntities: {
-    data: SearchedDataProps['data'];
-    total: number;
-  };
-  ownedEntities: {
-    data: SearchedDataProps['data'];
-    total: number;
+  queryFilters: {
+    myData: string;
+    following: string;
   };
   username: string;
-  isUserEntitiesLoading: boolean;
   handlePaginate: (page: string | number) => void;
   updateUserDetails: (data: Partial<User>) => Promise<void>;
 }

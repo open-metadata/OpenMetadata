@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-// / <reference types="Cypress" />
+// eslint-disable-next-line spaced-comment
+/// <reference types="Cypress" />
 
 import {
   addOwner,
@@ -113,14 +114,12 @@ Object.entries(ENTITY_DETAILS_FOR_VERSION_TEST).map(
           '0.2'
         );
 
-        cy.get(
-          `[data-testid="domain-link"] [data-testid="diff-added-${DOMAIN_CREATION_DETAILS.name}"]`
-        )
+        cy.get(`[data-testid="domain-link"] [data-testid="diff-added"]`)
           .scrollIntoView()
           .should('be.visible');
 
         cy.get(
-          `[data-testid="diff-added-${entityDetails.entityAddedDescription}"]`
+          `[data-testid="asset-description-container"] [data-testid="diff-added"]`
         )
           .scrollIntoView()
           .should('be.visible');
@@ -144,28 +143,25 @@ Object.entries(ENTITY_DETAILS_FOR_VERSION_TEST).map(
             .scrollIntoView()
             .should('be.visible');
 
-          cy.get(
-            `[data-testid="diff-removed-${entityDetails.entityChildRemovedDescription}"]`
-          )
+          cy.get(`[data-testid="diff-removed"]`)
+            .contains(entityDetails.entityChildRemovedDescription)
             .scrollIntoView()
             .should('be.visible');
 
-          cy.get(
-            `[data-testid="diff-added-${entityDetails.entityChildAddedDescription}"]`
-          )
+          cy.get(`[data-testid="diff-added"]`)
+            .contains(entityDetails.entityChildAddedDescription)
             .scrollIntoView()
             .should('be.visible');
         }
       });
 
       it(`${entityType} version page should show removed tags changes properly`, () => {
-        visitEntityDetailsPage(
-          entityDetails.name,
-          entityDetails.serviceName,
-          entityDetails.entity,
-          undefined,
-          entityType
-        );
+        visitEntityDetailsPage({
+          term: entityDetails.name,
+          serviceName: entityDetails.serviceName,
+          entity: entityDetails.entity,
+          entityType: entityType,
+        });
 
         cy.get(
           '[data-testid="entity-right-panel"]  [data-testid="edit-button"]'
@@ -195,13 +191,12 @@ Object.entries(ENTITY_DETAILS_FOR_VERSION_TEST).map(
       });
 
       it(`${entityType} version page should show owner changes properly`, () => {
-        visitEntityDetailsPage(
-          entityDetails.name,
-          entityDetails.serviceName,
-          entityDetails.entity,
-          undefined,
-          entityType
-        );
+        visitEntityDetailsPage({
+          term: entityDetails.name,
+          serviceName: entityDetails.serviceName,
+          entity: entityDetails.entity,
+          entityType: entityType,
+        });
 
         cy.get('[data-testid="version-button"]').as('versionButton');
 
@@ -231,7 +226,7 @@ Object.entries(ENTITY_DETAILS_FOR_VERSION_TEST).map(
         verifyResponseStatusCode('@getVersionsList', 200);
         verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
-        cy.get(`[data-testid="diff-added-${OWNER}"]`)
+        cy.get(`[data-testid="diff-added`)
           .scrollIntoView()
           .should('be.visible');
 
@@ -251,19 +246,18 @@ Object.entries(ENTITY_DETAILS_FOR_VERSION_TEST).map(
         verifyResponseStatusCode('@getVersionsList', 200);
         verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
-        cy.get(`[data-testid="diff-removed-${OWNER}"]`)
+        cy.get(`[data-testid="diff-removed"]`)
           .scrollIntoView()
           .should('be.visible');
       });
 
       it(`${entityType} version page should show tier changes properly`, () => {
-        visitEntityDetailsPage(
-          entityDetails.name,
-          entityDetails.serviceName,
-          entityDetails.entity,
-          undefined,
-          entityType
-        );
+        visitEntityDetailsPage({
+          term: entityDetails.name,
+          serviceName: entityDetails.serviceName,
+          entity: entityDetails.entity,
+          entityType: entityType,
+        });
 
         cy.get('[data-testid="version-button"]').as('versionButton');
 
@@ -293,7 +287,7 @@ Object.entries(ENTITY_DETAILS_FOR_VERSION_TEST).map(
         verifyResponseStatusCode('@getVersionsList', 200);
         verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
-        cy.get(`[data-testid="diff-added-${TIER}"]`)
+        cy.get(`[data-testid="diff-added"]`)
           .scrollIntoView()
           .should('be.visible');
 
@@ -313,7 +307,7 @@ Object.entries(ENTITY_DETAILS_FOR_VERSION_TEST).map(
         verifyResponseStatusCode('@getVersionsList', 200);
         verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
-        cy.get(`[data-testid="diff-removed-${TIER}"]`)
+        cy.get(`[data-testid="diff-removed"]`)
           .scrollIntoView()
           .should('be.visible');
       });

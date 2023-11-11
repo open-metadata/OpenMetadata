@@ -21,6 +21,7 @@ import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.data.Dashboard;
@@ -44,13 +45,12 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   private static final String DASHBOARD_PATCH_FIELDS = "charts,dataModels";
   private static final String DASHBOARD_URL = "sourceUrl";
 
-  public DashboardRepository(CollectionDAO dao) {
+  public DashboardRepository() {
     super(
         DashboardResource.COLLECTION_PATH,
         Entity.DASHBOARD,
         Dashboard.class,
-        dao.dashboardDAO(),
-        dao,
+        Entity.getCollectionDAO().dashboardDAO(),
         DASHBOARD_PATCH_FIELDS,
         DASHBOARD_UPDATE_FIELDS);
     supportsSearch = true;
@@ -179,12 +179,6 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   @Override
-  public Dashboard setInheritedFields(Dashboard dashboard, Fields fields) {
-    DashboardService dashboardService = Entity.getEntity(dashboard.getService(), "domain", ALL);
-    return inheritDomain(dashboard, fields, dashboardService);
-  }
-
-  @Override
   public EntityUpdater getUpdater(Dashboard original, Dashboard updated, Operation operation) {
     return new DashboardUpdater(original, updated, operation);
   }
@@ -206,6 +200,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
       super(original, updated, operation);
     }
 
+    @Transaction
     @Override
     public void entitySpecificUpdate() {
       update(Entity.CHART, "charts", listOrEmpty(updated.getCharts()), listOrEmpty(original.getCharts()));

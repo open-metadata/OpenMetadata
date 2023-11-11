@@ -12,12 +12,13 @@
  */
 
 import { Select, Space, Typography } from 'antd';
-import { ReactComponent as TeamIcon } from 'assets/svg/teams-grey.svg';
-import { UserTag } from 'components/common/UserTag/UserTag.component';
-import { OwnerType } from 'enums/user.enum';
 import { t } from 'i18next';
 import { groupBy, isUndefined } from 'lodash';
 import React, { FC, useMemo } from 'react';
+import { ReactComponent as TeamIcon } from '../../../assets/svg/teams-grey.svg';
+import { UserTag } from '../../../components/common/UserTag/UserTag.component';
+import { UserTagSize } from '../../../components/common/UserTag/UserTag.interface';
+import { OwnerType } from '../../../enums/user.enum';
 import { Option } from '../TasksPage.interface';
 import './Assignee.less';
 
@@ -72,7 +73,12 @@ const Assignees: FC<Props> = ({
           ...user,
           label: (
             <div data-testid={`assignee-option-${user.label}`}>
-              <UserTag id={user.value} name={user.label} />
+              <UserTag
+                className="assignee-item"
+                id={user.value}
+                name={user.label}
+                size={UserTagSize.small}
+              />
             </div>
           ),
         })),
@@ -85,7 +91,7 @@ const Assignees: FC<Props> = ({
   return (
     <Select
       showSearch
-      className="ant-select-custom"
+      className="ant-select-custom select-assignee"
       data-testid="select-assignee"
       defaultActiveFirstOption={false}
       filterOption={false}

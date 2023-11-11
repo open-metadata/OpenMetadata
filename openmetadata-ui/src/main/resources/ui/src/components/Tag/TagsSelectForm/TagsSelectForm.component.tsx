@@ -13,8 +13,9 @@
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Col, Form, Row, Space } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
-import AsyncSelectList from 'components/AsyncSelectList/AsyncSelectList';
 import React, { useState } from 'react';
+import AsyncSelectList from '../../../components/AsyncSelectList/AsyncSelectList';
+import './tag-select-fom.style.less';
 import { TagsSelectFormProps } from './TagsSelectForm.interface';
 
 const TagSelectForm = ({
@@ -23,6 +24,7 @@ const TagSelectForm = ({
   placeholder,
   onSubmit,
   onCancel,
+  tagData,
 }: TagsSelectFormProps) => {
   const [form] = useForm();
   const [isSubmitLoading, setIsSubmitLoading] = useState(false);
@@ -62,7 +64,9 @@ const TagSelectForm = ({
         <Col className="gutter-row" span={24}>
           <Form.Item noStyle name="tags">
             <AsyncSelectList
+              className="tag-select-box"
               fetchOptions={fetchApi}
+              initialData={tagData}
               mode="multiple"
               placeholder={placeholder}
             />

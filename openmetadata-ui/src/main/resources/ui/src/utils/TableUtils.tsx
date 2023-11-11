@@ -14,37 +14,35 @@
 import Icon, { FilterOutlined, SearchOutlined } from '@ant-design/icons';
 import { Tooltip } from 'antd';
 import { ExpandableConfig } from 'antd/lib/table/interface';
-import { ReactComponent as IconTerm } from 'assets/svg/book.svg';
-import { ReactComponent as ClassificationIcon } from 'assets/svg/classification.svg';
-import { ReactComponent as GlossaryIcon } from 'assets/svg/glossary.svg';
-import { ReactComponent as DataProductIcon } from 'assets/svg/ic-data-product.svg';
-import { ReactComponent as DomainIcon } from 'assets/svg/ic-domain.svg';
-import { ReactComponent as ContainerIcon } from 'assets/svg/ic-storage.svg';
 import classNames from 'classnames';
-import { SourceType } from 'components/searched-data/SearchedData.interface';
-import { SearchIndexField } from 'generated/entity/data/searchIndex';
-import { Field } from 'generated/type/schema';
 import { t } from 'i18next';
 import {
   isUndefined,
   lowerCase,
+  omit,
   reduce,
   toString,
   uniqBy,
   uniqueId,
   upperCase,
 } from 'lodash';
-import { EntityTags, TagOption } from 'Models';
+import { EntityTags } from 'Models';
 import React from 'react';
+import { ReactComponent as IconTerm } from '../assets/svg/book.svg';
+import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import { ReactComponent as IconDataModel } from '../assets/svg/data-model.svg';
 import { ReactComponent as IconDrag } from '../assets/svg/drag.svg';
 import { ReactComponent as IconForeignKeyLineThrough } from '../assets/svg/foreign-key-line-through.svg';
 import { ReactComponent as IconForeignKey } from '../assets/svg/foreign-key.svg';
+import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
 import { ReactComponent as IconDown } from '../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../assets/svg/ic-arrow-right.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/ic-dashboard.svg';
+import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
+import { ReactComponent as DomainIcon } from '../assets/svg/ic-domain.svg';
 import { ReactComponent as MlModelIcon } from '../assets/svg/ic-ml-model.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/ic-pipeline.svg';
+import { ReactComponent as ContainerIcon } from '../assets/svg/ic-storage.svg';
 import { ReactComponent as IconStoredProcedure } from '../assets/svg/ic-stored-procedure.svg';
 import { ReactComponent as TableIcon } from '../assets/svg/ic-table.svg';
 import { ReactComponent as TopicIcon } from '../assets/svg/ic-topic.svg';
@@ -54,6 +52,7 @@ import { ReactComponent as IconNotNullLineThrough } from '../assets/svg/icon-not
 import { ReactComponent as IconNotNull } from '../assets/svg/icon-not-null.svg';
 import { ReactComponent as IconUniqueLineThrough } from '../assets/svg/icon-unique-line-through.svg';
 import { ReactComponent as IconUnique } from '../assets/svg/icon-unique.svg';
+import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   DE_ACTIVE_COLOR,
@@ -66,7 +65,7 @@ import {
   getMlModelPath,
   getPipelineDetailsPath,
   getServiceDetailsPath,
-  getStoredProcedureDetailsPath,
+  getStoredProcedureDetailPath,
   getTableDetailsPath,
   getTableTabPath,
   getTagsDetailsPath,
@@ -78,20 +77,27 @@ import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constant
 import { EntityTabs, EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { ConstraintTypes, PrimaryTableDataTypes } from '../enums/table.enum';
+import { SearchIndexField } from '../generated/entity/data/searchIndex';
 import {
   Column,
   DataType,
   TableConstraint,
 } from '../generated/entity/data/table';
+import { Field } from '../generated/type/schema';
 import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
 import {
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
   sortTagsCaseInsensitive,
 } from './CommonUtils';
-import { getGlossaryPath, getSettingPath } from './RouterUtils';
+import {
+  getDataProductsDetailsPath,
+  getDomainDetailsPath,
+  getGlossaryPath,
+  getSettingPath,
+} from './RouterUtils';
 import { getSearchIndexDetailsPath } from './SearchIndexUtils';
-import { serviceTypeLogo } from './ServiceUtils';
+import serviceUtilClassBase from './ServiceUtilClassBase';
 import { getDecodedFqn, ordinalize } from './StringsUtils';
 import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
 
@@ -152,38 +158,34 @@ export const getConstraintIcon = ({
 }) => {
   let title: string, icon: SvgComponent, dataTestId: string;
   switch (constraint) {
-    case ConstraintTypes.PRIMARY_KEY:
-      {
-        title = t('label.primary-key');
-        icon = isConstraintDeleted ? IconKeyLineThrough : IconKey;
-        dataTestId = 'primary-key';
-      }
+    case ConstraintTypes.PRIMARY_KEY: {
+      title = t('label.primary-key');
+      icon = isConstraintDeleted ? IconKeyLineThrough : IconKey;
+      dataTestId = 'primary-key';
 
       break;
-    case ConstraintTypes.UNIQUE:
-      {
-        title = t('label.unique');
-        icon = isConstraintDeleted ? IconUniqueLineThrough : IconUnique;
-        dataTestId = 'unique';
-      }
+    }
+    case ConstraintTypes.UNIQUE: {
+      title = t('label.unique');
+      icon = isConstraintDeleted ? IconUniqueLineThrough : IconUnique;
+      dataTestId = 'unique';
 
       break;
-    case ConstraintTypes.NOT_NULL:
-      {
-        title = t('label.not-null');
-        icon = isConstraintDeleted ? IconNotNullLineThrough : IconNotNull;
-        dataTestId = 'not-null';
-      }
+    }
+    case ConstraintTypes.NOT_NULL: {
+      title = t('label.not-null');
+      icon = isConstraintDeleted ? IconNotNullLineThrough : IconNotNull;
+      dataTestId = 'not-null';
 
       break;
-    case ConstraintTypes.FOREIGN_KEY:
-      {
-        title = t('label.foreign-key');
-        icon = isConstraintDeleted ? IconForeignKeyLineThrough : IconForeignKey;
-        dataTestId = 'foreign-key';
-      }
+    }
+    case ConstraintTypes.FOREIGN_KEY: {
+      title = t('label.foreign-key');
+      icon = isConstraintDeleted ? IconForeignKeyLineThrough : IconForeignKey;
+      dataTestId = 'foreign-key';
 
       break;
+    }
     default:
       return null;
   }
@@ -242,6 +244,10 @@ export const getEntityLink = (
     case EntityType.DASHBOARD_SERVICE:
     case EntityType.MESSAGING_SERVICE:
     case EntityType.PIPELINE_SERVICE:
+    case EntityType.MLMODEL_SERVICE:
+    case EntityType.METADATA_SERVICE:
+    case EntityType.STORAGE_SERVICE:
+    case EntityType.SEARCH_SERVICE:
       return getServiceDetailsPath(fullyQualifiedName, `${indexType}s`);
 
     case EntityType.WEBHOOK:
@@ -269,7 +275,7 @@ export const getEntityLink = (
 
     case SearchIndex.STORED_PROCEDURE:
     case EntityType.STORED_PROCEDURE:
-      return getStoredProcedureDetailsPath(getDecodedFqn(fullyQualifiedName));
+      return getStoredProcedureDetailPath(getDecodedFqn(fullyQualifiedName));
 
     case EntityType.TEST_CASE:
       return `${getTableTabPath(
@@ -280,6 +286,14 @@ export const getEntityLink = (
     case EntityType.SEARCH_INDEX:
     case SearchIndex.SEARCH_INDEX:
       return getSearchIndexDetailsPath(fullyQualifiedName);
+
+    case EntityType.DOMAIN:
+    case SearchIndex.DOMAIN:
+      return getDomainDetailsPath(fullyQualifiedName);
+
+    case EntityType.DATA_PRODUCT:
+    case SearchIndex.DATA_PRODUCT:
+      return getDataProductsDetailsPath(fullyQualifiedName);
 
     case SearchIndex.TABLE:
     case EntityType.TABLE:
@@ -306,7 +320,7 @@ export const getServiceIcon = (source: SourceType) => {
       <img
         alt="service-icon"
         className="inline h-7"
-        src={serviceTypeLogo(source.serviceType || '')}
+        src={serviceUtilClassBase.getServiceTypeLogo(source.serviceType ?? '')}
       />
     );
   }
@@ -316,22 +330,32 @@ export const getEntityIcon = (indexType: string) => {
   switch (indexType) {
     case SearchIndex.TOPIC:
     case EntityType.TOPIC:
+    case EntityType.MESSAGING_SERVICE:
+    case SearchIndex.MESSAGING_SERVICE:
       return <TopicIcon />;
 
     case SearchIndex.DASHBOARD:
     case EntityType.DASHBOARD:
+    case EntityType.DASHBOARD_SERVICE:
+    case SearchIndex.DASHBOARD_SERVICE:
       return <DashboardIcon />;
 
     case SearchIndex.MLMODEL:
     case EntityType.MLMODEL:
+    case EntityType.MLMODEL_SERVICE:
+    case SearchIndex.ML_MODEL_SERVICE:
       return <MlModelIcon />;
 
     case SearchIndex.PIPELINE:
     case EntityType.PIPELINE:
+    case EntityType.PIPELINE_SERVICE:
+    case SearchIndex.PIPELINE_SERVICE:
       return <PipelineIcon />;
 
     case SearchIndex.CONTAINER:
     case EntityType.CONTAINER:
+    case EntityType.STORAGE_SERVICE:
+    case SearchIndex.STORAGE_SERVICE:
       return <ContainerIcon />;
 
     case SearchIndex.DASHBOARD_DATA_MODEL:
@@ -342,8 +366,10 @@ export const getEntityIcon = (indexType: string) => {
     case EntityType.STORED_PROCEDURE:
       return <IconStoredProcedure />;
 
+    case SearchIndex.TAG:
     case EntityType.TAG:
       return <ClassificationIcon />;
+    case SearchIndex.GLOSSARY:
     case EntityType.GLOSSARY:
       return <GlossaryIcon />;
     case EntityType.GLOSSARY_TERM:
@@ -351,7 +377,20 @@ export const getEntityIcon = (indexType: string) => {
 
     case EntityType.SEARCH_INDEX:
     case SearchIndex.SEARCH_INDEX:
-      return <SearchOutlined className="text-sm" />;
+    case EntityType.SEARCH_SERVICE:
+    case SearchIndex.SEARCH_SERVICE:
+      return (
+        <SearchOutlined
+          className="text-sm text-inherit"
+          style={{ color: DE_ACTIVE_COLOR }}
+        />
+      );
+
+    case EntityType.DOMAIN:
+    case EntityType.DATA_PRODUCT:
+    case SearchIndex.DATA_PRODUCT:
+    case SearchIndex.DOMAIN:
+      return <DomainIcon />;
 
     case SearchIndex.TABLE:
     case EntityType.TABLE:
@@ -362,11 +401,11 @@ export const getEntityIcon = (indexType: string) => {
 
 export const makeRow = <T extends Column | SearchIndexField>(column: T) => {
   return {
-    description: column.description || '',
+    description: column.description ?? '',
     // Sorting tags as the response of PATCH request does not return the sorted order
     // of tags, but is stored in sorted manner in the database
     // which leads to wrong PATCH payload sent after further tags removal
-    tags: sortTagsCaseInsensitive(column.tags || []),
+    tags: sortTagsCaseInsensitive(column.tags ?? []),
     key: column?.name,
     ...column,
   };
@@ -508,7 +547,7 @@ export const prepareConstraintIcon = ({
   const columnConstraintEl = columnConstraint
     ? getConstraintIcon({
         constraint: columnConstraint,
-        className: iconClassName || 'm-r-xs',
+        className: iconClassName ?? 'm-r-xs',
         width: iconWidth,
         isConstraintAdded: isColumnConstraintAdded,
         isConstraintDeleted: isColumnConstraintDeleted,
@@ -520,7 +559,7 @@ export const prepareConstraintIcon = ({
     ? filteredTableConstraints.map((tableConstraint) =>
         getConstraintIcon({
           constraint: tableConstraint.constraintType,
-          className: iconClassName || 'm-r-xs',
+          className: iconClassName ?? 'm-r-xs',
           width: iconWidth,
           isConstraintAdded: isTableConstraintAdded,
           isConstraintDeleted: isTableConstraintDeleted,
@@ -599,19 +638,18 @@ export const getUpdatedTags = <T extends TableFieldsInfoCommonEntities>(
 
   return reduce(
     newFieldTags,
-    (acc: Array<EntityTags>, cv: TagOption) => {
-      if (prevTagsFqn?.includes(cv.fqn)) {
-        const prev = field?.tags?.find((tag) => tag.tagFQN === cv.fqn);
+    (acc: Array<EntityTags>, cv: EntityTags) => {
+      if (prevTagsFqn?.includes(cv.tagFQN)) {
+        const prev = field?.tags?.find((tag) => tag.tagFQN === cv.tagFQN);
 
         return [...acc, prev];
       } else {
         return [
           ...acc,
           {
+            ...omit(cv, 'isRemovable'),
             labelType: LabelType.Manual,
             state: State.Confirmed,
-            source: cv.source,
-            tagFQN: cv.fqn,
           },
         ];
       }
@@ -640,7 +678,7 @@ export const updateFieldDescription = <T extends TableFieldsInfoCommonEntities>(
 
 export const updateFieldTags = <T extends TableFieldsInfoCommonEntities>(
   changedFieldFQN: string,
-  newFieldTags: Array<TagOption>,
+  newFieldTags: EntityTags[],
   searchIndexFields?: Array<T>
 ) => {
   searchIndexFields?.forEach((field) => {
@@ -658,3 +696,11 @@ export const updateFieldTags = <T extends TableFieldsInfoCommonEntities>(
 export const FilterIcon = (filtered: boolean) => (
   <FilterOutlined style={{ color: filtered ? PRIMERY_COLOR : undefined }} />
 );
+
+export const getFilterIcon = (dataTestId: string) => (filtered: boolean) =>
+  (
+    <FilterOutlined
+      data-testid={dataTestId}
+      style={{ color: filtered ? PRIMERY_COLOR : undefined }}
+    />
+  );

@@ -194,7 +194,7 @@ public class DashboardDataModelResourceTest extends EntityResourceTest<Dashboard
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
     assertCommonFieldChange(fieldName, expected, actual);
   }
 }

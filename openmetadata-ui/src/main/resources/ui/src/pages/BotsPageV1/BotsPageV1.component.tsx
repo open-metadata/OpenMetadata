@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import BotListV1 from 'components/BotListV1/BotListV1.component';
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
+import BotListV1 from '../../components/BotListV1/BotListV1.component';
 import { getCreateUserPath } from '../../constants/constants';
 
 export const BotsPageV1 = () => {

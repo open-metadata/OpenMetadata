@@ -13,24 +13,24 @@
 
 import { Badge, Button, Col, Row, Select } from 'antd';
 import classNames from 'classnames';
-import { PRIMERY_COLOR } from 'constants/constants';
-import { DatabaseServiceType } from 'generated/entity/data/database';
-import { PipelineServiceType } from 'generated/entity/services/pipelineService';
 import { startCase } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { PRIMERY_COLOR } from '../../../constants/constants';
 import {
   BETA_SERVICES,
   excludedService,
-  serviceTypes,
   SERVICE_CATEGORY_OPTIONS,
 } from '../../../constants/Services.constant';
 import { ServiceCategory } from '../../../enums/service.enum';
+import { DatabaseServiceType } from '../../../generated/entity/data/database';
 import { MetadataServiceType } from '../../../generated/entity/services/metadataService';
 import { MlModelServiceType } from '../../../generated/entity/services/mlmodelService';
+import { PipelineServiceType } from '../../../generated/entity/services/pipelineService';
 import { errorMsg, getServiceLogo } from '../../../utils/CommonUtils';
+import ServiceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
-import Searchbar from '../../common/searchbar/Searchbar';
+import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import './select-service-type.less';
 import { SelectServiceTypeProps } from './Steps.interface';
 
@@ -47,6 +47,7 @@ const SelectServiceType = ({
   const [category, setCategory] = useState('');
   const [connectorSearchTerm, setConnectorSearchTerm] = useState('');
   const [selectedConnectors, setSelectedConnectors] = useState<string[]>([]);
+  const serviceTypes = ServiceUtilClassBase.getSupportedServiceFromList();
 
   const handleConnectorSearchTerm = (value: string) => {
     setConnectorSearchTerm(value);

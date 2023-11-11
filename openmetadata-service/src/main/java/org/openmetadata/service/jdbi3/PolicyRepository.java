@@ -28,8 +28,11 @@ import static org.openmetadata.service.util.EntityUtil.ruleMatch;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
+import javax.ws.rs.BadRequestException;
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.type.EntityReference;
@@ -45,8 +48,8 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 public class PolicyRepository extends EntityRepository<Policy> {
   public static final String ENABLED = "enabled";
 
-  public PolicyRepository(CollectionDAO dao) {
-    super(PolicyResource.COLLECTION_PATH, POLICY, Policy.class, dao.policyDAO(), dao, "", "");
+  public PolicyRepository() {
+    super(PolicyResource.COLLECTION_PATH, POLICY, Policy.class, Entity.getCollectionDAO().policyDAO(), "", "");
   }
 
   @Override
@@ -149,6 +152,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
       super(original, updated, operation);
     }
 
+    @Transaction
     @Override
     public void entitySpecificUpdate() {
       recordChange(ENABLED, original.getEnabled(), updated.getEnabled());
@@ -156,6 +160,15 @@ public class PolicyRepository extends EntityRepository<Policy> {
     }
 
     private void updateRules(List<Rule> origRules, List<Rule> updatedRules) {
+      // Check if the Rules have unique names
+      if (!nullOrEmpty(updatedRules)) {
+        Set<String> ruleNames = updatedRules.stream().map(Rule::getName).collect(Collectors.toSet());
+
+        if (ruleNames.size() != updatedRules.size()) {
+          throw new BadRequestException("Policy contains duplicate Rules. Please use unique name for Rules.");
+        }
+      }
+
       // Record change description
       List<Rule> deletedRules = new ArrayList<>();
       List<Rule> addedRules = new ArrayList<>();

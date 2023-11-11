@@ -12,35 +12,27 @@
  */
 
 import { AxiosResponse } from 'axios';
-import { VotingDataProps } from 'components/Voting/voting.interface';
 import { Operation } from 'fast-json-patch';
-import { CSVImportResult } from 'generated/type/csvImportResult';
-import { EntityHistory } from 'generated/type/entityHistory';
-import { Include } from 'generated/type/include';
 import { PagingResponse } from 'Models';
+import { VotingDataProps } from '../components/Voting/voting.interface';
 import { CreateGlossary } from '../generated/api/data/createGlossary';
 import { CreateGlossaryTerm } from '../generated/api/data/createGlossaryTerm';
 import { Glossary } from '../generated/entity/data/glossary';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
+import { CSVImportResult } from '../generated/type/csvImportResult';
+import { EntityHistory } from '../generated/type/entityHistory';
+import { ListParams } from '../interface/API.interface';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
-type Params = {
-  fields?: string;
-  limit?: number;
-  before?: string;
-  after?: string;
-  include?: Include;
-};
-
-export type ListGlossaryTermsParams = Params & {
+export type ListGlossaryTermsParams = ListParams & {
   glossary?: string;
   parent?: string;
 };
 
 const BASE_URL = '/glossaries';
 
-export const getGlossariesList = async (params?: Params) => {
+export const getGlossariesList = async (params?: ListParams) => {
   const response = await APIClient.get<PagingResponse<Glossary[]>>(BASE_URL, {
     params,
   });

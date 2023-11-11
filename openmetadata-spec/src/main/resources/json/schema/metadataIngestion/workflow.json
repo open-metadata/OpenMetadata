@@ -53,6 +53,9 @@
             },
             {
               "$ref": "dbtPipeline.json"
+            },
+            {
+              "$ref": "applicationPipeline.json"
             }
           ]
         }
@@ -80,7 +83,7 @@
         }
       },
       "additionalProperties": false,
-      "required": ["type", "serviceName", "sourceConfig"]
+      "required": ["type", "sourceConfig"]
     },
     "processor": {
       "description": "Configuration for Processor Component in the OpenMetadata Ingestion Framework.",

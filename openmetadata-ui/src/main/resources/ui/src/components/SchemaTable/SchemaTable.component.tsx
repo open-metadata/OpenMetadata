@@ -11,50 +11,54 @@
  *  limitations under the License.
  */
 
-import Icon, { FilterOutlined } from '@ant-design/icons';
-import { Table, Tooltip, Typography } from 'antd';
+import Icon from '@ant-design/icons';
+import { Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
-import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
-import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
-import EntityNameModal from 'components/Modals/EntityNameModal/EntityNameModal.component';
-import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
-import { ColumnFilter } from 'components/Table/ColumnFilter/ColumnFilter.component';
-import TableDescription from 'components/TableDescription/TableDescription.component';
-import TableTags from 'components/TableTags/TableTags.component';
-import { PRIMERY_COLOR } from 'constants/constants';
-import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
-import { LabelType, State, TagSource } from 'generated/type/schema';
 import {
   cloneDeep,
   groupBy,
   isEmpty,
   isUndefined,
   lowerCase,
-  map,
-  reduce,
   set,
   sortBy,
   toLower,
   uniqBy,
 } from 'lodash';
-import { EntityTags, TagFilterOptions, TagOption } from 'Models';
+import { EntityTags, TagFilterOptions } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getAllTags, searchTagInData } from 'utils/TableTags/TableTags.utils';
+import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
+import FilterTablePlaceHolder from '../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
+import EntityNameModal from '../../components/Modals/EntityNameModal/EntityNameModal.component';
+import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
+import { ColumnFilter } from '../../components/Table/ColumnFilter/ColumnFilter.component';
+import TableDescription from '../../components/TableDescription/TableDescription.component';
+import TableTags from '../../components/TableTags/TableTags.component';
+import { NO_DATA_PLACEHOLDER } from '../../constants/constants';
+import { TABLE_SCROLL_VALUE } from '../../constants/Table.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Column } from '../../generated/entity/data/table';
+import { TagSource } from '../../generated/type/schema';
 import { TagLabel } from '../../generated/type/tagLabel';
 import {
   getEntityName,
   getFrequentlyJoinedColumns,
 } from '../../utils/EntityUtils';
 import {
+  getAllTags,
+  searchTagInData,
+} from '../../utils/TableTags/TableTags.utils';
+import {
   getDataTypeString,
+  getFilterIcon,
   getTableExpandableConfig,
   makeData,
   prepareConstraintIcon,
+  updateFieldTags,
 } from '../../utils/TableUtils';
+import Table from '../common/Table/Table';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { SchemaTableProps, TableCellRendered } from './SchemaTable.interface';
 
@@ -69,6 +73,7 @@ const SchemaTable = ({
   onThreadLinkSelect,
   entityFqn,
   tableConstraints,
+  tablePartitioned,
 }: SchemaTableProps) => {
   const { t } = useTranslation();
 
@@ -121,55 +126,8 @@ const SchemaTable = ({
     });
   };
 
-  const getUpdatedTags = (
-    column: Column,
-    newColumnTags: Array<EntityTags>
-  ): TagLabel[] => {
-    const prevTagsFqn = column?.tags?.map((tag) => tag.tagFQN);
-
-    return reduce(
-      newColumnTags,
-      (acc: Array<EntityTags>, cv: TagOption) => {
-        if (prevTagsFqn?.includes(cv.fqn)) {
-          const prev = column?.tags?.find((tag) => tag.tagFQN === cv.fqn);
-
-          return [...acc, prev];
-        } else {
-          return [
-            ...acc,
-            {
-              labelType: LabelType.Manual,
-              state: State.Confirmed,
-              source: cv.source,
-              tagFQN: cv.fqn,
-            },
-          ];
-        }
-      },
-      []
-    );
-  };
-
-  const updateColumnTags = (
-    tableCols: Column[],
-    changedColFQN: string,
-    newColumnTags: Array<TagOption>
-  ) => {
-    tableCols?.forEach((col) => {
-      if (col.fullyQualifiedName === changedColFQN) {
-        col.tags = getUpdatedTags(col, newColumnTags);
-      } else {
-        updateColumnTags(
-          col?.children as Column[],
-          changedColFQN,
-          newColumnTags
-        );
-      }
-    });
-  };
-
   const handleEditColumnChange = async (columnDescription: string) => {
-    if (editColumn && editColumn.fullyQualifiedName) {
+    if (!isUndefined(editColumn) && editColumn.fullyQualifiedName) {
       const tableCols = cloneDeep(tableColumns);
       updateColumnFields({
         fqn: editColumn.fullyQualifiedName,
@@ -188,16 +146,13 @@ const SchemaTable = ({
     selectedTags: EntityTags[],
     editColumnTag: Column
   ) => {
-    const newSelectedTags: TagOption[] = map(selectedTags, (tag) => ({
-      fqn: tag.tagFQN,
-      source: tag.source,
-    }));
-    if (newSelectedTags && editColumnTag) {
+    if (selectedTags && editColumnTag) {
       const tableCols = cloneDeep(tableColumns);
-      updateColumnTags(
-        tableCols,
+
+      updateFieldTags<Column>(
         editColumnTag.fullyQualifiedName ?? '',
-        newSelectedTags
+        selectedTags,
+        tableCols
       );
       await onUpdate(tableCols);
     }
@@ -239,22 +194,23 @@ const SchemaTable = ({
     dataTypeDisplay,
     record
   ) => {
-    return (
-      <>
-        {dataTypeDisplay ? (
-          isReadOnly || (dataTypeDisplay.length < 25 && !isReadOnly) ? (
-            toLower(dataTypeDisplay)
-          ) : (
-            <Tooltip title={toLower(dataTypeDisplay)}>
-              <Typography.Text ellipsis className="cursor-pointer">
-                {dataTypeDisplay || record.dataType}
-              </Typography.Text>
-            </Tooltip>
-          )
-        ) : (
-          '--'
-        )}
-      </>
+    const displayValue = isEmpty(dataTypeDisplay)
+      ? record.dataType
+      : dataTypeDisplay;
+
+    if (isEmpty(displayValue)) {
+      return NO_DATA_PLACEHOLDER;
+    }
+
+    return isReadOnly ||
+      (displayValue && displayValue.length < 25 && !isReadOnly) ? (
+      toLower(displayValue)
+    ) : (
+      <Tooltip title={toLower(displayValue)}>
+        <Typography.Text ellipsis className="cursor-pointer">
+          {displayValue}
+        </Typography.Text>
+      </Tooltip>
     );
   };
 
@@ -317,7 +273,10 @@ const SchemaTable = ({
   };
 
   const handleEditDisplayName = ({ displayName }: EntityName) => {
-    if (editColumnDisplayName && editColumnDisplayName.fullyQualifiedName) {
+    if (
+      !isUndefined(editColumnDisplayName) &&
+      editColumnDisplayName.fullyQualifiedName
+    ) {
       const tableCols = cloneDeep(tableColumns);
       updateColumnFields({
         fqn: editColumnDisplayName.fullyQualifiedName,
@@ -363,22 +322,22 @@ const SchemaTable = ({
                   tableConstraints,
                 })}
                 {/* If we do not have displayName name only be shown in the bold from the below code */}
-                {!isEmpty(displayName) ? (
-                  <Typography.Text
-                    className="m-b-0 d-block text-grey-muted"
-                    data-testid="column-name">
-                    {name}
-                  </Typography.Text>
-                ) : null}
 
-                {/* It will render displayName fallback to name */}
+                <Typography.Text
+                  className="m-b-0 d-block text-grey-muted"
+                  data-testid="column-name">
+                  {name}
+                </Typography.Text>
+              </div>
+              {!isEmpty(displayName) ? (
+                // It will render displayName fallback to name
                 <Typography.Text
                   className="m-b-0 d-block"
                   data-testid="column-display-name"
                   ellipsis={{ tooltip: true }}>
                   {getEntityName(record)}
                 </Typography.Text>
-              </div>
+              ) : null}
               <Icon
                 className="hover-cell-icon text-left m-t-xss"
                 component={IconEdit}
@@ -405,18 +364,28 @@ const SchemaTable = ({
         width: 320,
         render: renderDescription,
       },
+      ...(tablePartitioned
+        ? [
+            {
+              title: t('label.partitioned'),
+              dataIndex: 'name',
+              key: 'name',
+              accessor: 'name',
+              width: 120,
+              render: (columnName: string) =>
+                tablePartitioned?.columns?.includes(columnName)
+                  ? t('label.partitioned')
+                  : t('label.non-partitioned'),
+            },
+          ]
+        : []),
       {
         title: t('label.tag-plural'),
         dataIndex: 'tags',
         key: 'tags',
         accessor: 'tags',
         width: 250,
-        filterIcon: (filtered: boolean) => (
-          <FilterOutlined
-            data-testid="tag-filter"
-            style={{ color: filtered ? PRIMERY_COLOR : undefined }}
-          />
-        ),
+        filterIcon: getFilterIcon('tag-filter'),
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
             entityFqn={entityFqn}
@@ -441,12 +410,7 @@ const SchemaTable = ({
         key: 'glossary',
         accessor: 'tags',
         width: 250,
-        filterIcon: (filtered: boolean) => (
-          <FilterOutlined
-            data-testid="glossary-filter"
-            style={{ color: filtered ? PRIMERY_COLOR : undefined }}
-          />
-        ),
+        filterIcon: getFilterIcon('glossary-filter'),
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
             entityFqn={entityFqn}

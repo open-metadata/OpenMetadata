@@ -12,38 +12,10 @@
  */
 
 import { AxiosError } from 'axios';
-import { ActivityFeedTabs } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import { EntityField } from 'constants/Feeds.constants';
 import { Change, diffWordsWithSpace } from 'diff';
-import { Chart } from 'generated/entity/data/chart';
-import { Container } from 'generated/entity/data/container';
-import { Dashboard } from 'generated/entity/data/dashboard';
-import { MlFeature, Mlmodel } from 'generated/entity/data/mlmodel';
-import { Pipeline, Task } from 'generated/entity/data/pipeline';
-import { Field, Topic } from 'generated/entity/data/topic';
-import { TagLabel } from 'generated/type/tagLabel';
 import i18Next from 'i18next';
 import { isEqual, isUndefined } from 'lodash';
-import {
-  EntityData,
-  Option,
-  TaskAction,
-  TaskActionMode,
-} from 'pages/TasksPage/TasksPage.interface';
-import { getDashboardByFqn } from 'rest/dashboardAPI';
-import {
-  getDatabaseDetailsByFQN,
-  getDatabaseSchemaDetailsByFQN,
-} from 'rest/databaseAPI';
-import { getDataModelDetailsByFQN } from 'rest/dataModelsAPI';
-import { getUserSuggestions } from 'rest/miscAPI';
-import { getMlModelByFQN } from 'rest/mlModelAPI';
-import { getPipelineByFqn } from 'rest/pipelineAPI';
-import { getSearchIndexDetailsByFQN } from 'rest/SearchIndexAPI';
-import { getContainerByFQN } from 'rest/storageAPI';
-import { getStoredProceduresDetailsByFQN } from 'rest/storedProceduresAPI';
-import { getTableDetailsByFQN } from 'rest/tableAPI';
-import { getTopicByFqn } from 'rest/topicsAPI';
+import { ActivityFeedTabs } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import {
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
@@ -52,6 +24,7 @@ import {
   PLACEHOLDER_ROUTE_FQN,
   ROUTES,
 } from '../constants/constants';
+import { EntityField } from '../constants/Feeds.constants';
 import {
   EntityTabs,
   EntityType,
@@ -59,8 +32,35 @@ import {
   TabSpecificField,
 } from '../enums/entity.enum';
 import { ServiceCategory } from '../enums/service.enum';
+import { Chart } from '../generated/entity/data/chart';
+import { Container } from '../generated/entity/data/container';
+import { Dashboard } from '../generated/entity/data/dashboard';
+import { MlFeature, Mlmodel } from '../generated/entity/data/mlmodel';
+import { Pipeline, Task } from '../generated/entity/data/pipeline';
 import { Column, Table } from '../generated/entity/data/table';
+import { Field, Topic } from '../generated/entity/data/topic';
 import { TaskType, Thread } from '../generated/entity/feed/thread';
+import { TagLabel } from '../generated/type/tagLabel';
+import {
+  EntityData,
+  Option,
+  TaskAction,
+  TaskActionMode,
+} from '../pages/TasksPage/TasksPage.interface';
+import { getDashboardByFqn } from '../rest/dashboardAPI';
+import {
+  getDatabaseDetailsByFQN,
+  getDatabaseSchemaDetailsByFQN,
+} from '../rest/databaseAPI';
+import { getDataModelDetailsByFQN } from '../rest/dataModelsAPI';
+import { getUserSuggestions } from '../rest/miscAPI';
+import { getMlModelByFQN } from '../rest/mlModelAPI';
+import { getPipelineByFqn } from '../rest/pipelineAPI';
+import { getSearchIndexDetailsByFQN } from '../rest/SearchIndexAPI';
+import { getContainerByFQN } from '../rest/storageAPI';
+import { getStoredProceduresDetailsByFQN } from '../rest/storedProceduresAPI';
+import { getTableDetailsByFQN } from '../rest/tableAPI';
+import { getTopicByFqn } from '../rest/topicsAPI';
 import { getEntityDetailLink, getPartialNameFromTableFQN } from './CommonUtils';
 import { ContainerFields } from './ContainerDetailUtils';
 import {
@@ -75,8 +75,9 @@ import { getEntityName } from './EntityUtils';
 import { getEntityFQN, getEntityType } from './FeedUtils';
 import { defaultFields as MlModelFields } from './MlModelDetailsUtils';
 import { defaultFields as PipelineFields } from './PipelineDetailsUtils';
-import { serviceTypeLogo } from './ServiceUtils';
+import serviceUtilClassBase from './ServiceUtilClassBase';
 import { STORED_PROCEDURE_DEFAULT_FIELDS } from './StoredProceduresUtils';
+import { getEncodedFqn } from './StringsUtils';
 import { getEntityLink } from './TableUtils';
 import { showErrorToast } from './ToastUtils';
 
@@ -89,7 +90,7 @@ export const getRequestDescriptionPath = (
   let pathname = ROUTES.REQUEST_DESCRIPTION;
   pathname = pathname
     .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entityType)
-    .replace(PLACEHOLDER_ROUTE_FQN, entityFQN);
+    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(entityFQN));
   const searchParams = new URLSearchParams();
 
   if (!isUndefined(field) && !isUndefined(value)) {
@@ -109,7 +110,7 @@ export const getRequestTagsPath = (
   let pathname = ROUTES.REQUEST_TAGS;
   pathname = pathname
     .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entityType)
-    .replace(PLACEHOLDER_ROUTE_FQN, entityFQN);
+    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(entityFQN));
   const searchParams = new URLSearchParams();
 
   if (!isUndefined(field) && !isUndefined(value)) {
@@ -129,7 +130,7 @@ export const getUpdateDescriptionPath = (
   let pathname = ROUTES.UPDATE_DESCRIPTION;
   pathname = pathname
     .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entityType)
-    .replace(PLACEHOLDER_ROUTE_FQN, entityFQN);
+    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(entityFQN));
   const searchParams = new URLSearchParams();
 
   if (!isUndefined(field) && !isUndefined(value)) {
@@ -149,7 +150,7 @@ export const getUpdateTagsPath = (
   let pathname = ROUTES.UPDATE_TAGS;
   pathname = pathname
     .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entityType)
-    .replace(PLACEHOLDER_ROUTE_FQN, entityFQN);
+    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(entityFQN));
   const searchParams = new URLSearchParams();
 
   if (!isUndefined(field) && !isUndefined(value)) {
@@ -312,7 +313,7 @@ export const getBreadCrumbList = (
         ? getServiceDetailsPath(entityData.service?.name || '', serviceCategory)
         : '',
       imgSrc: entityData.serviceType
-        ? serviceTypeLogo(entityData.serviceType || '')
+        ? serviceUtilClassBase.getServiceTypeLogo(entityData.serviceType)
         : undefined,
     };
   };

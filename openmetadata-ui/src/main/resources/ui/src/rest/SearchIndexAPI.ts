@@ -13,15 +13,16 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
+import { PagingResponse, PagingWithoutTotal, RestoreRequestType } from 'Models';
+import { QueryVote } from '../components/TableQueries/TableQueries.interface';
 import {
   EntityReference,
   SearchIndex,
-} from 'generated/entity/data/searchIndex';
-import { EntityHistory } from 'generated/type/entityHistory';
-import { Include } from 'generated/type/include';
-import { PagingResponse, PagingWithoutTotal, RestoreRequestType } from 'Models';
-import { ServicePageData } from 'pages/ServiceDetailsPage/ServiceDetailsPage';
-import { getURLWithQueryFields } from 'utils/APIUtils';
+} from '../generated/entity/data/searchIndex';
+import { EntityHistory } from '../generated/type/entityHistory';
+import { Include } from '../generated/type/include';
+import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage';
+import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
 export const getSearchIndexes = async (args: {
@@ -120,6 +121,15 @@ export const removeFollower = async (searchIndexId: string, userId: string) => {
 export const getSampleDataBySearchIndexId = async (id: string) => {
   const response = await APIClient.get<SearchIndex>(
     `/searchIndexes/${id}/sampleData`
+  );
+
+  return response.data;
+};
+
+export const updateSearchIndexVotes = async (id: string, data: QueryVote) => {
+  const response = await APIClient.put<QueryVote, AxiosResponse<SearchIndex>>(
+    `/searchIndexes/${id}/vote`,
+    data
   );
 
   return response.data;

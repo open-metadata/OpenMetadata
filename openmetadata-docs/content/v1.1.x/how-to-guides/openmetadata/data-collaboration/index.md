@@ -17,3 +17,41 @@ There are three important aspects of data collaboration in OpenMetadata:
 Watch the video on how to use the collaboration features in OpenMetadata.
 
 {%  youtube videoId="M6mbFLA1bQc" start="0:00" end="5:58" /%}
+
+{%inlineCalloutContainer%}
+ {%inlineCallout
+  color="violet-70"
+  bold="Understanding Activity Feeds"
+  icon="MdConnectWithoutContact"
+  href="/how-to-guides/openmetadata/data-collaboration/activity-feeds"%}
+  Learn more about the announcements in OpenMetadata
+ {%/inlineCallout%}
+ {%inlineCallout
+  color="violet-70"
+  bold="Request for Description"
+  icon="MdDescription"
+  href="/how-to-guides/user-guide-for-data-stewards/overview-data-assets/request-description"%}
+  Request for a description and discuss the same within OpenMetadata
+ {%/inlineCallout%}
+ {%inlineCallout
+  color="violet-70"
+  bold="Request for Tags"
+  icon="MdDiscount"
+  href="/how-to-guides/user-guide-for-data-stewards/overview-data-assets/request-tags"%}
+  Request for tags and discuss about the same, all within OpenMetadata.
+ {%/inlineCallout%}
+ {%inlineCallout
+  color="violet-70"
+  bold="Overview of Announcements"
+  icon="MdVolumeUp"
+  href="/how-to-guides/openmetadata/data-collaboration/announcements"%}
+  Learn more about the announcements in OpenMetadata
+ {%/inlineCallout%}
+ {%inlineCallout
+  color="violet-70"
+  bold="Create an Announcement"
+  icon="MdVolumeUp"
+  href="/how-to-guides/openmetadata/data-collaboration/add-announcement"%}
+  Follow the steps to add an announcement
+ {%/inlineCallout%}
+{%/inlineCalloutContainer%}

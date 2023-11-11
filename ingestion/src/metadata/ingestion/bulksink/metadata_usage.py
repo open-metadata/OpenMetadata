@@ -35,9 +35,6 @@ from metadata.generated.schema.entity.data.table import (
     Table,
     TableJoins,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.lifeCycle import AccessDetails, LifeCycle
 from metadata.generated.schema.type.tableUsageCount import TableColumn, TableUsageCount
@@ -78,22 +75,21 @@ class MetadataUsageBulkSink(BulkSink):
     def __init__(
         self,
         config: MetadataUsageSinkConfig,
-        metadata_config: OpenMetadataConnection,
+        metadata: OpenMetadata,
     ):
         super().__init__()
         self.config = config
-        self.metadata_config = metadata_config
         self.service_name = None
         self.wrote_something = False
-        self.metadata = OpenMetadata(self.metadata_config)
+        self.metadata = metadata
         self.table_join_dict = {}
         self.table_usage_map = {}
         self.today = datetime.today().strftime("%Y-%m-%d")
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict: dict, metadata: OpenMetadata):
         config = MetadataUsageSinkConfig.parse_obj(config_dict)
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def __populate_table_usage_map(
         self, table_entity: Table, table_usage: TableUsageCount
@@ -361,18 +357,19 @@ class MetadataUsageBulkSink(BulkSink):
                 elif create_query.usedBy:
                     process_user = create_query.usedBy[0]
                 query_type = get_query_type(create_query=create_query)
-                access_details = AccessDetails(
-                    timestamp=create_query.queryDate.__root__,
-                    accessedBy=user,
-                    accessedByAProcess=process_user,
-                )
-                life_cycle_attr = getattr(life_cycle, query_type)
-                if (
-                    not life_cycle_attr
-                    or life_cycle_attr.timestamp.__root__
-                    < access_details.timestamp.__root__
-                ):
-                    setattr(life_cycle, query_type, access_details)
+                if query_type:
+                    access_details = AccessDetails(
+                        timestamp=create_query.queryDate.__root__,
+                        accessedBy=user,
+                        accessedByAProcess=process_user,
+                    )
+                    life_cycle_attr = getattr(life_cycle, query_type)
+                    if (
+                        not life_cycle_attr
+                        or life_cycle_attr.timestamp.__root__
+                        < access_details.timestamp.__root__
+                    ):
+                        setattr(life_cycle, query_type, access_details)
 
             self.metadata.patch_life_cycle(entity=table_entity, life_cycle=life_cycle)
 

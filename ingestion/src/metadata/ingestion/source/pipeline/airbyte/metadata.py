@@ -25,9 +25,6 @@ from metadata.generated.schema.entity.data.pipeline import (
     TaskStatus,
 )
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.services.connections.pipeline.airbyteConnection import (
     AirbyteConnection,
 )
@@ -41,10 +38,12 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils import fqn
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.time_utils import convert_timestamp_to_milliseconds
 
 logger = ingestion_logger()
 
@@ -75,14 +74,14 @@ class AirbyteSource(PipelineServiceSource):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: AirbyteConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, AirbyteConnection):
             raise InvalidSourceException(
                 f"Expected AirbyteConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def get_connections_jobs(self, connection: dict, connection_url: str):
         """
@@ -140,14 +139,24 @@ class AirbyteSource(PipelineServiceSource):
             if not job or not job.get("attempts"):
                 continue
             for attempt in job["attempts"]:
+                created_at = (
+                    convert_timestamp_to_milliseconds(attempt["createdAt"])
+                    if attempt.get("createdAt")
+                    else None
+                )
+                ended_at = (
+                    convert_timestamp_to_milliseconds(attempt["endedAt"])
+                    if attempt.get("endedAt")
+                    else None
+                )
                 task_status = [
                     TaskStatus(
                         name=str(pipeline_details.connection.get("connectionId")),
                         executionStatus=STATUS_MAP.get(
                             attempt["status"].lower(), StatusType.Pending
                         ).value,
-                        startTime=attempt.get("createdAt"),
-                        endTime=attempt.get("endedAt"),
+                        startTime=created_at,
+                        endTime=ended_at,
                         logLink=log_link,
                     )
                 ]
@@ -156,7 +165,7 @@ class AirbyteSource(PipelineServiceSource):
                         attempt["status"].lower(), StatusType.Pending
                     ).value,
                     taskStatus=task_status,
-                    timestamp=attempt["createdAt"],
+                    timestamp=created_at,
                 )
                 yield Either(
                     right=OMetaPipelineStatus(

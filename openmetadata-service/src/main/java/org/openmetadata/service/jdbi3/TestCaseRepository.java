@@ -18,6 +18,7 @@ import java.util.stream.Collectors;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestCase;
@@ -53,8 +54,14 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   private static final String PATCH_FIELDS = "owner,entityLink,testSuite,testDefinition";
   public static final String TESTCASE_RESULT_EXTENSION = "testCase.testCaseResult";
 
-  public TestCaseRepository(CollectionDAO dao) {
-    super(COLLECTION_PATH, TEST_CASE, TestCase.class, dao.testCaseDAO(), dao, PATCH_FIELDS, UPDATE_FIELDS);
+  public TestCaseRepository() {
+    super(
+        COLLECTION_PATH,
+        TEST_CASE,
+        TestCase.class,
+        Entity.getCollectionDAO().testCaseDAO(),
+        PATCH_FIELDS,
+        UPDATE_FIELDS);
     supportsSearch = true;
   }
 
@@ -412,6 +419,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     }
   }
 
+  @Transaction
   public RestUtil.PutResponse<TestSuite> addTestCasesToLogicalTestSuite(TestSuite testSuite, List<UUID> testCaseIds) {
     bulkAddToRelationship(testSuite.getId(), testCaseIds, TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
     List<EntityReference> testCasesEntityReferences = new ArrayList<>();
@@ -453,6 +461,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, LOGICAL_TEST_CASES_ADDED);
   }
 
+  @Transaction
   public RestUtil.DeleteResponse<TestCase> deleteTestCaseFromLogicalTestSuite(UUID testSuiteId, UUID testCaseId) {
     TestCase testCase = Entity.getEntity(Entity.TEST_CASE, testCaseId, null, null);
     deleteRelationship(testSuiteId, TEST_SUITE, testCaseId, TEST_CASE, Relationship.CONTAINS);
@@ -463,6 +472,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return new RestUtil.DeleteResponse<>(testCase, RestUtil.ENTITY_DELETED);
   }
 
+  @Transaction
   /** Remove test case from test suite summary and update test suite */
   private void removeTestCaseFromTestSuiteResultSummary(UUID testSuiteId, String testCaseFqn) {
     TestSuite testSuite = Entity.getEntity(TEST_SUITE, testSuiteId, "*", Include.ALL, false);
@@ -563,6 +573,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       super(original, updated, operation);
     }
 
+    @Transaction
     @Override
     public void entitySpecificUpdate() {
       EntityLink origEntityLink = EntityLink.parse(original.getEntityLink());

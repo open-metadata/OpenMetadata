@@ -10,19 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, List, Modal, Select, Space } from 'antd';
-import Searchbar from 'components/common/searchbar/Searchbar';
-import TableDataCardV2 from 'components/common/table-data-card-v2/TableDataCardV2';
-import { AssetsOfEntity } from 'components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
-import Loader from 'components/Loader/Loader';
-import { SearchedDataProps } from 'components/searched-data/SearchedData.interface';
-import { PAGE_SIZE_MEDIUM } from 'constants/constants';
-import { SearchIndex } from 'enums/search.enum';
+import { Button, List, Modal, Space, Typography } from 'antd';
+import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { Table } from 'generated/entity/data/table';
-import { DataProduct } from 'generated/entity/domains/dataProduct';
-import { Domain } from 'generated/entity/domains/domain';
-import { map, startCase } from 'lodash';
 import { EntityDetailUnion } from 'Models';
 import VirtualList from 'rc-virtual-list';
 import {
@@ -30,20 +20,33 @@ import {
   UIEventHandler,
   useCallback,
   useEffect,
-  useMemo,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getDataProductByName } from 'rest/dataProductAPI';
-import { getDomainByName } from 'rest/domainAPI';
-import { searchQuery } from 'rest/searchAPI';
+import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
+import { SearchIndex } from '../../../enums/search.enum';
+import { Table } from '../../../generated/entity/data/table';
+import { DataProduct } from '../../../generated/entity/domains/dataProduct';
+import { Domain } from '../../../generated/entity/domains/domain';
+import {
+  getDataProductByName,
+  patchDataProduct,
+} from '../../../rest/dataProductAPI';
+import { getDomainByName } from '../../../rest/domainAPI';
+import { searchQuery } from '../../../rest/searchAPI';
 import {
   getAPIfromSource,
   getAssetsFields,
-  getAssetsSearchIndex,
   getEntityAPIfromSource,
-} from 'utils/Assets/AssetsUtils';
-import { getQueryFilterToExcludeTerm } from 'utils/GlossaryUtils';
+} from '../../../utils/Assets/AssetsUtils';
+import { getEntityReferenceFromEntity } from '../../../utils/EntityUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
+import TableDataCardV2 from '../../common/TableDataCardV2/TableDataCardV2';
+import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
+import Loader from '../../Loader/Loader';
+import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 import './asset-selection-model.style.less';
 import { AssetSelectionModalProps } from './AssetSelectionModal.interface';
 
@@ -53,27 +56,24 @@ export const AssetSelectionModal = ({
   onSave,
   open,
   type = AssetsOfEntity.GLOSSARY,
+  queryFilter = {},
+  emptyPlaceHolderText,
 }: AssetSelectionModalProps) => {
   const { t } = useTranslation();
+  const ES_UPDATE_DELAY = 500;
   const [search, setSearch] = useState('');
   const [items, setItems] = useState<SearchedDataProps['data']>([]);
   const [selectedItems, setSelectedItems] =
     useState<Map<string, EntityDetailUnion>>();
   const [isLoading, setIsLoading] = useState(false);
   const [activeFilter, setActiveFilter] = useState<SearchIndex>(
-    SearchIndex.TABLE
+    type === AssetsOfEntity.GLOSSARY ? SearchIndex.DATA_ASSET : SearchIndex.ALL
   );
   const [activeEntity, setActiveEntity] = useState<Domain | DataProduct>();
   const [pageNumber, setPageNumber] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
 
-  const queryFilter = useMemo(() => {
-    if (type === AssetsOfEntity.GLOSSARY) {
-      return getQueryFilterToExcludeTerm(entityFqn);
-    } else {
-      return {};
-    }
-  }, [entityFqn, type]);
+  const [isSaveLoading, setIsSaveLoading] = useState<boolean>(false);
 
   const fetchEntities = useCallback(
     async ({ searchText = '', page = 1, index = activeFilter }) => {
@@ -106,7 +106,7 @@ export const AssetSelectionModal = ({
     } else if (type === AssetsOfEntity.DATA_PRODUCT) {
       const data = await getDataProductByName(
         encodeURIComponent(entityFqn),
-        ''
+        'domain,assets'
       );
       setActiveEntity(data);
     }
@@ -115,9 +115,14 @@ export const AssetSelectionModal = ({
   useEffect(() => {
     if (open) {
       fetchEntities({ index: activeFilter, searchText: search });
-      fetchCurrentEntity();
     }
   }, [open, activeFilter, search, type]);
+
+  useEffect(() => {
+    if (open) {
+      fetchCurrentEntity();
+    }
+  }, [open, fetchCurrentEntity]);
 
   const handleCardClick = (
     details: SearchedDataProps['data'][number]['_source']
@@ -184,51 +189,110 @@ export const AssetSelectionModal = ({
     }
   };
 
-  const domainAndDataProductsSave = async () => {
-    setIsLoading(true);
-    const entityDetails = [...(selectedItems?.values() ?? [])].map((item) =>
-      getEntityAPIfromSource(item.entityType)(
-        item.fullyQualifiedName,
-        getAssetsFields(type)
-      )
-    );
-
+  const dataProductsSave = async () => {
     try {
-      const entityDetailsResponse = await Promise.allSettled(entityDetails);
-      const map = new Map();
+      setIsSaveLoading(true);
+      if (!activeEntity) {
+        return;
+      }
 
-      entityDetailsResponse.forEach((response) => {
-        if (response.status === 'fulfilled') {
-          const entity = response.value;
-          entity && map.set(entity.fullyQualifiedName, entity);
-        }
+      const entities = [...(selectedItems?.values() ?? [])].map((item) => {
+        return getEntityReferenceFromEntity(item, item.entityType);
       });
-      const patchAPIPromises = [...(selectedItems?.values() ?? [])]
-        .map((item) => {
-          if (map.has(item.fullyQualifiedName) && activeEntity) {
-            const entity = map.get(item.fullyQualifiedName);
-            const jsonPatch = getJsonPatchObject(entity);
-            const api = getAPIfromSource(item.entityType);
 
-            return api(item.id, jsonPatch);
-          }
+      const newEntities = entities.filter((entity) => {
+        const entityKey = entity.id;
 
-          return;
-        })
-        .filter(Boolean);
+        return !((activeEntity as DataProduct).assets ?? []).some(
+          (asset) => asset.id === entityKey
+        );
+      });
 
-      await Promise.all(patchAPIPromises);
-      onSave?.();
-      onCancel();
-    } catch (_) {
-      // Nothing here
+      if (newEntities.length === 0) {
+        onSave?.();
+        onCancel();
+        setIsSaveLoading(false);
+
+        return;
+      }
+
+      const updatedActiveEntity = {
+        ...activeEntity,
+        assets: [
+          ...((activeEntity as DataProduct).assets ?? []),
+          ...newEntities,
+        ],
+      };
+
+      const jsonPatch = compare(activeEntity, updatedActiveEntity);
+      await patchDataProduct(activeEntity.id, jsonPatch);
+      await new Promise((resolve) => {
+        setTimeout(() => {
+          resolve('');
+          onSave?.();
+        }, ES_UPDATE_DELAY);
+      });
+    } catch (err) {
+      showErrorToast(err as AxiosError);
     } finally {
-      setIsLoading(false);
+      setIsSaveLoading(false);
+      onCancel();
+    }
+  };
+
+  const domainAndDataProductsSave = async () => {
+    if (type === AssetsOfEntity.DATA_PRODUCT) {
+      dataProductsSave();
+    } else {
+      try {
+        setIsSaveLoading(true);
+        const entityDetails = [...(selectedItems?.values() ?? [])].map((item) =>
+          getEntityAPIfromSource(item.entityType)(
+            item.fullyQualifiedName,
+            getAssetsFields(type)
+          )
+        );
+        const entityDetailsResponse = await Promise.allSettled(entityDetails);
+        const map = new Map();
+
+        entityDetailsResponse.forEach((response) => {
+          if (response.status === 'fulfilled') {
+            const entity = response.value;
+            entity && map.set(entity.fullyQualifiedName, entity);
+          }
+        });
+        const patchAPIPromises = [...(selectedItems?.values() ?? [])]
+          .map((item) => {
+            if (map.has(item.fullyQualifiedName) && activeEntity) {
+              const entity = map.get(item.fullyQualifiedName);
+              const jsonPatch = getJsonPatchObject(entity);
+              const api = getAPIfromSource(item.entityType);
+
+              return api(item.id, jsonPatch);
+            }
+
+            return;
+          })
+          .filter(Boolean);
+
+        await Promise.all(patchAPIPromises);
+        await new Promise((resolve) => {
+          setTimeout(() => {
+            resolve('');
+            onSave?.();
+          }, ES_UPDATE_DELAY);
+        });
+      } catch (err) {
+        showErrorToast(err as AxiosError);
+      } finally {
+        setIsSaveLoading(false);
+        onCancel();
+      }
     }
   };
 
   const handleSave = async () => {
-    setIsLoading(true);
+    setIsSaveLoading(true);
     const entityDetails = [...(selectedItems?.values() ?? [])].map((item) =>
       getEntityAPIfromSource(item.entityType)(
         item.fullyQualifiedName,
@@ -243,7 +307,7 @@ export const AssetSelectionModal = ({
       entityDetailsResponse.forEach((response) => {
         if (response.status === 'fulfilled') {
           const entity = response.value;
-          entity && map.set(entity.fullyQualifiedName, entity.tags);
+          entity && map.set(entity.fullyQualifiedName, (entity as Table).tags);
         }
       });
       const patchAPIPromises = [...(selectedItems?.values() ?? [])]
@@ -272,27 +336,36 @@ export const AssetSelectionModal = ({
         .filter(Boolean);
 
       await Promise.all(patchAPIPromises);
-      onSave?.();
-      onCancel();
-    } catch (_) {
-      // Nothing here
+      await new Promise((resolve) => {
+        setTimeout(() => {
+          resolve('');
+          onSave?.();
+        }, ES_UPDATE_DELAY);
+      });
+    } catch (err) {
+      showErrorToast(err as AxiosError);
     } finally {
-      setIsLoading(false);
+      setIsSaveLoading(false);
+      onCancel();
     }
   };
 
-  const onSaveAction = () => {
+  const onSaveAction = useCallback(() => {
     if (type === AssetsOfEntity.GLOSSARY) {
       handleSave();
     } else {
       domainAndDataProductsSave();
     }
-  };
+  }, [type, handleSave, domainAndDataProductsSave]);
 
   const onScroll: UIEventHandler<HTMLElement> = useCallback(
     (e) => {
+      const scrollHeight =
+        e.currentTarget.scrollHeight - e.currentTarget.scrollTop;
+
       if (
-        e.currentTarget.scrollHeight - e.currentTarget.scrollTop === 500 &&
+        scrollHeight > 499 &&
+        scrollHeight < 501 &&
         items.length < totalCount
       ) {
         !isLoading &&
@@ -303,12 +376,16 @@ export const AssetSelectionModal = ({
           });
       }
     },
-    [activeFilter, search, totalCount, items]
+    [
+      pageNumber,
+      activeFilter,
+      search,
+      totalCount,
+      items,
+      isLoading,
+      fetchEntities,
+    ]
   );
-
-  const mapAssetsSearchIndex = useMemo(() => {
-    return getAssetsSearchIndex(type);
-  }, [type]);
 
   return (
     <Modal
@@ -318,7 +395,11 @@ export const AssetSelectionModal = ({
       footer={
         <>
           <Button onClick={onCancel}>{t('label.cancel')}</Button>
-          <Button loading={isLoading} type="primary" onClick={onSaveAction}>
+          <Button
+            disabled={isLoading}
+            loading={isSaveLoading}
+            type="primary"
+            onClick={onSaveAction}>
             {t('label.save')}
           </Button>
         </>
@@ -332,47 +413,46 @@ export const AssetSelectionModal = ({
         <Searchbar
           removeMargin
           showClearSearch
-          showLoadingStatus
-          inputProps={{
-            addonBefore: (
-              <Select
-                bordered={false}
-                options={map(mapAssetsSearchIndex, (value, key) => ({
-                  label: startCase(key),
-                  value: value,
-                }))}
-                style={{ minWidth: '100px' }}
-                value={activeFilter}
-                onChange={setActiveFilter}
-              />
-            ),
-          }}
           placeholder={t('label.search-entity', {
             entity: t('label.asset-plural'),
           })}
           searchValue={search}
           onSearch={setSearch}
         />
-        <List loading={{ spinning: isLoading, indicator: <Loader /> }}>
-          <VirtualList
-            data={items}
-            height={500}
-            itemKey="id"
-            onScroll={onScroll}>
-            {({ _source: item }) => (
-              <TableDataCardV2
-                openEntityInNewPage
-                showCheckboxes
-                checked={selectedItems?.has(item.id ?? '')}
-                className="m-b-sm asset-selection-model-card cursor-pointer"
-                handleSummaryPanelDisplay={handleCardClick}
-                id={`tabledatacard-${item.id}`}
-                key={item.id}
-                source={{ ...item, tags: [] }}
-              />
+
+        {isLoading && <Loader />}
+
+        {!isLoading && items.length > 0 && (
+          <List>
+            <VirtualList
+              data={items}
+              height={500}
+              itemKey="id"
+              onScroll={onScroll}>
+              {({ _source: item }) => (
+                <TableDataCardV2
+                  openEntityInNewPage
+                  showCheckboxes
+                  checked={selectedItems?.has(item.id ?? '')}
+                  className="m-b-sm asset-selection-model-card cursor-pointer"
+                  handleSummaryPanelDisplay={handleCardClick}
+                  id={`tabledatacard-${item.id}`}
+                  key={item.id}
+                  source={{ ...item, tags: [] }}
+                />
+              )}
+            </VirtualList>
+          </List>
+        )}
+        {!isLoading && items.length === 0 && (
+          <ErrorPlaceHolder>
+            {emptyPlaceHolderText && (
+              <Typography.Paragraph>
+                {emptyPlaceHolderText}
+              </Typography.Paragraph>
             )}
-          </VirtualList>
-        </List>
+          </ErrorPlaceHolder>
+        )}
       </Space>
     </Modal>
   );

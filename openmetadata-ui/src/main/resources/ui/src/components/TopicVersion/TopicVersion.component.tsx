@@ -13,30 +13,31 @@
 
 import { Col, Row, Space, Tabs, TabsProps, Tag } from 'antd';
 import classNames from 'classnames';
-import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
-import DescriptionV1 from 'components/common/description/DescriptionV1';
-import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
-import EntityVersionTimeLine from 'components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
-import Loader from 'components/Loader/Loader';
-import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
-import TopicSchemaFields from 'components/TopicDetails/TopicSchema/TopicSchema';
-import { getVersionPathWithTab } from 'constants/constants';
-import { EntityField } from 'constants/Feeds.constants';
-import { EntityTabs, EntityType } from 'enums/entity.enum';
-import { TagSource } from 'generated/type/tagLabel';
 import { isEmpty, noop } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { stringToHTML } from 'utils/StringsUtils';
-import { getUpdatedMessageSchema } from 'utils/TopicVersionUtils';
+import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
+import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
+import DataAssetsVersionHeader from '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
+import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
+import Loader from '../../components/Loader/Loader';
+import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
+import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
+import TopicSchemaFields from '../../components/TopicDetails/TopicSchema/TopicSchema';
+import { getVersionPathWithTab } from '../../constants/constants';
+import { EntityField } from '../../constants/Feeds.constants';
+import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { ChangeDescription } from '../../generated/entity/data/topic';
+import { TagSource } from '../../generated/type/tagLabel';
 import {
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
+import { getEncodedFqn, stringToHTML } from '../../utils/StringsUtils';
+import { getUpdatedMessageSchema } from '../../utils/TopicVersionUtils';
+import DataProductsContainer from '../DataProductsContainer/DataProductsContainer.component';
 import { TopicVersionProp } from './TopicVersion.interface';
 
 const TopicVersion: FC<TopicVersionProp> = ({
@@ -52,6 +53,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
   versionHandler,
   entityPermissions,
   domain,
+  dataProducts,
 }: TopicVersionProp) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -87,7 +89,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
     history.push(
       getVersionPathWithTab(
         EntityType.TOPIC,
-        currentVersionData.fullyQualifiedName ?? '',
+        getEncodedFqn(currentVersionData.fullyQualifiedName ?? ''),
         String(version),
         activeKey
       )
@@ -139,9 +141,9 @@ const TopicVersion: FC<TopicVersionProp> = ({
               <Row gutter={[0, 16]}>
                 <Col span={24}>
                   <DescriptionV1
-                    isVersionView
                     description={description}
                     entityType={EntityType.TOPIC}
+                    showActions={false}
                   />
                 </Col>
                 <Col span={24}>
@@ -163,9 +165,13 @@ const TopicVersion: FC<TopicVersionProp> = ({
               data-testid="entity-right-panel"
               flex="220px">
               <Space className="w-full" direction="vertical" size="large">
+                <DataProductsContainer
+                  activeDomain={domain}
+                  dataProducts={dataProducts ?? []}
+                  hasPermission={false}
+                />
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
-                    entityFqn={currentVersionData.fullyQualifiedName}
                     entityType={EntityType.TOPIC}
                     key={tagType}
                     permission={false}

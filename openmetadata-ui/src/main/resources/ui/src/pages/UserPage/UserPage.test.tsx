@@ -14,7 +14,7 @@
 import { findByTestId, findByText, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { getUserByName } from 'rest/userAPI';
+import { getUserByName } from '../../rest/userAPI';
 import UserPage from './UserPage.component';
 
 const mockUserData = {
@@ -91,11 +91,11 @@ const mockUserData = {
   ],
 };
 
-jest.mock('components/MyData/LeftSidebar/LeftSidebar.component', () =>
+jest.mock('../../components/MyData/LeftSidebar/LeftSidebar.component', () =>
   jest.fn().mockReturnValue(<p>Sidebar</p>)
 );
 
-jest.mock('components/authentication/auth-provider/AuthProvider', () => {
+jest.mock('../../components/Auth/AuthProviders/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({
       isAuthDisabled: true,
@@ -109,28 +109,28 @@ jest.mock('react-router-dom', () => ({
   useLocation: jest.fn().mockImplementation(() => new URLSearchParams()),
 }));
 
-jest.mock('components/Loader/Loader', () => {
+jest.mock('../../components/Loader/Loader', () => {
   return jest.fn().mockReturnValue(<p>Loader</p>);
 });
 
-jest.mock('components/Users/Users.component', () => {
+jest.mock('../../components/Users/Users.component', () => {
   return jest.fn().mockReturnValue(<p>User Component</p>);
 });
 
-jest.mock('rest/userAPI', () => ({
+jest.mock('../../rest/userAPI', () => ({
   getUserByName: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: mockUserData })),
 }));
 
-jest.mock('rest/userAPI', () => ({
+jest.mock('../../rest/userAPI', () => ({
   getUserByName: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: mockUserData })),
   updateUserDetail: jest.fn(),
 }));
 
-jest.mock('rest/feedsAPI', () => ({
+jest.mock('../../rest/feedsAPI', () => ({
   getFeedsWithFilter: jest.fn().mockImplementation(() =>
     Promise.resolve({
       data: {

@@ -13,31 +13,31 @@
 import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import EntityVersionTimeLine from 'components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
-import Loader from 'components/Loader/Loader';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
-import { DataProduct } from 'generated/entity/domains/dataProduct';
-import { EntityHistory } from 'generated/type/entityHistory';
 import { toString } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { DataProduct } from '../../../generated/entity/domains/dataProduct';
+import { EntityHistory } from '../../../generated/type/entityHistory';
 import {
   deleteDataProduct,
   getDataProductByName,
   getDataProductVersionData,
   getDataProductVersionsList,
   patchDataProduct,
-} from 'rest/dataProductAPI';
+} from '../../../rest/dataProductAPI';
 import {
   getDataProductsDetailsPath,
   getDataProductVersionsPath,
   getDomainPath,
-} from 'utils/RouterUtils';
-import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
+} from '../../../utils/RouterUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
+import Loader from '../../Loader/Loader';
+import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import DataProductsDetailsPage from '../DataProductsDetailsPage/DataProductsDetailsPage.component';
 
 const DataProductsPage = () => {
@@ -101,7 +101,7 @@ const DataProductsPage = () => {
     try {
       const data = await getDataProductByName(
         encodeURIComponent(fqn),
-        'owner,experts'
+        'domain,owner,experts,assets'
       );
       setDataProduct(data);
 

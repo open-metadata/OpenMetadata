@@ -13,26 +13,30 @@
 
 import { Col, Row, Space, Switch, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import DescriptionV1 from 'components/common/description/DescriptionV1';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import NextPrevious from 'components/common/next-previous/NextPrevious';
-import { NextPreviousProps } from 'components/common/next-previous/NextPrevious.interface';
-import Loader from 'components/Loader/Loader';
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
-import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
-import { PAGE_SIZE } from 'constants/constants';
-import { Paging } from 'generated/type/paging';
-import { LabelType, State, TagSource } from 'generated/type/tagLabel';
-import { ServicesType } from 'interface/service.interface';
 import { isEmpty, isNil } from 'lodash';
 import { EntityTags, ServiceTypes } from 'Models';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
-import { getServiceMainTabColumns } from 'utils/ServiceMainTabContentUtils';
-import { getEntityTypeFromServiceCategory } from 'utils/ServiceUtils';
-import { getTagsWithoutTier, getTierTags } from 'utils/TableUtils';
+import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
+import { NextPreviousProps } from '../../components/common/NextPrevious/NextPrevious.interface';
+import DataProductsContainer from '../../components/DataProductsContainer/DataProductsContainer.component';
+import Loader from '../../components/Loader/Loader';
+import { OperationPermission } from '../../components/PermissionProvider/PermissionProvider.interface';
+import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
+import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
+import { PAGE_SIZE } from '../../constants/constants';
+import { EntityType } from '../../enums/entity.enum';
+import { DatabaseService } from '../../generated/entity/services/databaseService';
+import { Paging } from '../../generated/type/paging';
+import { TagSource } from '../../generated/type/tagLabel';
+import { ServicesType } from '../../interface/service.interface';
+import { getServiceMainTabColumns } from '../../utils/ServiceMainTabContentUtils';
+import { getEntityTypeFromServiceCategory } from '../../utils/ServiceUtils';
+import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
+import { createTagObject } from '../../utils/TagsUtils';
 import { ServicePageData } from './ServiceDetailsPage';
 
 interface ServiceMainTabContentProps {
@@ -63,7 +67,7 @@ function ServiceMainTabContent({
   currentPage,
   serviceDetails,
   saveUpdatedServiceData,
-}: ServiceMainTabContentProps) {
+}: Readonly<ServiceMainTabContentProps>) {
   const { t } = useTranslation();
   const { fqn: serviceFQN, serviceCategory } = useParams<{
     fqn: string;
@@ -94,18 +98,14 @@ function ServiceMainTabContent({
             .map((selTag) => selTag.tagFQN)
             .includes(tag?.tagFQN as string)
         ) || [];
-      const newTags = selectedTags
-        .filter((tag) => {
+      const newTags = createTagObject(
+        selectedTags.filter((tag) => {
           return !prevTags
             ?.map((prevTag) => prevTag.tagFQN)
             .includes(tag.tagFQN);
         })
-        .map((tag) => ({
-          labelType: LabelType.Manual,
-          state: State.Confirmed,
-          source: tag.source,
-          tagFQN: tag.tagFQN,
-        }));
+      );
+
       await onTagUpdate([...prevTags, ...newTags]);
     }
   };
@@ -138,8 +138,15 @@ function ServiceMainTabContent({
     [serviceCategory]
   );
 
-  const editTagsPermission = useMemo(
-    () => servicePermission.EditTags || servicePermission.EditAll,
+  const { editTagsPermission, editDescriptionPermission } = useMemo(
+    () => ({
+      editTagsPermission:
+        (servicePermission.EditTags || servicePermission.EditAll) &&
+        !serviceDetails.deleted,
+      editDescriptionPermission:
+        (servicePermission.EditDescription || servicePermission.EditAll) &&
+        !serviceDetails.deleted,
+    }),
     [servicePermission, serviceDetails]
   );
 
@@ -153,10 +160,9 @@ function ServiceMainTabContent({
               entityFqn={serviceFQN}
               entityName={serviceName}
               entityType={entityType}
-              hasEditAccess={
-                servicePermission.EditDescription || servicePermission.EditAll
-              }
+              hasEditAccess={editDescriptionPermission}
               isEdit={isEdit}
+              showActions={!serviceDetails.deleted}
               showCommentsIcon={false}
               onCancel={onCancel}
               onDescriptionEdit={onDescriptionEdit}
@@ -213,6 +219,16 @@ function ServiceMainTabContent({
         data-testid="entity-right-panel"
         flex="320px">
         <Space className="w-full" direction="vertical" size="large">
+          {entityType !== EntityType.METADATA_SERVICE && (
+            <DataProductsContainer
+              activeDomain={(serviceDetails as DatabaseService)?.domain}
+              dataProducts={
+                (serviceDetails as DatabaseService)?.dataProducts ?? []
+              }
+              hasPermission={false}
+            />
+          )}
+
           <TagsContainerV2
             displayType={DisplayType.READ_MORE}
             entityFqn={serviceFQN}

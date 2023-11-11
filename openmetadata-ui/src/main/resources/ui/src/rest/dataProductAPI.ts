@@ -12,19 +12,19 @@
  */
 
 import { AxiosResponse } from 'axios';
-import { PAGE_SIZE } from 'constants/constants';
-import { SearchIndex } from 'enums/search.enum';
 import { Operation } from 'fast-json-patch';
-import { CreateDataProduct } from 'generated/api/domains/createDataProduct';
-import { DataProduct } from 'generated/entity/domains/dataProduct';
-import { EntityHistory } from 'generated/type/entityHistory';
-import { Include } from 'generated/type/include';
-import { Paging } from 'generated/type/paging';
 import { PagingResponse } from 'Models';
+import { PAGE_SIZE } from '../constants/constants';
+import { SearchIndex } from '../enums/search.enum';
+import { CreateDataProduct } from '../generated/api/domains/createDataProduct';
+import { DataProduct } from '../generated/entity/domains/dataProduct';
+import { EntityHistory } from '../generated/type/entityHistory';
+import { Include } from '../generated/type/include';
+import { Paging } from '../generated/type/paging';
 import {
   formatDataProductResponse,
   getURLWithQueryFields,
-} from 'utils/APIUtils';
+} from '../utils/APIUtils';
 import APIClient from './index';
 import { searchQuery } from './searchAPI';
 

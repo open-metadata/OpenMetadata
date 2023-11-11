@@ -5,6 +5,7 @@ import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.STORED_PROCEDURE;
 
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.StoredProcedure;
@@ -20,13 +21,12 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
   static final String PATCH_FIELDS = "storedProcedureCode,sourceUrl";
   static final String UPDATE_FIELDS = "storedProcedureCode,sourceUrl";
 
-  public StoredProcedureRepository(CollectionDAO dao) {
+  public StoredProcedureRepository() {
     super(
         StoredProcedureResource.COLLECTION_PATH,
         STORED_PROCEDURE,
         StoredProcedure.class,
-        dao.storedProcedureDAO(),
-        dao,
+        Entity.getCollectionDAO().storedProcedureDAO(),
         PATCH_FIELDS,
         UPDATE_FIELDS);
     supportsSearch = true;
@@ -117,6 +117,7 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
       super(original, updated, operation);
     }
 
+    @Transaction
     @Override
     public void entitySpecificUpdate() {
       // storedProcedureCode is a required field. Cannot be null.

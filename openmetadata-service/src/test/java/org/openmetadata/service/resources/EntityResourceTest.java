@@ -52,6 +52,22 @@ import static org.openmetadata.service.util.TestUtils.UpdateType.NO_CHANGE;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import es.org.elasticsearch.action.search.SearchResponse;
+import es.org.elasticsearch.client.Request;
+import es.org.elasticsearch.client.Response;
+import es.org.elasticsearch.client.RestClient;
+import es.org.elasticsearch.search.SearchHit;
+import es.org.elasticsearch.search.aggregations.Aggregation;
+import es.org.elasticsearch.search.aggregations.bucket.terms.ParsedStringTerms;
+import es.org.elasticsearch.search.aggregations.bucket.terms.StringTerms;
+import es.org.elasticsearch.search.aggregations.metrics.ParsedTopHits;
+import es.org.elasticsearch.search.aggregations.metrics.TopHitsAggregationBuilder;
+import es.org.elasticsearch.xcontent.ContextParser;
+import es.org.elasticsearch.xcontent.DeprecationHandler;
+import es.org.elasticsearch.xcontent.NamedXContentRegistry;
+import es.org.elasticsearch.xcontent.ParseField;
+import es.org.elasticsearch.xcontent.XContentParser;
+import es.org.elasticsearch.xcontent.json.JsonXContent;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.time.Duration;
@@ -80,22 +96,6 @@ import org.apache.commons.text.RandomStringGenerator.Builder;
 import org.apache.http.client.HttpResponseException;
 import org.apache.http.util.EntityUtils;
 import org.awaitility.Awaitility;
-import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.client.Request;
-import org.elasticsearch.client.Response;
-import org.elasticsearch.client.RestClient;
-import org.elasticsearch.search.SearchHit;
-import org.elasticsearch.search.aggregations.Aggregation;
-import org.elasticsearch.search.aggregations.bucket.terms.ParsedStringTerms;
-import org.elasticsearch.search.aggregations.bucket.terms.StringTerms;
-import org.elasticsearch.search.aggregations.metrics.ParsedTopHits;
-import org.elasticsearch.search.aggregations.metrics.TopHitsAggregationBuilder;
-import org.elasticsearch.xcontent.ContextParser;
-import org.elasticsearch.xcontent.DeprecationHandler;
-import org.elasticsearch.xcontent.NamedXContentRegistry;
-import org.elasticsearch.xcontent.ParseField;
-import org.elasticsearch.xcontent.XContentParser;
-import org.elasticsearch.xcontent.json.JsonXContent;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.jupiter.api.AfterAll;
@@ -189,8 +189,7 @@ import org.openmetadata.service.resources.services.SearchServiceResourceTest;
 import org.openmetadata.service.resources.services.StorageServiceResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.resources.teams.*;
-import org.openmetadata.service.search.IndexUtil;
-import org.openmetadata.service.search.SearchIndexDefinition;
+import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
@@ -429,21 +428,21 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new QueryResourceTest().setupQuery(test);
 
     runWebhookTests = new Random().nextBoolean();
-    if (runWebhookTests) {
-      webhookCallbackResource.clearEvents();
-      EventSubscriptionResourceTest alertResourceTest = new EventSubscriptionResourceTest();
-      alertResourceTest.startWebhookSubscription();
-      alertResourceTest.startWebhookEntitySubscriptions(entityType);
-    }
+    // if (true) {
+    webhookCallbackResource.clearEvents();
+    EventSubscriptionResourceTest alertResourceTest = new EventSubscriptionResourceTest();
+    alertResourceTest.startWebhookSubscription();
+    alertResourceTest.startWebhookEntitySubscriptions(entityType);
+    // }
   }
 
   @AfterAll
   public void afterAllTests() throws Exception {
-    if (runWebhookTests) {
-      EventSubscriptionResourceTest alertResourceTest = new EventSubscriptionResourceTest();
-      alertResourceTest.validateWebhookEvents();
-      alertResourceTest.validateWebhookEntityEvents(entityType);
-    }
+    // if (true) {
+    EventSubscriptionResourceTest alertResourceTest = new EventSubscriptionResourceTest();
+    alertResourceTest.validateWebhookEvents();
+    alertResourceTest.validateWebhookEntityEvents(entityType);
+    // }
     delete_recursiveTest();
   }
 
@@ -1688,13 +1687,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         String indexName = jsonObject.getString("index");
         indexNamesFromResponse.add(indexName);
       }
-      for (SearchIndexDefinition.ElasticSearchIndexType elasticSearchIndexType :
-          SearchIndexDefinition.ElasticSearchIndexType.values()) {
-        // check all the indexes are created successfully
-        assertTrue(
-            indexNamesFromResponse.contains(elasticSearchIndexType.indexName),
-            "Index name not found in Elasticsearch response " + elasticSearchIndexType.indexName);
-      }
       client.close();
     }
   }
@@ -1705,9 +1697,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       // create entity
       T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
       EntityReference entityReference = getEntityReference(entity);
-      String indexName = IndexUtil.getIndexMappingByEntityType(entityReference.getType()).indexName;
+      IndexMapping indexMapping = Entity.getSearchRepository().getIndexMapping(entityReference.getType());
       Awaitility.await().wait(2000L);
-      SearchResponse response = getResponseFormSearch(indexName);
+      SearchResponse response = getResponseFormSearch(indexMapping.getIndexName());
       List<String> entityIds = new ArrayList<>();
       SearchHit[] hits = response.getHits().getHits();
       for (SearchHit hit : hits) {
@@ -1725,9 +1717,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       // create entity
       T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
       EntityReference entityReference = getEntityReference(entity);
-      String indexName = IndexUtil.getIndexMappingByEntityType(entityReference.getType()).indexName;
+      IndexMapping indexMapping = Entity.getSearchRepository().getIndexMapping(entityReference.getType());
       Awaitility.await().wait(2000L);
-      SearchResponse response = getResponseFormSearch(indexName);
+      SearchResponse response = getResponseFormSearch(indexMapping.getIndexName());
       List<String> entityIds = new ArrayList<>();
       SearchHit[] hits = response.getHits().getHits();
       for (SearchHit hit : hits) {
@@ -1741,8 +1733,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       WebTarget target = getResource(entity.getId());
       TestUtils.delete(target, entityClass, ADMIN_AUTH_HEADERS);
       // search again in search after deleting
+
       Awaitility.await().wait(2000L);
-      response = getResponseFormSearch(indexName);
+      response = getResponseFormSearch(indexMapping.getIndexName());
       hits = response.getHits().getHits();
       for (SearchHit hit : hits) {
         Map<String, Object> sourceAsMap = hit.getSourceAsMap();
@@ -1758,13 +1751,13 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     if (supportsSearchIndex && RUN_ELASTIC_SEARCH_TESTCASES) {
       T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
       EntityReference entityReference = getEntityReference(entity);
-      String indexName = IndexUtil.getIndexMappingByEntityType(entityReference.getType()).indexName;
+      IndexMapping indexMapping = Entity.getSearchRepository().getIndexMapping(entityReference.getType());
       String desc = "";
       String original = JsonUtils.pojoToJson(entity);
       entity.setDescription("update description");
       entity = patchEntity(entity.getId(), original, entity, ADMIN_AUTH_HEADERS);
       Awaitility.await().wait(2000L);
-      SearchResponse response = getResponseFormSearch(indexName);
+      SearchResponse response = getResponseFormSearch(indexMapping.getIndexName());
       SearchHit[] hits = response.getHits().getHits();
       for (SearchHit hit : hits) {
         Map<String, Object> sourceAsMap = hit.getSourceAsMap();
@@ -1785,7 +1778,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       // create an entity
       T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
       EntityReference entityReference = getEntityReference(entity);
-      String indexName = IndexUtil.getIndexMappingByEntityType(entityReference.getType()).indexName;
+      IndexMapping indexMapping = Entity.getSearchRepository().getIndexMapping(entityReference.getType());
       String origJson = JsonUtils.pojoToJson(entity);
       TagResourceTest tagResourceTest = new TagResourceTest();
       Tag tag = tagResourceTest.createEntity(tagResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
@@ -1796,7 +1789,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       // add tags to entity
       entity = patchEntity(entity.getId(), origJson, entity, ADMIN_AUTH_HEADERS);
       Awaitility.await().wait(2000L);
-      SearchResponse response = getResponseFormSearch(indexName);
+      SearchResponse response = getResponseFormSearch(indexMapping.getIndexName());
       SearchHit[] hits = response.getHits().getHits();
       for (SearchHit hit : hits) {
         Map<String, Object> sourceAsMap = hit.getSourceAsMap();
@@ -1813,7 +1806,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       // delete the tag
       tagResourceTest.deleteEntity(tag.getId(), false, true, ADMIN_AUTH_HEADERS);
       Awaitility.await().wait(2000L);
-      response = getResponseFormSearch(indexName);
+      response = getResponseFormSearch(indexMapping.getIndexName());
       hits = response.getHits().getHits();
       for (SearchHit hit : hits) {
         Map<String, Object> sourceAsMap = hit.getSourceAsMap();
@@ -2458,7 +2451,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
   }
 
-  protected final void assertCommonFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  protected final void assertCommonFieldChange(String fieldName, Object expected, Object actual) {
     if (expected == actual) {
       return;
     }
@@ -2789,8 +2782,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       List<CsvHeader> csvHeaders,
       List<String> createRecords,
       List<String> updateRecords,
-      List<String> newRecords)
-      throws IOException {
+      List<String> newRecords) {
     // Create new records
     importCsvAndValidate(entityName, csvHeaders, createRecords, null); // Dry run
 
@@ -2813,8 +2805,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertReference(expectedOwner, entity.getOwner()); // Inherited owner
     entity = getEntity(entity.getId(), "owner", ADMIN_AUTH_HEADERS);
     assertReference(expectedOwner, entity.getOwner()); // Inherited owner
+    assertTrue(entity.getOwner().getInherited());
     entity = getEntityByName(entity.getFullyQualifiedName(), "owner", ADMIN_AUTH_HEADERS);
     assertReference(expectedOwner, entity.getOwner()); // Inherited owner
+    assertTrue(entity.getOwner().getInherited());
     return entity;
   }
 
@@ -2825,12 +2819,17 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     entity.setOwner(newOwner);
     entity = patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS);
     assertReference(newOwner, entity.getOwner());
-    entity = updateEntity(updateRequest.withOwner(null), OK, ADMIN_AUTH_HEADERS); // Simulate ingestion update
+    assertNull(entity.getOwner().getInherited());
+
+    // Now simulate and ingestion entity update with no owner
+    entity = updateEntity(updateRequest.withOwner(null), OK, ADMIN_AUTH_HEADERS);
     assertReference(newOwner, entity.getOwner()); // Owner remains the same
     entity = getEntity(entity.getId(), "owner", ADMIN_AUTH_HEADERS);
     assertReference(newOwner, entity.getOwner()); // Owner remains the same
+    assertNull(entity.getOwner().getInherited());
     entity = getEntityByName(entity.getFullyQualifiedName(), "owner", ADMIN_AUTH_HEADERS);
     assertReference(newOwner, entity.getOwner()); // Owner remains the same
+    assertNull(entity.getOwner().getInherited());
   }
 
   public T assertDomainInheritance(K createRequest, EntityReference expectedDomain) throws HttpResponseException {
@@ -2838,8 +2837,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertReference(expectedDomain, entity.getDomain()); // Inherited owner
     entity = getEntity(entity.getId(), "domain", ADMIN_AUTH_HEADERS);
     assertReference(expectedDomain, entity.getDomain()); // Inherited owner
+    assertTrue(entity.getDomain().getInherited());
     entity = getEntityByName(entity.getFullyQualifiedName(), "domain", ADMIN_AUTH_HEADERS);
     assertReference(expectedDomain, entity.getDomain()); // Inherited owner
+    assertTrue(entity.getDomain().getInherited());
     return entity;
   }
 
@@ -2850,12 +2851,17 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     entity.setDomain(newDomain);
     entity = patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS);
     assertReference(newDomain, entity.getDomain());
-    entity = updateEntity(updateRequest.withDomain(null), OK, ADMIN_AUTH_HEADERS); // Simulate ingestion update
+    assertNull(entity.getDomain().getInherited());
+
+    // Now simulate and ingestion entity update with no domain
+    entity = updateEntity(updateRequest.withDomain(null), OK, ADMIN_AUTH_HEADERS);
     assertReference(newDomain, entity.getDomain()); // Domain remains the same
     entity = getEntity(entity.getId(), "domain", ADMIN_AUTH_HEADERS);
     assertReference(newDomain, entity.getDomain()); // Domain remains the same
+    assertNull(entity.getDomain().getInherited());
     entity = getEntityByName(entity.getFullyQualifiedName(), "domain", ADMIN_AUTH_HEADERS);
     assertReference(newDomain, entity.getDomain()); // Domain remains the same
+    assertNull(entity.getDomain().getInherited());
   }
 
   public static void assertLifeCycle(LifeCycle expected, LifeCycle actual) {
