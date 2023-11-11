@@ -86,6 +86,7 @@ export const imageTypes = {
 export const NO_DATA_PLACEHOLDER = '--';
 export const PIPE_SYMBOL = '|';
 export const NO_DATA = '-';
+export const STAR_OMD_USER = 'STAR_OMD_USER';
 
 export const TOUR_SEARCH_TERM = 'dim_a';
 export const ERROR500 = t('message.something-went-wrong');
@@ -118,6 +119,8 @@ export const PLACEHOLDER_ACTION = ':action';
 export const pagingObject = { after: '', before: '', total: 0 };
 
 export const ONLY_NUMBER_REGEX = /^[0-9\b]+$/;
+
+export const ES_UPDATE_DELAY = 500;
 
 export const globalSearchOptions = [
   { value: '', label: t('label.all') },

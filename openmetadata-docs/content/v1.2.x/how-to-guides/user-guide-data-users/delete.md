@@ -1,6 +1,6 @@
 ---
 title: How to Delete a Data Asset
-slug: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/delete
+slug: /how-to-guides/guide-for-data-users/delete
 ---
 
 # How to Delete a Data Asset
@@ -27,4 +27,4 @@ alt="Soft or Hard Delete a Data Asset"
 caption="Soft or Hard Delete a Data Asset"
 /%}
 
-{% note noteType="Tip" %} **Tip:** Notify team members of data changes by creating [announcements](/how-to-guides/user-guide-for-data-stewards/overview-data-assets/add-announcement).{% /note %}
+{% note noteType="Tip" %} **Tip:** Notify team members of data changes by creating [announcements](/how-to-guides/guide-for-data-users/add-announcement).{% /note %}

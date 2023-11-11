@@ -1,6 +1,6 @@
 ---
 title: Data Asset Versioning
-slug: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/versions
+slug: /how-to-guides/guide-for-data-users/versions
 ---
 
 # Data Asset Versioning
@@ -36,3 +36,11 @@ caption="Version History"
 /%}
 
 All the changes that have happened to your data and metadata are at your fingertips to understand the evolution of your data over time. This is also key for Data Governance.
+
+{%inlineCallout
+  color="violet-70"
+  bold="How to Delete a Data Asset"
+  icon="MdArrowForward"
+  href="/how-to-guides/guide-for-data-users/delete"%}
+  Soft, or hard delete data assets
+{%/inlineCallout%}

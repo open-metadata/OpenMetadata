@@ -1,6 +1,6 @@
 ---
 title: How to Add Glossary Terms
-slug: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/glossary
+slug: /how-to-guides/guide-for-data-users/glossary
 ---
 
 # How to Add Glossary Terms
@@ -38,3 +38,11 @@ src="/images/v1.1/how-to-guides/governance/tag6.png"
 alt="Glossary Term and Tag gets Added to the Data Asset"
 caption="Glossary Term and Tag gets Added to the Data Asset"
 /%}
+
+{%inlineCallout
+  color="violet-70"
+  bold="How to Create a Custom Property for a Data Asset"
+  icon="MdArrowForward"
+  href="/how-to-guides/guide-for-data-users/custom"%}
+  Learn how to create custom attributes for data assets
+{%/inlineCallout%}

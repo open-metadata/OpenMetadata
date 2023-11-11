@@ -11,6 +11,5 @@
  *  limitations under the License.
  */
 
-export const getReleaseVersionExpiry = () => {
-  return new Date(Date.now() + 60 * 60 * 24 * 31 * 1000);
-};
+export const getReleaseVersionExpiry = () =>
+  new Date(Date.now() + 60 * 60 * 24 * 31 * 1000);

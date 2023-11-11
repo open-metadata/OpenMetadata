@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Typography } from 'antd';
+import { Button, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isString, startCase, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
@@ -58,6 +58,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       showTags = true,
       openEntityInNewPage,
       hideBreadcrumbs = false,
+      actionPopoverContent,
     },
     ref
   ) => {
@@ -137,7 +138,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           if (source.style?.iconURL) {
             return (
               <img
-                className="align-middle m-r-xs"
+                className="align-middle m-r-xs object-contain"
                 data-testid="icon"
                 height={24}
                 src={source.style.iconURL}
@@ -245,6 +246,9 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             ))}
           </div>
         ) : null}
+        {actionPopoverContent && (
+          <Space className="explore-card-actions">{actionPopoverContent}</Space>
+        )}
       </div>
     );
   }

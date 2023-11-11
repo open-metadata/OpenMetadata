@@ -1,6 +1,6 @@
 ---
 title: Overview of Announcements
-slug: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/announcements
+slug: /how-to-guides/guide-for-data-users/announcements
 ---
 
 # Overview of Announcements
@@ -54,3 +54,11 @@ caption="Landing Page Announcement Display (Top Right)"
 {% note %}
 **Advanced Tip:** Users can set up Alerts to be sent from OpenMetadata via Email,  Chat, Slack, MS Teams, and Webhooks. If alerts have been set up for Activity Feeds, then the concerned data owners and followers will be notified via email, Slack, etc.
 {% /note %}
+
+{%inlineCallout
+  color="violet-70"
+  bold="How to Create an Announcement"
+  icon="MdArrowForward"
+  href="/how-to-guides/guide-for-data-users/add-announcement"%}
+  Follow the steps to add an announcement
+{%/inlineCallout%}

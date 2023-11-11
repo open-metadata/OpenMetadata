@@ -30,14 +30,14 @@ Watch the video on how to use the collaboration features in OpenMetadata.
   color="violet-70"
   bold="Request for Description"
   icon="MdDescription"
-  href="/how-to-guides/user-guide-for-data-stewards/overview-data-assets/request-description"%}
+  href="/how-to-guides/openmetadata/data-collaboration/request-description"%}
   Request for a description and discuss the same within OpenMetadata
  {%/inlineCallout%}
  {%inlineCallout
   color="violet-70"
   bold="Request for Tags"
   icon="MdDiscount"
-  href="/how-to-guides/user-guide-for-data-stewards/overview-data-assets/request-tags"%}
+  href="/how-to-guides/openmetadata/data-collaboration/request-tags"%}
   Request for tags and discuss about the same, all within OpenMetadata.
  {%/inlineCallout%}
  {%inlineCallout

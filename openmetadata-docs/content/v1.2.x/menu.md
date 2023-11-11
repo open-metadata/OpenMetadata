@@ -610,38 +610,36 @@ site_menu:
     url: /how-to-guides/admin-guide-roles-policies/authorization
   - category: How to Guides / Admin Guide for Roles and Policies / Use Cases - Creating Roles & Policies in OpenMetadata
     url: /how-to-guides/admin-guide-roles-policies/use-cases
-  - category: How to Guides / User Guide for Data Stewards
-    url: /how-to-guides/user-guide-for-data-stewards
-  - category: How to Guides / User Guide for Data Stewards / Understanding the Basics of OpenMetadata
-    url: /how-to-guides/user-guide-for-data-stewards/basics-openmetadata
-  - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets
-    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets
-  - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets / Data Asset Tabs
-    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/tabs
-  - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets / How to Add Description using Markdown
-    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/description
-  - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets / Request for Description
-    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/request-description
-  - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets / How to Assign or Change Data Ownership
-    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/data-ownership
-  - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets / How to Follow a Data Asset
-    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/follow-data-asset
-  - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets / How to Add Tags
-    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/tags
-  - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets / How to Request for Tags
-    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/request-tags
-  - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets / How to Add Glossary Terms
-    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/glossary
-  - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets / How to Create a Custom Property for a Data Asset
-    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/custom
-  - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets / Overview of Announcements
-    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/announcements
-  - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets / How to Create an Announcement
-    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/add-announcement
-  - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets / Data Asset Versioning
-    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/versions
-  - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets / How to Delete a Data Asset
-    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/delete
+  - category: How to Guides / Guide for Data Users
+    url: /how-to-guides/guide-for-data-users
+  - category: How to Guides / Guide for Data Users / Understanding the Basics of OpenMetadata
+    url: /how-to-guides/guide-for-data-users/basics-openmetadata
+  - category: How to Guides / Guide for Data Users / Overview of Data Assets
+    url: /how-to-guides/guide-for-data-users/data-asset-tabs
+  - category: How to Guides / Guide for Data Users / How to Add Description using Markdown
+    url: /how-to-guides/guide-for-data-users/description
+  - category: How to Guides / Guide for Data Users / How to Request for Description
+    url: /how-to-guides/guide-for-data-users/request-description
+  - category: How to Guides / Guide for Data Users / How to Assign or Change Data Ownership
+    url: /how-to-guides/guide-for-data-users/data-ownership
+  - category: How to Guides / Guide for Data Users / How to Follow a Data Asset
+    url: /how-to-guides/guide-for-data-users/follow-data-asset
+  - category: How to Guides / Guide for Data Users / How to Add Tags
+    url: /how-to-guides/guide-for-data-users/tags
+  - category: How to Guides / Guide for Data Users / How to Request for Tags
+    url: /how-to-guides/guide-for-data-users/request-tags
+  - category: How to Guides / Guide for Data Users / How to Add Glossary Terms
+    url: /how-to-guides/guide-for-data-users/glossary
+  - category: How to Guides / Guide for Data Users / How to Create a Custom Property for a Data Asset
+    url: /how-to-guides/guide-for-data-users/custom
+  - category: How to Guides / Guide for Data Users / Overview of Announcements
+    url: /how-to-guides/guide-for-data-users/announcements
+  - category: How to Guides / Guide for Data Users / How to Create an Announcement
+    url: /how-to-guides/guide-for-data-users/add-announcement
+  - category: How to Guides / Guide for Data Users / Data Asset Versioning
+    url: /how-to-guides/guide-for-data-users/versions
+  - category: How to Guides / Guide for Data Users / How to Delete a Data Asset
+    url: /how-to-guides/guide-for-data-users/delete
   - category: How to Guides / The Six Pillars of OpenMetadata
     url: /how-to-guides/openmetadata
   - category: How to Guides / The Six Pillars of OpenMetadata / Data Discovery

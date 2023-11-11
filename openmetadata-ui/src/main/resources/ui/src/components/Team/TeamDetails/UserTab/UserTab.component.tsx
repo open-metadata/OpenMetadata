@@ -30,7 +30,6 @@ import { UserSelectableList } from '../../../../components/common/UserSelectable
 import { useEntityExportModalProvider } from '../../../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import {
   INITIAL_PAGING_VALUE,
-  PAGE_SIZE_BASE,
   PAGE_SIZE_MEDIUM,
 } from '../../../../constants/constants';
 import {
@@ -95,7 +94,7 @@ export const UserTab = ({
     setIsLoading(true);
     getUsers({
       fields: 'teams,roles',
-      limit: PAGE_SIZE_BASE,
+      limit: pageSize,
       team: getDecodedFqn(team),
       ...paging,
     })
@@ -119,7 +118,7 @@ export const UserTab = ({
     searchData(
       text,
       currentPage,
-      PAGE_SIZE_BASE,
+      pageSize,
       `(teams.id:${currentTeam?.id})`,
       '',
       '',
@@ -171,7 +170,7 @@ export const UserTab = ({
 
   useEffect(() => {
     getCurrentTeamUsers(getEncodedFqn(currentTeam.name));
-  }, [currentTeam]);
+  }, [currentTeam, pageSize]);
 
   const isTeamDeleted = useMemo(
     () => currentTeam.deleted ?? false,
@@ -389,6 +388,8 @@ export const UserTab = ({
           rowKey="name"
           size="small"
         />
+      </Col>
+      <Col span={24}>
         {showPagination && (
           <NextPrevious
             currentPage={currentPage}
