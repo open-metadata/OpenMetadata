@@ -80,7 +80,7 @@ import { UserProfileIcon } from '../Users/UserProfileIcon/UserProfileIcon.compon
 import { useWebSocketConnector } from '../WebSocketProvider/WebSocketProvider';
 import './nav-bar.less';
 import { NavBarProps } from './NavBar.interface';
-import PopupAlertsCardsClassBase from './PopupAlertClassBase';
+import popupAlertsCardsClassBase from './PopupAlertClassBase';
 
 const cookieStorage = new CookieStorage();
 
@@ -120,14 +120,14 @@ const NavBar = ({
   const [activeTab, setActiveTab] = useState<string>('Task');
 
   const renderAlertCards = useMemo(() => {
-    const cardList = PopupAlertsCardsClassBase.alertsCards();
+    const cardList = popupAlertsCardsClassBase.alertsCards();
 
     return cardList.map(({ key, component }) => {
       const Component = component;
 
       return <Component key={key} />;
     });
-  }, [PopupAlertsCardsClassBase]);
+  }, []);
 
   const entitiesSelect = useMemo(
     () => (
