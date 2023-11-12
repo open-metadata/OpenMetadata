@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Affix, Button, Card, Skeleton, Typography } from 'antd';
+import { Affix, Button, Card, Skeleton, Space, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { CookieStorage } from 'cookie-storage';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -104,11 +104,13 @@ const GithubStarCard = () => {
       }
       `}>
       <Card data-testid="github-star-popup-card">
-        <StarIcon className="github-star-icon" />
+        <Space>
+          <StarIcon className="github-star-icon" />
 
-        <Typography.Text className="github-star-popup-header">
-          {t('label.star-us-on-github')}
-        </Typography.Text>
+          <Typography.Text className="github-star-popup-header">
+            {t('label.star-us-on-github')}
+          </Typography.Text>
+        </Space>
 
         <Typography.Paragraph className="github-star-popup-description">
           {t('message.star-on-github-description')}
