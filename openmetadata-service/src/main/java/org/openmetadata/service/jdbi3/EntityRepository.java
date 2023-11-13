@@ -211,6 +211,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Getter protected final boolean supportsReviewers;
   @Getter protected final boolean supportsExperts;
   protected boolean quoteFqn = false; // Entity FQNS not hierarchical such user, teams, services need to be quoted
+  protected boolean renameAllowed = false; // Entity can be renamed
 
   /** Fields that can be updated during PATCH operation */
   @Getter private final Fields patchFields;
@@ -371,7 +372,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   public void restorePatchAttributes(T original, T updated) {
     updated.setId(original.getId());
-    updated.setName(original.getName());
+    updated.setName(renameAllowed ? updated.getName() : original.getName());
     updated.setFullyQualifiedName(original.getFullyQualifiedName());
     updated.setChangeDescription(original.getChangeDescription());
   }

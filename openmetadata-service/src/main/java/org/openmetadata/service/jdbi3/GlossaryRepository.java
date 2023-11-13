@@ -269,6 +269,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   public class GlossaryUpdater extends EntityUpdater {
     public GlossaryUpdater(Glossary original, Glossary updated, Operation operation) {
       super(original, updated, operation);
+      renameAllowed = true;
     }
 
     @Transaction
@@ -285,6 +286,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
         }
         // Glossary name changed - update tag names starting from glossary and all the children tags
         LOG.info("Glossary name changed from {} to {}", original.getName(), updated.getName());
+        setFullyQualifiedName(updated);
         daoCollection.glossaryTermDAO().updateFqn(original.getName(), updated.getName());
         daoCollection
             .tagUsageDAO()
