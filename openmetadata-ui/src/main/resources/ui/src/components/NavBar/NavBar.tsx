@@ -74,14 +74,13 @@ import BrandImage from '../common/BrandImage/BrandImage';
 import CmdKIcon from '../common/CmdKIcon/CmdKIcon.component';
 import { useDomainProvider } from '../Domain/DomainProvider/DomainProvider';
 import { useGlobalSearchProvider } from '../GlobalSearchProvider/GlobalSearchProvider';
-import GithubStarModal from '../Modals/GithubStarModal/GithubStarModal.component';
-import WhatsNewAlert from '../Modals/WhatsNewModal/WhatsNewAlert/WhatsNewAlert.component';
 import WhatsNewModal from '../Modals/WhatsNewModal/WhatsNewModal';
 import NotificationBox from '../NotificationBox/NotificationBox.component';
 import { UserProfileIcon } from '../Users/UserProfileIcon/UserProfileIcon.component';
 import { useWebSocketConnector } from '../WebSocketProvider/WebSocketProvider';
 import './nav-bar.less';
 import { NavBarProps } from './NavBar.interface';
+import popupAlertsCardsClassBase from './PopupAlertClassBase';
 
 const cookieStorage = new CookieStorage();
 
@@ -119,6 +118,16 @@ const NavBar = ({
   const [hasMentionNotification, setHasMentionNotification] =
     useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>('Task');
+
+  const renderAlertCards = useMemo(() => {
+    const cardList = popupAlertsCardsClassBase.alertsCards();
+
+    return cardList.map(({ key, component }) => {
+      const Component = component;
+
+      return <Component key={key} />;
+    });
+  }, []);
 
   const entitiesSelect = useMemo(
     () => (
@@ -519,9 +528,8 @@ const NavBar = ({
         visible={isFeatureModalOpen}
         onCancel={handleModalCancel}
       />
-      <WhatsNewAlert />
 
-      <GithubStarModal />
+      {renderAlertCards}
     </>
   );
 };
