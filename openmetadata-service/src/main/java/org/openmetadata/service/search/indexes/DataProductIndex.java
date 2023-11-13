@@ -42,12 +42,8 @@ public class DataProductIndex implements SearchIndex {
             dataProduct.getFullyQualifiedName(),
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("entityType", Entity.DATA_PRODUCT);
-    if (dataProduct.getOwner() != null) {
-      doc.put("owner", getOwnerWithDisplayName(dataProduct.getOwner()));
-    }
-    if (dataProduct.getDomain() != null) {
-      doc.put("domain", getDomainWithDisplayName(dataProduct.getDomain()));
-    }
+    doc.put("owner", getEntityWithDisplayName(dataProduct.getOwner()));
+    doc.put("domain", getEntityWithDisplayName(dataProduct.getDomain()));
     return doc;
   }
 
