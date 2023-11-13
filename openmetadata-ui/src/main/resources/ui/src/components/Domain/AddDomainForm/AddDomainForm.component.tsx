@@ -35,9 +35,11 @@ import {
   FieldTypes,
   FormItemLayout,
 } from '../../../interface/FormUtils.interface';
+import { domainTypeTooltipDataRender } from '../../../utils/DomainUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { generateFormFields, getField } from '../../../utils/formUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
+import '../domain.less';
 import { DomainFormType } from '../DomainPage.interface';
 import { AddDomainFormProps } from './AddDomainForm.interface';
 
@@ -113,6 +115,7 @@ const AddDomainForm = ({
       required: false,
       placeholder: t('label.icon-url'),
       type: FieldTypes.TEXT,
+      helperText: t('message.govern-url-size-message'),
       props: {
         'data-testid': 'icon-url',
       },
@@ -139,9 +142,13 @@ const AddDomainForm = ({
       label: t('label.domain-type'),
       id: 'root/domainType',
       type: FieldTypes.SELECT,
+      helperText: domainTypeTooltipDataRender(),
       props: {
         'data-testid': 'domainType',
         options: domainTypeArray,
+        overlayClassName: 'domain-type-tooltip-container',
+        tooltipPlacement: 'topLeft',
+        tooltipAlign: { targetOffset: [18, 0] },
       },
     };
 

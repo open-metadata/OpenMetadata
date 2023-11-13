@@ -20,23 +20,24 @@ import { useHistory, useParams } from 'react-router-dom';
 import { useActivityFeedProvider } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
-import { useAuthContext } from '../../components/authentication/auth-provider/AuthProvider';
+import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
+import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
-import DescriptionV1 from '../../components/common/description/DescriptionV1';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import PageLayoutV1 from '../../components/containers/PageLayoutV1';
+import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import DataProductsContainer from '../../components/DataProductsContainer/DataProductsContainer.component';
 import EntityLineageComponent from '../../components/Entity/EntityLineage/EntityLineage.component';
 import Loader from '../../components/Loader/Loader';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
 } from '../../components/PermissionProvider/PermissionProvider.interface';
-import { withActivityFeed } from '../../components/router/withActivityFeed';
-import SchemaEditor from '../../components/schema-editor/SchemaEditor';
-import { SourceType } from '../../components/searched-data/SearchedData.interface';
+import SchemaEditor from '../../components/SchemaEditor/SchemaEditor';
+import { SourceType } from '../../components/SearchedData/SearchedData.interface';
 import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
 import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
@@ -470,6 +471,39 @@ const StoredProcedurePage = () => {
     [saveUpdatedStoredProceduresData, storedProcedure]
   );
 
+  const {
+    editTagsPermission,
+    editDescriptionPermission,
+    editCustomAttributePermission,
+    editLineagePermission,
+    viewAllPermission,
+    viewBasicPermission,
+  } = useMemo(
+    () => ({
+      editTagsPermission:
+        (storedProcedurePermissions.EditTags ||
+          storedProcedurePermissions.EditAll) &&
+        !storedProcedure?.deleted,
+      editDescriptionPermission:
+        (storedProcedurePermissions.EditDescription ||
+          storedProcedurePermissions.EditAll) &&
+        !storedProcedure?.deleted,
+      editCustomAttributePermission:
+        (storedProcedurePermissions.EditAll ||
+          storedProcedurePermissions.EditCustomFields) &&
+        !storedProcedure?.deleted,
+      editLineagePermission:
+        (storedProcedurePermissions.EditAll ||
+          storedProcedurePermissions.EditLineage) &&
+        !storedProcedure?.deleted,
+      viewAllPermission: storedProcedurePermissions.ViewAll,
+      viewBasicPermission:
+        storedProcedurePermissions.ViewAll ||
+        storedProcedurePermissions.ViewBasic,
+    }),
+    [storedProcedurePermissions, storedProcedure]
+  );
+
   const tabs = useMemo(
     () => [
       {
@@ -492,13 +526,10 @@ const StoredProcedurePage = () => {
                   entityFqn={decodedStoredProcedureFQN}
                   entityName={entityName}
                   entityType={EntityType.STORED_PROCEDURE}
-                  hasEditAccess={
-                    storedProcedurePermissions.EditAll ||
-                    storedProcedurePermissions.EditDescription
-                  }
+                  hasEditAccess={editDescriptionPermission}
                   isEdit={isEdit}
-                  isReadOnly={deleted}
                   owner={owner}
+                  showActions={!deleted}
                   onCancel={onCancel}
                   onDescriptionEdit={onDescriptionEdit}
                   onDescriptionUpdate={onDescriptionUpdate}
@@ -523,15 +554,16 @@ const StoredProcedurePage = () => {
               data-testid="entity-right-panel"
               flex="320px">
               <Space className="w-full" direction="vertical" size="large">
+                <DataProductsContainer
+                  activeDomain={storedProcedure?.domain}
+                  dataProducts={storedProcedure?.dataProducts ?? []}
+                  hasPermission={false}
+                />
                 <TagsContainerV2
                   displayType={DisplayType.READ_MORE}
                   entityFqn={decodedStoredProcedureFQN}
                   entityType={EntityType.STORED_PROCEDURE}
-                  permission={
-                    (storedProcedurePermissions.EditAll ||
-                      storedProcedurePermissions.EditTags) &&
-                    !deleted
-                  }
+                  permission={editTagsPermission}
                   selectedTags={tags}
                   tagType={TagSource.Classification}
                   onSelectionChange={handleTagSelection}
@@ -542,11 +574,7 @@ const StoredProcedurePage = () => {
                   displayType={DisplayType.READ_MORE}
                   entityFqn={decodedStoredProcedureFQN}
                   entityType={EntityType.STORED_PROCEDURE}
-                  permission={
-                    (storedProcedurePermissions.EditAll ||
-                      storedProcedurePermissions.EditTags) &&
-                    !deleted
-                  }
+                  permission={editTagsPermission}
                   selectedTags={tags}
                   tagType={TagSource.Glossary}
                   onSelectionChange={handleTagSelection}
@@ -584,10 +612,7 @@ const StoredProcedurePage = () => {
             deleted={deleted}
             entity={storedProcedure as SourceType}
             entityType={EntityType.STORED_PROCEDURE}
-            hasEditAccess={
-              storedProcedurePermissions.EditAll ||
-              storedProcedurePermissions.EditLineage
-            }
+            hasEditAccess={editLineagePermission}
           />
         ),
       },
@@ -603,11 +628,8 @@ const StoredProcedurePage = () => {
           <CustomPropertyTable
             entityType={EntityType.STORED_PROCEDURE}
             handleExtensionUpdate={onExtensionUpdate}
-            hasEditAccess={
-              storedProcedurePermissions.EditAll ||
-              storedProcedurePermissions.EditCustomFields
-            }
-            hasPermission={storedProcedurePermissions.ViewAll}
+            hasEditAccess={editCustomAttributePermission}
+            hasPermission={viewAllPermission}
           />
         ),
       },
@@ -624,7 +646,11 @@ const StoredProcedurePage = () => {
       description,
       storedProcedure,
       decodedStoredProcedureFQN,
-      storedProcedurePermissions,
+      editTagsPermission,
+      editLineagePermission,
+      editDescriptionPermission,
+      editCustomAttributePermission,
+      viewAllPermission,
     ]
   );
 
@@ -648,10 +674,7 @@ const StoredProcedurePage = () => {
   }, [storedProcedureFQN]);
 
   useEffect(() => {
-    if (
-      storedProcedurePermissions.ViewAll ||
-      storedProcedurePermissions.ViewBasic
-    ) {
+    if (viewBasicPermission) {
       fetchStoredProcedureDetails();
       getEntityFeedCount();
     }
@@ -661,11 +684,7 @@ const StoredProcedurePage = () => {
     return <Loader />;
   }
 
-  if (
-    !(
-      storedProcedurePermissions.ViewAll || storedProcedurePermissions.ViewBasic
-    )
-  ) {
+  if (!viewBasicPermission) {
     return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
   }
 
@@ -676,7 +695,9 @@ const StoredProcedurePage = () => {
   return (
     <PageLayoutV1
       className="bg-white"
-      pageTitle={t('label.stored-procedure-plural')}>
+      pageTitle={t('label.entity-detail-plural', {
+        entity: t('label.stored-procedure'),
+      })}>
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
           <DataAssetsHeader

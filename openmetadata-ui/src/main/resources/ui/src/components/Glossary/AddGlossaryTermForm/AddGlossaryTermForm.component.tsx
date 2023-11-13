@@ -34,7 +34,7 @@ import { formatSearchGlossaryTermResponse } from '../../../utils/APIUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { generateFormFields, getField } from '../../../utils/formUtils';
 import { getEntityReferenceFromGlossaryTerm } from '../../../utils/GlossaryUtils';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import { UserTag } from '../../common/UserTag/UserTag.component';
 import { UserTagSize } from '../../common/UserTag/UserTag.interface';
 import { AddGlossaryTermFormProps } from './AddGlossaryTermForm.interface';
@@ -288,8 +288,10 @@ const AddGlossaryTermForm = ({
       required: false,
       placeholder: t('label.icon-url'),
       type: FieldTypes.TEXT,
+      helperText: t('message.govern-url-size-message'),
       props: {
         'data-testid': 'icon-url',
+        tooltipPlacement: 'right',
       },
     },
     {

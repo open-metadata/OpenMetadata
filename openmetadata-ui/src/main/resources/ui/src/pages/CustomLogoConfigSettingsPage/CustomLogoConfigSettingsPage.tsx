@@ -19,13 +19,17 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import PageHeader from '../../components/header/PageHeader.component';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/Loader/Loader';
-import { GRAYED_OUT_COLOR, ROUTES } from '../../constants/constants';
+import PageHeader from '../../components/PageHeader/PageHeader.component';
+import {
+  GRAYED_OUT_COLOR,
+  NO_DATA_PLACEHOLDER,
+  ROUTES,
+} from '../../constants/constants';
 import { CUSTOM_LOGO_DOCS } from '../../constants/docs.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { LogoConfiguration } from '../../generated/configuration/applicationConfiguration';
+import { LogoConfiguration } from '../../generated/configuration/logoConfiguration';
 import { SettingType } from '../../generated/settings/settings';
 import { getSettingsConfigFromConfigType } from '../../rest/settingConfigAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -33,7 +37,6 @@ import { showErrorToast } from '../../utils/ToastUtils';
 const CustomLogoConfigSettingsPage = () => {
   const { t } = useTranslation();
   const history = useHistory();
-
   const [loading, setLoading] = useState<boolean>(false);
   const [config, setConfig] = useState<LogoConfiguration>();
 
@@ -52,6 +55,7 @@ const CustomLogoConfigSettingsPage = () => {
       setLoading(false);
     }
   };
+
   const handleEditClick = () => {
     history.push(ROUTES.SETTINGS_EDIT_CUSTOM_LOGO_CONFIG);
   };
@@ -120,7 +124,7 @@ const CustomLogoConfigSettingsPage = () => {
               <Col span={24}>
                 <Typography.Text data-testid="logo-url">
                   {isEmpty(config?.customLogoUrlPath)
-                    ? '--'
+                    ? NO_DATA_PLACEHOLDER
                     : config?.customLogoUrlPath}
                 </Typography.Text>
               </Col>
@@ -146,8 +150,34 @@ const CustomLogoConfigSettingsPage = () => {
               <Col span={24}>
                 <Typography.Text data-testid="monogram-url">
                   {isEmpty(config?.customMonogramUrlPath)
-                    ? '--'
+                    ? NO_DATA_PLACEHOLDER
                     : config?.customMonogramUrlPath}
+                </Typography.Text>
+              </Col>
+            </Row>
+          </Col>
+          <Col span={12}>
+            <Row align="middle">
+              <Col span={24}>
+                <Typography.Text className="m-0 text-grey-muted">
+                  {t('label.favicon-url')}
+                  <Tooltip
+                    placement="top"
+                    title={t('message.custom-favicon-url-path-message')}
+                    trigger="hover">
+                    <InfoCircleOutlined
+                      className="m-x-xss"
+                      data-testid="favicon-url-info"
+                      style={{ color: GRAYED_OUT_COLOR }}
+                    />
+                  </Tooltip>
+                </Typography.Text>
+              </Col>
+              <Col span={24}>
+                <Typography.Text data-testid="favicon-url">
+                  {isEmpty(config?.customFaviconUrlPath)
+                    ? NO_DATA_PLACEHOLDER
+                    : config?.customFaviconUrlPath}
                 </Typography.Text>
               </Col>
             </Row>

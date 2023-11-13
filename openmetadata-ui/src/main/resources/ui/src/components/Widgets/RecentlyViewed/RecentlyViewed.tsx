@@ -17,6 +17,8 @@ import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { ReactComponent as RecentlyViewedEmptyIcon } from '../../../assets/svg/recently-viewed-no-data-placeholder.svg';
+import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import {
@@ -25,8 +27,9 @@ import {
 } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityIcon, getEntityLink } from '../../../utils/TableUtils';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import EntityListSkeleton from '../../Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
-import './RecentlyViewed.less';
+import './recently-viewed.less';
 
 const RecentlyViewed = ({
   isEditView,
@@ -93,7 +96,18 @@ const RecentlyViewed = ({
           </Row>
           {isEmpty(data) ? (
             <div className="flex-center h-full">
-              {t('message.no-recently-viewed-date')}
+              <ErrorPlaceHolder
+                icon={
+                  <RecentlyViewedEmptyIcon
+                    height={SIZE.X_SMALL}
+                    width={SIZE.X_SMALL}
+                  />
+                }
+                type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+                <Typography.Paragraph>
+                  {t('message.no-recently-viewed-date')}
+                </Typography.Paragraph>
+              </ErrorPlaceHolder>
             </div>
           ) : (
             <div className="entity-list-body">

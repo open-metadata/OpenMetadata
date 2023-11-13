@@ -11,13 +11,12 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Switch, Tabs, Typography } from 'antd';
+import { Col, Row, Space, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
-import { isEmpty, isString, isUndefined, toString } from 'lodash';
+import { isEmpty, isUndefined, toString } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags } from 'Models';
-import QueryString from 'qs';
 import React, {
   FunctionComponent,
   useCallback,
@@ -32,21 +31,22 @@ import { default as appState } from '../../AppState';
 import { useActivityFeedProvider } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
+import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
-import DescriptionV1 from '../../components/common/description/DescriptionV1';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import { PagingHandlerParams } from '../../components/common/next-previous/NextPrevious.interface';
-import Searchbar from '../../components/common/searchbar/Searchbar';
-import PageLayoutV1 from '../../components/containers/PageLayoutV1';
+import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import { DatabaseSchemaTable } from '../../components/Database/DatabaseSchema/DatabaseSchemaTable/DatabaseSchemaTable';
+import DataProductsContainer from '../../components/DataProductsContainer/DataProductsContainer.component';
 import Loader from '../../components/Loader/Loader';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
 } from '../../components/PermissionProvider/PermissionProvider.interface';
-import { withActivityFeed } from '../../components/router/withActivityFeed';
+import ProfilerSettings from '../../components/ProfilerSettings/ProfilerSettings';
 import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
 import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
@@ -56,19 +56,13 @@ import {
   getDatabaseDetailsPath,
   getExplorePath,
   getVersionPathWithTab,
-  INITIAL_PAGING_VALUE,
-  PAGE_SIZE,
-  pagingObject,
 } from '../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
-import { SearchIndex } from '../../enums/search.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Database } from '../../generated/entity/data/database';
-import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { Include } from '../../generated/type/include';
-import { Paging } from '../../generated/type/paging';
 import { TagSource } from '../../generated/type/tagLabel';
 import { EntityFieldThreadCount } from '../../interface/feed.interface';
 import {
@@ -79,12 +73,10 @@ import {
   updateDatabaseVotes,
 } from '../../rest/databaseAPI';
 import { getFeedCount, postThread } from '../../rest/feedsAPI';
-import { searchQuery } from '../../rest/searchAPI';
 import {
   getEntityMissingError,
   sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
-import { getDatabaseSchemaTable } from '../../utils/DatabaseDetails.utils';
 import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getDecodedFqn } from '../../utils/StringsUtils';
@@ -96,23 +88,13 @@ const DatabaseDetails: FunctionComponent = () => {
   const { t } = useTranslation();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const searchValue = useMemo(() => {
-    const param = location.search;
-    const searchData = QueryString.parse(
-      param.startsWith('?') ? param.substring(1) : param
-    );
-
-    return searchData.schema as string | undefined;
-  }, [location.search]);
 
   const { fqn: databaseFQN, tab: activeTab = EntityTabs.SCHEMA } =
     useParams<{ fqn: string; tab: EntityTabs }>();
   const [isLoading, setIsLoading] = useState(true);
-  const [showDeletedSchemas, setShowDeletedSchemas] = useState<boolean>(false);
+
   const [database, setDatabase] = useState<Database>({} as Database);
   const [serviceType, setServiceType] = useState<string>();
-  const [schemaData, setSchemaData] = useState<DatabaseSchema[]>([]);
-  const [schemaDataLoading, setSchemaDataLoading] = useState<boolean>(true);
 
   const [databaseName, setDatabaseName] = useState<string>(
     databaseFQN.split(FQN_SEPARATOR_CHAR).slice(-1).pop() ?? ''
@@ -122,8 +104,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const [isEdit, setIsEdit] = useState(false);
   const [description, setDescription] = useState('');
   const [databaseId, setDatabaseId] = useState('');
-  const [databaseSchemaPaging, setSchemaPaging] =
-    useState<Paging>(pagingObject);
+
   const [databaseSchemaInstanceCount, setSchemaInstanceCount] =
     useState<number>(0);
 
@@ -133,7 +114,9 @@ const DatabaseDetails: FunctionComponent = () => {
   >([]);
 
   const [threadLink, setThreadLink] = useState<string>('');
-  const [currentPage, setCurrentPage] = useState(INITIAL_PAGING_VALUE);
+
+  const [updateProfilerSetting, setUpdateProfilerSetting] =
+    useState<boolean>(false);
 
   const history = useHistory();
   const isMounting = useRef(true);
@@ -166,80 +149,6 @@ const DatabaseDetails: FunctionComponent = () => {
     }
   };
 
-  const fetchDatabaseSchemas = (pagingObj?: string) => {
-    return new Promise<void>((resolve, reject) => {
-      setSchemaDataLoading(true);
-      getDatabaseSchemas(
-        databaseFQN,
-        pagingObj,
-        ['owner', 'usageSummary'],
-        showDeletedSchemas ? Include.Deleted : Include.NonDeleted
-      )
-        .then((res) => {
-          if (res.data) {
-            setSchemaData(res.data);
-            setSchemaPaging(res.paging);
-            setSchemaInstanceCount(res.paging.total);
-          } else {
-            setSchemaData([]);
-            setSchemaPaging(pagingObject);
-
-            throw t('server.unexpected-response');
-          }
-          resolve();
-        })
-        .catch(() => {
-          // Error
-
-          reject();
-        })
-        .finally(() => {
-          setSchemaDataLoading(false);
-        });
-    });
-  };
-
-  const searchSchema = async (
-    searchValue: string,
-    pageNumber = INITIAL_PAGING_VALUE
-  ) => {
-    setSchemaDataLoading(true);
-    try {
-      const response = await searchQuery({
-        query: `*${searchValue}*`,
-        pageNumber,
-        pageSize: PAGE_SIZE,
-        queryFilter: {
-          query: {
-            bool: {
-              must: [{ term: { 'database.fullyQualifiedName': databaseFQN } }],
-            },
-          },
-        },
-        searchIndex: SearchIndex.DATABASE_SCHEMA,
-        includeDeleted: showDeletedSchemas,
-        trackTotalHits: true,
-      });
-      const data = response.hits.hits.map((schema) => schema._source);
-      const total = response.hits.total.value;
-      setSchemaData(data);
-      setSchemaPaging({ total });
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setSchemaDataLoading(false);
-    }
-  };
-
-  const fetchDatabaseSchemasAndDBTModels = () => {
-    setIsLoading(true);
-    Promise.allSettled([
-      searchValue ? searchSchema(searchValue) : fetchDatabaseSchemas(),
-    ]).finally(() => {
-      setIsLoading(false);
-    });
-  };
-
   const onThreadLinkSelect = (link: string) => {
     setThreadLink(link);
   };
@@ -263,6 +172,26 @@ const DatabaseDetails: FunctionComponent = () => {
       });
   };
 
+  const fetchDatabaseSchemaCount = useCallback(async () => {
+    if (isEmpty(databaseFQN)) {
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      const { paging } = await getDatabaseSchemas({
+        databaseName: databaseFQN,
+        limit: 0,
+      });
+
+      setSchemaInstanceCount(paging.total);
+    } catch (error) {
+      showErrorToast(error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [databaseFQN]);
+
   const getDetailsByFQN = () => {
     setIsDatabaseDetailsLoading(true);
     getDatabaseDetailsByFQN(
@@ -278,8 +207,6 @@ const DatabaseDetails: FunctionComponent = () => {
           setDatabaseId(id ?? '');
           setDatabaseName(name);
           setServiceType(serviceType);
-          setShowDeletedSchemas(res.deleted ?? false);
-          fetchDatabaseSchemasAndDBTModels();
         }
       })
       .catch(() => {
@@ -338,27 +265,6 @@ const DatabaseDetails: FunctionComponent = () => {
       history.push({
         pathname: getDatabaseDetailsPath(decodedDatabaseFQN, key),
       });
-    }
-  };
-
-  const databaseSchemaPagingHandler = ({
-    cursorType,
-    currentPage,
-  }: PagingHandlerParams) => {
-    if (cursorType) {
-      if (isString(cursorType)) {
-        const pagingString = `&${cursorType}=${
-          databaseSchemaPaging[cursorType as keyof typeof databaseSchemaPaging]
-        }`;
-        setSchemaDataLoading(true);
-        fetchDatabaseSchemas(pagingString).finally(() => {
-          setSchemaDataLoading(false);
-        });
-        setCurrentPage(currentPage);
-      } else {
-        setCurrentPage(cursorType);
-        searchValue && searchSchema(searchValue, cursorType);
-      }
     }
   };
 
@@ -440,6 +346,7 @@ const DatabaseDetails: FunctionComponent = () => {
   useEffect(() => {
     if (databasePermission.ViewAll || databasePermission.ViewBasic) {
       getDetailsByFQN();
+      fetchDatabaseSchemaCount();
     }
   }, [databasePermission, databaseFQN]);
 
@@ -510,26 +417,6 @@ const DatabaseDetails: FunctionComponent = () => {
     }
   };
 
-  const databaseTable = useMemo(
-    () =>
-      getDatabaseSchemaTable(
-        schemaData,
-        schemaDataLoading,
-        databaseSchemaPaging,
-        currentPage,
-        databaseSchemaPagingHandler,
-        Boolean(searchSchema)
-      ),
-    [
-      schemaData,
-      schemaDataLoading,
-      databaseSchemaPaging,
-      currentPage,
-      databaseSchemaPagingHandler,
-      searchSchema,
-    ]
-  );
-
   const handleToggleDelete = () => {
     setDatabase((prev) => {
       if (!prev) {
@@ -560,11 +447,6 @@ const DatabaseDetails: FunctionComponent = () => {
     }
   }, [databaseId]);
 
-  const handleShowDeletedSchemas = useCallback((value: boolean) => {
-    setShowDeletedSchemas(value);
-    setCurrentPage(INITIAL_PAGING_VALUE);
-  }, []);
-
   const versionHandler = useCallback(() => {
     currentVersion &&
       history.push(
@@ -577,23 +459,30 @@ const DatabaseDetails: FunctionComponent = () => {
       );
   }, [currentVersion, databaseFQN]);
 
-  const editTagsPermission = useMemo(
-    () =>
-      (databasePermission.EditTags || databasePermission.EditAll) &&
-      !database.deleted,
-    [databasePermission, database]
-  );
-
-  const editDescriptionPermission = useMemo(
-    () =>
-      (databasePermission.EditDescription || databasePermission.EditAll) &&
-      !database.deleted,
+  const {
+    editTagsPermission,
+    editDescriptionPermission,
+    editCustomAttributePermission,
+    viewAllPermission,
+  } = useMemo(
+    () => ({
+      editTagsPermission:
+        (databasePermission.EditTags || databasePermission.EditAll) &&
+        !database.deleted,
+      editDescriptionPermission:
+        (databasePermission.EditDescription || databasePermission.EditAll) &&
+        !database.deleted,
+      editCustomAttributePermission:
+        (databasePermission.EditAll || databasePermission.EditCustomFields) &&
+        !database.deleted,
+      viewAllPermission: databasePermission.ViewAll,
+    }),
     [databasePermission, database]
   );
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) =>
-      isSoftDelete ? handleToggleDelete : history.push('/'),
+      isSoftDelete ? handleToggleDelete() : history.push('/'),
     []
   );
 
@@ -605,19 +494,6 @@ const DatabaseDetails: FunctionComponent = () => {
       version: updatedData.version,
     }));
   }, []);
-
-  const onSchemaSearch = (value: string) => {
-    history.push({
-      search: QueryString.stringify({
-        schema: isEmpty(value) ? undefined : value,
-      }),
-    });
-    if (value) {
-      searchSchema(value);
-    } else {
-      fetchDatabaseSchemas();
-    }
-  };
 
   const tabs = useMemo(
     () => [
@@ -643,7 +519,7 @@ const DatabaseDetails: FunctionComponent = () => {
                     entityType={EntityType.DATABASE}
                     hasEditAccess={editDescriptionPermission}
                     isEdit={isEdit}
-                    isReadOnly={database.deleted}
+                    showActions={!database.deleted}
                     onCancel={onCancel}
                     onDescriptionEdit={onDescriptionEdit}
                     onDescriptionUpdate={onDescriptionUpdate}
@@ -651,31 +527,8 @@ const DatabaseDetails: FunctionComponent = () => {
                   />
                 </Col>
                 <Col span={24}>
-                  <Row>
-                    <Col span={12}>
-                      <Searchbar
-                        removeMargin
-                        placeholder={t('label.search-for-type', {
-                          type: t('label.schema'),
-                        })}
-                        searchValue={searchValue}
-                        typingInterval={500}
-                        onSearch={onSchemaSearch}
-                      />
-                    </Col>
-                    <Col className="flex items-center justify-end" span={12}>
-                      <Switch
-                        checked={showDeletedSchemas}
-                        data-testid="show-deleted"
-                        onClick={handleShowDeletedSchemas}
-                      />
-                      <Typography.Text className="m-l-xs">
-                        {t('label.deleted')}
-                      </Typography.Text>{' '}
-                    </Col>
-                  </Row>
+                  <DatabaseSchemaTable />
                 </Col>
-                {databaseTable}
               </Row>
             </Col>
             <Col
@@ -683,6 +536,11 @@ const DatabaseDetails: FunctionComponent = () => {
               data-testid="entity-right-panel"
               flex="320px">
               <Space className="w-full" direction="vertical" size="large">
+                <DataProductsContainer
+                  activeDomain={database?.domain}
+                  dataProducts={database?.dataProducts ?? []}
+                  hasPermission={false}
+                />
                 <TagsContainerV2
                   displayType={DisplayType.READ_MORE}
                   entityFqn={decodedDatabaseFQN}
@@ -740,10 +598,8 @@ const DatabaseDetails: FunctionComponent = () => {
           <CustomPropertyTable
             entityType={EntityType.DATABASE}
             handleExtensionUpdate={settingsUpdateHandler}
-            hasEditAccess={databasePermission.ViewAll}
-            hasPermission={
-              databasePermission.EditAll || databasePermission.EditCustomFields
-            }
+            hasEditAccess={editCustomAttributePermission}
+            hasPermission={viewAllPermission}
             isVersionView={false}
           />
         ),
@@ -758,14 +614,13 @@ const DatabaseDetails: FunctionComponent = () => {
       entityFieldThreadCount,
       decodedDatabaseFQN,
       activeTab,
-      databaseTable,
       databasePermission,
       databaseSchemaInstanceCount,
       feedCount,
-      showDeletedSchemas,
       editTagsPermission,
       editDescriptionPermission,
-      handleShowDeletedSchemas,
+      editCustomAttributePermission,
+      viewAllPermission,
     ]
   );
 
@@ -782,10 +637,6 @@ const DatabaseDetails: FunctionComponent = () => {
       showErrorToast(error as AxiosError);
     }
   };
-
-  useEffect(() => {
-    fetchDatabaseSchemas();
-  }, [showDeletedSchemas]);
 
   if (isLoading || isDatabaseDetailsLoading) {
     return <Loader />;
@@ -817,6 +668,7 @@ const DatabaseDetails: FunctionComponent = () => {
               permissions={databasePermission}
               onDisplayNameUpdate={handleUpdateDisplayName}
               onOwnerUpdate={handleUpdateOwner}
+              onProfilerSettingUpdate={() => setUpdateProfilerSetting(true)}
               onRestoreDataAsset={handleRestoreDatabase}
               onTierUpdate={handleUpdateTier}
               onUpdateVote={updateVote}
@@ -844,6 +696,14 @@ const DatabaseDetails: FunctionComponent = () => {
               onCancel={onThreadPanelClose}
             />
           ) : null}
+          {updateProfilerSetting && (
+            <ProfilerSettings
+              entityId={database.id ?? ''}
+              entityType={EntityType.DATABASE}
+              visible={updateProfilerSetting}
+              onVisibilityChange={(value) => setUpdateProfilerSetting(value)}
+            />
+          )}
         </Row>
       )}
     </PageLayoutV1>

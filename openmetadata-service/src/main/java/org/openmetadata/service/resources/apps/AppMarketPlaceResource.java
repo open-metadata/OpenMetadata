@@ -36,6 +36,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.app.AppType;
@@ -59,12 +60,13 @@ import org.openmetadata.service.util.ResultList;
 @Tag(name = "Apps", description = "Apps marketplace holds to application available for Open-metadata")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "appsMarketPlace", order = 8)
+@Collection(name = "apps/marketplace", order = 8)
 @Slf4j
 public class AppMarketPlaceResource extends EntityResource<AppMarketPlaceDefinition, AppMarketPlaceRepository> {
   public static final String COLLECTION_PATH = "/v1/apps/marketplace/";
   private PipelineServiceClient pipelineServiceClient;
-  static final String FIELDS = "owner";
+
+  static final String FIELDS = "owner,tags";
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
@@ -363,6 +365,26 @@ public class AppMarketPlaceResource extends EntityResource<AppMarketPlaceDefinit
           boolean hardDelete,
       @Parameter(description = "Id of the App", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     return delete(uriInfo, securityContext, id, true, hardDelete);
+  }
+
+  @PUT
+  @Path("/restore")
+  @Operation(
+      operationId = "restore",
+      summary = "Restore a soft deleted KPI",
+      description = "Restore a soft deleted App.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully restored the App. ",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = AppMarketPlaceDefinition.class)))
+      })
+  public Response restoreApp(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
+    return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   private AppMarketPlaceDefinition getApplicationDefinition(

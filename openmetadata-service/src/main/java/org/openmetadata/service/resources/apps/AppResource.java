@@ -1,5 +1,6 @@
 package org.openmetadata.service.resources.apps;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.APPLICATION;
 import static org.openmetadata.service.Entity.BOT;
@@ -28,6 +29,7 @@ import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
+import javax.ws.rs.InternalServerErrorException;
 import javax.ws.rs.PATCH;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
@@ -458,7 +460,6 @@ public class AppResource extends EntityResource<App, AppRepository> {
   }
 
   @POST
-  @Path("/install")
   @Operation(
       operationId = "createApplication",
       summary = "Create a Application",
@@ -552,7 +553,11 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @DefaultValue("false")
           boolean hardDelete,
       @Parameter(description = "Name of the App", schema = @Schema(type = "string")) @PathParam("name") String name) {
-    return deleteByName(uriInfo, securityContext, name, true, hardDelete);
+    Response response = deleteByName(uriInfo, securityContext, name, true, hardDelete);
+    if (response.getStatus() == Response.Status.OK.getStatusCode()) {
+      deleteApp(securityContext, (App) response.getEntity(), hardDelete);
+    }
+    return response;
   }
 
   @DELETE
@@ -573,7 +578,11 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @DefaultValue("false")
           boolean hardDelete,
       @Parameter(description = "Id of the App", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
-    return delete(uriInfo, securityContext, id, true, hardDelete);
+    Response response = delete(uriInfo, securityContext, id, true, hardDelete);
+    if (response.getStatus() == Response.Status.OK.getStatusCode()) {
+      deleteApp(securityContext, (App) response.getEntity(), hardDelete);
+    }
+    return response;
   }
 
   @PUT
@@ -590,7 +599,14 @@ public class AppResource extends EntityResource<App, AppRepository> {
       })
   public Response restoreApp(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    Response response = restoreEntity(uriInfo, securityContext, restore.getId());
+    if (response.getStatus() == Response.Status.OK.getStatusCode()) {
+      App app = (App) response.getEntity();
+      if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
+        ApplicationHandler.scheduleApplication(app, Entity.getCollectionDAO(), searchRepository);
+      }
+    }
+    return response;
   }
 
   @POST
@@ -734,8 +750,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
         new App()
             .withId(UUID.randomUUID())
             .withName(marketPlaceDefinition.getName())
-            .withDisplayName(marketPlaceDefinition.getDisplayName())
-            .withDescription(marketPlaceDefinition.getDescription())
+            .withDisplayName(createAppRequest.getDisplayName())
+            .withDescription(createAppRequest.getDescription())
             .withOwner(owner)
             .withUpdatedBy(updatedBy)
             .withUpdatedAt(System.currentTimeMillis())
@@ -766,6 +782,39 @@ public class AppResource extends EntityResource<App, AppRepository> {
       app.setBot(Entity.getEntityReferenceByName(BOT, botName, Include.NON_DELETED));
     } else {
       app.setBot(repository.createNewAppBot(app));
+    }
+  }
+
+  private void deleteApp(SecurityContext securityContext, App installedApp, boolean hardDelete) {
+    if (installedApp.getAppType().equals(AppType.Internal)) {
+      try {
+        AppScheduler.getInstance().deleteScheduledApplication(installedApp);
+      } catch (SchedulerException ex) {
+        LOG.error("Failed in delete Application from Scheduler.", ex);
+        throw new InternalServerErrorException("Failed in Delete App from Scheduler.");
+      }
+    } else {
+      App app = repository.getByName(null, installedApp.getName(), repository.getFields("bot,pipelines"));
+      if (!nullOrEmpty(app.getPipelines())) {
+        EntityReference pipelineRef = app.getPipelines().get(0);
+        IngestionPipelineRepository ingestionPipelineRepository =
+            (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+
+        IngestionPipeline ingestionPipeline =
+            ingestionPipelineRepository.get(
+                null, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNER));
+
+        if (hardDelete) {
+          // Remove the Pipeline in case of Delete
+          if (!nullOrEmpty(app.getPipelines())) {
+            pipelineServiceClient.deletePipeline(ingestionPipeline);
+          }
+        } else {
+          // Just Kill Running ingestion
+          decryptOrNullify(securityContext, ingestionPipeline, app.getBot().getName(), true);
+          pipelineServiceClient.killIngestion(ingestionPipeline);
+        }
+      }
     }
   }
 }

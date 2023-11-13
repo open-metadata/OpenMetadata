@@ -28,7 +28,7 @@ const mockCsvImportResult = {
   success,Entity created,,Glossary2 term2,Glossary2 term2,Description data.,,,,\r`,
 } as CSVImportResult;
 
-jest.mock('../../common/title-breadcrumb/title-breadcrumb.component', () =>
+jest.mock('../../common/TitleBreadcrumb/TitleBreadcrumb.component', () =>
   jest.fn().mockReturnValue(<div data-testid="breadcrumb">Breadcrumb</div>)
 );
 

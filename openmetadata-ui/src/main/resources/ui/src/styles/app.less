@@ -84,13 +84,9 @@ p {
   padding: 4px 16px 16px;
 }
 
-.show-more,
-a[href]:not(.button-comp):not(.no-underline):not(.link-text-info),
-.link-text {
-  color: @link-color;
-
+a,
+a.ant-typography {
   &:hover {
-    color: @link-color;
     text-decoration: underline;
   }
 
@@ -137,6 +133,12 @@ a[href].link-text-grey,
 
 .text-underline {
   text-decoration: underline;
+}
+
+// image property
+
+.object-contain {
+  object-fit: contain;
 }
 
 // Border
@@ -340,7 +342,9 @@ a[href].link-text-grey,
 }
 
 .no-underline {
-  text-decoration: none;
+  &:hover {
+    text-decoration: none;
+  }
 }
 
 .z-5 {

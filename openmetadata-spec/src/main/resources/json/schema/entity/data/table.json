@@ -241,6 +241,7 @@
     "column": {
       "type": "object",
       "javaType": "org.openmetadata.schema.type.Column",
+      "javaInterfaces": ["org.openmetadata.schema.FieldInterface"],
       "description": "This schema defines the type for a column in a table.",
       "properties": {
         "name": {
@@ -720,6 +721,12 @@
         },
         "profileSampleType": {
           "$ref": "#/definitions/profileSampleType"
+        },
+        "sampleDataCount": {
+          "description": "Number of row of sample data to be generated",
+          "type": "integer",
+          "default": 50,
+          "title": "Sample Data Rows Count"
         },
         "profileQuery": {
           "description": "Users' raw SQL query to fetch sample data and profile the table",

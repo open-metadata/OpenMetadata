@@ -36,10 +36,11 @@ export const TEXT_GREY_MUTED = '#757575';
 export const SUCCESS_COLOR = '#008376';
 export const DE_ACTIVE_COLOR = '#6B7280';
 export const GRAPH_BACKGROUND_COLOR = '#f5f5f5';
-export const GRAYED_OUT_COLOR = '#CCCCCC';
+export const GRAYED_OUT_COLOR = '#959595';
 export const GREEN_COLOR = '#28A745';
 export const GREEN_COLOR_OPACITY_30 = '#28A74530';
 export const BORDER_COLOR = '#0000001a';
+export const BLACK_COLOR = '#000000';
 
 export const DEFAULT_CHART_OPACITY = 1;
 export const HOVER_CHART_OPACITY = 0.3;
@@ -85,6 +86,7 @@ export const imageTypes = {
 export const NO_DATA_PLACEHOLDER = '--';
 export const PIPE_SYMBOL = '|';
 export const NO_DATA = '-';
+export const STAR_OMD_USER = 'STAR_OMD_USER';
 
 export const TOUR_SEARCH_TERM = 'dim_a';
 export const ERROR500 = t('message.something-went-wrong');
@@ -117,6 +119,8 @@ export const PLACEHOLDER_ACTION = ':action';
 export const pagingObject = { after: '', before: '', total: 0 };
 
 export const ONLY_NUMBER_REGEX = /^[0-9\b]+$/;
+
+export const ES_UPDATE_DELAY = 500;
 
 export const globalSearchOptions = [
   { value: '', label: t('label.all') },
@@ -311,6 +315,7 @@ export const ROUTES = {
   EDIT_KPI: `/data-insights/kpi/edit-kpi/${KPI_NAME}`,
 
   SETTINGS_EDIT_CUSTOM_LOGO_CONFIG: `/settings/OpenMetadata/customLogo/edit-custom-logo-configuration`,
+  SETTINGS_EDIT_CUSTOM_LOGIN_CONFIG: `/settings/OpenMetadata/customLogo/edit-custom-login-configuration`,
 
   CUSTOMIZE_PAGE: `/customize-page/:fqn/:pageFqn`,
 };

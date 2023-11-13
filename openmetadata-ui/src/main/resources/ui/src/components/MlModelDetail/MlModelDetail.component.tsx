@@ -21,12 +21,12 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { useActivityFeedProvider } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
-import DescriptionV1 from '../../components/common/description/DescriptionV1';
-import PageLayoutV1 from '../../components/containers/PageLayoutV1';
+import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
+import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import EntityLineageComponent from '../../components/Entity/EntityLineage/EntityLineage.component';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
-import { withActivityFeed } from '../../components/router/withActivityFeed';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
@@ -47,8 +47,9 @@ import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
-import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
+import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
+import DataProductsContainer from '../DataProductsContainer/DataProductsContainer.component';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
 import { MlModelDetailProp } from './MlModelDetail.interface';
@@ -118,11 +119,11 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     }
   }, [mlModelDetail.id]);
 
-  const { mlModelTags, isFollowing, tier } = useMemo(() => {
+  const { mlModelTags, isFollowing, tier, deleted } = useMemo(() => {
     return {
       ...mlModelDetail,
       tier: getTierTags(mlModelDetail.tags ?? []),
-      mlModelTags: getTagsWithoutTier(mlModelDetail.tags || []),
+      mlModelTags: getTagsWithoutTier(mlModelDetail.tags ?? []),
       entityName: getEntityName(mlModelDetail),
       isFollowing: mlModelDetail.followers?.some(
         ({ id }: { id: string }) => id === currentUser?.id
@@ -345,8 +346,32 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) =>
-      isSoftDelete ? handleToggleDelete : history.push('/'),
+      isSoftDelete ? handleToggleDelete() : history.push('/'),
     []
+  );
+
+  const {
+    editTagsPermission,
+    editDescriptionPermission,
+    editCustomAttributePermission,
+    editLineagePermission,
+    viewAllPermission,
+  } = useMemo(
+    () => ({
+      editTagsPermission:
+        (mlModelPermissions.EditTags || mlModelPermissions.EditAll) && !deleted,
+      editDescriptionPermission:
+        (mlModelPermissions.EditDescription || mlModelPermissions.EditAll) &&
+        !deleted,
+      editCustomAttributePermission:
+        (mlModelPermissions.EditAll || mlModelPermissions.EditCustomFields) &&
+        !deleted,
+      editLineagePermission:
+        (mlModelPermissions.EditAll || mlModelPermissions.EditLineage) &&
+        !deleted,
+      viewAllPermission: mlModelPermissions.ViewAll,
+    }),
+    [mlModelPermissions, deleted]
   );
 
   const tabs = useMemo(
@@ -369,13 +394,10 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                   entityFqn={decodedMlModelFqn}
                   entityName={mlModelDetail.name}
                   entityType={EntityType.MLMODEL}
-                  hasEditAccess={
-                    mlModelPermissions.EditAll ||
-                    mlModelPermissions.EditDescription
-                  }
+                  hasEditAccess={editDescriptionPermission}
                   isEdit={isEdit}
-                  isReadOnly={mlModelDetail.deleted}
                   owner={mlModelDetail.owner}
+                  showActions={!deleted}
                   onCancel={onCancel}
                   onDescriptionEdit={onDescriptionEdit}
                   onDescriptionUpdate={onDescriptionUpdate}
@@ -396,15 +418,16 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
               data-testid="entity-right-panel"
               flex="320px">
               <Space className="w-full" direction="vertical" size="large">
+                <DataProductsContainer
+                  activeDomain={mlModelDetail?.domain}
+                  dataProducts={mlModelDetail?.dataProducts ?? []}
+                  hasPermission={false}
+                />
                 <TagsContainerV2
                   displayType={DisplayType.READ_MORE}
                   entityFqn={decodedMlModelFqn}
                   entityType={EntityType.MLMODEL}
-                  permission={
-                    (mlModelPermissions.EditAll ||
-                      mlModelPermissions.EditTags) &&
-                    !mlModelDetail.deleted
-                  }
+                  permission={editTagsPermission}
                   selectedTags={mlModelTags}
                   tagType={TagSource.Classification}
                   onSelectionChange={handleTagSelection}
@@ -415,11 +438,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                   displayType={DisplayType.READ_MORE}
                   entityFqn={decodedMlModelFqn}
                   entityType={EntityType.MLMODEL}
-                  permission={
-                    (mlModelPermissions.EditAll ||
-                      mlModelPermissions.EditTags) &&
-                    !mlModelDetail.deleted
-                  }
+                  permission={editTagsPermission}
                   selectedTags={mlModelTags}
                   tagType={TagSource.Glossary}
                   onSelectionChange={handleTagSelection}
@@ -466,11 +485,10 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         key: EntityTabs.LINEAGE,
         children: (
           <EntityLineageComponent
+            deleted={deleted}
             entity={mlModelDetail}
             entityType={EntityType.MLMODEL}
-            hasEditAccess={
-              mlModelPermissions.EditAll || mlModelPermissions.EditLineage
-            }
+            hasEditAccess={editLineagePermission}
           />
         ),
       },
@@ -486,10 +504,8 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           <CustomPropertyTable
             entityType={EntityType.MLMODEL}
             handleExtensionUpdate={onExtensionUpdate}
-            hasEditAccess={
-              mlModelPermissions.EditAll || mlModelPermissions.EditCustomFields
-            }
-            hasPermission={mlModelPermissions.ViewAll}
+            hasEditAccess={editCustomAttributePermission}
+            hasPermission={viewAllPermission}
           />
         ),
       },
@@ -509,14 +525,21 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       onDescriptionUpdate,
       onDescriptionEdit,
       getEntityFieldThreadCounts,
+      deleted,
+      editTagsPermission,
+      editDescriptionPermission,
+      editCustomAttributePermission,
+      editLineagePermission,
+      viewAllPermission,
     ]
   );
 
   return (
     <PageLayoutV1
       className="bg-white"
-      pageTitle="Table details"
-      title="Table details">
+      pageTitle={t('label.entity-detail-plural', {
+        entity: t('label.ml-model'),
+      })}>
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader

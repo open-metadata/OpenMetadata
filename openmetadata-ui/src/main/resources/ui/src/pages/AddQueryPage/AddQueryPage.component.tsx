@@ -18,13 +18,13 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { AsyncSelect } from '../../components/AsyncSelect/AsyncSelect';
-import { useAuthContext } from '../../components/authentication/auth-provider/AuthProvider';
+import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
-import RichTextEditor from '../../components/common/rich-text-editor/RichTextEditor';
-import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
-import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
+import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
+import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import SchemaEditor from '../../components/schema-editor/SchemaEditor';
+import SchemaEditor from '../../components/SchemaEditor/SchemaEditor';
 import { HTTP_STATUS_CODE } from '../../constants/auth.constants';
 import {
   getTableTabPath,

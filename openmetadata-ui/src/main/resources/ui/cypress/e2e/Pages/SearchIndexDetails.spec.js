@@ -30,7 +30,7 @@ import {
   verifyResponseStatusCode,
   visitEntityDetailsPage,
 } from '../../common/common';
-import { BASE_URL } from '../../constants/constants';
+import { BASE_URL, uuid } from '../../constants/constants';
 import {
   SEARCH_INDEX_DETAILS_FOR_ANNOUNCEMENT,
   SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST,
@@ -42,6 +42,32 @@ import {
   USER_CREDENTIALS,
   USER_NAME,
 } from '../../constants/SearchIndexDetails.constants';
+
+const policy = {
+  name: `cy-data-steward-policy-${uuid()}`,
+  rules: [
+    {
+      name: 'DataStewardPolicy-EditRule',
+      resources: ['All'],
+      operations: [
+        'EditDescription',
+        'EditDisplayName',
+        'EditOwner',
+        'EditLineage',
+        'EditTags',
+        'ViewAll',
+      ],
+      effect: 'allow',
+    },
+  ],
+};
+let policyId = '';
+
+const role = {
+  name: `cy-data-steward-role-${uuid()}`,
+  policies: [policy.name],
+};
+let roleId = '';
 
 const performCommonOperations = () => {
   // Add and remove tier flow should work properly
@@ -131,6 +157,29 @@ describe('Prerequisite for search index details page test', () => {
         response.body.fullyQualifiedName;
     });
 
+    // Create Data Steward Policy
+    cy.request({
+      method: 'POST',
+      url: `/api/v1/policies`,
+      headers: { Authorization: `Bearer ${token}` },
+      body: policy,
+    }).then((response) => {
+      policyId = response.body.id;
+
+      expect(response.status).to.eq(201);
+
+      cy.request({
+        method: 'POST',
+        url: `/api/v1/roles`,
+        headers: { Authorization: `Bearer ${token}` },
+        body: role,
+      }).then((response) => {
+        roleId = response.body.id;
+
+        expect(response.status).to.eq(201);
+      });
+    });
+
     // Create a new user
     cy.request({
       method: 'POST',
@@ -208,9 +257,11 @@ describe('Prerequisite for data steward role tests', () => {
 
     cy.get('[data-testid="edit-roles-button"]').click();
 
-    cy.get('[data-testid="inline-edit-container"] #select-role').click();
+    cy.get('[data-testid="inline-edit-container"] #select-role')
+      .click()
+      .type(role.name);
 
-    cy.get('[title="Data Steward"]').click();
+    cy.get(`[title=${role.name}]`).click();
 
     cy.clickOutside();
 
@@ -404,13 +455,31 @@ describe('Cleanup', () => {
     cy.login();
   });
 
-  it('Delete search index and user', () => {
+  it('Delete user, role and policy', () => {
     const token = localStorage.getItem('oidcIdToken');
 
     // Delete created user
     cy.request({
       method: 'DELETE',
       url: `/api/v1/users/${USER_CREDENTIALS.id}?hardDelete=true&recursive=false`,
+      headers: { Authorization: `Bearer ${token}` },
+    }).then((response) => {
+      expect(response.status).to.eq(200);
+    });
+
+    // Delete policy
+    cy.request({
+      method: 'DELETE',
+      url: `/api/v1/policies/${policyId}?hardDelete=true&recursive=false`,
+      headers: { Authorization: `Bearer ${token}` },
+    }).then((response) => {
+      expect(response.status).to.eq(200);
+    });
+
+    // Delete role
+    cy.request({
+      method: 'DELETE',
+      url: `/api/v1/roles/${roleId}?hardDelete=true&recursive=false`,
       headers: { Authorization: `Bearer ${token}` },
     }).then((response) => {
       expect(response.status).to.eq(200);

@@ -38,5 +38,8 @@ alt="Column-Level Lineage"
 caption="Column-Level Lineage"
 /%}
 
-Watch the video about lineage (13:30 to 15:50)
+Here's a quick video on manually adding lineage.
+{%  youtube videoId="hU8h1n_WmWg" start="00:01" end="00:23" /%}
+
+Watch the recording of the Webinar on Lineage (13:30 to 15:50)
 {%  youtube videoId="jEbN1tt89H0" start="13:30" end="15:48" /%}

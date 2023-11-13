@@ -387,11 +387,10 @@ public class OpenSearchClient implements SearchClient {
 
   @Override
   public Response searchBySourceUrl(String sourceUrl) throws IOException {
-    QueryBuilder wildcardQuery = QueryBuilders.queryStringQuery(sourceUrl).field("sourceUrl").escape(true);
     os.org.opensearch.action.search.SearchRequest searchRequest =
         new os.org.opensearch.action.search.SearchRequest(GLOBAL_SEARCH_ALIAS);
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    searchSourceBuilder.query(wildcardQuery);
+    searchSourceBuilder.query(QueryBuilders.boolQuery().must(QueryBuilders.termQuery("sourceUrl", sourceUrl)));
     searchRequest.source(searchSourceBuilder);
     String response = client.search(searchRequest, RequestOptions.DEFAULT).toString();
     return Response.status(OK).entity(response).build();
@@ -898,7 +897,8 @@ public class OpenSearchClient implements SearchClient {
             AggregationBuilders.terms(DOMAIN_DISPLAY_NAME_KEYWORD)
                 .field(DOMAIN_DISPLAY_NAME_KEYWORD)
                 .size(MAX_AGGREGATE_SIZE))
-        .aggregation(AggregationBuilders.terms(ES_TAG_FQN_FIELD).field(ES_TAG_FQN_FIELD));
+        .aggregation(AggregationBuilders.terms(ES_TAG_FQN_FIELD).field(ES_TAG_FQN_FIELD))
+        .aggregation(AggregationBuilders.terms("index_count").field("_index").size(MAX_AGGREGATE_SIZE));
     return builder;
   }
 
