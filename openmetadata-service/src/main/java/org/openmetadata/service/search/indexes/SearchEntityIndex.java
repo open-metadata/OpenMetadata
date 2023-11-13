@@ -46,12 +46,9 @@ public class SearchEntityIndex implements SearchIndex {
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.SEARCH_INDEX, searchIndex));
     doc.put("tags", parseTags.getTags());
     doc.put("tier", parseTags.getTierTag());
-    if (searchIndex.getOwner() != null) {
-      doc.put("owner", getOwnerWithDisplayName(searchIndex.getOwner()));
-    }
-    if (searchIndex.getDomain() != null) {
-      doc.put("domain", getDomainWithDisplayName(searchIndex.getDomain()));
-    }
+    doc.put("owner", getEntityWithDisplayName(searchIndex.getOwner()));
+    doc.put("service", getEntityWithDisplayName(searchIndex.getService()));
+    doc.put("domain", getEntityWithDisplayName(searchIndex.getDomain()));
     return doc;
   }
 

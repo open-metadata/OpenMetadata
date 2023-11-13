@@ -607,9 +607,11 @@ public class ElasticSearchClient implements SearchClient {
     hb.postTags(POST_TAG);
     SearchSourceBuilder searchSourceBuilder =
         new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
-    searchSourceBuilder.aggregation(AggregationBuilders.terms("database.name.keyword").field("database.name.keyword"));
+    searchSourceBuilder.aggregation(
+        AggregationBuilders.terms("database.displayName.keyword").field("database.displayName.keyword"));
     searchSourceBuilder
-        .aggregation(AggregationBuilders.terms("databaseSchema.name.keyword").field("databaseSchema.name.keyword"))
+        .aggregation(
+            AggregationBuilders.terms("databaseSchema.displayName.keyword").field("databaseSchema.displayName.keyword"))
         .aggregation(AggregationBuilders.terms(COLUMNS_NAME_KEYWORD).field(COLUMNS_NAME_KEYWORD))
         .aggregation(AggregationBuilders.terms(FIELD_COLUMN_NAMES).field(FIELD_COLUMN_NAMES))
         .aggregation(AggregationBuilders.terms("tableType").field("tableType"));
@@ -901,7 +903,9 @@ public class ElasticSearchClient implements SearchClient {
     builder
         .aggregation(AggregationBuilders.terms("serviceType").field("serviceType").size(MAX_AGGREGATE_SIZE))
         .aggregation(
-            AggregationBuilders.terms("service.name.keyword").field("service.name.keyword").size(MAX_AGGREGATE_SIZE))
+            AggregationBuilders.terms("service.displayName.keyword")
+                .field("service.displayName.keyword")
+                .size(MAX_AGGREGATE_SIZE))
         .aggregation(
             AggregationBuilders.terms("entityType.keyword").field("entityType.keyword").size(MAX_AGGREGATE_SIZE))
         .aggregation(AggregationBuilders.terms("tier.tagFQN").field("tier.tagFQN").size(MAX_AGGREGATE_SIZE))

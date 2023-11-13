@@ -32,12 +32,8 @@ public class DatabaseSchemaIndex implements SearchIndex {
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.DATABASE_SCHEMA);
-    if (databaseSchema.getOwner() != null) {
-      doc.put("owner", getOwnerWithDisplayName(databaseSchema.getOwner()));
-    }
-    if (databaseSchema.getDomain() != null) {
-      doc.put("domain", getDomainWithDisplayName(databaseSchema.getDomain()));
-    }
+    doc.put("owner", getEntityWithDisplayName(databaseSchema.getOwner()));
+    doc.put("domain", getEntityWithDisplayName(databaseSchema.getDomain()));
     return doc;
   }
 }

@@ -22,12 +22,12 @@ from metadata.profiler.source.metadata import OpenMetadataSource
 from metadata.profiler.source.metadata_ext import OpenMetadataSourceExt
 from metadata.utils.importer import import_sink_class
 from metadata.utils.logger import profiler_logger
-from metadata.workflow.base import BaseWorkflow
+from metadata.workflow.ingestion import IngestionWorkflow
 
 logger = profiler_logger()
 
 
-class ProfilerWorkflow(BaseWorkflow):
+class ProfilerWorkflow(IngestionWorkflow):
     """
     Profiler ingestion workflow implementation
 
