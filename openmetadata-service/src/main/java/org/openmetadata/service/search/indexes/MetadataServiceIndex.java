@@ -33,9 +33,7 @@ public class MetadataServiceIndex implements SearchIndex {
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.METADATA_SERVICE);
-    if (metadataService.getOwner() != null) {
-      doc.put("owner", getOwnerWithDisplayName(metadataService.getOwner()));
-    }
+    doc.put("owner", getEntityWithDisplayName(metadataService.getOwner()));
     return doc;
   }
 }
