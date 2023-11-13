@@ -363,10 +363,14 @@ public class SearchIndexApp extends AbstractNativeApplication {
   @SneakyThrows
   private void handleSourceError(ResultList<?> data, String lastCursor, long time) {
     if (!data.getErrors().isEmpty()) {
+      StringBuilder builder = new StringBuilder();
+      for (String str : data.getErrors()) {
+        builder.append(str);
+        builder.append("%n");
+      }
       handleSourceError(
           String.format("SourceContext: After Cursor : %s, Encountered Error While Reading Data.", lastCursor),
-          String.format(
-              "Following Entities were not fetched Successfully : %s", JsonUtils.pojoToJson(data.getErrors())),
+          String.format("Following Entities were not fetched Successfully : %s", builder),
           time);
     }
   }

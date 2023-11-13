@@ -78,7 +78,7 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
         lastFailedCursor = this.cursor;
         String errMsg =
             String.format(
-                "[PaginatedEntitiesSource] Encountered Failures. Marked After Cursor : %s, Batch Stats :- Submitted : %s Success: %s Failed: %s, Errors : %s",
+                "[PaginatedEntitiesSource] Encountered Failures. %n Marked After Cursor : %s, %n Batch Stats :- %n Submitted : %s Success: %s Failed: %s, %n Errors : %s",
                 this.lastFailedCursor,
                 batchSize,
                 result.getData().size(),
@@ -89,10 +89,8 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
       }
 
       LOG.debug(
-          "[PaginatedEntitiesSource] Batch Stats :- Submitted : {} Success: {} Failed: {}",
-          batchSize,
-          result.getData().size(),
-          result.getErrors().size());
+          "[PaginatedEntitiesSource] Batch Stats :- %n Submitted : {} Success: {} Failed: {}",
+          batchSize, result.getData().size(), result.getErrors().size());
       updateStats(result.getData().size(), result.getErrors().size());
     } catch (Exception e) {
       lastFailedCursor = this.cursor;
@@ -106,7 +104,7 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
       } else {
         String errMsg =
             String.format(
-                "[PaginatedEntitiesSource] Encountered Failures. Marked After Cursor : %s, Batch Stats :- Submitted : %s Success: %s Failed: %s, Errors : %s",
+                "[PaginatedEntitiesSource] Encountered Failures. %n Marked After Cursor : %s, %n Batch Stats :- Submitted : %s Success: %s Failed: %s, %n Errors : %s",
                 this.lastFailedCursor, batchSize, 0, batchSize, "No Relationship Issue , Json Processing or DB issue.");
         LOG.debug(errMsg);
         updateStats(0, batchSize);
