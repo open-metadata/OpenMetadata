@@ -120,6 +120,9 @@ Cypress.Commands.add('storeSession', (username, password) => {
       .click();
     verifyResponseStatusCode('@login', 200);
     cy.url().should('not.eq', `${BASE_URL}/signin`);
+
+    // Don't want to show any popup in the tests
+    cy.setCookie(`STAR_OMD_USER_admin`, 'true');
   });
 });
 
