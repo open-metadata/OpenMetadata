@@ -15,7 +15,7 @@ import json
 import uuid
 from datetime import datetime, timedelta
 from functools import partial
-from typing import Callable
+from typing import Callable, Union
 
 import airflow
 from airflow import DAG
@@ -31,6 +31,9 @@ from metadata.generated.schema.entity.services.mlmodelService import MlModelServ
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.services.searchService import SearchService
 from metadata.generated.schema.entity.services.storageService import StorageService
+from metadata.generated.schema.metadataIngestion.application import (
+    OpenMetadataApplicationConfig,
+)
 from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.workflow_output_handler import print_status
@@ -303,7 +306,7 @@ def send_failed_status_callback(workflow_config: OpenMetadataWorkflowConfig, _):
 def build_dag(
     task_name: str,
     ingestion_pipeline: IngestionPipeline,
-    workflow_config: OpenMetadataWorkflowConfig,
+    workflow_config: Union[OpenMetadataWorkflowConfig, OpenMetadataApplicationConfig],
     workflow_fn: Callable,
 ) -> DAG:
     """

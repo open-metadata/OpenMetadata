@@ -768,7 +768,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
             .withAppSchedule(createAppRequest.getAppSchedule())
             .withAppLogoUrl(marketPlaceDefinition.getAppLogoUrl())
             .withAppScreenshots(marketPlaceDefinition.getAppScreenshots())
-            .withFeatures(marketPlaceDefinition.getFeatures());
+            .withFeatures(marketPlaceDefinition.getFeatures())
+            .withSourcePythonClass(marketPlaceDefinition.getSourcePythonClass());
 
     // validate Bot if provided
     validateAndAddBot(app, createAppRequest.getBot());
