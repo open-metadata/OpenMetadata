@@ -83,8 +83,10 @@ public abstract class AbstractOmAppJobListener implements JobListener {
       if (runRecord.getFailureContext() != null) {
         context = runRecord.getFailureContext();
       }
-      context.withAdditionalProperty("message", jobException.getMessage());
-      context.withAdditionalProperty("stackTrace", ExceptionUtils.getStackTrace(jobException));
+      if (jobException != null) {
+        context.withAdditionalProperty("message", jobException.getMessage());
+        context.withAdditionalProperty("jobStackTrace", ExceptionUtils.getStackTrace(jobException));
+      }
       runRecord.setFailureContext(context);
     }
 
