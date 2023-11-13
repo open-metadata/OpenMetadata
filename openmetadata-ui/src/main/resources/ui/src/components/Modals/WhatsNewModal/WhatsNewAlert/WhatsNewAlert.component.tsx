@@ -21,6 +21,7 @@ import { ReactComponent as RightArrowIcon } from '../../../../assets/svg/ic-arro
 import { ReactComponent as PlayIcon } from '../../../../assets/svg/ic-play-button.svg';
 import { ReactComponent as StarIcon } from '../../../../assets/svg/ic-star.svg';
 import { BLACK_COLOR, ROUTES } from '../../../../constants/constants';
+import { OMD_REPOSITORY_LINK } from '../../../../constants/docs.constants';
 import { useAuth } from '../../../../hooks/authHooks';
 import { getReleaseVersionExpiry } from '../../../../utils/WhatsNewModal.util';
 import { COOKIE_VERSION, LATEST_VERSION_ID, WHATS_NEW } from '../whatsNewData';
@@ -123,7 +124,7 @@ const WhatsNewAlert = () => {
                     component={Typography.Link}
                     target="_blank"
                     to={{
-                      pathname: 'https://github.com/open-metadata/OpenMetadata',
+                      pathname: OMD_REPOSITORY_LINK,
                     }}>
                     {t('label.star-open-metadata')}
                   </Link>
