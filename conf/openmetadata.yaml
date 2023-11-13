@@ -273,7 +273,6 @@ pipelineServiceClientConfiguration:
 # no_encryption_at_rest is the default value, and it does what it says. Please read the manual on how
 # to secure your instance of OpenMetadata with TLS and encryption at rest.
 fernetConfiguration:
-  #fernetKey: ${FERNET_KEY:-jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUCbz3IHA=}
   fernetKey: ${FERNET_KEY:-jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUAbz3IHA=}
 
 secretsManagerConfiguration:
