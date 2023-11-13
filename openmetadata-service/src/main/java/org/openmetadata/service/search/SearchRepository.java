@@ -1,8 +1,13 @@
 package org.openmetadata.service.search;
 
+import static org.openmetadata.service.Entity.AGGREGATED_COST_ANALYSIS_REPORT_DATA;
+import static org.openmetadata.service.Entity.ENTITY_REPORT_DATA;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_USAGE_SUMMARY;
 import static org.openmetadata.service.Entity.QUERY;
+import static org.openmetadata.service.Entity.RAW_COST_ANALYSIS_REPORT_DATA;
+import static org.openmetadata.service.Entity.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA;
+import static org.openmetadata.service.Entity.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA;
 import static org.openmetadata.service.search.SearchClient.DEFAULT_UPDATE_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.PROPAGATE_ENTITY_REFERENCE_FIELD_SCRIPT;
@@ -69,11 +74,11 @@ public class SearchRepository {
 
   public final List<String> dataInsightReports =
       List.of(
-          "entityReportData",
-          "webAnalyticEntityViewReportData",
-          "webAnalyticUserActivityReportData",
-          "rawCostAnalysisReportData",
-          "aggregatedCostAnalysisReportData");
+          ENTITY_REPORT_DATA,
+          WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA,
+          WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA,
+          RAW_COST_ANALYSIS_REPORT_DATA,
+          AGGREGATED_COST_ANALYSIS_REPORT_DATA);
 
   public static final String ELASTIC_SEARCH_EXTENSION = "service.eventPublisher";
   public static final String ELASTIC_SEARCH_ENTITY_FQN_STREAM = "eventPublisher:ElasticSearch:STREAM";

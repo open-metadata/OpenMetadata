@@ -24,6 +24,10 @@ import org.openmetadata.service.workflows.interfaces.Processor;
 public class ElasticSearchDataInsightProcessor implements Processor<BulkRequest, ResultList<ReportData>> {
   private final StepStats stats = new StepStats();
 
+  public ElasticSearchDataInsightProcessor(int total) {
+    this.stats.withTotalRecords(total).withSuccessRecords(0).withFailedRecords(0);
+  }
+
   @Override
   public BulkRequest process(ResultList<ReportData> input, Map<String, Object> contextData) throws ProcessorException {
     String entityType = (String) contextData.get(ENTITY_TYPE_KEY);

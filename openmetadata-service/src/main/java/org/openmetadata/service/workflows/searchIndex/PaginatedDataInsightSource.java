@@ -33,7 +33,8 @@ public class PaginatedDataInsightSource implements Source<ResultList<ReportData>
   private final CollectionDAO dao;
   @Getter private final String entityType;
   @Getter private final int batchSize;
-  private final StepStats stats = new StepStats();
+  @Getter private final List<String> readerErrors = new ArrayList<>();
+  @Getter private final StepStats stats = new StepStats();
   private String cursor = null;
   @Getter private boolean isDone = false;
 
@@ -41,7 +42,10 @@ public class PaginatedDataInsightSource implements Source<ResultList<ReportData>
     this.dao = dao;
     this.entityType = entityType;
     this.batchSize = batchSize;
-    stats.setTotalRecords(dao.reportDataTimeSeriesDao().listCount(entityType));
+    this.stats
+        .withTotalRecords(dao.reportDataTimeSeriesDao().listCount(entityType))
+        .withSuccessRecords(0)
+        .withFailedRecords(0);
   }
 
   @Override
@@ -66,7 +70,7 @@ public class PaginatedDataInsightSource implements Source<ResultList<ReportData>
 
   private ResultList<ReportData> read(String afterCursor) throws SourceException {
     LOG.debug("[DataInsightReader] Fetching a Batch of Size: {} ", batchSize);
-    ResultList<ReportData> result;
+    ResultList<ReportData> result = null;
     try {
       result = getReportDataPagination(entityType, batchSize, afterCursor);
       LOG.debug(
@@ -76,14 +80,27 @@ public class PaginatedDataInsightSource implements Source<ResultList<ReportData>
           0);
       updateStats(result.getData().size(), result.getErrors().size());
     } catch (Exception ex) {
-      LOG.debug("[DataInsightReader] Batch Stats :- Submitted : {} Success: {} Failed: {}", batchSize, 0, batchSize);
-      if (stats.getTotalRecords() - stats.getProcessedRecords() <= batchSize) {
-        isDone = true;
-        updateStats(0, stats.getTotalRecords() - stats.getProcessedRecords());
+      String errMsg =
+          String.format(
+              "[DataInsightReader] Failing Completely. Batch Stats :- Submitted : %s Success: %s Failed: %s",
+              batchSize, 0, batchSize);
+      LOG.debug(errMsg);
+      if (result != null) {
+        if (result.getPaging().getAfter() == null) {
+          isDone = true;
+          int recordToRead = stats.getTotalRecords() - (stats.getSuccessRecords() + stats.getFailedRecords());
+          updateStats(result.getData().size(), recordToRead - result.getData().size());
+        } else {
+          updateStats(result.getData().size(), batchSize - result.getData().size());
+        }
       } else {
         updateStats(0, batchSize);
       }
-      throw new SourceException("[EntitiesReader] Batch encountered Exception. Failing Completely.", ex);
+
+      // Add the error to the list
+      readerErrors.add(errMsg);
+
+      throw new SourceException(errMsg, ex);
     }
 
     return result;
@@ -116,10 +133,5 @@ public class PaginatedDataInsightSource implements Source<ResultList<ReportData>
   @Override
   public void updateStats(int currentSuccess, int currentFailed) {
     getUpdatedStats(stats, currentSuccess, currentFailed);
-  }
-
-  @Override
-  public StepStats getStats() {
-    return stats;
   }
 }
