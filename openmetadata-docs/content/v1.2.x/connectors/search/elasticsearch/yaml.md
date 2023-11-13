@@ -78,7 +78,34 @@ This is a sample config for ElasticSearch:
 {% /codeInfo %}
 
 {% codeInfo srNumber=4 %}
-**caCert**: In case the SSL is enabled on your ElasticSearch instance and CA certificate is required for authentication, then specify the path of certificate in this field. NOTE: In case of docker deployment you need to store this certificate accessible to OpenMetadata Ingestion docker container, you can do it via copying the certificate to the docker container or store it in the volume associate with the OpenMetadata Ingestion container.
+- **sslConfig**:
+    1. SSL Certificates By Path
+    - caCertPath: This field specifies the path of CA certificate required for authentication.
+    - clientCertPath: This field specifies the path of Clint certificate required for authentication.
+    - privateKeyPath: This field specifies the path of Clint Key/Private Key required for authentication.
+    
+    2. SSL Certificates By Value
+    - caCertValue: This field specifies the value of CA certificate required for authentication.
+    - clientCertValue: This field specifies the value of Clint certificate required for authentication.
+    - privateKeyValue: This field specifies the value of Clint Key/Private Key required for authentication.
+    - stagingDir: This field specifies the path to temporary staging directory, where the certificates will be stored temporarily during the ingestion process, which will de deleted once the ingestion job is over.
+    - when you are using this approach make sure you are passing the key in a correct format. If your certificate looks like this:
+    ```
+    -----BEGIN CERTIFICATE-----
+    MII..
+    MBQ...
+    CgU..
+    8Lt..
+    ...
+    h+4=
+    -----END CERTIFICATE-----
+    ```
+
+    You will have to replace new lines with `\n` and the final value that you need to pass should look like this:
+
+    ```
+    -----BEGIN CERTIFICATE-----\nMII..\nMBQ...\nCgU..\n8Lt..\n...\nh+4=\n-----END CERTIFICATE-----\n
+
 {% /codeInfo %}
 
 
@@ -139,7 +166,17 @@ source:
         # apiKey: <api key>
 ```
 ```yaml {% srNumber=4 %}
-      caCert: /path/to/http_ca.crt
+      sslConfig:
+        certificates:
+          caCertPath: /path/to/http_ca.crt
+          clientCertPath: /path/to/http_ca.crt
+          privateKeyPath: /path/to/http_ca.crt
+
+          # pass certificate values
+          # caCertValue: -----BEGIN CERTIFICATE-----\n....\n.....\n-----END CERTIFICATE-----\n
+          # clientCertValue: -----BEGIN CERTIFICATE-----\n....\n...-----END CERTIFICATE-----\n
+          # privateKeyValue: -----BEGIN RSA PRIVATE KEY-----\n....\n....\n-----END RSA PRIVATE KEY-----\n
+          # stagingDir: /tmp/stage
 ```
 ```yaml {% srNumber=5 %}
       connectionTimeoutSecs: 30
