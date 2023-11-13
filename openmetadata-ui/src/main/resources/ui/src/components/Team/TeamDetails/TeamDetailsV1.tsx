@@ -34,7 +34,7 @@ import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import Qs from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useLocation } from 'react-router-dom';
+import { Link, useHistory, useLocation } from 'react-router-dom';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/add-placeholder.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as ExportIcon } from '../../../assets/svg/ic-export.svg';
@@ -621,11 +621,10 @@ const TeamDetailsV1 = ({
           <Transi18next
             i18nKey="message.refer-to-our-doc"
             renderElement={
-              <a
-                href={GLOSSARIES_DOCS}
+              <Link
                 rel="noreferrer"
-                style={{ color: '#1890ff' }}
                 target="_blank"
+                to={{ pathname: GLOSSARIES_DOCS }}
               />
             }
             values={{
@@ -1113,6 +1112,7 @@ const TeamDetailsV1 = ({
             <Collapse.Panel
               className="header-collapse-custom-panel"
               collapsible="icon"
+              data-testid="team-details-collapse"
               header={teamsCollapseHeader}
               key="1">
               <Row>

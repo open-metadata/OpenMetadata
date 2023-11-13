@@ -51,7 +51,6 @@ public class DashboardIndex implements SearchIndex {
       dataModelSuggest.add(SearchSuggest.builder().input(chart.getDisplayName()).weight(5).build());
     }
 
-    doc.put("name", dashboard.getDisplayName());
     doc.put("displayName", dashboard.getDisplayName() != null ? dashboard.getDisplayName() : dashboard.getName());
     doc.put("tags", parseTags.getTags());
     doc.put("followers", SearchIndexUtils.parseFollowers(dashboard.getFollowers()));

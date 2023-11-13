@@ -20,7 +20,7 @@ import {
 } from '../../common/common';
 import {
   API_SERVICE,
-  MYDATA_SUMMARY_OPTIONS,
+  DATA_ASSETS,
   SERVICE_TYPE,
 } from '../../constants/constants';
 
@@ -66,7 +66,7 @@ describe('ML Flow Ingestion', () => {
       modelName,
       description,
       SERVICE_TYPE.MLModels,
-      MYDATA_SUMMARY_OPTIONS.mlmodels
+      DATA_ASSETS.mlmodels
     );
   });
 

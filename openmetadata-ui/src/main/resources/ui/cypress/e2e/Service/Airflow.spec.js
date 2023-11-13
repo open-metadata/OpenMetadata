@@ -21,7 +21,7 @@ import {
 } from '../../common/common';
 import {
   API_SERVICE,
-  MYDATA_SUMMARY_OPTIONS,
+  DATA_ASSETS,
   SERVICE_TYPE,
 } from '../../constants/constants';
 
@@ -60,7 +60,7 @@ describe('Airflow Ingestion', () => {
       tableName,
       description,
       SERVICE_TYPE.Pipeline,
-      MYDATA_SUMMARY_OPTIONS.pipelines
+      DATA_ASSETS.pipelines
     );
   });
 

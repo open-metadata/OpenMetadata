@@ -25,14 +25,14 @@ import {
   editAssignee,
   verifyTaskDetails,
 } from '../../common/TaskUtils';
-import { MYDATA_SUMMARY_OPTIONS } from '../../constants/constants';
+import { DATA_ASSETS } from '../../constants/constants';
 import { DATABASE_SERVICE } from '../../constants/entityConstant';
 import { SERVICE_CATEGORIES } from '../../constants/service.constants';
 
 const ENTITY_TABLE = {
   term: DATABASE_SERVICE.tables.name,
   displayName: DATABASE_SERVICE.tables.name,
-  entity: MYDATA_SUMMARY_OPTIONS.tables,
+  entity: DATA_ASSETS.tables,
   serviceName: DATABASE_SERVICE.service.name,
   schemaName: DATABASE_SERVICE.schema.name,
   entityType: 'Table',

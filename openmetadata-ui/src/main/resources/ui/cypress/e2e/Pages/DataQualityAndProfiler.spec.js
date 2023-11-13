@@ -31,9 +31,9 @@ import {
 import { searchServiceFromSettingPage } from '../../common/serviceUtils';
 import {
   API_SERVICE,
+  DATA_ASSETS,
   DATA_QUALITY_SAMPLE_DATA_TABLE,
   DELETE_TERM,
-  MYDATA_SUMMARY_OPTIONS,
   NEW_COLUMN_TEST_CASE,
   NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE,
   NEW_TABLE_TEST_CASE,
@@ -54,7 +54,7 @@ const goToProfilerTab = () => {
   visitEntityDetailsPage({
     term: TEAM_ENTITY,
     serviceName,
-    entity: MYDATA_SUMMARY_OPTIONS.tables,
+    entity: DATA_ASSETS.tables,
   });
   verifyResponseStatusCode('@waitForPageLoad', 200);
 
