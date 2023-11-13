@@ -38,8 +38,6 @@ site_menu:
 
   - category: Deployment / Docker Deployment
     url: /deployment/docker
-  - category: Deployment / Docker Deployment / Volumes
-    url: /deployment/docker/volumes
   - category: Deployment / Docker Deployment / Enable Security
     url: /deployment/docker/security
 
