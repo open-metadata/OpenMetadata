@@ -30,7 +30,6 @@ import com.google.common.collect.Streams;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -72,6 +71,7 @@ import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.CollectionDAO.ExtensionRecord;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
@@ -101,11 +101,13 @@ public class TableRepository extends EntityRepository<Table> {
 
   public static final String TABLE_SAMPLE_DATA_EXTENSION = "table.sampleData";
   public static final String TABLE_PROFILER_CONFIG_EXTENSION = "table.tableProfilerConfig";
-  public static final String TABLE_COLUMN_EXTENSION = "table.column.";
-  public static final String CUSTOM_METRICS_EXTENSION = ".customMetrics";
+  public static final String TABLE_COLUMN_EXTENSION = "table.column";
+  public static final String TABLE_EXTENSION = "table.table";
+  public static final String CUSTOM_METRICS_EXTENSION = "customMetrics.";
   public static final String TABLE_PROFILER_CONFIG = "tableProfilerConfig";
 
   public static final String COLUMN_FIELD = "columns";
+  public static final String CUSTOM_METRICS = "customMetrics";
 
   public TableRepository() {
     super(
@@ -136,7 +138,12 @@ public class TableRepository extends EntityRepository<Table> {
     table.setTableProfilerConfig(
         fields.contains(TABLE_PROFILER_CONFIG) ? getTableProfilerConfig(table) : table.getTableProfilerConfig());
     table.setTestSuite(fields.contains("testSuite") ? getTestSuite(table) : table.getTestSuite());
-    getCustomMetrics(fields.contains("customMetrics"), table);
+    table.setCustomMetrics(fields.contains(CUSTOM_METRICS) ? getCustomMetrics(table, null) : table.getCustomMetrics());
+    if ((fields.contains(COLUMN_FIELD)) && (fields.contains(CUSTOM_METRICS))) {
+      for (Column column : table.getColumns()) {
+        column.setCustomMetrics(getCustomMetrics(table, column.getName()));
+      }
+    }
     return table;
   }
 
@@ -498,71 +505,42 @@ public class TableRepository extends EntityRepository<Table> {
   public Table addCustomMetric(UUID tableId, CustomMetric customMetric) {
     // Validate the request content
     Table table = dao.findEntityById(tableId);
-    String columnName = customMetric.getColumnName();
-    validateColumn(table, columnName);
 
-    // Override any custom metric definition with the same name
-    List<CustomMetric> storedCustomMetrics = getCustomMetrics(table, columnName);
-    Map<String, CustomMetric> storedMapCustomMetrics = new HashMap<>();
+    String customMetricName = customMetric.getName();
+    String customMetricColumnName = customMetric.getColumnName();
+    String extensionType = customMetricColumnName != null ? TABLE_COLUMN_EXTENSION : TABLE_EXTENSION;
+    String extension = CUSTOM_METRICS_EXTENSION + extensionType + "." + customMetricName;
+
+    // Validate the column name exists in the table
+    if (customMetricColumnName != null) {
+      validateColumn(table, customMetricColumnName);
+    }
+
+    CustomMetric storedCustomMetrics = getCustomMetric(table, extension);
     if (storedCustomMetrics != null) {
-      for (CustomMetric cm : storedCustomMetrics) {
-        storedMapCustomMetrics.put(cm.getName(), cm);
-      }
+      storedCustomMetrics.setExpression(customMetric.getExpression());
     }
 
-    // existing metric use the previous UUID
-    if (storedMapCustomMetrics.containsKey(customMetric.getName())) {
-      CustomMetric prevMetric = storedMapCustomMetrics.get(customMetric.getName());
-      customMetric.setId(prevMetric.getId());
-    }
-
-    storedMapCustomMetrics.put(customMetric.getName(), customMetric);
-    List<CustomMetric> updatedMetrics = new ArrayList<>(storedMapCustomMetrics.values());
-    String extension = TABLE_COLUMN_EXTENSION + columnName + CUSTOM_METRICS_EXTENSION;
     daoCollection
         .entityExtensionDAO()
-        .insert(table.getId(), extension, "customMetric", JsonUtils.pojoToJson(updatedMetrics));
-    setFieldsInternal(table, Fields.EMPTY_FIELDS);
+        .insert(table.getId(), extension, "customMetric", JsonUtils.pojoToJson(customMetric));
     // return the newly created/updated custom metric only
-    for (Column column : table.getColumns()) {
-      if (column.getName().equals(columnName)) {
-        column.setCustomMetrics(List.of(customMetric));
-      }
-    }
+    setFieldsInternal(table, new Fields(Set.of(CUSTOM_METRICS, COLUMN_FIELD)));
     return table;
   }
 
   public Table deleteCustomMetric(UUID tableId, String columnName, String metricName) {
     // Validate the request content
     Table table = dao.findEntityById(tableId);
-    validateColumn(table, columnName);
+    if (columnName != null) validateColumn(table, columnName);
 
-    // Override any custom metric definition with the same name
-    List<CustomMetric> storedCustomMetrics = getCustomMetrics(table, columnName);
-    Map<String, CustomMetric> storedMapCustomMetrics = new HashMap<>();
-    if (storedCustomMetrics != null) {
-      for (CustomMetric cm : storedCustomMetrics) {
-        storedMapCustomMetrics.put(cm.getName(), cm);
-      }
-    }
+    // Get unique entity extension and delete data from DB
+    String extensionType = columnName != null ? TABLE_COLUMN_EXTENSION : TABLE_EXTENSION;
+    String extension = CUSTOM_METRICS_EXTENSION + extensionType + "." + metricName;
+    daoCollection.entityExtensionDAO().delete(tableId, extension);
 
-    if (!storedMapCustomMetrics.containsKey(metricName)) {
-      throw new EntityNotFoundException(String.format("Failed to find %s for %s", metricName, table.getName()));
-    }
-
-    CustomMetric deleteCustomMetric = storedMapCustomMetrics.get(metricName);
-    storedMapCustomMetrics.remove(metricName);
-    List<CustomMetric> updatedMetrics = new ArrayList<>(storedMapCustomMetrics.values());
-    String extension = TABLE_COLUMN_EXTENSION + columnName + CUSTOM_METRICS_EXTENSION;
-    daoCollection
-        .entityExtensionDAO()
-        .insert(table.getId(), extension, "customMetric", JsonUtils.pojoToJson(updatedMetrics));
-    // return the newly created/updated custom metric test only
-    for (Column column : table.getColumns()) {
-      if (column.getName().equals(columnName)) {
-        column.setCustomMetrics(List.of(deleteCustomMetric));
-      }
-    }
+    // return the newly created/updated custom metric only
+    setFieldsInternal(table, new Fields(Set.of(CUSTOM_METRICS, COLUMN_FIELD)));
     return table;
   }
 
@@ -1001,18 +979,30 @@ public class TableRepository extends EntityRepository<Table> {
     return dc -> CommonUtil.dateInRange(RestUtil.DATE_FORMAT, dc.getDate(), 0, 30);
   }
 
-  private List<CustomMetric> getCustomMetrics(Table table, String columnName) {
-    String extension = TABLE_COLUMN_EXTENSION + columnName + CUSTOM_METRICS_EXTENSION;
-    return JsonUtils.readObjects(
+  private CustomMetric getCustomMetric(Table table, String extension) {
+    return JsonUtils.readValue(
         daoCollection.entityExtensionDAO().getExtension(table.getId(), extension), CustomMetric.class);
   }
 
-  private void getCustomMetrics(boolean setMetrics, Table table) {
-    // Add custom metrics info to columns if requested
-    List<Column> columns = table.getColumns();
-    for (Column c : listOrEmpty(columns)) {
-      c.setCustomMetrics(setMetrics ? getCustomMetrics(table, c.getName()) : c.getCustomMetrics());
+  private List<CustomMetric> getCustomMetrics(Table table, String columnName) {
+    String extension = columnName != null ? TABLE_COLUMN_EXTENSION : TABLE_EXTENSION;
+    extension = CUSTOM_METRICS_EXTENSION + extension;
+
+    List<ExtensionRecord> extensionRecords = daoCollection.entityExtensionDAO().getExtensions(table.getId(), extension);
+    List<CustomMetric> customMetrics = new ArrayList<>();
+    for (ExtensionRecord extensionRecord : extensionRecords) {
+      customMetrics.add(JsonUtils.readValue(extensionRecord.getExtensionJson(), CustomMetric.class));
     }
+
+    if (columnName != null) {
+      // Filter custom metrics by column name
+      customMetrics =
+          customMetrics.stream()
+              .filter(metric -> metric.getColumnName().equals(columnName))
+              .collect(Collectors.toList());
+    }
+
+    return customMetrics;
   }
 
   /** Handles entity updated from PUT and POST operation. */
