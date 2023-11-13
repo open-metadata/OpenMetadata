@@ -109,6 +109,29 @@ After the migration is finished, you can revert this changes.
 
 # Breaking Changes
 
+## 1.2.1
+
+### Application Logo Configuration Migrated to UI
+
+This change removes the traditional way of providing Custom URL logos configurations as part of OpenMetadata Configurations file and migrate this ablity to be driven and configured right from UI from Settings Menu >> OpenMetadata >> Custom Logo.
+
+### Extended Login Configuration Migrated to UI
+
+
+
+
+### OpenMetadata Helm Chart Dependencies Migrate from ElasticSearch to OpenSearch Charts
+
+As part of `1.2.1`, we migrated the base dependencies for OpenMetadata Helm Chart to use OpenSearch version `2.7` instead of ElasticSearch `8.X`. This is a reactive change done as community driven [ElasticSearch Helm Chart](https://github.com/elastic/helm-charts) project has been deprecated in the favor of Elastic Stack Operator which cannot be added as an helm chart dependency.
+
+For new users, this is an unnoticible change who will be installing the OpenMetadata dependencies using quickstart guides.
+
+For existing users, who have their proof-of-concept environments using the OpenMetadata Dependencies and are looking to upgrade to newer helm release - 
+- The default OpenMetadata helm values for `openmetadata.config.elasticsearch.*` has been updated to connect to OpenSearch from OpenMetadata Dependencies Helm Chart. Please refer to the [helm values](/deployment/kubernetes/helm-values) and update your custom installation accordingly.
+- Post upgrade, you will need to follow the steps here to [rebuild and reindex your search indexing](/deployment/upgrade#reindex).
+
+## 1.2.0
+
 ### Database connection SSL Configuration
 
 With 1.2.X, the environment variable `DB_USE_SSL` is deprecated in favour of `DB_PARAMS`.
