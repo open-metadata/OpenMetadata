@@ -216,7 +216,7 @@ email:
   enableSmtpServer : false
   emailingEntity: ""
   supportUrl: ""
-  openMetadataUrl: ""
+  openMetadataUrl: "http://localhost:8585"
   senderMail: ""
   serverEndpoint: ""
   serverPort: ""

@@ -15,6 +15,7 @@ package org.openmetadata.service.util;
 
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
+import static org.openmetadata.service.util.EmailUtil.getSmtpSettings;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -162,7 +163,7 @@ public class NotificationHandler {
             EmailUtil.sendTaskAssignmentNotificationToUser(
                 user.getName(),
                 user.getEmail(),
-                String.format("%s/users/%s/tasks", EmailUtil.buildBaseUrl(urlInstance), user.getName()),
+                String.format("%s/users/%s/tasks", getSmtpSettings().getOpenMetadataUrl(), user.getName()),
                 thread,
                 EmailUtil.getTaskAssignmentSubject(),
                 EmailUtil.TASK_NOTIFICATION_TEMPLATE);
