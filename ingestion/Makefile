@@ -27,7 +27,7 @@ install_all:  ## Install the ingestion module with all dependencies
 
 .PHONY: install_apis
 install_apis:  ## Install the REST APIs module to the current environment
-	python -m pip install $(ROOT_DIR)openmetadata-airflow-apis/
+	python -m pip install $(ROOT_DIR)/openmetadata-airflow-apis/
 
 .PHONY: lint
 lint: ## Run pylint on the Python sources to analyze the codebase
@@ -90,7 +90,7 @@ run_apis_tests:  ## Run the openmetadata airflow apis tests
 coverage_apis:  ## Run the python tests on openmetadata-airflow-apis
 	$(MAKE) run_apis_tests
 	coverage xml --rcfile $(ROOT_DIR)/openmetadata-airflow-apis/.coveragerc -o $(ROOT_DIR)/openmetadata-airflow-apis/coverage.xml
-	sed -e "s/$(shell python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")\///g" $(INGESTION_DIR)/openmetadata-airflow-apis/coverage.xml >> $(INGESTION_DIR)/openmetadata-airflow-apis/ci-coverage.xml
+	sed -e "s/$(shell python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")\///g" $(ROOT_DIR)/openmetadata-airflow-apis/coverage.xml >> $(ROOT_DIR)/openmetadata-airflow-apis/ci-coverage.xml
 
 
 

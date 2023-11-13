@@ -36,7 +36,7 @@ from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.api.step import Step
 from metadata.ingestion.api.steps import Sink
 from metadata.ingestion.api.steps import Source as WorkflowSource
-from metadata.workflow.base import BaseWorkflow
+from metadata.workflow.ingestion import IngestionWorkflow
 
 
 class SimpleSource(WorkflowSource):
@@ -104,7 +104,7 @@ class SimpleSink(Sink):
         """Nothing to do"""
 
 
-class SimpleWorkflow(BaseWorkflow):
+class SimpleWorkflow(IngestionWorkflow):
     """
     Simple Workflow for testing
     """
@@ -115,7 +115,7 @@ class SimpleWorkflow(BaseWorkflow):
         self.steps: Tuple[Step] = (SimpleSink(),)
 
 
-class BrokenWorkflow(BaseWorkflow):
+class BrokenWorkflow(IngestionWorkflow):
     """
     Simple Workflow for testing
     """

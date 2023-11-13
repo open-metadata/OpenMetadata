@@ -89,6 +89,10 @@
       "description": "Full Qualified ClassName for the the application",
       "type": "string"
     },
+    "sourcePythonClass": {
+      "description": "Fully Qualified class name for the Python source that will execute the external application.",
+      "type": "string"
+    },
     "appType": {
       "description": "This schema defines the type of application.",
       "$ref": "../app.json#/definitions/appType"

@@ -19,12 +19,12 @@ from metadata.ingestion.api.steps import Sink
 from metadata.utils.importer import import_sink_class
 from metadata.utils.logger import data_insight_logger
 from metadata.utils.time_utils import get_beginning_of_day_timestamp_mill
-from metadata.workflow.base import BaseWorkflow
+from metadata.workflow.ingestion import IngestionWorkflow
 
 logger = data_insight_logger()
 
 
-class DataInsightWorkflow(BaseWorkflow):
+class DataInsightWorkflow(IngestionWorkflow):
     """Data insight ingestion workflow implementation"""
 
     retention_days = 7
@@ -39,7 +39,8 @@ class DataInsightWorkflow(BaseWorkflow):
         kpi_runner = KpiRunner(self.metadata)
 
         for kpi_result in kpi_runner.run():
-            self.sink.run(kpi_result)
+            # Pick up the sink
+            self.steps[0].run(kpi_result)
 
     def _clean_up_web_analytics_events(self) -> None:
         """
@@ -64,14 +65,14 @@ class DataInsightWorkflow(BaseWorkflow):
 
         return sink
 
-    def _execute_internal(self):
+    def execute_internal(self):
         """Use parent logic and add step to process KPIs"""
-        super()._execute_internal()
+        super().execute_internal()
         self._run_kpi_processor()
         self._clean_up_web_analytics_events()
 
     def set_steps(self):
         self.source = DataInsightSource.create(self.metadata)  # type: ignore
 
-        self.sink = self._get_sink()
-        self.steps = (self.sink,)
+        sink = self._get_sink()
+        self.steps = (sink,)

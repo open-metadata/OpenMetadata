@@ -162,7 +162,11 @@
       "type": "string"
     },
     "className": {
-      "description": "Full Qualified ClassName for the Schedule",
+      "description": "Fully Qualified ClassName for the Schedule",
+      "type": "string"
+    },
+    "sourcePythonClass": {
+      "description": "Fully Qualified class name for the Python source that will execute the external application.",
       "type": "string"
     },
     "appType": {
