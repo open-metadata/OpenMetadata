@@ -554,11 +554,9 @@ public class AppResource extends EntityResource<App, AppRepository> {
           boolean hardDelete,
       @Parameter(description = "Name of the App", schema = @Schema(type = "string")) @PathParam("name") String name) {
     App app = repository.getByName(null, name, repository.getFields("bot,pipelines"));
-    Response response = deleteByName(uriInfo, securityContext, name, true, hardDelete);
-    if (response.getStatus() == Response.Status.OK.getStatusCode()) {
-      deleteApp(securityContext, app, hardDelete);
-    }
-    return response;
+    // Remove from Pipeline Service
+    deleteApp(securityContext, app, hardDelete);
+    return deleteByName(uriInfo, securityContext, name, true, hardDelete);
   }
 
   @DELETE
@@ -580,11 +578,10 @@ public class AppResource extends EntityResource<App, AppRepository> {
           boolean hardDelete,
       @Parameter(description = "Id of the App", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     App app = repository.get(null, id, repository.getFields("bot,pipelines"));
-    Response response = delete(uriInfo, securityContext, id, true, hardDelete);
-    if (response.getStatus() == Response.Status.OK.getStatusCode()) {
-      deleteApp(securityContext, app, hardDelete);
-    }
-    return response;
+    // Remove from Pipeline Service
+    deleteApp(securityContext, app, hardDelete);
+    // Remove from repository
+    return delete(uriInfo, securityContext, id, true, hardDelete);
   }
 
   @PUT
