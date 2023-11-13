@@ -92,6 +92,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
   @Override
   public void restorePatchAttributes(DataProduct original, DataProduct updated) {
+    super.restorePatchAttributes(original, updated);
     updated.withDomain(original.getDomain()); // Domain can't be changed
   }
 

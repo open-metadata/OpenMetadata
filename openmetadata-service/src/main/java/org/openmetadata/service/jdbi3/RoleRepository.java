@@ -65,12 +65,6 @@ public class RoleRepository extends EntityRepository<Role> {
     return findFrom(role.getId(), Entity.ROLE, Relationship.HAS, Entity.TEAM);
   }
 
-  @Override
-  public void restorePatchAttributes(Role original, Role updated) {
-    // Patch can't make changes to following fields. Ignore the changes
-    updated.withName(original.getName()).withId(original.getId());
-  }
-
   /**
    * If policy does not exist for this role, create a new entity reference. The actual policy gets created within the
    * storeEntity method call.

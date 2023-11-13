@@ -67,6 +67,7 @@ public class TagRepository extends EntityRepository<Tag> {
 
   @Override
   public void restorePatchAttributes(Tag original, Tag updated) {
+    super.restorePatchAttributes(original, updated);
     updated.setChildren(original.getChildren());
   }
 

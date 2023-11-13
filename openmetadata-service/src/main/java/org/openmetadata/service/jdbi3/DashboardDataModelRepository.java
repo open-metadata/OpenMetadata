@@ -174,11 +174,8 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   @Override
   public void restorePatchAttributes(DashboardDataModel original, DashboardDataModel updated) {
     // Patch can't make changes to following fields. Ignore the changes
-    updated
-        .withFullyQualifiedName(original.getFullyQualifiedName())
-        .withName(original.getName())
-        .withService(original.getService())
-        .withId(original.getId());
+    super.restorePatchAttributes(original, updated);
+    updated.withService(original.getService());
   }
 
   private void applyTags(List<Column> columns) {

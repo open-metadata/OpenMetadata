@@ -177,6 +177,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   @Override
   public void restorePatchAttributes(GlossaryTerm original, GlossaryTerm updated) {
     // Patch can't update Children
+    super.restorePatchAttributes(original, updated);
     updated.withChildren(original.getChildren());
   }
 

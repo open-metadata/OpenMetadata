@@ -370,7 +370,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * stored in the original entity.
    */
   public void restorePatchAttributes(T original, T updated) {
-    /* Nothing to restore during PATCH */
+    updated.setId(original.getId());
+    updated.setName(original.getName());
+    updated.setFullyQualifiedName(original.getFullyQualifiedName());
+    updated.setChangeDescription(original.getChangeDescription());
   }
 
   /** Set fullyQualifiedName of an entity */
