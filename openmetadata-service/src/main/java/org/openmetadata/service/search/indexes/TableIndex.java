@@ -88,12 +88,11 @@ public class TableIndex implements ColumnIndex {
     doc.put("database_suggest", databaseSuggest);
     doc.put("entityType", Entity.TABLE);
     doc.put("serviceType", table.getServiceType());
-    if (table.getOwner() != null) {
-      doc.put("owner", getOwnerWithDisplayName(table.getOwner()));
-    }
-    if (table.getDomain() != null) {
-      doc.put("domain", getDomainWithDisplayName(table.getDomain()));
-    }
+    doc.put("owner", getEntityWithDisplayName(table.getOwner()));
+    doc.put("service", getEntityWithDisplayName(table.getService()));
+    doc.put("domain", getEntityWithDisplayName(table.getDomain()));
+    doc.put("database", getEntityWithDisplayName(table.getDatabase()));
+    doc.put("databaseSchema", getEntityWithDisplayName(table.getDatabaseSchema()));
     return doc;
   }
 

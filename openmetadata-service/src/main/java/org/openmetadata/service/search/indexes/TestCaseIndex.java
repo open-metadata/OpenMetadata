@@ -51,9 +51,7 @@ public class TestCaseIndex implements SearchIndex {
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.TEST_CASE);
-    if (testCase.getOwner() != null) {
-      doc.put("owner", getOwnerWithDisplayName(testCase.getOwner()));
-    }
+    doc.put("owner", getEntityWithDisplayName(testCase.getOwner()));
     return doc;
   }
 

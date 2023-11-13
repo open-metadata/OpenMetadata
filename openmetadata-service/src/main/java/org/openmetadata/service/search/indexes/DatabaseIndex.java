@@ -33,12 +33,8 @@ public class DatabaseIndex implements SearchIndex {
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.DATABASE);
-    if (database.getOwner() != null) {
-      doc.put("owner", getOwnerWithDisplayName(database.getOwner()));
-    }
-    if (database.getDomain() != null) {
-      doc.put("domain", getDomainWithDisplayName(database.getDomain()));
-    }
+    doc.put("owner", getEntityWithDisplayName(database.getOwner()));
+    doc.put("domain", getEntityWithDisplayName(database.getDomain()));
     return doc;
   }
 }
