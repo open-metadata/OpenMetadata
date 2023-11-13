@@ -1,6 +1,7 @@
 package org.openmetadata.service.apps;
 
 import static com.cronutils.model.CronType.QUARTZ;
+import static org.openmetadata.service.apps.scheduler.AbstractOmAppJobListener.JOB_LISTENER_NAME;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_INFO_KEY;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.COLLECTION_DAO_KEY;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.SEARCH_CLIENT_KEY;
@@ -12,10 +13,12 @@ import com.cronutils.model.Cron;
 import com.cronutils.model.definition.CronDefinitionBuilder;
 import com.cronutils.parser.CronParser;
 import java.util.List;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.AppRuntime;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.entity.app.App;
+import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.AppType;
 import org.openmetadata.schema.entity.app.ExternalAppIngestionConfig;
 import org.openmetadata.schema.entity.app.ScheduleType;
@@ -28,6 +31,7 @@ import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
+import org.openmetadata.service.apps.scheduler.OmAppJobListener;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -38,6 +42,7 @@ import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
+import org.quartz.SchedulerException;
 
 @Slf4j
 public class AbstractNativeApplication implements NativeApplication {
@@ -187,7 +192,7 @@ public class AbstractNativeApplication implements NativeApplication {
     return JsonUtils.convertValue(app.getRuntime(), ScheduledExecutionContext.class);
   }
 
-  private IngestionPipeline getIngestionPipeline(CreateIngestionPipeline create, String botname, String user) {
+  protected IngestionPipeline getIngestionPipeline(CreateIngestionPipeline create, String botname, String user) {
     IngestionPipelineRepository ingestionPipelineRepository =
         (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
     OpenMetadataConnection openMetadataServerConnection =
@@ -201,5 +206,21 @@ public class AbstractNativeApplication implements NativeApplication {
         .withSourceConfig(create.getSourceConfig())
         .withLoggerLevel(create.getLoggerLevel())
         .withService(create.getService());
+  }
+
+  private OmAppJobListener getJobListener(JobExecutionContext jobExecutionContext) throws SchedulerException {
+    return (OmAppJobListener) jobExecutionContext.getScheduler().getListenerManager().getJobListener(JOB_LISTENER_NAME);
+  }
+
+  @SneakyThrows
+  protected AppRunRecord getJobRecord(JobExecutionContext jobExecutionContext) {
+    OmAppJobListener listener = getJobListener(jobExecutionContext);
+    return listener.getAppRunRecordForJob(jobExecutionContext);
+  }
+
+  @SneakyThrows
+  protected void pushAppStausUpdates(JobExecutionContext jobExecutionContext, AppRunRecord record, boolean update) {
+    OmAppJobListener listener = getJobListener(jobExecutionContext);
+    listener.pushApplicationStatusUpdates(jobExecutionContext, record, update);
   }
 }

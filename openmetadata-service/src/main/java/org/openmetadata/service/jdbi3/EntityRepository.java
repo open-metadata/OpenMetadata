@@ -609,7 +609,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           entities.add(withHref(uriInfo, entity));
         } catch (Exception e) {
           LOG.error("Failed in Set Fields for Entity with Json : {}", json);
-          errors.add(json);
+          errors.add(String.format("Error Message : %s , %n Entity Json : %s", e.getMessage(), json));
         }
       }
       currentOffset = currentOffset + limitParam;
