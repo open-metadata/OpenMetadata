@@ -252,11 +252,6 @@ export const LIST_OF_FIELDS_TO_EDIT_NOT_TO_BE_PRESENT = [
   },
   {
     containerSelector:
-      '[data-testid="entity-right-panel"] [data-testid="data-products-list"]',
-    elementSelector: '[data-testid="add-tag"]',
-  },
-  {
-    containerSelector:
       '[data-testid="entity-right-panel"] [data-testid="tags-container"]',
     elementSelector: '[data-testid="add-tag"]',
   },
@@ -265,12 +260,6 @@ export const LIST_OF_FIELDS_TO_EDIT_NOT_TO_BE_PRESENT = [
       '[data-testid="entity-right-panel"] [data-testid="glossary-container"]',
     elementSelector: '[data-testid="add-tag"]',
   },
-];
-
-export const LIST_OF_ENTITIES_WITH_DATA_PRODUCT = [
-  DATA_ASSETS.tables,
-  DATA_ASSETS.topics,
-  DATA_ASSETS.dashboards,
 ];
 
 export const LIST_OF_FIELDS_TO_EDIT_TO_BE_DISABLED = [

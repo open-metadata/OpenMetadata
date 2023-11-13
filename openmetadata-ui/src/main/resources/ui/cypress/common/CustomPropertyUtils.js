@@ -198,3 +198,23 @@ export const createTeams = ({ token, policyName, roleName, team1, team2 }) => {
     });
   });
 };
+
+export const deleteTeam = ({ token, teamName }) => {
+  cy.request({
+    method: 'GET',
+    url: `/api/v1/teams/name/${teamName}`,
+    headers: { Authorization: `Bearer ${token}` },
+  }).then((response) => {
+    expect(response.status).to.eq(200);
+
+    const teamId = response.body.id;
+
+    cy.request({
+      method: 'DELETE',
+      url: `/api/v1/teams/${teamId}?hardDelete=true&recursive=true`,
+      headers: { Authorization: `Bearer ${token}` },
+    }).then((response) => {
+      expect(response.status).to.eq(200);
+    });
+  });
+};

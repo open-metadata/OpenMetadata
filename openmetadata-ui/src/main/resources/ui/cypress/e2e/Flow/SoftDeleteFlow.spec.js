@@ -15,21 +15,44 @@
 
 import {
   interceptURL,
+  toastNotification,
   verifyResponseStatusCode,
   visitDatabaseDetailsPage,
   visitDatabaseSchemaDetailsPage,
   visitEntityDetailsPage,
   visitServiceDetailsPage,
 } from '../../common/common';
-import { createTeams } from '../../common/CustomPropertyUtils';
-import { softDeletedEntityCommonChecks } from '../../common/SoftDeleteFlowUtils';
+import {
+  createCustomAttribute,
+  createTeams,
+  deleteCustomAttribute,
+  deleteTeam,
+} from '../../common/CustomPropertyUtils';
+import {
+  createEntityTable,
+  createSingleLevelEntity,
+  hardDeleteService,
+} from '../../common/entityUtils';
+import {
+  deletedTeamChecks,
+  nonDeletedTeamChecks,
+  softDeletedEntityCommonChecks,
+} from '../../common/SoftDeleteFlowUtils';
+import { SERVICE_CATEGORIES } from '../../constants/service.constants';
 import {
   ALL_SERVICES_SOFT_DELETE_TEST,
+  CUSTOM_ATTRIBUTE_ASSETS_SOFT_DELETE_TEST,
+  CUSTOM_ATTRIBUTE_NAME,
+  DASHBOARD_DATA_MODEL_SOFT_DELETE_TEST,
   DATABASE_SCHEMA_SOFT_DELETE_TEST,
   DATABASE_SERVICE_DETAILS_SOFT_DELETE_TEST,
+  DATABASE_SERVICE_SOFT_DELETE_TEST,
   DATABASE_SOFT_DELETE_TEST,
+  OMIT_SERVICE_CREATION_FOR_ENTITIES,
   POLICY_NAME,
   ROLE_NAME,
+  SINGLE_LEVEL_SERVICE_SOFT_DELETE_TEST,
+  STORED_PROCEDURE_SOFT_DELETE_TEST,
   TEAM_1_DETAILS_SOFT_DELETE_TEST,
   TEAM_1_NAME,
   TEAM_2_DETAILS_SOFT_DELETE_TEST,
@@ -43,50 +66,50 @@ describe(`Soft delete flow should work for all entities`, () => {
     cy.getAllLocalStorage().then((data) => {
       const token = Object.values(data)[0].oidcIdToken;
 
-      // CUSTOM_ATTRIBUTE_ASSETS_SOFT_DELETE_TEST.forEach(
-      //   ({ entitySchemaName }) => {
-      //     if (entitySchemaName) {
-      //       createCustomAttribute({
-      //         name: CUSTOM_ATTRIBUTE_NAME,
-      //         serviceType: entitySchemaName,
-      //         token,
-      //       });
-      //     }
-      //   }
-      // );
+      CUSTOM_ATTRIBUTE_ASSETS_SOFT_DELETE_TEST.forEach(
+        ({ entitySchemaName }) => {
+          if (entitySchemaName) {
+            createCustomAttribute({
+              name: CUSTOM_ATTRIBUTE_NAME,
+              serviceType: entitySchemaName,
+              token,
+            });
+          }
+        }
+      );
 
-      // const ids = createEntityTable({
-      //   token,
-      //   ...DATABASE_SERVICE_SOFT_DELETE_TEST,
-      //   tables: [DATABASE_SERVICE_SOFT_DELETE_TEST.entity],
-      // });
+      const ids = createEntityTable({
+        token,
+        ...DATABASE_SERVICE_SOFT_DELETE_TEST,
+        tables: [DATABASE_SERVICE_SOFT_DELETE_TEST.entity],
+      });
 
-      // createdEntityIds = ids;
+      createdEntityIds = ids;
 
-      // SINGLE_LEVEL_SERVICE_SOFT_DELETE_TEST.filter(
-      //   (data) => !OMIT_SERVICE_CREATION_FOR_ENTITIES.includes(data.entityType)
-      // ).forEach((data) => {
-      //   createSingleLevelEntity({
-      //     token,
-      //     ...data,
-      //     entity: [data.entity],
-      //   });
-      // });
+      SINGLE_LEVEL_SERVICE_SOFT_DELETE_TEST.filter(
+        (data) => !OMIT_SERVICE_CREATION_FOR_ENTITIES.includes(data.entityType)
+      ).forEach((data) => {
+        createSingleLevelEntity({
+          token,
+          ...data,
+          entity: [data.entity],
+        });
+      });
 
-      // // creating data model
-      // cy.request({
-      //   method: 'POST',
-      //   url: `/api/v1/dashboard/datamodels`,
-      //   headers: { Authorization: `Bearer ${token}` },
-      //   body: DASHBOARD_DATA_MODEL_SOFT_DELETE_TEST,
-      // });
-      // // creating stored procedure
-      // cy.request({
-      //   method: 'POST',
-      //   url: `/api/v1/storedProcedures`,
-      //   headers: { Authorization: `Bearer ${token}` },
-      //   body: STORED_PROCEDURE_SOFT_DELETE_TEST,
-      // });
+      // creating data model
+      cy.request({
+        method: 'POST',
+        url: `/api/v1/dashboard/datamodels`,
+        headers: { Authorization: `Bearer ${token}` },
+        body: DASHBOARD_DATA_MODEL_SOFT_DELETE_TEST,
+      });
+      // creating stored procedure
+      cy.request({
+        method: 'POST',
+        url: `/api/v1/storedProcedures`,
+        headers: { Authorization: `Bearer ${token}` },
+        body: STORED_PROCEDURE_SOFT_DELETE_TEST,
+      });
 
       createTeams({
         token,
@@ -111,7 +134,7 @@ describe(`Soft delete flow should work for all entities`, () => {
       entityTypeDisplay,
       entitySchemaName,
     }) => {
-      it.skip(`Soft delete flow should work properly for ${entityType}`, () => {
+      it(`Soft delete flow should work properly for ${entityType}`, () => {
         visitEntityDetailsPage({
           term: entity.name,
           serviceName: service.name,
@@ -129,7 +152,7 @@ describe(`Soft delete flow should work for all entities`, () => {
     }
   );
 
-  it.skip(`Soft delete flow should work properly for database schemas`, () => {
+  it(`Soft delete flow should work properly for database schemas`, () => {
     visitDatabaseSchemaDetailsPage({
       settingsMenuId: DATABASE_SCHEMA_SOFT_DELETE_TEST.settingsMenuId,
       serviceCategory: DATABASE_SCHEMA_SOFT_DELETE_TEST.serviceCategory,
@@ -148,7 +171,7 @@ describe(`Soft delete flow should work for all entities`, () => {
     });
   });
 
-  it.skip(`Soft delete flow should work properly for databases`, () => {
+  it(`Soft delete flow should work properly for databases`, () => {
     visitDatabaseDetailsPage({
       settingsMenuId: DATABASE_SOFT_DELETE_TEST.settingsMenuId,
       serviceCategory: DATABASE_SOFT_DELETE_TEST.serviceCategory,
@@ -165,7 +188,7 @@ describe(`Soft delete flow should work for all entities`, () => {
     });
   });
 
-  it.skip(`Soft delete flow should work properly for services`, () => {
+  it(`Soft delete flow should work properly for services`, () => {
     visitServiceDetailsPage(
       DATABASE_SERVICE_DETAILS_SOFT_DELETE_TEST.settingsMenuId,
 
@@ -203,42 +226,15 @@ describe(`Soft delete flow should work for all entities`, () => {
 
     verifyResponseStatusCode('@getChildTeams', 200);
 
-    /* ==== Generated with Cypress Studio ==== */
-    cy.get(
-      '[data-testid="team-details-collapse"] [data-testid="edit-team-name"]'
-    ).should('be.visible');
-    cy.get(
-      '[data-testid="team-details-collapse"] [data-testid="add-domain"]'
-    ).should('be.visible');
-    cy.get(
-      '[data-testid="team-details-collapse"] [data-testid="edit-owner"]'
-    ).should('be.visible');
-    cy.get(
-      '[data-testid="team-details-collapse"] [data-testid="edit-email"]'
-    ).should('be.visible');
-    cy.get('[data-testid="teams-subscription"] .cursor-pointer').should(
-      'be.visible'
-    );
-    cy.get(
-      '[data-testid="team-details-collapse"] [data-testid="edit-team-type-icon"]'
-    ).should('be.visible');
-
     cy.get('[data-testid="team-details-collapse"] .ant-collapse-arrow')
       .scrollIntoView()
-      .click();
-    cy.get(
-      '[data-testid="team-details-collapse"] [data-testid="edit-description"]'
-    )
-      .scrollIntoView()
-      .should('be.visible');
-    cy.get('[data-testid="add-team"]').scrollIntoView().should('be.visible');
-    cy.get('[data-testid="users"]').click();
-    cy.get('[data-testid="add-new-user"]').should('be.visible');
-    cy.get('[data-testid="roles"]').click();
-    cy.get('[data-testid="add-role"]').should('be.visible');
-    cy.get('[data-testid="policies"]').click();
-    cy.get('[data-testid="add-policy"]').should('be.visible');
-    cy.get('[data-testid="manage-button"]').click();
+      .click({ waitForAnimations: true });
+
+    // Check if edit actions are enabled for the team
+    nonDeletedTeamChecks();
+
+    // Soft Delete team
+    cy.get('[data-testid="manage-button"]').scrollIntoView().click();
     cy.get('[data-testid="import-button-title"]').should('be.visible');
     cy.get('[data-testid="export-title"]').should('be.visible');
     cy.get('[data-testid="open-group-label"]').should('be.visible');
@@ -246,40 +242,52 @@ describe(`Soft delete flow should work for all entities`, () => {
     cy.get('[data-testid="confirmation-text-input"]').type('DELETE');
     cy.get('[data-testid="confirm-button"]').click();
 
+    toastNotification('Team deleted successfully!');
+
+    // Checks if soft deleted team has all edit actions disabled
+    deletedTeamChecks();
+
+    // Restore team
     cy.get('[data-testid="manage-button"]').click();
     cy.get('[data-testid="restore-team-dropdown-title"]').click();
-    /* ==== End Cypress Studio ==== */
+
+    toastNotification('Team restored successfully');
+
+    // Edit team actions should be enabled again after entity restored
+    nonDeletedTeamChecks();
   });
 
   after(() => {
-    // cy.login();
-    // cy.getAllLocalStorage().then((data) => {
-    //   const token = Object.values(data)[0].oidcIdToken;
-    //   hardDeleteService({
-    //     token,
-    //     serviceFqn: DATABASE_SERVICE_SOFT_DELETE_TEST.service.name,
-    //     serviceType: SERVICE_CATEGORIES.DATABASE_SERVICES,
-    //   });
-    //   SINGLE_LEVEL_SERVICE_SOFT_DELETE_TEST.filter(
-    //     (data) => !OMIT_SERVICE_CREATION_FOR_ENTITIES.includes(data.entityType)
-    //   ).forEach((data) => {
-    //     hardDeleteService({
-    //       token,
-    //       serviceFqn: data.service.name,
-    //       serviceType: data.serviceType,
-    //     });
-    //   });
-    //   CUSTOM_ATTRIBUTE_ASSETS_SOFT_DELETE_TEST.forEach(
-    //     ({ entitySchemaName }) => {
-    //       if (entitySchemaName) {
-    //         deleteCustomAttribute({
-    //           name: CUSTOM_ATTRIBUTE_NAME,
-    //           serviceType: entitySchemaName,
-    //           token,
-    //         });
-    //       }
-    //     }
-    //   );
-    // });
+    cy.login();
+    cy.getAllLocalStorage().then((data) => {
+      const token = Object.values(data)[0].oidcIdToken;
+      hardDeleteService({
+        token,
+        serviceFqn: DATABASE_SERVICE_SOFT_DELETE_TEST.service.name,
+        serviceType: SERVICE_CATEGORIES.DATABASE_SERVICES,
+      });
+      SINGLE_LEVEL_SERVICE_SOFT_DELETE_TEST.filter(
+        (data) => !OMIT_SERVICE_CREATION_FOR_ENTITIES.includes(data.entityType)
+      ).forEach((data) => {
+        hardDeleteService({
+          token,
+          serviceFqn: data.service.name,
+          serviceType: data.serviceType,
+        });
+      });
+      CUSTOM_ATTRIBUTE_ASSETS_SOFT_DELETE_TEST.forEach(
+        ({ entitySchemaName }) => {
+          if (entitySchemaName) {
+            deleteCustomAttribute({
+              name: CUSTOM_ATTRIBUTE_NAME,
+              serviceType: entitySchemaName,
+              token,
+            });
+          }
+        }
+      );
+
+      deleteTeam({ token, teamName: TEAM_1_NAME });
+    });
   });
 });

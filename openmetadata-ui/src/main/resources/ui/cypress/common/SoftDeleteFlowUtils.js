@@ -17,7 +17,6 @@ import { DATA_ASSETS } from '../constants/constants';
 import {
   CUSTOM_ATTRIBUTE_NAME,
   ENTITIES_WITHOUT_FOLLOWING_BUTTON,
-  LIST_OF_ENTITIES_WITH_DATA_PRODUCT,
   LIST_OF_FIELDS_TO_EDIT_NOT_TO_BE_PRESENT,
   LIST_OF_FIELDS_TO_EDIT_TO_BE_DISABLED,
 } from '../constants/SoftDeleteFlow.constants';
@@ -84,22 +83,15 @@ const checkForEditActions = (
 
   LIST_OF_FIELDS_TO_EDIT_NOT_TO_BE_PRESENT.map(
     ({ containerSelector, elementSelector }) => {
-      // Check if the the entities have data products for testing data product edit actions
-      const shouldRunCheck = containerSelector.includes('data-products-list')
-        ? LIST_OF_ENTITIES_WITH_DATA_PRODUCT.includes(entityType)
-        : true;
-
-      if (shouldRunCheck) {
-        if (checkIsActionEnabled) {
-          cy.get(`${containerSelector} ${elementSelector}`)
-            .scrollIntoView()
-            .should('be.visible');
-        } else {
-          checkIsEditButtonNotAvailable({
-            containerSelector,
-            elementSelector,
-          });
-        }
+      if (checkIsActionEnabled) {
+        cy.get(`${containerSelector} ${elementSelector}`)
+          .scrollIntoView()
+          .should('be.visible');
+      } else {
+        checkIsEditButtonNotAvailable({
+          containerSelector,
+          elementSelector,
+        });
       }
     }
   );
@@ -138,7 +130,7 @@ const checkForTableSpecificFields = (
   verifyAPIResponse = false,
   checkIsActionEnabled = true
 ) => {
-  interceptURL('GET', `/api/v1/queries?limit=10&entityId=*`, 'getQueryData');
+  interceptURL('GET', `/api/v1/queries*`, 'getQueryData');
 
   cy.get('[data-testid="table_queries"]').click();
 
@@ -254,4 +246,123 @@ export const softDeletedEntityCommonChecks = ({
   if (isTableEntity) {
     checkForTableSpecificFields(true);
   }
+};
+
+export const nonDeletedTeamChecks = () => {
+  cy.get('[data-testid="manage-button"]').scrollIntoView().click();
+  cy.get('[data-testid="import-button-title"]').should('be.visible');
+  cy.get('[data-testid="export-title"]').should('be.visible');
+  cy.get('[data-testid="open-group-label"]').should('be.visible');
+  cy.get('[data-testid="delete-button-title"]').should('be.visible');
+  cy.clickOutside();
+
+  cy.get('[data-testid="edit-team-name"]')
+    .scrollIntoView()
+    .should('be.visible');
+  cy.get('[data-testid="add-domain"]').scrollIntoView().should('be.visible');
+  cy.get('[data-testid="edit-owner"]').scrollIntoView().should('be.visible');
+  cy.get('[data-testid="edit-email"]').scrollIntoView().should('be.visible');
+  cy.get('[data-testid="teams-subscription"] .cursor-pointer')
+    .scrollIntoView()
+    .should('be.visible');
+  cy.get('[data-testid="edit-team-type-icon"]')
+    .scrollIntoView()
+    .should('be.visible');
+  cy.get('[data-testid="edit-description"]')
+    .scrollIntoView()
+    .should('be.visible');
+
+  cy.get('[data-testid="teams"]').scrollIntoView().click();
+  cy.get('[data-testid="add-team"]').scrollIntoView().should('be.visible');
+  cy.get('[data-testid="users"]').scrollIntoView().click();
+  cy.get('[data-testid="add-new-user"]').scrollIntoView().should('be.visible');
+  cy.get('[data-testid="roles"]').scrollIntoView().click();
+  cy.get('[data-testid="add-role"]').scrollIntoView().should('be.visible');
+  cy.get('[data-testid="policies"]').scrollIntoView().click();
+  cy.get('[data-testid="add-policy"]').scrollIntoView().should('be.visible');
+};
+
+export const deletedTeamChecks = () => {
+  cy.get('[data-testid="manage-button"]').scrollIntoView().click();
+  cy.get('[data-testid="manage-dropdown-list-container"]').then(($body) => {
+    const importButton = $body.find('[data-testid="import-button-title"]');
+
+    expect(importButton.length).to.equal(0);
+  });
+  cy.get('[data-testid="manage-dropdown-list-container"]').then(($body) => {
+    const exportButton = $body.find('[data-testid="export-title"]');
+
+    expect(exportButton.length).to.equal(0);
+  });
+  cy.get('[data-testid="manage-dropdown-list-container"]').then(($body) => {
+    const openGroupButton = $body.find('[data-testid="open-group-label"]');
+
+    expect(openGroupButton.length).to.equal(0);
+  });
+  cy.get('[data-testid="restore-team-dropdown-title"]').should('be.visible');
+  cy.get('[data-testid="delete-button-title"]').should('be.visible');
+  cy.clickOutside();
+
+  cy.get('[data-testid="team-details-collapse"]').then(($body) => {
+    const editTeamButton = $body.find('[data-testid="edit-team-name"]');
+
+    expect(editTeamButton.length).to.equal(0);
+  });
+  cy.get('[data-testid="team-details-collapse"]').then(($body) => {
+    const addDomainButton = $body.find('[data-testid="add-domain"]');
+
+    expect(addDomainButton.length).to.equal(0);
+  });
+  cy.get('[data-testid="team-details-collapse"]').then(($body) => {
+    const editOwnerButton = $body.find('[data-testid="edit-owner"]');
+
+    expect(editOwnerButton.length).to.equal(0);
+  });
+  cy.get('[data-testid="team-details-collapse"]').then(($body) => {
+    const editEmailButton = $body.find('[data-testid="edit-email"]');
+
+    expect(editEmailButton.length).to.equal(0);
+  });
+  cy.get('[data-testid="teams-subscription"]').then(($body) => {
+    const teamSubscriptionEditButton = $body.find('.cursor-pointer');
+
+    expect(teamSubscriptionEditButton.length).to.equal(0);
+  });
+  cy.get('[data-testid="team-details-collapse"]').then(($body) => {
+    const editTeamTypeButton = $body.find(
+      '[data-testid="edit-team-type-icon"]'
+    );
+
+    expect(editTeamTypeButton.length).to.equal(0);
+  });
+  cy.get('[data-testid="team-details-collapse"]').then(($body) => {
+    const editDescription = $body.find('[data-testid="edit-description"]');
+
+    expect(editDescription.length).to.equal(0);
+  });
+
+  cy.get('[data-testid="teams"]').scrollIntoView().click();
+  cy.get('[data-testid=" team-details-container"]').then(($body) => {
+    const editDescription = $body.find('[data-testid="add-team"]');
+
+    expect(editDescription.length).to.equal(0);
+  });
+  cy.get('[data-testid="users"]').scrollIntoView().click();
+  cy.get('[data-testid=" team-details-container"]').then(($body) => {
+    const editDescription = $body.find('[data-testid="add-new-user"]');
+
+    expect(editDescription.length).to.equal(0);
+  });
+  cy.get('[data-testid="roles"]').scrollIntoView().click();
+  cy.get('[data-testid=" team-details-container"]').then(($body) => {
+    const editDescription = $body.find('[data-testid="add-role"]');
+
+    expect(editDescription.length).to.equal(0);
+  });
+  cy.get('[data-testid="policies"]').scrollIntoView().click();
+  cy.get('[data-testid=" team-details-container"]').then(($body) => {
+    const editDescription = $body.find('[data-testid="add-policy"]');
+
+    expect(editDescription.length).to.equal(0);
+  });
 };
