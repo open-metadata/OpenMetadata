@@ -801,16 +801,21 @@ public class AppResource extends EntityResource<App, AppRepository> {
         IngestionPipeline ingestionPipeline =
             ingestionPipelineRepository.get(
                 null, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNER));
-
-        if (hardDelete) {
-          // Remove the Pipeline in case of Delete
-          if (!nullOrEmpty(installedApp.getPipelines())) {
-            pipelineServiceClient.deletePipeline(ingestionPipeline);
+        try {
+          if (hardDelete) {
+            // Remove the Pipeline in case of Delete
+            if (!nullOrEmpty(installedApp.getPipelines())) {
+              pipelineServiceClient.deletePipeline(ingestionPipeline);
+            }
+          } else {
+            // Just Kill Running ingestion
+            if (Boolean.TRUE.equals(ingestionPipeline.getDeployed())) {
+              decryptOrNullify(securityContext, ingestionPipeline, installedApp.getBot().getName(), true);
+              pipelineServiceClient.killIngestion(ingestionPipeline);
+            }
           }
-        } else {
-          // Just Kill Running ingestion
-          decryptOrNullify(securityContext, ingestionPipeline, installedApp.getBot().getName(), true);
-          pipelineServiceClient.killIngestion(ingestionPipeline);
+        } catch (Exception ex) {
+          LOG.error("Failed in Pipeline Service Client : ", ex);
         }
       }
     }
