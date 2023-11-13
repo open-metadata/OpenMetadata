@@ -51,7 +51,34 @@ We extract ElasticSearch's metadata by using its [API](https://www.elastic.co/gu
     2. API Key Authentication
     - API Key: API Key to connect to ElasticSearch required when API Key Authentication is enabled on ElasticSearch.
     - API Key Id: Enter API Key ID In case of API Key Authentication if there is any API Key ID associated with the API Key, otherwise this field can be left blank.
-- **Client Certificate Path**: In case the SSL is enabled on your ElasticSearch instance and CA certificate is required for authentication, then specify the path of certificate in this field. NOTE: In case of docker deployment you need to store this certificate accessible to OpenMetadata Ingestion docker container, you can do it via copying the certificate to the docker container or store it in the volume associate with the OpenMetadata Ingestion container.
+- **SSL Certificates**:
+    1. SSL Certificates By Path
+    - CA Certificate Path: This field specifies the path of CA certificate required for authentication.
+    - Client Certificate Path: This field specifies the path of Clint certificate required for authentication.
+    - Private Key Path: This field specifies the path of Clint Key/Private Key required for authentication.
+    
+    2. SSL Certificates By Value
+    - CA Certificate Value: This field specifies the value of CA certificate required for authentication.
+    - Client Certificate Value: This field specifies the value of Clint certificate required for authentication.
+    - Private Key Value: This field specifies the value of Clint Key/Private Key required for authentication.
+    - Staging Directory Path: This field specifies the path to temporary staging directory, where the certificates will be stored temporarily during the ingestion process, which will de deleted once the ingestion job is over.
+    - when you are using this approach make sure you are passing the key in a correct format. If your certificate looks like this:
+    ```
+    -----BEGIN CERTIFICATE-----
+    MII..
+    MBQ...
+    CgU..
+    8Lt..
+    ...
+    h+4=
+    -----END CERTIFICATE-----
+    ```
+
+    You will have to replace new lines with `\n` and the final value that you need to pass should look like this:
+
+    ```
+    -----BEGIN CERTIFICATE-----\nMII..\nMBQ...\nCgU..\n8Lt..\n...\nh+4=\n-----END CERTIFICATE-----\n
+
 - **Connection Timeout in Seconds**: Connection timeout configuration for communicating with ElasticSearch APIs.
 
 {% /extraContent %}

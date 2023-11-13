@@ -11,6 +11,8 @@
 """
 Elasticsearch source to extract metadata
 """
+import shutil
+from pathlib import Path
 from typing import Any, Iterable, Optional
 
 from elasticsearch8 import Elasticsearch
@@ -124,3 +126,11 @@ class ElasticsearchSource(SearchServiceSource):
                     ),
                 )
             )
+
+    def close(self):
+        try:
+            if Path(self.service_connection.sslConfig.certificates.stagingDir).exists():
+                shutil.rmtree(self.service_connection.sslConfig.certificates.stagingDir)
+        except AttributeError:
+            pass
+        return super().close()
