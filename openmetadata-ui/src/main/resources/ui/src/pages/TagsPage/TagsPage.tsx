@@ -718,6 +718,7 @@ const TagsPage = () => {
           handleEditDescriptionClick={handleEditDescriptionClick}
           handleEditTagClick={handleEditTagClick}
           handleUpdateClassification={handleUpdateClassification}
+          isAddingTag={isAddingTag}
           isEditClassification={isEditClassification}
         />
       )}

@@ -73,6 +73,7 @@ export interface ClassificationDetailsProps {
   currentClassification?: Classification;
   deleteTags?: DeleteTagsType;
   isEditClassification?: boolean;
+  isAddingTag?: boolean;
   disableEditButton?: boolean;
   handleAfterDeleteAction?: () => void;
   handleEditTagClick?: (selectedTag: Tag) => void;
@@ -93,13 +94,14 @@ function ClassificationDetails({
   handleUpdateClassification,
   handleEditTagClick,
   deleteTags,
+  isAddingTag,
   handleActionDeleteTag,
   handleAddNewTagClick,
   handleEditDescriptionClick,
   handleCancelEditDescription,
   disableEditButton,
   isVersionView = false,
-}: ClassificationDetailsProps) {
+}: Readonly<ClassificationDetailsProps>) {
   const { permissions } = usePermissionProvider();
   const { t } = useTranslation();
   const { fqn: tagCategoryName } = useParams<{ fqn: string }>();
@@ -407,10 +409,19 @@ function ClassificationDetails({
   }, [currentClassification, changeDescription]);
 
   useEffect(() => {
-    if (currentClassification?.fullyQualifiedName) {
+    if (
+      currentClassification?.fullyQualifiedName &&
+      !deleteTags?.state &&
+      !isAddingTag
+    ) {
       fetchClassificationChildren(currentClassification.fullyQualifiedName);
     }
-  }, [currentClassification?.fullyQualifiedName, pageSize]);
+  }, [
+    currentClassification?.fullyQualifiedName,
+    pageSize,
+    deleteTags?.state,
+    isAddingTag,
+  ]);
 
   return (
     <div className="p-x-md" data-testid="tags-container">
