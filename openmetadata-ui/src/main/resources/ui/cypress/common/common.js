@@ -1350,12 +1350,12 @@ export const visitDataModelPage = (dataModelFQN, dataModelName) => {
 
   interceptURL(
     'GET',
-    'api/v1/services/dashboardServices/name/sample_looker?fields=*',
+    'api/v1/services/dashboardServices/name/sample_looker*',
     'getDashboardDetails'
   );
   interceptURL(
     'GET',
-    '/api/v1/dashboard/datamodels?service=sample_looker&fields=*',
+    '/api/v1/dashboard/datamodels?service=sample_looker*',
     'getDataModels'
   );
 
