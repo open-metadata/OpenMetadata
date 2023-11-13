@@ -553,9 +553,10 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @DefaultValue("false")
           boolean hardDelete,
       @Parameter(description = "Name of the App", schema = @Schema(type = "string")) @PathParam("name") String name) {
+    App app = repository.getByName(null, name, repository.getFields("bot,pipelines"));
     Response response = deleteByName(uriInfo, securityContext, name, true, hardDelete);
     if (response.getStatus() == Response.Status.OK.getStatusCode()) {
-      deleteApp(securityContext, (App) response.getEntity(), hardDelete);
+      deleteApp(securityContext, app, hardDelete);
     }
     return response;
   }
@@ -578,9 +579,10 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @DefaultValue("false")
           boolean hardDelete,
       @Parameter(description = "Id of the App", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+    App app = repository.get(null, id, repository.getFields("bot,pipelines"));
     Response response = delete(uriInfo, securityContext, id, true, hardDelete);
     if (response.getStatus() == Response.Status.OK.getStatusCode()) {
-      deleteApp(securityContext, (App) response.getEntity(), hardDelete);
+      deleteApp(securityContext, app, hardDelete);
     }
     return response;
   }
@@ -794,9 +796,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
         throw new InternalServerErrorException("Failed in Delete App from Scheduler.");
       }
     } else {
-      App app = repository.getByName(null, installedApp.getName(), repository.getFields("bot,pipelines"));
-      if (!nullOrEmpty(app.getPipelines())) {
-        EntityReference pipelineRef = app.getPipelines().get(0);
+      if (!nullOrEmpty(installedApp.getPipelines())) {
+        EntityReference pipelineRef = installedApp.getPipelines().get(0);
         IngestionPipelineRepository ingestionPipelineRepository =
             (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
 
@@ -806,12 +807,12 @@ public class AppResource extends EntityResource<App, AppRepository> {
 
         if (hardDelete) {
           // Remove the Pipeline in case of Delete
-          if (!nullOrEmpty(app.getPipelines())) {
+          if (!nullOrEmpty(installedApp.getPipelines())) {
             pipelineServiceClient.deletePipeline(ingestionPipeline);
           }
         } else {
           // Just Kill Running ingestion
-          decryptOrNullify(securityContext, ingestionPipeline, app.getBot().getName(), true);
+          decryptOrNullify(securityContext, ingestionPipeline, installedApp.getBot().getName(), true);
           pipelineServiceClient.killIngestion(ingestionPipeline);
         }
       }

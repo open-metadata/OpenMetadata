@@ -2,6 +2,7 @@ package org.openmetadata.service.apps.scheduler;
 
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_INFO_KEY;
 
+import java.util.UUID;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
@@ -16,11 +17,10 @@ import org.quartz.JobExecutionException;
 import org.quartz.JobListener;
 
 public abstract class AbstractOmAppJobListener implements JobListener {
-  private CollectionDAO collectionDAO;
+  private final CollectionDAO collectionDAO;
   private static final String SCHEDULED_APP_RUN_EXTENSION = "AppScheduleRun";
-  private static final String SCHEDULED_APP_RUN_RECORD_SCHEMA = "applicationRunRecord.json";
   public static final String APP_RUN_STATS = "AppRunStats";
-  static final String JOB_LISTENER_NAME = "OM_JOB_LISTENER";
+  public static final String JOB_LISTENER_NAME = "OM_JOB_LISTENER";
 
   protected AbstractOmAppJobListener(CollectionDAO dao) {
     this.collectionDAO = dao;
@@ -50,8 +50,8 @@ public abstract class AbstractOmAppJobListener implements JobListener {
     // Put the Context in the Job Data Map
     dataMap.put(SCHEDULED_APP_RUN_EXTENSION, runRecord);
 
-    // Run the Scheduled Run Record on the time series
-    collectionDAO.appExtensionTimeSeriesDao().insert(JsonUtils.pojoToJson(runRecord));
+    // Insert new Record Run
+    pushApplicationStatusUpdates(jobExecutionContext, runRecord, false);
 
     this.doJobToBeExecuted(jobExecutionContext);
   }
@@ -67,25 +67,54 @@ public abstract class AbstractOmAppJobListener implements JobListener {
     long endTime = System.currentTimeMillis();
     runRecord.withEndTime(endTime);
 
-    boolean success = jobException == null;
-    if (success) {
+    if (jobException == null
+        && !(runRecord.getStatus() == AppRunRecord.Status.FAILED
+            || runRecord.getStatus() == AppRunRecord.Status.ACTIVE_ERROR)) {
       runRecord.withStatus(AppRunRecord.Status.SUCCESS);
       SuccessContext context = new SuccessContext();
+      if (runRecord.getSuccessContext() != null) {
+        context = runRecord.getSuccessContext();
+      }
       context.getAdditionalProperties().put("stats", JsonUtils.getMap(jobStats));
       runRecord.setSuccessContext(context);
     } else {
       runRecord.withStatus(AppRunRecord.Status.FAILED);
       FailureContext context = new FailureContext();
+      if (runRecord.getFailureContext() != null) {
+        context = runRecord.getFailureContext();
+      }
       context.withAdditionalProperty("message", jobException.getMessage());
       context.withAdditionalProperty("stackTrace", ExceptionUtils.getStackTrace(jobException));
       runRecord.setFailureContext(context);
     }
 
-    collectionDAO
-        .appExtensionTimeSeriesDao()
-        .update(runRecord.getAppId().toString(), JsonUtils.pojoToJson(runRecord), runRecord.getTimestamp());
+    // Update App Run Record
+    pushApplicationStatusUpdates(jobExecutionContext, runRecord, true);
 
     this.doJobWasExecuted(jobExecutionContext, jobException);
+  }
+
+  public AppRunRecord getAppRunRecordForJob(JobExecutionContext context) {
+    JobDataMap dataMap = context.getJobDetail().getJobDataMap();
+    return (AppRunRecord) dataMap.get(SCHEDULED_APP_RUN_EXTENSION);
+  }
+
+  public void pushApplicationStatusUpdates(JobExecutionContext context, AppRunRecord runRecord, boolean update) {
+    JobDataMap dataMap = context.getJobDetail().getJobDataMap();
+    if (dataMap.containsKey(SCHEDULED_APP_RUN_EXTENSION)) {
+      App jobApp = (App) context.getJobDetail().getJobDataMap().get(APP_INFO_KEY);
+      updateStatus(jobApp.getId(), runRecord, update);
+    }
+  }
+
+  private void updateStatus(UUID appId, AppRunRecord record, boolean update) {
+    if (update) {
+      collectionDAO
+          .appExtensionTimeSeriesDao()
+          .update(appId.toString(), JsonUtils.pojoToJson(record), record.getTimestamp());
+    } else {
+      collectionDAO.appExtensionTimeSeriesDao().insert(JsonUtils.pojoToJson(record));
+    }
   }
 
   protected void doJobWasExecuted(JobExecutionContext jobExecutionContext, JobExecutionException jobException) {}
