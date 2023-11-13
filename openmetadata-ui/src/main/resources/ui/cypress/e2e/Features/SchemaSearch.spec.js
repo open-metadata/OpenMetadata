@@ -118,7 +118,7 @@ describe('Schema search', () => {
     );
     interceptURL(
       'GET',
-      `/api/v1/databaseSchemas?fields=*&database=${serviceName}.default&include=non-deleted`,
+      `/api/v1/databaseSchemas?fields=*&database=${serviceName}.default*`,
       'databaseSchema'
     );
     interceptURL(
