@@ -55,8 +55,8 @@ site_menu:
     url: /deployment/kubernetes/security
   - category: Deployment / Kubernetes Deployment / Helm Values
     url: /deployment/kubernetes/helm-values
-  - category: Deployment / Kubernetes Deployment / GKE Troubleshooting
-    url: /deployment/kubernetes/gke-troubleshooting
+  - category: Deployment / Kubernetes Deployment / FAQs
+    url: /deployment/kubernetes/faqs
 
   - category: Deployment / Ingestion
     url: /deployment/ingestion
