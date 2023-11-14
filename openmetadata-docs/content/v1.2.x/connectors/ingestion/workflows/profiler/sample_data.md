@@ -5,16 +5,22 @@ slug: /connectors/ingestion/workflows/profiler/external-sample-data
 
 # External Storage for Sample Data
 
-While running the profiler workflow if you have enabled the `Generate Sample Data` flag in your profiler configuration then sample data would be ingested for all the table included in the profiler workflow. This sample data is a random sample picked from the table and by default would contain 50 rows of data which is now configurable.
+While running the profiler workflow if you have enabled the `Generate Sample Data` flag in your profiler configuration, 
+sample data will be ingested for all the tables included in the profiler workflow. This data is a randomly sampled 
+from the table and by default would contain 50 rows of data, which is now configurable.
 
-With OpenMetadata release 1.2.1, a new capability allows users to take advantage of this sample data by uploading it to an S3 bucket in Parquet format. This means that the random sample, once generated, can be stored in a standardized, columnar storage format, facilitating efficient and scalable data analysis. To leverage this functionality, follow the documentation provided for uploading sample data to an S3 bucket in Parquet format as part of your profiling workflow.
+With OpenMetadata release 1.2.1, a new capability allows users to take advantage of this sample data by uploading
+it to an S3 bucket in Parquet format. This means that the random sample, once generated, can be stored in a standardized, 
+columnar storage format, facilitating efficient and scalable data analysis. 
 
+To leverage this functionality, follow the documentation provided for uploading sample data to an S3 bucket in Parquet 
+format as part of your profiling workflow.
 
-## Configure Sample Data Storage Credentials.
+## Configure the Sample Data Storage Credentials
 
 To upload the sample data on you need to first configure your storage account credentials, and there are multiple ways how you can do this.
 
-### Storage Credentials at Database Service.
+### Storage Credentials at the Database Service
 
 You can configure the Sample Data Storage Credentials at Database Service level while creating a new service or editing connection details of an existing Database Service.
 
@@ -27,9 +33,9 @@ You will provide the storage credential details in advance config section of con
  /%}
 
 
-### Storage Credentials at Database.
+### Storage Credentials at the Database
 
-You can configure the Sample Data Storage Credentials at Database level via "Profiler Settings" option from the menu.
+You can configure the Sample Data Storage Credentials at the Database level via the `Profiler Settings` option from the menu.
 
 {% image
   src="/images/v1.2/features/ingestion/workflows/profiler/sample-data-config-database-1.png"
@@ -44,9 +50,9 @@ You can configure the Sample Data Storage Credentials at Database level via "Pro
   caption="Database Storage Config - 2"
  /%}
 
-### Storage Credentials at Database Schema.
+### Storage Credentials at the Database Schema
 
-You can configure the Sample Data Storage Credentials at Database Schema level via "Profiler Settings" option from the menu.
+You can configure the Sample Data Storage Credentials at the Database Schema level via the `Profiler Settings` option from the menu.
 
 {% image
   src="/images/v1.2/features/ingestion/workflows/profiler/sample-data-config-schema-1.png"
@@ -62,7 +68,7 @@ You can configure the Sample Data Storage Credentials at Database Schema level v
  /%}
 
 
-### Configuration Details.
+### Configuration Details
 
 
 - **Profile Sample Value**: Percentage of data or number of rows to use when sampling tables. By default, the profiler will run against the entire table.
@@ -70,16 +76,17 @@ You can configure the Sample Data Storage Credentials at Database Schema level v
     - **Percentage**: this will use a percentage to sample the table (e.g. if table has 100 rows, and we set sample percentage tp 50%, the profiler will use 50 random rows to compute the metrics).
     - **Row Count**: this will use a number of rows to sample the table (e.g. if table has 100 rows, and we set row count to 10, the profiler will use 10 random rows to compute the metrics).
 - **Sample Data Rows Count**: Number of rows of sample data to be ingested, if generate sample data option is enabled.
+
 {% note %}
 
-OpenMetadata UI will always show 50 or less rows of sample data. *Sample Data Rows Count* higher than 50 is only used for maintaining the row count of sample data that will be stored in parquet file in an object storage.
+The OpenMetadata UI will always show 50 or fewer rows of sample data. *Sample Data Rows Count* higher than 50 is only used for maintaining the row count of sample data that will be stored in parquet file in an object storage.
 
 {% /note %}
 
 
-- **Bucket Name**: A bucket name is a unique identifier used to organize and store data objects.It's similar to a folder name, but it's used for object storage rather than file storage.
+- **Bucket Name**: A bucket name is a unique identifier used to organize and store data objects. It's similar to a folder name, but it's used for object storage rather than file storage.
 - **Prefix**: The prefix of a data source refers to the first part of the data path that identifies the source or origin of the data. The generated sample data parquet file will be uploaded to this prefix path in your bucket.
-- **Overwrite Sample Data**: If this flag is enabled, only one parquet file will be generated per table to store the sample data. Otherwise a parquet file will be generated for each day when the profiler workflow runs.
+- **Overwrite Sample Data**: If this flag is enabled, only one parquet file will be generated per table to store the sample data. Otherwise, a parquet file will be generated for each day when the profiler workflow runs.
 
 #### Connection Details for AWS S3
 
@@ -146,7 +153,12 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 
 #### OpenMetadata Storage Config
 
-This option is useful when you wan to skip uploading sample data of a schema or database from being uploaded to object storage. For example consider the scenario where you have a database and within database there are three schemas A, B & C. You have configured the S3 Storage credentials for your database and if you do not have any storage configuration at database schema level then by default sample data of tables within all schema will be uploaded to storage config. Suppose you do not wish to upload sample data of tables from schema A, then you can choose OpenMetadata Storage Config option to achieve the same.
+This option is useful when you want to skip uploading sample data of a schema or database from being uploaded to object storage.
+For example, consider the scenario where you have a database with three schemas A, B & C. You have configured the S3 Storage 
+credentials for your database and, if you do not have any storage configuration at database schema level, then by default the sample data of
+the tables in the schemas will be uploaded to the storage config. 
+
+Suppose that you do not wish to upload sample data of tables from schema A, then you can choose the OpenMetadata Storage Config option to achieve the same.
 
 ### Order of Precedence
 
@@ -156,4 +168,6 @@ As described above, you can configure the storage configuration to upload the sa
 Database Schema > Database > Database Service
 ```
 
-Which means if you have configured storage credentials at database schema level sample data of all the tables would be uploaded with that storage config, i.e. at the specified bucket, prefix and with account configured within database schema. If that is not configure then the preference would be given to the database storage options and at last to the database service storage options.
+Which means that if you have configured the storage credentials at database schema level, the sample data of all the tables 
+would be uploaded with that storage config. If that is not configured, then the preference would be given to the database storage
+options and at last to the database service storage options.
