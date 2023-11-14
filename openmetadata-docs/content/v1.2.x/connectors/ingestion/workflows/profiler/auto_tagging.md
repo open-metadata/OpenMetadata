@@ -1,5 +1,5 @@
 ---
-title: Lineage Ingestion
+title: Auto PII Tagging
 slug: /connectors/ingestion/auto_tagging
 ---
 

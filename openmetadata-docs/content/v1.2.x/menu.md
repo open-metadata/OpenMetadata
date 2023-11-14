@@ -556,6 +556,10 @@ site_menu:
     url: /connectors/ingestion/workflows/profiler
   - category: Connectors / Ingestion / Workflows / Profiler / Metrics
     url: /connectors/ingestion/workflows/profiler/metrics
+  - category: Connectors / Ingestion / Workflows / Profiler / Sample Data
+    url: /connectors/ingestion/workflows/profiler/external-sample-data
+  - category: Connectors / Ingestion / Workflows / Profiler / External Workflow
+    url: /connectors/ingestion/workflows/profiler/external-workflow
   - category: Connectors / Ingestion / Workflows / Data Quality
     url: /connectors/ingestion/workflows/data-quality
   - category: Connectors / Ingestion / Workflows / Data Quality / Tests
