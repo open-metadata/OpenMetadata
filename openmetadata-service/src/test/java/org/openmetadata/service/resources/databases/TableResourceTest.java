@@ -1736,6 +1736,38 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
+  void test_domainUpdate(TestInfo test) throws HttpResponseException {
+    DatabaseService dbService = dbServiceTest.createEntity(dbServiceTest.createRequest(test), ADMIN_AUTH_HEADERS);
+    CreateDatabase createDb = dbTest.createRequest(test).withService(dbService.getFullyQualifiedName());
+    Database db = dbTest.createEntity(createDb, ADMIN_AUTH_HEADERS);
+    CreateDatabaseSchema createSchema = schemaTest.createRequest(test).withDatabase(db.getFullyQualifiedName());
+    DatabaseSchema schema = schemaTest.createEntity(createSchema, ADMIN_AUTH_HEADERS);
+    CreateTable createTable =
+        createRequest(test)
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withDomain(DOMAIN.getFullyQualifiedName());
+    Table table = createEntity(createTable, ADMIN_AUTH_HEADERS);
+
+    Table createdTable = getEntity(table.getId(), "domain", ADMIN_AUTH_HEADERS);
+    assertEquals(DOMAIN.getFullyQualifiedName(), createdTable.getDomain().getFullyQualifiedName());
+
+    // update table entity domain w/ PUT request w/ bot auth and check update is ignored
+    CreateTable updateTablePayload = createTable.withDomain(DOMAIN1.getFullyQualifiedName());
+    updateEntity(updateTablePayload, OK, INGESTION_BOT_AUTH_HEADERS);
+    Table updatedTable = getEntity(table.getId(), "domain", ADMIN_AUTH_HEADERS);
+    assertEquals(DOMAIN.getFullyQualifiedName(), updatedTable.getDomain().getFullyQualifiedName());
+
+    // patch domain w/ bot auth and check update is applied
+    patchEntity(
+        table.getId(),
+        JsonUtils.pojoToJson(createTable),
+        createdTable.withDomain(DOMAIN1.getEntityReference()),
+        INGESTION_BOT_AUTH_HEADERS);
+    Table patchedTable = getEntity(table.getId(), "domain", ADMIN_AUTH_HEADERS);
+    assertEquals(DOMAIN1.getFullyQualifiedName(), patchedTable.getDomain().getFullyQualifiedName());
+  }
+
+  @Test
   void test_retentionPeriod(TestInfo test) throws HttpResponseException {
     CreateDatabase createDatabase = dbTest.createRequest(getEntityName(test)).withRetentionPeriod("P30D");
     Database database = dbTest.createEntity(createDatabase, ADMIN_AUTH_HEADERS);

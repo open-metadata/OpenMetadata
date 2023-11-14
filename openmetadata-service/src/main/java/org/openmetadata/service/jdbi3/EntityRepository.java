@@ -1978,6 +1978,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
       if (origDomain == updatedDomain) {
         return;
       }
+      if (operation.isPut() && !nullOrEmpty(original.getDomain()) && updatedByBot()) {
+        // Revert change to non-empty domain if it is being updated by a bot
+        // This is to prevent bots from overwriting the domain. Domain need to be
+        // updated with a PATCH request
+        updated.setDomain(original.getDomain());
+        return;
+      }
+
       if ((operation.isPatch() || updatedDomain != null)
           && recordChange(FIELD_DOMAIN, origDomain, updatedDomain, true, entityReferenceMatch)) {
         if (origDomain != null) {
