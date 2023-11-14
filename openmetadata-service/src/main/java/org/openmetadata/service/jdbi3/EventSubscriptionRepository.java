@@ -93,11 +93,6 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     // No relationships to store beyond what is stored in the super class
   }
 
-  @Override
-  public void restorePatchAttributes(EventSubscription original, EventSubscription updated) {
-    updated.withId(original.getId()).withName(original.getName());
-  }
-
   private SubscriptionPublisher getPublisher(UUID id) {
     return subscriptionPublisherMap.get(id);
   }
