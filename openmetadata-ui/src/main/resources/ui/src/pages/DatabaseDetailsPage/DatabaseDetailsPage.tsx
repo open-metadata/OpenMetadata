@@ -14,7 +14,7 @@
 import { Col, Row, Space, Switch, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
-import { isEmpty, isString, isUndefined, toString } from 'lodash';
+import { isEmpty, isUndefined, toString } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags } from 'Models';
 import QueryString from 'qs';
@@ -223,7 +223,7 @@ const DatabaseDetails: FunctionComponent = () => {
       const data = response.hits.hits.map((schema) => schema._source);
       const total = response.hits.total.value;
       setSchemaData(data);
-      setSchemaPaging({ total });
+      setSchemaPaging({ total: total });
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -345,20 +345,21 @@ const DatabaseDetails: FunctionComponent = () => {
     cursorType,
     currentPage,
   }: PagingHandlerParams) => {
-    if (cursorType) {
-      if (isString(cursorType)) {
-        const pagingString = `&${cursorType}=${
-          databaseSchemaPaging[cursorType as keyof typeof databaseSchemaPaging]
-        }`;
-        setSchemaDataLoading(true);
-        fetchDatabaseSchemas(pagingString).finally(() => {
-          setSchemaDataLoading(false);
-        });
-        setCurrentPage(currentPage);
-      } else {
-        setCurrentPage(cursorType);
-        searchValue && searchSchema(searchValue, cursorType);
-      }
+    if (searchValue) {
+      setCurrentPage(currentPage);
+      setSchemaDataLoading(true);
+      searchSchema(searchValue, currentPage).finally(() =>
+        setSchemaDataLoading(false)
+      );
+    } else if (cursorType && databaseSchemaPaging[cursorType]) {
+      const pagingString = `&${cursorType}=${
+        databaseSchemaPaging[cursorType as keyof typeof databaseSchemaPaging]
+      }`;
+      setCurrentPage(currentPage);
+      setSchemaDataLoading(true);
+      fetchDatabaseSchemas(pagingString).finally(() => {
+        setSchemaDataLoading(false);
+      });
     }
   };
 
@@ -518,7 +519,7 @@ const DatabaseDetails: FunctionComponent = () => {
         databaseSchemaPaging,
         currentPage,
         databaseSchemaPagingHandler,
-        Boolean(searchSchema)
+        ((databaseSchemaPaging.after || databaseSchemaPaging.before  ) ? false : true)
       ),
     [
       schemaData,
