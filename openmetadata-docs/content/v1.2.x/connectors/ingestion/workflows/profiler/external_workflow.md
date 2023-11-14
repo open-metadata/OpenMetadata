@@ -3,22 +3,29 @@ title: External Profiler Workflow
 slug: /connectors/ingestion/workflows/profiler/external-workflow
 ---
 
-# External Profiler Workflow.
+# External Profiler Workflow
 
-Consider an use case when you have a large database source with multiple databases and multiple schemas which are maintained by different teams within your organization. You have created multiple database services within OpenMetadata depending on your use case by applying various database and schema filters on this sample large database source. Now instead of running a profiler pipeline for each service you want to run profiler for the entire database irrespective of the OpenMetadata service which a table or database or database schema would belong to. This document will guide you on how to achieve it.
+Consider a use case where you have a large database source with multiple databases and schemas which are maintained by 
+different teams within your organization. You have created multiple database services within OpenMetadata depending on 
+your use case by applying various filters on this large source. Now, instead of running a profiler pipeline for each 
+service, you want to run a **single workflow profiler for the entire source**, irrespective of the OpenMetadata service which
+an asset would belong to. This document will guide you on how to achieve this.
 
+{% note %}
 
-The support for running profiler against a database source and not a specific database service is only achievable when you run it externally.
+Note that running a single profiler workflow is only supported if you run the workflow **externally**, not from OpenMetadata.
+
+{% /note %}
 
 {% partial file="/v1.2/connectors/external-ingestion-deployment.md" /%}
 
 
 ## 1. Define the YAML Config
 
+You will need to prepare a yaml file for the data profiler depending on the database source. 
+You can get details of how to define a yaml file for data profiler for each connector [here](https://docs.open-metadata.org/v1.2.x/connectors/database).
 
-You will need to prepare a yaml file for data profiler depending on the database source. You can get details of how to define a yaml file for data profiler for each connector [here](https://docs.open-metadata.org/v1.2.x/connectors/database).
-
-For example, consider if the data source was snowflake then the yaml file would have looked like as follows.
+For example, consider if the data source was snowflake, then the yaml file would have looked like as follows.
 
 
 ```snowflake_external_profiler.yaml
@@ -85,17 +92,54 @@ workflowConfig:
 
 ```
 
+{% note %}
 
-**Notice that we do not pass the service name in this yaml file, compared to a normal profiler external workflow.**
+Note that we do **NOT pass the Service Name** in this yaml file, unlike your typical profiler workflow
+
+{% /note %}
 
 
+## 2. Run the Workflow
 
-## 2. Run with the CLI
-After saving the YAML config, we will run the command the same way we did for the metadata ingestion:
+### Run the Workflow with the CLI
+
+One option to running the workflow externally is by leveraging the `metadata` CLI.
+
+After saving the YAML config, we will run the command:
 
 ```
 metadata profile -c <path-to-yaml>
 ```
 
-Note now instead of running ingest, we are using the profile command to select the Profiler workflow.
+### Run the Workflow from Python using the SDK
 
+If you'd rather have a Python script taking care of the execution, you can use:
+
+```python
+from metadata.workflow.profiler import ProfilerWorkflow
+from metadata.workflow.workflow_output_handler import print_status
+
+# Specify your YAML configuration
+CONFIG = """
+source:
+  ...
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: 'http://localhost:8585/api'
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: ...
+"""
+
+def run():
+    workflow_config = yaml.safe_load(CONFIG)
+    workflow = ProfilerWorkflow.create(workflow_config)
+    workflow.execute()
+    workflow.raise_from_status()
+    print_status(workflow)
+    workflow.stop()
+
+
+if __name__ == "__main__":
+  run()
+```
