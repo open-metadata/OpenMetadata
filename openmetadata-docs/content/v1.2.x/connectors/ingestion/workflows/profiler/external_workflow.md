@@ -5,6 +5,12 @@ slug: /connectors/ingestion/workflows/profiler/external-workflow
 
 # External Profiler Workflow
 
+{% note %}
+
+Note that this requires OpenMetadata 1.2.1 or higher.
+
+{% note %}
+
 Consider a use case where you have a large database source with multiple databases and schemas which are maintained by 
 different teams within your organization. You have created multiple database services within OpenMetadata depending on 
 your use case by applying various filters on this large source. Now, instead of running a profiler pipeline for each 

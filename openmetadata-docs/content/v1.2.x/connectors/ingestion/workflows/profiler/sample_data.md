@@ -5,6 +5,12 @@ slug: /connectors/ingestion/workflows/profiler/external-sample-data
 
 # External Storage for Sample Data
 
+{% note %}
+
+Note that this requires OpenMetadata 1.2.1 or higher.
+
+{% note %}
+
 While running the profiler workflow if you have enabled the `Generate Sample Data` flag in your profiler configuration, 
 sample data will be ingested for all the tables included in the profiler workflow. This data is a randomly sampled 
 from the table and by default would contain 50 rows of data, which is now configurable.
