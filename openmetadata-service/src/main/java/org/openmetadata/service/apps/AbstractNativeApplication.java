@@ -184,6 +184,11 @@ public class AbstractNativeApplication implements NativeApplication {
     this.startApp(jobExecutionContext);
   }
 
+  @Override
+  public void configure() {
+    /* Not needed by default */
+  }
+
   public static AppRuntime getAppRuntime(App app) {
     return JsonUtils.convertValue(app.getRuntime(), ScheduledExecutionContext.class);
   }

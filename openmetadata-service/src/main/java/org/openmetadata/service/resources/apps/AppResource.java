@@ -480,6 +480,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
     App app = getApplication(definition, create, securityContext.getUserPrincipal().getName());
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
       ApplicationHandler.scheduleApplication(app, Entity.getCollectionDAO(), searchRepository);
+      ApplicationHandler.configureApplication(app, Entity.getCollectionDAO(), searchRepository);
     }
     return create(uriInfo, securityContext, app);
   }
@@ -632,6 +633,29 @@ public class AppResource extends EntityResource<App, AppRepository> {
       return Response.status(Response.Status.OK).entity("App is Scheduled.").build();
     }
     throw new IllegalArgumentException("App is not of schedule type Scheduled.");
+  }
+
+  @POST
+  @Path("/configure/{name}")
+  @Operation(
+      operationId = "configureApplication",
+      summary = "Configure an Application",
+      description = "Schedule a application to be run on demand.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The Application",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Response.class))),
+        @ApiResponse(responseCode = "404", description = "Application for instance {id} is not found")
+      })
+  public Response configureApplication(
+      @Context UriInfo uriInfo,
+      @Parameter(description = "Name of the App", schema = @Schema(type = "string")) @PathParam("name") String name,
+      @Context SecurityContext securityContext) {
+    App app = repository.getByName(uriInfo, name, new EntityUtil.Fields(repository.getAllowedFields()));
+    // The application will have the updated appConfiguration we can use to run the `configure` logic
+    ApplicationHandler.configureApplication(app, repository.getDaoCollection(), searchRepository);
+    return Response.status(Response.Status.OK).entity("App has been configured.").build();
   }
 
   @POST
