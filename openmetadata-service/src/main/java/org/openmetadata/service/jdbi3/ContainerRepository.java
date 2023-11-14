@@ -146,12 +146,8 @@ public class ContainerRepository extends EntityRepository<Container> {
   @Override
   public void restorePatchAttributes(Container original, Container updated) {
     // Patch can't make changes to following fields. Ignore the changes
-    updated
-        .withFullyQualifiedName(original.getFullyQualifiedName())
-        .withService(original.getService())
-        .withParent(original.getParent())
-        .withName(original.getName())
-        .withId(original.getId());
+    super.restorePatchAttributes(original, updated);
+    updated.withService(original.getService()).withParent(original.getParent());
   }
 
   @Override

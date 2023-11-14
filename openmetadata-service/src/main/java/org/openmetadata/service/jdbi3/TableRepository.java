@@ -177,12 +177,8 @@ public class TableRepository extends EntityRepository<Table> {
   @Override
   public void restorePatchAttributes(Table original, Table updated) {
     // Patch can't make changes to following fields. Ignore the changes.
-    updated
-        .withFullyQualifiedName(original.getFullyQualifiedName())
-        .withName(original.getName())
-        .withDatabase(original.getDatabase())
-        .withService(original.getService())
-        .withId(original.getId());
+    super.restorePatchAttributes(original, updated);
+    updated.withDatabase(original.getDatabase()).withService(original.getService());
   }
 
   @Override

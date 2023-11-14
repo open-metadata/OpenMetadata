@@ -82,6 +82,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         PATCH_FIELDS,
         UPDATE_FIELDS);
     supportsSearch = true;
+    renameAllowed = true;
   }
 
   @Override
@@ -177,6 +178,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   @Override
   public void restorePatchAttributes(GlossaryTerm original, GlossaryTerm updated) {
     // Patch can't update Children
+    super.restorePatchAttributes(original, updated);
     updated.withChildren(original.getChildren());
   }
 
@@ -435,6 +437,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
               CatalogExceptionMessage.systemEntityRenameNotAllowed(original.getName(), entityType));
         }
         // Glossary term name changed - update the FQNs of the children terms to reflect this
+        setFullyQualifiedName(updated);
         LOG.info("Glossary term name changed from {} to {}", original.getName(), updated.getName());
         daoCollection.glossaryTermDAO().updateFqn(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
         daoCollection
@@ -455,6 +458,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       UUID newGlossaryId = getId(updated.getGlossary());
       boolean glossaryChanged = !Objects.equals(oldGlossaryId, newGlossaryId);
 
+      setFullyQualifiedName(updated); // Update the FQN since the parent has changed
       daoCollection.glossaryTermDAO().updateFqn(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
       daoCollection
           .tagUsageDAO()

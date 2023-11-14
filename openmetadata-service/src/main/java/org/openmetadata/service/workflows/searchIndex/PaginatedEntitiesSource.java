@@ -126,11 +126,6 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
     getUpdatedStats(stats, currentSuccess, currentFailed);
   }
 
-  @Override
-  public StepStats getStats() {
-    return stats;
-  }
-
   public String getLastFailedCursor() {
     return lastFailedCursor;
   }
