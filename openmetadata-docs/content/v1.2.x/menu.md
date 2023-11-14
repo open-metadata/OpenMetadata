@@ -466,6 +466,8 @@ site_menu:
     url: /connectors/pipeline/nifi
   - category: Connectors / Pipeline / Nifi / Run Externally
     url: /connectors/pipeline/nifi/yaml
+  - category: Connectors / Pipeline / Nifi / Troubleshooting
+    url: /connectors/pipeline/nifi/troubleshooting
   - category: Connectors / Pipeline / Spline
     url: /connectors/pipeline/spline
   - category: Connectors / Pipeline / Spline / Run Externally
