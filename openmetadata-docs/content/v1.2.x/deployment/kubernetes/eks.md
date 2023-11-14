@@ -8,7 +8,7 @@ slug: /deployment/kubernetes/eks
 OpenMetadata supports the Installation and Running of Application on Elastic Kubernetes Services (EKS) through Helm Charts.
 However, there are some additional configurations which needs to be done as prerequisites for the same.
 
-{%note%}
+{%note noteType="Warning"%}
 
 All the code snippets in this section assume the `default` namespace for kubernetes.
 This guide presumes you have AWS EKS Cluster already available.
@@ -16,6 +16,65 @@ This guide presumes you have AWS EKS Cluster already available.
 {%/note%}
 
 ## Prerequisites
+
+### AWS Services for Database as RDS and Search Engine as ElasticSearch
+
+It is recommended to use [Amazon RDS](https://docs.aws.amazon.com/rds/index.html) and [Amazon OpenSearch Service](https://docs.aws.amazon.com/opensearch-service/?id=docs_gateway) for Production Deployments.
+
+We support 
+
+- Amazon RDS (MySQL) engine version 8 or greater
+- Amazon RDS (PostgreSQL) engine version between 12 or greater
+- Amazon OpenSearch engine version 2.7
+
+{%note noteType="Tip"%}
+When using AWS Services the SearchType Configuration for elastic search should be `opensearch`, for both cases ElasticSearch and OpenSearch, as you can see in the ElasticSearch configuration example below.
+{%/note%}
+
+We recommend 
+- Amazon RDS to be in Multiple Availability Zones. 
+- Amazon OpenSearch (or ElasticSearch) Service with Multiple Availability Zones with minimum 2 Nodes.
+
+Once you have the RDS and OpenSearch Services Setup, you can update the environment variables below for OpenMetadata kubernetes deployments to connect with Database and ElasticSearch.
+
+```yaml
+# openmetadata-values.prod.yaml
+...
+openmetadata:
+  config:
+    elasticsearch:
+      host: <AMAZON_OPENSEARCH_SERVICE_ENDPOINT_WITHOUT_HTTPS>
+      searchType: opensearch
+      port: 443
+      scheme: https
+      connectionTimeoutSecs: 5
+      socketTimeoutSecs: 60
+      keepAliveTimeoutSecs: 600
+      batchSize: 10
+      auth:
+        enabled: true
+        username: <AMAZON_OPENSEARCH_USERNAME>
+        password:
+          secretRef: elasticsearch-secrets
+          secretKey: openmetadata-elasticsearch-password
+    database:
+      host: <AMAZON_RDS_ENDPOINT>
+      port: 3306
+      driverClass: com.mysql.cj.jdbc.Driver
+      dbScheme: mysql
+      dbUseSSL: true
+      databaseName: <RDS_DATABASE_NAME>
+      auth:
+        username: <RDS_DATABASE_USERNAME>
+        password:
+          secretRef: mysql-secrets
+          secretKey: openmetadata-mysql-password
+  ...
+```
+
+Make sure to create RDS and OpenSearch credentials as Kubernetes Secrets mentioned [here](https://docs.open-metadata.org/deployment/kubernetes#quickstart).
+
+Also, disable MySQL and ElasticSearch from OpenMetadata Dependencies Helm Charts as mentioned in the FAQs [here](/deployment/kubernetes/faqs#how-to-disable-mysql-and-elasticsearch-from-openmetadata-dependencies-helm-charts).
 
 ### Create Elastic File System in AWS
 

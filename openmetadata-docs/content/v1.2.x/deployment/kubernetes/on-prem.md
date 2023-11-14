@@ -1,6 +1,6 @@
 ---
 title: Kubernetes On Premises Deployment
-slug: /deployment/kubernetes/onprem
+slug: /deployment/kubernetes/on-prem
 ---
 
 # On Premises Kubernetes Deployment
@@ -8,9 +8,9 @@ slug: /deployment/kubernetes/onprem
 OpenMetadata supports the Installation and Running of application on OnPremises Kubernetes through Helm Charts.
 However, there are some additional configurations which needs to be done as prerequisites for the same.
 
-{%note%}
+{%note noteType="Warning"%}
 
-This guide presumes you have an on premises Kubernetes cluster setup and you are installing OpenMetadata in `default` namespace.
+This guide presumes you have an on premises Kubernetes cluster setup, and you are installing OpenMetadata in `default` namespace.
 
 {%/note%}
 
@@ -24,7 +24,7 @@ The workaround is to create nfs-share and use that as the persistent claim to de
 
 {%note%}
 
-This guide assumes you have NFS Server already setup with Hostname or IP Address which is reachable from your on premises Kubernetes cluster and you have configured a path to be used for OpenMetadata Airflow Helm Dependency.
+This guide assumes you have NFS Server already setup with Hostname or IP Address which is reachable from your on premises Kubernetes cluster, and you have configured a path to be used for OpenMetadata Airflow Helm Dependency.
 
 {%/note%}
 
@@ -109,7 +109,7 @@ kubectl create -f logs_pvc.yml
 
 ## Change owner and permission manually on disks
 
-Since airflow pods run as non root users, they would not have write access on the nfs server volumes. In order to fix the permission here, spin up a pod with persistent volumes attached and run it once.
+Since airflow pods run as non-root users, they would not have write access on the nfs server volumes. In order to fix the permission here, spin up a pod with persistent volumes attached and run it once.
 
 ```yaml
 # permissions_pod.yml
@@ -146,7 +146,7 @@ spec:
 
 {%note%}
 
-Airflow runs the pods with linux user name as airflow and linux user id as 50000.
+Airflow runs the pods with linux username as airflow and linux user id as 50000.
 
 {%/note%}
 
@@ -188,7 +188,7 @@ airflow:
       enabled: false
 ```
 
-For more information on airflow helm chart values, please refer to [airflow-helm](https://artifacthub.io/packages/helm/airflow-helm/airflow/8.5.3).
+For more information on airflow helm chart values, please refer to [airflow-helm](https://artifacthub.io/packages/helm/airflow-helm/airflow/8.8.0).
 
 When deploying openmetadata dependencies helm chart, use the below command -
 
