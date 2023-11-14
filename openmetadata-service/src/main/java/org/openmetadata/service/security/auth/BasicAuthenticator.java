@@ -29,6 +29,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.MAX_FAI
 import static org.openmetadata.service.exception.CatalogExceptionMessage.SELF_SIGNUP_ERROR;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.TOKEN_EXPIRY_ERROR;
 import static org.openmetadata.service.resources.teams.UserResource.USER_PROTECTED_FIELDS;
+import static org.openmetadata.service.util.EmailUtil.getSmtpSettings;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
 import freemarker.template.TemplateException;
@@ -166,7 +167,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
       String emailVerificationLink =
           String.format(
               "%s/users/registrationConfirmation?user=%s&token=%s",
-              EmailUtil.buildBaseUrl(uriInfo.getRequestUri()), user.getFullyQualifiedName(), mailVerificationToken);
+              getSmtpSettings().getOpenMetadataUrl(), user.getFullyQualifiedName(), mailVerificationToken);
       try {
         EmailUtil.sendEmailVerification(emailVerificationLink, user);
       } catch (TemplateException e) {
@@ -187,7 +188,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     String passwordResetLink =
         String.format(
             "%s/users/password/reset?user=%s&token=%s",
-            EmailUtil.buildBaseUrl(uriInfo.getRequestUri()), user.getFullyQualifiedName(), mailVerificationToken);
+            getSmtpSettings().getOpenMetadataUrl(), user.getFullyQualifiedName(), mailVerificationToken);
     try {
       EmailUtil.sendPasswordResetLink(passwordResetLink, user, subject, templateFilePath);
     } catch (TemplateException e) {

@@ -15,13 +15,13 @@ package org.openmetadata.service.formatter.decorators;
 
 import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 import static org.openmetadata.service.formatter.util.FormatterUtil.getFormattedMessages;
+import static org.openmetadata.service.util.EmailUtil.getSmtpSettings;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.service.ChangeEventConfig;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.subscription.slack.SlackAttachment;
 import org.openmetadata.service.events.subscription.slack.SlackMessage;
@@ -62,7 +62,7 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
   public String getEntityUrl(String entityType, String fqn) {
     return String.format(
         "<%s/%s/%s|%s>",
-        ChangeEventConfig.getInstance().getOmUri(), entityType, fqn.trim().replaceAll(" ", "%20"), fqn.trim());
+        getSmtpSettings().getOpenMetadataUrl(), entityType, fqn.trim().replaceAll(" ", "%20"), fqn.trim());
   }
 
   @Override

@@ -23,7 +23,6 @@ import freemarker.template.Template;
 import freemarker.template.TemplateException;
 import java.io.IOException;
 import java.io.StringWriter;
-import java.net.URI;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
@@ -78,9 +77,10 @@ public class EmailUtil {
   public static final String CHANGE_EVENT_TEMPLATE = "changeEvent.ftl";
   public static final String INVITE_CREATE_PWD = "invite-createPassword.ftl";
   public static final String TASK_NOTIFICATION_TEMPLATE = "taskAssignment.ftl";
-
   private static final String REPORT_SUBJECT = "%s: Data Insights Weekly - %s";
   public static final String DATA_INSIGHT_REPORT_TEMPLATE = "dataInsightReport.ftl";
+  public static final String TEST_EMAIL_TEMPLATE = "testMail.ftl";
+  public static final String TEST_EMAIL_SUBJECT = "%s : Test Email";
   private static SmtpSettings storedSmtpSettings;
   private static Mailer mailer;
   private static final Configuration templateConfiguration = new Configuration(VERSION_2_3_28);
@@ -110,11 +110,12 @@ public class EmailUtil {
           strategy = SMTP;
           break;
       }
+      String username =
+          CommonUtil.nullOrEmpty(smtpServerSettings.getUsername()) ? null : smtpServerSettings.getUsername();
+      String password =
+          CommonUtil.nullOrEmpty(smtpServerSettings.getPassword()) ? null : smtpServerSettings.getPassword();
       return MailerBuilder.withSMTPServer(
-              smtpServerSettings.getServerEndpoint(),
-              smtpServerSettings.getServerPort(),
-              smtpServerSettings.getUsername(),
-              smtpServerSettings.getPassword())
+              smtpServerSettings.getServerEndpoint(), smtpServerSettings.getServerPort(), username, password)
           .withTransportStrategy(strategy)
           .buildMailer();
     }
@@ -246,19 +247,6 @@ public class EmailUtil {
     }
   }
 
-  public static String buildBaseUrl(URI uri) {
-    try {
-      if (CommonUtil.nullOrEmpty(getSmtpSettings().getOpenMetadataUrl())) {
-        return String.format("%s://%s", uri.getScheme(), uri.getHost());
-      } else {
-        URI serverUrl = new URI(getSmtpSettings().getOpenMetadataUrl());
-        return String.format("%s://%s", serverUrl.getScheme(), serverUrl.getHost());
-      }
-    } catch (Exception ex) {
-      throw new IllegalArgumentException("Missing URI info from URI and SMTP settings.");
-    }
-  }
-
   public static void sendInviteMailToAdmin(User user, String pwd) {
     if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
       Map<String, Object> templatePopulator = new HashMap<>();
@@ -330,6 +318,18 @@ public class EmailUtil {
     }
   }
 
+  public static void sendTestEmail(String email) throws IOException, TemplateException {
+    if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
+      Map<String, Object> templatePopulator = new HashMap<>();
+      templatePopulator.put("userName", email.split("@")[0]);
+      templatePopulator.put("entity", getSmtpSettings().getEmailingEntity());
+      templatePopulator.put("supportUrl", getSmtpSettings().getSupportUrl());
+      sendMail(getTestEmailSubject(), templatePopulator, email, EMAIL_TEMPLATE_BASEPATH, TEST_EMAIL_TEMPLATE);
+    } else {
+      LOG.warn(EMAIL_IGNORE_MSG, email);
+    }
+  }
+
   public static void testConnection() {
     mailer.testConnection();
   }
@@ -358,6 +358,10 @@ public class EmailUtil {
     return String.format(TASK_SUBJECT, getSmtpSettings().getEmailingEntity());
   }
 
+  public static String getTestEmailSubject() {
+    return String.format(TEST_EMAIL_SUBJECT, getSmtpSettings().getEmailingEntity());
+  }
+
   public static String getDataInsightReportSubject() {
     return String.format(
         REPORT_SUBJECT, getSmtpSettings().getEmailingEntity(), new SimpleDateFormat("dd-MM-yy").format(new Date()));
@@ -375,7 +379,7 @@ public class EmailUtil {
     return getSmtpSettings().getOpenMetadataUrl();
   }
 
-  private static SmtpSettings getSmtpSettings() {
+  public static SmtpSettings getSmtpSettings() {
     SmtpSettings emailConfig = SettingsCache.getSetting(SettingsType.EMAIL_CONFIGURATION, SmtpSettings.class);
     if (!emailConfig.equals(storedSmtpSettings)) {
       storedSmtpSettings = emailConfig;

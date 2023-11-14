@@ -15,12 +15,12 @@ package org.openmetadata.service.formatter.decorators;
 
 import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 import static org.openmetadata.service.formatter.util.FormatterUtil.getFormattedMessages;
+import static org.openmetadata.service.util.EmailUtil.getSmtpSettings;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.service.ChangeEventConfig;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.subscription.email.EmailMessage;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -59,7 +59,7 @@ public class EmailMessageDecorator implements MessageDecorator<EmailMessage> {
   @Override
   public String getEntityUrl(String entityType, String fqn) {
     return String.format(
-        "<a href = '%s/%s/%s'>%s</a>", ChangeEventConfig.getInstance().getOmUri(), entityType, fqn.trim(), fqn.trim());
+        "<a href = '%s/%s/%s'>%s</a>", getSmtpSettings().getOpenMetadataUrl(), entityType, fqn.trim(), fqn.trim());
   }
 
   @Override

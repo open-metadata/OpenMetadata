@@ -132,7 +132,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // init for dataSourceFactory
     DatasourceConfig.initialize(catalogConfig.getDataSourceFactory().getDriverClass());
 
-    ChangeEventConfig.initialize(catalogConfig);
     final Jdbi jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
     CollectionDAO collectionDAO = jdbi.onDemand(CollectionDAO.class);
     Entity.setCollectionDAO(collectionDAO);
