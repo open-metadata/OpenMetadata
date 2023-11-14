@@ -44,12 +44,6 @@ public class DocumentRepository extends EntityRepository<Document> {
   }
 
   @Override
-  public void restorePatchAttributes(Document original, Document updated) {
-    // Patch can't make changes to following fields. Ignore the changes
-    updated.withName(original.getName()).withId(original.getId());
-  }
-
-  @Override
   public Document setFields(Document document, Fields fields) {
     return document;
   }

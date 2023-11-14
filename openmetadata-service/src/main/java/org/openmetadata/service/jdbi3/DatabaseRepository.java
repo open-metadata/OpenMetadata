@@ -112,11 +112,8 @@ public class DatabaseRepository extends EntityRepository<Database> {
   @Override
   public void restorePatchAttributes(Database original, Database updated) {
     // Patch can't make changes to following fields. Ignore the changes
-    updated
-        .withFullyQualifiedName(original.getFullyQualifiedName())
-        .withName(original.getName())
-        .withService(original.getService())
-        .withId(original.getId());
+    super.restorePatchAttributes(original, updated);
+    updated.withService(original.getService());
   }
 
   @Override

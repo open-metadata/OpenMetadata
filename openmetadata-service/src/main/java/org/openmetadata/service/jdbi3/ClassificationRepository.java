@@ -48,6 +48,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
         "");
     quoteFqn = true;
     supportsSearch = true;
+    renameAllowed = true;
   }
 
   @Override
@@ -110,7 +111,6 @@ public class ClassificationRepository extends EntityRepository<Classification> {
     @Transaction
     @Override
     public void entitySpecificUpdate() {
-      // TODO handle name change
       // TODO mutuallyExclusive from false to true?
       recordChange("mutuallyExclusive", original.getMutuallyExclusive(), updated.getMutuallyExclusive());
       recordChange("disabled", original.getDisabled(), updated.getDisabled());
@@ -125,6 +125,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
         }
         // Classification name changed - update tag names starting from classification and all the children tags
         LOG.info("Classification name changed from {} to {}", original.getName(), updated.getName());
+        setFullyQualifiedName(updated);
         daoCollection.tagDAO().updateFqn(original.getName(), updated.getName());
         daoCollection
             .tagUsageDAO()

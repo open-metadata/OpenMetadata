@@ -57,12 +57,6 @@ public class PersonaRepository extends EntityRepository<Persona> {
   }
 
   @Override
-  public void restorePatchAttributes(Persona original, Persona updated) {
-    // Patch can't make changes to following fields. Ignore the changes
-    updated.withName(original.getName()).withId(original.getId());
-  }
-
-  @Override
   public void prepare(Persona persona, boolean update) {
     validateUsers(persona.getUsers());
   }
