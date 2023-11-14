@@ -111,7 +111,6 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
-import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LifeCycle;
 import org.openmetadata.schema.type.ProviderType;
@@ -1802,16 +1801,38 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * also tracks the changes between original and updated to version the entity and produce change events. <br>
    * <br>
    * Common entity attributes such as description, displayName, owner, tags are handled by this class. Override {@code
-   * entitySpecificUpdate()} to add additional entity specific fields to be updated.
+   * entitySpecificUpdate()} to add additional entity specific fields to be updated. <br>
+   * EntityUpdater supports consolidation of changes done by a user within session timeout. It is done as follows:
+   *
+   * <ol>
+   *   <li>First, entity is reverted from current version (original) to previous version without recording any changes.
+   *       Hence changeDescription is null in this phase.
+   *   <li>Second, entity is updated from current version (original) to updated to carry forward changes from original
+   *       to updated again without recording changes. Hence changeDescription is null in this phase.
+   *   <li>Finally, entity is updated from previous version to updated to consolidate the changes in a session. Hence
+   *       changeDescription is **NOT** null in this phase.
+   * </ol>
+   *
+   * Here are the cases for consolidation:
+   *
+   * <ol>
+   *   <li>Entity goes from v0 -> v1 -> v1 again where consolidation of changes in original and updated happens
+   *       resulting in new version of the entity that remains the same. In this case stored previous version remains v0
+   *       and new version v1 is stored that has consolidated updates.
+   *   <li>Entity goes from v0 -> v1 -> v0 where v1 -> v0 undoes the changes from v0 -> v1. Example a user added a
+   *       description to create v1. Then removed the description in the next update. In this case stored previous
+   *       version goes to v-1 and new version v0 replaces v1 for the entity.
+   * </ol>
    *
    * @see TableRepository.TableUpdater#entitySpecificUpdate() for example.
    */
   public class EntityUpdater {
-    public static volatile long sessionTimeoutMillis = 10 * 60 * 1000; // 10 minutes
+    private static volatile long sessionTimeoutMillis = 10L * 60 * 1000; // 10 minutes
+    protected T previous;
     protected T original;
     protected T updated;
     protected Operation operation;
-    protected ChangeDescription changeDescription = new ChangeDescription();
+    protected ChangeDescription changeDescription = null;
     protected boolean majorVersionChange = false;
     protected final User updatingUser;
     private boolean entityChanged = false;
@@ -1836,7 +1857,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       // Now updated from previous/original to updated one
       changeDescription = new ChangeDescription();
-      updateInternal(false);
+      updateInternal();
 
       // Store the updated entity
       storeUpdate();
@@ -1845,18 +1866,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     @Transaction
     private void revert() {
-      // Revert from original to previous version to go back to the previous version
+      // Revert from current version to previous version to go back to the previous version
       // set changeDescription to null
       T updatedOld = updated;
-      T previous = getPreviousVersion(original);
+      previous = getPreviousVersion(original);
       LOG.debug("In session change consolidation. Reverting to previous version {}", previous.getVersion());
       updated = previous;
-      updateInternal(true);
+      updateInternal();
       LOG.info("In session change consolidation. Reverting to previous version {} completed", previous.getVersion());
 
       // Now go from original to updated
       updated = updatedOld;
-      updateInternal(true);
+      updateInternal();
 
       // Finally, go from previous to the latest updated entity to consolidate changes
       original = previous;
@@ -1864,12 +1885,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     /** Compare original and updated entities and perform updates. Update the entity version and track changes. */
     @Transaction
-    private void updateInternal(boolean revert) {
+    private void updateInternal() {
       if (operation.isDelete()) { // Soft DELETE Operation
-        updateDeleted(revert);
+        updateDeleted();
       } else { // PUT or PATCH operations
         updated.setId(original.getId());
-        updateDeleted(revert);
+        updateDeleted();
         updateDescription();
         updateDisplayName();
         updateOwner();
@@ -1900,12 +1921,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
       recordChange(FIELD_DESCRIPTION, original.getDescription(), updated.getDescription());
     }
 
-    private void updateDeleted(boolean revert) {
+    private void updateDeleted() {
       if (operation.isPut() || operation.isPatch()) {
         // Update operation can't set delete attributed to true. This can only be done as part of delete operation
         if (!Objects.equals(updated.getDeleted(), original.getDeleted())
             && Boolean.TRUE.equals(updated.getDeleted())
-            && !revert) {
+            && changeDescription != null) {
           throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute(entityType, FIELD_DELETED));
         }
         // PUT or PATCH is restoring the soft-deleted entity
@@ -2142,9 +2163,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     public final boolean updateVersion(Double oldVersion) {
-      if (changeDescription == null) {
-        return false;
-      }
       Double newVersion = oldVersion;
       if (majorVersionChange) {
         newVersion = nextMajorVersion(oldVersion);
@@ -2189,33 +2207,30 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     public final <K> boolean recordChange(
         String field, K orig, K updated, boolean jsonValue, BiPredicate<K, K> typeMatch, boolean updateVersion) {
-      if (orig == updated || changeDescription == null) {
+      if (orig == updated) {
         return false;
       }
       if (!updateVersion && entityChanged) {
         return false;
       }
-      FieldChange fieldChange =
-          new FieldChange()
-              .withName(field)
-              .withOldValue(jsonValue ? JsonUtils.pojoToJson(orig) : orig)
-              .withNewValue(jsonValue ? JsonUtils.pojoToJson(updated) : updated);
+      Object oldValue = jsonValue ? JsonUtils.pojoToJson(orig) : orig;
+      Object newValue = jsonValue ? JsonUtils.pojoToJson(updated) : updated;
       if (orig == null) {
         entityChanged = true;
         if (updateVersion) {
-          changeDescription.getFieldsAdded().add(fieldChange);
+          fieldAdded(changeDescription, field, newValue);
         }
         return true;
       } else if (updated == null) {
         entityChanged = true;
         if (updateVersion) {
-          changeDescription.getFieldsDeleted().add(fieldChange);
+          fieldDeleted(changeDescription, field, oldValue);
         }
         return true;
       } else if (!typeMatch.test(orig, updated)) {
         entityChanged = true;
         if (updateVersion) {
-          changeDescription.getFieldsUpdated().add(fieldChange);
+          fieldUpdated(changeDescription, field, oldValue, newValue);
         }
         return true;
       }
@@ -2365,7 +2380,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     public final void storeUpdate() {
       if (updateVersion(original.getVersion())) { // Update changed the entity version
-        storeOldVersion(); // Store old version for listing previous versions of the entity
+        storeEntityHistory(); // Store old version for listing previous versions of the entity
         storeNewVersion(); // Store the update version of the entity
       } else if (entityChanged) {
         storeNewVersion();
@@ -2373,13 +2388,22 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updated.setUpdatedBy(original.getUpdatedBy());
         updated.setUpdatedAt(original.getUpdatedAt());
       }
+      // Remove entity history recorded when going from previous -> original (and now back to previous)
+      if (changeDescription != null && previous != null && previous.getVersion().equals(updated.getVersion())) {
+        removeEntityHistory(updated.getVersion());
+      }
     }
 
-    private void storeOldVersion() {
+    private void storeEntityHistory() {
       String extensionName = EntityUtil.getVersionExtension(entityType, original.getVersion());
       daoCollection
           .entityExtensionDAO()
           .insert(original.getId(), extensionName, entityType, JsonUtils.pojoToJson(original));
+    }
+
+    private void removeEntityHistory(Double version) {
+      String extensionName = EntityUtil.getVersionExtension(entityType, version);
+      daoCollection.entityExtensionDAO().delete(original.getId(), extensionName);
     }
 
     private void storeNewVersion() {

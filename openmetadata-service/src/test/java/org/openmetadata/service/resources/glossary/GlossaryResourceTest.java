@@ -242,7 +242,6 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     // h  -> h1 -> h11 -> h111
     Glossary g = createEntity(createRequest("changeParent'_g"), ADMIN_AUTH_HEADERS);
     Glossary h = createEntity(createRequest("changeParent'_h"), ADMIN_AUTH_HEADERS);
-
     GlossaryTermResourceTest glossaryTermResourceTest = new GlossaryTermResourceTest();
     GlossaryTerm t1 = createGlossaryTerm(glossaryTermResourceTest, g, null, "t'_1");
     GlossaryTerm t11 = createGlossaryTerm(glossaryTermResourceTest, g, t1, "t'_11");

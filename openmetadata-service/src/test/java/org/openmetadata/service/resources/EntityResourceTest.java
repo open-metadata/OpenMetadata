@@ -2200,6 +2200,20 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // GET ../entity/{id}/versions to list the all the versions of an entity
     EntityHistory history = getVersionList(id, authHeaders);
     T latestVersion = JsonUtils.readValue((String) history.getVersions().get(0), entityClass);
+    Double version = null;
+    for (Object x : history.getVersions()) {
+      T e = JsonUtils.readValue((String) x, entityClass);
+      LOG.debug(
+          "entityHistory version %s and change %s%n",
+          e.getVersion(), JsonUtils.pojoToJson(e.getChangeDescription(), true));
+      if (version == null) {
+        version = e.getVersion();
+      } else {
+        // Version must be in descending order
+        assertTrue(version > e.getVersion());
+        version = e.getVersion();
+      }
+    }
 
     // Make sure the latest version has changeDescription as received during update
     validateChangeDescription(latestVersion, updateType, expectedChangeDescription);
