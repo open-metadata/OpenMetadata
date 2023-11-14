@@ -111,20 +111,34 @@ After the migration is finished, you can revert this changes.
 
 ## 1.2.1
 
-### Application Logo Configuration Migrated to UI
+### Application Logo and Login Configuration Migrated to UI
 
-This change removes the traditional way of providing Custom URL logos configurations as part of OpenMetadata Configurations file and migrate this ablity to be driven and configured right from UI from Settings Menu >> OpenMetadata >> Custom Logo.
+The following configuration block has been removed from `openmetadata.yaml`:
 
-### Extended Login Configuration Migrated to UI
+```yaml
+applicationConfig:
+  logoConfig:
+    customLogoUrlPath: ${OM_CUSTOM_LOGO_URL_PATH:-""}
+    customMonogramUrlPath: ${OM_CUSTOM_MONOGRAM_URL_PATH:-""}
+  loginConfig:
+    maxLoginFailAttempts: ${OM_MAX_FAILED_LOGIN_ATTEMPTS:-3}
+    accessBlockTime: ${OM_LOGIN_ACCESS_BLOCK_TIME:-600}
+    jwtTokenExpiryTime: ${OM_JWT_EXPIRY_TIME:-3600}
+```
 
+This change removes the traditional way of providing **Custom URL** logos configurations as part of OpenMetadata Configurations 
+file and migrate this to be driven and configured right from UI from `Settings` > `OpenMetadata` > `Custom Logo`.
 
+The same applies to the **Login Configuration**, which can now be configured under `Settings` > `OpenMetadata` > `Login Configuration`.
+
+Note that these environment variables will now have no effect. If you are deploying on Bare Metal, make sure to use the latest `openmetadata.yaml` file.
 
 
 ### OpenMetadata Helm Chart Dependencies Migrate from ElasticSearch to OpenSearch Charts
 
 As part of `1.2.1`, we migrated the base dependencies for OpenMetadata Helm Chart to use OpenSearch version `2.7` instead of ElasticSearch `8.X`. This is a reactive change done as community driven [ElasticSearch Helm Chart](https://github.com/elastic/helm-charts) project has been deprecated in the favor of Elastic Stack Operator which cannot be added as an helm chart dependency.
 
-For new users, this is an unnoticible change who will be installing the OpenMetadata dependencies using quickstart guides.
+For new users, this is an unnoticeable change who will be installing the OpenMetadata dependencies using quickstart guides.
 
 For existing users, who have their proof-of-concept environments using the OpenMetadata Dependencies and are looking to upgrade to newer helm release - 
 - The default OpenMetadata helm values for `openmetadata.config.elasticsearch.*` has been updated to connect to OpenSearch from OpenMetadata Dependencies Helm Chart. Please refer to the [helm values](/deployment/kubernetes/helm-values) and update your custom installation accordingly.
