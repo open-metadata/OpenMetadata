@@ -33,7 +33,10 @@ from metadata.generated.schema.entity.data.table import (
     TableData,
     TableProfile,
 )
-from metadata.profiler.api.models import ProfilerResponse
+from metadata.generated.schema.tests.customMetric import (
+    CustomMetric as CustomMetricEntity,
+)
+from metadata.profiler.api.models import ProfilerResponse, ThreadPoolMetrics
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.profiler.metrics.core import (
     ComposedMetric,
@@ -273,6 +276,33 @@ class Profiler(Generic[TMetric]):
 
         return [metric for metric in metrics if metric.is_col_metric()]
 
+    def get_custom_metrics(
+        self, column_name: Optional[str] = None
+    ) -> Optional[List[CustomMetricEntity]]:
+        """Get custom metrics for a table or column
+
+        Args:
+            column (Optional[str]): optional column name. If None will fetch table level custom metrics
+
+        Returns:
+            List[str]
+        """
+        if column_name is None:
+            return self.profiler_interface.table_entity.customMetrics or None
+
+        # if we have a column we'll get the custom metrics for this column
+        column = next(
+            (
+                clmn
+                for clmn in self.profiler_interface.table_entity.columns
+                if clmn.name.__root__ == column_name
+            ),
+            None,
+        )
+        if column:
+            return column.customMetrics or None
+        return None
+
     @property
     def sample(self):
         """Return the sample used for the profiler"""
@@ -345,22 +375,40 @@ class Profiler(Generic[TMetric]):
 
     def _prepare_table_metrics(self) -> List:
         """prepare table metrics"""
+        metrics = []
         table_metrics = [
             metric
             for metric in self.static_metrics
             if (not metric.is_col_metric() and not metric.is_system_metrics())
         ]
 
+        custom_table_metrics = self.get_custom_metrics()
+
         if table_metrics:
-            return [
-                (
-                    table_metrics,  # metric functions
-                    MetricTypes.Table,  # metric type for function mapping
-                    None,  # column name
-                    self.table,  # table name
-                ),
-            ]
-        return []
+            metrics.extend(
+                [
+                    ThreadPoolMetrics(
+                        metrics=table_metrics,
+                        metric_type=MetricTypes.Table,
+                        column=None,
+                        table=self.table,
+                    )
+                ]
+            )
+
+        if custom_table_metrics:
+            metrics.extend(
+                [
+                    ThreadPoolMetrics(
+                        metrics=custom_table_metrics,
+                        metric_type=MetricTypes.Custom,
+                        column=None,
+                        table=self.table,
+                    )
+                ]
+            )
+
+        return metrics
 
     def _prepare_system_metrics(self) -> List:
         """prepare system metrics"""
@@ -368,11 +416,11 @@ class Profiler(Generic[TMetric]):
 
         if system_metrics:
             return [
-                (
-                    system_metric,  # metric functions
-                    MetricTypes.System,  # metric type for function mapping
-                    None,  # column name
-                    self.table,  # table name
+                ThreadPoolMetrics(
+                    metrics=system_metric,  # metric functions
+                    metric_type=MetricTypes.System,  # metric type for function mapping
+                    column=None,  # column name
+                    table=self.table,  # table name
                 )
                 for system_metric in system_metrics
             ]
@@ -386,45 +434,60 @@ class Profiler(Generic[TMetric]):
             for column in self.columns
             if column.type.__class__.__name__ not in NOT_COMPUTE
         ]
-
-        column_metrics_for_thread_pool = [
-            *[
-                (
-                    [
-                        metric
-                        for metric in self.get_col_metrics(self.static_metrics, column)
-                        if not metric.is_window_metric()
-                    ],
-                    MetricTypes.Static,
-                    column,
-                    self.table,
-                )
-                for column in columns
-            ],
-            *[
-                (
-                    metric,
-                    MetricTypes.Query,
-                    column,
-                    self.table,
-                )
-                for column in columns
-                for metric in self.get_col_metrics(self.query_metrics, column)
-            ],
-            *[
-                (
-                    [
-                        metric
-                        for metric in self.get_col_metrics(self.static_metrics, column)
-                        if metric.is_window_metric()
-                    ],
-                    MetricTypes.Window,
-                    column,
-                    self.table,
-                )
-                for column in columns
-            ],
+        column_metrics_for_thread_pool = []
+        static_metrics = [
+            ThreadPoolMetrics(
+                metrics=[
+                    metric
+                    for metric in self.get_col_metrics(self.static_metrics, column)
+                    if not metric.is_window_metric()
+                ],
+                metric_type=MetricTypes.Static,
+                column=column,
+                table=self.table,
+            )
+            for column in columns
         ]
+        query_metrics = [
+            ThreadPoolMetrics(
+                metrics=metric,
+                metric_type=MetricTypes.Query,
+                column=column,
+                table=self.table,
+            )
+            for column in columns
+            for metric in self.get_col_metrics(self.query_metrics, column)
+        ]
+        window_metrics = [
+            ThreadPoolMetrics(
+                metrics=[
+                    metric
+                    for metric in self.get_col_metrics(self.static_metrics, column)
+                    if metric.is_window_metric()
+                ],
+                metric_type=MetricTypes.Window,
+                column=column,
+                table=self.table,
+            )
+            for column in columns
+        ]
+
+        # we'll add the system metrics to the thread pool computation
+        for metric_type in [static_metrics, query_metrics, window_metrics]:
+            column_metrics_for_thread_pool.extend(metric_type)
+
+        # we'll add the custom metrics to the thread pool computation
+        for column in columns:
+            custom_metrics = self.get_custom_metrics(column.name)
+            if custom_metrics:
+                column_metrics_for_thread_pool.append(
+                    ThreadPoolMetrics(
+                        metrics=custom_metrics,
+                        metric_type=MetricTypes.Custom,
+                        column=column,
+                        table=self.table,
+                    )
+                )
 
         return column_metrics_for_thread_pool
 

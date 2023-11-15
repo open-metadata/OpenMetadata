@@ -17,6 +17,9 @@ multiple profilers per table and columns.
 """
 from typing import List, Optional, Union
 
+from sqlalchemy import Column
+from sqlalchemy.orm import DeclarativeMeta
+
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
@@ -31,9 +34,12 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
     SampleDataStorageConfig,
 )
+from metadata.generated.schema.tests.customMetric import CustomMetric
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.ingestion.models.table_metadata import ColumnTag
+from metadata.profiler.metrics.core import MetricTypes
 from metadata.profiler.processor.models import ProfilerDef
+from metadata.utils.sqa_like_column import SQALikeColumn
 
 
 class ColumnConfig(ConfigModel):
@@ -113,3 +119,15 @@ class ProfilerResponse(ConfigModel):
     def __str__(self):
         """Return the table name being processed"""
         return f"Table [{self.table.name.__root__}]"
+
+
+class ThreadPoolMetrics(ConfigModel):
+    """thread pool metric"""
+
+    metrics: list
+    metric_type: Union[MetricTypes, CustomMetric]
+    column: Optional[Union[Column, SQALikeColumn]]
+    table: Union[Table, DeclarativeMeta]
+
+    class Config:
+        arbitrary_types_allowed = True

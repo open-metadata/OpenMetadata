@@ -27,6 +27,7 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
     DatalakeConnection,
 )
 from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
+from metadata.profiler.api.models import ThreadPoolMetrics
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.profiler.metrics.core import MetricTypes
 from metadata.profiler.metrics.registry import Metrics
@@ -241,33 +242,30 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
 
     def compute_metrics(
         self,
-        metrics,
-        metric_type,
-        column,
-        table,
+        metric_func: ThreadPoolMetrics,
     ):
         """Run metrics in processor worker"""
-        logger.debug(f"Running profiler for {table}")
+        logger.debug(f"Running profiler for {metric_func.table}")
         try:
             row = None
             if self.complex_dataframe_sample:
-                row = self._get_metric_fn[metric_type.value](
-                    metrics,
+                row = self._get_metric_fn[metric_func.metric_type.value](
+                    metric_func.metrics,
                     self.complex_dataframe_sample,
-                    column=column,
+                    column=metric_func.column,
                 )
         except Exception as exc:
-            name = f"{column if column is not None else table}"
+            name = f"{metric_func.column if metric_func.column is not None else metric_func.table}"
             error = f"{name} metric_type.value: {exc}"
             logger.error(error)
             self.status.failed_profiler(error, traceback.format_exc())
             row = None
-        if column is not None:
-            column = column.name
-            self.status.scanned(f"{table.name.__root__}.{column}")
+        if metric_func.column is not None:
+            column = metric_func.column.name
+            self.status.scanned(f"{metric_func.table.name.__root__}.{column}")
         else:
-            self.status.scanned(table.name.__root__)
-        return row, column, metric_type.value
+            self.status.scanned(metric_func.table.name.__root__)
+        return row, metric_func.column, metric_func.metric_type.value
 
     def fetch_sample_data(self, table, columns: SQALikeColumn) -> TableData:
         """Fetch sample data from database
@@ -329,7 +327,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
 
         profile_results = {"table": {}, "columns": defaultdict(dict)}
         metric_list = [
-            self.compute_metrics(*metric_func) for metric_func in metric_funcs
+            self.compute_metrics(metric_func) for metric_func in metric_funcs
         ]
         for metric_result in metric_list:
             profile, column, metric_type = metric_result

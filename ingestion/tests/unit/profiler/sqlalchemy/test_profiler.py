@@ -42,6 +42,7 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
     SQLiteConnection,
     SQLiteScheme,
 )
+from metadata.generated.schema.tests.customMetric import CustomMetric
 from metadata.ingestion.source import sqa_types
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
@@ -83,7 +84,26 @@ class ProfilerTest(TestCase):
             EntityColumn(
                 name=ColumnName(__root__="id"),
                 dataType=DataType.INT,
+                customMetrics=[
+                    CustomMetric(
+                        name="custom_metric",
+                        description="custom metric",
+                        expression="SELECT cos(id) FROM users",
+                    )
+                ],
             )
+        ],
+        customMetrics=[
+            CustomMetric(
+                name="custom_metric",
+                description="custom metric",
+                expression="SELECT COUNT(id) / COUNT(age) FROM users",
+            ),
+            CustomMetric(
+                name="custom_metric_two",
+                description="custom metric",
+                expression="SELECT COUNT(id) * COUNT(age) FROM users",
+            ),
         ],
     )
     with patch.object(
@@ -230,6 +250,25 @@ class ProfilerTest(TestCase):
                     )
                 )
             )
+
+    def test__prepare_column_metrics(self):
+        """test _prepare_column_metrics returns as expected"""
+        profiler = Profiler(
+            Metrics.FIRST_QUARTILE.value,
+            profiler_interface=self.sqa_profiler_interface,
+        )
+
+        metrics = profiler._prepare_column_metrics()
+        self.assertEqual(2, len(metrics))
+
+    def test__prepare_table_metrics(self):
+        """test _prepare_table_metrics returns as expected"""
+        profiler = Profiler(
+            Metrics.COLUMN_COUNT.value,
+            profiler_interface=self.sqa_profiler_interface,
+        )
+        metrics = profiler._prepare_table_metrics()
+        self.assertEqual(2, len(metrics))
 
     def test_profiler_with_timeout(self):
         """check timeout is properly used"""
