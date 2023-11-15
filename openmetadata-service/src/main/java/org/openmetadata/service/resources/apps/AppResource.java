@@ -478,11 +478,14 @@ public class AppResource extends EntityResource<App, AppRepository> {
             .getByName(
                 uriInfo, create.getName(), new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
     App app = getApplication(definition, create, securityContext.getUserPrincipal().getName());
+    app.setOpenMetadataServerConnection(
+        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, app.getBot().getName()).build());
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
       ApplicationHandler.scheduleApplication(app, Entity.getCollectionDAO(), searchRepository);
-      // TODO: ADD OM SERVER CONFIG
       ApplicationHandler.configureApplication(app, Entity.getCollectionDAO(), searchRepository);
     }
+    // We don't want to store this information
+    app.setOpenMetadataServerConnection(null);
     return create(uriInfo, securityContext, app);
   }
 
@@ -655,8 +658,16 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Context SecurityContext securityContext) {
     App app = repository.getByName(uriInfo, name, new EntityUtil.Fields(repository.getAllowedFields()));
     // The application will have the updated appConfiguration we can use to run the `configure` logic
-    ApplicationHandler.configureApplication(app, repository.getDaoCollection(), searchRepository);
-    return Response.status(Response.Status.OK).entity("App has been configured.").build();
+    app.setOpenMetadataServerConnection(
+        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, app.getBot().getName()).build());
+    try {
+      ApplicationHandler.configureApplication(app, repository.getDaoCollection(), searchRepository);
+      return Response.status(Response.Status.OK).entity("App has been configured.").build();
+    } catch (RuntimeException e) {
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity(String.format("Error configuring app [%s]", e.getMessage()))
+          .build();
+    }
   }
 
   @POST
