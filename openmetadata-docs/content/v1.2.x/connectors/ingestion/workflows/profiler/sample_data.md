@@ -9,7 +9,7 @@ slug: /connectors/ingestion/workflows/profiler/external-sample-data
 
 Note that this requires OpenMetadata 1.2.1 or higher.
 
-{% note %}
+{% /note %}
 
 While running the profiler workflow if you have enabled the `Generate Sample Data` flag in your profiler configuration, 
 sample data will be ingested for all the tables included in the profiler workflow. This data is a randomly sampled 
