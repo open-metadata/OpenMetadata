@@ -128,10 +128,10 @@ export const DatabaseSchemaTable = () => {
 
   const handleSchemaPageChange = useCallback(
     ({ currentPage, cursorType }: PagingHandlerParams) => {
-      if (cursorType) {
-        fetchDatabaseSchema({ [cursorType]: paging[cursorType] });
-      } else if (searchValue) {
+      if (searchValue) {
         searchSchema(searchValue, currentPage);
+      } else if (cursorType) {
+        fetchDatabaseSchema({ [cursorType]: paging[cursorType] });
       }
       handlePageChange(currentPage);
     },
