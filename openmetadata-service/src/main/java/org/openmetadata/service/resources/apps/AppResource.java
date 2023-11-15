@@ -480,6 +480,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
     App app = getApplication(definition, create, securityContext.getUserPrincipal().getName());
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
       ApplicationHandler.scheduleApplication(app, Entity.getCollectionDAO(), searchRepository);
+      // TODO: ADD OM SERVER CONFIG
       ApplicationHandler.configureApplication(app, Entity.getCollectionDAO(), searchRepository);
     }
     return create(uriInfo, securityContext, app);
