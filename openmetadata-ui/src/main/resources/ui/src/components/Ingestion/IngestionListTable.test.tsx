@@ -16,7 +16,7 @@ import React from 'react';
 import { mockIngestionListTableProps } from '../../mocks/IngestionListTable.mock';
 import IngestionListTable from './IngestionListTable.component';
 
-jest.mock('../../components/common/NextPrevious/NextPrevious', () =>
+jest.mock('../../components/common/next-previous/NextPrevious', () =>
   jest.fn().mockImplementation(() => <div>nextPrevious</div>)
 );
 jest.mock('../../components/Loader/Loader', () =>
@@ -72,7 +72,7 @@ describe('IngestionListTable tests', () => {
       <IngestionListTable
         {...mockIngestionListTableProps}
         paging={{
-          total: 26,
+          total: 16,
           after: 'after',
         }}
       />

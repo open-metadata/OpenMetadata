@@ -40,7 +40,7 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
-jest.mock('../../common/EntityDescription/DescriptionV1', () => {
+jest.mock('../../common/description/DescriptionV1', () => {
   return jest.fn().mockImplementation(() => <div>Description</div>);
 });
 

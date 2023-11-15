@@ -92,7 +92,6 @@ class MetricsTest(TestCase):
                 None,
                 None,
                 None,
-                None,
                 thread_count=1,
             )
         cls.engine = cls.sqa_profiler_interface.session.get_bind()
@@ -731,7 +730,6 @@ class MetricsTest(TestCase):
                 self.sqlite_conn,
                 None,
                 self.table_entity,
-                None,
                 None,
                 None,
                 None,

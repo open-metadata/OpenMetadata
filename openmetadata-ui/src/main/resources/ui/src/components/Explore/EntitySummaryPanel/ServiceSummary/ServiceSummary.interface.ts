@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
+import { EntityServiceUnion } from '../../../../components/Explore/explore.interface';
 import { ExplorePageTabs } from '../../../../enums/Explore.enum';
 import { TagLabel } from '../../../../generated/type/tagLabel';
 import { DRAWER_NAVIGATION_OPTIONS } from '../../../../utils/EntityUtils';
-import { EntityServiceUnion } from '../../ExplorePage.interface';
 
 export interface ServiceSummaryProps {
   type: ExplorePageTabs;

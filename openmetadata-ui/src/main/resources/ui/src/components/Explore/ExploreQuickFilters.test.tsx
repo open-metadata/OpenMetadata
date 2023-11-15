@@ -15,8 +15,8 @@ import { act, render } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { SearchIndex } from '../../enums/search.enum';
+import { ExploreQuickFilterField } from '../Explore/explore.interface';
 import { SearchDropdownProps } from '../SearchDropdown/SearchDropdown.interface';
-import { ExploreQuickFilterField } from './ExplorePage.interface';
 import ExploreQuickFilters from './ExploreQuickFilters';
 import {
   mockAdvancedFieldDefaultOptions,

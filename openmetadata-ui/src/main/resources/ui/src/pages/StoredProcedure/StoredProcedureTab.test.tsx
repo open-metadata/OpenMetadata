@@ -13,16 +13,36 @@
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
+import { INITIAL_PAGING_VALUE, pagingObject } from '../../constants/constants';
+import { mockStoredProcedureData } from '../../mocks/StoredProcedure.mock';
+import { StoredProcedureTabProps } from './storedProcedure.interface';
 import StoredProcedureTab from './StoredProcedureTab';
 
+const mockPagingHandler = jest.fn();
+const mockShowDeletedHandler = jest.fn();
+const mockFetchHandler = jest.fn();
+
+const mockProps: StoredProcedureTabProps = {
+  storedProcedure: {
+    data: mockStoredProcedureData,
+    isLoading: false,
+    deleted: false,
+    paging: pagingObject,
+    currentPage: INITIAL_PAGING_VALUE,
+  },
+  pagingHandler: mockPagingHandler,
+  fetchStoredProcedure: mockFetchHandler,
+  onShowDeletedStoreProcedureChange: mockShowDeletedHandler,
+};
+
 jest.mock(
-  '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
+  '../../components/common/error-with-placeholder/ErrorPlaceHolder',
   () => {
     return jest.fn().mockImplementation(() => <p>testErrorPlaceHolder</p>);
   }
 );
 
-jest.mock('../../components/common/NextPrevious/NextPrevious', () => {
+jest.mock('../../components/common/next-previous/NextPrevious', () => {
   return jest.fn().mockImplementation(({ pagingHandler }) => (
     <p data-testid="next-previous" onClick={pagingHandler}>
       testNextPrevious
@@ -31,7 +51,7 @@ jest.mock('../../components/common/NextPrevious/NextPrevious', () => {
 });
 
 jest.mock(
-  '../../components/common/RichTextEditor/RichTextEditorPreviewer',
+  '../../components/common/rich-text-editor/RichTextEditorPreviewer',
   () => {
     return jest
       .fn()
@@ -48,7 +68,6 @@ jest.mock('react-router-dom', () => ({
   Link: jest
     .fn()
     .mockImplementation(({ children }) => <a href="#">{children}</a>),
-  useParams: jest.fn().mockImplementation(() => ({ fqn: 'something' })),
 }));
 
 jest.mock('../../utils/EntityUtils', () => ({
@@ -57,26 +76,23 @@ jest.mock('../../utils/EntityUtils', () => ({
 
 jest.mock('../../utils/StringsUtils', () => ({
   getEncodedFqn: jest.fn().mockImplementation((fqn) => fqn),
-  getErrorText: jest.fn().mockImplementation(() => 'test'),
 }));
 
 jest.mock('../../utils/TableUtils', () => ({
   getEntityLink: jest.fn().mockImplementation((link) => link),
-  getTableExpandableConfig: jest.fn(),
 }));
 
-jest.mock('../../rest/storedProceduresAPI', () => {
-  return {
-    getStoredProceduresList: jest
-      .fn()
-      .mockResolvedValue({ data: [], paging: { total: 0 } }),
-  };
-});
-
 describe('StoredProcedureTab component', () => {
-  it('StoredProcedureTab should render components', () => {
-    render(<StoredProcedureTab />);
+  it('StoredProcedureTab should fetch details', () => {
+    render(<StoredProcedureTab {...mockProps} />);
 
+    expect(mockFetchHandler).toHaveBeenCalled();
+  });
+
+  it('StoredProcedureTab should render components', () => {
+    render(<StoredProcedureTab {...mockProps} />);
+
+    expect(mockFetchHandler).toHaveBeenCalled();
     expect(screen.getByTestId('stored-procedure-table')).toBeInTheDocument();
     expect(
       screen.getByTestId('show-deleted-stored-procedure')
@@ -84,8 +100,51 @@ describe('StoredProcedureTab component', () => {
     expect(screen.queryByText('testNextPrevious')).not.toBeInTheDocument();
   });
 
+  it('StoredProcedureTab should show loader till api is not resolved', () => {
+    render(
+      <StoredProcedureTab
+        {...mockProps}
+        storedProcedure={{ ...mockProps.storedProcedure, isLoading: true }}
+      />
+    );
+
+    expect(mockFetchHandler).toHaveBeenCalled();
+
+    expect(screen.queryByText('testLoader')).toBeInTheDocument();
+  });
+
+  it('StoredProcedureTab should show empty placeholder within table when data is empty', () => {
+    render(
+      <StoredProcedureTab
+        {...mockProps}
+        storedProcedure={{
+          ...mockProps.storedProcedure,
+          data: [],
+        }}
+      />
+    );
+
+    expect(mockFetchHandler).toHaveBeenCalled();
+
+    expect(screen.queryByText('testErrorPlaceHolder')).toBeInTheDocument();
+  });
+
+  it('StoredProcedureTab should show table along with data', () => {
+    render(<StoredProcedureTab {...mockProps} />);
+
+    expect(mockFetchHandler).toHaveBeenCalled();
+
+    const container = screen.getByTestId('stored-procedure-table');
+
+    expect(screen.getAllByText('testRichTextEditorPreviewer')).toHaveLength(2);
+
+    screen.debug(container);
+  });
+
   it('show deleted switch handler show properly', () => {
-    render(<StoredProcedureTab />);
+    render(<StoredProcedureTab {...mockProps} />);
+
+    expect(mockFetchHandler).toHaveBeenCalled();
 
     const showDeletedHandler = screen.getByTestId(
       'show-deleted-stored-procedure'
@@ -94,5 +153,51 @@ describe('StoredProcedureTab component', () => {
     expect(showDeletedHandler).toBeInTheDocument();
 
     fireEvent.click(showDeletedHandler);
+
+    expect(mockShowDeletedHandler).toHaveBeenCalled();
+  });
+
+  it('show render next_previous component', () => {
+    render(
+      <StoredProcedureTab
+        {...mockProps}
+        storedProcedure={{
+          data: [],
+          isLoading: false,
+          deleted: false,
+          paging: { ...pagingObject, total: 20 },
+          currentPage: INITIAL_PAGING_VALUE,
+        }}
+      />
+    );
+
+    expect(mockFetchHandler).toHaveBeenCalled();
+
+    expect(screen.queryByText('testNextPrevious')).toBeInTheDocument();
+  });
+
+  it('next_previous handler should work properly', () => {
+    render(
+      <StoredProcedureTab
+        {...mockProps}
+        storedProcedure={{
+          data: [],
+          isLoading: false,
+          deleted: false,
+          paging: { ...pagingObject, total: 20 },
+          currentPage: INITIAL_PAGING_VALUE,
+        }}
+      />
+    );
+
+    expect(mockFetchHandler).toHaveBeenCalled();
+
+    const nextComponent = screen.getByTestId('next-previous');
+
+    expect(nextComponent).toBeInTheDocument();
+
+    fireEvent.click(nextComponent);
+
+    expect(mockPagingHandler).toHaveBeenCalled();
   });
 });

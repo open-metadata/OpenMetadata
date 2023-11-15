@@ -13,7 +13,7 @@
 
 import { SearchIndex } from '../../enums/search.enum';
 import { Aggregations } from '../../interface/search.interface';
-import { ExploreQuickFilterField } from './ExplorePage.interface';
+import { ExploreQuickFilterField } from './explore.interface';
 
 export interface ExploreQuickFiltersProps {
   index: SearchIndex;

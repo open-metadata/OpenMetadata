@@ -16,7 +16,7 @@ import { t } from 'i18next';
 import { isUndefined, startCase } from 'lodash';
 import { ServiceTypes } from 'Models';
 import React from 'react';
-import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import ErrorPlaceHolder from '../components/common/error-with-placeholder/ErrorPlaceHolder';
 import { getServiceDetailsPath } from '../constants/constants';
 import {
   DATA_INSIGHTS_PIPELINE_DOCS,

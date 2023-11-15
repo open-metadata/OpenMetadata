@@ -50,7 +50,6 @@ from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
 )
-from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.ingestion.source.database.redshift.models import RedshiftStoredProcedure
 from metadata.ingestion.source.database.redshift.queries import (
     REDSHIFT_GET_ALL_RELATION_INFO,
@@ -102,7 +101,7 @@ RedshiftDialect._get_all_relation_info = (  # pylint: disable=protected-access
 )
 
 
-class RedshiftSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource):
+class RedshiftSource(StoredProcedureMixin, CommonDbSourceService):
     """
     Implements the necessary methods to extract
     Database metadata from Redshift Source
@@ -154,21 +153,16 @@ class RedshiftSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource)
             for name, relkind in result
         ]
 
-    def get_configured_database(self) -> Optional[str]:
-        if not self.service_connection.ingestAllDatabases:
-            return self.service_connection.database
-        return None
-
-    def get_database_names_raw(self) -> Iterable[str]:
-        yield from self._execute_database_query(REDSHIFT_GET_DATABASE_NAMES)
-
     def get_database_names(self) -> Iterable[str]:
         if not self.config.serviceConnection.__root__.config.ingestAllDatabases:
             self.inspector = inspect(self.engine)
             self.get_partition_details()
             yield self.config.serviceConnection.__root__.config.database
         else:
-            for new_database in self.get_database_names_raw():
+            results = self.connection.execute(REDSHIFT_GET_DATABASE_NAMES)
+            for res in results:
+                row = list(res)
+                new_database = row[0]
                 database_fqn = fqn.build(
                     self.metadata,
                     entity_type=Database,

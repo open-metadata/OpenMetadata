@@ -44,11 +44,11 @@ import {
   getSelectedOptionLabelString,
 } from '../../utils/AdvancedSearchUtils';
 import Loader from '../Loader/Loader';
-import './search-dropdown.less';
 import {
   SearchDropdownOption,
   SearchDropdownProps,
 } from './SearchDropdown.interface';
+import './SearchDropdown.less';
 
 const SearchDropdown: FC<SearchDropdownProps> = ({
   isSuggestionsLoading,

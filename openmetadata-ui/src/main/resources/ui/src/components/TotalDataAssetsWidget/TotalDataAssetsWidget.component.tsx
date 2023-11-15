@@ -31,10 +31,8 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { ReactComponent as TotalDataAssetsEmptyIcon } from '../../assets/svg/data-insight-no-data-placeholder.svg';
 import { CHART_WIDGET_DAYS_DURATION } from '../../constants/constants';
 import { TOTAL_ENTITY_CHART_COLOR } from '../../constants/DataInsight.constants';
-import { SIZE } from '../../enums/common.enum';
 import { WidgetWidths } from '../../enums/CustomizablePage.enum';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import {
@@ -49,11 +47,11 @@ import {
   getEpochMillisForPastDays,
 } from '../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import '../DataInsightDetail/data-insight-detail.less';
+import '../DataInsightDetail/DataInsightDetail.less';
 import { EmptyGraphPlaceholder } from '../DataInsightDetail/EmptyGraphPlaceholder';
 import TotalEntityInsightSummary from '../DataInsightDetail/TotalEntityInsightSummary.component';
-import './total-data-assets-widget.less';
 import { TotalDataAssetsWidgetProps } from './TotalDataAssetsWidget.interface';
+import './TotalDataAssetsWidget.less';
 
 const TotalDataAssetsWidget = ({
   isEditView = false,
@@ -136,14 +134,7 @@ const TotalDataAssetsWidget = ({
             </Typography.Text>
           </Col>
           <Col className="h-95" span={24}>
-            <EmptyGraphPlaceholder
-              icon={
-                <TotalDataAssetsEmptyIcon
-                  height={SIZE.X_SMALL}
-                  width={SIZE.X_SMALL}
-                />
-              }
-            />
+            <EmptyGraphPlaceholder />
           </Col>
         </Row>
       ) : (

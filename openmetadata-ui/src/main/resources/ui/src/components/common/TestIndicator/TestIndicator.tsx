@@ -15,7 +15,7 @@ import { Space } from 'antd';
 import classNames from 'classnames';
 import React from 'react';
 import { TestIndicatorProps } from '../../TableProfiler/TableProfiler.interface';
-import './test-indicator.less';
+import './testIndicator.less';
 
 const TestIndicator: React.FC<TestIndicatorProps> = ({ value, type }) => {
   return (

@@ -24,7 +24,7 @@ import { getIsErrorMatch } from '../../../utils/CommonUtils';
 import { getDomainPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
-import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
+import TitleBreadcrumb from '../../common/title-breadcrumb/title-breadcrumb.component';
 import AddDomainForm from '../AddDomainForm/AddDomainForm.component';
 import { DomainFormType } from '../DomainPage.interface';
 import { useDomainProvider } from '../DomainProvider/DomainProvider';

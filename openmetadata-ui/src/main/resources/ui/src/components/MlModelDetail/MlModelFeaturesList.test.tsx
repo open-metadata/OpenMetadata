@@ -122,7 +122,7 @@ jest.mock('../../utils/CommonUtils', () => ({
   getHtmlForNonAdminAction: jest.fn().mockReturnValue('admin action'),
 }));
 
-jest.mock('../common/RichTextEditor/RichTextEditorPreviewer', () => {
+jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });
 

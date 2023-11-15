@@ -84,9 +84,13 @@ p {
   padding: 4px 16px 16px;
 }
 
-a,
-a.ant-typography {
+.show-more,
+a[href]:not(.button-comp):not(.no-underline):not(.link-text-info),
+.link-text {
+  color: @link-color;
+
   &:hover {
+    color: @link-color;
     text-decoration: underline;
   }
 
@@ -133,12 +137,6 @@ a[href].link-text-grey,
 
 .text-underline {
   text-decoration: underline;
-}
-
-// image property
-
-.object-contain {
-  object-fit: contain;
 }
 
 // Border
@@ -342,9 +340,7 @@ a[href].link-text-grey,
 }
 
 .no-underline {
-  &:hover {
-    text-decoration: none;
-  }
+  text-decoration: none;
 }
 
 .z-5 {
@@ -748,19 +744,4 @@ a[href].link-text-grey,
   height: 36px;
   width: 36px;
   border-radius: 50%;
-}
-
-// Collapse able headers
-
-.header-collapse-custom-collapse .header-collapse-custom-panel {
-  overflow: hidden;
-  padding: 0;
-  background: @user-profile-background;
-  border: 0px;
-
-  .ant-collapse-content {
-    .ant-collapse-content-box {
-      padding: 0;
-    }
-  }
 }

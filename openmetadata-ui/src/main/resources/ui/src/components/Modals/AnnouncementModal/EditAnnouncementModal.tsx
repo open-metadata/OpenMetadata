@@ -20,9 +20,9 @@ import { VALIDATION_MESSAGES } from '../../../constants/constants';
 import { AnnouncementDetails } from '../../../generated/entity/feed/thread';
 import { getTimeZone } from '../../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
+import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
 import { CreateAnnouncement } from './AddAnnouncementModal';
-import './announcement-modal.less';
+import './AnnouncementModal.less';
 
 interface Props {
   announcement: AnnouncementDetails;

@@ -25,24 +25,22 @@ import {
   getRoleWithFqnPath,
 } from '../../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
-import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
 
 const ListEntities = ({
   list,
   type,
   onDelete,
   hasAccess,
-  isTeamDeleted,
 }: {
   list: EntityReference[];
   type: EntityType;
   onDelete: (record: EntityReference) => void;
   hasAccess: boolean;
-  isTeamDeleted: boolean;
 }) => {
   const { t } = useTranslation();
   const columns: ColumnsType<EntityReference> = useMemo(() => {
-    const tabColumns: ColumnsType<EntityReference> = [
+    return [
       {
         title: t('label.name'),
         dataIndex: 'name',
@@ -108,11 +106,7 @@ const ListEntities = ({
         },
       },
     ];
-
-    return tabColumns.filter((column) =>
-      column.key === 'actions' ? !isTeamDeleted : true
-    );
-  }, [isTeamDeleted]);
+  }, []);
 
   return (
     <Table

@@ -23,12 +23,12 @@ import { Document } from '../../../generated/entity/docStore/document';
 import { getAllKnowledgePanels } from '../../../rest/DocStoreAPI';
 import { getWidgetWidthLabelFromKey } from '../../../utils/CustomizableLandingPageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import './add-widget-modal.less';
+import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
 import {
   AddWidgetModalProps,
   WidgetSizeInfo,
 } from './AddWidgetModal.interface';
+import './AddWidgetModal.less';
 import AddWidgetTabContent from './AddWidgetTabContent';
 
 function AddWidgetModal({

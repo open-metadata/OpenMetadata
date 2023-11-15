@@ -32,11 +32,11 @@ jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
     }),
   }),
 }));
-jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
+jest.mock('../../components/containers/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
 jest.mock(
-  '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
+  '../../components/common/title-breadcrumb/title-breadcrumb.component',
   () => {
     return jest.fn().mockImplementation(() => <div>TitleBreadcrumb</div>);
   }

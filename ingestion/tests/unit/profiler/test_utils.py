@@ -33,7 +33,7 @@ from metadata.utils.profiler_utils import (
 )
 from metadata.utils.sqa_utils import is_array
 
-from .conftest import LowerRow, Row
+from .conftest import Row
 
 Base = declarative_base()
 
@@ -165,22 +165,7 @@ def test_get_snowflake_system_queries_all_dll(query, expected):
         query_text=query,
     )
 
-    lower_row = LowerRow(
-        query_id=1,
-        query_type=expected,
-        start_time=datetime.now(),
-        query_text=query,
-    )
-
     query_result = get_snowflake_system_queries(row, "DATABASE", "SCHEMA")  # type: ignore
-
-    assert query_result
-    assert query_result.query_type == expected
-    assert query_result.database_name == "database"
-    assert query_result.schema_name == "schema"
-    assert query_result.table_name == "table1"
-
-    query_result = get_snowflake_system_queries(lower_row, "DATABASE", "SCHEMA")  # type: ignore
 
     assert query_result
     assert query_result.query_type == expected

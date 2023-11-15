@@ -93,7 +93,6 @@ export const storedProcedureVersionMockProps: StoredProcedureVersionProp = {
   isVersionLoading: false,
   owner: mockOwner,
   domain: mockDomain,
-  dataProducts: [],
   tier: mockTier,
   slashedTableName: [],
 

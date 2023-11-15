@@ -34,6 +34,9 @@ jest.mock('../../AddDataQualityTest/rightPanelData', () => ({
   getRightPanelForAddTestSuitePage: jest.fn().mockReturnValue('Add test suite'),
 }));
 
+jest.mock('../../../utils/CommonUtils', () => ({
+  getCurrentUserId: jest.fn().mockReturnValue('1'),
+}));
 jest.mock('../../../constants/TestSuite.constant', () => ({
   STEPS_FOR_ADD_TEST_SUITE: [],
   TEST_SUITE_STEPPER_BREADCRUMB: [],
@@ -55,7 +58,7 @@ jest.mock('../../../components/AddDataQualityTest/TestSuiteIngestion', () => {
   return jest.fn().mockReturnValue(<div>TestSuiteIngestion</div>);
 });
 
-jest.mock('../../../components/common/SuccessScreen/SuccessScreen', () => {
+jest.mock('../../../components/common/success-screen/SuccessScreen', () => {
   return jest.fn().mockReturnValue(<div>SuccessScreen</div>);
 });
 
@@ -76,13 +79,13 @@ jest.mock('../../../components/common/ResizablePanels/ResizablePanels', () =>
 );
 
 jest.mock(
-  '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
+  '../../../components/common/title-breadcrumb/title-breadcrumb.component',
   () => {
     return jest.fn().mockReturnValue(<div>Title Breadcrumb</div>);
   }
 );
 
-jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () =>
+jest.mock('../../../components/containers/PageLayoutV1', () =>
   jest.fn().mockImplementation(({ children, leftPanel, rightPanel }) => (
     <div>
       {leftPanel}

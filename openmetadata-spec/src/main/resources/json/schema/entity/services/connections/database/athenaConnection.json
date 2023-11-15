@@ -85,10 +85,6 @@
       "description": "Supports Lineage Extraction.",
       "type": "boolean",
       "default": true
-    },
-    "sampleDataStorageConfig": {
-      "title": "S3 Config for Sample Data",
-      "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
     }
   },
   "additionalProperties": false,

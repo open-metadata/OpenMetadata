@@ -18,13 +18,12 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { AsyncSelect } from '../../components/AsyncSelect/AsyncSelect';
-import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
-import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
-import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import RichTextEditor from '../../components/common/rich-text-editor/RichTextEditor';
+import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
+import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import SchemaEditor from '../../components/SchemaEditor/SchemaEditor';
+import SchemaEditor from '../../components/schema-editor/SchemaEditor';
 import { HTTP_STATUS_CODE } from '../../constants/auth.constants';
 import {
   getTableTabPath,
@@ -41,14 +40,16 @@ import { Table } from '../../generated/entity/data/table';
 import { searchData } from '../../rest/miscAPI';
 import { postQuery } from '../../rest/queryAPI';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
-import { getPartialNameFromFQN } from '../../utils/CommonUtils';
+import {
+  getCurrentUserId,
+  getPartialNameFromFQN,
+} from '../../utils/CommonUtils';
 import { getCurrentMillis } from '../../utils/date-time/DateTimeUtils';
 import { getEntityBreadcrumbs, getEntityName } from '../../utils/EntityUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const AddQueryPage = () => {
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
   const { fqn: datasetFQN } = useParams<{ fqn: string }>();
   const { permissions } = usePermissionProvider();
   const [form] = Form.useForm();
@@ -139,7 +140,7 @@ const AddQueryPage = () => {
       ...values,
       description: isEmpty(description) ? undefined : description,
       owner: {
-        id: currentUser?.id ?? '',
+        id: getCurrentUserId(),
         type: OwnerType.USER,
       },
       queryUsedIn: [

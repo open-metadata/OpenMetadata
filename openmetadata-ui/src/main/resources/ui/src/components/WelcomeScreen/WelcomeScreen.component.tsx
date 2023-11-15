@@ -17,11 +17,12 @@ import { ReactComponent as CloseIcon } from '../../assets/svg/close.svg';
 import { ReactComponent as LineArrowRight } from '../../assets/svg/line-arrow-right.svg';
 
 import { split } from 'lodash';
+import { observer } from 'mobx-react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import AppState from '../../AppState';
 import { ROUTES } from '../../constants/constants';
 import { getEntityName } from '../../utils/EntityUtils';
-import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
 import './welcome-screen.style.less';
 
 const { Paragraph, Text } = Typography;
@@ -32,11 +33,11 @@ interface WelcomeScreenProps {
 
 const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
-
   const userName = useMemo(() => {
-    return split(getEntityName(currentUser), ' ')[0];
-  }, [currentUser]);
+    const user = AppState.getCurrentUserDetails();
+
+    return split(getEntityName(user), ' ')[0];
+  }, [AppState]);
 
   return (
     <Card
@@ -89,4 +90,4 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
   );
 };
 
-export default WelcomeScreen;
+export default observer(WelcomeScreen);

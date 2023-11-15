@@ -18,13 +18,13 @@ import { isEmpty, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
+import AppState from '../../../AppState';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import { useAuthContext } from '../../../components/Auth/AuthProviders/AuthProvider';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
-import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
 import ExploreSearchCard from '../../../components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import Loader from '../../../components/Loader/Loader';
-import { SearchedDataProps } from '../../../components/SearchedData/SearchedData.interface';
+import { SearchedDataProps } from '../../../components/searched-data/SearchedData.interface';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -51,12 +51,11 @@ import {
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import Assignees from '../shared/Assignees';
 import { DescriptionTabs } from '../shared/DescriptionTabs';
-import '../task-page.style.less';
+import '../TaskPage.style.less';
 import { EntityData, Option } from '../TasksPage.interface';
 
 const UpdateDescription = () => {
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
   const location = useLocation();
   const history = useHistory();
   const [form] = useForm();
@@ -76,6 +75,12 @@ const UpdateDescription = () => {
   const getSanitizeValue = value?.replaceAll(/^"|"$/g, '') || '';
 
   const decodedEntityFQN = useMemo(() => getDecodedFqn(entityFQN), [entityFQN]);
+
+  // get current user details
+  const currentUser = useMemo(
+    () => AppState.getCurrentUserDetails(),
+    [AppState.userDetails, AppState.nonSecureUserDetails]
+  );
 
   const message = `Update description for ${getSanitizeValue || entityType} ${
     field !== EntityField.COLUMNS ? getEntityName(entityData) : ''

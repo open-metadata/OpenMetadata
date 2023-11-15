@@ -18,8 +18,8 @@ import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import appState from '../../AppState';
-import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
-import { UserProfile } from '../../components/Auth/AuthProviders/AuthProvider.interface';
+import { useAuthContext } from '../../components/authentication/auth-provider/AuthProvider';
+import { UserProfile } from '../../components/authentication/auth-provider/AuthProvider.interface';
 import TeamsSelectable from '../../components/TeamsSelectable/TeamsSelectable';
 import {
   REDIRECT_PATHNAME,

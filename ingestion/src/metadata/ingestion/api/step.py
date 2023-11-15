@@ -11,7 +11,6 @@
 """
 Each of the ingestion steps: Source, Sink, Stage,...
 """
-import inspect
 import traceback
 from abc import ABC, abstractmethod
 from typing import Iterable, Optional
@@ -80,19 +79,6 @@ class ReturnStep(Step, ABC):
         except WorkflowFatalError as err:
             logger.error(f"Fatal error running step [{self}]: [{err}]")
             raise err
-        except AttributeError as exc:
-            error = (
-                f"Object type defined in `def _run()` "
-                f"{inspect.getsourcefile(self._run)} is not an Either: [{exc}]"
-            )
-            logger.warning(error)
-            self.status.failed(
-                StackTraceError(
-                    name="Not an Either",
-                    error=error,
-                    stack_trace=traceback.format_exc(),
-                )
-            )
         except Exception as exc:
             error = f"Unhandled exception during workflow processing: [{exc}]"
             logger.warning(error)
@@ -135,19 +121,6 @@ class StageStep(Step, ABC):
         except WorkflowFatalError as err:
             logger.error(f"Fatal error running step [{self}]: [{err}]")
             raise err
-        except AttributeError as exc:
-            error = (
-                f"Object type defined in `def _run()` "
-                f"{inspect.getsourcefile(self._run)} is not an Either: [{exc}]"
-            )
-            logger.warning(error)
-            self.status.failed(
-                StackTraceError(
-                    name="Not an Either",
-                    error=error,
-                    stack_trace=traceback.format_exc(),
-                )
-            )
         except Exception as exc:
             error = f"Unhandled exception during workflow processing: [{exc}]"
             logger.warning(error)
@@ -184,19 +157,6 @@ class IterStep(Step, ABC):
         except WorkflowFatalError as err:
             logger.error(f"Fatal error running step [{self}]: [{err}]")
             raise err
-        except AttributeError as exc:
-            error = (
-                f"Object type defined in `def _iter()` "
-                f"{inspect.getsourcefile(self._iter)} is not an Either: [{exc}]"
-            )
-            logger.warning(error)
-            self.status.failed(
-                StackTraceError(
-                    name="Not an Either",
-                    error=error,
-                    stack_trace=traceback.format_exc(),
-                )
-            )
         except Exception as exc:
             error = f"Encountered exception running step [{self}]: [{exc}]"
             logger.warning(error)

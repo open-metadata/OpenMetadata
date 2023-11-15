@@ -16,10 +16,10 @@ import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import GlobalSettingRouter from '../../components/AppRouter/GlobalSettingRouter';
 import LeftPanelCard from '../../components/common/LeftPanelCard/LeftPanelCard';
-import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import GlobalSettingRouter from '../../components/router/GlobalSettingRouter';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,

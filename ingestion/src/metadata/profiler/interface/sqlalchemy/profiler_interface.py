@@ -20,7 +20,7 @@ import threading
 import traceback
 from collections import defaultdict
 from datetime import datetime, timezone
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 from sqlalchemy import Column, inspect
 from sqlalchemy.exc import ProgrammingError, ResourceClosedError
@@ -40,7 +40,7 @@ from metadata.profiler.orm.functions.table_metric_construct import (
 )
 from metadata.profiler.orm.registry import Dialects
 from metadata.profiler.processor.runner import QueryRunner
-from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
+from metadata.profiler.processor.sampler.sampler_factory import sampler_factory_
 from metadata.utils.custom_thread_pool import CustomThreadPoolExecutor
 from metadata.utils.logger import profiler_interface_registry_logger
 
@@ -73,7 +73,6 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         service_connection_config,
         ometa_client,
         entity,
-        storage_config,
         profile_sample_config,
         source_config,
         sample_query,
@@ -81,7 +80,6 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         thread_count: int = 5,
         timeout_seconds: int = 43200,
         sqa_metadata=None,
-        sample_data_count: Optional[int] = SAMPLE_DATA_DEFAULT_COUNT,
         **kwargs,
     ):
         """Instantiate SQA Interface object"""
@@ -90,14 +88,12 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             service_connection_config,
             ometa_client,
             entity,
-            storage_config,
             profile_sample_config,
             source_config,
             sample_query,
             table_partition_config,
             thread_count,
             timeout_seconds,
-            sample_data_count,
         )
 
         self._table = self._convert_table_to_orm_object(sqa_metadata)
@@ -112,10 +108,6 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
 
     def _get_sampler(self, **kwargs):
         """get sampler object"""
-        from metadata.profiler.processor.sampler.sampler_factory import (  # pylint: disable=import-outside-toplevel
-            sampler_factory_,
-        )
-
         session = kwargs.get("session")
         table = kwargs["table"]
 
@@ -126,7 +118,6 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             profile_sample_config=self.profile_sample_config,
             partition_details=self.partition_details,
             profile_sample_query=self.profile_query,
-            sample_data_count=self.sample_data_count,
         )
 
     def _session_factory(self) -> scoped_session:

@@ -28,11 +28,11 @@ describe('Test if the total count of users and teams is correctly displayed in t
   it('Check total count of users and teams', () => {
     const token = localStorage.getItem('oidcIdToken');
 
-    visitEntityDetailsPage({
-      term: TEAM_DETAILS.term,
-      serviceName: TEAM_DETAILS.serviceName,
-      entity: TEAM_DETAILS.entity,
-    });
+    visitEntityDetailsPage(
+      TEAM_DETAILS.term,
+      TEAM_DETAILS.serviceName,
+      TEAM_DETAILS.entity
+    );
 
     cy.request({
       method: 'GET',

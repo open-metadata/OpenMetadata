@@ -71,7 +71,6 @@
     "field": {
       "type": "object",
       "javaType": "org.openmetadata.schema.type.Field",
-      "javaInterfaces": ["org.openmetadata.schema.FieldInterface"],
       "description": "This schema defines the nested object to capture protobuf/avro/jsonschema of topic's schema.",
       "properties": {
         "name": {

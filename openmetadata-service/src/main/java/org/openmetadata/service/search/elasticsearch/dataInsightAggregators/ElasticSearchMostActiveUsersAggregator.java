@@ -16,12 +16,12 @@ public class ElasticSearchMostActiveUsersAggregator
 
   @Override
   protected Double getSumValue(Sum key) {
-    return key != null ? key.getValue() : 0.0;
+    return key.getValue();
   }
 
   @Override
   protected Long getMaxValue(Max key) {
-    return key != null ? (long) key.getValue() : 0;
+    return (long) key.getValue();
   }
 
   @Override

@@ -22,12 +22,6 @@
           "type": "string",
           "default": null
         },
-        "separator": {
-          "title": "Separator",
-          "description": "For delimited files such as CSV, what is the separator being used?",
-          "type": "string",
-          "default": null
-        },
         "isPartitioned": {
           "title": "Is Partitioned",
           "description": "Flag indicating whether the container's data is partitioned",

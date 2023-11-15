@@ -12,7 +12,6 @@
 Workflow definition for metadata related ingestions: metadata and lineage.
 """
 
-from metadata.config.common import WorkflowExecutionError
 from metadata.ingestion.api.steps import Sink, Source
 from metadata.utils.importer import (
     import_from_module,
@@ -41,12 +40,6 @@ class MetadataWorkflow(BaseWorkflow):
     def _get_source(self) -> Source:
         # Source that we are ingesting, e.g., mysql, looker or kafka
         source_type = self.config.source.type.lower()
-        if not self.config.source.serviceName:
-            raise WorkflowExecutionError(
-                "serviceName is required field for executing the Metadata Workflow. "
-                "You can find more information on how to build the YAML "
-                "configuration here: https://docs.open-metadata.org/connectors"
-            )
 
         source_class = (
             import_from_module(

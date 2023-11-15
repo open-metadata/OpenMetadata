@@ -29,15 +29,14 @@ import {
 import { Role } from '../../../../generated/entity/teams/role';
 import { useAuth } from '../../../../hooks/authHooks';
 import { getRoles } from '../../../../rest/rolesAPIV1';
-import { handleSearchFilterOption } from '../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { UserProfileRolesProps } from './UserProfileRoles.interface';
 
 const UserProfileRoles = ({
+  isUserAdmin,
   userRoles,
   updateUserDetails,
-  isUserAdmin,
 }: UserProfileRolesProps) => {
   const { t } = useTranslation();
 
@@ -62,7 +61,7 @@ const UserProfileRoles = ({
     }
 
     return options;
-  }, [roles, isUserAdmin, getEntityName]);
+  }, [roles]);
 
   const fetchRoles = async () => {
     setIsRolesLoading(true);
@@ -155,7 +154,7 @@ const UserProfileRoles = ({
             <EditIcon
               className="cursor-pointer align-middle"
               color={DE_ACTIVE_COLOR}
-              data-testid="edit-roles-button"
+              data-testid="edit-roles"
               {...ICON_DIMENSION}
               onClick={() => setIsRolesEdit(true)}
             />
@@ -173,8 +172,6 @@ const UserProfileRoles = ({
               showSearch
               aria-label="Select roles"
               className="w-full"
-              data-testid="select-user-roles"
-              filterOption={handleSearchFilterOption}
               id="select-role"
               loading={isRolesLoading}
               maxTagCount={4}

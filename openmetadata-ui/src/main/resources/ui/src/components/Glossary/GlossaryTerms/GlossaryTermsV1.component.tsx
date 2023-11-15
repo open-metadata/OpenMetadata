@@ -13,18 +13,12 @@
 
 import { Col, Row, Tabs } from 'antd';
 import { t } from 'i18next';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { getGlossaryTermDetailsPath } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
+import { myDataSearchIndex } from '../../../constants/Mydata.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
-import { SearchIndex } from '../../../enums/search.enum';
 import {
   GlossaryTerm,
   Status,
@@ -103,12 +97,6 @@ const GlossaryTermsV1 = ({
     );
   };
 
-  const handleAssetSave = useCallback(() => {
-    fetchGlossaryTermAssets();
-    assetTabRef.current?.refreshAssets();
-    tab !== 'assets' && activeTabHandler('assets');
-  }, [assetTabRef, tab]);
-
   const onExtensionUpdate = async (updatedTable: GlossaryTerm) => {
     await handleGlossaryTermUpdate({
       ...glossaryTerm,
@@ -174,13 +162,11 @@ const GlossaryTermsV1 = ({
               children: (
                 <AssetsTabs
                   assetCount={assetCount}
-                  entityFqn={glossaryTerm.fullyQualifiedName ?? ''}
                   isSummaryPanelOpen={isSummaryPanelOpen}
                   permissions={assetPermissions}
                   ref={assetTabRef}
                   onAddAsset={() => setAssetModelVisible(true)}
                   onAssetClick={onAssetClick}
-                  onRemoveAsset={handleAssetSave}
                 />
               ),
             },
@@ -240,7 +226,6 @@ const GlossaryTermsV1 = ({
     isSummaryPanelOpen,
     isVersionView,
     assetPermissions,
-    handleAssetSave,
   ]);
 
   const fetchGlossaryTermAssets = async () => {
@@ -253,7 +238,7 @@ const GlossaryTermsV1 = ({
           `(tags.tagFQN:"${glossaryFqn}")`,
           '',
           '',
-          SearchIndex.ALL
+          myDataSearchIndex
         );
 
         setAssetCount(res.data.hits.total.value ?? 0);
@@ -267,6 +252,12 @@ const GlossaryTermsV1 = ({
     fetchGlossaryTermAssets();
     getEntityFeedCount();
   }, [glossaryFqn]);
+
+  const handleAssetSave = () => {
+    fetchGlossaryTermAssets();
+    assetTabRef.current?.refreshAssets();
+    tab !== 'assets' && activeTabHandler('assets');
+  };
 
   const name = useMemo(
     () =>
@@ -321,7 +312,7 @@ const GlossaryTermsV1 = ({
           />
         </Col>
       </Row>
-      {glossaryTerm.fullyQualifiedName && assetModalVisible && (
+      {glossaryTerm.fullyQualifiedName && (
         <AssetSelectionModal
           entityFqn={glossaryTerm.fullyQualifiedName}
           open={assetModalVisible}

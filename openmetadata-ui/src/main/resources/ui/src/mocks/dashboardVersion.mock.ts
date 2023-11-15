@@ -90,7 +90,6 @@ export const dashboardVersionProps: DashboardVersionProp = {
   isVersionLoading: false,
   owner: mockOwner,
   domain: mockDomain,
-  dataProducts: [],
   tier: mockTier,
   slashedDashboardName: [
     {

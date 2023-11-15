@@ -36,8 +36,8 @@ import { HTMLToMarkdown, matcher } from '../../utils/FeedUtils';
 import { LinkBlot } from '../../utils/QuillLink/QuillLink';
 import { insertMention, insertRef } from '../../utils/QuillUtils';
 import { getEntityIcon } from '../../utils/TableUtils';
-import { editorRef } from '../common/RichTextEditor/RichTextEditor.interface';
-import './feed-editor.less';
+import { editorRef } from '../common/rich-text-editor/RichTextEditor.interface';
+import './FeedEditor.css';
 import { FeedEditorProp } from './FeedEditor.interface';
 
 Quill.register('modules/markdownOptions', QuillMarkdown);

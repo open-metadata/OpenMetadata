@@ -20,11 +20,11 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import TestSuiteScheduler from '../../components/AddDataQualityTest/components/TestSuiteScheduler';
 import AppInstallVerifyCard from '../../components/Applications/AppInstallVerifyCard/AppInstallVerifyCard.component';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import FormBuilder from '../../components/common/FormBuilder/FormBuilder';
+import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import IngestionStepper from '../../components/IngestionStepper/IngestionStepper.component';
 import Loader from '../../components/Loader/Loader';
-import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { STEPS_FOR_APP_INSTALL } from '../../constants/Applications.constant';
 import {
   GlobalSettingOptions,
@@ -113,8 +113,6 @@ const AppInstall = () => {
           cronExpression: repeatFrequency,
         },
         name: fqn,
-        description: appData?.description,
-        displayName: appData?.displayName,
       };
       await installApplication(data);
 

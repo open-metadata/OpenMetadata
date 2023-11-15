@@ -14,7 +14,7 @@ Module to define pydentic models related to datalake
 """
 from typing import Any, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from metadata.generated.schema.entity.data.table import Column
 
@@ -39,9 +39,6 @@ class DatalakeTableSchemaWrapper(BaseModel):
     key: str
     bucket_name: str
     file_extension: Optional[Any]
-    separator: Optional[str] = Field(
-        None, description="Used for DSV readers to identify the separator"
-    )
 
 
 class DatalakeTableMetadata(BaseModel):

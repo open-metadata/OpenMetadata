@@ -208,9 +208,7 @@ const GlossaryDetailsRightPanel = ({
           domain={selectedData.domain}
           entityFqn={selectedData.fullyQualifiedName ?? ''}
           entityId={selectedData.id ?? ''}
-          entityType={
-            isGlossary ? EntityType.GLOSSARY : EntityType.GLOSSARY_TERM
-          }
+          entityType={EntityType.GLOSSARY}
           hasPermission={permissions.EditAll}
         />
       </Col>

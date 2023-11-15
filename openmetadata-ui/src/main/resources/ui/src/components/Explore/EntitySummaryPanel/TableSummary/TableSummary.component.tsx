@@ -50,10 +50,7 @@ import CommonEntitySummaryInfo from '../CommonEntitySummaryInfo/CommonEntitySumm
 import SummaryList from '../SummaryList/SummaryList.component';
 import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
 import './table-summary.less';
-import {
-  TableProfileDetails,
-  TableSummaryProps,
-} from './TableSummary.interface';
+import { TableSummaryProps } from './TableSummary.interface';
 
 function TableSummary({
   entityDetails,
@@ -65,16 +62,10 @@ function TableSummary({
   const location = useLocation();
   const isTourPage = location.pathname.includes(ROUTES.TOUR);
   const { getEntityPermission } = usePermissionProvider();
-
-  const [profileData, setProfileData] = useState<TableProfileDetails>();
+  const [tableDetails, setTableDetails] = useState<Table>(entityDetails);
   const [testSuiteSummary, setTestSuiteSummary] = useState<TestSummary>();
   const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
-  );
-
-  const tableDetails: Table = useMemo(
-    () => ({ ...entityDetails, ...profileData }),
-    [entityDetails, profileData]
   );
 
   const viewProfilerPermission = useMemo(
@@ -82,12 +73,12 @@ function TableSummary({
     [tablePermissions]
   );
 
-  const isTableDeleted = useMemo(() => tableDetails.deleted, [tableDetails]);
+  const isTableDeleted = useMemo(() => entityDetails.deleted, [entityDetails]);
 
   const fetchAllTests = async () => {
     try {
       const res = await getTableDetailsByFQN(
-        getEncodedFqn(tableDetails.fullyQualifiedName ?? ''),
+        getEncodedFqn(entityDetails.fullyQualifiedName ?? ''),
         'testSuite'
       );
 
@@ -101,14 +92,23 @@ function TableSummary({
 
   const fetchProfilerData = useCallback(async () => {
     try {
-      const { profile, tableConstraints } = await getLatestTableProfileByFqn(
-        tableDetails?.fullyQualifiedName ?? ''
+      const profileResponse = await getLatestTableProfileByFqn(
+        entityDetails?.fullyQualifiedName || ''
       );
-      setProfileData({ profile, tableConstraints });
+
+      const { profile, tableConstraints } = profileResponse;
+
+      setTableDetails((prev) => {
+        if (prev) {
+          return { ...prev, profile, tableConstraints };
+        } else {
+          return {} as Table;
+        }
+      });
     } catch (error) {
       // Error
     }
-  }, [tableDetails]);
+  }, [entityDetails]);
 
   const profilerSummary = useMemo(() => {
     if (!viewProfilerPermission) {
@@ -163,6 +163,8 @@ function TableSummary({
     );
   }, [tableDetails, testSuiteSummary, viewProfilerPermission]);
 
+  const { columns } = tableDetails;
+
   const entityInfo = useMemo(
     () => getEntityOverview(ExplorePageTabs.TABLES, tableDetails),
     [tableDetails]
@@ -172,22 +174,22 @@ function TableSummary({
     () =>
       getFormattedEntityData(
         SummaryEntityType.COLUMN,
-        tableDetails.columns,
+        columns,
         tableDetails.tableConstraints
       ),
-    [tableDetails]
+    [columns, tableDetails]
   );
 
   const init = useCallback(async () => {
-    if (tableDetails.id && !isTourPage) {
+    if (entityDetails.id && !isTourPage) {
       const tablePermission = await getEntityPermission(
         ResourceEntity.TABLE,
-        tableDetails.id
+        entityDetails.id
       );
       setTablePermissions(tablePermission);
       const shouldFetchProfilerData =
         !isTableDeleted &&
-        tableDetails.service?.type === 'databaseService' &&
+        entityDetails.service?.type === 'databaseService' &&
         !isTourPage &&
         tablePermission;
 
@@ -198,18 +200,11 @@ function TableSummary({
     } else {
       setTablePermissions(mockTablePermission as OperationPermission);
     }
-  }, [
-    tableDetails,
-    isTourPage,
-    isTableDeleted,
-    fetchProfilerData,
-    fetchAllTests,
-    getEntityPermission,
-  ]);
+  }, [entityDetails.fullyQualifiedName, isTourPage, isTableDeleted]);
 
   useEffect(() => {
     init();
-  }, [tableDetails.id]);
+  }, [entityDetails.id]);
 
   return (
     <SummaryPanelSkeleton loading={isLoading || isEmpty(tableDetails)}>
@@ -239,8 +234,8 @@ function TableSummary({
         <Divider className="m-y-xs" />
 
         <SummaryTagsDescription
-          entityDetail={tableDetails}
-          tags={tags ?? tableDetails.tags ?? []}
+          entityDetail={entityDetails}
+          tags={tags ?? entityDetails.tags ?? []}
         />
         <Divider className="m-y-xs" />
 

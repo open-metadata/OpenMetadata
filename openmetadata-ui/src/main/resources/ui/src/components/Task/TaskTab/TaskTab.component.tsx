@@ -31,6 +31,7 @@ import { isEmpty, isEqual, isUndefined, noop } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import AppState from '../../../AppState';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/ic-close-task.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
@@ -68,7 +69,6 @@ import {
   TASK_ACTION_LIST,
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import './task-tab.less';
 import { TaskTabProps } from './TaskTab.interface';
 
@@ -79,7 +79,6 @@ export const TaskTab = ({
   ...rest
 }: TaskTabProps) => {
   const [assigneesForm] = useForm();
-  const { currentUser } = useAuthContext();
   const updatedAssignees = Form.useWatch('assignees', assigneesForm);
 
   const { task: taskDetails } = taskThread;
@@ -105,6 +104,12 @@ export const TaskTab = ({
         type: assignee.type,
       })) ?? [],
     [taskDetails]
+  );
+
+  // get current user details
+  const currentUser = useMemo(
+    () => AppState.getCurrentUserDetails(),
+    [AppState.userDetails, AppState.nonSecureUserDetails]
   );
 
   const taskField = useMemo(() => {

@@ -83,7 +83,7 @@
         }
       },
       "additionalProperties": false,
-      "required": ["type", "sourceConfig"]
+      "required": ["type", "serviceName", "sourceConfig"]
     },
     "processor": {
       "description": "Configuration for Processor Component in the OpenMetadata Ingestion Framework.",

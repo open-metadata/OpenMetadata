@@ -31,30 +31,30 @@ import { isEmpty, isString, isUndefined, noop } from 'lodash';
 import Qs from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import { useAdvanceSearch } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import AppliedFilterText from '../../components/Explore/AppliedFilterText/AppliedFilterText';
 import EntitySummaryPanel from '../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
+import {
+  ExploreProps,
+  ExploreQuickFilterField,
+  ExploreSearchIndex,
+} from '../../components/Explore/explore.interface';
+import { getSelectedValuesFromQuickFilter } from '../../components/Explore/Explore.utils';
 import ExploreQuickFilters from '../../components/Explore/ExploreQuickFilters';
 import SortingDropDown from '../../components/Explore/SortingDropDown';
+import SearchedData from '../../components/searched-data/SearchedData';
+import { SearchedDataProps } from '../../components/searched-data/SearchedData.interface';
 import { tabsInfo } from '../../constants/explore.constants';
 import { ERROR_PLACEHOLDER_TYPE, SORT_ORDER } from '../../enums/common.enum';
 import {
   QueryFieldInterface,
   QueryFieldValueInterface,
-} from '../../pages/ExplorePage/ExplorePage.interface';
+} from '../../pages/explore/ExplorePage.interface';
 import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
-import { getSelectedValuesFromQuickFilter } from '../../utils/Explore.utils';
-import {
-  ExploreProps,
-  ExploreQuickFilterField,
-  ExploreSearchIndex,
-} from '../Explore/ExplorePage.interface';
+import PageLayoutV1 from '../containers/PageLayoutV1';
 import Loader from '../Loader/Loader';
-import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
-import SearchedData from '../SearchedData/SearchedData';
-import { SearchedDataProps } from '../SearchedData/SearchedData.interface';
-import './exploreV1.less';
+import './ExploreV1.style.less';
 
 const ExploreV1: React.FC<ExploreProps> = ({
   aggregations,
@@ -238,10 +238,8 @@ const ExploreV1: React.FC<ExploreProps> = ({
                 rootClassName="left-container"
                 selectedKeys={[activeTabKey]}
                 onClick={(info) => {
-                  if (info && info.key !== activeTabKey) {
-                    onChangeSearchIndex(info.key as ExploreSearchIndex);
-                    setShowSummaryPanel(false);
-                  }
+                  info && onChangeSearchIndex(info.key as ExploreSearchIndex);
+                  setShowSummaryPanel(false);
                 }}
               />
             </Sider>

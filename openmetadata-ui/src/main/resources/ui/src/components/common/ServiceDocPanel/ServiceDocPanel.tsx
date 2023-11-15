@@ -22,8 +22,8 @@ import { PipelineType } from '../../../generated/entity/services/ingestionPipeli
 import { fetchMarkdownFile } from '../../../rest/miscAPI';
 import { SupportedLocales } from '../../../utils/i18next/i18nextUtil';
 import Loader from '../../Loader/Loader';
-import RichTextEditorPreviewer from '../RichTextEditor/RichTextEditorPreviewer';
-import './service-doc-panel.less';
+import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
+import './ServiceDocPanel.less';
 
 interface ServiceDocPanelProp {
   serviceName: string;

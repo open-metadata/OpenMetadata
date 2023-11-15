@@ -21,8 +21,8 @@ import {
   useHistory,
   useParams,
 } from 'react-router-dom';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
 import { ROUTES } from '../../constants/constants';
@@ -33,7 +33,7 @@ import { Operation } from '../../generated/entity/policies/policy';
 import { DataInsightTabs } from '../../interface/data-insight.interface';
 import { getDataInsightPathWithFqn } from '../../utils/DataInsightUtils';
 import { checkPermission } from '../../utils/PermissionsUtils';
-import './data-insight.less';
+import './DataInsight.less';
 import DataInsightClassBase from './DataInsightClassBase';
 import DataInsightHeader from './DataInsightHeader/DataInsightHeader.component';
 import DataInsightLeftPanel from './DataInsightLeftPanel/DataInsightLeftPanel';

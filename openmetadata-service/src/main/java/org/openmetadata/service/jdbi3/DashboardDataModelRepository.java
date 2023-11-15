@@ -13,10 +13,10 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
-import static org.openmetadata.service.Entity.populateEntityFieldTags;
 
 import java.util.List;
 import lombok.SneakyThrows;
@@ -161,11 +161,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
 
   @Override
   public DashboardDataModel setFields(DashboardDataModel dashboardDataModel, Fields fields) {
-    populateEntityFieldTags(
-        entityType,
-        dashboardDataModel.getColumns(),
-        dashboardDataModel.getFullyQualifiedName(),
-        fields.contains(FIELD_TAGS));
+    getColumnTags(fields.contains(FIELD_TAGS), dashboardDataModel.getColumns());
     if (dashboardDataModel.getService() == null) {
       dashboardDataModel.withService(getContainer(dashboardDataModel.getId()));
     }
@@ -185,6 +181,14 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
         .withName(original.getName())
         .withService(original.getService())
         .withId(original.getId());
+  }
+
+  // TODO move this to base class?
+  private void getColumnTags(boolean setTags, List<Column> columns) {
+    for (Column c : listOrEmpty(columns)) {
+      c.setTags(setTags ? getTags(c.getFullyQualifiedName()) : c.getTags());
+      getColumnTags(setTags, c.getChildren());
+    }
   }
 
   private void applyTags(List<Column> columns) {

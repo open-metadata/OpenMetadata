@@ -7,13 +7,9 @@ import static org.openmetadata.service.util.TestUtils.INGESTION_BOT;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import java.io.IOException;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
-import java.util.UUID;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,20 +17,17 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.CreateBot;
 import org.openmetadata.schema.entity.Bot;
-import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.EntityResourceTest;
-import org.openmetadata.service.resources.apps.AppsResourceTest;
 import org.openmetadata.service.resources.bots.BotResource.BotList;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
-@Slf4j
 public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
   public static User botUser;
 
@@ -51,24 +44,9 @@ public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
   @BeforeEach
   public void beforeEach() throws HttpResponseException {
     ResultList<Bot> bots = listEntities(null, ADMIN_AUTH_HEADERS);
-
-    // Get App Bots
-    AppsResourceTest appsResourceTest = new AppsResourceTest();
-    ResultList<App> appResultList = appsResourceTest.listEntities(null, ADMIN_AUTH_HEADERS);
-    Set<UUID> applicationBotIds = new HashSet<>();
-    appResultList
-        .getData()
-        .forEach(
-            app -> {
-              if (app.getBot() != null) {
-                applicationBotIds.add(app.getBot().getId());
-              } else {
-                LOG.error("Bot Entry Null for App : {}", app.getName());
-              }
-            });
     for (Bot bot : bots.getData()) {
       try {
-        if (!bot.getProvider().equals(ProviderType.SYSTEM) && !applicationBotIds.contains(bot.getId())) {
+        if (!bot.getProvider().equals(ProviderType.SYSTEM)) {
           deleteEntity(bot.getId(), true, true, ADMIN_AUTH_HEADERS);
           createUser();
         }

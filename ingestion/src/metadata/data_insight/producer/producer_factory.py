@@ -14,8 +14,10 @@ OpenMetadata producer factory
 
 from typing import Type
 
-from metadata.data_insight.producer.cost_analysis_producer import CostAnalysisProducer
-from metadata.data_insight.producer.entity_producer import EntityProducer
+from metadata.data_insight.producer.entity_producer import (
+    EntityProducer,
+    EntityProducerTable,
+)
 from metadata.data_insight.producer.producer_interface import ProducerInterface
 from metadata.data_insight.producer.web_analytics_producer import WebAnalyticsProducer
 from metadata.generated.schema.analytics.reportData import ReportDataType
@@ -40,10 +42,10 @@ class ProducerFactory:
 producer_factory = ProducerFactory()
 producer_factory.register(ReportDataType.entityReportData.value, EntityProducer)
 producer_factory.register(
-    ReportDataType.rawCostAnalysisReportData.value, CostAnalysisProducer
+    ReportDataType.rawCostAnalysisReportData.value, EntityProducerTable
 )
 producer_factory.register(
-    ReportDataType.aggregatedCostAnalysisReportData.value, CostAnalysisProducer
+    ReportDataType.aggregatedCostAnalysisReportData.value, EntityProducerTable
 )
 producer_factory.register(
     ReportDataType.webAnalyticEntityViewReportData.value, WebAnalyticsProducer

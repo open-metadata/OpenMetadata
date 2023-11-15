@@ -26,7 +26,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
+import { useAuthContext } from '../../components/authentication/auth-provider/AuthProvider';
 import Loader from '../../components/Loader/Loader';
 import Users from '../../components/Users/Users.component';
 import { UserProfileTab } from '../../enums/user.enum';

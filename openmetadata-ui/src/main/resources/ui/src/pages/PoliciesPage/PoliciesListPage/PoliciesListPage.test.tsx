@@ -32,7 +32,7 @@ jest.mock('../../../components/common/DeleteWidget/DeleteWidgetModal', () =>
   jest.fn().mockReturnValue(<div>Delete Widget</div>)
 );
 jest.mock(
-  '../../../components/common/RichTextEditor/RichTextEditorPreviewer',
+  '../../../components/common/rich-text-editor/RichTextEditorPreviewer',
   () => jest.fn().mockReturnValue(<div data-testid="previewer">Previewer</div>)
 );
 
@@ -42,7 +42,7 @@ jest.mock('../../../rest/rolesAPIV1', () => ({
     .mockImplementation(() => Promise.resolve(POLICY_LIST_WITH_PAGING)),
 }));
 
-jest.mock('../../../components/common/NextPrevious/NextPrevious', () =>
+jest.mock('../../../components/common/next-previous/NextPrevious', () =>
   jest.fn().mockReturnValue(<div>NextPrevious</div>)
 );
 

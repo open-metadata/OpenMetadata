@@ -108,17 +108,12 @@ def get_lineage_from_multi_tenant_table(
                     lineage_details = LineageDetails(
                         columnsLineage=column_lineages,
                     )
-                    yield Either(
-                        left=None,
-                        right=AddLineageRequest(
-                            edge=EntitiesEdge(
-                                fromEntity=EntityReference(
-                                    id=source_entity.id, type="table"
-                                ),
-                                toEntity=EntityReference(
-                                    id=target_entity.id, type="table"
-                                ),
-                                lineageDetails=lineage_details,
-                            )
-                        ),
+                    yield AddLineageRequest(
+                        edge=EntitiesEdge(
+                            fromEntity=EntityReference(
+                                id=source_entity.id, type="table"
+                            ),
+                            toEntity=EntityReference(id=target_entity.id, type="table"),
+                            lineageDetails=lineage_details,
+                        )
                     )

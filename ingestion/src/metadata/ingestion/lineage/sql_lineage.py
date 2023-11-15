@@ -34,7 +34,6 @@ from metadata.utils.lru_cache import LRUCache
 
 logger = utils_logger()
 LRU_CACHE_SIZE = 4096
-DEFAULT_SCHEMA_NAME = "<default>"
 
 
 def get_column_fqn(table_entity: Table, column: str) -> Optional[str]:
@@ -145,12 +144,6 @@ def get_table_fqn_from_query_name(
         database_query, schema_query, table = (
             empty_list * (3 - len(split_table))
         ) + split_table
-
-    if schema_query == DEFAULT_SCHEMA_NAME:
-        schema_query = None
-
-    if database_query == DEFAULT_SCHEMA_NAME:
-        database_query = None
 
     return database_query, schema_query, table
 

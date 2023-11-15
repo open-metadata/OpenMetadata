@@ -20,6 +20,10 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
+import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
+import { TitleBreadcrumbProps } from '../../../components/common/title-breadcrumb/title-breadcrumb.interface';
+import PageHeader from '../../../components/header/PageHeader.component';
+import { HeaderProps } from '../../../components/header/PageHeader.interface';
 import {
   Effect,
   EventSubscription,
@@ -33,10 +37,6 @@ import {
   getFunctionDisplayName,
 } from '../../../utils/Alerts/AlertsUtil';
 import { getHostNameFromURL } from '../../../utils/CommonUtils';
-import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
-import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
-import PageHeader from '../../PageHeader/PageHeader.component';
-import { HeaderProps } from '../../PageHeader/PageHeader.interface';
 
 interface AlertDetailsComponentProps {
   alerts: EventSubscription;

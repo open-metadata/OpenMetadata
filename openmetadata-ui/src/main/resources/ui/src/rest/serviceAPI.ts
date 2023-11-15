@@ -12,17 +12,11 @@
  */
 
 import { AxiosResponse } from 'axios';
-import {
-  RestoreRequestType,
-  ServiceData,
-  ServicesData,
-  ServicesUpdateRequest,
-} from 'Models';
+import { ServiceData, ServicesData, ServicesUpdateRequest } from 'Models';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
 import { configOptions, PAGE_SIZE } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
 import { EntityHistory } from '../generated/type/entityHistory';
-import { Include } from '../generated/type/include';
 import {
   DomainSupportedServiceTypes,
   ServiceResponse,
@@ -78,13 +72,11 @@ export const getServiceById = async (serviceName: string, id: string) => {
 export const getServiceByFQN = async (
   serviceCat: string,
   fqn: string,
-  arrQueryFields: string | string[] = '',
-  include = Include.NonDeleted
+  arrQueryFields: string | string[] = ''
 ) => {
   const url = getURLWithQueryFields(
     `/services/${serviceCat}/name/${fqn}`,
-    arrQueryFields,
-    `include=${include}`
+    arrQueryFields
   );
 
   const response = await APIClient.get<ServicesType>(url);
@@ -210,17 +202,6 @@ export const searchService = async ({
     '',
     searchIndex
   );
-
-  return response.data;
-};
-
-export const restoreService = async (serviceCategory: string, id: string) => {
-  const response = await APIClient.put<
-    RestoreRequestType,
-    AxiosResponse<ServicesType>
-  >(`/services/${serviceCategory}/restore`, {
-    id,
-  });
 
   return response.data;
 };

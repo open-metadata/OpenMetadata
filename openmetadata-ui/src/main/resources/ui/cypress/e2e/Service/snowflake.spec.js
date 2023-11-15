@@ -26,9 +26,6 @@ const serviceName = `${serviceType}-ct-test-${uuid()}`;
 const tableName = 'CUSTOMER';
 const schema = 'TPCH_SF1000';
 const description = `This is ${serviceName} description`;
-const entityFqn = `${serviceName}.${Cypress.env(
-  'snowflakeDatabase'
-)}.${schema}.${tableName}`;
 
 describe('Snowflake Ingestion', () => {
   beforeEach(() => {
@@ -72,8 +69,7 @@ describe('Snowflake Ingestion', () => {
       tableName,
       description,
       SERVICE_TYPE.Database,
-      'tables',
-      entityFqn
+      'tables'
     );
   });
 

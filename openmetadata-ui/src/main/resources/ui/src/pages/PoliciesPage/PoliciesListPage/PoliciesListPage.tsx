@@ -20,15 +20,19 @@ import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import DeleteWidgetModal from '../../../components/common/DeleteWidget/DeleteWidgetModal';
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';
-import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
-import RichTextEditorPreviewer from '../../../components/common/RichTextEditor/RichTextEditorPreviewer';
+import ErrorPlaceHolder from '../../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import NextPrevious from '../../../components/common/next-previous/NextPrevious';
+import { PagingHandlerParams } from '../../../components/common/next-previous/NextPrevious.interface';
+import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import Table from '../../../components/common/Table/Table';
-import PageHeader from '../../../components/PageHeader/PageHeader.component';
+import PageHeader from '../../../components/header/PageHeader.component';
 import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../components/PermissionProvider/PermissionProvider.interface';
-import { PAGE_SIZE_MEDIUM, ROUTES } from '../../../constants/constants';
+import {
+  INITIAL_PAGING_VALUE,
+  PAGE_SIZE_MEDIUM,
+  ROUTES,
+} from '../../../constants/constants';
 import {
   NO_PERMISSION_FOR_ACTION,
   NO_PERMISSION_TO_VIEW,
@@ -38,7 +42,6 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { Operation, Policy } from '../../../generated/entity/policies/policy';
 import { Paging } from '../../../generated/type/paging';
-import { usePaging } from '../../../hooks/paging/usePaging';
 import { getPolicies } from '../../../rest/rolesAPIV1';
 import { getEntityName } from '../../../utils/EntityUtils';
 import {
@@ -51,7 +54,7 @@ import {
   getRoleWithFqnPath,
 } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import './policies-list.less';
+import './PoliciesList.less';
 
 const PoliciesListPage = () => {
   const { t } = useTranslation();
@@ -59,16 +62,8 @@ const PoliciesListPage = () => {
   const [selectedPolicy, setSelectedPolicy] = useState<Policy>();
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const {
-    currentPage,
-    handlePageChange,
-    paging,
-    handlePagingChange,
-    pageSize,
-    handlePageSizeChange,
-    showPagination,
-  } = usePaging(PAGE_SIZE_MEDIUM);
-
+  const [paging, setPaging] = useState<Paging>();
+  const [currentPage, setCurrentPage] = useState<number>(INITIAL_PAGING_VALUE);
   const { permissions } = usePermissionProvider();
 
   const addPolicyPermission = useMemo(() => {
@@ -214,28 +209,26 @@ const PoliciesListPage = () => {
         'roles',
         paging?.after,
         paging?.before,
-        pageSize
+        PAGE_SIZE_MEDIUM
       );
 
       setPolicies(data.data || []);
-      handlePagingChange(data.paging);
+      setPaging(data.paging);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
       setIsLoading(false);
     }
   };
-
   const handleAfterDeleteAction = useCallback(() => {
     fetchPolicies();
   }, [fetchPolicies]);
-
   const handleAddPolicy = () => {
     history.push(ROUTES.ADD_POLICY);
   };
 
   const handlePaging = ({ currentPage, cursorType }: PagingHandlerParams) => {
-    handlePageChange(currentPage);
+    setCurrentPage(currentPage);
     if (cursorType && paging) {
       fetchPolicies({
         [cursorType]: paging[cursorType],
@@ -246,7 +239,7 @@ const PoliciesListPage = () => {
 
   useEffect(() => {
     fetchPolicies();
-  }, [pageSize]);
+  }, []);
 
   return (
     <Row
@@ -305,13 +298,12 @@ const PoliciesListPage = () => {
         )}
       </Col>
       <Col span={24}>
-        {showPagination && (
+        {paging && paging.total > PAGE_SIZE_MEDIUM && (
           <NextPrevious
             currentPage={currentPage}
-            pageSize={pageSize}
+            pageSize={PAGE_SIZE_MEDIUM}
             paging={paging}
             pagingHandler={handlePaging}
-            onShowSizeChange={handlePageSizeChange}
           />
         )}
       </Col>

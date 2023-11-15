@@ -30,7 +30,6 @@ from metadata.ingestion.ometa.mixins.patch_mixin_utils import (
     PatchValue,
 )
 from metadata.ingestion.ometa.utils import model_str
-from metadata.utils.deprecation import deprecated
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
@@ -130,10 +129,6 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
             ]
         return data
 
-    @deprecated(
-        message="Use metadata.patch instead as the new standard method that will create the jsonpatch dynamically",
-        release="1.3",
-    )
     def patch_role_policy(
         self,
         entity_id: Union[str, basic.Uuid],
@@ -266,10 +261,6 @@ class OMetaRolePolicyMixin(OMetaPatchMixinBase):
 
         return None
 
-    @deprecated(
-        message="Use metadata.patch instead as the new standard method that will create the jsonpatch dynamically",
-        release="1.3",
-    )
     def patch_policy_rule(
         self,
         entity_id: Union[str, basic.Uuid],

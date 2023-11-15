@@ -54,7 +54,7 @@ class ESMixin(Generic[T]):
         self,
         entity_type: Type[T],
         query_string: str,
-        fields: Optional[str] = None,
+        fields: Optional[List[str]] = None,
     ) -> Optional[List[T]]:
         """
         Run the ES query and return a list of entities that match. It does an extra query to the OM API with the
@@ -66,8 +66,6 @@ class ESMixin(Generic[T]):
         response = self.client.get(query_string)
 
         if response:
-            if fields:
-                fields = fields.split(",")
             return [
                 self.get_by_name(
                     entity=entity_type,
@@ -85,7 +83,7 @@ class ESMixin(Generic[T]):
         fqn_search_string: str,
         from_count: int = 0,
         size: int = 10,
-        fields: Optional[str] = None,
+        fields: Optional[List[str]] = None,
     ) -> Optional[List[T]]:
         """
         Given a service_name and some filters, search for entities using ES
@@ -94,7 +92,7 @@ class ESMixin(Generic[T]):
         :param fqn_search_string: string used to search by FQN. E.g., service.*.schema.table
         :param from_count: Records to expect
         :param size: Number of records
-        :param fields: Comma separated list of fields to be returned
+        :param fields: Fields to be returned
         :return: List of entities
         """
         query_string = self.fqdn_search.format(

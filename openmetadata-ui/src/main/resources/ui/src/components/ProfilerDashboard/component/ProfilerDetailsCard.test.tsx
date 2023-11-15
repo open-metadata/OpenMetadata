@@ -27,7 +27,7 @@ jest.mock('./ProfilerLatestValue', () => {
     return <div>ProfilerLatestValue</div>;
   });
 });
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
+jest.mock('../../common/error-with-placeholder/ErrorPlaceHolder', () => {
   return jest.fn().mockImplementation(() => {
     return <div>ErrorPlaceHolder</div>;
   });

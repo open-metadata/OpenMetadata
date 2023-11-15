@@ -1,25 +1,4 @@
 {
-  "settings": {
-    "analysis": {
-      "normalizer": {
-        "lowercase_normalizer": {
-          "type": "custom",
-          "char_filter": [],
-          "filter": [
-            "lowercase"
-          ]
-        }
-      },
-      "analyzer": {
-      },
-      "filter": {
-        "om_stemmer": {
-          "type": "stemmer",
-          "name": "english"
-        }
-      }
-    }
-  },
   "mappings": {
     "properties": {
       "id": {
@@ -30,8 +9,7 @@
         "fields": {
           "keyword": {
             "type": "keyword",
-            "ignore_above": 256,
-            "normalizer": "lowercase_normalizer"
+            "ignore_above": 256
           }
         }
       },

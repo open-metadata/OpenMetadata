@@ -27,7 +27,7 @@ import { DashboardVersionProp } from './DashboardVersion.interface';
 const mockPush = jest.fn();
 
 jest.mock(
-  '../../components/common/RichTextEditor/RichTextEditorPreviewer',
+  '../../components/common/rich-text-editor/RichTextEditorPreviewer',
   () => {
     return jest
       .fn()
@@ -35,7 +35,7 @@ jest.mock(
   }
 );
 
-jest.mock('../../components/common/EntityDescription/DescriptionV1', () => {
+jest.mock('../../components/common/description/DescriptionV1', () => {
   return jest.fn().mockImplementation(() => <div>Description.component</div>);
 });
 
@@ -53,7 +53,7 @@ jest.mock('../../components/Loader/Loader', () => {
 });
 
 jest.mock(
-  '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
+  '../../components/common/error-with-placeholder/ErrorPlaceHolder',
   () => {
     return jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>);
   }

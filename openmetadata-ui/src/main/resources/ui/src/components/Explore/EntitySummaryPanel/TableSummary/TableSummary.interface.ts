@@ -30,8 +30,3 @@ export interface BasicTableInfo {
   Queries: string;
   Columns: string;
 }
-
-export interface TableProfileDetails {
-  profile: Table['profile'];
-  tableConstraints: Table['tableConstraints'];
-}

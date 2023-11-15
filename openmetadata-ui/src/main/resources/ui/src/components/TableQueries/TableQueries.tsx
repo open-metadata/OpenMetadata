@@ -15,15 +15,23 @@ import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
+import { PagingResponse } from 'Models';
 import Qs from 'qs';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
+import NextPrevious from '../../components/common/next-previous/NextPrevious';
+import { PagingHandlerParams } from '../../components/common/next-previous/NextPrevious.interface';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
 } from '../../components/PermissionProvider/PermissionProvider.interface';
+import {
+  INITIAL_PAGING_VALUE,
+  PAGE_SIZE,
+  pagingObject,
+} from '../../constants/constants';
 import { USAGE_DOCS } from '../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import {
@@ -32,7 +40,6 @@ import {
 } from '../../constants/Query.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { Query } from '../../generated/entity/data/query';
-import { usePaging } from '../../hooks/paging/usePaging';
 import {
   getQueriesList,
   getQueryById,
@@ -47,9 +54,7 @@ import {
 } from '../../utils/Query/QueryUtils';
 import { getAddQueryPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import NextPrevious from '../common/NextPrevious/NextPrevious';
-import { PagingHandlerParams } from '../common/NextPrevious/NextPrevious.interface';
+import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from '../Loader/Loader';
 import QueryCard from './QueryCard';
 import { QueryVote, TableQueriesProp } from './TableQueries.interface';
@@ -70,23 +75,19 @@ const TableQueries: FC<TableQueriesProp> = ({
     return searchData;
   }, [location]);
 
-  const [tableQueries, setTableQueries] = useState<Query[]>([]);
+  const [tableQueries, setTableQueries] = useState<PagingResponse<Query[]>>({
+    data: [],
+    paging: pagingObject,
+  });
   const [isLoading, setIsLoading] = useState(QUERY_PAGE_LOADING_STATE);
   const [isError, setIsError] = useState(QUERY_PAGE_ERROR_STATE);
   const [selectedQuery, setSelectedQuery] = useState<Query>();
   const [queryPermissions, setQueryPermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
   );
-
-  const {
-    currentPage,
-    handlePageChange,
-    pageSize,
-    handlePageSizeChange,
-    paging,
-    handlePagingChange,
-    showPagination,
-  } = usePaging();
+  const [currentPage, setCurrentPage] = useState(
+    Number(searchParams.queryFrom) || INITIAL_PAGING_VALUE
+  );
 
   const { getEntityPermission, permissions } = usePermissionProvider();
 
@@ -99,7 +100,7 @@ const TableQueries: FC<TableQueriesProp> = ({
     try {
       const permission = await getEntityPermission(
         ResourceEntity.QUERY,
-        selectedQuery.id ?? ''
+        selectedQuery.id || ''
       );
       setQueryPermissions(permission);
     } catch (error) {
@@ -127,12 +128,15 @@ const TableQueries: FC<TableQueriesProp> = ({
     const jsonPatch = compare(selectedQuery, updatedQuery);
 
     try {
-      const res = await patchQueries(selectedQuery.id ?? '', jsonPatch);
+      const res = await patchQueries(selectedQuery.id || '', jsonPatch);
       setSelectedQuery((pre) => (pre ? { ...pre, ...res } : res));
       setTableQueries((pre) => {
-        return pre.map((query) =>
-          query.id === updatedQuery.id ? { ...query, ...res } : query
-        );
+        return {
+          ...pre,
+          data: pre.data.map((query) =>
+            query.id === updatedQuery.id ? { ...query, ...res } : query
+          ),
+        };
       });
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -141,15 +145,18 @@ const TableQueries: FC<TableQueriesProp> = ({
 
   const updateVote = async (data: QueryVote, id?: string) => {
     try {
-      await updateQueryVote(id ?? '', data);
-      const response = await getQueryById(id ?? '', {
+      await updateQueryVote(id || '', data);
+      const response = await getQueryById(id || '', {
         fields: 'owner,votes,tags,queryUsedIn,users',
       });
       setSelectedQuery(response);
       setTableQueries((pre) => {
-        return pre.map((query) =>
-          query.id === response.id ? response : query
-        );
+        return {
+          ...pre,
+          data: pre.data.map((query) =>
+            query.id === response.id ? response : query
+          ),
+        };
       });
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -161,22 +168,22 @@ const TableQueries: FC<TableQueriesProp> = ({
   ) => {
     setIsLoading((pre) => ({ ...pre, query: true }));
     try {
-      const { data: queries, paging } = await getQueriesList({
+      const queries = await getQueriesList({
         ...params,
-        limit: pageSize,
+        limit: PAGE_SIZE,
         entityId: tableId,
         fields: 'owner,votes,tags,queryUsedIn,users',
       });
-      if (queries.length === 0) {
+      if (queries.data.length === 0) {
         setIsError((pre) => ({ ...pre, page: true }));
       } else {
         setTableQueries(queries);
         const selectedQueryData = searchParams.query
-          ? queries.find((query) => query.id === searchParams.query) ||
-            queries[0]
-          : queries[0];
+          ? queries.data.find((query) => query.id === searchParams.query) ||
+            queries.data[0]
+          : queries.data[0];
         setSelectedQuery(selectedQueryData);
-        handlePagingChange(paging);
+
         history.push({
           search: stringifySearchParams({
             tableId,
@@ -195,9 +202,10 @@ const TableQueries: FC<TableQueriesProp> = ({
   };
 
   const pagingHandler = ({ cursorType, currentPage }: PagingHandlerParams) => {
+    const { paging } = tableQueries;
     if (cursorType) {
       fetchTableQuery({ [cursorType]: paging[cursorType] }, currentPage);
-      handlePageChange(currentPage);
+      setCurrentPage(currentPage);
     }
   };
 
@@ -221,10 +229,9 @@ const TableQueries: FC<TableQueriesProp> = ({
         setIsLoading((pre) => ({ ...pre, page: false }));
       });
     } else {
-      setIsLoading((pre) => ({ ...pre, page: false, query: false }));
-      setIsError(QUERY_PAGE_ERROR_STATE);
+      setIsLoading((pre) => ({ ...pre, page: false }));
     }
-  }, [tableId, pageSize, isTableDeleted]);
+  }, [tableId]);
 
   const handleAddQueryClick = () => {
     history.push(getAddQueryPath(datasetFQN));
@@ -262,18 +269,6 @@ const TableQueries: FC<TableQueriesProp> = ({
     );
   }
 
-  if (isTableDeleted) {
-    return (
-      <div className="flex-center font-medium mt-24" data-testid="no-queries">
-        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-          {t('message.field-data-is-not-available-for-deleted-entities', {
-            field: t('label.query-plural'),
-          })}
-        </ErrorPlaceHolder>
-      </div>
-    );
-  }
-
   const queryTabBody = isError.search ? (
     <Col
       className="flex-center font-medium mt-24"
@@ -288,7 +283,7 @@ const TableQueries: FC<TableQueriesProp> = ({
       </ErrorPlaceHolder>
     </Col>
   ) : (
-    tableQueries.map((query) => (
+    tableQueries.data.map((query) => (
       <Col data-testid="query-card" key={query.id} span={24}>
         <QueryCard
           afterDeleteAction={fetchTableQuery}
@@ -318,13 +313,12 @@ const TableQueries: FC<TableQueriesProp> = ({
           {isLoading.query ? <Loader /> : queryTabBody}
 
           <Col span={24}>
-            {showPagination && (
+            {tableQueries.paging.total > PAGE_SIZE && (
               <NextPrevious
                 currentPage={currentPage}
-                pageSize={pageSize}
-                paging={paging}
+                pageSize={PAGE_SIZE}
+                paging={tableQueries.paging}
                 pagingHandler={pagingHandler}
-                onShowSizeChange={handlePageSizeChange}
               />
             )}
           </Col>

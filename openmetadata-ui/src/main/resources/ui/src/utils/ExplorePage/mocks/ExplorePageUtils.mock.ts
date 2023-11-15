@@ -14,7 +14,7 @@
 import {
   QueryFieldInterface,
   QueryFilterInterface,
-} from '../../../pages/ExplorePage/ExplorePage.interface';
+} from '../../../pages/explore/ExplorePage.interface';
 
 export const mockAdvancedSearchQueryFilters: QueryFilterInterface = {
   query: {

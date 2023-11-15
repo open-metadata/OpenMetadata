@@ -11,61 +11,51 @@
  *  limitations under the License.
  */
 import { MYDATA_SUMMARY_OPTIONS, SERVICE_TYPE } from './constants';
-import {
-  DASHBOARD_DATA_MODEL_DETAILS,
-  DASHBOARD_SERVICE,
-  DATABASE_SERVICE,
-  MESSAGING_SERVICE,
-  MLMODEL_SERVICE,
-  PIPELINE_SERVICE,
-  STORAGE_SERVICE,
-  STORED_PROCEDURE_DETAILS,
-} from './entityConstant';
 
 export const SERVICES = {
   databaseServices: {
     type: SERVICE_TYPE.Database,
-    name: DATABASE_SERVICE.service.name,
+    name: 'sample_data',
     displayName: 'Sample Data',
   },
   messagingServices: {
     type: SERVICE_TYPE.Messaging,
-    name: MESSAGING_SERVICE.service.name,
+    name: 'sample_kafka',
     displayName: 'Sample Kafka',
   },
   dashboardServices: {
     type: SERVICE_TYPE.Dashboard,
-    name: DASHBOARD_SERVICE.service.name,
+    name: 'sample_looker',
     displayName: 'Sample Looker',
   },
   pipelineServices: {
     type: SERVICE_TYPE.Pipeline,
-    name: PIPELINE_SERVICE.service.name,
+    name: 'sample_airflow',
     displayName: 'Sample Airflow',
   },
   mlmodelServices: {
     type: SERVICE_TYPE.MLModels,
-    name: MLMODEL_SERVICE.service.name,
+    name: 'mlflow_svc',
     displayName: 'ML Flow Service',
   },
   storageServices: {
     type: SERVICE_TYPE.Storage,
-    name: STORAGE_SERVICE.service.name,
+    name: 's3_storage_sample',
     displayName: 'Storage Sample Service',
   },
 };
 
 const DB_SERVICE = SERVICES.databaseServices.name;
 const DATABASE_AND_SCHEMA = {
-  schema: DATABASE_SERVICE.schema.name,
+  schema: 'shopify',
   schemaDisplayName: 'Shopify Schema',
-  database: DATABASE_SERVICE.database.name,
+  database: 'ecommerce_db',
   databaseDisplayName: 'E-Commerce Database',
 };
 
 export const ENTITIES_DISPLAY_NAME = {
   table: {
-    name: DATABASE_SERVICE.tables.name,
+    name: 'dim.shop',
     oldDisplayName: 'dim.shop',
     displayName: 'Dim Shop Test',
     entity: MYDATA_SUMMARY_OPTIONS.tables,
@@ -77,7 +67,7 @@ export const ENTITIES_DISPLAY_NAME = {
     ],
   },
   topic: {
-    name: MESSAGING_SERVICE.entity.name,
+    name: 'address_book',
     oldDisplayName: 'address_book',
     displayName: 'Kafka Address Book',
     entity: MYDATA_SUMMARY_OPTIONS.topics,
@@ -85,7 +75,7 @@ export const ENTITIES_DISPLAY_NAME = {
     breadcrumb: [SERVICES.messagingServices.displayName],
   },
   dashboard: {
-    name: DASHBOARD_SERVICE.entity.name,
+    name: 'Customers dashboard',
     oldDisplayName: 'Customers dashboard',
     displayName: 'Looker Customers Dashboard',
     entity: MYDATA_SUMMARY_OPTIONS.dashboards,
@@ -93,7 +83,7 @@ export const ENTITIES_DISPLAY_NAME = {
     breadcrumb: [SERVICES.dashboardServices.displayName],
   },
   pipeline: {
-    name: PIPELINE_SERVICE.entity.name,
+    name: 'dim_address_etl',
     oldDisplayName: 'dim_address_etl',
     displayName: 'Dim Address ETL',
     entity: MYDATA_SUMMARY_OPTIONS.pipelines,
@@ -101,7 +91,7 @@ export const ENTITIES_DISPLAY_NAME = {
     breadcrumb: [SERVICES.pipelineServices.displayName],
   },
   mlmodel: {
-    name: MLMODEL_SERVICE.entity.name,
+    name: 'eta_predictions',
     oldDisplayName: 'ETA Predictions',
     displayName: 'Predictions ETA',
     entity: MYDATA_SUMMARY_OPTIONS.mlmodels,
@@ -109,7 +99,7 @@ export const ENTITIES_DISPLAY_NAME = {
     breadcrumb: [SERVICES.mlmodelServices.displayName],
   },
   container: {
-    name: STORAGE_SERVICE.entity.name,
+    name: 'departments',
     oldDisplayName: 'Company departments',
     displayName: 'Company Departments Test',
     entity: MYDATA_SUMMARY_OPTIONS.containers,
@@ -117,11 +107,11 @@ export const ENTITIES_DISPLAY_NAME = {
     breadcrumb: [SERVICES.storageServices.displayName],
   },
   storedProcedure: {
-    name: STORED_PROCEDURE_DETAILS.name,
+    name: 'update_dim_address_table',
     oldDisplayName: 'update_dim_address_table',
     displayName: 'Update_Dim_Address_Table',
     entity: MYDATA_SUMMARY_OPTIONS.storedProcedures,
-    serviceName: DB_SERVICE,
+    serviceName: 'sample_data',
     breadcrumb: [
       DATABASE_AND_SCHEMA.schemaDisplayName,
       DATABASE_AND_SCHEMA.databaseDisplayName,
@@ -131,7 +121,7 @@ export const ENTITIES_DISPLAY_NAME = {
 };
 export const DASHBOARD_DATA_MODEL = {
   service: SERVICES.dashboardServices,
-  name: DASHBOARD_DATA_MODEL_DETAILS.name,
+  name: 'Operations View',
   displayName: 'Operations View Dashboard',
   breadcrumb: [SERVICES.dashboardServices.displayName],
 };

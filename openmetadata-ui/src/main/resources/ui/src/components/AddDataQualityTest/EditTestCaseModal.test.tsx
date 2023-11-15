@@ -26,7 +26,7 @@ const mockProps: EditTestCaseModalProps = {
   onUpdate: jest.fn(),
 };
 
-jest.mock('../common/RichTextEditor/RichTextEditor', () => {
+jest.mock('../common/rich-text-editor/RichTextEditor', () => {
   return forwardRef(
     jest.fn().mockImplementation(() => <div>RichTextEditor.component</div>)
   );

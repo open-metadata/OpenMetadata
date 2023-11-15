@@ -20,13 +20,6 @@
       "description": "Description of the pipeline instance. What it has and how to use it.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
-    "dataProducts" : {
-      "description": "List of fully qualified names of data products this entity is part of.",
-      "type": "array",
-      "items" : {
-        "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
-      }
-    },
     "sourceUrl": {
       "description": "Pipeline URL suffix to visit/manage. This URL points to respective pipeline service UI",
       "$ref": "../../type/basic.json#/definitions/sourceUrl"

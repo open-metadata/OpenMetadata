@@ -17,12 +17,12 @@ import { useTranslation } from 'react-i18next';
 import { NavLink } from 'react-router-dom';
 import { ReactComponent as GovernIcon } from '../../../assets/svg/bank.svg';
 import { ReactComponent as LogoutIcon } from '../../../assets/svg/logout.svg';
+import { useAuthContext } from '../../../components/authentication/auth-provider/AuthProvider';
 import {
   SETTING_ITEM,
   SIDEBAR_GOVERN_LIST,
 } from '../../../constants/LeftSidebar.constants';
 import leftSidebarClassBase from '../../../utils/LeftSidebarClassBase';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import './left-sidebar.less';
 import LeftSidebarItem from './LeftSidebarItem.component';
 

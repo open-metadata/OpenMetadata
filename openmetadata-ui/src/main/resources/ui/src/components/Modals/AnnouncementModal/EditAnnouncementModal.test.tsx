@@ -25,7 +25,7 @@ jest.mock('../../../utils/EntityUtils', () => ({
   getEntityFeedLink: jest.fn(),
 }));
 
-jest.mock('../../common/RichTextEditor/RichTextEditor', () => {
+jest.mock('../../common/rich-text-editor/RichTextEditor', () => {
   return jest.fn().mockReturnValue(<div>RichTextEditor</div>);
 });
 

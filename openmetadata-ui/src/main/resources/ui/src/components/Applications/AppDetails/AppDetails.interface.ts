@@ -18,9 +18,3 @@ export interface DataInsightLatestRun {
   total: string;
   pipelineStatus: PipelineStatus;
 }
-
-export enum AppAction {
-  ENABLE = 'enable',
-  DISABLE = 'disable',
-  UNINSTALL = 'uninstall',
-}

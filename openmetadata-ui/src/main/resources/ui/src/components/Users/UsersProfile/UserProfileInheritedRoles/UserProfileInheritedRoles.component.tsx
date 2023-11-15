@@ -31,7 +31,7 @@ const UserProfileInheritedRoles = ({
       title={
         <Typography.Text
           className="right-panel-label m-b-0"
-          data-testid="inherited-roles-label">
+          data-testid="inherited-roles">
           {t('label.inherited-role-plural')}
         </Typography.Text>
       }>

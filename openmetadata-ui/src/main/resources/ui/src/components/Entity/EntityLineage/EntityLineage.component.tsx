@@ -113,7 +113,7 @@ import {
 } from '../../../utils/EntityUtils';
 import SVGIcons from '../../../utils/SvgUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
+import TitleBreadcrumb from '../../common/title-breadcrumb/title-breadcrumb.component';
 import Loader from '../../Loader/Loader';
 import { useTourProvider } from '../../TourProvider/TourProvider';
 import EdgeInfoDrawer from '../EntityInfoDrawer/EdgeInfoDrawer.component';
@@ -1597,10 +1597,8 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   };
 
   useEffect(() => {
-    if (!entity?.deleted) {
-      fetchLineageData(lineageConfig);
-    }
-  }, [entity?.deleted]);
+    fetchLineageData(lineageConfig);
+  }, []);
 
   useEffect(() => {
     if (!entityLineage) {

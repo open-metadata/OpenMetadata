@@ -17,7 +17,7 @@ import { useHistory } from 'react-router-dom';
 import { Persona } from '../../../generated/entity/teams/persona';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getPersonaDetailsPath } from '../../../utils/RouterUtils';
-import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
 
 interface PersonaDetailsCardProps {
   persona: Persona;

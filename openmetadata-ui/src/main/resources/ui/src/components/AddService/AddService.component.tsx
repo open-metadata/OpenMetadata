@@ -31,7 +31,7 @@ import { ServiceCategory } from '../../enums/service.enum';
 import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { ConfigData } from '../../interface/service.interface';
-import { getServiceLogo } from '../../utils/CommonUtils';
+import { getCurrentUserId, getServiceLogo } from '../../utils/CommonUtils';
 import { getAddServicePath, getSettingPath } from '../../utils/RouterUtils';
 import {
   getServiceCreatedLabel,
@@ -41,10 +41,9 @@ import {
 import { getEncodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import AddIngestion from '../AddIngestion/AddIngestion.component';
-import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
 import ServiceDocPanel from '../common/ServiceDocPanel/ServiceDocPanel';
-import SuccessScreen from '../common/SuccessScreen/SuccessScreen';
-import TitleBreadcrumb from '../common/TitleBreadcrumb/TitleBreadcrumb.component';
+import SuccessScreen from '../common/success-screen/SuccessScreen';
+import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
 import ConnectionConfigForm from '../ServiceConfig/ConnectionConfigForm';
 import { AddServiceProps, ServiceConfig } from './AddService.interface';
@@ -67,7 +66,6 @@ const AddService = ({
   handleAddIngestion,
 }: AddServiceProps) => {
   const history = useHistory();
-  const { currentUser } = useAuthContext();
   const { fetchAirflowStatus } = useAirflowStatus();
 
   const [showErrorMessage, setShowErrorMessage] = useState(
@@ -133,7 +131,7 @@ const AddService = ({
       serviceType: selectServiceType,
       description: serviceConfig.description,
       owner: {
-        id: currentUser?.id ?? '',
+        id: getCurrentUserId(),
         type: 'user',
       },
     };

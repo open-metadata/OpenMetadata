@@ -164,30 +164,28 @@ export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
       <Card
         className="custom-data-insight-tooltip"
         title={<Typography.Title level={5}>{timestamp}</Typography.Title>}>
-        <ul className="custom-data-insight-tooltip-container">
-          {payload.map((entry, index) => (
-            <li
-              className="d-flex items-center justify-between gap-6 p-b-xss text-sm"
-              key={`item-${index}`}>
-              <span className="flex items-center text-grey-muted">
-                <Surface className="mr-2" height={12} version="1.1" width={12}>
-                  <rect fill={entry.color} height="14" rx="2" width="14" />
-                </Surface>
-                {startCase(entry.dataKey as string)}
-              </span>
-              <span className="font-medium">
-                {valueFormatter
-                  ? valueFormatter(entry.value)
-                  : getEntryFormattedValue(
-                      entry.value,
-                      entry.dataKey,
-                      kpiTooltipRecord,
-                      isPercentage
-                    )}
-              </span>
-            </li>
-          ))}
-        </ul>
+        {payload.map((entry, index) => (
+          <li
+            className="d-flex items-center justify-between gap-6 p-b-xss text-sm"
+            key={`item-${index}`}>
+            <span className="flex items-center text-grey-muted">
+              <Surface className="mr-2" height={12} version="1.1" width={12}>
+                <rect fill={entry.color} height="14" rx="2" width="14" />
+              </Surface>
+              {startCase(entry.dataKey as string)}
+            </span>
+            <span className="font-medium">
+              {valueFormatter
+                ? valueFormatter(entry.value)
+                : getEntryFormattedValue(
+                    entry.value,
+                    entry.dataKey,
+                    kpiTooltipRecord,
+                    isPercentage
+                  )}
+            </span>
+          </li>
+        ))}
       </Card>
     );
   }
@@ -680,26 +678,4 @@ export const getOptionalDataInsightTabFlag = (tab: DataInsightTabs) => {
     showKpiChart:
       tab === DataInsightTabs.KPIS || tab === DataInsightTabs.DATA_ASSETS,
   };
-};
-
-export const sortEntityByValue = (
-  entities: string[],
-  latestData: Record<string, number>
-) => {
-  const entityValues = entities.map((entity) => ({
-    entity,
-    value: latestData[entity] ?? 0,
-  }));
-
-  // Sort the entities based on their values in descending order
-  entityValues.sort((a, b) => b.value - a.value);
-
-  // Extract the sorted entities without their values
-  return entityValues.map((entity) => entity.entity);
-};
-
-export const getRandomHexColor = () => {
-  const randomColor = Math.floor(Math.random() * 16777215).toString(16);
-
-  return `#${randomColor}`;
 };

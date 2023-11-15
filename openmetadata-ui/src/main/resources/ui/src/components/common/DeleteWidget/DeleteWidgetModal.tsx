@@ -13,14 +13,13 @@
 
 import {
   Button,
-  Form,
   Modal,
   Radio,
   RadioChangeEvent,
   Space,
   Typography,
 } from 'antd';
-import Input, { InputRef } from 'antd/lib/input/Input';
+import Input from 'antd/lib/input/Input';
 import { AxiosError } from 'axios';
 import { startCase } from 'lodash';
 import React, {
@@ -28,7 +27,6 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -67,7 +65,6 @@ const DeleteWidgetModal = ({
     allowSoftDelete ? DeleteType.SOFT_DELETE : DeleteType.HARD_DELETE
   );
   const [isLoading, setIsLoading] = useState(false);
-  const deleteTextInputRef = useRef<InputRef>(null);
 
   const DELETE_OPTION = useMemo(
     () => [
@@ -109,14 +106,11 @@ const DeleteWidgetModal = ({
   }, []);
 
   const handleOnEntityDeleteCancel = useCallback(() => {
-    setEntityDeleteState({
-      ...ENTITY_DELETE_STATE,
-      softDelete: allowSoftDelete,
-    });
+    setEntityDeleteState(ENTITY_DELETE_STATE);
     setName('');
-    setValue(allowSoftDelete ? DeleteType.SOFT_DELETE : DeleteType.HARD_DELETE);
+    setValue(DeleteType.SOFT_DELETE);
     onCancel();
-  }, [onCancel, allowSoftDelete]);
+  }, [onCancel]);
 
   const handleOnEntityDeleteConfirm = useCallback(async () => {
     try {
@@ -180,21 +174,6 @@ const DeleteWidgetModal = ({
   );
 
   useEffect(() => {
-    let timeout: number;
-
-    if (visible) {
-      // using setTimeout here as directly calling focus() doesn't focus element after first time
-      timeout = window.setTimeout(() => {
-        deleteTextInputRef.current?.focus();
-      }, 1);
-    }
-
-    return () => {
-      clearTimeout(timeout);
-    };
-  }, [visible, deleteTextInputRef]);
-
-  useEffect(() => {
     setValue(allowSoftDelete ? DeleteType.SOFT_DELETE : DeleteType.HARD_DELETE);
     setEntityDeleteState({
       ...ENTITY_DELETE_STATE,
@@ -240,48 +219,45 @@ const DeleteWidgetModal = ({
       open={visible}
       title={`${t('label.delete')} ${entityName}`}
       onCancel={handleOnEntityDeleteCancel}>
-      <Form onFinish={handleOnEntityDeleteConfirm}>
-        <Radio.Group value={value} onChange={onChange}>
-          {(deleteOptions ?? DELETE_OPTION).map(
-            (option) =>
-              option.isAllowed && (
-                <Radio
-                  data-testid={option.type}
-                  key={option.type}
-                  value={option.type}>
-                  <Typography.Paragraph
-                    className="delete-widget-title break-all"
-                    data-testid={`${option.type}-option`}>
-                    {option.title}
-                  </Typography.Paragraph>
-                  <Typography.Paragraph className="text-grey-muted text-xs break-all">
-                    {option.description}
-                  </Typography.Paragraph>
-                </Radio>
-              )
-          )}
-        </Radio.Group>
-        <div>
-          <div className="m-b-xss">
-            <Transi18next
-              i18nKey="message.type-delete-to-confirm"
-              renderElement={<strong />}
-            />
-          </div>
-
-          <Input
-            autoComplete="off"
-            data-testid="confirmation-text-input"
-            disabled={entityDeleteState.loading === 'waiting'}
-            name="entityName"
-            placeholder={t('label.delete-uppercase')}
-            ref={deleteTextInputRef}
-            type="text"
-            value={name}
-            onChange={handleOnChange}
+      <Radio.Group value={value} onChange={onChange}>
+        {(deleteOptions ?? DELETE_OPTION).map(
+          (option) =>
+            option.isAllowed && (
+              <Radio
+                data-testid={option.type}
+                key={option.type}
+                value={option.type}>
+                <Typography.Paragraph
+                  className="delete-widget-title break-all"
+                  data-testid={`${option.type}-option`}>
+                  {option.title}
+                </Typography.Paragraph>
+                <Typography.Paragraph className="text-grey-muted text-xs break-all">
+                  {option.description}
+                </Typography.Paragraph>
+              </Radio>
+            )
+        )}
+      </Radio.Group>
+      <div>
+        <div className="m-b-xss">
+          <Transi18next
+            i18nKey="message.type-delete-to-confirm"
+            renderElement={<strong />}
           />
         </div>
-      </Form>
+
+        <Input
+          autoComplete="off"
+          data-testid="confirmation-text-input"
+          disabled={entityDeleteState.loading === 'waiting'}
+          name="entityName"
+          placeholder={t('label.delete-uppercase')}
+          type="text"
+          value={name}
+          onChange={handleOnChange}
+        />
+      </div>
     </Modal>
   );
 };

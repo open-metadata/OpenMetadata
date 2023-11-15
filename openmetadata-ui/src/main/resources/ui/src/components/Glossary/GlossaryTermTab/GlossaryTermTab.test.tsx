@@ -53,14 +53,14 @@ jest.mock('../../../rest/glossaryAPI', () => ({
     .mockImplementation(() => Promise.resolve({ data: mockedGlossaryTerms })),
   patchGlossaryTerm: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
-jest.mock('../../common/RichTextEditor/RichTextEditorPreviewer', () =>
+jest.mock('../../common/rich-text-editor/RichTextEditorPreviewer', () =>
   jest
     .fn()
     .mockImplementation(({ markdown }) => (
       <p data-testid="description">{markdown}</p>
     ))
 );
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
+jest.mock('../../common/error-with-placeholder/ErrorPlaceHolder', () =>
   jest
     .fn()
     .mockImplementation(({ onClick }) => (

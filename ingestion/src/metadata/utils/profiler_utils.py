@@ -40,14 +40,6 @@ class QueryResult(BaseModel):
     rows: Optional[int] = None
 
 
-class SnowflakeQueryResult(QueryResult):
-    """Snowflake system metric query result"""
-
-    rows_inserted: Optional[int] = None
-    rows_updated: Optional[int] = None
-    rows_deleted: Optional[int] = None
-
-
 def clean_up_query(query: str) -> str:
     """remove comments and newlines from query"""
     return sqlparse.format(query, strip_comments=True).replace("\\n", "")

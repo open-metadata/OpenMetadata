@@ -12,6 +12,7 @@
  */
 
 import { CurveType } from 'recharts/types/shape/Curve';
+import { NextPreviousProps } from '../../components/common/next-previous/NextPrevious.interface';
 import {
   Column,
   ColumnProfile,
@@ -19,8 +20,8 @@ import {
 } from '../../generated/entity/data/table';
 import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
+import { Paging } from '../../generated/type/paging';
 import { ListTestCaseParams } from '../../rest/testAPI';
-import { NextPreviousProps } from '../common/NextPrevious/NextPrevious.interface';
 import { DateRangeObject } from './component/TestSummary';
 
 export interface ProfilerDashboardProps {
@@ -105,11 +106,15 @@ export interface DataQualityTabProps {
   showTableColumn?: boolean;
   isLoading?: boolean;
   onTestCaseResultUpdate?: (data: TestCase) => void;
-  pagingData?: NextPreviousProps;
+  pagingData?: {
+    paging: Paging;
+    currentPage: number;
+    onPagingClick: NextPreviousProps['pagingHandler'];
+    isNumberBased?: boolean;
+  };
   removeFromTestSuite?: {
     testSuite: TestSuite;
   };
-  showPagination?: boolean;
 }
 
 export interface TestSummaryProps {

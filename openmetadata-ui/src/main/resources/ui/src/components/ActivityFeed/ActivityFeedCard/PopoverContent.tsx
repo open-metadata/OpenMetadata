@@ -15,6 +15,7 @@ import Icon from '@ant-design/icons';
 import { Popover, Space } from 'antd';
 import { isNil, isUndefined, uniqueId } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
+import AppState from '../../../AppState';
 import { ReactComponent as IconFeedDelete } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconEdit } from '../../../assets/svg/ic-edit.svg';
 import { ReactComponent as IconReaction } from '../../../assets/svg/ic-reaction.svg';
@@ -23,7 +24,6 @@ import { REACTION_LIST } from '../../../constants/reactions.constant';
 import { ReactionOperation } from '../../../enums/reactions.enum';
 import { Post } from '../../../generated/entity/feed/thread';
 import { ReactionType } from '../../../generated/type/reaction';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import Reaction from '../../Reactions/Reaction';
 import { ConfirmState } from './ActivityFeedCard.interface';
 
@@ -59,7 +59,12 @@ const PopoverContent: FC<Props> = ({
   isAnnouncement,
   editAnnouncementPermission,
 }) => {
-  const { currentUser } = useAuthContext();
+  // get current user details
+  const currentUser = useMemo(
+    () => AppState.getCurrentUserDetails(),
+    [AppState.userDetails, AppState.nonSecureUserDetails]
+  );
+
   const [visible, setVisible] = useState<boolean>(false);
 
   const hide = () => {

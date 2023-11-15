@@ -13,7 +13,6 @@
 
 export enum SearchIndex {
   ALL = 'all',
-  DATA_ASSET = 'dataAsset',
   TABLE = 'table_search_index',
   TOPIC = 'topic_search_index',
   DASHBOARD = 'dashboard_search_index',
@@ -40,4 +39,14 @@ export enum SearchIndex {
   STORED_PROCEDURE = 'stored_procedure_search_index',
   DASHBOARD_DATA_MODEL = 'dashboard_data_model_search_index',
   DATA_PRODUCT = 'data_product_search_index',
+}
+
+export enum PublisherType {
+  ElasticSearch = 'elasticSearch',
+  Kafka = 'kafka',
+}
+
+export enum RunMode {
+  Stream = 'stream',
+  Batch = 'batch',
 }

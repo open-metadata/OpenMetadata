@@ -31,7 +31,7 @@ const mockTableQueriesProp: TableQueriesProp = {
 jest.mock('./QueryCard', () => {
   return jest.fn().mockReturnValue(<p>QueryCard</p>);
 });
-jest.mock('../../components/common/NextPrevious/NextPrevious', () => {
+jest.mock('../../components/common/next-previous/NextPrevious', () => {
   return jest.fn().mockImplementation(() => <div>NextPrevious.component</div>);
 });
 jest.mock('./TableQueryRightPanel/TableQueryRightPanel.component', () => {

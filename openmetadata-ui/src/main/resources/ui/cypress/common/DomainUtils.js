@@ -116,11 +116,7 @@ export const updateAssets = (domainObj) => {
   cy.contains('Adding a new Asset is easy, just give it a spin!').should(
     'be.visible'
   );
-  visitEntityDetailsPage({
-    term: entity.term,
-    serviceName: entity.serviceName,
-    entity: entity.entity,
-  });
+  visitEntityDetailsPage(entity.term, entity.serviceName, entity.entity);
 
   cy.get('[data-testid="add-domain"]').click();
 
@@ -161,11 +157,7 @@ export const removeAssets = (domainObj) => {
     .contains(entity.term)
     .click();
 
-  visitEntityDetailsPage({
-    term: entity.term,
-    serviceName: entity.serviceName,
-    entity: entity.entity,
-  });
+  visitEntityDetailsPage(entity.term, entity.serviceName, entity.entity);
 
   cy.get('[data-testid="add-domain"]').click();
   verifyResponseStatusCode('@domains', 200);
@@ -231,7 +223,7 @@ const fillForm = (formObj, type) => {
     .and('be.visible')
     .click();
 
-  cy.get('[data-testid="delete-modal"]').should('not.exist');
+  cy.get('[data-testid="delete-confirmation-modal"]').should('not.exist');
   cy.get('[data-testid="experts-container"]')
     .children()
     .should('have.length', 1);
@@ -284,11 +276,12 @@ export const deleteDomain = (domainObj) => {
   cy.get('.ant-menu-item').contains(domainObj.updatedDisplayName).click();
   cy.get('[data-testid="manage-button"]').click();
   cy.get('[data-testid="delete-button"]').scrollIntoView().click();
-  cy.get('[data-testid="delete-modal"]').then(() => {
+  cy.get('[data-testid="delete-confirmation-modal"]').then(() => {
     cy.get('[role="dialog"]').should('be.visible');
+    cy.get('[data-testid="modal-header"]').should('be.visible');
   });
 
-  cy.get('[data-testid="delete-modal"] .ant-modal-title').should(
+  cy.get('[data-testid="modal-header"]').should(
     'contain',
     `Delete ${domainObj.updatedName}`
   );

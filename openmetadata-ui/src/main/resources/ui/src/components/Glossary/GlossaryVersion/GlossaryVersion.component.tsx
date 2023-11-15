@@ -30,9 +30,8 @@ import {
   getGlossaryVersionsPath,
 } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import PageLayoutV1 from '../../containers/PageLayoutV1';
 import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
-import Loader from '../../Loader/Loader';
-import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import GlossaryV1Component from '../GlossaryV1.component';
 
 interface GlossaryVersionProps {
@@ -50,7 +49,6 @@ const GlossaryVersion = ({ isGlossary = false }: GlossaryVersionProps) => {
     {} as EntityHistory
   );
   const [selectedData, setSelectedData] = useState<Glossary | GlossaryTerm>();
-  const [isVersionLoading, setIsVersionLoading] = useState<boolean>(true);
 
   const fetchVersionsInfo = async () => {
     try {
@@ -65,7 +63,6 @@ const GlossaryVersion = ({ isGlossary = false }: GlossaryVersionProps) => {
   };
 
   const fetchActiveVersion = async () => {
-    setIsVersionLoading(true);
     try {
       const res = isGlossary
         ? await getGlossaryVersion(glossaryName, version)
@@ -74,8 +71,6 @@ const GlossaryVersion = ({ isGlossary = false }: GlossaryVersionProps) => {
       setSelectedData(res);
     } catch (error) {
       showErrorToast(error as AxiosError);
-    } finally {
-      setIsVersionLoading(false);
     }
   };
 
@@ -93,9 +88,6 @@ const GlossaryVersion = ({ isGlossary = false }: GlossaryVersionProps) => {
 
   useEffect(() => {
     fetchVersionsInfo();
-  }, [glossaryName]);
-
-  useEffect(() => {
     fetchActiveVersion();
   }, [glossaryName, version]);
 
@@ -103,21 +95,17 @@ const GlossaryVersion = ({ isGlossary = false }: GlossaryVersionProps) => {
     <PageLayoutV1 pageTitle="Glossary version">
       <div className="version-data">
         {/* TODO: Need to implement version component for Glossary */}
-        {isVersionLoading ? (
-          <Loader />
-        ) : (
-          <GlossaryV1Component
-            isVersionsView
-            deleteStatus={LOADING_STATE.INITIAL}
-            isGlossaryActive={isGlossary}
-            isSummaryPanelOpen={false}
-            selectedData={selectedData as Glossary}
-            updateGlossary={() => Promise.resolve()}
-            onGlossaryDelete={noop}
-            onGlossaryTermDelete={noop}
-            onGlossaryTermUpdate={() => Promise.resolve()}
-          />
-        )}
+        <GlossaryV1Component
+          isVersionsView
+          deleteStatus={LOADING_STATE.INITIAL}
+          isGlossaryActive={isGlossary}
+          isSummaryPanelOpen={false}
+          selectedData={selectedData as Glossary}
+          updateGlossary={() => Promise.resolve()}
+          onGlossaryDelete={noop}
+          onGlossaryTermDelete={noop}
+          onGlossaryTermUpdate={() => Promise.resolve()}
+        />
       </div>
       <EntityVersionTimeLine
         currentVersion={toString(version)}

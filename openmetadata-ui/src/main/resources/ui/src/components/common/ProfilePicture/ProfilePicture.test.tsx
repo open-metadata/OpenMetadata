@@ -17,7 +17,7 @@ import AppState from '../../../AppState';
 import { getUserProfilePic } from '../../../utils/UserDataUtils';
 import ProfilePicture from './ProfilePicture';
 
-jest.mock('../AvatarComponent/Avatar', () => {
+jest.mock('../avatar/Avatar', () => {
   return jest.fn().mockImplementation(() => <div>Avatar</div>);
 });
 

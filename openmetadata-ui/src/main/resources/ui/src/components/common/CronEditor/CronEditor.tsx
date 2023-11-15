@@ -23,7 +23,6 @@ import {
   getQuartzCronExpression,
   getStateValue,
 } from '../../../utils/CronUtils';
-import './cron-editor.less';
 import {
   getDayOptions,
   getHourOptions,

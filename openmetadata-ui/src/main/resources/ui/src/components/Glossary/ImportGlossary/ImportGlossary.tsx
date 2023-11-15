@@ -20,10 +20,10 @@ import { importGlossaryInCSVFormat } from '../../../rest/glossaryAPI';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { EntityImport } from '../../common/EntityImport/EntityImport.component';
-import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
-import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import TitleBreadcrumb from '../../common/title-breadcrumb/title-breadcrumb.component';
+import { TitleBreadcrumbProps } from '../../common/title-breadcrumb/title-breadcrumb.interface';
 import { GlossaryImportResult } from '../ImportResult/GlossaryImportResult.component';
-import './import-glossary.less';
+import './ImportGlossary.less';
 
 interface Props {
   glossaryName: string;

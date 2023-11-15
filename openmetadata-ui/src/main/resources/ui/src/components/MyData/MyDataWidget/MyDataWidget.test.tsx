@@ -68,7 +68,7 @@ jest.mock('../../../utils/TableUtils', () => ({
   getEntityIcon: jest.fn().mockImplementation((obj) => obj.name),
 }));
 
-jest.mock('../../Auth/AuthProviders/AuthProvider', () => ({
+jest.mock('../../authentication/auth-provider/AuthProvider', () => ({
   useAuthContext: jest.fn(() => ({
     currentUser: mockUserData,
   })),

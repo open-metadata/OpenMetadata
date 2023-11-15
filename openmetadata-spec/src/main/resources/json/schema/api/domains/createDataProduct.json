@@ -1,7 +1,7 @@
 {
   "$id": "https://open-metadata.org/schema/entity/domains/createDataProduct.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "CreateDataProductRequest",
+  "title": "createDataProduct",
   "description": "Create DataProduct API request",
   "type": "object",
   "javaType": "org.openmetadata.schema.api.domains.CreateDataProduct",

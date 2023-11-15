@@ -25,7 +25,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import { GRAPH_BACKGROUND_COLOR } from '../../constants/constants';
 import { DEFAULT_HISTOGRAM_DATA } from '../../constants/profiler.constant';
 import { HistogramClass } from '../../generated/entity/data/table';

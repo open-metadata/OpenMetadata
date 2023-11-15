@@ -44,7 +44,7 @@ let currentUser: { id: string; name: string } | null = {
   name: 'Test User',
 };
 
-jest.mock('../Auth/AuthProviders/AuthProvider', () => {
+jest.mock('../authentication/auth-provider/AuthProvider', () => {
   return {
     useAuthContext: jest.fn().mockImplementation(() => ({
       currentUser,

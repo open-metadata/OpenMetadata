@@ -33,7 +33,7 @@ import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import TierCard from '../TierCard/TierCard';
 import { UserSelectableList } from '../UserSelectableList/UserSelectableList.component';
 import { UserTeamSelectableList } from '../UserTeamSelectableList/UserTeamSelectableList.component';
-import './entity-summary-details.style.less';
+import './EntitySummaryDetails.style.less';
 
 export interface GetInfoElementsProps {
   data: ExtraInfo;

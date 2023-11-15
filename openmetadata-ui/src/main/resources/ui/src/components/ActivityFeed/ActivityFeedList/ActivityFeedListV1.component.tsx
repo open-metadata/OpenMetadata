@@ -14,8 +14,9 @@ import { Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FeedEmptyIcon } from '../../../assets/svg/activity-feed-no-data-placeholder.svg';
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { ReactComponent as ActivityFeedIcon } from '../../../assets/svg/activity-feed.svg';
+import { ReactComponent as TaskIcon } from '../../../assets/svg/ic-task.svg';
+import ErrorPlaceHolder from '../../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from '../../../components/Loader/Loader';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { Thread } from '../../../generated/entity/feed/thread';
@@ -68,12 +69,15 @@ const ActivityFeedListV1 = ({
   }
 
   return isEmpty(entityThread) ? (
-    <div
-      className="h-full p-x-md"
-      data-testid="no-data-placeholder-container"
-      id="feedData">
+    <div className="h-full p-x-md" data-testid="no-data-placeholder-container">
       <ErrorPlaceHolder
-        icon={<FeedEmptyIcon height={SIZE.X_SMALL} width={SIZE.X_SMALL} />}
+        icon={
+          isTaskTab ? (
+            <TaskIcon height={24} width={24} />
+          ) : (
+            <ActivityFeedIcon height={SIZE.MEDIUM} width={SIZE.MEDIUM} />
+          )
+        }
         type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
         <Typography.Paragraph
           className="tw-max-w-md"

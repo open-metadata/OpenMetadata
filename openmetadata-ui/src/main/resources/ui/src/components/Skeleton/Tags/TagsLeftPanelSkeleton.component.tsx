@@ -13,10 +13,10 @@
 import { Col, Row } from 'antd';
 import { uniqueId } from 'lodash';
 import React from 'react';
-import { getSkeletonMockData } from '../../../utils/Skeleton.utils';
 import ButtonSkeleton from '../CommonSkeletons/ControlElements/ControlElements.component';
 import LabelCountSkeleton from '../CommonSkeletons/LabelCountSkeleton/LabelCountSkeleton.component';
 import { SkeletonInterface } from '../Skeleton.interfaces';
+import { getSkeletonMockData } from '../SkeletonUtils/Skeleton.utils';
 
 const TagsLeftPanelSkeleton = ({ loading, children }: SkeletonInterface) => {
   return loading ? (

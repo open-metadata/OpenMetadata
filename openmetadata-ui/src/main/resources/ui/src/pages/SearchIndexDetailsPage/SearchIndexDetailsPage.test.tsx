@@ -57,11 +57,11 @@ jest.mock(
   }
 );
 
-jest.mock('../../components/common/EntityDescription/DescriptionV1', () => {
+jest.mock('../../components/common/description/DescriptionV1', () => {
   return jest.fn().mockImplementation(() => <p>testDescriptionV1</p>);
 });
 jest.mock(
-  '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
+  '../../components/common/error-with-placeholder/ErrorPlaceHolder',
   () => {
     return jest.fn().mockImplementation(() => <p>testErrorPlaceHolder</p>);
   }
@@ -71,7 +71,7 @@ jest.mock('../../components/common/QueryViewer/QueryViewer.component', () => {
   return jest.fn().mockImplementation(() => <p>testQueryViewer</p>);
 });
 
-jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
+jest.mock('../../components/containers/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <p>{children}</p>);
 });
 
@@ -149,7 +149,7 @@ describe('SearchIndexDetailsPage component', () => {
 
     expect(getSearchIndexDetailsByFQN).toHaveBeenCalledWith(
       'fqn',
-      'fields,followers,tags,owner,domain,votes,dataProducts'
+      'fields,followers,tags,owner,domain'
     );
   });
 
@@ -166,7 +166,7 @@ describe('SearchIndexDetailsPage component', () => {
 
     expect(getSearchIndexDetailsByFQN).toHaveBeenCalledWith(
       'fqn',
-      'fields,followers,tags,owner,domain,votes,dataProducts'
+      'fields,followers,tags,owner,domain'
     );
 
     expect(await screen.findByText('testDataAssetsHeader')).toBeInTheDocument();
@@ -197,7 +197,7 @@ describe('SearchIndexDetailsPage component', () => {
 
     expect(getSearchIndexDetailsByFQN).toHaveBeenCalledWith(
       'fqn',
-      'fields,followers,tags,owner,domain,votes,dataProducts'
+      'fields,followers,tags,owner,domain'
     );
 
     expect(

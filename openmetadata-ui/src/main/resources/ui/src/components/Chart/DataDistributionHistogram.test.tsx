@@ -97,7 +97,7 @@ const COLUMN_PROFILER = {
 };
 
 jest.mock(
-  '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
+  '../../components/common/error-with-placeholder/ErrorPlaceHolder',
   () => {
     return jest.fn().mockReturnValue(<div>ErrorPlaceHolder</div>);
   }

@@ -6,6 +6,7 @@ import static org.openmetadata.service.resources.teams.UserResource.getUser;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import javax.ws.rs.InternalServerErrorException;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
@@ -20,12 +21,14 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.apps.AppResource;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
+import org.quartz.SchedulerException;
 
 @Slf4j
 public class AppRepository extends EntityRepository<App> {
@@ -42,7 +45,6 @@ public class AppRepository extends EntityRepository<App> {
         UPDATE_FIELDS,
         UPDATE_FIELDS);
     supportsSearch = false;
-    quoteFqn = true;
   }
 
   @Override
@@ -149,6 +151,16 @@ public class AppRepository extends EntityRepository<App> {
 
     // Restore entity fields
     entity.withBot(botUserRef).withOwner(ownerRef);
+  }
+
+  @Override
+  public void postDelete(App entity) {
+    try {
+      AppScheduler.getInstance().deleteScheduledApplication(entity);
+    } catch (SchedulerException ex) {
+      LOG.error("Failed in delete Application from Scheduler.", ex);
+      throw new InternalServerErrorException("Failed in Delete App from Scheduler.");
+    }
   }
 
   public EntityReference getBotUser(App application) {

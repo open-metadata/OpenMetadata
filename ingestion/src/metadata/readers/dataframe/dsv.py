@@ -114,9 +114,5 @@ class DSVDataFrameReader(DataFrameReader):
         )
 
 
-def get_dsv_reader_by_separator(separator: str) -> functools.partial:
-    return functools.partial(DSVDataFrameReader, separator=separator)
-
-
-CSVDataFrameReader = get_dsv_reader_by_separator(separator=CSV_SEPARATOR)
-TSVDataFrameReader = get_dsv_reader_by_separator(separator=TSV_SEPARATOR)
+CSVDataFrameReader = functools.partial(DSVDataFrameReader, separator=CSV_SEPARATOR)
+TSVDataFrameReader = functools.partial(DSVDataFrameReader, separator=TSV_SEPARATOR)

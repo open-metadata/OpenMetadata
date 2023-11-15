@@ -68,7 +68,6 @@ from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
 )
-from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.ingestion.source.database.stored_procedures_mixin import (
     QueryByProcedure,
     StoredProcedureMixin,
@@ -191,7 +190,7 @@ BigQueryDialect._build_formatted_table_id = (  # pylint: disable=protected-acces
 )
 
 
-class BigquerySource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource):
+class BigquerySource(StoredProcedureMixin, CommonDbSourceService):
     """
     Implements the necessary methods to extract
     Database metadata from Bigquery Source
@@ -421,12 +420,6 @@ class BigquerySource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource)
         self.client = inspector_details.client
         self.engine = inspector_details.engine
         self.inspector = inspector_details.inspector
-
-    def get_configured_database(self) -> Optional[str]:
-        return None
-
-    def get_database_names_raw(self) -> Iterable[str]:
-        yield from self.project_ids
 
     def get_database_names(self) -> Iterable[str]:
         for project_id in self.project_ids:

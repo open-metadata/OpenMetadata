@@ -23,7 +23,7 @@ import { getUserProfilePic } from '../../../utils/UserDataUtils';
 import Loader from '../../Loader/Loader';
 import { usePermissionProvider } from '../../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../PermissionProvider/PermissionProvider.interface';
-import Avatar from '../AvatarComponent/Avatar';
+import Avatar from '../avatar/Avatar';
 
 type UserData = Pick<User, 'id' | 'name' | 'displayName'>;
 

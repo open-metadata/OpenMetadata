@@ -19,9 +19,12 @@ import {
   Aggregations,
   DataInsightSearchResponse,
   KeysOfUnion,
+  RawSuggestResponse,
   SearchIndexSearchSourceMapping,
   SearchRequest,
   SearchResponse,
+  SuggestRequest,
+  SuggestResponse,
 } from '../interface/search.interface';
 import { omitDeep } from '../utils/APIUtils';
 import { getQueryWithSlash } from '../utils/SearchUtils';
@@ -286,4 +289,140 @@ export const searchQueryDataInsight = async (
   return formatSearchQueryResponse(
     res.data
   ) as unknown as DataInsightSearchResponse;
+};
+
+/**
+ * Formats a response from {@link rawSuggestQuery}
+ *
+ * Warning: avoid this pattern unless applying custom transformation to the raw response!
+ * ```ts
+ * const response = await rawSuggestQuery(req);
+ * const data = formatSuggestQueryResponse(response.data);
+ * ```
+ *
+ * Instead use the shorthand {@link suggestQuery}
+ * ```ts
+ * const data = suggestQuery(req);
+ * ```
+ *
+ * @param data
+ */
+export const formatSuggestQueryResponse = <
+  SI extends SearchIndex | SearchIndex[],
+  TIncludeFields extends KeysOfUnion<
+    SearchIndexSearchSourceMapping[SI extends Array<SearchIndex>
+      ? SI[number]
+      : SI]
+  >
+>(
+  data: RawSuggestResponse<
+    SI extends Array<SearchIndex> ? SI[number] : SI,
+    TIncludeFields
+  >
+): SuggestResponse<
+  SI extends Array<SearchIndex> ? SI[number] : SI,
+  TIncludeFields
+> => {
+  let _data;
+
+  _data = data;
+
+  // Elasticsearch responses use 'null' for missing values, we want undefined
+  _data = omitDeep<
+    SuggestResponse<
+      SI extends Array<SearchIndex> ? SI[number] : SI,
+      TIncludeFields
+    >
+  >(_data.suggest['metadata-suggest'][0].options, isNil);
+
+  /* Elasticsearch objects use `entityType` to track their type, but the EntityReference interface uses `type`
+      This copies `entityType` into `type` (if `entityType` exists) so responses implement EntityReference */
+  _data = _data.map((datum) =>
+    '_source' in datum
+      ? 'entityType' in datum._source
+        ? {
+            ...datum,
+            _source: {
+              ...(datum._source as SearchIndexSearchSourceMapping[SI extends Array<SearchIndex>
+                ? SI[number]
+                : SI]),
+              type: (
+                datum._source as SearchIndexSearchSourceMapping[SI extends Array<SearchIndex>
+                  ? SI[number]
+                  : SI]
+              ).entityType,
+            },
+          }
+        : datum
+      : datum
+  );
+
+  return _data;
+};
+
+/**
+ * Executes a request to /search/suggest, returning the raw response.
+ * Warning: Only call this function directly in special cases. Otherwise use {@link suggestQuery}
+ *
+ * @param req Request object
+ */
+export const rawSuggestQuery = <
+  SI extends SearchIndex | SearchIndex[],
+  TIncludeFields extends KeysOfUnion<
+    SearchIndexSearchSourceMapping[SI extends Array<SearchIndex>
+      ? SI[number]
+      : SI]
+  >
+>(
+  req: SuggestRequest<SI, TIncludeFields>
+): Promise<
+  AxiosResponse<
+    RawSuggestResponse<
+      SI extends Array<SearchIndex> ? SI[number] : SI,
+      TIncludeFields
+    >
+  >
+> => {
+  const { query, searchIndex, field, fetchSource } = req;
+
+  return APIClient.get<
+    RawSuggestResponse<
+      SI extends Array<SearchIndex> ? SI[number] : SI,
+      TIncludeFields
+    >
+  >('/search/suggest', {
+    params: {
+      q: query,
+      field,
+      index: getSearchIndexParam(searchIndex),
+      fetch_source: fetchSource,
+      include_source_fields: req.fetchSource ? req.includeFields : undefined,
+    },
+  });
+};
+
+/**
+ * Access point for the Suggestion API.
+ * Executes a request to /search/suggest, returning a formatted response.
+ *
+ * @param req Request object
+ */
+export const suggestQuery = async <
+  SI extends SearchIndex | SearchIndex[],
+  TIncludeFields extends KeysOfUnion<
+    SearchIndexSearchSourceMapping[SI extends Array<SearchIndex>
+      ? SI[number]
+      : SI]
+  >
+>(
+  req: SuggestRequest<SI, TIncludeFields>
+): Promise<
+  SuggestResponse<
+    SI extends Array<SearchIndex> ? SI[number] : SI,
+    TIncludeFields
+  >
+> => {
+  const res = await rawSuggestQuery(req);
+
+  return formatSuggestQueryResponse(res.data);
 };

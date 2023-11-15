@@ -21,7 +21,7 @@ let fqn = '';
 const mockPush = jest.fn();
 const mockBack = jest.fn();
 
-jest.mock('../../components/common/RichTextEditor/RichTextEditor', () => {
+jest.mock('../../components/common/rich-text-editor/RichTextEditor', () => {
   return jest.fn().mockImplementation(({ initialValue }) => (
     <div data-testid="editor">
       <textarea data-testid="description" value={initialValue} />

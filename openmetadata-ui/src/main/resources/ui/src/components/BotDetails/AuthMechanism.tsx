@@ -17,8 +17,8 @@ import React, { FC } from 'react';
 import { AuthenticationMechanism } from '../../generated/entity/teams/user';
 import { getTokenExpiry } from '../../utils/BotsUtils';
 import SVGIcons from '../../utils/SvgUtils';
-import CopyToClipboardButton from '../CopyToClipboardButton/CopyToClipboardButton';
-import './auth-mechanism.less';
+import CopyToClipboardButton from '../buttons/CopyToClipboardButton/CopyToClipboardButton';
+import './AuthMechanism.less';
 
 interface Props {
   authenticationMechanism: AuthenticationMechanism;

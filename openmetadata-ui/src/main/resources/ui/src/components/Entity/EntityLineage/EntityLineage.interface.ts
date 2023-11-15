@@ -18,7 +18,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { Column } from '../../../generated/entity/data/container';
 import { EntityReference } from '../../../generated/entity/type';
 import { EntityLineage } from '../../../generated/type/entityLineage';
-import { SourceType } from '../../SearchedData/SearchedData.interface';
+import { SourceType } from '../../searched-data/SearchedData.interface';
 
 export interface SelectedNode {
   name: string;

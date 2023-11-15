@@ -65,7 +65,6 @@ def fetch_dataframe(
                 type_=file_extension,
                 config_source=config_source,
                 client=client,
-                separator=file_fqn.separator,
             )
             try:
                 df_wrapper: DatalakeColumnWrapper = df_reader.read(

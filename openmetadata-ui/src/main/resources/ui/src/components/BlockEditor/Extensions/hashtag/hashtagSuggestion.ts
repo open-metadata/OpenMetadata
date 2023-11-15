@@ -20,7 +20,7 @@ import { getSuggestions, searchData } from '../../../../rest/miscAPI';
 import { getEntityBreadcrumbs } from '../../../../utils/EntityUtils';
 import { buildMentionLink } from '../../../../utils/FeedUtils';
 import { getEncodedFqn } from '../../../../utils/StringsUtils';
-import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
+import { SearchedDataProps } from '../../../searched-data/SearchedData.interface';
 import { ExtensionRef } from '../../BlockEditor.interface';
 import HashList from './HashList';
 

@@ -51,6 +51,7 @@ export const DataInsightContext = createContext<DataInsightContextType>(
 );
 const fetchTeamSuggestions = autocomplete({
   searchIndex: SearchIndex.TEAM,
+  entitySearchIndex: SearchIndex.TEAM,
   entityField: EntityFields.OWNER,
 });
 

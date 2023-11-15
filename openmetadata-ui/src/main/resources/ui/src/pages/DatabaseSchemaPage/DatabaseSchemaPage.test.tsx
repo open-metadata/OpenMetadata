@@ -89,7 +89,7 @@ jest.mock('../../pages/StoredProcedure/StoredProcedureTab', () => {
   return jest.fn().mockImplementation(() => <div>testStoredProcedureTab</div>);
 });
 
-jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
+jest.mock('../../components/containers/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <p>{children}</p>);
 });
 
@@ -141,8 +141,9 @@ jest.mock('../../components/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div>testLoader</div>)
 );
 
-jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(() => <p>ErrorPlaceHolder</p>)
+jest.mock(
+  '../../components/common/error-with-placeholder/ErrorPlaceHolder',
+  () => jest.fn().mockImplementation(() => <p>ErrorPlaceHolder</p>)
 );
 
 jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
@@ -260,6 +261,8 @@ describe('Tests for DatabaseSchemaPage', () => {
 
     expect(getStoredProceduresList).toHaveBeenCalledWith({
       databaseSchema: mockParams.fqn,
+      fields: 'owner,tags,followers',
+      include: 'non-deleted',
       limit: 0,
     });
   });

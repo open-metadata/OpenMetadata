@@ -18,7 +18,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Node } from 'reactflow';
-import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
+import DescriptionV1 from '../../../components/common/description/DescriptionV1';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
@@ -26,12 +26,12 @@ import { getEntityName } from '../../../utils/EntityUtils';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { getEntityLink } from '../../../utils/TableUtils';
 import Loader from '../../Loader/Loader';
-import SchemaEditor from '../../SchemaEditor/SchemaEditor';
-import './entity-info-drawer.less';
+import SchemaEditor from '../../schema-editor/SchemaEditor';
 import {
   EdgeInfoDrawerInfo,
   EdgeInformationType,
 } from './EntityInfoDrawer.interface';
+import './EntityInfoDrawer.style.less';
 
 const EdgeInfoDrawer = ({
   edge,

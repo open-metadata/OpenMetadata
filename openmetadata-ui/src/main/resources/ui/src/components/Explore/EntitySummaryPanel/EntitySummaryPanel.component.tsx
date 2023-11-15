@@ -45,7 +45,7 @@ import {
 } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getEncodedFqn, stringToHTML } from '../../../utils/StringsUtils';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from '../../Loader/Loader';
 import { usePermissionProvider } from '../../PermissionProvider/PermissionProvider';
 import {
@@ -58,8 +58,8 @@ import DatabaseSchemaSummary from './DatabaseSchemaSummary/DatabaseSchemaSummary
 import DatabaseSummary from './DatabaseSummary/DatabaseSummary.component';
 import DataModelSummary from './DataModelSummary/DataModelSummary.component';
 import DataProductSummary from './DataProductSummary/DataProductSummary.component';
-import './entity-summary-panel.less';
 import { EntitySummaryPanelProps } from './EntitySummaryPanel.interface';
+import './EntitySummaryPanel.style.less';
 import GlossaryTermSummary from './GlossaryTermSummary/GlossaryTermSummary.component';
 import MlModelSummary from './MlModelSummary/MlModelSummary.component';
 import PipelineSummary from './PipelineSummary/PipelineSummary.component';

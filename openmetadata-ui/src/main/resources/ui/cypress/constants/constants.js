@@ -384,7 +384,6 @@ export const ENTITIES = {
     stringValue: 'This is string propery',
     markdownValue: 'This is markdown value',
     entityObj: SEARCH_ENTITY_TABLE.table_1,
-    entityApiType: 'tables',
   },
   entity_topic: {
     name: 'topic',
@@ -393,7 +392,6 @@ export const ENTITIES = {
     stringValue: 'This is string propery',
     markdownValue: 'This is markdown value',
     entityObj: SEARCH_ENTITY_TOPIC.topic_1,
-    entityApiType: 'topics',
   },
   // commenting the dashboard test for not, need to make changes in dynamic data-test side
   //   entity_dashboard: {
@@ -403,7 +401,6 @@ export const ENTITIES = {
   //     stringValue: 'This is string propery',
   //     markdownValue: 'This is markdown value',
   //     entityObj: SEARCH_ENTITY_DASHBOARD.dashboard_1,
-  // entityApiType: "dashboards"
   //   },
   entity_pipeline: {
     name: 'pipeline',
@@ -412,7 +409,6 @@ export const ENTITIES = {
     stringValue: 'This is string propery',
     markdownValue: 'This is markdown value',
     entityObj: SEARCH_ENTITY_PIPELINE.pipeline_1,
-    entityApiType: 'pipelines',
   },
 };
 
@@ -439,7 +435,7 @@ export const HTTP_CONFIG_SOURCE = {
 
 export const DBT = {
   classification: 'dbtTags',
-  tagName: 'model_tag_two',
+  tagName: 'model_tag_one',
   dbtQuery: 'select * from "dev"."dbt_jaffle"."stg_orders"',
   dbtLineageNodeLabel: 'customers',
   dbtLineageNode: 'dev.dbt_jaffle.stg_customers',

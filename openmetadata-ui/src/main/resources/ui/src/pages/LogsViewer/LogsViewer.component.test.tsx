@@ -29,10 +29,10 @@ jest.mock('../../utils/LogsViewer.utils', () => ({
 }));
 
 jest.mock(
-  '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
+  '../../components/common/title-breadcrumb/title-breadcrumb.component',
   () => () => <>TitleBreadcrumb.component</>
 );
-jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
+jest.mock('../../components/containers/PageLayoutV1', () =>
   jest.fn().mockImplementation(({ children }) => <div>{children}</div>)
 );
 

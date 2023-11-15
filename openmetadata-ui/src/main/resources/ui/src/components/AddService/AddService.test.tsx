@@ -24,7 +24,7 @@ jest.mock('../AddIngestion/AddIngestion.component', () => () => (
   <>AddIngestion</>
 ));
 
-jest.mock('../common/TitleBreadcrumb/TitleBreadcrumb.component', () => () => (
+jest.mock('../common/title-breadcrumb/title-breadcrumb.component', () => () => (
   <>TitleBreadcrumb.component</>
 ));
 

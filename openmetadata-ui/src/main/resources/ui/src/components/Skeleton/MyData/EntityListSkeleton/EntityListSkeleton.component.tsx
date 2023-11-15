@@ -13,12 +13,12 @@
 
 import { uniqueId } from 'lodash';
 import React from 'react';
+import LabelCountSkeleton from '../../CommonSkeletons/LabelCountSkeleton/LabelCountSkeleton.component';
+import { EntityListSkeletonProps } from '../../Skeleton.interfaces';
 import {
   DEFAULT_SKELETON_DATA_LENGTH,
   getSkeletonMockData,
-} from '../../../../utils/Skeleton.utils';
-import LabelCountSkeleton from '../../CommonSkeletons/LabelCountSkeleton/LabelCountSkeleton.component';
-import { EntityListSkeletonProps } from '../../Skeleton.interfaces';
+} from '../../SkeletonUtils/Skeleton.utils';
 
 const EntityListSkeleton = ({
   loading,

@@ -19,8 +19,8 @@ import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../../assets/svg/external-links.svg';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
-import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
-import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
+import DescriptionV1 from '../../components/common/description/DescriptionV1';
+import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import DataAssetsVersionHeader from '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from '../../components/Loader/Loader';
@@ -41,7 +41,6 @@ import {
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
 import { getEncodedFqn } from '../../utils/StringsUtils';
-import DataProductsContainer from '../DataProductsContainer/DataProductsContainer.component';
 import { DashboardVersionProp } from './DashboardVersion.interface';
 
 const DashboardVersion: FC<DashboardVersionProp> = ({
@@ -57,7 +56,6 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
   versionHandler,
   entityPermissions,
   domain,
-  dataProducts,
 }: DashboardVersionProp) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -178,9 +176,9 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
               <Row gutter={[0, 16]}>
                 <Col span={24}>
                   <DescriptionV1
+                    isVersionView
                     description={description}
                     entityType={EntityType.DASHBOARD}
-                    showActions={false}
                   />
                 </Col>
                 <Col span={24}>
@@ -201,11 +199,6 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
               data-testid="entity-right-panel"
               flex="220px">
               <Space className="w-full" direction="vertical" size="large">
-                <DataProductsContainer
-                  activeDomain={domain}
-                  dataProducts={dataProducts ?? []}
-                  hasPermission={false}
-                />
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
                     entityType={EntityType.DASHBOARD}

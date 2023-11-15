@@ -69,31 +69,3 @@ class Row:
         self.QUERY_TYPE = query_type
         self.START_TIME = start_time
         self.QUERY_TEXT = query_text
-
-    def __iter__(self):
-        """implemetation to support dict(row)"""
-        yield "QUERY_ID", self.QUERY_ID
-        yield "QUERY_TYPE", self.QUERY_TYPE
-        yield "START_TIME", self.START_TIME
-        yield "QUERY_TEXT", self.QUERY_TEXT
-
-
-class LowerRow:
-    def __init__(
-        self,
-        query_id,
-        query_type,
-        start_time,
-        query_text,
-    ):
-        self.QUERY_ID = query_id
-        self.QUERY_TYPE = query_type
-        self.START_TIME = start_time
-        self.QUERY_TEXT = query_text
-
-    def __iter__(self):
-        """implemetation to support dict(row)"""
-        yield "query_id", self.QUERY_ID
-        yield "query_type", self.QUERY_TYPE
-        yield "start_time", self.START_TIME
-        yield "query_text", self.QUERY_TEXT

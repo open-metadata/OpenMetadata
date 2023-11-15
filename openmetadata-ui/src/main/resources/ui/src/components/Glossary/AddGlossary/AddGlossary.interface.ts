@@ -12,7 +12,7 @@
  */
 
 import { CreateGlossary } from '../../../generated/api/data/createGlossary';
-import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import { TitleBreadcrumbProps } from '../../common/title-breadcrumb/title-breadcrumb.interface';
 
 export interface AddGlossaryProps {
   header: string;

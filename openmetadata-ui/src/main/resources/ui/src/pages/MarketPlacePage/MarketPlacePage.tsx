@@ -18,12 +18,12 @@ import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as HeadingIcon } from '../../assets/svg/marketplace-heading.svg';
 import ApplicationCard from '../../components/Applications/ApplicationCard/ApplicationCard.component';
-import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
-import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
-import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import NextPrevious from '../../components/common/next-previous/NextPrevious';
+import { PagingHandlerParams } from '../../components/common/next-previous/NextPrevious.interface';
+import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
+import PageLayoutV1 from '../../components/containers/PageLayoutV1';
+import PageHeader from '../../components/header/PageHeader.component';
 import Loader from '../../components/Loader/Loader';
-import PageHeader from '../../components/PageHeader/PageHeader.component';
-import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -33,6 +33,7 @@ import { AppMarketPlaceDefinition } from '../../generated/entity/applications/ma
 import { Paging } from '../../generated/type/paging';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getMarketPlaceApplicationList } from '../../rest/applicationMarketPlaceAPI';
+import { showPagination } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import {
   getMarketPlaceAppDetailsPath,
@@ -50,33 +51,29 @@ const MarketPlacePage = () => {
     handlePagingChange,
     handlePageChange,
     handlePageSizeChange,
-    showPagination,
   } = usePaging();
   const history = useHistory();
   const [isLoading, setIsLoading] = useState(true);
   const [applicationData, setApplicationData] =
     useState<AppMarketPlaceDefinition[]>();
 
-  const fetchApplicationList = useCallback(
-    async (pagingOffset?: Paging) => {
-      try {
-        setIsLoading(true);
-        const { data, paging } = await getMarketPlaceApplicationList({
-          after: pagingOffset?.after,
-          before: pagingOffset?.before,
-          limit: pageSize,
-        });
+  const fetchApplicationList = useCallback(async (pagingOffset?: Paging) => {
+    try {
+      setIsLoading(true);
+      const { data, paging } = await getMarketPlaceApplicationList({
+        after: pagingOffset?.after,
+        before: pagingOffset?.before,
+        limit: pageSize,
+      });
 
-        setApplicationData(data);
-        handlePagingChange(paging);
-      } catch (err) {
-        showErrorToast(err as AxiosError);
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [pageSize, handlePagingChange]
-  );
+      setApplicationData(data);
+      handlePagingChange(paging);
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   const handleMarketPlacePageChange = ({
     currentPage,
@@ -96,7 +93,7 @@ const MarketPlacePage = () => {
 
   useEffect(() => {
     fetchApplicationList();
-  }, [pageSize]);
+  }, []);
 
   if (isLoading) {
     return <Loader />;
@@ -156,7 +153,7 @@ const MarketPlacePage = () => {
           </div>
         </Col>
         <Col span={18}>
-          {showPagination && (
+          {showPagination(paging) && (
             <NextPrevious
               currentPage={currentPage}
               pageSize={pageSize}

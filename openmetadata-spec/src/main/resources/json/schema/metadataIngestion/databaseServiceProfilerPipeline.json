@@ -51,6 +51,12 @@
       "default": 80,
       "title": "Confidence"
     },
+    "generateSampleData": {
+      "description": "Option to turn on/off generating sample data.",
+      "type": "boolean",
+      "default": true,
+      "title": "Generate Sample Data"
+    },
     "profileSample": {
       "description": "Percentage of data or no. of rows we want to execute the profiler and tests on",
       "type": "number",
@@ -60,18 +66,6 @@
     "profileSampleType": {
       "$ref": "../entity/data/table.json#/definitions/profileSampleType",
       "title": "Profile Sample Type"
-    },
-    "generateSampleData": {
-      "description": "Option to turn on/off generating sample data.",
-      "type": "boolean",
-      "default": true,
-      "title": "Generate Sample Data"
-    },
-    "sampleDataCount": {
-      "description": "Number of row of sample data to be generated",
-      "type": "integer",
-      "default": 50,
-      "title": "Sample Data Rows Count"
     },
     "threadCount": {
       "description": "Number of threads to use during metric computations",

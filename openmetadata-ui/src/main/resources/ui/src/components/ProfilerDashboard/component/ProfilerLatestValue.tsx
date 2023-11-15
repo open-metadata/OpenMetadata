@@ -16,7 +16,7 @@ import React from 'react';
 import { getStatisticsDisplayValue } from '../../../utils/CommonUtils';
 import { ProfilerLatestValueProps } from '../profilerDashboard.interface';
 
-import '../profiler-dashboard.less';
+import '../profilerDashboard.less';
 
 const ProfilerLatestValue = ({
   information,

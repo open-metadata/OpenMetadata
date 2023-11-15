@@ -17,8 +17,8 @@ import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as GridIcon } from '../../assets/svg/ic-grid.svg';
 import { ReactComponent as ListIcon } from '../../assets/svg/ic-list.svg';
+import Searchbar from '../../components/common/searchbar/Searchbar';
 import Table from '../../components/common/Table/Table';
-import Searchbar from '../common/SearchBarComponent/SearchBar.component';
 import { ListViewOptions, ListViewProps } from './ListView.interface';
 
 // eslint-disable-next-line @typescript-eslint/ban-types, @typescript-eslint/no-explicit-any

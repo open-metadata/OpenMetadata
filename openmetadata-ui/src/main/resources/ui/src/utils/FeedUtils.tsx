@@ -20,7 +20,7 @@ import React from 'react';
 import Showdown from 'showdown';
 import TurndownService from 'turndown';
 import { MentionSuggestionsItem } from '../components/FeedEditor/FeedEditor.interface';
-import { SearchedDataProps } from '../components/SearchedData/SearchedData.interface';
+import { SearchedDataProps } from '../components/searched-data/SearchedData.interface';
 import {
   FQN_SEPARATOR_CHAR,
   WILD_CARD_CHAR,

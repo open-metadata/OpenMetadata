@@ -21,8 +21,6 @@ need to bring information about:
 
 - **dataPath**: Where we can find the data. This should be a path relative to the top-level container.
 - **structureFormat**: What is the format of the data we are going to find. This information will be used to read the data.
-- **separator**: Optionally, for delimiter-separated formats such as CSV, you can specify the separator to use when reading the file.
-  If you don't, we will use `,` for CSV and `/t` for TSV files.
 
 After ingesting this container, we will bring in the schema of the data in the `dataPath`.
 
@@ -68,8 +66,7 @@ Again, this information will be added on top of the inferred schema from the dat
 ```json {% srNumber=2 %}
         {
             "dataPath": "transactions",
-            "structureFormat": "csv",
-            "separator": ","
+            "structureFormat": "csv"
         },
 ```
 ```json {% srNumber=3 %}

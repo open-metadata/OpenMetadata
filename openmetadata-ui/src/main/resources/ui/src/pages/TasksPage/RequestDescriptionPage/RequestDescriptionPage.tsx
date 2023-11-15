@@ -15,18 +15,19 @@ import { Button, Form, FormProps, Input, Space, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
+import { observer } from 'mobx-react';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
+import AppState from '../../../AppState';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import { useAuthContext } from '../../../components/Auth/AuthProviders/AuthProvider';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
-import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
-import { EditorContentRef } from '../../../components/common/RichTextEditor/RichTextEditor.interface';
-import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import RichTextEditor from '../../../components/common/rich-text-editor/RichTextEditor';
+import { EditorContentRef } from '../../../components/common/rich-text-editor/RichTextEditor.interface';
+import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
 import ExploreSearchCard from '../../../components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import Loader from '../../../components/Loader/Loader';
-import { SearchedDataProps } from '../../../components/SearchedData/SearchedData.interface';
+import { SearchedDataProps } from '../../../components/searched-data/SearchedData.interface';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import {
@@ -49,12 +50,11 @@ import {
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import Assignees from '../shared/Assignees';
-import '../task-page.style.less';
+import '../TaskPage.style.less';
 import { EntityData, Option } from '../TasksPage.interface';
 
 const RequestDescription = () => {
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
   const location = useLocation();
   const history = useHistory();
   const [form] = useForm();
@@ -81,6 +81,12 @@ const RequestDescription = () => {
   const decodedEntityFQN = useMemo(
     () => getDecodedFqn(entityFQN),
     [entityType]
+  );
+
+  // get current user details
+  const currentUser = useMemo(
+    () => AppState.getCurrentUserDetails(),
+    [AppState.userDetails, AppState.nonSecureUserDetails]
   );
 
   const back = () => history.goBack();
@@ -291,4 +297,4 @@ const RequestDescription = () => {
   );
 };
 
-export default RequestDescription;
+export default observer(RequestDescription);

@@ -49,7 +49,7 @@ jest.mock('../../../utils/GlossaryUtils', () => ({
   getGlossaryTermsList: jest.fn().mockImplementation(() => Promise.resolve([])),
 }));
 
-jest.mock('../../common/RichTextEditor/RichTextEditorPreviewer', () =>
+jest.mock('../../common/rich-text-editor/RichTextEditorPreviewer', () =>
   jest
     .fn()
     .mockReturnValue(
@@ -74,7 +74,7 @@ jest.mock('../../TableTags/TableTags.component', () =>
     ))
 );
 
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
+jest.mock('../../common/error-with-placeholder/ErrorPlaceHolder', () =>
   jest
     .fn()
     .mockImplementation(() => (
@@ -82,7 +82,7 @@ jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
     ))
 );
 
-jest.mock('../../SchemaEditor/SchemaEditor', () =>
+jest.mock('../../schema-editor/SchemaEditor', () =>
   jest
     .fn()
     .mockImplementation(() => (

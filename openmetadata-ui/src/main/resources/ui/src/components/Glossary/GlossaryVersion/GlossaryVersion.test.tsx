@@ -60,7 +60,7 @@ jest.mock('../GlossaryV1.component', () => {
   return jest.fn().mockReturnValue(<>Glossary component</>);
 });
 
-jest.mock('../../PageLayoutV1/PageLayoutV1', () => {
+jest.mock('../../containers/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
 

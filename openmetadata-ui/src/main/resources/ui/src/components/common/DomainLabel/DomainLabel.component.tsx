@@ -148,7 +148,7 @@ export const DomainLabel = ({
     }
 
     return (
-      <Space data-testid="header-domain-container">
+      <Space>
         <Typography.Text className="self-center text-xs whitespace-nowrap">
           <DomainIcon
             className="d-flex"

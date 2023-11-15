@@ -32,8 +32,7 @@
         "fields": {
           "keyword": {
             "type": "keyword",
-            "ignore_above": 256,
-            "normalizer": "lowercase_normalizer"
+            "ignore_above": 256
           }
         }
       },
@@ -56,53 +55,6 @@
       },
       "version": {
         "type": "float"
-      },
-      "dataProducts": {
-        "properties": {
-          "id": {
-            "type": "keyword",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 36
-              }
-            }
-          },
-          "type": {
-            "type": "keyword"
-          },
-          "name": {
-            "type": "keyword",
-            "normalizer": "lowercase_normalizer",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 256
-              }
-            }
-          },
-          "displayName": {
-            "type": "keyword",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 256
-              }
-            }
-          },
-          "fullyQualifiedName": {
-            "type": "text"
-          },
-          "description": {
-            "type": "text"
-          },
-          "deleted": {
-            "type": "text"
-          },
-          "href": {
-            "type": "text"
-          }
-        }
       },
       "updatedAt": {
         "type": "date",

@@ -11,7 +11,7 @@
 """Azure SQL source module"""
 
 import traceback
-from typing import Iterable, Optional
+from typing import Iterable
 
 from sqlalchemy.dialects.mssql.base import MSDialect, ischema_names
 
@@ -24,14 +24,12 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.azuresql.queries import AZURE_SQL_GET_DATABASES
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.ingestion.source.database.mssql.utils import (
     get_columns,
     get_table_comment,
     get_view_definition,
 )
-from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
@@ -52,7 +50,7 @@ MSDialect.get_all_table_comments = get_all_table_comments
 MSDialect.get_columns = get_columns
 
 
-class AzuresqlSource(CommonDbSourceService, MultiDBSource):
+class AzuresqlSource(CommonDbSourceService):
     """
     Implements the necessary methods to extract
     Database metadata from Azuresql Source
@@ -68,14 +66,6 @@ class AzuresqlSource(CommonDbSourceService, MultiDBSource):
             )
         return cls(config, metadata)
 
-    def get_configured_database(self) -> Optional[str]:
-        if not self.service_connection.ingestAllDatabases:
-            return self.service_connection.database
-        return None
-
-    def get_database_names_raw(self) -> Iterable[str]:
-        yield from self._execute_database_query(AZURE_SQL_GET_DATABASES)
-
     def get_database_names(self) -> Iterable[str]:
 
         if not self.config.serviceConnection.__root__.config.ingestAllDatabases:
@@ -83,7 +73,12 @@ class AzuresqlSource(CommonDbSourceService, MultiDBSource):
             self.set_inspector(database_name=configured_db)
             yield configured_db
         else:
-            for new_database in self.get_database_names_raw():
+            results = self.connection.execute(
+                "SELECT name FROM master.sys.databases order by name"
+            )
+            for res in results:
+                row = list(res)
+                new_database = row[0]
                 database_fqn = fqn.build(
                     self.metadata,
                     entity_type=Database,

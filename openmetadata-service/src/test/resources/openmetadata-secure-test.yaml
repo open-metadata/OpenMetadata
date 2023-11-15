@@ -105,7 +105,7 @@ database:
 migrationConfiguration:
   flywayPath: "../bootstrap/sql/migrations/flyway"
   nativePath: "../bootstrap/sql/migrations/native"
-  extensionPath: ""
+  extensionPath: ${MIGRATION_EXTENSION_PATH:-""}
 
 #elasticsearch:
 #  host: localhost
@@ -223,3 +223,13 @@ email:
   username: ""
   password: ""
   transportationStrategy: "SMTP_TLS"
+
+applicationConfig:
+  logoConfig:
+    customLogoUrlPath: ""
+    customMonogramUrlPath: ""
+  loginConfig:
+    maxLoginFailAttempts: 3
+    accessBlockTime: 600
+    jwtTokenExpiryTime: 3600
+  

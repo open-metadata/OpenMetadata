@@ -190,7 +190,6 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
                 structureFormat=entry.structureFormat,
                 isPartitioned=entry.isPartitioned,
                 partitionColumns=entry.partitionColumns,
-                separator=entry.separator,
             )
             for entry in manifest.entries
             if entry.containerName == container_name
@@ -223,7 +222,6 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
                 key=sample_key,
                 bucket_name=bucket_name,
                 file_extension=SupportedTypes(metadata_entry.structureFormat),
-                separator=metadata_entry.separator,
             ),
         )
         columns = []

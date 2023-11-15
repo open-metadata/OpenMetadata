@@ -11,13 +11,15 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Row } from 'antd';
+import { Card, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
-import { includes, isEmpty, round, toLower } from 'lodash';
+import { isEmpty, round, uniqueId } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   CartesianGrid,
+  Legend,
+  LegendProps,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -25,6 +27,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import PageHeader from '../../components/header/PageHeader.component';
 import {
   DEFAULT_CHART_OPACITY,
   GRAPH_BACKGROUND_COLOR,
@@ -33,7 +36,6 @@ import {
 import {
   BAR_CHART_MARGIN,
   DI_STRUCTURE,
-  GRAPH_HEIGHT,
   TOTAL_ENTITY_CHART_COLOR,
 } from '../../constants/DataInsight.constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
@@ -51,13 +53,10 @@ import {
 import {
   CustomTooltip,
   getGraphDataByEntityType,
-  getRandomHexColor,
-  sortEntityByValue,
+  renderLegend,
 } from '../../utils/DataInsightUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import Searchbar from '../common/SearchBarComponent/SearchBar.component';
-import PageHeader from '../PageHeader/PageHeader.component';
-import './data-insight-detail.less';
+import './DataInsightDetail.less';
 import DataInsightProgressBar from './DataInsightProgressBar';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
 import EntitySummaryProgressBar from './EntitySummaryProgressBar.component';
@@ -80,10 +79,9 @@ const DescriptionInsight: FC<Props> = ({
   const [totalEntitiesDescriptionByType, setTotalEntitiesDescriptionByType] =
     useState<DataInsightChartResult>();
 
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
   const [activeMouseHoverKey, setActiveMouseHoverKey] = useState('');
-  const [searchEntityKeyWord, setSearchEntityKeyWord] = useState('');
 
   const {
     data,
@@ -98,18 +96,6 @@ const DescriptionInsight: FC<Props> = ({
       dataInsightChartName
     );
   }, [totalEntitiesDescriptionByType]);
-
-  const sortedEntitiesByValue = useMemo(() => {
-    return sortEntityByValue(entities, latestData);
-  }, [entities, latestData]);
-
-  const rightSideEntityList = useMemo(
-    () =>
-      sortedEntitiesByValue.filter((entity) =>
-        includes(toLower(entity), toLower(searchEntityKeyWord))
-      ),
-    [sortedEntitiesByValue, searchEntityKeyWord]
-  );
 
   const { t } = useTranslation();
 
@@ -139,16 +125,16 @@ const DescriptionInsight: FC<Props> = ({
     }
   };
 
-  const handleLegendClick = (entity: string) => {
+  const handleLegendClick: LegendProps['onClick'] = (event) => {
     setActiveKeys((prevActiveKeys) =>
-      updateActiveChartFilter(entity, prevActiveKeys)
+      updateActiveChartFilter(event.dataKey, prevActiveKeys)
     );
   };
 
-  const handleLegendMouseEnter = (entity: string) => {
-    setActiveMouseHoverKey(entity);
+  const handleLegendMouseEnter: LegendProps['onMouseEnter'] = (event) => {
+    setActiveMouseHoverKey(event.dataKey);
   };
-  const handleLegendMouseLeave = () => {
+  const handleLegendMouseLeave: LegendProps['onMouseLeave'] = () => {
     setActiveMouseHoverKey('');
   };
 
@@ -156,137 +142,111 @@ const DescriptionInsight: FC<Props> = ({
     fetchTotalEntitiesDescriptionByType();
   }, [chartFilter]);
 
-  if (isLoading || data.length === 0) {
-    return (
-      <Card
-        className="data-insight-card"
-        loading={isLoading}
-        title={
-          <PageHeader
-            data={{
-              header,
-              subHeader: t('message.field-insight', {
-                field: t('label.description-lowercase'),
-              }),
-            }}
-          />
-        }>
-        <EmptyGraphPlaceholder />
-      </Card>
-    );
-  }
-
   return (
     <Card
       className="data-insight-card"
       data-testid="entity-description-percentage-card"
-      id={dataInsightChartName}>
-      <Row gutter={DI_STRUCTURE.rowContainerGutter}>
-        <Col span={DI_STRUCTURE.leftContainerSpan}>
-          <PageHeader
-            data={{
-              header,
-              subHeader: t('message.field-insight', {
-                field: t('label.description-lowercase'),
-              }),
-            }}
-          />
-          <ResponsiveContainer
-            className="m-t-lg"
-            debounce={1}
-            height={GRAPH_HEIGHT}
-            id={`${dataInsightChartName}-graph`}>
-            <LineChart data={data} margin={BAR_CHART_MARGIN}>
-              <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} vertical={false} />
-              <XAxis dataKey="timestamp" />
-              <YAxis
-                tickFormatter={(value: number) => axisTickFormatter(value, '%')}
-              />
-              <Tooltip
-                content={<CustomTooltip isPercentage />}
-                wrapperStyle={{ pointerEvents: 'auto' }}
-              />
-              {entities.map((entity, i) => (
-                <Line
-                  dataKey={entity}
-                  hide={
-                    activeKeys.length && entity !== activeMouseHoverKey
-                      ? !activeKeys.includes(entity)
-                      : false
-                  }
-                  key={entity}
-                  stroke={TOTAL_ENTITY_CHART_COLOR[i] ?? getRandomHexColor()}
-                  strokeOpacity={
-                    isEmpty(activeMouseHoverKey) ||
-                    entity === activeMouseHoverKey
-                      ? DEFAULT_CHART_OPACITY
-                      : HOVER_CHART_OPACITY
-                  }
-                  type="monotone"
+      id={dataInsightChartName}
+      loading={isLoading}
+      title={
+        <PageHeader
+          data={{
+            header,
+            subHeader: t('message.field-insight', {
+              field: t('label.description-lowercase'),
+            }),
+          }}
+        />
+      }>
+      {data.length ? (
+        <Row gutter={DI_STRUCTURE.rowContainerGutter}>
+          <Col span={DI_STRUCTURE.leftContainerSpan}>
+            <ResponsiveContainer
+              debounce={1}
+              id={`${dataInsightChartName}-graph`}
+              minHeight={400}>
+              <LineChart data={data} margin={BAR_CHART_MARGIN}>
+                <CartesianGrid
+                  stroke={GRAPH_BACKGROUND_COLOR}
+                  vertical={false}
                 />
-              ))}
-            </LineChart>
-          </ResponsiveContainer>
-        </Col>
-        <Col span={DI_STRUCTURE.rightContainerSpan}>
-          <Row gutter={[8, 16]}>
-            <Col span={24}>
-              <DataInsightProgressBar
-                changeInValue={relativePercentage}
-                duration={selectedDays}
-                label={`${t('label.completed-entity', {
-                  entity: t('label.description'),
-                })}${isPercentageGraph ? ' %' : ''}`}
-                progress={Number(total)}
-                suffix={isPercentageGraph ? '%' : ''}
-                target={targetValue}
-              />
-            </Col>
-            <Col span={24}>
-              <Searchbar
-                removeMargin
-                searchValue={searchEntityKeyWord}
-                onSearch={setSearchEntityKeyWord}
-              />
-            </Col>
-            <Col className="chart-card-right-panel-container" span={24}>
-              <Row gutter={[8, 8]}>
-                {rightSideEntityList.map((entity, i) => {
-                  return (
-                    <Col
-                      className="entity-summary-container"
-                      key={entity}
-                      span={24}
-                      onClick={() => handleLegendClick(entity)}
-                      onMouseEnter={() => handleLegendMouseEnter(entity)}
-                      onMouseLeave={handleLegendMouseLeave}>
-                      <EntitySummaryProgressBar
-                        entity={entity}
-                        isActive={
-                          activeKeys.length ? activeKeys.includes(entity) : true
-                        }
-                        label={`${round(latestData[entity] ?? 0, 2)}${
-                          isPercentageGraph ? '%' : ''
-                        }`}
-                        latestData={latestData}
-                        progress={latestData[entity]}
-                        strokeColor={TOTAL_ENTITY_CHART_COLOR[i]}
-                      />
-                    </Col>
-                  );
-                })}
-              </Row>
-            </Col>
-            {activeKeys.length > 0 && (
-              <Col className="flex justify-end" span={24}>
-                <Button type="link" onClick={() => setActiveKeys([])}>
-                  {t('label.clear')}
-                </Button>
+                <XAxis dataKey="timestamp" />
+                <YAxis
+                  tickFormatter={(value: number) =>
+                    axisTickFormatter(value, '%')
+                  }
+                />
+                <Tooltip content={<CustomTooltip isPercentage />} />
+                <Legend
+                  align="left"
+                  content={(props) =>
+                    renderLegend(props as LegendProps, activeKeys)
+                  }
+                  layout="horizontal"
+                  verticalAlign="top"
+                  wrapperStyle={{ left: '0px', top: '0px' }}
+                  onClick={handleLegendClick}
+                  onMouseEnter={handleLegendMouseEnter}
+                  onMouseLeave={handleLegendMouseLeave}
+                />
+                {entities.map((entity, i) => (
+                  <Line
+                    dataKey={entity}
+                    hide={
+                      activeKeys.length && entity !== activeMouseHoverKey
+                        ? !activeKeys.includes(entity)
+                        : false
+                    }
+                    key={entity}
+                    stroke={TOTAL_ENTITY_CHART_COLOR[i]}
+                    strokeOpacity={
+                      isEmpty(activeMouseHoverKey) ||
+                      entity === activeMouseHoverKey
+                        ? DEFAULT_CHART_OPACITY
+                        : HOVER_CHART_OPACITY
+                    }
+                    type="monotone"
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </Col>
+          <Col span={DI_STRUCTURE.rightContainerSpan}>
+            <Row gutter={DI_STRUCTURE.rightRowGutter}>
+              <Col span={24}>
+                <DataInsightProgressBar
+                  changeInValue={relativePercentage}
+                  className="m-b-md"
+                  duration={selectedDays}
+                  label={`${t('label.completed-entity', {
+                    entity: t('label.description'),
+                  })}${isPercentageGraph ? ' %' : ''}`}
+                  progress={Number(total)}
+                  suffix={isPercentageGraph ? '%' : ''}
+                  target={targetValue}
+                />
               </Col>
-            )}
-          </Row>
-        </Col>
-      </Row>
+              {entities.map((entity, i) => {
+                return (
+                  <Col key={uniqueId()} span={24}>
+                    <EntitySummaryProgressBar
+                      entity={entity}
+                      label={`${round(latestData[entity] ?? 0, 2)}${
+                        isPercentageGraph ? '%' : ''
+                      }`}
+                      latestData={latestData}
+                      progress={latestData[entity]}
+                      strokeColor={TOTAL_ENTITY_CHART_COLOR[i]}
+                    />
+                  </Col>
+                );
+              })}
+            </Row>
+          </Col>
+        </Row>
+      ) : (
+        <EmptyGraphPlaceholder />
+      )}
     </Card>
   );
 };

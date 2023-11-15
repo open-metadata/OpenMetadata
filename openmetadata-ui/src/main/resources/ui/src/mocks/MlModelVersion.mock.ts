@@ -173,7 +173,6 @@ export const mlModelVersionMockProps: MlModelVersionProp = {
   isVersionLoading: false,
   owner: mockOwner,
   domain: mockDomain,
-  dataProducts: [],
   tier: mockTier,
   slashedMlModelName: [],
   versionList: mockVersionList,

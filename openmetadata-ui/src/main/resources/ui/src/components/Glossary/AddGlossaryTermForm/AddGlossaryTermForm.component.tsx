@@ -31,10 +31,10 @@ import {
 } from '../../../interface/FormUtils.interface';
 import { searchData } from '../../../rest/miscAPI';
 import { formatSearchGlossaryTermResponse } from '../../../utils/APIUtils';
+import { getCurrentUserId } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { generateFormFields, getField } from '../../../utils/formUtils';
 import { getEntityReferenceFromGlossaryTerm } from '../../../utils/GlossaryUtils';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import { UserTag } from '../../common/UserTag/UserTag.component';
 import { UserTagSize } from '../../common/UserTag/UserTag.interface';
 import { AddGlossaryTermFormProps } from './AddGlossaryTermForm.interface';
@@ -49,7 +49,6 @@ const AddGlossaryTermForm = ({
   isFormInModal = false,
   formRef: form,
 }: AddGlossaryTermFormProps) => {
-  const { currentUser } = useAuthContext();
   const [relatedTermsOptions, setRelatedTermsOptions] = useState<
     EntityReference[]
   >([]);
@@ -112,7 +111,7 @@ const AddGlossaryTermForm = ({
     } = formObj;
 
     const selectedOwner = owner || {
-      id: currentUser?.id ?? '',
+      id: getCurrentUserId(),
       type: 'user',
     };
 
@@ -288,10 +287,8 @@ const AddGlossaryTermForm = ({
       required: false,
       placeholder: t('label.icon-url'),
       type: FieldTypes.TEXT,
-      helperText: t('message.govern-url-size-message'),
       props: {
         'data-testid': 'icon-url',
-        tooltipPlacement: 'right',
       },
     },
     {

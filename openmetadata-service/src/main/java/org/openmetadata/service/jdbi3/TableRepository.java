@@ -22,7 +22,6 @@ import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.Entity.getEntity;
-import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.util.LambdaExceptionUtil.ignoringComparator;
 import static org.openmetadata.service.util.LambdaExceptionUtil.rethrowFunction;
 
@@ -129,8 +128,7 @@ public class TableRepository extends EntityRepository<Table> {
     }
     if (fields.contains(COLUMN_FIELD)) {
       // We'll get column tags only if we are getting the column fields
-      populateEntityFieldTags(
-          entityType, table.getColumns(), table.getFullyQualifiedName(), fields.contains(FIELD_TAGS));
+      getColumnTags(fields.contains(FIELD_TAGS), table.getColumns());
     }
     table.setJoins(fields.contains("joins") ? getJoins(table) : table.getJoins());
     table.setTableProfilerConfig(
@@ -255,7 +253,7 @@ public class TableRepository extends EntityRepository<Table> {
 
     // Set the column tags. Will be used to mask the sample data
     if (!authorizePII) {
-      populateEntityFieldTags(entityType, table.getColumns(), table.getFullyQualifiedName(), true);
+      getColumnTags(true, table.getColumns());
       table.setTags(getTags(table));
       return PIIMasker.getSampleData(table);
     }
@@ -488,7 +486,7 @@ public class TableRepository extends EntityRepository<Table> {
 
     // Set the column tags. Will be used to hide the data
     if (!authorizePII) {
-      populateEntityFieldTags(entityType, table.getColumns(), table.getFullyQualifiedName(), true);
+      getColumnTags(true, table.getColumns());
       return PIIMasker.getTableProfile(table);
     }
 
@@ -803,6 +801,14 @@ public class TableRepository extends EntityRepository<Table> {
       }
     }
     return childrenColumn;
+  }
+
+  // TODO duplicated code
+  private void getColumnTags(boolean setTags, List<Column> columns) {
+    for (Column c : listOrEmpty(columns)) {
+      c.setTags(setTags ? getTags(c.getFullyQualifiedName()) : c.getTags());
+      getColumnTags(setTags, c.getChildren());
+    }
   }
 
   private void validateTableFQN(String fqn) {

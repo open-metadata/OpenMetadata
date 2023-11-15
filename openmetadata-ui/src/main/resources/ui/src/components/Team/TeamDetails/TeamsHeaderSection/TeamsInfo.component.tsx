@@ -24,7 +24,7 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { Team, TeamType } from '../../../../generated/entity/teams/team';
 import { EntityReference } from '../../../../generated/entity/type';
 import { useAuth } from '../../../../hooks/authHooks';
-import { useAuthContext } from '../../../Auth/AuthProviders/AuthProvider';
+import { useAuthContext } from '../../../authentication/auth-provider/AuthProvider';
 import { DomainLabel } from '../../../common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import TeamTypeSelect from '../../../common/TeamTypeSelect/TeamTypeSelect.component';
@@ -38,7 +38,6 @@ const TeamsInfo = ({
   entityPermissions,
   currentTeam,
   updateTeamHandler,
-  isTeamDeleted,
 }: TeamsInfoProps) => {
   const { t } = useTranslation();
 
@@ -57,19 +56,17 @@ const TeamsInfo = ({
 
   const { hasEditPermission, hasAccess } = useMemo(
     () => ({
-      hasEditPermission: entityPermissions.EditAll && !isTeamDeleted,
-      hasAccess: isAuthDisabled || (isAdminUser && !isTeamDeleted),
+      hasEditPermission: entityPermissions.EditAll,
+      hasAccess: isAuthDisabled || isAdminUser,
     }),
 
-    [entityPermissions, isTeamDeleted]
+    [entityPermissions]
   );
 
   const hasEditSubscriptionPermission = useMemo(
     () =>
-      (entityPermissions.EditAll ||
-        currentTeam.owner?.id === currentUser?.id) &&
-      !isTeamDeleted,
-    [entityPermissions, currentTeam, currentUser, isTeamDeleted]
+      entityPermissions.EditAll || currentTeam.owner?.id === currentUser?.id,
+    [entityPermissions, currentTeam, currentUser]
   );
 
   const onEmailSave = async (data: { email: string }) => {

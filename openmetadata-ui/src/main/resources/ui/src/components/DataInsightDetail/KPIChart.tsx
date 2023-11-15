@@ -29,7 +29,8 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import PageHeader from '../../components/header/PageHeader.component';
 import {
   DEFAULT_CHART_OPACITY,
   GRAPH_BACKGROUND_COLOR,
@@ -40,7 +41,6 @@ import {
   BAR_CHART_MARGIN,
   DATA_INSIGHT_GRAPH_COLORS,
   DI_STRUCTURE,
-  GRAPH_HEIGHT,
 } from '../../constants/DataInsight.constants';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../enums/common.enum';
 import {
@@ -60,8 +60,7 @@ import {
   renderLegend,
 } from '../../utils/DataInsightUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import PageHeader from '../PageHeader/PageHeader.component';
-import './data-insight-detail.less';
+import './DataInsightDetail.less';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
 import KPILatestResultsV1 from './KPILatestResultsV1';
 
@@ -215,8 +214,8 @@ const KPIChart: FC<Props> = ({
               <Col span={DI_STRUCTURE.leftContainerSpan}>
                 <ResponsiveContainer
                   debounce={1}
-                  height={GRAPH_HEIGHT}
-                  id="kpi-chart">
+                  id="kpi-chart"
+                  minHeight={400}>
                   <LineChart data={graphData} margin={BAR_CHART_MARGIN}>
                     <CartesianGrid
                       stroke={GRAPH_BACKGROUND_COLOR}

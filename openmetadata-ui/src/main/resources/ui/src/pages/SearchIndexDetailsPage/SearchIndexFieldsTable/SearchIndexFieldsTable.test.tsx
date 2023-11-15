@@ -44,7 +44,7 @@ jest.mock(
 );
 
 jest.mock(
-  '../../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder',
+  '../../../components/common/error-with-placeholder/FilterTablePlaceHolder',
   () =>
     jest.fn().mockImplementation(() => <div>testFilterTablePlaceHolder</div>)
 );

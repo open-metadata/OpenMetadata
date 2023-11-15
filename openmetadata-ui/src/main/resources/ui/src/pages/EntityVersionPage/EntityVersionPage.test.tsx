@@ -93,7 +93,7 @@ jest.mock('../../rest/storageAPI', () => ({
   getContainerVersions: jest.fn().mockImplementation(() => Promise.resolve({})),
 }));
 
-jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
+jest.mock('../../components/containers/PageLayoutV1', () =>
   jest.fn().mockImplementation(({ children }) => <div>{children}</div>)
 );
 

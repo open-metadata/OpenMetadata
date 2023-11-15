@@ -10,21 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Affix, Button, Card, Col, Row, Space, Typography } from 'antd';
+import { Affix, Button, Card, Space, Typography } from 'antd';
 import { CookieStorage } from 'cookie-storage';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useLocation } from 'react-router-dom';
-import UpdateLoaderGif from '../../../../assets/gif/whats-new-loader.gif';
+import { useLocation } from 'react-router-dom';
 import { ReactComponent as CloseIcon } from '../../../../assets/svg/close.svg';
-import { ReactComponent as RightArrowIcon } from '../../../../assets/svg/ic-arrow-right-full.svg';
-import { ReactComponent as PlayIcon } from '../../../../assets/svg/ic-play-button.svg';
-import { ReactComponent as StarIcon } from '../../../../assets/svg/ic-star.svg';
-import { BLACK_COLOR, ROUTES } from '../../../../constants/constants';
+import { ReactComponent as RocketIcon } from '../../../../assets/svg/rocket.svg';
+import { ROUTES } from '../../../../constants/constants';
 import { useAuth } from '../../../../hooks/authHooks';
-import { getReleaseVersionExpiry } from '../../../../utils/WhatsNewModal.util';
+import { Transi18next } from '../../../../utils/CommonUtils';
 import { COOKIE_VERSION, LATEST_VERSION_ID, WHATS_NEW } from '../whatsNewData';
 import WhatsNewModal from '../WhatsNewModal';
+import '../WhatsNewModal.styles.less';
+import { getReleaseVersionExpiry } from '../WhatsNewModal.util';
 
 const cookieStorage = new CookieStorage();
 
@@ -46,31 +45,6 @@ const WhatsNewAlert = () => {
     [location.pathname]
   );
 
-  const onAlertCardClick = useCallback(
-    () =>
-      setShowWhatsNew({
-        alert: false,
-        modal: true,
-      }),
-    []
-  );
-
-  const onModalCancel = useCallback(
-    () =>
-      setShowWhatsNew({
-        alert: false,
-        modal: false,
-      }),
-    []
-  );
-
-  const handleCancel = useCallback(() => {
-    cookieStorage.setItem(COOKIE_VERSION, 'true', {
-      expires: getReleaseVersionExpiry(),
-    });
-    onModalCancel();
-  }, [cookieStorage, onModalCancel, getReleaseVersionExpiry]);
-
   useEffect(() => {
     setShowWhatsNew({
       alert: cookieStorage.getItem(COOKIE_VERSION) !== 'true',
@@ -78,64 +52,66 @@ const WhatsNewAlert = () => {
     });
   }, [isFirstTimeUser]);
 
+  const onAlertCardClick = () => {
+    setShowWhatsNew({
+      alert: false,
+      modal: true,
+    });
+  };
+  const onModalCancel = () => {
+    setShowWhatsNew({
+      alert: false,
+      modal: false,
+    });
+  };
+  const handleCancel = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    cookieStorage.setItem(COOKIE_VERSION, 'true', {
+      expires: getReleaseVersionExpiry(),
+    });
+    onModalCancel();
+  };
+
   return (
     <>
       {showWhatsNew.alert && isHomePage && (
         <Affix className="whats-new-alert-container">
-          <Card className="cursor-pointer" data-testid="whats-new-alert-card">
+          <Card
+            className="cursor-pointer"
+            data-testid="whats-new-alert-card"
+            onClick={onAlertCardClick}>
             <Space align="start" className="d-flex justify-between">
-              <Typography.Text className="whats-new-alert-header">
-                {t('label.open-metadata-updated')}
-              </Typography.Text>
+              <Space size={14}>
+                <RocketIcon color="#fff" height={42} width={42} />
+                <Typography.Text className="whats-new-alert-header">
+                  <Transi18next
+                    i18nKey="message.version-released-try-now"
+                    renderElement={<div />}
+                    values={{
+                      version: latestVersion.version,
+                    }}
+                  />
+                </Typography.Text>
+              </Space>
               <Button
                 className="flex-center m--t-xss"
                 data-testid="close-whats-new-alert"
-                icon={<CloseIcon color={BLACK_COLOR} height={12} width={12} />}
+                icon={<CloseIcon color="#fff" height={12} width={12} />}
                 type="text"
                 onClick={handleCancel}
               />
             </Space>
 
-            <Row className="m-t-sm" gutter={[0, 12]}>
-              <Col className="whats-new-alert-content" span={24}>
-                <Space align="center" size={12} onClick={onAlertCardClick}>
-                  <div className="whats-new-alert-content-icon-container">
-                    <PlayIcon className="whats-new-alert-content-icon" />
-                  </div>
-
-                  <Typography.Text className="whats-new-alert-sub-header">
-                    {t('label.whats-new-version', {
-                      version: latestVersion.version,
-                    })}
-                  </Typography.Text>
-
-                  <RightArrowIcon className="whats-new-alert-content-icon-arrow" />
-                </Space>
-              </Col>
-
-              <Col className="whats-new-alert-content" span={24}>
-                <Space align="center" size={12}>
-                  <div className="whats-new-alert-content-icon-container">
-                    <StarIcon className="whats-new-alert-content-icon" />
-                  </div>
-                  <Link
-                    className="whats-new-alert-sub-header"
-                    component={Typography.Link}
-                    target="_blank"
-                    to={{
-                      pathname: 'https://github.com/open-metadata/OpenMetadata',
-                    }}>
-                    {t('label.star-open-metadata')}
-                  </Link>
-
-                  <RightArrowIcon className="whats-new-alert-content-icon-arrow" />
-                </Space>
-              </Col>
-            </Row>
-
-            <div className="update-icon-container">
-              <img className="update-icon" src={UpdateLoaderGif} />
-            </div>
+            {latestVersion?.shortSummary ? (
+              <Typography.Paragraph
+                className="whats-new-alert-description"
+                style={{ marginBottom: 0, marginTop: '8px' }}>
+                {latestVersion?.shortSummary}
+              </Typography.Paragraph>
+            ) : (
+              ''
+            )}
           </Card>
         </Affix>
       )}

@@ -30,7 +30,7 @@ jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockReturnValue({ push: jest.fn() }),
   useParams: jest.fn().mockImplementation(() => ({ tab: activeTab })),
 }));
-jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
+jest.mock('../../components/containers/PageLayoutV1', () =>
   jest.fn().mockImplementation(({ children }) => <>{children}</>)
 );
 jest.mock('./DataInsightProvider', () =>

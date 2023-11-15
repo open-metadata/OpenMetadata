@@ -43,13 +43,13 @@ import { CreateTestCase } from '../../generated/api/tests/createTestCase';
 import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
 import { createExecutableTestSuite, createTestCase } from '../../rest/testAPI';
+import { getCurrentUserId } from '../../utils/CommonUtils';
 import { getEntityBreadcrumbs, getEntityName } from '../../utils/EntityUtils';
 import { getEncodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
-import SuccessScreen from '../common/SuccessScreen/SuccessScreen';
-import TitleBreadcrumb from '../common/TitleBreadcrumb/TitleBreadcrumb.component';
-import { TitleBreadcrumbProps } from '../common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import SuccessScreen from '../common/success-screen/SuccessScreen';
+import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
+import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
 import { AddDataQualityTestProps } from './AddDataQualityTest.interface';
 import RightPanel from './components/RightPanel';
@@ -70,7 +70,6 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
   const [testSuiteData, setTestSuiteData] = useState<TestSuite>();
   const [testCaseRes, setTestCaseRes] = useState<TestCase>();
   const [addIngestion, setAddIngestion] = useState(false);
-  const { currentUser } = useAuthContext();
 
   const breadcrumb = useMemo(() => {
     const data: TitleBreadcrumbProps['titleLinks'] = [
@@ -93,10 +92,10 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
 
   const owner = useMemo(
     () => ({
-      id: currentUser?.id ?? '',
+      id: getCurrentUserId(),
       type: OwnerType.USER,
     }),
-    [currentUser]
+    [getCurrentUserId]
   );
 
   const handleRedirection = () => {

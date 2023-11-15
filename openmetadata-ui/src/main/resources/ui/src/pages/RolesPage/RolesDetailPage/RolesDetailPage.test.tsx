@@ -30,17 +30,17 @@ jest.mock('../../../rest/rolesAPIV1', () => ({
   patchRole: jest.fn().mockImplementation(() => Promise.resolve(ROLE_DATA)),
 }));
 
-jest.mock('../../../components/common/EntityDescription/Description', () =>
+jest.mock('../../../components/common/description/Description', () =>
   jest.fn().mockReturnValue(<div data-testid="description">Description</div>)
 );
 
 jest.mock(
-  '../../../components/common/RichTextEditor/RichTextEditorPreviewer',
+  '../../../components/common/rich-text-editor/RichTextEditorPreviewer',
   () => jest.fn().mockReturnValue(<div data-testid="previewer">Previewer</div>)
 );
 
 jest.mock(
-  '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
+  '../../../components/common/title-breadcrumb/title-breadcrumb.component',
   () =>
     jest.fn().mockReturnValue(<div data-testid="breadcrumb">Breadcrumb</div>)
 );

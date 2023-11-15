@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { FilterOutlined } from '@ant-design/icons';
 import {
   Col,
   Radio,
@@ -28,13 +29,15 @@ import { cloneDeep, groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import RichTextEditorPreviewer from '../../../components/common/RichTextEditor/RichTextEditorPreviewer';
+import ErrorPlaceHolder from '../../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import { ModalWithMarkdownEditor } from '../../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import SchemaEditor from '../../../components/schema-editor/SchemaEditor';
 import { ColumnFilter } from '../../../components/Table/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../../components/TableDescription/TableDescription.component';
 import TableTags from '../../../components/TableTags/TableTags.component';
 import ToggleExpandButton from '../../../components/ToggleExpandButton/ToggleExpandButton';
+import { PRIMERY_COLOR } from '../../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { EntityType } from '../../../enums/entity.enum';
@@ -47,12 +50,10 @@ import {
 } from '../../../utils/TableTags/TableTags.utils';
 import {
   getAllRowKeysByKeyName,
-  getFilterIcon,
   getTableExpandableConfig,
   updateFieldDescription,
   updateFieldTags,
 } from '../../../utils/TableUtils';
-import SchemaEditor from '../../SchemaEditor/SchemaEditor';
 import {
   SchemaViewType,
   TopicSchemaFieldsProps,
@@ -148,10 +149,10 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
       <Typography.Text>
         {isVersionView ? (
           <RichTextEditorPreviewer
-            markdown={record.dataTypeDisplay ?? dataType}
+            markdown={record.dataTypeDisplay || dataType}
           />
         ) : (
-          record.dataTypeDisplay ?? dataType
+          record.dataTypeDisplay || dataType
         )}
       </Typography.Text>
     ),
@@ -213,7 +214,12 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         key: 'tags',
         accessor: 'tags',
         width: 300,
-        filterIcon: getFilterIcon('tag-filter'),
+        filterIcon: (filtered: boolean) => (
+          <FilterOutlined
+            data-testid="tag-filter"
+            style={{ color: filtered ? PRIMERY_COLOR : undefined }}
+          />
+        ),
         render: (tags: TagLabel[], record: Field, index: number) => (
           <TableTags<Field>
             entityFqn={entityFqn}
@@ -238,7 +244,12 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         key: 'glossary',
         accessor: 'tags',
         width: 300,
-        filterIcon: getFilterIcon('glossary-filter'),
+        filterIcon: (filtered: boolean) => (
+          <FilterOutlined
+            data-testid="glossary-filter"
+            style={{ color: filtered ? PRIMERY_COLOR : undefined }}
+          />
+        ),
         render: (tags: TagLabel[], record: Field, index: number) => (
           <TableTags<Field>
             entityFqn={entityFqn}

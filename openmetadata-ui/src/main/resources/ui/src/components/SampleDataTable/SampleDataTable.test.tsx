@@ -44,7 +44,7 @@ jest.mock('../../rest/tableAPI', () => ({
     .mockImplementation(() => Promise.resolve(MOCK_TABLE)),
 }));
 
-jest.mock('../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
+jest.mock('../common/error-with-placeholder/ErrorPlaceHolder', () => {
   return jest
     .fn()
     .mockReturnValue(

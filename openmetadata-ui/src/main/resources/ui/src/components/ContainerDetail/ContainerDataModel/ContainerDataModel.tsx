@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { FilterOutlined } from '@ant-design/icons';
 import { Tooltip, Typography } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
 import {
@@ -23,11 +24,12 @@ import {
 import { EntityTags, TagFilterOptions } from 'Models';
 import React, { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import ErrorPlaceHolder from '../../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import { ModalWithMarkdownEditor } from '../../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { ColumnFilter } from '../../../components/Table/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../../components/TableDescription/TableDescription.component';
 import TableTags from '../../../components/TableTags/TableTags.component';
+import { PRIMERY_COLOR } from '../../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Column, TagLabel } from '../../../generated/entity/data/container';
@@ -41,10 +43,7 @@ import {
   getAllTags,
   searchTagInData,
 } from '../../../utils/TableTags/TableTags.utils';
-import {
-  getFilterIcon,
-  getTableExpandableConfig,
-} from '../../../utils/TableUtils';
+import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import { ContainerDataModelProps } from './ContainerDataModel.interface';
 
 const ContainerDataModel: FC<ContainerDataModelProps> = ({
@@ -138,7 +137,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
               }}
               title={toLower(dataTypeDisplay)}>
               <Typography.Text ellipsis className="cursor-pointer">
-                {dataTypeDisplay ?? record.dataType}
+                {dataTypeDisplay || record.dataType}
               </Typography.Text>
             </Tooltip>
           );
@@ -172,7 +171,12 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         key: 'tags',
         accessor: 'tags',
         width: 300,
-        filterIcon: getFilterIcon('tag-filter'),
+        filterIcon: (filtered: boolean) => (
+          <FilterOutlined
+            data-testid="tag-filter"
+            style={{ color: filtered ? PRIMERY_COLOR : undefined }}
+          />
+        ),
         filters: tagFilter.Classification,
         filterDropdown: ColumnFilter,
         onFilter: searchTagInData,
@@ -197,7 +201,12 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         key: 'glossary',
         accessor: 'tags',
         width: 300,
-        filterIcon: getFilterIcon('glossary-filter'),
+        filterIcon: (filtered: boolean) => (
+          <FilterOutlined
+            data-testid="glossary-filter"
+            style={{ color: filtered ? PRIMERY_COLOR : undefined }}
+          />
+        ),
         filters: tagFilter.Glossary,
         filterDropdown: ColumnFilter,
         onFilter: searchTagInData,

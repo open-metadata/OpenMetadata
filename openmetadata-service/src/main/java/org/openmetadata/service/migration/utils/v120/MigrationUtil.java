@@ -13,9 +13,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.QueryRepository;
-import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.util.JsonUtils;
-import org.postgresql.util.PGobject;
 
 @Slf4j
 public class MigrationUtil {
@@ -138,15 +136,7 @@ public class MigrationUtil {
           .mapToMap()
           .forEach(
               row -> {
-                String jsonRow;
-                if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
-                  jsonRow = (String) row.get("json");
-                } else {
-                  // Postgres stores JSON as a JSONB, so we can't just cast it as a string
-                  PGobject pgObject = (PGobject) row.get("json");
-                  jsonRow = pgObject.getValue();
-                }
-                GlossaryTerm term = JsonUtils.readValue(jsonRow, GlossaryTerm.class);
+                GlossaryTerm term = JsonUtils.readValue((String) row.get("json"), GlossaryTerm.class);
                 if (term.getStatus() == GlossaryTerm.Status.DRAFT) {
                   term.setStatus(GlossaryTerm.Status.APPROVED);
                   collectionDAO.glossaryTermDAO().update(term);

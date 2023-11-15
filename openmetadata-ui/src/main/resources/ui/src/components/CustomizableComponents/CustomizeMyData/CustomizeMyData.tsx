@@ -44,7 +44,6 @@ import {
   getWidgetFromKey,
 } from '../../../utils/CustomizableLandingPageUtils';
 import customizePageClassBase from '../../../utils/CustomizePageClassBase';
-import { getEntityName } from '../../../utils/EntityUtils';
 import {
   getPersonaDetailsPath,
   getSettingPath,
@@ -52,23 +51,20 @@ import {
 import { getDecodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ActivityFeedProvider from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
-import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
+import PageLayoutV1 from '../../containers/PageLayoutV1';
 import AddWidgetModal from '../AddWidgetModal/AddWidgetModal';
-import './customize-my-data.less';
 import { CustomizeMyDataProps } from './CustomizeMyData.interface';
+import './CustomizeMyData.less';
 
 const ReactGridLayout = WidthProvider(RGL);
 
 function CustomizeMyData({
-  personaDetails,
   initialPageData,
   onSaveLayout,
   handlePageDataChange,
   handleSaveCurrentPageLayout,
 }: Readonly<CustomizeMyDataProps>) {
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
   const history = useHistory();
   const { fqn: personaFQN } = useParams<{ fqn: string; pageFqn: PageType }>();
   const location = useLocation();
@@ -97,6 +93,11 @@ function CustomizeMyData({
   const decodedPersonaFQN = useMemo(
     () => getDecodedFqn(personaFQN),
     [personaFQN]
+  );
+
+  const currentUser = useMemo(
+    () => AppState.getCurrentUserDetails(),
+    [AppState.userDetails, AppState.nonSecureUserDetails]
   );
 
   const handlePlaceholderWidgetKey = useCallback((value: string) => {
@@ -302,9 +303,7 @@ function CustomizeMyData({
                     />
                   }
                   values={{
-                    persona: isNil(personaDetails)
-                      ? decodedPersonaFQN
-                      : getEntityName(personaDetails),
+                    persona: decodedPersonaFQN,
                   }}
                 />
               </Typography.Title>

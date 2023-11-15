@@ -18,9 +18,9 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { User } from '../../../generated/entity/teams/user';
 import { EntityReference } from '../../../generated/entity/type';
 import { getUserById } from '../../../rest/userAPI';
-import { commonUserDetailColumns } from '../../../utils/Users.util';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
 import Table from '../../common/Table/Table';
+import { commonUserDetailColumns } from '../Users.util';
 
 interface UsersTabProps {
   users: EntityReference[];

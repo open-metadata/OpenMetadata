@@ -12,13 +12,14 @@
  */
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
+import { PagingResponse } from 'Models';
 import QueryString from 'qs';
 import React, { ReactNode, useEffect, useMemo, useState } from 'react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { INITIAL_PAGING_VALUE, PAGE_SIZE } from '../../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { TestCase } from '../../../generated/tests/testCase';
-import { usePaging } from '../../../hooks/paging/usePaging';
 import {
   SearchHitBody,
   TestCaseSearchSource,
@@ -31,9 +32,9 @@ import {
   ListTestCaseParams,
 } from '../../../rest/testAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
-import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
+import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
+import { PagingHandlerParams } from '../../common/next-previous/NextPrevious.interface';
+import Searchbar from '../../common/searchbar/Searchbar';
 import { usePermissionProvider } from '../../PermissionProvider/PermissionProvider';
 import DataQualityTab from '../../ProfilerDashboard/component/DataQualityTab';
 import { DataQualitySearchParams } from '../DataQuality.interface';
@@ -56,18 +57,13 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
   }, [location]);
   const { searchValue = '' } = params;
 
-  const [testCase, setTestCase] = useState<TestCase[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [testCase, setTestCase] = useState<PagingResponse<TestCase[]>>({
+    data: [],
+    paging: { total: 0 },
+  });
 
-  const {
-    currentPage,
-    handlePageChange,
-    pageSize,
-    handlePageSizeChange,
-    paging,
-    handlePagingChange,
-    showPagination,
-  } = usePaging();
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [currentPage, setCurrentPage] = useState(INITIAL_PAGING_VALUE);
 
   const handleSearchParam = (
     value: string | boolean,
@@ -81,7 +77,7 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
   const handleTestCaseUpdate = (data?: TestCase) => {
     if (data) {
       setTestCase((prev) => {
-        const updatedTestCase = prev.map((test) =>
+        const updatedTestCase = prev.data.map((test) =>
           test.id === data.id ? { ...test, ...data } : test
         );
 
@@ -93,14 +89,12 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
   const fetchTestCases = async (params?: ListTestCaseParams) => {
     setIsLoading(true);
     try {
-      const { data, paging } = await getListTestCase({
+      const response = await getListTestCase({
         ...params,
-        limit: pageSize,
         fields: 'testDefinition,testCaseResult,testSuite',
         orderByLastExecutionDate: true,
       });
-      setTestCase(data);
-      handlePagingChange(paging);
+      setTestCase(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -110,7 +104,7 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
 
   const handleStatusSubmit = (testCase: TestCase) => {
     setTestCase((prev) => {
-      const data = prev.map((test) => {
+      const data = prev.data.map((test) => {
         if (test.fullyQualifiedName === testCase.fullyQualifiedName) {
           return testCase;
         }
@@ -121,13 +115,12 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
       return { ...prev, data };
     });
   };
-
   const searchTestCases = async (page = 1) => {
     setIsLoading(true);
     try {
       const response = await searchQuery({
         pageNumber: page,
-        pageSize: pageSize,
+        pageSize: PAGE_SIZE,
         searchIndex: SearchIndex.TEST_CASE,
         query: searchValue,
         fetchSource: false,
@@ -153,11 +146,12 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
         return prev;
       }, [] as TestCase[]);
 
-      setTestCase(testSuites);
-      handlePageChange(page);
-      handlePagingChange({ total: response.hits.total.value ?? 0 });
+      setTestCase({
+        data: testSuites,
+        paging: { total: response.hits.total.value ?? 0 },
+      });
     } catch (error) {
-      setTestCase([]);
+      setTestCase({ data: [], paging: { total: 0 } });
     } finally {
       setIsLoading(false);
     }
@@ -169,13 +163,14 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
     if (searchValue) {
       searchTestCases(currentPage);
     } else {
+      const { paging } = testCase;
       if (cursorType) {
         fetchTestCases({
           [cursorType]: paging?.[cursorType],
         });
       }
     }
-    handlePageChange(currentPage);
+    setCurrentPage(currentPage);
   };
 
   useEffect(() => {
@@ -190,26 +185,7 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
     } else {
       setIsLoading(false);
     }
-  }, [tab, searchValue, testCasePermission, pageSize]);
-
-  const pagingData = useMemo(
-    () => ({
-      paging,
-      currentPage,
-      pagingHandler: handlePagingClick,
-      pageSize,
-      onShowSizeChange: handlePageSizeChange,
-      isNumberBased: Boolean(searchValue),
-    }),
-    [
-      paging,
-      currentPage,
-      handlePagingClick,
-      pageSize,
-      handlePageSizeChange,
-      searchValue,
-    ]
-  );
+  }, [tab, searchValue, testCasePermission]);
 
   if (!testCasePermission?.ViewAll && !testCasePermission?.ViewBasic) {
     return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
@@ -232,9 +208,13 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
         <DataQualityTab
           afterDeleteAction={fetchTestCases}
           isLoading={isLoading}
-          pagingData={pagingData}
-          showPagination={showPagination}
-          testCases={testCase}
+          pagingData={{
+            paging: testCase.paging,
+            currentPage,
+            onPagingClick: handlePagingClick,
+            isNumberBased: Boolean(searchValue),
+          }}
+          testCases={testCase.data}
           onTestCaseResultUpdate={handleStatusSubmit}
           onTestUpdate={handleTestCaseUpdate}
         />

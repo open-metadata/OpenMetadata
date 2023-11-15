@@ -18,7 +18,7 @@ import { toLower } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
-import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import { TERM_ADMIN } from '../../constants/constants';
 import {
   GlobalSettingOptions,
@@ -38,15 +38,15 @@ import {
 import { getEntityName } from '../../utils/EntityUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import Description from '../common/EntityDescription/Description';
+import Description from '../common/description/Description';
 import InheritedRolesCard from '../common/InheritedRolesCard/InheritedRolesCard.component';
 import RolesCard from '../common/RolesCard/RolesCard.component';
-import TitleBreadcrumb from '../common/TitleBreadcrumb/TitleBreadcrumb.component';
+import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import AuthMechanism from './AuthMechanism';
 import AuthMechanismForm from './AuthMechanismForm';
-import './bot-details.less';
 import { BotsDetailProps } from './BotDetails.interfaces';
+import './BotDetails.style.less';
 
 import { ReactComponent as IconBotProfile } from '../../assets/svg/bot-profile.svg';
 

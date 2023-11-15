@@ -31,7 +31,7 @@ jest.mock('react-router-dom', () => ({
   })),
 }));
 
-jest.mock('../../common/RichTextEditor/RichTextEditor', () =>
+jest.mock('../../common/rich-text-editor/RichTextEditor', () =>
   jest.fn().mockReturnValue(<>RichTextEditor</>)
 );
 

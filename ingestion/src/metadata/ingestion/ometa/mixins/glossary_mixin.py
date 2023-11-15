@@ -30,7 +30,6 @@ from metadata.ingestion.ometa.mixins.patch_mixin_utils import (
     PatchValue,
 )
 from metadata.ingestion.ometa.utils import model_str
-from metadata.utils.deprecation import deprecated
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
@@ -45,7 +44,6 @@ class GlossaryMixin(OMetaPatchMixinBase):
     To be inherited by OpenMetadata
     """
 
-    @deprecated(message="Use metadata.create_or_update instead", release="1.3")
     def create_glossary(self, glossaries_body):
         """Method to create new Glossary
         Args:
@@ -56,7 +54,6 @@ class GlossaryMixin(OMetaPatchMixinBase):
         )
         logger.info(f"Created a Glossary: {resp}")
 
-    @deprecated(message="Use metadata.create_or_update instead", release="1.3")
     def create_glossary_term(self, glossary_term_body):
         """Method to create new Glossary Term
         Args:
@@ -67,10 +64,6 @@ class GlossaryMixin(OMetaPatchMixinBase):
         )
         logger.info(f"Created a Glossary Term: {resp}")
 
-    @deprecated(
-        message="Use metadata.patch instead as the new standard method that will create the jsonpatch dynamically",
-        release="1.3",
-    )
     def patch_glossary_term_parent(
         self,
         entity_id: Union[str, basic.Uuid],
@@ -140,10 +133,6 @@ class GlossaryMixin(OMetaPatchMixinBase):
 
         return None
 
-    @deprecated(
-        message="Use metadata.patch instead as the new standard method that will create the jsonpatch dynamically",
-        release="1.3",
-    )
     def patch_glossary_term_related_terms(
         self,
         entity_id: Union[str, basic.Uuid],
@@ -232,10 +221,6 @@ class GlossaryMixin(OMetaPatchMixinBase):
 
         return None
 
-    @deprecated(
-        message="Use metadata.patch instead as the new standard method that will create the jsonpatch dynamically",
-        release="1.3",
-    )
     def patch_reviewers(
         self,
         entity: Union[Type[Glossary], Type[GlossaryTerm]],
@@ -322,10 +307,6 @@ class GlossaryMixin(OMetaPatchMixinBase):
 
         return None
 
-    @deprecated(
-        message="Use metadata.patch instead as the new standard method that will create the jsonpatch dynamically",
-        release="1.3",
-    )
     def patch_glossary_term_synonyms(
         self,
         entity_id: Union[str, basic.Uuid],
@@ -404,10 +385,6 @@ class GlossaryMixin(OMetaPatchMixinBase):
 
         return None
 
-    @deprecated(
-        message="Use metadata.patch instead as the new standard method that will create the jsonpatch dynamically",
-        release="1.3",
-    )
     def patch_glossary_term_references(
         self,
         entity_id: Union[str, basic.Uuid],

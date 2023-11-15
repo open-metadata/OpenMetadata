@@ -54,13 +54,13 @@ import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getTestCaseDetailsPath } from '../../../utils/RouterUtils';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
+import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
+import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
 import DatePickerMenu from '../../DatePickerMenu/DatePickerMenu.component';
 import Loader from '../../Loader/Loader';
-import SchemaEditor from '../../SchemaEditor/SchemaEditor';
+import SchemaEditor from '../../schema-editor/SchemaEditor';
 import { TestSummaryProps } from '../profilerDashboard.interface';
-import './test-summary.less';
+import './TestSummary.style.less';
 
 type ChartDataType = {
   information: { label: string; color: string }[];

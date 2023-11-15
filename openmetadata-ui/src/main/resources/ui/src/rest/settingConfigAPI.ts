@@ -13,8 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import axiosClient from '.';
-import { LoginConfiguration } from '../generated/configuration/loginConfiguration';
-import { LogoConfiguration } from '../generated/configuration/logoConfiguration';
+import { LogoConfiguration } from '../generated/configuration/applicationConfiguration';
 import { Settings, SettingType } from '../generated/settings/settings';
 
 export const getSettingsConfigFromConfigType = async (
@@ -36,14 +35,6 @@ export const updateSettingsConfig = async (payload: Settings) => {
 export const getCustomLogoConfig = async () => {
   const response = await axiosClient.get<LogoConfiguration>(
     `system/config/customLogoConfiguration`
-  );
-
-  return response.data;
-};
-
-export const getLoginConfig = async () => {
-  const response = await axiosClient.get<LoginConfiguration>(
-    `system/config/loginConfig`
   );
 
   return response.data;

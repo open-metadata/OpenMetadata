@@ -24,7 +24,7 @@ import {
 } from '../../constants/AdvancedSearch.constants';
 import { TIER_FQN_KEY } from '../../constants/explore.constants';
 import { SearchIndex } from '../../enums/search.enum';
-import { QueryFilterInterface } from '../../pages/ExplorePage/ExplorePage.interface';
+import { QueryFilterInterface } from '../../pages/explore/ExplorePage.interface';
 import { getAggregateFieldOptions } from '../../rest/miscAPI';
 import { getTags } from '../../rest/tagAPI';
 import { getOptionsFromAggregationBucket } from '../../utils/AdvancedSearchUtils';
@@ -34,7 +34,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import SearchDropdown from '../SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
 import { useAdvanceSearch } from './AdvanceSearchProvider/AdvanceSearchProvider.component';
-import { ExploreSearchIndex } from './ExplorePage.interface';
+import { ExploreSearchIndex } from './explore.interface';
 import { ExploreQuickFiltersProps } from './ExploreQuickFilters.interface';
 
 const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({

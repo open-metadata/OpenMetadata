@@ -67,7 +67,7 @@ const mockTriggerIngestion = jest
   .fn()
   .mockImplementation(() => Promise.resolve());
 
-jest.mock('../common/SearchBarComponent/SearchBar.component', () => {
+jest.mock('../common/searchbar/Searchbar', () => {
   return jest.fn().mockImplementation(() => <div>Searchbar</div>);
 });
 

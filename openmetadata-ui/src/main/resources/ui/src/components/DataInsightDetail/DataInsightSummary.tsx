@@ -43,7 +43,7 @@ import { getEntityName } from '../../utils/EntityUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import UserPopOverCard from '../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
-import './data-insight-detail.less';
+import './DataInsightDetail.less';
 
 interface Props {
   chartFilter: ChartFilter;

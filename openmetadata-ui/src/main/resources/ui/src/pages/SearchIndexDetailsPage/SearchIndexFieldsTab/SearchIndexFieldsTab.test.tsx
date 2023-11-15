@@ -33,14 +33,12 @@ const mockProps: SearchIndexFieldsTabProps = {
   entityFqn: 'search_service.search_index_fqn',
 };
 
-jest.mock(
-  '../../../components/common/SearchBarComponent/SearchBar.component',
-  () =>
-    jest
-      .fn()
-      .mockImplementation(({ onSearch }) => (
-        <div onClick={() => onSearch('name')}>testSearchBar</div>
-      ))
+jest.mock('../../../components/common/searchbar/Searchbar', () =>
+  jest
+    .fn()
+    .mockImplementation(({ onSearch }) => (
+      <div onClick={() => onSearch('name')}>testSearchBar</div>
+    ))
 );
 
 jest.mock('../../../components/ToggleExpandButton/ToggleExpandButton', () =>

@@ -50,5 +50,5 @@ ENTITY_ATTRIBUTE
     ;
 
 ENTITY_FQN
-    : [\p{L}\p{N},. _\-'&()%"]+
+    : [a-zA-Z0-9,. _\-'&()%"]+
     ;

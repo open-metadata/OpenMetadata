@@ -23,7 +23,6 @@
 /docker
 
 # Assets
-*.gif
 *.svg
 *.png
 *.ico

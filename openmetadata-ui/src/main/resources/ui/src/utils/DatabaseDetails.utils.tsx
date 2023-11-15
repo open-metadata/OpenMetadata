@@ -11,23 +11,29 @@
  *  limitations under the License.
  */
 
+import { Col, Space } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { t } from 'i18next';
 import React from 'react';
 import { Link } from 'react-router-dom';
-import RichTextEditorPreviewer from '../components/common/RichTextEditor/RichTextEditorPreviewer';
+import ErrorPlaceHolder from '../components/common/error-with-placeholder/ErrorPlaceHolder';
+import NextPrevious from '../components/common/next-previous/NextPrevious';
+import { NextPreviousProps } from '../components/common/next-previous/NextPrevious.interface';
+import RichTextEditorPreviewer from '../components/common/rich-text-editor/RichTextEditorPreviewer';
+import Table from '../components/common/Table/Table';
 import {
   getDatabaseSchemaDetailsPath,
-  NO_DATA_PLACEHOLDER,
+  PAGE_SIZE,
 } from '../constants/constants';
 import { TabSpecificField } from '../enums/entity.enum';
 import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
 import { EntityReference } from '../generated/entity/type';
 import { UsageDetails } from '../generated/type/entityUsage';
+import { Paging } from '../generated/type/paging';
 import { getEntityName } from '../utils/EntityUtils';
 import { getUsagePercentile } from '../utils/TableUtils';
 
-export const DatabaseFields = `${TabSpecificField.TAGS}, ${TabSpecificField.OWNER}, ${TabSpecificField.DOMAIN},${TabSpecificField.DATA_PRODUCTS}`;
+export const DatabaseFields = `${TabSpecificField.TAGS}, ${TabSpecificField.OWNER}, ${TabSpecificField.DOMAIN}`;
 
 export const schemaTableColumns: ColumnsType<DatabaseSchema> = [
   {
@@ -63,8 +69,7 @@ export const schemaTableColumns: ColumnsType<DatabaseSchema> = [
     dataIndex: 'owner',
     key: 'owner',
     width: 120,
-    render: (text: EntityReference) =>
-      getEntityName(text) || NO_DATA_PLACEHOLDER,
+    render: (text: EntityReference) => getEntityName(text) || '--',
   },
   {
     title: t('label.usage'),
@@ -75,3 +80,41 @@ export const schemaTableColumns: ColumnsType<DatabaseSchema> = [
       getUsagePercentile(text?.weeklyStats?.percentileRank ?? 0),
   },
 ];
+
+export const getDatabaseSchemaTable = (
+  schemaData: DatabaseSchema[],
+  schemaDataLoading: boolean,
+  databaseSchemaPaging: Paging,
+  currentPage: number,
+  databaseSchemaPagingHandler: NextPreviousProps['pagingHandler'],
+  isNumberBased = false
+) => {
+  return (
+    <Col span={24}>
+      <Space className="w-full m-b-md" direction="vertical" size="middle">
+        <Table
+          bordered
+          columns={schemaTableColumns}
+          data-testid="database-databaseSchemas"
+          dataSource={schemaData}
+          loading={schemaDataLoading}
+          locale={{
+            emptyText: <ErrorPlaceHolder className="m-y-md" />,
+          }}
+          pagination={false}
+          rowKey="id"
+          size="small"
+        />
+        {databaseSchemaPaging.total > PAGE_SIZE && (
+          <NextPrevious
+            currentPage={currentPage}
+            isNumberBased={isNumberBased}
+            pageSize={PAGE_SIZE}
+            paging={databaseSchemaPaging}
+            pagingHandler={databaseSchemaPagingHandler}
+          />
+        )}
+      </Space>
+    </Col>
+  );
+};

@@ -55,14 +55,11 @@ class OMetaMlModelMixin(OMetaLineageMixin):
 
     client: REST
 
-    def add_mlmodel_lineage(
-        self, model: MlModel, description: Optional[str] = None
-    ) -> Dict[str, Any]:
+    def add_mlmodel_lineage(self, model: MlModel) -> Dict[str, Any]:
         """
         Iterates over MlModel's Feature Sources and
         add the lineage information.
         :param model: MlModel containing EntityReferences
-        :param description: Lineage description
         :return: List of added lineage information
         """
 
@@ -80,8 +77,8 @@ class OMetaMlModelMixin(OMetaLineageMixin):
         for entity_ref in refs:
             self.add_lineage(
                 AddLineageRequest(
+                    description="MlModel uses FeatureSource",
                     edge=EntitiesEdge(
-                        description=description,
                         fromEntity=entity_ref,
                         toEntity=self.get_entity_reference(
                             entity=MlModel, fqn=model.fullyQualifiedName

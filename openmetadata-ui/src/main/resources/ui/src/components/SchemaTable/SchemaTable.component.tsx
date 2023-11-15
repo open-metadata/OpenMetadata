@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
+import Icon, { FilterOutlined } from '@ant-design/icons';
 import { Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
@@ -30,13 +30,13 @@ import { EntityTags, TagFilterOptions } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
-import FilterTablePlaceHolder from '../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
+import FilterTablePlaceHolder from '../../components/common/error-with-placeholder/FilterTablePlaceHolder';
 import EntityNameModal from '../../components/Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import { ColumnFilter } from '../../components/Table/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../components/TableDescription/TableDescription.component';
 import TableTags from '../../components/TableTags/TableTags.component';
-import { NO_DATA_PLACEHOLDER } from '../../constants/constants';
+import { PRIMERY_COLOR } from '../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../constants/Table.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Column } from '../../generated/entity/data/table';
@@ -52,7 +52,6 @@ import {
 } from '../../utils/TableTags/TableTags.utils';
 import {
   getDataTypeString,
-  getFilterIcon,
   getTableExpandableConfig,
   makeData,
   prepareConstraintIcon,
@@ -125,7 +124,7 @@ const SchemaTable = ({
   };
 
   const handleEditColumnChange = async (columnDescription: string) => {
-    if (!isUndefined(editColumn) && editColumn.fullyQualifiedName) {
+    if (editColumn && editColumn.fullyQualifiedName) {
       const tableCols = cloneDeep(tableColumns);
       updateColumnFields({
         fqn: editColumn.fullyQualifiedName,
@@ -192,23 +191,22 @@ const SchemaTable = ({
     dataTypeDisplay,
     record
   ) => {
-    const displayValue = isEmpty(dataTypeDisplay)
-      ? record.dataType
-      : dataTypeDisplay;
-
-    if (isEmpty(displayValue)) {
-      return NO_DATA_PLACEHOLDER;
-    }
-
-    return isReadOnly ||
-      (displayValue && displayValue.length < 25 && !isReadOnly) ? (
-      toLower(displayValue)
-    ) : (
-      <Tooltip title={toLower(displayValue)}>
-        <Typography.Text ellipsis className="cursor-pointer">
-          {displayValue}
-        </Typography.Text>
-      </Tooltip>
+    return (
+      <>
+        {dataTypeDisplay ? (
+          isReadOnly || (dataTypeDisplay.length < 25 && !isReadOnly) ? (
+            toLower(dataTypeDisplay)
+          ) : (
+            <Tooltip title={toLower(dataTypeDisplay)}>
+              <Typography.Text ellipsis className="cursor-pointer">
+                {dataTypeDisplay || record.dataType}
+              </Typography.Text>
+            </Tooltip>
+          )
+        ) : (
+          '--'
+        )}
+      </>
     );
   };
 
@@ -271,10 +269,7 @@ const SchemaTable = ({
   };
 
   const handleEditDisplayName = ({ displayName }: EntityName) => {
-    if (
-      !isUndefined(editColumnDisplayName) &&
-      editColumnDisplayName.fullyQualifiedName
-    ) {
+    if (editColumnDisplayName && editColumnDisplayName.fullyQualifiedName) {
       const tableCols = cloneDeep(tableColumns);
       updateColumnFields({
         fqn: editColumnDisplayName.fullyQualifiedName,
@@ -368,7 +363,12 @@ const SchemaTable = ({
         key: 'tags',
         accessor: 'tags',
         width: 250,
-        filterIcon: getFilterIcon('tag-filter'),
+        filterIcon: (filtered: boolean) => (
+          <FilterOutlined
+            data-testid="tag-filter"
+            style={{ color: filtered ? PRIMERY_COLOR : undefined }}
+          />
+        ),
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
             entityFqn={entityFqn}
@@ -393,7 +393,12 @@ const SchemaTable = ({
         key: 'glossary',
         accessor: 'tags',
         width: 250,
-        filterIcon: getFilterIcon('glossary-filter'),
+        filterIcon: (filtered: boolean) => (
+          <FilterOutlined
+            data-testid="glossary-filter"
+            style={{ color: filtered ? PRIMERY_COLOR : undefined }}
+          />
+        ),
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
             entityFqn={entityFqn}

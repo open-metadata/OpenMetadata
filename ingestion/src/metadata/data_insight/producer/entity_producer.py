@@ -61,3 +61,9 @@ class EntityProducer(ProducerInterface):
             except Exception as err:
                 logger.error(f"Error trying to fetch entity -- {err}")
                 logger.debug(traceback.format_exc())
+
+
+class EntityProducerTable(EntityProducer):
+    """entity producer class for table"""
+
+    entities = [table.Table]

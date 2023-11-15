@@ -12,7 +12,7 @@
  */
 
 import { HTMLAttributes } from 'react';
-import { SampleDataType } from '../../SampleDataTable/SampleData.interface';
+import { SampleDataType } from '../../SampleDataTable/sample.interface';
 
 export interface SchemaModalProp extends HTMLAttributes<HTMLDivElement> {
   onClose: () => void;

@@ -20,8 +20,6 @@ from metadata.generated.schema.analytics.reportData import ReportData
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.dashboard import Dashboard
-from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.entity.data.mlmodel import MlModel
@@ -29,7 +27,6 @@ from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.query import Query
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.utils.logger import utils_logger
@@ -39,9 +36,6 @@ T = TypeVar("T", bound=BaseModel)
 
 ES_INDEX_MAP = {
     Table.__name__: "table_search_index",
-    Database.__name__: "database_search_index",
-    DatabaseSchema.__name__: "database_schema_search_index",
-    DatabaseService.__name__: "database_service_search_index",
     Team.__name__: "team_search_index",
     User.__name__: "user_search_index",
     Dashboard.__name__: "dashboard_search_index",

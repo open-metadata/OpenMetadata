@@ -13,7 +13,6 @@ Helper module to handle data sampling
 for the profiler
 """
 from sqlalchemy import inspect, or_, text
-from trino.sqlalchemy.dialect import TrinoDialect
 
 from metadata.profiler.orm.registry import FLOAT_SET
 from metadata.profiler.processor.handle_partition import RANDOM_LABEL
@@ -25,8 +24,6 @@ class TrinoSampler(SQASampler):
     Generates a sample of the data to not
     run the query in the whole table.
     """
-
-    TrinoDialect._json_deserializer = None  # pylint: disable=protected-access
 
     def _base_sample_query(self, label=None):
         sqa_columns = [col for col in inspect(self.table).c if col.name != RANDOM_LABEL]

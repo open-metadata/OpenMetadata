@@ -27,11 +27,11 @@ import {
   FieldTypes,
   FormItemLayout,
 } from '../../../interface/FormUtils.interface';
+import { getCurrentUserId } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { generateFormFields, getField } from '../../../utils/formUtils';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
-import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
+import TitleBreadcrumb from '../../common/title-breadcrumb/title-breadcrumb.component';
 import { UserTag } from '../../common/UserTag/UserTag.component';
 import { UserTagSize } from '../../common/UserTag/UserTag.interface';
 import { AddGlossaryProps } from './AddGlossary.interface';
@@ -46,7 +46,6 @@ const AddGlossary = ({
 }: AddGlossaryProps) => {
   const { t } = useTranslation();
   const [form] = useForm();
-  const { currentUser } = useAuthContext();
 
   const selectedOwner = Form.useWatch<EntityReference | undefined>(
     'owner',
@@ -67,7 +66,7 @@ const AddGlossary = ({
     } = formData;
 
     const selectedOwner = owner ?? {
-      id: currentUser?.id,
+      id: getCurrentUserId(),
       type: 'user',
     };
     const data: CreateGlossary = {

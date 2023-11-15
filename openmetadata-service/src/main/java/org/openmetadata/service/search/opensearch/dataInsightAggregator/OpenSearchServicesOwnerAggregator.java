@@ -14,7 +14,7 @@ public class OpenSearchServicesOwnerAggregator
 
   @Override
   protected Double getValue(Sum key) {
-    return key != null ? key.getValue() : 0.0;
+    return key.getValue();
   }
 
   @Override

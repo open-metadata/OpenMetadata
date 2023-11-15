@@ -20,6 +20,8 @@ import RightPanel from '../../../components/AddDataQualityTest/components/RightP
 import { getRightPanelForAddTestSuitePage } from '../../../components/AddDataQualityTest/rightPanelData';
 import { AddTestCaseList } from '../../../components/AddTestCaseList/AddTestCaseList.component';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
+import SuccessScreen from '../../../components/common/success-screen/SuccessScreen';
+import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
 import IngestionStepper from '../../../components/IngestionStepper/IngestionStepper.component';
 import { HTTP_STATUS_CODE } from '../../../constants/auth.constants';
 import {
@@ -33,18 +35,15 @@ import {
   addTestCaseToLogicalTestSuite,
   createTestSuites,
 } from '../../../rest/testAPI';
+import { getCurrentUserId } from '../../../utils/CommonUtils';
 import { getTestSuitePath } from '../../../utils/RouterUtils';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
-import SuccessScreen from '../../common/SuccessScreen/SuccessScreen';
-import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import AddTestSuiteForm from '../AddTestSuiteForm/AddTestSuiteForm';
 
 const TestSuiteStepper = () => {
   const { t } = useTranslation();
   const history = useHistory();
-  const { currentUser } = useAuthContext();
   const [activeServiceStep, setActiveServiceStep] = useState(1);
   const [testSuiteResponse, setTestSuiteResponse] = useState<TestSuite>();
 
@@ -64,7 +63,7 @@ const TestSuiteStepper = () => {
   const onSubmit = async (data: string[]) => {
     try {
       const owner = {
-        id: currentUser?.id ?? '',
+        id: getCurrentUserId(),
         type: OwnerType.USER,
       };
 

@@ -17,6 +17,7 @@ import 'codemirror/addon/fold/foldgutter.css';
 import { isUndefined } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import SchemaEditor from '../../../components/schema-editor/SchemaEditor';
 import { SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME } from '../../../constants/profiler.constant';
 import { CSMode } from '../../../enums/codemirror.enum';
 import {
@@ -24,8 +25,7 @@ import {
   TestDataType,
 } from '../../../generated/tests/testDefinition';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
-import SchemaEditor from '../../SchemaEditor/SchemaEditor';
-import '../../TableProfiler/table-profiler.less';
+import '../../TableProfiler/tableProfiler.less';
 import { ParameterFormProps } from '../AddDataQualityTest.interface';
 
 const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {

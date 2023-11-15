@@ -10,13 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Popover, Row, Space, Tag, Typography } from 'antd';
+import { Popover, Space, Tag, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
-import {
-  NO_DATA_PLACEHOLDER,
-  USER_DATA_SIZE,
-} from '../../../constants/constants';
+import { USER_DATA_SIZE } from '../../../constants/constants';
 import { EntityReference } from '../../../generated/entity/type';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { ChipProps } from './Chip.interface';
@@ -35,15 +32,15 @@ const Chip = ({
   );
 
   const getChipElement = (item: EntityReference) => (
-    <Col
-      className="d-flex gap-1 items-center"
+    <div
+      className="w-full d-flex items-center gap-2"
       data-testid={item.name}
       key={item.name}>
       {icon}
-      <Typography.Text className="text-left">
+      <Typography.Text className="w-56 text-left" ellipsis={{ tooltip: true }}>
         {getEntityName(item)}
       </Typography.Text>
-    </Col>
+    </div>
   );
 
   useEffect(() => {
@@ -52,18 +49,14 @@ const Chip = ({
 
   if (isEmpty(data) && showNoDataPlaceholder) {
     return (
-      <Typography.Paragraph className="text-grey-muted m-b-0">
-        {noDataPlaceholder ?? NO_DATA_PLACEHOLDER}
+      <Typography.Paragraph className="text-grey-muted">
+        {noDataPlaceholder}
       </Typography.Paragraph>
     );
   }
 
   return (
-    <Row
-      wrap
-      className="align-middle"
-      data-testid="chip-container"
-      gutter={[20, 6]}>
+    <Space wrap data-testid="chip-container" size={4}>
       {data.slice(0, USER_DATA_SIZE).map(getChipElement)}
       {hasMoreElement && (
         <Popover
@@ -80,7 +73,7 @@ const Chip = ({
           } more`}</Tag>
         </Popover>
       )}
-    </Row>
+    </Space>
   );
 };
 

@@ -18,12 +18,11 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as CheckMarkIcon } from '../../../assets/svg/ic-cloud-checkmark.svg';
-import RichTextEditorPreviewer from '../../../components/common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
+import PageLayoutV1 from '../../../components/containers/PageLayoutV1';
 import Loader from '../../../components/Loader/Loader';
-import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { ROUTES } from '../../../constants/constants';
 import { AppMarketPlaceDefinition } from '../../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
-import { Include } from '../../../generated/type/include';
 import { getApplicationByName } from '../../../rest/applicationAPI';
 import { getMarketPlaceApplicationByName } from '../../../rest/applicationMarketPlaceAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
@@ -85,10 +84,7 @@ const MarketPlaceAppDetails = () => {
 
   const fetchInstalledAppDetails = useCallback(async () => {
     try {
-      await getApplicationByName(fqn, {
-        fields: 'owner',
-        include: Include.All,
-      });
+      await getApplicationByName(fqn, 'owner');
       setIsInstalled(true);
     } catch (error) {
       setIsInstalled(false);
@@ -127,7 +123,6 @@ const MarketPlaceAppDetails = () => {
           <Button
             block
             className="m-t-md"
-            data-testid="install-application"
             disabled={isInstalled}
             type="primary"
             onClick={installApp}>

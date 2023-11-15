@@ -29,7 +29,6 @@ import {
 } from '../../../constants/constants';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { getDomainList } from '../../../rest/domainAPI';
-import { getEntityName } from '../../../utils/EntityUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { usePermissionProvider } from '../../PermissionProvider/PermissionProvider';
 import { DomainContextType } from './DomainProvider.interface';
@@ -57,7 +56,7 @@ const DomainProvider: FC<Props> = ({ children }: Props) => {
     ];
     domains.forEach((domain: Domain) => {
       options.push({
-        label: getEntityName(domain),
+        label: domain.displayName ?? domain.name,
         key: domain.fullyQualifiedName ?? '',
       });
     });

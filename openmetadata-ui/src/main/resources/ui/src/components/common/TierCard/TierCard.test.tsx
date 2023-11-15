@@ -79,7 +79,7 @@ jest.mock('antd', () => ({
     }),
 }));
 
-jest.mock('../RichTextEditor/RichTextEditorPreviewer', () => {
+jest.mock('../rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<div>RichTextEditorPreviewer</div>);
 });
 

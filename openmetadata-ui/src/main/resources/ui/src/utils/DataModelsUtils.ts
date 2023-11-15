@@ -39,7 +39,7 @@ export const updateDataModelColumnDescription = (
 };
 
 export const defaultFields = `${TabSpecificField.TAGS}, ${TabSpecificField.OWNER},
-${TabSpecificField.FOLLOWERS}, ${TabSpecificField.DOMAIN},${TabSpecificField.DATA_PRODUCTS}`;
+${TabSpecificField.FOLLOWERS}, ${TabSpecificField.DOMAIN}`;
 
 export const getSortedDataModelColumnTags = (column: Column[]): Column[] =>
   column.map((item) => ({

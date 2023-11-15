@@ -10,48 +10,67 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import {
+  act,
+  findByText,
+  fireEvent,
+  render,
+  screen,
+} from '@testing-library/react';
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { OperationPermission } from '../../../../components/PermissionProvider/PermissionProvider.interface';
+import { pagingObject } from '../../../../constants/constants';
 import { Team } from '../../../../generated/entity/teams/team';
+import { User } from '../../../../generated/entity/teams/user';
 import { MOCK_MARKETING_TEAM } from '../../../../mocks/Teams.mock';
-import { getUsers } from '../../../../rest/userAPI';
 import { UserTab } from './UserTab.component';
 import { UserTabProps } from './UserTab.interface';
 
-const mockOnRemoveUser = jest.fn().mockResolvedValue('removed');
-
 const props: UserTabProps = {
+  users: MOCK_MARKETING_TEAM.users as User[],
+  searchText: '',
+  isLoading: 0,
   permission: {
     EditAll: true,
   } as OperationPermission,
   currentTeam: MOCK_MARKETING_TEAM as Team,
+  onSearchUsers: jest.fn(),
   onAddUser: jest.fn(),
-  onRemoveUser: mockOnRemoveUser,
+  paging: pagingObject,
+  onChangePaging: jest.fn(),
+  currentPage: 1,
+  onRemoveUser: jest.fn().mockResolvedValue('removed'),
 };
 jest.mock(
-  '../../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
+  '../../../../components/common/error-with-placeholder/ErrorPlaceHolder',
   () => {
     return jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>);
   }
 );
-jest.mock('../../../../components/common/NextPrevious/NextPrevious', () => {
+jest.mock('../../../../components/common/next-previous/NextPrevious', () => {
   return jest.fn().mockImplementation(() => <div>NextPrevious</div>);
 });
-jest.mock(
-  '../../../../components/common/SearchBarComponent/SearchBar.component',
-  () => {
-    return jest.fn().mockImplementation(() => <div>Searchbar</div>);
-  }
-);
+jest.mock('../../../../components/common/searchbar/Searchbar', () => {
+  return jest.fn().mockImplementation(() => <div>Searchbar</div>);
+});
 jest.mock('../../../../components/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader</div>);
 });
 jest.mock(
-  '../../../../components/common/EntityPageInfos/ManageButton/ManageButton',
+  '../../../../components/common/entityPageInfo/ManageButton/ManageButton',
   () => {
     return jest.fn().mockImplementation(() => <div>ManageButton</div>);
+  }
+);
+jest.mock(
+  '../../../../components/Modals/ConfirmationModal/ConfirmationModal',
+  () => {
+    return jest.fn().mockImplementation(({ onConfirm }) => (
+      <div data-testid="confirmation-modal">
+        <button onClick={onConfirm}>confirm</button>
+      </div>
+    ));
   }
 );
 jest.mock(
@@ -65,13 +84,6 @@ jest.mock(
   })
 );
 
-jest.mock('../../../../rest/userAPI', () => ({
-  getUsers: jest.fn().mockResolvedValue({
-    data: [{ id: 'test', name: 'testing' }],
-    paging: { total: 10 },
-  }),
-}));
-
 describe('UserTab', () => {
   it('Component should render', async () => {
     render(
@@ -80,8 +92,7 @@ describe('UserTab', () => {
       </BrowserRouter>
     );
 
-    expect(getUsers).toHaveBeenCalled();
-    // expect(await screen.findByRole('table')).toBeInTheDocument();
+    expect(await screen.findByRole('table')).toBeInTheDocument();
     expect(
       await screen.findByTestId('user-selectable-list')
     ).toBeInTheDocument();
@@ -91,13 +102,9 @@ describe('UserTab', () => {
   });
 
   it('Error placeholder should visible if there is no data', async () => {
-    (getUsers as jest.Mock).mockRejectedValueOnce({
-      data: [],
-      paging: { total: 0 },
-    });
     render(
       <BrowserRouter>
-        <UserTab {...props} />
+        <UserTab {...props} users={[]} />
       </BrowserRouter>
     );
 
@@ -107,10 +114,11 @@ describe('UserTab', () => {
   it('Loader should visible if data is loading', async () => {
     render(
       <BrowserRouter>
-        <UserTab {...props} />
+        <UserTab {...props} isLoading={1} />
       </BrowserRouter>
     );
 
+    expect(await screen.findByTestId('skeleton-table')).toBeInTheDocument();
     expect(screen.queryByRole('table')).toBeInTheDocument();
     expect(
       await screen.findByTestId('user-selectable-list')
@@ -120,16 +128,38 @@ describe('UserTab', () => {
   });
 
   it('Pagination should visible if total value is greater then 25', async () => {
-    (getUsers as jest.Mock).mockResolvedValueOnce({
-      data: [{ id: 'test', name: 'testing' }],
-      paging: { total: 30 },
-    });
+    render(
+      <BrowserRouter>
+        <UserTab {...props} paging={{ total: 26 }} />
+      </BrowserRouter>
+    );
+
+    expect(await screen.findByText('NextPrevious')).toBeInTheDocument();
+  });
+
+  it('Remove user flow', async () => {
     render(
       <BrowserRouter>
         <UserTab {...props} />
       </BrowserRouter>
     );
+    const removeBtn = await screen.findByTestId('remove-user-btn');
 
-    expect(await screen.findByText('NextPrevious')).toBeInTheDocument();
+    expect(removeBtn).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(removeBtn);
+    });
+    const confirmationModal = await screen.findByTestId('confirmation-modal');
+    const confirmBtn = await findByText(confirmationModal, 'confirm');
+
+    expect(confirmationModal).toBeInTheDocument();
+    expect(confirmBtn).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(confirmBtn);
+    });
+
+    expect(props.onRemoveUser).toHaveBeenCalledWith(props.users[0].id);
   });
 });

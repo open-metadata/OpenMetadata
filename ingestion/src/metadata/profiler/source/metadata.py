@@ -64,16 +64,13 @@ class OpenMetadataSource(Source):
     We do this here as well.
     """
 
-    def init_steps(self):
-        super().__init__()
-
-    # pylint: disable=super-init-not-called
     def __init__(
         self,
         config: OpenMetadataWorkflowConfig,
         metadata: OpenMetadata,
     ):
-        self.init_steps()
+
+        super().__init__()
 
         self.config = config
         self.metadata = metadata

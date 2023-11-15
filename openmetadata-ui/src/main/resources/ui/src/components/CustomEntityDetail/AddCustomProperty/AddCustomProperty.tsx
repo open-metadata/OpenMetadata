@@ -45,7 +45,7 @@ import { getSettingPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../common/ServiceDocPanel/ServiceDocPanel';
-import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
+import TitleBreadcrumb from '../../common/title-breadcrumb/title-breadcrumb.component';
 
 const AddCustomProperty = () => {
   const { entityTypeFQN } = useParams<{ entityTypeFQN: EntityType }>();

@@ -35,7 +35,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { AsyncSelect } from '../../components/AsyncSelect/AsyncSelect';
-import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
+import RichTextEditor from '../../components/common/rich-text-editor/RichTextEditor';
 import { HTTP_STATUS_CODE } from '../../constants/auth.constants';
 import {
   GlobalSettingOptions,

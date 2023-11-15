@@ -17,14 +17,14 @@ import { CookieStorage } from 'cookie-storage';
 import { t } from 'i18next';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { DE_ACTIVE_COLOR, PRIMERY_COLOR } from '../../../constants/constants';
-import { getReleaseVersionExpiry } from '../../../utils/WhatsNewModal.util';
 import CloseIcon from '../CloseIcon.component';
 import { VersionIndicatorIcon } from '../VersionIndicatorIcon.component';
 import ChangeLogs from './ChangeLogs';
 import FeaturesCarousel from './FeaturesCarousel';
-import './whats-new-modal.less';
 import { COOKIE_VERSION, LATEST_VERSION_ID, WHATS_NEW } from './whatsNewData';
 import { ToggleType, WhatsNewModalProps } from './WhatsNewModal.interface';
+import './WhatsNewModal.styles.less';
+import { getReleaseVersionExpiry } from './WhatsNewModal.util';
 
 const cookieStorage = new CookieStorage();
 

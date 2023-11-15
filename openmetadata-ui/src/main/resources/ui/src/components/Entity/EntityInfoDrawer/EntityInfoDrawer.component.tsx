@@ -53,8 +53,8 @@ import StoredProcedureSummary from '../../Explore/EntitySummaryPanel/StoredProce
 import TableSummary from '../../Explore/EntitySummaryPanel/TableSummary/TableSummary.component';
 import TopicSummary from '../../Explore/EntitySummaryPanel/TopicSummary/TopicSummary.component';
 import { SelectedNode } from '../EntityLineage/EntityLineage.interface';
-import './entity-info-drawer.less';
 import { LineageDrawerProps } from './EntityInfoDrawer.interface';
+import './EntityInfoDrawer.style.less';
 
 const EntityInfoDrawer = ({
   show,
@@ -254,7 +254,7 @@ const EntityInfoDrawer = ({
       default:
         return null;
     }
-  }, [entityDetail, fetchEntityDetail, tags, selectedNode, isLoading]);
+  }, [entityDetail, fetchEntityDetail, tags, selectedNode]);
 
   useEffect(() => {
     fetchEntityDetail(selectedNode);

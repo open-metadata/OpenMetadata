@@ -51,7 +51,7 @@ jest.mock('../../../components/DatePickerMenu/DatePickerMenu.component', () => {
     .fn()
     .mockImplementation(() => <div>DatePickerMenu.component</div>);
 });
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
+jest.mock('../../common/error-with-placeholder/ErrorPlaceHolder', () => {
   return jest
     .fn()
     .mockImplementation(() => <div>ErrorPlaceHolder.component</div>);
@@ -59,7 +59,7 @@ jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
 jest.mock('../../Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader.component</div>);
 });
-jest.mock('../../SchemaEditor/SchemaEditor', () => {
+jest.mock('../../schema-editor/SchemaEditor', () => {
   return jest.fn().mockImplementation(() => <div>SchemaEditor.component</div>);
 });
 

@@ -27,8 +27,12 @@ import { ReactComponent as StarIcon } from '../../../assets/svg/ic-star.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { DomainLabel } from '../../../components/common/DomainLabel/DomainLabel.component';
+import AnnouncementCard from '../../../components/common/entityPageInfo/AnnouncementCard/AnnouncementCard';
+import AnnouncementDrawer from '../../../components/common/entityPageInfo/AnnouncementDrawer/AnnouncementDrawer';
+import ManageButton from '../../../components/common/entityPageInfo/ManageButton/ManageButton';
 import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import TierCard from '../../../components/common/TierCard/TierCard';
+import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { useTourProvider } from '../../../components/TourProvider/TourProvider';
 import Voting from '../../../components/Voting/Voting.component';
@@ -45,7 +49,10 @@ import {
 import { useClipboard } from '../../../hooks/useClipBoard';
 import { getActiveAnnouncement, getFeedCount } from '../../../rest/feedsAPI';
 import { getContainerByName } from '../../../rest/storageAPI';
-import { getEntityDetailLink } from '../../../utils/CommonUtils';
+import {
+  getCurrentUserId,
+  getEntityDetailLink,
+} from '../../../utils/CommonUtils';
 import { getDataAssetsHeaderInfo } from '../../../utils/DataAssetsHeader.utils';
 import {
   getEntityFeedLink,
@@ -55,11 +62,6 @@ import {
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { getTierTags } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
-import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
-import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
-import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
-import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import {
   DataAssetHeaderInfo,
   DataAssetsHeaderProps,
@@ -126,10 +128,8 @@ export const DataAssetsHeader = ({
   onRestoreDataAsset,
   onDisplayNameUpdate,
   afterDomainUpdateAction,
-  onProfilerSettingUpdate,
 }: DataAssetsHeaderProps) => {
-  const { currentUser } = useAuthContext();
-  const USER_ID = currentUser?.id ?? '';
+  const USER_ID = getCurrentUserId();
   const { t } = useTranslation();
   const { isTourPage } = useTourProvider();
   const { onCopyToClipBoard } = useClipboard(window.location.href);
@@ -369,7 +369,7 @@ export const DataAssetsHeader = ({
                 />
                 <Divider className="self-center m-x-sm" type="vertical" />
                 <TierCard currentTier={tier?.tagFQN} updateTier={onTierUpdate}>
-                  <Space data-testid="header-tier-container">
+                  <Space>
                     {tier ? (
                       <span className="font-medium text-xs" data-testid="Tier">
                         {getEntityName(tier)}
@@ -472,7 +472,6 @@ export const DataAssetsHeader = ({
                       : undefined
                   }
                   onEditDisplayName={onDisplayNameUpdate}
-                  onProfilerSettingUpdate={onProfilerSettingUpdate}
                   onRestoreEntity={onRestoreDataAsset}
                 />
               </ButtonGroup>

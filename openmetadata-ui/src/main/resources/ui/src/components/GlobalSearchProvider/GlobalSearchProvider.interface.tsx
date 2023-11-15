@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ExploreSearchIndex } from '../Explore/ExplorePage.interface';
+import { ExploreSearchIndex } from '../../components/Explore/explore.interface';
 
 export interface GlobalSearchContextType {
   searchCriteria: ExploreSearchIndex | '';

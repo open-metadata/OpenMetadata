@@ -16,7 +16,7 @@ import { ColumnsType } from 'antd/lib/table';
 import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import FilterTablePlaceHolder from '../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
+import FilterTablePlaceHolder from '../../components/common/error-with-placeholder/FilterTablePlaceHolder';
 import { NO_DATA_PLACEHOLDER } from '../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../constants/Table.constants';
 import { TableConstraint } from '../../generated/api/data/createTable';
@@ -32,8 +32,8 @@ import {
   makeData,
   prepareConstraintIcon,
 } from '../../utils/TableUtils';
-import RichTextEditorPreviewer from '../common/RichTextEditor/RichTextEditorPreviewer';
-import Searchbar from '../common/SearchBarComponent/SearchBar.component';
+import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
+import Searchbar from '../common/searchbar/Searchbar';
 import TagsViewer from '../Tag/TagsViewer/TagsViewer';
 import { VersionTableProps } from './VersionTable.interfaces';
 

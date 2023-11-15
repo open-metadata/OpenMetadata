@@ -20,7 +20,7 @@ import {
   mockChangedFormData,
   mockCreateUser,
   mockFormData,
-} from './mocks/SignupData.mock';
+} from './mocks/signup.mock';
 import SignUp from './SignUpPage';
 
 let letExpectedUserName = {
@@ -36,7 +36,7 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
-jest.mock('../../components/Auth/AuthProviders/AuthProvider', () => ({
+jest.mock('../../components/authentication/auth-provider/AuthProvider', () => ({
   useAuthContext: jest.fn(() => ({
     setIsSigningIn: jest.fn(),
   })),

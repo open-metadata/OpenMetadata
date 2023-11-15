@@ -34,10 +34,8 @@ export const DI_STRUCTURE = {
   rowContainerGutter: 32 as RowProps['gutter'],
   leftContainerSpan: 16,
   rightContainerSpan: 8,
-  rightRowGutter: [8, 0] as RowProps['gutter'],
+  rightRowGutter: [8, 16] as RowProps['gutter'],
 };
-
-export const GRAPH_HEIGHT = 500;
 
 export const DATA_INSIGHT_GRAPH_COLORS = [
   '#E7B85D',

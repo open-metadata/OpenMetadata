@@ -15,6 +15,7 @@ System Metric
 
 import traceback
 from collections import defaultdict
+from textwrap import dedent
 from typing import Dict, List, Optional
 
 from sqlalchemy import text
@@ -40,6 +41,7 @@ from metadata.profiler.metrics.system.queries.redshift import (
 )
 from metadata.profiler.metrics.system.queries.snowflake import (
     INFORMATION_SCHEMA_QUERY,
+    RESULT_SCAN,
     get_snowflake_system_queries,
 )
 from metadata.profiler.orm.registry import Dialects
@@ -333,37 +335,16 @@ def _(
             query_results.append(result)
 
     for query_result in query_results:
-        rows_affected = None
-        if query_result.query_type == DatabaseDMLOperations.INSERT.value:
-            rows_affected = query_result.rows_inserted
-        if query_result.query_type == DatabaseDMLOperations.DELETE.value:
-            rows_affected = query_result.rows_deleted
-        if query_result.query_type == DatabaseDMLOperations.UPDATE.value:
-            rows_affected = query_result.rows_updated
-        if query_result.query_type == DatabaseDMLOperations.MERGE.value:
-            if query_result.rows_inserted:
-                metric_results.append(
-                    {
-                        "timestamp": int(query_result.timestamp.timestamp() * 1000),
-                        "operation": DatabaseDMLOperations.INSERT.value,
-                        "rowsAffected": query_result.rows_inserted,
-                    }
-                )
-            if query_result.rows_updated:
-                metric_results.append(
-                    {
-                        "timestamp": int(query_result.timestamp.timestamp() * 1000),
-                        "operation": DatabaseDMLOperations.UPDATE.value,
-                        "rowsAffected": query_result.rows_updated,
-                    }
-                )
-            continue
+        cursor_for_result_scan = session.execute(
+            text(dedent(RESULT_SCAN.format(query_id=query_result.query_id)))
+        )
+        row_for_result_scan = cursor_for_result_scan.first()
 
         metric_results.append(
             {
                 "timestamp": int(query_result.timestamp.timestamp() * 1000),
                 "operation": DML_OPERATION_MAP.get(query_result.query_type),
-                "rowsAffected": rows_affected,
+                "rowsAffected": row_for_result_scan[0] if row_for_result_scan else None,
             }
         )
 

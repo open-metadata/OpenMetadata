@@ -26,12 +26,13 @@ export const visitEntityDetailsVersionPage = (
   entityFQN,
   version
 ) => {
-  visitEntityDetailsPage({
-    term: entityDetails.name,
-    serviceName: entityDetails.serviceName,
-    entity: entityDetails.entity,
-    entityType: entityDetails.entityType,
-  });
+  visitEntityDetailsPage(
+    entityDetails.name,
+    entityDetails.serviceName,
+    entityDetails.entity,
+    undefined,
+    entityDetails.entityType
+  );
 
   interceptURL(
     'GET',

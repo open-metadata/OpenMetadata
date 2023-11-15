@@ -18,8 +18,8 @@ import { useTranslation } from 'react-i18next';
 import { TERM_ADMIN } from '../../../constants/constants';
 import { getEntityName } from '../../../utils/EntityUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
-import './roles-element.styles.less';
 import { RolesElementProps } from './RolesElement.interface';
+import './RolesElement.styles.less';
 
 const RolesElement = ({ userData }: RolesElementProps) => {
   const { t } = useTranslation();

@@ -50,7 +50,7 @@ export interface FieldProp {
   props?: Record<string, unknown> & { children?: ReactNode };
   formItemProps?: FormItemProps;
   rules?: FormRule[];
-  helperText?: ReactNode;
+  helperText?: string;
   placeholder?: string;
   hasSeparator?: boolean;
   formItemLayout?: FormItemLayout;

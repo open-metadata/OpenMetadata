@@ -12,12 +12,13 @@
  */
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { PagingResponse, RestoreRequestType } from 'Models';
+import { PagingResponse } from 'Models';
 import { DataInsightLatestRun } from '../components/Applications/AppDetails/AppDetails.interface';
 import { App } from '../generated/entity/applications/app';
 import { AppRunRecord } from '../generated/entity/applications/appRunRecord';
 import { CreateAppRequest } from '../generated/entity/applications/createAppRequest';
 import { ListParams } from '../interface/API.interface';
+import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
 const BASE_URL = '/apps';
@@ -39,16 +40,19 @@ export const getApplicationList = async (params?: ListParams) => {
 export const installApplication = (
   data: CreateAppRequest
 ): Promise<AxiosResponse> => {
-  return APIClient.post(`${BASE_URL}`, data);
+  return APIClient.post(`${BASE_URL}/install`, data);
 };
 
 export const getApplicationByName = async (
   appName: string,
-  params?: AppListParams
+  arrQueryFields: string | string[]
 ) => {
-  const response = await APIClient.get<App>(`${BASE_URL}/name/${appName}`, {
-    params,
-  });
+  const url = getURLWithQueryFields(
+    `${BASE_URL}/name/${appName}`,
+    arrQueryFields
+  );
+
+  const response = await APIClient.get<App>(url);
 
   return response.data;
 };
@@ -101,13 +105,4 @@ export const triggerOnDemandApp = (appName: string): Promise<AxiosResponse> => {
 
 export const deployApp = (appName: string): Promise<AxiosResponse> => {
   return APIClient.post(`${BASE_URL}/deploy/${appName}`);
-};
-
-export const restoreApp = async (id: string) => {
-  const response = await APIClient.put<RestoreRequestType, AxiosResponse<App>>(
-    `${BASE_URL}/restore`,
-    { id }
-  );
-
-  return response.data;
 };

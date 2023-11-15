@@ -10,30 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useCallback, useMemo, useState } from 'react';
-import {
-  INITIAL_PAGING_VALUE,
-  PAGE_SIZE_BASE,
-  pagingObject,
-} from '../../constants/constants';
+import { useState } from 'react';
+import { PAGE_SIZE_BASE, pagingObject } from '../../constants/constants';
 import { Paging } from '../../generated/type/paging';
 
-export const usePaging = (defaultPageSize = PAGE_SIZE_BASE) => {
+export const usePaging = () => {
   const [paging, setPaging] = useState<Paging>(pagingObject);
-  const [currentPage, setCurrentPage] = useState<number>(INITIAL_PAGING_VALUE);
-  const [pageSize, setPageSize] = useState(defaultPageSize);
-
-  const handlePageSize = useCallback(
-    (page: number) => {
-      setPageSize(page);
-      setCurrentPage(INITIAL_PAGING_VALUE);
-    },
-    [setPageSize, setCurrentPage]
-  );
-
-  const paginationVisible = useMemo(() => {
-    return paging.total > pageSize || pageSize !== defaultPageSize;
-  }, [defaultPageSize, paging, pageSize]);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE_BASE);
 
   return {
     paging,
@@ -41,7 +25,6 @@ export const usePaging = (defaultPageSize = PAGE_SIZE_BASE) => {
     currentPage,
     handlePageChange: setCurrentPage,
     pageSize,
-    handlePageSizeChange: handlePageSize,
-    showPagination: paginationVisible,
+    handlePageSizeChange: setPageSize,
   };
 };

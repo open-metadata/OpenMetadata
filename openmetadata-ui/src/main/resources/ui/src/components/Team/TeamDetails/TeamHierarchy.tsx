@@ -21,7 +21,7 @@ import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import FilterTablePlaceHolder from '../../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
+import FilterTablePlaceHolder from '../../../components/common/error-with-placeholder/FilterTablePlaceHolder';
 import Table from '../../../components/common/Table/Table';
 import { TABLE_CONSTANTS } from '../../../constants/Teams.constants';
 import { TeamType } from '../../../generated/api/teams/createTeam';

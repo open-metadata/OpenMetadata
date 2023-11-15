@@ -26,14 +26,15 @@ import { ReactComponent as IconCheckMark } from '../../../assets/svg/ic-check-ma
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import EditTestCaseModal from '../../../components/AddDataQualityTest/EditTestCaseModal';
 import AppBadge from '../../../components/common/Badge/Badge.component';
-import FilterTablePlaceHolder from '../../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
+import FilterTablePlaceHolder from '../../../components/common/error-with-placeholder/FilterTablePlaceHolder';
 import { StatusBox } from '../../../components/common/LastRunGraph/LastRunGraph.component';
+import NextPrevious from '../../../components/common/next-previous/NextPrevious';
 import Table from '../../../components/common/Table/Table';
 import { TestCaseStatusModal } from '../../../components/DataQuality/TestCaseStatusModal/TestCaseStatusModal.component';
 import ConfirmationModal from '../../../components/Modals/ConfirmationModal/ConfirmationModal';
 import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../components/PermissionProvider/PermissionProvider.interface';
-import { getTableTabPath } from '../../../constants/constants';
+import { getTableTabPath, PAGE_SIZE } from '../../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { TestCaseStatus } from '../../../generated/configuration/testResultNotificationConfiguration';
 import { Operation } from '../../../generated/entity/policies/policy';
@@ -57,13 +58,12 @@ import { getEncodedFqn, replacePlus } from '../../../utils/StringsUtils';
 import { getEntityFqnFromEntityLink } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
-import NextPrevious from '../../common/NextPrevious/NextPrevious';
 import {
   DataQualityTabProps,
   TableProfilerTab,
   TestCaseAction,
 } from '../profilerDashboard.interface';
-import './data-quality-tab.less';
+import './DataQualityTab.style.less';
 import TestSummary from './TestSummary';
 
 const DataQualityTab: React.FC<DataQualityTabProps> = ({
@@ -75,7 +75,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   removeFromTestSuite,
   showTableColumn = true,
   afterDeleteAction,
-  showPagination,
 }) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
@@ -419,7 +418,15 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         />
       </Col>
       <Col span={24}>
-        {pagingData && showPagination && <NextPrevious {...pagingData} />}
+        {!isUndefined(pagingData) && pagingData.paging.total > PAGE_SIZE && (
+          <NextPrevious
+            currentPage={pagingData.currentPage}
+            isNumberBased={pagingData.isNumberBased}
+            pageSize={PAGE_SIZE}
+            paging={pagingData.paging}
+            pagingHandler={pagingData.onPagingClick}
+          />
+        )}
       </Col>
       <Col>
         <EditTestCaseModal

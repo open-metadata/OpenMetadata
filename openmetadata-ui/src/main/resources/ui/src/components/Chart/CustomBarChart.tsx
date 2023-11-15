@@ -30,7 +30,7 @@ import {
   tooltipFormatter,
   updateActiveChartFilter,
 } from '../../utils/ChartUtils';
-import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import { CustomBarChartProps } from './Chart.interface';
 
 const CustomBarChart = ({

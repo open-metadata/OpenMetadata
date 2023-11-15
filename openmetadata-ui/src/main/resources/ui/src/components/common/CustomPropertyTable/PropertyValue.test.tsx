@@ -15,7 +15,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { PropertyValue } from './PropertyValue';
 
-jest.mock('../../common/RichTextEditor/RichTextEditorPreviewer', () => {
+jest.mock('../../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest
     .fn()
     .mockReturnValue(

@@ -17,14 +17,14 @@ import { mockEntityPermissions } from '../../pages/DatabaseSchemaPage/mocks/Data
 import { getTestSuiteByName } from '../../rest/testAPI';
 import TestSuiteDetailsPage from './TestSuiteDetailsPage.component';
 
-jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
+jest.mock('../../components/containers/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
 jest.mock('../../components/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader.component</div>);
 });
 jest.mock(
-  '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
+  '../../components/common/title-breadcrumb/title-breadcrumb.component',
   () => {
     return jest
       .fn()
@@ -32,7 +32,7 @@ jest.mock(
   }
 );
 jest.mock(
-  '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
+  '../../components/common/error-with-placeholder/ErrorPlaceHolder',
   () => {
     return jest
       .fn()
@@ -48,14 +48,14 @@ jest.mock(
   }
 );
 jest.mock(
-  '../../components/common/EntityPageInfos/ManageButton/ManageButton',
+  '../../components/common/entityPageInfo/ManageButton/ManageButton',
   () => {
     return jest
       .fn()
       .mockImplementation(() => <div>ManageButton.component</div>);
   }
 );
-jest.mock('../../components/common/EntityDescription/Description', () => {
+jest.mock('../../components/common/description/Description', () => {
   return jest.fn().mockImplementation(() => <div>Description.component</div>);
 });
 jest.mock('../../components/ProfilerDashboard/component/DataQualityTab', () => {
@@ -63,7 +63,7 @@ jest.mock('../../components/ProfilerDashboard/component/DataQualityTab', () => {
     .fn()
     .mockImplementation(() => <div>DataQualityTab.component</div>);
 });
-jest.mock('../../components/Auth/AuthProviders/AuthProvider', () => {
+jest.mock('../../components/authentication/auth-provider/AuthProvider', () => {
   return {
     useAuthContext: jest
       .fn()
@@ -130,7 +130,7 @@ describe('TestSuiteDetailsPage component', () => {
     });
 
     expect(mockGetTestSuiteByName).toHaveBeenCalledWith('testSuiteFQN', {
-      fields: 'owner',
+      fields: 'owner,tests',
       include: 'all',
     });
   });

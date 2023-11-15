@@ -15,8 +15,8 @@ import React from 'react';
 import { ReflexContainer, ReflexElement, ReflexSplitter } from 'react-reflex';
 import DocumentTitle from '../../../components/DocumentTitle/DocumentTitle';
 import PanelContainer from './PanelContainer/PanelContainer';
-import './resizable-panels.less';
 import { ResizablePanelsProps } from './ResizablePanels.interface';
+import './ResizablePanels.less';
 
 const ResizablePanels: React.FC<ResizablePanelsProps> = ({
   className,

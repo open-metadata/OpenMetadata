@@ -15,7 +15,7 @@ import { OperationPermission } from '../../components/PermissionProvider/Permiss
 import { Table } from '../../generated/entity/data/table';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { TagLabel } from '../../generated/type/tagLabel';
-import { TitleBreadcrumbProps } from '../common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 
 export interface TableVersionProp {
   version: string;
@@ -23,7 +23,6 @@ export interface TableVersionProp {
   isVersionLoading: boolean;
   owner: Table['owner'];
   domain: Table['domain'];
-  dataProducts: Table['dataProducts'];
   tier: TagLabel;
   slashedTableName: TitleBreadcrumbProps['titleLinks'];
   versionList: EntityHistory;

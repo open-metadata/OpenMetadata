@@ -198,11 +198,11 @@ jest.mock('../../components/TabsLabel/TabsLabel.component', () => {
   return jest.fn().mockImplementation(({ name }) => <p>{name}</p>);
 });
 
-jest.mock('../common/EntityDescription/Description', () => {
+jest.mock('../common/description/Description', () => {
   return jest.fn().mockReturnValue(<p>Description</p>);
 });
 
-jest.mock('../common/RichTextEditor/RichTextEditorPreviewer', () => {
+jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });
 
@@ -221,7 +221,7 @@ jest.mock('../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel', () => {
   return jest.fn().mockReturnValue(<p>ActivityThreadPanel</p>);
 });
 
-jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
+jest.mock('../../components/containers/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
 
@@ -231,6 +231,7 @@ jest.mock('../../utils/CommonUtils', () => {
     getEntityPlaceHolder: jest.fn().mockReturnValue('entityPlaceholder'),
     getOwnerValue: jest.fn().mockReturnValue('Owner'),
     getEmptyPlaceholder: jest.fn().mockReturnValue(<p>ErrorPlaceHolder</p>),
+    getCurrentUserId: jest.fn().mockReturnValue('testId'),
     getCountBadge: jest.fn().mockReturnValue(<p>1</p>),
   };
 });

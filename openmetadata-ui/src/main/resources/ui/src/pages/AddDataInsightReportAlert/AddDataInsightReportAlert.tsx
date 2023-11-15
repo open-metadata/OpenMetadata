@@ -26,7 +26,7 @@ import { isEmpty, map } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
+import RichTextEditor from '../../components/common/rich-text-editor/RichTextEditor';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,

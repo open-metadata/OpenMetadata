@@ -19,7 +19,6 @@ export interface ApplicationCardProps {
   linkTitle: string;
   className?: string;
   showDescription?: boolean;
-  deleted?: boolean;
   onClick: () => void;
   appName: string;
 }

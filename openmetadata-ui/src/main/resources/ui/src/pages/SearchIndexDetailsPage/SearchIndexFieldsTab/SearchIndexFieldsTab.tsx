@@ -16,7 +16,7 @@ import { ExpandableConfig } from 'antd/lib/table/interface';
 import { isEmpty, sortBy } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import Searchbar from '../../../components/common/SearchBarComponent/SearchBar.component';
+import Searchbar from '../../../components/common/searchbar/Searchbar';
 import ToggleExpandButton from '../../../components/ToggleExpandButton/ToggleExpandButton';
 import { SearchIndexField } from '../../../generated/entity/data/searchIndex';
 import {

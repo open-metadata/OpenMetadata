@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { UserProfile } from '../components/Auth/AuthProviders/AuthProvider.interface';
+import { UserProfile } from '../components/authentication/auth-provider/AuthProvider.interface';
 import { getNameFromUserData } from './AuthProvider.util';
 
 const userProfile = {

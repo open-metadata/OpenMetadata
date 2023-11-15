@@ -21,7 +21,7 @@ import {
 import { UserProfileImageProps } from './UserProfileImage.interface';
 
 const UserProfileImage = ({ userData }: UserProfileImageProps) => {
-  const [isImgUrlValid, setIsImgUrlValid] = useState<boolean>(true);
+  const [isImgUrlValid, SetIsImgUrlValid] = useState<boolean>(true);
 
   const image = useMemo(
     () =>
@@ -30,32 +30,31 @@ const UserProfileImage = ({ userData }: UserProfileImageProps) => {
   );
 
   useEffect(() => {
-    setIsImgUrlValid(Boolean(image));
+    if (image) {
+      SetIsImgUrlValid(true);
+    }
   }, [image]);
 
   return (
-    <div
-      className="profile-image-container"
-      data-testid="profile-image-container">
+    <div className="profile-image-container">
       {isImgUrlValid ? (
         <Image
           alt="profile"
-          data-testid="user-profile-image"
           preview={false}
           referrerPolicy="no-referrer"
           src={image ?? ''}
           onError={() => {
-            setIsImgUrlValid(false);
+            SetIsImgUrlValid(false);
           }}
         />
       ) : (
         <ProfilePicture
           displayName={userData?.displayName ?? userData.name}
-          height="54"
+          height="186"
           id={userData?.id ?? ''}
           name={userData?.name ?? ''}
-          textClass="text-xl"
-          width="54"
+          textClass="text-5xl"
+          width=""
         />
       )}
     </div>

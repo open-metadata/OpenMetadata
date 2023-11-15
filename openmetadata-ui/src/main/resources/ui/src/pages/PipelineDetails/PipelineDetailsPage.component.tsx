@@ -14,11 +14,11 @@
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isUndefined, omitBy } from 'lodash';
+import { observer } from 'mobx-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from '../../components/Loader/Loader';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
@@ -38,6 +38,7 @@ import {
 } from '../../rest/pipelineAPI';
 import {
   addToRecentViewed,
+  getCurrentUserId,
   getEntityMissingError,
   sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
@@ -52,8 +53,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 
 const PipelineDetailsPage = () => {
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
-  const USERId = currentUser?.id ?? '';
+  const USERId = getCurrentUserId();
   const history = useHistory();
 
   const { fqn: pipelineFQN } = useParams<{ fqn: string }>();
@@ -331,4 +331,4 @@ const PipelineDetailsPage = () => {
   );
 };
 
-export default PipelineDetailsPage;
+export default observer(PipelineDetailsPage);

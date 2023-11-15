@@ -13,7 +13,7 @@
 
 import React, { Fragment, useState } from 'react';
 import SchemaModal from '../Modals/SchemaModal/SchemaModal';
-import { SampleDataType } from './SampleData.interface';
+import { SampleDataType } from './sample.interface';
 
 export const RowData = ({ data }: { data: SampleDataType }) => {
   const [isFullView, setIsFullView] = useState<boolean>(false);

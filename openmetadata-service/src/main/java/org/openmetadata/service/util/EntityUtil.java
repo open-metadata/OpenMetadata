@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.util;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 
@@ -39,7 +38,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.binary.Hex;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
@@ -557,19 +555,5 @@ public final class EntityUtil {
         .findFirst()
         .orElseThrow(
             () -> new IllegalArgumentException(CatalogExceptionMessage.invalidFieldName("column", columnName)));
-  }
-
-  public static <T extends FieldInterface> List<T> getFlattenedEntityField(List<T> fields) {
-    List<T> flattenedFields = new ArrayList<>();
-    fields.forEach(column -> flattenEntityField(column, flattenedFields));
-    return flattenedFields;
-  }
-
-  private static <T extends FieldInterface> void flattenEntityField(T field, List<T> flattenedFields) {
-    flattenedFields.add(field);
-    List<T> children = (List<T>) field.getChildren();
-    for (T child : listOrEmpty(children)) {
-      flattenEntityField(child, flattenedFields);
-    }
   }
 }

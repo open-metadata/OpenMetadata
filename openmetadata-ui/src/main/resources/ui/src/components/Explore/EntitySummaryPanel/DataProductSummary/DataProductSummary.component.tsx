@@ -16,7 +16,7 @@ import { useTranslation } from 'react-i18next';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
-import RichTextEditorPreviewer from '../../../common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewer from '../../../common/rich-text-editor/RichTextEditorPreviewer';
 import SummaryPanelSkeleton from '../../../Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 
 interface DataProductSummaryProps {

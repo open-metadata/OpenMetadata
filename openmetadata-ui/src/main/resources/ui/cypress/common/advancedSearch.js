@@ -255,11 +255,11 @@ export const checkmust_notPaths = (
 };
 
 export const removeOwner = () => {
-  visitEntityDetailsPage({
-    term: SEARCH_ENTITY_TABLE.table_1.term,
-    serviceName: SEARCH_ENTITY_TABLE.table_1.serviceName,
-    entity: SEARCH_ENTITY_TABLE.table_1.entity,
-  });
+  visitEntityDetailsPage(
+    SEARCH_ENTITY_TABLE.table_1.term,
+    SEARCH_ENTITY_TABLE.table_1.serviceName,
+    SEARCH_ENTITY_TABLE.table_1.entity
+  );
   interceptURL(
     'PATCH',
     `/api/v1/${SEARCH_ENTITY_TABLE.table_1.entity}/*`,
@@ -272,11 +272,11 @@ export const removeOwner = () => {
 };
 
 export const addOwner = (ownerName) => {
-  visitEntityDetailsPage({
-    term: SEARCH_ENTITY_TABLE.table_1.term,
-    serviceName: SEARCH_ENTITY_TABLE.table_1.serviceName,
-    entity: SEARCH_ENTITY_TABLE.table_1.entity,
-  });
+  visitEntityDetailsPage(
+    SEARCH_ENTITY_TABLE.table_1.term,
+    SEARCH_ENTITY_TABLE.table_1.serviceName,
+    SEARCH_ENTITY_TABLE.table_1.entity
+  );
 
   interceptURL(
     'GET',
@@ -322,11 +322,11 @@ export const addOwner = (ownerName) => {
 };
 
 export const addTier = () => {
-  visitEntityDetailsPage({
-    term: SEARCH_ENTITY_TABLE.table_2.term,
-    serviceName: SEARCH_ENTITY_TABLE.table_2.serviceName,
-    entity: SEARCH_ENTITY_TABLE.table_2.entity,
-  });
+  visitEntityDetailsPage(
+    SEARCH_ENTITY_TABLE.table_2.term,
+    SEARCH_ENTITY_TABLE.table_2.serviceName,
+    SEARCH_ENTITY_TABLE.table_2.entity
+  );
 
   cy.get('[data-testid="edit-tier"]')
     .scrollIntoView()
@@ -344,11 +344,11 @@ export const addTier = () => {
 };
 
 export const addTag = (tag) => {
-  visitEntityDetailsPage({
-    term: SEARCH_ENTITY_TABLE.table_3.term,
-    serviceName: SEARCH_ENTITY_TABLE.table_3.serviceName,
-    entity: SEARCH_ENTITY_TABLE.table_3.entity,
-  });
+  visitEntityDetailsPage(
+    SEARCH_ENTITY_TABLE.table_3.term,
+    SEARCH_ENTITY_TABLE.table_3.serviceName,
+    SEARCH_ENTITY_TABLE.table_3.entity
+  );
 
   cy.get('[data-testid="entity-right-panel"] [data-testid="entity-tags"]')
     .eq(0)

@@ -407,22 +407,6 @@ public class EventSubscriptionResourceTest extends EntityResourceTest<EventSubsc
     List<ChangeEvent> expected =
         getChangeEvents(entityCreated, entityUpdated, entityRestored, entityDeleted, timestamp, ADMIN_AUTH_HEADERS)
             .getData();
-
-    // Comparison if all callBack Event are there in expected
-    for (ChangeEvent changeEvent : callbackEvents) {
-      boolean found = false;
-      for (ChangeEvent expectedChangeEvent : expected) {
-        if (changeEvent.getEventType().equals(expectedChangeEvent.getEventType())
-            && changeEvent.getEntityId().equals(expectedChangeEvent.getEntityId())) {
-          found = true;
-          break;
-        }
-      }
-      if (!found) {
-        LOG.error("[ChangeEventError] Change Events Missing from Expected: {}", changeEvent.toString());
-      }
-    }
-
     Awaitility.await()
         .pollInterval(Duration.ofMillis(100L))
         .atMost(Duration.ofMillis(iteration * 100L))

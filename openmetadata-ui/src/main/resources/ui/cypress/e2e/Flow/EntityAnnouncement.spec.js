@@ -37,11 +37,7 @@ describe('Entity Announcement', () => {
         'announcementFeed'
       );
       interceptURL('DELETE', '/api/v1/feed/*', 'deleteFeed');
-      visitEntityDetailsPage({
-        term: value.term,
-        serviceName: value.serviceName,
-        entity: value.entity,
-      });
+      visitEntityDetailsPage(value.term, value.serviceName, value.entity);
       cy.get('[data-testid="manage-button"]').click();
       cy.get('[data-testid="announcement-button"]').click();
 

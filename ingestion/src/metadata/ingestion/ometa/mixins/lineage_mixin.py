@@ -177,10 +177,9 @@ class OMetaLineageMixin(Generic[T]):
                 timeout_seconds=timeout,
             )
             for lineage_request in add_lineage_request or []:
-                if lineage_request.right:
-                    resp = self.add_lineage(lineage_request.right)
-                    entity_name = resp.get("entity", {}).get("name")
-                    for node in resp.get("nodes", []):
-                        logger.info(
-                            f"added lineage between table {node.get('name')} and {entity_name} "
-                        )
+                resp = self.add_lineage(lineage_request)
+                entity_name = resp.get("entity", {}).get("name")
+                for node in resp.get("nodes", []):
+                    logger.info(
+                        f"added lineage between table {node.get('name')} and {entity_name} "
+                    )

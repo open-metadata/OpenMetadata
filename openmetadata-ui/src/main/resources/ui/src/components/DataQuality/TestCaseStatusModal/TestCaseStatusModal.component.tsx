@@ -14,7 +14,8 @@ import { Form, Modal, Select } from 'antd';
 import { startCase } from 'lodash';
 import React, { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
+import AppState from '../../../AppState';
+import RichTextEditor from '../../../components/common/rich-text-editor/RichTextEditor';
 import { EditorContentRef } from '../../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor.interface';
 import {
   TestCaseFailureReason,
@@ -22,7 +23,6 @@ import {
   TestCaseFailureStatusType,
 } from '../../../generated/tests/testCase';
 import { getCurrentMillis } from '../../../utils/date-time/DateTimeUtils';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import { TestCaseStatusModalProps } from './TestCaseStatusModal.interface';
 
 export const TestCaseStatusModal = ({
@@ -32,7 +32,6 @@ export const TestCaseStatusModal = ({
   onCancel,
 }: TestCaseStatusModalProps) => {
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
   const [form] = Form.useForm();
   const markdownRef = useRef<EditorContentRef>();
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -43,7 +42,7 @@ export const TestCaseStatusModal = ({
     const updatedData: TestCaseFailureStatus = {
       ...data,
       updatedAt: getCurrentMillis(),
-      updatedBy: currentUser?.fullyQualifiedName,
+      updatedBy: AppState.getCurrentUserDetails()?.fullyQualifiedName,
     };
     onSubmit(updatedData).finally(() => {
       setIsLoading(false);

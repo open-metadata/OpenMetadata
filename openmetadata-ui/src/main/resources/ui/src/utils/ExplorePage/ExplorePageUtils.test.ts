@@ -12,7 +12,7 @@
  */
 
 import { QueryFilterFieldsEnum } from '../../enums/Explore.enum';
-import { QueryFilterInterface } from '../../pages/ExplorePage/ExplorePage.interface';
+import { QueryFilterInterface } from '../../pages/explore/ExplorePage.interface';
 import {
   getCombinedFields,
   getCombinedQueryFilterObject,

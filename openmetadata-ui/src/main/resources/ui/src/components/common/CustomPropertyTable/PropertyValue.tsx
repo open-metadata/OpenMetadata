@@ -20,7 +20,7 @@ import { ReactComponent as EditIconComponent } from '../../../assets/svg/edit-ne
 import { Table } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import RichTextEditorPreviewer from '../RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
 import { PropertyInput } from './PropertyInput';
 
 interface Props {

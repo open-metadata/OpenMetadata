@@ -14,7 +14,7 @@ import { EntityReference } from '../../../generated/entity/type';
 
 export interface ChipProps {
   data: EntityReference[];
-  icon?: React.ReactElement;
-  noDataPlaceholder?: string;
+  icon: React.ReactElement;
+  noDataPlaceholder: string;
   showNoDataPlaceholder?: boolean;
 }

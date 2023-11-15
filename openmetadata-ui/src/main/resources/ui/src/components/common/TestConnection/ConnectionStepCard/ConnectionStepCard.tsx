@@ -22,7 +22,7 @@ import { ReactComponent as SuccessIcon } from '../../../../assets/svg/success-ba
 import { TestConnectionStepResult } from '../../../../generated/entity/automations/workflow';
 import { TestConnectionStep } from '../../../../generated/entity/services/connections/testConnectionDefinition';
 import { requiredField } from '../../../../utils/CommonUtils';
-import './connection-step-card.less';
+import './ConnectionStepCard.less';
 
 const { Panel } = Collapse;
 

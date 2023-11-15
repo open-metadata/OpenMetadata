@@ -326,16 +326,17 @@ export const testServiceCreationAndIngestion = ({
 
   verifyResponseStatusCode('@testConnectionStepDefinition', 200);
 
-  verifyResponseStatusCode('@createWorkflow', 201);
-  // added extra buffer time as triggerWorkflow API can take up to 2minute to provide result
-  verifyResponseStatusCode('@triggerWorkflow', 200, {
-    responseTimeout: 120000,
-  });
   cy.get('[data-testid="test-connection-modal"]').should('exist');
   cy.get('.ant-modal-footer > .ant-btn-primary')
     .should('exist')
     .contains('OK')
     .click();
+
+  verifyResponseStatusCode('@createWorkflow', 201);
+  // added extra buffer time as triggerWorkflow API can take up to 2minute to provide result
+  verifyResponseStatusCode('@triggerWorkflow', 200, {
+    responseTimeout: 120000,
+  });
   verifyResponseStatusCode('@getWorkflow', 200);
   cy.get('[data-testid="messag-text"]').then(($message) => {
     if ($message.text().includes('partially successful')) {
@@ -524,14 +525,13 @@ export const goToAddNewServicePage = (service_type) => {
   cy.get('[data-testid="service-category"]').should('be.visible');
 };
 
-export const visitEntityDetailsPage = ({
+export const visitEntityDetailsPage = (
   term,
   serviceName,
   entity,
   dataTestId,
-  entityType,
-  entityFqn,
-}) => {
+  entityType
+) => {
   if (entity === 'dashboardDataModel') {
     interceptURL(
       'GET',
@@ -557,7 +557,7 @@ export const visitEntityDetailsPage = ({
 
   // searching term in search box
   cy.get('[data-testid="searchBox"]').scrollIntoView().should('be.visible');
-  cy.get('[data-testid="searchBox"]').type(entityFqn ?? term);
+  cy.get('[data-testid="searchBox"]').type(term);
   cy.wait('@explorePageSearch').then(() => {
     cy.wait(500);
     cy.get('body').then(($body) => {
@@ -598,11 +598,11 @@ export const visitEntityDetailsPage = ({
 // add new tag to entity and its table
 export const addNewTagToEntity = (entityObj, term) => {
   const { name, fqn } = term;
-  visitEntityDetailsPage({
-    term: entityObj.term,
-    serviceName: entityObj.serviceName,
-    entity: entityObj.entity,
-  });
+  visitEntityDetailsPage(
+    entityObj.term,
+    entityObj.serviceName,
+    entityObj.entity
+  );
   cy.wait(500);
   cy.get(
     '[data-testid="classification-tags-0"] [data-testid="entity-tags"] [data-testid="add-tag"]'
@@ -779,7 +779,7 @@ export const toastNotification = (msg, closeToast = true) => {
 
 export const addCustomPropertiesForEntity = (
   propertyName,
-  customPropertyData,
+  entityType,
   customType,
   value,
   entityObj
@@ -841,7 +841,7 @@ export const addCustomPropertiesForEntity = (
   cy.get('[data-testid="propertyType"]').click();
   cy.get(`[title="${customType}"]`).click();
 
-  cy.get(descriptionBox).clear().type(customPropertyData.description);
+  cy.get(descriptionBox).clear().type(entityType.description);
 
   // Check if the property got added
   cy.intercept('/api/v1/metadata/types/name/*?fields=customProperties').as(
@@ -857,11 +857,11 @@ export const addCustomPropertiesForEntity = (
 
   // Checking the added property in Entity
 
-  visitEntityDetailsPage({
-    term: entityObj.term,
-    serviceName: entityObj.serviceName,
-    entity: entityObj.entity,
-  });
+  visitEntityDetailsPage(
+    entityObj.term,
+    entityObj.serviceName,
+    entityObj.entity
+  );
 
   cy.get('[data-testid="custom_properties"]').click();
   cy.get('tbody').should('contain', propertyName);
@@ -876,11 +876,6 @@ export const addCustomPropertiesForEntity = (
 
   cy.get('@editbutton').click();
 
-  interceptURL(
-    'PATCH',
-    `/api/v1/${customPropertyData.entityApiType}/*`,
-    'patchEntity'
-  );
   // Checking for value text box or markdown box
   cy.get('body').then(($body) => {
     if ($body.find('[data-testid="value-input"]').length > 0) {
@@ -897,7 +892,7 @@ export const addCustomPropertiesForEntity = (
       cy.get('[data-testid="save"]').click();
     }
   });
-  verifyResponseStatusCode('@patchEntity', 200);
+
   cy.get(`[data-row-key="${propertyName}"]`).should('contain', value);
 };
 
@@ -982,29 +977,7 @@ export const login = (username, password) => {
   cy.get('.ant-btn').contains('Login').should('be.visible').click();
 };
 
-export const selectTeamHierarchy = (index) => {
-  if (index > 0) {
-    cy.get('[data-testid="team-type"]')
-      .invoke('text')
-      .then((text) => {
-        cy.log(text);
-        checkTeamTypeOptions(text);
-        cy.log('check type', text);
-        cy.get(
-          `.ant-select-dropdown [title="${getTeamType(text).childTeamType}"]`
-        ).click();
-      });
-  } else {
-    checkTeamTypeOptions('BusinessUnit');
-
-    cy.get(`.ant-select-dropdown [title='BusinessUnit']`)
-      .should('exist')
-      .should('be.visible')
-      .click();
-  }
-};
-
-export const addTeam = (teamDetails, index, isHierarchy) => {
+export const addTeam = (TEAM_DETAILS, index) => {
   interceptURL('GET', '/api/v1/teams*', 'addTeam');
   // Fetching the add button and clicking on it
   if (index > 0) {
@@ -1016,27 +989,62 @@ export const addTeam = (teamDetails, index, isHierarchy) => {
   verifyResponseStatusCode('@addTeam', 200);
 
   // Entering team details
-  cy.get('[data-testid="name"]').type(teamDetails.name);
+  cy.get('[data-testid="name"]')
+    .should('exist')
+    .should('be.visible')
+    .type(TEAM_DETAILS.name);
 
-  cy.get('[data-testid="display-name"]').type(teamDetails.name);
+  cy.get('[data-testid="display-name"]')
+    .should('exist')
+    .should('be.visible')
+    .type(TEAM_DETAILS.name);
 
-  cy.get('[data-testid="email"]').type(teamDetails.email);
+  cy.get('[data-testid="email"]')
+    .should('exist')
+    .should('be.visible')
+    .type(TEAM_DETAILS.email);
 
-  cy.get('[data-testid="team-selector"]').click();
+  cy.get('[data-testid="team-selector"]')
+    .should('exist')
+    .should('be.visible')
+    .click();
 
-  if (isHierarchy) {
-    selectTeamHierarchy(index);
+  if (index > 0) {
+    cy.get('[data-testid="team-type"]')
+      .invoke('text')
+      .then((text) => {
+        cy.log(text);
+        checkTeamTypeOptions(text);
+        cy.log('check type', text);
+        cy.get(
+          `.ant-select-dropdown [title="${getTeamType(text).childTeamType}"]`
+        )
+          .should('exist')
+          .should('be.visible')
+          .click();
+      });
   } else {
-    cy.get(`.ant-select-dropdown [title="${teamDetails.teamType}"]`).click();
+    checkTeamTypeOptions('BusinessUnit');
+
+    cy.get(`.ant-select-dropdown [title='BusinessUnit']`)
+      .should('exist')
+      .should('be.visible')
+      .click();
   }
 
-  cy.get(descriptionBox).type(teamDetails.description);
+  cy.get(descriptionBox)
+    .should('exist')
+    .should('be.visible')
+    .type(TEAM_DETAILS.description);
 
   interceptURL('POST', '/api/v1/teams', 'saveTeam');
   interceptURL('GET', '/api/v1/team*', 'createTeam');
 
   // Saving the created team
-  cy.get('[form="add-team-form"]').scrollIntoView().click();
+  cy.get('[form="add-team-form"]')
+    .scrollIntoView()
+    .should('be.visible')
+    .click();
 
   verifyResponseStatusCode('@saveTeam', 201);
   verifyResponseStatusCode('@createTeam', 200);
@@ -1091,8 +1099,7 @@ export const updateDescriptionForIngestedTables = (
   tableName,
   description,
   type,
-  entity,
-  entityFqn
+  entity
 ) => {
   interceptURL(
     'GET',
@@ -1111,7 +1118,7 @@ export const updateDescriptionForIngestedTables = (
     'pipelineStatus'
   );
   // Navigate to ingested table
-  visitEntityDetailsPage({ term: tableName, serviceName, entity, entityFqn });
+  visitEntityDetailsPage(tableName, serviceName, entity);
 
   // update description
   cy.get('[data-testid="edit-description"]')
@@ -1169,7 +1176,7 @@ export const updateDescriptionForIngestedTables = (
   retryIngestionRun();
 
   // Navigate to table name
-  visitEntityDetailsPage({ term: tableName, serviceName, entity, entityFqn });
+  visitEntityDetailsPage(tableName, serviceName, entity);
   cy.get('[data-testid="markdown-parser"]')
     .first()
     .invoke('text')
@@ -1265,12 +1272,13 @@ export const deleteEntity = (
   successMessageEntityName,
   deletionType = 'hard'
 ) => {
-  visitEntityDetailsPage({
-    term: entityName,
+  visitEntityDetailsPage(
+    entityName,
     serviceName,
     entity,
-    entityType,
-  });
+    undefined,
+    entityType
+  );
 
   cy.get('[data-testid="manage-button"]').click();
 
@@ -1475,11 +1483,7 @@ export const addAnnouncement = (value) => {
     'announcementFeed'
   );
 
-  visitEntityDetailsPage({
-    term: value.term,
-    serviceName: value.serviceName,
-    entity: value.entity,
-  });
+  visitEntityDetailsPage(value.term, value.serviceName, value.entity);
   cy.get('[data-testid="manage-button"]').click();
   cy.get('[data-testid="announcement-button"]').click();
 

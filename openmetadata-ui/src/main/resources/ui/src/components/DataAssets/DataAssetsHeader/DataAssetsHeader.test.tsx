@@ -45,7 +45,7 @@ const mockProps: DataAssetsHeaderProps = {
 };
 
 jest.mock(
-  '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
+  '../../../components/common/title-breadcrumb/title-breadcrumb.component',
   () => {
     return jest
       .fn()
@@ -74,16 +74,16 @@ jest.mock('../../../components/common/TierCard/TierCard', () =>
   ))
 );
 jest.mock(
-  '../../../components/common/EntityPageInfos/ManageButton/ManageButton',
+  '../../../components/common/entityPageInfo/ManageButton/ManageButton',
   () => jest.fn().mockImplementation(() => <div>ManageButton.component</div>)
 );
 jest.mock(
-  '../../../components/common/EntityPageInfos/AnnouncementCard/AnnouncementCard',
+  '../../../components/common/entityPageInfo/AnnouncementCard/AnnouncementCard',
   () =>
     jest.fn().mockImplementation(() => <div>AnnouncementCard.component</div>)
 );
 jest.mock(
-  '../../../components/common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer',
+  '../../../components/common/entityPageInfo/AnnouncementDrawer/AnnouncementDrawer',
   () =>
     jest.fn().mockImplementation(() => <div>AnnouncementDrawer.component</div>)
 );
