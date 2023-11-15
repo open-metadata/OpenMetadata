@@ -50,6 +50,9 @@ parameter for the generic `DatabaseConnection` type.
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
+from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
+    BasicAuth,
+)
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
@@ -65,7 +68,7 @@ db_service = CreateDatabaseServiceRequest(
     connection=DatabaseConnection(
         config=MysqlConnection(
             username="username",
-            password="password",
+            authType=BasicAuth(password="password"),
             hostPort="http://localhost:1234",
         )
     ),

@@ -207,7 +207,9 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
     DatabaseConnection,
 )
-
+from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
+    BasicAuth,
+)
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
@@ -218,7 +220,7 @@ create_service = CreateDatabaseServiceRequest(
     connection=DatabaseConnection(
         config=MysqlConnection(
             username="username",
-            password="password",
+            authType=BasicAuth(password="password"),
             hostPort="http://localhost:1234",
         )
     ),
