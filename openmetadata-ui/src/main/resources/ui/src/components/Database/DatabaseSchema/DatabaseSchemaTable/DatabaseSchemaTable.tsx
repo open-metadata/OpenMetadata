@@ -130,10 +130,12 @@ export const DatabaseSchemaTable = () => {
     ({ currentPage, cursorType }: PagingHandlerParams) => {
       if (cursorType) {
         fetchDatabaseSchema({ [cursorType]: paging[cursorType] });
+      } else if (searchValue) {
+        searchSchema(searchValue, currentPage);
       }
       handlePageChange(currentPage);
     },
-    [paging, fetchDatabaseSchema]
+    [paging, fetchDatabaseSchema, searchSchema]
   );
 
   const onSchemaSearch = (value: string) => {
@@ -195,6 +197,7 @@ export const DatabaseSchemaTable = () => {
         {showPagination && (
           <NextPrevious
             currentPage={currentPage}
+            isNumberBased={Boolean(searchValue)}
             pageSize={pageSize}
             paging={paging}
             pagingHandler={handleSchemaPageChange}
