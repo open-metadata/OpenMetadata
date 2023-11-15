@@ -793,6 +793,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     prepareInternal(updated, true);
     populateOwner(updated.getOwner());
+    populateDomain(updated.getDomain());
     restorePatchAttributes(original, updated);
 
     // Update the attributes and relationships of an entity
@@ -1613,6 +1614,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     EntityReference ref = validateOwner(owner);
     EntityUtil.copy(ref, owner);
+  }
+  
+  protected void populateDomain(EntityReference domain) {
+    if (domain == null) {
+      return;
+    }
+    EntityReference ref = validateDomain(domain.getFullyQualifiedName());
+    EntityUtil.copy(ref, domain);
   }
 
   @Transaction
