@@ -1,5 +1,5 @@
 
---update the timestamps to millis for dbt test results
+-- update the timestamps to millis for dbt test results
 UPDATE data_quality_data_time_series dqdts
 SET dqdts.json = JSON_INSERT(
     JSON_REMOVE(dqdts.json, '$.timestamp'),
