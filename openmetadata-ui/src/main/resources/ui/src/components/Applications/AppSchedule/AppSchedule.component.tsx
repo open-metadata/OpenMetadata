@@ -95,7 +95,10 @@ const AppSchedule = ({
   };
 
   const appRunHistory = useMemo(() => {
-    if (appData.appType === AppType.Internal || isPipelineDeployed) {
+    if (
+      !appData.deleted &&
+      (appData.appType === AppType.Internal || isPipelineDeployed)
+    ) {
       return (
         <AppRunsHistory
           appData={appData}
@@ -103,6 +106,14 @@ const AppSchedule = ({
           ref={appRunsHistoryRef}
           showPagination={false}
         />
+      );
+    }
+
+    if (appData.deleted) {
+      return (
+        <Typography.Text>
+          {t('message.application-disabled-message')}
+        </Typography.Text>
       );
     }
 
@@ -143,7 +154,9 @@ const AppSchedule = ({
                   <Typography.Text className="right-panel-label">
                     {t('label.schedule-interval')}
                   </Typography.Text>
-                  <Typography.Text className="font-medium">
+                  <Typography.Text
+                    className="font-medium"
+                    data-testid="cron-string">
                     {cronString}
                   </Typography.Text>
                 </Space>
@@ -151,31 +164,37 @@ const AppSchedule = ({
             </>
           )}
         </Col>
-        <Col className="d-flex items-center justify-end" flex="200px">
-          <Space>
-            {appData.appType === AppType.External && (
-              <Button
-                data-testid="deploy-button"
-                type="primary"
-                onClick={onDeployTrigger}>
-                {t('label.deploy')}
-              </Button>
-            )}
+        {!appData.deleted && (
+          <Col className="d-flex items-center justify-end" flex="200px">
+            <Space>
+              {appData.appType === AppType.External && (
+                <Button
+                  data-testid="deploy-button"
+                  disabled={appData.deleted}
+                  type="primary"
+                  onClick={onDeployTrigger}>
+                  {t('label.deploy')}
+                </Button>
+              )}
 
-            <Button
-              data-testid="edit-button"
-              type="primary"
-              onClick={() => setShowModal(true)}>
-              {t('label.edit')}
-            </Button>
-            <Button
-              data-testid="run-now-button"
-              type="primary"
-              onClick={onAppTrigger}>
-              {t('label.run-now')}
-            </Button>
-          </Space>
-        </Col>
+              <Button
+                data-testid="edit-button"
+                disabled={appData.deleted}
+                type="primary"
+                onClick={() => setShowModal(true)}>
+                {t('label.edit')}
+              </Button>
+
+              <Button
+                data-testid="run-now-button"
+                disabled={appData.deleted}
+                type="primary"
+                onClick={onAppTrigger}>
+                {t('label.run-now')}
+              </Button>
+            </Space>
+          </Col>
+        )}
 
         <Divider />
 

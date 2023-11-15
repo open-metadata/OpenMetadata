@@ -21,10 +21,10 @@ import {
   capitalize,
   get,
   isEmpty,
-  isNil,
   isNull,
   isString,
   isUndefined,
+  toLower,
   toNumber,
 } from 'lodash';
 import {
@@ -43,7 +43,7 @@ import {
   getDayCron,
   getHourCron,
 } from '../components/common/CronEditor/CronEditor.constant';
-import ErrorPlaceHolder from '../components/common/error-with-placeholder/ErrorPlaceHolder';
+import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../components/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
@@ -69,7 +69,6 @@ import { SIZE } from '../enums/common.enum';
 import { EntityTabs, EntityType, FqnPart } from '../enums/entity.enum';
 import { PipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { EntityReference } from '../generated/entity/teams/user';
-import { Paging } from '../generated/type/paging';
 import { TagLabel } from '../generated/type/tagLabel';
 import { getFeedCount } from '../rest/feedsAPI';
 import { getEntityFeedLink, getTitleCase } from './EntityUtils';
@@ -187,12 +186,6 @@ export const getTableFQNFromColumnFQN = (columnFQN: string): string => {
   );
 };
 
-export const getCurrentUserId = (): string => {
-  const currentUser = AppState.getCurrentUserDetails();
-
-  return currentUser?.id || '';
-};
-
 export const pluralize = (count: number, noun: string, suffix = 's') => {
   const countString = count.toLocaleString();
   if (count !== 1 && count !== 0 && !noun.endsWith(suffix)) {
@@ -234,11 +227,14 @@ export const getCountBadge = (
   return (
     <span
       className={classNames(
-        'p-x-xss m-x-xss global-border rounded-4 text-xs text-center',
+        'p-x-xss m-x-xss global-border rounded-4 text-center',
         clsBG,
         className
       )}>
-      <span data-testid="filter-count" title={count.toString()}>
+      <span
+        className="text-xs"
+        data-testid="filter-count"
+        title={count.toString()}>
         {count}
       </span>
     </span>
@@ -546,15 +542,6 @@ export const getFeedCounts = (
  */
 export const isTaskSupported = (entityType: EntityType) =>
   TASK_ENTITIES.includes(entityType);
-
-/**
- * Utility function to show pagination
- * @param paging paging object
- * @returns boolean
- */
-export const showPagination = (paging: Paging) => {
-  return !isNil(paging.after) || !isNil(paging.before);
-};
 
 export const formatNumberWithComma = (number: number) => {
   return new Intl.NumberFormat('en-US').format(number);
@@ -874,3 +861,17 @@ export const getUniqueArray = (count: number) =>
   [...Array(count)].map((_, index) => ({
     key: `key${index}`,
   }));
+
+/**
+ * @param searchValue search input
+ * @param option select options list
+ * @returns boolean
+ */
+export const handleSearchFilterOption = (
+  searchValue: string,
+  option?: {
+    label: string;
+    value: string;
+  }
+) => toLower(option?.label).includes(toLower(searchValue));
+// Check label while searching anything and filter that options out if found matching

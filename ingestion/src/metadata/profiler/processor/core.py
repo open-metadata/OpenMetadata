@@ -48,6 +48,8 @@ from metadata.profiler.metrics.core import (
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.metrics.static.row_count import RowCount
 from metadata.profiler.orm.registry import NOT_COMPUTE
+from metadata.profiler.processor.sample_data_handler import upload_sample_data
+from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -494,7 +496,18 @@ class Profiler(Generic[TMetric]):
                 "Fetching sample data for "
                 f"{self.profiler_interface.table_entity.fullyQualifiedName.__root__}..."  # type: ignore
             )
-            return self.profiler_interface.fetch_sample_data(self.table, self.columns)
+            table_data = self.profiler_interface.fetch_sample_data(
+                self.table, self.columns
+            )
+            upload_sample_data(
+                data=table_data, profiler_interface=self.profiler_interface
+            )
+            table_data.rows = table_data.rows[
+                : min(
+                    SAMPLE_DATA_DEFAULT_COUNT, self.profiler_interface.sample_data_count
+                )
+            ]
+            return table_data
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error fetching sample data: {err}")

@@ -16,19 +16,20 @@ import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import DeleteWidgetModal from '../../../components/common/DeleteWidget/DeleteWidgetModal';
-import ErrorPlaceHolder from '../../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import NextPrevious from '../../../components/common/next-previous/NextPrevious';
-import PageHeader from '../../../components/header/PageHeader.component';
+import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';
+import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
+import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import { AddEditPersonaForm } from '../../../components/Persona/AddEditPersona/AddEditPersona.component';
 import { PersonaDetailsCard } from '../../../components/Persona/PersonaDetailsCard/PersonaDetailsCard';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { Persona } from '../../../generated/entity/teams/persona';
+import { Paging } from '../../../generated/type/paging';
 import { useAuth } from '../../../hooks/authHooks';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { getAllPersonas } from '../../../rest/PersonaAPI';
-import { showPagination } from '../../../utils/CommonUtils';
 
 export const PersonaPage = () => {
   const { isAdminUser } = useAuth();
@@ -48,14 +49,17 @@ export const PersonaPage = () => {
     handlePageSizeChange,
     paging,
     handlePagingChange,
+    showPagination,
   } = usePaging();
 
-  const fetchPersonas = useCallback(async () => {
+  const fetchPersonas = useCallback(async (params?: Partial<Paging>) => {
     try {
       setIsLoading(true);
       const { data, paging } = await getAllPersonas({
         limit: pageSize,
         fields: 'users',
+        after: params?.after,
+        before: params?.before,
       });
 
       setPersona(data);
@@ -69,7 +73,7 @@ export const PersonaPage = () => {
 
   useEffect(() => {
     fetchPersonas();
-  }, []);
+  }, [pageSize]);
 
   const handleAddNewPersona = () => {
     setAddEditPersona({} as Persona);
@@ -98,6 +102,16 @@ export const PersonaPage = () => {
     fetchPersonas();
   };
 
+  const handlePersonaPageChange = ({
+    currentPage,
+    cursorType,
+  }: PagingHandlerParams) => {
+    handlePageChange(currentPage);
+    if (cursorType) {
+      fetchPersonas({ [cursorType]: paging[cursorType] });
+    }
+  };
+
   return (
     <Row
       className="user-listing p-b-md"
@@ -117,30 +131,29 @@ export const PersonaPage = () => {
         </Space>
       </Col>
 
-      {isLoading &&
-        [1, 2, 3].map((key) => (
-          <Col key={key} span={8}>
-            <Card>
-              <Skeleton active paragraph title />
-            </Card>
-          </Col>
-        ))}
+      {isLoading
+        ? [1, 2, 3].map((key) => (
+            <Col key={key} span={8}>
+              <Card>
+                <Skeleton active paragraph title />
+              </Card>
+            </Col>
+          ))
+        : persona?.map((persona) => (
+            <Col key={persona.id} span={8}>
+              <PersonaDetailsCard persona={persona} />
+            </Col>
+          ))}
 
       {isEmpty(persona) && !isLoading && errorPlaceHolder}
 
-      {persona?.map((persona) => (
-        <Col key={persona.id} span={8}>
-          <PersonaDetailsCard persona={persona} />
-        </Col>
-      ))}
-
-      {showPagination(paging) && (
+      {showPagination && (
         <Col span={24}>
           <NextPrevious
             currentPage={currentPage}
             pageSize={pageSize}
             paging={paging}
-            pagingHandler={({ currentPage }) => handlePageChange(currentPage)}
+            pagingHandler={handlePersonaPageChange}
             onShowSizeChange={handlePageSizeChange}
           />
         </Col>
@@ -155,7 +168,7 @@ export const PersonaPage = () => {
       )}
 
       <DeleteWidgetModal
-        afterDeleteAction={fetchPersonas}
+        afterDeleteAction={() => fetchPersonas()}
         allowSoftDelete={false}
         entityId={personaDeleting?.id ?? ''}
         entityName={personaDeleting?.name ?? ''}

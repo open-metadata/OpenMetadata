@@ -407,6 +407,7 @@ export const ADVANCED_PROPERTIES = [
   'connectionArguments',
   'connectionOptions',
   'scheme',
+  'sampleDataStorageConfig',
 ];
 
 export const PIPELINE_SERVICE_PLATFORM = 'Airflow';

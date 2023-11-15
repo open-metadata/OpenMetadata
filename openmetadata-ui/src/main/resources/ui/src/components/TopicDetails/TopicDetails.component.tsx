@@ -19,15 +19,15 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { useActivityFeedProvider } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
-import DescriptionV1 from '../../components/common/description/DescriptionV1';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
+import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import QueryViewer from '../../components/common/QueryViewer/QueryViewer.component';
-import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import DataProductsContainer from '../../components/DataProductsContainer/DataProductsContainer.component';
 import EntityLineageComponent from '../../components/Entity/EntityLineage/EntityLineage.component';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
-import { withActivityFeed } from '../../components/router/withActivityFeed';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import SampleDataWithMessages from '../../components/SampleDataWithMessages/SampleDataWithMessages';
 import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
@@ -42,7 +42,7 @@ import { ThreadType } from '../../generated/entity/feed/thread';
 import { TagLabel } from '../../generated/type/schema';
 import { TagSource } from '../../generated/type/tagLabel';
 import { restoreTopic } from '../../rest/topicsAPI';
-import { getCurrentUserId, getFeedCounts } from '../../utils/CommonUtils';
+import { getFeedCounts } from '../../utils/CommonUtils';
 import {
   getEntityName,
   getEntityReferenceFromEntity,
@@ -52,6 +52,7 @@ import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
+import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
 import { TopicDetailsProps } from './TopicDetails.interface';
 import TopicSchemaFields from './TopicSchema/TopicSchema';
@@ -70,6 +71,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   onUpdateVote,
 }: TopicDetailsProps) => {
   const { t } = useTranslation();
+  const { currentUser } = useAuthContext();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const { fqn: topicFQN, tab: activeTab = EntityTabs.SCHEMA } =
     useParams<{ fqn: string; tab: EntityTabs }>();
@@ -86,6 +88,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
 
   const {
     owner,
+    deleted,
     description,
     followers = [],
     entityName,
@@ -103,10 +106,10 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
 
   const { isFollowing } = useMemo(
     () => ({
-      isFollowing: followers?.some(({ id }) => id === getCurrentUserId()),
+      isFollowing: followers?.some(({ id }) => id === currentUser?.id),
       followersCount: followers?.length ?? 0,
     }),
-    [followers]
+    [followers, currentUser]
   );
 
   const followTopic = async () =>
@@ -251,14 +254,40 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) =>
-      isSoftDelete ? handleToggleDelete : history.push('/'),
+      isSoftDelete ? handleToggleDelete() : history.push('/'),
     []
   );
 
+  const {
+    editTagsPermission,
+    editDescriptionPermission,
+    editCustomAttributePermission,
+    editAllPermission,
+    editLineagePermission,
+    viewSampleDataPermission,
+    viewAllPermission,
+  } = useMemo(
+    () => ({
+      editTagsPermission:
+        (topicPermissions.EditTags || topicPermissions.EditAll) && !deleted,
+      editDescriptionPermission:
+        (topicPermissions.EditDescription || topicPermissions.EditAll) &&
+        !deleted,
+      editCustomAttributePermission:
+        (topicPermissions.EditAll || topicPermissions.EditCustomFields) &&
+        !deleted,
+      editAllPermission: topicPermissions.EditAll && !deleted,
+      editLineagePermission:
+        (topicPermissions.EditAll || topicPermissions.EditLineage) && !deleted,
+      viewSampleDataPermission:
+        topicPermissions.ViewAll || topicPermissions.ViewSampleData,
+      viewAllPermission: topicPermissions.ViewAll,
+    }),
+    [topicPermissions, deleted]
+  );
+
   useEffect(() => {
-    if (topicPermissions.ViewAll || topicPermissions.ViewBasic) {
-      getEntityFeedCount();
-    }
+    getEntityFeedCount();
   }, [topicPermissions, decodedTopicFQN]);
 
   const tabs = useMemo(
@@ -275,12 +304,10 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                   entityFqn={decodedTopicFQN}
                   entityName={entityName}
                   entityType={EntityType.TOPIC}
-                  hasEditAccess={
-                    topicPermissions.EditAll || topicPermissions.EditDescription
-                  }
+                  hasEditAccess={editDescriptionPermission}
                   isEdit={isEdit}
-                  isReadOnly={topicDetails.deleted}
                   owner={topicDetails.owner}
+                  showActions={!deleted}
                   onCancel={onCancel}
                   onDescriptionEdit={onDescriptionEdit}
                   onDescriptionUpdate={onDescriptionUpdate}
@@ -288,12 +315,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                 />
                 <TopicSchemaFields
                   entityFqn={decodedTopicFQN}
-                  hasDescriptionEditAccess={
-                    topicPermissions.EditAll || topicPermissions.EditDescription
-                  }
-                  hasTagEditAccess={
-                    topicPermissions.EditAll || topicPermissions.EditTags
-                  }
+                  hasDescriptionEditAccess={editDescriptionPermission}
+                  hasTagEditAccess={editTagsPermission}
                   isReadOnly={Boolean(topicDetails.deleted)}
                   messageSchema={topicDetails.messageSchema}
                   onThreadLinkSelect={onThreadLinkSelect}
@@ -309,20 +332,14 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                 <DataProductsContainer
                   activeDomain={topicDetails?.domain}
                   dataProducts={topicDetails?.dataProducts ?? []}
-                  hasPermission={
-                    topicPermissions.EditAll && !topicDetails.deleted
-                  }
-                  onSave={onDataProductsUpdate}
+                  hasPermission={false}
                 />
 
                 <TagsContainerV2
                   displayType={DisplayType.READ_MORE}
                   entityFqn={decodedTopicFQN}
                   entityType={EntityType.TOPIC}
-                  permission={
-                    (topicPermissions.EditAll || topicPermissions.EditTags) &&
-                    !topicDetails.deleted
-                  }
+                  permission={editTagsPermission}
                   selectedTags={topicTags}
                   tagType={TagSource.Classification}
                   onSelectionChange={handleTagSelection}
@@ -333,10 +350,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                   displayType={DisplayType.READ_MORE}
                   entityFqn={decodedTopicFQN}
                   entityType={EntityType.TOPIC}
-                  permission={
-                    (topicPermissions.EditAll || topicPermissions.EditTags) &&
-                    !topicDetails.deleted
-                  }
+                  permission={editTagsPermission}
                   selectedTags={topicTags}
                   tagType={TagSource.Glossary}
                   onSelectionChange={handleTagSelection}
@@ -374,9 +388,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           />
         ),
         key: EntityTabs.SAMPLE_DATA,
-        children: !(
-          topicPermissions.ViewAll || topicPermissions.ViewSampleData
-        ) ? (
+        children: !viewSampleDataPermission ? (
           <div className="m-t-xlg">
             <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
           </div>
@@ -402,11 +414,10 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         key: EntityTabs.LINEAGE,
         children: (
           <EntityLineageComponent
+            deleted={topicDetails.deleted}
             entity={topicDetails}
             entityType={EntityType.TOPIC}
-            hasEditAccess={
-              topicPermissions.EditAll || topicPermissions.EditLineage
-            }
+            hasEditAccess={editLineagePermission}
           />
         ),
       },
@@ -422,10 +433,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           <CustomPropertyTable
             entityType={EntityType.TOPIC}
             handleExtensionUpdate={onExtensionUpdate}
-            hasEditAccess={
-              topicPermissions.EditAll || topicPermissions.EditCustomFields
-            }
-            hasPermission={topicPermissions.ViewAll}
+            hasEditAccess={editCustomAttributePermission}
+            hasPermission={viewAllPermission}
           />
         ),
       },
@@ -438,10 +447,9 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       topicTags,
       entityName,
       topicDetails,
-      topicPermissions,
       decodedTopicFQN,
-      topicPermissions,
       fetchTopic,
+      deleted,
       onCancel,
       onDescriptionEdit,
       getEntityFeedCount,
@@ -451,14 +459,22 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       onDescriptionUpdate,
       onDataProductsUpdate,
       handleSchemaFieldsUpdate,
+      editTagsPermission,
+      editDescriptionPermission,
+      editCustomAttributePermission,
+      editLineagePermission,
+      editAllPermission,
+      viewSampleDataPermission,
+      viewAllPermission,
     ]
   );
 
   return (
     <PageLayoutV1
       className="bg-white"
-      pageTitle="Table details"
-      title="Table details">
+      pageTitle={t('label.entity-detail-plural', {
+        entity: t('label.topic'),
+      })}>
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader

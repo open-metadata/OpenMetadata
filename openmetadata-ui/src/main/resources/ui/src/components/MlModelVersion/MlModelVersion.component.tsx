@@ -26,9 +26,9 @@ import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
-import DescriptionV1 from '../../components/common/description/DescriptionV1';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
+import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
 import DataAssetsVersionHeader from '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import SourceList from '../../components/MlModelDetail/SourceList.component';
@@ -49,6 +49,7 @@ import {
 import { getMlFeatureVersionData } from '../../utils/MlModelVersionUtils';
 import { getEncodedFqn } from '../../utils/StringsUtils';
 import { getFilterTags } from '../../utils/TableTags/TableTags.utils';
+import DataProductsContainer from '../DataProductsContainer/DataProductsContainer.component';
 import Loader from '../Loader/Loader';
 import { MlModelVersionProp } from './MlModelVersion.interface';
 
@@ -58,6 +59,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
   isVersionLoading,
   owner,
   domain,
+  dataProducts,
   tier,
   slashedMlModelName,
   versionList,
@@ -147,9 +149,9 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
               <Row gutter={[0, 16]}>
                 <Col span={24}>
                   <DescriptionV1
-                    isVersionView
                     description={description}
                     entityType={EntityType.PIPELINE}
+                    showActions={false}
                   />
                 </Col>
                 <Col span={24}>
@@ -285,6 +287,11 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
               data-testid="entity-right-panel"
               flex="220px">
               <Space className="w-full" direction="vertical" size="large">
+                <DataProductsContainer
+                  activeDomain={domain}
+                  dataProducts={dataProducts ?? []}
+                  hasPermission={false}
+                />
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
                     entityType={EntityType.MLMODEL}

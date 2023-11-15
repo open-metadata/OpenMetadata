@@ -15,7 +15,7 @@ import { DashboardDataModel } from '../../generated/entity/data/dashboardDataMod
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { VersionData } from '../../pages/EntityVersionPage/EntityVersionPage.component';
-import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
+import { TitleBreadcrumbProps } from '../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 
 export interface DataModelVersionProp {
   version: string;
@@ -23,6 +23,7 @@ export interface DataModelVersionProp {
   isVersionLoading: boolean;
   owner: DashboardDataModel['owner'];
   domain: DashboardDataModel['domain'];
+  dataProducts: DashboardDataModel['dataProducts'];
   tier: TagLabel;
   slashedDataModelName: TitleBreadcrumbProps['titleLinks'];
   versionList: EntityHistory;

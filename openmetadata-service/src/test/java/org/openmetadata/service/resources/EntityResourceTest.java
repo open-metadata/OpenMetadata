@@ -428,21 +428,21 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new QueryResourceTest().setupQuery(test);
 
     runWebhookTests = new Random().nextBoolean();
-    if (runWebhookTests) {
-      webhookCallbackResource.clearEvents();
-      EventSubscriptionResourceTest alertResourceTest = new EventSubscriptionResourceTest();
-      alertResourceTest.startWebhookSubscription();
-      alertResourceTest.startWebhookEntitySubscriptions(entityType);
-    }
+    // if (true) {
+    webhookCallbackResource.clearEvents();
+    EventSubscriptionResourceTest alertResourceTest = new EventSubscriptionResourceTest();
+    alertResourceTest.startWebhookSubscription();
+    alertResourceTest.startWebhookEntitySubscriptions(entityType);
+    // }
   }
 
   @AfterAll
   public void afterAllTests() throws Exception {
-    if (runWebhookTests) {
-      EventSubscriptionResourceTest alertResourceTest = new EventSubscriptionResourceTest();
-      alertResourceTest.validateWebhookEvents();
-      alertResourceTest.validateWebhookEntityEvents(entityType);
-    }
+    // if (true) {
+    EventSubscriptionResourceTest alertResourceTest = new EventSubscriptionResourceTest();
+    alertResourceTest.validateWebhookEvents();
+    alertResourceTest.validateWebhookEntityEvents(entityType);
+    // }
     delete_recursiveTest();
   }
 

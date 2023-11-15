@@ -36,6 +36,7 @@ import {
 import { EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { getPartialNameFromTableFQN } from './CommonUtils';
+import { getEntityName } from './EntityUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import { escapeESReservedCharacters } from './StringsUtils';
 import { getEntityLink } from './TableUtils';
@@ -188,7 +189,7 @@ export const getSuggestionElement = (
   const displayText =
     database && schema
       ? `${database}${FQN_SEPARATOR_CHAR}${schema}${FQN_SEPARATOR_CHAR}${name}`
-      : name;
+      : getEntityName(suggestion);
 
   const retn = (
     <Button
@@ -231,7 +232,7 @@ export const filterOptionsByIndex = (
     .slice(0, maxItemsPerType);
 
 export const getEntityTypeFromSearchIndex = (searchIndex: string) => {
-  const commonAssets: Record<string, string> = {
+  const commonAssets: Record<string, EntityType> = {
     [SearchIndex.TABLE]: EntityType.TABLE,
     [SearchIndex.PIPELINE]: EntityType.PIPELINE,
     [SearchIndex.DASHBOARD]: EntityType.DASHBOARD,
@@ -241,6 +242,7 @@ export const getEntityTypeFromSearchIndex = (searchIndex: string) => {
     [SearchIndex.STORED_PROCEDURE]: EntityType.STORED_PROCEDURE,
     [SearchIndex.DASHBOARD_DATA_MODEL]: EntityType.DASHBOARD_DATA_MODEL,
     [SearchIndex.SEARCH_INDEX]: EntityType.SEARCH_INDEX,
+    [SearchIndex.DATABASE_SCHEMA]: EntityType.DATABASE_SCHEMA,
     [SearchIndex.DATABASE_SERVICE]: EntityType.DATABASE_SERVICE,
     [SearchIndex.MESSAGING_SERVICE]: EntityType.MESSAGING_SERVICE,
     [SearchIndex.DASHBOARD_SERVICE]: EntityType.DASHBOARD_SERVICE,
@@ -249,6 +251,10 @@ export const getEntityTypeFromSearchIndex = (searchIndex: string) => {
     [SearchIndex.STORAGE_SERVICE]: EntityType.STORAGE_SERVICE,
     [SearchIndex.SEARCH_SERVICE]: EntityType.SEARCH_SERVICE,
     [SearchIndex.GLOSSARY]: EntityType.GLOSSARY,
+    [SearchIndex.TAG]: EntityType.TAG,
+    [SearchIndex.DATABASE]: EntityType.DATABASE,
+    [SearchIndex.DOMAIN]: EntityType.DOMAIN,
+    [SearchIndex.DATA_PRODUCT]: EntityType.DATA_PRODUCT,
   };
 
   return commonAssets[searchIndex] || null; // Return null if not found

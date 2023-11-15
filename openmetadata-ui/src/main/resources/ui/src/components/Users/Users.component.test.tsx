@@ -12,11 +12,13 @@
  */
 
 import {
+  findByRole,
   findByTestId,
   findByText,
   queryByTestId,
   render,
 } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import React, { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { mockTeamsData, mockUserData, mockUserRole } from './mocks/User.mocks';
@@ -66,7 +68,7 @@ jest.mock('./UsersProfile/UserProfileTeams/UserProfileTeams.component', () => {
   return jest.fn().mockReturnValue(<div>UserProfileTeams</div>);
 });
 
-jest.mock('../../components/searched-data/SearchedData', () => {
+jest.mock('../../components/SearchedData/SearchedData', () => {
   return jest.fn().mockReturnValue(<p>SearchedData</p>);
 });
 
@@ -110,7 +112,7 @@ jest.mock('../../rest/teamsAPI', () => ({
   getTeams: jest.fn().mockImplementation(() => Promise.resolve(mockTeamsData)),
 }));
 
-jest.mock('../containers/PageLayoutV1', () =>
+jest.mock('../PageLayoutV1/PageLayoutV1', () =>
   jest
     .fn()
     .mockImplementation(
@@ -132,7 +134,7 @@ jest.mock('../containers/PageLayoutV1', () =>
     )
 );
 
-jest.mock('../common/description/Description', () => {
+jest.mock('../common/EntityDescription/Description', () => {
   return jest.fn().mockReturnValue(<p>Description</p>);
 });
 const updateUserDetails = jest.fn();
@@ -151,7 +153,7 @@ jest.mock('../../rest/userAPI', () => ({
   checkValidImage: jest.fn().mockImplementation(() => Promise.resolve(true)),
 }));
 
-jest.mock('../containers/PageLayoutV1', () =>
+jest.mock('../PageLayoutV1/PageLayoutV1', () =>
   jest.fn().mockImplementation(({ children, leftPanel, rightPanel }) => (
     <div>
       {leftPanel}
@@ -174,7 +176,22 @@ describe('Test User Component', () => {
       container,
       'UserProfileDetails'
     );
-    const UserProfileImage = await findByText(container, 'UserProfileImage');
+
+    expect(UserProfileDetails).toBeInTheDocument();
+  });
+
+  it('User profile should render when open collapsible header', async () => {
+    const { container } = render(
+      <Users userData={mockUserData} {...mockProp} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const collapsibleButton = await findByRole(container, 'img');
+
+    userEvent.click(collapsibleButton);
+
     const UserProfileInheritedRoles = await findByText(
       container,
       'UserProfileInheritedRoles'
@@ -183,8 +200,6 @@ describe('Test User Component', () => {
 
     const UserProfileTeams = await findByText(container, 'UserProfileTeams');
 
-    expect(UserProfileDetails).toBeInTheDocument();
-    expect(UserProfileImage).toBeInTheDocument();
     expect(UserProfileRoles).toBeInTheDocument();
     expect(UserProfileTeams).toBeInTheDocument();
     expect(UserProfileInheritedRoles).toBeInTheDocument();
@@ -212,7 +227,7 @@ describe('Test User Component', () => {
       }
     );
 
-    const datasetContainer = await findByTestId(container, 'table-container');
+    const datasetContainer = await findByTestId(container, 'user-profile');
 
     expect(datasetContainer).toBeInTheDocument();
   });

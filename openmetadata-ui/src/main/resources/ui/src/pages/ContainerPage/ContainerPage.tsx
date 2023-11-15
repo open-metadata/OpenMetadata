@@ -14,31 +14,31 @@ import { Col, Row, Space, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, omitBy, toString } from 'lodash';
-import { observer } from 'mobx-react';
 import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import AppState from '../../AppState';
 import { useActivityFeedProvider } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
+import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
+import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
-import DescriptionV1 from '../../components/common/description/DescriptionV1';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import ContainerChildren from '../../components/ContainerDetail/ContainerChildren/ContainerChildren';
 import ContainerDataModel from '../../components/ContainerDetail/ContainerDataModel/ContainerDataModel';
-import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import DataProductsContainer from '../../components/DataProductsContainer/DataProductsContainer.component';
 import EntityLineageComponent from '../../components/Entity/EntityLineage/EntityLineage.component';
 import Loader from '../../components/Loader/Loader';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
 } from '../../components/PermissionProvider/PermissionProvider.interface';
-import { withActivityFeed } from '../../components/router/withActivityFeed';
 import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
 import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
@@ -66,7 +66,6 @@ import {
 } from '../../rest/storageAPI';
 import {
   addToRecentViewed,
-  getCurrentUserId,
   getEntityMissingError,
   getFeedCounts,
   sortTagsCaseInsensitive,
@@ -82,6 +81,7 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 const ContainerPage = () => {
   const history = useHistory();
   const { t } = useTranslation();
+  const { currentUser } = useAuthContext();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const { fqn: containerName, tab } =
@@ -117,7 +117,7 @@ const ContainerPage = () => {
     try {
       const response = await getContainerByName(
         containerFQN,
-        'parent,dataModel,owner,tags,followers,extension,domain,votes',
+        'parent,dataModel,owner,tags,followers,extension,domain,dataProducts,votes',
         Include.All
       );
       addToRecentViewed({
@@ -130,7 +130,7 @@ const ContainerPage = () => {
       });
       setContainerData({
         ...response,
-        tags: sortTagsCaseInsensitive(response.tags || []),
+        tags: sortTagsCaseInsensitive(response.tags ?? []),
       });
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -172,27 +172,6 @@ const ContainerPage = () => {
   };
 
   const {
-    hasViewPermission,
-    hasEditDescriptionPermission,
-    hasEditTagsPermission,
-    hasEditCustomFieldsPermission,
-    hasEditLineagePermission,
-  } = useMemo(() => {
-    return {
-      hasViewPermission:
-        containerPermissions.ViewAll || containerPermissions.ViewBasic,
-      hasEditDescriptionPermission:
-        containerPermissions.EditAll || containerPermissions.EditDescription,
-      hasEditTagsPermission:
-        containerPermissions.EditAll || containerPermissions.EditTags,
-      hasEditCustomFieldsPermission:
-        containerPermissions.EditAll || containerPermissions.EditCustomFields,
-      hasEditLineagePermission:
-        containerPermissions.EditAll || containerPermissions.EditLineage,
-    };
-  }, [containerPermissions]);
-
-  const {
     deleted,
     owner,
     description,
@@ -212,20 +191,44 @@ const ContainerPage = () => {
       entityId: containerData?.id,
       entityName: getEntityName(containerData),
       isUserFollowing: containerData?.followers?.some(
-        ({ id }: { id: string }) => id === getCurrentUserId()
+        ({ id }: { id: string }) => id === currentUser?.id
       ),
       followers: containerData?.followers ?? [],
-      size: containerData?.size || 0,
-      numberOfObjects: containerData?.numberOfObjects || 0,
+      size: containerData?.size ?? 0,
+      numberOfObjects: containerData?.numberOfObjects ?? 0,
       partitioned: containerData?.dataModel?.isPartitioned,
       entityFqn: containerData?.fullyQualifiedName ?? '',
     };
-  }, [containerData]);
+  }, [containerData, currentUser]);
 
-  // get current user details
-  const currentUser = useMemo(
-    () => AppState.getCurrentUserDetails(),
-    [AppState.userDetails, AppState.nonSecureUserDetails]
+  const {
+    editTagsPermission,
+    editDescriptionPermission,
+    editCustomAttributePermission,
+    editLineagePermission,
+    viewBasicPermission,
+    viewAllPermission,
+  } = useMemo(
+    () => ({
+      editTagsPermission:
+        (containerPermissions.EditTags || containerPermissions.EditAll) &&
+        !deleted,
+      editDescriptionPermission:
+        (containerPermissions.EditDescription ||
+          containerPermissions.EditAll) &&
+        !deleted,
+      editCustomAttributePermission:
+        (containerPermissions.EditAll ||
+          containerPermissions.EditCustomFields) &&
+        !deleted,
+      editLineagePermission:
+        (containerPermissions.EditAll || containerPermissions.EditLineage) &&
+        !deleted,
+      viewBasicPermission:
+        containerPermissions.ViewAll || containerPermissions.ViewBasic,
+      viewAllPermission: containerPermissions.ViewAll,
+    }),
+    [containerPermissions, deleted]
   );
 
   const isDataModelEmpty = useMemo(
@@ -307,7 +310,7 @@ const ContainerPage = () => {
 
         setContainerData((prev) => ({
           ...(prev as Container),
-          followers: (containerData?.followers || []).filter(
+          followers: (containerData?.followers ?? []).filter(
             (follower) => follower.id !== oldValue[0].id
           ),
         }));
@@ -331,7 +334,7 @@ const ContainerPage = () => {
       try {
         const { owner: newOwner, version } = await handleUpdateContainerData({
           ...(containerData as Container),
-          owner: updatedOwner ? updatedOwner : undefined,
+          owner: updatedOwner,
         });
 
         setContainerData((prev) => ({
@@ -378,7 +381,7 @@ const ContainerPage = () => {
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) =>
-      isSoftDelete ? handleToggleDelete : history.push('/'),
+      isSoftDelete ? handleToggleDelete() : history.push('/'),
     []
   );
 
@@ -504,10 +507,10 @@ const ContainerPage = () => {
                   entityFqn={decodedContainerName}
                   entityName={entityName}
                   entityType={EntityType.CONTAINER}
-                  hasEditAccess={hasEditDescriptionPermission}
+                  hasEditAccess={editDescriptionPermission}
                   isEdit={isEditDescription}
-                  isReadOnly={deleted}
                   owner={owner}
+                  showActions={!deleted}
                   onCancel={() => setIsEditDescription(false)}
                   onDescriptionEdit={() => setIsEditDescription(true)}
                   onDescriptionUpdate={handleUpdateDescription}
@@ -524,8 +527,8 @@ const ContainerPage = () => {
                   <ContainerDataModel
                     dataModel={containerData?.dataModel}
                     entityFqn={decodedContainerName}
-                    hasDescriptionEditAccess={hasEditDescriptionPermission}
-                    hasTagEditAccess={hasEditTagsPermission}
+                    hasDescriptionEditAccess={editDescriptionPermission}
+                    hasTagEditAccess={editTagsPermission}
                     isReadOnly={Boolean(deleted)}
                     onThreadLinkSelect={onThreadLinkSelect}
                     onUpdate={handleUpdateDataModel}
@@ -538,12 +541,17 @@ const ContainerPage = () => {
               data-testid="entity-right-panel"
               flex="320px">
               <Space className="w-full" direction="vertical" size="large">
+                <DataProductsContainer
+                  activeDomain={containerData?.domain}
+                  dataProducts={containerData?.dataProducts ?? []}
+                  hasPermission={false}
+                />
                 <TagsContainerV2
                   displayType={DisplayType.READ_MORE}
                   entityFqn={decodedContainerName}
                   entityType={EntityType.CONTAINER}
                   permission={
-                    hasEditDescriptionPermission && !containerData?.deleted
+                    editDescriptionPermission && !containerData?.deleted
                   }
                   selectedTags={tags}
                   tagType={TagSource.Classification}
@@ -555,7 +563,7 @@ const ContainerPage = () => {
                   entityFqn={decodedContainerName}
                   entityType={EntityType.CONTAINER}
                   permission={
-                    hasEditDescriptionPermission && !containerData?.deleted
+                    editDescriptionPermission && !containerData?.deleted
                   }
                   selectedTags={tags}
                   tagType={TagSource.Glossary}
@@ -616,9 +624,10 @@ const ContainerPage = () => {
         key: EntityTabs.LINEAGE,
         children: (
           <EntityLineageComponent
+            deleted={deleted}
             entity={containerData}
             entityType={EntityType.CONTAINER}
-            hasEditAccess={hasEditLineagePermission}
+            hasEditAccess={editLineagePermission}
           />
         ),
       },
@@ -634,8 +643,8 @@ const ContainerPage = () => {
           <CustomPropertyTable
             entityType={EntityType.CONTAINER}
             handleExtensionUpdate={handleExtensionUpdate}
-            hasEditAccess={hasEditCustomFieldsPermission}
-            hasPermission={containerPermissions.ViewAll}
+            hasEditAccess={editCustomAttributePermission}
+            hasPermission={viewAllPermission}
           />
         ),
       },
@@ -647,11 +656,12 @@ const ContainerPage = () => {
       containerName,
       decodedContainerName,
       entityName,
-      hasEditDescriptionPermission,
-      hasEditTagsPermission,
+      editDescriptionPermission,
+      editTagsPermission,
       isEditDescription,
-      hasEditLineagePermission,
-      hasEditCustomFieldsPermission,
+      editLineagePermission,
+      editCustomAttributePermission,
+      viewAllPermission,
       deleted,
       owner,
       isChildrenLoading,
@@ -682,20 +692,20 @@ const ContainerPage = () => {
 
   // Effects
   useEffect(() => {
-    if (hasViewPermission) {
+    if (viewBasicPermission) {
       fetchContainerDetail(containerName);
     }
-  }, [containerName, hasViewPermission]);
+  }, [containerName, viewBasicPermission]);
 
   useEffect(() => {
     fetchResourcePermission(containerName);
   }, [containerName]);
 
   useEffect(() => {
-    if (hasViewPermission) {
+    if (viewBasicPermission) {
       getEntityFeedCount();
     }
-  }, [containerName, hasViewPermission]);
+  }, [containerName, viewBasicPermission]);
 
   // Rendering
   if (isLoading) {
@@ -710,7 +720,7 @@ const ContainerPage = () => {
     );
   }
 
-  if (!hasViewPermission) {
+  if (!viewBasicPermission) {
     return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
   }
 
@@ -721,8 +731,9 @@ const ContainerPage = () => {
   return (
     <PageLayoutV1
       className="bg-white"
-      pageTitle="Table details"
-      title="Table details">
+      pageTitle={t('label.entity-detail-plural', {
+        entity: t('label.container'),
+      })}>
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
@@ -770,4 +781,4 @@ const ContainerPage = () => {
   );
 };
 
-export default withActivityFeed(observer(ContainerPage));
+export default withActivityFeed(ContainerPage);

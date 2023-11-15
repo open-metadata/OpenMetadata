@@ -14,7 +14,6 @@
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy, toString } from 'lodash';
-import { observer } from 'mobx-react';
 import React, {
   FunctionComponent,
   useCallback,
@@ -23,7 +22,8 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/Loader/Loader';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import {
@@ -47,7 +47,6 @@ import {
 } from '../../rest/topicsAPI';
 import {
   addToRecentViewed,
-  getCurrentUserId,
   getEntityMissingError,
   sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
@@ -57,7 +56,8 @@ import { showErrorToast } from '../../utils/ToastUtils';
 
 const TopicDetailsPage: FunctionComponent = () => {
   const { t } = useTranslation();
-  const USERId = getCurrentUserId();
+  const { currentUser } = useAuthContext();
+  const USERId = currentUser?.id ?? '';
   const history = useHistory();
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
@@ -294,4 +294,4 @@ const TopicDetailsPage: FunctionComponent = () => {
   );
 };
 
-export default observer(TopicDetailsPage);
+export default TopicDetailsPage;

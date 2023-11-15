@@ -21,14 +21,12 @@ import { useHistory, useParams } from 'react-router-dom';
 import { useActivityFeedProvider } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
-import DescriptionV1 from '../../components/common/description/DescriptionV1';
-import PageLayoutV1 from '../../components/containers/PageLayoutV1';
+import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
+import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import EntityLineageComponent from '../../components/Entity/EntityLineage/EntityLineage.component';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
-import { withActivityFeed } from '../../components/router/withActivityFeed';
-import SchemaEditor from '../../components/schema-editor/SchemaEditor';
-import { SourceType } from '../../components/searched-data/SearchedData.interface';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
@@ -47,6 +45,9 @@ import { getDecodedFqn } from '../../utils/StringsUtils';
 import { getTagsWithoutTier } from '../../utils/TableUtils';
 import { createTagObject } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import DataProductsContainer from '../DataProductsContainer/DataProductsContainer.component';
+import SchemaEditor from '../SchemaEditor/SchemaEditor';
+import { SourceType } from '../SearchedData/SearchedData.interface';
 import { DataModelDetailsProps } from './DataModelDetails.interface';
 import ModelTab from './ModelTab/ModelTab.component';
 
@@ -81,21 +82,6 @@ const DataModelDetails = ({
     [dashboardDataModelFQN]
   );
 
-  const {
-    hasEditDescriptionPermission,
-    hasEditTagsPermission,
-    hasEditLineagePermission,
-  } = useMemo(() => {
-    return {
-      hasEditDescriptionPermission:
-        dataModelPermissions.EditAll || dataModelPermissions.EditDescription,
-      hasEditTagsPermission:
-        dataModelPermissions.EditAll || dataModelPermissions.EditTags,
-      hasEditLineagePermission:
-        dataModelPermissions.EditAll || dataModelPermissions.EditLineage,
-    };
-  }, [dataModelPermissions]);
-
   const { deleted, owner, description, version, entityName, tags } =
     useMemo(() => {
       return {
@@ -104,7 +90,7 @@ const DataModelDetails = ({
         description: dataModelData?.description,
         version: dataModelData?.version,
         entityName: getEntityName(dataModelData),
-        tags: getTagsWithoutTier(dataModelData.tags || []),
+        tags: getTagsWithoutTier(dataModelData.tags ?? []),
       };
     }, [dataModelData]);
 
@@ -189,9 +175,28 @@ const DataModelDetails = ({
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) =>
-      isSoftDelete ? handleToggleDelete : history.push('/'),
+      isSoftDelete ? handleToggleDelete() : history.push('/'),
     []
   );
+
+  const {
+    editDescriptionPermission,
+    editTagsPermission,
+    editLineagePermission,
+  } = useMemo(() => {
+    return {
+      editDescriptionPermission:
+        (dataModelPermissions.EditAll ||
+          dataModelPermissions.EditDescription) &&
+        !deleted,
+      editTagsPermission:
+        (dataModelPermissions.EditAll || dataModelPermissions.EditTags) &&
+        !deleted,
+      editLineagePermission:
+        (dataModelPermissions.EditAll || dataModelPermissions.EditLineage) &&
+        !deleted,
+    };
+  }, [dataModelPermissions, deleted]);
 
   const modelComponent = useMemo(() => {
     return (
@@ -203,10 +208,10 @@ const DataModelDetails = ({
               entityFqn={decodedDataModelFQN}
               entityName={entityName}
               entityType={EntityType.DASHBOARD_DATA_MODEL}
-              hasEditAccess={hasEditDescriptionPermission}
+              hasEditAccess={editDescriptionPermission}
               isEdit={isEditDescription}
-              isReadOnly={deleted}
               owner={owner}
+              showActions={!deleted}
               onCancel={() => setIsEditDescription(false)}
               onDescriptionEdit={() => setIsEditDescription(true)}
               onDescriptionUpdate={handleUpdateDescription}
@@ -215,8 +220,8 @@ const DataModelDetails = ({
             <ModelTab
               data={dataModelData?.columns || []}
               entityFqn={decodedDataModelFQN}
-              hasEditDescriptionPermission={hasEditDescriptionPermission}
-              hasEditTagsPermission={hasEditTagsPermission}
+              hasEditDescriptionPermission={editDescriptionPermission}
+              hasEditTagsPermission={editTagsPermission}
               isReadOnly={Boolean(deleted)}
               onThreadLinkSelect={onThreadLinkSelect}
               onUpdate={handleColumnUpdateDataModel}
@@ -228,11 +233,16 @@ const DataModelDetails = ({
           data-testid="entity-right-panel"
           flex="320px">
           <Space className="w-full" direction="vertical" size="large">
+            <DataProductsContainer
+              activeDomain={dataModelData?.domain}
+              dataProducts={dataModelData?.dataProducts ?? []}
+              hasPermission={false}
+            />
             <TagsContainerV2
               displayType={DisplayType.READ_MORE}
               entityFqn={decodedDataModelFQN}
               entityType={EntityType.DASHBOARD_DATA_MODEL}
-              permission={hasEditTagsPermission && !dataModelData.deleted}
+              permission={editTagsPermission}
               selectedTags={tags}
               tagType={TagSource.Classification}
               onSelectionChange={handleTagSelection}
@@ -242,7 +252,7 @@ const DataModelDetails = ({
               displayType={DisplayType.READ_MORE}
               entityFqn={decodedDataModelFQN}
               entityType={EntityType.DASHBOARD_DATA_MODEL}
-              permission={hasEditTagsPermission && !dataModelData.deleted}
+              permission={editTagsPermission}
               selectedTags={tags}
               tagType={TagSource.Glossary}
               onSelectionChange={handleTagSelection}
@@ -257,9 +267,9 @@ const DataModelDetails = ({
     dataModelData,
     description,
     dashboardDataModelFQN,
-    hasEditTagsPermission,
+    editTagsPermission,
     deleted,
-    hasEditDescriptionPermission,
+    editDescriptionPermission,
     isEditDescription,
     entityName,
     handleTagSelection,
@@ -342,19 +352,27 @@ const DataModelDetails = ({
             deleted={deleted}
             entity={dataModelData as SourceType}
             entityType={EntityType.DASHBOARD_DATA_MODEL}
-            hasEditAccess={hasEditLineagePermission}
+            hasEditAccess={editLineagePermission}
           />
         ),
       },
     ];
 
     return allTabs;
-  }, [feedCount, dataModelData?.sql, modelComponent]);
+  }, [
+    feedCount,
+    dataModelData?.sql,
+    modelComponent,
+    deleted,
+    editLineagePermission,
+  ]);
 
   return (
     <PageLayoutV1
       className="bg-white"
-      pageTitle="Data Model Details"
+      pageTitle={t('label.entity-detail-plural', {
+        entity: t('label.data-model'),
+      })}
       title="Data Model Details">
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>

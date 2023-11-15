@@ -59,6 +59,7 @@ export enum EntityType {
   PAGE = 'Page',
   knowledgePanels = 'KnowLedgePanels',
   GOVERN = 'govern',
+  ALL = 'all',
 }
 
 export enum AssetsType {
@@ -69,12 +70,6 @@ export enum AssetsType {
   MLMODEL = 'mlmodel',
   DASHBOARD_DATA_MODEL = 'dashboardDataModel',
   STORED_PROCEDURE = 'storedProcedure',
-}
-
-export enum ChangeType {
-  ADDED = 'Added',
-  UPDATED = 'Updated',
-  REMOVED = 'Removed',
 }
 
 export enum EntityLineageDirection {
@@ -129,29 +124,6 @@ export enum FqnPart {
   NestedColumn,
   Topic,
   SearchIndexField,
-}
-
-export enum EntityInfo {
-  OWNER = 'Owner',
-  TIER = 'Tier',
-  TYPE = 'Type',
-  COLUMNS = 'Columns',
-  ROWS = 'row-plural',
-  URL = 'Url',
-  ALGORITHM = 'Algorithm',
-  TARGET = 'Target',
-  SERVER = 'Server',
-  DASHBOARD = 'Dashboard',
-  PARTITIONS = 'Partitions',
-  PARTITIONED = 'partitioned',
-  REPLICATION_FACTOR = 'Replication Factor',
-  RETENTION_SIZE = 'Retention Size',
-  CLEAN_UP_POLICIES = 'Clean-up Policies',
-  MAX_MESSAGE_SIZE = 'Max Message Size',
-  SIZE = 'size',
-  NUMBER_OF_OBJECTS = 'number-of-object-plural',
-  DATA_MODEL_TYPE = 'data-model-type',
-  QUERIES = 'queries',
 }
 
 export enum EntityTabs {

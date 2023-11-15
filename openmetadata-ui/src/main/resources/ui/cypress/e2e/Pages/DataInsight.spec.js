@@ -18,12 +18,11 @@ import {
   getEpochMillisForFutureDays,
 } from '../../../src/utils/date-time/DateTimeUtils';
 import {
-  BASE_WAIT_TIME,
   descriptionBox,
   interceptURL,
-  RETRY_TIMES,
   verifyResponseStatusCode,
 } from '../../common/common';
+import { checkDataInsightSuccessStatus } from '../../common/DataInsightUtils';
 
 const KPI_DATA = [
   {
@@ -54,28 +53,6 @@ const deleteKpiRequest = () => {
         });
       });
       cy.reload();
-    }
-  });
-};
-
-const checkSuccessStatus = (count = 1, timer = BASE_WAIT_TIME) => {
-  cy.get('[data-testid="app-run-history-table"]')
-    .find('[data-testid="pipeline-status"]')
-    .as('checkRun');
-  // the latest run should be success
-  cy.get('@checkRun').then(($ingestionStatus) => {
-    if (
-      $ingestionStatus.text() !== 'Success' &&
-      $ingestionStatus.text() !== 'Failed' &&
-      count <= RETRY_TIMES
-    ) {
-      // retry after waiting with log1 method [20s,40s,80s,160s,320s]
-      cy.wait(timer);
-      timer *= 2;
-      cy.reload();
-      checkSuccessStatus(++count, timer * 2);
-    } else {
-      cy.get('@checkRun').should('have.text', 'Success');
     }
   });
 };
@@ -139,7 +116,7 @@ describe('Data Insight feature', () => {
     interceptURL('GET', '/api/v1/apps?limit=*', 'apps');
     interceptURL(
       'GET',
-      '/api/v1/apps/name/DataInsightsApplication?fields=owner,pipelines',
+      '/api/v1/apps/name/DataInsightsApplication?*',
       'dataInsightsApplication'
     );
     interceptURL(
@@ -156,7 +133,7 @@ describe('Data Insight feature', () => {
     cy.get('[data-menu-id*="integrations.apps"]').scrollIntoView().click();
     verifyResponseStatusCode('@apps', 200);
     cy.get(
-      '[data-testid="data-insights-card"] [data-testid="config-btn"]'
+      '[data-testid="data-insights-application-card"] [data-testid="config-btn"]'
     ).click();
     verifyResponseStatusCode('@dataInsightsApplication', 200);
     cy.get('[data-testid="deploy-button"]').click();
@@ -166,7 +143,7 @@ describe('Data Insight feature', () => {
     cy.get('[data-testid="run-now-button"]').click();
     verifyResponseStatusCode('@triggerPipeline', 200);
     cy.reload();
-    checkSuccessStatus();
+    checkDataInsightSuccessStatus();
   });
 
   it('Verifying Data assets tab', () => {

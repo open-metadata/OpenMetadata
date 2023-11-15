@@ -45,9 +45,9 @@ import {
 } from '../../../utils/date-time/DateTimeUtils';
 import { getLogsViewerPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
-import NextPrevious from '../../common/next-previous/NextPrevious';
-import { PagingHandlerParams } from '../../common/next-previous/NextPrevious.interface';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NextPrevious from '../../common/NextPrevious/NextPrevious';
+import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import StatusBadge from '../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../common/StatusBadge/StatusBadge.interface';
 import Table from '../../common/Table/Table';
@@ -77,6 +77,7 @@ const AppRunsHistory = forwardRef(
       handlePagingChange,
       handlePageChange,
       handlePageSizeChange,
+      showPagination: paginationVisible,
     } = usePaging();
 
     const history = useHistory();
@@ -211,21 +212,25 @@ const AppRunsHistory = forwardRef(
 
           if (isExternalApp) {
             const currentTime = Date.now();
-            const oneDayAgo = getEpochMillisForPastDays(1);
+            // past 30 days
+            const startDay = getEpochMillisForPastDays(30);
 
             const { data } = await getApplicationRuns(fqn, {
-              startTs: oneDayAgo,
+              startTs: startDay,
               endTs: currentTime,
             });
 
             setAppRunsHistoryData(
-              data.map((item) => ({
-                ...item,
-                status: getStatusFromPipelineState(
-                  (item as PipelineStatus).pipelineState ?? PipelineState.Failed
-                ),
-                id: (item as PipelineStatus).runId ?? '',
-              }))
+              data
+                .map((item) => ({
+                  ...item,
+                  status: getStatusFromPipelineState(
+                    (item as PipelineStatus).pipelineState ??
+                      PipelineState.Failed
+                  ),
+                  id: (item as PipelineStatus).runId ?? '',
+                }))
+                .slice(0, maxRecords)
             );
           } else {
             const { data, paging } = await getApplicationRuns(fqn, {
@@ -247,7 +252,7 @@ const AppRunsHistory = forwardRef(
           setIsLoading(false);
         }
       },
-      [fqn, pageSize, maxRecords]
+      [fqn, pageSize, maxRecords, appData]
     );
 
     const handleAppHistoryPageChange = ({
@@ -255,7 +260,7 @@ const AppRunsHistory = forwardRef(
     }: PagingHandlerParams) => {
       handlePageChange(currentPage);
       fetchAppHistory({
-        offset: currentPage * pageSize,
+        offset: (currentPage - 1) * pageSize,
       } as Paging);
     };
 
@@ -267,10 +272,10 @@ const AppRunsHistory = forwardRef(
 
     useEffect(() => {
       fetchAppHistory();
-    }, [fqn]);
+    }, [fqn, pageSize]);
 
     return (
-      <Row>
+      <Row gutter={[16, 16]}>
         <Col span={24}>
           <Table
             bordered
@@ -292,18 +297,16 @@ const AppRunsHistory = forwardRef(
             size="small"
           />
         </Col>
-        <Col span={20}>
-          {paging.total > pageSize && showPagination && (
-            <div className="p-y-md">
-              <NextPrevious
-                isNumberBased
-                currentPage={currentPage}
-                pageSize={pageSize}
-                paging={paging}
-                pagingHandler={handleAppHistoryPageChange}
-                onShowSizeChange={handlePageSizeChange}
-              />
-            </div>
+        <Col span={24}>
+          {showPagination && paginationVisible && (
+            <NextPrevious
+              isNumberBased
+              currentPage={currentPage}
+              pageSize={pageSize}
+              paging={paging}
+              pagingHandler={handleAppHistoryPageChange}
+              onShowSizeChange={handlePageSizeChange}
+            />
           )}
         </Col>
       </Row>

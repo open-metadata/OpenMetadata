@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ExploreSearchIndex } from '../components/Explore/explore.interface';
+import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
 import { SortingField } from '../components/Explore/SortingDropDown';
 import { SearchIndex } from '../enums/search.enum';
 import i18n from '../utils/i18next/LocalUtil';

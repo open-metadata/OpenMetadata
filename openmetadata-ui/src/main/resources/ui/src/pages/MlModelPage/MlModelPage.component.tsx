@@ -14,11 +14,11 @@
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isNil, isUndefined, omitBy, toString } from 'lodash';
-import { observer } from 'mobx-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/Loader/Loader';
 import MlModelDetailComponent from '../../components/MlModelDetail/MlModelDetail.component';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
@@ -39,7 +39,6 @@ import {
 } from '../../rest/mlModelAPI';
 import {
   addToRecentViewed,
-  getCurrentUserId,
   getEntityMissingError,
   sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
@@ -50,11 +49,12 @@ import { showErrorToast } from '../../utils/ToastUtils';
 
 const MlModelPage = () => {
   const { t } = useTranslation();
+  const { currentUser } = useAuthContext();
   const history = useHistory();
   const { fqn: mlModelFqn } = useParams<{ fqn: string }>();
   const [mlModelDetail, setMlModelDetail] = useState<Mlmodel>({} as Mlmodel);
   const [isDetailLoading, setIsDetailLoading] = useState<boolean>(false);
-  const USERId = getCurrentUserId();
+  const USERId = currentUser?.id ?? '';
 
   const [mlModelPermissions, setPipelinePermissions] = useState(
     DEFAULT_ENTITY_PERMISSION
@@ -336,4 +336,4 @@ const MlModelPage = () => {
   );
 };
 
-export default observer(MlModelPage);
+export default MlModelPage;

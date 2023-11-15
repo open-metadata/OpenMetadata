@@ -127,6 +127,14 @@ describe('DataConsumer Edit policy should work properly', () => {
       CREDENTIALS.lastName
     ).then((id) => {
       CREDENTIALS.id = id;
+
+      cy.clickOutside();
+
+      // click the collapse button to open the other details
+      cy.get(
+        '[data-testid="user-profile"] .ant-collapse-expand-icon > .anticon > svg'
+      ).click();
+
       cy.get(
         '[data-testid="user-profile"] [data-testid="user-profile-inherited-roles"]'
       ).should('contain', policy);
@@ -139,7 +147,11 @@ describe('DataConsumer Edit policy should work properly', () => {
     cy.url().should('eq', `${BASE_URL}/my-data`);
 
     Object.values(ENTITIES).forEach((entity) => {
-      visitEntityDetailsPage(entity.term, entity.serviceName, entity.entity);
+      visitEntityDetailsPage({
+        term: entity.term,
+        serviceName: entity.serviceName,
+        entity: entity.entity,
+      });
       // Check Edit description
       cy.get('[data-testid="edit-description"]')
         .should('be.visible')
@@ -164,11 +176,11 @@ describe('DataConsumer Edit policy should work properly', () => {
     });
 
     // Check if tags is editable for table
-    visitEntityDetailsPage(
-      ENTITIES.table.term,
-      ENTITIES.table.serviceName,
-      ENTITIES.table.entity
-    );
+    visitEntityDetailsPage({
+      term: ENTITIES.table.term,
+      serviceName: ENTITIES.table.serviceName,
+      entity: ENTITIES.table.entity,
+    });
 
     cy.get('[data-testid="add-tag"]')
       .should('be.visible')
@@ -178,11 +190,12 @@ describe('DataConsumer Edit policy should work properly', () => {
     cy.get('[data-testid="tag-selector"]').should('be.visible');
 
     // Check if tags is editable for dashboard
-    visitEntityDetailsPage(
-      ENTITIES.dashboard.term,
-      ENTITIES.dashboard.serviceName,
-      ENTITIES.dashboard.entity
-    );
+
+    visitEntityDetailsPage({
+      term: ENTITIES.dashboard.term,
+      serviceName: ENTITIES.dashboard.serviceName,
+      entity: ENTITIES.dashboard.entity,
+    });
 
     cy.get('[data-testid="add-tag"]')
       .should('be.visible')

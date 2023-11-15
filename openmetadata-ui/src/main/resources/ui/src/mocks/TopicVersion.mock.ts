@@ -93,6 +93,7 @@ export const topicVersionMockProps: TopicVersionProp = {
   isVersionLoading: false,
   owner: mockOwner,
   domain: mockDomain,
+  dataProducts: [],
   tier: mockTier,
   slashedTopicName: [],
   versionList: mockVersionList,
