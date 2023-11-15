@@ -9,7 +9,7 @@ slug: /connectors/ingestion/workflows/profiler/external-workflow
 
 Note that this requires OpenMetadata 1.2.1 or higher.
 
-{% note %}
+{% /note %}
 
 Consider a use case where you have a large database source with multiple databases and schemas which are maintained by 
 different teams within your organization. You have created multiple database services within OpenMetadata depending on 
