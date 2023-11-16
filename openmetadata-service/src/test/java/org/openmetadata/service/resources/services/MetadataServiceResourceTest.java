@@ -231,10 +231,13 @@ public class MetadataServiceResourceTest extends EntityResourceTest<MetadataServ
 
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) {
+    if (expected == actual) {
+      return;
+    }
     if ("connection".equals(fieldName)) {
       assertTrue(((String) actual).contains("-encrypted-value"));
     } else {
-      super.assertCommonFieldChange(fieldName, expected, actual);
+      assertCommonFieldChange(fieldName, expected, actual);
     }
   }
 

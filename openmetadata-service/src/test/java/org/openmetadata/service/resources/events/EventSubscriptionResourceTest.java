@@ -42,6 +42,7 @@ import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.events.subscription.EventSubscriptionResource;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -542,7 +543,16 @@ public class EventSubscriptionResourceTest extends EntityResourceTest<EventSubsc
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) {}
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
+    if (expected == actual) {
+      return;
+    }
+    if (fieldName.equals("subscriptionConfig") || fieldName.equals("filteringRules")) {
+      assertEquals(JsonUtils.pojoToJson(expected), actual);
+    } else {
+      assertCommonFieldChange(fieldName, expected, actual);
+    }
+  }
 
   public Webhook getWebhook(String uri) {
     return new Webhook().withEndpoint(URI.create(uri)).withSecretKey("webhookTest");

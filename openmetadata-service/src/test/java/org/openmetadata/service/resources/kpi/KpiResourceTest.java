@@ -40,6 +40,7 @@ import org.openmetadata.schema.type.DataReportIndex;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.datainsight.DataInsightChartResourceTest;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
@@ -106,7 +107,7 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
     KpiTarget newTarget = new KpiTarget().withName(KPI_TARGET.getName()).withValue("newValue");
     create.withTargetDefinition(List.of(newTarget));
     ChangeDescription change = getChangeDescription(createdKpi.getVersion());
-    fieldUpdated(change, "targetDefinition", KPI_TARGET, newTarget);
+    fieldUpdated(change, "targetDefinition", List.of(KPI_TARGET), create.getTargetDefinition());
 
     createdKpi = updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, TestUtils.UpdateType.MINOR_UPDATE, change);
     createdKpi = getEntity(createdKpi.getId(), KpiResource.FIELDS, ADMIN_AUTH_HEADERS);
@@ -268,7 +269,13 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
 
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) {
-    if (expected == actual) {}
-    // TODO fix this
+    if (expected == actual) {
+      return;
+    }
+    if (fieldName.equals("targetDefinition")) {
+      assertEquals(JsonUtils.pojoToJson(expected), actual);
+    } else {
+      assertCommonFieldChange(fieldName, expected, actual);
+    }
   }
 }

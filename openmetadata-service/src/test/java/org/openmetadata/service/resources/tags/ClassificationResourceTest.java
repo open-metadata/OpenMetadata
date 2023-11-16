@@ -125,9 +125,6 @@ public class ClassificationResourceTest extends EntityResourceTest<Classificatio
 
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) {
-    if (expected == actual) {
-      return;
-    }
     assertCommonFieldChange(fieldName, expected, actual);
   }
 

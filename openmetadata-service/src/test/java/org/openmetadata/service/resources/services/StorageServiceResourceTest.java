@@ -179,7 +179,7 @@ public class StorageServiceResourceTest extends ServiceResourceTest<StorageServi
     if (fieldName.equals("connection")) {
       assertTrue(((String) actual).contains("-encrypted-value"));
     } else {
-      super.assertCommonFieldChange(fieldName, expected, actual);
+      assertCommonFieldChange(fieldName, expected, actual);
     }
   }
 
