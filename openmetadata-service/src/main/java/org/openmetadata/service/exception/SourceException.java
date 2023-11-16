@@ -19,4 +19,12 @@ public class SourceException extends IOException {
   public SourceException(String msg, Throwable throwable) {
     super(msg, throwable);
   }
+
+  public SourceException(Throwable throwable) {
+    super(throwable);
+  }
+
+  public SourceException(String msg) {
+    super(msg);
+  }
 }

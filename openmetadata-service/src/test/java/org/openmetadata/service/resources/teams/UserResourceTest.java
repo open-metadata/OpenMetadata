@@ -1289,7 +1289,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) {
-    if (expected == null && actual == null) {
+    if (expected == actual) {
       return;
     }
     switch (fieldName) {
@@ -1301,15 +1301,10 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
       case "teams":
       case "roles":
       case "personas":
-        @SuppressWarnings("unchecked")
-        List<EntityReference> expectedList = (List<EntityReference>) expected;
-        List<EntityReference> actualList = JsonUtils.readObjects(actual.toString(), EntityReference.class);
-        assertEntityReferences(expectedList, actualList);
+        assertEntityReferencesFieldChange(expected, actual);
         break;
       case "defaultPersona":
-        EntityReference expectedRef = (EntityReference) expected;
-        EntityReference actualRef = JsonUtils.readValue(actual.toString(), EntityReference.class);
-        assertEquals(expectedRef.getId(), actualRef.getId());
+        assertEntityReferenceFieldChange(expected, actual);
         break;
       default:
         assertCommonFieldChange(fieldName, expected, actual);

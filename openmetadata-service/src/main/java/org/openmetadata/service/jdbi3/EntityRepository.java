@@ -211,6 +211,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Getter protected final boolean supportsReviewers;
   @Getter protected final boolean supportsExperts;
   protected boolean quoteFqn = false; // Entity FQNS not hierarchical such user, teams, services need to be quoted
+  protected boolean renameAllowed = false; // Entity can be renamed
 
   /** Fields that can be updated during PATCH operation */
   @Getter private final Fields patchFields;
@@ -370,7 +371,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * stored in the original entity.
    */
   public void restorePatchAttributes(T original, T updated) {
-    /* Nothing to restore during PATCH */
+    updated.setId(original.getId());
+    updated.setName(renameAllowed ? updated.getName() : original.getName());
+    updated.setFullyQualifiedName(original.getFullyQualifiedName());
+    updated.setChangeDescription(original.getChangeDescription());
   }
 
   /** Set fullyQualifiedName of an entity */
@@ -610,7 +614,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           entities.add(withHref(uriInfo, entity));
         } catch (Exception e) {
           LOG.error("Failed in Set Fields for Entity with Json : {}", json);
-          errors.add(json);
+          errors.add(String.format("Error Message : %s , %n Entity Json : %s", e.getMessage(), json));
         }
       }
       currentOffset = currentOffset + limitParam;
@@ -1974,6 +1978,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
       if (origDomain == updatedDomain) {
         return;
       }
+      if (operation.isPut() && !nullOrEmpty(original.getDomain()) && updatedByBot()) {
+        // Revert change to non-empty domain if it is being updated by a bot
+        // This is to prevent bots from overwriting the domain. Domain need to be
+        // updated with a PATCH request
+        updated.setDomain(original.getDomain());
+        return;
+      }
+
       if ((operation.isPatch() || updatedDomain != null)
           && recordChange(FIELD_DOMAIN, origDomain, updatedDomain, true, entityReferenceMatch)) {
         if (origDomain != null) {

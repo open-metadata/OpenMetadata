@@ -1,5 +1,6 @@
 package org.openmetadata.service.resources.system;
 
+import freemarker.template.TemplateException;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
@@ -10,6 +11,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.io.IOException;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.ws.rs.Consumes;
@@ -38,6 +40,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/system")
@@ -121,6 +124,25 @@ public class SystemResource {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Settings settingName) {
     authorizer.authorizeAdmin(securityContext);
     return systemRepository.createOrUpdate(settingName);
+  }
+
+  @PUT
+  @Path("/email/test")
+  @Operation(
+      operationId = "sendTestEmail",
+      summary = "Sends a Test Email",
+      description = "Sends a Test Email with Provided Settings",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "EmailTest",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = String.class)))
+      })
+  public Response sendTestEmail(@Context UriInfo uriInfo, @Context SecurityContext securityContext, String email)
+      throws TemplateException, IOException {
+    authorizer.authorizeAdmin(securityContext);
+    EmailUtil.sendTestEmail(email);
+    return Response.status(Response.Status.OK).entity("Test Email Sent Successfully.").build();
   }
 
   @PATCH

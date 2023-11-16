@@ -97,6 +97,7 @@ public class DomainRepository extends EntityRepository<Domain> {
 
   @Override
   public void restorePatchAttributes(Domain original, Domain updated) {
+    super.restorePatchAttributes(original, updated);
     updated.withParent(original.getParent()); // Parent can't be changed
     updated.withChildren(original.getChildren()); // Children can't be changed
   }
