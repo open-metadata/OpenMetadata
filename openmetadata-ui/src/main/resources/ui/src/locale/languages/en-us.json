@@ -1035,6 +1035,7 @@
     "test-case-lowercase": "test case",
     "test-case-lowercase-plural": "test cases",
     "test-case-plural": "Test Cases",
+    "test-email": "Test Email",
     "test-entity": "Test {{entity}}",
     "test-plural": "Tests",
     "test-suite": "Test Suite",
