@@ -17,9 +17,10 @@ import { CookieStorage } from 'cookie-storage';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router-dom';
+import { ReactComponent as CloseIcon } from '../../assets/svg/close.svg';
 import { ReactComponent as StarGithubIcon } from '../../assets/svg/ic-star-github.svg';
 import { ReactComponent as StarIcon } from '../../assets/svg/ic-start-filled-github.svg';
-import { ROUTES, STAR_OMD_USER } from '../../constants/constants';
+import { BLACK_COLOR, ROUTES, STAR_OMD_USER } from '../../constants/constants';
 import { OMD_REPOSITORY_LINK } from '../../constants/docs.constants';
 import { getRepositoryData } from '../../rest/commonAPI';
 import { getReleaseVersionExpiry } from '../../utils/WhatsNewModal.util';
@@ -88,6 +89,10 @@ const GithubStarCard = () => {
     ]
   );
 
+  const handleCancel = useCallback(() => {
+    setShowGithubStarPopup(false);
+  }, []);
+
   useEffect(() => {
     updateGithubPopup(!usernameExistsInCookie);
 
@@ -104,12 +109,21 @@ const GithubStarCard = () => {
       }
       `}>
       <Card data-testid="github-star-popup-card">
-        <Space>
-          <StarIcon className="github-star-icon" />
+        <Space align="center" className="d-flex justify-between">
+          <Space>
+            <StarIcon className="github-star-icon" />
 
-          <Typography.Text className="github-star-popup-header">
-            {t('label.star-us-on-github')}
-          </Typography.Text>
+            <Typography.Text className="github-star-popup-header">
+              {t('label.star-us-on-github')}
+            </Typography.Text>
+          </Space>
+          <Button
+            className="flex-center m--t-xss"
+            data-testid="close-whats-new-alert"
+            icon={<CloseIcon color={BLACK_COLOR} height={12} width={12} />}
+            type="text"
+            onClick={handleCancel}
+          />
         </Space>
 
         <Typography.Paragraph className="github-star-popup-description">
