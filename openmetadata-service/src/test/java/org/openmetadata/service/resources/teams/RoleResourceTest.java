@@ -110,14 +110,14 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
     // Add new DATA_STEWARD_POLICY to role in addition to DATA_CONSUMER_POLICY
     String originalJson = JsonUtils.pojoToJson(role);
     role.getPolicies().addAll(DATA_STEWARD_ROLE.getPolicies());
-    ChangeDescription change = getChangeDescription(role.getVersion());
+    ChangeDescription change = getChangeDescription(role, MINOR_UPDATE);
     fieldAdded(change, "policies", DATA_STEWARD_ROLE.getPolicies());
     role = patchEntityAndCheck(role, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Remove new DATA_CONSUMER_POLICY
     originalJson = JsonUtils.pojoToJson(role);
     role.setPolicies(DATA_STEWARD_ROLE.getPolicies());
-    change = getChangeDescription(role.getVersion());
+    change = getChangeDescription(role, MINOR_UPDATE);
     fieldDeleted(change, "policies", DATA_CONSUMER_ROLE.getPolicies());
     role = patchEntityAndCheck(role, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
@@ -126,7 +126,7 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
     final UUID id = role.getId();
     final Role role1 = role;
     role1.setPolicies(null);
-    change = getChangeDescription(role1.getVersion());
+    change = getChangeDescription(role1, MINOR_UPDATE);
     fieldAdded(change, "policies", DATA_CONSUMER_ROLE.getPolicies());
     assertResponse(
         () -> patchEntity(id, originalJson1, role1, ADMIN_AUTH_HEADERS),

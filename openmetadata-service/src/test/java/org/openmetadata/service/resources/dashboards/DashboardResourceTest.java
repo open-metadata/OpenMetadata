@@ -114,7 +114,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
     Dashboard dashboard = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     // Add description, and charts
-    ChangeDescription change = getChangeDescription(dashboard.getVersion());
+    ChangeDescription change = getChangeDescription(dashboard, MINOR_UPDATE);
     fieldAdded(change, "description", "newDescription");
     fieldAdded(change, "charts", CHART_REFERENCES);
     updateAndCheckEntity(
@@ -131,14 +131,14 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
     Dashboard dashboard = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     // Add charts
-    ChangeDescription change = getChangeDescription(dashboard.getVersion());
+    ChangeDescription change = getChangeDescription(dashboard, MINOR_UPDATE);
     fieldAdded(change, "charts", CHART_REFERENCES);
     dashboard =
         updateAndCheckEntity(request.withCharts(CHART_REFERENCES), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     assertEntityReferenceNames(CHART_REFERENCES, dashboard.getCharts());
 
     // remove a chart
-    change = getChangeDescription(dashboard.getVersion());
+    change = getChangeDescription(dashboard, MINOR_UPDATE);
     fieldDeleted(change, "charts", List.of(CHART_REFERENCES.get(0)));
     CHART_REFERENCES.remove(0);
     updateAndCheckEntity(request.withCharts(CHART_REFERENCES), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);

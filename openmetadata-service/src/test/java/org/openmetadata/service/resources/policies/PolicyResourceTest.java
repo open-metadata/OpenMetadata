@@ -307,7 +307,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
 
     // Change existing rule1 fields
     String origJson = JsonUtils.pojoToJson(policy);
-    ChangeDescription change = getChangeDescription(policy.getVersion());
+    ChangeDescription change = getChangeDescription(policy, MINOR_UPDATE);
     rule1
         .withDescription("description")
         .withEffect(DENY)
@@ -325,7 +325,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
 
     // Change existing rule1 fields. Update description and condition
     origJson = JsonUtils.pojoToJson(policy);
-    change = getChangeDescription(policy.getVersion());
+    change = getChangeDescription(policy, MINOR_UPDATE);
     rule1.withDescription("newDescription").withCondition("noOwner()");
     fieldUpdated(change, getRuleField(rule1, FIELD_DESCRIPTION), "description", "newDescription");
     fieldUpdated(change, getRuleField(rule1, "condition"), "isOwner()", "noOwner()");
@@ -338,14 +338,14 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     Rule newRule =
         accessControlRule("newRule", List.of(ALL_RESOURCES), List.of(MetadataOperation.EDIT_DESCRIPTION), ALLOW);
     policy.getRules().add(newRule);
-    change = getChangeDescription(policy.getVersion());
+    change = getChangeDescription(policy, MINOR_UPDATE);
     fieldAdded(change, "rules", List.of(newRule));
     policy = patchEntityAndCheck(policy, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Delete rule1 rule
     origJson = JsonUtils.pojoToJson(policy);
     policy.setRules(List.of(newRule));
-    change = getChangeDescription(policy.getVersion());
+    change = getChangeDescription(policy, MINOR_UPDATE);
     fieldDeleted(change, "rules", List.of(rule1));
     patchEntityAndCheck(policy, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }

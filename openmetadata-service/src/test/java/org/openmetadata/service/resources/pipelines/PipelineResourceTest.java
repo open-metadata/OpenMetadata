@@ -237,7 +237,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     Pipeline pipeline = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     // Add description and tasks
-    ChangeDescription change = getChangeDescription(pipeline.getVersion());
+    ChangeDescription change = getChangeDescription(pipeline, MINOR_UPDATE);
     fieldAdded(change, "description", "newDescription");
     fieldAdded(change, "tasks", TASKS);
 
@@ -246,7 +246,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
             request.withDescription("newDescription").withTasks(TASKS), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Add a task without description
-    change = getChangeDescription(pipeline.getVersion());
+    change = getChangeDescription(pipeline, MINOR_UPDATE);
     List<Task> tasks = new ArrayList<>();
     Task taskEmptyDesc = new Task().withName("taskEmpty").withSourceUrl("http://localhost:0");
     tasks.add(taskEmptyDesc);
@@ -254,12 +254,12 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     // Create new request with all the Tasks
     List<Task> updatedTasks = Stream.concat(TASKS.stream(), tasks.stream()).collect(Collectors.toList());
     pipeline = updateAndCheckEntity(request.withTasks(updatedTasks), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-    change = getChangeDescription(pipeline.getVersion());
+    change = getChangeDescription(pipeline, MINOR_UPDATE);
     // create a request with same tasks we shouldn't see any change
     updateAndCheckEntity(request.withTasks(updatedTasks), OK, ADMIN_AUTH_HEADERS, NO_CHANGE, change);
     // create new request with few tasks removed
     updatedTasks.remove(taskEmptyDesc);
-    change = getChangeDescription(pipeline.getVersion());
+    change = getChangeDescription(pipeline, MINOR_UPDATE);
     fieldDeleted(change, "tasks", List.of(taskEmptyDesc));
     updateAndCheckEntity(request.withTasks(updatedTasks), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     pipeline = getPipeline(pipeline.getId(), "tasks", ADMIN_AUTH_HEADERS);
@@ -281,7 +281,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
                 .withDisplayName("displayName")
                 .withSourceUrl("http://localhost:0"));
 
-    ChangeDescription change = getChangeDescription(pipeline.getVersion());
+    ChangeDescription change = getChangeDescription(pipeline, MINOR_UPDATE);
     fieldAdded(change, "tasks", newTask);
     fieldDeleted(change, "tasks", TASKS);
     updateAndCheckEntity(request.withTasks(newTask), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
@@ -429,7 +429,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
 
     String origJson = JsonUtils.pojoToJson(pipeline);
     // Add a task without description
-    ChangeDescription change = getChangeDescription(pipeline.getVersion());
+    ChangeDescription change = getChangeDescription(pipeline, MINOR_UPDATE);
     List<Task> tasks = new ArrayList<>();
     Task taskEmptyDesc = new Task().withName("taskEmpty").withSourceUrl("http://localhost:0");
     tasks.add(taskEmptyDesc);
@@ -446,7 +446,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
 
     // add a description to an existing task
     origJson = JsonUtils.pojoToJson(pipeline);
-    change = getChangeDescription(pipeline.getVersion());
+    change = getChangeDescription(pipeline, MINOR_UPDATE);
     List<Task> newTasks = new ArrayList<>();
     Task taskWithDesc =
         taskEmptyDesc
@@ -461,7 +461,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
 
     // update the descriptions of pipeline and task and add tags to tasks
     origJson = JsonUtils.pojoToJson(pipeline);
-    change = getChangeDescription(pipeline.getVersion());
+    change = getChangeDescription(pipeline, MINOR_UPDATE);
     newTasks = new ArrayList<>();
     taskWithDesc = taskEmptyDesc.withDescription("newTaskDescription");
     newTasks.add(taskWithDesc);
@@ -475,7 +475,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
 
     // delete task and pipeline description by setting them to null
     origJson = JsonUtils.pojoToJson(pipeline);
-    change = getChangeDescription(pipeline.getVersion());
+    change = getChangeDescription(pipeline, MINOR_UPDATE);
     newTasks = new ArrayList<>();
     Task taskWithoutDesc = taskEmptyDesc.withDescription(null);
     newTasks.add(taskWithoutDesc);
@@ -500,7 +500,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     Pipeline pipeline = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     // Add tasks and description
-    ChangeDescription change = getChangeDescription(pipeline.getVersion());
+    ChangeDescription change = getChangeDescription(pipeline, MINOR_UPDATE);
     fieldAdded(change, "description", "newDescription");
     fieldAdded(change, "tasks", TASKS);
     fieldAdded(change, "concurrency", 5);
@@ -530,7 +530,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
       new_tasks.add(task);
     }
     request.setTasks(new_tasks);
-    change = getChangeDescription(pipeline.getVersion());
+    change = getChangeDescription(pipeline, MINOR_UPDATE);
     change.getFieldsUpdated().add(new FieldChange().withNewValue(new_tasks).withOldValue(TASKS));
     pipeline = updateEntity(request, OK, ADMIN_AUTH_HEADERS);
     assertEquals(2, pipeline.getTasks().size());

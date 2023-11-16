@@ -267,14 +267,14 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     String oldEmail = create.getEmail();
     CreateUser update = create.withEmail("user.xyz@email.com").withDisplayName("displayName1");
 
-    ChangeDescription change = getChangeDescription(user.getVersion());
+    ChangeDescription change = getChangeDescription(user, MINOR_UPDATE);
     fieldAdded(change, "displayName", "displayName1");
     fieldUpdated(change, "email", oldEmail, "user.xyz@email.com");
     user = updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Update the user information using PUT as the logged-in user
     update = create.withDisplayName("displayName2");
-    change = getChangeDescription(user.getVersion());
+    change = getChangeDescription(user, MINOR_UPDATE);
     fieldUpdated(change, "displayName", "displayName1", "displayName2");
     updateAndCheckEntity(update, OK, authHeaders("user.xyz@email.com"), MINOR_UPDATE, change);
     assertNotNull(user);
@@ -642,7 +642,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
         .withPersonas(List.of(DATA_SCIENTIST.getEntityReference(), DATA_ENGINEER.getEntityReference()))
         .withIsBot(false)
         .withIsAdmin(false);
-    ChangeDescription change = getChangeDescription(user.getVersion());
+    ChangeDescription change = getChangeDescription(user, MINOR_UPDATE);
     fieldAdded(change, "roles", listOf(role1));
     fieldDeleted(change, "teams", listOf(ORG_TEAM.getEntityReference()));
     fieldAdded(change, "teams", teams);
@@ -674,7 +674,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
         .withIsBot(true)
         .withIsAdmin(false);
 
-    change = getChangeDescription(user.getVersion());
+    change = getChangeDescription(user, MINOR_UPDATE);
     fieldDeleted(change, "roles", listOf(role1));
     fieldDeleted(change, "teams", listOf(team2));
     fieldDeleted(change, "personas", listOf(DATA_SCIENTIST.getEntityReference()));
@@ -700,7 +700,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
         .withIsAdmin(false);
 
     // Note non-empty display field is not deleted. When teams are deleted, Organization is added back as default team.
-    change = getChangeDescription(user.getVersion());
+    change = getChangeDescription(user, MINOR_UPDATE);
     fieldDeleted(change, "roles", listOf(role2));
     fieldDeleted(change, "teams", teams1);
     fieldAdded(change, "teams", listOf(ORG_TEAM.getEntityReference()));
@@ -737,7 +737,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertResponse(() -> patchEntity(user1.getId(), json, user1, user1Auth), FORBIDDEN, notAdmin(user1.getName()));
 
     // User can change for authorized as himself the teams and other attributes
-    ChangeDescription change = getChangeDescription(user1.getVersion());
+    ChangeDescription change = getChangeDescription(user1, MINOR_UPDATE);
     user1.withRoles(null).withDescription("description").withDisplayName("display");
     user1.getTeams().add(team.getEntityReference());
     fieldUpdated(change, "description", "", "description");
@@ -1146,14 +1146,14 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     // Add policies to the team
     String json = JsonUtils.pojoToJson(user);
     user.withProfile(profile1);
-    ChangeDescription change = getChangeDescription(user.getVersion());
+    ChangeDescription change = getChangeDescription(user, MINOR_UPDATE);
     fieldUpdated(change, "profile", PROFILE, profile1);
     user = patchEntityAndCheck(user, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Remove policies from the team
     json = JsonUtils.pojoToJson(user);
     user.withProfile(null);
-    change = getChangeDescription(user.getVersion());
+    change = getChangeDescription(user, MINOR_UPDATE);
     fieldDeleted(change, "profile", profile1);
     patchEntityAndCheck(user, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }

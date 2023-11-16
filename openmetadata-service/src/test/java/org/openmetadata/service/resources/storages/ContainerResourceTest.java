@@ -21,6 +21,7 @@ import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.FullyQualifiedName.build;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.UpdateType.MAJOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
@@ -62,7 +63,6 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
-import org.openmetadata.service.util.TestUtils.UpdateType;
 
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -148,7 +148,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     // Create a Model with POST
     CreateContainer request = createRequest(test).withOwner(USER1_REF);
     Container container = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
-    ChangeDescription change = getChangeDescription(container.getVersion());
+    ChangeDescription change = getChangeDescription(container, MINOR_UPDATE);
 
     // Update Container two times successfully with PUT requests
     updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, NO_CHANGE, change);
@@ -160,7 +160,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
         createRequest(test).withDataModel(null).withPrefix(null).withFileFormats(null).withNumberOfObjects(null);
     Container container = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
-    ChangeDescription change = getChangeDescription(container.getVersion());
+    ChangeDescription change = getChangeDescription(container, MINOR_UPDATE);
     fieldAdded(change, "dataModel", PARTITIONED_DATA_MODEL);
     fieldAdded(change, "prefix", "prefix2");
     fieldAdded(change, "fileFormats", FILE_FORMATS);
@@ -180,7 +180,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     assertEquals(1.0, container.getSize());
     assertEquals(10.0, container.getNumberOfObjects());
 
-    change = getChangeDescription(container.getVersion());
+    change = getChangeDescription(container, MINOR_UPDATE);
     fieldUpdated(change, "prefix", "prefix2", "prefix3");
     container =
         updateAndCheckEntity(
@@ -193,7 +193,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     assertEquals(5.0, container.getSize());
     assertEquals(15.0, container.getNumberOfObjects());
 
-    change = getChangeDescription(container.getVersion());
+    change = getChangeDescription(container, MINOR_UPDATE);
 
     container =
         updateAndCheckEntity(
@@ -214,7 +214,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
 
     String originalJson = JsonUtils.pojoToJson(container);
 
-    ChangeDescription change = getChangeDescription(container.getVersion());
+    ChangeDescription change = getChangeDescription(container, MINOR_UPDATE);
     container
         .withDataModel(PARTITIONED_DATA_MODEL)
         .withPrefix("prefix1")
@@ -231,7 +231,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
 
     // Update description, chartType and chart url and verify patch
     originalJson = JsonUtils.pojoToJson(container);
-    change = getChangeDescription(container.getVersion());
+    change = getChangeDescription(container, MINOR_UPDATE);
     container
         .withPrefix("prefix2")
         .withDataModel(
@@ -243,10 +243,10 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     fieldAdded(change, "fileFormats", List.of(ContainerFileFormat.Gz, ContainerFileFormat.Csv));
     fieldDeleted(change, "fileFormats", List.of(ContainerFileFormat.Parquet));
 
-    patchEntityAndCheck(container, originalJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    patchEntityAndCheck(container, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     originalJson = JsonUtils.pojoToJson(container);
-    change = getChangeDescription(container.getVersion());
+    change = getChangeDescription(container, NO_CHANGE);
     container.withSize(2.0).withNumberOfObjects(3.0);
 
     container = patchEntityAndCheck(container, originalJson, ADMIN_AUTH_HEADERS, NO_CHANGE, change);
@@ -258,7 +258,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
   void noChangeForSomeFields(TestInfo test) throws IOException {
     CreateContainer request = createRequest(test).withDataModel(null).withSize(null);
     Container container = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
-    ChangeDescription change = getChangeDescription(container.getVersion());
+    ChangeDescription change = getChangeDescription(container, MINOR_UPDATE);
 
     container =
         updateAndCheckEntity(
@@ -275,7 +275,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
   void put_ContainerUpdateDataModel_200(TestInfo test) throws IOException {
     CreateContainer request = createRequest(test);
     Container container = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
-    ChangeDescription change = getChangeDescription(container.getVersion());
+    ChangeDescription change = getChangeDescription(container, MINOR_UPDATE);
 
     // We are removing the columns here. This is a major change
     ContainerDataModel newDataModel = PARTITIONED_DATA_MODEL.withIsPartitioned(false);
@@ -499,14 +499,14 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
         updateAndCheckEntity(create2, CREATED, ADMIN_AUTH_HEADERS, TestUtils.UpdateType.CREATED, null);
 
     // Test PUT operation again without any change
-    ChangeDescription change = getChangeDescription(container2.getVersion());
+    ChangeDescription change = getChangeDescription(container2, MINOR_UPDATE);
     updateAndCheckEntity(create2, Response.Status.OK, ADMIN_AUTH_HEADERS, NO_CHANGE, change);
 
     //
     // Update the complex columns
     //
     // c1 from array<int> to array<char> - Data type change means old c1 deleted, and new c1 added
-    change = getChangeDescription(container2.getVersion());
+    change = getChangeDescription(container2, MAJOR_UPDATE);
     fieldDeleted(change, "dataModel.columns", List.of(c1));
     Column c1_new =
         getColumn(C1, ARRAY, USER_ADDRESS_TAG_LABEL).withArrayDataType(CHAR).withDataTypeDisplay("array<int>");

@@ -613,7 +613,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
     IngestionPipeline ingestion = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     // Add description and tasks
-    ChangeDescription change = getChangeDescription(ingestion.getVersion());
+    ChangeDescription change = getChangeDescription(ingestion, MINOR_UPDATE);
     fieldAdded(change, "description", "newDescription");
     fieldAdded(change, FIELD_OWNER, USER1_REF);
     updateAndCheckEntity(

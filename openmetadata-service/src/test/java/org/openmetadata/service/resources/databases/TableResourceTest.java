@@ -324,7 +324,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .withInterval("column");
     create.setTablePartition(partition);
 
-    ChangeDescription change = getChangeDescription(table.getVersion());
+    ChangeDescription change = getChangeDescription(table, MINOR_UPDATE);
     fieldAdded(change, "columns", List.of(column3));
     fieldUpdated(change, build("columns", "column1", "description"), "column1", "");
     fieldUpdated(change, build("columns", "column1", "displayName"), "c1", "");
@@ -345,21 +345,21 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     Column column4 = getColumn("column4", STRING, null, "column4", null).withOrdinalPosition(2);
     create.getColumns().add(2, column4);
 
-    change = getChangeDescription(table.getVersion());
+    change = getChangeDescription(table, MINOR_UPDATE);
     fieldAdded(change, "columns", List.of(column4));
     table = updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Change column1 data type from INT to STRING to cause major update
     Column updatedColumn1 = getColumn("column1", STRING, null, "column1", "c1").withOrdinalPosition(1);
     create.getColumns().set(0, updatedColumn1);
-    change = getChangeDescription(table.getVersion());
+    change = getChangeDescription(table, MINOR_UPDATE);
     fieldDeleted(change, "columns", List.of(column1));
     fieldAdded(change, "columns", List.of(updatedColumn1));
     table = updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, MAJOR_UPDATE, change);
 
     // Delete column4 to cause major update
     create.getColumns().remove(2);
-    change = getChangeDescription(table.getVersion());
+    change = getChangeDescription(table, MINOR_UPDATE);
     fieldDeleted(change, "columns", List.of(column4));
     updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, MAJOR_UPDATE, change);
 
@@ -417,14 +417,14 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     Table table2 = updateAndCheckEntity(create2, CREATED, ADMIN_AUTH_HEADERS, UpdateType.CREATED, null);
 
     // Test PUT operation again without any change
-    ChangeDescription change = getChangeDescription(table2.getVersion());
+    ChangeDescription change = getChangeDescription(table2, MINOR_UPDATE);
     updateAndCheckEntity(create2, Status.OK, ADMIN_AUTH_HEADERS, NO_CHANGE, change);
 
     //
     // Update the complex columns
     //
     // c1 from array<int> to array<char> - Data type change means old c1 deleted, and new c1 added
-    change = getChangeDescription(table2.getVersion());
+    change = getChangeDescription(table2, MAJOR_UPDATE);
     fieldDeleted(change, "columns", List.of(c1));
     Column c1_new = getColumn(C1, ARRAY, "array<int>", USER_ADDRESS_TAG_LABEL).withArrayDataType(CHAR);
     fieldAdded(change, "columns", List.of(c1_new));
@@ -517,7 +517,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     checkOwnerOwns(USER1_REF, table.getId(), true);
 
     // Update the table with constraints and ensure minor version change
-    ChangeDescription change = getChangeDescription(table.getVersion());
+    ChangeDescription change = getChangeDescription(table, MINOR_UPDATE);
     TableConstraint constraint =
         new TableConstraint().withConstraintType(ConstraintType.UNIQUE).withColumns(List.of(C1));
     fieldAdded(change, "tableConstraints", List.of(constraint));
@@ -525,11 +525,11 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     Table updatedTable = updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Update again with no change. Version must not change
-    change = getChangeDescription(updatedTable.getVersion());
+    change = getChangeDescription(updatedTable, MINOR_UPDATE);
     updatedTable = updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, NO_CHANGE, change);
 
     // Update the table with new constraints
-    change = getChangeDescription(updatedTable.getVersion());
+    change = getChangeDescription(updatedTable, MINOR_UPDATE);
     TableConstraint constraint1 =
         new TableConstraint().withConstraintType(ConstraintType.PRIMARY_KEY).withColumns(List.of(C1));
     request = request.withTableConstraints(List.of(constraint1));
@@ -538,7 +538,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     updatedTable = updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Remove table constraint and ensure minor version changes
-    change = getChangeDescription(updatedTable.getVersion());
+    change = getChangeDescription(updatedTable, MINOR_UPDATE);
     request = request.withTableConstraints(null);
     fieldDeleted(change, "tableConstraints", List.of(constraint1));
     updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
@@ -553,7 +553,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     Table table = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     // Change the column constraints and expect minor version change
-    ChangeDescription change = getChangeDescription(table.getVersion());
+    ChangeDescription change = getChangeDescription(table, MINOR_UPDATE);
     request.getColumns().get(0).withConstraint(ColumnConstraint.NOT_NULL);
     fieldUpdated(change, build("columns", C1, "constraint"), ColumnConstraint.NULL, ColumnConstraint.NOT_NULL);
 
@@ -563,7 +563,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     Table updatedTable = updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Remove column constraints and expect minor version change
-    change = getChangeDescription(updatedTable.getVersion());
+    change = getChangeDescription(updatedTable, MINOR_UPDATE);
     request.getColumns().get(0).withConstraint(null);
     fieldDeleted(change, build("columns", C1, "constraint"), ColumnConstraint.NOT_NULL);
 
@@ -605,7 +605,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     tags.add(GLOSSARY1_TERM1_LABEL); // Duplicated tags should be handled
     List<Column> updatedColumns = new ArrayList<>();
     updatedColumns.add(getColumn(C1, BIGINT, null).withTags(tags));
-    ChangeDescription change = getChangeDescription(table.getVersion());
+    ChangeDescription change = getChangeDescription(table, MINOR_UPDATE);
     fieldAdded(change, build("columns", C1, "tags"), List.of(GLOSSARY1_TERM1_LABEL));
     table = updateAndCheckEntity(request.withColumns(updatedColumns), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
@@ -618,7 +618,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     //
     // Add a new column c2 using PUT
     //
-    change = getChangeDescription(table.getVersion());
+    change = getChangeDescription(table, MINOR_UPDATE);
     Column c2 = getColumn(C2, BINARY, null).withOrdinalPosition(2).withDataLength(10).withTags(tags);
     updatedColumns.add(c2);
     fieldAdded(change, "columns", List.of(c2));
@@ -635,7 +635,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // and only minor version changes
     //
     c2.setDataLength(20);
-    change = getChangeDescription(table.getVersion());
+    change = getChangeDescription(table, MINOR_UPDATE);
     String fieldName = build("columns", C2, "dataLength");
     fieldUpdated(change, fieldName, 10, 20);
     table = updateAndCheckEntity(request.withColumns(updatedColumns), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
@@ -645,14 +645,14 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // and results in major version changes
     //
     c2.setDataLength(10);
-    change = getChangeDescription(table.getVersion());
+    change = getChangeDescription(table, MAJOR_UPDATE);
     fieldUpdated(change, fieldName, 20, 10);
     table = updateAndCheckEntity(request.withColumns(updatedColumns), OK, ADMIN_AUTH_HEADERS, MAJOR_UPDATE, change);
 
     //
     // Remove a column c2 and make sure it is deleted by PUT
     //
-    change = getChangeDescription(table.getVersion());
+    change = getChangeDescription(table, MAJOR_UPDATE);
     updatedColumns.remove(1);
     fieldDeleted(change, "columns", List.of(c2));
     table = updateAndCheckEntity(request.withColumns(updatedColumns), OK, ADMIN_AUTH_HEADERS, MAJOR_UPDATE, change);
@@ -1518,7 +1518,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         List.of(new TableConstraint().withConstraintType(ConstraintType.UNIQUE).withColumns(List.of(C1)));
 
     String originalJson = JsonUtils.pojoToJson(table);
-    ChangeDescription change = getChangeDescription(table.getVersion());
+    ChangeDescription change = getChangeDescription(table, MINOR_UPDATE);
 
     table.withTableType(TableType.Regular).withTableConstraints(tableConstraints);
 
@@ -1533,7 +1533,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     List<TableConstraint> tableConstraints1 =
         List.of(new TableConstraint().withConstraintType(ConstraintType.UNIQUE).withColumns(List.of(C2)));
     originalJson = JsonUtils.pojoToJson(table);
-    change = getChangeDescription(table.getVersion());
+    change = getChangeDescription(table, MINOR_UPDATE);
 
     table.withTableType(TableType.External).withTableConstraints(tableConstraints1);
 
@@ -1545,7 +1545,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     // Remove tableType, tableConstraints
     originalJson = JsonUtils.pojoToJson(table);
-    change = getChangeDescription(table.getVersion());
+    change = getChangeDescription(table, MINOR_UPDATE);
 
     table.withTableType(null).withTableConstraints(null);
 
@@ -1565,7 +1565,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     Table table = createEntity(createRequest(test).withColumns(columns), ADMIN_AUTH_HEADERS);
 
     // Update the column tags and description
-    ChangeDescription change = getChangeDescription(table.getVersion());
+    ChangeDescription change = getChangeDescription(table, MINOR_UPDATE);
     columns
         .get(0)
         .withDescription("new0") // Set new description
@@ -1594,7 +1594,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertColumns(columns, table.getColumns());
 
     // Now reduce the precision and make sure it is a backward incompatible change
-    change = getChangeDescription(table.getVersion());
+    change = getChangeDescription(table, MAJOR_UPDATE);
     fieldUpdated(change, build("columns", C3, "precision"), 10, 7);
 
     originalJson = JsonUtils.pojoToJson(table);
@@ -1606,7 +1606,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertColumns(columns, table.getColumns());
 
     // Now reduce the scale and make sure it is a backward incompatible change
-    change = getChangeDescription(table.getVersion());
+    change = getChangeDescription(table, MAJOR_UPDATE);
     fieldUpdated(change, build("columns", C3, "scale"), 3, 1);
 
     originalJson = JsonUtils.pojoToJson(table);
