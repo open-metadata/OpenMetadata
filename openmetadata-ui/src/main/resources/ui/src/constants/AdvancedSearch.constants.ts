@@ -12,6 +12,7 @@
  */
 
 import { t } from 'i18next';
+import { isUndefined, uniq } from 'lodash';
 import {
   BasicConfig,
   Fields,
@@ -23,6 +24,7 @@ import AntdConfig from 'react-awesome-query-builder/lib/config/antd';
 import { EntityFields, SuggestionField } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { getAggregateFieldOptions } from '../rest/miscAPI';
+import { suggestQuery } from '../rest/searchAPI';
 import { renderAdvanceSearchButtons } from '../utils/AdvancedSearchUtils';
 import { getCombinedQueryFilterObject } from '../utils/ExplorePage/ExplorePageUtils';
 
@@ -218,27 +220,64 @@ export const emptyJsonTree: JsonTree = {
  */
 export const autocomplete: (args: {
   searchIndex: SearchIndex | SearchIndex[];
+  entitySearchIndex: SearchIndex | SearchIndex[];
   entityField: EntityFields;
   suggestField?: SuggestionField;
-}) => SelectFieldSettings['asyncFetch'] = ({ searchIndex, entityField }) => {
-  return (search) => {
-    return getAggregateFieldOptions(
-      searchIndex,
-      entityField,
-      search ?? '',
-      JSON.stringify(getCombinedQueryFilterObject())
-    ).then((response) => {
-      const buckets =
-        response.data.aggregations[`sterms#${entityField}`].buckets;
+}) => SelectFieldSettings['asyncFetch'] = ({
+  searchIndex,
+  suggestField,
+  entitySearchIndex,
+  entityField,
+}) => {
+  const isUserAndTeamSearchIndex =
+    searchIndex.includes(SearchIndex.USER) ||
+    searchIndex.includes(SearchIndex.TEAM);
 
-      return {
-        values: buckets.map((bucket) => ({
-          value: bucket.key,
-          title: bucket.label ?? bucket.key,
-        })),
-        hasMore: false,
-      };
-    });
+  return (search) => {
+    if (search) {
+      return suggestQuery({
+        query: search ?? '*',
+        searchIndex: searchIndex,
+        field: suggestField,
+        // fetch source if index is type of user or team and both
+        fetchSource: isUserAndTeamSearchIndex,
+      }).then((resp) => {
+        return {
+          values: uniq(resp).map(({ text, _source }) => {
+            // set displayName or name if index is type of user or team and both.
+            // else set the text
+            const name =
+              isUserAndTeamSearchIndex && !isUndefined(_source)
+                ? _source?.displayName || _source.name
+                : text;
+
+            return {
+              value: name,
+              title: name,
+            };
+          }),
+          hasMore: false,
+        };
+      });
+    } else {
+      return getAggregateFieldOptions(
+        entitySearchIndex,
+        entityField,
+        '',
+        JSON.stringify(getCombinedQueryFilterObject())
+      ).then((response) => {
+        const buckets =
+          response.data.aggregations[`sterms#${entityField}`].buckets;
+
+        return {
+          values: buckets.map((bucket) => ({
+            value: bucket.key,
+            title: bucket.label ?? bucket.key,
+          })),
+          hasMore: false,
+        };
+      });
+    }
   };
 };
 
@@ -267,10 +306,8 @@ const getCommonQueryBuilderFields = (
 
       fieldSettings: {
         asyncFetch: autocomplete({
-          searchIndex: entitySearchIndex ?? [
-            SearchIndex.USER,
-            SearchIndex.TEAM,
-          ],
+          searchIndex: [SearchIndex.USER, SearchIndex.TEAM],
+          entitySearchIndex: [SearchIndex.USER, SearchIndex.TEAM],
           entityField: EntityFields.OWNER,
         }),
         useAsyncSearch: true,
@@ -283,10 +320,8 @@ const getCommonQueryBuilderFields = (
       mainWidgetProps,
       fieldSettings: {
         asyncFetch: autocomplete({
-          searchIndex: entitySearchIndex ?? [
-            SearchIndex.TAG,
-            SearchIndex.GLOSSARY,
-          ],
+          searchIndex: [SearchIndex.TAG, SearchIndex.GLOSSARY],
+          entitySearchIndex,
           entityField: EntityFields.TAG,
         }),
         useAsyncSearch: true,
@@ -299,7 +334,8 @@ const getCommonQueryBuilderFields = (
       mainWidgetProps,
       fieldSettings: {
         asyncFetch: autocomplete({
-          searchIndex: entitySearchIndex ?? [SearchIndex.TAG],
+          searchIndex: [SearchIndex.TAG, SearchIndex.GLOSSARY],
+          entitySearchIndex,
           entityField: EntityFields.TIER,
         }),
         useAsyncSearch: true,
@@ -328,7 +364,9 @@ const getServiceQueryBuilderFields = (index: SearchIndex) => {
       fieldSettings: {
         asyncFetch: autocomplete({
           searchIndex: index,
+          entitySearchIndex: index,
           entityField: EntityFields.SERVICE,
+          suggestField: SuggestionField.SERVICE,
         }),
         useAsyncSearch: true,
       },
@@ -349,7 +387,9 @@ const tableQueryBuilderFields: Fields = {
     fieldSettings: {
       asyncFetch: autocomplete({
         searchIndex: SearchIndex.TABLE,
+        entitySearchIndex: SearchIndex.TABLE,
         entityField: EntityFields.DATABASE,
+        suggestField: SuggestionField.DATABASE,
       }),
       useAsyncSearch: true,
     },
@@ -362,7 +402,9 @@ const tableQueryBuilderFields: Fields = {
     fieldSettings: {
       asyncFetch: autocomplete({
         searchIndex: SearchIndex.TABLE,
+        entitySearchIndex: SearchIndex.TABLE,
         entityField: EntityFields.DATABASE_SCHEMA,
+        suggestField: SuggestionField.SCHEMA,
       }),
       useAsyncSearch: true,
     },
@@ -375,7 +417,9 @@ const tableQueryBuilderFields: Fields = {
     fieldSettings: {
       asyncFetch: autocomplete({
         searchIndex: SearchIndex.TABLE,
+        entitySearchIndex: SearchIndex.TABLE,
         entityField: EntityFields.COLUMN,
+        suggestField: SuggestionField.COLUMN,
       }),
       useAsyncSearch: true,
     },
