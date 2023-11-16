@@ -218,12 +218,17 @@ export const emptyJsonTree: JsonTree = {
  */
 export const autocomplete: (args: {
   searchIndex: SearchIndex | SearchIndex[];
+  entitySearchIndex?: SearchIndex | SearchIndex[];
   entityField: EntityFields;
   suggestField?: SuggestionField;
-}) => SelectFieldSettings['asyncFetch'] = ({ searchIndex, entityField }) => {
+}) => SelectFieldSettings['asyncFetch'] = ({
+  searchIndex,
+  entityField,
+  entitySearchIndex,
+}) => {
   return (search) => {
     return getAggregateFieldOptions(
-      searchIndex,
+      !search && entitySearchIndex ? entitySearchIndex : searchIndex,
       entityField,
       search ?? '',
       JSON.stringify(getCombinedQueryFilterObject())
@@ -267,10 +272,7 @@ const getCommonQueryBuilderFields = (
 
       fieldSettings: {
         asyncFetch: autocomplete({
-          searchIndex: entitySearchIndex ?? [
-            SearchIndex.USER,
-            SearchIndex.TEAM,
-          ],
+          searchIndex: [SearchIndex.USER, SearchIndex.TEAM],
           entityField: EntityFields.OWNER,
         }),
         useAsyncSearch: true,
@@ -283,10 +285,8 @@ const getCommonQueryBuilderFields = (
       mainWidgetProps,
       fieldSettings: {
         asyncFetch: autocomplete({
-          searchIndex: entitySearchIndex ?? [
-            SearchIndex.TAG,
-            SearchIndex.GLOSSARY,
-          ],
+          searchIndex: [SearchIndex.TAG, SearchIndex.GLOSSARY],
+          entitySearchIndex,
           entityField: EntityFields.TAG,
         }),
         useAsyncSearch: true,
@@ -299,7 +299,8 @@ const getCommonQueryBuilderFields = (
       mainWidgetProps,
       fieldSettings: {
         asyncFetch: autocomplete({
-          searchIndex: entitySearchIndex ?? [SearchIndex.TAG],
+          searchIndex: [SearchIndex.TAG],
+          entitySearchIndex,
           entityField: EntityFields.TIER,
         }),
         useAsyncSearch: true,
