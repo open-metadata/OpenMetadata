@@ -17,8 +17,8 @@ import { PagingResponse } from 'Models';
 import { CreateKpiRequest } from '../generated/api/dataInsight/kpi/createKpiRequest';
 import { Kpi, KpiResult } from '../generated/dataInsight/kpi/kpi';
 
-import APIClient from './index';
 import { ListParams } from '../interface/API.interface';
+import APIClient from './index';
 
 export type KpiResultParam = {
   startTs: number;

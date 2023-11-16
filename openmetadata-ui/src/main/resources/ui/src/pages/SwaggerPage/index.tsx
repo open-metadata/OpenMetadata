@@ -11,22 +11,36 @@
  *  limitations under the License.
  */
 
-import { RedocStandalone } from '@deuex-solutions/redoc';
+import {
+  GRAPH_BACKGROUND_COLOR,
+  PRIMERY_COLOR,
+  TEXT_BODY_COLOR,
+} from 'constants/constants';
 import React from 'react';
+import RapiDocReact from './RapiDocReact';
 import './swagger.less';
 
 const SwaggerPage = () => {
-  // return (<RedocStandalone
-  //   specUrl="https://raw.githubusercontent.com/deuex-solutions/redoc/master/demo/petstore.json"
-  // />);
   return (
     <div
       className="container-fluid"
       data-testid="fluid-container"
       id="doc-container">
-      <RedocStandalone
-        options={{ enableConsole: true }}
-        specUrl="./swagger.json"
+      <RapiDocReact
+        allow-spec-file-download
+        persist-auth
+        font-size="large"
+        nav-bg-color={GRAPH_BACKGROUND_COLOR}
+        nav-item-spacing="compact"
+        nav-text-color={TEXT_BODY_COLOR}
+        primary-color={PRIMERY_COLOR}
+        regular-font="Open Sans"
+        render-style="focused"
+        show-header={false}
+        show-method-in-nav-bar="as-colored-block"
+        spec-url="./swagger.json"
+        text-color={TEXT_BODY_COLOR}
+        theme="light"
       />
     </div>
   );
