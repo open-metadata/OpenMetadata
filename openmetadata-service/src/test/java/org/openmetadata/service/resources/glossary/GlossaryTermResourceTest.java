@@ -239,7 +239,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     String origJson = JsonUtils.pojoToJson(term);
     TermReference reference1 = new TermReference().withName("reference1").withEndpoint(URI.create("http://reference1"));
     term.withReviewers(List.of(USER1_REF)).withSynonyms(List.of("synonym1")).withReferences(List.of(reference1));
-    ChangeDescription change = getChangeDescription(term.getVersion());
+    ChangeDescription change = getChangeDescription(term, MINOR_UPDATE);
     fieldAdded(change, "reviewers", List.of(USER1_REF));
     fieldAdded(change, "synonyms", List.of("synonym1"));
     fieldAdded(change, "references", List.of(reference1));
@@ -251,7 +251,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     term.withReviewers(List.of(USER1_REF, USER2_REF))
         .withSynonyms(List.of("synonym1", "synonym2"))
         .withReferences(List.of(reference1, reference2));
-    change = getChangeDescription(term.getVersion());
+    change = getChangeDescription(term, MINOR_UPDATE);
     fieldAdded(change, "reviewers", List.of(USER2_REF));
     fieldAdded(change, "synonyms", List.of("synonym2"));
     fieldAdded(change, "references", List.of(reference2));
@@ -260,7 +260,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     // Remove a reviewer USER1, synonym1, reference1 in PATCH request
     origJson = JsonUtils.pojoToJson(term);
     term.withReviewers(List.of(USER2_REF)).withSynonyms(List.of("synonym2")).withReferences(List.of(reference2));
-    change = getChangeDescription(term.getVersion());
+    change = getChangeDescription(term, MINOR_UPDATE);
     fieldDeleted(change, "reviewers", List.of(USER1_REF));
     fieldDeleted(change, "synonyms", List.of("synonym1"));
     fieldDeleted(change, "references", List.of(reference1));
@@ -709,7 +709,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   public void renameGlossaryTermAndCheck(GlossaryTerm term, String newName) throws IOException {
     String oldName = term.getName();
     String json = JsonUtils.pojoToJson(term);
-    ChangeDescription change = getChangeDescription(term.getVersion());
+    ChangeDescription change = getChangeDescription(term, MINOR_UPDATE);
     fieldUpdated(change, "name", oldName, newName);
     term.setName(newName);
     term.setFullyQualifiedName(FullyQualifiedName.build(term.getGlossary().getFullyQualifiedName(), newName));
@@ -735,7 +735,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     EntityReference oldGlossary = term.getGlossary();
     EntityReference oldParent = term.getParent();
     String json = JsonUtils.pojoToJson(term);
-    ChangeDescription change = getChangeDescription(term.getVersion());
+    ChangeDescription change = getChangeDescription(term, MINOR_UPDATE);
 
     // Changes description for glossary term parent change
     UpdateType update = MINOR_UPDATE;

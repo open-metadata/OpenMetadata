@@ -7,6 +7,7 @@ import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertEntityReferenceNames;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
@@ -27,7 +28,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.domains.DomainResource.DomainList;
 import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.TestUtils.UpdateType;
 
 public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain> {
   public DomainResourceTest() {
@@ -48,29 +48,29 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
 
     // Add User2 as expert using PUT
     create.withExperts(List.of(USER1.getFullyQualifiedName(), USER2.getFullyQualifiedName()));
-    ChangeDescription change = getChangeDescription(domain.getVersion());
+    ChangeDescription change = getChangeDescription(domain, MINOR_UPDATE);
     fieldAdded(change, "experts", listOf(USER2.getEntityReference()));
-    domain = updateAndCheckEntity(create, Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    domain = updateAndCheckEntity(create, Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Remove User2 as expert using PUT
     create.withExperts(List.of(USER1.getFullyQualifiedName()));
-    change = getChangeDescription(domain.getVersion());
+    change = getChangeDescription(domain, MINOR_UPDATE);
     fieldDeleted(change, "experts", listOf(USER2.getEntityReference()));
-    domain = updateAndCheckEntity(create, Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    domain = updateAndCheckEntity(create, Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Add User2 as expert using PATCH
     String json = JsonUtils.pojoToJson(domain);
     domain.withExperts(List.of(USER1.getEntityReference(), USER2.getEntityReference()));
-    change = getChangeDescription(domain.getVersion());
+    change = getChangeDescription(domain, MINOR_UPDATE);
     fieldAdded(change, "experts", listOf(USER2.getEntityReference()));
-    domain = patchEntityAndCheck(domain, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    domain = patchEntityAndCheck(domain, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Remove User2 as expert using PATCH
     json = JsonUtils.pojoToJson(domain);
     domain.withExperts(List.of(USER1.getEntityReference()));
-    change = getChangeDescription(domain.getVersion());
+    change = getChangeDescription(domain, MINOR_UPDATE);
     fieldDeleted(change, "experts", listOf(USER2.getEntityReference()));
-    patchEntityAndCheck(domain, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    patchEntityAndCheck(domain, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
@@ -80,16 +80,16 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
 
     // Change domain type from AGGREGATE to SOURCE_ALIGNED using PUT
     create.withDomainType(DomainType.SOURCE_ALIGNED);
-    ChangeDescription change = getChangeDescription(domain.getVersion());
+    ChangeDescription change = getChangeDescription(domain, MINOR_UPDATE);
     fieldUpdated(change, "domainType", DomainType.AGGREGATE, DomainType.SOURCE_ALIGNED);
-    domain = updateAndCheckEntity(create, Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    domain = updateAndCheckEntity(create, Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Change domain type from SOURCE_ALIGNED to CONSUMER_ALIGNED using PATCH
     String json = JsonUtils.pojoToJson(domain);
     domain.withDomainType(DomainType.CONSUMER_ALIGNED);
-    change = getChangeDescription(domain.getVersion());
+    change = getChangeDescription(domain, MINOR_UPDATE);
     fieldUpdated(change, "domainType", DomainType.SOURCE_ALIGNED, DomainType.CONSUMER_ALIGNED);
-    patchEntityAndCheck(domain, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    patchEntityAndCheck(domain, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
