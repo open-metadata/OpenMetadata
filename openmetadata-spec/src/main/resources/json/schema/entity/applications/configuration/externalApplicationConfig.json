@@ -11,7 +11,7 @@
           "$ref": "./external/autoTaggerAppConfig.json"
         },
         {
-          "$ref": "./external/waiiAppConfig.json"
+          "$ref": "./external/metaPilotAppConfig.json"
         }
       ]
     }
