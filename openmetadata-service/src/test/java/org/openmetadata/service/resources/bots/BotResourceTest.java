@@ -158,7 +158,9 @@ public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) {}
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
+    assertCommonFieldChange(fieldName, expected, actual);
+  }
 
   private void createUser() {
     User user = new UserResourceTest().createUser("botUser", true);

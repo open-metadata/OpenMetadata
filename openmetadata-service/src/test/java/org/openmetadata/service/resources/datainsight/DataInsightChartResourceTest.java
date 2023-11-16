@@ -175,5 +175,7 @@ public class DataInsightChartResourceTest extends EntityResourceTest<DataInsight
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) {}
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
+    assertCommonFieldChange(fieldName, expected, actual);
+  }
 }

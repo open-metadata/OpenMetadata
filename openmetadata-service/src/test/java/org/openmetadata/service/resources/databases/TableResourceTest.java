@@ -2319,12 +2319,9 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
       List<TableConstraint> actualConstraints = JsonUtils.readObjects(actual.toString(), TableConstraint.class);
       assertEquals(expectedConstraints, actualConstraints);
     } else if (fieldName.contains("columns") && !fieldName.endsWith(FIELD_TAGS)) {
-      @SuppressWarnings("unchecked")
-      List<Column> expectedRefs = (List<Column>) expected;
-      List<Column> actualRefs = JsonUtils.readObjects(actual.toString(), Column.class);
-      assertColumns(expectedRefs, actualRefs);
+      assertColumnsFieldChange(expected, actual);
     } else if (fieldName.endsWith("tableType")) {
-      TableType expectedTableType = (TableType) expected;
+      TableType expectedTableType = TableType.fromValue(expected.toString());
       TableType actualTableType = TableType.fromValue(actual.toString());
       assertEquals(expectedTableType, actualTableType);
     } else {

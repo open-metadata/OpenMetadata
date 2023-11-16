@@ -655,17 +655,8 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
       return;
     }
     switch (fieldName) {
-      case "reviewers":
-        @SuppressWarnings("unchecked")
-        List<EntityReference> expectedRefs = (List<EntityReference>) expected;
-        List<EntityReference> actualRefs = JsonUtils.readObjects(actual.toString(), EntityReference.class);
-        assertEntityReferences(expectedRefs, actualRefs);
-        break;
-      case "parent":
       case "glossary":
-        EntityReference expectedRef = (EntityReference) expected;
-        EntityReference actualRef = JsonUtils.readValue(actual.toString(), EntityReference.class);
-        assertEquals(expectedRef.getId(), actualRef.getId());
+        assertEntityReferenceFieldChange(expected, actual);
         break;
       case "synonyms":
         @SuppressWarnings("unchecked")
@@ -680,7 +671,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
         assertTermReferences(expectedTermRefs, actualTermRefs);
         break;
       case "status":
-        Status expectedStatus = (Status) expected;
+        Status expectedStatus = Status.fromValue(expected.toString());
         Status actualStatus = Status.fromValue(actual.toString());
         assertEquals(expectedStatus, actualStatus);
         break;

@@ -195,7 +195,7 @@ public class KpiRepository extends EntityRepository<Kpi> {
           original.getDataInsightChart(),
           updated.getDataInsightChart(),
           false);
-      recordChange("targetDefinition", original.getTargetDefinition(), updated.getTargetDefinition());
+      recordChange("targetDefinition", original.getTargetDefinition(), updated.getTargetDefinition(), true);
       recordChange("startDate", original.getStartDate(), updated.getStartDate());
       recordChange("endDate", original.getEndDate(), updated.getEndDate());
       recordChange("metricType", original.getMetricType(), updated.getMetricType());

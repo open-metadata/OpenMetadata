@@ -665,6 +665,8 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
       assertFileFormats((List<ContainerFileFormat>) expected, actual.toString());
     } else if (fieldName.contains("dataModel")) {
       assertDataModel((ContainerDataModel) expected, (String) actual);
+    } else {
+      assertCommonFieldChange(fieldName, expected, actual);
     }
   }
 

@@ -141,9 +141,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
       URI actualPolicyUrl = URI.create((String) actual);
       assertEquals(expectedPolicyUrl, actualPolicyUrl);
     } else if (fieldName.equals("location")) {
-      EntityReference expectedLocation = (EntityReference) expected;
-      EntityReference actualLocation = JsonUtils.readValue(actual.toString(), EntityReference.class);
-      assertEquals(expectedLocation.getId(), actualLocation.getId());
+      assertEntityReferenceFieldChange(expected, actual);
     } else if (fieldName.equals("rules")) {
       @SuppressWarnings("unchecked")
       List<Rule> expectedRule = (List<Rule>) expected;

@@ -254,10 +254,7 @@ public class PersonaResourceTest extends EntityResourceTest<Persona, CreatePerso
       return;
     }
     if (List.of("users").contains(fieldName)) {
-      @SuppressWarnings("unchecked")
-      List<EntityReference> expectedRefs = (List<EntityReference>) expected;
-      List<EntityReference> actualRefs = JsonUtils.readObjects(actual.toString(), EntityReference.class);
-      assertEntityReferences(expectedRefs, actualRefs);
+      assertEntityReferencesFieldChange(expected, actual);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }

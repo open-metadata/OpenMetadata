@@ -247,7 +247,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
       return;
     }
     if (fieldName.startsWith("chartType")) {
-      ChartType expectedChartType = (ChartType) expected;
+      ChartType expectedChartType = ChartType.fromValue(expected.toString());
       ChartType actualChartType = ChartType.fromValue(actual.toString());
       assertEquals(expectedChartType, actualChartType);
     } else {
