@@ -79,5 +79,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {}
+  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+    assertCommonFieldChange(fieldName, expected, actual);
+  }
 }
