@@ -68,6 +68,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import javax.ws.rs.HEAD;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
 import lombok.extern.slf4j.Slf4j;
@@ -424,7 +425,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Update the complex columns
     //
     // c1 from array<int> to array<char> - Data type change means old c1 deleted, and new c1 added
-    change = getChangeDescription(table2, MAJOR_UPDATE);
+    change = getChangeDescription(table2, MINOR_UPDATE);
     fieldDeleted(change, "columns", List.of(c1));
     Column c1_new = getColumn(C1, ARRAY, "array<int>", USER_ADDRESS_TAG_LABEL).withArrayDataType(CHAR);
     fieldAdded(change, "columns", List.of(c1_new));
