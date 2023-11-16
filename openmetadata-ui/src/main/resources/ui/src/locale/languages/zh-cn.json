@@ -1035,6 +1035,7 @@
     "test-case-lowercase": "测试用例",
     "test-case-lowercase-plural": "测试用例",
     "test-case-plural": "测试用例",
+    "test-email": "Test Email",
     "test-entity": "测试{{entity}}",
     "test-plural": "测试",
     "test-suite": "质控测试集",
