@@ -453,17 +453,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
 
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) {
-    if (expected == actual) {
-      return;
-    }
-    if (fieldName.equals("reviewers")) {
-      @SuppressWarnings("unchecked")
-      List<EntityReference> expectedRefs = (List<EntityReference>) expected;
-      List<EntityReference> actualRefs = JsonUtils.readObjects(actual.toString(), EntityReference.class);
-      assertEntityReferences(expectedRefs, actualRefs);
-    } else {
-      assertCommonFieldChange(fieldName, expected, actual);
-    }
+    assertCommonFieldChange(fieldName, expected, actual);
   }
 
   private GlossaryTerm createGlossaryTerm(

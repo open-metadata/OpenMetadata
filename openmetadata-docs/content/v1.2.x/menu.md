@@ -38,8 +38,6 @@ site_menu:
 
   - category: Deployment / Docker Deployment
     url: /deployment/docker
-  - category: Deployment / Docker Deployment / Volumes
-    url: /deployment/docker/volumes
   - category: Deployment / Docker Deployment / Enable Security
     url: /deployment/docker/security
 
@@ -57,8 +55,8 @@ site_menu:
     url: /deployment/kubernetes/security
   - category: Deployment / Kubernetes Deployment / Helm Values
     url: /deployment/kubernetes/helm-values
-  - category: Deployment / Kubernetes Deployment / GKE Troubleshooting
-    url: /deployment/kubernetes/gke-troubleshooting
+  - category: Deployment / Kubernetes Deployment / FAQs
+    url: /deployment/kubernetes/faqs
 
   - category: Deployment / Ingestion
     url: /deployment/ingestion
@@ -468,6 +466,8 @@ site_menu:
     url: /connectors/pipeline/nifi
   - category: Connectors / Pipeline / Nifi / Run Externally
     url: /connectors/pipeline/nifi/yaml
+  - category: Connectors / Pipeline / Nifi / Troubleshooting
+    url: /connectors/pipeline/nifi/troubleshooting
   - category: Connectors / Pipeline / Spline
     url: /connectors/pipeline/spline
   - category: Connectors / Pipeline / Spline / Run Externally
@@ -558,6 +558,10 @@ site_menu:
     url: /connectors/ingestion/workflows/profiler
   - category: Connectors / Ingestion / Workflows / Profiler / Metrics
     url: /connectors/ingestion/workflows/profiler/metrics
+  - category: Connectors / Ingestion / Workflows / Profiler / Sample Data
+    url: /connectors/ingestion/workflows/profiler/external-sample-data
+  - category: Connectors / Ingestion / Workflows / Profiler / External Workflow
+    url: /connectors/ingestion/workflows/profiler/external-workflow
   - category: Connectors / Ingestion / Workflows / Data Quality
     url: /connectors/ingestion/workflows/data-quality
   - category: Connectors / Ingestion / Workflows / Data Quality / Tests

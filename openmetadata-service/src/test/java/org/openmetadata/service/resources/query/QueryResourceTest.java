@@ -108,7 +108,16 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) {}
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
+    if (expected == actual) {
+      return;
+    }
+    if (fieldName.equals("queryUsedIn")) {
+      assertEntityReferencesFieldChange(expected, actual);
+    } else {
+      assertCommonFieldChange(fieldName, expected, actual);
+    }
+  }
 
   @Test
   void post_valid_query_test_created(TestInfo test) throws IOException {
@@ -163,6 +172,8 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
   void patch_queryAttributes_200_ok(TestInfo test) throws IOException {
     CreateQuery create = createRequest(getEntityName(test));
     Query query = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Add queryUsedIn as TEST_TABLE2
     String origJson = JsonUtils.pojoToJson(query);
     query.setQueryUsedIn(List.of(TEST_TABLE2.getEntityReference()));
     ChangeDescription change = getChangeDescription(query.getVersion());
@@ -173,9 +184,6 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     assertEquals(List.of(TEST_TABLE2.getEntityReference()), updatedQuery.getQueryUsedIn());
     updatedQuery.setQuery("select * from table1");
     updatedQuery.setQueryUsedIn(List.of(TABLE_REF, TEST_TABLE2.getEntityReference()));
-    change = getChangeDescription(query.getVersion());
-    fieldUpdated(change, "queryUsedIn", List.of(TABLE_REF), List.of(TABLE_REF, TEST_TABLE2));
-    fieldUpdated(change, "query", query.getQuery(), updatedQuery.getQuery());
   }
 
   @Test

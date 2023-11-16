@@ -40,7 +40,6 @@ import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.type.ChangeDescription;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -222,10 +221,7 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
       return;
     }
     if (fieldName.equals("policies")) {
-      @SuppressWarnings("unchecked")
-      List<EntityReference> expectedRefs = (List<EntityReference>) expected;
-      List<EntityReference> actualRefs = JsonUtils.readObjects(actual.toString(), EntityReference.class);
-      assertEntityReferences(expectedRefs, actualRefs);
+      assertEntityReferencesFieldChange(expected, actual);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }

@@ -1284,7 +1284,15 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) {
-    if (expected == actual) {}
-    // TODO fix this
+    if (expected == actual) {
+      return;
+    }
+    if (fieldName.equals("parameterValues")) {
+      assertEquals(JsonUtils.pojoToJson(expected), JsonUtils.pojoToJson(actual));
+    } else if (fieldName.equals("testDefinition")) {
+      assertEntityReferenceFieldChange(expected, actual);
+    } else {
+      assertCommonFieldChange(fieldName, expected, actual);
+    }
   }
 }

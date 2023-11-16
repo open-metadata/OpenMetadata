@@ -533,9 +533,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
       String actualAlgorithm = actual.toString();
       assertEquals(expectedAlgorithm, actualAlgorithm);
     } else if (fieldName.contains("dashboard")) {
-      EntityReference expectedDashboard = (EntityReference) expected;
-      EntityReference actualDashboard = JsonUtils.readValue(actual.toString(), EntityReference.class);
-      assertEquals(expectedDashboard.getId(), actualDashboard.getId());
+      assertEntityReferenceFieldChange(expected, actual);
     } else if (fieldName.contains("server")) {
       URI expectedServer = (URI) expected;
       URI actualServer = URI.create(actual.toString());

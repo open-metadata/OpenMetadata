@@ -2359,6 +2359,33 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     validateChangeEvents(entityInterface, timestamp, expectedEventType, expectedChangeDescription, authHeaders, false);
   }
 
+  public void assertEntityReferenceFieldChange(Object expected, Object actual) {
+    EntityReference expectedRef = (EntityReference) expected;
+    EntityReference actualRef = JsonUtils.readValue(actual.toString(), EntityReference.class);
+    assertEquals(expectedRef.getId(), actualRef.getId());
+  }
+
+  public void assertEntityNamesFieldChange(Object expected, Object actual) {
+    @SuppressWarnings("unchecked")
+    List<String> expectedRefs = (List<String>) expected;
+    List<EntityReference> actualRefs = JsonUtils.readObjects(actual.toString(), EntityReference.class);
+    assertEntityReferenceNames(expectedRefs, actualRefs);
+  }
+
+  public void assertColumnsFieldChange(Object expected, Object actual) throws HttpResponseException {
+    @SuppressWarnings("unchecked")
+    List<Column> expectedRefs = (List<Column>) expected;
+    List<Column> actualRefs = JsonUtils.readObjects(actual.toString(), Column.class);
+    TableResourceTest.assertColumns(expectedRefs, actualRefs);
+  }
+
+  public void assertEntityReferencesFieldChange(Object expected, Object actual) {
+    @SuppressWarnings("unchecked")
+    List<EntityReference> expectedRefs = (List<EntityReference>) expected;
+    List<EntityReference> actualRefs = JsonUtils.readObjects(actual.toString(), EntityReference.class);
+    assertEntityReferences(expectedRefs, actualRefs);
+  }
+
   public static class EventHolder {
     @Getter ChangeEvent expectedEvent;
 
@@ -2503,10 +2530,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     if (expected == actual) {
       return;
     }
-    if (fieldName.endsWith(FIELD_OWNER)) {
-      EntityReference expectedRef = (EntityReference) expected;
-      EntityReference actualRef = JsonUtils.readValue(actual.toString(), EntityReference.class);
-      assertEquals(expectedRef.getId(), actualRef.getId());
+    if (fieldName.equals(FIELD_EXPERTS) || fieldName.equals(FIELD_REVIEWERS)) {
+      assertEntityReferencesFieldChange(expected, actual);
+    } else if (fieldName.endsWith(FIELD_OWNER) || fieldName.equals(FIELD_DOMAIN) || fieldName.equals(FIELD_PARENT)) {
+      assertEntityReferenceFieldChange(expected, actual);
     } else if (fieldName.endsWith(FIELD_TAGS)) {
       @SuppressWarnings("unchecked")
       List<TagLabel> expectedTags = (List<TagLabel>) expected;

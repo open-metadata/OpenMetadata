@@ -23,7 +23,6 @@ import org.openmetadata.schema.api.domains.CreateDomain.DomainType;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.type.ChangeDescription;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.domains.DomainResource.DomainList;
@@ -161,17 +160,6 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
     if (expected == actual) {
       return;
     }
-    if (fieldName.startsWith("parent")) {
-      EntityReference expectedRef = (EntityReference) expected;
-      EntityReference actualRef = JsonUtils.readValue(actual.toString(), EntityReference.class);
-      assertEquals(expectedRef.getId(), actualRef.getId());
-    } else if (fieldName.startsWith("experts")) {
-      @SuppressWarnings("unchecked")
-      List<EntityReference> expectedRefs = (List<EntityReference>) expected;
-      List<EntityReference> actualRefs = JsonUtils.readObjects(actual.toString(), EntityReference.class);
-      assertEntityReferences(expectedRefs, actualRefs);
-    } else {
-      assertCommonFieldChange(fieldName, expected, actual);
-    }
+    assertCommonFieldChange(fieldName, expected, actual);
   }
 }

@@ -921,10 +921,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
       return;
     }
     if (List.of("users", "defaultRoles", "parents", "children", "policies").contains(fieldName)) {
-      @SuppressWarnings("unchecked")
-      List<EntityReference> expectedRefs = (List<EntityReference>) expected;
-      List<EntityReference> actualRefs = JsonUtils.readObjects(actual.toString(), EntityReference.class);
-      assertEntityReferences(expectedRefs, actualRefs);
+      assertEntityReferencesFieldChange(expected, actual);
     } else if (fieldName.equals("profile")) {
       Profile expectedProfile = (Profile) expected;
       Profile actualProfile = JsonUtils.convertValue(actual, Profile.class);
