@@ -8,6 +8,7 @@ import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.EntityUtil.*;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.LONG_ENTITY_NAME;
+import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
@@ -176,10 +177,10 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     // Add queryUsedIn as TEST_TABLE2
     String origJson = JsonUtils.pojoToJson(query);
     query.setQueryUsedIn(List.of(TEST_TABLE2.getEntityReference()));
-    ChangeDescription change = getChangeDescription(query.getVersion());
+    ChangeDescription change = getChangeDescription(query, MINOR_UPDATE);
     fieldAdded(change, "queryUsedIn", List.of(TEST_TABLE2.getEntityReference()));
     fieldDeleted(change, "queryUsedIn", List.of(TABLE_REF));
-    patchEntityAndCheck(query, origJson, ADMIN_AUTH_HEADERS, TestUtils.UpdateType.MINOR_UPDATE, change);
+    patchEntityAndCheck(query, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     Query updatedQuery = getEntity(query.getId(), ADMIN_AUTH_HEADERS);
     assertEquals(List.of(TEST_TABLE2.getEntityReference()), updatedQuery.getQueryUsedIn());
     updatedQuery.setQuery("select * from table1");

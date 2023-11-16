@@ -151,7 +151,7 @@ public class PersonaResourceTest extends EntityResourceTest<Persona, CreatePerso
         permissionNotAllowed(randomUserName, List.of(MetadataOperation.EDIT_USERS)));
 
     // Ensure user with UpdateTeam permission can add users to a team.
-    ChangeDescription change = getChangeDescription(persona.getVersion());
+    ChangeDescription change = getChangeDescription(persona, MINOR_UPDATE);
     fieldAdded(change, "users", userRefs);
     patchEntityAndCheck(persona, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
@@ -175,9 +175,9 @@ public class PersonaResourceTest extends EntityResourceTest<Persona, CreatePerso
     int removeUserIndex = new Random().nextInt(totalUsers);
     EntityReference deletedUser = persona.getUsers().get(removeUserIndex);
     persona.getUsers().remove(removeUserIndex);
-    ChangeDescription change = getChangeDescription(persona.getVersion());
+    ChangeDescription change = getChangeDescription(persona, MINOR_UPDATE);
     fieldDeleted(change, "users", CommonUtil.listOf(deletedUser));
-    patchEntityAndCheck(persona, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    patchEntityAndCheck(persona, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   private static void validatePersona(

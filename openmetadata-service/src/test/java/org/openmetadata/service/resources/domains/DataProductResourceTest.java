@@ -7,6 +7,7 @@ import static org.openmetadata.service.Entity.FIELD_ASSETS;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.TestUtils.*;
+import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -54,32 +55,32 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
 
     // Add asset topic with PUT
     create.withAssets(List.of(TEST_TABLE1.getEntityReference(), topic.getEntityReference()));
-    ChangeDescription change = getChangeDescription(product.getVersion());
+    ChangeDescription change = getChangeDescription(product, MINOR_UPDATE);
     fieldAdded(change, FIELD_ASSETS, listOf(topic.getEntityReference()));
-    product = updateAndCheckEntity(create, Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    product = updateAndCheckEntity(create, Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     entityInDataProduct(topic, product, true); // topic is part of data product
 
     // Remove asset topic with PUT
     create.withAssets(List.of(TEST_TABLE1.getEntityReference()));
-    change = getChangeDescription(product.getVersion());
+    change = getChangeDescription(product, MINOR_UPDATE);
     fieldDeleted(change, FIELD_ASSETS, listOf(topic.getEntityReference()));
-    product = updateAndCheckEntity(create, Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    product = updateAndCheckEntity(create, Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     entityInDataProduct(topic, product, false); // topic is not part of data product
 
     // Add topic asset with PATCH
     String json = JsonUtils.pojoToJson(product);
     product.withAssets(List.of(TEST_TABLE1.getEntityReference(), topic.getEntityReference()));
-    change = getChangeDescription(product.getVersion());
+    change = getChangeDescription(product, MINOR_UPDATE);
     fieldAdded(change, FIELD_ASSETS, listOf(topic.getEntityReference()));
-    product = patchEntityAndCheck(product, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    product = patchEntityAndCheck(product, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     entityInDataProduct(topic, product, true); // topic is part of data product
 
     // Remove asset topic with PATCH
     json = JsonUtils.pojoToJson(product);
     product.withAssets(List.of(TEST_TABLE1.getEntityReference()));
-    change = getChangeDescription(product.getVersion());
+    change = getChangeDescription(product, MINOR_UPDATE);
     fieldDeleted(change, FIELD_ASSETS, listOf(topic.getEntityReference()));
-    patchEntityAndCheck(product, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    patchEntityAndCheck(product, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     entityInDataProduct(topic, product, false); // topic is not part of data product
   }
 
@@ -90,29 +91,29 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
 
     // Add User2 as expert using PUT
     create.withExperts(List.of(USER1.getFullyQualifiedName(), USER2.getFullyQualifiedName()));
-    ChangeDescription change = getChangeDescription(product.getVersion());
+    ChangeDescription change = getChangeDescription(product, MINOR_UPDATE);
     fieldAdded(change, "experts", listOf(USER2.getEntityReference()));
-    product = updateAndCheckEntity(create, Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    product = updateAndCheckEntity(create, Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Remove User2 as expert using PUT
     create.withExperts(List.of(USER1.getFullyQualifiedName()));
-    change = getChangeDescription(product.getVersion());
+    change = getChangeDescription(product, MINOR_UPDATE);
     fieldDeleted(change, "experts", listOf(USER2.getEntityReference()));
-    product = updateAndCheckEntity(create, Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    product = updateAndCheckEntity(create, Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Add User2 as expert using PATCH
     String json = JsonUtils.pojoToJson(product);
     product.withExperts(List.of(USER1.getEntityReference(), USER2.getEntityReference()));
-    change = getChangeDescription(product.getVersion());
+    change = getChangeDescription(product, MINOR_UPDATE);
     fieldAdded(change, "experts", listOf(USER2.getEntityReference()));
-    product = patchEntityAndCheck(product, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    product = patchEntityAndCheck(product, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Remove User2 as expert using PATCH
     json = JsonUtils.pojoToJson(product);
     product.withExperts(List.of(USER1.getEntityReference()));
-    change = getChangeDescription(product.getVersion());
+    change = getChangeDescription(product, MINOR_UPDATE);
     fieldDeleted(change, "experts", listOf(USER2.getEntityReference()));
-    patchEntityAndCheck(product, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    patchEntityAndCheck(product, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test

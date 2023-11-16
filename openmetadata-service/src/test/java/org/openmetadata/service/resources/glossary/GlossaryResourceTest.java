@@ -81,7 +81,6 @@ import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
-import org.openmetadata.service.util.TestUtils.UpdateType;
 
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -129,23 +128,23 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     // Add reviewer USER1 in PATCH request
     String origJson = JsonUtils.pojoToJson(glossary);
     glossary.withReviewers(List.of(USER1_REF));
-    ChangeDescription change = getChangeDescription(glossary.getVersion());
+    ChangeDescription change = getChangeDescription(glossary, MINOR_UPDATE);
     fieldAdded(change, "reviewers", List.of(USER1_REF));
-    glossary = patchEntityAndCheck(glossary, origJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    glossary = patchEntityAndCheck(glossary, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Add another reviewer USER2 in PATCH request
     origJson = JsonUtils.pojoToJson(glossary);
     glossary.withReviewers(List.of(USER1_REF, USER2_REF));
-    change = getChangeDescription(glossary.getVersion());
+    change = getChangeDescription(glossary, MINOR_UPDATE);
     fieldAdded(change, "reviewers", List.of(USER2_REF));
-    glossary = patchEntityAndCheck(glossary, origJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    glossary = patchEntityAndCheck(glossary, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Remove a reviewer USER1 in PATCH request
     origJson = JsonUtils.pojoToJson(glossary);
     glossary.withReviewers(List.of(USER2_REF));
-    change = getChangeDescription(glossary.getVersion());
+    change = getChangeDescription(glossary, MINOR_UPDATE);
     fieldDeleted(change, "reviewers", List.of(USER1_REF));
-    patchEntityAndCheck(glossary, origJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    patchEntityAndCheck(glossary, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
@@ -473,7 +472,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
   public void renameGlossaryAndCheck(Glossary glossary, String newName) throws IOException {
     String oldName = glossary.getName();
     String json = JsonUtils.pojoToJson(glossary);
-    ChangeDescription change = getChangeDescription(glossary.getVersion());
+    ChangeDescription change = getChangeDescription(glossary, MINOR_UPDATE);
     fieldUpdated(change, "name", oldName, newName);
     glossary.setName(newName);
     patchEntityAndCheck(glossary, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);

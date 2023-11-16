@@ -177,7 +177,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
     // Create a Model with POST
     CreateMlModel request = createRequest(test).withOwner(USER1_REF);
     MlModel model = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
-    ChangeDescription change = getChangeDescription(model.getVersion());
+    ChangeDescription change = getChangeDescription(model, MINOR_UPDATE);
 
     // Update Model two times successfully with PUT requests
     updateAndCheckEntity(request, Status.OK, ADMIN_AUTH_HEADERS, NO_CHANGE, change);
@@ -187,7 +187,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
   void put_MlModelUpdateAlgorithm_200(TestInfo test) throws IOException {
     CreateMlModel request = createRequest(test);
     MlModel model = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
-    ChangeDescription change = getChangeDescription(model.getVersion());
+    ChangeDescription change = getChangeDescription(model, MAJOR_UPDATE);
     fieldUpdated(change, "algorithm", "regression", "SVM");
     updateAndCheckEntity(request.withAlgorithm("SVM"), Status.OK, ADMIN_AUTH_HEADERS, MAJOR_UPDATE, change);
   }
@@ -196,7 +196,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
   void put_MlModelAddDashboard_200(TestInfo test) throws IOException {
     CreateMlModel request = createRequest(test).withDashboard(null);
     MlModel model = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
-    ChangeDescription change = getChangeDescription(model.getVersion());
+    ChangeDescription change = getChangeDescription(model, MINOR_UPDATE);
     fieldAdded(change, "dashboard", DASHBOARD_REFERENCE);
     updateAndCheckEntity(
         request.withDashboard(DASHBOARD.getFullyQualifiedName()), Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
@@ -215,7 +215,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
   void put_MlModelAddServer_200(TestInfo test) throws IOException {
     CreateMlModel request = createRequest(test);
     MlModel model = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
-    ChangeDescription change = getChangeDescription(model.getVersion());
+    ChangeDescription change = getChangeDescription(model, MAJOR_UPDATE);
     fieldAdded(change, "server", SERVER);
     updateAndCheckEntity(request.withServer(SERVER), Status.OK, ADMIN_AUTH_HEADERS, MAJOR_UPDATE, change);
   }
@@ -224,7 +224,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
   void put_MlModelUpdateServer_200(TestInfo test) throws IOException {
     CreateMlModel request = createRequest(test).withServer(SERVER);
     MlModel model = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
-    ChangeDescription change = getChangeDescription(model.getVersion());
+    ChangeDescription change = getChangeDescription(model, MAJOR_UPDATE);
     URI newServer = URI.create("http://localhost.com/mlModel/v2");
     fieldUpdated(change, "server", SERVER, newServer);
     updateAndCheckEntity(request.withServer(newServer), Status.OK, ADMIN_AUTH_HEADERS, MAJOR_UPDATE, change);
@@ -234,7 +234,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
   void put_MlModelAddMlStore_200(TestInfo test) throws IOException {
     CreateMlModel request = createRequest(test);
     MlModel model = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
-    ChangeDescription change = getChangeDescription(model.getVersion());
+    ChangeDescription change = getChangeDescription(model, MINOR_UPDATE);
     fieldAdded(change, "mlStore", ML_STORE);
     updateAndCheckEntity(request.withMlStore(ML_STORE), Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
@@ -247,7 +247,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
             .withAlgorithm(ALGORITHM)
             .withService(MLFLOW_REFERENCE.getName());
     MlModel model = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
-    ChangeDescription change = getChangeDescription(model.getVersion());
+    ChangeDescription change = getChangeDescription(model, MINOR_UPDATE);
     fieldAdded(change, "mlFeatures", ML_FEATURES);
     updateAndCheckEntity(request.withMlFeatures(ML_FEATURES), Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
@@ -263,7 +263,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
     MlFeature newMlFeature = new MlFeature().withName("color").withDataType(MlFeatureDataType.Categorical);
     List<MlFeature> newFeatures = Collections.singletonList(newMlFeature);
 
-    ChangeDescription change = getChangeDescription(model.getVersion());
+    ChangeDescription change = getChangeDescription(model, MINOR_UPDATE);
     fieldAdded(change, "mlFeatures", newFeatures);
     fieldDeleted(change, "mlFeatures", ML_FEATURES);
     updateAndCheckEntity(request.withMlFeatures(newFeatures), Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
@@ -286,7 +286,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
                         .withDataSource(TABLE_REFERENCE)));
     List<MlFeature> newFeatures = Collections.singletonList(newMlFeature);
 
-    ChangeDescription change = getChangeDescription(model.getVersion());
+    ChangeDescription change = getChangeDescription(model, MINOR_UPDATE);
     fieldAdded(change, "mlFeatures", newFeatures);
     fieldDeleted(change, "mlFeatures", ML_FEATURES);
     updateAndCheckEntity(request.withMlFeatures(newFeatures), Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
@@ -325,7 +325,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
             .withAlgorithm(ALGORITHM)
             .withService(MLFLOW_REFERENCE.getName());
     MlModel model = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
-    ChangeDescription change = getChangeDescription(model.getVersion());
+    ChangeDescription change = getChangeDescription(model, MINOR_UPDATE);
     fieldAdded(change, "mlHyperParameters", ML_HYPERPARAMS);
     updateAndCheckEntity(
         request.withMlHyperParameters(ML_HYPERPARAMS), Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
@@ -335,7 +335,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
   void put_MlModelAddTarget_200(TestInfo test) throws IOException {
     CreateMlModel request = createRequest(test);
     MlModel model = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
-    ChangeDescription change = getChangeDescription(model.getVersion());
+    ChangeDescription change = getChangeDescription(model, MAJOR_UPDATE);
     fieldAdded(change, "target", "myTarget");
     updateAndCheckEntity(request.withTarget("myTarget"), Status.OK, ADMIN_AUTH_HEADERS, MAJOR_UPDATE, change);
   }
@@ -345,7 +345,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
     CreateMlModel request = createRequest(test).withTarget("origTarget");
     MlModel model = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
-    ChangeDescription change = getChangeDescription(model.getVersion());
+    ChangeDescription change = getChangeDescription(model, MAJOR_UPDATE);
     fieldUpdated(change, "target", "origTarget", "newTarget");
     updateAndCheckEntity(request.withTarget("newTarget"), Status.OK, ADMIN_AUTH_HEADERS, MAJOR_UPDATE, change);
   }
