@@ -41,7 +41,6 @@ import org.openmetadata.service.util.TestUtils;
 @Slf4j
 public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
   private EntityReference TABLE_REF;
-  private EntityReference TABLE_REF_2;
   private String QUERY;
   private String QUERY_CHECKSUM;
 
