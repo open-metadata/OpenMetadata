@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { PagingResponse, RestoreRequestType } from 'Models';
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
+import { PagingResponse, RestoreRequestType } from 'Models';
 import { CreateTestCase } from '../generated/api/tests/createTestCase';
 import { CreateTestSuite } from '../generated/api/tests/createTestSuite';
 import { TestCase, TestCaseResult } from '../generated/tests/testCase';

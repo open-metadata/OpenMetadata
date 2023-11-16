@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { PagingResponse } from 'Models';
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
+import { PagingResponse } from 'Models';
 import { QueryVote } from '../components/TableQueries/TableQueries.interface';
 import { CreateQuery } from '../generated/api/data/createQuery';
 import { Query } from '../generated/entity/data/query';
