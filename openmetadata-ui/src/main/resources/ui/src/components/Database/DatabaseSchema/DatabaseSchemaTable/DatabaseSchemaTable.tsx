@@ -135,7 +135,7 @@ export const DatabaseSchemaTable = () => {
       }
       handlePageChange(currentPage);
     },
-    [paging, fetchDatabaseSchema, searchSchema]
+    [paging, fetchDatabaseSchema, searchSchema, searchValue]
   );
 
   const onSchemaSearch = (value: string) => {
