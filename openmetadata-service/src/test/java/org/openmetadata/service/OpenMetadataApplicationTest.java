@@ -101,14 +101,24 @@ public abstract class OpenMetadataApplicationTest {
     sqlContainer.withConnectTimeoutSeconds(240);
     sqlContainer.start();
 
-    final String flyWayMigrationScripsLocation =
+    final String flyWayMigrationScriptsLocation =
         ResourceHelpers.resourceFilePath("db/sql/migrations/flyway/" + sqlContainer.getDriverClassName());
-    final String nativeMigrationScripsLocation = ResourceHelpers.resourceFilePath("db/sql/migrations/native/");
+    final String nativeMigrationScriptsLocation = ResourceHelpers.resourceFilePath("db/sql/migrations/native/");
+
+    // Extension Config
+    String extensionMigrationScripsLocation = "";
+    try {
+      extensionMigrationScripsLocation = ResourceHelpers.resourceFilePath("extension/sql/migrations/");
+      configOverrides.add(
+          ConfigOverride.config("migrationConfiguration.extensionPath", extensionMigrationScripsLocation));
+    } catch (Exception ex) {
+      LOG.info("Extension migrations not found");
+    }
     Flyway flyway =
         Flyway.configure()
             .dataSource(sqlContainer.getJdbcUrl(), sqlContainer.getUsername(), sqlContainer.getPassword())
             .table("DATABASE_CHANGE_LOG")
-            .locations("filesystem:" + flyWayMigrationScripsLocation)
+            .locations("filesystem:" + flyWayMigrationScriptsLocation)
             .sqlMigrationPrefix("v")
             .cleanDisabled(false)
             .load();
@@ -127,8 +137,8 @@ public abstract class OpenMetadataApplicationTest {
     overrideDatabaseConfig(sqlContainer);
 
     // Migration overrides
-    configOverrides.add(ConfigOverride.config("migrationConfiguration.flywayPath", flyWayMigrationScripsLocation));
-    configOverrides.add(ConfigOverride.config("migrationConfiguration.nativePath", nativeMigrationScripsLocation));
+    configOverrides.add(ConfigOverride.config("migrationConfiguration.flywayPath", flyWayMigrationScriptsLocation));
+    configOverrides.add(ConfigOverride.config("migrationConfiguration.nativePath", nativeMigrationScriptsLocation));
 
     ConfigOverride[] configOverridesArray = configOverrides.toArray(new ConfigOverride[0]);
     APP = new DropwizardAppExtension<>(OpenMetadataApplication.class, CONFIG_PATH, configOverridesArray);
@@ -141,8 +151,8 @@ public abstract class OpenMetadataApplicationTest {
         jdbi,
         config,
         ConnectionType.from(sqlContainer.getDriverClassName()),
-        nativeMigrationScripsLocation,
-        null,
+        nativeMigrationScriptsLocation,
+        extensionMigrationScripsLocation,
         false);
     APP.before();
     createClient();
