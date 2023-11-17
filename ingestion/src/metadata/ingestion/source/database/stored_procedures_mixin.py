@@ -125,6 +125,10 @@ class StoredProcedureMixin(ABC):
     def is_lineage_query(query_type: str, query_text: str) -> bool:
         """Check if it's worth it to parse the query for lineage"""
 
+        logger.debug(
+            f"Validating query lineage for type [{query_type}] and text [{query_text}]"
+        )
+
         if query_type in ("MERGE", "UPDATE", "CREATE_TABLE_AS_SELECT"):
             return True
 
@@ -139,7 +143,6 @@ class StoredProcedureMixin(ABC):
         self, query_by_procedure: QueryByProcedure, procedure: StoredProcedure
     ) -> Iterable[Either[AddLineageRequest]]:
         """Add procedure lineage from its query"""
-
         self.context.stored_procedure_query_lineage = False
         if self.is_lineage_query(
             query_type=query_by_procedure.query_type,
@@ -201,6 +204,7 @@ class StoredProcedureMixin(ABC):
             queries_dict = self.get_stored_procedure_queries_dict()
             # Then for each procedure, iterate over all its queries
             for procedure in self.context.stored_procedures:
+                logger.debug(f"Processing Lineage for [{procedure.name}]")
                 for query_by_procedure in (
                     queries_dict.get(procedure.name.__root__.lower()) or []
                 ):
