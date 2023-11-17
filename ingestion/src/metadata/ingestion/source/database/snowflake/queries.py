@@ -24,7 +24,7 @@ SNOWFLAKE_SQL_STATEMENT = textwrap.dedent(
       schema_name,
       start_time,
       end_time,
-      total_elapsed_time/1000 duration
+      total_elapsed_time duration
     from snowflake.account_usage.query_history
     WHERE query_text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
     AND query_text NOT LIKE '/* {{"app": "dbt", %%}} */%%'

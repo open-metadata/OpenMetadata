@@ -72,7 +72,7 @@ REDSHIFT_SQL_STATEMENT = textwrap.dedent(
         s.schema_name,
         q.starttime AS start_time,
         q.endtime AS end_time,
-        datediff(second,q.starttime,q.endtime) AS duration,
+        datediff(millisecond,q.starttime,q.endtime) AS duration,
         q.aborted AS aborted
     FROM queries AS q
         LEFT JOIN scans AS s
