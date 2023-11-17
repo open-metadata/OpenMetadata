@@ -1,0 +1,17 @@
+[build-system]
+requires = ['hatchling', 'hatch-fancy-pypi-readme>=22.5.0']
+build-backend = 'hatchling.build'
+
+[versions]
+airflow = "apache-airflow==2.6.3"
+avro = "avro~=1.11"
+
+[project]
+name = "openmetadata-ingestion"
+version = "1.3.0.0.dev0"
+url = "https://open-metadata.org/"
+author = "OpenMetadata Committers"
+license = "Apache License 2.0"
+description = "Ingestion Framework for OpenMetadata"
+requires-python = ">=3.8"
+dependencies = [versions.avro]
