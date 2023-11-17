@@ -446,7 +446,10 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                     sample=sample,
                 )
             except Exception as exc:
-                error = f"{metric_func.column if metric_func.column is not None else metric_func.table.__tablename__} metric_type.value: {exc}"
+                error = (
+                    f"{metric_func.column if metric_func.column is not None else metric_func.table.__tablename__} "
+                    f"metric_type.value: {exc}"
+                )
                 logger.error(error)
                 self.status.failed_profiler(error, traceback.format_exc())
                 row = None

@@ -24,9 +24,12 @@ class TrinoSampler(SQASampler):
     Generates a sample of the data to not
     run the query in the whole table.
     """
+
     def __init__(self, *args, **kwargs):
+        # pylint: disable=import-outside-toplevel
         from trino.sqlalchemy.dialect import TrinoDialect
-        TrinoDialect._json_deserializer = None  # pylint: disable=protected-access
+
+        TrinoDialect._json_deserializer = None
 
         super().__init__(*args, **kwargs)
 
