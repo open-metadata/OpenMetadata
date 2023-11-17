@@ -631,6 +631,7 @@ class Profiler(Generic[TMetric]):
                 profileSampleType=self.profile_sample_config.profile_sample_type
                 if self.profile_sample_config
                 else None,
+                customMetrics=self._table_results.get("customMetrics"),
             )
 
             if self._system_results:
