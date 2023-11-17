@@ -26,6 +26,7 @@ import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
@@ -65,7 +66,6 @@ import org.openmetadata.service.resources.topics.TopicResource.TopicList;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
-import org.openmetadata.service.util.TestUtils.UpdateType;
 
 @Slf4j
 public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
@@ -150,7 +150,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
         .withMessageSchema(new MessageSchema().withSchemaText("bcd").withSchemaType(SchemaType.Avro))
         .withCleanupPolicies(List.of(CleanupPolicy.DELETE));
 
-    ChangeDescription change = getChangeDescription(topic.getVersion());
+    ChangeDescription change = getChangeDescription(topic, MINOR_UPDATE);
     fieldUpdated(change, FIELD_OWNER, USER1_REF, TEAM11_REF);
     fieldUpdated(change, "maximumMessageSize", 1, 2);
     fieldUpdated(change, "minimumInSyncReplicas", 1, 2);
@@ -162,7 +162,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     fieldDeleted(change, "cleanupPolicies", List.of(CleanupPolicy.COMPACT));
     fieldAdded(change, "cleanupPolicies", List.of(CleanupPolicy.DELETE));
 
-    updateAndCheckEntity(createTopic, Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    updateAndCheckEntity(createTopic, Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
@@ -235,7 +235,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
         .withMessageSchema(schema.withSchemaFields(fields))
         .withCleanupPolicies(List.of(CleanupPolicy.DELETE));
 
-    ChangeDescription change = getChangeDescription(topic.getVersion());
+    ChangeDescription change = getChangeDescription(topic, MINOR_UPDATE);
     fieldUpdated(change, FIELD_OWNER, USER1_REF, TEAM11_REF);
     fieldUpdated(change, "maximumMessageSize", 1, 2);
     fieldUpdated(change, "minimumInSyncReplicas", 1, 2);
@@ -245,7 +245,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     fieldUpdated(change, "retentionSize", 1.0, 2.0);
     fieldDeleted(change, "cleanupPolicies", List.of(CleanupPolicy.COMPACT));
     fieldAdded(change, "cleanupPolicies", List.of(CleanupPolicy.DELETE));
-    patchEntityAndCheck(topic, origJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    patchEntityAndCheck(topic, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test

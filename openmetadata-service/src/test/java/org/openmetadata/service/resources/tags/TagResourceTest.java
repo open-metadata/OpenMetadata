@@ -169,7 +169,7 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
   public void renameTagAndCheck(Tag tag, String newName) throws IOException {
     String oldName = tag.getName();
     String json = JsonUtils.pojoToJson(tag);
-    ChangeDescription change = getChangeDescription(tag.getVersion());
+    ChangeDescription change = getChangeDescription(tag, MINOR_UPDATE);
     fieldUpdated(change, "name", oldName, newName);
     tag.setName(newName);
     tag = patchEntityAndCheck(tag, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
@@ -239,9 +239,6 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
 
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) {
-    if (expected == actual) {
-      return;
-    }
     assertCommonFieldChange(fieldName, expected, actual);
   }
 

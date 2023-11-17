@@ -178,6 +178,9 @@ public class TagRepository extends EntityRepository<Tag> {
       UUID oldCategoryId = getId(original.getClassification());
       UUID newCategoryId = getId(updated.getClassification());
       boolean classificationChanged = !Objects.equals(oldCategoryId, newCategoryId);
+      if (!parentChanged && !classificationChanged) {
+        return;
+      }
 
       setFullyQualifiedName(updated);
       daoCollection.tagDAO().updateFqn(original.getFullyQualifiedName(), updated.getFullyQualifiedName());

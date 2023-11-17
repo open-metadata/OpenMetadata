@@ -42,7 +42,6 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.quartz.JobExecutionContext;
-import org.quartz.JobExecutionException;
 import org.quartz.SchedulerException;
 
 @Slf4j
@@ -176,7 +175,7 @@ public class AbstractNativeApplication implements NativeApplication {
   }
 
   @Override
-  public void execute(JobExecutionContext jobExecutionContext) throws JobExecutionException {
+  public void execute(JobExecutionContext jobExecutionContext) {
     // This is the part of the code that is executed by the scheduler
     App jobApp = (App) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_INFO_KEY);
     CollectionDAO dao = (CollectionDAO) jobExecutionContext.getJobDetail().getJobDataMap().get(COLLECTION_DAO_KEY);
@@ -187,6 +186,11 @@ public class AbstractNativeApplication implements NativeApplication {
 
     // Trigger
     this.startApp(jobExecutionContext);
+  }
+
+  @Override
+  public void configure() {
+    /* Not needed by default */
   }
 
   public static AppRuntime getAppRuntime(App app) {

@@ -122,6 +122,8 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     private void updateAssets() {
       List<EntityReference> origToRefs = listOrEmpty(original.getAssets());
       List<EntityReference> updatedToRefs = listOrEmpty(updated.getAssets());
+      origToRefs.sort(EntityUtil.compareEntityReference);
+      updatedToRefs.sort(EntityUtil.compareEntityReference);
       List<EntityReference> added = new ArrayList<>();
       List<EntityReference> deleted = new ArrayList<>();
 
@@ -136,8 +138,6 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       for (EntityReference asset : added) {
         addRelationship(original.getId(), asset.getId(), DATA_PRODUCT, asset.getType(), Relationship.HAS, false);
       }
-      updatedToRefs.sort(EntityUtil.compareEntityReference);
-      origToRefs.sort(EntityUtil.compareEntityReference);
     }
   }
 }

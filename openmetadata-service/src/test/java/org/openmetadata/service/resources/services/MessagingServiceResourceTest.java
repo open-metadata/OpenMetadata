@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import java.io.IOException;
@@ -48,7 +49,6 @@ import org.openmetadata.service.resources.services.messaging.MessagingServiceRes
 import org.openmetadata.service.resources.services.messaging.MessagingServiceResource.MessagingServiceList;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
-import org.openmetadata.service.util.TestUtils.UpdateType;
 
 @Slf4j
 public class MessagingServiceResourceTest extends ServiceResourceTest<MessagingService, CreateMessagingService> {
@@ -141,19 +141,19 @@ public class MessagingServiceResourceTest extends ServiceResourceTest<MessagingS
             .withName(service.getName())
             .withDescription("description1")
             .withConnection(messagingConnection);
-    ChangeDescription change = getChangeDescription(service.getVersion());
+    ChangeDescription change = getChangeDescription(service, MINOR_UPDATE);
     fieldAdded(change, "description", "description1");
-    service = updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    service = updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Update connection
     MessagingConnection messagingConnection1 =
         new MessagingConnection()
             .withConfig(
                 new KafkaConnection().withBootstrapServers("host:9092").withSchemaRegistryURL(new URI("host:8081")));
-    change = getChangeDescription(service.getVersion());
+    change = getChangeDescription(service, MINOR_UPDATE);
     fieldUpdated(change, "connection", messagingConnection, messagingConnection1);
     update.withConnection(messagingConnection1);
-    service = updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    service = updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Update description and connection
     MessagingConnection messagingConnection2 =
@@ -161,10 +161,10 @@ public class MessagingServiceResourceTest extends ServiceResourceTest<MessagingS
             .withConfig(
                 new KafkaConnection().withBootstrapServers("host1:9092").withSchemaRegistryURL(new URI("host1:8081")));
     update.withConnection(messagingConnection1);
-    change = getChangeDescription(service.getVersion());
+    change = getChangeDescription(service, MINOR_UPDATE);
     fieldUpdated(change, "connection", messagingConnection1, messagingConnection2);
     update.setConnection(messagingConnection2);
-    updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
@@ -239,10 +239,13 @@ public class MessagingServiceResourceTest extends ServiceResourceTest<MessagingS
 
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) {
+    if (expected == actual) {
+      return;
+    }
     if ("connection".equals(fieldName)) {
       assertTrue(((String) actual).contains("-encrypted-value"));
     } else {
-      super.assertCommonFieldChange(fieldName, expected, actual);
+      assertCommonFieldChange(fieldName, expected, actual);
     }
   }
 
