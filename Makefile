@@ -224,8 +224,7 @@ update_python_release_paths: ## To update the setup.py files
 
 .PHONY: update_dockerfile_version
 update_dockerfile_version: ## To update the dockerfiles version
-	@file_paths="docker/docker-compose-ingestion/docker-compose-ingestion-postgres.yml \
-		     docker/docker-compose-ingestion/docker-compose-ingestion.yml \
+	@file_paths="docker/docker-compose-ingestion/docker-compose-ingestion.yml \
 		     docker/docker-compose-openmetadata/docker-compose-openmetadata.yml \
 		     docker/docker-compose-quickstart/docker-compose-postgres.yml \
 		     docker/docker-compose-quickstart/docker-compose.yml"; \
