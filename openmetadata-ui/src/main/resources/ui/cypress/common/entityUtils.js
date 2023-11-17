@@ -142,3 +142,35 @@ export const generateRandomTable = () => {
 
   return table;
 };
+
+/**
+ * get Table by name and create query in the table
+ */
+export const createQueryByTableName = (token, table) => {
+  cy.request({
+    method: 'GET',
+    url: `/api/v1/tables/name/${table.databaseSchema}.${table.name}`,
+    headers: { Authorization: `Bearer ${token}` },
+  }).then((response) => {
+    cy.request({
+      method: 'POST',
+      url: `/api/v1/queries`,
+      headers: { Authorization: `Bearer ${token}` },
+      body: {
+        query: 'SELECT * FROM SALES',
+        description: 'this is query description',
+        queryUsedIn: [
+          {
+            id: response.body.id,
+            type: 'table',
+          },
+        ],
+        duration: 6199,
+        queryDate: 1700225667191,
+        service: DATABASE_SERVICE_DETAILS.name,
+      },
+    }).then((response) => {
+      expect(response.status).to.eq(201);
+    });
+  });
+};

@@ -19,7 +19,7 @@ CLICKHOUSE_SQL_STATEMENT = textwrap.dedent(
         Select
           query_start_time start_time,
           DATEADD(query_duration_ms, query_start_time) end_time,
-          query_duration_ms/1000 duration,
+          query_duration_ms duration,
           'default' database_name,
           user user_name,
           FALSE aborted,
@@ -66,7 +66,7 @@ CLICKHOUSE_SQL_STATEMENT_TEST = """
         Select
           query_start_time start_time,
           DATEADD(query_duration_ms, query_start_time) end_time,
-          query_duration_ms/1000 duration,
+          query_duration_ms duration,
           'default' database_name,
           user user_name,
           FALSE aborted,
