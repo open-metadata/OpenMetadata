@@ -4,6 +4,7 @@
   "title": "AutoTaggerAppConfig",
   "description": "Configuration for the Auto Tagger External Application.",
   "type": "object",
+  "javaType": "org.openmetadata.schema.entity.app.external.AutoTaggerAppConfig",
   "definitions": {
     "autoTaggerApp": {
       "description": "Application type.",
