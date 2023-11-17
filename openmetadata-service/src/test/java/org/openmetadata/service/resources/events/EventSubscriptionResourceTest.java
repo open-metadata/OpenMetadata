@@ -356,15 +356,13 @@ public class EventSubscriptionResourceTest extends EntityResourceTest<EventSubsc
         webhookCallbackResource.getEntityCallbackEvents(EventType.ENTITY_CREATED, entity);
     assertTrue(callbackEvents.size() > 0);
     long timestamp = callbackEvents.get(0).getTimestamp();
-    waitAndCheckForEvents(entity, null, null, null, timestamp, callbackEvents, 30);
+    waitAndCheckForEvents(entity, null, null, null, timestamp, callbackEvents, 50);
 
     // For the entity all the webhooks registered for updated events have the right number of events
     callbackEvents = webhookCallbackResource.getEntityCallbackEvents(EventType.ENTITY_UPDATED, entity);
     // Use previous date if no update events
     timestamp = callbackEvents.size() > 0 ? callbackEvents.get(0).getTimestamp() : timestamp;
-    waitAndCheckForEvents(null, entity, null, null, timestamp, callbackEvents, 30);
-
-    // TODO add delete event support
+    waitAndCheckForEvents(null, entity, null, null, timestamp, callbackEvents, 50);
   }
 
   public void waitAndCheckForEvents(

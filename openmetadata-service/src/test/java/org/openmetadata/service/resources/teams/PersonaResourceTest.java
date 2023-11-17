@@ -253,7 +253,7 @@ public class PersonaResourceTest extends EntityResourceTest<Persona, CreatePerso
     if (expected == actual) {
       return;
     }
-    if (List.of("users").contains(fieldName)) {
+    if ("users".equals(fieldName)) {
       assertEntityReferencesFieldChange(expected, actual);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);

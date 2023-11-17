@@ -340,6 +340,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     for (EntityReference asset : listOrEmpty(create.getAssets())) {
       asset = Entity.getEntityReference(asset, Include.NON_DELETED);
       dataProduct.getAssets().add(asset);
+      dataProduct.getAssets().sort(EntityUtil.compareEntityReference);
     }
     return dataProduct;
   }

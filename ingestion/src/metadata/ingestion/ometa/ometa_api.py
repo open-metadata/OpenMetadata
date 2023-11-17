@@ -36,7 +36,6 @@ from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
 from metadata.ingestion.ometa.mixins.dashboard_mixin import OMetaDashboardMixin
 from metadata.ingestion.ometa.mixins.data_insight_mixin import DataInsightMixin
 from metadata.ingestion.ometa.mixins.es_mixin import ESMixin
-from metadata.ingestion.ometa.mixins.glossary_mixin import GlossaryMixin
 from metadata.ingestion.ometa.mixins.ingestion_pipeline_mixin import (
     OMetaIngestionPipelineMixin,
 )
@@ -97,7 +96,6 @@ class OpenMetadata(
     OMetaTableMixin,
     OMetaTopicMixin,
     OMetaVersionMixin,
-    GlossaryMixin,
     OMetaServiceMixin,
     ESMixin,
     OMetaServerMixin,

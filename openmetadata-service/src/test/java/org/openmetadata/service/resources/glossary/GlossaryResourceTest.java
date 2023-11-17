@@ -29,12 +29,12 @@ import static org.openmetadata.csv.EntityCsvTest.createCsv;
 import static org.openmetadata.csv.EntityCsvTest.getFailedRecord;
 import static org.openmetadata.schema.type.ProviderType.SYSTEM;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
-import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.EntityUtil.getFqn;
 import static org.openmetadata.service.util.EntityUtil.getFqns;
 import static org.openmetadata.service.util.EntityUtil.toTagLabels;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.UpdateType.CHANGE_CONSOLIDATED;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
@@ -73,6 +73,7 @@ import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.service.jdbi3.GlossaryRepository.GlossaryCsv;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
@@ -133,18 +134,22 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     glossary = patchEntityAndCheck(glossary, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Add another reviewer USER2 in PATCH request
+    // Changes from this PATCH is consolidated with the previous changes
     origJson = JsonUtils.pojoToJson(glossary);
     glossary.withReviewers(List.of(USER1_REF, USER2_REF));
-    change = getChangeDescription(glossary, MINOR_UPDATE);
-    fieldAdded(change, "reviewers", List.of(USER2_REF));
-    glossary = patchEntityAndCheck(glossary, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    change =
+        getChangeDescription(glossary, CHANGE_CONSOLIDATED); // PATCH operation update is consolidated in a user session
+    fieldAdded(change, "reviewers", List.of(USER1_REF, USER2_REF));
+    glossary = patchEntityAndCheck(glossary, origJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
 
     // Remove a reviewer USER1 in PATCH request
+    // Changes from this PATCH is consolidated with the previous changes
     origJson = JsonUtils.pojoToJson(glossary);
     glossary.withReviewers(List.of(USER2_REF));
-    change = getChangeDescription(glossary, MINOR_UPDATE);
-    fieldDeleted(change, "reviewers", List.of(USER1_REF));
-    patchEntityAndCheck(glossary, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    change =
+        getChangeDescription(glossary, CHANGE_CONSOLIDATED); // PATCH operation update is consolidated in a user session
+    fieldAdded(change, "reviewers", List.of(USER2_REF));
+    patchEntityAndCheck(glossary, origJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
   }
 
   @Test
@@ -238,7 +243,6 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     // h  -> h1 -> h11 -> h111
     Glossary g = createEntity(createRequest("changeParent'_g"), ADMIN_AUTH_HEADERS);
     Glossary h = createEntity(createRequest("changeParent'_h"), ADMIN_AUTH_HEADERS);
-
     GlossaryTermResourceTest glossaryTermResourceTest = new GlossaryTermResourceTest();
     GlossaryTerm t1 = createGlossaryTerm(glossaryTermResourceTest, g, null, "t'_1");
     GlossaryTerm t11 = createGlossaryTerm(glossaryTermResourceTest, g, t1, "t'_11");
@@ -283,10 +287,11 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
       {t1, h, h1, h11, h111} // Diff hierarchy and diff glossary
     };
 
+    // Moving to another glossary term as parent
+    EntityUpdater.setSessionTimeout(0); // Turn off consolidation of changes in a session
     for (int i = 0; i < scenarios.length; i++) {
       GlossaryTerm termToMove = (GlossaryTerm) scenarios[i][0];
 
-      // Moving to another glossary term as parent
       for (int j = 1; j < scenarios[i].length; j++) {
         GlossaryTerm updatedTerm;
 
@@ -301,7 +306,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
           newParent = newParentTerm.getEntityReference();
         }
         LOG.info(
-            "Scenario iteration [{}, {}] move {} from glossary {} parent {} to glossary {} and parent {}",
+            "Scenario iteration [{}, {}] move the term {} from glossary:parent {}:{} to {}:{}",
             i,
             j,
             getFqn(termToMove),
@@ -319,6 +324,8 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
         () -> glossaryTermResourceTest.moveGlossaryTerm(g.getEntityReference(), t11.getEntityReference(), t1),
         Status.BAD_REQUEST,
         CatalogExceptionMessage.invalidGlossaryTermMove(t1.getFullyQualifiedName(), t11.getFullyQualifiedName()));
+
+    EntityUpdater.setSessionTimeout(10 * 60 * 1000); // Turn consolidation of changes back on
   }
 
   @Test

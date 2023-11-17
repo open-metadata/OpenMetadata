@@ -379,6 +379,10 @@ public final class EntityUtil {
     return FullyQualifiedName.build("extension", key);
   }
 
+  public static Double previousVersion(Double version) {
+    return Math.round((version - 0.1) * 10.0) / 10.0;
+  }
+
   public static Double nextVersion(Double version) {
     return Math.round((version + 0.1) * 10.0) / 10.0;
   }
@@ -440,16 +444,22 @@ public final class EntityUtil {
   }
 
   public static void fieldAdded(ChangeDescription change, String fieldName, Object newValue) {
-    change.getFieldsAdded().add(new FieldChange().withName(fieldName).withNewValue(newValue));
+    if (change != null) {
+      change.getFieldsAdded().add(new FieldChange().withName(fieldName).withNewValue(newValue));
+    }
   }
 
   public static void fieldDeleted(ChangeDescription change, String fieldName, Object oldValue) {
-    change.getFieldsDeleted().add(new FieldChange().withName(fieldName).withOldValue(oldValue));
+    if (change != null) {
+      change.getFieldsDeleted().add(new FieldChange().withName(fieldName).withOldValue(oldValue));
+    }
   }
 
   public static void fieldUpdated(ChangeDescription change, String fieldName, Object oldValue, Object newValue) {
-    FieldChange fieldChange = new FieldChange().withName(fieldName).withOldValue(oldValue).withNewValue(newValue);
-    change.getFieldsUpdated().add(fieldChange);
+    if (change != null) {
+      FieldChange fieldChange = new FieldChange().withName(fieldName).withOldValue(oldValue).withNewValue(newValue);
+      change.getFieldsUpdated().add(fieldChange);
+    }
   }
 
   public static MetadataOperation createOrUpdateOperation(ResourceContext resourceContext) {

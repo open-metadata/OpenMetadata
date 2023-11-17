@@ -52,9 +52,11 @@ import static org.openmetadata.service.util.EntityUtil.tagLabelMatch;
 import static org.openmetadata.service.util.FullyQualifiedName.build;
 import static org.openmetadata.service.util.RestUtil.DATE_FORMAT;
 import static org.openmetadata.service.util.TestUtils.*;
+import static org.openmetadata.service.util.TestUtils.UpdateType.CHANGE_CONSOLIDATED;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MAJOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.NO_CHANGE;
+import static org.openmetadata.service.util.TestUtils.UpdateType.REVERT;
 
 import java.io.IOException;
 import java.text.ParseException;
@@ -361,11 +363,12 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     create.getColumns().remove(2);
     change = getChangeDescription(table, MINOR_UPDATE);
     fieldDeleted(change, "columns", List.of(column4));
-    updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, MAJOR_UPDATE, change);
+    table = updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, MAJOR_UPDATE, change);
 
     // Change the case of the column name for column2, and it shouldn't update
     column2.setName("COLUMN2");
-    updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, NO_CHANGE, null);
+    change = getChangeDescription(table, NO_CHANGE);
+    updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
   }
 
   public static Column getColumn(String name, ColumnDataType columnDataType, TagLabel tag) {
@@ -417,7 +420,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     Table table2 = updateAndCheckEntity(create2, CREATED, ADMIN_AUTH_HEADERS, UpdateType.CREATED, null);
 
     // Test PUT operation again without any change
-    ChangeDescription change = getChangeDescription(table2, MINOR_UPDATE);
+    ChangeDescription change = getChangeDescription(table2, NO_CHANGE);
     updateAndCheckEntity(create2, Status.OK, ADMIN_AUTH_HEADERS, NO_CHANGE, change);
 
     //
@@ -525,7 +528,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     Table updatedTable = updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Update again with no change. Version must not change
-    change = getChangeDescription(updatedTable, MINOR_UPDATE);
+    change = getChangeDescription(updatedTable, NO_CHANGE);
     updatedTable = updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, NO_CHANGE, change);
 
     // Update the table with new constraints
@@ -1517,41 +1520,31 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     List<TableConstraint> tableConstraints =
         List.of(new TableConstraint().withConstraintType(ConstraintType.UNIQUE).withColumns(List.of(C1)));
 
+    // Add tableType, tableConstraints
     String originalJson = JsonUtils.pojoToJson(table);
     ChangeDescription change = getChangeDescription(table, MINOR_UPDATE);
-
     table.withTableType(TableType.Regular).withTableConstraints(tableConstraints);
-
     fieldAdded(change, "tableType", TableType.Regular);
     fieldAdded(change, "tableConstraints", tableConstraints);
-
     table = patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
-    //
     // Replace tableType, tableConstraints
-    //
+    // Changes from this PATCH is consolidated with the previous changes
     List<TableConstraint> tableConstraints1 =
         List.of(new TableConstraint().withConstraintType(ConstraintType.UNIQUE).withColumns(List.of(C2)));
     originalJson = JsonUtils.pojoToJson(table);
-    change = getChangeDescription(table, MINOR_UPDATE);
-
+    change = getChangeDescription(table, CHANGE_CONSOLIDATED);
     table.withTableType(TableType.External).withTableConstraints(tableConstraints1);
-
-    fieldUpdated(change, "tableType", TableType.Regular, TableType.External);
-    fieldDeleted(change, "tableConstraints", tableConstraints);
+    fieldAdded(change, "tableType", TableType.External);
     fieldAdded(change, "tableConstraints", tableConstraints1);
-
-    table = patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    table = patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
 
     // Remove tableType, tableConstraints
+    // Changes from this PATCH is consolidated with the previous changes resulting in no change
     originalJson = JsonUtils.pojoToJson(table);
-    change = getChangeDescription(table, MINOR_UPDATE);
-
+    change = getChangeDescription(table, REVERT);
     table.withTableType(null).withTableConstraints(null);
-
-    fieldDeleted(change, "tableType", TableType.External);
-    fieldDeleted(change, "tableConstraints", tableConstraints1);
-    patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, REVERT, null);
   }
 
   @Test
@@ -1564,26 +1557,21 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     Table table = createEntity(createRequest(test).withColumns(columns), ADMIN_AUTH_HEADERS);
 
-    // Update the column tags and description
-    ChangeDescription change = getChangeDescription(table, MINOR_UPDATE);
+    // Update the column tags and description with PATCH
+    ChangeDescription change = getChangeDescription(table, MAJOR_UPDATE);
     columns
         .get(0)
         .withDescription("new0") // Set new description
         .withTags(List.of(USER_ADDRESS_TAG_LABEL, GLOSSARY1_TERM1_LABEL));
-    // Column c1 has new description
     fieldAdded(change, build("columns", C1, "description"), "new0");
-    //  Column c1 got new tags
     fieldAdded(change, build("columns", C1, "tags"), List.of(GLOSSARY1_TERM1_LABEL));
-
     columns
         .get(1)
         .withDescription("new1") // Change description
         .withTags(List.of(USER_ADDRESS_TAG_LABEL)); // No change in tags
-    // Column c2 description changed
     fieldUpdated(change, build("columns", C2, "description"), C2, "new1");
 
     columns.get(2).withTags(new ArrayList<>()).withPrecision(10).withScale(3); // Remove tag
-    // Column c3 tags were removed and precision and scale were added
     fieldDeleted(change, build("columns", C3, "tags"), List.of(GLOSSARY1_TERM1_LABEL));
     fieldAdded(change, build("columns", C3, "precision"), 10);
     fieldAdded(change, build("columns", C3, "scale"), 3);
@@ -1594,27 +1582,35 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertColumns(columns, table.getColumns());
 
     // Now reduce the precision and make sure it is a backward incompatible change
-    change = getChangeDescription(table, MAJOR_UPDATE);
-    fieldUpdated(change, build("columns", C3, "precision"), 10, 7);
-
+    // Changes from this PATCH is consolidated with the previous changes
+    change = getChangeDescription(table, CHANGE_CONSOLIDATED);
+    fieldAdded(change, build("columns", C1, "description"), "new0");
+    fieldAdded(change, build("columns", C1, "tags"), List.of(GLOSSARY1_TERM1_LABEL));
+    fieldUpdated(change, build("columns", C2, "description"), C2, "new1");
+    fieldDeleted(change, build("columns", C3, "tags"), List.of(GLOSSARY1_TERM1_LABEL));
+    fieldAdded(change, build("columns", C3, "precision"), 7); // Change in this patch
+    fieldAdded(change, build("columns", C3, "scale"), 3);
     originalJson = JsonUtils.pojoToJson(table);
-
     columns = table.getColumns();
     columns.get(2).withPrecision(7).withScale(3); // Precision change from 10 to 7. Scale remains the same
     table.setColumns(columns);
-    table = patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MAJOR_UPDATE, change);
+    table = patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
     assertColumns(columns, table.getColumns());
 
     // Now reduce the scale and make sure it is a backward incompatible change
-    change = getChangeDescription(table, MAJOR_UPDATE);
-    fieldUpdated(change, build("columns", C3, "scale"), 3, 1);
-
+    // Changes from this PATCH is consolidated with the previous changes
+    change = getChangeDescription(table, CHANGE_CONSOLIDATED);
+    fieldAdded(change, build("columns", C1, "description"), "new0");
+    fieldAdded(change, build("columns", C1, "tags"), List.of(GLOSSARY1_TERM1_LABEL));
+    fieldUpdated(change, build("columns", C2, "description"), C2, "new1");
+    fieldDeleted(change, build("columns", C3, "tags"), List.of(GLOSSARY1_TERM1_LABEL));
+    fieldAdded(change, build("columns", C3, "precision"), 7);
+    fieldAdded(change, build("columns", C3, "scale"), 1); // Change in this patch
     originalJson = JsonUtils.pojoToJson(table);
-
     columns = table.getColumns();
     columns.get(2).withPrecision(7).withScale(1); // Scale change from 10 to 7. Scale remains the same
     table.setColumns(columns);
-    table = patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MAJOR_UPDATE, change);
+    table = patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
     assertColumns(columns, table.getColumns());
   }
 
@@ -1995,8 +1991,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   private static void assertColumn(Column expectedColumn, Column actualColumn) throws HttpResponseException {
     assertNotNull(actualColumn.getFullyQualifiedName());
     assertTrue(
-        expectedColumn.getName().equals(actualColumn.getName())
-            || expectedColumn.getName().equals(actualColumn.getDisplayName()));
+        expectedColumn.getName().equalsIgnoreCase(actualColumn.getName())
+            || expectedColumn.getName().equalsIgnoreCase(actualColumn.getDisplayName()));
     assertEquals(expectedColumn.getDescription(), actualColumn.getDescription());
     assertEquals(expectedColumn.getDataType(), actualColumn.getDataType());
     assertEquals(expectedColumn.getArrayDataType(), actualColumn.getArrayDataType());
@@ -2021,8 +2017,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Make a copy before sorting in case the lists are immutable
     List<Column> expected = new ArrayList<>(expectedColumns);
     List<Column> actual = new ArrayList<>(actualColumns);
-    expected.sort(Comparator.comparing(Column::getName));
-    actual.sort(Comparator.comparing(Column::getName));
+    expected.sort(Comparator.comparing(Column::getName, String.CASE_INSENSITIVE_ORDER));
+    actual.sort(Comparator.comparing(Column::getName, String.CASE_INSENSITIVE_ORDER));
     for (int i = 0; i < expected.size(); i++) {
       assertColumn(expected.get(i), actual.get(i));
     }
@@ -2315,7 +2311,10 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
       assertEquals(expected, actual);
     } else if (fieldName.endsWith("tableConstraints")) {
       @SuppressWarnings("unchecked")
-      List<TableConstraint> expectedConstraints = (List<TableConstraint>) expected;
+      List<TableConstraint> expectedConstraints =
+          expected instanceof List
+              ? (List<TableConstraint>) expected
+              : JsonUtils.readObjects(expected.toString(), TableConstraint.class);
       List<TableConstraint> actualConstraints = JsonUtils.readObjects(actual.toString(), TableConstraint.class);
       assertEquals(expectedConstraints, actualConstraints);
     } else if (fieldName.contains("columns") && !fieldName.endsWith(FIELD_TAGS)) {

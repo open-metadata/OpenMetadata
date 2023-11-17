@@ -678,7 +678,7 @@ public class TeamRepository extends EntityRepository<Team> {
           throw new IllegalArgumentException(INVALID_GROUP_TEAM_CHILDREN_UPDATE);
         }
       }
-      recordChange("profile", original.getProfile(), updated.getProfile());
+      recordChange("profile", original.getProfile(), updated.getProfile(), true);
       recordChange("isJoinable", original.getIsJoinable(), updated.getIsJoinable());
       recordChange("teamType", original.getTeamType(), updated.getTeamType());
       // If the team is empty then email should be null, not be empty

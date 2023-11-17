@@ -12,7 +12,6 @@ import static org.openmetadata.service.apps.scheduler.AppScheduler.SEARCH_CLIENT
 import static org.openmetadata.service.util.SubscriptionUtil.getAdminsData;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import freemarker.template.TemplateException;
 import java.io.IOException;
 import java.text.ParseException;
 import java.time.Instant;
@@ -95,8 +94,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
   }
 
   private void sendReportsToTeams(
-      SearchClient searchClient, Long scheduleTime, Long currentTime, int numberOfDaysChange)
-      throws IOException, ParseException, TemplateException {
+      SearchClient searchClient, Long scheduleTime, Long currentTime, int numberOfDaysChange) throws IOException {
     PaginatedEntitiesSource teamReader = new PaginatedEntitiesSource(TEAM, 10, List.of("name", "email", "users"));
     while (!teamReader.isDone()) {
       ResultList<Team> resultList = (ResultList<Team>) teamReader.readNext(null);
@@ -136,8 +134,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     }
   }
 
-  private void sendToAdmins(SearchClient searchClient, Long scheduleTime, Long currentTime, int numberOfDaysChange)
-      throws ParseException, IOException, TemplateException {
+  private void sendToAdmins(SearchClient searchClient, Long scheduleTime, Long currentTime, int numberOfDaysChange) {
     // Get Admins
     Set<String> emailList = getAdminsData(CreateEventSubscription.SubscriptionType.DATA_INSIGHT);
     try {

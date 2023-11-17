@@ -280,7 +280,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
       ResultSummary storedResultSummary = findMatchingResultSummary(resultSummaries, resultSummary.getTestCaseName());
 
-      if (!shouldUpdateResultSummary(storedResultSummary, timestamp, isDeleted)) {
+      if (!shouldUpdateResultSummary(storedResultSummary, timestamp)) {
         continue; // if the state should not be updated then nothing to do
       }
 
@@ -317,7 +317,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         .orElse(null);
   }
 
-  private boolean shouldUpdateResultSummary(ResultSummary storedResultSummary, Long timestamp, boolean isDeleted) {
+  private boolean shouldUpdateResultSummary(ResultSummary storedResultSummary, Long timestamp) {
     return storedResultSummary == null || timestamp >= storedResultSummary.getTimestamp();
   }
 

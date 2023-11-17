@@ -63,7 +63,6 @@ public class QueryFormatter implements EntityFormatter {
     return field.toString();
   }
 
-  @SuppressWarnings("unchecked")
   private String transformQueryUsedIn(
       MessageDecorator<?> messageFormatter,
       FieldChange fieldChange,

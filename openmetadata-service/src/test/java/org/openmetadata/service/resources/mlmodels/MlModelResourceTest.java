@@ -177,7 +177,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
     // Create a Model with POST
     CreateMlModel request = createRequest(test).withOwner(USER1_REF);
     MlModel model = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
-    ChangeDescription change = getChangeDescription(model, MINOR_UPDATE);
+    ChangeDescription change = getChangeDescription(model, NO_CHANGE);
 
     // Update Model two times successfully with PUT requests
     updateAndCheckEntity(request, Status.OK, ADMIN_AUTH_HEADERS, NO_CHANGE, change);

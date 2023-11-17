@@ -316,7 +316,6 @@ public class ContainerRepository extends EntityRepository<Container> {
     }
 
     private void updateDataModel(Container original, Container updated) {
-
       if (original.getDataModel() == null || updated.getDataModel() == null) {
         recordChange("dataModel", original.getDataModel(), updated.getDataModel(), true);
       }

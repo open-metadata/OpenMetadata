@@ -243,7 +243,6 @@ public class UserRepository extends EntityRepository<User> {
     if (teams != null) {
       for (EntityReference entityReference : teams) {
         EntityReference ref = Entity.getEntityReferenceById(Entity.TEAM, entityReference.getId(), ALL);
-
         EntityUtil.copy(ref, entityReference);
       }
       teams.sort(EntityUtil.compareEntityReference);

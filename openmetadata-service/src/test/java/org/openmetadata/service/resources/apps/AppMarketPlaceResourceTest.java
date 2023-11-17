@@ -3,7 +3,6 @@ package org.openmetadata.service.resources.apps;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 
-import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.HashSet;
@@ -107,7 +106,7 @@ public class AppMarketPlaceResourceTest
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
     assertCommonFieldChange(fieldName, expected, actual);
   }
 }
