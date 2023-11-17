@@ -9,6 +9,9 @@
       "oneOf": [
         {
           "$ref": "./external/autoTaggerAppConfig.json"
+        },
+        {
+          "$ref": "./external/metaPilotAppConfig.json"
         }
       ]
     }
