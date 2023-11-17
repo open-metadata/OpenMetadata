@@ -57,7 +57,7 @@ permissions policy includes all the actions listed in [AWS managed policy: AWSQu
 This policy groups the following permissions:
 
 - `athena` – Allows the principal to run queries on Athena resources.
-- `glue` – Allows principals access to AWS Glue databases, tables, and partitions. This is required so that the principal can use the AWS Glue Data Catalog with Athena.
+- `glue` – Allows principals access to AWS Glue databases, tables, and partitions. This is required so that the principal can use the AWS Glue Data Catalog with Athena. Resources of each table and database needs to be added as resource for each database user wants to ingest.
 - `lakeformation` – Allows principals to request temporary credentials to access data in a data lake location that is registered with Lake Formation.
 
 And is defined as:
@@ -79,8 +79,8 @@ And is defined as:
             ],
             "Effect": "Allow",
             "Resource": [
-                "arn:aws:athena:us-east-2:<ACCOUNT_ID>:workgroup/your_workgroup",
-                "arn:aws:athena:us-east-2:<ACCOUNT_ID>:datacatalog/your_datacatalog"
+                "arn:aws:athena:<<AWS_REGION>>:<<ACCOUNT_ID>>:workgroup/<<WORKGROUP_NAME>>",
+                "arn:aws:athena:<<AWS_REGION>>:<<ACCOUNT_ID>>:datacatalog/<<DATA_CATALOG_NAME>>"
             ]
         },
         {
@@ -91,11 +91,9 @@ And is defined as:
             ],
             "Effect": "Allow",
             "Resource": [
-                "arn:aws:glue:us-east-2:<ACCOUNT_ID>:table/default/*",
-                "arn:aws:glue:us-east-2:<ACCOUNT_ID>:table/mydatabase/*",
-                "arn:aws:glue:us-east-2:<ACCOUNT_ID>:database/default",
-                "arn:aws:glue:us-east-2:<ACCOUNT_ID>:database/mydatabase",
-                "arn:aws:glue:us-east-2:<ACCOUNT_ID>:catalog"
+                "arn:aws:glue:<AWS_REGION>:<ACCOUNT_ID>:table/<<DATABASE_NAME>>/*",
+                "arn:aws:glue:<AWS_REGION>:<ACCOUNT_ID>:database/<<DATABASE_NAME>>",
+                "arn:aws:glue:<AWS_REGION>:<ACCOUNT_ID>:catalog"
             ]
         },
         {
@@ -107,7 +105,7 @@ And is defined as:
             ],
             "Effect": "Allow",
             "Resource": [
-                "arn:aws:s3:::athena-bucket/*"
+                "arn:aws:s3:::<<ATHENA_S3_BUCKET>>/*"
             ]
         }
     ]
