@@ -18,11 +18,15 @@ import {
 } from '../../common/common';
 import {
   createEntityTable,
+  createQueryByTableName,
   generateRandomTable,
   hardDeleteService,
 } from '../../common/entityUtils';
 import { MYDATA_SUMMARY_OPTIONS } from '../../constants/constants';
-import { DATABASE_SERVICE } from '../../constants/entityConstant';
+import {
+  DATABASE_SERVICE,
+  DATABASE_SERVICE_DETAILS,
+} from '../../constants/entityConstant';
 import { SERVICE_CATEGORIES } from '../../constants/service.constants';
 
 const queryTable = {
@@ -58,6 +62,8 @@ describe('Query Entity', () => {
         ...DATABASE_SERVICE,
         tables: [DATABASE_SERVICE.tables, table1, table2],
       });
+      // get Table by name and create query in the table
+      createQueryByTableName(token, table1);
     });
   });
 
@@ -217,5 +223,23 @@ describe('Query Entity', () => {
     cy.get('.ant-dropdown').should('be.visible');
     cy.get('[data-menu-id*="delete-query"]').click();
     cy.get('[data-testid="save-button"]').click();
+  });
+
+  it('Verify query duration', () => {
+    interceptURL('GET', '/api/v1/queries?*', 'fetchQuery');
+
+    visitEntityDetailsPage({
+      term: table1.name,
+      serviceName: DATABASE_SERVICE_DETAILS.name,
+      entity: DATA.entity,
+    });
+
+    cy.get('[data-testid="table_queries"]').click();
+    verifyResponseStatusCode('@fetchQuery', 200);
+
+    // Validate that the duration is in sec or not
+    cy.get('[data-testid="query-run-duration"]')
+      .should('be.visible')
+      .should('contain', '6.199 sec');
   });
 });
