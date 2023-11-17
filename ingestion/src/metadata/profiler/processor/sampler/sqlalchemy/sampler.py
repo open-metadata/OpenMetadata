@@ -15,7 +15,6 @@ for the profiler
 import traceback
 from typing import List, Optional, Union, cast
 
-from ingestion.src.metadata.utils.helpers import is_safe_sql_query
 from sqlalchemy import Column, inspect, text
 from sqlalchemy.orm import DeclarativeMeta, Query, aliased
 from sqlalchemy.orm.util import AliasedClass
@@ -32,6 +31,7 @@ from metadata.profiler.orm.functions.random_num import RandomNumFn
 from metadata.profiler.orm.registry import Dialects
 from metadata.profiler.processor.handle_partition import partition_filter_handler
 from metadata.profiler.processor.sampler.sampler_interface import SamplerInterface
+from metadata.utils.helpers import is_safe_sql_query
 from metadata.utils.logger import profiler_interface_registry_logger
 from metadata.utils.sqa_utils import (
     build_query_filter,
