@@ -67,21 +67,47 @@ And is defined as:
     "Version": "2012-10-17",
     "Statement": [
         {
-            "Effect": "Allow",
             "Action": [
-                "athena:GetTableMetadata",
-                "athena:ListDatabases",
                 "athena:ListTableMetadata",
-                "athena:GetQueryExecution",
+                "athena:ListDatabases",
+                "athena:GetTableMetadata",
+                "athena:ListQueryExecutions",
                 "athena:StartQueryExecution",
+                "athena:GetQueryExecution",
                 "athena:GetQueryResults",
-                "glue:GetDatabases",
+                "athena:BatchGetQueryExecution"
+            ],
+            "Effect": "Allow",
+            "Resource": [
+                "arn:aws:athena:us-east-2:<ACCOUNT_ID>:workgroup/your_workgroup",
+                "arn:aws:athena:us-east-2:<ACCOUNT_ID>:datacatalog/your_datacatalog"
+            ]
+        },
+        {
+            "Action": [
                 "glue:GetTables",
                 "glue:GetTable",
-                "lakeformation:GetDataAccess"
+                "glue:GetDatabases"
             ],
+            "Effect": "Allow",
             "Resource": [
-                "*"
+                "arn:aws:glue:us-east-2:<ACCOUNT_ID>:table/default/*",
+                "arn:aws:glue:us-east-2:<ACCOUNT_ID>:table/mydatabase/*",
+                "arn:aws:glue:us-east-2:<ACCOUNT_ID>:database/default",
+                "arn:aws:glue:us-east-2:<ACCOUNT_ID>:database/mydatabase",
+                "arn:aws:glue:us-east-2:<ACCOUNT_ID>:catalog"
+            ]
+        },
+        {
+            "Action": [
+                "s3:ListBucket",
+                "s3:GetObject",
+                "s3:GetBucketLocation",
+                "s3:PutObject"
+            ],
+            "Effect": "Allow",
+            "Resource": [
+                "arn:aws:s3:::athena-bucket/*"
             ]
         }
     ]
