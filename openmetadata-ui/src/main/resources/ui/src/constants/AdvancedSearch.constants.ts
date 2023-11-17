@@ -267,10 +267,7 @@ const getCommonQueryBuilderFields = (
 
       fieldSettings: {
         asyncFetch: autocomplete({
-          searchIndex: entitySearchIndex ?? [
-            SearchIndex.USER,
-            SearchIndex.TEAM,
-          ],
+          searchIndex: [SearchIndex.USER, SearchIndex.TEAM],
           entityField: EntityFields.OWNER,
         }),
         useAsyncSearch: true,
@@ -284,8 +281,7 @@ const getCommonQueryBuilderFields = (
       fieldSettings: {
         asyncFetch: autocomplete({
           searchIndex: entitySearchIndex ?? [
-            SearchIndex.TAG,
-            SearchIndex.GLOSSARY,
+            (SearchIndex.TAG, SearchIndex.GLOSSARY),
           ],
           entityField: EntityFields.TAG,
         }),
