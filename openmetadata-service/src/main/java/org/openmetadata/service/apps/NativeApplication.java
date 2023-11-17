@@ -15,5 +15,7 @@ public interface NativeApplication extends Job {
 
   void initializeExternalApp();
 
+  void configure();
+
   default void startApp(JobExecutionContext jobExecutionContext) {}
 }

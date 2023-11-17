@@ -1,0 +1,69 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/configuration/external/metaPilotAppConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MetaPilotAppConfig",
+  "description": "Configuration for the MetaPilot External Application.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.app.external.MetaPilotAppConfig",
+  "definitions": {
+    "metaPilotApp": {
+      "description": "Application type.",
+      "type": "string",
+      "enum": ["MetaPilot"],
+      "default": "MetaPilot"
+    },
+    "serviceDatabases": {
+      "title": "Service Databases",
+      "description": "Choose the service and its databases you want to generate descriptions from.",
+      "type": "object",
+      "properties": {
+        "serviceName": {
+          "title": "Service Name",
+          "description": "Service Name to get descriptions from.",
+          "type": "string"
+        },
+        "databases": {
+          "title": "Databases",
+          "description": "List of database names from the Service to get descriptions from.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": ["serviceName", "databases"]
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/metaPilotApp",
+      "default": "MetaPilot"
+    },
+    "waiiInstance": {
+      "title": "WAII Instance",
+      "description": "WAII API host URL",
+      "type": "string",
+      "format": "URI",
+      "default": "https://tweakit.waii.ai/api/"
+    },
+    "token": {
+      "title": "WAII API Token",
+      "description": "WAII API Token",
+      "type": "string",
+      "format": "password"
+    },
+    "serviceDatabases": {
+      "title": "Service Databases",
+      "description": "Services and Databases configured to get the descriptions from.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/serviceDatabases"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "required": ["token"]
+}

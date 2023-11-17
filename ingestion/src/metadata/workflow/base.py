@@ -121,8 +121,6 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
             except Exception as exc:
                 logger.warning(f"Error trying to close the step {step} due to [{exc}]")
 
-        self.source.close()
-
     @property
     def timer(self) -> RepeatedTimer:
         """
