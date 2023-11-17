@@ -456,8 +456,9 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 self.status.scanned(f"{metric_func.table.__tablename__}.{column}")
             else:
                 self.status.scanned(metric_func.table.__tablename__)
+                column = None
 
-            return row, metric_func.column, metric_func.metric_type.value
+            return row, column, metric_func.metric_type.value
 
     # pylint: disable=use-dict-literal
     def get_all_metrics(

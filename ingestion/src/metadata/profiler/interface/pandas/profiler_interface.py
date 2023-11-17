@@ -22,10 +22,11 @@ from typing import Dict, List, Optional
 
 from sqlalchemy import Column
 
-from metadata.generated.schema.entity.data.table import TableData
+from metadata.generated.schema.entity.data.table import CustomMetricProfile, TableData
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
 )
+from metadata.generated.schema.tests.customMetric import CustomMetric
 from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
 from metadata.profiler.api.models import ThreadPoolMetrics
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
@@ -240,6 +241,40 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         """
         return None  # to be implemented
 
+    def _compute_custom_metrics(
+        self, metrics: List[CustomMetric], runner, *args, **kwargs
+    ):
+        """Compute custom metrics. For pandas source we expect expression
+        to be a boolean value. We'll return the length of the dataframe
+
+        Args:
+            metrics (List[Metrics]): list of customMetrics
+            runner (_type_): runner
+        """
+        if not metrics:
+            return None
+
+        custom_metrics = []
+
+        for metric in metrics:
+            try:
+                row = sum(
+                    len(df.query(metric.expression).index)
+                    for df in runner
+                    if len(df.query(metric.expression).index)
+                )
+                custom_metrics.append(
+                    CustomMetricProfile(name=metric.name.__root__, value=row)
+                )
+
+            except Exception as exc:
+                msg = f"Error trying to compute profile for {runner.table.__tablename__}.{metric.columnName}: {exc}"
+                logger.debug(traceback.format_exc())
+                logger.warning(msg)
+        if custom_metrics:
+            return {"customMetrics": custom_metrics}
+        return None
+
     def compute_metrics(
         self,
         metric_func: ThreadPoolMetrics,
@@ -265,7 +300,8 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
             self.status.scanned(f"{metric_func.table.name.__root__}.{column}")
         else:
             self.status.scanned(metric_func.table.name.__root__)
-        return row, metric_func.column, metric_func.metric_type.value
+            column = None
+        return row, column, metric_func.metric_type.value
 
     def fetch_sample_data(self, table, columns: SQALikeColumn) -> TableData:
         """Fetch sample data from database
@@ -336,6 +372,8 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
                     profile_results["table"].update(profile)
                 if metric_type == MetricTypes.System.value:
                     profile_results["system"] = profile
+                elif metric_type == MetricTypes.Custom.value and column is None:
+                    profile_results["table"].update(profile)
                 else:
                     if profile:
                         profile_results["columns"][column].update(

@@ -15,7 +15,7 @@ Return types for Profiler workflow execution.
 We need to define this class as we end up having
 multiple profilers per table and columns.
 """
-from typing import List, Optional, Union
+from typing import List, Optional, Type, Union
 
 from sqlalchemy import Column
 from sqlalchemy.orm import DeclarativeMeta
@@ -37,7 +37,7 @@ from metadata.generated.schema.entity.services.connections.connectionBasicType i
 from metadata.generated.schema.tests.customMetric import CustomMetric
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.ingestion.models.table_metadata import ColumnTag
-from metadata.profiler.metrics.core import MetricTypes
+from metadata.profiler.metrics.core import Metric, MetricTypes
 from metadata.profiler.processor.models import ProfilerDef
 from metadata.utils.sqa_like_column import SQALikeColumn
 
@@ -124,8 +124,8 @@ class ProfilerResponse(ConfigModel):
 class ThreadPoolMetrics(ConfigModel):
     """thread pool metric"""
 
-    metrics: list
-    metric_type: Union[MetricTypes, CustomMetric]
+    metrics: Union[list[Union[Type[Metric], CustomMetric]], Type[Metric]]
+    metric_type: MetricTypes
     column: Optional[Union[Column, SQALikeColumn]]
     table: Union[Table, DeclarativeMeta]
 
