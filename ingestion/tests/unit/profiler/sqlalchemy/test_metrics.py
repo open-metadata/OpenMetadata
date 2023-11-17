@@ -18,7 +18,6 @@ from unittest import TestCase
 from unittest.mock import patch
 from uuid import uuid4
 
-from ingestion.src.metadata.generated.schema.tests.customMetric import CustomMetric
 from sqlalchemy import TEXT, Column, Date, DateTime, Integer, String, Time
 from sqlalchemy.orm import declarative_base
 
@@ -28,6 +27,7 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
     SQLiteConnection,
     SQLiteScheme,
 )
+from metadata.generated.schema.tests.customMetric import CustomMetric
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
@@ -906,11 +906,12 @@ class MetricsTest(TestCase):
             profiler_interface=self.sqa_profiler_interface,
         )
         metrics = profiler.compute_metrics()
-        for metric in metrics._table_results:
-            if metric.name == "CustomerBornedAfter1991":
-                assert metric.value == 2
-            if metric.name == "AverageAge":
-                assert metric.value == 20.0
+        for k, v in metrics._table_results.items():
+            for metric in v:
+                if metric.name == "CustomerBornedAfter1991":
+                    assert metric.value == 2
+                if metric.name == "AverageAge":
+                    assert metric.value == 20.0
 
     def test_column_custom_metric(self):
         table_entity = Table(

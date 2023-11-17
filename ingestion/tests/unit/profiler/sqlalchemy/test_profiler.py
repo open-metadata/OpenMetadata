@@ -259,7 +259,12 @@ class ProfilerTest(TestCase):
         )
 
         metrics = profiler._prepare_column_metrics()
-        self.assertEqual(2, len(metrics))
+        for metric in metrics:
+            if metric.metrics:
+                if isinstance(metric.metrics[0], CustomMetric):
+                    assert metric.metrics[0].name.__root__ == "custom_metric"
+                else:
+                    assert metric.metrics[0].name() == "firstQuartile"
 
     def test__prepare_table_metrics(self):
         """test _prepare_table_metrics returns as expected"""
@@ -298,6 +303,7 @@ class ProfilerTest(TestCase):
     def test_profiler_get_col_metrics(self):
         """check getc column metrics"""
         metric_filter = ["mean", "min", "max", "firstQuartile"]
+        custom_metric_filter = ["custom_metric"]
         self.sqa_profiler_interface.table_entity.tableProfilerConfig = (
             TableProfilerConfig(
                 includeColumns=[
@@ -312,8 +318,20 @@ class ProfilerTest(TestCase):
 
         column_metrics = default_profiler._prepare_column_metrics()
         for metric in column_metrics:
-            if metric[1] is not MetricTypes.Table and metric[2].name == "id":
-                assert all(metric_filter.count(m.name()) for m in metric[0])
+            if (
+                metric.metric_type is not MetricTypes.Table
+                and metric.column.name == "id"
+            ):
+                assert all(
+                    metric_filter.count(m.name())
+                    for m in metric.metrics
+                    if not isinstance(m, CustomMetric)
+                )
+                assert all(
+                    custom_metric_filter.count(m.name.__root__)
+                    for m in metric.metrics
+                    if isinstance(m, CustomMetric)
+                )
 
     @classmethod
     def tearDownClass(cls) -> None:
