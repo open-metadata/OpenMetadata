@@ -85,16 +85,22 @@ const QueryCard: FC<QueryCardProp> = ({
   }, [query]);
 
   const duration = useMemo(() => {
-    const durationInSeconds = query.duration;
+    const durationInMilliSeconds = query.duration;
 
-    if (isUndefined(durationInSeconds)) {
+    if (isUndefined(durationInMilliSeconds)) {
       return undefined;
     }
 
-    const duration = Duration.fromObject({ milliseconds: durationInSeconds });
+    if (durationInMilliSeconds < 1) {
+      return `${t('label.runs-for')} ${durationInMilliSeconds} ms`;
+    }
+
+    const duration = Duration.fromObject({
+      milliseconds: durationInMilliSeconds,
+    });
 
     let formatString;
-    if (durationInSeconds < ONE_MINUTE_IN_MILLISECOND) {
+    if (durationInMilliSeconds < ONE_MINUTE_IN_MILLISECOND) {
       formatString = "s.S 'sec'";
     } else {
       formatString = "m 'min' s 'sec'";
