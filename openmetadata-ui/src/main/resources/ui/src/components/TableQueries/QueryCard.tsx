@@ -181,7 +181,7 @@ const QueryCard: FC<QueryCardProp> = ({
               {duration && (
                 <>
                   <Text className="text-gray-400">{PIPE_SYMBOL}</Text>
-                  <Text>{duration}</Text>
+                  <Text data-testid="query-run-duration">{duration}</Text>
                 </>
               )}
             </Space>

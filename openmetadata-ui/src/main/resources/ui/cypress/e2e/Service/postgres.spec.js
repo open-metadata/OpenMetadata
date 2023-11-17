@@ -176,6 +176,12 @@ describe('Postgres Ingestion', () => {
       .should('be.visible')
       .trigger('click');
     verifyResponseStatusCode('@queriesTab', 200);
+
+    // Validate that the duration is in sec or not
+    cy.get('[data-testid="query-run-duration"]')
+      .should('be.visible')
+      .should('contain', '1.113 sec');
+
     // Validate that the triggered query is visible in the queries container
     cy.get('[data-testid="queries-container"]')
       .should('be.visible')
