@@ -89,6 +89,14 @@ GRANT IMPORTED PRIVILEGES ON ALL SCHEMAS IN DATABASE SNOWFLAKE TO ROLE NEW_ROLE;
 
 You can find more information about the `account_usage` schema [here](https://docs.snowflake.com/en/sql-reference/account-usage).
 
+Regarding Stored Procedures:
+1. Snowflake only allows the grant of `USAGE` or `OWNERSHIP`
+2. A user can only see the definition of the procedure in 2 situations:
+   1. If it has the `OWNERSHIP` grant,
+   2. If it has the `USAGE` grant and the procedure is created with `EXECUTE AS CALLER`.
+
+Make sure to add the `GRANT <USAGE|OWNERSHIP> ON PROCEDURE <NAME>(<SIGNATURE>) to NEW_ROLE`, e.g., `GRANT USAGE ON PROCEDURE CLEAN_DATA(varchar, varchar) to NEW_ROLE`.
+
 ## Metadata Ingestion
 
 {% partial 
