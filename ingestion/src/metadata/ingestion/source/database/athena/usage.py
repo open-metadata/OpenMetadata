@@ -48,7 +48,7 @@ class AthenaUsageSource(AthenaQueryParserSource, UsageSource):
                     ),
                     analysisDate=query.Status.SubmissionDateTime,
                     serviceName=self.config.serviceName,
-                    duration=query.Statistics.TotalExecutionTimeInMillis
+                    duration=query.Statistics.TotalExecutionTimeInMillis / 1000
                     if query.Statistics
                     else None,
                     aborted=query.Status.State == QUERY_ABORTED_STATE,
