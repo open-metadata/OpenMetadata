@@ -1369,6 +1369,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   void createUpdateDeleteCustomMetrics(Table table, Map<String, String> authHeaders) throws IOException {
+    // ===========================
+    // Check Column custom metrics
     Column c1 = table.getColumns().get(0);
 
     CreateCustomMetric createMetric =
@@ -1379,7 +1381,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     Table putResponse = putCustomMetric(table.getId(), createMetric, authHeaders);
     verifyCustomMetrics(putResponse, c1, List.of(createMetric));
 
-    table = getEntity(table.getId(), "customMetrics", authHeaders);
+    table = getEntity(table.getId(), "customMetrics,columns", authHeaders);
     verifyCustomMetrics(table, c1, List.of(createMetric));
 
     // Update Custom Metric
@@ -1398,15 +1400,56 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .withColumnName(c1.getName())
             .withExpression("Yet another statement");
     putResponse = putCustomMetric(table.getId(), createMetric2, authHeaders);
-    verifyCustomMetrics(putResponse, c1, List.of(createMetric2));
+    verifyCustomMetrics(putResponse, c1, List.of(createMetric2, updatedMetric));
 
-    table = getEntity(table.getId(), "customMetrics", authHeaders);
+    table = getEntity(table.getId(), "customMetrics,columns", authHeaders);
     verifyCustomMetrics(table, c1, List.of(updatedMetric, createMetric2));
 
-    // Delete Custom Metric
+    // Delete Column Custom Metric
     deleteCustomMetric(table.getId(), c1.getName(), updatedMetric.getName(), authHeaders);
-    table = getEntity(table.getId(), "customMetrics", authHeaders);
+    table = getEntity(table.getId(), "customMetrics,columns", authHeaders);
     verifyCustomMetrics(table, c1, List.of(createMetric2));
+
+    // ===========================
+    // Check Table custom metrics
+    // Create table custom metric
+    CreateCustomMetric createTableMetric =
+        new CreateCustomMetric().withName("customTable").withExpression("SELECT SUM(xyz) + SUM(def) FROM abc");
+    Table tablePutResponse = putCustomMetric(table.getId(), createTableMetric, authHeaders);
+    assertEquals(tablePutResponse.getCustomMetrics().size(), 1);
+
+    // Add another table custom metric
+    CreateCustomMetric createTableMetric2 =
+        new CreateCustomMetric().withName("custom2Table").withExpression("SELECT SUM(xyz) / SUM(def) FROM abc");
+    tablePutResponse = putCustomMetric(table.getId(), createTableMetric2, authHeaders);
+    assertEquals(tablePutResponse.getCustomMetrics().size(), 2);
+
+    // check we can get the custom metrics
+    Map<String, Object> customMetrics =
+        tablePutResponse.getCustomMetrics().stream()
+            .collect(Collectors.toMap(CustomMetric::getName, (metric) -> metric));
+
+    for (CreateCustomMetric metric : List.of(createTableMetric, createTableMetric2)) {
+      CustomMetric customMetric = (CustomMetric) customMetrics.get(metric.getName());
+      assertEquals(customMetric.getExpression(), metric.getExpression());
+    }
+
+    // Update table custom metric
+    CreateCustomMetric updatedTableMetric =
+        new CreateCustomMetric().withName("customTable").withExpression("SELECT SUM(xyz) - SUM(def) FROM abc");
+    tablePutResponse = putCustomMetric(table.getId(), updatedTableMetric, authHeaders);
+    CustomMetric updatedCustomMetric =
+        tablePutResponse.getCustomMetrics().stream()
+            .filter(metric -> metric.getName().equals(updatedTableMetric.getName()))
+            .findFirst()
+            .orElseThrow();
+    assertEquals(updatedCustomMetric.getExpression(), updatedTableMetric.getExpression());
+
+    // Delete table custom metric
+    deleteTableCustomMetric(table.getId(), updatedTableMetric.getName(), authHeaders);
+    table = getEntity(table.getId(), "customMetrics,columns", authHeaders);
+    assertEquals(table.getCustomMetrics().size(), 1);
+    assertEquals(table.getCustomMetrics().get(0).getName(), createTableMetric2.getName());
   }
 
   @Test
@@ -2123,10 +2166,16 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     return TestUtils.put(target, data, Table.class, OK, authHeaders);
   }
 
-  public Table deleteCustomMetric(UUID tableId, String columnName, String metricName, Map<String, String> authHeaders)
+  public void deleteCustomMetric(UUID tableId, String columnName, String metricName, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource(tableId).path("/customMetric/" + columnName + "/" + metricName);
-    return TestUtils.delete(target, Table.class, authHeaders);
+    TestUtils.delete(target, Table.class, authHeaders);
+  }
+
+  public void deleteTableCustomMetric(UUID tableId, String metricName, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource(tableId).path("/customMetric/" + metricName);
+    TestUtils.delete(target, Table.class, authHeaders);
   }
 
   private int getTagUsageCount(String tagFqn, Map<String, String> authHeaders) throws HttpResponseException {

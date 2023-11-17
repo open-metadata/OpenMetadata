@@ -626,6 +626,14 @@ public interface CollectionDAO {
         @Bind("jsonSchema") String jsonSchema,
         @Bind("json") String json);
 
+    @ConnectionAwareSqlUpdate(
+        value = "UPDATE entity_extension SET json = :json where (json -> '$.id') = :id",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "UPDATE entity_extension SET json = (:json :: jsonb) where (json ->> 'id) = :id",
+        connectionType = POSTGRES)
+    void update(@BindUUID("id") UUID id, @Bind("json") String json);
+
     @SqlQuery("SELECT json FROM entity_extension WHERE id = :id AND extension = :extension")
     String getExtension(@BindUUID("id") UUID id, @Bind("extension") String extension);
 
