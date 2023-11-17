@@ -290,9 +290,7 @@ class DatabricksLegacySource(CommonDbSourceService, MultiDBSource):
 
     def get_database_names_raw(self) -> Iterable[str]:
         if not self.is_older_version:
-            results = self.connection.execute(
-                DATABRICKS_GET_CATALOGS
-            )  # pylint: disable=no-member
+            results = self.connection.execute(DATABRICKS_GET_CATALOGS)
             for res in results:
                 if res:
                     row = list(res)
