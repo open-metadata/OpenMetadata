@@ -146,7 +146,6 @@ export const generateRandomTable = () => {
 /**
  * get Table by name and create query in the table
  */
-// get Table by name and create query in the table
 export const createQueryByTableName = (token, table) => {
   cy.request({
     method: 'GET',
