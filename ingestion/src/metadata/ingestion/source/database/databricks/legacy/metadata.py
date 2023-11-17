@@ -13,11 +13,12 @@
 import re
 import traceback
 from copy import deepcopy
-from typing import Iterable
+from typing import Iterable, Optional
 
 from pyhive.sqlalchemy_hive import _type_map
 from sqlalchemy import types, util
 from sqlalchemy.engine import reflection
+from sqlalchemy.exc import DatabaseError
 from sqlalchemy.inspection import inspect
 from sqlalchemy.sql.sqltypes import String
 from sqlalchemy_databricks._dialect import DatabricksDialect
@@ -35,10 +36,13 @@ from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.ingestion.source.database.databricks.queries import (
+    DATABRICKS_GET_CATALOGS,
     DATABRICKS_GET_TABLE_COMMENTS,
     DATABRICKS_VIEW_DEFINITIONS,
 )
+from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.utils import fqn
+from metadata.utils.constants import DEFAULT_DATABASE
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
@@ -158,7 +162,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
 @reflection.cache
 def get_schema_names(self, connection, **kw):  # pylint: disable=unused-argument
     # Equivalent to SHOW DATABASES
-    if kw.get("database"):
+    if kw.get("database") and kw.get("is_old_version") is not True:
         connection.execute(f"USE CATALOG '{kw.get('database')}'")
     return [row[0] for row in connection.execute("SHOW SCHEMAS")]
 
@@ -238,12 +242,25 @@ DatabricksDialect.get_all_view_definitions = get_all_view_definitions
 reflection.Inspector.get_schema_names = get_schema_names_reflection
 
 
-class DatabricksLegacySource(CommonDbSourceService):
+class DatabricksLegacySource(CommonDbSourceService, MultiDBSource):
     """
     Implements the necessary methods to extract
     Database metadata from Databricks Source using
     the legacy hive metastore method
     """
+
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
+        super().__init__(config, metadata)
+        self.is_older_version = False
+        self._init_version()
+
+    def _init_version(self):
+        try:
+            self.connection.execute(DATABRICKS_GET_CATALOGS).fetchone()
+            self.is_older_version = False
+        except DatabaseError as soe:
+            logger.debug(f"Failed to fetch catalogs due to: {soe}")
+            self.is_older_version = True
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata):
@@ -268,44 +285,57 @@ class DatabricksLegacySource(CommonDbSourceService):
         self.engine = get_connection(new_service_connection)
         self.inspector = inspect(self.engine)
 
+    def get_configured_database(self) -> Optional[str]:
+        return self.service_connection.catalog
+
+    def get_database_names_raw(self) -> Iterable[str]:
+        if not self.is_older_version:
+            results = self.connection.execute(
+                DATABRICKS_GET_CATALOGS
+            )  # pylint: disable=no-member
+            for res in results:
+                if res:
+                    row = list(res)
+                    yield row[0]
+        else:
+            yield DEFAULT_DATABASE
+
     def get_database_names(self) -> Iterable[str]:
-        configured_catalog = self.service_connection.__dict__.get("catalog")
+        configured_catalog = self.service_connection.catalog
         if configured_catalog:
             self.set_inspector(database_name=configured_catalog)
             yield configured_catalog
         else:
-            results = self.connection.execute("SHOW CATALOGS")
-            for res in results:
-                if res:
-                    new_catalog = res[0]
-                    database_fqn = fqn.build(
-                        self.metadata,
-                        entity_type=Database,
-                        service_name=self.context.database_service.name.__root__,
-                        database_name=new_catalog,
+            for new_catalog in self.get_database_names_raw():
+                database_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.database_service.name.__root__,
+                    database_name=new_catalog,
+                )
+                if filter_by_database(
+                    self.source_config.databaseFilterPattern,
+                    database_fqn
+                    if self.source_config.useFqnForFiltering
+                    else new_catalog,
+                ):
+                    self.status.filter(database_fqn, "Database Filtered Out")
+                    continue
+                try:
+                    self.set_inspector(database_name=new_catalog)
+                    yield new_catalog
+                except Exception as exc:
+                    logger.error(traceback.format_exc())
+                    logger.warning(
+                        f"Error trying to process database {new_catalog}: {exc}"
                     )
-                    if filter_by_database(
-                        self.source_config.databaseFilterPattern,
-                        database_fqn
-                        if self.source_config.useFqnForFiltering
-                        else new_catalog,
-                    ):
-                        self.status.filter(database_fqn, "Database Filtered Out")
-                        continue
-                    try:
-                        self.set_inspector(database_name=new_catalog)
-                        yield new_catalog
-                    except Exception as exc:
-                        logger.error(traceback.format_exc())
-                        logger.warning(
-                            f"Error trying to process database {new_catalog}: {exc}"
-                        )
 
     def get_raw_database_schema_names(self) -> Iterable[str]:
         if self.service_connection.__dict__.get("databaseSchema"):
             yield self.service_connection.databaseSchema
         else:
             for schema_name in self.inspector.get_schema_names(
-                database=self.context.database.name.__root__
+                database=self.context.database.name.__root__,
+                is_old_version=self.is_older_version,
             ):
                 yield schema_name
