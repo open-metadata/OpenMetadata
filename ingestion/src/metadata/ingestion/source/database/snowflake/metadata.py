@@ -591,7 +591,6 @@ class SnowflakeSource(
         start, _ = get_start_and_end(self.source_config.queryLogDuration)
         query = SNOWFLAKE_GET_STORED_PROCEDURE_QUERIES.format(
             start_date=start,
-            warehouse=self.service_connection.warehouse,
         )
 
         queries_dict = self.procedure_queries_dict(
