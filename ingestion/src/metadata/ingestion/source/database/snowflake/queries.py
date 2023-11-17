@@ -185,7 +185,6 @@ WITH SP_HISTORY AS (
     FROM SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY SP
     WHERE QUERY_TYPE = 'CALL'
       AND START_TIME >= '{start_date}' 
-      AND WAREHOUSE_NAME = '{warehouse}'
 ),
 Q_HISTORY AS (
     SELECT
@@ -204,7 +203,6 @@ Q_HISTORY AS (
       AND QUERY_TEXT NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
       AND QUERY_TEXT NOT LIKE '/* {{"app": "dbt", %%}} */%%'
       AND START_TIME >= '{start_date}' 
-      AND WAREHOUSE_NAME = '{warehouse}'
 )
 SELECT
   SP.QUERY_ID AS PROCEDURE_ID,
