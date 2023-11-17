@@ -158,7 +158,7 @@ services:
   openmetadata-server:
     container_name: openmetadata_server
     restart: always
-    image: docker.getcollate.io/openmetadata/server:1.3.0-SNAPSHOT-SNAPSHOT
+    image: docker.getcollate.io/openmetadata/server:1.3.0-SNAPSHOT
     environment:
       OPENMETADATA_CLUSTER_NAME: ${OPENMETADATA_CLUSTER_NAME:-openmetadata}
       SERVER_PORT: ${SERVER_PORT:-8585}
