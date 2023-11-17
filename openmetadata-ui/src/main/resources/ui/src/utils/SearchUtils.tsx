@@ -18,6 +18,7 @@ import { isEmpty } from 'lodash';
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconDashboard } from '../assets/svg/dashboard-grey.svg';
+import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
 import { ReactComponent as IconContainer } from '../assets/svg/ic-storage.svg';
 import { ReactComponent as IconStoredProcedure } from '../assets/svg/ic-stored-procedure.svg';
 import { ReactComponent as IconMlModal } from '../assets/svg/mlmodal.svg';
@@ -147,6 +148,12 @@ export const getGroupLabel = (index: string) => {
     case SearchIndex.SEARCH_INDEX:
       label = i18next.t('label.search-index-plural');
       GroupIcon = SearchOutlined;
+
+      break;
+
+    case SearchIndex.DATA_PRODUCT:
+      label = i18next.t('label.data-product-plural');
+      GroupIcon = DataProductIcon;
 
       break;
 
