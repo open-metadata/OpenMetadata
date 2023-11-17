@@ -268,7 +268,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
                 )
 
             except Exception as exc:
-                msg = f"Error trying to compute profile for {runner.table.__tablename__}.{metric.columnName}: {exc}"
+                msg = f"Error trying to compute profile for custom metric: {exc}"
                 logger.debug(traceback.format_exc())
                 logger.warning(msg)
         if custom_metrics:

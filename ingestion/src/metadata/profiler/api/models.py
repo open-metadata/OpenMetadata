@@ -124,7 +124,7 @@ class ProfilerResponse(ConfigModel):
 class ThreadPoolMetrics(ConfigModel):
     """thread pool metric"""
 
-    metrics: Union[list[Union[Type[Metric], CustomMetric]], Type[Metric]]
+    metrics: Union[List[Union[Type[Metric], CustomMetric]], Type[Metric]]
     metric_type: MetricTypes
     column: Optional[Union[Column, SQALikeColumn]]
     table: Union[Table, DeclarativeMeta]
