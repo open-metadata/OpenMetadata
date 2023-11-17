@@ -134,6 +134,7 @@ public class DatabaseServiceResourceTest extends ServiceResourceTest<DatabaseSer
     ChangeDescription change = getChangeDescription(service, MINOR_UPDATE);
     fieldAdded(change, "description", "description1");
     updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
     SnowflakeConnection snowflakeConnection = new SnowflakeConnection().withUsername("test").withPassword("test12");
     DatabaseConnection databaseConnection = new DatabaseConnection().withConfig(snowflakeConnection);
     update.withConnection(databaseConnection);
@@ -269,7 +270,7 @@ public class DatabaseServiceResourceTest extends ServiceResourceTest<DatabaseSer
   }
 
   @Test
-  void get_listDatabaseServicesWithInvalidEnumValue_400(TestInfo test) {
+  void get_listDatabaseServicesWithInvalidEnumValue_400() {
     Map<String, String> queryParams = new HashMap<>();
     queryParams.put("include", "invalid-enum-value");
 
