@@ -136,6 +136,7 @@ export const globalSearchOptions = [
   { value: SearchIndex.GLOSSARY, label: t('label.glossary') },
   { value: SearchIndex.TAG, label: t('label.tag') },
   { value: SearchIndex.SEARCH_INDEX, label: t('label.search-index') },
+  { value: SearchIndex.DATA_PRODUCT, label: t('label.data-product') },
 ];
 
 export const DESCRIPTIONLENGTH = 100;
