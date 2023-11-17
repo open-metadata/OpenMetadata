@@ -169,7 +169,7 @@ public class SearchRepository {
       }
       searchClient.createAliases(indexMapping);
     } catch (Exception e) {
-      LOG.error(String.format("Failed to Update Index for entity %s due to ", indexMapping.getIndexName()), e);
+      LOG.warn(String.format("Failed to Update Index for entity %s", indexMapping.getIndexName()));
     }
   }
 
