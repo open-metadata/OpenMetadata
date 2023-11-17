@@ -48,7 +48,6 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.type.TaskDetails;
 import org.openmetadata.schema.type.TaskStatus;
@@ -377,15 +376,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       updateParent(original, updated);
     }
 
-    @Override
-    protected void updateTags(String fqn, String fieldName, List<TagLabel> origTags, List<TagLabel> updatedTags) {
-      super.updateTags(fqn, fieldName, origTags, updatedTags);
-      List<String> targetFQNList = daoCollection.tagUsageDAO().getTargetFQNs(TagSource.CLASSIFICATION.ordinal(), fqn);
-      for (String targetFQN : targetFQNList) {
-        applyTags(updatedTags, targetFQN);
-      }
-    }
-
     private void updateStatus(GlossaryTerm origTerm, GlossaryTerm updatedTerm) {
       if (origTerm.getStatus() == updatedTerm.getStatus()) {
         return;
@@ -452,11 +442,14 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       // Can't change parent and glossary both at the same time
       UUID oldParentId = getId(original.getParent());
       UUID newParentId = getId(updated.getParent());
-      boolean parentChanged = !Objects.equals(oldParentId, newParentId);
+      final boolean parentChanged = !Objects.equals(oldParentId, newParentId);
 
       UUID oldGlossaryId = getId(original.getGlossary());
       UUID newGlossaryId = getId(updated.getGlossary());
-      boolean glossaryChanged = !Objects.equals(oldGlossaryId, newGlossaryId);
+      final boolean glossaryChanged = !Objects.equals(oldGlossaryId, newGlossaryId);
+      if (!parentChanged && !glossaryChanged) {
+        return;
+      }
 
       setFullyQualifiedName(updated); // Update the FQN since the parent has changed
       daoCollection.glossaryTermDAO().updateFqn(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
