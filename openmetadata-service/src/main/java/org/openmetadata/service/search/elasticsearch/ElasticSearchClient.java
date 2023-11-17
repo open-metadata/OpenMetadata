@@ -239,7 +239,7 @@ public class ElasticSearchClient implements SearchClient {
       AcknowledgedResponse putMappingResponse = client.indices().putMapping(request, RequestOptions.DEFAULT);
       LOG.debug("{} Updated {}", indexMapping.getIndexMappingFile(), putMappingResponse.isAcknowledged());
     } catch (Exception e) {
-      LOG.error(String.format("Failed to Update Elastic Search index %s due to", indexMapping.getIndexName()), e);
+      LOG.warn(String.format("Failed to Update Elastic Search index %s", indexMapping.getIndexName()));
     }
   }
 
