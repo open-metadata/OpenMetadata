@@ -34,6 +34,7 @@ import {
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
   DashboardSource,
+  DataProductSource,
   GlossarySource,
   MlModelSource,
   Option,
@@ -92,6 +93,9 @@ const Suggestions = ({
   const [dataModelSuggestions, setDataModelSuggestions] = useState<
     DashboardDataModelSearchSource[]
   >([]);
+  const [dataProductSuggestions, setDataProductSuggestions] = useState<
+    DataProductSource[]
+  >([]);
 
   const isMounting = useRef(true);
 
@@ -117,6 +121,9 @@ const Suggestions = ({
     );
     setGlossarySuggestions(filterOptionsByIndex(options, SearchIndex.GLOSSARY));
     setTagSuggestions(filterOptionsByIndex(options, SearchIndex.TAG));
+    setDataProductSuggestions(
+      filterOptionsByIndex(options, SearchIndex.DATA_PRODUCT)
+    );
   };
 
   const getSuggestionsForIndex = (
@@ -175,6 +182,10 @@ const Suggestions = ({
             searchIndex: SearchIndex.GLOSSARY,
           },
           { suggestions: tagSuggestions, searchIndex: SearchIndex.TAG },
+          {
+            suggestions: dataProductSuggestions,
+            searchIndex: SearchIndex.DATA_PRODUCT,
+          },
         ].map(({ suggestions, searchIndex }) =>
           getSuggestionsForIndex(suggestions, searchIndex)
         )}
