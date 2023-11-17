@@ -31,6 +31,7 @@ from metadata.profiler.orm.functions.random_num import RandomNumFn
 from metadata.profiler.orm.registry import Dialects
 from metadata.profiler.processor.handle_partition import partition_filter_handler
 from metadata.profiler.processor.sampler.sampler_interface import SamplerInterface
+from metadata.utils.helpers import is_safe_sql_query
 from metadata.utils.logger import profiler_interface_registry_logger
 from metadata.utils.sqa_utils import (
     build_query_filter,
@@ -171,6 +172,11 @@ class SQASampler(SamplerInterface):
 
     def _fetch_sample_data_from_user_query(self) -> TableData:
         """Returns a table data object using results from query execution"""
+        if not is_safe_sql_query(self._profile_sample_query):
+            raise RuntimeError(
+                f"SQL expression is not safe\n\n{self._profile_sample_query}"
+            )
+
         rnd = self.client.execute(f"{self._profile_sample_query}")
         try:
             columns = [col.name for col in rnd.cursor.description]
@@ -183,6 +189,11 @@ class SQASampler(SamplerInterface):
 
     def _rdn_sample_from_user_query(self) -> Query:
         """Returns sql alchemy object to use when running profiling"""
+        if not is_safe_sql_query(self._profile_sample_query):
+            raise RuntimeError(
+                f"SQL expression is not safe\n\n{self._profile_sample_query}"
+            )
+
         return self.client.query(self.table).from_statement(
             text(f"{self._profile_sample_query}")
         )

@@ -238,9 +238,7 @@ class OpenMetadataSource(Source):
         """
         tables = self.metadata.list_all_entities(
             entity=Table,
-            fields=[
-                "tableProfilerConfig",
-            ],
+            fields=["tableProfilerConfig", "columns", "customMetrics"],
             params={
                 "service": self.config.source.serviceName,
                 "database": fqn.build(

@@ -32,6 +32,7 @@ from metadata.generated.schema.entity.data.table import (
     Table,
     TableProfile,
 )
+from metadata.profiler.api.models import ThreadPoolMetrics
 from metadata.profiler.interface.pandas.profiler_interface import (
     PandasProfilerInterface,
 )
@@ -146,15 +147,15 @@ class PandasInterfaceTest(TestCase):
 
     def test_get_all_metrics(self):
         table_metrics = [
-            (
-                [
+            ThreadPoolMetrics(
+                metrics=[
                     metric
                     for metric in self.metrics
                     if (not metric.is_col_metric() and not metric.is_system_metrics())
                 ],
-                MetricTypes.Table,
-                None,
-                self.table_entity,
+                metric_type=MetricTypes.Table,
+                column=None,
+                table=self.table_entity,
             )
         ]
         column_metrics = []
@@ -164,36 +165,36 @@ class PandasInterfaceTest(TestCase):
             if col.name == "id":
                 continue
             column_metrics.append(
-                (
-                    [
+                ThreadPoolMetrics(
+                    metrics=[
                         metric
                         for metric in self.static_metrics
                         if metric.is_col_metric() and not metric.is_window_metric()
                     ],
-                    MetricTypes.Static,
-                    col,
-                    self.table_entity,
+                    metric_type=MetricTypes.Static,
+                    column=col,
+                    table=self.table_entity,
                 )
             )
             for query_metric in self.query_metrics:
                 query_metrics.append(
-                    (
-                        query_metric,
-                        MetricTypes.Query,
-                        col,
-                        self.table_entity,
+                    ThreadPoolMetrics(
+                        metrics=query_metric,
+                        metric_type=MetricTypes.Query,
+                        column=col,
+                        table=self.table_entity,
                     )
                 )
             window_metrics.append(
-                (
-                    [
+                ThreadPoolMetrics(
+                    metrics=[
                         metric
                         for metric in self.window_metrics
                         if metric.is_window_metric()
                     ],
-                    MetricTypes.Window,
-                    col,
-                    self.table_entity,
+                    metric_type=MetricTypes.Window,
+                    column=col,
+                    table=self.table_entity,
                 )
             )
 

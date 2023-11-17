@@ -428,7 +428,7 @@ def get_parser(args=None):
     return parser.parse_args(args)
 
 
-def metadata(args=None):  # pylint: disable=too-many-branches
+def metadata(args=None):
     """
     This method implements parsing of the arguments passed from CLI
     """

@@ -46,6 +46,7 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
     DatabaseServiceProfilerPipeline,
 )
+from metadata.generated.schema.tests.customMetric import CustomMetric
 from metadata.ingestion.api.models import StackTraceError
 from metadata.ingestion.api.status import Status
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -130,6 +131,7 @@ class ProfilerInterface(ABC):
             MetricTypes.Query.value: self._compute_query_metrics,
             MetricTypes.Window.value: self._compute_window_metrics,
             MetricTypes.System.value: self._compute_system_metrics,
+            MetricTypes.Custom.value: self._compute_custom_metrics,
         }
 
     @abstractmethod
@@ -457,6 +459,13 @@ class ProfilerInterface(ABC):
         **kwargs,
     ):
         """Get metrics"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def _compute_custom_metrics(
+        self, metrics: List[CustomMetric], runner, *args, **kwargs
+    ):
+        """Compute custom metrics"""
         raise NotImplementedError
 
     @abstractmethod

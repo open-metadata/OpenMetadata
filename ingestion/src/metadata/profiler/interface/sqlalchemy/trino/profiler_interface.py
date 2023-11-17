@@ -67,6 +67,8 @@ class TrinoProfilerInterface(SQAProfilerInterface):
             row = runner.select_first_from_sample(
                 *[metric(column).fn() for metric in metrics], **runner_kwargs
             )
+            if row:
+                return dict(row)
         except ProgrammingError as err:
             logger.info(
                 f"Skipping window metrics for {runner.table.__tablename__}.{column.name} due to {err}"
@@ -76,6 +78,4 @@ class TrinoProfilerInterface(SQAProfilerInterface):
         except Exception as exc:
             msg = f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
             handle_query_exception(msg, exc, session)
-        if row:
-            return dict(row)
         return None

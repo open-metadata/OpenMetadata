@@ -90,6 +90,9 @@ class Max(StaticMetric):
 
     def df_fn(self, dfs=None):
         """pandas function"""
-        if is_quantifiable(self.col.type) or is_date_time(self.col.type):
+        if is_quantifiable(self.col.type):
             return max((df[self.col.name].max() for df in dfs))
+        if is_date_time(self.col.type):
+            max_ = max((df[self.col.name].max() for df in dfs))
+            return int(max_.timestamp() * 1000)
         return 0
