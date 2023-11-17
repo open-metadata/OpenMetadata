@@ -23,7 +23,11 @@ import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { ReactComponent as ExitFullScreen } from '../../assets/svg/exit-full-screen.svg';
 import { ReactComponent as FullScreen } from '../../assets/svg/full-screen.svg';
 import { ReactComponent as CopyIcon } from '../../assets/svg/icon-copy.svg';
-import { getTableTabPath, PIPE_SYMBOL } from '../../constants/constants';
+import {
+  getTableTabPath,
+  ONE_MINUTE_IN_MILLISECOND,
+  PIPE_SYMBOL,
+} from '../../constants/constants';
 import {
   QUERY_DATE_FORMAT,
   QUERY_LINE_HEIGHT,
@@ -87,15 +91,13 @@ const QueryCard: FC<QueryCardProp> = ({
       return undefined;
     }
 
-    const duration = Duration.fromObject({ seconds: durationInSeconds });
+    const duration = Duration.fromObject({ milliseconds: durationInSeconds });
 
     let formatString;
-    if (durationInSeconds < 1) {
-      formatString = "SSS 'milisec'";
-    } else if (durationInSeconds < 5) {
-      formatString = "s 'sec'";
+    if (durationInSeconds < ONE_MINUTE_IN_MILLISECOND) {
+      formatString = "s.S 'sec'";
     } else {
-      formatString = "m 'min'";
+      formatString = "m 'min' s 'sec'";
     }
 
     // Format the duration as a string using the chosen format string
@@ -176,9 +178,9 @@ const QueryCard: FC<QueryCardProp> = ({
           title={
             <Space className="font-normal p-y-xs" size={8}>
               <Text>{queryDate}</Text>
-              <Text className="text-gray-400">{PIPE_SYMBOL}</Text>
               {duration && (
                 <>
+                  <Text className="text-gray-400">{PIPE_SYMBOL}</Text>
                   <Text>{duration}</Text>
                 </>
               )}
