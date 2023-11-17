@@ -116,8 +116,8 @@ def update_column_description(
 
             col.description = desc_column.description
 
-            if col.children:
-                update_column_description(col.children, column_descriptions, force)
+        if col.children:
+            update_column_description(col.children, column_descriptions, force)
 
 
 class OMetaPatchMixin(OMetaPatchMixinBase):
