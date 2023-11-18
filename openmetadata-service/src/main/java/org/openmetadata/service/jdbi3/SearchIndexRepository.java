@@ -80,11 +80,6 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
     SearchService searchService = Entity.getEntity(searchIndex.getService(), "", ALL);
     searchIndex.setService(searchService.getEntityReference());
     searchIndex.setServiceType(searchService.getServiceType());
-    // Validate field tags
-    if (searchIndex.getFields() != null) {
-      addDerivedFieldTags(searchIndex.getFields());
-      validateSchemaFieldTags(searchIndex.getFields());
-    }
   }
 
   @Override
@@ -234,9 +229,17 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
         .withChildren(children);
   }
 
+  @Override
+  public void validateTags(SearchIndex entity) {
+    super.validateTags(entity);
+    validateSchemaFieldTags(entity.getFields());
+  }
+
   private void validateSchemaFieldTags(List<SearchIndexField> fields) {
     // Add field level tags by adding tag to field relationship
-    for (SearchIndexField field : fields) {
+    for (SearchIndexField field : listOrEmpty(fields)) {
+      validateTags(field.getTags());
+      field.setTags(addDerivedTags(field.getTags()));
       checkMutuallyExclusive(field.getTags());
       if (field.getChildren() != null) {
         validateSchemaFieldTags(field.getChildren());
@@ -244,12 +247,12 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
     }
   }
 
-  private void applyTags(List<SearchIndexField> fields) {
+  private void applyFieldTags(List<SearchIndexField> fields) {
     // Add field level tags by adding tag to field relationship
     for (SearchIndexField field : fields) {
       applyTags(field.getTags(), field.getFullyQualifiedName());
       if (field.getChildren() != null) {
-        applyTags(field.getChildren());
+        applyFieldTags(field.getChildren());
       }
     }
   }
@@ -259,7 +262,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
     // Add table level tags by adding tag to table relationship
     super.applyTags(searchIndex);
     if (searchIndex.getFields() != null) {
-      applyTags(searchIndex.getFields());
+      applyFieldTags(searchIndex.getFields());
     }
   }
 

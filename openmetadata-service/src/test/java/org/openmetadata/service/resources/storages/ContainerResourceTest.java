@@ -7,11 +7,13 @@ import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.schema.type.ColumnDataType.ARRAY;
 import static org.openmetadata.schema.type.ColumnDataType.BIGINT;
 import static org.openmetadata.schema.type.ColumnDataType.CHAR;
 import static org.openmetadata.schema.type.ColumnDataType.INT;
 import static org.openmetadata.schema.type.ColumnDataType.STRUCT;
+import static org.openmetadata.service.Entity.TAG;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.resources.databases.TableResourceTest.assertColumns;
 import static org.openmetadata.service.resources.databases.TableResourceTest.getColumn;
@@ -36,6 +38,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.MethodOrderer;
@@ -53,6 +56,7 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.ContainerDataModel;
 import org.openmetadata.schema.type.ContainerFileFormat;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
@@ -602,6 +606,49 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     // Data consumer as an owner of the service can create container under it
     createEntity(
         createRequest("container").withService(service.getFullyQualifiedName()), authHeaders(DATA_CONSUMER.getName()));
+  }
+
+  @Test
+  void test_columnWithInvalidTag(TestInfo test) throws HttpResponseException {
+    // Add an entity with invalid tag
+    TagLabel invalidTag = new TagLabel().withTagFQN("invalidTag");
+    List<Column> invalidTagColumns = List.of(getColumn(C1, BIGINT, invalidTag));
+    ContainerDataModel invalidTagModel =
+        new ContainerDataModel().withIsPartitioned(true).withColumns(invalidTagColumns);
+    CreateContainer create = createRequest(getEntityName(test)).withDataModel(invalidTagModel);
+
+    // Entity can't be created with PUT or POST
+    assertResponse(
+        () -> createEntity(create, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+
+    assertResponse(
+        () -> updateEntity(create, Status.CREATED, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+
+    // Create an entity and update the columns with PUT and PATCH with an invalid tag
+    List<Column> validColumns = List.of(getColumn(C1, BIGINT, TIER1_TAG_LABEL));
+    ContainerDataModel validTagModel = new ContainerDataModel().withIsPartitioned(true).withColumns(validColumns);
+    create.setDataModel(validTagModel);
+    Container entity = createEntity(create, ADMIN_AUTH_HEADERS);
+    String json = JsonUtils.pojoToJson(entity);
+
+    create.setDataModel(invalidTagModel);
+    assertResponse(
+        () -> updateEntity(create, Status.CREATED, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+
+    entity.setTags(listOf(invalidTag));
+    assertResponse(
+        () -> patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+
+    // No lingering relationships should cause error in listing the entity
+    listEntities(null, ADMIN_AUTH_HEADERS);
   }
 
   @Override

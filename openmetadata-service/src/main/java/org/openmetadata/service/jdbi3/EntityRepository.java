@@ -98,8 +98,6 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.teams.CreateTeam;
-import org.openmetadata.schema.entity.classification.Tag;
-import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
@@ -115,7 +113,6 @@ import org.openmetadata.schema.type.LifeCycle;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.schema.type.Votes;
@@ -441,6 +438,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setDescription(request.getDescription());
     entity.setOwner(owner);
     entity.setDomain(domain);
+    entity.setTags(request.getTags());
     entity.setDataProducts(getEntityReferences(Entity.DATA_PRODUCT, request.getDataProducts()));
     entity.setLifeCycle(request.getLifeCycle());
     entity.setExtension(request.getExtension());
@@ -686,10 +684,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public void prepareInternal(T entity, boolean update) {
-    if (supportsTags) {
-      entity.setTags(addDerivedTags(entity.getTags()));
-      checkMutuallyExclusive(entity.getTags());
-    }
+    validateTags(entity);
     prepare(entity, update);
     setFullyQualifiedName(entity);
     validateExtension(entity);
@@ -1244,6 +1239,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return Collections.emptyList();
   }
 
+  protected void applyColumnTags(List<Column> columns) {
+    // Add column level tags by adding tag to column relationship
+    for (Column column : columns) {
+      applyTags(column.getTags(), column.getFullyQualifiedName());
+      if (column.getChildren() != null) {
+        applyColumnTags(column.getChildren());
+      }
+    }
+  }
+
   protected void applyTags(T entity) {
     if (supportsTags) {
       // Add entity level tags by adding tag to the entity relationship
@@ -1255,16 +1260,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
   /** Apply tags {@code tagLabels} to the entity or field identified by {@code targetFQN} */
   public void applyTags(List<TagLabel> tagLabels, String targetFQN) {
     for (TagLabel tagLabel : listOrEmpty(tagLabels)) {
-      if (tagLabel.getSource() == TagSource.CLASSIFICATION) {
-        Tag tag = daoCollection.tagDAO().findEntityByName(tagLabel.getTagFQN());
-        tagLabel.withDescription(tag.getDescription());
-        tagLabel.setSource(TagSource.CLASSIFICATION);
-      } else if (tagLabel.getSource() == TagLabel.TagSource.GLOSSARY) {
-        GlossaryTerm term = daoCollection.glossaryTermDAO().findEntityByName(tagLabel.getTagFQN(), NON_DELETED);
-        tagLabel.withDescription(term.getDescription());
-        tagLabel.setSource(TagLabel.TagSource.GLOSSARY);
-      }
-
       // Apply tagLabel to targetFQN that identifies an entity or field
       daoCollection
           .tagUsageDAO()
@@ -1725,6 +1720,21 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return Entity.getEntityReferenceById(owner.getType(), owner.getId(), ALL);
   }
 
+  public void validateTags(T entity) {
+    if (!supportsTags) {
+      return;
+    }
+    validateTags(entity.getTags());
+    entity.setTags(addDerivedTags(entity.getTags()));
+    checkMutuallyExclusive(entity.getTags());
+  }
+
+  public void validateTags(List<TagLabel> labels) {
+    for (TagLabel label : listOrEmpty(labels)) {
+      TagLabelUtil.applyTagCommonFields(label);
+    }
+  }
+
   public EntityReference validateDomain(String domainFqn) {
     if (!supportsDomain || domainFqn == null) {
       return null;
@@ -1762,6 +1772,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
     ThreadType threadType = threadContext.getThread().getType();
     if (threadType != ThreadType.Task) {
       throw new IllegalArgumentException(String.format("Thread type %s is not task related", threadType));
+    }
+  }
+
+  protected void validateColumnTags(List<Column> columns) {
+    // Add column level tags by adding tag to column relationship
+    for (Column column : listOrEmpty(columns)) {
+      validateTags(column.getTags());
+      column.setTags(addDerivedTags(column.getTags()));
+      checkMutuallyExclusive(column.getTags());
+      if (column.getChildren() != null) {
+        validateColumnTags(column.getChildren());
+      }
     }
   }
 

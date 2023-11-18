@@ -222,9 +222,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   @Override
   public void prepare(Pipeline pipeline, boolean update) {
     populateService(pipeline);
-    if (pipeline.getTasks() != null) {
-      pipeline.getTasks().forEach(task -> checkMutuallyExclusive(task.getTags()));
-    }
   }
 
   @Override
@@ -257,7 +254,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   public void applyTags(Pipeline pipeline) {
     // Add table level tags by adding tag to table relationship
     super.applyTags(pipeline);
-    applyTags(pipeline.getTasks());
+    applyTaskTags(pipeline.getTasks()); // TODO need cleanup
   }
 
   @Override
@@ -265,11 +262,19 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     return Entity.getEntity(entity.getService(), fields, Include.NON_DELETED);
   }
 
-  private void applyTags(List<Task> tasks) {
-    if (tasks != null) {
-      for (Task task : tasks) {
-        applyTags(task.getTags(), task.getFullyQualifiedName());
-      }
+  @Override
+  public void validateTags(Pipeline entity) {
+    super.validateTags(entity);
+    for (Task task : listOrEmpty(entity.getTasks())) {
+      validateTags(task.getTags());
+      task.setTags(addDerivedTags(task.getTags()));
+      checkMutuallyExclusive(task.getTags());
+    }
+  }
+
+  private void applyTaskTags(List<Task> tasks) {
+    for (Task task : listOrEmpty(tasks)) {
+      applyTags(task.getTags(), task.getFullyQualifiedName());
     }
   }
 
@@ -388,6 +393,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         List<Task> added = new ArrayList<>();
         List<Task> deleted = new ArrayList<>();
         recordListChange(TASKS_FIELD, origTasks, updatedTasks, added, deleted, taskMatch);
+        applyTaskTags(added);
+        deleted.forEach(d -> daoCollection.tagUsageDAO().deleteTagsByTarget(d.getFullyQualifiedName()));
       }
     }
 
