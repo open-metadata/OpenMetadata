@@ -107,3 +107,11 @@ enable = "useless-suppression"
 [tool.pylint.FORMAT]
 # We all have big monitors now
 max-line-length = 120
+
+[tool.black]
+line-length = 120
+extend-exclude = "src/metadata/generated"
+
+[tool.pycln]
+all = true
+extend-exclude = "src/metadata/generated"
