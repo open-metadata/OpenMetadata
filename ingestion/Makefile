@@ -85,14 +85,11 @@ run_apis_tests:  ## Run the openmetadata airflow apis tests
 	coverage run --rcfile $(ROOT_DIR)/openmetadata-airflow-apis/pyproject.toml -a --branch -m pytest -c $(INGESTION_DIR)/pyproject.toml --junitxml=$(ROOT_DIR)/openmetadata-airflow-apis/junit/test-results.xml $(ROOT_DIR)/openmetadata-airflow-apis/tests
 	coverage report --rcfile $(ROOT_DIR)/openmetadata-airflow-apis/pyproject.toml
 
-
 .PHONY: coverage_apis
 coverage_apis:  ## Run the python tests on openmetadata-airflow-apis
 	$(MAKE) run_apis_tests
 	coverage xml --rcfile $(ROOT_DIR)/openmetadata-airflow-apis/pyproject.toml -o $(ROOT_DIR)/openmetadata-airflow-apis/coverage.xml
 	sed -e "s/$(shell python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")\///g" $(ROOT_DIR)/openmetadata-airflow-apis/coverage.xml >> $(ROOT_DIR)/openmetadata-airflow-apis/ci-coverage.xml
-
-
 
 .PHONY: coverage
 coverage:  ## Run all Python tests and generate the coverage XML report
