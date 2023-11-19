@@ -65,10 +65,6 @@ check_untyped_defs = true
 disallow_untyped_defs = false
 disallow_incomplete_defs = false
 
-[tool.isort]
-profile = "black"
-indent = "    "
-
 [tool.pytest.ini_options]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')"
@@ -109,9 +105,14 @@ enable = "useless-suppression"
 max-line-length = 120
 
 [tool.black]
-line-length = 120
 extend-exclude = "src/metadata/generated"
 
 [tool.pycln]
 all = true
 extend-exclude = "src/metadata/generated"
+
+[tool.isort]
+skip = "src/metadata/generated,env,build,../openmetadata-airflow-apis/build"
+profile = "black"
+indent = "    "
+multi_line_output = 3

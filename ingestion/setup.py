@@ -17,7 +17,6 @@ from typing import Dict, Set
 
 from setuptools import setup
 
-
 # Add here versions required for multiple plugins
 VERSIONS = {
     "airflow": "apache-airflow==2.6.3",
@@ -258,7 +257,7 @@ dev = {
     "pylint~=3.0.0",
     # For publishing
     "twine",
-    "build"
+    "build",
 }
 
 test = {
