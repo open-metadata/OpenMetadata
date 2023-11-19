@@ -579,7 +579,7 @@ public class TableRepository extends EntityRepository<Table> {
       }
       stored.setTags(modelColumn.getTags());
     }
-    applyTags(table.getColumns());
+    applyColumnTags(table.getColumns());
     dao.update(table.getId(), table.getFullyQualifiedName(), JsonUtils.pojoToJson(table));
     setFieldsInternal(table, new Fields(Set.of(FIELD_OWNER), FIELD_OWNER));
     setFieldsInternal(table, new Fields(Set.of(FIELD_TAGS), FIELD_TAGS));
@@ -607,10 +607,6 @@ public class TableRepository extends EntityRepository<Table> {
         .withDatabase(schema.getDatabase())
         .withService(schema.getService())
         .withServiceType(schema.getServiceType());
-
-    // Validate column tags
-    addDerivedColumnTags(table.getColumns());
-    validateColumnTags(table.getColumns());
   }
 
   @Override
@@ -641,36 +637,22 @@ public class TableRepository extends EntityRepository<Table> {
     return new TableUpdater(original, updated, operation);
   }
 
-  private void validateColumnTags(List<Column> columns) {
-    // Add column level tags by adding tag to column relationship
-    for (Column column : columns) {
-      checkMutuallyExclusive(column.getTags());
-      if (column.getChildren() != null) {
-        validateColumnTags(column.getChildren());
-      }
-    }
-  }
-
-  private void applyTags(List<Column> columns) {
-    // Add column level tags by adding tag to column relationship
-    for (Column column : columns) {
-      applyTags(column.getTags(), column.getFullyQualifiedName());
-      if (column.getChildren() != null) {
-        applyTags(column.getChildren());
-      }
-    }
-  }
-
   @Override
   public void applyTags(Table table) {
     // Add table level tags by adding tag to table relationship
     super.applyTags(table);
-    applyTags(table.getColumns());
+    applyColumnTags(table.getColumns());
   }
 
   @Override
   public EntityInterface getParentEntity(Table entity, String fields) {
     return Entity.getEntity(entity.getDatabaseSchema(), fields, Include.NON_DELETED);
+  }
+
+  @Override
+  public void validateTags(Table entity) {
+    super.validateTags(entity);
+    validateColumnTags(entity.getColumns());
   }
 
   @Override
