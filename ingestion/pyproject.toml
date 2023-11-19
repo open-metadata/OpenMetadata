@@ -112,7 +112,11 @@ all = true
 extend-exclude = "src/metadata/generated"
 
 [tool.isort]
-skip = "src/metadata/generated,env,build,../openmetadata-airflow-apis/build"
+skip = [
+    "src/metadata/generated",
+    "build",
+    "../openmetadata-airflow-apis/build"
+]
 profile = "black"
 indent = "    "
 multi_line_output = 3
