@@ -25,7 +25,7 @@ AIRFLOW_ADMIN_PASSWORD=${AIRFLOW_ADMIN_PASSWORD:-admin}
 
 OPENMETADATA_SERVER=${OPENMETADATA_SERVER:-"http://openmetadata-server:8585"}
 
-sed -i "s#\(sql_alchemy_conn = \).*#\1${DB_CONN}#" /opt/airflow/airflow.cfg
+sed -i 's,^#*[ ]*\(sql_alchemy_conn[ ]*=\).*,\1 '${DB_CONN}',g' /opt/airflow/airflow.cfg
 
 airflow db init
 
