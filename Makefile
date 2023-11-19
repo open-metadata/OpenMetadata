@@ -24,40 +24,6 @@ yarn_install_cache:  ## Use Yarn to install UI dependencies
 yarn_start_dev_ui:  ## Run the UI locally with Yarn
 	cd openmetadata-ui/src/main/resources/ui && yarn start
 
-## Ingestion Core
-.PHONY: core_install_dev
-core_install_dev:  ## Prepare a venv for the ingestion-core module
-	cd ingestion-core; \
-		rm -rf venv; \
-		python3 -m venv venv; \
-		. venv/bin/activate; \
-		python3 -m pip install ".[dev]"
-
-.PHONY: core_clean
-core_clean:  ## Clean the ingestion-core generated files
-	rm -rf ingestion-core/src/metadata/generated
-	rm -rf ingestion-core/build
-	rm -rf ingestion-core/dist
-
-.PHONY: core_generate
-core_generate:  ## Generate the pydantic models from the JSON Schemas to the ingestion-core module
-	$(MAKE) core_install_dev
-	mkdir -p ingestion-core/src/metadata/generated; \
-	. ingestion-core/venv/bin/activate; \
-	datamodel-codegen --input openmetadata-spec/src/main/resources/json/schema  --input-file-type jsonschema --output ingestion-core/src/metadata/generated/schema
-	$(MAKE) core_py_antlr
-
-.PHONY: core_bump_version_dev
-core_bump_version_dev:  ## Bump a `dev` version to the ingestion-core module. To be used when schemas are updated
-	$(MAKE) core_install_dev
-	cd ingestion-core; \
-		. venv/bin/activate; \
-		python -m incremental.update metadata --dev
-
-.PHONY: core_py_antlr
-core_py_antlr:  ## Generate the Python core code for parsing FQNs under ingestion-core
-	antlr4 -Dlanguage=Python3 -o ingestion-core/src/metadata/generated/antlr ${PWD}/openmetadata-spec/src/main/antlr4/org/openmetadata/schema/*.g4
-
 .PHONY: py_antlr
 py_antlr:  ## Generate the Python code for parsing FQNs
 	antlr4 -Dlanguage=Python3 -o ingestion/src/metadata/generated/antlr ${PWD}/openmetadata-spec/src/main/antlr4/org/openmetadata/schema/*.g4
