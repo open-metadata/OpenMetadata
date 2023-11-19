@@ -41,15 +41,15 @@ precommit_install:  ## Install the project's precommit hooks from .pre-commit-co
 
 .PHONY: py_format
 py_format:  ## Run black and isort to format the Python codebase
-	pycln $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --extend-exclude $(PY_SOURCE)/metadata/generated --all
+	pycln $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --config $(INGESTION_DIR)/pyproject.toml
 	isort $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --skip $(PY_SOURCE)/metadata/generated --skip $(INGESTION_DIR)/env --skip $(INGESTION_DIR)/build --skip $(ROOT_DIR)/openmetadata-airflow-apis/build --profile black --multi-line 3
-	black $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --extend-exclude $(PY_SOURCE)/metadata/generated
+	black $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --config $(INGESTION_DIR)/pyproject.toml
 
 .PHONY: py_format_check
 py_format_check:  ## Check if Python sources are correctly formatted
-	pycln $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --diff --extend-exclude $(PY_SOURCE)/metadata/generated --all
+	pycln $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --diff
 	isort --check-only $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --skip $(PY_SOURCE)/metadata/generated --skip $(INGESTION_DIR)/build --skip $(ROOT_DIR)/openmetadata-airflow-apis/build --profile black --multi-line 3
-	black --check --diff $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/  --extend-exclude $(PY_SOURCE)/metadata/generated
+	black --check --diff $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/
 	PYTHONPATH="${PYTHONPATH}:$(INGESTION_DIR)/plugins" pylint --fail-under=10 $(PY_SOURCE)/metadata --ignore-paths $(PY_SOURCE)/metadata/generated || (echo "PyLint error code $$?"; exit 1)
 
 .PHONY: unit_ingestion
