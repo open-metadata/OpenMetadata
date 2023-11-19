@@ -1417,13 +1417,13 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     CreateCustomMetric createTableMetric =
         new CreateCustomMetric().withName("customTable").withExpression("SELECT SUM(xyz) + SUM(def) FROM abc");
     Table tablePutResponse = putCustomMetric(table.getId(), createTableMetric, authHeaders);
-    assertEquals(tablePutResponse.getCustomMetrics().size(), 1);
+    assertEquals(1, tablePutResponse.getCustomMetrics().size());
 
     // Add another table custom metric
     CreateCustomMetric createTableMetric2 =
         new CreateCustomMetric().withName("custom2Table").withExpression("SELECT SUM(xyz) / SUM(def) FROM abc");
     tablePutResponse = putCustomMetric(table.getId(), createTableMetric2, authHeaders);
-    assertEquals(tablePutResponse.getCustomMetrics().size(), 2);
+    assertEquals(2, tablePutResponse.getCustomMetrics().size());
 
     // check we can get the custom metrics
     Map<String, Object> customMetrics =
@@ -1449,8 +1449,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Delete table custom metric
     deleteTableCustomMetric(table.getId(), updatedTableMetric.getName(), authHeaders);
     table = getEntity(table.getId(), "customMetrics,columns", authHeaders);
-    assertEquals(table.getCustomMetrics().size(), 1);
-    assertEquals(table.getCustomMetrics().get(0).getName(), createTableMetric2.getName());
+    assertEquals(1, table.getCustomMetrics().size());
+    assertEquals(createTableMetric2.getName(), table.getCustomMetrics().get(0).getName());
   }
 
   @Test

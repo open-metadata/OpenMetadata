@@ -758,7 +758,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
   }
 
   private void decryptOrNullify(
-      SecurityContext securityContext, IngestionPipeline ingestionPipeline, String botname, boolean forceNotMask) {
+      SecurityContext securityContext, IngestionPipeline ingestionPipeline, String botName, boolean forceNotMask) {
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     try {
       authorizer.authorize(
@@ -770,7 +770,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
     }
     secretsManager.decryptIngestionPipeline(ingestionPipeline);
     OpenMetadataConnection openMetadataServerConnection =
-        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, botname).build();
+        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, botName).build();
     ingestionPipeline.setOpenMetadataServerConnection(
         secretsManager.encryptOpenMetadataConnection(openMetadataServerConnection, false));
     if (authorizer.shouldMaskPasswords(securityContext) && !forceNotMask) {

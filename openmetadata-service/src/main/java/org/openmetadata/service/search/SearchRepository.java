@@ -32,7 +32,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.TreeMap;
+import java.util.SortedMap;
 import javax.json.JsonObject;
 import javax.ws.rs.core.Response;
 import lombok.Getter;
@@ -81,7 +81,6 @@ public class SearchRepository {
           AGGREGATED_COST_ANALYSIS_REPORT_DATA);
 
   public static final String ELASTIC_SEARCH_EXTENSION = "service.eventPublisher";
-  public static final String ELASTIC_SEARCH_ENTITY_FQN_STREAM = "eventPublisher:ElasticSearch:STREAM";
 
   public SearchRepository(ElasticSearchConfiguration config) {
     elasticSearchConfiguration = config;
@@ -122,20 +121,20 @@ public class SearchRepository {
   }
 
   public void createIndexes() {
-    for (String entityType : entityIndexMap.keySet()) {
-      createIndex(entityIndexMap.get(entityType));
+    for (IndexMapping indexMapping : entityIndexMap.values()) {
+      createIndex(indexMapping);
     }
   }
 
   public void updateIndexes() {
-    for (String entityType : entityIndexMap.keySet()) {
-      updateIndex(entityIndexMap.get(entityType));
+    for (IndexMapping indexMapping : entityIndexMap.values()) {
+      updateIndex(indexMapping);
     }
   }
 
   public void dropIndexes() {
-    for (String entityType : entityIndexMap.keySet()) {
-      deleteIndex(entityIndexMap.get(entityType));
+    for (IndexMapping indexMapping : entityIndexMap.values()) {
+      deleteIndex(indexMapping);
     }
   }
 
@@ -521,7 +520,7 @@ public class SearchRepository {
     return searchClient.suggest(request);
   }
 
-  public TreeMap<Long, List<Object>> getSortedDate(
+  public SortedMap<Long, List<Object>> getSortedDate(
       String team,
       Long scheduleTime,
       Long currentTime,

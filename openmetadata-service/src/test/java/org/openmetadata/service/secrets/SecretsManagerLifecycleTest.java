@@ -66,7 +66,7 @@ public class SecretsManagerLifecycleTest {
 
     // SM will have the key stored
     String secretValue = secretsManager.getSecret(secretName);
-    assertEquals(secretValue, DECRYPTED_VALUE);
+    assertEquals(DECRYPTED_VALUE, secretValue);
 
     // Now we delete the service
     secretsManager.deleteSecretsFromServiceConnectionConfig(
@@ -114,7 +114,7 @@ public class SecretsManagerLifecycleTest {
 
     // SM will have the key stored
     String secretValue = secretsManager.getSecret(secretName);
-    assertEquals(secretValue, DECRYPTED_VALUE);
+    assertEquals(DECRYPTED_VALUE, secretValue);
 
     // Now we delete the service
     secretsManager.deleteSecretsFromWorkflow(workflow);
