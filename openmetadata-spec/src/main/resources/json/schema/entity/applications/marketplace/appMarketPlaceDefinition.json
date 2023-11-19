@@ -62,7 +62,7 @@
       "default": false
     },
     "tags": {
-      "description": "Tags associated with the column.",
+      "description": "Tags associated with the entity.",
       "type": "array",
       "items": {
         "$ref": "../../../type/tagLabel.json"

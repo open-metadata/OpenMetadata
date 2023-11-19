@@ -14,11 +14,14 @@
 package org.openmetadata.service.resources.datamodels;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.schema.type.ColumnDataType.BIGINT;
 import static org.openmetadata.schema.type.ColumnDataType.INT;
 import static org.openmetadata.schema.type.ColumnDataType.STRUCT;
+import static org.openmetadata.service.Entity.TAG;
 import static org.openmetadata.service.resources.databases.TableResourceTest.getColumn;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
@@ -31,6 +34,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import javax.ws.rs.core.Response.Status;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
@@ -44,10 +48,12 @@ import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.DataModelType;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.DashboardServiceResourceTest;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
@@ -117,6 +123,46 @@ public class DashboardDataModelResourceTest extends EntityResourceTest<Dashboard
         () -> createEntity(createDashboardDataModel1, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         CatalogExceptionMessage.mutuallyExclusiveLabels(TIER2_TAG_LABEL, TIER1_TAG_LABEL));
+  }
+
+  @Test
+  void test_columnWithInvalidTag(TestInfo test) throws HttpResponseException {
+    // Add an entity with invalid tag
+    TagLabel invalidTag = new TagLabel().withTagFQN("invalidTag");
+    List<Column> invalidTagColumns = List.of(getColumn(C1, BIGINT, invalidTag));
+    CreateDashboardDataModel create = createRequest(getEntityName(test)).withColumns(invalidTagColumns);
+
+    // Entity can't be created with PUT or POST
+    assertResponse(
+        () -> createEntity(create, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+
+    assertResponse(
+        () -> updateEntity(create, Status.CREATED, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+
+    // Create an entity and update the columns with PUT and PATCH with an invalid tag
+    List<Column> validColumns = List.of(getColumn(C1, BIGINT, TIER1_TAG_LABEL));
+    create.setColumns(validColumns);
+    DashboardDataModel entity = createEntity(create, ADMIN_AUTH_HEADERS);
+    String json = JsonUtils.pojoToJson(entity);
+
+    create.setColumns(invalidTagColumns);
+    assertResponse(
+        () -> updateEntity(create, Status.CREATED, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+
+    entity.setTags(listOf(invalidTag));
+    assertResponse(
+        () -> patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+
+    // No lingering relationships should cause error in listing the entity
+    listEntities(null, ADMIN_AUTH_HEADERS);
   }
 
   @Test

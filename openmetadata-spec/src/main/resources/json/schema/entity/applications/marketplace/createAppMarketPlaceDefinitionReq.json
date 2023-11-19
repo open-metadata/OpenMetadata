@@ -28,6 +28,14 @@
       "$ref": "../../../type/entityReference.json",
       "default": null
     },
+    "tags": {
+      "description": "Tags associated with the entity.",
+      "type": "array",
+      "items": {
+        "$ref": "../../../type/tagLabel.json"
+      },
+      "default": null
+    },
     "developer": {
       "description": "Developer For the Application.",
       "type": "string"
