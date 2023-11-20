@@ -307,6 +307,10 @@ export const ROUTES = {
   DATA_QUALITY: '/data-quality',
   DATA_QUALITY_WITH_TAB: `/data-quality/${PLACEHOLDER_ROUTE_TAB}`,
 
+  RESOLUTION_CENTER: '/resolution-center',
+  RESOLUTION_CENTER_DETAILS: `/resolution-center/${PLACEHOLDER_ROUTE_FQN}`,
+  RESOLUTION_CENTER_DETAILS_WITH_TAB: `/resolution-center/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+
   // logs viewer
   LOGS: `/${LOG_ENTITY_TYPE}/${INGESTION_NAME}/logs`,
 

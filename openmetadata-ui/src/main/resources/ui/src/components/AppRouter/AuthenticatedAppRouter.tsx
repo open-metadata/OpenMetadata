@@ -345,6 +345,19 @@ const EditLoginConfiguration = withSuspenseFallback(
   )
 );
 
+const ResolutionCenterPage = withSuspenseFallback(
+  React.lazy(() => import('../../pages/ResolutionCenter/ResolutionCenterPage'))
+);
+
+const ResolutionCenterDetailPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../../pages/ResolutionCenter/ResolutionCenterDetailPage/ResolutionCenterDetailPage'
+      )
+  )
+);
+
 const AuthenticatedAppRouter: FunctionComponent = () => {
   const { permissions } = usePermissionProvider();
   const { routeElements } = useApplicationConfigContext();
@@ -872,6 +885,36 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
           permissions
         )}
         path={ROUTES.DATA_QUALITY}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={ResolutionCenterPage}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.TEST_SUITE,
+          permissions
+        )}
+        path={ROUTES.RESOLUTION_CENTER}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={ResolutionCenterDetailPage}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.TEST_SUITE,
+          permissions
+        )}
+        path={ROUTES.RESOLUTION_CENTER_DETAILS}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={ResolutionCenterDetailPage}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.TEST_SUITE,
+          permissions
+        )}
+        path={ROUTES.RESOLUTION_CENTER_DETAILS_WITH_TAB}
       />
 
       <AdminProtectedRoute

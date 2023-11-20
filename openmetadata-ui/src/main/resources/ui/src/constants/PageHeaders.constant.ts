@@ -170,4 +170,8 @@ export const PAGE_HEADERS = {
     }),
     subHeader: i18n.t('message.page-sub-header-for-customize-landing-page'),
   },
+  RESOLUTION_CENTER: {
+    header: i18n.t('label.resolution-center'),
+    subHeader: i18n.t('message.page-sub-header-for-data-quality'),
+  },
 };
