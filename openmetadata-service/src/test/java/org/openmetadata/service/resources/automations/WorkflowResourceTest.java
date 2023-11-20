@@ -79,9 +79,6 @@ public class WorkflowResourceTest extends EntityResourceTest<Workflow, CreateWor
 
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) {
-    if (expected == actual) {
-      return;
-    }
     assertCommonFieldChange(fieldName, expected, actual);
   }
 }

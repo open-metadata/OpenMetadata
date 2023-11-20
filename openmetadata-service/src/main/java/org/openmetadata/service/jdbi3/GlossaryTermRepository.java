@@ -48,7 +48,6 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.type.TaskDetails;
 import org.openmetadata.schema.type.TaskStatus;
@@ -82,6 +81,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         PATCH_FIELDS,
         UPDATE_FIELDS);
     supportsSearch = true;
+    renameAllowed = true;
   }
 
   @Override
@@ -177,6 +177,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   @Override
   public void restorePatchAttributes(GlossaryTerm original, GlossaryTerm updated) {
     // Patch can't update Children
+    super.restorePatchAttributes(original, updated);
     updated.withChildren(original.getChildren());
   }
 
@@ -243,6 +244,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     daoCollection.tagUsageDAO().deleteTagLabels(TagSource.GLOSSARY.ordinal(), entity.getFullyQualifiedName());
   }
 
+  @Override
   public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
     validateTaskThread(threadContext);
     TaskType taskType = threadContext.getThread().getTask().getType();
@@ -375,15 +377,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       updateParent(original, updated);
     }
 
-    @Override
-    protected void updateTags(String fqn, String fieldName, List<TagLabel> origTags, List<TagLabel> updatedTags) {
-      super.updateTags(fqn, fieldName, origTags, updatedTags);
-      List<String> targetFQNList = daoCollection.tagUsageDAO().getTargetFQNs(TagSource.CLASSIFICATION.ordinal(), fqn);
-      for (String targetFQN : targetFQNList) {
-        applyTags(updatedTags, targetFQN);
-      }
-    }
-
     private void updateStatus(GlossaryTerm origTerm, GlossaryTerm updatedTerm) {
       if (origTerm.getStatus() == updatedTerm.getStatus()) {
         return;
@@ -435,6 +428,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
               CatalogExceptionMessage.systemEntityRenameNotAllowed(original.getName(), entityType));
         }
         // Glossary term name changed - update the FQNs of the children terms to reflect this
+        setFullyQualifiedName(updated);
         LOG.info("Glossary term name changed from {} to {}", original.getName(), updated.getName());
         daoCollection.glossaryTermDAO().updateFqn(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
         daoCollection
@@ -449,12 +443,16 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       // Can't change parent and glossary both at the same time
       UUID oldParentId = getId(original.getParent());
       UUID newParentId = getId(updated.getParent());
-      boolean parentChanged = !Objects.equals(oldParentId, newParentId);
+      final boolean parentChanged = !Objects.equals(oldParentId, newParentId);
 
       UUID oldGlossaryId = getId(original.getGlossary());
       UUID newGlossaryId = getId(updated.getGlossary());
-      boolean glossaryChanged = !Objects.equals(oldGlossaryId, newGlossaryId);
+      final boolean glossaryChanged = !Objects.equals(oldGlossaryId, newGlossaryId);
+      if (!parentChanged && !glossaryChanged) {
+        return;
+      }
 
+      setFullyQualifiedName(updated); // Update the FQN since the parent has changed
       daoCollection.glossaryTermDAO().updateFqn(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
       daoCollection
           .tagUsageDAO()

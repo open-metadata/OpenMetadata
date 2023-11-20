@@ -34,11 +34,6 @@
           "type": "integer",
           "default": 0
         },
-        "processedRecords": {
-          "description": "Records that are processed in",
-          "type": "integer",
-          "default": 0
-        },
         "successRecords": {
           "description": "Count of Total Successfully Records",
           "type": "integer",
@@ -49,22 +44,15 @@
           "type": "integer",
           "default": 0
         }
-      },
-      "additionalProperties": false
+      }
     },
     "stats": {
       "type": "object",
       "properties": {
-        "sourceStats": {
-          "$ref": "#/definitions/stepStats"
-        },
-        "processorStats": {
-          "$ref": "#/definitions/stepStats"
-        },
-        "sinkStats": {
-          "$ref": "#/definitions/stepStats"
-        },
         "jobStats": {
+          "$ref": "#/definitions/stepStats"
+        },
+        "entityStats": {
           "$ref": "#/definitions/stepStats"
         }
       },
@@ -99,41 +87,19 @@
       "description": "This schema publisher run job status.",
       "type": "string",
       "enum": [
-        "STARTED",
-        "RUNNING",
-        "COMPLETED",
-        "FAILED",
-        "ACTIVE",
-        "ACTIVE_WITH_ERROR",
-        "STOPPED"
+        "started",
+        "running",
+        "completed",
+        "failed",
+        "active",
+        "activeError",
+        "stopped",
+        "success"
       ]
     },
     "failure": {
       "description": "List of Failures in the Job",
-      "type": "object",
-      "properties": {
-        "sourceError": {
-          "type": "object",
-          "$ref": "#/definitions/failureDetails",
-          "default": null
-        },
-        "processorError": {
-          "type": "object",
-          "$ref": "#/definitions/failureDetails",
-          "default": null
-        },
-        "sinkError": {
-          "type": "object",
-          "$ref": "#/definitions/failureDetails",
-          "default": null
-        },
-        "jobError": {
-          "type": "object",
-          "$ref": "#/definitions/failureDetails",
-          "default": null
-        }
-      },
-      "additionalProperties": false
+      "type": "object"
     },
     "stats": {
       "$ref": "#/definitions/stats"

@@ -12,7 +12,6 @@
 """
 OpenMetadata high-level API Table Life Cycle test
 """
-import uuid
 from unittest import TestCase
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
@@ -100,6 +99,14 @@ class OMetaLifeCycleTest(TestCase):
     )
     service_type = "databaseService"
 
+    def create_table(self, name: str) -> Table:
+        create = CreateTableRequest(
+            name=name,
+            databaseSchema=self.create_schema_entity.fullyQualifiedName,
+            columns=[Column(name="id", dataType=DataType.BIGINT)],
+        )
+        return self.metadata.create_or_update(create)
+
     @classmethod
     def setUpClass(cls) -> None:
         """
@@ -121,22 +128,6 @@ class OMetaLifeCycleTest(TestCase):
         )
 
         cls.create_schema_entity = cls.metadata.create_or_update(data=create_schema)
-
-        cls.entity = Table(
-            id=uuid.uuid4(),
-            name="test",
-            databaseSchema=EntityReference(
-                id=cls.create_schema_entity.id, type="databaseSchema"
-            ),
-            fullyQualifiedName="test-service-lifecycle.test-db.test-schema.test",
-            columns=[Column(name="id", dataType=DataType.BIGINT)],
-        )
-
-        cls.create = CreateTableRequest(
-            name="test",
-            databaseSchema=cls.create_schema_entity.fullyQualifiedName,
-            columns=[Column(name="id", dataType=DataType.BIGINT)],
-        )
 
         cls.life_cycle = LifeCycle(
             created=AccessDetails(
@@ -175,10 +166,10 @@ class OMetaLifeCycleTest(TestCase):
         We can create a Table and we receive it back as Entity
         """
 
-        res = self.metadata.create_or_update(data=self.create)
+        res = self.create_table(name="test_create")
 
-        self.assertEqual(res.name, self.entity.name)
-        self.assertEqual(res.databaseSchema.id, self.entity.databaseSchema.id)
+        self.assertEqual(res.name.__root__, "test_create")
+        self.assertEqual(res.databaseSchema.id, self.create_schema_entity.id)
         self.assertEqual(res.owner, None)
 
     def test_ingest_life_cycle(self):
@@ -186,9 +177,7 @@ class OMetaLifeCycleTest(TestCase):
         Test the life cycle API
         """
 
-        table_entity = self.metadata.get_by_name(
-            entity=Table, fqn=self.entity.fullyQualifiedName
-        )
+        table_entity = self.create_table(name="test_ingest_life_cycle")
 
         self.metadata.patch_life_cycle(entity=table_entity, life_cycle=self.life_cycle)
 
@@ -197,9 +186,13 @@ class OMetaLifeCycleTest(TestCase):
         We can fetch a Table by name/id and pass the field for lifeCycle
         """
 
-        # test the get_by_name api
+        entity = self.create_table(name="test_life_cycle_get_methods")
+        self.metadata.patch_life_cycle(entity=entity, life_cycle=self.life_cycle)
+
         res = self.metadata.get_by_name(
-            entity=Table, fqn=self.entity.fullyQualifiedName, fields=["lifeCycle"]
+            entity=Table,
+            fqn="test-service-lifecycle.test-db.test-schema.test_life_cycle_get_methods",
+            fields=["lifeCycle"],
         )
         self.assertEqual(res.lifeCycle, self.life_cycle)
 
@@ -215,9 +208,11 @@ class OMetaLifeCycleTest(TestCase):
         Only the latest information should get updated for the life cycle fields.
         """
 
-        table_entity = self.metadata.get_by_name(
-            entity=Table, fqn=self.entity.fullyQualifiedName
-        )
+        entity = self.create_table(name="test_update_life_cycle")
+
+        # We PATCH twice and review the results
+        self.metadata.patch_life_cycle(entity=entity, life_cycle=self.life_cycle)
+
         new_accessed = AccessDetails(
             timestamp=1694015100000,
             accessedBy=self.updated_user_ref,
@@ -228,14 +223,24 @@ class OMetaLifeCycleTest(TestCase):
             accessedBy=self.updated_user_ref,
         )
 
+        updated_entity = self.metadata.get_by_name(
+            entity=Table,
+            fqn="test-service-lifecycle.test-db.test-schema.test_update_life_cycle",
+            fields=["lifeCycle"],
+        )
         self.metadata.patch_life_cycle(
-            entity=table_entity,
+            entity=updated_entity,
             life_cycle=LifeCycle(accessed=new_accessed, updated=new_updated),
         )
 
         res = self.metadata.get_by_name(
-            entity=Table, fqn=self.entity.fullyQualifiedName, fields=["lifeCycle"]
+            entity=Table,
+            fqn="test-service-lifecycle.test-db.test-schema.test_update_life_cycle",
+            fields=["lifeCycle"],
         )
+        # Created is maintained from the first PATCH
         self.assertEqual(self.life_cycle.created, res.lifeCycle.created)
+        # This comes from the second PATCH
         self.assertEqual(new_accessed, res.lifeCycle.accessed)
+        # Second PATCH does not update the `updated` field since it's older in the first PATCH
         self.assertNotEqual(new_updated, res.lifeCycle.updated)

@@ -210,19 +210,13 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   @Override
   public void restorePatchAttributes(Pipeline original, Pipeline updated) {
     // Patch can't make changes to following fields. Ignore the changes
-    updated
-        .withFullyQualifiedName(original.getFullyQualifiedName())
-        .withName(original.getName())
-        .withService(original.getService())
-        .withId(original.getId());
+    super.restorePatchAttributes(original, updated);
+    updated.withService(original.getService());
   }
 
   @Override
   public void prepare(Pipeline pipeline, boolean update) {
     populateService(pipeline);
-    if (pipeline.getTasks() != null) {
-      pipeline.getTasks().forEach(task -> checkMutuallyExclusive(task.getTags()));
-    }
   }
 
   @Override
@@ -248,7 +242,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   public void applyTags(Pipeline pipeline) {
     // Add table level tags by adding tag to table relationship
     super.applyTags(pipeline);
-    applyTags(pipeline.getTasks());
+    applyTaskTags(pipeline.getTasks()); // TODO need cleanup
   }
 
   @Override
@@ -256,11 +250,19 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     return Entity.getEntity(entity.getService(), fields, Include.NON_DELETED);
   }
 
-  private void applyTags(List<Task> tasks) {
-    if (tasks != null) {
-      for (Task task : tasks) {
-        applyTags(task.getTags(), task.getFullyQualifiedName());
-      }
+  @Override
+  public void validateTags(Pipeline entity) {
+    super.validateTags(entity);
+    for (Task task : listOrEmpty(entity.getTasks())) {
+      validateTags(task.getTags());
+      task.setTags(addDerivedTags(task.getTags()));
+      checkMutuallyExclusive(task.getTags());
+    }
+  }
+
+  private void applyTaskTags(List<Task> tasks) {
+    for (Task task : listOrEmpty(tasks)) {
+      applyTags(task.getTags(), task.getFullyQualifiedName());
     }
   }
 
@@ -354,14 +356,14 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       // The API will only take care of marking tasks as added/updated/deleted based on the original
       // and incoming changes.
 
-      List<Task> updatedTasks = listOrEmpty(updated.getTasks());
       List<Task> origTasks = listOrEmpty(original.getTasks());
+      List<Task> updatedTasks = listOrEmpty(updated.getTasks());
 
       boolean newTasks = false;
       // Update the task descriptions
       for (Task updatedTask : updatedTasks) {
         Task storedTask = origTasks.stream().filter(c -> taskMatch.test(c, updatedTask)).findAny().orElse(null);
-        if (storedTask == null || updatedTask == null) { // New task added
+        if (storedTask == null) { // New task added
           newTasks = true;
           continue;
         }
@@ -379,6 +381,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         List<Task> added = new ArrayList<>();
         List<Task> deleted = new ArrayList<>();
         recordListChange(TASKS_FIELD, origTasks, updatedTasks, added, deleted, taskMatch);
+        applyTaskTags(added);
+        deleted.forEach(d -> daoCollection.tagUsageDAO().deleteTagsByTarget(d.getFullyQualifiedName()));
       }
     }
 

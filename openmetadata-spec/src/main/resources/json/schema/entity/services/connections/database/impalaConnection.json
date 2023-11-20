@@ -100,7 +100,7 @@
         "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
       },
       "sampleDataStorageConfig": {
-        "title": "S3 Config for Sample Data",
+        "title": "Storage Config for Sample Data",
         "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
       }
     },

@@ -8,7 +8,7 @@ import org.openmetadata.schema.dataInsight.type.PercentageOfEntitiesWithOwnerByT
 public abstract class EntitiesOwnerAggregator<A, B, M, S> implements DataInsightAggregatorInterface {
   private final A aggregations;
 
-  public EntitiesOwnerAggregator(A aggregations) {
+  protected EntitiesOwnerAggregator(A aggregations) {
     this.aggregations = aggregations;
   }
 

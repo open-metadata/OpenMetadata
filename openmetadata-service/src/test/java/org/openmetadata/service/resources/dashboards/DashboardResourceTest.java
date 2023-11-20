@@ -51,7 +51,6 @@ import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.dashboards.DashboardResource.DashboardList;
 import org.openmetadata.service.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
@@ -115,7 +114,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
     Dashboard dashboard = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     // Add description, and charts
-    ChangeDescription change = getChangeDescription(dashboard.getVersion());
+    ChangeDescription change = getChangeDescription(dashboard, MINOR_UPDATE);
     fieldAdded(change, "description", "newDescription");
     fieldAdded(change, "charts", CHART_REFERENCES);
     updateAndCheckEntity(
@@ -132,14 +131,14 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
     Dashboard dashboard = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     // Add charts
-    ChangeDescription change = getChangeDescription(dashboard.getVersion());
+    ChangeDescription change = getChangeDescription(dashboard, MINOR_UPDATE);
     fieldAdded(change, "charts", CHART_REFERENCES);
     dashboard =
         updateAndCheckEntity(request.withCharts(CHART_REFERENCES), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     assertEntityReferenceNames(CHART_REFERENCES, dashboard.getCharts());
 
     // remove a chart
-    change = getChangeDescription(dashboard.getVersion());
+    change = getChangeDescription(dashboard, MINOR_UPDATE);
     fieldDeleted(change, "charts", List.of(CHART_REFERENCES.get(0)));
     CHART_REFERENCES.remove(0);
     updateAndCheckEntity(request.withCharts(CHART_REFERENCES), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
@@ -231,10 +230,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
       return;
     }
     if (fieldName.contains("charts")) {
-      @SuppressWarnings("unchecked")
-      List<String> expectedRefs = (List<String>) expected;
-      List<EntityReference> actualRefs = JsonUtils.readObjects(actual.toString(), EntityReference.class);
-      assertEntityReferenceNames(expectedRefs, actualRefs);
+      assertEntityNamesFieldChange(expected, actual);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }

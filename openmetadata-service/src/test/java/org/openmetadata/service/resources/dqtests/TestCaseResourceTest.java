@@ -20,6 +20,8 @@ import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_USER_NAME;
+import static org.openmetadata.service.util.TestUtils.UpdateType.CHANGE_CONSOLIDATED;
+import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertEntityPagination;
 import static org.openmetadata.service.util.TestUtils.assertListNotEmpty;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
@@ -66,7 +68,6 @@ import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
-import org.openmetadata.service.util.TestUtils.UpdateType;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Slf4j
@@ -226,11 +227,11 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
     // Change the test with PUT request
     create.withTestDefinition(TEST_DEFINITION2.getFullyQualifiedName()).withParameterValues(new ArrayList<>());
-    ChangeDescription change = getChangeDescription(testCase.getVersion());
+    ChangeDescription change = getChangeDescription(testCase, MINOR_UPDATE);
     fieldUpdated(
         change, "testDefinition", TEST_DEFINITION3.getEntityReference(), TEST_DEFINITION2.getEntityReference());
     fieldUpdated(change, "parameterValues", testCase.getParameterValues(), new ArrayList<>());
-    updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, TestUtils.UpdateType.MINOR_UPDATE, change);
+    updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
@@ -362,7 +363,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
     // add a new test case to the logical test suite to validate if the
     // summary is updated correctly
-    testCaseIds.removeAll(testCaseIds);
+    testCaseIds.clear();
     testCaseIds.add(testCase.getId());
     testSuiteResourceTest.addTestCasesToLogicalTestSuite(logicalTestSuite, testCaseIds);
 
@@ -417,7 +418,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     // test we get the right summary for the logical test suite
     TestSummary logicalTestSummary = getTestSummary(ADMIN_AUTH_HEADERS, logicalTestSuite.getId().toString());
     assertEquals(1, logicalTestSummary.getTotal());
-    testCaseIds.removeAll(testCaseIds);
+    testCaseIds.clear();
     testCaseIds.add(testCase.getId());
     testSuiteResourceTest.addTestCasesToLogicalTestSuite(logicalTestSuite, testCaseIds);
     logicalTestSummary = getTestSummary(ADMIN_AUTH_HEADERS, logicalTestSuite.getId().toString());
@@ -442,10 +443,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     // test suite
     deleteLogicalTestCase(logicalTestSuite, testCase.getId());
     logicalTestSummary = getTestSummary(ADMIN_AUTH_HEADERS, logicalTestSuite.getId().toString());
-    assertEquals(
-        null,
-        logicalTestSummary
-            .getTotal()); // check the deletion of the test case from the logical test suite is reflected in the summary
+    // check the deletion of the test case from the logical test suite is reflected in the summary
+    assertNull(logicalTestSummary.getTotal());
   }
 
   @Test
@@ -579,24 +578,24 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     // Update description with PUT
     String oldDescription = testCase.getDescription();
     String newDescription = "description1";
-    ChangeDescription change = getChangeDescription(testCase.getVersion());
+    ChangeDescription change = getChangeDescription(testCase, MINOR_UPDATE);
     fieldUpdated(change, "description", oldDescription, newDescription);
     testCase =
         updateAndCheckEntity(
             createRequest(test).withDescription(newDescription).withName(testCase.getName()),
             OK,
             ownerAuthHeaders,
-            UpdateType.MINOR_UPDATE,
+            MINOR_UPDATE,
             change);
 
     // Update description with PATCH
-    oldDescription = testCase.getDescription();
+    // Changes from this PATCH is consolidated with the previous changes
     newDescription = "description2";
-    change = getChangeDescription(testCase.getVersion());
+    change = getChangeDescription(testCase, CHANGE_CONSOLIDATED);
     fieldUpdated(change, "description", oldDescription, newDescription);
     String json = JsonUtils.pojoToJson(testCase);
     testCase.setDescription(newDescription);
-    testCase = patchEntityAndCheck(testCase, json, ownerAuthHeaders, UpdateType.MINOR_UPDATE, change);
+    testCase = patchEntityAndCheck(testCase, json, ownerAuthHeaders, CHANGE_CONSOLIDATED, change);
 
     // Delete the testcase
     deleteAndCheckEntity(testCase, ownerAuthHeaders);
@@ -1283,7 +1282,15 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) {
-    if (expected == actual) {}
-    // TODO fix this
+    if (expected == actual) {
+      return;
+    }
+    if (fieldName.equals("parameterValues")) {
+      assertEquals(JsonUtils.pojoToJson(expected), JsonUtils.pojoToJson(actual));
+    } else if (fieldName.equals("testDefinition")) {
+      assertEntityReferenceFieldChange(expected, actual);
+    } else {
+      assertCommonFieldChange(fieldName, expected, actual);
+    }
   }
 }

@@ -18,8 +18,9 @@ public class ElasticSearchIndexSink implements Sink<BulkRequest, BulkResponse> {
   private final StepStats stats = new StepStats();
   private final SearchRepository searchRepository;
 
-  public ElasticSearchIndexSink(SearchRepository searchRepository) {
+  public ElasticSearchIndexSink(SearchRepository searchRepository, int total) {
     this.searchRepository = searchRepository;
+    this.stats.withTotalRecords(total).withSuccessRecords(0).withFailedRecords(0);
   }
 
   @Override

@@ -112,7 +112,7 @@ class MetadataElasticsearchSource(Source):
         total_retries_count = 3
         current_try = 1
 
-        while status not in {Status.COMPLETED, Status.FAILED, Status.STOPPED}:
+        while status not in {Status.completed, Status.failed, Status.stopped}:
             sleep(5)
             job = self.metadata.get_reindex_job_status(model_str(self.reindex_job.id))
             if job and job.stats and job.stats.jobStats:

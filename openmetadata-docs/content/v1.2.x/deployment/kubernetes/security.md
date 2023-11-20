@@ -9,7 +9,7 @@ Follow the steps for setting up the SSO, and then check the specific `Kubernetes
 
 {%note%}
 
-By default Basic Authentication will be enabled as authentication mechanism.
+By default, Basic Authentication will be enabled as authentication mechanism.
 
 {%inlineCallout
     color="violet-70"
@@ -58,7 +58,7 @@ By default Basic Authentication will be enabled as authentication mechanism.
     href="/deployment/security/google/kubernetes"%}
     Configure Google SSO to access the UI and APIs
   {%/inlineCallout%}
-  {%/inlineCallout
+  {%inlineCallout
     color="violet-70"
     bold="Okta SSO"
     icon="add_moderator"

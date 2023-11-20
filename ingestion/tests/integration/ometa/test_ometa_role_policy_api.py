@@ -373,38 +373,35 @@ class OMetaRolePolicyTest(TestCase):
         test PATCHing the rules of a policy
         """
         policy: Policy = self.metadata.create_or_update(self.create_policy)
-
+        dest_policy = deepcopy(policy)
+        if dest_policy.rules is None:
+            dest_policy.rules.__root__ = list()
+        dest_policy.rules.__root__.append(self.rule_3)
         # Add rule
-        res: Policy = self.metadata.patch_policy_rule(
-            entity_id=policy.id,
-            rule=self.rule_3,
-            operation=PatchOperation.ADD,
+
+        res: Policy = self.metadata.patch(
+            entity=Policy, source=policy, destination=dest_policy
         )
         self.assertIsNotNone(res)
         self.assertEqual(len(res.rules.__root__), 3)
         self.assertEqual(res.rules.__root__[2].name, self.rule_3.name)
-
+        dest_policy = deepcopy(res)
+        dest_policy.rules.__root__.pop(2)
         # Remove last rule
-        res = self.metadata.patch_policy_rule(
-            entity_id=policy.id,
-            rule=self.rule_3,
-            operation=PatchOperation.REMOVE,
-        )
+        res = self.metadata.patch(entity=Policy, source=res, destination=dest_policy)
         self.assertIsNotNone(res)
         self.assertEqual(len(res.rules.__root__), 2)
         self.assertEqual(res.rules.__root__[1].name, self.rule_2.name)
-
+        dest_policy = deepcopy(res)
+        dest_policy.rules.__root__.append(self.rule_3)
         # Remove rule with fewer operations
-        self.metadata.patch_policy_rule(
-            entity_id=policy.id,
-            rule=self.rule_3,
-            operation=PatchOperation.ADD,
+        res: Policy = self.metadata.patch(
+            entity=Policy, source=policy, destination=dest_policy
         )
-
-        res = self.metadata.patch_policy_rule(
-            entity_id=policy.id,
-            rule=self.rule_2,
-            operation=PatchOperation.REMOVE,
+        dest_policy = deepcopy(res)
+        dest_policy.rules.__root__.remove(self.rule_2)
+        res: Policy = self.metadata.patch(
+            entity=Policy, source=res, destination=dest_policy
         )
         self.assertIsNotNone(res)
         self.assertEqual(len(res.rules.__root__), 2)
@@ -416,11 +413,9 @@ class OMetaRolePolicyTest(TestCase):
 
         # Remove rule with more operations
         policy = self.metadata.create_or_update(self.create_policy)
-        res = self.metadata.patch_policy_rule(
-            entity_id=policy.id,
-            rule=self.rule_1,
-            operation=PatchOperation.REMOVE,
-        )
+        dest_policy = deepcopy(policy)
+        dest_policy.rules.__root__.remove(self.rule_1)
+        res = self.metadata.patch(entity=Policy, source=res, destination=dest_policy)
         self.assertIsNotNone(res)
         self.assertEqual(len(res.rules.__root__), 1)
         self.assertEqual(res.rules.__root__[0].name, self.rule_2.name)
@@ -431,29 +426,11 @@ class OMetaRolePolicyTest(TestCase):
             res.rules.__root__[0].fullyQualifiedName, self.rule_2.fullyQualifiedName
         )
 
+        dest_policy = deepcopy(res)
+        dest_policy.rules.__root__.remove(self.rule_2)
         # Try to remove the only rule - Fails
-        res = self.metadata.patch_policy_rule(
-            entity_id=policy.id,
-            rule=self.rule_2,
-            operation=PatchOperation.REMOVE,
-        )
+        res = self.metadata.patch(entity=Policy, source=res, destination=dest_policy)
         self.assertIsNone(res)
-
-        # Try to remove a nonexistent rule - Fails
-        policy = self.metadata.create_or_update(self.create_policy)
-        res = self.metadata.patch_policy_rule(
-            entity_id=policy.id,
-            rule=self.rule_3,
-            operation=PatchOperation.REMOVE,
-        )
-        self.assertIsNone(res)
-
-        # Try to patch a nonexistent policy - Fails
-        res = self.metadata.patch_policy_rule(
-            entity_id=str(uuid.uuid4()),
-            rule=self.rule_3,
-            operation=PatchOperation.ADD,
-        )
 
     def test_role_create(self):
         """

@@ -430,6 +430,9 @@ def is_safe_sql_query(sql_query: str) -> bool:
         "SET TRANSACTION",
     }
 
+    if sql_query is None:
+        return True
+
     parsed_queries: Tuple[Statement] = sqlparse.parse(sql_query)
     for parsed_query in parsed_queries:
         validation = [

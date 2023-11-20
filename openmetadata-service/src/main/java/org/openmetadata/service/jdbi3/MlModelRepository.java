@@ -103,11 +103,8 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   @Override
   public void restorePatchAttributes(MlModel original, MlModel updated) {
     // Patch can't make changes to following fields. Ignore the changes
-    updated
-        .withFullyQualifiedName(original.getFullyQualifiedName())
-        .withService(original.getService())
-        .withName(original.getName())
-        .withId(original.getId());
+    super.restorePatchAttributes(original, updated);
+    updated.withService(original.getService());
   }
 
   private void setMlFeatureSourcesFQN(List<MlFeatureSource> mlSources) {
