@@ -21,6 +21,7 @@ import NumberedListImage from '../../../../assets/img/ic-slash-numbered-list.png
 import QuoteImage from '../../../../assets/img/ic-slash-quote.png';
 import TextImage from '../../../../assets/img/ic-slash-text.png';
 import TaskListIcon from '../../../../assets/img/ic-task-list.png';
+import IconFormatCallout from '../../../../assets/svg/ic-format-callout.svg';
 import CodeBlockImage from '../../../../assets/svg/ic-format-code-block.svg';
 import IconFormatImage from '../../../../assets/svg/ic-format-image.svg';
 import MentionImage from '../../../../assets/svg/ic-mentions.svg';
@@ -204,6 +205,16 @@ export const getSuggestionItems = (props: {
       },
       imgSrc: TaskListIcon,
       type: SuggestionItemType.ADVANCED_BLOCKS,
+    },
+    {
+      title: 'Callout',
+      description: 'A simple callout block',
+      searchTerms: ['callout', 'info', 'warning', 'danger', 'note'],
+      command: ({ editor, range }) => {
+        editor.chain().focus().deleteRange(range).toggleCallout({}).run();
+      },
+      type: SuggestionItemType.ADVANCED_BLOCKS,
+      imgSrc: IconFormatCallout,
     },
   ];
 
