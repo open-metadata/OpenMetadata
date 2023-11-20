@@ -67,15 +67,6 @@ const AppInstall = () => {
     [appData]
   );
 
-  const stepperList = useMemo(
-    () =>
-      isExternalApp
-        ? STEPS_FOR_APP_INSTALL.filter((item) => item.step !== 2)
-        : STEPS_FOR_APP_INSTALL,
-
-    [isExternalApp]
-  );
-
   const fetchAppDetails = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -146,7 +137,7 @@ const AppInstall = () => {
               isExternalApp ? t('label.schedule') : t('label.configure')
             }
             onCancel={onCancel}
-            onSave={() => setActiveServiceStep(isExternalApp ? 3 : 2)}
+            onSave={() => setActiveServiceStep(2)}
           />
         );
 
@@ -211,7 +202,7 @@ const AppInstall = () => {
         <Col span={24}>
           <IngestionStepper
             activeStep={activeServiceStep}
-            steps={stepperList}
+            steps={STEPS_FOR_APP_INSTALL}
           />
         </Col>
         <Col span={24}>
