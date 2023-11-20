@@ -74,10 +74,10 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <mockito.version>5.6.0</mockito.version>
+    <mockito.version>5.7.0</mockito.version>
     <!-- Upgrading slf4j causes dropwizard issues -->
     <slf4j.version>1.7.36</slf4j.version>
-    <jackson.version>2.15.3</jackson.version>
+    <jackson.version>2.16.0</jackson.version>
     <dropwizard.version>2.1.9</dropwizard.version>
     <dropwizard-jdbi3.version>2.1.6</dropwizard-jdbi3.version>
     <diffMatch.version>1.0</diffMatch.version>
@@ -95,10 +95,10 @@
     <wiremock-standalone.version>2.15.0</wiremock-standalone.version>
     <jacoco-plugin.version>0.8.10</jacoco-plugin.version>
     <jdbi3.version>3.37.1</jdbi3.version>
-    <commons-cli.version>1.5.0</commons-cli.version>
-    <commons-io.version>2.14.0</commons-io.version>
+    <commons-cli.version>1.6.0</commons-cli.version>
+    <commons-io.version>2.15.0</commons-io.version>
     <flyway.version>9.22.3</flyway.version>
-    <redshift-jdbc.version>2.1.0.20</redshift-jdbc.version>
+    <redshift-jdbc.version>2.1.0.22</redshift-jdbc.version>
     <gson.version>2.10.1</gson.version>
     <mysql.connector.version>8.0.33</mysql.connector.version>
     <postgres.connector.version>42.6.0</postgres.connector.version>
@@ -112,7 +112,7 @@
     <elasticsearch.version>7.17.13</elasticsearch.version>
     <opensearch.version>2.5.0</opensearch.version>
     <httpasyncclient.version>4.1.5</httpasyncclient.version>
-    <openapiswagger.version>2.2.17</openapiswagger.version>
+    <openapiswagger.version>2.2.19</openapiswagger.version>
     <spring-security-kerberos-core.version>1.0.1.RELEASE</spring-security-kerberos-core.version>
     <httpclient.version>4.5.14</httpclient.version>
     <!-- Upgrading to spring version 6.x requires Java 17 -->
@@ -428,7 +428,7 @@
       <dependency>
         <groupId>io.github.classgraph</groupId>
         <artifactId>classgraph</artifactId>
-        <version>4.8.163</version>
+        <version>4.8.165</version>
       </dependency>
       <dependency>
         <groupId>org.reflections</groupId>
