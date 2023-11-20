@@ -472,8 +472,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return new RestUtil.DeleteResponse<>(testCase, RestUtil.ENTITY_DELETED);
   }
 
-  @Transaction
   /** Remove test case from test suite summary and update test suite */
+  @Transaction
   private void removeTestCaseFromTestSuiteResultSummary(UUID testSuiteId, String testCaseFqn) {
     TestSuite testSuite = Entity.getEntity(TEST_SUITE, testSuiteId, "*", Include.ALL, false);
     testSuite.setSummary(null); // we don't want to store the summary in the database

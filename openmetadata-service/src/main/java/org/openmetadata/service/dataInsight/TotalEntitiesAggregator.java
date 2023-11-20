@@ -8,7 +8,7 @@ import org.openmetadata.schema.dataInsight.type.TotalEntitiesByType;
 public abstract class TotalEntitiesAggregator<A, B, M, S> implements DataInsightAggregatorInterface {
   private final A aggregations;
 
-  public TotalEntitiesAggregator(A aggregations) {
+  protected TotalEntitiesAggregator(A aggregations) {
     this.aggregations = aggregations;
   }
 

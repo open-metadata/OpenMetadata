@@ -197,11 +197,11 @@ public class AbstractNativeApplication implements NativeApplication {
     return JsonUtils.convertValue(app.getRuntime(), ScheduledExecutionContext.class);
   }
 
-  protected IngestionPipeline getIngestionPipeline(CreateIngestionPipeline create, String botname, String user) {
+  protected IngestionPipeline getIngestionPipeline(CreateIngestionPipeline create, String botName, String user) {
     IngestionPipelineRepository ingestionPipelineRepository =
         (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
     OpenMetadataConnection openMetadataServerConnection =
-        new OpenMetadataConnectionBuilder(ingestionPipelineRepository.getOpenMetadataApplicationConfig(), botname)
+        new OpenMetadataConnectionBuilder(ingestionPipelineRepository.getOpenMetadataApplicationConfig(), botName)
             .build();
     return ingestionPipelineRepository
         .copy(new IngestionPipeline(), create, user)
@@ -224,8 +224,8 @@ public class AbstractNativeApplication implements NativeApplication {
   }
 
   @SneakyThrows
-  protected void pushAppStausUpdates(JobExecutionContext jobExecutionContext, AppRunRecord record, boolean update) {
+  protected void pushAppStatusUpdates(JobExecutionContext jobExecutionContext, AppRunRecord appRecord, boolean update) {
     OmAppJobListener listener = getJobListener(jobExecutionContext);
-    listener.pushApplicationStatusUpdates(jobExecutionContext, record, update);
+    listener.pushApplicationStatusUpdates(jobExecutionContext, appRecord, update);
   }
 }

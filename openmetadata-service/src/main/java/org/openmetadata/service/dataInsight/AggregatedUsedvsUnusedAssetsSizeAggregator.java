@@ -9,7 +9,7 @@ import org.openmetadata.schema.dataInsight.type.AggregatedUsedVsUnusedAssetsSize
 public abstract class AggregatedUsedvsUnusedAssetsSizeAggregator<A, H, B, S> implements DataInsightAggregatorInterface {
   private final A aggregations;
 
-  public AggregatedUsedvsUnusedAssetsSizeAggregator(A aggregations) {
+  protected AggregatedUsedvsUnusedAssetsSizeAggregator(A aggregations) {
     this.aggregations = aggregations;
   }
 
@@ -25,8 +25,8 @@ public abstract class AggregatedUsedvsUnusedAssetsSizeAggregator<A, H, B, S> imp
       Double used = Objects.requireNonNullElse(getValue(totalUsed), 0.0);
       Double unused = Objects.requireNonNullElse(getValue(totalUnused), 0.0);
       Double total = used + unused;
-      Double usedPercentage = 0.0;
-      Double unusedPercentage = 0.0;
+      double usedPercentage = 0.0;
+      double unusedPercentage = 0.0;
       if (total != 0.0) {
         usedPercentage = used / total;
         unusedPercentage = unused / total;

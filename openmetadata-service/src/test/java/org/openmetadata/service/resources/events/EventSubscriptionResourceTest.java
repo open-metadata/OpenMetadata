@@ -72,7 +72,7 @@ public class EventSubscriptionResourceTest extends EntityResourceTest<EventSubsc
     CreateEventSubscription genericWebhookActionRequest =
         createRequest(webhookName).withEnabled(false).withSubscriptionConfig(genericWebhook);
     EventSubscription alert = createAndCheckEntity(genericWebhookActionRequest, ADMIN_AUTH_HEADERS);
-    // For the DISABLED Publisher are not available so it will have no status
+    // For the DISABLED Publisher are not available, so it will have no status
     SubscriptionStatus status = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
     assertEquals(DISABLED, status.getStatus());
     WebhookCallbackResource.EventDetails details = webhookCallbackResource.getEventDetails(webhookName);
