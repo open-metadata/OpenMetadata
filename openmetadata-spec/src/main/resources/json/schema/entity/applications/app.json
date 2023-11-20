@@ -209,6 +209,9 @@
       "type": "string",
       "format": "uri"
     },
+    "appConfigSchema": {
+      "description": "Contains a String of json schema that app Config adheres to"
+    },
     "appScreenshots": {
       "description": "Application Screenshots.",
       "type": "array",
@@ -219,5 +222,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["id", "name", "appType", "className", "scheduleType", "permission", "runtime", "appSchedule"]
+  "required": ["id", "name", "appConfigSchema", "appType", "className", "scheduleType", "permission", "runtime", "appSchedule"]
 }

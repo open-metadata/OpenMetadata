@@ -112,6 +112,9 @@
     "appConfiguration": {
       "description": "Application Configuration object."
     },
+    "appConfigSchema": {
+      "description": "Contains a String of json schema that app Config adheres to"
+    },
     "appLogoUrl": {
       "description": "Application Logo Url.",
       "type": "string",
@@ -127,5 +130,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["id", "name", "appType", "className", "scheduleType", "permission"]
+  "required": ["id", "name", "appConfigSchema", "appType", "className", "scheduleType", "permission"]
 }

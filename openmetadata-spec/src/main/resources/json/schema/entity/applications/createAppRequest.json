@@ -34,7 +34,11 @@
     },
     "appSchedule": {
       "$ref": "./app.json#/definitions/appSchedule"
+    },
+    "appConfigSchema": {
+      "description": "Contains a String of json schema that app Config adheres to"
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "required": ["name", "appConfigSchema"]
 }

@@ -780,6 +780,12 @@ public class AppResource extends EntityResource<App, AppRepository> {
 
   private App getApplication(
       AppMarketPlaceDefinition marketPlaceDefinition, CreateApp createAppRequest, String updatedBy) {
+
+    // Validate App Schema
+    if (CommonUtil.nullOrEmpty(createAppRequest.getAppConfigSchema())) {
+      throw new BadRequestException("App Schema cannot be Emtpy.");
+    }
+
     EntityReference owner = repository.validateOwner(createAppRequest.getOwner());
     App app =
         new App()
@@ -804,6 +810,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
             .withAppLogoUrl(marketPlaceDefinition.getAppLogoUrl())
             .withAppScreenshots(marketPlaceDefinition.getAppScreenshots())
             .withFeatures(marketPlaceDefinition.getFeatures())
+            .withAppConfigSchema(createAppRequest.getAppConfigSchema())
             .withSourcePythonClass(marketPlaceDefinition.getSourcePythonClass());
 
     // validate Bot if provided

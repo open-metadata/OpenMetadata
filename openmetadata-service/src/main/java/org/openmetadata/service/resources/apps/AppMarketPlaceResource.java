@@ -36,6 +36,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
@@ -389,6 +390,12 @@ public class AppMarketPlaceResource extends EntityResource<AppMarketPlaceDefinit
 
   private AppMarketPlaceDefinition getApplicationDefinition(
       CreateAppMarketPlaceDefinitionReq create, String updatedBy) {
+
+    // Validate App Schema
+    if (CommonUtil.nullOrEmpty(create.getAppConfigSchema())) {
+      throw new BadRequestException("App Schema cannot be Emtpy.");
+    }
+
     AppMarketPlaceDefinition app =
         repository
             .copy(new AppMarketPlaceDefinition(), create, updatedBy)
@@ -405,10 +412,12 @@ public class AppMarketPlaceResource extends EntityResource<AppMarketPlaceDefinit
             .withAppLogoUrl(create.getAppLogoUrl())
             .withAppScreenshots(create.getAppScreenshots())
             .withFeatures(create.getFeatures())
+            .withAppConfigSchema(create.getAppConfigSchema())
             .withSourcePythonClass(create.getSourcePythonClass());
 
     // Validate App
     validateApplication(app);
+
     return app;
   }
 

@@ -1,5 +1,7 @@
 {
   "name": "DataInsightsReportApplication",
+  "displayName": "Data Insights Report",
+  "description": "**Data Insights Reports: Enhancing Data Management through OpenMetadata**\n\n**Integration with OpenMetadata:** Data Insights Reports is designed to work seamlessly with OpenMetadata, providing organizations with the tools they need to set and track Key Performance Indicators (KPIs) such as Ownership and Description Coverage. These KPIs help establish clear goals for data management across the organization.\n\n**Focus on Ownership and Description Coverage:**\n     **Ownership:** Knowing who is responsible for each data asset is crucial. By making Ownership a KPI, we help ensure that there is clear accountability for every piece of data, which in turn helps in its proper management.\n    **Description Coverage:** It’s important for data to be easily understandable. Setting Description Coverage as a KPI ensures that all data assets are accompanied by clear descriptions, making them more accessible and useful to everyone in the organization.\n\n**Weekly Email Reminders to Stay on Track:**\n    **Regular Updates:** Our weekly email reminders keep all teams in the loop, helping them stay aware of their progress in achieving the organization’s KPIs.\nVisual Progress Tracking: The emails include visual representations of progress, making it easy for teams to quickly understand where they stand in relation to the set goals.\n    **Guidance for Action:** The updates are not just about tracking progress; they also provide insights and suggestions on what can be done to improve, ensuring that teams have the guidance they need to meet their goals.\n\n**Supporting Teams and Advancing Organizational Goals:**\n    **Building a Data-Driven Culture:** By integrating KPI tracking into regular workflows, Data Insights Reports helps cultivate a culture that values and leverages data for better decision-making.\n    **Tailored to Each Team:** While Ownership and Description Coverage are universal goals, our tool recognizes that each team is different. The weekly reports are customized to suit the specific needs and characteristics of each team, ensuring that the insights provided are always relevant.\nIn summary, Data Insights Reports provides a practical and effective solution for organizations looking to enhance their data management practices. Through integration with OpenMetadata, regular updates, and a focus on key data management goals, it supports teams in their efforts to maintain clear ownership and comprehensive descriptions of their data assets.",
   "appConfiguration": {
     "sendToAdmins": true,
     "sendToTeams": true
@@ -7,5 +9,24 @@
   "appSchedule": {
     "scheduleType": "Custom",
     "cronExpression": "0 0 0 1/1 * ? *"
+  },
+  "appConfigSchema" : {
+    "$id": "DataInsightsReportApplication.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Data Insights Report Application",
+    "description": "This schema defines configuration for Data Insights Report Application.",
+    "properties": {
+      "sendToAdmins": {
+        "title": "Send To Admins",
+        "type": "boolean",
+        "default": true
+      },
+      "sendToTeams": {
+        "title": "Send To Teams",
+        "type": "boolean",
+        "default": true
+      }
+    },
+    "additionalProperties": false
   }
 }
