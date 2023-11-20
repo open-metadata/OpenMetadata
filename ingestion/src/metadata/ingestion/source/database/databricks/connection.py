@@ -17,6 +17,7 @@ from typing import Optional, Union
 
 from databricks.sdk import WorkspaceClient
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import DatabaseError
 from sqlalchemy.inspection import inspect
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -33,7 +34,6 @@ from metadata.ingestion.connections.builders import (
 from metadata.ingestion.connections.test_connections import (
     test_connection_engine_step,
     test_connection_steps,
-    test_query,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.databricks.client import DatabricksClient
@@ -42,6 +42,9 @@ from metadata.ingestion.source.database.databricks.queries import (
     DATABRICKS_GET_CATALOGS,
 )
 from metadata.utils.db_utils import get_host_from_host_port
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
 
 
 def get_connection_url(connection: DatabricksConnection) -> str:
@@ -84,6 +87,18 @@ def test_connection(
     """
     client = DatabricksClient(service_connection)
 
+    def test_database_query(engine: Engine, statement: str):
+        """
+        Method used to execute the given query and fetch a result
+        to test if user has access to the tables specified
+        in the sql statement
+        """
+        try:
+            connection = engine.connect()
+            connection.execute(statement).fetchone()
+        except DatabaseError as soe:
+            logger.debug(f"Failed to fetch catalogs due to: {soe}")
+
     if service_connection.useUnityCatalog:
         table_obj = DatabricksTable()
 
@@ -121,7 +136,7 @@ def test_connection(
             "GetTables": inspector.get_table_names,
             "GetViews": inspector.get_view_names,
             "GetDatabases": partial(
-                test_query,
+                test_database_query,
                 engine=connection,
                 statement=DATABRICKS_GET_CATALOGS,
             ),

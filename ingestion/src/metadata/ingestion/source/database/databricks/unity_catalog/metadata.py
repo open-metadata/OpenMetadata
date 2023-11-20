@@ -61,6 +61,7 @@ from metadata.ingestion.source.database.databricks.models import (
     ForeignConstrains,
     Type,
 )
+from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
 from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
@@ -84,7 +85,7 @@ def from_dict(cls, dct: Dict[str, Any]) -> "TableConstraintList":
 TableConstraintList.from_dict = from_dict
 
 
-class DatabricksUnityCatalogSource(DatabaseServiceSource):
+class DatabricksUnityCatalogSource(DatabaseServiceSource, MultiDBSource):
     """
     Implements the necessary methods to extract
     Database metadata from Databricks Source using
@@ -106,6 +107,13 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
         self.connection_obj = self.client
         self.table_constraints = []
         self.test_connection()
+
+    def get_configured_database(self) -> Optional[str]:
+        return self.service_connection.catalog
+
+    def get_database_names_raw(self) -> Iterable[str]:
+        for catalog in self.client.catalogs.list():
+            yield catalog.name
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata):
@@ -131,31 +139,31 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
         if self.service_connection.catalog:
             yield self.service_connection.catalog
         else:
-            for catalog in self.client.catalogs.list():
+            for catalog_name in self.get_database_names_raw():
                 try:
                     database_fqn = fqn.build(
                         self.metadata,
                         entity_type=Database,
                         service_name=self.context.database_service.name.__root__,
-                        database_name=catalog.name,
+                        database_name=catalog_name,
                     )
                     if filter_by_database(
                         self.config.sourceConfig.config.databaseFilterPattern,
                         database_fqn
                         if self.config.sourceConfig.config.useFqnForFiltering
-                        else catalog.name,
+                        else catalog_name,
                     ):
                         self.status.filter(
                             database_fqn,
                             "Database (Catalog ID) Filtered Out",
                         )
                         continue
-                    yield catalog.name
+                    yield catalog_name
                 except Exception as exc:
                     self.status.failed(
                         StackTraceError(
-                            name=catalog.name,
-                            error=f"Unexpected exception to get database name [{catalog.name}]: {exc}",
+                            name=catalog_name,
+                            error=f"Unexpected exception to get database name [{catalog_name}]: {exc}",
                             stack_trace=traceback.format_exc(),
                         )
                     )
