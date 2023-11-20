@@ -27,7 +27,7 @@ public class Migration extends MigrationProcessImpl {
   @Override
   @SneakyThrows
   public void runDataMigration() {
-    // tests cases coming from dbt for case-sensitive services are not properly linked to a table
+    // testcases coming from dbt for case-sensitive services are not properly linked to a table
     fixTestCases(handle, collectionDAO);
     // Try again the 1.1.6 test suite migration
     fixTestSuites(collectionDAO);

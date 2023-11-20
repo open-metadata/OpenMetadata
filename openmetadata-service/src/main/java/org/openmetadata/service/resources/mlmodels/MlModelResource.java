@@ -450,7 +450,6 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
         .withMlStore(create.getMlStore())
         .withServer(create.getServer())
         .withTarget(create.getTarget())
-        .withSourceUrl(create.getSourceUrl())
-        .withTags(create.getTags());
+        .withSourceUrl(create.getSourceUrl());
   }
 }

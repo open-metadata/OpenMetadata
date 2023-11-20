@@ -107,7 +107,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
   private void migrateTags() {
     // Just want to run it when upgrading to version above 0.13.1 where tag relationship are not there , once we have
     // any entries we don't need to run it
-    if (!(repository.getDaoCollection().relationshipDAO().findIfAnyRelationExist(CLASSIFICATION, TAG) > 0)) {
+    if (repository.getDaoCollection().relationshipDAO().findIfAnyRelationExist(CLASSIFICATION, TAG) <= 0) {
       // We are missing relationship for classification -> tag, and also tag -> tag (parent relationship)
       // Find tag definitions and load classifications from the json file, if necessary
       ClassificationRepository classificationRepository =

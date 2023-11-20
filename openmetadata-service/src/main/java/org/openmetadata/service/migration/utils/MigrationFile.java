@@ -27,7 +27,8 @@ public class MigrationFile implements Comparable<MigrationFile> {
   private final MigrationDAO migrationDAO;
   private final List<String> schemaChanges;
   private final List<String> postDDLScripts;
-  public final String DEFAULT_MIGRATION_PROCESS_CLASS = "org.openmetadata.service.migration.api.MigrationProcessImpl";
+  public static final String DEFAULT_MIGRATION_PROCESS_CLASS =
+      "org.openmetadata.service.migration.api.MigrationProcessImpl";
 
   public MigrationFile(File dir, MigrationDAO migrationDAO, ConnectionType connectionType) {
     this.dir = dir;

@@ -109,7 +109,7 @@ public class PersonaResourceTest extends EntityResourceTest<Persona, CreatePerso
 
     // Ensure that the user does not have relationship to this persona
     User user = userResourceTest.getEntity(user1.getId(), "personas", ADMIN_AUTH_HEADERS);
-    assertEquals(user.getPersonas().size(), 0);
+    assertEquals(0, user.getPersonas().size());
   }
 
   @Test

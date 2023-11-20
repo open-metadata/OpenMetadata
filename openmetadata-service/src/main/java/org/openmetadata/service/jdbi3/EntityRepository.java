@@ -1853,7 +1853,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     protected T previous;
     protected T original;
     protected T updated;
-    protected Operation operation;
+    protected final Operation operation;
     protected ChangeDescription changeDescription = null;
     protected boolean majorVersionChange = false;
     protected final User updatingUser;

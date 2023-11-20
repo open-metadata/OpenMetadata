@@ -494,7 +494,6 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
         .copy(new SearchIndex(), create, user)
         .withService(getEntityReference(Entity.SEARCH_SERVICE, create.getService()))
         .withFields(create.getFields())
-        .withSearchIndexSettings(create.getSearchIndexSettings())
-        .withTags(create.getTags());
+        .withSearchIndexSettings(create.getSearchIndexSettings());
   }
 }
