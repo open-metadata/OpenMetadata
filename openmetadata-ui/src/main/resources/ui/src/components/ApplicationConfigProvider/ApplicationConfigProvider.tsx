@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { cloneDeep } from 'lodash';
+import { cloneDeep, isEmpty } from 'lodash';
 import React, {
   createContext,
   FC,
@@ -22,12 +22,13 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { LogoConfiguration } from '../../generated/configuration/applicationConfiguration';
+import { LoginConfiguration } from '../../generated/configuration/loginConfiguration';
+import { LogoConfiguration } from '../../generated/configuration/logoConfiguration';
 import { User } from '../../generated/entity/teams/user';
 import { EntityReference } from '../../generated/entity/type';
 import { getCustomLogoConfig } from '../../rest/settingConfigAPI';
 
-interface ContextConfig extends LogoConfiguration {
+interface ContextConfig extends LogoConfiguration, LoginConfiguration {
   routeElements?: ReactNode;
   userProfilePics: Record<string, User>;
   updateUserProfilePics: (data: { id: string; user: User }) => void;
@@ -88,9 +89,12 @@ const ApplicationConfigProvider: FC<ApplicationConfigProviderProps> = ({
     }
   };
 
-  const updateSelectedPersona = useCallback((persona: EntityReference) => {
-    setSelectedPersona(persona);
-  }, []);
+  const updateSelectedPersona = useCallback(
+    (persona: EntityReference) => {
+      setSelectedPersona(persona);
+    },
+    [setSelectedPersona]
+  );
 
   const updateUserProfilePics = useCallback(
     ({ id, user }: { id: string; user: User }) => {
@@ -107,6 +111,17 @@ const ApplicationConfigProvider: FC<ApplicationConfigProviderProps> = ({
   useEffect(() => {
     fetchApplicationConfig();
   }, []);
+
+  useEffect(() => {
+    const faviconHref = isEmpty(applicationConfig.customFaviconUrlPath)
+      ? '/favicon.png'
+      : applicationConfig.customFaviconUrlPath ?? '/favicon.png';
+    const link = document.querySelector('link[rel~="icon"]');
+
+    if (link) {
+      link.setAttribute('href', faviconHref);
+    }
+  }, [applicationConfig]);
 
   const contextValue = useMemo(
     () => ({

@@ -12,6 +12,7 @@
 Usage Workflow Definition
 """
 
+from metadata.config.common import WorkflowExecutionError
 from metadata.ingestion.api.steps import BulkSink, Processor, Source, Stage
 from metadata.utils.importer import (
     import_bulk_sink_type,
@@ -21,12 +22,12 @@ from metadata.utils.importer import (
     import_stage_class,
 )
 from metadata.utils.logger import ingestion_logger
-from metadata.workflow.base import BaseWorkflow
+from metadata.workflow.ingestion import IngestionWorkflow
 
 logger = ingestion_logger()
 
 
-class UsageWorkflow(BaseWorkflow):
+class UsageWorkflow(IngestionWorkflow):
     """
     Usage ingestion workflow implementation.
     """
@@ -44,6 +45,12 @@ class UsageWorkflow(BaseWorkflow):
     def _get_source(self) -> Source:
         # Source that we are ingesting, e.g., mysql, looker or kafka
         source_type = self.config.source.type.lower()
+        if not self.config.source.serviceName:
+            raise WorkflowExecutionError(
+                "ServiceName is required field for executing the Usage Workflow. "
+                "You can find more information on how to build the YAML "
+                "configuration here: https://docs.open-metadata.org/connectors"
+            )
 
         source_class = (
             import_from_module(
@@ -69,7 +76,7 @@ class UsageWorkflow(BaseWorkflow):
         processor_config = self.config.processor.dict().get("config", {})
         processor: Processor = processor_class.create(
             processor_config,
-            self.metadata_config,
+            self.metadata,
             connection_type=str(
                 self.config.source.serviceConnection.__root__.config.type.value
             ),

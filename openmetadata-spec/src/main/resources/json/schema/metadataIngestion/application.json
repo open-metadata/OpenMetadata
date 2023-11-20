@@ -1,0 +1,31 @@
+{
+  "$id": "https://open-metadata.org/schema/metadataIngestion/application.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OpenMetadataApplicationConfig",
+  "description": "OpenMetadata Ingestion Framework definition for Applications, i.e., the YAML shape we require.",
+  "type": "object",
+  "properties": {
+    "workflowConfig": {
+      "$ref": "workflow.json#/definitions/workflowConfig",
+      "description": "General Workflow configuration, such as the OpenMetadata server connection and logging level"
+    },
+    "sourcePythonClass": {
+      "description": "Source Python Class Name to run the application",
+      "type": "string"
+    },
+    "appConfig": {
+      "$ref": "../entity/applications/configuration/externalApplicationConfig.json#/definitions/appConfig",
+      "description": "External Application configuration"
+    },
+    "ingestionPipelineFQN": {
+      "description": "Fully qualified name of ingestion pipeline, used to identify the current ingestion pipeline",
+      "type": "string"
+    },
+    "pipelineRunId": {
+      "description": "Unique identifier of pipeline run, used to identify the current pipeline run",
+      "$ref": "../type/basic.json#/definitions/uuid"
+    }
+  },
+  "required": ["workflowConfig"],
+  "additionalProperties": false
+}

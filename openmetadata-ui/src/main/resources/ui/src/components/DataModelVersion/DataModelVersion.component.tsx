@@ -16,7 +16,7 @@ import classNames from 'classnames';
 import { cloneDeep } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import DescriptionV1 from '../../components/common/description/DescriptionV1';
+import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import DataAssetsVersionHeader from '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
@@ -39,6 +39,7 @@ import {
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
 import { getEncodedFqn } from '../../utils/StringsUtils';
+import DataProductsContainer from '../DataProductsContainer/DataProductsContainer.component';
 import Loader from '../Loader/Loader';
 import { DataModelVersionProp } from './DataModelVersion.interface';
 
@@ -48,6 +49,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
   isVersionLoading,
   owner,
   domain,
+  dataProducts,
   tier,
   slashedDataModelName,
   versionList,
@@ -117,9 +119,9 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
               <Row gutter={[0, 16]}>
                 <Col span={24}>
                   <DescriptionV1
-                    isVersionView
                     description={description}
                     entityType={EntityType.DASHBOARD_DATA_MODEL}
+                    showActions={false}
                   />
                 </Col>
                 <Col span={24}>
@@ -142,6 +144,11 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
               data-testid="entity-right-panel"
               flex="220px">
               <Space className="w-full" direction="vertical" size="large">
+                <DataProductsContainer
+                  activeDomain={domain}
+                  dataProducts={dataProducts ?? []}
+                  hasPermission={false}
+                />
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
                     entityType={EntityType.DASHBOARD_DATA_MODEL}

@@ -63,7 +63,7 @@ ORDER BY order_day ASC;`,
   checksum: '0232b0368458aadb29230ccc531462c9',
 } as Query;
 
-jest.mock('../schema-editor/SchemaEditor', () => {
+jest.mock('../SchemaEditor/SchemaEditor', () => {
   return jest.fn().mockReturnValue(<p>SchemaEditor</p>);
 });
 jest.mock('./QueryCardExtraOption/QueryCardExtraOption.component', () => {

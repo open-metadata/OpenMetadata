@@ -14,10 +14,12 @@ Base source for the profiler used to instantiate a profiler runner with
 its interface
 """
 from copy import deepcopy
-from typing import List, Optional, cast
+from typing import List, Optional, Tuple, cast
 
 from sqlalchemy import MetaData
 
+from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import ColumnProfilerConfig, Table
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
@@ -100,25 +102,38 @@ class ProfilerSource(ProfilerSourceInterface):
             return self.service_conn_config.__class__.__name__
         return config.source.serviceConnection.__root__.config.__class__.__name__
 
-    def _get_config_for_table(
-        self, entity: Table, profiler_config
-    ) -> Optional[TableConfig]:
+    @staticmethod
+    def get_config_for_table(entity: Table, profiler_config) -> Optional[TableConfig]:
         """Get config for a specific entity
 
         Args:
             entity: table entity
         """
-        if not profiler_config.tableConfig:
-            return None
-        return next(
-            (
-                table_config
-                for table_config in profiler_config.tableConfig
-                if table_config.fullyQualifiedName.__root__
-                == entity.fullyQualifiedName.__root__  # type: ignore
-            ),
-            None,
-        )
+        for table_config in profiler_config.tableConfig or []:
+            if (
+                table_config.fullyQualifiedName.__root__
+                == entity.fullyQualifiedName.__root__
+            ):
+                return table_config
+
+        for schema_config in profiler_config.schemaConfig or []:
+            if (
+                schema_config.fullyQualifiedName.__root__
+                == entity.databaseSchema.fullyQualifiedName
+            ):
+                return TableConfig.from_database_and_schema_config(
+                    schema_config, entity.fullyQualifiedName.__root__
+                )
+        for database_config in profiler_config.databaseConfig or []:
+            if (
+                database_config.fullyQualifiedName.__root__
+                == entity.database.fullyQualifiedName
+            ):
+                return TableConfig.from_database_and_schema_config(
+                    database_config, entity.fullyQualifiedName.__root__
+                )
+
+        return None
 
     def _get_include_columns(
         self, entity, entity_config: Optional[TableConfig]
@@ -176,12 +191,20 @@ class ProfilerSource(ProfilerSourceInterface):
         self,
         entity: Table,
         config: Optional[TableConfig],
+        profiler_config: Optional[ProfilerProcessorConfig],
+        schema_entity: Optional[DatabaseSchema],
+        database_entity: Optional[Database],
+        db_service: Optional[DatabaseService],
     ) -> ProfilerInterface:
         """Create sqlalchemy profiler interface"""
         profiler_interface: ProfilerInterface = profiler_interface_factory.create(
             self.profiler_interface_type,
             entity,
+            schema_entity,
+            database_entity,
+            db_service,
             config,
+            profiler_config,
             self.source_config,
             self.service_conn_config,
             self.ometa_client,
@@ -191,16 +214,59 @@ class ProfilerSource(ProfilerSourceInterface):
         self.interface = profiler_interface
         return self.interface
 
+    def _get_context_entities(
+        self, entity: Table
+    ) -> Tuple[DatabaseSchema, Database, DatabaseService]:
+
+        schema_entity = None
+        database_entity = None
+        db_service = None
+
+        if entity.databaseSchema:
+            schema_entity_list = self.ometa_client.es_search_from_fqn(
+                entity_type=DatabaseSchema,
+                fqn_search_string=entity.databaseSchema.fullyQualifiedName,
+                fields="databaseSchemaProfilerConfig",
+            )
+            if schema_entity_list:
+                schema_entity = schema_entity_list[0]
+
+        if entity.database:
+            database_entity_list = self.ometa_client.es_search_from_fqn(
+                entity_type=Database,
+                fqn_search_string=entity.database.fullyQualifiedName,
+                fields="databaseProfilerConfig",
+            )
+            if database_entity_list:
+                database_entity = database_entity_list[0]
+
+        if entity.service:
+            db_service_list = self.ometa_client.es_search_from_fqn(
+                entity_type=DatabaseService,
+                fqn_search_string=entity.service.fullyQualifiedName,
+            )
+            if db_service_list:
+                db_service = db_service_list[0]
+
+        return schema_entity, database_entity, db_service
+
     def get_profiler_runner(
         self, entity: Table, profiler_config: ProfilerProcessorConfig
     ) -> Profiler:
         """
         Returns the runner for the profiler
         """
-        table_config = self._get_config_for_table(entity, profiler_config)
+        table_config = self.get_config_for_table(entity, profiler_config)
+        schema_entity, database_entity, db_service = self._get_context_entities(
+            entity=entity
+        )
         profiler_interface = self.create_profiler_interface(
             entity,
             table_config,
+            profiler_config,
+            schema_entity,
+            database_entity,
+            db_service,
         )
 
         if not profiler_config.profiler:

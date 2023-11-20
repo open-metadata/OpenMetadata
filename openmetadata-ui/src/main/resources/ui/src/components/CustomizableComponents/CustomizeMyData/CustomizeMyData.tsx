@@ -44,6 +44,7 @@ import {
   getWidgetFromKey,
 } from '../../../utils/CustomizableLandingPageUtils';
 import customizePageClassBase from '../../../utils/CustomizePageClassBase';
+import { getEntityName } from '../../../utils/EntityUtils';
 import {
   getPersonaDetailsPath,
   getSettingPath,
@@ -51,15 +52,16 @@ import {
 import { getDecodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ActivityFeedProvider from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
-import PageLayoutV1 from '../../containers/PageLayoutV1';
+import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import AddWidgetModal from '../AddWidgetModal/AddWidgetModal';
+import './customize-my-data.less';
 import { CustomizeMyDataProps } from './CustomizeMyData.interface';
-import './CustomizeMyData.less';
 
 const ReactGridLayout = WidthProvider(RGL);
 
 function CustomizeMyData({
+  personaDetails,
   initialPageData,
   onSaveLayout,
   handlePageDataChange,
@@ -300,7 +302,9 @@ function CustomizeMyData({
                     />
                   }
                   values={{
-                    persona: decodedPersonaFQN,
+                    persona: isNil(personaDetails)
+                      ? decodedPersonaFQN
+                      : getEntityName(personaDetails),
                   }}
                 />
               </Typography.Title>

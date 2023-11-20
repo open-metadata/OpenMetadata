@@ -20,6 +20,8 @@ import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_USER_NAME;
+import static org.openmetadata.service.util.TestUtils.UpdateType.CHANGE_CONSOLIDATED;
+import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertEntityPagination;
 import static org.openmetadata.service.util.TestUtils.assertListNotEmpty;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
@@ -66,7 +68,6 @@ import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
-import org.openmetadata.service.util.TestUtils.UpdateType;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Slf4j
@@ -226,11 +227,11 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
     // Change the test with PUT request
     create.withTestDefinition(TEST_DEFINITION2.getFullyQualifiedName()).withParameterValues(new ArrayList<>());
-    ChangeDescription change = getChangeDescription(testCase.getVersion());
+    ChangeDescription change = getChangeDescription(testCase, MINOR_UPDATE);
     fieldUpdated(
         change, "testDefinition", TEST_DEFINITION3.getEntityReference(), TEST_DEFINITION2.getEntityReference());
     fieldUpdated(change, "parameterValues", testCase.getParameterValues(), new ArrayList<>());
-    updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, TestUtils.UpdateType.MINOR_UPDATE, change);
+    updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
@@ -362,7 +363,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
     // add a new test case to the logical test suite to validate if the
     // summary is updated correctly
-    testCaseIds.removeAll(testCaseIds);
+    testCaseIds.clear();
     testCaseIds.add(testCase.getId());
     testSuiteResourceTest.addTestCasesToLogicalTestSuite(logicalTestSuite, testCaseIds);
 
@@ -417,7 +418,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     // test we get the right summary for the logical test suite
     TestSummary logicalTestSummary = getTestSummary(ADMIN_AUTH_HEADERS, logicalTestSuite.getId().toString());
     assertEquals(1, logicalTestSummary.getTotal());
-    testCaseIds.removeAll(testCaseIds);
+    testCaseIds.clear();
     testCaseIds.add(testCase.getId());
     testSuiteResourceTest.addTestCasesToLogicalTestSuite(logicalTestSuite, testCaseIds);
     logicalTestSummary = getTestSummary(ADMIN_AUTH_HEADERS, logicalTestSuite.getId().toString());
@@ -442,10 +443,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     // test suite
     deleteLogicalTestCase(logicalTestSuite, testCase.getId());
     logicalTestSummary = getTestSummary(ADMIN_AUTH_HEADERS, logicalTestSuite.getId().toString());
-    assertEquals(
-        null,
-        logicalTestSummary
-            .getTotal()); // check the deletion of the test case from the logical test suite is reflected in the summary
+    // check the deletion of the test case from the logical test suite is reflected in the summary
+    assertNull(logicalTestSummary.getTotal());
   }
 
   @Test
@@ -579,24 +578,24 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     // Update description with PUT
     String oldDescription = testCase.getDescription();
     String newDescription = "description1";
-    ChangeDescription change = getChangeDescription(testCase.getVersion());
+    ChangeDescription change = getChangeDescription(testCase, MINOR_UPDATE);
     fieldUpdated(change, "description", oldDescription, newDescription);
     testCase =
         updateAndCheckEntity(
             createRequest(test).withDescription(newDescription).withName(testCase.getName()),
             OK,
             ownerAuthHeaders,
-            UpdateType.MINOR_UPDATE,
+            MINOR_UPDATE,
             change);
 
     // Update description with PATCH
-    oldDescription = testCase.getDescription();
+    // Changes from this PATCH is consolidated with the previous changes
     newDescription = "description2";
-    change = getChangeDescription(testCase.getVersion());
+    change = getChangeDescription(testCase, CHANGE_CONSOLIDATED);
     fieldUpdated(change, "description", oldDescription, newDescription);
     String json = JsonUtils.pojoToJson(testCase);
     testCase.setDescription(newDescription);
-    testCase = patchEntityAndCheck(testCase, json, ownerAuthHeaders, UpdateType.MINOR_UPDATE, change);
+    testCase = patchEntityAndCheck(testCase, json, ownerAuthHeaders, CHANGE_CONSOLIDATED, change);
 
     // Delete the testcase
     deleteAndCheckEntity(testCase, ownerAuthHeaders);
@@ -1057,45 +1056,16 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     ResultList<TestCase> allEntities = getTestCases(1000000, null, null, "*", true, ADMIN_AUTH_HEADERS);
     int totalRecords = allEntities.getData().size();
 
-    // List entity with "limit" set from 1 to maxEntities size with random jumps (to reduce the test time)
-    // Each time compare the returned list with allTables list to make sure right results are returned
-    for (int limit = 1; limit < maxEntities; limit += random.nextInt(5) + 1) {
-      String after = null;
-      String before;
-      int pageCount = 0;
-      int indexInAllTables = 0;
-      ResultList<TestCase> forwardPage;
-      ResultList<TestCase> backwardPage;
-      boolean foundDeleted = false;
-      do { // For each limit (or page size) - forward scroll till the end
-        forwardPage = getTestCases(limit, null, after, "*", true, ADMIN_AUTH_HEADERS);
-        after = forwardPage.getPaging().getAfter();
-        before = forwardPage.getPaging().getBefore();
-        assertEntityPagination(allEntities.getData(), forwardPage, limit, indexInAllTables);
+    paginate(maxEntities, allEntities, null);
 
-        if (pageCount == 0) { // CASE 0 - First page is being returned. There is no before-cursor
-          assertNull(before);
-        } else {
-          // Make sure scrolling back based on before cursor returns the correct result
-          backwardPage = getTestCases(limit, before, null, "*", true, ADMIN_AUTH_HEADERS);
-          assertEntityPagination(allEntities.getData(), backwardPage, limit, (indexInAllTables - limit));
-        }
-
-        indexInAllTables += forwardPage.getData().size();
-        pageCount++;
-      } while (after != null);
-
-      // We have now reached the last page - test backward scroll till the beginning
-      pageCount = 0;
-      indexInAllTables = totalRecords - limit - forwardPage.getData().size();
-      do {
-        forwardPage = getTestCases(limit, before, null, "*", true, ADMIN_AUTH_HEADERS);
-        before = forwardPage.getPaging().getBefore();
-        assertEntityPagination(allEntities.getData(), forwardPage, limit, indexInAllTables);
-        pageCount++;
-        indexInAllTables -= forwardPage.getData().size();
-      } while (before != null);
-    }
+    // Validate Pagination when filtering by testSuiteId
+    TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
+    CreateTestSuite createLogicalTestSuite = testSuiteResourceTest.createRequest(test);
+    TestSuite logicalTestSuite = testSuiteResourceTest.createEntity(createLogicalTestSuite, ADMIN_AUTH_HEADERS);
+    List<UUID> testCaseIds = createdTestCase.stream().map(TestCase::getId).collect(Collectors.toList());
+    testSuiteResourceTest.addTestCasesToLogicalTestSuite(logicalTestSuite, testCaseIds);
+    allEntities = getTestCases(1000000, null, null, "*", null, logicalTestSuite, false, true, ADMIN_AUTH_HEADERS);
+    paginate(maxEntities, allEntities, logicalTestSuite);
   }
 
   public void deleteTestCaseResult(String fqn, Long timestamp, Map<String, String> authHeaders)
@@ -1128,14 +1098,24 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   public ResultList<TestCase> getTestCases(
-      Integer limit, String fields, String link, Boolean includeAll, Map<String, String> authHeaders)
+      Integer limit,
+      String before,
+      String after,
+      String fields,
+      String link,
+      TestSuite testSuite,
+      Boolean includeAll,
+      Boolean orderByLastExecutionDate,
+      Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getCollection();
-    target = limit != null ? target.queryParam("limit", limit) : target;
     target = target.queryParam("fields", fields);
-    if (link != null) {
-      target = target.queryParam("entityLink", link);
-    }
+    target = limit != null ? target.queryParam("limit", limit) : target;
+    target = before != null ? target.queryParam("before", before) : target;
+    target = after != null ? target.queryParam("after", after) : target;
+    target = link != null ? target.queryParam("entityLink", link) : target;
+    target = testSuite != null ? target.queryParam("testSuiteId", testSuite.getId()) : target;
+    target = orderByLastExecutionDate ? target.queryParam("orderByLastExecutionDate", true) : target;
     if (includeAll) {
       target = target.queryParam("includeAllTests", true);
       target = target.queryParam("include", "all");
@@ -1144,17 +1124,15 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   public ResultList<TestCase> getTestCases(
+      Integer limit, String fields, String link, Boolean includeAll, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    return getTestCases(limit, null, null, fields, link, null, includeAll, false, authHeaders);
+  }
+
+  public ResultList<TestCase> getTestCases(
       Integer limit, String fields, TestSuite testSuite, Boolean includeAll, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = getCollection();
-    target = limit != null ? target.queryParam("limit", limit) : target;
-    target = target.queryParam("fields", fields);
-    target = target.queryParam("testSuiteId", testSuite.getId());
-    if (includeAll) {
-      target = target.queryParam("includeAllTests", true);
-      target = target.queryParam("include", "all");
-    }
-    return TestUtils.get(target, TestCaseResource.TestCaseList.class, authHeaders);
+    return getTestCases(limit, null, null, fields, null, testSuite, includeAll, false, authHeaders);
   }
 
   public ResultList<TestCase> getTestCases(
@@ -1165,15 +1143,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
       Boolean orderByLastExecutionDate,
       Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = getCollection();
-    target = limit != null ? target.queryParam("limit", limit) : target;
-    target = before != null ? target.queryParam("before", before) : target;
-    target = after != null ? target.queryParam("after", after) : target;
-    target = target.queryParam("fields", fields);
-    if (orderByLastExecutionDate) {
-      target = target.queryParam("orderByLastExecutionDate", true);
-    }
-    return TestUtils.get(target, TestCaseResource.TestCaseList.class, authHeaders);
+    return getTestCases(limit, before, after, fields, null, null, false, orderByLastExecutionDate, authHeaders);
   }
 
   private TestCaseResult patchTestCaseResult(
@@ -1215,6 +1185,51 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
   private void verifyTestCaseResult(TestCaseResult expected, TestCaseResult actual) {
     assertEquals(expected, actual);
+  }
+
+  private void paginate(Integer maxEntities, ResultList<TestCase> allEntities, TestSuite testSuite)
+      throws HttpResponseException {
+    Random random = new Random();
+    int totalRecords = allEntities.getData().size();
+
+    for (int limit = 1; limit < maxEntities; limit += random.nextInt(5) + 1) {
+      String after = null;
+      String before;
+      int pageCount = 0;
+      int indexInAllTables = 0;
+      ResultList<TestCase> forwardPage;
+      ResultList<TestCase> backwardPage;
+      boolean foundDeleted = false;
+      do { // For each limit (or page size) - forward scroll till the end
+        forwardPage = getTestCases(limit, null, after, "*", null, testSuite, false, true, ADMIN_AUTH_HEADERS);
+        after = forwardPage.getPaging().getAfter();
+        before = forwardPage.getPaging().getBefore();
+        assertEntityPagination(allEntities.getData(), forwardPage, limit, indexInAllTables);
+
+        if (pageCount == 0) { // CASE 0 - First page is being returned. There is no before-cursor
+          assertNull(before);
+        } else {
+          // Make sure scrolling back based on before cursor returns the correct result
+          backwardPage = getTestCases(limit, before, null, "*", null, testSuite, false, true, ADMIN_AUTH_HEADERS);
+          getTestCases(limit, before, null, "*", true, ADMIN_AUTH_HEADERS);
+          assertEntityPagination(allEntities.getData(), backwardPage, limit, (indexInAllTables - limit));
+        }
+
+        indexInAllTables += forwardPage.getData().size();
+        pageCount++;
+      } while (after != null);
+
+      // We have now reached the last page - test backward scroll till the beginning
+      pageCount = 0;
+      indexInAllTables = totalRecords - limit - forwardPage.getData().size();
+      do {
+        forwardPage = getTestCases(limit, before, null, "*", null, testSuite, false, true, ADMIN_AUTH_HEADERS);
+        before = forwardPage.getPaging().getBefore();
+        assertEntityPagination(allEntities.getData(), forwardPage, limit, indexInAllTables);
+        pageCount++;
+        indexInAllTables -= forwardPage.getData().size();
+      } while (before != null);
+    }
   }
 
   @Override
@@ -1267,7 +1282,15 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) {
-    if (expected == actual) {}
-    // TODO fix this
+    if (expected == actual) {
+      return;
+    }
+    if (fieldName.equals("parameterValues")) {
+      assertEquals(JsonUtils.pojoToJson(expected), JsonUtils.pojoToJson(actual));
+    } else if (fieldName.equals("testDefinition")) {
+      assertEntityReferenceFieldChange(expected, actual);
+    } else {
+      assertCommonFieldChange(fieldName, expected, actual);
+    }
   }
 }

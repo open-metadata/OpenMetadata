@@ -1,5 +1,6 @@
 package org.openmetadata.service.resources.apps;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.APPLICATION;
 import static org.openmetadata.service.Entity.BOT;
@@ -28,6 +29,7 @@ import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
+import javax.ws.rs.InternalServerErrorException;
 import javax.ws.rs.PATCH;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
@@ -458,7 +460,6 @@ public class AppResource extends EntityResource<App, AppRepository> {
   }
 
   @POST
-  @Path("/install")
   @Operation(
       operationId = "createApplication",
       summary = "Create a Application",
@@ -477,9 +478,14 @@ public class AppResource extends EntityResource<App, AppRepository> {
             .getByName(
                 uriInfo, create.getName(), new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
     App app = getApplication(definition, create, securityContext.getUserPrincipal().getName());
+    app.setOpenMetadataServerConnection(
+        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, app.getBot().getName()).build());
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
       ApplicationHandler.scheduleApplication(app, Entity.getCollectionDAO(), searchRepository);
+      ApplicationHandler.configureApplication(app, Entity.getCollectionDAO(), searchRepository);
     }
+    // We don't want to store this information
+    app.setOpenMetadataServerConnection(null);
     return create(uriInfo, securityContext, app);
   }
 
@@ -552,6 +558,9 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @DefaultValue("false")
           boolean hardDelete,
       @Parameter(description = "Name of the App", schema = @Schema(type = "string")) @PathParam("name") String name) {
+    App app = repository.getByName(null, name, repository.getFields("bot,pipelines"));
+    // Remove from Pipeline Service
+    deleteApp(securityContext, app, hardDelete);
     return deleteByName(uriInfo, securityContext, name, true, hardDelete);
   }
 
@@ -573,6 +582,10 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @DefaultValue("false")
           boolean hardDelete,
       @Parameter(description = "Id of the App", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+    App app = repository.get(null, id, repository.getFields("bot,pipelines"));
+    // Remove from Pipeline Service
+    deleteApp(securityContext, app, hardDelete);
+    // Remove from repository
     return delete(uriInfo, securityContext, id, true, hardDelete);
   }
 
@@ -590,7 +603,14 @@ public class AppResource extends EntityResource<App, AppRepository> {
       })
   public Response restoreApp(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    Response response = restoreEntity(uriInfo, securityContext, restore.getId());
+    if (response.getStatus() == Response.Status.OK.getStatusCode()) {
+      App app = (App) response.getEntity();
+      if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
+        ApplicationHandler.scheduleApplication(app, Entity.getCollectionDAO(), searchRepository);
+      }
+    }
+    return response;
   }
 
   @POST
@@ -616,6 +636,37 @@ public class AppResource extends EntityResource<App, AppRepository> {
       return Response.status(Response.Status.OK).entity("App is Scheduled.").build();
     }
     throw new IllegalArgumentException("App is not of schedule type Scheduled.");
+  }
+
+  @POST
+  @Path("/configure/{name}")
+  @Operation(
+      operationId = "configureApplication",
+      summary = "Configure an Application",
+      description = "Schedule a application to be run on demand.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The Application",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Response.class))),
+        @ApiResponse(responseCode = "404", description = "Application for instance {id} is not found")
+      })
+  public Response configureApplication(
+      @Context UriInfo uriInfo,
+      @Parameter(description = "Name of the App", schema = @Schema(type = "string")) @PathParam("name") String name,
+      @Context SecurityContext securityContext) {
+    App app = repository.getByName(uriInfo, name, new EntityUtil.Fields(repository.getAllowedFields()));
+    // The application will have the updated appConfiguration we can use to run the `configure` logic
+    app.setOpenMetadataServerConnection(
+        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, app.getBot().getName()).build());
+    try {
+      ApplicationHandler.configureApplication(app, repository.getDaoCollection(), searchRepository);
+      return Response.status(Response.Status.OK).entity("App has been configured.").build();
+    } catch (RuntimeException e) {
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity(String.format("Error configuring app [%s]", e.getMessage()))
+          .build();
+    }
   }
 
   @POST
@@ -707,7 +758,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
   }
 
   private void decryptOrNullify(
-      SecurityContext securityContext, IngestionPipeline ingestionPipeline, String botname, boolean forceNotMask) {
+      SecurityContext securityContext, IngestionPipeline ingestionPipeline, String botName, boolean forceNotMask) {
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     try {
       authorizer.authorize(
@@ -719,7 +770,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
     }
     secretsManager.decryptIngestionPipeline(ingestionPipeline);
     OpenMetadataConnection openMetadataServerConnection =
-        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, botname).build();
+        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, botName).build();
     ingestionPipeline.setOpenMetadataServerConnection(
         secretsManager.encryptOpenMetadataConnection(openMetadataServerConnection, false));
     if (authorizer.shouldMaskPasswords(securityContext) && !forceNotMask) {
@@ -734,8 +785,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
         new App()
             .withId(UUID.randomUUID())
             .withName(marketPlaceDefinition.getName())
-            .withDisplayName(marketPlaceDefinition.getDisplayName())
-            .withDescription(marketPlaceDefinition.getDescription())
+            .withDisplayName(createAppRequest.getDisplayName())
+            .withDescription(createAppRequest.getDescription())
             .withOwner(owner)
             .withUpdatedBy(updatedBy)
             .withUpdatedAt(System.currentTimeMillis())
@@ -752,7 +803,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
             .withAppSchedule(createAppRequest.getAppSchedule())
             .withAppLogoUrl(marketPlaceDefinition.getAppLogoUrl())
             .withAppScreenshots(marketPlaceDefinition.getAppScreenshots())
-            .withFeatures(marketPlaceDefinition.getFeatures());
+            .withFeatures(marketPlaceDefinition.getFeatures())
+            .withSourcePythonClass(marketPlaceDefinition.getSourcePythonClass());
 
     // validate Bot if provided
     validateAndAddBot(app, createAppRequest.getBot());
@@ -765,6 +817,43 @@ public class AppResource extends EntityResource<App, AppRepository> {
       app.setBot(Entity.getEntityReferenceByName(BOT, botName, Include.NON_DELETED));
     } else {
       app.setBot(repository.createNewAppBot(app));
+    }
+  }
+
+  private void deleteApp(SecurityContext securityContext, App installedApp, boolean hardDelete) {
+    if (installedApp.getAppType().equals(AppType.Internal)) {
+      try {
+        AppScheduler.getInstance().deleteScheduledApplication(installedApp);
+      } catch (SchedulerException ex) {
+        LOG.error("Failed in delete Application from Scheduler.", ex);
+        throw new InternalServerErrorException("Failed in Delete App from Scheduler.");
+      }
+    } else {
+      if (!nullOrEmpty(installedApp.getPipelines())) {
+        EntityReference pipelineRef = installedApp.getPipelines().get(0);
+        IngestionPipelineRepository ingestionPipelineRepository =
+            (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+
+        IngestionPipeline ingestionPipeline =
+            ingestionPipelineRepository.get(
+                null, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNER));
+        try {
+          if (hardDelete) {
+            // Remove the Pipeline in case of Delete
+            if (!nullOrEmpty(installedApp.getPipelines())) {
+              pipelineServiceClient.deletePipeline(ingestionPipeline);
+            }
+          } else {
+            // Just Kill Running ingestion
+            if (Boolean.TRUE.equals(ingestionPipeline.getDeployed())) {
+              decryptOrNullify(securityContext, ingestionPipeline, installedApp.getBot().getName(), true);
+              pipelineServiceClient.killIngestion(ingestionPipeline);
+            }
+          }
+        } catch (Exception ex) {
+          LOG.error("Failed in Pipeline Service Client : ", ex);
+        }
+      }
     }
   }
 }

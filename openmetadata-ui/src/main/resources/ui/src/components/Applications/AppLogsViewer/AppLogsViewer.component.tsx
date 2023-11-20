@@ -12,33 +12,19 @@
  */
 
 import { Badge, Button, Card, Col, Divider, Row, Space } from 'antd';
-import { isEmpty, isNil } from 'lodash';
-import React, { useCallback, useMemo } from 'react';
+import { isNil } from 'lodash';
+import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LazyLog } from 'react-lazylog';
 import { ReactComponent as IconSuccessBadge } from '../../../assets/svg/success-badge.svg';
 import { formatDateTimeWithTimezone } from '../../../utils/date-time/DateTimeUtils';
-import CopyToClipboardButton from '../../buttons/CopyToClipboardButton/CopyToClipboardButton';
+import CopyToClipboardButton from '../../CopyToClipboardButton/CopyToClipboardButton';
 import { AppLogsViewerProps, JobStats } from './AppLogsViewer.interface';
 
 const AppLogsViewer = ({ data }: AppLogsViewerProps) => {
   const { t } = useTranslation();
 
-  const { failureContext, successContext, timestamp } = useMemo(
-    () => ({
-      ...data,
-    }),
-    [data]
-  );
-
-  const hasSuccessStats = useMemo(
-    () => !isEmpty(successContext?.stats),
-    [successContext]
-  );
-  const hasFailureStats = useMemo(
-    () => !isEmpty(failureContext?.stats),
-    [failureContext]
-  );
+  const { successContext, failureContext, timestamp } = data;
 
   const handleJumpToEnd = () => {
     const logsBody = document.getElementsByClassName(
@@ -155,27 +141,13 @@ const AppLogsViewer = ({ data }: AppLogsViewerProps) => {
     [timestamp, formatDateTimeWithTimezone]
   );
 
-  const successContextRender = useMemo(
-    () => (
-      <>
-        {hasSuccessStats && statsRender(successContext?.stats.jobStats)}
-        {logsRender(successContext?.stackTrace)}
-      </>
-    ),
-    [successContext]
+  return (
+    <>
+      {successContext?.stats && statsRender(successContext?.stats.jobStats)}
+      {failureContext?.stats && statsRender(failureContext?.stats.jobStats)}
+      {logsRender(failureContext?.stackTrace ?? failureContext?.failure)}
+    </>
   );
-
-  const failureContextRender = useMemo(
-    () => (
-      <>
-        {hasFailureStats && statsRender(failureContext?.stats.jobStats)}
-        {logsRender(failureContext?.stackTrace)}
-      </>
-    ),
-    [failureContext]
-  );
-
-  return successContext ? successContextRender : failureContextRender;
 };
 
 export default AppLogsViewer;

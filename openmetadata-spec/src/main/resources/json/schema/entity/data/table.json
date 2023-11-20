@@ -241,6 +241,7 @@
     "column": {
       "type": "object",
       "javaType": "org.openmetadata.schema.type.Column",
+      "javaInterfaces": ["org.openmetadata.schema.FieldInterface"],
       "description": "This schema defines the type for a column in a table.",
       "properties": {
         "name": {
@@ -309,17 +310,17 @@
           },
           "default": null
         },
+        "profile": {
+          "description": "Latest Data profile for a Column.",
+          "$ref": "#/definitions/columnProfile",
+          "default": null
+        },
         "customMetrics": {
-          "description": "List of Custom Metrics registered for a column.",
+          "description": "List of Custom Metrics registered for a table.",
           "type": "array",
           "items": {
             "$ref": "../../tests/customMetric.json"
           },
-          "default": null
-        },
-        "profile": {
-          "description": "Latest Data profile for a Column.",
-          "$ref": "#/definitions/columnProfile",
           "default": null
         }
       },
@@ -591,7 +592,7 @@
           },
           "additionalProperties": false
         },
-        "customMetricsProfile": {
+        "customMetrics": {
           "description": "Custom Metrics profile list bound to a column.",
           "type": "array",
           "items": {
@@ -721,6 +722,12 @@
         "profileSampleType": {
           "$ref": "#/definitions/profileSampleType"
         },
+        "sampleDataCount": {
+          "description": "Number of row of sample data to be generated",
+          "type": "integer",
+          "default": 50,
+          "title": "Sample Data Rows Count"
+        },
         "profileQuery": {
           "description": "Users' raw SQL query to fetch sample data and profile the table",
           "type": "string",
@@ -781,6 +788,14 @@
           "description": "Table creation time.",
           "type": "string",
           "format": "date-time"
+        },
+        "customMetrics": {
+          "description": "Custom Metrics profile list bound to a column.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/customMetricProfile"
+          },
+          "default": null
         }
       },
       "required": [
@@ -990,6 +1005,14 @@
     "tableProfilerConfig": {
       "description": "Table Profiler Config to include or exclude columns from profiling.",
       "$ref": "#/definitions/tableProfilerConfig"
+    },
+    "customMetrics": {
+      "description": "List of Custom Metrics registered for a table.",
+      "type": "array",
+      "items": {
+        "$ref": "../../tests/customMetric.json"
+      },
+      "default": null
     },
     "profile": {
       "description": "Latest Data profile for a table.",

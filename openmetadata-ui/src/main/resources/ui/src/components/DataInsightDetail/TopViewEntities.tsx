@@ -19,7 +19,6 @@ import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import Table from '../../components/common/Table/Table';
-import PageHeader from '../../components/header/PageHeader.component';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { MostViewedEntities } from '../../generated/dataInsight/type/mostViewedEntities';
@@ -28,7 +27,8 @@ import { getAggregateChartData } from '../../rest/DataInsightAPI';
 import { getDecodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
-import './DataInsightDetail.less';
+import PageHeader from '../PageHeader/PageHeader.component';
+import './data-insight-detail.less';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
 
 interface Props {

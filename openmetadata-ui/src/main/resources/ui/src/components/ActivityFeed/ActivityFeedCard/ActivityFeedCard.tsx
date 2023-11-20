@@ -25,7 +25,7 @@ import {
   getEntityFQN,
   getEntityType,
 } from '../../../utils/FeedUtils';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import EditAnnouncementModal from '../../Modals/AnnouncementModal/EditAnnouncementModal';

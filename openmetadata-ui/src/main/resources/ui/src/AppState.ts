@@ -14,7 +14,7 @@
 import { isEmpty, isNil } from 'lodash';
 import { action, makeAutoObservable } from 'mobx';
 import { ClientAuth, NewUser } from 'Models';
-import { EntityUnion } from './components/Explore/explore.interface';
+import { EntityUnion } from './components/Explore/ExplorePage.interface';
 import { ResourcePermission } from './generated/entity/policies/accessControl/resourcePermission';
 import {
   EntityReference as UserTeams,

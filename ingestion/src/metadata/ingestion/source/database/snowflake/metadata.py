@@ -13,6 +13,7 @@ Snowflake source module
 """
 import json
 import traceback
+import urllib
 from typing import Dict, Iterable, List, Optional, Tuple
 
 import sqlparse
@@ -52,11 +53,13 @@ from metadata.ingestion.source.database.common_db_source import (
 from metadata.ingestion.source.database.life_cycle_query_mixin import (
     LifeCycleQueryMixin,
 )
+from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.ingestion.source.database.snowflake.models import (
     STORED_PROC_LANGUAGE_MAP,
     SnowflakeStoredProcedure,
 )
 from metadata.ingestion.source.database.snowflake.queries import (
+    SNOWFLAKE_DESC_STORED_PROCEDURE,
     SNOWFLAKE_FETCH_ALL_TAGS,
     SNOWFLAKE_GET_CLUSTER_KEY,
     SNOWFLAKE_GET_CURRENT_ACCOUNT,
@@ -122,7 +125,9 @@ SnowflakeDialect.get_foreign_keys = get_foreign_keys
 SnowflakeDialect.get_columns = get_columns
 
 
-class SnowflakeSource(LifeCycleQueryMixin, StoredProcedureMixin, CommonDbSourceService):
+class SnowflakeSource(
+    LifeCycleQueryMixin, StoredProcedureMixin, CommonDbSourceService, MultiDBSource
+):
     """
     Implements the necessary methods to extract
     Database metadata from Snowflake Source
@@ -214,6 +219,15 @@ class SnowflakeSource(LifeCycleQueryMixin, StoredProcedureMixin, CommonDbSourceS
         """
         return self.database_desc_map.get(database_name)
 
+    def get_configured_database(self) -> Optional[str]:
+        return self.service_connection.database
+
+    def get_database_names_raw(self) -> Iterable[str]:
+        results = self.connection.execute(SNOWFLAKE_GET_DATABASES)
+        for res in results:
+            row = list(res)
+            yield row[1]
+
     def get_database_names(self) -> Iterable[str]:
         configured_db = self.config.serviceConnection.__root__.config.database
         if configured_db:
@@ -224,10 +238,7 @@ class SnowflakeSource(LifeCycleQueryMixin, StoredProcedureMixin, CommonDbSourceS
             self.set_database_description_map()
             yield configured_db
         else:
-            results = self.connection.execute(SNOWFLAKE_GET_DATABASES)
-            for res in results:
-                row = list(res)
-                new_database = row[1]
+            for new_database in self.get_database_names_raw():
                 database_fqn = fqn.build(
                     self.metadata,
                     entity_type=Database,
@@ -506,7 +517,35 @@ class SnowflakeSource(LifeCycleQueryMixin, StoredProcedureMixin, CommonDbSourceS
             ).all()
             for row in results:
                 stored_procedure = SnowflakeStoredProcedure.parse_obj(dict(row))
+                if stored_procedure.definition is None:
+                    logger.debug(
+                        f"Missing ownership permissions on procedure {stored_procedure.name}."
+                        " Trying to fetch description via DESCRIBE."
+                    )
+                    stored_procedure.definition = self.describe_procedure_definition(
+                        stored_procedure
+                    )
                 yield stored_procedure
+
+    def describe_procedure_definition(
+        self, stored_procedure: SnowflakeStoredProcedure
+    ) -> str:
+        """
+        We can only get the SP definition via the INFORMATION_SCHEMA.PROCEDURES if the
+        user has OWNERSHIP grants, which will not always be the case.
+
+        Then, if the procedure is created with `EXECUTE AS CALLER`, we can still try to
+        get the definition with a DESCRIBE.
+        """
+        res = self.engine.execute(
+            SNOWFLAKE_DESC_STORED_PROCEDURE.format(
+                database_name=self.context.database.name.__root__,
+                schema_name=self.context.database_schema.name.__root__,
+                procedure_name=stored_procedure.name,
+                procedure_signature=urllib.parse.unquote(stored_procedure.signature),
+            )
+        )
+        return dict(res.all()).get("body", "")
 
     def yield_stored_procedure(
         self, stored_procedure: SnowflakeStoredProcedure
@@ -552,7 +591,6 @@ class SnowflakeSource(LifeCycleQueryMixin, StoredProcedureMixin, CommonDbSourceS
         start, _ = get_start_and_end(self.source_config.queryLogDuration)
         query = SNOWFLAKE_GET_STORED_PROCEDURE_QUERIES.format(
             start_date=start,
-            warehouse=self.service_connection.warehouse,
         )
 
         queries_dict = self.procedure_queries_dict(

@@ -136,9 +136,8 @@ public class UserRepository extends EntityRepository<User> {
   @Override
   public void restorePatchAttributes(User original, User updated) {
     // Patch can't make changes to following fields. Ignore the changes
+    super.restorePatchAttributes(original, updated);
     updated
-        .withId(original.getId())
-        .withName(original.getName())
         .withInheritedRoles(original.getInheritedRoles())
         .withAuthenticationMechanism(original.getAuthenticationMechanism());
   }
@@ -187,7 +186,7 @@ public class UserRepository extends EntityRepository<User> {
       List<EntityReference> teams = !fields.contains(TEAMS_FIELD) ? getTeams(user) : user.getTeams();
       if (!nullOrEmpty(teams)) {
         Team team = Entity.getEntity(TEAM, teams.get(0).getId(), "domain", ALL);
-        user.withDomain(team.getDomain());
+        inheritDomain(user, fields, team);
       }
     }
     return user;
@@ -244,7 +243,6 @@ public class UserRepository extends EntityRepository<User> {
     if (teams != null) {
       for (EntityReference entityReference : teams) {
         EntityReference ref = Entity.getEntityReferenceById(Entity.TEAM, entityReference.getId(), ALL);
-
         EntityUtil.copy(ref, entityReference);
       }
       teams.sort(EntityUtil.compareEntityReference);

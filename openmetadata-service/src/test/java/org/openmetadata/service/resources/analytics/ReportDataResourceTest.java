@@ -19,6 +19,7 @@ import es.org.elasticsearch.client.RestClient;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -132,7 +133,7 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
             .withEntityCount(11);
     ReportData reportData1 =
         new ReportData()
-            .withTimestamp(new Date(122, 9, 15, 10, 10, 10).getTime())
+            .withTimestamp(new Date(122, Calendar.OCTOBER, 15, 10, 10, 10).getTime())
             .withReportDataType(ReportData.ReportDataType.ENTITY_REPORT_DATA)
             .withData(entityReportData);
 
@@ -144,7 +145,7 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
             .withLastSession(TestUtils.dateToTimestamp("2022-10-13"));
     ReportData reportData2 =
         new ReportData()
-            .withTimestamp(new Date(122, 9, 15, 10, 10, 10).getTime())
+            .withTimestamp(new Date(122, Calendar.OCTOBER, 15, 10, 10, 10).getTime())
             .withReportDataType(ReportData.ReportDataType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA)
             .withData(webAnalyticUserActivityReportData);
 

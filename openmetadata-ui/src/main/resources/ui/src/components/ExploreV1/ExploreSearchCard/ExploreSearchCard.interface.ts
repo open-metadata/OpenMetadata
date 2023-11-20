@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { SearchedDataProps } from '../../searched-data/SearchedData.interface';
+import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 
 export interface ExploreSearchCardProps {
   id: string;
@@ -31,4 +31,5 @@ export interface ExploreSearchCardProps {
   showTags?: boolean;
   openEntityInNewPage?: boolean;
   hideBreadcrumbs?: boolean;
+  actionPopoverContent?: React.ReactNode;
 }

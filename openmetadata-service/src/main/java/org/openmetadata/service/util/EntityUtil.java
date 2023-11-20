@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.util;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 
@@ -38,6 +39,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.binary.Hex;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
@@ -297,7 +299,7 @@ public final class EntityUtil {
 
     @Override
     public String toString() {
-      return fieldList.toString();
+      return String.join(",", fieldList);
     }
 
     public boolean contains(String field) {
@@ -377,6 +379,10 @@ public final class EntityUtil {
     return FullyQualifiedName.build("extension", key);
   }
 
+  public static Double previousVersion(Double version) {
+    return Math.round((version - 0.1) * 10.0) / 10.0;
+  }
+
   public static Double nextVersion(Double version) {
     return Math.round((version + 0.1) * 10.0) / 10.0;
   }
@@ -438,16 +444,22 @@ public final class EntityUtil {
   }
 
   public static void fieldAdded(ChangeDescription change, String fieldName, Object newValue) {
-    change.getFieldsAdded().add(new FieldChange().withName(fieldName).withNewValue(newValue));
+    if (change != null) {
+      change.getFieldsAdded().add(new FieldChange().withName(fieldName).withNewValue(newValue));
+    }
   }
 
   public static void fieldDeleted(ChangeDescription change, String fieldName, Object oldValue) {
-    change.getFieldsDeleted().add(new FieldChange().withName(fieldName).withOldValue(oldValue));
+    if (change != null) {
+      change.getFieldsDeleted().add(new FieldChange().withName(fieldName).withOldValue(oldValue));
+    }
   }
 
   public static void fieldUpdated(ChangeDescription change, String fieldName, Object oldValue, Object newValue) {
-    FieldChange fieldChange = new FieldChange().withName(fieldName).withOldValue(oldValue).withNewValue(newValue);
-    change.getFieldsUpdated().add(fieldChange);
+    if (change != null) {
+      FieldChange fieldChange = new FieldChange().withName(fieldName).withOldValue(oldValue).withNewValue(newValue);
+      change.getFieldsUpdated().add(fieldChange);
+    }
   }
 
   public static MetadataOperation createOrUpdateOperation(ResourceContext resourceContext) {
@@ -555,5 +567,19 @@ public final class EntityUtil {
         .findFirst()
         .orElseThrow(
             () -> new IllegalArgumentException(CatalogExceptionMessage.invalidFieldName("column", columnName)));
+  }
+
+  public static <T extends FieldInterface> List<T> getFlattenedEntityField(List<T> fields) {
+    List<T> flattenedFields = new ArrayList<>();
+    fields.forEach(column -> flattenEntityField(column, flattenedFields));
+    return flattenedFields;
+  }
+
+  private static <T extends FieldInterface> void flattenEntityField(T field, List<T> flattenedFields) {
+    flattenedFields.add(field);
+    List<T> children = (List<T>) field.getChildren();
+    for (T child : listOrEmpty(children)) {
+      flattenEntityField(child, flattenedFields);
+    }
   }
 }

@@ -14,8 +14,8 @@ slug: /connectors/database/couchbase/yaml
 | Query Usage        | {% icon iconName="cross" /%} |
 | Data Profiler      | {% icon iconName="cross" /%} |
 | Data Quality       | {% icon iconName="cross" /%} |
-| Lineage            | {% icon iconName="cross" /%}          |
-| DBT                | {% icon iconName="cross" /%} |
+| Stored Procedures            | {% icon iconName="cross" /%} |
+| DBT                | {% icon iconName="check" /%} |
 | Supported Versions | --                           |
 
 | Feature      | Status                       |
@@ -98,31 +98,11 @@ This is a sample config for Couchbase:
 
 {% /codeInfo %}
 
-#### Source Configuration - Source Config
+{% partial file="/v1.2/connectors/yaml/database/source-config-def.md" /%}
 
-{% codeInfo srNumber=5 %}
+{% partial file="/v1.2/connectors/yaml/ingestion-sink-def.md" /%}
 
-The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/databaseServiceMetadataPipeline.json):
-
-**markDeletedTables**: To flag tables as soft-deleted if they are not present anymore in the source system.
-
-**includeTables**: true or false, to ingest table data. Default is true.
-
-**includeViews**: true or false, to ingest views definitions.
-
-**databaseFilterPattern**, **schemaFilterPattern**, **tableFilternPattern**: Note that the filter supports regex as include or exclude. You can find examples [here](/connectors/ingestion/workflows/metadata/filter-patterns/database)
-
-{% /codeInfo %}
-
-#### Sink Configuration
-
-{% codeInfo srNumber=6 %}
-
-To send the metadata to OpenMetadata, it needs to be specified as `type: metadata-rest`.
-
-{% /codeInfo %}
-
-{% partial file="/v1.2/connectors/workflow-config.md" /%}
+{% partial file="/v1.2/connectors/yaml/workflow-config-def.md" /%}
 
 #### Advanced Configuration
 
@@ -144,7 +124,7 @@ source:
   serviceConnection:
     config:
       type: Couchbase
-
+```
 ```yaml {% srNumber=1 %}
         username: username
 ```
@@ -159,59 +139,17 @@ source:
       bucket: custom_bucket_name
 ```
 
-```yaml {% srNumber=5 %}
-  sourceConfig:
-    config:
-      type: DatabaseMetadata
-      markDeletedTables: true
-      includeTables: true
-      includeViews: true
-      # includeTags: true
-      # databaseFilterPattern:
-      #   includes:
-      #     - database1
-      #     - database2
-      #   excludes:
-      #     - database3
-      #     - database4
-      # schemaFilterPattern:
-      #   includes:
-      #     - schema1
-      #     - schema2
-      #   excludes:
-      #     - schema3
-      #     - schema4
-      # tableFilterPattern:
-      #   includes:
-      #     - users
-      #     - type_test
-      #   excludes:
-      #     - table3
-      #     - table4
-```
+{% partial file="/v1.2/connectors/yaml/database/source-config.md" /%}
 
-```yaml {% srNumber=6 %}
-sink:
-  type: metadata-rest
-  config: {}
-```
+{% partial file="/v1.2/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.2/connectors/workflow-config-yaml.md" /%}
+{% partial file="/v1.2/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
 {% /codePreview %}
 
-### 2. Run with the CLI
-
-First, we will need to save the YAML file. Afterward, and with all requirements installed, we can run:
-
-```bash
-metadata ingest -c <path-to-yaml>
-```
-
-Note that from connector to connector, this recipe will always be the same. By updating the YAML configuration,
-you will be able to extract metadata from different sources.
+{% partial file="/v1.2/connectors/yaml/ingestion-cli.md" /%}
 
 ## Related
 

@@ -32,10 +32,8 @@ public class StorageServiceIndex implements SearchIndex {
             storageService.getFullyQualifiedName(),
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
-    doc.put("entityType", Entity.METADATA_SERVICE);
-    if (storageService.getOwner() != null) {
-      doc.put("owner", getOwnerWithDisplayName(storageService.getOwner()));
-    }
+    doc.put("entityType", Entity.STORAGE_SERVICE);
+    doc.put("owner", getEntityWithDisplayName(storageService.getOwner()));
     return doc;
   }
 }

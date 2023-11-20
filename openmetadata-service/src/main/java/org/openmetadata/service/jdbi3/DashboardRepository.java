@@ -118,11 +118,8 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   @Override
   public void restorePatchAttributes(Dashboard original, Dashboard updated) {
     // Patch can't make changes to following fields. Ignore the changes
-    updated
-        .withId(original.getId())
-        .withFullyQualifiedName(original.getFullyQualifiedName())
-        .withName(original.getName())
-        .withService(original.getService());
+    super.restorePatchAttributes(original, updated);
+    updated.withService(original.getService());
   }
 
   private void populateService(Dashboard dashboard) {
@@ -176,12 +173,6 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
             dashboard.getId(), dataModel.getId(), Entity.DASHBOARD, Entity.DASHBOARD_DATA_MODEL, Relationship.HAS);
       }
     }
-  }
-
-  @Override
-  public Dashboard setInheritedFields(Dashboard dashboard, Fields fields) {
-    DashboardService dashboardService = Entity.getEntity(dashboard.getService(), "domain", ALL);
-    return inheritDomain(dashboard, fields, dashboardService);
   }
 
   @Override

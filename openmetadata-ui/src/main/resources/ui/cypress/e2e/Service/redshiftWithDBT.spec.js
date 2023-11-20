@@ -32,6 +32,10 @@ import {
 } from '../../constants/constants';
 import { REDSHIFT } from '../../constants/service.constants';
 
+const dbtEntityFqn = `${REDSHIFT.serviceName}.${Cypress.env(
+  'redshiftDatabase'
+)}.dbt_jaffle.${REDSHIFT.DBTTable}`;
+
 describe('RedShift Ingestion', () => {
   beforeEach(() => {
     cy.login();
@@ -218,7 +222,7 @@ describe('RedShift Ingestion', () => {
     // Verify DBT tags
     interceptURL(
       'GET',
-      `/api/v1/tags?fields=usageCount&parent=${DBT.classification}&limit=10`,
+      `/api/v1/tags?*parent=${DBT.classification}*`,
       'getTagList'
     );
     cy.get('[data-testid="governance"]').click();
@@ -228,6 +232,10 @@ describe('RedShift Ingestion', () => {
     });
 
     verifyResponseStatusCode('@fetchClassifications', 200);
+
+    cy.get('[data-testid="data-summary-container"]')
+      .contains(DBT.classification)
+      .click();
 
     verifyResponseStatusCode('@getTagList', 200);
     // Verify DBT tag category is added
@@ -240,7 +248,12 @@ describe('RedShift Ingestion', () => {
       .should('contain', DBT.tagName);
 
     // Verify DBT in table entity
-    visitEntityDetailsPage(REDSHIFT.DBTTable, REDSHIFT.serviceName, 'tables');
+    visitEntityDetailsPage({
+      term: REDSHIFT.DBTTable,
+      serviceName: REDSHIFT.serviceName,
+      entity: 'tables',
+      entityFqn: dbtEntityFqn,
+    });
 
     // Verify tags
     cy.get('[data-testid="entity-tags"]').should('contain', `${DBT.tagName}`);

@@ -17,7 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../components/common/ServiceDocPanel/ServiceDocPanel';
-import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
+import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import Loader from '../../components/Loader/Loader';
 import {
   GlobalSettingOptions,
@@ -28,7 +28,7 @@ import {
   OPEN_METADATA,
 } from '../../constants/service-guide.constant';
 import { ServiceCategory } from '../../enums/service.enum';
-import { LogoConfiguration } from '../../generated/configuration/applicationConfiguration';
+import { LogoConfiguration } from '../../generated/configuration/logoConfiguration';
 import { Settings, SettingType } from '../../generated/settings/settings';
 import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
 import {
@@ -95,6 +95,7 @@ const EditCustomLogoConfig = () => {
       id: 'root/customLogoUrlPath',
       props: {
         'data-testid': 'customLogoUrlPath',
+        autoFocus: true,
       },
       rules: [
         {
@@ -119,6 +120,24 @@ const EditCustomLogoConfig = () => {
           type: 'url',
           message: t('message.entity-is-not-valid-url', {
             entity: t('label.monogram-url'),
+          }),
+        },
+      ],
+    },
+    {
+      name: 'customFaviconUrlPath',
+      label: t('label.favicon-url'),
+      type: FieldTypes.TEXT,
+      required: false,
+      id: 'root/customFaviconUrlPath',
+      props: {
+        'data-testid': 'customFaviconUrlPath',
+      },
+      rules: [
+        {
+          type: 'url',
+          message: t('message.entity-is-not-valid-url', {
+            entity: t('label.favicon-url'),
           }),
         },
       ],

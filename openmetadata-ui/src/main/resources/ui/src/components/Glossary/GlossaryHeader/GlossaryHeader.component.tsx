@@ -39,7 +39,6 @@ import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
 import { ManageButtonItemLabel } from '../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import StatusBadge from '../../../components/common/StatusBadge/StatusBadge.component';
-import { TitleBreadcrumbProps } from '../../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import { useEntityExportModalProvider } from '../../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { EntityHeader } from '../../../components/Entity/EntityHeader/EntityHeader.component';
 import EntityDeleteModal from '../../../components/Modals/EntityDeleteModal/EntityDeleteModal';
@@ -74,7 +73,8 @@ import {
 } from '../../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
 
 export interface GlossaryHeaderProps {
@@ -168,7 +168,7 @@ const GlossaryHeader = ({
     if ((selectedData as GlossaryTerm).style?.iconURL) {
       return (
         <img
-          className="align-middle"
+          className="align-middle object-contain"
           data-testid="icon"
           height={36}
           src={(selectedData as GlossaryTerm).style?.iconURL}
@@ -556,9 +556,11 @@ const GlossaryHeader = ({
                     <Button
                       className="glossary-manage-dropdown-button tw-px-1.5"
                       data-testid="manage-button"
-                      onClick={() => setShowActions(true)}>
-                      <IconDropdown className="anticon self-center manage-dropdown-icon" />
-                    </Button>
+                      icon={
+                        <IconDropdown className="vertical-align-inherit manage-dropdown-icon" />
+                      }
+                      onClick={() => setShowActions(true)}
+                    />
                   </Tooltip>
                 </Dropdown>
               )}

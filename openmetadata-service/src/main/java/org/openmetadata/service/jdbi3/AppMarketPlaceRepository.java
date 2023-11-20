@@ -16,6 +16,7 @@ public class AppMarketPlaceRepository extends EntityRepository<AppMarketPlaceDef
         "",
         "");
     supportsSearch = false;
+    quoteFqn = true;
   }
 
   @Override

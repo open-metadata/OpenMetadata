@@ -78,7 +78,34 @@ This is a sample config for ElasticSearch:
 {% /codeInfo %}
 
 {% codeInfo srNumber=4 %}
-**caCert**: In case the SSL is enabled on your ElasticSearch instance and CA certificate is required for authentication, then specify the path of certificate in this field. NOTE: In case of docker deployment you need to store this certificate accessible to OpenMetadata Ingestion docker container, you can do it via copying the certificate to the docker container or store it in the volume associate with the OpenMetadata Ingestion container.
+- **sslConfig**:
+    1. SSL Certificates By Path
+    - caCertPath: This field specifies the path of CA certificate required for authentication.
+    - clientCertPath: This field specifies the path of Clint certificate required for authentication.
+    - privateKeyPath: This field specifies the path of Clint Key/Private Key required for authentication.
+    
+    2. SSL Certificates By Value
+    - caCertValue: This field specifies the value of CA certificate required for authentication.
+    - clientCertValue: This field specifies the value of Clint certificate required for authentication.
+    - privateKeyValue: This field specifies the value of Clint Key/Private Key required for authentication.
+    - stagingDir: This field specifies the path to temporary staging directory, where the certificates will be stored temporarily during the ingestion process, which will de deleted once the ingestion job is over.
+    - when you are using this approach make sure you are passing the key in a correct format. If your certificate looks like this:
+    ```
+    -----BEGIN CERTIFICATE-----
+    MII..
+    MBQ...
+    CgU..
+    8Lt..
+    ...
+    h+4=
+    -----END CERTIFICATE-----
+    ```
+
+    You will have to replace new lines with `\n` and the final value that you need to pass should look like this:
+
+    ```
+    -----BEGIN CERTIFICATE-----\nMII..\nMBQ...\nCgU..\n8Lt..\n...\nh+4=\n-----END CERTIFICATE-----\n
+
 {% /codeInfo %}
 
 
@@ -86,33 +113,11 @@ This is a sample config for ElasticSearch:
 **connectionTimeoutSecs**: Connection timeout configuration for communicating with ElasticSearch APIs.
 {% /codeInfo %}
 
+{% partial file="/v1.2/connectors/yaml/search/source-config-def.md" /%}
 
+{% partial file="/v1.2/connectors/yaml/ingestion-sink-def.md" /%}
 
-#### Source Configuration - Source Config
-
-{% codeInfo srNumber=6 %}
-
-The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/searchServiceMetadataPipeline.json):
-
-**includeSampleData**: Set the Ingest Sample Data toggle to control whether to ingest sample data as part of metadata ingestion.
-
-**sampleSize**: If include sample data is enabled, 10 records will be ingested by default. Using this field you can customize the size of sample data.
-
-**markDeletedSearchIndexes**: Optional configuration to soft delete `search indexes` in OpenMetadata if the source `search indexes` are deleted. After deleting, all the associated entities like lineage, etc., with that `search index` will be deleted.
-
-**searchIndexFilterPattern**: Note that the `searchIndexFilterPattern` support regex to include or exclude search indexes during metadata ingestion process.
-
-{% /codeInfo %}
-
-#### Sink Configuration
-
-{% codeInfo srNumber=7%}
-
-To send the metadata to OpenMetadata, it needs to be specified as `type: metadata-rest`.
-
-{% /codeInfo %}
-
-{% partial file="/v1.2/connectors/workflow-config.md" /%}
+{% partial file="/v1.2/connectors/yaml/workflow-config-def.md" /%}
 
 {% /codeInfoContainer %}
 
@@ -139,45 +144,30 @@ source:
         # apiKey: <api key>
 ```
 ```yaml {% srNumber=4 %}
-      caCert: /path/to/http_ca.crt
+      sslConfig:
+        certificates:
+          caCertPath: /path/to/http_ca.crt
+          clientCertPath: /path/to/http_ca.crt
+          privateKeyPath: /path/to/http_ca.crt
+
+          # pass certificate values
+          # caCertValue: -----BEGIN CERTIFICATE-----\n....\n.....\n-----END CERTIFICATE-----\n
+          # clientCertValue: -----BEGIN CERTIFICATE-----\n....\n...-----END CERTIFICATE-----\n
+          # privateKeyValue: -----BEGIN RSA PRIVATE KEY-----\n....\n....\n-----END RSA PRIVATE KEY-----\n
+          # stagingDir: /tmp/stage
 ```
 ```yaml {% srNumber=5 %}
       connectionTimeoutSecs: 30
 ```
-```yaml {% srNumber=6 %}
-  sourceConfig:
-    config:
-      type: SearchMetadata
-      # markDeletedSearchIndexes: True
-      # includeSampleData: True
-      # sampleSize: 10
-      # searchIndexFilterPattern:
-      #   includes:
-      #     - index1
-      #     - index2
-      #   excludes:
-      #     - index4
-      #     - index3
-```
-```yaml {% srNumber=7 %}
-sink:
-  type: metadata-rest
-  config: {}
-```
 
-{% partial file="/v1.2/connectors/workflow-config-yaml.md" /%}
+{% partial file="/v1.2/connectors/yaml/search/source-config.md" /%}
+
+{% partial file="/v1.2/connectors/yaml/ingestion-sink.md" /%}
+
+{% partial file="/v1.2/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
 {% /codePreview %}
 
-### 2. Run with the CLI
-
-First, we will need to save the YAML file. Afterward, and with all requirements installed, we can run:
-
-```bash
-metadata ingest -c <path-to-yaml>
-```
-
-Note that from connector to connector, this recipe will always be the same. By updating the YAML configuration,
-you will be able to extract metadata from different sources.
+{% partial file="/v1.2/connectors/yaml/ingestion-cli.md" /%}

@@ -122,7 +122,7 @@ function DomainExperts({
 
   if (!isEmpty(entity.experts) && !isUndefined(entity.experts)) {
     return (
-      <Space wrap data-testid="domain-expert-name-heading" size={6}>
+      <Space wrap data-testid="domain-expert-name-heading" size={8}>
         {entity.experts.map((expert) =>
           getExpert(expert, EntityChangeOperations.NORMAL)
         )}

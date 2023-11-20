@@ -16,9 +16,9 @@ import { split } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CopyIcon } from '../../../assets/svg/icon-copy.svg';
-import SchemaEditor from '../../../components/schema-editor/SchemaEditor';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
+import SchemaEditor from '../../SchemaEditor/SchemaEditor';
 import './query-viewer.style.less';
 
 const QueryViewer = ({

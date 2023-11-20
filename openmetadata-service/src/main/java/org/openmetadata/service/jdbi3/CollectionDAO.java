@@ -24,9 +24,11 @@ import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 import com.fasterxml.jackson.core.type.TypeReference;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -53,6 +55,7 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.TokenInterface;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.analytics.WebAnalyticEvent;
+import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.auth.EmailVerificationToken;
 import org.openmetadata.schema.auth.PasswordResetToken;
 import org.openmetadata.schema.auth.PersonalAccessToken;
@@ -623,6 +626,14 @@ public interface CollectionDAO {
         @Bind("jsonSchema") String jsonSchema,
         @Bind("json") String json);
 
+    @ConnectionAwareSqlUpdate(
+        value = "UPDATE entity_extension SET json = :json where (json -> '$.id') = :id",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "UPDATE entity_extension SET json = (:json :: jsonb) where (json ->> 'id) = :id",
+        connectionType = POSTGRES)
+    void update(@BindUUID("id") UUID id, @Bind("json") String json);
+
     @SqlQuery("SELECT json FROM entity_extension WHERE id = :id AND extension = :extension")
     String getExtension(@BindUUID("id") UUID id, @Bind("extension") String extension);
 
@@ -632,10 +643,6 @@ public interface CollectionDAO {
             + "LIKE CONCAT (:extensionPrefix, '.%') "
             + "ORDER BY extension")
     List<ExtensionRecord> getExtensions(@BindUUID("id") UUID id, @Bind("extensionPrefix") String extensionPrefix);
-
-    @RegisterRowMapper(ExtensionMapper.class)
-    @SqlQuery("SELECT json FROM entity_extension WHERE id = :id AND extension = :extension " + "ORDER BY extension")
-    List<String> getExtensionJsons(@BindUUID("id") UUID id, @Bind("extension") String extension);
 
     @SqlUpdate("DELETE FROM entity_extension WHERE id = :id AND extension = :extension")
     void delete(@BindUUID("id") UUID id, @Bind("extension") String extension);
@@ -1753,7 +1760,7 @@ public interface CollectionDAO {
         @Define("cond") String cond, @BindMap Map<String, Object> bindings);
 
     @SqlQuery(
-        "SELECT json FROM (SELECT ingestion_pipeline_entity.name, ingestion_pipeline_entity.json FROM ingestion_pipeline_entity <cond>) last_rows_subquery ORDER BY fullyQualifiedName")
+        "SELECT json FROM (SELECT ingestion_pipeline_entity.name, ingestion_pipeline_entity.json FROM ingestion_pipeline_entity <cond>) last_rows_subquery ORDER BY last_rows_subquery.name")
     List<String> listBeforeIngestionPipelineByserviceType(
         @Define("cond") String cond, @BindMap Map<String, Object> bindings);
 
@@ -2201,9 +2208,65 @@ public interface CollectionDAO {
       return tags;
     }
 
+    default Map<String, List<TagLabel>> getTagsByPrefix(String targetFQNPrefix) {
+      Map<String, List<TagLabel>> resultSet = new LinkedHashMap<>();
+      List<Pair<String, TagLabel>> tags = getTagsInternalByPrefix(targetFQNPrefix);
+      tags.forEach(
+          pair -> {
+            String targetHash = pair.getLeft();
+            TagLabel tagLabel = pair.getRight();
+            List<TagLabel> listOfTarget = new ArrayList<>();
+            if (resultSet.containsKey(targetHash)) {
+              listOfTarget = resultSet.get(targetHash);
+              listOfTarget.add(tagLabel);
+            } else {
+              listOfTarget.add(tagLabel);
+            }
+            resultSet.put(targetHash, listOfTarget);
+          });
+      return resultSet;
+    }
+
     @SqlQuery(
         "SELECT source, tagFQN,  labelType, state FROM tag_usage WHERE targetFQNHash = :targetFQNHash ORDER BY tagFQN")
     List<TagLabel> getTagsInternal(@BindFQN("targetFQNHash") String targetFQNHash);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT source, tagFQN, labelType, targetFQNHash, state, json "
+                + "FROM ("
+                + "  SELECT gterm.* , tu.* "
+                + "  FROM glossary_term_entity AS gterm "
+                + "  JOIN tag_usage AS tu "
+                + "  ON gterm.fqnHash = tu.tagFQNHash "
+                + "  WHERE tu.source = 1 "
+                + "  UNION ALL "
+                + "  SELECT ta.*, tu.* "
+                + "  FROM tag AS ta "
+                + "  JOIN tag_usage AS tu "
+                + "  ON ta.fqnHash = tu.tagFQNHash "
+                + "  WHERE tu.source = 0 "
+                + ") AS combined_data "
+                + "WHERE combined_data.targetFQNHash  LIKE CONCAT(:targetFQNHashPrefix, '.%')",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT source, tagFQN, labelType, targetFQNHash, state, json "
+                + "FROM ("
+                + "  SELECT gterm.*, tu.* "
+                + "  FROM glossary_term_entity AS gterm "
+                + "  JOIN tag_usage AS tu ON gterm.fqnHash = tu.tagFQNHash "
+                + "  WHERE tu.source = 1 "
+                + "  UNION ALL "
+                + "  SELECT ta.*, tu.* "
+                + "  FROM tag AS ta "
+                + "  JOIN tag_usage AS tu ON ta.fqnHash = tu.tagFQNHash "
+                + "  WHERE tu.source = 0 "
+                + ") AS combined_data "
+                + "WHERE combined_data.targetFQNHash LIKE CONCAT(:targetFQNHashPrefix, '.%')",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(TagLabelRowMapperWithTargetFqnHash.class)
+    List<Pair<String, TagLabel>> getTagsInternalByPrefix(@BindFQN("targetFQNHashPrefix") String targetFQNHashPrefix);
 
     @SqlQuery("SELECT * FROM tag_usage")
     @Deprecated(since = "Release 1.1")
@@ -2291,6 +2354,35 @@ public interface CollectionDAO {
             .withLabelType(TagLabel.LabelType.values()[r.getInt("labelType")])
             .withState(TagLabel.State.values()[r.getInt("state")])
             .withTagFQN(r.getString("tagFQN"));
+      }
+    }
+
+    class TagLabelRowMapperWithTargetFqnHash implements RowMapper<Pair<String, TagLabel>> {
+      @Override
+      public Pair<String, TagLabel> map(ResultSet r, StatementContext ctx) throws SQLException {
+        TagLabel label =
+            new TagLabel()
+                .withSource(TagLabel.TagSource.values()[r.getInt("source")])
+                .withLabelType(TagLabel.LabelType.values()[r.getInt("labelType")])
+                .withState(TagLabel.State.values()[r.getInt("state")])
+                .withTagFQN(r.getString("tagFQN"));
+        TagLabel.TagSource source = TagLabel.TagSource.values()[r.getInt("source")];
+        if (source == TagLabel.TagSource.CLASSIFICATION) {
+          Tag tag = JsonUtils.readValue(r.getString("json"), Tag.class);
+          label.setName(tag.getName());
+          label.setDisplayName(tag.getDisplayName());
+          label.setDescription(tag.getDescription());
+          label.setStyle(tag.getStyle());
+        } else if (source == TagLabel.TagSource.GLOSSARY) {
+          GlossaryTerm glossaryTerm = JsonUtils.readValue(r.getString("json"), GlossaryTerm.class);
+          label.setName(glossaryTerm.getName());
+          label.setDisplayName(glossaryTerm.getDisplayName());
+          label.setDescription(glossaryTerm.getDescription());
+          label.setStyle(glossaryTerm.getStyle());
+        } else {
+          throw new IllegalArgumentException("Invalid source type " + source);
+        }
+        return Pair.of(r.getString("targetFQNHash"), label);
       }
     }
 
@@ -3229,16 +3321,16 @@ public interface CollectionDAO {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT * FROM (SELECT json, ranked FROM "
-                + "(SELECT id, json, deleted, ROW_NUMBER() OVER(ORDER BY (json ->> '$.testCaseResult.timestamp') DESC) AS ranked FROM <table>) executionTimeSorted "
-                + "<cond> AND ranked < :before "
+                + "(SELECT id, json, deleted, ROW_NUMBER() OVER(ORDER BY (json ->> '$.testCaseResult.timestamp') DESC) AS ranked FROM <table> <cond>) executionTimeSorted "
+                + "WHERE ranked < :before "
                 + "ORDER BY ranked DESC "
                 + "LIMIT :limit) rankedBefore ORDER BY ranked",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT * FROM (SELECT json, ranked FROM "
-                + "(SELECT id, json, deleted, ROW_NUMBER() OVER(ORDER BY (json -> 'testCaseResult'->>'timestamp') DESC NULLS LAST) AS ranked FROM <table>) executionTimeSorted "
-                + "<cond> AND ranked < :before "
+                + "(SELECT id, json, deleted, ROW_NUMBER() OVER(ORDER BY (json -> 'testCaseResult'->>'timestamp') DESC NULLS LAST) AS ranked FROM <table> <cond>) executionTimeSorted "
+                + "WHERE ranked < :before "
                 + "ORDER BY ranked DESC "
                 + "LIMIT :limit) rankedBefore ORDER BY ranked",
         connectionType = POSTGRES)
@@ -3254,16 +3346,16 @@ public interface CollectionDAO {
         value =
             "SELECT json, ranked FROM "
                 + "(SELECT id, json, deleted, ROW_NUMBER() OVER(ORDER BY (json ->> '$.testCaseResult.timestamp') DESC ) AS ranked FROM <table> "
-                + ") executionTimeSorted "
-                + "<cond> AND ranked > :after "
+                + "<cond>) executionTimeSorted "
+                + "WHERE ranked > :after "
                 + "LIMIT :limit",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json, ranked FROM "
                 + "(SELECT id, json, deleted, ROW_NUMBER() OVER(ORDER BY (json->'testCaseResult'->>'timestamp') DESC NULLS LAST) AS ranked FROM <table> "
-                + ") executionTimeSorted "
-                + "<cond> AND ranked > :after "
+                + "<cond>) executionTimeSorted "
+                + "WHERE ranked > :after "
                 + "LIMIT :limit",
         connectionType = POSTGRES)
     @RegisterRowMapper(TestCaseRecordMapper.class)
@@ -3533,6 +3625,9 @@ public interface CollectionDAO {
           break;
         case CUSTOM_LOGO_CONFIGURATION:
           value = JsonUtils.readValue(json, LogoConfiguration.class);
+          break;
+        case LOGIN_CONFIGURATION:
+          value = JsonUtils.readValue(json, LoginConfiguration.class);
           break;
         case SLACK_APP_CONFIGURATION:
           value = JsonUtils.readValue(json, String.class);

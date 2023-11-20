@@ -13,10 +13,10 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
+import static org.openmetadata.service.Entity.populateEntityFieldTags;
 
 import java.util.List;
 import lombok.SneakyThrows;
@@ -122,9 +122,6 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     DashboardService dashboardService = Entity.getEntity(dashboardDataModel.getService(), "", Include.ALL);
     dashboardDataModel.setService(dashboardService.getEntityReference());
     dashboardDataModel.setServiceType(dashboardService.getServiceType());
-
-    // Validate column tags
-    validateColumnTags(dashboardDataModel.getColumns());
   }
 
   @Override
@@ -154,14 +151,12 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   }
 
   @Override
-  public DashboardDataModel setInheritedFields(DashboardDataModel dataModel, Fields fields) {
-    DashboardService dashboardService = Entity.getEntity(dataModel.getService(), "domain", ALL);
-    return inheritDomain(dataModel, fields, dashboardService);
-  }
-
-  @Override
   public DashboardDataModel setFields(DashboardDataModel dashboardDataModel, Fields fields) {
-    getColumnTags(fields.contains(FIELD_TAGS), dashboardDataModel.getColumns());
+    populateEntityFieldTags(
+        entityType,
+        dashboardDataModel.getColumns(),
+        dashboardDataModel.getFullyQualifiedName(),
+        fields.contains(FIELD_TAGS));
     if (dashboardDataModel.getService() == null) {
       dashboardDataModel.withService(getContainer(dashboardDataModel.getId()));
     }
@@ -176,36 +171,15 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   @Override
   public void restorePatchAttributes(DashboardDataModel original, DashboardDataModel updated) {
     // Patch can't make changes to following fields. Ignore the changes
-    updated
-        .withFullyQualifiedName(original.getFullyQualifiedName())
-        .withName(original.getName())
-        .withService(original.getService())
-        .withId(original.getId());
-  }
-
-  // TODO move this to base class?
-  private void getColumnTags(boolean setTags, List<Column> columns) {
-    for (Column c : listOrEmpty(columns)) {
-      c.setTags(setTags ? getTags(c.getFullyQualifiedName()) : c.getTags());
-      getColumnTags(setTags, c.getChildren());
-    }
-  }
-
-  private void applyTags(List<Column> columns) {
-    // Add column level tags by adding tag to column relationship
-    for (Column column : columns) {
-      applyTags(column.getTags(), column.getFullyQualifiedName());
-      if (column.getChildren() != null) {
-        applyTags(column.getChildren());
-      }
-    }
+    super.restorePatchAttributes(original, updated);
+    updated.withService(original.getService());
   }
 
   @Override
   public void applyTags(DashboardDataModel dashboardDataModel) {
     // Add table level tags by adding tag to table relationship
     super.applyTags(dashboardDataModel);
-    applyTags(dashboardDataModel.getColumns());
+    applyColumnTags(dashboardDataModel.getColumns());
   }
 
   @Override
@@ -218,13 +192,10 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     return new DataModelUpdater(original, updated, operation);
   }
 
-  private void validateColumnTags(List<Column> columns) {
-    for (Column column : columns) {
-      checkMutuallyExclusive(column.getTags());
-      if (column.getChildren() != null) {
-        validateColumnTags(column.getChildren());
-      }
-    }
+  @Override
+  public void validateTags(DashboardDataModel entity) {
+    super.validateTags(entity);
+    validateColumnTags(entity.getColumns());
   }
 
   public class DataModelUpdater extends ColumnEntityUpdater {

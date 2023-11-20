@@ -13,8 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.schema.type.Include.ALL;
-
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -65,12 +63,6 @@ public class ChartRepository extends EntityRepository<Chart> {
   }
 
   @Override
-  public Chart setInheritedFields(Chart chart, Fields fields) {
-    DashboardService dashboardService = Entity.getEntity(chart.getService(), "domain", ALL);
-    return inheritDomain(chart, fields, dashboardService);
-  }
-
-  @Override
   public Chart setFields(Chart chart, Fields fields) {
     return chart.withService(getContainer(chart.getId()));
   }
@@ -83,11 +75,8 @@ public class ChartRepository extends EntityRepository<Chart> {
   @Override
   public void restorePatchAttributes(Chart original, Chart updated) {
     // Patch can't make changes to following fields. Ignore the changes
-    updated
-        .withFullyQualifiedName(original.getFullyQualifiedName())
-        .withName(original.getName())
-        .withService(original.getService())
-        .withId(original.getId());
+    super.restorePatchAttributes(original, updated);
+    updated.withService(original.getService());
   }
 
   @Override

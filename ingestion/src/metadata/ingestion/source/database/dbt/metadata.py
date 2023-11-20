@@ -86,6 +86,7 @@ from metadata.utils import fqn
 from metadata.utils.elasticsearch import get_entity_from_es_result
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
+from metadata.utils.time_utils import convert_timestamp_to_milliseconds
 
 logger = ingestion_logger()
 
@@ -845,7 +846,9 @@ class DbtSource(DbtServiceSource):
                         testCaseFailureReason=None,
                         testCaseFailureComment=None,
                         updatedAt=Timestamp(
-                            __root__=int(datetime.utcnow().timestamp() * 1000)
+                            __root__=convert_timestamp_to_milliseconds(
+                                datetime.utcnow().timestamp()
+                            )
                         ),
                         updatedBy=None,
                     )
@@ -863,7 +866,7 @@ class DbtSource(DbtServiceSource):
                     dbt_timestamp = self.context.run_results_generate_time.timestamp()
                 # Create the test case result object
                 test_case_result = TestCaseResult(
-                    timestamp=dbt_timestamp,
+                    timestamp=convert_timestamp_to_milliseconds(dbt_timestamp),
                     testCaseStatus=test_case_status,
                     testResultValue=[
                         TestResultValue(

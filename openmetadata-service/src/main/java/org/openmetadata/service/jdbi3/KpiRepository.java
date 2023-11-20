@@ -104,12 +104,7 @@ public class KpiRepository extends EntityRepository<Kpi> {
   public RestUtil.PutResponse<?> addKpiResult(UriInfo uriInfo, String fqn, KpiResult kpiResult) {
     // Validate the request content
     Kpi kpi = dao.findEntityByName(fqn);
-    storeTimeSeries(
-        kpi.getFullyQualifiedName(),
-        KPI_RESULT_EXTENSION,
-        "kpiResult",
-        JsonUtils.pojoToJson(kpiResult),
-        kpiResult.getTimestamp());
+    storeTimeSeries(kpi.getFullyQualifiedName(), KPI_RESULT_EXTENSION, "kpiResult", JsonUtils.pojoToJson(kpiResult));
     ChangeDescription change = addKpiResultChangeDescription(kpi.getVersion(), kpiResult);
     ChangeEvent changeEvent = getChangeEvent(withHref(uriInfo, kpi), change, entityType, kpi.getVersion());
 
@@ -200,7 +195,7 @@ public class KpiRepository extends EntityRepository<Kpi> {
           original.getDataInsightChart(),
           updated.getDataInsightChart(),
           false);
-      recordChange("targetDefinition", original.getTargetDefinition(), updated.getTargetDefinition());
+      recordChange("targetDefinition", original.getTargetDefinition(), updated.getTargetDefinition(), true);
       recordChange("startDate", original.getStartDate(), updated.getStartDate());
       recordChange("endDate", original.getEndDate(), updated.getEndDate());
       recordChange("metricType", original.getMetricType(), updated.getMetricType());

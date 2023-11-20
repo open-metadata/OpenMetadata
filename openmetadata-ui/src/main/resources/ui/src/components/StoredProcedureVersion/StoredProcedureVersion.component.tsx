@@ -18,7 +18,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
-import DescriptionV1 from '../../components/common/description/DescriptionV1';
+import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import DataAssetsVersionHeader from '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from '../../components/Loader/Loader';
@@ -35,6 +35,7 @@ import {
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
 import { getEncodedFqn } from '../../utils/StringsUtils';
+import DataProductsContainer from '../DataProductsContainer/DataProductsContainer.component';
 import { StoredProcedureVersionProp } from './StoredProcedureVersion.interface';
 const StoredProcedureVersion = ({
   version,
@@ -42,6 +43,7 @@ const StoredProcedureVersion = ({
   isVersionLoading,
   owner,
   domain,
+  dataProducts,
   tier,
   slashedTableName,
   versionList,
@@ -114,9 +116,9 @@ const StoredProcedureVersion = ({
               <Row gutter={[0, 16]}>
                 <Col span={24}>
                   <DescriptionV1
-                    isVersionView
                     description={description}
                     entityType={EntityType.STORED_PROCEDURE}
+                    showActions={false}
                   />
                 </Col>
               </Row>
@@ -126,6 +128,11 @@ const StoredProcedureVersion = ({
               data-testid="entity-right-panel"
               flex="220px">
               <Space className="w-full" direction="vertical" size="large">
+                <DataProductsContainer
+                  activeDomain={domain}
+                  dataProducts={dataProducts ?? []}
+                  hasPermission={false}
+                />
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
                     entityType={EntityType.STORED_PROCEDURE}

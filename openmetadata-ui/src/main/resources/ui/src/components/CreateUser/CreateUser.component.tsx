@@ -37,12 +37,13 @@ import { EntityReference } from '../../generated/entity/type';
 import { AuthProvider } from '../../generated/settings/settings';
 import { checkEmailInUse, generateRandomPwd } from '../../rest/auth-API';
 import { getJWTTokenExpiryOptions } from '../../utils/BotsUtils';
+import { handleSearchFilterOption } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
-import CopyToClipboardButton from '../buttons/CopyToClipboardButton/CopyToClipboardButton';
-import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
+import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
+import RichTextEditor from '../common/RichTextEditor/RichTextEditor';
+import CopyToClipboardButton from '../CopyToClipboardButton/CopyToClipboardButton';
 import Loader from '../Loader/Loader';
 import TeamsSelectable from '../TeamsSelectable/TeamsSelectable';
 import { CreateUserProps } from './CreateUser.interface';
@@ -346,9 +347,7 @@ const CreateUser = ({
             <Select
               data-testid="roles-dropdown"
               disabled={isEmpty(roles)}
-              filterOption={(input, option) =>
-                (option?.label ?? '').includes(input)
-              }
+              filterOption={handleSearchFilterOption}
               mode="multiple"
               options={roleOptions}
               placeholder={t('label.please-select-entity', {

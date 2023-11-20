@@ -25,7 +25,7 @@ const defaultProps = {
   isVersionsView: false,
 };
 
-jest.mock('../../../common/description/DescriptionV1', () => {
+jest.mock('../../../common/EntityDescription/DescriptionV1', () => {
   return jest.fn().mockImplementation(() => <div>DescriptionV1</div>);
 });
 

@@ -33,19 +33,21 @@ import ActivityFeedProvider, {
 } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
+import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import { PagingHandlerParams } from '../../components/common/next-previous/NextPrevious.interface';
-import PageLayoutV1 from '../../components/containers/PageLayoutV1';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import DataProductsContainer from '../../components/DataProductsContainer/DataProductsContainer.component';
 import Loader from '../../components/Loader/Loader';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
 } from '../../components/PermissionProvider/PermissionProvider.interface';
-import { withActivityFeed } from '../../components/router/withActivityFeed';
+import ProfilerSettings from '../../components/ProfilerSettings/ProfilerSettings';
 import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
 import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
@@ -54,7 +56,6 @@ import {
   getDatabaseSchemaDetailsPath,
   getVersionPathWithTab,
   INITIAL_PAGING_VALUE,
-  pagingObject,
 } from '../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
@@ -73,10 +74,7 @@ import {
   updateDatabaseSchemaVotes,
 } from '../../rest/databaseAPI';
 import { getFeedCount, postThread } from '../../rest/feedsAPI';
-import {
-  getStoredProceduresList,
-  ListStoredProcedureParams,
-} from '../../rest/storedProceduresAPI';
+import { getStoredProceduresList } from '../../rest/storedProceduresAPI';
 import { getTableList, TableListParams } from '../../rest/tableAPI';
 import {
   getEntityMissingError,
@@ -88,7 +86,6 @@ import { getDecodedFqn } from '../../utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import { StoredProcedureData } from './DatabaseSchemaPage.interface';
 import SchemaTablesTab from './SchemaTablesTab';
 
 const DatabaseSchemaPage: FunctionComponent = () => {
@@ -124,14 +121,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const [showDeletedTables, setShowDeletedTables] = useState<boolean>(false);
   const [currentTablesPage, setCurrentTablesPage] =
     useState<number>(INITIAL_PAGING_VALUE);
+  const [storedProcedureCount, setStoredProcedureCount] = useState(0);
 
-  const [storedProcedure, setStoredProcedure] = useState<StoredProcedureData>({
-    data: [],
-    isLoading: false,
-    deleted: false,
-    paging: pagingObject,
-    currentPage: INITIAL_PAGING_VALUE,
-  });
+  const [updateProfilerSetting, setUpdateProfilerSetting] =
+    useState<boolean>(false);
 
   const decodedDatabaseSchemaFQN = useMemo(
     () => getDecodedFqn(databaseSchemaFQN),
@@ -143,13 +136,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     setCurrentTablesPage(INITIAL_PAGING_VALUE);
   };
 
-  const handleShowDeletedStoredProcedure = (value: boolean) => {
-    setStoredProcedure((prev) => ({
-      ...prev,
-      currentPage: INITIAL_PAGING_VALUE,
-      deleted: value,
-    }));
-  };
   const { version: currentVersion } = useMemo(
     () => databaseSchema,
     [databaseSchema]
@@ -232,28 +218,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       setIsSchemaDetailsLoading(false);
     }
   }, [databaseSchemaFQN]);
-
-  const fetchStoreProcedureDetails = useCallback(
-    async (params?: ListStoredProcedureParams) => {
-      try {
-        setStoredProcedure((prev) => ({ ...prev, isLoading: true }));
-        const { data, paging } = await getStoredProceduresList({
-          databaseSchema: decodedDatabaseSchemaFQN,
-          fields: 'owner,tags,followers',
-          include: storedProcedure.deleted
-            ? Include.Deleted
-            : Include.NonDeleted,
-          ...params,
-        });
-        setStoredProcedure((prev) => ({ ...prev, data, paging }));
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      } finally {
-        setStoredProcedure((prev) => ({ ...prev, isLoading: false }));
-      }
-    },
-    [decodedDatabaseSchemaFQN, storedProcedure.deleted]
-  );
 
   const getSchemaTables = useCallback(
     async (params?: TableListParams) => {
@@ -340,34 +304,26 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   );
 
   const handleUpdateOwner = useCallback(
-    (owner: DatabaseSchema['owner']) => {
-      const updatedData = {
-        ...databaseSchema,
-        owner: owner ? { ...databaseSchema?.owner, ...owner } : undefined,
-      };
+    async (owner: DatabaseSchema['owner']) => {
+      try {
+        const updatedData = {
+          ...databaseSchema,
+          owner: owner ? { ...databaseSchema?.owner, ...owner } : undefined,
+        };
 
-      return new Promise<void>((_, reject) => {
-        saveUpdatedDatabaseSchemaData(updatedData as DatabaseSchema)
-          .then((res) => {
-            if (res) {
-              setDatabaseSchema(res);
-              reject();
-            } else {
-              reject();
+        const response = await saveUpdatedDatabaseSchemaData(
+          updatedData as DatabaseSchema
+        );
 
-              throw t('server.unexpected-response');
-            }
+        setDatabaseSchema(response);
+      } catch (error) {
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-updating-error', {
+            entity: t('label.database-schema'),
           })
-          .catch((err: AxiosError) => {
-            showErrorToast(
-              err,
-              t('server.entity-updating-error', {
-                entity: t('label.database-schema'),
-              })
-            );
-            reject();
-          });
-      });
+        );
+      }
     },
     [databaseSchema, databaseSchema?.owner]
   );
@@ -516,23 +472,18 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     }));
   }, []);
 
-  const storedProcedurePagingHandler = useCallback(
-    async ({ cursorType, currentPage }: PagingHandlerParams) => {
-      if (cursorType) {
-        const pagingString = {
-          [cursorType]: storedProcedure.paging[cursorType],
-        };
-
-        await fetchStoreProcedureDetails(pagingString);
-
-        setStoredProcedure((prev) => ({
-          ...prev,
-          currentPage: currentPage,
-        }));
-      }
-    },
-    [storedProcedure.paging]
-  );
+  // Fetch stored procedure count to show it in Tab label
+  const fetchStoreProcedureCount = useCallback(async () => {
+    try {
+      const { paging } = await getStoredProceduresList({
+        databaseSchema: decodedDatabaseSchemaFQN,
+        limit: 0,
+      });
+      setStoredProcedureCount(paging.total);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  }, [decodedDatabaseSchemaFQN]);
 
   useEffect(() => {
     fetchDatabaseSchemaPermission();
@@ -541,7 +492,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   useEffect(() => {
     if (viewDatabaseSchemaPermission) {
       fetchDatabaseSchemaDetails();
-      fetchStoreProcedureDetails({ limit: 0 });
+      fetchStoreProcedureCount();
       getEntityFeedCount();
     }
   }, [viewDatabaseSchemaPermission, databaseSchemaFQN]);
@@ -558,18 +509,27 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     appState.inPageSearchText = '';
   }, []);
 
-  const editTagsPermission = useMemo(
-    () =>
-      (databaseSchemaPermission.EditTags || databaseSchemaPermission.EditAll) &&
-      !databaseSchema?.deleted,
-    [databaseSchemaPermission, databaseSchema]
-  );
-
-  const editDescriptionPermission = useMemo(
-    () =>
-      (databaseSchemaPermission.EditDescription ||
-        databaseSchemaPermission.EditAll) &&
-      !databaseSchema.deleted,
+  const {
+    editTagsPermission,
+    editDescriptionPermission,
+    editCustomAttributePermission,
+    viewAllPermission,
+  } = useMemo(
+    () => ({
+      editTagsPermission:
+        (databaseSchemaPermission.EditTags ||
+          databaseSchemaPermission.EditAll) &&
+        !databaseSchema.deleted,
+      editDescriptionPermission:
+        (databaseSchemaPermission.EditDescription ||
+          databaseSchemaPermission.EditAll) &&
+        !databaseSchema.deleted,
+      editCustomAttributePermission:
+        (databaseSchemaPermission.EditAll ||
+          databaseSchemaPermission.EditCustomFields) &&
+        !databaseSchema.deleted,
+      viewAllPermission: databaseSchemaPermission.ViewAll,
+    }),
     [databaseSchemaPermission, databaseSchema]
   );
 
@@ -619,6 +579,11 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             data-testid="entity-right-panel"
             flex="320px">
             <Space className="w-full" direction="vertical" size="large">
+              <DataProductsContainer
+                activeDomain={databaseSchema?.domain}
+                dataProducts={databaseSchema?.dataProducts ?? []}
+                hasPermission={false}
+              />
               <TagsContainerV2
                 displayType={DisplayType.READ_MORE}
                 entityFqn={decodedDatabaseSchemaFQN}
@@ -647,21 +612,14 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     {
       label: (
         <TabsLabel
-          count={storedProcedure.paging.total}
+          count={storedProcedureCount}
           id={EntityTabs.STORED_PROCEDURE}
           isActive={activeTab === EntityTabs.STORED_PROCEDURE}
           name={t('label.stored-procedure-plural')}
         />
       ),
       key: EntityTabs.STORED_PROCEDURE,
-      children: (
-        <StoredProcedureTab
-          fetchStoredProcedure={fetchStoreProcedureDetails}
-          pagingHandler={storedProcedurePagingHandler}
-          storedProcedure={storedProcedure}
-          onShowDeletedStoreProcedureChange={handleShowDeletedStoredProcedure}
-        />
-      ),
+      children: <StoredProcedureTab />,
     },
     {
       label: (
@@ -697,11 +655,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           className=""
           entityType={EntityType.DATABASE_SCHEMA}
           handleExtensionUpdate={handelExtentionUpdate}
-          hasEditAccess={databaseSchemaPermission.ViewAll}
-          hasPermission={
-            databaseSchemaPermission.EditAll ||
-            databaseSchemaPermission.EditCustomFields
-          }
+          hasEditAccess={editCustomAttributePermission}
+          hasPermission={viewAllPermission}
           isVersionView={false}
         />
       ),
@@ -764,6 +719,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                 permissions={databaseSchemaPermission}
                 onDisplayNameUpdate={handleUpdateDisplayName}
                 onOwnerUpdate={handleUpdateOwner}
+                onProfilerSettingUpdate={() => setUpdateProfilerSetting(true)}
                 onRestoreDataAsset={handleRestoreDatabaseSchema}
                 onTierUpdate={handleUpdateTier}
                 onUpdateVote={updateVote}
@@ -794,6 +750,14 @@ const DatabaseSchemaPage: FunctionComponent = () => {
               />
             ) : null}
           </Col>
+          {updateProfilerSetting && (
+            <ProfilerSettings
+              entityId={databaseSchemaId}
+              entityType={EntityType.DATABASE_SCHEMA}
+              visible={updateProfilerSetting}
+              onVisibilityChange={(value) => setUpdateProfilerSetting(value)}
+            />
+          )}
         </Row>
       )}
     </PageLayoutV1>

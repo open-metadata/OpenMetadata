@@ -15,7 +15,7 @@ import { Typography } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AnnouncementIcon } from '../../../assets/svg/announcements-v1.svg';
-import './Badge.less';
+import './task-badge.less';
 
 const AnnouncementBadge = () => {
   const { t } = useTranslation();

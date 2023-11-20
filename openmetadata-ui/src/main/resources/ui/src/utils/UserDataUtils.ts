@@ -12,12 +12,12 @@
  */
 
 import { isEqual } from 'lodash';
+import { OidcUser } from '../components/Auth/AuthProviders/AuthProvider.interface';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
 import { SettledStatus } from '../enums/axios.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { SearchResponse } from '../interface/search.interface';
 import { getSearchedTeams, getSearchedUsers } from '../rest/miscAPI';
-import { OidcUser } from './../components/authentication/auth-provider/AuthProvider.interface';
 import { User } from './../generated/entity/teams/user';
 import { formatTeamsResponse, formatUsersResponse } from './APIUtils';
 import { getImages } from './CommonUtils';

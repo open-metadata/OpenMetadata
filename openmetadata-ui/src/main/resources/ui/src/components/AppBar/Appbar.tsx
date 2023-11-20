@@ -49,8 +49,8 @@ import {
 import { addToRecentSearched } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
-import NavBar from '../nav-bar/NavBar';
+import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
+import NavBar from '../NavBar/NavBar';
 import './app-bar.style.less';
 
 const Appbar: React.FC = (): JSX.Element => {

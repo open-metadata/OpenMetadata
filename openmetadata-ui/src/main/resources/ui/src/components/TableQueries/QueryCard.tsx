@@ -23,7 +23,11 @@ import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { ReactComponent as ExitFullScreen } from '../../assets/svg/exit-full-screen.svg';
 import { ReactComponent as FullScreen } from '../../assets/svg/full-screen.svg';
 import { ReactComponent as CopyIcon } from '../../assets/svg/icon-copy.svg';
-import { getTableTabPath, PIPE_SYMBOL } from '../../constants/constants';
+import {
+  getTableTabPath,
+  ONE_MINUTE_IN_MILLISECOND,
+  PIPE_SYMBOL,
+} from '../../constants/constants';
 import {
   QUERY_DATE_FORMAT,
   QUERY_LINE_HEIGHT,
@@ -34,7 +38,7 @@ import { useClipboard } from '../../hooks/useClipBoard';
 import { customFormatDateTime } from '../../utils/date-time/DateTimeUtils';
 import { parseSearchParams } from '../../utils/Query/QueryUtils';
 import { getQueryPath } from '../../utils/RouterUtils';
-import SchemaEditor from '../schema-editor/SchemaEditor';
+import SchemaEditor from '../SchemaEditor/SchemaEditor';
 import QueryCardExtraOption from './QueryCardExtraOption/QueryCardExtraOption.component';
 import QueryUsedByOtherTable from './QueryUsedByOtherTable/QueryUsedByOtherTable.component';
 import './table-queries.style.less';
@@ -81,21 +85,25 @@ const QueryCard: FC<QueryCardProp> = ({
   }, [query]);
 
   const duration = useMemo(() => {
-    const durationInSeconds = query.duration;
+    const durationInMilliSeconds = query.duration;
 
-    if (isUndefined(durationInSeconds)) {
+    if (isUndefined(durationInMilliSeconds)) {
       return undefined;
     }
 
-    const duration = Duration.fromObject({ seconds: durationInSeconds });
+    if (durationInMilliSeconds < 1) {
+      return `${t('label.runs-for')} ${durationInMilliSeconds} ms`;
+    }
+
+    const duration = Duration.fromObject({
+      milliseconds: durationInMilliSeconds,
+    });
 
     let formatString;
-    if (durationInSeconds < 1) {
-      formatString = "SSS 'milisec'";
-    } else if (durationInSeconds < 5) {
-      formatString = "s 'sec'";
+    if (durationInMilliSeconds < ONE_MINUTE_IN_MILLISECOND) {
+      formatString = "s.S 'sec'";
     } else {
-      formatString = "m 'min'";
+      formatString = "m 'min' s 'sec'";
     }
 
     // Format the duration as a string using the chosen format string
@@ -176,10 +184,10 @@ const QueryCard: FC<QueryCardProp> = ({
           title={
             <Space className="font-normal p-y-xs" size={8}>
               <Text>{queryDate}</Text>
-              <Text className="text-gray-400">{PIPE_SYMBOL}</Text>
               {duration && (
                 <>
-                  <Text>{duration}</Text>
+                  <Text className="text-gray-400">{PIPE_SYMBOL}</Text>
+                  <Text data-testid="query-run-duration">{duration}</Text>
                 </>
               )}
             </Space>

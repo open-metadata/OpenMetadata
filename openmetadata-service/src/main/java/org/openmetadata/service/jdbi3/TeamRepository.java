@@ -125,7 +125,7 @@ public class TeamRepository extends EntityRepository<Team> {
   @Override
   public void restorePatchAttributes(Team original, Team updated) {
     // Patch can't make changes to following fields. Ignore the changes
-    updated.withName(original.getName()).withId(original.getId());
+    super.restorePatchAttributes(original, updated);
     updated.withInheritedRoles(original.getInheritedRoles());
   }
 
@@ -185,7 +185,7 @@ public class TeamRepository extends EntityRepository<Team> {
       List<EntityReference> parents = !fields.contains(PARENTS_FIELD) ? getParents(team) : team.getParents();
       if (!nullOrEmpty(parents)) {
         Team parent = Entity.getEntity(TEAM, parents.get(0).getId(), "domain", ALL);
-        team.withDomain(parent.getDomain());
+        inheritDomain(team, fields, parent);
       }
     }
     return team;
@@ -678,7 +678,7 @@ public class TeamRepository extends EntityRepository<Team> {
           throw new IllegalArgumentException(INVALID_GROUP_TEAM_CHILDREN_UPDATE);
         }
       }
-      recordChange("profile", original.getProfile(), updated.getProfile());
+      recordChange("profile", original.getProfile(), updated.getProfile(), true);
       recordChange("isJoinable", original.getIsJoinable(), updated.getIsJoinable());
       recordChange("teamType", original.getTeamType(), updated.getTeamType());
       // If the team is empty then email should be null, not be empty

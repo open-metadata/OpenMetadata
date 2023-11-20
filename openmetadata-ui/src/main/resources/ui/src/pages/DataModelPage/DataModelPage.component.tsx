@@ -24,8 +24,8 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
-import { useAuthContext } from '../../components/authentication/auth-provider/AuthProvider';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import DataModelDetails from '../../components/DataModels/DataModelDetails.component';
 import Loader from '../../components/Loader/Loader';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
@@ -123,7 +123,7 @@ const DataModelsPage = () => {
     try {
       const response = await getDataModelsByName(
         dashboardDataModelFQN,
-        'owner,tags,followers,votes',
+        'owner,tags,followers,votes,domain,dataProducts',
         Include.All
       );
       setDataModelData(response);
@@ -293,7 +293,7 @@ const DataModelsPage = () => {
       await updateDataModelVotes(id, data);
       const details = await getDataModelsByName(
         dashboardDataModelFQN,
-        'owner,tags,followers,votes',
+        'owner,tags,followers,votes,domain,dataProducts',
         Include.All
       );
       setDataModelData(details);

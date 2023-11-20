@@ -215,7 +215,7 @@ public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDoc
         permissionNotAllowed(randomUserName, List.of(MetadataOperation.EDIT_ALL)));
 
     // Ensure user with UpdateTeam permission can add users to a team.
-    ChangeDescription change = getChangeDescription(kp.getVersion());
+    ChangeDescription change = getChangeDescription(kp, MINOR_UPDATE);
     fieldUpdated(change, "data", data, kp.getData());
     patchEntityAndCheck(kp, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }

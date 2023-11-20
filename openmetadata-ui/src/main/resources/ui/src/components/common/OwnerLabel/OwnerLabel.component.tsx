@@ -13,7 +13,7 @@
 import Icon from '@ant-design/icons';
 import { Typography } from 'antd';
 import classNames from 'classnames';
-import { isUndefined } from 'lodash';
+import { isNil } from 'lodash';
 import React, { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -46,7 +46,7 @@ export const OwnerLabel = ({
   const { t } = useTranslation();
 
   const profilePicture = useMemo(() => {
-    if (isUndefined(owner)) {
+    if (isNil(owner)) {
       return (
         <Icon
           component={IconUser}

@@ -28,6 +28,14 @@
       "$ref": "../../../type/entityReference.json",
       "default": null
     },
+    "tags": {
+      "description": "Tags associated with the entity.",
+      "type": "array",
+      "items": {
+        "$ref": "../../../type/tagLabel.json"
+      },
+      "default": null
+    },
     "developer": {
       "description": "Developer For the Application.",
       "type": "string"
@@ -46,6 +54,10 @@
     },
     "className": {
       "description": "Full Qualified ClassName for the the application",
+      "type": "string"
+    },
+    "sourcePythonClass": {
+      "description": "Fully Qualified class name for the Python source that will execute the external application.",
       "type": "string"
     },
     "appType": {

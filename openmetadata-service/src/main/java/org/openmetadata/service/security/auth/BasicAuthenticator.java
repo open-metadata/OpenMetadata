@@ -29,6 +29,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.MAX_FAI
 import static org.openmetadata.service.exception.CatalogExceptionMessage.SELF_SIGNUP_ERROR;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.TOKEN_EXPIRY_ERROR;
 import static org.openmetadata.service.resources.teams.UserResource.USER_PROTECTED_FIELDS;
+import static org.openmetadata.service.util.EmailUtil.getSmtpSettings;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
 import freemarker.template.TemplateException;
@@ -61,12 +62,14 @@ import org.openmetadata.schema.auth.TokenRefreshRequest;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
+import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.EmailUtil;
@@ -93,11 +96,11 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     this.userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     this.tokenRepository = Entity.getTokenRepository();
     this.authorizerConfiguration = config.getAuthorizerConfiguration();
-    this.loginAttemptCache = new LoginAttemptCache(config);
+    this.loginAttemptCache = new LoginAttemptCache();
     SmtpSettings smtpSettings = config.getSmtpSettings();
     this.isEmailServiceEnabled = smtpSettings != null && smtpSettings.getEnableSmtpServer();
     this.isSelfSignUpAvailable = config.getAuthenticationConfiguration().getEnableSelfSignup();
-    this.loginConfiguration = config.getApplicationConfiguration().getLoginConfig();
+    this.loginConfiguration = SettingsCache.getSetting(SettingsType.LOGIN_CONFIGURATION, LoginConfiguration.class);
   }
 
   @Override
@@ -164,7 +167,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
       String emailVerificationLink =
           String.format(
               "%s/users/registrationConfirmation?user=%s&token=%s",
-              EmailUtil.buildBaseUrl(uriInfo.getRequestUri()), user.getFullyQualifiedName(), mailVerificationToken);
+              getSmtpSettings().getOpenMetadataUrl(), user.getFullyQualifiedName(), mailVerificationToken);
       try {
         EmailUtil.sendEmailVerification(emailVerificationLink, user);
       } catch (TemplateException e) {
@@ -185,7 +188,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     String passwordResetLink =
         String.format(
             "%s/users/password/reset?user=%s&token=%s",
-            EmailUtil.buildBaseUrl(uriInfo.getRequestUri()), user.getFullyQualifiedName(), mailVerificationToken);
+            getSmtpSettings().getOpenMetadataUrl(), user.getFullyQualifiedName(), mailVerificationToken);
     try {
       EmailUtil.sendPasswordResetLink(passwordResetLink, user, subject, templateFilePath);
     } catch (TemplateException e) {
