@@ -249,6 +249,7 @@ class DatabricksUnitTest(TestCase):
     """
     Databricks unit tests
     """
+
     @patch(
         "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
     )
