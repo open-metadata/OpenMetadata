@@ -7,7 +7,7 @@ import org.openmetadata.schema.dataInsight.type.MostActiveUsers;
 public abstract class MostActiveUsersAggregator<A, B, M, S, X> implements DataInsightAggregatorInterface {
   private final A aggregations;
 
-  public MostActiveUsersAggregator(A aggregations) {
+  protected MostActiveUsersAggregator(A aggregations) {
     this.aggregations = aggregations;
   }
 

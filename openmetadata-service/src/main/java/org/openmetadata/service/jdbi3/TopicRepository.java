@@ -178,19 +178,6 @@ public class TopicRepository extends EntityRepository<Topic> {
         });
   }
 
-  private void addDerivedFieldTags(List<Field> fields) {
-    if (nullOrEmpty(fields)) {
-      return;
-    }
-
-    for (Field field : fields) {
-      field.setTags(addDerivedTags(field.getTags()));
-      if (field.getChildren() != null) {
-        addDerivedFieldTags(field.getChildren());
-      }
-    }
-  }
-
   List<Field> cloneWithoutTags(List<Field> fields) {
     if (nullOrEmpty(fields)) {
       return fields;

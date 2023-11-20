@@ -968,7 +968,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
                 .withTableConstraints(create.getTableConstraints())
                 .withTablePartition(create.getTablePartition())
                 .withTableType(create.getTableType())
-                .withTags(create.getTags())
                 .withFileFormat(create.getFileFormat())
                 .withViewDefinition(create.getViewDefinition())
                 .withTableProfilerConfig(create.getTableProfilerConfig())

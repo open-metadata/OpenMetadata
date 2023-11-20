@@ -501,7 +501,6 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
         .withRetentionTime(create.getRetentionTime())
         .withReplicationFactor(create.getReplicationFactor())
         .withTopicConfig(create.getTopicConfig())
-        .withSourceUrl(create.getSourceUrl())
-        .withTags(create.getTags());
+        .withSourceUrl(create.getSourceUrl());
   }
 }

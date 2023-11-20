@@ -33,34 +33,29 @@ public class MigrationUtil {
     List<TestCase> testCases =
         testCaseRepository.listAll(new EntityUtil.Fields(Set.of("id")), new ListFilter(Include.ALL));
 
-    try {
-      List<String> fqnList;
-      if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
-        fqnList = handle.createQuery(MYSQL_LIST_TABLE_FQNS).mapTo(String.class).list();
-      } else {
-        fqnList = handle.createQuery(POSTGRES_LIST_TABLE_FQNS).mapTo(String.class).list();
-      }
-      Map<String, String> tableMap = new HashMap<>();
-      for (String fqn : fqnList) {
-        tableMap.put(fqn.toLowerCase(), fqn);
-      }
+    List<String> fqnList;
+    if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+      fqnList = handle.createQuery(MYSQL_LIST_TABLE_FQNS).mapTo(String.class).list();
+    } else {
+      fqnList = handle.createQuery(POSTGRES_LIST_TABLE_FQNS).mapTo(String.class).list();
+    }
+    Map<String, String> tableMap = new HashMap<>();
+    for (String fqn : fqnList) {
+      tableMap.put(fqn.toLowerCase(), fqn);
+    }
 
-      for (TestCase testCase : testCases) {
-        // Create New Executable Test Suites
-        MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(testCase.getEntityLink());
-        String fqn = entityLink.getEntityFQN();
-        Table table = JsonUtils.readValue(tableRepository.getDao().findJsonByFqn(fqn, Include.ALL), Table.class);
-        if (table == null) {
-          String findTableFQN = tableMap.get(fqn.toLowerCase());
-          MessageParser.EntityLink newEntityLink =
-              new MessageParser.EntityLink(entityLink.getEntityType(), findTableFQN);
-          testCase.setEntityLink(newEntityLink.getLinkString());
-          testCase.setEntityFQN(findTableFQN);
-          collectionDAO.testCaseDAO().update(testCase);
-        }
+    for (TestCase testCase : testCases) {
+      // Create New Executable Test Suites
+      MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(testCase.getEntityLink());
+      String fqn = entityLink.getEntityFQN();
+      Table table = JsonUtils.readValue(tableRepository.getDao().findJsonByFqn(fqn, Include.ALL), Table.class);
+      if (table == null) {
+        String findTableFQN = tableMap.get(fqn.toLowerCase());
+        MessageParser.EntityLink newEntityLink = new MessageParser.EntityLink(entityLink.getEntityType(), findTableFQN);
+        testCase.setEntityLink(newEntityLink.getLinkString());
+        testCase.setEntityFQN(findTableFQN);
+        collectionDAO.testCaseDAO().update(testCase);
       }
-    } catch (Exception exc) {
-      throw exc;
     }
   }
 }

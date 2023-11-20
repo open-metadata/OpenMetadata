@@ -65,13 +65,13 @@ public class ResourceRegistry {
     ResourceDescriptor resourceDescriptor =
         new ResourceDescriptor()
             .withName(resourceName)
-            .withOperations(getOperations(resourceName, entitySpecificOperations, new ArrayList<>(entityFields)));
+            .withOperations(getOperations(entitySpecificOperations, new ArrayList<>(entityFields)));
     RESOURCE_DESCRIPTORS.sort(Comparator.comparing(ResourceDescriptor::getName));
     RESOURCE_DESCRIPTORS.add(resourceDescriptor);
   }
 
   private static List<MetadataOperation> getOperations(
-      String resourceName, List<MetadataOperation> entitySpecificOperations, List<String> entityFields) {
+      List<MetadataOperation> entitySpecificOperations, List<String> entityFields) {
     Set<MetadataOperation> operations = new TreeSet<>(COMMON_OPERATIONS);
     if (!nullOrEmpty(entitySpecificOperations)) {
       operations.addAll(entitySpecificOperations);

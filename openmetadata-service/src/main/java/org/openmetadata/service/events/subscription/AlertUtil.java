@@ -98,14 +98,14 @@ public final class AlertUtil {
     }
   }
 
-  public static <T> T validateExpression(String condition, Class<T> clz) {
+  public static <T> void validateExpression(String condition, Class<T> clz) {
     if (condition == null) {
-      return null;
+      return;
     }
     Expression expression = parseExpression(condition);
     AlertsRuleEvaluator ruleEvaluator = new AlertsRuleEvaluator(null);
     try {
-      return expression.getValue(ruleEvaluator, clz);
+      expression.getValue(ruleEvaluator, clz);
     } catch (Exception exception) {
       // Remove unnecessary class details in the exception message
       String message = exception.getMessage().replaceAll("on type .*$", "").replaceAll("on object .*$", "");

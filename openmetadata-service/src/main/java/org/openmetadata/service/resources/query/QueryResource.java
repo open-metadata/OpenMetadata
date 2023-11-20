@@ -405,7 +405,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
       @Valid List<String> userFqnList) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    return repository.AddQueryUser(uriInfo, securityContext.getUserPrincipal().getName(), id, userFqnList).toResponse();
+    return repository.addQueryUser(uriInfo, securityContext.getUserPrincipal().getName(), id, userFqnList).toResponse();
   }
 
   @PUT
@@ -427,7 +427,8 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
       @Valid List<String> usedByList) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    return repository.AddQueryUsedBy(uriInfo, securityContext.getUserPrincipal().getName(), id, usedByList)
+    return repository
+        .addQueryUsedBy(uriInfo, securityContext.getUserPrincipal().getName(), id, usedByList)
         .toResponse();
   }
 
@@ -511,7 +512,6 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
   private Query getQuery(CreateQuery create, String user) {
     return repository
         .copy(new Query(), create, user)
-        .withTags(create.getTags())
         .withQuery(create.getQuery())
         .withService(getEntityReference(Entity.DATABASE_SERVICE, create.getService()))
         .withDuration(create.getDuration())

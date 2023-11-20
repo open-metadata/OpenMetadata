@@ -56,10 +56,6 @@ import org.openmetadata.service.util.jdbi.DatabaseAuthenticationProviderFactory;
 
 public final class TablesInitializer {
   private static final String DEBUG_MODE_ENABLED = "debug_mode";
-  private static final String OPTION_FLYWAY_SCRIPT_ROOT_PATH = "flyway-sql-root";
-
-  private static final String OPTION_NATIVE_SQL_ROOT_PATH = "native-sql-root";
-  private static final String OPTION_EXTENSION_SQL_ROOT_PATH = "extension-sql-root";
   private static final String OPTION_CONFIG_FILE_PATH = "config";
   private static final String OPTION_FORCE_MIGRATIONS = "force";
   private static final String DISABLE_VALIDATE_ON_MIGRATE = "disable-validate-on-migrate";

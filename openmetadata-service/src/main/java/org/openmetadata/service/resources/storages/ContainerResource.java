@@ -449,7 +449,6 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
         .withNumberOfObjects(create.getNumberOfObjects())
         .withSize(create.getSize())
         .withFileFormats(create.getFileFormats())
-        .withSourceUrl(create.getSourceUrl())
-        .withTags(create.getTags());
+        .withSourceUrl(create.getSourceUrl());
   }
 }

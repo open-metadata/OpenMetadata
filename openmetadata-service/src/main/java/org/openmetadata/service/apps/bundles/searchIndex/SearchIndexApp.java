@@ -151,7 +151,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
       appRecord.setSuccessContext(new SuccessContext().withAdditionalProperty("stats", jobData.getStats()));
     }
 
-    pushAppStausUpdates(jobExecutionContext, appRecord, true);
+    pushAppStatusUpdates(jobExecutionContext, appRecord, true);
   }
 
   private void entitiesReIndex() {

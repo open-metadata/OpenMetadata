@@ -8,7 +8,7 @@ import org.openmetadata.schema.dataInsight.type.PercentageOfEntitiesWithDescript
 public abstract class EntitiesDescriptionAggregator<A, B, M, S> implements DataInsightAggregatorInterface {
   private final A aggregations;
 
-  public EntitiesDescriptionAggregator(A aggregations) {
+  protected EntitiesDescriptionAggregator(A aggregations) {
     this.aggregations = aggregations;
   }
 

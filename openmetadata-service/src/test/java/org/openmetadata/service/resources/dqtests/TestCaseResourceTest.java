@@ -363,7 +363,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
     // add a new test case to the logical test suite to validate if the
     // summary is updated correctly
-    testCaseIds.removeAll(testCaseIds);
+    testCaseIds.clear();
     testCaseIds.add(testCase.getId());
     testSuiteResourceTest.addTestCasesToLogicalTestSuite(logicalTestSuite, testCaseIds);
 
@@ -418,7 +418,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     // test we get the right summary for the logical test suite
     TestSummary logicalTestSummary = getTestSummary(ADMIN_AUTH_HEADERS, logicalTestSuite.getId().toString());
     assertEquals(1, logicalTestSummary.getTotal());
-    testCaseIds.removeAll(testCaseIds);
+    testCaseIds.clear();
     testCaseIds.add(testCase.getId());
     testSuiteResourceTest.addTestCasesToLogicalTestSuite(logicalTestSuite, testCaseIds);
     logicalTestSummary = getTestSummary(ADMIN_AUTH_HEADERS, logicalTestSuite.getId().toString());
@@ -443,10 +443,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     // test suite
     deleteLogicalTestCase(logicalTestSuite, testCase.getId());
     logicalTestSummary = getTestSummary(ADMIN_AUTH_HEADERS, logicalTestSuite.getId().toString());
-    assertEquals(
-        null,
-        logicalTestSummary
-            .getTotal()); // check the deletion of the test case from the logical test suite is reflected in the summary
+    // check the deletion of the test case from the logical test suite is reflected in the summary
+    assertNull(logicalTestSummary.getTotal());
   }
 
   @Test

@@ -102,7 +102,7 @@ public class SamlSettingsHolder {
     samlData.put(SettingsBuilder.SECURITY_DIGEST_ALGORITHM, "http://www.w3.org/2001/04/xmlenc#sha256");
     if (securityConfig.getSendSignedAuthRequest()
         || securityConfig.getWantAssertionEncrypted()
-        || securityConfig.getWantNameIdEncrypted()) {
+        || Boolean.TRUE.equals(securityConfig.getWantNameIdEncrypted())) {
       if (!CommonUtil.nullOrEmpty(securityConfig.getKeyStoreFilePath())
           && !CommonUtil.nullOrEmpty(securityConfig.getKeyStorePassword())
           && !CommonUtil.nullOrEmpty(securityConfig.getKeyStoreAlias())) {

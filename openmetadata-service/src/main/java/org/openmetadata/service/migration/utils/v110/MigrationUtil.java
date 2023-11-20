@@ -7,6 +7,7 @@ import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.util.EntityUtil.hash;
 
 import java.util.*;
+import java.util.Map.Entry;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
@@ -163,8 +164,8 @@ public class MigrationUtil {
       String nameHashColumn) {
     LOG.debug("Starting Migration for table : {}", dao.getTableName());
     if (dao instanceof CollectionDAO.TestSuiteDAO) {
-      // We have to do this since this column in changed in the dao in latest version after this , and this will fail
-      // the migrations here
+      // We have to do this since this column in changed in the dao in the latest version after this , and this will
+      // fail the migrations here
       nameHashColumn = "nameHash";
     }
     while (true) {
@@ -470,9 +471,10 @@ public class MigrationUtil {
     // create native test suites
     TestSuiteRepository testSuiteRepository = (TestSuiteRepository) Entity.getEntityRepository(TEST_SUITE);
     Map<String, ArrayList<TestCase>> testCasesByTable = groupTestCasesByTable();
-    for (String tableFQN : testCasesByTable.keySet()) {
+    for (Entry<String, ArrayList<TestCase>> entry : testCasesByTable.entrySet()) {
+      String tableFQN = entry.getKey();
       String nativeTestSuiteFqn = tableFQN + ".testSuite";
-      List<TestCase> testCases = testCasesByTable.get(tableFQN);
+      List<TestCase> testCases = entry.getValue();
       if (testCases != null && !testCases.isEmpty()) {
         MessageParser.EntityLink entityLink =
             MessageParser.EntityLink.parse(testCases.stream().findFirst().get().getEntityLink());

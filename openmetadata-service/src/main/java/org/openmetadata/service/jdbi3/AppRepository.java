@@ -29,7 +29,7 @@ import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 public class AppRepository extends EntityRepository<App> {
-  public static String APP_BOT_ROLE = "ApplicationBotRole";
+  public static final String APP_BOT_ROLE = "ApplicationBotRole";
 
   public static final String UPDATE_FIELDS = "appConfiguration,appSchedule";
 
@@ -199,8 +199,7 @@ public class AppRepository extends EntityRepository<App> {
   protected void cleanup(App app) {
     // Remove the Pipelines for Application
     List<EntityReference> pipelineRef = getIngestionPipelines(app);
-    pipelineRef.forEach(
-        (reference) -> Entity.deleteEntity("admin", reference.getType(), reference.getId(), true, true));
+    pipelineRef.forEach(reference -> Entity.deleteEntity("admin", reference.getType(), reference.getId(), true, true));
     super.cleanup(app);
   }
 

@@ -109,13 +109,13 @@ public abstract class AbstractOmAppJobListener implements JobListener {
     }
   }
 
-  private void updateStatus(UUID appId, AppRunRecord record, boolean update) {
+  private void updateStatus(UUID appId, AppRunRecord appRunRecord, boolean update) {
     if (update) {
       collectionDAO
           .appExtensionTimeSeriesDao()
-          .update(appId.toString(), JsonUtils.pojoToJson(record), record.getTimestamp());
+          .update(appId.toString(), JsonUtils.pojoToJson(appRunRecord), appRunRecord.getTimestamp());
     } else {
-      collectionDAO.appExtensionTimeSeriesDao().insert(JsonUtils.pojoToJson(record));
+      collectionDAO.appExtensionTimeSeriesDao().insert(JsonUtils.pojoToJson(appRunRecord));
     }
   }
 

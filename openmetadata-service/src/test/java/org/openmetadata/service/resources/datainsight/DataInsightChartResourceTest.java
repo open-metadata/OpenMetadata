@@ -110,7 +110,7 @@ public class DataInsightChartResourceTest extends EntityResourceTest<DataInsight
         true);
   }
 
-  /* We need elasticsearch to fecth data so we'll only test permission are
+  /* We need elasticsearch to fetch data, so we'll only test permission are
    * handled correctly in the request for a restricted user.
    *  */
   public void getDataInsightData(

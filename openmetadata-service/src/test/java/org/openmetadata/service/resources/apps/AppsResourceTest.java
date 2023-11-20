@@ -31,7 +31,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
   public CreateApp createRequest(String name) {
     // Create AppMarketPlaceDefinition
     AppMarketPlaceResourceTest appMarketPlaceResourceTest = new AppMarketPlaceResourceTest();
-    AppMarketPlaceDefinition appMarketPlaceDefinition = null;
+    AppMarketPlaceDefinition appMarketPlaceDefinition;
     try {
       appMarketPlaceDefinition = appMarketPlaceResourceTest.getEntityByName(name, ADMIN_AUTH_HEADERS);
     } catch (EntityNotFoundException | HttpResponseException ex) {

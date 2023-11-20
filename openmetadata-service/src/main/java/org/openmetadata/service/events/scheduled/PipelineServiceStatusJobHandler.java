@@ -33,7 +33,7 @@ public class PipelineServiceStatusJobHandler {
   private final Integer healthCheckInterval;
   private final Scheduler scheduler = new StdSchedulerFactory().getScheduler();
 
-  private static PipelineServiceStatusJobHandler INSTANCE;
+  private static PipelineServiceStatusJobHandler instance;
 
   private PipelineServiceStatusJobHandler(PipelineServiceClientConfiguration config, String clusterName)
       throws SchedulerException {
@@ -46,15 +46,14 @@ public class PipelineServiceStatusJobHandler {
   }
 
   public static PipelineServiceStatusJobHandler create(PipelineServiceClientConfiguration config, String clusterName) {
-    if (INSTANCE != null) return INSTANCE;
+    if (instance != null) return instance;
 
     try {
-      INSTANCE = new PipelineServiceStatusJobHandler(config, clusterName);
+      instance = new PipelineServiceStatusJobHandler(config, clusterName);
     } catch (Exception ex) {
       LOG.error("Failed to initialize the Pipeline Service Status Handler");
     }
-
-    return INSTANCE;
+    return instance;
   }
 
   private JobDetail jobBuilder() {

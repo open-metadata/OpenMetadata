@@ -5,7 +5,6 @@ import java.util.List;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.analytics.ReportData.ReportDataType;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
@@ -13,15 +12,12 @@ public class ReportDataRepository extends EntityTimeSeriesRepository<ReportData>
   public static final String COLLECTION_PATH = "/v1/analytics/report";
   public static final String REPORT_DATA_EXTENSION = "reportData.reportDataResult";
 
-  private final SearchRepository searchRepository;
-
   public ReportDataRepository() {
     super(
         COLLECTION_PATH,
         Entity.getCollectionDAO().reportDataTimeSeriesDao(),
         ReportData.class,
         Entity.ENTITY_REPORT_DATA);
-    searchRepository = Entity.getSearchRepository();
   }
 
   public ResultList<ReportData> getReportData(ReportDataType reportDataType, Long startTs, Long endTs) {

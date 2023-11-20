@@ -38,12 +38,12 @@ public class PipelineServiceClientTest {
   public void testBuildVersionMismatchErrorMessage() {
     String res = mockPipelineServiceClient.buildVersionMismatchErrorMessage("1.1.0.dev0", "1.0.0");
     assertEquals(
-        res,
-        "Server version [1.0.0] is older than Ingestion Version [1.1.0.dev0]. Please upgrade your server or downgrade the ingestion client.");
+        "Server version [1.0.0] is older than Ingestion Version [1.1.0.dev0]. Please upgrade your server or downgrade the ingestion client.",
+        res);
 
     res = mockPipelineServiceClient.buildVersionMismatchErrorMessage("1.0.0.dev0", "1.0.1");
     assertEquals(
-        res,
-        "Ingestion version [1.0.0.dev0] is older than Server Version [1.0.1]. Please upgrade your ingestion client.");
+        "Ingestion version [1.0.0.dev0] is older than Server Version [1.0.1]. Please upgrade your ingestion client.",
+        res);
   }
 }

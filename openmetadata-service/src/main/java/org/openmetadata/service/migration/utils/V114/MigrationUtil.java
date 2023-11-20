@@ -7,6 +7,7 @@ import static org.openmetadata.service.migration.utils.v110.MigrationUtil.groupT
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
@@ -33,11 +34,11 @@ public class MigrationUtil {
    * Step 1: re-run the fix for FQN to catch any issues from previous release where we were quoting the FQN Step 2:
    * Group all the testCases with the table. We will create a Map with Table FQN as the key and all the test cases
    * belonging to that Table Step 3: Iterate through the Map keySet, which is table names. For each table name we create
-   * a executable test suite FQN Step 4: Fetch executable testSuite using step 3 FQN Step 5: Iterate through the test
+   * an executable test suite FQN Step 4: Fetch executable testSuite using step 3 FQN Step 5: Iterate through the test
    * case list associated with the current table FQN in the loop Step 6: for each test case fetch TestSuite
    * relationships Step 7: Iterate through the testSuite relation to check if the executableTestSuite FQN matches. If it
-   * matches there exists a relation from testCase to a executable Test suite Step 8: If we can't find a match, create a
-   * relationship.
+   * matches there exists a relation from testCase to an executable Test suite Step 8: If we can't find a match, create
+   * a relationship.
    */
   public static void fixTestSuites(CollectionDAO collectionDAO) {
     // Fix any FQN issues for executable TestSuite
@@ -58,9 +59,10 @@ public class MigrationUtil {
     // Let's iterate through the test cases and make sure there exists a relationship between testcases and its native
     // TestSuite
     Map<String, ArrayList<TestCase>> testCasesGroupByTable = groupTestCasesByTable();
-    for (String tableFQN : testCasesGroupByTable.keySet()) {
+    for (Entry<String, ArrayList<TestCase>> entry : testCasesGroupByTable.entrySet()) {
+      String tableFQN = entry.getKey();
       try {
-        List<TestCase> testCases = testCasesGroupByTable.get(tableFQN);
+        List<TestCase> testCases = entry.getValue();
         String executableTestSuiteFQN = tableFQN + ".testSuite";
         TestSuite executableTestSuite =
             getOrCreateExecutableTestSuite(collectionDAO, testCases, testSuiteRepository, executableTestSuiteFQN);

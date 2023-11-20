@@ -9,7 +9,7 @@ import org.openmetadata.schema.dataInsight.type.AggregatedUnusedAssetsSize;
 public abstract class AggregatedUnusedAssetsSizeAggregator<A, H, B, S> implements DataInsightAggregatorInterface {
   private final A aggregations;
 
-  public AggregatedUnusedAssetsSizeAggregator(A aggregations) {
+  protected AggregatedUnusedAssetsSizeAggregator(A aggregations) {
     this.aggregations = aggregations;
   }
 
