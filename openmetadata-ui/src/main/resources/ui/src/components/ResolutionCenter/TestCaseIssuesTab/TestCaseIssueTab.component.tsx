@@ -10,13 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { TestCase } from '../../generated/tests/testCase';
 
-export enum ResolutionCenterTabs {
-  TEST_CASE_RESULTS = 'test-case-results',
-  ISSUES = 'issues',
-}
-export interface TestCaseData {
-  data: TestCase[];
-  isLoading: boolean;
-}
+import React from 'react';
+import { useTranslation } from 'react-i18next';
+
+const TestCaseIssueTab = () => {
+  const { t } = useTranslation();
+
+  return <div>{t('label.issues')}</div>;
+};
+
+export default TestCaseIssueTab;

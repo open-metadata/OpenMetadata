@@ -10,13 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { TestCase } from '../../generated/tests/testCase';
 
-export enum ResolutionCenterTabs {
-  TEST_CASE_RESULTS = 'test-case-results',
-  ISSUES = 'issues',
-}
-export interface TestCaseData {
-  data: TestCase[];
-  isLoading: boolean;
+import { TestCase } from '../../../generated/tests/testCase';
+
+export interface TestCaseResultTabProps {
+  testCaseData?: TestCase;
 }

@@ -41,6 +41,7 @@ import { arrServiceTypes } from '../constants/Services.constant';
 import { EntityAction } from '../enums/entity.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
+import { ResolutionCenterTabs } from '../pages/ResolutionCenter/ResolutionCenter.interface';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
 import { getEncodedFqn } from './StringsUtils';
 
@@ -524,6 +525,19 @@ export const getDataQualityPagePath = (tab?: DataQualityPageTabs) => {
   if (tab) {
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
   }
+
+  return path;
+};
+
+export const getResolutionCenterDetailPagePath = (
+  fqn: string,
+  tab = ResolutionCenterTabs.TEST_CASE_RESULTS
+) => {
+  let path = ROUTES.RESOLUTION_CENTER_DETAILS_WITH_TAB;
+
+  path = path
+    .replace(PLACEHOLDER_ROUTE_FQN, fqn)
+    .replace(PLACEHOLDER_ROUTE_TAB, tab);
 
   return path;
 };

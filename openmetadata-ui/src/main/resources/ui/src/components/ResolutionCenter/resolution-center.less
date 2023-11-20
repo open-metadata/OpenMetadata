@@ -10,13 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { TestCase } from '../../generated/tests/testCase';
 
-export enum ResolutionCenterTabs {
-  TEST_CASE_RESULTS = 'test-case-results',
-  ISSUES = 'issues',
-}
-export interface TestCaseData {
-  data: TestCase[];
-  isLoading: boolean;
+@import url('../../styles/variables.less');
+
+.parameter-value-container {
+  background: @grey-1;
+  border-radius: 4px;
+  padding: 8px 10px;
 }
