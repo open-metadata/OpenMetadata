@@ -396,21 +396,28 @@
   background-color: @callout-danger-bg;
   border-left-color: @error-color;
 }
+
 .callout-type-btn.ant-btn.ant-btn-text {
-  background: @hover-bg;
   padding: 2px 4px;
 }
+
 .om-callout-node-popover {
   .ant-popover-inner-content {
-    padding: 0px;
-    .callout-type-btn {
-      padding: 8px;
-      display: block;
-      cursor: pointer;
-      &:hover {
-        background: @hover-bg;
-      }
-    }
+    padding: 12px 4px;
+  }
+}
+
+.callout-menu {
+  display: flex;
+  flex-direction: column;
+  align-items: baseline;
+  .ant-btn {
+    width: 100%;
+    display: inline-flex;
+    gap: 4px;
+    text-align: left;
+    padding: 8px 16px;
+    height: auto;
   }
 }
 

@@ -11,6 +11,10 @@
  *  limitations under the License.
  */
 import { EditorOptions } from '@tiptap/core';
+import { ReactComponent as IconDanger } from '../assets/svg/callout-danger.svg';
+import { ReactComponent as IconInfo } from '../assets/svg/callout-info.svg';
+import { ReactComponent as IconNote } from '../assets/svg/callout-note.svg';
+import { ReactComponent as IconWarning } from '../assets/svg/callout-warning.svg';
 
 export const EDITOR_OPTIONS: Partial<EditorOptions> = {
   enableInputRules: [
@@ -51,8 +55,11 @@ export const CLICKABLE_NODES = [
 export const DROP_CURSOR_COLOR = '#ebf6fe';
 
 export const CALLOUT_CONTENT = {
-  note: '📝',
-  warning: '⚠️',
-  info: '💡',
-  danger: '⚠️',
+  note: IconNote,
+  warning: IconWarning,
+  info: IconInfo,
+  danger: IconDanger,
 };
+
+export const CALL_OUT_REGEX = /^:::([A-Za-z]*)?$/;
+export const CALL_OUT_INPUT_RULE_REGEX = /^::: $/;

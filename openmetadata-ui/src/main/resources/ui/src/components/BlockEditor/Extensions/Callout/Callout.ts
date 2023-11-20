@@ -21,6 +21,10 @@ import {
   wrappingInputRule,
 } from '@tiptap/core';
 import { ReactNodeViewRenderer } from '@tiptap/react';
+import {
+  CALL_OUT_INPUT_RULE_REGEX,
+  CALL_OUT_REGEX,
+} from '../../../../constants/BlockEditor.constants';
 import CalloutComponent from './CalloutComponent';
 
 export interface CalloutOptions {
@@ -134,7 +138,7 @@ export const Callout = Node.create<CalloutOptions>({
           return false;
         }
 
-        const regex = /^:::([A-Za-z]*)?$/;
+        const regex = CALL_OUT_REGEX;
         const { text, nodeSize } = nodeBefore;
         const { textContent } = parent;
 
@@ -237,7 +241,7 @@ export const Callout = Node.create<CalloutOptions>({
   addInputRules() {
     return [
       wrappingInputRule({
-        find: /^::: $/,
+        find: CALL_OUT_INPUT_RULE_REGEX,
         type: this.type,
       }),
     ];
