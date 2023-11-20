@@ -24,7 +24,7 @@ SNOWFLAKE_SQL_STATEMENT = textwrap.dedent(
       schema_name,
       start_time,
       end_time,
-      total_elapsed_time/1000 duration
+      total_elapsed_time duration
     from snowflake.account_usage.query_history
     WHERE query_text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
     AND query_text NOT LIKE '/* {{"app": "dbt", %%}} */%%'
@@ -189,7 +189,6 @@ WITH SP_HISTORY AS (
     FROM SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY SP
     WHERE QUERY_TYPE = 'CALL'
       AND START_TIME >= '{start_date}' 
-      AND WAREHOUSE_NAME = '{warehouse}'
 ),
 Q_HISTORY AS (
     SELECT
@@ -208,7 +207,6 @@ Q_HISTORY AS (
       AND QUERY_TEXT NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
       AND QUERY_TEXT NOT LIKE '/* {{"app": "dbt", %%}} */%%'
       AND START_TIME >= '{start_date}' 
-      AND WAREHOUSE_NAME = '{warehouse}'
 )
 SELECT
   SP.QUERY_ID AS PROCEDURE_ID,

@@ -1,14 +1,6 @@
 package org.openmetadata.service.search.indexes;
 
-import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
-import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
-import static org.openmetadata.service.Entity.FIELD_NAME;
-import static org.openmetadata.service.search.EntityBuilderConstant.DISPLAY_NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.FULLY_QUALIFIED_NAME_PARTS;
-import static org.openmetadata.service.search.EntityBuilderConstant.NAME_KEYWORD;
-
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -52,13 +44,6 @@ public class StoredProcedureIndex implements SearchIndex {
   }
 
   public static Map<String, Float> getFields() {
-    Map<String, Float> fields = new HashMap<>();
-    fields.put(FIELD_DISPLAY_NAME, 15.0f);
-    fields.put(FIELD_NAME, 15.0f);
-    fields.put(DISPLAY_NAME_KEYWORD, 25.0f);
-    fields.put(NAME_KEYWORD, 25.0f);
-    fields.put(FIELD_DESCRIPTION, 1.0f);
-    fields.put(FULLY_QUALIFIED_NAME_PARTS, 10.0f);
-    return fields;
+    return SearchIndex.getDefaultFields();
   }
 }

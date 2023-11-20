@@ -33,6 +33,6 @@ public class MigrationContext {
   }
 
   public void show() {
-    LOG.info(String.format("Version [%s] context is [%s]", version, results.toString()));
+    LOG.info(String.format("Version [%s] context is [%s]", version, results));
   }
 }

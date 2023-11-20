@@ -26,5 +26,6 @@
         }
       ]
     }
-  }
+  },
+  "additionalProperties": false
 }

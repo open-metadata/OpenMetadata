@@ -877,6 +877,30 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   }
 
   @DELETE
+  @Path("/{id}/customMetric/{customMetricName}")
+  @Operation(
+      operationId = "deleteCustomMetric",
+      summary = "Delete custom metric from a table",
+      description = "Delete a custom metric from a table.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
+      })
+  public Table deleteTableCustomMetric(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "column Test Type", schema = @Schema(type = "string")) @PathParam("customMetricName")
+          String customMetricName) {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_TESTS);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    Table table = repository.deleteCustomMetric(id, null, customMetricName);
+    return addHref(uriInfo, table);
+  }
+
+  @DELETE
   @Path("/{id}/customMetric/{columnName}/{customMetricName}")
   @Operation(
       operationId = "deleteCustomMetric",
@@ -888,7 +912,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
             description = "OK",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
       })
-  public Table deleteCustomMetric(
+  public Table deleteColumnCustomMetric(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
@@ -944,7 +968,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
                 .withTableConstraints(create.getTableConstraints())
                 .withTablePartition(create.getTablePartition())
                 .withTableType(create.getTableType())
-                .withTags(create.getTags())
                 .withFileFormat(create.getFileFormat())
                 .withViewDefinition(create.getViewDefinition())
                 .withTableProfilerConfig(create.getTableProfilerConfig())
