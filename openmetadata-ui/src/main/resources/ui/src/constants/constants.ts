@@ -66,6 +66,7 @@ export const DEPLOYED_PROGRESS_VAL = 100;
 export const DESCRIPTION_MAX_PREVIEW_CHARACTERS = 350;
 export const MAX_CHAR_LIMIT_ENTITY_SUMMARY = 130;
 export const SMALL_TABLE_LOADER_SIZE = 3;
+export const ONE_MINUTE_IN_MILLISECOND = 60000;
 export const LOCALSTORAGE_RECENTLY_VIEWED = `recentlyViewedData_${COOKIE_VERSION}`;
 export const LOCALSTORAGE_RECENTLY_SEARCHED = `recentlySearchedData_${COOKIE_VERSION}`;
 export const LOCALSTORAGE_USER_PROFILES = 'userProfiles';
@@ -86,6 +87,7 @@ export const imageTypes = {
 export const NO_DATA_PLACEHOLDER = '--';
 export const PIPE_SYMBOL = '|';
 export const NO_DATA = '-';
+export const STAR_OMD_USER = 'STAR_OMD_USER';
 
 export const TOUR_SEARCH_TERM = 'dim_a';
 export const ERROR500 = t('message.something-went-wrong');
@@ -119,6 +121,8 @@ export const pagingObject = { after: '', before: '', total: 0 };
 
 export const ONLY_NUMBER_REGEX = /^[0-9\b]+$/;
 
+export const ES_UPDATE_DELAY = 500;
+
 export const globalSearchOptions = [
   { value: '', label: t('label.all') },
   { value: SearchIndex.TABLE, label: t('label.table') },
@@ -132,6 +136,7 @@ export const globalSearchOptions = [
   { value: SearchIndex.GLOSSARY, label: t('label.glossary') },
   { value: SearchIndex.TAG, label: t('label.tag') },
   { value: SearchIndex.SEARCH_INDEX, label: t('label.search-index') },
+  { value: SearchIndex.DATA_PRODUCT, label: t('label.data-product') },
 ];
 
 export const DESCRIPTIONLENGTH = 100;

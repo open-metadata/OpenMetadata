@@ -184,7 +184,9 @@ public final class TestUtils {
 
   public enum UpdateType {
     CREATED, // Not updated instead entity was created
-    NO_CHANGE, // PUT/PATCH made no change
+    NO_CHANGE, // PUT/PATCH made no change to the entity and the version remains the same
+    CHANGE_CONSOLIDATED, // PATCH made change that was consolidated with the previous and no version change
+    REVERT, // PATCH resulted in entity reverting to previous version due to consolidation of changes in a session
     MINOR_UPDATE, // PUT/PATCH made backward compatible minor version change
     MAJOR_UPDATE // PUT/PATCH made backward incompatible minor version change
   }
@@ -415,20 +417,6 @@ public final class TestUtils {
     existsInEntityReferenceList(user.getFollows(), entityId, expectedFollowing);
   }
 
-  // TODO remove this
-  public static void validateUpdate(Double previousVersion, Double newVersion, UpdateType updateType) {
-    if (updateType == UpdateType.CREATED) {
-      assertEquals(0.1, newVersion); // New version of entity created
-    } else if (updateType == UpdateType.NO_CHANGE) {
-      assertEquals(previousVersion, newVersion); // No change in the version
-    } else if (updateType == UpdateType.MINOR_UPDATE) {
-      assertEquals(EntityUtil.nextVersion(previousVersion), newVersion); //
-      // Minor version change
-    } else if (updateType == UpdateType.MAJOR_UPDATE) {
-      assertEquals(EntityUtil.nextMajorVersion(previousVersion), newVersion); // Major version change
-    }
-  }
-
   public static void assertEntityReferenceIds(List<UUID> expected, List<EntityReference> actual) {
     if (expected == null && actual == null) {
       return;
@@ -468,9 +456,10 @@ public final class TestUtils {
     }
   }
 
-  public static void existsInEntityReferenceList(List<EntityReference> list, UUID id, boolean expectedExistsInList) {
+  public static void existsInEntityReferenceList(
+      List<EntityReference> ownsList, UUID id, boolean expectedExistsInList) {
     EntityReference ref = null;
-    for (EntityReference r : list) {
+    for (EntityReference r : ownsList) {
       validateEntityReference(r);
       if (r.getId().equals(id)) {
         ref = r;

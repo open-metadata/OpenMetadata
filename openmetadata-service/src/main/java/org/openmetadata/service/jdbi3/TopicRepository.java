@@ -75,11 +75,6 @@ public class TopicRepository extends EntityRepository<Topic> {
     MessagingService messagingService = Entity.getEntity(topic.getService(), "", ALL);
     topic.setService(messagingService.getEntityReference());
     topic.setServiceType(messagingService.getServiceType());
-    // Validate field tags
-    if (topic.getMessageSchema() != null) {
-      addDerivedFieldTags(topic.getMessageSchema().getSchemaFields());
-      validateSchemaFieldTags(topic.getMessageSchema().getSchemaFields());
-    }
   }
 
   @Override
@@ -183,19 +178,6 @@ public class TopicRepository extends EntityRepository<Topic> {
         });
   }
 
-  private void addDerivedFieldTags(List<Field> fields) {
-    if (nullOrEmpty(fields)) {
-      return;
-    }
-
-    for (Field field : fields) {
-      field.setTags(addDerivedTags(field.getTags()));
-      if (field.getChildren() != null) {
-        addDerivedFieldTags(field.getChildren());
-      }
-    }
-  }
-
   List<Field> cloneWithoutTags(List<Field> fields) {
     if (nullOrEmpty(fields)) {
       return fields;
@@ -220,6 +202,8 @@ public class TopicRepository extends EntityRepository<Topic> {
   private void validateSchemaFieldTags(List<Field> fields) {
     // Add field level tags by adding tag to field relationship
     for (Field field : fields) {
+      validateTags(field.getTags());
+      field.setTags(addDerivedTags(field.getTags()));
       checkMutuallyExclusive(field.getTags());
       if (field.getChildren() != null) {
         validateSchemaFieldTags(field.getChildren());
@@ -249,6 +233,14 @@ public class TopicRepository extends EntityRepository<Topic> {
   @Override
   public EntityInterface getParentEntity(Topic entity, String fields) {
     return Entity.getEntity(entity.getService(), fields, Include.NON_DELETED);
+  }
+
+  @Override
+  public void validateTags(Topic entity) {
+    super.validateTags(entity);
+    if (entity.getMessageSchema() != null) {
+      validateSchemaFieldTags(entity.getMessageSchema().getSchemaFields());
+    }
   }
 
   @Override

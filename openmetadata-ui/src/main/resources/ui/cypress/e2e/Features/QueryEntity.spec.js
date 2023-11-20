@@ -16,21 +16,70 @@ import {
   verifyResponseStatusCode,
   visitEntityDetailsPage,
 } from '../../common/common';
-import { SEARCH_ENTITY_TABLE } from '../../constants/constants';
+import {
+  createEntityTable,
+  createQueryByTableName,
+  generateRandomTable,
+  hardDeleteService,
+} from '../../common/entityUtils';
+import { MYDATA_SUMMARY_OPTIONS } from '../../constants/constants';
+import {
+  DATABASE_SERVICE,
+  DATABASE_SERVICE_DETAILS,
+} from '../../constants/entityConstant';
+import { SERVICE_CATEGORIES } from '../../constants/service.constants';
+
+const queryTable = {
+  term: DATABASE_SERVICE.tables.name,
+  displayName: DATABASE_SERVICE.tables.name,
+  entity: MYDATA_SUMMARY_OPTIONS.tables,
+  serviceName: DATABASE_SERVICE.service.name,
+  entityType: 'Table',
+};
+const table1 = generateRandomTable();
+const table2 = generateRandomTable();
 
 const DATA = {
-  ...SEARCH_ENTITY_TABLE.table_5,
-  query: `select * from table ${SEARCH_ENTITY_TABLE.table_5.term}`,
+  ...queryTable,
+  query: `select * from table ${queryTable.term}`,
   description: 'select all the field from table',
   owner: 'Aaron Johnson',
   tag: 'Personal',
   queryUsedIn: {
-    table1: 'dim_address_clean',
-    table2: 'raw_product_catalog',
+    table1: table1.name,
+    table2: table2.name,
   },
 };
 
 describe('Query Entity', () => {
+  before(() => {
+    cy.login();
+    cy.getAllLocalStorage().then((data) => {
+      const token = Object.values(data)[0].oidcIdToken;
+
+      createEntityTable({
+        token,
+        ...DATABASE_SERVICE,
+        tables: [DATABASE_SERVICE.tables, table1, table2],
+      });
+      // get Table by name and create query in the table
+      createQueryByTableName(token, table1);
+    });
+  });
+
+  after(() => {
+    cy.login();
+    cy.getAllLocalStorage().then((data) => {
+      const token = Object.values(data)[0].oidcIdToken;
+
+      hardDeleteService({
+        token,
+        serviceFqn: DATABASE_SERVICE.service.name,
+        serviceType: SERVICE_CATEGORIES.DATABASE_SERVICES,
+      });
+    });
+  });
+
   beforeEach(() => {
     cy.login();
     cy.get("[data-testid='welcome-screen-close-btn']").click();
@@ -174,5 +223,23 @@ describe('Query Entity', () => {
     cy.get('.ant-dropdown').should('be.visible');
     cy.get('[data-menu-id*="delete-query"]').click();
     cy.get('[data-testid="save-button"]').click();
+  });
+
+  it('Verify query duration', () => {
+    interceptURL('GET', '/api/v1/queries?*', 'fetchQuery');
+
+    visitEntityDetailsPage({
+      term: table1.name,
+      serviceName: DATABASE_SERVICE_DETAILS.name,
+      entity: DATA.entity,
+    });
+
+    cy.get('[data-testid="table_queries"]').click();
+    verifyResponseStatusCode('@fetchQuery', 200);
+
+    // Validate that the duration is in sec or not
+    cy.get('[data-testid="query-run-duration"]')
+      .should('be.visible')
+      .should('contain', '6.199 sec');
   });
 });

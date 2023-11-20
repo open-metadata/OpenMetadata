@@ -144,6 +144,8 @@ authorizerConfiguration:
 
 authenticationConfiguration:
   provider: ${AUTHENTICATION_PROVIDER:-basic}
+  # This is used by auth provider provide response as either id_token or code
+  responseType: ${AUTHENTICATION_RESPONSE_TYPE:-id_token}
   # This will only be valid when provider type specified is customOidc
   providerName: ${CUSTOM_OIDC_AUTHENTICATION_PROVIDER_NAME:-""}
   publicKeyUrls: ${AUTHENTICATION_PUBLIC_KEYS:-[http://localhost:8585/api/v1/system/config/jwks]}
@@ -299,7 +301,7 @@ email:
   emailingEntity: ${OM_EMAIL_ENTITY:-"OpenMetadata"}
   supportUrl: ${OM_SUPPORT_URL:-"https://slack.open-metadata.org"}
   enableSmtpServer : ${AUTHORIZER_ENABLE_SMTP:-false}
-  openMetadataUrl: ${OPENMETADATA_SERVER_URL:-""}
+  openMetadataUrl: ${OPENMETADATA_SERVER_URL:-"http://localhost:8585"}
   senderMail: ${OPENMETADATA_SMTP_SENDER_MAIL:-""}
   serverEndpoint: ${SMTP_SERVER_ENDPOINT:-""}
   serverPort: ${SMTP_SERVER_PORT:-""}
@@ -334,8 +336,4 @@ web:
   permission-policy:
     enabled: ${WEB_CONF_PERMISSION_POLICY_ENABLED:-false}
     option: ${WEB_CONF_PERMISSION_POLICY_OPTION:-""}
-
-
-changeEventConfig:
-  omUri: ${OM_URI:- "http://localhost:8585"} #openmetadata in om uri for eg http://localhost:8585
-
+    

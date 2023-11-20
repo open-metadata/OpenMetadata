@@ -15,6 +15,7 @@ To be used by OpenMetadata class
 """
 import json
 import traceback
+from copy import deepcopy
 from typing import Dict, List, Optional, Type, TypeVar, Union
 
 import jsonpatch
@@ -123,6 +124,12 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             Updated Entity
         """
         try:
+            # remove change descriptions from entities
+            if source.changeDescription is not None:
+                source.changeDescription = None
+            if destination.changeDescription is not None:
+                destination.changeDescription = None
+
             # Get the difference between source and destination
             patch = jsonpatch.make_patch(
                 json.loads(source.json(exclude_unset=True, exclude_none=True)),
@@ -342,12 +349,10 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             )
             return None
 
-        source.owner = instance.owner
-
-        destination = source.copy(deep=True)
+        destination = deepcopy(instance)
         destination.owner = owner
 
-        return self.patch(entity=entity, source=source, destination=destination)
+        return self.patch(entity=entity, source=instance, destination=destination)
 
     def patch_column_tags(
         self,

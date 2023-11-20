@@ -14,8 +14,13 @@
       "description": "Status for the Job.",
       "type": "string",
       "enum": [
+        "started",
         "running",
+        "completed",
         "failed",
+        "active",
+        "activeError",
+        "stopped",
         "success"
       ]
     },

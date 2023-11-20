@@ -93,11 +93,6 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     // No relationships to store beyond what is stored in the super class
   }
 
-  @Override
-  public void restorePatchAttributes(EventSubscription original, EventSubscription updated) {
-    updated.withId(original.getId()).withName(original.getName());
-  }
-
   private SubscriptionPublisher getPublisher(UUID id) {
     return subscriptionPublisherMap.get(id);
   }
@@ -226,10 +221,10 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
       recordChange("enabled", original.getEnabled(), updated.getEnabled());
       recordChange("batchSize", original.getBatchSize(), updated.getBatchSize());
       recordChange("timeout", original.getTimeout(), updated.getTimeout());
-      recordChange("filteringRules", original.getFilteringRules(), updated.getFilteringRules());
+      recordChange("filteringRules", original.getFilteringRules(), updated.getFilteringRules(), true);
       recordChange("subscriptionType", original.getSubscriptionType(), updated.getSubscriptionType());
-      recordChange("subscriptionConfig", original.getSubscriptionConfig(), updated.getSubscriptionConfig());
-      recordChange("trigger", original.getTrigger(), updated.getTrigger());
+      recordChange("subscriptionConfig", original.getSubscriptionConfig(), updated.getSubscriptionConfig(), true);
+      recordChange("trigger", original.getTrigger(), updated.getTrigger(), true);
     }
   }
 }

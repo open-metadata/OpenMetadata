@@ -72,7 +72,7 @@ const TestSuiteDetailsPage = () => {
   };
   const [testSuite, setTestSuite] = useState<TestSuite>();
   const [isDescriptionEditable, setIsDescriptionEditable] = useState(false);
-  const [isTestCaseLoading, setIsTestCaseLoading] = useState(false);
+  const [isTestCaseLoading, setIsTestCaseLoading] = useState(true);
   const [testCaseResult, setTestCaseResult] = useState<Array<TestCase>>([]);
 
   const {

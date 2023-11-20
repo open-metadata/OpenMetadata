@@ -22,10 +22,13 @@ import os.org.opensearch.action.bulk.BulkItemResponse;
 import os.org.opensearch.action.bulk.BulkResponse;
 
 public class ReindexingUtil {
+  private ReindexingUtil() {
+    /*unused*/
+  }
+
   public static final String ENTITY_TYPE_KEY = "entityType";
 
   public static void getUpdatedStats(StepStats stats, int currentSuccess, int currentFailed) {
-    stats.setProcessedRecords(stats.getProcessedRecords() + currentSuccess + currentFailed);
     stats.setSuccessRecords(stats.getSuccessRecords() + currentSuccess);
     stats.setFailedRecords(stats.getFailedRecords() + currentFailed);
   }
@@ -41,7 +44,7 @@ public class ReindexingUtil {
         EntityRepository<?> repository = Entity.getEntityRepository(entityType);
         total += repository.getDao().listTotalCount();
       } else {
-        total += dao.entityExtensionTimeSeriesDao().listCount(entityType);
+        total += dao.reportDataTimeSeriesDao().listCount(entityType);
       }
     }
     return total;

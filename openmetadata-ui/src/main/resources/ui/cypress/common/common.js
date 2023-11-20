@@ -979,6 +979,10 @@ export const login = (username, password) => {
   cy.visit('/');
   cy.get('[id="email"]').should('be.visible').clear().type(username);
   cy.get('[id="password"]').should('be.visible').clear().type(password);
+
+  // Don't want to show any popup in the tests
+  cy.setCookie(`STAR_OMD_USER_${username.split('@')[0]}`, 'true');
+
   cy.get('.ant-btn').contains('Login').should('be.visible').click();
 };
 
@@ -1347,12 +1351,12 @@ export const visitDataModelPage = (dataModelFQN, dataModelName) => {
 
   interceptURL(
     'GET',
-    'api/v1/services/dashboardServices/name/sample_looker?fields=*',
+    'api/v1/services/dashboardServices/name/sample_looker*',
     'getDashboardDetails'
   );
   interceptURL(
     'GET',
-    '/api/v1/dashboard/datamodels?service=sample_looker&fields=*',
+    '/api/v1/dashboard/datamodels?service=sample_looker*',
     'getDataModels'
   );
 

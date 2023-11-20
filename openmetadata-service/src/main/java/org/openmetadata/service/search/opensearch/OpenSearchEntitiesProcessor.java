@@ -25,6 +25,10 @@ import os.org.opensearch.common.xcontent.XContentType;
 public class OpenSearchEntitiesProcessor implements Processor<BulkRequest, ResultList<? extends EntityInterface>> {
   private final StepStats stats = new StepStats();
 
+  public OpenSearchEntitiesProcessor(int total) {
+    this.stats.withTotalRecords(total).withSuccessRecords(0).withFailedRecords(0);
+  }
+
   @Override
   public BulkRequest process(ResultList<? extends EntityInterface> input, Map<String, Object> contextData)
       throws ProcessorException {

@@ -128,7 +128,7 @@ public class QueryRepository extends EntityRepository<Query> {
     }
   }
 
-  public RestUtil.PutResponse<?> AddQueryUser(
+  public RestUtil.PutResponse<?> addQueryUser(
       UriInfo uriInfo, String updatedBy, UUID queryId, List<String> userFqnList) {
     Query query = Entity.getEntity(Entity.QUERY, queryId, QUERY_USERS_FIELD, Include.NON_DELETED);
     List<EntityReference> oldValue = query.getUsers();
@@ -146,7 +146,7 @@ public class QueryRepository extends EntityRepository<Query> {
     return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
-  public RestUtil.PutResponse<?> AddQueryUsedBy(
+  public RestUtil.PutResponse<?> addQueryUsedBy(
       UriInfo uriInfo, String updatedBy, UUID queryId, List<String> userList) {
     Query query = Entity.getEntity(Entity.QUERY, queryId, QUERY_UPDATE_FIELDS, Include.NON_DELETED);
     Query oldQuery = JsonUtils.readValue(JsonUtils.pojoToJson(query), Query.class);

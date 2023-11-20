@@ -404,7 +404,8 @@ public class AppMarketPlaceResource extends EntityResource<AppMarketPlaceDefinit
             .withPermission(create.getPermission())
             .withAppLogoUrl(create.getAppLogoUrl())
             .withAppScreenshots(create.getAppScreenshots())
-            .withFeatures(create.getFeatures());
+            .withFeatures(create.getFeatures())
+            .withSourcePythonClass(create.getSourcePythonClass());
 
     // Validate App
     validateApplication(app);

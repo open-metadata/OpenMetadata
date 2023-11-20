@@ -430,7 +430,7 @@ class OpenMetadataValidationAction(ValidationAction):
 
             self.ometa_conn.add_test_case_results(
                 test_results=TestCaseResult(
-                    timestamp=datetime.now(timezone.utc).timestamp(),
+                    timestamp=int(datetime.now(timezone.utc).timestamp() * 1000),
                     testCaseStatus=TestCaseStatus.Success
                     if result["success"]
                     else TestCaseStatus.Failed,

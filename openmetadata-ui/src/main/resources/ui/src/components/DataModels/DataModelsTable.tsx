@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col } from 'antd';
+import { Col, Row, Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
@@ -23,6 +23,8 @@ import RichTextEditorPreviewer from '../../components/common/RichTextEditor/Rich
 import Table from '../../components/common/Table/Table';
 import {
   getDataModelDetailsPath,
+  INITIAL_PAGING_VALUE,
+  PAGE_SIZE_BASE,
   pagingObject,
 } from '../../constants/constants';
 import { Include } from '../../generated/type/include';
@@ -35,10 +37,11 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import NextPrevious from '../common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../common/NextPrevious/NextPrevious.interface';
 
-const DataModelTable = ({ showDeleted }: { showDeleted?: boolean }) => {
+const DataModelTable = () => {
   const { t } = useTranslation();
   const { fqn } = useParams<{ fqn: string }>();
   const [dataModels, setDataModels] = useState<Array<ServicePageData>>();
+  const [showDeleted, setShowDeleted] = useState(false);
   const {
     currentPage,
     pageSize,
@@ -94,7 +97,6 @@ const DataModelTable = ({ showDeleted }: { showDeleted?: boolean }) => {
         setIsLoading(true);
         const { data, paging: resPaging } = await getDataModels({
           service: fqn,
-          fields: 'owner,tags,followers',
           limit: pageSize,
           include: showDeleted ? Include.Deleted : Include.NonDeleted,
           ...pagingData,
@@ -122,12 +124,32 @@ const DataModelTable = ({ showDeleted }: { showDeleted?: boolean }) => {
     handlePageChange(currentPage);
   };
 
+  const handleShowDeletedChange = (checked: boolean) => {
+    setShowDeleted(checked);
+    handlePageChange(INITIAL_PAGING_VALUE);
+    handlePageSizeChange(PAGE_SIZE_BASE);
+  };
+
   useEffect(() => {
     fetchDashboardsDataModel();
   }, [pageSize, showDeleted]);
 
   return (
-    <>
+    <Row gutter={[0, 16]}>
+      <Col className="p-t-sm p-x-lg" span={24}>
+        <Row justify="end">
+          <Col>
+            <Switch
+              checked={showDeleted}
+              data-testid="show-deleted"
+              onClick={handleShowDeletedChange}
+            />
+            <Typography.Text className="m-l-xs">
+              {t('label.deleted')}
+            </Typography.Text>{' '}
+          </Col>
+        </Row>
+      </Col>
       <Col className="p-x-lg" data-testid="table-container" span={24}>
         <Table
           bordered
@@ -155,7 +177,7 @@ const DataModelTable = ({ showDeleted }: { showDeleted?: boolean }) => {
           />
         )}
       </Col>
-    </>
+    </Row>
   );
 };
 

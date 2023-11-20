@@ -50,7 +50,9 @@ import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.INGESTION_BOT;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_USER_NAME;
+import static org.openmetadata.service.util.TestUtils.UpdateType.CHANGE_CONSOLIDATED;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
+import static org.openmetadata.service.util.TestUtils.UpdateType.REVERT;
 import static org.openmetadata.service.util.TestUtils.assertDeleted;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
@@ -267,14 +269,14 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     String oldEmail = create.getEmail();
     CreateUser update = create.withEmail("user.xyz@email.com").withDisplayName("displayName1");
 
-    ChangeDescription change = getChangeDescription(user.getVersion());
+    ChangeDescription change = getChangeDescription(user, MINOR_UPDATE);
     fieldAdded(change, "displayName", "displayName1");
     fieldUpdated(change, "email", oldEmail, "user.xyz@email.com");
     user = updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Update the user information using PUT as the logged-in user
     update = create.withDisplayName("displayName2");
-    change = getChangeDescription(user.getVersion());
+    change = getChangeDescription(user, MINOR_UPDATE);
     fieldUpdated(change, "displayName", "displayName1", "displayName2");
     updateAndCheckEntity(update, OK, authHeaders("user.xyz@email.com"), MINOR_UPDATE, change);
     assertNotNull(user);
@@ -642,7 +644,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
         .withPersonas(List.of(DATA_SCIENTIST.getEntityReference(), DATA_ENGINEER.getEntityReference()))
         .withIsBot(false)
         .withIsAdmin(false);
-    ChangeDescription change = getChangeDescription(user.getVersion());
+    ChangeDescription change = getChangeDescription(user, MINOR_UPDATE);
     fieldAdded(change, "roles", listOf(role1));
     fieldDeleted(change, "teams", listOf(ORG_TEAM.getEntityReference()));
     fieldAdded(change, "teams", teams);
@@ -655,7 +657,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     user = patchEntityAndCheck(user, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     //
-    // Replace the attributes
+    // Replace the attributes - Change from this patch is consolidated with the previous changes
     //
     String timezone1 = "Canada/Eastern";
     List<EntityReference> teams1 = Arrays.asList(team1, team3); // team2 dropped and team3 is added
@@ -674,20 +676,20 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
         .withIsBot(true)
         .withIsAdmin(false);
 
-    change = getChangeDescription(user.getVersion());
-    fieldDeleted(change, "roles", listOf(role1));
-    fieldDeleted(change, "teams", listOf(team2));
-    fieldDeleted(change, "personas", listOf(DATA_SCIENTIST.getEntityReference()));
+    change = getChangeDescription(user, CHANGE_CONSOLIDATED);
     fieldAdded(change, "roles", listOf(role2));
-    fieldAdded(change, "teams", listOf(team3));
-    fieldUpdated(change, "timezone", timezone, timezone1);
-    fieldUpdated(change, "displayName", "displayName", "displayName1");
-    fieldUpdated(change, "profile", profile, profile1);
-    fieldUpdated(change, "isBot", false, true);
-    user = patchEntityAndCheck(user, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    fieldDeleted(change, "teams", listOf(ORG_TEAM.getEntityReference()));
+    fieldAdded(change, "teams", teams1);
+    fieldAdded(change, "timezone", timezone1);
+    fieldAdded(change, "displayName", "displayName1");
+    fieldAdded(change, "profile", profile1);
+    fieldAdded(change, "isBot", true);
+    fieldAdded(change, "defaultPersona", DATA_SCIENTIST.getEntityReference());
+    fieldAdded(change, "personas", List.of(DATA_ENGINEER.getEntityReference()));
+    user = patchEntityAndCheck(user, origJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
 
     //
-    // Remove the attributes
+    // Remove the attributes - Consolidating changes from this patch with previous results in no change
     //
     origJson = JsonUtils.pojoToJson(user);
     user.withRoles(null)
@@ -695,21 +697,14 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
         .withTimezone(null)
         .withDisplayName(null)
         .withProfile(null)
+        .withDefaultPersona(null)
         .withPersonas(null)
         .withIsBot(null)
         .withIsAdmin(false);
 
     // Note non-empty display field is not deleted. When teams are deleted, Organization is added back as default team.
-    change = getChangeDescription(user.getVersion());
-    fieldDeleted(change, "roles", listOf(role2));
-    fieldDeleted(change, "teams", teams1);
-    fieldAdded(change, "teams", listOf(ORG_TEAM.getEntityReference()));
-    fieldDeleted(change, "timezone", timezone1);
-    fieldDeleted(change, "displayName", "displayName1");
-    fieldDeleted(change, "profile", profile1);
-    fieldDeleted(change, "isBot", true);
-    fieldDeleted(change, "personas", listOf(DATA_ENGINEER.getEntityReference()));
-    patchEntityAndCheck(user, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    change = getChangeDescription(user, REVERT);
+    patchEntityAndCheck(user, origJson, ADMIN_AUTH_HEADERS, REVERT, change);
   }
 
   @Test
@@ -737,7 +732,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertResponse(() -> patchEntity(user1.getId(), json, user1, user1Auth), FORBIDDEN, notAdmin(user1.getName()));
 
     // User can change for authorized as himself the teams and other attributes
-    ChangeDescription change = getChangeDescription(user1.getVersion());
+    ChangeDescription change = getChangeDescription(user1, MINOR_UPDATE);
     user1.withRoles(null).withDescription("description").withDisplayName("display");
     user1.getTeams().add(team.getEntityReference());
     fieldUpdated(change, "description", "", "description");
@@ -1143,19 +1138,20 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
             .withSubscription(
                 new SubscriptionConfig().withSlack(new Webhook().withEndpoint(new URI("https://example.com"))));
 
-    // Add policies to the team
+    // Update profile of the user
     String json = JsonUtils.pojoToJson(user);
     user.withProfile(profile1);
-    ChangeDescription change = getChangeDescription(user.getVersion());
+    ChangeDescription change = getChangeDescription(user, MINOR_UPDATE);
     fieldUpdated(change, "profile", PROFILE, profile1);
     user = patchEntityAndCheck(user, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
-    // Remove policies from the team
+    // Remove profile from the user
+    // Changes from this PATCH are consolidated with previous changes where original PROFILE is removed
     json = JsonUtils.pojoToJson(user);
     user.withProfile(null);
-    change = getChangeDescription(user.getVersion());
-    fieldDeleted(change, "profile", profile1);
-    patchEntityAndCheck(user, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    change = getChangeDescription(user, CHANGE_CONSOLIDATED);
+    fieldDeleted(change, "profile", PROFILE);
+    patchEntityAndCheck(user, json, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
   }
 
   @Test
@@ -1289,7 +1285,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) {
-    if (expected == null && actual == null) {
+    if (expected == actual) {
       return;
     }
     switch (fieldName) {
@@ -1301,15 +1297,10 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
       case "teams":
       case "roles":
       case "personas":
-        @SuppressWarnings("unchecked")
-        List<EntityReference> expectedList = (List<EntityReference>) expected;
-        List<EntityReference> actualList = JsonUtils.readObjects(actual.toString(), EntityReference.class);
-        assertEntityReferences(expectedList, actualList);
+        assertEntityReferencesFieldChange(expected, actual);
         break;
       case "defaultPersona":
-        EntityReference expectedRef = (EntityReference) expected;
-        EntityReference actualRef = JsonUtils.readValue(actual.toString(), EntityReference.class);
-        assertEquals(expectedRef.getId(), actualRef.getId());
+        assertEntityReferenceFieldChange(expected, actual);
         break;
       default:
         assertCommonFieldChange(fieldName, expected, actual);

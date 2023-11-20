@@ -113,7 +113,35 @@ export const getUserNames = (
   return getOwner(hasPermission, getEntityName(entity.owner), entity.owner);
 };
 
-export const getQueryFilterToIncludeDomain = (fqn: string) => ({
+export const getQueryFilterToIncludeDomain = (
+  domainFqn: string,
+  dataProductFqn: string
+) => ({
+  query: {
+    bool: {
+      must: [
+        {
+          term: {
+            'domain.fullyQualifiedName': domainFqn,
+          },
+        },
+        {
+          bool: {
+            must_not: [
+              {
+                term: {
+                  'dataProducts.fullyQualifiedName': dataProductFqn,
+                },
+              },
+            ],
+          },
+        },
+      ],
+    },
+  },
+});
+
+export const getQueryFilterToExcludeDomainTerms = (fqn: string) => ({
   query: {
     bool: {
       must: [
@@ -121,8 +149,12 @@ export const getQueryFilterToIncludeDomain = (fqn: string) => ({
           bool: {
             must: [
               {
-                term: {
-                  'domain.fullyQualifiedName': fqn,
+                bool: {
+                  must_not: {
+                    term: {
+                      'domain.fullyQualifiedName': fqn,
+                    },
+                  },
                 },
               },
             ],

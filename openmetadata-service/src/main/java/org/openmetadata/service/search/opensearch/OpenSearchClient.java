@@ -59,6 +59,7 @@ import org.openmetadata.service.search.indexes.MlModelIndex;
 import org.openmetadata.service.search.indexes.PipelineIndex;
 import org.openmetadata.service.search.indexes.QueryIndex;
 import org.openmetadata.service.search.indexes.SearchEntityIndex;
+import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.indexes.StoredProcedureIndex;
 import org.openmetadata.service.search.indexes.TableIndex;
 import org.openmetadata.service.search.indexes.TagIndex;
@@ -231,7 +232,7 @@ public class OpenSearchClient implements SearchClient {
       AcknowledgedResponse putMappingResponse = client.indices().putMapping(request, RequestOptions.DEFAULT);
       LOG.debug("{} Updated {}", indexMapping.getIndexMappingFile(), putMappingResponse.isAcknowledged());
     } catch (Exception e) {
-      LOG.error(String.format("Failed to Update Open Search index %s due to", indexMapping.getIndexName()), e);
+      LOG.warn(String.format("Failed to Update Open Search index %s", indexMapping.getIndexName()));
     }
   }
 
@@ -336,7 +337,17 @@ public class OpenSearchClient implements SearchClient {
     }
 
     /* For backward-compatibility we continue supporting the deleted argument, this should be removed in future versions */
-    if (request.getIndex().equalsIgnoreCase("domain_search_index")
+    if (request.getIndex().equalsIgnoreCase("all")) {
+      BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
+      boolQueryBuilder.should(
+          QueryBuilders.boolQuery()
+              .must(searchSourceBuilder.query())
+              .must(QueryBuilders.existsQuery("deleted"))
+              .must(QueryBuilders.termQuery("deleted", request.deleted())));
+      boolQueryBuilder.should(
+          QueryBuilders.boolQuery().must(searchSourceBuilder.query()).mustNot(QueryBuilders.existsQuery("deleted")));
+      searchSourceBuilder.query(boolQueryBuilder);
+    } else if (request.getIndex().equalsIgnoreCase("domain_search_index")
         || request.getIndex().equalsIgnoreCase("data_product_search_index")
         || request.getIndex().equalsIgnoreCase("query_search_index")
         || request.getIndex().equalsIgnoreCase("raw_cost_analysis_report_data_index")
@@ -618,9 +629,11 @@ public class OpenSearchClient implements SearchClient {
     hb.postTags(POST_TAG);
     SearchSourceBuilder searchSourceBuilder =
         new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
-    searchSourceBuilder.aggregation(AggregationBuilders.terms("database.name.keyword").field("database.name.keyword"));
+    searchSourceBuilder.aggregation(
+        AggregationBuilders.terms("database.displayName.keyword").field("database.displayName.keyword"));
     searchSourceBuilder
-        .aggregation(AggregationBuilders.terms("databaseSchema.name.keyword").field("databaseSchema.name.keyword"))
+        .aggregation(
+            AggregationBuilders.terms("databaseSchema.displayName.keyword").field("databaseSchema.displayName.keyword"))
         .aggregation(AggregationBuilders.terms(COLUMNS_NAME_KEYWORD).field(COLUMNS_NAME_KEYWORD))
         .aggregation(AggregationBuilders.terms(FIELD_COLUMN_NAMES).field(FIELD_COLUMN_NAMES))
         .aggregation(AggregationBuilders.terms("tableType").field("tableType"));
@@ -876,7 +889,8 @@ public class OpenSearchClient implements SearchClient {
   }
 
   private static SearchSourceBuilder buildAggregateSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder = QueryBuilders.queryStringQuery(query).lenient(true);
+    QueryStringQueryBuilder queryBuilder =
+        QueryBuilders.queryStringQuery(query).fields(SearchIndex.getDefaultFields()).lenient(true);
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, null, from, size);
     return addAggregation(searchSourceBuilder);
   }
@@ -885,7 +899,9 @@ public class OpenSearchClient implements SearchClient {
     builder
         .aggregation(AggregationBuilders.terms("serviceType").field("serviceType").size(MAX_AGGREGATE_SIZE))
         .aggregation(
-            AggregationBuilders.terms("service.name.keyword").field("service.name.keyword").size(MAX_AGGREGATE_SIZE))
+            AggregationBuilders.terms("service.displayName.keyword")
+                .field("service.displayName.keyword")
+                .size(MAX_AGGREGATE_SIZE))
         .aggregation(
             AggregationBuilders.terms("entityType.keyword").field("entityType.keyword").size(MAX_AGGREGATE_SIZE))
         .aggregation(AggregationBuilders.terms("tier.tagFQN").field("tier.tagFQN").size(MAX_AGGREGATE_SIZE))

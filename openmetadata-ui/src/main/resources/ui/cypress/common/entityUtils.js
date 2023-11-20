@@ -10,6 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+import {
+  DATABASE_DETAILS,
+  DATABASE_SERVICE_DETAILS,
+  SCHEMA_DETAILS,
+} from '../constants/entityConstant';
+import { uuid } from './common';
+
 /**
  * create full hierarchy of database service (service > database > schema > tables)
  */
@@ -109,6 +117,60 @@ export const hardDeleteService = ({ serviceFqn, token, serviceType }) => {
       headers: { Authorization: `Bearer ${token}` },
     }).then((response) => {
       expect(response.status).to.eq(200);
+    });
+  });
+};
+
+export const generateRandomTable = () => {
+  const id = uuid();
+  const name = `cypress-table-${id}`;
+
+  const table = {
+    name,
+    description: `cypress-table-description-${id}`,
+    displayName: name,
+    columns: [
+      {
+        name: `cypress-column-${id}`,
+        description: `cypress-column-description-${id}`,
+        dataType: 'NUMERIC',
+        dataTypeDisplay: 'numeric',
+      },
+    ],
+    databaseSchema: `${DATABASE_SERVICE_DETAILS.name}.${DATABASE_DETAILS.name}.${SCHEMA_DETAILS.name}`,
+  };
+
+  return table;
+};
+
+/**
+ * get Table by name and create query in the table
+ */
+export const createQueryByTableName = (token, table) => {
+  cy.request({
+    method: 'GET',
+    url: `/api/v1/tables/name/${table.databaseSchema}.${table.name}`,
+    headers: { Authorization: `Bearer ${token}` },
+  }).then((response) => {
+    cy.request({
+      method: 'POST',
+      url: `/api/v1/queries`,
+      headers: { Authorization: `Bearer ${token}` },
+      body: {
+        query: 'SELECT * FROM SALES',
+        description: 'this is query description',
+        queryUsedIn: [
+          {
+            id: response.body.id,
+            type: 'table',
+          },
+        ],
+        duration: 6199,
+        queryDate: 1700225667191,
+        service: DATABASE_SERVICE_DETAILS.name,
+      },
+    }).then((response) => {
+      expect(response.status).to.eq(201);
     });
   });
 };

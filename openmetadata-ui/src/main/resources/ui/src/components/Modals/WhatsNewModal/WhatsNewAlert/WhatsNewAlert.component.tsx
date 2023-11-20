@@ -14,12 +14,11 @@ import { Affix, Button, Card, Col, Row, Space, Typography } from 'antd';
 import { CookieStorage } from 'cookie-storage';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import UpdateLoaderGif from '../../../../assets/gif/whats-new-loader.gif';
 import { ReactComponent as CloseIcon } from '../../../../assets/svg/close.svg';
 import { ReactComponent as RightArrowIcon } from '../../../../assets/svg/ic-arrow-right-full.svg';
 import { ReactComponent as PlayIcon } from '../../../../assets/svg/ic-play-button.svg';
-import { ReactComponent as StarIcon } from '../../../../assets/svg/ic-star.svg';
 import { BLACK_COLOR, ROUTES } from '../../../../constants/constants';
 import { useAuth } from '../../../../hooks/authHooks';
 import { getReleaseVersionExpiry } from '../../../../utils/WhatsNewModal.util';
@@ -108,25 +107,6 @@ const WhatsNewAlert = () => {
                       version: latestVersion.version,
                     })}
                   </Typography.Text>
-
-                  <RightArrowIcon className="whats-new-alert-content-icon-arrow" />
-                </Space>
-              </Col>
-
-              <Col className="whats-new-alert-content" span={24}>
-                <Space align="center" size={12}>
-                  <div className="whats-new-alert-content-icon-container">
-                    <StarIcon className="whats-new-alert-content-icon" />
-                  </div>
-                  <Link
-                    className="whats-new-alert-sub-header"
-                    component={Typography.Link}
-                    target="_blank"
-                    to={{
-                      pathname: 'https://github.com/open-metadata/OpenMetadata',
-                    }}>
-                    {t('label.star-open-metadata')}
-                  </Link>
 
                   <RightArrowIcon className="whats-new-alert-content-icon-arrow" />
                 </Space>

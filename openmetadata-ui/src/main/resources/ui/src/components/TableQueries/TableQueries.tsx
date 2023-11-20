@@ -130,12 +130,9 @@ const TableQueries: FC<TableQueriesProp> = ({
       const res = await patchQueries(selectedQuery.id ?? '', jsonPatch);
       setSelectedQuery((pre) => (pre ? { ...pre, ...res } : res));
       setTableQueries((pre) => {
-        return {
-          ...pre,
-          data: pre.map((query) =>
-            query.id === updatedQuery.id ? { ...query, ...res } : query
-          ),
-        };
+        return pre.map((query) =>
+          query.id === updatedQuery.id ? { ...query, ...res } : query
+        );
       });
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -150,12 +147,9 @@ const TableQueries: FC<TableQueriesProp> = ({
       });
       setSelectedQuery(response);
       setTableQueries((pre) => {
-        return {
-          ...pre,
-          data: pre.map((query) =>
-            query.id === response.id ? response : query
-          ),
-        };
+        return pre.map((query) =>
+          query.id === response.id ? response : query
+        );
       });
     } catch (error) {
       showErrorToast(error as AxiosError);

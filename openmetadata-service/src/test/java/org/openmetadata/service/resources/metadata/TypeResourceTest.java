@@ -19,6 +19,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.UpdateType.CHANGE_CONSOLIDATED;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertCustomProperties;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
@@ -86,36 +87,38 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
     Type tableEntity = getEntityByName("table", "customProperties", ADMIN_AUTH_HEADERS);
     assertTrue(listOrEmpty(tableEntity.getCustomProperties()).isEmpty());
 
-    // Add a custom property with name intA with type integer
+    // Add a custom property with name intA with type integer with PUT
     CustomProperty fieldA =
         new CustomProperty().withName("intA").withDescription("intA").withPropertyType(INT_TYPE.getEntityReference());
-    ChangeDescription change = getChangeDescription(tableEntity.getVersion());
+    ChangeDescription change = getChangeDescription(tableEntity, MINOR_UPDATE);
     fieldAdded(change, "customProperties", new ArrayList<>(List.of(fieldA)));
     tableEntity = addCustomPropertyAndCheck(tableEntity.getId(), fieldA, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     assertCustomProperties(new ArrayList<>(List.of(fieldA)), tableEntity.getCustomProperties());
 
     // Changing custom property description with PUT
     fieldA.withDescription("updated");
-    change = getChangeDescription(tableEntity.getVersion());
+    change = getChangeDescription(tableEntity, MINOR_UPDATE);
     fieldUpdated(change, EntityUtil.getCustomField(fieldA, "description"), "intA", "updated");
     tableEntity = addCustomPropertyAndCheck(tableEntity.getId(), fieldA, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     assertCustomProperties(new ArrayList<>(List.of(fieldA)), tableEntity.getCustomProperties());
 
     // Changing custom property description with PATCH
+    // Changes from this PATCH is consolidated with the previous changes
     fieldA.withDescription("updated2");
     String json = JsonUtils.pojoToJson(tableEntity);
     tableEntity.setCustomProperties(List.of(fieldA));
-    change = getChangeDescription(tableEntity.getVersion());
-    fieldUpdated(change, EntityUtil.getCustomField(fieldA, "description"), "updated", "updated2");
-    tableEntity = patchEntityAndCheck(tableEntity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    change = getChangeDescription(tableEntity, CHANGE_CONSOLIDATED);
+    fieldUpdated(change, EntityUtil.getCustomField(fieldA, "description"), "intA", "updated2");
+    tableEntity = patchEntityAndCheck(tableEntity, json, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
 
     // Add a second property with name intB with type integer
+    // Note that since this is PUT operation, the previous changes are not consolidated
     EntityReference typeRef =
         new EntityReference()
             .withType(INT_TYPE.getEntityReference().getType())
             .withId(INT_TYPE.getEntityReference().getId());
     CustomProperty fieldB = new CustomProperty().withName("intB").withDescription("intB").withPropertyType(typeRef);
-    change = getChangeDescription(tableEntity.getVersion());
+    change = getChangeDescription(tableEntity, MINOR_UPDATE);
     fieldAdded(change, "customProperties", new ArrayList<>(List.of(fieldB)));
     tableEntity = addCustomPropertyAndCheck(tableEntity.getId(), fieldB, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     fieldB.setPropertyType(INT_TYPE.getEntityReference());

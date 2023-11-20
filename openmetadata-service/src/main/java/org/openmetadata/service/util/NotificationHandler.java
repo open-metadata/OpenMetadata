@@ -15,12 +15,12 @@ package org.openmetadata.service.util;
 
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
+import static org.openmetadata.service.util.EmailUtil.getSmtpSettings;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import freemarker.template.TemplateException;
 import java.io.IOException;
-import java.net.URI;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
@@ -80,7 +80,7 @@ public class NotificationHandler {
           handleConversationNotification(thread, collectionDAO);
           break;
         case Announcement:
-          handleAnnouncementNotification(thread, collectionDAO);
+          handleAnnouncementNotification(thread);
           break;
       }
     }
@@ -113,8 +113,7 @@ public class NotificationHandler {
     }
   }
 
-  private void handleAnnouncementNotification(Thread thread, CollectionDAO collectionDAO)
-      throws JsonProcessingException {
+  private void handleAnnouncementNotification(Thread thread) throws JsonProcessingException {
     String jsonThread = mapper.writeValueAsString(thread);
     AnnouncementDetails announcementDetails = thread.getAnnouncement();
     Long currentTimestamp = Instant.now().getEpochSecond();
@@ -154,7 +153,6 @@ public class NotificationHandler {
 
   private void handleEmailNotifications(HashSet<UUID> userList, Thread thread) {
     UserRepository repository = (UserRepository) Entity.getEntityRepository(USER);
-    URI urlInstance = thread.getHref();
     userList.forEach(
         id -> {
           try {
@@ -162,7 +160,7 @@ public class NotificationHandler {
             EmailUtil.sendTaskAssignmentNotificationToUser(
                 user.getName(),
                 user.getEmail(),
-                String.format("%s/users/%s/tasks", EmailUtil.buildBaseUrl(urlInstance), user.getName()),
+                String.format("%s/users/%s/tasks", getSmtpSettings().getOpenMetadataUrl(), user.getName()),
                 thread,
                 EmailUtil.getTaskAssignmentSubject(),
                 EmailUtil.TASK_NOTIFICATION_TEMPLATE);

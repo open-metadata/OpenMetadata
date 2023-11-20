@@ -18,6 +18,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
 from metadata.__version__ import get_metadata_version
+from metadata.cli.app import run_app
 from metadata.cli.backup import UploadDestinationType, run_backup
 from metadata.cli.dataquality import run_test
 from metadata.cli.docker import BACKEND_DATABASES, DockerActions, run_docker
@@ -50,8 +51,20 @@ class MetadataCommands(Enum):
     WEBHOOK = "webhook"
     INSIGHT = "insight"
     LINEAGE = "lineage"
+    APP = "app"
     OPENMETADATA_IMPORTS_MIGRATION = "openmetadata_imports_migration"
     OPENMETADATA_DAG_CONFIG_MIGRATION = "openmetadata_dag_config_migration"
+
+
+RUN_PATH_METHODS = {
+    MetadataCommands.INGEST.value: run_ingest,
+    MetadataCommands.USAGE.value: run_usage,
+    MetadataCommands.LINEAGE.value: run_lineage,
+    MetadataCommands.INSIGHT.value: run_insight,
+    MetadataCommands.PROFILE.value: run_profiler,
+    MetadataCommands.TEST.value: run_test,
+    MetadataCommands.APP.value: run_app,
+}
 
 
 OM_IMPORTS_MIGRATION = """
@@ -365,6 +378,12 @@ def get_parser(args=None):
             MetadataCommands.TEST.value, help="Workflow for running test suites"
         )
     )
+    create_common_config_parser_args(
+        sub_parser.add_parser(
+            MetadataCommands.APP.value,
+            help="Workflow for running external applications",
+        )
+    )
     create_openmetadata_imports_migration_args(
         sub_parser.add_parser(
             MetadataCommands.OPENMETADATA_IMPORTS_MIGRATION.value,
@@ -409,7 +428,7 @@ def get_parser(args=None):
     return parser.parse_args(args)
 
 
-def metadata(args=None):  # pylint: disable=too-many-branches
+def metadata(args=None):
     """
     This method implements parsing of the arguments passed from CLI
     """
@@ -418,6 +437,10 @@ def metadata(args=None):  # pylint: disable=too-many-branches
     config_file = contains_args.get("config")
     if config_file:
         path = Path(config_file).expanduser()
+    else:
+        raise ValueError(
+            "Could not load config file! Please specify the config path with `-c` or `--config`."
+        )
     if contains_args.get("debug"):
         set_loggers_level(logging.DEBUG)
     elif contains_args.get("log_level"):
@@ -425,18 +448,9 @@ def metadata(args=None):  # pylint: disable=too-many-branches
     else:
         set_loggers_level(logging.INFO)
 
-    if metadata_workflow == MetadataCommands.INGEST.value:
-        run_ingest(config_path=path)
-    if metadata_workflow == MetadataCommands.USAGE.value:
-        run_usage(config_path=path)
-    if metadata_workflow == MetadataCommands.LINEAGE.value:
-        run_lineage(config_path=path)
-    if metadata_workflow == MetadataCommands.INSIGHT.value:
-        run_insight(config_path=path)
-    if metadata_workflow == MetadataCommands.PROFILE.value:
-        run_profiler(config_path=path)
-    if metadata_workflow == MetadataCommands.TEST.value:
-        run_test(config_path=path)
+    if metadata_workflow in RUN_PATH_METHODS:
+        RUN_PATH_METHODS[metadata_workflow](path)
+
     if metadata_workflow == MetadataCommands.BACKUP.value:
         run_backup(
             common_backup_obj_instance=BackupRestoreArgs(

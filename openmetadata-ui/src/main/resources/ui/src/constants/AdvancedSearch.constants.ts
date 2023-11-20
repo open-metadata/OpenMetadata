@@ -49,7 +49,7 @@ export const COMMON_DROPDOWN_ITEMS = [
   },
   {
     label: t('label.service'),
-    key: 'service.name.keyword',
+    key: 'service.displayName.keyword',
   },
   {
     label: t('label.service-type'),
@@ -60,11 +60,11 @@ export const COMMON_DROPDOWN_ITEMS = [
 export const TABLE_DROPDOWN_ITEMS = [
   {
     label: t('label.database'),
-    key: 'database.name.keyword',
+    key: 'database.displayName.keyword',
   },
   {
     label: t('label.schema'),
-    key: 'databaseSchema.name.keyword',
+    key: 'databaseSchema.displayName.keyword',
   },
   {
     label: t('label.column'),
@@ -267,10 +267,7 @@ const getCommonQueryBuilderFields = (
 
       fieldSettings: {
         asyncFetch: autocomplete({
-          searchIndex: entitySearchIndex ?? [
-            SearchIndex.USER,
-            SearchIndex.TEAM,
-          ],
+          searchIndex: [SearchIndex.USER, SearchIndex.TEAM],
           entityField: EntityFields.OWNER,
         }),
         useAsyncSearch: true,
@@ -284,8 +281,7 @@ const getCommonQueryBuilderFields = (
       fieldSettings: {
         asyncFetch: autocomplete({
           searchIndex: entitySearchIndex ?? [
-            SearchIndex.TAG,
-            SearchIndex.GLOSSARY,
+            (SearchIndex.TAG, SearchIndex.GLOSSARY),
           ],
           entityField: EntityFields.TAG,
         }),

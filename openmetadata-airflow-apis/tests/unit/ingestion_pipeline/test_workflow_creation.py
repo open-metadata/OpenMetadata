@@ -17,6 +17,9 @@ import uuid
 from unittest import TestCase
 from unittest.mock import patch
 
+from openmetadata_managed_apis.workflows.ingestion.application import (
+    build_application_workflow_config,
+)
 from openmetadata_managed_apis.workflows.ingestion.lineage import (
     build_lineage_workflow_config,
 )
@@ -33,6 +36,12 @@ from openmetadata_managed_apis.workflows.ingestion.usage import (
     build_usage_workflow_config,
 )
 
+from metadata.generated.schema.entity.applications.configuration.external.autoTaggerAppConfig import (
+    AutoTaggerAppConfig,
+)
+from metadata.generated.schema.entity.applications.configuration.externalApplicationConfig import (
+    AppConfig,
+)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -41,6 +50,9 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
     AirflowConfig,
     IngestionPipeline,
     PipelineType,
+)
+from metadata.generated.schema.metadataIngestion.applicationPipeline import (
+    ApplicationPipeline,
 )
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
@@ -68,6 +80,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.workflow.application import ApplicationWorkflow
 from metadata.workflow.data_quality import TestSuiteWorkflow
 from metadata.workflow.metadata import MetadataWorkflow
 from metadata.workflow.profiler import ProfilerWorkflow
@@ -315,7 +328,7 @@ class OMetaServiceTest(TestCase):
     def test_test_suite_workflow(self):
         """
         Validate that the ingestionPipeline can be parsed
-        and properly load a Profiler Workflow
+        and properly load a Test Suite Workflow
         """
 
         ingestion_pipeline = IngestionPipeline(
@@ -344,3 +357,44 @@ class OMetaServiceTest(TestCase):
         config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
 
         parse_workflow_config_gracefully(config)
+
+    @patch.object(
+        ApplicationWorkflow,
+        "set_ingestion_pipeline_status",
+        mock_set_ingestion_pipeline_status,
+    )
+    def test_application_workflow(self):
+        """
+        Validate that the ingestionPipeline can be parsed
+        and properly load an Application Workflow
+        """
+
+        ingestion_pipeline = IngestionPipeline(
+            id=uuid.uuid4(),
+            name="test_auto_tagger_application",
+            pipelineType=PipelineType.application,
+            fullyQualifiedName="OpenMetadata.test_auto_tagger_application",
+            sourceConfig=SourceConfig(
+                config=ApplicationPipeline(
+                    type="Application",
+                    appConfig=AppConfig(
+                        __root__=AutoTaggerAppConfig(confidenceLevel=80)
+                    ),
+                    sourcePythonClass="metadata.applications.auto_tagger.AutoTaggerApp",
+                )
+            ),
+            openMetadataServerConnection=self.server_config,
+            airflowConfig=AirflowConfig(
+                startDate="2022-06-10T15:06:47+00:00",
+            ),
+            service=EntityReference(
+                id=uuid.uuid4(),
+                type="metadata",
+                name="OpenMetadata",
+            ),
+        )
+
+        workflow_config = build_application_workflow_config(ingestion_pipeline)
+        config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
+
+        ApplicationWorkflow.create(config)
