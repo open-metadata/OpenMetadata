@@ -23,6 +23,7 @@ import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_USER_NAME;
+import static org.openmetadata.service.util.TestUtils.UpdateType.CHANGE_CONSOLIDATED;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
@@ -110,24 +111,24 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
     // Add new DATA_STEWARD_POLICY to role in addition to DATA_CONSUMER_POLICY
     String originalJson = JsonUtils.pojoToJson(role);
     role.getPolicies().addAll(DATA_STEWARD_ROLE.getPolicies());
-    ChangeDescription change = getChangeDescription(role.getVersion());
+    ChangeDescription change = getChangeDescription(role, MINOR_UPDATE);
     fieldAdded(change, "policies", DATA_STEWARD_ROLE.getPolicies());
     role = patchEntityAndCheck(role, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Remove new DATA_CONSUMER_POLICY
+    // Changes from this PATCH is consolidated with the previous changes
     originalJson = JsonUtils.pojoToJson(role);
     role.setPolicies(DATA_STEWARD_ROLE.getPolicies());
-    change = getChangeDescription(role.getVersion());
+    change = getChangeDescription(role, CHANGE_CONSOLIDATED);
     fieldDeleted(change, "policies", DATA_CONSUMER_ROLE.getPolicies());
-    role = patchEntityAndCheck(role, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    fieldAdded(change, "policies", DATA_STEWARD_ROLE.getPolicies());
+    role = patchEntityAndCheck(role, originalJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
 
     // Remove all the policies. It should be disallowed
     final String originalJson1 = JsonUtils.pojoToJson(role);
     final UUID id = role.getId();
     final Role role1 = role;
     role1.setPolicies(null);
-    change = getChangeDescription(role1.getVersion());
-    fieldAdded(change, "policies", DATA_CONSUMER_ROLE.getPolicies());
     assertResponse(
         () -> patchEntity(id, originalJson1, role1, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,

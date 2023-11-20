@@ -15,7 +15,6 @@
 
 .github-star-popup-card {
   border: none;
-  text-align: center;
   position: fixed;
   right: 30px;
   bottom: -100%;
@@ -24,10 +23,15 @@
 
   .ant-card {
     position: relative;
-    width: 342px;
+    width: 338px;
     overflow: hidden;
     border-radius: 14px;
-    box-shadow: @box-shadow-base;
+    box-shadow: 0 0 20px rgba(117, 117, 117, 0.3);
+    border: 1px solid @primary-color;
+
+    .ant-card-body {
+      padding: 26px;
+    }
   }
 
   .github-star-icon {
@@ -38,14 +42,14 @@
 
   .github-star-popup-header {
     color: @primary-color;
-    font-size: 20px;
-    font-weight: 500;
+    font-size: 16px;
+    font-weight: 600;
   }
 
   .github-star-popup-description {
     margin-top: 10px;
-    color: @text-grey-muted;
-    font-size: 14px;
+    color: @text-color;
+    font-size: 12px;
     font-weight: 400;
   }
 
@@ -90,7 +94,7 @@
 
 @keyframes scrollInWithAlert {
   to {
-    bottom: 200px;
+    bottom: 160px;
   }
 }
 

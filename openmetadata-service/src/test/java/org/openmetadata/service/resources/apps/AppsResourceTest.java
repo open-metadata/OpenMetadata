@@ -2,7 +2,6 @@ package org.openmetadata.service.resources.apps;
 
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 
-import java.io.IOException;
 import java.util.Map;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -32,7 +31,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
   public CreateApp createRequest(String name) {
     // Create AppMarketPlaceDefinition
     AppMarketPlaceResourceTest appMarketPlaceResourceTest = new AppMarketPlaceResourceTest();
-    AppMarketPlaceDefinition appMarketPlaceDefinition = null;
+    AppMarketPlaceDefinition appMarketPlaceDefinition;
     try {
       appMarketPlaceDefinition = appMarketPlaceResourceTest.getEntityByName(name, ADMIN_AUTH_HEADERS);
     } catch (EntityNotFoundException | HttpResponseException ex) {
@@ -79,7 +78,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
     assertCommonFieldChange(fieldName, expected, actual);
   }
 }

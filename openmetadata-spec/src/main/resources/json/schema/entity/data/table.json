@@ -310,17 +310,17 @@
           },
           "default": null
         },
+        "profile": {
+          "description": "Latest Data profile for a Column.",
+          "$ref": "#/definitions/columnProfile",
+          "default": null
+        },
         "customMetrics": {
-          "description": "List of Custom Metrics registered for a column.",
+          "description": "List of Custom Metrics registered for a table.",
           "type": "array",
           "items": {
             "$ref": "../../tests/customMetric.json"
           },
-          "default": null
-        },
-        "profile": {
-          "description": "Latest Data profile for a Column.",
-          "$ref": "#/definitions/columnProfile",
           "default": null
         }
       },
@@ -592,7 +592,7 @@
           },
           "additionalProperties": false
         },
-        "customMetricsProfile": {
+        "customMetrics": {
           "description": "Custom Metrics profile list bound to a column.",
           "type": "array",
           "items": {
@@ -788,6 +788,14 @@
           "description": "Table creation time.",
           "type": "string",
           "format": "date-time"
+        },
+        "customMetrics": {
+          "description": "Custom Metrics profile list bound to a column.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/customMetricProfile"
+          },
+          "default": null
         }
       },
       "required": [
@@ -997,6 +1005,14 @@
     "tableProfilerConfig": {
       "description": "Table Profiler Config to include or exclude columns from profiling.",
       "$ref": "#/definitions/tableProfilerConfig"
+    },
+    "customMetrics": {
+      "description": "List of Custom Metrics registered for a table.",
+      "type": "array",
+      "items": {
+        "$ref": "../../tests/customMetric.json"
+      },
+      "default": null
     },
     "profile": {
       "description": "Latest Data profile for a table.",

@@ -59,6 +59,7 @@ import org.openmetadata.service.search.indexes.MlModelIndex;
 import org.openmetadata.service.search.indexes.PipelineIndex;
 import org.openmetadata.service.search.indexes.QueryIndex;
 import org.openmetadata.service.search.indexes.SearchEntityIndex;
+import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.indexes.StoredProcedureIndex;
 import org.openmetadata.service.search.indexes.TableIndex;
 import org.openmetadata.service.search.indexes.TagIndex;
@@ -231,7 +232,7 @@ public class OpenSearchClient implements SearchClient {
       AcknowledgedResponse putMappingResponse = client.indices().putMapping(request, RequestOptions.DEFAULT);
       LOG.debug("{} Updated {}", indexMapping.getIndexMappingFile(), putMappingResponse.isAcknowledged());
     } catch (Exception e) {
-      LOG.error(String.format("Failed to Update Open Search index %s due to", indexMapping.getIndexName()), e);
+      LOG.warn(String.format("Failed to Update Open Search index %s", indexMapping.getIndexName()));
     }
   }
 
@@ -336,7 +337,17 @@ public class OpenSearchClient implements SearchClient {
     }
 
     /* For backward-compatibility we continue supporting the deleted argument, this should be removed in future versions */
-    if (request.getIndex().equalsIgnoreCase("domain_search_index")
+    if (request.getIndex().equalsIgnoreCase("all")) {
+      BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
+      boolQueryBuilder.should(
+          QueryBuilders.boolQuery()
+              .must(searchSourceBuilder.query())
+              .must(QueryBuilders.existsQuery("deleted"))
+              .must(QueryBuilders.termQuery("deleted", request.deleted())));
+      boolQueryBuilder.should(
+          QueryBuilders.boolQuery().must(searchSourceBuilder.query()).mustNot(QueryBuilders.existsQuery("deleted")));
+      searchSourceBuilder.query(boolQueryBuilder);
+    } else if (request.getIndex().equalsIgnoreCase("domain_search_index")
         || request.getIndex().equalsIgnoreCase("data_product_search_index")
         || request.getIndex().equalsIgnoreCase("query_search_index")
         || request.getIndex().equalsIgnoreCase("raw_cost_analysis_report_data_index")
@@ -878,7 +889,8 @@ public class OpenSearchClient implements SearchClient {
   }
 
   private static SearchSourceBuilder buildAggregateSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder = QueryBuilders.queryStringQuery(query).lenient(true);
+    QueryStringQueryBuilder queryBuilder =
+        QueryBuilders.queryStringQuery(query).fields(SearchIndex.getDefaultFields()).lenient(true);
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, null, from, size);
     return addAggregation(searchSourceBuilder);
   }

@@ -491,7 +491,6 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         .withRelatedTerms(getEntityReferences(Entity.GLOSSARY_TERM, create.getRelatedTerms()))
         .withReferences(create.getReferences())
         .withReviewers(getEntityReferences(Entity.USER, create.getReviewers()))
-        .withTags(create.getTags())
         .withProvider(create.getProvider())
         .withMutuallyExclusive(create.getMutuallyExclusive());
   }

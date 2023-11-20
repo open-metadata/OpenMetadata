@@ -14,7 +14,7 @@ import org.openmetadata.service.util.JsonUtils;
 public abstract class UnusedAssetsAggregator<H extends Iterable<S>, S, T> implements DataInsightAggregatorInterface {
   private final H hits;
 
-  public UnusedAssetsAggregator(H hits) {
+  protected UnusedAssetsAggregator(H hits) {
     this.hits = hits;
   }
 

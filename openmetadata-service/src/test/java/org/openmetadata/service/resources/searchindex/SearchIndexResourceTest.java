@@ -15,15 +15,18 @@ package org.openmetadata.service.resources.searchindex;
 
 import static java.util.Collections.singletonList;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
+import static org.openmetadata.service.Entity.TAG;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
@@ -59,7 +62,6 @@ import org.openmetadata.service.resources.services.SearchServiceResourceTest;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
-import org.openmetadata.service.util.TestUtils.UpdateType;
 
 @Slf4j
 public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, CreateSearchIndex> {
@@ -131,7 +133,7 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
     CreateSearchIndex createSearchIndex = createRequest(test).withOwner(USER1_REF).withFields(searchIndexFields);
 
     SearchIndex searchIndex = createEntity(createSearchIndex, ADMIN_AUTH_HEADERS);
-    ChangeDescription change = getChangeDescription(searchIndex.getVersion());
+    ChangeDescription change = getChangeDescription(searchIndex, MINOR_UPDATE);
 
     // Patch and update the searchIndex
     fields.add(new SearchIndexField().withName("updatedBy").withDataType(SearchIndexDataType.KEYWORD));
@@ -148,7 +150,7 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
     fieldUpdated(change, FIELD_OWNER, USER1_REF, TEAM11_REF);
     fieldUpdated(change, "description", "", "searchIndex");
     fieldAdded(change, "fields.tableSearchIndex", JsonUtils.pojoToJson(List.of(addedField)));
-    updateAndCheckEntity(createSearchIndex, Status.OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    updateAndCheckEntity(createSearchIndex, Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
@@ -206,10 +208,10 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
     SearchIndexField addedField = updatedFields.get(updatedFields.size() - 1);
     addedField.setFullyQualifiedName(searchIndex.getFullyQualifiedName() + "." + addedField.getName());
 
-    ChangeDescription change = getChangeDescription(searchIndex.getVersion());
+    ChangeDescription change = getChangeDescription(searchIndex, MINOR_UPDATE);
     fieldUpdated(change, FIELD_OWNER, USER1_REF, TEAM11_REF);
     fieldAdded(change, "fields", JsonUtils.pojoToJson(List.of(addedField)));
-    patchEntityAndCheck(searchIndex, origJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    patchEntityAndCheck(searchIndex, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
@@ -296,6 +298,52 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
     // Create a searchIndex without domain and ensure it inherits domain from the parent
     CreateSearchIndex create = createRequest("user").withService(service.getFullyQualifiedName());
     assertDomainInheritance(create, DOMAIN.getEntityReference());
+  }
+
+  @Test
+  void test_fieldWithInvalidTag(TestInfo test) throws HttpResponseException {
+    // Add an entity with invalid tag
+    TagLabel invalidTag = new TagLabel().withTagFQN("invalidTag");
+    List<SearchIndexField> invalidFields =
+        List.of(
+            new SearchIndexField()
+                .withName("field")
+                .withDataType(SearchIndexDataType.TEXT)
+                .withTags(listOf(invalidTag)));
+    CreateSearchIndex create = createRequest(getEntityName(test)).withFields(invalidFields);
+
+    // Entity can't be created with PUT or POST
+    assertResponse(
+        () -> createEntity(create, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+
+    assertResponse(
+        () -> updateEntity(create, Status.CREATED, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+
+    // Create an entity and update the columns with PUT and PATCH with an invalid tag
+    List<SearchIndexField> validFields =
+        List.of(new SearchIndexField().withName("field").withDataType(SearchIndexDataType.TEXT));
+    create.setFields(validFields);
+    SearchIndex entity = createEntity(create, ADMIN_AUTH_HEADERS);
+    String json = JsonUtils.pojoToJson(entity);
+
+    create.setFields(invalidFields);
+    assertResponse(
+        () -> updateEntity(create, Status.CREATED, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+
+    entity.setTags(listOf(invalidTag));
+    assertResponse(
+        () -> patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+
+    // No lingering relationships should cause error in listing the entity
+    listEntities(null, ADMIN_AUTH_HEADERS);
   }
 
   @Override

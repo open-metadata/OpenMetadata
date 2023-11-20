@@ -7,11 +7,13 @@ import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.schema.type.ColumnDataType.ARRAY;
 import static org.openmetadata.schema.type.ColumnDataType.BIGINT;
 import static org.openmetadata.schema.type.ColumnDataType.CHAR;
 import static org.openmetadata.schema.type.ColumnDataType.INT;
 import static org.openmetadata.schema.type.ColumnDataType.STRUCT;
+import static org.openmetadata.service.Entity.TAG;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.resources.databases.TableResourceTest.assertColumns;
 import static org.openmetadata.service.resources.databases.TableResourceTest.getColumn;
@@ -21,6 +23,8 @@ import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.FullyQualifiedName.build;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.UpdateType.CHANGE_CONSOLIDATED;
+import static org.openmetadata.service.util.TestUtils.UpdateType.MAJOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
@@ -36,6 +40,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.MethodOrderer;
@@ -53,6 +58,7 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.ContainerDataModel;
 import org.openmetadata.schema.type.ContainerFileFormat;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
@@ -62,7 +68,6 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
-import org.openmetadata.service.util.TestUtils.UpdateType;
 
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -148,7 +153,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     // Create a Model with POST
     CreateContainer request = createRequest(test).withOwner(USER1_REF);
     Container container = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
-    ChangeDescription change = getChangeDescription(container.getVersion());
+    ChangeDescription change = getChangeDescription(container, NO_CHANGE);
 
     // Update Container two times successfully with PUT requests
     updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, NO_CHANGE, change);
@@ -160,7 +165,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
         createRequest(test).withDataModel(null).withPrefix(null).withFileFormats(null).withNumberOfObjects(null);
     Container container = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
-    ChangeDescription change = getChangeDescription(container.getVersion());
+    ChangeDescription change = getChangeDescription(container, MINOR_UPDATE);
     fieldAdded(change, "dataModel", PARTITIONED_DATA_MODEL);
     fieldAdded(change, "prefix", "prefix2");
     fieldAdded(change, "fileFormats", FILE_FORMATS);
@@ -180,7 +185,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     assertEquals(1.0, container.getSize());
     assertEquals(10.0, container.getNumberOfObjects());
 
-    change = getChangeDescription(container.getVersion());
+    change = getChangeDescription(container, MINOR_UPDATE);
     fieldUpdated(change, "prefix", "prefix2", "prefix3");
     container =
         updateAndCheckEntity(
@@ -193,8 +198,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     assertEquals(5.0, container.getSize());
     assertEquals(15.0, container.getNumberOfObjects());
 
-    change = getChangeDescription(container.getVersion());
-
+    change = getChangeDescription(container, NO_CHANGE);
     container =
         updateAndCheckEntity(
             request.withPrefix("prefix3").withNumberOfObjects(3.0).withSize(2.0),
@@ -212,9 +216,9 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
         createRequest(test).withDataModel(null).withPrefix(null).withFileFormats(null).withNumberOfObjects(null);
     Container container = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
+    // Add dataModel, prefix, fileFormats
     String originalJson = JsonUtils.pojoToJson(container);
-
-    ChangeDescription change = getChangeDescription(container.getVersion());
+    ChangeDescription change = getChangeDescription(container, MINOR_UPDATE);
     container
         .withDataModel(PARTITIONED_DATA_MODEL)
         .withPrefix("prefix1")
@@ -224,32 +228,33 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     fieldAdded(change, "dataModel", PARTITIONED_DATA_MODEL);
     fieldAdded(change, "prefix", "prefix1");
     fieldAdded(change, "fileFormats", FILE_FORMATS);
-
     container = patchEntityAndCheck(container, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     assertEquals(1.0, container.getSize());
     assertEquals(2.0, container.getNumberOfObjects());
 
     // Update description, chartType and chart url and verify patch
+    // Changes from this PATCH is consolidated with the previous changes
     originalJson = JsonUtils.pojoToJson(container);
-    change = getChangeDescription(container.getVersion());
-    container
-        .withPrefix("prefix2")
-        .withDataModel(
-            new ContainerDataModel().withIsPartitioned(false).withColumns(PARTITIONED_DATA_MODEL.getColumns()))
-        .withFileFormats(List.of(ContainerFileFormat.Gz, ContainerFileFormat.Csv));
+    change = getChangeDescription(container, CHANGE_CONSOLIDATED);
+    ContainerDataModel newModel =
+        new ContainerDataModel().withIsPartitioned(false).withColumns(PARTITIONED_DATA_MODEL.getColumns());
+    List<ContainerFileFormat> newFileFormats = List.of(ContainerFileFormat.Gz, ContainerFileFormat.Csv);
+    container.withPrefix("prefix2").withDataModel(newModel).withFileFormats(newFileFormats);
 
-    fieldUpdated(change, "prefix", "prefix1", "prefix2");
-    fieldUpdated(change, "dataModel.partition", true, false);
-    fieldAdded(change, "fileFormats", List.of(ContainerFileFormat.Gz, ContainerFileFormat.Csv));
-    fieldDeleted(change, "fileFormats", List.of(ContainerFileFormat.Parquet));
+    fieldAdded(change, "dataModel", newModel);
+    fieldAdded(change, "prefix", "prefix2");
+    fieldAdded(change, "fileFormats", newFileFormats);
+    patchEntityAndCheck(container, originalJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
 
-    patchEntityAndCheck(container, originalJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
-
+    // Update the container size and number of objects
+    // Changes from this PATCH is consolidated with the previous changes
     originalJson = JsonUtils.pojoToJson(container);
-    change = getChangeDescription(container.getVersion());
+    change = getChangeDescription(container, CHANGE_CONSOLIDATED);
+    fieldAdded(change, "dataModel", newModel);
+    fieldAdded(change, "prefix", "prefix2");
+    fieldAdded(change, "fileFormats", newFileFormats);
     container.withSize(2.0).withNumberOfObjects(3.0);
-
-    container = patchEntityAndCheck(container, originalJson, ADMIN_AUTH_HEADERS, NO_CHANGE, change);
+    container = patchEntityAndCheck(container, originalJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
     assertEquals(2.0, container.getSize());
     assertEquals(3.0, container.getNumberOfObjects());
   }
@@ -258,15 +263,11 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
   void noChangeForSomeFields(TestInfo test) throws IOException {
     CreateContainer request = createRequest(test).withDataModel(null).withSize(null);
     Container container = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
-    ChangeDescription change = getChangeDescription(container.getVersion());
+    ChangeDescription change = getChangeDescription(container, NO_CHANGE);
 
     container =
         updateAndCheckEntity(
-            request.withDataModel(PARTITIONED_DATA_MODEL).withSize(30.0).withNumberOfObjects(20.0),
-            OK,
-            ADMIN_AUTH_HEADERS,
-            NO_CHANGE,
-            change);
+            request.withSize(30.0).withNumberOfObjects(20.0), OK, ADMIN_AUTH_HEADERS, NO_CHANGE, change);
     assertEquals(30.0, container.getSize());
     assertEquals(20.0, container.getNumberOfObjects());
   }
@@ -275,7 +276,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
   void put_ContainerUpdateDataModel_200(TestInfo test) throws IOException {
     CreateContainer request = createRequest(test);
     Container container = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
-    ChangeDescription change = getChangeDescription(container.getVersion());
+    ChangeDescription change = getChangeDescription(container, MINOR_UPDATE);
 
     // We are removing the columns here. This is a major change
     ContainerDataModel newDataModel = PARTITIONED_DATA_MODEL.withIsPartitioned(false);
@@ -499,14 +500,14 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
         updateAndCheckEntity(create2, CREATED, ADMIN_AUTH_HEADERS, TestUtils.UpdateType.CREATED, null);
 
     // Test PUT operation again without any change
-    ChangeDescription change = getChangeDescription(container2.getVersion());
+    ChangeDescription change = getChangeDescription(container2, NO_CHANGE);
     updateAndCheckEntity(create2, Response.Status.OK, ADMIN_AUTH_HEADERS, NO_CHANGE, change);
 
     //
     // Update the complex columns
     //
     // c1 from array<int> to array<char> - Data type change means old c1 deleted, and new c1 added
-    change = getChangeDescription(container2.getVersion());
+    change = getChangeDescription(container2, MAJOR_UPDATE);
     fieldDeleted(change, "dataModel.columns", List.of(c1));
     Column c1_new =
         getColumn(C1, ARRAY, USER_ADDRESS_TAG_LABEL).withArrayDataType(CHAR).withDataTypeDisplay("array<int>");
@@ -602,6 +603,49 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     // Data consumer as an owner of the service can create container under it
     createEntity(
         createRequest("container").withService(service.getFullyQualifiedName()), authHeaders(DATA_CONSUMER.getName()));
+  }
+
+  @Test
+  void test_columnWithInvalidTag(TestInfo test) throws HttpResponseException {
+    // Add an entity with invalid tag
+    TagLabel invalidTag = new TagLabel().withTagFQN("invalidTag");
+    List<Column> invalidTagColumns = List.of(getColumn(C1, BIGINT, invalidTag));
+    ContainerDataModel invalidTagModel =
+        new ContainerDataModel().withIsPartitioned(true).withColumns(invalidTagColumns);
+    CreateContainer create = createRequest(getEntityName(test)).withDataModel(invalidTagModel);
+
+    // Entity can't be created with PUT or POST
+    assertResponse(
+        () -> createEntity(create, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+
+    assertResponse(
+        () -> updateEntity(create, Status.CREATED, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+
+    // Create an entity and update the columns with PUT and PATCH with an invalid tag
+    List<Column> validColumns = List.of(getColumn(C1, BIGINT, TIER1_TAG_LABEL));
+    ContainerDataModel validTagModel = new ContainerDataModel().withIsPartitioned(true).withColumns(validColumns);
+    create.setDataModel(validTagModel);
+    Container entity = createEntity(create, ADMIN_AUTH_HEADERS);
+    String json = JsonUtils.pojoToJson(entity);
+
+    create.setDataModel(invalidTagModel);
+    assertResponse(
+        () -> updateEntity(create, Status.CREATED, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+
+    entity.setTags(listOf(invalidTag));
+    assertResponse(
+        () -> patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+
+    // No lingering relationships should cause error in listing the entity
+    listEntities(null, ADMIN_AUTH_HEADERS);
   }
 
   @Override
