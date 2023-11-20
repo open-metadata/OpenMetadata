@@ -48,3 +48,17 @@ export const getLoginConfig = async () => {
 
   return response.data;
 };
+
+export const testEmailConnection = async (email: string) => {
+  const configOptions = {
+    headers: { 'Content-type': 'application/json' },
+  };
+
+  const response = await axiosClient.put<string>(
+    '/system/email/test',
+    email,
+    configOptions
+  );
+
+  return response;
+};

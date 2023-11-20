@@ -12,7 +12,7 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Col, Row, Skeleton, Typography } from 'antd';
+import { Button, Col, Row, Skeleton, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isBoolean, isEmpty, isNumber, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -25,9 +25,12 @@ import { ROUTES } from '../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { SMTPSettings } from '../../generated/email/smtpSettings';
 import { SettingType } from '../../generated/settings/settings';
-import { getSettingsConfigFromConfigType } from '../../rest/settingConfigAPI';
+import {
+  getSettingsConfigFromConfigType,
+  testEmailConnection,
+} from '../../rest/settingConfigAPI';
 import { getEmailConfigFieldLabels } from '../../utils/EmailConfigUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 function EmailConfigSettingsPage() {
   const { t } = useTranslation();
@@ -59,6 +62,18 @@ function EmailConfigSettingsPage() {
 
   const handleEditClick = () => {
     history.push(ROUTES.SETTINGS_EDIT_EMAIL_CONFIG);
+  };
+
+  const handleTestEmailConnection = async () => {
+    try {
+      const res = await testEmailConnection(
+        emailConfigValues?.senderMail ?? ''
+      );
+
+      showSuccessToast(res.data);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   };
 
   const configValues = useMemo(() => {
@@ -139,17 +154,23 @@ function EmailConfigSettingsPage() {
             />
           </Col>
           <Col>
-            <Button
-              icon={
-                !isUndefined(emailConfigValues) && (
-                  <Icon component={IconEdit} size={12} />
-                )
-              }
-              onClick={handleEditClick}>
-              {isUndefined(emailConfigValues)
-                ? t('label.add')
-                : t('label.edit')}
-            </Button>
+            <Space>
+              <Button type="primary" onClick={handleTestEmailConnection}>
+                {t('label.test-email')}
+              </Button>
+
+              <Button
+                icon={
+                  !isUndefined(emailConfigValues) && (
+                    <Icon component={IconEdit} size={12} />
+                  )
+                }
+                onClick={handleEditClick}>
+                {isUndefined(emailConfigValues)
+                  ? t('label.add')
+                  : t('label.edit')}
+              </Button>
+            </Space>
           </Col>
         </Row>
       </Col>

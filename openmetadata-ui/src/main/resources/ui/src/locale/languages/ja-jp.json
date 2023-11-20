@@ -1035,6 +1035,7 @@
     "test-case-lowercase": "テストケース",
     "test-case-lowercase-plural": "test cases",
     "test-case-plural": "テストケース",
+    "test-email": "Test Email",
     "test-entity": "テスト {{entity}}",
     "test-plural": "テスト",
     "test-suite": "テストスイート",
