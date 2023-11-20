@@ -4,7 +4,7 @@ include ingestion/Makefile
 
 .PHONY: help
 help:
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[35m%-30s\033[0m %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":"}; {printf "\033[35m%-35s\033[0m %s\n", $$2, $$3}'
 
 .PHONY: install_e2e_tests
 install_e2e_tests:  ## Install the ingestion module with e2e test dependencies (playwright)
@@ -137,7 +137,7 @@ generate-schema-docs:  ## Generates markdown files for documenting the JSON Sche
 
 #Upgrade release automation scripts below	
 .PHONY: update_all
-update_all: ## To update all the release related files run make update_all RELEASE_VERSION=2.2.2 PY_RELEASE_VERSION=2.2.2.2
+update_all:  ## To update all the release related files run make update_all RELEASE_VERSION=2.2.2 PY_RELEASE_VERSION=2.2.2.2
 	@echo "The release version is: $(RELEASE_VERSION)" ; \
 	echo "The python metadata release version: $(PY_RELEASE_VERSION)" ; \
 	$(MAKE) update_maven ; \
@@ -150,7 +150,7 @@ update_all: ## To update all the release related files run make update_all RELEA
 #make update_all RELEASE_VERSION=2.2.2 PY_RELEASE_VERSION=2.2.2.2
 
 .PHONY: update_maven
-update_maven: ## To update the common and pom.xml maven version
+update_maven:  ## To update the common and pom.xml maven version
 	@echo "Updating Maven projects to version $(RELEASE_VERSION)..."; \
 	mvn versions:set -DnewVersion=$(RELEASE_VERSION)
 #remove comment and use the below section when want to use this sub module "update_maven" independently to update github actions
@@ -158,7 +158,7 @@ update_maven: ## To update the common and pom.xml maven version
 
 
 .PHONY: update_github_action_paths
-update_github_action_paths: ## To update the github action ci docker files
+update_github_action_paths:  ## To update the github action ci docker files
 	@echo "Updating docker github action release version to $(RELEASE_VERSION)... "; \
 	file_paths="docker/docker-compose-quickstart/Dockerfile \
 	            .github/workflows/docker-openmetadata-db.yml \
@@ -178,7 +178,7 @@ update_github_action_paths: ## To update the github action ci docker files
 #make update_github_action_paths RELEASE_VERSION=2.2.2
 
 .PHONY: update_python_release_paths
-update_python_release_paths: ## To update the setup.py files
+update_python_release_paths:  ## To update the setup.py files
 	file_paths="ingestion/setup.py \
 				openmetadata-airflow-apis/setup.py"; \
 	echo "Updating Python setup file versions to $(PY_RELEASE_VERSION)... "; \
@@ -189,7 +189,7 @@ update_python_release_paths: ## To update the setup.py files
 #make update_python_release_paths PY_RELEASE_VERSION=2.2.2.2
 
 .PHONY: update_dockerfile_version
-update_dockerfile_version: ## To update the dockerfiles version
+update_dockerfile_version:  ## To update the dockerfiles version
 	@file_paths="docker/docker-compose-ingestion/docker-compose-ingestion.yml \
 		     docker/docker-compose-openmetadata/docker-compose-openmetadata.yml \
 		     docker/docker-compose-quickstart/docker-compose-postgres.yml \
@@ -202,7 +202,7 @@ update_dockerfile_version: ## To update the dockerfiles version
 #make update_dockerfile_version RELEASE_VERSION=2.2.2
 
 .PHONY: update_ingestion_dockerfile_version
-update_ingestion_dockerfile_version: ## To update the ingestion dockerfiles version
+update_ingestion_dockerfile_version:  ## To update the ingestion dockerfiles version
 	@file_paths="ingestion/Dockerfile \
 	             ingestion/operators/docker/Dockerfile"; \
 	echo "Updating ingestion dockerfile release version to $(PY_RELEASE_VERSION)... "; \
