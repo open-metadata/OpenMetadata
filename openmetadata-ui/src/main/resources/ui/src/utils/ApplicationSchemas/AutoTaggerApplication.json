@@ -1,19 +1,31 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/applications/configuration/externalApplicationConfig.json",
+  "$id": "https://open-metadata.org/schema/entity/applications/configuration/external/autoTaggerAppConfig.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "ExternalApplicationConfig",
-  "description": "External Application Pipeline Configuration.",
+  "title": "AutoTaggerAppConfig",
+  "description": "Configuration for the Auto Tagger External Application.",
   "type": "object",
-  "properties": {
-    "config": {
-      "$ref": "../../../type/basic.json#/definitions/componentConfig",
-      "description": "Application-specific configuration"
-    },
-    "sourcePythonClass": {
-      "description": "Source Python Class Name to run the application",
-      "type": "string"
+  "javaType": "org.openmetadata.schema.entity.app.external.AutoTaggerAppConfig",
+  "definitions": {
+    "autoTaggerApp": {
+      "description": "Application type.",
+      "type": "string",
+      "enum": ["AutoTagger"],
+      "default": "AutoTagger"
     }
   },
-  "additionalProperties": false,
-  "required": ["sourcePythonClass"]
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/autoTaggerApp",
+      "default": "AutoTagger"
+    },
+    "confidenceLevel": {
+      "title": "Confidence Level",
+      "type": "integer",
+      "description": "Confidence level for the ML models to apply the PII tagging.",
+      "default": 80
+    }
+  },
+  "additionalProperties": false
 }
