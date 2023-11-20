@@ -116,7 +116,7 @@ const PopoverContent = ({ userName }: { userName: string }) => {
         });
     };
 
-    if (!user?.hasOwnProperty('teams')) {
+    if (!('teams' in user)) {
       getUserWithAdditionalDetails(userName);
     } else {
       setIsLoading(false);
