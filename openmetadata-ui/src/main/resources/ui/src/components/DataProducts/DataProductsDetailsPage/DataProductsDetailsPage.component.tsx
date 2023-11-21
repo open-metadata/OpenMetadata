@@ -312,12 +312,11 @@ const DataProductsDetailsPage = ({
 
   const onNameSave = (obj: { name: string; displayName: string }) => {
     if (dataProduct) {
-      const { name, displayName } = obj;
+      const { displayName } = obj;
       let updatedDetails = cloneDeep(dataProduct);
 
       updatedDetails = {
         ...dataProduct,
-        name: name?.trim() || dataProduct.name,
         displayName: displayName?.trim(),
       };
 
@@ -548,10 +547,9 @@ const DataProductsDetailsPage = ({
       </Row>
 
       <EntityNameModal
-        allowRename
         entity={dataProduct}
         title={t('label.edit-entity', {
-          entity: t('label.name'),
+          entity: t('label.display-name'),
         })}
         visible={isNameEditing}
         onCancel={() => setIsNameEditing(false)}

@@ -62,16 +62,6 @@ const checkDisplayName = (displayName) => {
     });
 };
 
-const checkName = (name) => {
-  cy.get('[data-testid="entity-header-name"]')
-    .scrollIntoView()
-    .should('exist')
-    .and('be.visible')
-    .within(() => {
-      cy.contains(name);
-    });
-};
-
 const updateOwner = (newOwner) => {
   interceptURL('PATCH', `/api/v1/domains/*`, 'patchOwner');
   interceptURL('GET', '/api/v1/users?limit=25&isBot=false', 'getUsers');
@@ -290,7 +280,7 @@ export const deleteDomain = (domainObj) => {
 
   cy.get('[data-testid="delete-modal"] .ant-modal-title').should(
     'contain',
-    `Delete ${domainObj.updatedName}`
+    `Delete ${domainObj.name}`
   );
 
   cy.get('[data-testid="confirmation-text-input"]').type(DELETE_TERM);
@@ -371,15 +361,13 @@ export const renameDomain = (domainObj) => {
   cy.get('[data-testid="manage-button"]').click();
   cy.get('[data-testid="rename-button-details-container"]').click();
 
-  cy.get('#name').should('not.be.disabled').clear();
+  cy.get('#name').should('be.disabled');
   cy.get('#displayName').should('not.be.disabled').clear();
 
-  cy.get('#name').type(domainObj.updatedName);
   cy.get('#displayName').type(domainObj.updatedDisplayName);
 
   cy.get('[data-testid="save-button"]').click();
   verifyResponseStatusCode('@patchName&DisplayName', 200);
 
-  checkName(domainObj.updatedName);
   checkDisplayName(domainObj.updatedDisplayName);
 };
