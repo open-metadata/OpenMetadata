@@ -42,78 +42,86 @@ describe('Glossary and glossary term version pages should work properly', () => 
   let glossaryTerm1Id;
   let glossaryTerm2Id;
 
-  before(() => {
-    cy.login();
-    cy.getAllLocalStorage().then((data) => {
-      const token = Object.values(data)[0].oidcIdToken;
-      // Create Glossary
-      cy.request({
-        method: 'PUT',
-        url: `/api/v1/glossaries`,
-        headers: { Authorization: `Bearer ${token}` },
-        body: GLOSSARY_FOR_VERSION_TEST,
-      }).then((response) => {
-        glossaryId = response.body.id;
-
-        cy.request({
-          method: 'PATCH',
-          url: `/api/v1/glossaries/${glossaryId}`,
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json-patch+json',
-          },
-          body: GLOSSARY_PATCH_PAYLOAD,
-        });
-      });
-
-      // Create First Glossary Term
-      cy.request({
-        method: 'PUT',
-        url: `/api/v1/glossaryTerms`,
-        headers: { Authorization: `Bearer ${token}` },
-        body: GLOSSARY_TERM_FOR_VERSION_TEST1,
-      }).then((response) => {
-        glossaryTerm1Id = response.body.id;
-      });
-
-      // Create Second Glossary Term
-      cy.request({
-        method: 'PUT',
-        url: `/api/v1/glossaryTerms`,
-        headers: { Authorization: `Bearer ${token}` },
-        body: GLOSSARY_TERM_FOR_VERSION_TEST2,
-      }).then((response) => {
-        glossaryTerm2Id = response.body.id;
-
-        const relatedTermsPatchValue = {
-          op: 'add',
-          path: '/relatedTerms/0',
-          value: {
-            id: glossaryTerm1Id,
-            type: 'glossaryTerm',
-            displayName: GLOSSARY_TERM_NAME_FOR_VERSION_TEST1,
-            name: GLOSSARY_TERM_NAME_FOR_VERSION_TEST1,
-          },
-        };
-
-        cy.request({
-          method: 'PATCH',
-          url: `/api/v1/glossaryTerms/${glossaryTerm2Id}`,
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json-patch+json',
-          },
-          body: [...GLOSSARY_TERM_PATCH_PAYLOAD2, relatedTermsPatchValue],
-        });
-      });
-    });
-  });
-
   beforeEach(() => {
     cy.login();
     interceptURL('GET', `/api/v1/glossaries?fields=*`, 'getGlossaryDetails');
     interceptURL('GET', '/api/v1/glossaryTerms?glossary=*', 'getGlossaryTerms');
     visitGlossaryPage();
+  });
+
+  it('Prerequisites for glossary and glossary term version page tests', () => {
+    const token = localStorage.getItem('oidcIdToken');
+
+    // Create Glossary
+    cy.request({
+      method: 'PUT',
+      url: `/api/v1/glossaries`,
+      headers: { Authorization: `Bearer ${token}` },
+      body: GLOSSARY_FOR_VERSION_TEST,
+    }).then((response) => {
+      expect(response.status).to.eq(201);
+
+      glossaryId = response.body.id;
+
+      cy.request({
+        method: 'PATCH',
+        url: `/api/v1/glossaries/${glossaryId}`,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json-patch+json',
+        },
+        body: GLOSSARY_PATCH_PAYLOAD,
+      }).then((response) => {
+        expect(response.status).to.eq(200);
+      });
+    });
+
+    // Create First Glossary Term
+    cy.request({
+      method: 'PUT',
+      url: `/api/v1/glossaryTerms`,
+      headers: { Authorization: `Bearer ${token}` },
+      body: GLOSSARY_TERM_FOR_VERSION_TEST1,
+    }).then((response) => {
+      expect(response.status).to.eq(201);
+
+      glossaryTerm1Id = response.body.id;
+    });
+
+    // Create Second Glossary Term
+    cy.request({
+      method: 'PUT',
+      url: `/api/v1/glossaryTerms`,
+      headers: { Authorization: `Bearer ${token}` },
+      body: GLOSSARY_TERM_FOR_VERSION_TEST2,
+    }).then((response) => {
+      expect(response.status).to.eq(201);
+
+      glossaryTerm2Id = response.body.id;
+
+      const relatedTermsPatchValue = {
+        op: 'add',
+        path: '/relatedTerms/0',
+        value: {
+          id: glossaryTerm1Id,
+          type: 'glossaryTerm',
+          displayName: GLOSSARY_TERM_NAME_FOR_VERSION_TEST1,
+          name: GLOSSARY_TERM_NAME_FOR_VERSION_TEST1,
+        },
+      };
+
+      cy.request({
+        method: 'PATCH',
+        url: `/api/v1/glossaryTerms/${glossaryTerm2Id}`,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json-patch+json',
+        },
+        body: [...GLOSSARY_TERM_PATCH_PAYLOAD2, relatedTermsPatchValue],
+      }).then((response) => {
+        expect(response.status).to.eq(200);
+      });
+    });
   });
 
   it('Glossary version page should display the version changes properly', () => {
@@ -148,11 +156,11 @@ describe('Glossary and glossary term version pages should work properly', () => 
     interceptURL('GET', `/api/v1/glossaries/*/versions`, 'getVersionsList');
     interceptURL(
       'GET',
-      `/api/v1/glossaries/*/versions/0.2`,
+      `/api/v1/glossaries/*/versions/0.3`,
       'getSelectedVersionDetails'
     );
 
-    cy.get('[data-testid="version-button"]').contains('0.2').click();
+    cy.get('[data-testid="version-button"]').contains('0.3').click();
 
     verifyResponseStatusCode('@getVersionsList', 200);
     verifyResponseStatusCode('@getSelectedVersionDetails', 200);
@@ -161,22 +169,42 @@ describe('Glossary and glossary term version pages should work properly', () => 
       .scrollIntoView()
       .should('be.visible');
 
-    cy.get('[data-testid="version-button"]').contains('0.2').click();
+    cy.get('[data-testid="version-button"]').contains('0.3').click();
 
     verifyResponseStatusCode('@getGlossaryDetails', 200);
     verifyResponseStatusCode('@getGlossaryTerms', 200);
 
     removeOwner('glossaries', true);
 
+    interceptURL(
+      'GET',
+      `/api/v1/glossaries/*/versions/0.4`,
+      'getSelectedVersionDetails'
+    );
+
+    cy.get('[data-testid="version-button"]').contains('0.4').click();
+
+    verifyResponseStatusCode('@getVersionsList', 200);
+    verifyResponseStatusCode('@getSelectedVersionDetails', 200);
+
+    cy.get('[data-testid="glossary-owner-name"] [data-testid="diff-removed"]')
+      .scrollIntoView()
+      .should('be.visible');
+
+    cy.get('[data-testid="version-button"]').contains('0.4').click();
+
+    verifyResponseStatusCode('@getGlossaryDetails', 200);
+    verifyResponseStatusCode('@getGlossaryTerms', 200);
+
     addReviewer(REVIEWER, 'glossaries');
 
     interceptURL(
       'GET',
-      `/api/v1/glossaries/*/versions/0.2`,
+      `/api/v1/glossaries/*/versions/0.5`,
       'getSelectedVersionDetails'
     );
 
-    cy.get('[data-testid="version-button"]').contains('0.2').click();
+    cy.get('[data-testid="version-button"]').contains('0.5').click();
 
     verifyResponseStatusCode('@getVersionsList', 200);
     verifyResponseStatusCode('@getSelectedVersionDetails', 200);
@@ -185,12 +213,27 @@ describe('Glossary and glossary term version pages should work properly', () => 
       .scrollIntoView()
       .should('be.visible');
 
-    cy.get('[data-testid="version-button"]').contains('0.2').click();
+    cy.get('[data-testid="version-button"]').contains('0.5').click();
 
     verifyResponseStatusCode('@getGlossaryDetails', 200);
     verifyResponseStatusCode('@getGlossaryTerms', 200);
 
     removeReviewer('glossaries');
+
+    interceptURL(
+      'GET',
+      `/api/v1/glossaries/*/versions/0.6`,
+      'getSelectedVersionDetails'
+    );
+
+    cy.get('[data-testid="version-button"]').contains('0.6').click();
+
+    verifyResponseStatusCode('@getVersionsList', 200);
+    verifyResponseStatusCode('@getSelectedVersionDetails', 200);
+
+    cy.get('[data-testid="glossary-reviewer"] [data-testid="diff-removed"]')
+      .scrollIntoView()
+      .should('be.visible');
   });
 
   it('Glossary term version page should display version changes properly', () => {
@@ -275,11 +318,11 @@ describe('Glossary and glossary term version pages should work properly', () => 
     interceptURL('GET', `/api/v1/glossaryTerms/*/versions`, 'getVersionsList');
     interceptURL(
       'GET',
-      `/api/v1/glossaryTerms/*/versions/0.2`,
+      `/api/v1/glossaryTerms/*/versions/0.3`,
       'getSelectedVersionDetails'
     );
 
-    cy.get('[data-testid="version-button"]').contains('0.2').click();
+    cy.get('[data-testid="version-button"]').contains('0.3').click();
 
     verifyResponseStatusCode('@getVersionsList', 200);
     verifyResponseStatusCode('@getSelectedVersionDetails', 200);
@@ -288,22 +331,42 @@ describe('Glossary and glossary term version pages should work properly', () => 
       .scrollIntoView()
       .should('be.visible');
 
-    cy.get('[data-testid="version-button"]').contains('0.2').click();
+    cy.get('[data-testid="version-button"]').contains('0.3').click();
 
     verifyResponseStatusCode('@getGlossaryTermParents', 200);
     verifyResponseStatusCode('@getChildGlossaryTerms', 200);
 
     removeOwner('glossaryTerms', true);
 
+    interceptURL(
+      'GET',
+      `/api/v1/glossaryTerms/*/versions/0.4`,
+      'getSelectedVersionDetails'
+    );
+
+    cy.get('[data-testid="version-button"]').contains('0.4').click();
+
+    verifyResponseStatusCode('@getVersionsList', 200);
+    verifyResponseStatusCode('@getSelectedVersionDetails', 200);
+
+    cy.get('[data-testid="glossary-owner-name"] [data-testid="diff-removed"]')
+      .scrollIntoView()
+      .should('be.visible');
+
+    cy.get('[data-testid="version-button"]').contains('0.4').click();
+
+    verifyResponseStatusCode('@getGlossaryTermParents', 200);
+    verifyResponseStatusCode('@getChildGlossaryTerms', 200);
+
     addReviewer(REVIEWER, 'glossaryTerms');
 
     interceptURL(
       'GET',
-      `/api/v1/glossaryTerms/*/versions/0.2`,
+      `/api/v1/glossaryTerms/*/versions/0.5`,
       'getSelectedVersionDetails'
     );
 
-    cy.get('[data-testid="version-button"]').contains('0.2').click();
+    cy.get('[data-testid="version-button"]').contains('0.5').click();
 
     verifyResponseStatusCode('@getVersionsList', 200);
     verifyResponseStatusCode('@getSelectedVersionDetails', 200);
@@ -312,12 +375,27 @@ describe('Glossary and glossary term version pages should work properly', () => 
       .scrollIntoView()
       .should('be.visible');
 
-    cy.get('[data-testid="version-button"]').contains('0.2').click();
+    cy.get('[data-testid="version-button"]').contains('0.5').click();
 
     verifyResponseStatusCode('@getGlossaryTermParents', 200);
     verifyResponseStatusCode('@getChildGlossaryTerms', 200);
 
     removeReviewer('glossaryTerms');
+
+    interceptURL(
+      'GET',
+      `/api/v1/glossaryTerms/*/versions/0.6`,
+      'getSelectedVersionDetails'
+    );
+
+    cy.get('[data-testid="version-button"]').contains('0.6').click();
+
+    verifyResponseStatusCode('@getVersionsList', 200);
+    verifyResponseStatusCode('@getSelectedVersionDetails', 200);
+
+    cy.get('[data-testid="glossary-reviewer"] [data-testid="diff-removed"]')
+      .scrollIntoView()
+      .should('be.visible');
   });
 
   it('Cleanup for glossary and glossary term version page tests', () => {
