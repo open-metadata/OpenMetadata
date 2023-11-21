@@ -103,6 +103,13 @@ export const deployApp = (appName: string): Promise<AxiosResponse> => {
   return APIClient.post(`${BASE_URL}/deploy/${appName}`);
 };
 
+export const configureApp = (
+  appName: string,
+  data: Record<string, unknown>
+): Promise<AxiosResponse> => {
+  return APIClient.post(`${BASE_URL}/configure/${appName}`, data);
+};
+
 export const restoreApp = async (id: string) => {
   const response = await APIClient.put<RestoreRequestType, AxiosResponse<App>>(
     `${BASE_URL}/restore`,
