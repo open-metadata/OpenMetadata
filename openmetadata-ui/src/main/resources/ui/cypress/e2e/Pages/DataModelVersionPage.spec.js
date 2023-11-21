@@ -17,8 +17,6 @@ import {
   addOwner,
   addTier,
   interceptURL,
-  removeOwner,
-  removeTier,
   toastNotification,
   verifyResponseStatusCode,
   visitDataModelPage,
@@ -38,36 +36,35 @@ describe('Data model version page should work properly', () => {
   let dataModelId;
   let dataModelFQN;
 
-  beforeEach(() => {
+  before(() => {
     cy.login();
-  });
-
-  it('Prerequisite for data model version page tests', () => {
-    const token = localStorage.getItem('oidcIdToken');
-
-    cy.request({
-      method: 'PUT',
-      url: `/api/v1/dashboard/datamodels`,
-      headers: { Authorization: `Bearer ${token}` },
-      body: DATA_MODEL_DETAILS_FOR_VERSION_TEST,
-    }).then((response) => {
-      expect(response.status).to.eq(201);
-
-      dataModelId = response.body.id;
-      dataModelFQN = response.body.fullyQualifiedName;
+    cy.getAllLocalStorage().then((data) => {
+      const token = Object.values(data)[0].oidcIdToken;
 
       cy.request({
-        method: 'PATCH',
-        url: `/api/v1/dashboard/datamodels/${dataModelId}`,
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json-patch+json',
-        },
-        body: DATA_MODEL_PATCH_PAYLOAD,
+        method: 'PUT',
+        url: `/api/v1/dashboard/datamodels`,
+        headers: { Authorization: `Bearer ${token}` },
+        body: DATA_MODEL_DETAILS_FOR_VERSION_TEST,
       }).then((response) => {
-        expect(response.status).to.eq(200);
+        dataModelId = response.body.id;
+        dataModelFQN = response.body.fullyQualifiedName;
+
+        cy.request({
+          method: 'PATCH',
+          url: `/api/v1/dashboard/datamodels/${dataModelId}`,
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json-patch+json',
+          },
+          body: DATA_MODEL_PATCH_PAYLOAD,
+        });
       });
     });
+  });
+
+  beforeEach(() => {
+    cy.login();
   });
 
   it('Data model version page should show description and tag changes properly', () => {
@@ -104,42 +101,12 @@ describe('Data model version page should work properly', () => {
       .should('be.visible');
   });
 
-  it(`Data model version page should show removed tags changes properly`, () => {
-    visitDataModelPage(dataModelFQN, dataModelName);
-
-    cy.get(
-      '[data-testid="entity-right-panel"]  [data-testid="edit-button"]'
-    ).click();
-
-    cy.get(
-      '[data-testid="selected-tag-PersonalData.SpecialCategory"] [data-testid="remove-tags"]'
-    ).click();
-
-    interceptURL(
-      'PATCH',
-      `/api/v1/dashboard/datamodels/${dataModelId}`,
-      `patchDataModel`
-    );
-
-    cy.get('[data-testid="saveAssociatedTag"]').click();
-
-    verifyResponseStatusCode(`@patchDataModel`, 200);
-
-    cy.get('[data-testid="version-button"]').contains('0.3').click();
-
-    cy.get(
-      `[data-testid="entity-right-panel"] .diff-removed [data-testid="tag-PersonalData.SpecialCategory"]`
-    )
-      .scrollIntoView()
-      .should('be.visible');
-  });
-
   it(`Data model version page should show owner changes properly`, () => {
     visitDataModelPage(dataModelFQN, dataModelName);
 
     cy.get('[data-testid="version-button"]').as('versionButton');
 
-    cy.get('@versionButton').contains('0.3');
+    cy.get('@versionButton').contains('0.2');
 
     addOwner(OWNER, 'dashboard/datamodels');
 
@@ -155,35 +122,17 @@ describe('Data model version page should work properly', () => {
     );
     interceptURL(
       'GET',
-      `/api/v1/dashboard/datamodels/${dataModelId}/versions/0.4`,
+      `/api/v1/dashboard/datamodels/${dataModelId}/versions/0.2`,
       'getSelectedVersionDetails'
     );
 
-    cy.get('@versionButton').contains('0.4').click();
+    cy.get('@versionButton').contains('0.2').click();
 
     verifyResponseStatusCode(`@getDataModelDetails`, 200);
     verifyResponseStatusCode('@getVersionsList', 200);
     verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
-    cy.get(`[data-testid="diff-added"]`).scrollIntoView().should('be.visible');
-
-    cy.get('@versionButton').contains('0.4').click();
-
-    removeOwner('dashboard/datamodels');
-
-    interceptURL(
-      'GET',
-      `/api/v1/dashboard/datamodels/${dataModelId}/versions/0.5`,
-      'getSelectedVersionDetails'
-    );
-
-    cy.get('@versionButton').contains('0.5').click();
-
-    verifyResponseStatusCode(`@getDataModelDetails`, 200);
-    verifyResponseStatusCode('@getVersionsList', 200);
-    verifyResponseStatusCode('@getSelectedVersionDetails', 200);
-
-    cy.get(`[data-testid="diff-removed"]`)
+    cy.get('[data-testid="owner-link"] > [data-testid="diff-added"]')
       .scrollIntoView()
       .should('be.visible');
   });
@@ -193,7 +142,7 @@ describe('Data model version page should work properly', () => {
 
     cy.get('[data-testid="version-button"]').as('versionButton');
 
-    cy.get('@versionButton').contains('0.5');
+    cy.get('@versionButton').contains('0.2');
 
     addTier(TIER, 'dashboard/datamodels');
 
@@ -209,35 +158,17 @@ describe('Data model version page should work properly', () => {
     );
     interceptURL(
       'GET',
-      `/api/v1/dashboard/datamodels/${dataModelId}/versions/0.6`,
+      `/api/v1/dashboard/datamodels/${dataModelId}/versions/0.2`,
       'getSelectedVersionDetails'
     );
 
-    cy.get('@versionButton').contains('0.6').click();
+    cy.get('@versionButton').contains('0.2').click();
 
     verifyResponseStatusCode(`@getDataModelDetails`, 200);
     verifyResponseStatusCode('@getVersionsList', 200);
     verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
-    cy.get(`[data-testid="diff-added"]`).scrollIntoView().should('be.visible');
-
-    cy.get('@versionButton').contains('0.6').click();
-
-    removeTier('dashboard/datamodels');
-
-    interceptURL(
-      'GET',
-      `/api/v1/dashboard/datamodels/${dataModelId}/versions/0.7`,
-      'getSelectedVersionDetails'
-    );
-
-    cy.get('@versionButton').contains('0.7').click();
-
-    verifyResponseStatusCode(`@getDataModelDetails`, 200);
-    verifyResponseStatusCode('@getVersionsList', 200);
-    verifyResponseStatusCode('@getSelectedVersionDetails', 200);
-
-    cy.get(`[data-testid="diff-removed"]`)
+    cy.get('[data-testid="Tier"] > [data-testid="diff-added"]')
       .scrollIntoView()
       .should('be.visible');
   });

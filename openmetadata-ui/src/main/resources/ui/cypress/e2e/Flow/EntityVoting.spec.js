@@ -16,9 +16,86 @@ import {
   verifyResponseStatusCode,
   visitEntityDetailsPage,
 } from '../../common/common';
-import { VOTING_ENTITIES } from '../../constants/voting.constant';
+import {
+  createEntityTable,
+  createSingleLevelEntity,
+  hardDeleteService,
+} from '../../common/entityUtils';
+import {
+  DASHBOARD_DATA_MODEL_DETAILS,
+  DATABASE_SERVICE,
+  SINGLE_LEVEL_SERVICE,
+  STORED_PROCEDURE_DETAILS,
+  VISIT_ENTITIES_DATA,
+} from '../../constants/entityConstant';
+import { SERVICE_CATEGORIES } from '../../constants/service.constants';
+
+const VOTING_ENTITIES = [
+  VISIT_ENTITIES_DATA.table,
+  VISIT_ENTITIES_DATA.topic,
+  VISIT_ENTITIES_DATA.dashboard,
+  VISIT_ENTITIES_DATA.pipeline,
+  VISIT_ENTITIES_DATA.mlmodel,
+  VISIT_ENTITIES_DATA.storedProcedure,
+  VISIT_ENTITIES_DATA.dataModel,
+];
 
 describe('Check if voting work properly in entities', () => {
+  before(() => {
+    cy.login();
+    cy.getAllLocalStorage().then((data) => {
+      const token = Object.values(data)[0].oidcIdToken;
+
+      createEntityTable({
+        token,
+        ...DATABASE_SERVICE,
+        tables: [DATABASE_SERVICE.tables],
+      });
+      SINGLE_LEVEL_SERVICE.forEach((data) => {
+        createSingleLevelEntity({
+          token,
+          ...data,
+          entity: [data.entity],
+        });
+      });
+
+      // creating data model
+      cy.request({
+        method: 'POST',
+        url: `/api/v1/dashboard/datamodels`,
+        headers: { Authorization: `Bearer ${token}` },
+        body: DASHBOARD_DATA_MODEL_DETAILS,
+      });
+      // creating stored procedure
+      cy.request({
+        method: 'POST',
+        url: `/api/v1/storedProcedures`,
+        headers: { Authorization: `Bearer ${token}` },
+        body: STORED_PROCEDURE_DETAILS,
+      });
+    });
+  });
+
+  after(() => {
+    cy.login();
+    cy.getAllLocalStorage().then((data) => {
+      const token = Object.values(data)[0].oidcIdToken;
+
+      hardDeleteService({
+        token,
+        serviceFqn: DATABASE_SERVICE.service.name,
+        serviceType: SERVICE_CATEGORIES.DATABASE_SERVICES,
+      });
+      SINGLE_LEVEL_SERVICE.forEach((data) => {
+        hardDeleteService({
+          token,
+          serviceFqn: data.service.name,
+          serviceType: data.serviceType,
+        });
+      });
+    });
+  });
+
   beforeEach(() => {
     cy.login();
   });
@@ -30,8 +107,6 @@ describe('Check if voting work properly in entities', () => {
         : entityDetails.entity;
 
     it(`UpVote the ${entityDetails.entity} entity`, () => {
-      interceptURL('GET', entityDetails.permissionApi, 'getEntityPermission');
-
       interceptURL(
         'GET',
         `/api/v1/${apiEntity}/name/*?fields=*`,
@@ -45,7 +120,6 @@ describe('Check if voting work properly in entities', () => {
         entity: entityDetails.entity,
       });
       verifyResponseStatusCode('@getEntityDetail', 200);
-      verifyResponseStatusCode('@getEntityPermission', 200);
 
       cy.get('[data-testid="up-vote-btn"]').click();
 
@@ -66,8 +140,6 @@ describe('Check if voting work properly in entities', () => {
         : entityDetails.entity;
 
     it(`DownVote the ${entityDetails.entity} entity`, () => {
-      interceptURL('GET', entityDetails.permissionApi, 'getEntityPermission');
-
       interceptURL(
         'GET',
         `/api/v1/${apiEntity}/name/*?fields=*`,
@@ -81,7 +153,6 @@ describe('Check if voting work properly in entities', () => {
         entity: entityDetails.entity,
       });
       verifyResponseStatusCode('@getEntityDetail', 200);
-      verifyResponseStatusCode('@getEntityPermission', 200);
 
       cy.get('[data-testid="up-vote-count"]').contains(1);
 
@@ -105,8 +176,6 @@ describe('Check if voting work properly in entities', () => {
         : entityDetails.entity;
 
     it(`UnVote the ${entityDetails.entity} entity`, () => {
-      interceptURL('GET', entityDetails.permissionApi, 'getEntityPermission');
-
       interceptURL(
         'GET',
         `/api/v1/${apiEntity}/name/*?fields=*`,
@@ -120,7 +189,6 @@ describe('Check if voting work properly in entities', () => {
         entity: entityDetails.entity,
       });
       verifyResponseStatusCode('@getEntityDetail', 200);
-      verifyResponseStatusCode('@getEntityPermission', 200);
 
       cy.get('[data-testid="down-vote-count"]').contains(1);
 

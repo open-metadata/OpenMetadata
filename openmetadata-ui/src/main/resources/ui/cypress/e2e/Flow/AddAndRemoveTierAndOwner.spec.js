@@ -24,31 +24,40 @@ import {
   visitEntityDetailsPage,
 } from '../../common/common';
 import {
-  DELETE_TERM,
-  SEARCH_ENTITY_DASHBOARD,
-  SEARCH_ENTITY_MLMODEL,
-  SEARCH_ENTITY_PIPELINE,
-  SEARCH_ENTITY_STORED_PROCEDURE,
-  SEARCH_ENTITY_TABLE,
-  SEARCH_ENTITY_TOPIC,
-} from '../../constants/constants';
+  createEntityTable,
+  createSingleLevelEntity,
+  createUserEntity,
+  deleteEntityById,
+  deleteUserEntity,
+  hardDeleteService,
+} from '../../common/entityUtils';
+import { DELETE_TERM, uuid } from '../../constants/constants';
+import {
+  DATABASE_SERVICE,
+  SINGLE_LEVEL_SERVICE,
+  STORED_PROCEDURE_DETAILS,
+  VISIT_ENTITIES_DATA,
+} from '../../constants/entityConstant';
+import { USER_CREDENTIALS } from '../../constants/SearchIndexDetails.constants';
+import { SERVICE_CATEGORIES } from '../../constants/service.constants';
 
 const ENTITIES = {
   table: {
-    ...SEARCH_ENTITY_TABLE.table_5,
-    schema: 'shopify',
-    database: 'ecommerce_db',
+    ...VISIT_ENTITIES_DATA.table,
+    schema: DATABASE_SERVICE.schema.name,
+    database: DATABASE_SERVICE.database.name,
   },
-  topic: SEARCH_ENTITY_TOPIC.topic_2,
-  dashboard: SEARCH_ENTITY_DASHBOARD.dashboard_2,
-  pipeline: SEARCH_ENTITY_PIPELINE.pipeline_2,
-  mlmodel: SEARCH_ENTITY_MLMODEL.mlmodel_2,
-  storedProcedure: SEARCH_ENTITY_STORED_PROCEDURE.stored_procedure_2,
+  topic: VISIT_ENTITIES_DATA.topic,
+  dashboard: VISIT_ENTITIES_DATA.dashboard,
+  pipeline: VISIT_ENTITIES_DATA.pipeline,
+  mlmodel: VISIT_ENTITIES_DATA.mlmodel,
+  storedProcedure: VISIT_ENTITIES_DATA.storedProcedure,
 };
+const TEST_SUITE = { name: `aaa-cypress-test-suite-${uuid()}` };
 const glossary = 'GlossaryOwnerTest';
 const glossaryTerm = 'GlossaryTermOwnerTest';
 
-const OWNER = 'Amber Green';
+const OWNER = `${USER_CREDENTIALS.firstName}${USER_CREDENTIALS.lastName}`;
 const TIER = 'Tier1';
 
 const addRemoveOwner = (ownerName, entity, isGlossaryPage) => {
@@ -63,6 +72,44 @@ const addRemoveTier = (tier, entity) => {
 };
 
 describe('Add and Remove Owner', () => {
+  before(() => {
+    cy.login();
+    cy.getAllLocalStorage().then((data) => {
+      const token = Object.values(data)[0].oidcIdToken;
+
+      createEntityTable({
+        token,
+        ...DATABASE_SERVICE,
+        tables: [DATABASE_SERVICE.tables],
+      });
+      SINGLE_LEVEL_SERVICE.forEach((data) => {
+        createSingleLevelEntity({
+          token,
+          ...data,
+          entity: [data.entity],
+        });
+      });
+
+      // creating stored procedure
+      cy.request({
+        method: 'POST',
+        url: `/api/v1/storedProcedures`,
+        headers: { Authorization: `Bearer ${token}` },
+        body: STORED_PROCEDURE_DETAILS,
+      });
+
+      // creating test suite
+      cy.request({
+        method: 'POST',
+        url: `/api/v1/dataQuality/testSuites`,
+        headers: { Authorization: `Bearer ${token}` },
+        body: TEST_SUITE,
+      });
+
+      createUserEntity({ token, user: USER_CREDENTIALS });
+    });
+  });
+
   beforeEach(() => {
     interceptURL('GET', '/api/v1/permissions/*/name/*', 'entityPermission');
     interceptURL('GET', '/api/v1/feed/count?entityLink=*', 'activityFeed');
@@ -323,6 +370,34 @@ describe('Add and Remove Owner', () => {
 });
 
 describe('Add and Remove Tier', () => {
+  after(() => {
+    cy.login();
+    cy.getAllLocalStorage().then((data) => {
+      const token = Object.values(data)[0].oidcIdToken;
+
+      hardDeleteService({
+        token,
+        serviceFqn: DATABASE_SERVICE.service.name,
+        serviceType: SERVICE_CATEGORIES.DATABASE_SERVICES,
+      });
+      SINGLE_LEVEL_SERVICE.forEach((data) => {
+        hardDeleteService({
+          token,
+          serviceFqn: data.service.name,
+          serviceType: data.serviceType,
+        });
+      });
+      deleteUserEntity({ token, id: USER_CREDENTIALS.id });
+
+      // Delete test suite
+      deleteEntityById({
+        entityFqn: TEST_SUITE.name,
+        entityType: 'dataQuality/testSuites',
+        token,
+      });
+    });
+  });
+
   beforeEach(() => {
     interceptURL('GET', '/api/v1/permissions/*/name/*', 'entityPermission');
     interceptURL('GET', '/api/v1/feed/count?entityLink=*', 'activityFeed');
