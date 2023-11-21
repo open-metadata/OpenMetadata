@@ -45,15 +45,13 @@ public class PersonaRepository extends EntityRepository<Persona> {
   }
 
   @Override
-  public Persona setFields(Persona persona, Fields fields) {
+  public void setFields(Persona persona, Fields fields) {
     persona.setUsers(fields.contains(FIELD_USERS) ? getUsers(persona) : persona.getUsers());
-    return persona;
   }
 
   @Override
-  public Persona clearFields(Persona persona, Fields fields) {
+  public void clearFields(Persona persona, Fields fields) {
     persona.setUsers(fields.contains(FIELD_USERS) ? persona.getUsers() : null);
-    return persona;
   }
 
   @Override

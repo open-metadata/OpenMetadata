@@ -21,6 +21,7 @@ import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.service.resources.apps.AppResource;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.EntityUtil;
@@ -46,9 +47,9 @@ public class AppRepository extends EntityRepository<App> {
   }
 
   @Override
-  public App setFields(App entity, EntityUtil.Fields fields) {
+  public void setFields(App entity, EntityUtil.Fields fields) {
     entity.setPipelines(fields.contains("pipelines") ? getIngestionPipelines(entity) : entity.getPipelines());
-    return entity.withBot(getBotUser(entity));
+    entity.withBot(getBotUser(entity));
   }
 
   @Override
@@ -68,8 +69,8 @@ public class AppRepository extends EntityRepository<App> {
   }
 
   @Override
-  public App clearFields(App entity, EntityUtil.Fields fields) {
-    return entity;
+  public void clearFields(App entity, EntityUtil.Fields fields) {
+    /* Nothing to do */
   }
 
   @Override

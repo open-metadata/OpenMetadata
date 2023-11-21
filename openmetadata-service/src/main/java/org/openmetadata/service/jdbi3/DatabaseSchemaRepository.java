@@ -87,22 +87,22 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         : findTo(schema.getId(), Entity.DATABASE_SCHEMA, Relationship.CONTAINS, Entity.TABLE);
   }
 
-  public DatabaseSchema setFields(DatabaseSchema schema, Fields fields) {
+  public void setFields(DatabaseSchema schema, Fields fields) {
     setDefaultFields(schema);
     schema.setTables(fields.contains("tables") ? getTables(schema) : null);
     schema.setDatabaseSchemaProfilerConfig(
         fields.contains(DATABASE_SCHEMA_PROFILER_CONFIG)
             ? getDatabaseSchemaProfilerConfig(schema)
             : schema.getDatabaseSchemaProfilerConfig());
-    return schema.withUsageSummary(
+    schema.withUsageSummary(
         fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), schema.getId()) : null);
   }
 
-  public DatabaseSchema clearFields(DatabaseSchema schema, Fields fields) {
+  public void clearFields(DatabaseSchema schema, Fields fields) {
     schema.setTables(fields.contains("tables") ? schema.getTables() : null);
     schema.setDatabaseSchemaProfilerConfig(
         fields.contains(DATABASE_SCHEMA_PROFILER_CONFIG) ? schema.getDatabaseSchemaProfilerConfig() : null);
-    return schema.withUsageSummary(fields.contains("usageSummary") ? schema.getUsageSummary() : null);
+    schema.withUsageSummary(fields.contains("usageSummary") ? schema.getUsageSummary() : null);
   }
 
   private void setDefaultFields(DatabaseSchema schema) {

@@ -120,8 +120,8 @@ public interface EntityTimeSeriesDAO {
   @Deprecated(since = "1.1.1")
   int listDistinctCount(@Define("table") String table);
 
-  default int listDistinctCount() {
-    return listDistinctCount(getTimeSeriesTableName());
+  default void listDistinctCount() {
+    listDistinctCount(getTimeSeriesTableName());
   }
 
   @ConnectionAwareSqlQuery(

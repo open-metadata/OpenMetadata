@@ -198,25 +198,25 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Override
-  public User setFields(User user, Fields fields) {
+  public void setFields(User user, Fields fields) {
     user.setTeams(fields.contains(TEAMS_FIELD) ? getTeams(user) : user.getTeams());
     user.setOwns(fields.contains("owns") ? getOwns(user) : user.getOwns());
     user.setFollows(fields.contains("follows") ? getFollows(user) : user.getFollows());
     user.setRoles(fields.contains(ROLES_FIELD) ? getRoles(user) : user.getRoles());
     user.setPersonas(fields.contains("personas") ? getPersonas(user) : user.getPersonas());
     user.setDefaultPersona(fields.contains("defaultPersonas") ? getDefaultPersona(user) : user.getDefaultPersona());
-    return user.withInheritedRoles(fields.contains(ROLES_FIELD) ? getInheritedRoles(user) : user.getInheritedRoles());
+    user.withInheritedRoles(fields.contains(ROLES_FIELD) ? getInheritedRoles(user) : user.getInheritedRoles());
   }
 
   @Override
-  public User clearFields(User user, Fields fields) {
+  public void clearFields(User user, Fields fields) {
     user.setProfile(fields.contains("profile") ? user.getProfile() : null);
     user.setTeams(fields.contains(TEAMS_FIELD) ? user.getTeams() : null);
     user.setOwns(fields.contains("owns") ? user.getOwns() : null);
     user.setFollows(fields.contains("follows") ? user.getFollows() : null);
     user.setRoles(fields.contains(ROLES_FIELD) ? user.getRoles() : null);
     user.setAuthenticationMechanism(fields.contains(AUTH_MECHANISM_FIELD) ? user.getAuthenticationMechanism() : null);
-    return user.withInheritedRoles(fields.contains(ROLES_FIELD) ? user.getInheritedRoles() : null);
+    user.withInheritedRoles(fields.contains(ROLES_FIELD) ? user.getInheritedRoles() : null);
   }
 
   @Override
