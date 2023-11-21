@@ -139,8 +139,13 @@ describe('Classification version page should work properly', () => {
       `/api/v1/classifications/${classificationId}/versions`,
       'getVersionsList'
     );
+    interceptURL(
+      'GET',
+      `/api/v1/classifications/${classificationId}/versions/0.3`,
+      'getSelectedVersionDetails'
+    );
 
-    cy.get('[data-testid="version-button"]').contains('0.2').click();
+    cy.get('[data-testid="version-button"]').contains('0.3').click();
 
     verifyResponseStatusCode(`@getClassificationDetails`, 200);
     verifyResponseStatusCode('@getVersionsList', 200);
@@ -148,7 +153,7 @@ describe('Classification version page should work properly', () => {
 
     cy.get('[data-testid="disabled"]').should('be.visible');
 
-    cy.get('[data-testid="version-button"]').contains('0.2').click();
+    cy.get('[data-testid="version-button"]').contains('0.3').click();
 
     cy.get('[data-testid="manage-button"]').click({ waitForAnimations: true });
 
@@ -166,8 +171,13 @@ describe('Classification version page should work properly', () => {
       `/api/v1/classifications/${classificationId}/versions`,
       'getVersionsList'
     );
+    interceptURL(
+      'GET',
+      `/api/v1/classifications/${classificationId}/versions/0.4`,
+      'getSelectedVersionDetails'
+    );
 
-    cy.get('[data-testid="version-button"]').contains('0.2').click();
+    cy.get('[data-testid="version-button"]').contains('0.4').click();
 
     verifyResponseStatusCode(`@getClassificationDetails`, 200);
     verifyResponseStatusCode('@getVersionsList', 200);
