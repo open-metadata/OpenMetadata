@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { uuid } from './constants';
+import { MYDATA_SUMMARY_OPTIONS, uuid } from './constants';
 import { SERVICE_CATEGORIES } from './service.constants';
 
 const DATABASE_SERVICE_NAME = `cy-database-service-${uuid()}`;
@@ -267,23 +267,44 @@ export const DASHBOARD_DETAILS = {
   displayName: DASHBOARD_NAME,
   service: DASHBOARD_SERVICE_DETAILS.name,
 };
+export const DASHBOARD_CHART_DETAILS = {
+  name: 'dashboard-chart',
+  displayName: 'dashboard-chart',
+  service: DASHBOARD_SERVICE_DETAILS.name,
+};
 export const DASHBOARD_DATA_MODEL_DETAILS = {
   name: DASHBOARD_DATA_MODEL_NAME,
   displayName: DASHBOARD_DATA_MODEL_NAME,
   service: DASHBOARD_SERVICE_DETAILS.name,
-  columns: [],
+  columns: [
+    {
+      name: 'country_name',
+      dataType: 'VARCHAR',
+      dataLength: 256,
+      dataTypeDisplay: 'varchar',
+      description: 'Name of the country.',
+    },
+  ],
   dataModelType: 'SupersetDataModel',
 };
 
 export const PIPELINE_DETAILS = {
   name: `cypress-pipeline-${uuid()}`,
   service: PIPELINE_SERVICE_DETAILS.name,
+  tasks: [{ name: 'snowflake_task' }],
 };
 
 export const ML_MODEL_DETAILS = {
   name: `cypress-mlmodel-${uuid()}`,
   service: ML_MODEL_SERVICE_DETAILS.name,
   algorithm: 'Time Series',
+  mlFeatures: [
+    {
+      name: 'sales',
+      dataType: 'numerical',
+      description: 'Sales amount',
+    },
+  ],
 };
 
 export const CONTAINER_DETAILS = {
@@ -342,3 +363,63 @@ export const SINGLE_LEVEL_SERVICE = [
   MLMODEL_SERVICE,
   STORAGE_SERVICE,
 ];
+
+// visit entity details page object
+export const VISIT_ENTITIES_DATA = {
+  table: {
+    term: DATABASE_SERVICE.tables.name,
+    displayName: DATABASE_SERVICE.tables.name,
+    entity: MYDATA_SUMMARY_OPTIONS.tables,
+    serviceName: DATABASE_SERVICE.service.name,
+    schemaName: DATABASE_SERVICE.schema.name,
+    entityType: 'Table',
+  },
+  topic: {
+    term: MESSAGING_SERVICE.entity.name,
+    displayName: MESSAGING_SERVICE.entity.name,
+    entity: MYDATA_SUMMARY_OPTIONS.topics,
+    serviceName: MESSAGING_SERVICE.service.name,
+    entityType: 'Topic',
+  },
+  dashboard: {
+    term: DASHBOARD_SERVICE.entity.name,
+    displayName: DASHBOARD_SERVICE.entity.name,
+    entity: MYDATA_SUMMARY_OPTIONS.dashboards,
+    serviceName: DASHBOARD_SERVICE.service.name,
+    entityType: 'Dashboard',
+  },
+  pipeline: {
+    term: PIPELINE_SERVICE.entity.name,
+    displayName: PIPELINE_SERVICE.entity.name,
+    entity: MYDATA_SUMMARY_OPTIONS.pipelines,
+    serviceName: PIPELINE_SERVICE.service.name,
+    entityType: 'Pipeline',
+  },
+  mlmodel: {
+    term: MLMODEL_SERVICE.entity.name,
+    displayName: MLMODEL_SERVICE.entity.name,
+    entity: MYDATA_SUMMARY_OPTIONS.mlmodels,
+    serviceName: MLMODEL_SERVICE.service.name,
+    entityType: 'ML Model',
+  },
+  storedProcedure: {
+    term: STORED_PROCEDURE_DETAILS.name,
+    displayName: STORED_PROCEDURE_DETAILS.name,
+    entity: MYDATA_SUMMARY_OPTIONS.storedProcedures,
+    serviceName: DATABASE_SERVICE_DETAILS.name,
+    entityType: 'Stored Procedure',
+  },
+  dataModel: {
+    term: DASHBOARD_DATA_MODEL_DETAILS.name,
+    entity: MYDATA_SUMMARY_OPTIONS.dataModel,
+    serviceName: DASHBOARD_DATA_MODEL_DETAILS.service,
+    displayName: DASHBOARD_DATA_MODEL_DETAILS.name,
+    entityType: 'Data Model',
+  },
+  container: {
+    term: STORAGE_SERVICE.entity.name,
+    displayName: STORAGE_SERVICE.entity.name,
+    entity: 'containers',
+    serviceName: STORAGE_SERVICE.service.name,
+  },
+};
