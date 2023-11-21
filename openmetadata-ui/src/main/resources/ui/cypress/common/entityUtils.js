@@ -185,3 +185,47 @@ export const createQueryByTableName = (token, table) => {
     });
   });
 };
+
+/**
+ * Create a new user
+ */
+export const createUserEntity = ({ token, user }) => {
+  cy.request({
+    method: 'POST',
+    url: `/api/v1/users/signup`,
+    headers: { Authorization: `Bearer ${token}` },
+    body: user,
+  }).then((response) => {
+    user.id = response.body.id;
+  });
+};
+
+/**
+ * Delete a user by id
+ */
+export const deleteUserEntity = ({ token, id }) => {
+  cy.request({
+    method: 'DELETE',
+    url: `/api/v1/users/${id}?hardDelete=true&recursive=false`,
+    headers: { Authorization: `Bearer ${token}` },
+  });
+};
+
+/**
+ * Delete any entity by id
+ */
+export const deleteEntityById = ({ entityType, token, entityFqn }) => {
+  cy.request({
+    method: 'GET',
+    url: `/api/v1/${entityType}/name/${entityFqn}`,
+    headers: { Authorization: `Bearer ${token}` },
+  }).then((response) => {
+    cy.request({
+      method: 'DELETE',
+      url: `/api/v1/${entityType}/${response.body.id}?hardDelete=true&recursive=true`,
+      headers: { Authorization: `Bearer ${token}` },
+    }).then((response) => {
+      expect(response.status).to.eq(200);
+    });
+  });
+};

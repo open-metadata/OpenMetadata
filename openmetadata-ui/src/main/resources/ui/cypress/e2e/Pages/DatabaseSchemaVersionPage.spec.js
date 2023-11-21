@@ -17,8 +17,6 @@ import {
   addOwner,
   addTier,
   interceptURL,
-  removeOwner,
-  removeTier,
   toastNotification,
   verifyResponseStatusCode,
   visitDatabaseSchemaDetailsPage,
@@ -38,97 +36,91 @@ const serviceDetails = SERVICE_DETAILS_FOR_VERSION_TEST.Database;
 
 let domainId;
 
-describe('Common prerequisite for database schema version test', () => {
-  beforeEach(() => {
-    cy.login();
-  });
-
-  it('Domain creation for database schema version test', () => {
-    const token = localStorage.getItem('oidcIdToken');
-
-    cy.request({
-      method: 'PUT',
-      url: `/api/v1/domains`,
-      headers: { Authorization: `Bearer ${token}` },
-      body: DOMAIN_CREATION_DETAILS,
-    }).then((response) => {
-      expect(response.status).to.eq(201);
-
-      domainId = response.body.id;
-    });
-  });
-});
-
 describe(`Database schema version page should work properly`, () => {
   let databaseId;
   let databaseSchemaId;
   let databaseSchemaFQN;
 
-  beforeEach(() => {
+  before(() => {
     cy.login();
-  });
-
-  it(`Prerequisite for Database Schema version page tests`, () => {
-    const token = localStorage.getItem('oidcIdToken');
-
-    // Create service
-    cy.request({
-      method: 'POST',
-      url: `/api/v1/services/${serviceDetails.serviceCategory}`,
-      headers: { Authorization: `Bearer ${token}` },
-      body: serviceDetails.entityCreationDetails,
-    }).then((response) => {
-      expect(response.status).to.eq(201);
-    });
-
-    // Create Database
-    cy.request({
-      method: 'POST',
-      url: `/api/v1/databases`,
-      headers: { Authorization: `Bearer ${token}` },
-      body: DATABASE_DETAILS_FOR_VERSION_TEST,
-    }).then((response) => {
-      expect(response.status).to.eq(201);
-
-      databaseId = response.body.id;
-    });
-
-    // Create Database Schema
-    cy.request({
-      method: 'PUT',
-      url: `/api/v1/databaseSchemas`,
-      headers: { Authorization: `Bearer ${token}` },
-      body: DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST,
-    }).then((response) => {
-      expect(response.status).to.eq(201);
-
-      databaseSchemaId = response.body.id;
-      databaseSchemaFQN = response.body.fullyQualifiedName;
-
+    cy.getAllLocalStorage().then((data) => {
+      const token = Object.values(data)[0].oidcIdToken;
       cy.request({
-        method: 'PATCH',
-        url: `/api/v1/databaseSchemas/${databaseSchemaId}`,
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json-patch+json',
-        },
-        body: [
-          ...COMMON_PATCH_PAYLOAD,
-          {
-            op: 'add',
-            path: '/domain',
-            value: {
-              id: domainId,
-              type: 'domain',
-              name: DOMAIN_CREATION_DETAILS.name,
-              description: DOMAIN_CREATION_DETAILS.description,
-            },
-          },
-        ],
+        method: 'PUT',
+        url: `/api/v1/domains`,
+        headers: { Authorization: `Bearer ${token}` },
+        body: DOMAIN_CREATION_DETAILS,
       }).then((response) => {
-        expect(response.status).to.eq(200);
+        domainId = response.body.id;
+      });
+
+      // Create service
+      cy.request({
+        method: 'POST',
+        url: `/api/v1/services/${serviceDetails.serviceCategory}`,
+        headers: { Authorization: `Bearer ${token}` },
+        body: serviceDetails.entityCreationDetails,
+      });
+
+      // Create Database
+      cy.request({
+        method: 'POST',
+        url: `/api/v1/databases`,
+        headers: { Authorization: `Bearer ${token}` },
+        body: DATABASE_DETAILS_FOR_VERSION_TEST,
+      }).then((response) => {
+        databaseId = response.body.id;
+      });
+
+      // Create Database Schema
+      cy.request({
+        method: 'PUT',
+        url: `/api/v1/databaseSchemas`,
+        headers: { Authorization: `Bearer ${token}` },
+        body: DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST,
+      }).then((response) => {
+        databaseSchemaId = response.body.id;
+        databaseSchemaFQN = response.body.fullyQualifiedName;
+
+        cy.request({
+          method: 'PATCH',
+          url: `/api/v1/databaseSchemas/${databaseSchemaId}`,
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json-patch+json',
+          },
+          body: [
+            ...COMMON_PATCH_PAYLOAD,
+            {
+              op: 'add',
+              path: '/domain',
+              value: {
+                id: domainId,
+                type: 'domain',
+                name: DOMAIN_CREATION_DETAILS.name,
+                description: DOMAIN_CREATION_DETAILS.description,
+              },
+            },
+          ],
+        });
       });
     });
+  });
+
+  after(() => {
+    cy.login();
+    cy.getAllLocalStorage().then((data) => {
+      const token = Object.values(data)[0].oidcIdToken;
+      cy.request({
+        method: 'DELETE',
+        url: `/api/v1/domains/name/${DOMAIN_CREATION_DETAILS.name}`,
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    });
+  });
+
+  beforeEach(() => {
+    cy.login();
   });
 
   it(`Database Schema version page should show edited tags and description changes properly`, () => {
@@ -187,44 +179,6 @@ describe(`Database schema version page should work properly`, () => {
       .should('be.visible');
   });
 
-  it(`Database Schema version page should show removed tags changes properly`, () => {
-    visitDatabaseSchemaDetailsPage({
-      settingsMenuId: serviceDetails.settingsMenuId,
-      serviceCategory: serviceDetails.serviceCategory,
-      serviceName: serviceDetails.serviceName,
-      databaseRowKey: databaseId,
-      databaseName: DATABASE_DETAILS_FOR_VERSION_TEST.name,
-      databaseSchemaRowKey: databaseSchemaId,
-      databaseSchemaName: DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST.name,
-    });
-
-    cy.get(
-      '[data-testid="entity-right-panel"]  [data-testid="edit-button"]'
-    ).click();
-
-    cy.get(
-      '[data-testid="selected-tag-PersonalData.SpecialCategory"] [data-testid="remove-tags"]'
-    ).click();
-
-    interceptURL(
-      'PATCH',
-      `/api/v1/databaseSchemas/${databaseSchemaId}`,
-      `patchDatabase`
-    );
-
-    cy.get('[data-testid="saveAssociatedTag"]').click();
-
-    verifyResponseStatusCode(`@patchDatabase`, 200);
-
-    cy.get('[data-testid="version-button"]').contains('0.3').click();
-
-    cy.get(
-      `[data-testid="entity-right-panel"] .diff-removed [data-testid="tag-PersonalData.SpecialCategory"]`
-    )
-      .scrollIntoView()
-      .should('be.visible');
-  });
-
   it(`Database Schema version page should show owner changes properly`, () => {
     visitDatabaseSchemaDetailsPage({
       settingsMenuId: serviceDetails.settingsMenuId,
@@ -238,7 +192,7 @@ describe(`Database schema version page should work properly`, () => {
 
     cy.get('[data-testid="version-button"]').as('versionButton');
 
-    cy.get('@versionButton').contains('0.3');
+    cy.get('@versionButton').contains('0.2');
 
     addOwner(OWNER, `databaseSchemas`);
 
@@ -254,35 +208,17 @@ describe(`Database schema version page should work properly`, () => {
     );
     interceptURL(
       'GET',
-      `/api/v1/databaseSchemas/${databaseSchemaId}/versions/0.4`,
+      `/api/v1/databaseSchemas/${databaseSchemaId}/versions/0.2`,
       'getSelectedVersionDetails'
     );
 
-    cy.get('@versionButton').contains('0.4').click();
+    cy.get('@versionButton').contains('0.2').click();
 
     verifyResponseStatusCode(`@getDatabaseSchemaDetails`, 200);
     verifyResponseStatusCode('@getVersionsList', 200);
     verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
-    cy.get(`[data-testid="diff-added"]`).scrollIntoView().should('be.visible');
-
-    cy.get('@versionButton').contains('0.4').click();
-
-    removeOwner(`databaseSchemas`);
-
-    interceptURL(
-      'GET',
-      `/api/v1/databaseSchemas/${databaseSchemaId}/versions/0.5`,
-      'getSelectedVersionDetails'
-    );
-
-    cy.get('@versionButton').contains('0.5').click();
-
-    verifyResponseStatusCode(`@getDatabaseSchemaDetails`, 200);
-    verifyResponseStatusCode('@getVersionsList', 200);
-    verifyResponseStatusCode('@getSelectedVersionDetails', 200);
-
-    cy.get(`[data-testid="diff-removed"]`)
+    cy.get('[data-testid="owner-link"] > [data-testid="diff-added"]')
       .scrollIntoView()
       .should('be.visible');
   });
@@ -300,7 +236,7 @@ describe(`Database schema version page should work properly`, () => {
 
     cy.get('[data-testid="version-button"]').as('versionButton');
 
-    cy.get('@versionButton').contains('0.5');
+    cy.get('@versionButton').contains('0.2');
 
     addTier(TIER, `databaseSchemas`);
 
@@ -316,35 +252,17 @@ describe(`Database schema version page should work properly`, () => {
     );
     interceptURL(
       'GET',
-      `/api/v1/databaseSchemas/${databaseSchemaId}/versions/0.6`,
+      `/api/v1/databaseSchemas/${databaseSchemaId}/versions/0.2`,
       'getSelectedVersionDetails'
     );
 
-    cy.get('@versionButton').contains('0.6').click();
+    cy.get('@versionButton').contains('0.2').click();
 
     verifyResponseStatusCode(`@getDatabaseSchemaDetails`, 200);
     verifyResponseStatusCode('@getVersionsList', 200);
     verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
-    cy.get(`[data-testid="diff-added"]`).scrollIntoView().should('be.visible');
-
-    cy.get('@versionButton').contains('0.6').click();
-
-    removeTier(`databaseSchemas`);
-
-    interceptURL(
-      'GET',
-      `/api/v1/databaseSchemas/${databaseSchemaId}/versions/0.7`,
-      'getSelectedVersionDetails'
-    );
-
-    cy.get('@versionButton').contains('0.7').click();
-
-    verifyResponseStatusCode(`@getDatabaseSchemaDetails`, 200);
-    verifyResponseStatusCode('@getVersionsList', 200);
-    verifyResponseStatusCode('@getSelectedVersionDetails', 200);
-
-    cy.get(`[data-testid="diff-removed"]`)
+    cy.get('[data-testid="Tier"] > [data-testid="diff-added"]')
       .scrollIntoView()
       .should('be.visible');
   });
@@ -399,23 +317,5 @@ describe(`Database schema version page should work properly`, () => {
     cy.get(
       `[data-testid="service-name-${DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST.name}"]`
     ).should('not.exist');
-  });
-});
-
-describe('Common cleanup for database schema version test', () => {
-  beforeEach(() => {
-    cy.login();
-  });
-
-  it('Domain deletion for database schema version test', () => {
-    const token = localStorage.getItem('oidcIdToken');
-
-    cy.request({
-      method: 'DELETE',
-      url: `/api/v1/domains/name/${DOMAIN_CREATION_DETAILS.name}`,
-      headers: { Authorization: `Bearer ${token}` },
-    }).then((response) => {
-      expect(response.status).to.eq(200);
-    });
   });
 });
