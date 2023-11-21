@@ -112,7 +112,7 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(description = "Limit the number data insight chart returned. (1 to 1000000, default = " + "10)")
+      @Parameter(description = "Limit the number data insight chart returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
           @Min(0)
@@ -239,7 +239,7 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
                 @Content(mediaType = "application/json", schema = @Schema(implementation = DataInsightChart.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Data Insight Chart for instance {id} and version {version} is " + "not found")
+            description = "Data Insight Chart for instance {id} and version {version} is not found")
       })
   public DataInsightChart getVersion(
       @Context UriInfo uriInfo,
@@ -291,9 +291,7 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }

@@ -852,7 +852,7 @@ public interface CollectionDAO {
     @RegisterRowMapper(FromRelationshipMapper.class)
     List<EntityRelationshipRecord> findFromPipeline(@BindUUID("toId") UUID toId, @Bind("relation") int relation);
 
-    @SqlQuery("SELECT count(*) FROM entity_relationship " + "WHERE fromEntity = :fromEntity AND toEntity = :toEntity")
+    @SqlQuery("SELECT count(*) FROM entity_relationship WHERE fromEntity = :fromEntity AND toEntity = :toEntity")
     int findIfAnyRelationExist(@Bind("fromEntity") String fromEntity, @Bind("toEntity") String toEntity);
 
     //
@@ -3427,10 +3427,10 @@ public interface CollectionDAO {
 
   interface AppExtensionTimeSeries {
     @ConnectionAwareSqlUpdate(
-        value = "INSERT INTO apps_extension_time_series(json) " + "VALUES (:json)",
+        value = "INSERT INTO apps_extension_time_series(json) VALUES (:json)",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
-        value = "INSERT INTO apps_extension_time_series(json) " + "VALUES ((:json :: jsonb))",
+        value = "INSERT INTO apps_extension_time_series(json) VALUES ((:json :: jsonb))",
         connectionType = POSTGRES)
     void insert(@Bind("json") String json);
 
