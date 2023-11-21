@@ -1035,6 +1035,7 @@
     "test-case-lowercase": "caso de prueba",
     "test-case-lowercase-plural": "test cases",
     "test-case-plural": "Casos de Prueba",
+    "test-email": "Test Email",
     "test-entity": "Prueba {{entity}}",
     "test-plural": "Pruebas",
     "test-suite": "Suite de Pruebas",

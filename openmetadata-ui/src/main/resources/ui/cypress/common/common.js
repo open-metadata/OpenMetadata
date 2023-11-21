@@ -1186,13 +1186,13 @@ export const addOwner = (
   isGlossaryPage,
   isOwnerEmpty = false
 ) => {
+  interceptURL('GET', '/api/v1/users?limit=*&isBot=false', 'getUsers');
   if (isGlossaryPage && isOwnerEmpty) {
     cy.get('[data-testid="glossary-owner-name"] > [data-testid="Add"]').click();
   } else {
     cy.get('[data-testid="edit-owner"]').click();
   }
 
-  interceptURL('GET', '/api/v1/users?limit=25&isBot=false', 'getUsers');
   cy.get('.ant-tabs [id*=tab-users]').click();
   verifyResponseStatusCode('@getUsers', 200);
 
@@ -1265,7 +1265,6 @@ export const deleteEntity = (
   entityName,
   serviceName,
   entity,
-  entityType,
   successMessageEntityName,
   deletionType = 'hard'
 ) => {
@@ -1273,7 +1272,6 @@ export const deleteEntity = (
     term: entityName,
     serviceName,
     entity,
-    entityType,
   });
 
   cy.get('[data-testid="manage-button"]').click();
@@ -1417,7 +1415,7 @@ export const signupAndLogin = (email, password, firstName, lastName) => {
 
     // Login with the created user
     login(email, password);
-    cy.goToHomePage(true);
+    // cy.goToHomePage(true);
     cy.url().should('eq', `${BASE_URL}/my-data`);
 
     // Verify user profile

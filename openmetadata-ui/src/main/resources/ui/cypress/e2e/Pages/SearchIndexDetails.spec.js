@@ -207,7 +207,6 @@ describe('SearchIndexDetails page should work properly for data consumer role', 
       term: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.name,
       serviceName: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.service,
       entity: 'searchIndexes',
-      entityType: 'Search Index',
     });
 
     // Edit domain option should not be available
@@ -286,7 +285,6 @@ describe('SearchIndexDetails page should work properly for data steward role', (
       term: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.name,
       serviceName: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.service,
       entity: 'searchIndexes',
-      entityType: 'Search Index',
     });
 
     // Edit domain option should not be available
@@ -372,7 +370,6 @@ describe('SearchIndexDetails page should work properly for admin role', () => {
       SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.service,
       'searchIndexes',
       'Search Index',
-      'Search Index',
       'soft'
     );
 
@@ -443,7 +440,6 @@ describe('SearchIndexDetails page should work properly for admin role', () => {
       SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.name,
       SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.service,
       'searchIndexes',
-      'Search Index',
       'Search Index'
     );
   });
