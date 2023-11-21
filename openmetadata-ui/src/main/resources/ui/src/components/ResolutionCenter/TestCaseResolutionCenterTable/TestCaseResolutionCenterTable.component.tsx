@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Space, Tooltip, Typography } from 'antd';
+import { Col, Row, Space, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { sortBy } from 'lodash';
@@ -18,7 +18,10 @@ import QueryString from 'qs';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getTableTabPath } from '../../../constants/constants';
+import {
+  getTableTabPath,
+  NO_DATA_PLACEHOLDER,
+} from '../../../constants/constants';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/entity/type';
 import {
@@ -33,6 +36,7 @@ import {
 } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
+import { getResolutionCenterDetailPagePath } from '../../../utils/RouterUtils';
 import { getEncodedFqn, replacePlus } from '../../../utils/StringsUtils';
 import { getEntityFqnFromEntityLink } from '../../../utils/TableUtils';
 import AppBadge from '../../common/Badge/Badge.component';
@@ -47,7 +51,7 @@ import { TableProfilerTab } from '../../ProfilerDashboard/profilerDashboard.inte
 import { TestCaseResolutionCenterTableProps } from './TestCaseResolutionCenterTable.interface';
 
 const TestCaseResolutionCenterTable = ({
-  testCaseData,
+  testCaseListData,
   pagingData,
   showPagination,
 }: TestCaseResolutionCenterTableProps) => {
@@ -64,7 +68,7 @@ const TestCaseResolutionCenterTable = ({
 
   const sortedData = useMemo(
     () =>
-      sortBy(testCaseData.data, (test) => {
+      sortBy(testCaseListData.data, (test) => {
         switch (test.testCaseResult?.testCaseStatus) {
           case TestCaseStatus.Failed:
             return 0;
@@ -77,7 +81,7 @@ const TestCaseResolutionCenterTable = ({
             return 3;
         }
       }),
-    [testCaseData.data]
+    [testCaseListData.data]
   );
 
   const columns: ColumnsType<TestCase> = useMemo(
@@ -87,20 +91,27 @@ const TestCaseResolutionCenterTable = ({
         dataIndex: 'name',
         key: 'name',
         width: 300,
-        render: (name: string, record) => {
+        fixed: 'left',
+        render: (_, record) => {
           const status = record.testCaseResult?.testCaseStatus;
 
           return (
-            <Space data-testid={name}>
+            <Space data-testid={record.name}>
               <Tooltip title={status}>
                 <div>
                   <StatusBox status={status?.toLocaleLowerCase()} />
                 </div>
               </Tooltip>
 
-              <Typography.Paragraph className="m-0" style={{ maxWidth: 280 }}>
+              <Link
+                className="m-0 break-all text-primary"
+                data-testid={`test-case-${record.name}`}
+                style={{ maxWidth: 280 }}
+                to={getResolutionCenterDetailPagePath(
+                  record.fullyQualifiedName ?? ''
+                )}>
                 {getEntityName(record)}
-              </Typography.Paragraph>
+              </Link>
             </Space>
           );
         },
@@ -133,7 +144,9 @@ const TestCaseResolutionCenterTable = ({
         title: t('label.test-suite'),
         dataIndex: 'testSuite',
         key: 'testSuite',
-        width: 150,
+        width: 300,
+        render: (testSuite: EntityReference) =>
+          getEntityName(testSuite) || NO_DATA_PLACEHOLDER,
       },
       {
         title: t('label.column'),
@@ -217,7 +230,7 @@ const TestCaseResolutionCenterTable = ({
         render: (owner: EntityReference) => <OwnerLabel owner={owner} />,
       },
     ],
-    [testCaseEditPermission, testCaseData.data]
+    [testCaseEditPermission, testCaseListData.data]
   );
 
   return (
@@ -227,14 +240,15 @@ const TestCaseResolutionCenterTable = ({
           bordered
           className="test-case-table-container"
           columns={columns}
-          data-testid="test-case-table"
+          data-testid="test-case-resolution-table"
           dataSource={sortedData}
-          loading={testCaseData.isLoading}
+          loading={testCaseListData.isLoading}
           locale={{
             emptyText: <FilterTablePlaceHolder />,
           }}
           pagination={false}
           rowKey="id"
+          scroll={{ x: 1600 }}
           size="small"
         />
       </Col>

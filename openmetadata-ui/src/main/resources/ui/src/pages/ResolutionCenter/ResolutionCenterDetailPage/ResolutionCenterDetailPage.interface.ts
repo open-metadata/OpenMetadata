@@ -10,11 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { TestCaseListData } from '../../../pages/ResolutionCenter/ResolutionCenter.interface';
-import { NextPreviousProps } from '../../common/NextPrevious/NextPrevious.interface';
 
-export interface TestCaseResolutionCenterTableProps {
-  testCaseListData: TestCaseListData;
-  pagingData?: NextPreviousProps;
-  showPagination?: boolean;
+import { TestCase } from '../../../generated/tests/testCase';
+
+export interface TestCaseData {
+  data?: TestCase;
+  isLoading: boolean;
 }

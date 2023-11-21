@@ -13,12 +13,13 @@
 import { Col, Divider, Row, Space, Tabs, TabsProps, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import Loader from '../../../components/Loader/Loader';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import TestCaseIssueTab from '../../../components/ResolutionCenter/TestCaseIssuesTab/TestCaseIssueTab.component';
 import TestCaseResultTab from '../../../components/ResolutionCenter/TestCaseResultTab/TestCaseResultTab.component';
@@ -31,6 +32,7 @@ import { getEntityName } from '../../../utils/EntityUtils';
 import { getResolutionCenterDetailPagePath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { ResolutionCenterTabs } from '../ResolutionCenter.interface';
+import { TestCaseData } from './ResolutionCenterDetailPage.interface';
 
 const ResolutionCenterDetailPage = () => {
   const { t } = useTranslation();
@@ -40,9 +42,15 @@ const ResolutionCenterDetailPage = () => {
     tab: activeTab = ResolutionCenterTabs.TEST_CASE_RESULTS,
   } = useParams<{ fqn: string; tab: EntityTabs }>();
 
-  const [testCaseData, setTestCaseData] = useState<TestCase>();
+  const [testCaseData, setTestCaseData] = useState<TestCaseData>({
+    data: undefined,
+    isLoading: true,
+  });
 
-  const onTestCaseUpdate = (data: TestCase) => setTestCaseData(data);
+  const onTestCaseUpdate = useCallback(
+    (data: TestCase) => setTestCaseData((prev) => ({ ...prev, data })),
+    [setTestCaseData]
+  );
 
   const tabDetails: TabsProps['items'] = useMemo(
     () => [
@@ -50,7 +58,7 @@ const ResolutionCenterDetailPage = () => {
         label: <TabsLabel id="by-tables" name={t('label.test-case-result')} />,
         children: (
           <TestCaseResultTab
-            testCaseData={testCaseData}
+            testCaseData={testCaseData.data}
             onTestCaseUpdate={onTestCaseUpdate}
           />
         ),
@@ -66,16 +74,19 @@ const ResolutionCenterDetailPage = () => {
   );
 
   const fetchTestCaseData = async () => {
+    setTestCaseData((prev) => ({ ...prev, isLoading: true }));
     try {
       const response = await getTestCaseByFqn(testCaseFQN, {
         fields: ['testSuite', 'testCaseResult', 'testDefinition'],
       });
-      setTestCaseData(response.data);
+      setTestCaseData((prev) => ({ ...prev, data: response.data }));
     } catch (error) {
       showErrorToast(
         error as AxiosError,
         t('server.entity-fetch-error', { entity: t('label.test-case') })
       );
+    } finally {
+      setTestCaseData((prev) => ({ ...prev, isLoading: false }));
     }
   };
 
@@ -86,7 +97,7 @@ const ResolutionCenterDetailPage = () => {
         url: ROUTES.RESOLUTION_CENTER,
       },
       {
-        name: testCaseData?.name ?? '',
+        name: testCaseData?.data?.name ?? '',
         url: '',
         activeTitle: true,
       },
@@ -108,6 +119,10 @@ const ResolutionCenterDetailPage = () => {
     fetchTestCaseData();
   }, [testCaseFQN]);
 
+  if (testCaseData.isLoading) {
+    return <Loader />;
+  }
+
   if (isEmpty(testCaseData)) {
     return <ErrorPlaceHolder />;
   }
@@ -121,10 +136,10 @@ const ResolutionCenterDetailPage = () => {
         <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
           <Space align="center">
             <Typography.Text className="font-bold">
-              {getEntityName(testCaseData)}
+              {getEntityName(testCaseData.data)}
             </Typography.Text>
             <Divider type="vertical" />
-            <OwnerLabel owner={testCaseData?.owner} />
+            <OwnerLabel owner={testCaseData.data?.owner} />
           </Space>
         </Col>
 

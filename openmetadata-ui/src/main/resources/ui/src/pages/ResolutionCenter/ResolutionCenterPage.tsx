@@ -26,7 +26,7 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getListTestCase, ListTestCaseParams } from '../../rest/testAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { TestCaseData } from './ResolutionCenter.interface';
+import { TestCaseListData } from './ResolutionCenter.interface';
 
 const summary = {
   total: 100,
@@ -42,7 +42,7 @@ const isLoading = false;
 const ResolutionCenterPage = () => {
   const { t } = useTranslation();
 
-  const [testCaseData, setTestCaseData] = useState<TestCaseData>({
+  const [testCaseListData, setTestCaseListData] = useState<TestCaseListData>({
     data: [],
     isLoading: true,
   });
@@ -61,7 +61,7 @@ const ResolutionCenterPage = () => {
   } = usePaging();
 
   const fetchTestCases = async (params?: ListTestCaseParams) => {
-    setTestCaseData((prev) => ({ ...prev, isLoading: true }));
+    setTestCaseListData((prev) => ({ ...prev, isLoading: true }));
     try {
       const { data, paging } = await getListTestCase({
         ...params,
@@ -69,12 +69,12 @@ const ResolutionCenterPage = () => {
         fields: 'testDefinition,testCaseResult,testSuite',
         orderByLastExecutionDate: true,
       });
-      setTestCaseData((prev) => ({ ...prev, data: data }));
+      setTestCaseListData((prev) => ({ ...prev, data: data }));
       handlePagingChange(paging);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
-      setTestCaseData((prev) => ({ ...prev, isLoading: false }));
+      setTestCaseListData((prev) => ({ ...prev, isLoading: false }));
     }
   };
 
@@ -174,7 +174,7 @@ const ResolutionCenterPage = () => {
           <TestCaseResolutionCenterTable
             pagingData={pagingData}
             showPagination={showPagination}
-            testCaseData={testCaseData}
+            testCaseListData={testCaseListData}
           />
         </Col>
       </Row>

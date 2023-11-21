@@ -16,7 +16,7 @@ export enum ResolutionCenterTabs {
   TEST_CASE_RESULTS = 'test-case-results',
   ISSUES = 'issues',
 }
-export interface TestCaseData {
+export interface TestCaseListData {
   data: TestCase[];
   isLoading: boolean;
 }
