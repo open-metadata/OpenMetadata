@@ -51,7 +51,7 @@ public interface SearchClient {
 
   boolean indexExists(String indexName);
 
-  boolean createIndex(IndexMapping indexMapping, String indexMappingContent);
+  void createIndex(IndexMapping indexMapping, String indexMappingContent);
 
   void updateIndex(IndexMapping indexMapping, String indexMappingContent);
 

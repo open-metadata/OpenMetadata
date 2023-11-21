@@ -63,13 +63,13 @@ public class ChartRepository extends EntityRepository<Chart> {
   }
 
   @Override
-  public Chart setFields(Chart chart, Fields fields) {
-    return chart.withService(getContainer(chart.getId()));
+  public void setFields(Chart chart, Fields fields) {
+    chart.withService(getContainer(chart.getId()));
   }
 
   @Override
-  public Chart clearFields(Chart chart, Fields fields) {
-    return chart; // Nothing to do
+  public void clearFields(Chart chart, Fields fields) {
+    /* Nothing to do */
   }
 
   @Override
