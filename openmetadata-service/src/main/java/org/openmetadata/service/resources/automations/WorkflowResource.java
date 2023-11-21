@@ -122,7 +122,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(description = "Limit the number automations workflows returned. (1 to 1000000, default = " + "10)")
+      @Parameter(description = "Limit the number automations workflows returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
           @Min(0)
@@ -260,7 +260,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Workflow.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Workflow for instance {id} and version {version} is " + "not found")
+            description = "Workflow for instance {id} and version {version} is not found")
       })
   public Workflow getVersion(
       @Context UriInfo uriInfo,
@@ -341,9 +341,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     Response response = patchInternal(uriInfo, securityContext, id, patch);
     return Response.fromResponse(response)

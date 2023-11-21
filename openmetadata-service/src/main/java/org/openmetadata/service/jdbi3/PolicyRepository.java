@@ -53,15 +53,15 @@ public class PolicyRepository extends EntityRepository<Policy> {
   }
 
   @Override
-  public Policy setFields(Policy policy, Fields fields) {
+  public void setFields(Policy policy, Fields fields) {
     policy.setTeams(fields.contains("teams") ? getTeams(policy) : policy.getTeams());
-    return policy.withRoles(fields.contains("roles") ? getRoles(policy) : policy.getRoles());
+    policy.withRoles(fields.contains("roles") ? getRoles(policy) : policy.getRoles());
   }
 
   @Override
-  public Policy clearFields(Policy policy, Fields fields) {
+  public void clearFields(Policy policy, Fields fields) {
     policy.setTeams(fields.contains("teams") ? policy.getTeams() : null);
-    return policy.withRoles(fields.contains("roles") ? policy.getRoles() : null);
+    policy.withRoles(fields.contains("roles") ? policy.getRoles() : null);
   }
 
   /* Get all the teams that use this policy */

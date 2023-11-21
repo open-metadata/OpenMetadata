@@ -35,13 +35,13 @@ public class BotRepository extends EntityRepository<Bot> {
   }
 
   @Override
-  public Bot setFields(Bot entity, Fields fields) {
-    return entity.withBotUser(getBotUser(entity));
+  public void setFields(Bot entity, Fields fields) {
+    entity.withBotUser(getBotUser(entity));
   }
 
   @Override
-  public Bot clearFields(Bot entity, Fields fields) {
-    return entity;
+  public void clearFields(Bot entity, Fields fields) {
+    /* Do nothing */
   }
 
   @Override

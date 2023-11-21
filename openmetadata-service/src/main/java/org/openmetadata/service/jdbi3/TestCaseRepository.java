@@ -66,20 +66,20 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   @Override
-  public TestCase setFields(TestCase test, Fields fields) {
+  public void setFields(TestCase test, Fields fields) {
     test.setTestSuites(fields.contains("testSuites") ? getTestSuites(test) : test.getTestSuites());
     test.setTestSuite(fields.contains(TEST_SUITE_FIELD) ? getTestSuite(test) : test.getTestSuite());
     test.setTestDefinition(fields.contains(TEST_DEFINITION) ? getTestDefinition(test) : test.getTestDefinition());
-    return test.withTestCaseResult(
+    test.withTestCaseResult(
         fields.contains(TEST_CASE_RESULT_FIELD) ? getTestCaseResult(test) : test.getTestCaseResult());
   }
 
   @Override
-  public TestCase clearFields(TestCase test, Fields fields) {
+  public void clearFields(TestCase test, Fields fields) {
     test.setTestSuites(fields.contains("testSuites") ? test.getTestSuites() : null);
     test.setTestSuite(fields.contains(TEST_SUITE) ? test.getTestSuite() : null);
     test.setTestDefinition(fields.contains(TEST_DEFINITION) ? test.getTestDefinition() : null);
-    return test.withTestCaseResult(fields.contains(TEST_CASE_RESULT_FIELD) ? test.getTestCaseResult() : null);
+    test.withTestCaseResult(fields.contains(TEST_CASE_RESULT_FIELD) ? test.getTestCaseResult() : null);
   }
 
   public RestUtil.PatchResponse<TestCaseResult> patchTestCaseResults(

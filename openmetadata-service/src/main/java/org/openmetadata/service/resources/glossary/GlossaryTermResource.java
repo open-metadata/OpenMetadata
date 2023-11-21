@@ -174,7 +174,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(description = "Limit the number glossary terms returned. (1 to 1000000, " + "default = 10)")
+      @Parameter(description = "Limit the number glossary terms returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @Min(0)
           @Max(1000000)
@@ -322,7 +322,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Glossary.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Glossary for instance {id} and version {version} is " + "not found")
+            description = "Glossary for instance {id} and version {version} is not found")
       })
   public GlossaryTerm getVersion(
       @Context UriInfo uriInfo,
@@ -371,9 +371,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }

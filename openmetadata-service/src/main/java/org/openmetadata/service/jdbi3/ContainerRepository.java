@@ -50,20 +50,19 @@ public class ContainerRepository extends EntityRepository<Container> {
   }
 
   @Override
-  public Container setFields(Container container, EntityUtil.Fields fields) {
+  public void setFields(Container container, EntityUtil.Fields fields) {
     setDefaultFields(container);
     container.setParent(fields.contains(FIELD_PARENT) ? getParent(container) : container.getParent());
     if (container.getDataModel() != null) {
       populateDataModelColumnTags(
           fields.contains(FIELD_TAGS), container.getFullyQualifiedName(), container.getDataModel().getColumns());
     }
-    return container;
   }
 
   @Override
-  public Container clearFields(Container container, EntityUtil.Fields fields) {
+  public void clearFields(Container container, EntityUtil.Fields fields) {
     container.setParent(fields.contains(FIELD_PARENT) ? container.getParent() : null);
-    return container.withDataModel(fields.contains("dataModel") ? container.getDataModel() : null);
+    container.withDataModel(fields.contains("dataModel") ? container.getDataModel() : null);
   }
 
   private void populateDataModelColumnTags(boolean setTags, String fqnPrefix, List<Column> columns) {

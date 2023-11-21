@@ -76,16 +76,15 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   @Override
-  public IngestionPipeline setFields(IngestionPipeline ingestionPipeline, Fields fields) {
+  public void setFields(IngestionPipeline ingestionPipeline, Fields fields) {
     if (ingestionPipeline.getService() == null) {
       ingestionPipeline.withService(getContainer(ingestionPipeline.getId()));
     }
-    return ingestionPipeline;
   }
 
   @Override
-  public IngestionPipeline clearFields(IngestionPipeline ingestionPipeline, Fields fields) {
-    return ingestionPipeline;
+  public void clearFields(IngestionPipeline ingestionPipeline, Fields fields) {
+    /* Nothing to do */
   }
 
   @Override

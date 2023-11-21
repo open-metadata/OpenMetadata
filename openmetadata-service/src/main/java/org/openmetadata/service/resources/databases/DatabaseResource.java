@@ -127,7 +127,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
               schema = @Schema(type = "string", example = "snowflakeWestCoast"))
           @QueryParam("service")
           String serviceParam,
-      @Parameter(description = "Limit the number tables returned. (1 to 1000000, default" + " = 10)")
+      @Parameter(description = "Limit the number tables returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
           @Min(0)
@@ -245,7 +245,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Database.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Database for instance {id} and version {version} is " + "not found")
+            description = "Database for instance {id} and version {version} is not found")
       })
   public Database getVersion(
       @Context UriInfo uriInfo,
@@ -294,9 +294,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }

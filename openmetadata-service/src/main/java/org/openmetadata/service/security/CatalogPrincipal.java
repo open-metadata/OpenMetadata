@@ -25,6 +25,6 @@ public class CatalogPrincipal implements Principal {
 
   @Override
   public String toString() {
-    return "CatalogPrincipal{" + "name='" + name + '\'' + '}';
+    return "CatalogPrincipal{name='" + name + '\'' + '}';
   }
 }

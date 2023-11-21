@@ -109,7 +109,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(description = "Limit the number test definitions returned. (1 to 1000000, default = " + "10)")
+      @Parameter(description = "Limit the number test definitions returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
           @Min(0)
@@ -238,7 +238,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = TestSuite.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Test Suite for instance {id} and version {version} is " + "not found")
+            description = "Test Suite for instance {id} and version {version} is not found")
       })
   public TestSuite getVersion(
       @Context UriInfo uriInfo,
@@ -337,9 +337,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }

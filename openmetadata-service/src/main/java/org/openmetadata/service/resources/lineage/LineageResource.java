@@ -211,7 +211,7 @@ public class LineageResource {
     boolean deleted = dao.deleteLineage(fromEntity, fromId, toEntity, toId);
     if (!deleted) {
       return Response.status(NOT_FOUND)
-          .entity(new ErrorMessage(NOT_FOUND.getStatusCode(), "Lineage edge not " + "found"))
+          .entity(new ErrorMessage(NOT_FOUND.getStatusCode(), "Lineage edge not found"))
           .build();
     }
     return Response.status(Status.OK).build();

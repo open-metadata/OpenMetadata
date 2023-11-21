@@ -59,14 +59,14 @@ public class TypeRepository extends EntityRepository<Type> {
   }
 
   @Override
-  public Type setFields(Type type, Fields fields) {
-    return type.withCustomProperties(
+  public void setFields(Type type, Fields fields) {
+    type.withCustomProperties(
         fields.contains("customProperties") ? getCustomProperties(type) : type.getCustomProperties());
   }
 
   @Override
-  public Type clearFields(Type type, Fields fields) {
-    return type.withCustomProperties(fields.contains("customProperties") ? type.getCustomProperties() : null);
+  public void clearFields(Type type, Fields fields) {
+    type.withCustomProperties(fields.contains("customProperties") ? type.getCustomProperties() : null);
   }
 
   @Override

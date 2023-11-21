@@ -267,9 +267,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
             responseCode = "200",
             description = "role",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Role.class))),
-        @ApiResponse(
-            responseCode = "404",
-            description = "Role for instance {id} and version {version} is " + "not found")
+        @ApiResponse(responseCode = "404", description = "Role for instance {id} and version {version} is not found")
       })
   public Role getVersion(
       @Context UriInfo uriInfo,
@@ -336,9 +334,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }

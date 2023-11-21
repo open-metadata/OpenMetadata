@@ -95,9 +95,8 @@ public final class CsvUtil {
         : field.stream().map(CsvUtil::quoteCsvField).collect(Collectors.joining(FIELD_SEPARATOR));
   }
 
-  public static List<String> addField(List<String> csvRecord, Boolean field) {
+  public static void addField(List<String> csvRecord, Boolean field) {
     csvRecord.add(field == null ? "" : field.toString());
-    return csvRecord;
   }
 
   public static List<String> addField(List<String> csvRecord, String field) {
@@ -129,14 +128,12 @@ public final class CsvUtil {
     return csvRecord;
   }
 
-  public static List<String> addOwner(List<String> csvRecord, EntityReference owner) {
+  public static void addOwner(List<String> csvRecord, EntityReference owner) {
     csvRecord.add(nullOrEmpty(owner) ? null : owner.getType() + FIELD_SEPARATOR + owner.getName());
-    return csvRecord;
   }
 
-  public static List<String> addUserOwner(List<String> csvRecord, EntityReference owner) {
+  public static void addUserOwner(List<String> csvRecord, EntityReference owner) {
     csvRecord.add(nullOrEmpty(owner) ? null : owner.getName());
-    return csvRecord;
   }
 
   private static String quoteCsvField(String str) {

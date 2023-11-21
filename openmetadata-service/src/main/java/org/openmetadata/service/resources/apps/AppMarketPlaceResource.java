@@ -124,7 +124,7 @@ public class AppMarketPlaceResource extends EntityResource<AppMarketPlaceDefinit
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(description = "Limit the number of installed applications returned. (1 to 1000000, default = " + "10)")
+      @Parameter(description = "Limit the number of installed applications returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
           @Min(0)
@@ -243,9 +243,7 @@ public class AppMarketPlaceResource extends EntityResource<AppMarketPlaceDefinit
             responseCode = "200",
             description = "App",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = App.class))),
-        @ApiResponse(
-            responseCode = "404",
-            description = "App for instance {id} and version {version} is " + "not found")
+        @ApiResponse(responseCode = "404", description = "App for instance {id} and version {version} is not found")
       })
   public AppMarketPlaceDefinition getVersion(
       @Context UriInfo uriInfo,
@@ -299,9 +297,7 @@ public class AppMarketPlaceResource extends EntityResource<AppMarketPlaceDefinit
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }

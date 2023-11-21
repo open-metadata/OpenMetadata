@@ -78,19 +78,19 @@ public final class TablesInitializer {
         null,
         SchemaMigrationOption.CHECK_CONNECTION.toString(),
         false,
-        "Check the connection for " + "configured data source");
+        "Check the connection for configured data source");
     OPTIONS.addOption(
-        null, SchemaMigrationOption.MIGRATE.toString(), false, "Execute schema migration from last " + "check point");
+        null, SchemaMigrationOption.MIGRATE.toString(), false, "Execute schema migration from last check point");
     OPTIONS.addOption(
         null,
         SchemaMigrationOption.INFO.toString(),
         false,
-        "Show the status of the schema migration " + "compared to the target database");
+        "Show the status of the schema migration compared to the target database");
     OPTIONS.addOption(
         null,
         SchemaMigrationOption.VALIDATE.toString(),
         false,
-        "Validate the target database changes " + "with the migration scripts");
+        "Validate the target database changes with the migration scripts");
     OPTIONS.addOption(
         null,
         SchemaMigrationOption.REPAIR.toString(),
@@ -98,7 +98,7 @@ public final class TablesInitializer {
         "Repairs the DATABASE_CHANGE_LOG by "
             + "removing failed migrations and correcting checksum of existing migration script");
     OPTIONS.addOption(
-        null, DISABLE_VALIDATE_ON_MIGRATE, false, "Disable flyway validation checks while running " + "migrate");
+        null, DISABLE_VALIDATE_ON_MIGRATE, false, "Disable flyway validation checks while running migrate");
     OPTIONS.addOption(
         null, SchemaMigrationOption.ES_CREATE.toString(), false, "Creates all the indexes in the elastic search");
     OPTIONS.addOption(

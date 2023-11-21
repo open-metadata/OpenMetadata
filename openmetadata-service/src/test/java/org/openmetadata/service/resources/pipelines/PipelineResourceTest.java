@@ -654,10 +654,10 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     return TestUtils.put(target, data, Pipeline.class, OK, authHeaders);
   }
 
-  public Pipeline deletePipelineStatus(String fqn, Long timestamp, Map<String, String> authHeaders)
+  public void deletePipelineStatus(String fqn, Long timestamp, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource("pipelines/").path(fqn).path("/status/").path(String.valueOf(timestamp));
-    return TestUtils.delete(target, Pipeline.class, authHeaders);
+    TestUtils.delete(target, Pipeline.class, authHeaders);
   }
 
   public ResultList<PipelineStatus> getPipelineStatues(

@@ -164,7 +164,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(description = "Limit the number event subscriptions returned. (1 to 1000000, default = " + "10) ")
+      @Parameter(description = "Limit the number event subscriptions returned. (1 to 1000000, default = 10) ")
           @DefaultValue("10")
           @Min(0)
           @Max(1000000)
@@ -343,9 +343,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     Response response = patchInternal(uriInfo, securityContext, id, patch);
     repository.updateEventSubscription((EventSubscription) response.getEntity());
@@ -386,7 +384,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
                 @Content(mediaType = "application/json", schema = @Schema(implementation = EventSubscription.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Event Subscription for instance {id} and version {version} is " + "not found")
+            description = "Event Subscription for instance {id} and version {version} is not found")
       })
   public EventSubscription getEventSubscriptionVersion(
       @Context UriInfo uriInfo,

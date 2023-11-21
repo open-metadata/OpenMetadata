@@ -56,7 +56,7 @@ import org.openmetadata.service.util.ResultList;
 @Path("/v1/services/storageServices")
 @Tag(
     name = "Object Store Services",
-    description = "APIs related `Object Store Service` entities, such as S3, GCS or " + "AZURE.")
+    description = "APIs related `Object Store Service` entities, such as S3, GCS or AZURE.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "storageServices")
@@ -265,14 +265,14 @@ public class StorageServiceResource
                 @Content(mediaType = "application/json", schema = @Schema(implementation = StorageService.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Object store service for instance {id} and version " + "{version} is not found")
+            description = "Object store service for instance {id} and version {version} is not found")
       })
   public StorageService getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "storage service Id", schema = @Schema(type = "string")) @PathParam("id") UUID id,
       @Parameter(
-              description = "storage service version number in the form `major`" + ".`minor`",
+              description = "storage service version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
@@ -339,9 +339,7 @@ public class StorageServiceResource
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
@@ -351,10 +349,10 @@ public class StorageServiceResource
   @Operation(
       operationId = "deleteStorageService",
       summary = "Delete an storage service",
-      description = "Delete an storage services. If containers belong the service, it can't be " + "deleted.",
+      description = "Delete an storage services. If containers belong the service, it can't be deleted.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "StorageService service for instance {id} " + "is not found")
+        @ApiResponse(responseCode = "404", description = "StorageService service for instance {id} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,

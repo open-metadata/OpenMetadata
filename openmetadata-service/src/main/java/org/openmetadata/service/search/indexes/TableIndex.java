@@ -25,7 +25,7 @@ public class TableIndex implements ColumnIndex {
           "tableProfile",
           "joins",
           "changeDescription",
-          "viewDefinition, tableProfilerConfig, profile, location, tableQueries, " + "tests, dataModel");
+          "viewDefinition, tableProfilerConfig, profile, location, tableQueries, tests, dataModel");
 
   final Table table;
 

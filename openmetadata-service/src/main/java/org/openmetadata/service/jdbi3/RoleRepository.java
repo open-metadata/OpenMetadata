@@ -40,17 +40,17 @@ public class RoleRepository extends EntityRepository<Role> {
   }
 
   @Override
-  public Role setFields(Role role, Fields fields) {
+  public void setFields(Role role, Fields fields) {
     role.setPolicies(fields.contains(POLICIES) ? getPolicies(role) : role.getPolicies());
     role.setTeams(fields.contains("teams") ? getTeams(role) : role.getTeams());
-    return role.withUsers(fields.contains("users") ? getUsers(role) : role.getUsers());
+    role.withUsers(fields.contains("users") ? getUsers(role) : role.getUsers());
   }
 
   @Override
-  public Role clearFields(Role role, Fields fields) {
+  public void clearFields(Role role, Fields fields) {
     role.setPolicies(fields.contains(POLICIES) ? role.getPolicies() : null);
     role.setTeams(fields.contains("teams") ? role.getTeams() : null);
-    return role.withUsers(fields.contains("users") ? role.getUsers() : null);
+    role.withUsers(fields.contains("users") ? role.getUsers() : null);
   }
 
   private List<EntityReference> getPolicies(@NonNull Role role) {

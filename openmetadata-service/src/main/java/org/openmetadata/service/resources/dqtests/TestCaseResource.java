@@ -128,7 +128,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(description = "Limit the number tests returned. (1 to 1000000, default = " + "10)")
+      @Parameter(description = "Limit the number tests returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
           @Min(0)
@@ -293,9 +293,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             responseCode = "200",
             description = "Test",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = TestCase.class))),
-        @ApiResponse(
-            responseCode = "404",
-            description = "Test for instance {id} and version {version} is " + "not found")
+        @ApiResponse(responseCode = "404", description = "Test for instance {id} and version {version} is not found")
       })
   public TestCase getVersion(
       @Context UriInfo uriInfo,
@@ -353,9 +351,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     // Override OperationContext to change the entity to table and operation from UPDATE to EDIT_TESTS
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().id(id).build();
@@ -387,9 +383,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     // Override OperationContext to change the entity to table and operation from UPDATE to EDIT_TESTS
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().name(fqn).build();

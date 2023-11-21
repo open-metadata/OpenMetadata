@@ -50,15 +50,15 @@ public class QueryRepository extends EntityRepository<Query> {
   }
 
   @Override
-  public Query setFields(Query entity, EntityUtil.Fields fields) {
+  public void setFields(Query entity, EntityUtil.Fields fields) {
     entity.setQueryUsedIn(fields.contains(QUERY_USED_IN_FIELD) ? getQueryUsage(entity) : entity.getQueryUsedIn());
-    return entity.withUsers(fields.contains("users") ? getQueryUsers(entity) : entity.getUsers());
+    entity.withUsers(fields.contains("users") ? getQueryUsers(entity) : entity.getUsers());
   }
 
   @Override
-  public Query clearFields(Query entity, EntityUtil.Fields fields) {
+  public void clearFields(Query entity, EntityUtil.Fields fields) {
     entity.withQueryUsedIn(fields.contains(QUERY_USED_IN_FIELD) ? entity.getQueryUsedIn() : null);
-    return entity.withUsers(fields.contains("users") ? this.getQueryUsers(entity) : null);
+    entity.withUsers(fields.contains("users") ? this.getQueryUsers(entity) : null);
   }
 
   public List<EntityReference> getQueryUsage(Query queryEntity) {

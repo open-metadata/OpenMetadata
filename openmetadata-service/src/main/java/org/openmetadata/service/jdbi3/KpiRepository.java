@@ -44,16 +44,16 @@ public class KpiRepository extends EntityRepository<Kpi> {
   }
 
   @Override
-  public Kpi setFields(Kpi kpi, EntityUtil.Fields fields) {
+  public void setFields(Kpi kpi, EntityUtil.Fields fields) {
     kpi.setDataInsightChart(fields.contains("dataInsightChart") ? getDataInsightChart(kpi) : kpi.getDataInsightChart());
-    return kpi.withKpiResult(
+    kpi.withKpiResult(
         fields.contains(KPI_RESULT_FIELD) ? getKpiResult(kpi.getFullyQualifiedName()) : kpi.getKpiResult());
   }
 
   @Override
-  public Kpi clearFields(Kpi kpi, EntityUtil.Fields fields) {
+  public void clearFields(Kpi kpi, EntityUtil.Fields fields) {
     kpi.setDataInsightChart(fields.contains("dataInsightChart") ? kpi.getDataInsightChart() : null);
-    return kpi.withKpiResult(fields.contains(KPI_RESULT_FIELD) ? kpi.getKpiResult() : null);
+    kpi.withKpiResult(fields.contains(KPI_RESULT_FIELD) ? kpi.getKpiResult() : null);
   }
 
   @Override

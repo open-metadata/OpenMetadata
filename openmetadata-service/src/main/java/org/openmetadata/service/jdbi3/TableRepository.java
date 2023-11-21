@@ -15,7 +15,6 @@ package org.openmetadata.service.jdbi3;
 
 import static java.util.stream.Collectors.groupingBy;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
@@ -121,7 +120,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
-  public Table setFields(Table table, Fields fields) {
+  public void setFields(Table table, Fields fields) {
     setDefaultFields(table);
     if (table.getUsageSummary() == null) {
       table.setUsageSummary(
@@ -144,18 +143,16 @@ public class TableRepository extends EntityRepository<Table> {
         column.setCustomMetrics(getCustomMetrics(table, column.getName()));
       }
     }
-    return table;
   }
 
   @Override
-  public Table clearFields(Table table, Fields fields) {
+  public void clearFields(Table table, Fields fields) {
     table.setTableConstraints(fields.contains("tableConstraints") ? table.getTableConstraints() : null);
     table.setUsageSummary(fields.contains("usageSummary") ? table.getUsageSummary() : null);
     table.setJoins(fields.contains("joins") ? table.getJoins() : null);
     table.setViewDefinition(fields.contains("viewDefinition") ? table.getViewDefinition() : null);
     table.setTableProfilerConfig(fields.contains(TABLE_PROFILER_CONFIG) ? table.getTableProfilerConfig() : null);
     table.setTestSuite(fields.contains("testSuite") ? table.getTestSuite() : null);
-    return table;
   }
 
   @Override
@@ -584,19 +581,6 @@ public class TableRepository extends EntityRepository<Table> {
     setFieldsInternal(table, new Fields(Set.of(FIELD_OWNER), FIELD_OWNER));
     setFieldsInternal(table, new Fields(Set.of(FIELD_TAGS), FIELD_TAGS));
     return table;
-  }
-
-  private void addDerivedColumnTags(List<Column> columns) {
-    if (nullOrEmpty(columns)) {
-      return;
-    }
-
-    for (Column column : columns) {
-      column.setTags(addDerivedTags(column.getTags()));
-      if (column.getChildren() != null) {
-        addDerivedColumnTags(column.getChildren());
-      }
-    }
   }
 
   @Override

@@ -45,17 +45,17 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   }
 
   @Override
-  public TestSuite setFields(TestSuite entity, EntityUtil.Fields fields) {
+  public void setFields(TestSuite entity, EntityUtil.Fields fields) {
     entity.setPipelines(fields.contains("pipelines") ? getIngestionPipelines(entity) : entity.getPipelines());
     entity.setSummary(fields.contains("summary") ? getTestCasesExecutionSummary(entity) : entity.getSummary());
-    return entity.withTests(fields.contains("tests") ? getTestCases(entity) : entity.getTests());
+    entity.withTests(fields.contains("tests") ? getTestCases(entity) : entity.getTests());
   }
 
   @Override
-  public TestSuite clearFields(TestSuite entity, EntityUtil.Fields fields) {
+  public void clearFields(TestSuite entity, EntityUtil.Fields fields) {
     entity.setPipelines(fields.contains("pipelines") ? entity.getPipelines() : null);
     entity.setSummary(fields.contains("summary") ? entity.getSummary() : null);
-    return entity.withTests(fields.contains("tests") ? entity.getTests() : null);
+    entity.withTests(fields.contains("tests") ? entity.getTests() : null);
   }
 
   private TestSummary buildTestSummary(HashMap<String, Integer> testCaseSummary, int total) {

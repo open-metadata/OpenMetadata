@@ -98,8 +98,7 @@ public class TestConnectionDefinitionResource
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(
-              description = "Limit the number test connection definitions returned. (1 to 1000000, default = " + "10)")
+      @Parameter(description = "Limit the number test connection definitions returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
           @Min(0)

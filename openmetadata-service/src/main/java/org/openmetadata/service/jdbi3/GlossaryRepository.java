@@ -78,15 +78,15 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   }
 
   @Override
-  public Glossary setFields(Glossary glossary, Fields fields) {
+  public void setFields(Glossary glossary, Fields fields) {
     glossary.setTermCount(fields.contains("termCount") ? getTermCount(glossary) : glossary.getTermCount());
-    return glossary.withUsageCount(fields.contains("usageCount") ? getUsageCount(glossary) : glossary.getUsageCount());
+    glossary.withUsageCount(fields.contains("usageCount") ? getUsageCount(glossary) : glossary.getUsageCount());
   }
 
   @Override
-  public Glossary clearFields(Glossary glossary, Fields fields) {
+  public void clearFields(Glossary glossary, Fields fields) {
     glossary.setTermCount(fields.contains("termCount") ? glossary.getTermCount() : null);
-    return glossary.withUsageCount(fields.contains("usageCount") ? glossary.getUsageCount() : null);
+    glossary.withUsageCount(fields.contains("usageCount") ? glossary.getUsageCount() : null);
   }
 
   @Override

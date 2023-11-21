@@ -75,7 +75,7 @@ public abstract class OMWebBundle<T extends Configuration> implements Configured
   }
 
   private String deriveUrlPattern(String uri) {
-    return uri.endsWith("/") ? uri + "*" : uri + "/" + "*";
+    return uri.endsWith("/") ? uri + "*" : uri + "/*";
   }
 
   public abstract OMWebConfiguration getWebConfiguration(T var1);

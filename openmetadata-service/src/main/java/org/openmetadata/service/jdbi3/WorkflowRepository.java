@@ -26,13 +26,13 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
   }
 
   @Override
-  public Workflow setFields(Workflow entity, EntityUtil.Fields fields) {
-    return entity;
+  public void setFields(Workflow entity, EntityUtil.Fields fields) {
+    /* Nothing to do */
   }
 
   @Override
-  public Workflow clearFields(Workflow entity, EntityUtil.Fields fields) {
-    return entity;
+  public void clearFields(Workflow entity, EntityUtil.Fields fields) {
+    /* Nothing to do */
   }
 
   @Override

@@ -75,7 +75,7 @@ import org.openmetadata.service.util.ResultList;
 @Path("/v1/policies")
 @Tag(
     name = "Policies",
-    description = "A `Policy` defines control that needs to be applied across different Data " + "Entities.")
+    description = "A `Policy` defines control that needs to be applied across different Data Entities.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "policies", order = 0)
@@ -159,7 +159,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(description = "Limit the number policies returned. (1 to 1000000, " + "default = 10)")
+      @Parameter(description = "Limit the number policies returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @Min(0)
           @Max(1000000)
@@ -275,9 +275,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
             responseCode = "200",
             description = "policy",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Policy.class))),
-        @ApiResponse(
-            responseCode = "404",
-            description = "Policy for instance {id} and version {version} is" + " " + "not found")
+        @ApiResponse(responseCode = "404", description = "Policy for instance {id} and version {version} is not found")
       })
   public Policy getVersion(
       @Context UriInfo uriInfo,
@@ -347,9 +345,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }

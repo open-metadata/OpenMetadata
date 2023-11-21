@@ -108,7 +108,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(description = "Limit the number of KIPs returned. (1 to 1000000, default = " + "10)")
+      @Parameter(description = "Limit the number of KIPs returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
           @Min(0)
@@ -221,9 +221,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
             responseCode = "200",
             description = "KPI",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Kpi.class))),
-        @ApiResponse(
-            responseCode = "404",
-            description = "KPI for instance {id} and version {version} is " + "not found")
+        @ApiResponse(responseCode = "404", description = "KPI for instance {id} and version {version} is not found")
       })
   public Kpi getVersion(
       @Context UriInfo uriInfo,
@@ -274,9 +272,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }

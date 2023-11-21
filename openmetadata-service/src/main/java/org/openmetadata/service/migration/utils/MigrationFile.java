@@ -149,8 +149,8 @@ public class MigrationFile implements Comparable<MigrationFile> {
 
   private String getVersionPackageName() {
     StringBuilder arrayAsString = new StringBuilder();
-    for (int i = 0; i < versionNumbers.length; i++) {
-      arrayAsString.append(versionNumbers[i]);
+    for (int versionNumber : versionNumbers) {
+      arrayAsString.append(versionNumber);
     }
     return "v" + arrayAsString;
   }

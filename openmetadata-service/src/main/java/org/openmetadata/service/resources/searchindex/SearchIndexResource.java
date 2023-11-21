@@ -125,7 +125,7 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
               schema = @Schema(type = "string", example = "ElasticSearchWestCoast"))
           @QueryParam("service")
           String serviceParam,
-      @Parameter(description = "Limit the number SearchIndexes returned. (1 to 1000000, default = " + "10)")
+      @Parameter(description = "Limit the number SearchIndexes returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
           @Min(0)
@@ -242,7 +242,7 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = SearchIndex.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "SearchIndex for instance {id} and version {version} is " + "not found")
+            description = "SearchIndex for instance {id} and version {version} is not found")
       })
   public SearchIndex getVersion(
       @Context UriInfo uriInfo,
@@ -291,9 +291,7 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }

@@ -94,7 +94,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   @Override
-  public Dashboard setFields(Dashboard dashboard, Fields fields) {
+  public void setFields(Dashboard dashboard, Fields fields) {
     dashboard.setService(getContainer(dashboard.getId()));
     dashboard.setCharts(fields.contains("charts") ? getRelatedEntities(dashboard, Entity.CHART) : null);
     dashboard.setDataModels(
@@ -105,14 +105,13 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
               ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), dashboard.getId())
               : null);
     }
-    return dashboard;
   }
 
   @Override
-  public Dashboard clearFields(Dashboard dashboard, Fields fields) {
+  public void clearFields(Dashboard dashboard, Fields fields) {
     dashboard.setCharts(fields.contains("charts") ? dashboard.getCharts() : null);
     dashboard.setDataModels(fields.contains("dataModels") ? dashboard.getDataModels() : null);
-    return dashboard.withUsageSummary(fields.contains("usageSummary") ? dashboard.getUsageSummary() : null);
+    dashboard.withUsageSummary(fields.contains("usageSummary") ? dashboard.getUsageSummary() : null);
   }
 
   @Override

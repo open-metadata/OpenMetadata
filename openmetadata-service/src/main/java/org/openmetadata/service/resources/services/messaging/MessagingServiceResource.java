@@ -107,7 +107,7 @@ public class MessagingServiceResource
       @Parameter(description = "Filter services by domain", schema = @Schema(type = "string", example = "Marketing"))
           @QueryParam("domain")
           String domain,
-      @Parameter(description = "Limit number services returned. (1 to 1000000, " + "default 10)")
+      @Parameter(description = "Limit number services returned. (1 to 1000000, default 10)")
           @DefaultValue("10")
           @Min(0)
           @Max(1000000)
@@ -268,14 +268,14 @@ public class MessagingServiceResource
                 @Content(mediaType = "application/json", schema = @Schema(implementation = MessagingService.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Messaging service for instance {id} and version " + "{version} is not found")
+            description = "Messaging service for instance {id} and version {version} is not found")
       })
   public MessagingService getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the messaging service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
-              description = "messaging service version number in the form `major`" + ".`minor`",
+              description = "messaging service version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
@@ -342,9 +342,7 @@ public class MessagingServiceResource
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
@@ -354,10 +352,10 @@ public class MessagingServiceResource
   @Operation(
       operationId = "deleteMessagingService",
       summary = "Delete a messaging service by Id",
-      description = "Delete a messaging service. If topics belong the service, it can't be " + "deleted.",
+      description = "Delete a messaging service. If topics belong the service, it can't be deleted.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "MessagingService service for instance {id} " + "is not found")
+        @ApiResponse(responseCode = "404", description = "MessagingService service for instance {id} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
@@ -380,12 +378,10 @@ public class MessagingServiceResource
   @Operation(
       operationId = "deleteMessagingServiceByName",
       summary = "Delete a messaging service by name",
-      description = "Delete a messaging service by `name`. If topics belong the service, it can't be " + "deleted.",
+      description = "Delete a messaging service by `name`. If topics belong the service, it can't be deleted.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(
-            responseCode = "404",
-            description = "MessagingService service for instance {name} " + "is not found")
+        @ApiResponse(responseCode = "404", description = "MessagingService service for instance {name} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,

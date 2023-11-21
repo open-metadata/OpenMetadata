@@ -57,7 +57,7 @@ import org.openmetadata.service.util.ResultList;
 @Path("/v1/queries")
 @Tag(
     name = "Queries",
-    description = "A `Query` entity represents a SQL query associated with data assets it is run " + "against.")
+    description = "A `Query` entity represents a SQL query associated with data assets it is run against.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "queries")
@@ -118,7 +118,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
       @Parameter(description = "Filter Queries by service Fully Qualified Name", schema = @Schema(type = "string"))
           @QueryParam("service")
           String service,
-      @Parameter(description = "Limit the number queries returned. " + "(1 to 1000000, default = 10)")
+      @Parameter(description = "Limit the number queries returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @Min(0)
           @Max(1000000)
@@ -221,9 +221,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
             responseCode = "200",
             description = "query",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Query.class))),
-        @ApiResponse(
-            responseCode = "404",
-            description = "query for instance {id} and version {version} is " + "not found")
+        @ApiResponse(responseCode = "404", description = "query for instance {id} and version {version} is not found")
       })
   public Query getVersion(
       @Context UriInfo uriInfo,
@@ -293,9 +291,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }

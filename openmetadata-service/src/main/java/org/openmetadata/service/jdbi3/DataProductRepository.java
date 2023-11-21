@@ -50,13 +50,13 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   }
 
   @Override
-  public DataProduct setFields(DataProduct entity, Fields fields) {
-    return entity.withAssets(fields.contains(FIELD_ASSETS) ? getAssets(entity) : null);
+  public void setFields(DataProduct entity, Fields fields) {
+    entity.withAssets(fields.contains(FIELD_ASSETS) ? getAssets(entity) : null);
   }
 
   @Override
-  public DataProduct clearFields(DataProduct entity, Fields fields) {
-    return entity.withAssets(fields.contains(FIELD_ASSETS) ? entity.getAssets() : null);
+  public void clearFields(DataProduct entity, Fields fields) {
+    entity.withAssets(fields.contains(FIELD_ASSETS) ? entity.getAssets() : null);
   }
 
   private List<EntityReference> getAssets(DataProduct entity) {
