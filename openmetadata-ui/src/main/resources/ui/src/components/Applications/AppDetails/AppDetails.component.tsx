@@ -55,6 +55,7 @@ import {
 } from '../../../generated/entity/applications/app';
 import { Include } from '../../../generated/type/include';
 import {
+  configureApp,
   deployApp,
   getApplicationByName,
   patchApplication,
@@ -242,6 +243,8 @@ const AppDetails = () => {
 
       try {
         const response = await patchApplication(appData.id, jsonPatch);
+        // call configure endpoint also to update configuration
+        await configureApp(appData.fullyQualifiedName ?? '', updatedFormData);
         setAppData(response);
         showSuccessToast(
           t('message.entity-saved-successfully', {

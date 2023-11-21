@@ -25,7 +25,10 @@ import FormBuilder from '../../components/common/FormBuilder/FormBuilder';
 import IngestionStepper from '../../components/IngestionStepper/IngestionStepper.component';
 import Loader from '../../components/Loader/Loader';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { STEPS_FOR_APP_INSTALL } from '../../constants/Applications.constant';
+import {
+  APPLICATION_UI_SCHEMA,
+  STEPS_FOR_APP_INSTALL,
+} from '../../constants/Applications.constant';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -154,6 +157,7 @@ const AppInstall = () => {
               serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
               serviceType=""
               showTestConnection={false}
+              uiSchema={APPLICATION_UI_SCHEMA}
               validator={validator}
               onCancel={() => setActiveServiceStep(1)}
               onSubmit={onSaveConfiguration}
