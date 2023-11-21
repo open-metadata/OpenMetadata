@@ -14,15 +14,14 @@ Generic Workflow entrypoint to execute Applications
 import json
 
 from airflow import DAG
+from metadata.generated.schema.entity.applications.configuration.applicationConfig import AppConfig
+
 from openmetadata_managed_apis.utils.logger import set_operator_logger
 from openmetadata_managed_apis.workflows.ingestion.common import (
     build_dag,
     build_workflow_config_property,
 )
 
-from metadata.generated.schema.entity.applications.configuration.externalApplicationConfig import (
-    AppConfig,
-)
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
 )

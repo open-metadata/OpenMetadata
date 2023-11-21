@@ -4,7 +4,7 @@ import com.cronutils.model.Cron;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
-import org.openmetadata.schema.entity.applications.configuration.ExternalApplicationConfig;
+import org.openmetadata.schema.entity.applications.configuration.ApplicationConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
@@ -34,8 +34,7 @@ public class ExternalApplicationHandler extends AbstractNativeApplication {
   @Override
   public void initializeExternalApp() {
 
-    ExternalApplicationConfig config =
-        JsonUtils.convertValue(this.getApp().getAppConfiguration(), ExternalApplicationConfig.class);
+    ApplicationConfig config = JsonUtils.convertValue(this.getApp().getAppConfiguration(), ApplicationConfig.class);
     IngestionPipelineRepository ingestionPipelineRepository =
         (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
 
@@ -85,7 +84,7 @@ public class ExternalApplicationHandler extends AbstractNativeApplication {
                       .withConfig(
                           new ApplicationPipeline()
                               .withSourcePythonClass(this.getApp().getSourcePythonClass())
-                              .withAppConfig(config.getConfig())))
+                              .withAppConfig(config)))
               .withAirflowConfig(
                   new AirflowConfig().withScheduleInterval(this.getCronMapper().map(quartzCron).asString()))
               .withService(service);

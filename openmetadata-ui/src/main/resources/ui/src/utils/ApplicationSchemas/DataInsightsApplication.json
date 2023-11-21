@@ -1,7 +1,7 @@
 {
   "$id": "DataInsightsApplication.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Data Insights Application Config",
+  "title": "DataInsightsAppConfig",
   "description": "This schema defines configuration for Search Reindexing Application.",
   "properties": {},
   "additionalProperties": false

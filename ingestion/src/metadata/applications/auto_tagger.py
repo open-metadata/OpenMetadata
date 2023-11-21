@@ -46,7 +46,8 @@ class AutoTaggerApp(AppRunner):
     with a YAML file like:
 
     sourcePythonClass: metadata.applications.auto_tagger.AutoTaggerApp
-    config:
+    appConfig:
+      type: AutoTagger
       confidenceLevel: 80
     workflowConfig:
       loggerLevel: INFO
