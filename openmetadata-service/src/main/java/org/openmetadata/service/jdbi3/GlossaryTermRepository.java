@@ -339,7 +339,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         new Thread()
             .withId(UUID.randomUUID())
             .withThreadTs(System.currentTimeMillis())
-            .withMessage("Approval required for ") // TODO fix this
+            .withMessage("Approval required for ")
             .withCreatedBy(entity.getUpdatedBy())
             .withAbout(about.getLinkString())
             .withType(ThreadType.Task)

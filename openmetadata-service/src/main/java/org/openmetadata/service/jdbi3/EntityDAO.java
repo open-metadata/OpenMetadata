@@ -177,8 +177,8 @@ public interface EntityDAO<T extends EntityInterface> {
   @ConnectionAwareSqlQuery(
       value =
           "SELECT <table>.json FROM <table> <postgresCond> AND "
-              + "<table>.<nameColumn> > :after "
-              + "ORDER BY <table>.<name> "
+              + "<table>.name > :after "
+              + "ORDER BY <table>.name "
               + "LIMIT :limit",
       connectionType = POSTGRES)
   List<String> listAfter(

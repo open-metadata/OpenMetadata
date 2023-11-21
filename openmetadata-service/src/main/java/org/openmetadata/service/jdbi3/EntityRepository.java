@@ -98,6 +98,7 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.VoteRequest;
+import org.openmetadata.schema.api.VoteRequest.VoteType;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.entity.data.Table;
@@ -850,7 +851,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     fieldUpdated(change, FIELD_VOTES, null, request.getUpdatedVoteType());
 
     // Add or Delete relationship
-    if (request.getUpdatedVoteType() == VoteRequest.VoteType.UN_VOTED) {
+    if (request.getUpdatedVoteType() == VoteType.UN_VOTED) {
       deleteRelationship(userId, Entity.USER, entityId, entityType, Relationship.VOTED);
     } else {
       addRelationship(
@@ -1314,20 +1315,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (!supportsVotes || entity == null) {
       return new Votes();
     }
-    List<EntityReference> upVoters = new ArrayList<>();
-    List<EntityReference> downVoters = new ArrayList<>();
+    List<EntityRelationshipRecord> upVoterRecords = new ArrayList<>();
+    List<EntityRelationshipRecord> downVoterRecords = new ArrayList<>();
     List<EntityRelationshipRecord> records =
         findFromRecords(entity.getId(), entityType, Relationship.VOTED, Entity.USER);
     for (EntityRelationshipRecord entityRelationshipRecord : records) {
-      VoteRequest.VoteType type;
-      type = JsonUtils.readValue(entityRelationshipRecord.getJson(), VoteRequest.VoteType.class);
-      EntityReference user = Entity.getEntityReferenceById(Entity.USER, entityRelationshipRecord.getId(), ALL);
-      if (type == VoteRequest.VoteType.VOTED_UP) {
-        upVoters.add(user);
-      } else if (type == VoteRequest.VoteType.VOTED_DOWN) {
-        downVoters.add(user);
+      VoteType type = JsonUtils.readValue(entityRelationshipRecord.getJson(), VoteType.class);
+      if (type == VoteType.VOTED_UP) {
+        upVoterRecords.add(entityRelationshipRecord);
+      } else if (type == VoteType.VOTED_DOWN) {
+        downVoterRecords.add(entityRelationshipRecord);
       }
     }
+    List<EntityReference> upVoters = getEntityReferences(upVoterRecords);
+    List<EntityReference> downVoters = getEntityReferences(downVoterRecords);
     return new Votes()
         .withUpVotes(upVoters.size())
         .withDownVotes(downVoters.size())
@@ -1698,14 +1699,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected List<EntityReference> getIngestionPipelines(T service) {
-    List<EntityRelationshipRecord> pipelines =
-        findToRecords(service.getId(), entityType, Relationship.CONTAINS, Entity.INGESTION_PIPELINE);
-    List<EntityReference> ingestionPipelines = new ArrayList<>();
-    for (EntityRelationshipRecord entityRelationshipRecord : pipelines) {
-      ingestionPipelines.add(
-          Entity.getEntityReferenceById(Entity.INGESTION_PIPELINE, entityRelationshipRecord.getId(), ALL));
-    }
-    return ingestionPipelines;
+    return findTo(service.getId(), entityType, Relationship.CONTAINS, Entity.INGESTION_PIPELINE);
   }
 
   protected void checkSystemEntityDeletion(T entity) {
