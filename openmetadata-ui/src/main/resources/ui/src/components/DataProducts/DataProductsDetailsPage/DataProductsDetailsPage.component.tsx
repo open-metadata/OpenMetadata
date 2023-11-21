@@ -549,7 +549,7 @@ const DataProductsDetailsPage = ({
       <EntityNameModal
         entity={dataProduct}
         title={t('label.edit-entity', {
-          entity: t('label.name'),
+          entity: t('label.display-name'),
         })}
         visible={isNameEditing}
         onCancel={() => setIsNameEditing(false)}
