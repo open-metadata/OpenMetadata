@@ -188,7 +188,11 @@ export const softDeletedEntityCommonChecks = ({
 
   cy.get('[data-testid="manage-button"]').click();
   cy.get('[data-testid="delete-button-title"]').click();
-  cy.get('[data-testid="confirmation-text-input"]').type('DELETE');
+  cy.get('[data-testid="confirm-button"]').should('be.disabled');
+  cy.get('[data-testid="confirmation-text-input"]').type('DEL{enter}');
+  cy.get('#deleteTextInput_help').contains('Please type DELETE to confirm.');
+  cy.get('[data-testid="confirm-button"]').should('be.disabled');
+  cy.get('[data-testid="confirmation-text-input"]').clear().type('DELETE');
   cy.get('[data-testid="confirm-button"]').click();
   cy.get('.Toastify__close-button').click();
   cy.get('[data-testid="deleted-badge"]').should('be.visible');

@@ -22,7 +22,7 @@ import {
   generateRandomTable,
   hardDeleteService,
 } from '../../common/entityUtils';
-import { MYDATA_SUMMARY_OPTIONS } from '../../constants/constants';
+import { DATA_ASSETS } from '../../constants/constants';
 import {
   DATABASE_SERVICE,
   DATABASE_SERVICE_DETAILS,
@@ -32,7 +32,7 @@ import { SERVICE_CATEGORIES } from '../../constants/service.constants';
 const queryTable = {
   term: DATABASE_SERVICE.tables.name,
   displayName: DATABASE_SERVICE.tables.name,
-  entity: MYDATA_SUMMARY_OPTIONS.tables,
+  entity: DATA_ASSETS.tables,
   serviceName: DATABASE_SERVICE.service.name,
   entityType: 'Table',
 };

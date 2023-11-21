@@ -139,7 +139,6 @@ describe(`Soft delete flow should work for all entities`, () => {
           term: entity.name,
           serviceName: service.name,
           entity: entityType,
-          entityType: entityTypeDisplay,
         });
 
         softDeletedEntityCommonChecks({

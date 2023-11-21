@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { MYDATA_SUMMARY_OPTIONS, uuid } from './constants';
+import { DATA_ASSETS, uuid } from './constants';
 import { SERVICE_CATEGORIES } from './service.constants';
 
 const DATABASE_SERVICE_NAME = `cy-database-service-${uuid()}`;
@@ -369,7 +369,7 @@ export const VISIT_ENTITIES_DATA = {
   table: {
     term: DATABASE_SERVICE.tables.name,
     displayName: DATABASE_SERVICE.tables.name,
-    entity: MYDATA_SUMMARY_OPTIONS.tables,
+    entity: DATA_ASSETS.tables,
     serviceName: DATABASE_SERVICE.service.name,
     schemaName: DATABASE_SERVICE.schema.name,
     entityType: 'Table',
@@ -377,41 +377,41 @@ export const VISIT_ENTITIES_DATA = {
   topic: {
     term: MESSAGING_SERVICE.entity.name,
     displayName: MESSAGING_SERVICE.entity.name,
-    entity: MYDATA_SUMMARY_OPTIONS.topics,
+    entity: DATA_ASSETS.topics,
     serviceName: MESSAGING_SERVICE.service.name,
     entityType: 'Topic',
   },
   dashboard: {
     term: DASHBOARD_SERVICE.entity.name,
     displayName: DASHBOARD_SERVICE.entity.name,
-    entity: MYDATA_SUMMARY_OPTIONS.dashboards,
+    entity: DATA_ASSETS.dashboards,
     serviceName: DASHBOARD_SERVICE.service.name,
     entityType: 'Dashboard',
   },
   pipeline: {
     term: PIPELINE_SERVICE.entity.name,
     displayName: PIPELINE_SERVICE.entity.name,
-    entity: MYDATA_SUMMARY_OPTIONS.pipelines,
+    entity: DATA_ASSETS.pipelines,
     serviceName: PIPELINE_SERVICE.service.name,
     entityType: 'Pipeline',
   },
   mlmodel: {
     term: MLMODEL_SERVICE.entity.name,
     displayName: MLMODEL_SERVICE.entity.name,
-    entity: MYDATA_SUMMARY_OPTIONS.mlmodels,
+    entity: DATA_ASSETS.mlmodels,
     serviceName: MLMODEL_SERVICE.service.name,
     entityType: 'ML Model',
   },
   storedProcedure: {
     term: STORED_PROCEDURE_DETAILS.name,
     displayName: STORED_PROCEDURE_DETAILS.name,
-    entity: MYDATA_SUMMARY_OPTIONS.storedProcedures,
+    entity: DATA_ASSETS.storedProcedures,
     serviceName: DATABASE_SERVICE_DETAILS.name,
     entityType: 'Stored Procedure',
   },
   dataModel: {
     term: DASHBOARD_DATA_MODEL_DETAILS.name,
-    entity: MYDATA_SUMMARY_OPTIONS.dataModel,
+    entity: DATA_ASSETS.dataModel,
     serviceName: DASHBOARD_DATA_MODEL_DETAILS.service,
     displayName: DASHBOARD_DATA_MODEL_DETAILS.name,
     entityType: 'Data Model',
