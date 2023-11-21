@@ -29,11 +29,11 @@ export function directionHandler(value) {
   const container = document.getElementById('om-quill-editor');
 
   if (value === 'rtl' && align == null) {
-    container.dir = value;
+    container.setAttribute('data-dir', value);
     this.quill.format('align', 'right', 'user');
   } else if (!value && align === 'right') {
     this.quill.format('align', false, 'user');
-    container.dir = 'ltr';
+    container.setAttribute('data-dir', 'ltr');
   }
   this.quill.format('direction', value, 'user');
 }
