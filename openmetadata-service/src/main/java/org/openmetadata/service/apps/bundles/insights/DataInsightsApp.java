@@ -13,8 +13,8 @@ import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.metadataIngestion.DataInsightPipeline;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
-import org.openmetadata.schema.services.connections.metadata.ComponentConfig;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
@@ -84,7 +84,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
                 .withDisplayName(INGESTION_PIPELINE_NAME)
                 .withDescription(PIPELINE_DESCRIPTION)
                 .withPipelineType(PipelineType.DATA_INSIGHT)
-                .withSourceConfig(new SourceConfig().withConfig(new ComponentConfig()))
+                .withSourceConfig(new SourceConfig().withConfig(new DataInsightPipeline()))
                 .withAirflowConfig(new AirflowConfig().withScheduleInterval(getCronMapper().map(quartzCron).asString()))
                 .withService(service);
 
