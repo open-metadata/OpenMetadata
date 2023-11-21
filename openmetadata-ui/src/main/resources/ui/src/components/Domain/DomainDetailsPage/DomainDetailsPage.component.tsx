@@ -300,12 +300,11 @@ const DomainDetailsPage = ({
   }, []);
 
   const onNameSave = (obj: { name: string; displayName: string }) => {
-    const { name, displayName } = obj;
+    const { displayName } = obj;
     let updatedDetails = cloneDeep(domain);
 
     updatedDetails = {
       ...domain,
-      name: name?.trim() || domain.name,
       displayName: displayName?.trim(),
     };
 
@@ -650,7 +649,6 @@ const DomainDetailsPage = ({
         />
       )}
       <EntityNameModal
-        allowRename
         entity={domain}
         title={t('label.edit-entity', {
           entity: t('label.name'),
