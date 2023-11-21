@@ -150,7 +150,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
               schema = @Schema(type = "string", example = "Property, Entity"))
           @QueryParam("category")
           String categoryParam,
-      @Parameter(description = "Limit the number types returned. (1 to 1000000, " + "default = 10)")
+      @Parameter(description = "Limit the number types returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @Min(0)
           @Max(1000000)
@@ -258,9 +258,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
             responseCode = "200",
             description = "types",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Type.class))),
-        @ApiResponse(
-            responseCode = "404",
-            description = "Type for instance {id} and version {version} is " + "not found")
+        @ApiResponse(responseCode = "404", description = "Type for instance {id} and version {version} is not found")
       })
   public Type getVersion(
       @Context UriInfo uriInfo,
@@ -308,9 +306,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }

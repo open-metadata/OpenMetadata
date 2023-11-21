@@ -299,13 +299,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * Set the requested fields in an entity. This is used for requesting specific fields in the object during GET
    * operations. It is also used during PUT and PATCH operations to set up fields that can be updated.
    */
-  public abstract T setFields(T entity, Fields fields);
+  public abstract void setFields(T entity, Fields fields);
 
   /**
    * Set the requested fields in an entity. This is used for requesting specific fields in the object during GET
    * operations. It is also used during PUT and PATCH operations to set up fields that can be updated.
    */
-  public abstract T clearFields(T entity, Fields fields);
+  public abstract void clearFields(T entity, Fields fields);
 
   /**
    * This method is used for validating an entity to be created during POST, PUT, and PATCH operations and prepare the

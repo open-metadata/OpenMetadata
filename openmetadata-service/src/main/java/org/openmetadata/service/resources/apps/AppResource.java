@@ -184,7 +184,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(description = "Limit the number of installed applications returned. (1 to 1000000, default = " + "10)")
+      @Parameter(description = "Limit the number of installed applications returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
           @Min(0)
@@ -225,13 +225,13 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the App", schema = @Schema(type = "string")) @PathParam("name") String name,
-      @Parameter(description = "Limit records. (1 to 1000000, default = " + "10)")
+      @Parameter(description = "Limit records. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
           @Min(0)
           @Max(1000000)
           int limitParam,
-      @Parameter(description = "Offset records. (0 to 1000000, default = " + "0)")
+      @Parameter(description = "Offset records. (0 to 1000000, default = 0)")
           @DefaultValue("0")
           @QueryParam("offset")
           @Min(0)
@@ -443,9 +443,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
             responseCode = "200",
             description = "App",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = App.class))),
-        @ApiResponse(
-            responseCode = "404",
-            description = "App for instance {id} and version {version} is " + "not found")
+        @ApiResponse(responseCode = "404", description = "App for instance {id} and version {version} is not found")
       })
   public App getVersion(
       @Context UriInfo uriInfo,
@@ -506,9 +504,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
