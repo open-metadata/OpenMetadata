@@ -42,11 +42,18 @@ const ResolutionCenterDetailPage = () => {
 
   const [testCaseData, setTestCaseData] = useState<TestCase>();
 
+  const onTestCaseUpdate = (data: TestCase) => setTestCaseData(data);
+
   const tabDetails: TabsProps['items'] = useMemo(
     () => [
       {
         label: <TabsLabel id="by-tables" name={t('label.test-case-result')} />,
-        children: <TestCaseResultTab testCaseData={testCaseData} />,
+        children: (
+          <TestCaseResultTab
+            testCaseData={testCaseData}
+            onTestCaseUpdate={onTestCaseUpdate}
+          />
+        ),
         key: ResolutionCenterTabs.TEST_CASE_RESULTS,
       },
       {
@@ -61,7 +68,7 @@ const ResolutionCenterDetailPage = () => {
   const fetchTestCaseData = async () => {
     try {
       const response = await getTestCaseByFqn(testCaseFQN, {
-        fields: ['testSuite', 'testCaseResult'],
+        fields: ['testSuite', 'testCaseResult', 'testDefinition'],
       });
       setTestCaseData(response.data);
     } catch (error) {

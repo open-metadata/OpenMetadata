@@ -13,17 +13,26 @@
 
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Col, Divider, Row, Space, Typography } from 'antd';
+import { AxiosError } from 'axios';
+import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
+import { updateTestCaseById } from '../../../rest/testAPI';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import EditTestCaseModal from '../../AddDataQualityTest/EditTestCaseModal';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
+import TestSummary from '../../ProfilerDashboard/component/TestSummary';
 import '../resolution-center.less';
 import { TestCaseResultTabProps } from './TestCaseResultTab.interface';
 
-const TestCaseResultTab = ({ testCaseData }: TestCaseResultTabProps) => {
+const TestCaseResultTab = ({
+  testCaseData,
+  onTestCaseUpdate,
+}: TestCaseResultTabProps) => {
   const { t } = useTranslation();
   const [isDescriptionEdit, setIsDescriptionEdit] = useState<boolean>(false);
   const [isParameterEdit, setIsParameterEdit] = useState<boolean>(false);
@@ -40,11 +49,42 @@ const TestCaseResultTab = ({ testCaseData }: TestCaseResultTabProps) => {
     [testCaseData?.parameterValues]
   );
 
-  const handleDescriptionChange = useCallback(async (description: string) => {
-    //   await updateUserDetails({ description });
+  const handleDescriptionChange = useCallback(
+    async (description: string) => {
+      if (testCaseData) {
+        const updatedTestCase = {
+          ...testCaseData,
+          description,
+        };
+        const jsonPatch = compare(testCaseData, updatedTestCase);
 
-    setIsDescriptionEdit(false);
-  }, []);
+        if (jsonPatch.length) {
+          try {
+            const res = await updateTestCaseById(
+              testCaseData.id ?? '',
+              jsonPatch
+            );
+            onTestCaseUpdate(res);
+            showSuccessToast(
+              t('server.update-entity-success', {
+                entity: t('label.test-case'),
+              })
+            );
+          } catch (error) {
+            showErrorToast(error as AxiosError);
+          } finally {
+            setIsDescriptionEdit(false);
+          }
+        }
+      }
+    },
+    [testCaseData, updateTestCaseById, onTestCaseUpdate]
+  );
+
+  const handleCancelParameter = useCallback(
+    () => setIsParameterEdit(false),
+    []
+  );
 
   return (
     <Row className="p-lg" gutter={[0, 20]}>
@@ -69,7 +109,7 @@ const TestCaseResultTab = ({ testCaseData }: TestCaseResultTabProps) => {
             </Typography.Text>
             <Icon
               component={EditIcon}
-              data-testid="edit-description"
+              data-testid="edit-description-icon"
               style={{ color: DE_ACTIVE_COLOR }}
               onClick={() => setIsParameterEdit(true)}
             />
@@ -97,6 +137,26 @@ const TestCaseResultTab = ({ testCaseData }: TestCaseResultTabProps) => {
           )}
         </Space>
       </Col>
+
+      {testCaseData && (
+        <Col span={24}>
+          <TestSummary
+            data={testCaseData}
+            showDescription={false}
+            showExpandIcon={false}
+          />
+        </Col>
+      )}
+
+      {testCaseData && isParameterEdit && (
+        <EditTestCaseModal
+          showOnlyParameter
+          testCase={testCaseData}
+          visible={isParameterEdit}
+          onCancel={handleCancelParameter}
+          onUpdate={onTestCaseUpdate}
+        />
+      )}
     </Row>
   );
 };

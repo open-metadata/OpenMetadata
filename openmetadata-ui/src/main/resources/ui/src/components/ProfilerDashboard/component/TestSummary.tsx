@@ -74,6 +74,7 @@ export interface DateRangeObject {
 
 const TestSummary: React.FC<TestSummaryProps> = ({
   data,
+  showDescription = true,
   showExpandIcon = true,
 }) => {
   const history = useHistory();
@@ -368,7 +369,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
           {!isUndefined(parameterValuesWithSqlExpression) ? (
             <Col>{parameterValuesWithSqlExpression.map(showParamsData)}</Col>
           ) : null}
-          {data.description && (
+          {data.description && showDescription && (
             <Col>
               <Space direction="vertical" size={4}>
                 <Typography.Text className="text-grey-muted">

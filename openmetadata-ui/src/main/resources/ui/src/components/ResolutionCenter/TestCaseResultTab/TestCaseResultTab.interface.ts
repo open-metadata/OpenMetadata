@@ -15,4 +15,5 @@ import { TestCase } from '../../../generated/tests/testCase';
 
 export interface TestCaseResultTabProps {
   testCaseData?: TestCase;
+  onTestCaseUpdate: (data: TestCase) => void;
 }

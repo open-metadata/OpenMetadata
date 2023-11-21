@@ -114,6 +114,7 @@ export interface DataQualityTabProps {
 
 export interface TestSummaryProps {
   data: TestCase;
+  showDescription?: boolean;
   showExpandIcon?: boolean;
 }
 
