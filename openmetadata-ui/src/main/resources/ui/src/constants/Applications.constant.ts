@@ -12,6 +12,7 @@
  */
 import { t } from 'i18next';
 import { StepperStepType } from 'Models';
+import { SearchIndex } from '../enums/search.enum';
 
 export const STEPS_FOR_APP_INSTALL: Array<StepperStepType> = [
   {
@@ -21,3 +22,18 @@ export const STEPS_FOR_APP_INSTALL: Array<StepperStepType> = [
   { name: t('label.configure'), step: 2 },
   { name: t('label.schedule'), step: 3 },
 ];
+
+export const APPLICATION_UI_SCHEMA = {
+  databases: {
+    'ui:widget': 'autoComplete',
+    'ui:options': {
+      autoCompleteType: SearchIndex.DATABASE,
+    },
+  },
+  owner: {
+    'ui:widget': 'autoComplete',
+    'ui:options': {
+      autoCompleteType: SearchIndex.USER,
+    },
+  },
+};
