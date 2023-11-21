@@ -21,6 +21,7 @@ import org.openmetadata.schema.ServiceConnectionEntityInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.EntityUtil;
@@ -83,7 +84,7 @@ public abstract class ServiceEntityRepository<
   }
 
   public T addTestConnectionResult(UUID serviceId, TestConnectionResult testConnectionResult) {
-    T service = dao.findEntityById(serviceId);
+    T service = find(serviceId, Include.NON_DELETED);
     service.setTestConnectionResult(testConnectionResult);
     dao.update(serviceId, service.getFullyQualifiedName(), JsonUtils.pojoToJson(service));
     return service;

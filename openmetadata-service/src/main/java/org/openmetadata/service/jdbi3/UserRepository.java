@@ -18,6 +18,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addEntityReferences;
 import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.schema.utils.EntityInterfaceUtil.quoteName;
 import static org.openmetadata.service.Entity.FIELD_DOMAIN;
 import static org.openmetadata.service.Entity.ROLE;
@@ -253,7 +254,7 @@ public class UserRepository extends EntityRepository<User> {
 
   /* Validate if the user is already part of the given team */
   public void validateTeamAddition(UUID userId, UUID teamId) {
-    User user = dao.findEntityById(userId);
+    User user = find(userId, NON_DELETED);
     List<EntityReference> teams = getTeams(user);
     Optional<EntityReference> team = teams.stream().filter(t -> t.getId().equals(teamId)).findFirst();
     if (team.isPresent()) {

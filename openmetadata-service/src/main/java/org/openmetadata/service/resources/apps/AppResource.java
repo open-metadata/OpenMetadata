@@ -80,7 +80,6 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.ResultList;
 import org.quartz.SchedulerException;
@@ -124,15 +123,10 @@ public class AppResource extends EntityResource<App, AppRepository> {
                   .getByName(
                       null, createApp.getName(), new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
 
-          String existingJson = repository.getDao().findJsonByFqn(createApp.getName(), ALL);
-
-          App app;
-
-          if (existingJson == null) {
+          App app = repository.findByNameOrNull(createApp.getName(), ALL);
+          if (app == null) {
             app = getApplication(definition, createApp, "admin").withFullyQualifiedName(createApp.getName());
             repository.initializeEntity(app);
-          } else {
-            app = JsonUtils.readValue(existingJson, App.class);
           }
 
           // Schedule

@@ -421,8 +421,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
   /** Initialize a given entity if it does not exist. */
   @Transaction
   public void initializeEntity(T entity) {
-    String existingJson = dao.findJsonByFqn(entity.getFullyQualifiedName(), ALL);
-    if (existingJson != null) {
+    T existingEntity = findByNameOrNull(entity.getFullyQualifiedName(), ALL);
+    if (existingEntity != null) {
       LOG.info("{} {} is already initialized", entityType, entity.getFullyQualifiedName());
       return;
     }
@@ -657,7 +657,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return JsonUtils.readValue(json, entityClass);
     }
     // If requested the latest version, return it from current version of the entity
-    T entity = setFieldsInternal(dao.findEntityById(id, ALL), putFields);
+    T entity = setFieldsInternal(find(id, ALL), putFields);
     if (entity.getVersion().equals(requestedVersion)) {
       return entity;
     }
@@ -666,7 +666,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public EntityHistory listVersions(UUID id) {
-    T latest = setFieldsInternal(dao.findEntityById(id, ALL), putFields);
+    T latest = setFieldsInternal(find(id, ALL), putFields);
     String extensionPrefix = EntityUtil.getVersionExtensionPrefix(entityType);
     List<ExtensionRecord> records = daoCollection.entityExtensionDAO().getExtensions(id, extensionPrefix);
     List<EntityVersionPair> oldVersions = new ArrayList<>();
@@ -737,7 +737,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @Transaction
   public final PutResponse<T> createOrUpdate(UriInfo uriInfo, T updated) {
-    T original = JsonUtils.readValue(dao.findJsonByFqn(updated.getFullyQualifiedName(), ALL), entityClass);
+    T original = findByNameOrNull(updated.getFullyQualifiedName(), ALL);
     if (original == null) { // If an original entity does not exist then create it, else update
       return new PutResponse<>(Status.CREATED, withHref(uriInfo, createNewEntity(updated)), RestUtil.ENTITY_CREATED);
     }
@@ -779,7 +779,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Transaction
   public final PatchResponse<T> patch(UriInfo uriInfo, UUID id, String user, JsonPatch patch) {
     // Get all the fields in the original entity that can be updated during PATCH operation
-    T original = setFieldsInternal(dao.findEntityById(id), patchFields);
+    T original = setFieldsInternal(find(id, NON_DELETED), patchFields);
     setInheritedFields(original, patchFields);
 
     // Apply JSON patch to the original entity to get the updated entity
@@ -804,8 +804,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @Transaction
   public PutResponse<T> addFollower(String updatedBy, UUID entityId, UUID userId) {
-    // Get entity
-    T entity = dao.findEntityById(entityId);
+    T entity = find(entityId, NON_DELETED);
 
     // Validate follower
     User user = daoCollection.userDAO().findEntityById(userId);
@@ -838,7 +837,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @Transaction
   public PutResponse<T> updateVote(String updatedBy, UUID entityId, VoteRequest request) {
-    T originalEntity = dao.findEntityById(entityId);
+    T originalEntity = find(entityId, NON_DELETED);
 
     // Validate User
     User user = daoCollection.userDAO().findEntityByName(FullyQualifiedName.quoteName(updatedBy));
@@ -947,14 +946,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public final DeleteResponse<T> deleteInternalByName(
       String updatedBy, String name, boolean recursive, boolean hardDelete) {
     // Validate entity
-    T entity = dao.findEntityByName(name, ALL);
+    T entity = findByName(name, ALL);
     return delete(updatedBy, entity, recursive, hardDelete);
   }
 
   @Transaction
   public final DeleteResponse<T> deleteInternal(String updatedBy, UUID id, boolean recursive, boolean hardDelete) {
     // Validate entity
-    T entity = dao.findEntityById(id, ALL);
+    T entity = find(id, ALL);
     return delete(updatedBy, entity, recursive, hardDelete);
   }
 
@@ -1363,7 +1362,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     // Finally set entity deleted flag to false
     LOG.info("Restoring the {} {}", entityType, id);
-    T original = dao.findEntityById(id, DELETED);
+    T original = find(id, DELETED);
     setFieldsInternal(original, putFields);
     T updated = JsonUtils.readValue(JsonUtils.pojoToJson(original), entityClass);
     updated.setUpdatedBy(updatedBy);

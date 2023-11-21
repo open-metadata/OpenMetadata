@@ -310,10 +310,6 @@ public interface EntityDAO<T extends EntityInterface> {
     return entity;
   }
 
-  default String findJsonByFqn(String fqn, Include include) {
-    return findByName(getTableName(), getNameHashColumn(), fqn, getCondition(include));
-  }
-
   default int listCount(ListFilter filter) {
     return listCount(getTableName(), filter.getCondition());
   }

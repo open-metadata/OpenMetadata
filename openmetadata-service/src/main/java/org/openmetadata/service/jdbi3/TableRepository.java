@@ -16,6 +16,7 @@ package org.openmetadata.service.jdbi3;
 import static java.util.stream.Collectors.groupingBy;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
@@ -188,8 +189,7 @@ public class TableRepository extends EntityRepository<Table> {
   @Transaction
   public Table addJoins(UUID tableId, TableJoins joins) {
     // Validate the request content
-    Table table = dao.findEntityById(tableId);
-
+    Table table = find(tableId, NON_DELETED);
     if (!CommonUtil.dateInRange(RestUtil.DATE_FORMAT, joins.getStartDate(), 0, 30)) {
       throw new IllegalArgumentException("Date range can only include past 30 days starting today");
     }
@@ -220,7 +220,7 @@ public class TableRepository extends EntityRepository<Table> {
   @Transaction
   public Table addSampleData(UUID tableId, TableData tableData) {
     // Validate the request content
-    Table table = dao.findEntityById(tableId);
+    Table table = find(tableId, NON_DELETED);
 
     // Validate all the columns
     for (String columnName : tableData.getColumns()) {
@@ -244,8 +244,7 @@ public class TableRepository extends EntityRepository<Table> {
 
   public Table getSampleData(UUID tableId, boolean authorizePII) {
     // Validate the request content
-    Table table = dao.findEntityById(tableId);
-
+    Table table = find(tableId, NON_DELETED);
     TableData sampleData =
         JsonUtils.readValue(
             daoCollection.entityExtensionDAO().getExtension(table.getId(), TABLE_SAMPLE_DATA_EXTENSION),
@@ -266,8 +265,7 @@ public class TableRepository extends EntityRepository<Table> {
   @Transaction
   public Table deleteSampleData(UUID tableId) {
     // Validate the request content
-    Table table = dao.findEntityById(tableId);
-
+    Table table = find(tableId, NON_DELETED);
     daoCollection.entityExtensionDAO().delete(tableId, TABLE_SAMPLE_DATA_EXTENSION);
     setFieldsInternal(table, Fields.EMPTY_FIELDS);
     return table;
@@ -296,7 +294,7 @@ public class TableRepository extends EntityRepository<Table> {
   @Transaction
   public Table addTableProfilerConfig(UUID tableId, TableProfilerConfig tableProfilerConfig) {
     // Validate the request content
-    Table table = dao.findEntityById(tableId);
+    Table table = find(tableId, NON_DELETED);
 
     // Validate all the columns
     if (tableProfilerConfig.getExcludeColumns() != null) {
@@ -326,9 +324,9 @@ public class TableRepository extends EntityRepository<Table> {
   @Transaction
   public Table deleteTableProfilerConfig(UUID tableId) {
     // Validate the request content
-    Table table = dao.findEntityById(tableId);
+    Table table = find(tableId, NON_DELETED);
     daoCollection.entityExtensionDAO().delete(tableId, TABLE_PROFILER_CONFIG_EXTENSION);
-    setFieldsInternal(table, Fields.EMPTY_FIELDS);
+    clearFieldsInternal(table, Fields.EMPTY_FIELDS);
     return table;
   }
 
@@ -355,7 +353,7 @@ public class TableRepository extends EntityRepository<Table> {
 
   public Table addTableProfileData(UUID tableId, CreateTableProfile createTableProfile) {
     // Validate the request content
-    Table table = dao.findEntityById(tableId);
+    Table table = find(tableId, NON_DELETED);
     daoCollection
         .profilerDataTimeSeriesDao()
         .insert(
@@ -476,7 +474,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   public Table getLatestTableProfile(String fqn, boolean authorizePII) {
-    Table table = dao.findEntityByName(fqn, ALL);
+    Table table = findByName(fqn, ALL);
     TableProfile tableProfile =
         JsonUtils.readValue(
             daoCollection
@@ -497,7 +495,7 @@ public class TableRepository extends EntityRepository<Table> {
 
   public Table addCustomMetric(UUID tableId, CustomMetric customMetric) {
     // Validate the request content
-    Table table = dao.findEntityById(tableId);
+    Table table = find(tableId, NON_DELETED);
 
     String customMetricName = customMetric.getName();
     String customMetricColumnName = customMetric.getColumnName();
@@ -524,7 +522,7 @@ public class TableRepository extends EntityRepository<Table> {
 
   public Table deleteCustomMetric(UUID tableId, String columnName, String metricName) {
     // Validate the request content
-    Table table = dao.findEntityById(tableId);
+    Table table = find(tableId, NON_DELETED);
     if (columnName != null) validateColumn(table, columnName);
 
     // Get unique entity extension and delete data from DB
@@ -538,7 +536,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   public Table addDataModel(UUID tableId, DataModel dataModel) {
-    Table table = dao.findEntityById(tableId);
+    Table table = find(tableId, NON_DELETED);
 
     // Update the sql fields only if correct value is present
     if (dataModel.getRawSql() == null || dataModel.getRawSql().isBlank()) {
@@ -765,7 +763,7 @@ public class TableRepository extends EntityRepository<Table> {
     for (JoinedWith joinedWith : joinedWithList) {
       // Validate table
       String tableFQN = FullyQualifiedName.getTableFQN(joinedWith.getFullyQualifiedName());
-      Table joinedWithTable = dao.findEntityByName(tableFQN);
+      Table joinedWithTable = findByName(tableFQN, NON_DELETED);
 
       // Validate column
       ColumnUtil.validateColumnFQN(joinedWithTable.getColumns(), joinedWith.getFullyQualifiedName());

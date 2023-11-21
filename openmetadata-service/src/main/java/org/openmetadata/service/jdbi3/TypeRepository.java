@@ -108,7 +108,7 @@ public class TypeRepository extends EntityRepository<Type> {
   }
 
   public PutResponse<Type> addCustomProperty(UriInfo uriInfo, String updatedBy, UUID id, CustomProperty property) {
-    Type type = dao.findEntityById(id, Include.NON_DELETED);
+    Type type = find(id, Include.NON_DELETED);
     property.setPropertyType(
         Entity.getEntityReferenceById(Entity.TYPE, property.getPropertyType().getId(), NON_DELETED));
     if (type.getCategory().equals(Category.Field)) {
@@ -116,7 +116,7 @@ public class TypeRepository extends EntityRepository<Type> {
     }
     setFieldsInternal(type, putFields);
 
-    dao.findEntityById(property.getPropertyType().getId()); // Validate customProperty type exists
+    find(property.getPropertyType().getId(), NON_DELETED); // Validate customProperty type exists
 
     // If property already exists, then update it. Else add the new property.
     List<CustomProperty> updatedProperties = new ArrayList<>(List.of(property));
