@@ -1,3 +1,6 @@
+import { generateRandomTable } from '../common/entityUtils';
+import { DATABASE_SERVICE, VISIT_ENTITIES_DATA } from './entityConstant';
+
 /*
  *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,74 +14,55 @@
  *  limitations under the License.
  */
 
+export const TAGS_ADD_REMOVE_TABLE = generateRandomTable();
+
 export const TAGS_ADD_REMOVE_ENTITIES = [
   {
-    term: 'marketing',
-    displayName: 'marketing',
+    term: TAGS_ADD_REMOVE_TABLE.name,
+    displayName: TAGS_ADD_REMOVE_TABLE.name,
     entity: 'tables',
-    serviceName: 'sample_data',
-    fieldName: 'SKU',
+    serviceName: DATABASE_SERVICE.service.name,
+    fieldName: TAGS_ADD_REMOVE_TABLE.columns[0].name,
     tags: ['PersonalData.Personal', 'PII.Sensitive'],
     permissionApi: '/api/v1/permissions/*/name/*',
   },
   {
-    term: 'address_book',
-    displayName: 'address_book',
-    entity: 'topics',
-    serviceName: 'sample_kafka',
-    fieldName: 'AddressBook',
+    ...VISIT_ENTITIES_DATA.topic,
+    fieldName: 'first_name',
     tags: ['PersonalData.Personal', 'PII.Sensitive'],
     permissionApi: '/api/v1/permissions/*/name/*',
   },
   {
-    term: 'deck.gl Demo',
-    displayName: 'deck.gl Demo',
-    entity: 'dashboards',
+    ...VISIT_ENTITIES_DATA.dashboard,
     insideEntity: 'charts',
-    serviceName: 'sample_superset',
     fieldName: 'e3cfd274-44f8-4bf3-b75d-d40cf88869ba',
     tags: ['PersonalData.Personal', 'PII.Sensitive'],
     permissionApi: '/api/v1/permissions/*/*',
   },
   {
-    term: 'dim_address_etl',
-    displayName: 'dim_address etl',
-    entity: 'pipelines',
-    serviceName: 'sample_airflow',
-    fieldName: 'dim_address_task',
+    ...VISIT_ENTITIES_DATA.pipeline,
+    fieldName: 'snowflake_task',
     tags: ['PersonalData.Personal', 'PII.Sensitive'],
     permissionApi: '/api/v1/permissions/*/*',
   },
   {
-    term: 'eta_predictions',
-    displayName: 'ETA Predictions',
-    entity: 'mlmodels',
-    serviceName: 'mlflow_svc',
+    ...VISIT_ENTITIES_DATA.mlmodel,
     fieldName: 'sales',
     tags: ['PersonalData.Personal', 'PII.Sensitive'],
     permissionApi: '/api/v1/permissions/*/*',
   },
   {
-    term: 'engineering',
-    displayName: 'Engineering department',
-    entity: 'containers',
-    serviceName: 's3_storage_sample',
+    ...VISIT_ENTITIES_DATA.container,
     tags: ['PersonalData.Personal', 'PII.Sensitive'],
     permissionApi: '/api/v1/permissions/*/name/*',
   },
   {
-    term: 'update_orders_table',
-    displayName: 'update_orders_table',
-    entity: 'storedProcedures',
-    serviceName: 'sample_data',
+    ...VISIT_ENTITIES_DATA.storedProcedure,
     tags: ['PersonalData.Personal', 'PII.Sensitive'],
     permissionApi: '/api/v1/permissions/*/name/*',
   },
   {
-    term: 'orders_view',
-    displayName: 'orders_view',
-    entity: 'dashboardDataModel',
-    serviceName: 'sample_looker',
+    ...VISIT_ENTITIES_DATA.dataModel,
     tags: ['PersonalData.Personal', 'PII.Sensitive'],
     permissionApi: '/api/v1/permissions/*/name/*',
   },
