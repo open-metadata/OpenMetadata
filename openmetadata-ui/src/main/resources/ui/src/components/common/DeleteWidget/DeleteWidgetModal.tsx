@@ -41,7 +41,13 @@ import {
 } from '../../../utils/DeleteWidgetModalUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import './delete-widget-modal.style.less';
-import { DeleteType, DeleteWidgetModalProps } from './DeleteWidget.interface';
+import {
+  DeleteType,
+  DeleteWidgetFormFields,
+  DeleteWidgetModalProps,
+} from './DeleteWidget.interface';
+
+export const DELETE_CONFIRMATION_TEXT = 'DELETE';
 
 const DeleteWidgetModal = ({
   allowSoftDelete = true,
@@ -62,7 +68,8 @@ const DeleteWidgetModal = ({
   const { t } = useTranslation();
   const [entityDeleteState, setEntityDeleteState] =
     useState<typeof ENTITY_DELETE_STATE>(ENTITY_DELETE_STATE);
-  const [name, setName] = useState<string>('');
+  const [deleteConfirmationText, setDeleteConfirmationText] =
+    useState<string>('');
   const [value, setValue] = useState<DeleteType>(
     allowSoftDelete ? DeleteType.SOFT_DELETE : DeleteType.HARD_DELETE
   );
@@ -101,7 +108,7 @@ const DeleteWidgetModal = ({
   );
 
   const handleOnChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
-    setName(e.target.value);
+    setDeleteConfirmationText(e.target.value);
   }, []);
 
   const handleOnEntityDelete = useCallback((softDelete = true) => {
@@ -113,10 +120,17 @@ const DeleteWidgetModal = ({
       ...ENTITY_DELETE_STATE,
       softDelete: allowSoftDelete,
     });
-    setName('');
+    setDeleteConfirmationText('');
     setValue(allowSoftDelete ? DeleteType.SOFT_DELETE : DeleteType.HARD_DELETE);
     onCancel();
   }, [onCancel, allowSoftDelete]);
+
+  const isDeleteTextPresent = useMemo(() => {
+    return (
+      deleteConfirmationText === DELETE_CONFIRMATION_TEXT &&
+      (value === DeleteType.SOFT_DELETE || value === DeleteType.HARD_DELETE)
+    );
+  }, [deleteConfirmationText]);
 
   const handleOnEntityDeleteConfirm = useCallback(async () => {
     try {
@@ -150,7 +164,9 @@ const DeleteWidgetModal = ({
         })
       );
     } finally {
-      handleOnEntityDeleteCancel();
+      if (isDeleteTextPresent) {
+        handleOnEntityDeleteCancel();
+      }
       setIsLoading(false);
     }
   }, [
@@ -161,14 +177,8 @@ const DeleteWidgetModal = ({
     afterDeleteAction,
     entityName,
     handleOnEntityDeleteCancel,
+    isDeleteTextPresent,
   ]);
-
-  const isNameMatching = useCallback(() => {
-    return (
-      name === 'DELETE' &&
-      (value === DeleteType.SOFT_DELETE || value === DeleteType.HARD_DELETE)
-    );
-  }, [name]);
 
   const onChange = useCallback(
     (e: RadioChangeEvent) => {
@@ -214,7 +224,7 @@ const DeleteWidgetModal = ({
         </Button>
         <Button
           data-testid="confirm-button"
-          disabled={!isNameMatching()}
+          disabled={!isDeleteTextPresent}
           loading={entityDeleteState.loading === 'waiting'}
           type="primary"
           onClick={handleOnEntityDeleteConfirm}>
@@ -226,7 +236,7 @@ const DeleteWidgetModal = ({
     entityDeleteState,
     handleOnEntityDeleteCancel,
     handleOnEntityDeleteConfirm,
-    isNameMatching,
+    isDeleteTextPresent,
   ]);
 
   return (
@@ -241,26 +251,36 @@ const DeleteWidgetModal = ({
       title={`${t('label.delete')} ${entityName}`}
       onCancel={handleOnEntityDeleteCancel}>
       <Form onFinish={handleOnEntityDeleteConfirm}>
-        <Radio.Group value={value} onChange={onChange}>
-          {(deleteOptions ?? DELETE_OPTION).map(
-            (option) =>
-              option.isAllowed && (
-                <Radio
-                  data-testid={option.type}
-                  key={option.type}
-                  value={option.type}>
-                  <Typography.Paragraph
-                    className="delete-widget-title break-all"
-                    data-testid={`${option.type}-option`}>
-                    {option.title}
-                  </Typography.Paragraph>
-                  <Typography.Paragraph className="text-grey-muted text-xs break-all">
-                    {option.description}
-                  </Typography.Paragraph>
-                </Radio>
-              )
-          )}
-        </Radio.Group>
+        <Form.Item
+          className="m-0"
+          rules={[
+            {
+              required: true,
+              type: 'enum',
+              enum: [DeleteType.SOFT_DELETE, DeleteType.HARD_DELETE],
+            },
+          ]}>
+          <Radio.Group value={value} onChange={onChange}>
+            {(deleteOptions ?? DELETE_OPTION).map(
+              (option) =>
+                option.isAllowed && (
+                  <Radio
+                    data-testid={option.type}
+                    key={option.type}
+                    value={option.type}>
+                    <Typography.Paragraph
+                      className="delete-widget-title break-all"
+                      data-testid={`${option.type}-option`}>
+                      {option.title}
+                    </Typography.Paragraph>
+                    <Typography.Paragraph className="text-grey-muted text-xs break-all">
+                      {option.description}
+                    </Typography.Paragraph>
+                  </Radio>
+                )
+            )}
+          </Radio.Group>
+        </Form.Item>
         <div>
           <div className="m-b-xss">
             <Transi18next
@@ -269,17 +289,31 @@ const DeleteWidgetModal = ({
             />
           </div>
 
-          <Input
-            autoComplete="off"
-            data-testid="confirmation-text-input"
-            disabled={entityDeleteState.loading === 'waiting'}
-            name="entityName"
-            placeholder={t('label.delete-uppercase')}
-            ref={deleteTextInputRef}
-            type="text"
-            value={name}
-            onChange={handleOnChange}
-          />
+          <Form.Item<DeleteWidgetFormFields>
+            className="m-0"
+            name="deleteTextInput"
+            rules={[
+              {
+                required: true,
+                message: t('message.please-type-text-to-confirm', {
+                  text: t('label.delete-uppercase'),
+                }),
+                type: 'enum',
+                enum: [DELETE_CONFIRMATION_TEXT],
+              },
+            ]}>
+            <Input
+              autoComplete="off"
+              data-testid="confirmation-text-input"
+              disabled={entityDeleteState.loading === 'waiting'}
+              name="entityName"
+              placeholder={t('label.delete-uppercase')}
+              ref={deleteTextInputRef}
+              type="text"
+              value={deleteConfirmationText}
+              onChange={handleOnChange}
+            />
+          </Form.Item>
         </div>
       </Form>
     </Modal>
