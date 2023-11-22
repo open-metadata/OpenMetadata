@@ -25,9 +25,14 @@ import {
   getGlossaryTermDetailsPath,
 } from '../../constants/constants';
 import { EntityAction } from '../../enums/entity.enum';
+import {
+  CreateThread,
+  ThreadType,
+} from '../../generated/api/feed/createThread';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { VERSION_VIEW_GLOSSARY_PERMISSION } from '../../mocks/Glossary.mock';
+import { postThread } from '../../rest/feedsAPI';
 import {
   addGlossaryTerm,
   getGlossaryTerms,
@@ -37,6 +42,8 @@ import {
 import { getEntityDeleteMessage } from '../../utils/CommonUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { useActivityFeedProvider } from '../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import {
@@ -69,6 +76,11 @@ const GlossaryV1 = ({
   const { action, tab } =
     useParams<{ action: EntityAction; glossaryName: string; tab: string }>();
   const history = useHistory();
+  const [threadLink, setThreadLink] = useState<string>('');
+  const [threadType, setThreadType] = useState<ThreadType>(
+    ThreadType.Conversation
+  );
+  const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
 
   const { getEntityPermission } = usePermissionProvider();
   const [isLoading, setIsLoading] = useState(true);
@@ -95,6 +107,17 @@ const GlossaryV1 = ({
     () => action === EntityAction.IMPORT,
     [action]
   );
+
+  const onThreadPanelClose = () => {
+    setThreadLink('');
+  };
+
+  const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
+    setThreadLink(link);
+    if (threadType) {
+      setThreadType(threadType);
+    }
+  };
 
   const fetchGlossaryTerm = async (
     params?: ListGlossaryTermsParams,
@@ -136,6 +159,20 @@ const GlossaryV1 = ({
       setGlossaryTermPermission(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
+    }
+  };
+
+  const createThread = async (data: CreateThread) => {
+    try {
+      await postThread(data);
+      // getEntityFeedCount();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.create-entity-error', {
+          entity: t('label.conversation'),
+        })
+      );
     }
   };
 
@@ -329,6 +366,7 @@ const GlossaryV1 = ({
             onEditGlossaryTerm={(term) =>
               handleGlossaryTermModalAction(true, term)
             }
+            onThreadLinkSelect={onThreadLinkSelect}
           />
         ) : (
           <GlossaryTermsV1
@@ -350,6 +388,7 @@ const GlossaryV1 = ({
             onEditGlossaryTerm={(term) =>
               handleGlossaryTermModalAction(true, term)
             }
+            onThreadLinkSelect={onThreadLinkSelect}
           />
         ))}
 
@@ -376,6 +415,19 @@ const GlossaryV1 = ({
           onSave={handleGlossaryTermSave}
         />
       )}
+
+      {threadLink ? (
+        <ActivityThreadPanel
+          createThread={createThread}
+          deletePostHandler={deleteFeed}
+          open={Boolean(threadLink)}
+          postFeedHandler={postFeed}
+          threadLink={threadLink}
+          threadType={threadType}
+          updateThreadHandler={updateFeed}
+          onCancel={onThreadPanelClose}
+        />
+      ) : null}
     </>
   );
 };
