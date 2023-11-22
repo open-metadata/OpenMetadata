@@ -241,6 +241,7 @@ const DeleteWidgetModal = ({
 
   return (
     <Modal
+      destroyOnClose
       closable={false}
       confirmLoading={isLoading}
       data-testid="delete-modal"
