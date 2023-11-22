@@ -12,6 +12,7 @@
  */
 import { Col, Row, Space, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { sortBy } from 'lodash';
 import QueryString from 'qs';
@@ -39,6 +40,7 @@ import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getResolutionCenterDetailPagePath } from '../../../utils/RouterUtils';
 import { getEncodedFqn, replacePlus } from '../../../utils/StringsUtils';
 import { getEntityFqnFromEntityLink } from '../../../utils/TableUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import AppBadge from '../../common/Badge/Badge.component';
 import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { StatusBox } from '../../common/LastRunGraph/LastRunGraph.component';
@@ -48,6 +50,8 @@ import Table from '../../common/Table/Table';
 import { usePermissionProvider } from '../../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../PermissionProvider/PermissionProvider.interface';
 import { TableProfilerTab } from '../../ProfilerDashboard/profilerDashboard.interface';
+import '../resolution-center.style.less';
+import Severity from '../Severity/Severity.component';
 import { TestCaseResolutionCenterTableProps } from './TestCaseResolutionCenterTable.interface';
 
 const TestCaseResolutionCenterTable = ({
@@ -57,6 +61,7 @@ const TestCaseResolutionCenterTable = ({
 }: TestCaseResolutionCenterTableProps) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
+  const [isLoading, setIsLoading] = React.useState<boolean>(false);
 
   const testCaseEditPermission = useMemo(() => {
     return checkPermission(
@@ -83,6 +88,20 @@ const TestCaseResolutionCenterTable = ({
       }),
     [testCaseListData.data]
   );
+
+  const handleSeveritySave = (
+    values: { severity: string },
+    record: TestCase
+  ) => {
+    setIsLoading(true);
+    try {
+      // onSave(values.severity);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const columns: ColumnsType<TestCase> = useMemo(
     () => [
@@ -215,6 +234,13 @@ const TestCaseResolutionCenterTable = ({
         dataIndex: 'severity',
         key: 'severity',
         width: 150,
+        render: (severity: string, record) => (
+          <Severity
+            isLoading={isLoading}
+            severity={severity}
+            onSave={(severity) => handleSeveritySave(severity, record)}
+          />
+        ),
       },
       {
         title: t('label.assignee'),

@@ -1,0 +1,64 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import (reference) url('../../styles/variables.less');
+
+.parameter-value-container {
+  background: @grey-1;
+  border-radius: 4px;
+  padding: 8px 10px;
+}
+
+.severity {
+  width: max-content;
+
+  .ant-typography {
+    font-weight: 500;
+  }
+
+  &.severity_1 {
+    background-color: @severity-1-background;
+    border: 1px solid @severity-1;
+    .ant-typography {
+      color: @severity-1;
+    }
+  }
+  &.severity_2 {
+    background-color: @severity-2-background;
+    border: 1px solid @severity-2;
+    .ant-typography {
+      color: @severity-2;
+    }
+  }
+  &.severity_3 {
+    background-color: @severity-3-background;
+    border: 1px solid @severity-3;
+    .ant-typography {
+      color: @severity-3;
+    }
+  }
+  &.severity_4 {
+    background-color: @severity-4-background;
+    border: 1px solid @severity-4;
+    .ant-typography {
+      color: @severity-4;
+    }
+  }
+  &.severity_5 {
+    background-color: @severity-5-background;
+    border: 1px solid @severity-5;
+    .ant-typography {
+      color: @severity-5;
+    }
+  }
+}

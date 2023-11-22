@@ -10,12 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export interface SummaryCardProps {
-  type?: 'success' | 'failed' | 'aborted' | 'assigned' | 'acknowledged' | 'new';
-  title: string;
-  value: React.ReactNode;
-  total: number;
-  showProgressBar?: boolean;
-  className?: string;
-  isLoading?: boolean;
+
+export interface SeverityFormProps {
+  isLoading: boolean;
+  onSave: (data: { severity: string }) => void;
+}
+
+export interface SeverityProps extends SeverityFormProps {
+  severity: string;
+}
+
+export interface SeverityModalProps extends SeverityFormProps {
+  initialSeverity: string;
+  onCancel: () => void;
 }

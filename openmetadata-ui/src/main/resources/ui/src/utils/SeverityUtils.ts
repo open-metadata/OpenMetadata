@@ -11,10 +11,19 @@
  *  limitations under the License.
  */
 
-@import url('../../styles/variables.less');
+// return 5 level of severity options
+export const severityOptions = () => {
+  const options: {
+    label: string;
+    value: string;
+  }[] = [];
+  for (let i = 0; i < 5; i++) {
+    const count = i + 1;
+    options.push({
+      label: `Severity ${count}`,
+      value: `severity_${count}`,
+    });
+  }
 
-.parameter-value-container {
-  background: @grey-1;
-  border-radius: 4px;
-  padding: 8px 10px;
-}
+  return options;
+};

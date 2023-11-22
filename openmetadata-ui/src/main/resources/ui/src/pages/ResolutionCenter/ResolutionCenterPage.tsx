@@ -122,12 +122,13 @@ const ResolutionCenterPage = () => {
 
         <Col span={24}>
           <Row wrap gutter={[16, 16]}>
-            <Col span={5}>
+            <Col span={4}>
               <SummaryCard
                 className="h-full"
                 isLoading={isLoading}
                 title={t('label.new')}
                 total={summary?.total ?? 0}
+                type="new"
                 value={summary?.new ?? 0}
               />
             </Col>
@@ -136,7 +137,7 @@ const ResolutionCenterPage = () => {
                 isLoading={isLoading}
                 title={t('label.acknowledged')}
                 total={summary?.total ?? 0}
-                type="success"
+                type="acknowledged"
                 value={summary?.acknowledged ?? 0}
               />
             </Col>
@@ -154,16 +155,16 @@ const ResolutionCenterPage = () => {
                 isLoading={isLoading}
                 title={t('label.assigned')}
                 total={summary?.total ?? 0}
-                type="failed"
+                type="assigned"
                 value={summary?.assigned ?? 0}
               />
             </Col>
-            <Col span={4}>
+            <Col span={5}>
               <SummaryCard
                 isLoading={isLoading}
                 title={t('label.resolved')}
                 total={summary?.total ?? 0}
-                type="failed"
+                type="success"
                 value={summary?.resolved ?? 0}
               />
             </Col>

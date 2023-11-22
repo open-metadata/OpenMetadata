@@ -16,7 +16,13 @@ import { AxiosError } from 'axios';
 import { t } from 'i18next';
 import { isEmpty, isEqual, isUndefined, round, uniqueId } from 'lodash';
 import Qs from 'qs';
-import React, { ReactElement, useEffect, useMemo, useState } from 'react';
+import React, {
+  ReactElement,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useHistory } from 'react-router-dom';
 import {
   Legend,
@@ -31,6 +37,7 @@ import {
 } from 'recharts';
 import { ReactComponent as ExitFullScreen } from '../../../assets/svg/exit-full-screen.svg';
 import { ReactComponent as FullScreen } from '../../../assets/svg/full-screen.svg';
+import { ReactComponent as FilterPlaceHolderIcon } from '../../../assets/svg/no-search-placeholder.svg';
 import {
   GREEN_3,
   GREEN_3_OPACITY,
@@ -40,9 +47,10 @@ import {
 import {
   COLORS,
   DEFAULT_RANGE_DATA,
+  DEFAULT_SELECTED_RANGE,
 } from '../../../constants/profiler.constant';
 import { CSMode } from '../../../enums/codemirror.enum';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import {
   TestCaseParameterValue,
   TestCaseResult,
@@ -86,6 +94,9 @@ const TestSummary: React.FC<TestSummaryProps> = ({
     useState<DateRangeObject>(DEFAULT_RANGE_DATA);
   const [isLoading, setIsLoading] = useState(true);
   const [isGraphLoading, setIsGraphLoading] = useState(true);
+  const [selectedTimeRange, setSelectedTimeRange] = useState<string>(
+    DEFAULT_SELECTED_RANGE.title
+  );
 
   const handleDateRangeChange = (value: DateRangeObject) => {
     if (!isEqual(value, dateRangeObject)) {
@@ -220,9 +231,22 @@ const TestSummary: React.FC<TestSummaryProps> = ({
     ) : (
       <ErrorPlaceHolder
         className="m-t-0"
-        size={SIZE.MEDIUM}
-        type={ERROR_PLACEHOLDER_TYPE.FILTER}
-      />
+        icon={
+          <FilterPlaceHolderIcon
+            className="h-32 w-32"
+            data-testid="no-search-image"
+          />
+        }
+        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+        <Typography.Paragraph style={{ marginBottom: '0' }}>
+          {t('message.no-test-result-for-days', {
+            days: selectedTimeRange,
+          })}
+        </Typography.Paragraph>
+        <Typography.Paragraph>
+          {t('message.select-longer-duration')}
+        </Typography.Paragraph>
+      </ErrorPlaceHolder>
     );
   };
 
@@ -311,6 +335,10 @@ const TestSummary: React.FC<TestSummaryProps> = ({
     ]
   );
 
+  const handleSelectedTimeRange = useCallback((range: string) => {
+    setSelectedTimeRange(range);
+  }, []);
+
   return (
     <Row data-testid="test-summary-container" gutter={[0, 16]}>
       <Col span={24}>
@@ -324,6 +352,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
                   <DatePickerMenu
                     showSelectedCustomRange
                     handleDateRangeChange={handleDateRangeChange}
+                    handleSelectedTimeRange={handleSelectedTimeRange}
                   />
                 </Col>
                 <Col>
