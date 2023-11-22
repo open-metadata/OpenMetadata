@@ -1036,12 +1036,19 @@
   text-decoration: none;
 }
 
+.ql-snow.ql-toolbar .ql-formats:nth-child(5) {
+  vertical-align: baseline;
+}
+
+.ql-snow.ql-toolbar .ql-formats button.ql-insertMention {
+  padding: 0px;
+}
+
 .ql-insertMention::after {
   content: '@';
   font-weight: bold;
   font-size: 18px;
   display: block;
-  margin-top: -4px;
 }
 .ql-insertRef::after {
   content: '#';
@@ -1094,4 +1101,10 @@ button.ql-emoji {
 .mention-icon-image > svg {
   height: 24px;
   width: 24px;
+}
+
+#om-quill-editor[data-dir='rtl'] {
+  .ql-editor.ql-blank::before {
+    text-align: right;
+  }
 }
