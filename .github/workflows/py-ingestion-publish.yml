@@ -37,6 +37,6 @@ jobs:
           sudo make install_antlr_cli
           make install_dev generate install
           cd ingestion; \
-            python setup.py build sdist bdist_wheel; \
+            python -m build; \
             twine check dist/*; \
             twine upload dist/* --verbose

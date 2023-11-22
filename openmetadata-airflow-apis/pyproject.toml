@@ -1,0 +1,65 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+# We will keep handling dependencies in setup.py
+# since it helps us organize and isolate version management
+[project]
+name = "openmetadata_managed_apis"
+version = "1.3.0.0.dev0"
+dynamic = ["readme"]
+authors = [
+    {name = "OpenMetadata Committers"}
+]
+license = {file = "LICENSE"}
+description = "Airflow REST APIs to create and manage DAGS"
+requires-python = ">=3.8"
+dependencies = [
+    "pendulum~=2.1.2",
+    "apache-airflow>=2.2.2",
+    "Flask>=1.1.4",
+    "Flask-Admin==1.6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black==22.3.0",
+    "pytest",
+    "pylint",
+    "pytest-cov",
+    "isort",
+    "pycln",
+]
+
+[project.urls]
+Homepage = "https://open-metadata.org/"
+Documentation = "https://docs.open-metadata.org/"
+Source = "https://github.com/open-metadata/OpenMetadata"
+
+[tool.setuptools.dynamic]
+readme = {file = ["README.md"]}
+
+[tool.setuptools.packages.find]
+include = ["openmetadata_managed_apis.*", "openmetadata_managed_apis"]
+
+[tool.setuptools.package-data]
+"openmetadata_managed_apis" = ["views/templates/rest_api/index.html", "resources/dag_runner.j2"]
+
+[project.entry-points."airflow.plugins"]
+openmetadata_managed_apis = "openmetadata_managed_apis.plugin:RestApiPlugin"
+
+
+[tool.coverage.run]
+source = [
+    "env/lib/python3.9/site-packages/openmetadata_managed_apis"
+]
+relative_files = true
+branch = true
+
+[tool.coverage.report]
+omit = [
+    "*__init__*",
+    "tests/*",
+    "views/**",
+    "plugin.py"
+]
