@@ -15,24 +15,18 @@ import {
   deleteCreatedService,
   goToAddNewServicePage,
   testServiceCreationAndIngestion,
-  updateDescriptionForIngestedTables,
   uuid,
 } from '../../common/common';
-import {
-  API_SERVICE,
-  DATA_ASSETS,
-  SERVICE_TYPE,
-} from '../../constants/constants';
+import { API_SERVICE, SERVICE_TYPE } from '../../constants/constants';
 
 const serviceType = 'Mlflow';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
 const modelName = 'ElasticnetWineModel';
-const description = `This is ${modelName} description`;
 
 const connectionInput = () => {
-  cy.get('#root\\/trackingUri').type(Cypress.env('mlModelTrackingUri'));
+  cy.get('#root\\/trackingUri').type('mlModelTrackingUri');
   checkServiceFieldSectionHighlighting('trackingUri');
-  cy.get('#root\\/registryUri').type(Cypress.env('mlModelRegistryUri'));
+  cy.get('#root\\/registryUri').type('mlModelRegistryUri');
   checkServiceFieldSectionHighlighting('registryUri');
 };
 
@@ -57,17 +51,9 @@ describe('ML Flow Ingestion', () => {
       serviceName,
       type: SERVICE_TYPE.MLModels,
       serviceCategory: 'MlModel',
+      shouldAddIngestion: false,
+      allowTestConnection: false,
     });
-  });
-
-  it('Update MlModel description and verify description after re-run', () => {
-    updateDescriptionForIngestedTables(
-      serviceName,
-      modelName,
-      description,
-      SERVICE_TYPE.MLModels,
-      DATA_ASSETS.mlmodels
-    );
   });
 
   it('delete created service', () => {

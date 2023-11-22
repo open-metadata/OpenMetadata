@@ -1102,8 +1102,11 @@ const TeamDetailsV1 = ({
 
   return (
     <div className="teams-layout">
-      <Row className="h-full" data-testid=" team-details-container">
-        <Col className="teams-profile-container" span={24}>
+      <Row className="h-full" data-testid="team-details-container">
+        <Col
+          className="teams-profile-container"
+          data-testid="team-detail-header"
+          span={24}>
           <Collapse
             accordion
             bordered={false}
