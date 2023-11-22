@@ -165,7 +165,6 @@ const GlossaryV1 = ({
   const createThread = async (data: CreateThread) => {
     try {
       await postThread(data);
-      // getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,

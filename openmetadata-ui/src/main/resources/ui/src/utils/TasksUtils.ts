@@ -74,6 +74,7 @@ import { defaultFields as DataModelFields } from './DataModelsUtils';
 import { defaultFields as TableFields } from './DatasetDetailsUtils';
 import { getEntityName } from './EntityUtils';
 import { getEntityFQN, getEntityType } from './FeedUtils';
+import { getGlossaryBreadcrumbs } from './GlossaryUtils';
 import { defaultFields as MlModelFields } from './MlModelDetailsUtils';
 import { defaultFields as PipelineFields } from './PipelineDetailsUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
@@ -314,7 +315,7 @@ export const getBreadCrumbList = (
       name: getEntityName((entityData as Table).service),
       url: getEntityName((entityData as Table).service)
         ? getServiceDetailsPath(
-            (entityData as Table).service?.name || '',
+            (entityData as Table).service?.name ?? '',
             serviceCategory
           )
         : '',
@@ -378,6 +379,11 @@ export const getBreadCrumbList = (
         databaseSchema,
         activeEntity,
       ];
+    }
+
+    case EntityType.GLOSSARY:
+    case EntityType.GLOSSARY_TERM: {
+      return getGlossaryBreadcrumbs(entityData.fullyQualifiedName ?? '');
     }
 
     default:
