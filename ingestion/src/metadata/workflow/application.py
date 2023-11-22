@@ -14,9 +14,10 @@ Generic Workflow entrypoint to execute Applications
 from abc import ABC, abstractmethod
 from typing import List, Optional
 
-from metadata.generated.schema.entity.applications.configuration.applicationConfig import AppConfig
-
 from metadata.config.common import WorkflowExecutionError
+from metadata.generated.schema.entity.applications.configuration.applicationConfig import (
+    AppConfig,
+)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
