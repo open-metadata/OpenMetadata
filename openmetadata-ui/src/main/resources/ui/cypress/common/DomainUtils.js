@@ -62,6 +62,18 @@ const checkDisplayName = (displayName) => {
     });
 };
 
+const checkDataProductsCount = (dataProductsCount) => {
+  cy.get('[data-testid="data_products"] [data-testid="count"]')
+    .scrollIntoView()
+    .eq(dataProductsCount);
+};
+
+const checkAssetsCount = (assetsCount) => {
+  cy.get('[data-testid="assets"] [data-testid="count"]')
+    .scrollIntoView()
+    .eq(assetsCount);
+};
+
 const updateOwner = (newOwner) => {
   interceptURL('PATCH', `/api/v1/domains/*`, 'patchOwner');
   interceptURL('GET', '/api/v1/users?limit=25&isBot=false', 'getUsers');
@@ -267,6 +279,8 @@ export const createDomain = (domainObj, validate) => {
 
     cy.url().should('include', '/domain/');
     checkDisplayName(domainObj.name);
+    checkAssetsCount(0);
+    checkDataProductsCount(0);
   });
 };
 

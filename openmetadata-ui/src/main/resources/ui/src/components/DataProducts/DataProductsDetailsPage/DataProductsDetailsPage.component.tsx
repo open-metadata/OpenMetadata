@@ -208,7 +208,7 @@ const DataProductsDetailsPage = ({
           '',
           1,
           0,
-          `(dataProducts.fullyQualifiedName:"${fqn}")`,
+          `(dataProducts.fullyQualifiedName:${fqn})`,
           '',
           '',
           SearchIndex.ALL
