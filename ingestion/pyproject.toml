@@ -32,7 +32,7 @@ namespaces = true
 "metadata.examples" = ["workflows/*.yaml"]
 
 [project.scripts]
-metadata-cli = "metadata.cmd:metadata"
+metadata = "metadata.cmd:metadata"
 
 [project.entry-points.apache_airflow_provider]
 provider_info = "airflow_provider_openmetadata:get_provider_config"
