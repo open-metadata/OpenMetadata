@@ -95,7 +95,19 @@
                       "dataTypeDisplay": "varchar",
                       "description": "The ZIP or postal code. For example, 90210.",
                       "tags": [],
-                      "ordinalPosition": 10
+                      "ordinalPosition": 10,
+                      "customMetrics": [
+                        {
+                            "name": "CountOfLAZipCode",
+                            "columnName": "zip",
+                            "expression": "SELECT COUNT(zip) FROM dim_address WHERE zip LIKE '900%'"
+                        },
+                        {
+                            "name": "CountOfOrangeCountyZipCode",
+                            "columnName": "zip",
+                            "expression": "SELECT COUNT(zip) FROM dim_address WHERE zip LIKE '92%'"
+                        }
+                      ]
                   },
                   {
                       "name": "country",
@@ -113,7 +125,14 @@
                       "dataTypeDisplay": "varchar",
                       "description": "The phone number of the customer.",
                       "tags": [],
-                      "ordinalPosition": 12
+                      "ordinalPosition": 12,
+                      "customMetrics": [
+                        {
+                            "name": "CountOfNonUsPhoneNumbers",
+                            "columnName": "zip",
+                            "expression": "SELECT COUNT(phone) FROM dim_address WHERE phone NOT LIKE '1%'"
+                        }
+                    ]
                   }
               ],
               "tableConstraints": [
@@ -581,6 +600,16 @@
                       "timestamp": 1634366539,
                       "columnCount": 12,
                       "rowCount": 725,
+                      "customMetrics": [
+                        {
+                            "name": "CountOfUSAddress",
+                            "value": 15467
+                        },
+                        {
+                            "name": "CountOfFRAddress",
+                            "value": 1467
+                        }
+                      ],
                       "columnProfile": [
                           {
                               "name": "address_id",
@@ -650,7 +679,17 @@
                               "uniqueCount": 11,
                               "uniqueProportion": 0.1383472,
                               "distinctCount": 0,
-                              "distinctProportion": 0
+                              "distinctProportion": 0,
+                              "customMetrics": [
+                                {
+                                    "name": "CountOfLAZipCode",
+                                    "value": 3456
+                                },
+                                {
+                                    "name": "CountOfOrangeCountyZipCode",
+                                    "value": 2345
+                                }
+                            ]
                           },
                           {
                               "name": "country",
@@ -674,7 +713,17 @@
                   "name": "sample_data.ecommerce_db.shopify",
                   "description": "This **mock** Schema contains tables related to shopify sales and orders with related dimension tables.",
                   "href": "http://localhost:8585/api/v1/databaseSchemas/d7be1e2c-b3dc-11ec-b909-0242ac120002"
-              }
+              },
+              "customMetrics": [
+                {
+                    "name": "CountOfUSAddress",
+                    "expression": "SELECT COUNT(address_id) FROM dim_address WHERE country = 'US'"
+                },
+                {
+                    "name": "CountOfFRAddress",
+                    "expression": "SELECT COUNT(address_id) FROM dim_address WHERE country = 'FR'"
+                }
+              ]
           },
           {
               "id": "1cda9ecb-f4c6-4ed4-8506-abe965b64c87",

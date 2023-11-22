@@ -1292,6 +1292,7 @@ class SampleDataSource(
                             rowCount=profile["rowCount"],
                             createDateTime=profile.get("createDateTime"),
                             sizeInByte=profile.get("sizeInByte"),
+                            customMetrics=profile.get("customMetrics"),
                             timestamp=int(
                                 (
                                     datetime.now(tz=timezone.utc) - timedelta(days=days)
