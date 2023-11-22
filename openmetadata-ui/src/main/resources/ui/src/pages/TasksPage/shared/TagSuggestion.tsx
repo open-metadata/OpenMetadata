@@ -15,18 +15,33 @@ import { DefaultOptionType } from 'antd/lib/select';
 import { t } from 'i18next';
 import { isArray, isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
-import React from 'react';
+import React, { useMemo } from 'react';
 import AsyncSelectList from '../../../components/AsyncSelectList/AsyncSelectList';
 import { TagSource } from '../../../generated/entity/data/container';
 import { TagLabel } from '../../../generated/type/tagLabel';
-import { fetchTagsElasticSearch } from '../../../utils/TagsUtils';
+import {
+  fetchGlossaryList,
+  fetchTagsElasticSearch,
+} from '../../../utils/TagsUtils';
 
 export interface TagSuggestionProps {
-  onChange?: (newTags: TagLabel[]) => void;
+  placeholder?: string;
+  tagType?: TagSource;
   value?: TagLabel[];
+  onChange?: (newTags: TagLabel[]) => void;
 }
 
-const TagSuggestion: React.FC<TagSuggestionProps> = ({ onChange, value }) => {
+const TagSuggestion: React.FC<TagSuggestionProps> = ({
+  onChange,
+  value,
+  placeholder,
+  tagType = TagSource.Classification,
+}) => {
+  const isGlossaryType = useMemo(
+    () => tagType === TagSource.Glossary,
+    [tagType]
+  );
+
   const handleTagSelection = (
     newValue: DefaultOptionType | DefaultOptionType[]
   ) => {
@@ -40,7 +55,9 @@ const TagSuggestion: React.FC<TagSuggestionProps> = ({ onChange, value }) => {
           }
           let tagData: EntityTags = {
             tagFQN: tag.value,
-            source: TagSource.Classification,
+            source: isGlossaryType
+              ? TagSource.Glossary
+              : TagSource.Classification,
           };
 
           if (tag.data) {
@@ -64,11 +81,14 @@ const TagSuggestion: React.FC<TagSuggestionProps> = ({ onChange, value }) => {
   return (
     <AsyncSelectList
       defaultValue={value?.map((item) => item.tagFQN) || []}
-      fetchOptions={fetchTagsElasticSearch}
+      fetchOptions={isGlossaryType ? fetchGlossaryList : fetchTagsElasticSearch}
       mode="multiple"
-      placeholder={t('label.select-field', {
-        field: t('label.tag-plural'),
-      })}
+      placeholder={
+        placeholder ??
+        t('label.select-field', {
+          field: t('label.tag-plural'),
+        })
+      }
       onChange={(value) => handleTagSelection(value)}
     />
   );
