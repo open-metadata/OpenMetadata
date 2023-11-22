@@ -148,10 +148,10 @@ const AssetsTabs = forwardRef(
     const queryParam = useMemo(() => {
       switch (type) {
         case AssetsOfEntity.DOMAIN:
-          return `(domain.fullyQualifiedName:"${fqn}")`;
+          return `(domain.fullyQualifiedName:${fqn})`;
 
         case AssetsOfEntity.DATA_PRODUCT:
-          return `(dataProducts.fullyQualifiedName:"${fqn}")`;
+          return `(dataProducts.fullyQualifiedName:${fqn})`;
 
         case AssetsOfEntity.TEAM:
           return `(owner.fullyQualifiedName:"${fqn}")`;

@@ -88,7 +88,7 @@ public class StoredProcedureResource extends EntityResource<StoredProcedure, Sto
               schema = @Schema(type = "string", example = "customerDatabaseSchema"))
           @QueryParam("databaseSchema")
           String databaseSchemaParam,
-      @Parameter(description = "Limit the number schemas returned. (1 to 1000000, default" + " = 10)")
+      @Parameter(description = "Limit the number schemas returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
           @Min(0)
@@ -209,7 +209,7 @@ public class StoredProcedureResource extends EntityResource<StoredProcedure, Sto
                 @Content(mediaType = "application/json", schema = @Schema(implementation = StoredProcedure.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Stored Procedure for instance {id} and version {version} is " + "not found")
+            description = "Stored Procedure for instance {id} and version {version} is not found")
       })
   public StoredProcedure getVersion(
       @Context UriInfo uriInfo,
@@ -259,9 +259,7 @@ public class StoredProcedureResource extends EntityResource<StoredProcedure, Sto
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }

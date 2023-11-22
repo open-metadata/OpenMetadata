@@ -217,9 +217,9 @@ public class FeedRepository {
   }
 
   @Transaction
-  public Thread create(Thread thread, ChangeEvent event) {
+  public void create(Thread thread, ChangeEvent event) {
     ThreadContext threadContext = getThreadContext(thread, event);
-    return createThread(threadContext);
+    createThread(threadContext);
   }
 
   @Transaction

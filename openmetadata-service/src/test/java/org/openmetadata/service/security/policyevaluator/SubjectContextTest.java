@@ -56,7 +56,6 @@ public class SubjectContextTest {
   private static List<Role> team12Roles;
   private static List<Policy> team12Policies;
 
-  private static List<Role> team13Roles;
   private static List<Policy> team13Policies;
   private static Team team13;
 
@@ -64,7 +63,6 @@ public class SubjectContextTest {
   private static List<Policy> team111Policies;
   private static Team team111;
 
-  private static List<Role> team131Roles;
   private static List<Policy> team131Policies;
   private static Team team131;
 
@@ -114,7 +112,7 @@ public class SubjectContextTest {
     team12Policies = getPolicies("team12");
     Team team12 = createTeam("team12", team12Roles, team12Policies, List.of(team1));
 
-    team13Roles = getRoles("team13");
+    List<Role> team13Roles = getRoles("team13");
     team13Policies = getPolicies("team13");
     team13 = createTeam("team13", team13Roles, team13Policies, List.of(team1));
 
@@ -122,7 +120,7 @@ public class SubjectContextTest {
     team111Policies = getPolicies("team111");
     team111 = createTeam("team111", team111Roles, team111Policies, List.of(team11, team12));
 
-    team131Roles = getRoles("team131");
+    List<Role> team131Roles = getRoles("team131");
     team131Policies = getPolicies("team131");
     team131 = createTeam("team131", team131Roles, team131Policies, List.of(team13));
 

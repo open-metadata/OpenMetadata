@@ -51,6 +51,6 @@ public enum ConnectionType {
 
   @Override
   public String toString() {
-    return "ConnectionType{" + "name='" + name() + '\'' + "driver='" + label + '\'' + '}';
+    return "ConnectionType{name='" + name() + '\'' + "driver='" + label + '\'' + '}';
   }
 }

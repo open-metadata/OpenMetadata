@@ -82,7 +82,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   @Override
-  public MlModel setFields(MlModel mlModel, Fields fields) {
+  public void setFields(MlModel mlModel, Fields fields) {
     mlModel.setService(getContainer(mlModel.getId()));
     mlModel.setDashboard(fields.contains("dashboard") ? getDashboard(mlModel) : mlModel.getDashboard());
     if (mlModel.getUsageSummary() == null) {
@@ -91,13 +91,12 @@ public class MlModelRepository extends EntityRepository<MlModel> {
               ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), mlModel.getId())
               : mlModel.getUsageSummary());
     }
-    return mlModel;
   }
 
   @Override
-  public MlModel clearFields(MlModel mlModel, Fields fields) {
+  public void clearFields(MlModel mlModel, Fields fields) {
     mlModel.setDashboard(fields.contains("dashboard") ? mlModel.getDashboard() : null);
-    return mlModel.withUsageSummary(fields.contains("usageSummary") ? mlModel.getUsageSummary() : null);
+    mlModel.withUsageSummary(fields.contains("usageSummary") ? mlModel.getUsageSummary() : null);
   }
 
   @Override
