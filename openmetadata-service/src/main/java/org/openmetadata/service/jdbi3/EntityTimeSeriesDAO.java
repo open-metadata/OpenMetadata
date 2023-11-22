@@ -120,8 +120,8 @@ public interface EntityTimeSeriesDAO {
   @Deprecated(since = "1.1.1")
   int listDistinctCount(@Define("table") String table);
 
-  default int listDistinctCount() {
-    return listDistinctCount(getTimeSeriesTableName());
+  default void listDistinctCount() {
+    listDistinctCount(getTimeSeriesTableName());
   }
 
   @ConnectionAwareSqlQuery(
@@ -204,14 +204,14 @@ public interface EntityTimeSeriesDAO {
     return getLatestExtensionByFQNs(getTimeSeriesTableName(), entityFQNHashes, extension);
   }
 
-  @SqlQuery("SELECT json FROM <table> WHERE extension = :extension " + "ORDER BY timestamp DESC LIMIT 1")
+  @SqlQuery("SELECT json FROM <table> WHERE extension = :extension ORDER BY timestamp DESC LIMIT 1")
   String getLatestByExtension(@Define("table") String table, @Bind("extension") String extension);
 
   default String getLatestByExtension(String extension) {
     return getLatestByExtension(getTimeSeriesTableName(), extension);
   }
 
-  @SqlQuery("SELECT json FROM <table> WHERE extension = :extension " + "ORDER BY timestamp DESC")
+  @SqlQuery("SELECT json FROM <table> WHERE extension = :extension ORDER BY timestamp DESC")
   List<String> getAllByExtension(@Define("table") String table, @Bind("extension") String extension);
 
   default List<String> getAllByExtension(String extension) {

@@ -21,13 +21,18 @@ import {
   visitEntityDetailsPage,
 } from '../../common/common';
 import {
-  BASE_URL,
-  SEARCH_ENTITY_DASHBOARD,
-  SEARCH_ENTITY_PIPELINE,
-  SEARCH_ENTITY_TABLE,
-  SEARCH_ENTITY_TOPIC,
-} from '../../constants/constants';
+  createEntityTable,
+  createSingleLevelEntity,
+  hardDeleteService,
+} from '../../common/entityUtils';
+import { BASE_URL } from '../../constants/constants';
+import {
+  DATABASE_SERVICE,
+  SINGLE_LEVEL_SERVICE,
+  VISIT_ENTITIES_DATA,
+} from '../../constants/entityConstant';
 import { NAVBAR_DETAILS } from '../../constants/redirections.constants';
+import { SERVICE_CATEGORIES } from '../../constants/service.constants';
 
 const CREDENTIALS = {
   firstName: 'Test_Data_Consumer',
@@ -35,13 +40,13 @@ const CREDENTIALS = {
   email: `test_dataconsumer${uuid()}@openmetadata.org`,
   password: 'User@OMD123',
 };
-
+const { dashboard, pipeline, table, topic } = VISIT_ENTITIES_DATA;
 const policy = 'Data Consumer';
 const ENTITIES = {
-  table: SEARCH_ENTITY_TABLE.table_2,
-  topic: SEARCH_ENTITY_TOPIC.topic_1,
-  dashboard: SEARCH_ENTITY_DASHBOARD.dashboard_1,
-  pipeline: SEARCH_ENTITY_PIPELINE.pipeline_1,
+  dashboard,
+  pipeline,
+  table,
+  topic,
 };
 
 const glossary = NAVBAR_DETAILS.glossary;
@@ -119,6 +124,49 @@ const PERMISSIONS = {
 };
 
 describe('DataConsumer Edit policy should work properly', () => {
+  before(() => {
+    cy.login();
+    cy.getAllLocalStorage().then((data) => {
+      const token = Object.values(data)[0].oidcIdToken;
+
+      createEntityTable({
+        token,
+        ...DATABASE_SERVICE,
+        tables: [DATABASE_SERVICE.tables],
+      });
+      SINGLE_LEVEL_SERVICE.forEach((data) => {
+        createSingleLevelEntity({
+          token,
+          ...data,
+          entity: [data.entity],
+        });
+      });
+    });
+    cy.logout();
+  });
+
+  after(() => {
+    Cypress.session.clearAllSavedSessions();
+    cy.login();
+    cy.getAllLocalStorage().then((data) => {
+      const token = Object.values(data)[0].oidcIdToken;
+
+      hardDeleteService({
+        token,
+        serviceFqn: DATABASE_SERVICE.service.name,
+        serviceType: SERVICE_CATEGORIES.DATABASE_SERVICES,
+      });
+      SINGLE_LEVEL_SERVICE.forEach((data) => {
+        hardDeleteService({
+          token,
+          serviceFqn: data.service.name,
+          serviceType: data.serviceType,
+        });
+      });
+    });
+    deleteUser(CREDENTIALS.id);
+  });
+
   it('Create a new account and assign Data consumer role to the user', () => {
     signupAndLogin(
       CREDENTIALS.email,
@@ -261,16 +309,5 @@ describe('DataConsumer Edit policy should work properly', () => {
         cy.get(id.testid).should('not.be.exist');
       }
     });
-  });
-});
-
-describe('Cleanup', () => {
-  beforeEach(() => {
-    Cypress.session.clearAllSavedSessions();
-    cy.login();
-  });
-
-  it('delete user', () => {
-    deleteUser(CREDENTIALS.id);
   });
 });

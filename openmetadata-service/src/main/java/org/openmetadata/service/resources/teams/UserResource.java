@@ -454,9 +454,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
             responseCode = "200",
             description = "user",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = User.class))),
-        @ApiResponse(
-            responseCode = "404",
-            description = "User for instance {id} and version {version} is " + "not found")
+        @ApiResponse(responseCode = "404", description = "User for instance {id} and version {version} is not found")
       })
   public User getVersion(
       @Context UriInfo uriInfo,
@@ -712,9 +710,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     for (JsonValue patchOp : patch.toJsonArray()) {
       JsonObject patchOpObject = patchOp.asJsonObject();

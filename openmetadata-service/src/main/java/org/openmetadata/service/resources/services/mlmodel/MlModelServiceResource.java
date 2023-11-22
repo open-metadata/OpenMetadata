@@ -122,7 +122,7 @@ public class MlModelServiceResource
       @Parameter(description = "Filter services by domain", schema = @Schema(type = "string", example = "Marketing"))
           @QueryParam("domain")
           String domain,
-      @Parameter(description = "Limit number services returned. (1 to 1000000, " + "default 10)")
+      @Parameter(description = "Limit number services returned. (1 to 1000000, default 10)")
           @DefaultValue("10")
           @Min(0)
           @Max(1000000)
@@ -283,14 +283,14 @@ public class MlModelServiceResource
                 @Content(mediaType = "application/json", schema = @Schema(implementation = MlModelService.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "MlModel service for instance {id} and version " + "{version} is not found")
+            description = "MlModel service for instance {id} and version {version} is not found")
       })
   public MlModelService getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the ML Model service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
-              description = "mlModel service version number in the form `major`" + ".`minor`",
+              description = "mlModel service version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
@@ -357,9 +357,7 @@ public class MlModelServiceResource
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
@@ -369,11 +367,10 @@ public class MlModelServiceResource
   @Operation(
       operationId = "deleteMlModelService",
       summary = "Delete an ML model service by Id",
-      description =
-          "Delete a mlModel services. If mlModels (and tasks) belong to the service, it can't be " + "deleted.",
+      description = "Delete a mlModel services. If mlModels (and tasks) belong to the service, it can't be deleted.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "MlModel service for instance {id} " + "is not found")
+        @ApiResponse(responseCode = "404", description = "MlModel service for instance {id} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
@@ -401,7 +398,7 @@ public class MlModelServiceResource
               + "deleted.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "MlModel service for instance {name} " + "is not found")
+        @ApiResponse(responseCode = "404", description = "MlModel service for instance {name} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,

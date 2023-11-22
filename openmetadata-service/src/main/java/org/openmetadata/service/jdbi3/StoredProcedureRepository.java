@@ -77,15 +77,14 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
   }
 
   @Override
-  public StoredProcedure setFields(StoredProcedure storedProcedure, EntityUtil.Fields fields) {
+  public void setFields(StoredProcedure storedProcedure, EntityUtil.Fields fields) {
     setDefaultFields(storedProcedure);
     storedProcedure.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(storedProcedure) : null);
-    return storedProcedure;
   }
 
   @Override
-  public StoredProcedure clearFields(StoredProcedure storedProcedure, EntityUtil.Fields fields) {
-    return storedProcedure;
+  public void clearFields(StoredProcedure storedProcedure, EntityUtil.Fields fields) {
+    /* Nothing to do */
   }
 
   private void setDefaultFields(StoredProcedure storedProcedure) {

@@ -16,6 +16,7 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
@@ -111,18 +112,17 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
   }
 
   @Override
-  public SearchIndex setFields(SearchIndex searchIndex, Fields fields) {
+  public void setFields(SearchIndex searchIndex, Fields fields) {
     searchIndex.setService(getContainer(searchIndex.getId()));
     searchIndex.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(searchIndex) : null);
     if (searchIndex.getFields() != null) {
       getFieldTags(fields.contains(FIELD_TAGS), searchIndex.getFields());
     }
-    return searchIndex;
   }
 
   @Override
-  public SearchIndex clearFields(SearchIndex searchIndex, Fields fields) {
-    return searchIndex;
+  public void clearFields(SearchIndex searchIndex, Fields fields) {
+    /* Nothing to do */
   }
 
   @Override
@@ -140,8 +140,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
 
   public SearchIndex getSampleData(UUID searchIndexId, boolean authorizePII) {
     // Validate the request content
-    SearchIndex searchIndex = dao.findEntityById(searchIndexId);
-
+    SearchIndex searchIndex = find(searchIndexId, NON_DELETED);
     SearchIndexSampleData sampleData =
         JsonUtils.readValue(
             daoCollection.entityExtensionDAO().getExtension(searchIndex.getId(), "searchIndex.sampleData"),
@@ -185,19 +184,6 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
     for (SearchIndexField f : listOrEmpty(fields)) {
       f.setTags(setTags ? getTags(f.getFullyQualifiedName()) : null);
       getFieldTags(setTags, f.getChildren());
-    }
-  }
-
-  private void addDerivedFieldTags(List<SearchIndexField> fields) {
-    if (nullOrEmpty(fields)) {
-      return;
-    }
-
-    for (SearchIndexField field : fields) {
-      field.setTags(addDerivedTags(field.getTags()));
-      if (field.getChildren() != null) {
-        addDerivedFieldTags(field.getChildren());
-      }
     }
   }
 

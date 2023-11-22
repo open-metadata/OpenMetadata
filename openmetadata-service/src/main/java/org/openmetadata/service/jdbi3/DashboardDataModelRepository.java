@@ -151,7 +151,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   }
 
   @Override
-  public DashboardDataModel setFields(DashboardDataModel dashboardDataModel, Fields fields) {
+  public void setFields(DashboardDataModel dashboardDataModel, Fields fields) {
     populateEntityFieldTags(
         entityType,
         dashboardDataModel.getColumns(),
@@ -160,12 +160,11 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     if (dashboardDataModel.getService() == null) {
       dashboardDataModel.withService(getContainer(dashboardDataModel.getId()));
     }
-    return dashboardDataModel;
   }
 
   @Override
-  public DashboardDataModel clearFields(DashboardDataModel dashboardDataModel, Fields fields) {
-    return dashboardDataModel; // Nothing to do
+  public void clearFields(DashboardDataModel dashboardDataModel, Fields fields) {
+    /* Nothing to do */
   }
 
   @Override

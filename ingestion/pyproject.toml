@@ -1,0 +1,125 @@
+[build-system]
+requires = ["setuptools==69.0.2"]
+build-backend = "setuptools.build_meta"
+
+# We will keep handling dependencies in setup.py
+# since it helps us organize and isolate version management
+[project]
+name = "openmetadata-ingestion"
+version = "1.3.0.0.dev0"
+dynamic = ["readme", "dependencies", "optional-dependencies"]
+authors = [
+    {name = "OpenMetadata Committers"}
+]
+license = {file = "LICENSE"}
+description = "Ingestion Framework for OpenMetadata"
+requires-python = ">=3.8"
+
+[project.urls]
+Homepage = "https://open-metadata.org/"
+Documentation = "https://docs.open-metadata.org/"
+Source = "https://github.com/open-metadata/OpenMetadata"
+
+[tool.setuptools.dynamic]
+readme = {file = ["README.md"]}
+
+[tool.setuptools.packages.find]
+where = ["./src"]
+exclude = ["tests*"]
+namespaces = true
+
+[tool.setuptools.package-data]
+"metadata.examples" = ["workflows/*.yaml"]
+
+[project.scripts]
+metadata = "metadata.cmd:metadata"
+
+[project.entry-points.apache_airflow_provider]
+provider_info = "airflow_provider_openmetadata:get_provider_config"
+
+[tool.coverage.run]
+source = [
+    "env/lib/python3.9/site-packages/metadata"
+]
+relative_files = true
+branch = true
+
+[tool.coverage.report]
+omit = [
+    "*__init__*",
+    "*/generated/*",
+    "tests/*",
+    "ingestion/src/*",
+    "*/src/metadata/ingestion/source/database/sample_*"
+]
+
+[tool.mypy]
+mypy_path = "src"
+plugins = [
+    "sqlalchemy.ext.mypy.plugin",
+    "pydantic.mypy"
+]
+ignore_missing_imports = true
+namespace_packages = true
+strict_optional = true
+check_untyped_defs = true
+# eventually we'd like to enable these
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+
+[tool.pytest.ini_options]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')"
+]
+
+[tool.pylint.BASIC]
+# W1203: logging-fstring-interpolation - f-string brings better readability and unifies style
+# W1202: logging-format-interpolation - lazy formatting in logging functions
+# R0903: too-few-public-methods - False negatives in pydantic classes
+# W0707: raise-missing-from - Tends to be a false positive as exception are closely encapsulated
+# R0901: too-many-ancestors - We are already inheriting from SQA classes with a bunch of ancestors
+# W0703: broad-except - We are dealing with many different source systems, but we want to make sure workflows run until the end
+# W0511: fixme - These are internal notes and guides
+# W1518: method-cache-max-size-none - allow us to use LRU Cache with maxsize `None` to speed up certain calls
+disable = "W1203,W1202,R0903,W0707,R0901,W1201,W0703,W0511,W1518"
+
+docstring-min-length = 20
+max-args = 7
+max-attributes = 12
+
+# usual typevar naming
+good-names = "T,C,fn,db,df,i"
+module-rgx = "(([a-z_][a-z0-9_]*)|([a-zA-Z0-9]+))$"
+
+[tool.pylint.MASTER]
+fail-under = 6.0
+init-hook = "from pylint.config import find_default_config_files; import os, sys; sys.path.append(os.path.dirname(next(find_default_config_files())))"
+extension-pkg-allow-list = "pydantic"
+load-plugins = "ingestion.plugins.print_checker"
+max-public-methods = 25
+
+[tool.pylint."MESSAGES CONTROL"]
+disable = "no-name-in-module,import-error,duplicate-code"
+enable = "useless-suppression"
+
+[tool.pylint.FORMAT]
+# We all have big monitors now
+max-line-length = 120
+
+[tool.black]
+extend-exclude = "src/metadata/generated"
+
+[tool.pycln]
+all = true
+extend-exclude = "src/metadata/generated"
+
+[tool.isort]
+skip_glob = [
+    "src/metadata/generated/*",
+    "build/*",
+    "env/*",
+    "../openmetadata-airflow-apis/build/*"
+]
+profile = "black"
+indent = "    "
+multi_line_output = 3
