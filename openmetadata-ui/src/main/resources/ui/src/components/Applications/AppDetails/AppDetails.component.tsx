@@ -43,6 +43,7 @@ import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import Loader from '../../../components/Loader/Loader';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import TabsLabel from '../../../components/TabsLabel/TabsLabel.component';
+import { APPLICATION_UI_SCHEMA } from '../../../constants/Applications.constant';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import {
   GlobalSettingOptions,
@@ -312,7 +313,7 @@ const AppDetails = () => {
 
   const tabs = useMemo(() => {
     const tabConfiguration =
-      appData?.appConfiguration && jsonSchema
+      appData?.appConfiguration && appData.allowConfiguration && jsonSchema
         ? [
             {
               label: (
@@ -334,6 +335,7 @@ const AppDetails = () => {
                     serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
                     serviceType=""
                     showTestConnection={false}
+                    uiSchema={APPLICATION_UI_SCHEMA}
                     validator={validator}
                     onCancel={noop}
                     onSubmit={onConfigSave}

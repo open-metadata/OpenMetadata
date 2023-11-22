@@ -70,6 +70,14 @@ const AppInstall = () => {
     [appData]
   );
 
+  const stepperList = useMemo(
+    () =>
+      !appData?.allowConfiguration
+        ? STEPS_FOR_APP_INSTALL.filter((item) => item.step !== 2)
+        : STEPS_FOR_APP_INSTALL,
+    [appData]
+  );
+
   const fetchAppDetails = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -137,10 +145,14 @@ const AppInstall = () => {
           <AppInstallVerifyCard
             appData={appData}
             nextButtonLabel={
-              isExternalApp ? t('label.schedule') : t('label.configure')
+              appData?.allowConfiguration
+                ? t('label.configure')
+                : t('label.schedule')
             }
             onCancel={onCancel}
-            onSave={() => setActiveServiceStep(2)}
+            onSave={() =>
+              setActiveServiceStep(appData?.allowConfiguration ? 2 : 3)
+            }
           />
         );
 
@@ -172,7 +184,9 @@ const AppInstall = () => {
               isQuartzCron
               includePeriodOptions={isExternalApp ? ['Day'] : undefined}
               initialData={getIngestionFrequency(PipelineType.Application)}
-              onCancel={() => setActiveServiceStep(isExternalApp ? 1 : 2)}
+              onCancel={() =>
+                setActiveServiceStep(appData.allowConfiguration ? 2 : 1)
+              }
               onSubmit={onSubmit}
             />
           </div>
@@ -206,7 +220,7 @@ const AppInstall = () => {
         <Col span={24}>
           <IngestionStepper
             activeStep={activeServiceStep}
-            steps={STEPS_FOR_APP_INSTALL}
+            steps={stepperList}
           />
         </Col>
         <Col span={24}>

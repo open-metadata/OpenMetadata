@@ -36,4 +36,5 @@ export const APPLICATION_UI_SCHEMA = {
       autoCompleteType: SearchIndex.USER,
     },
   },
+  type: { 'ui:widget': 'hidden' },
 };
