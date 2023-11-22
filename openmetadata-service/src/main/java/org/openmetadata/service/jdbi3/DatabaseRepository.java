@@ -128,8 +128,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   public Database addDatabaseProfilerConfig(UUID databaseId, DatabaseProfilerConfig databaseProfilerConfig) {
     // Validate the request content
-    Database database = dao.findEntityById(databaseId);
-
+    Database database = find(databaseId, Include.NON_DELETED);
     if (databaseProfilerConfig.getProfileSampleType() != null && databaseProfilerConfig.getProfileSample() != null) {
       EntityUtil.validateProfileSample(
           databaseProfilerConfig.getProfileSampleType().toString(), databaseProfilerConfig.getProfileSample());
@@ -154,9 +153,9 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   public Database deleteDatabaseProfilerConfig(UUID databaseId) {
     // Validate the request content
-    Database database = dao.findEntityById(databaseId);
+    Database database = find(databaseId, Include.NON_DELETED);
     daoCollection.entityExtensionDAO().delete(databaseId, DATABASE_PROFILER_CONFIG_EXTENSION);
-    setFieldsInternal(database, Fields.EMPTY_FIELDS);
+    clearFieldsInternal(database, Fields.EMPTY_FIELDS);
     return database;
   }
 

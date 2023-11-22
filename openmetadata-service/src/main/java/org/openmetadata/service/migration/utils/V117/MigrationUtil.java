@@ -16,7 +16,6 @@ import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 
 public class MigrationUtil {
   private MigrationUtil() {
@@ -48,7 +47,7 @@ public class MigrationUtil {
       // Create New Executable Test Suites
       MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(testCase.getEntityLink());
       String fqn = entityLink.getEntityFQN();
-      Table table = JsonUtils.readValue(tableRepository.getDao().findJsonByFqn(fqn, Include.ALL), Table.class);
+      Table table = tableRepository.findByNameOrNull(fqn, Include.ALL);
       if (table == null) {
         String findTableFQN = tableMap.get(fqn.toLowerCase());
         MessageParser.EntityLink newEntityLink = new MessageParser.EntityLink(entityLink.getEntityType(), findTableFQN);

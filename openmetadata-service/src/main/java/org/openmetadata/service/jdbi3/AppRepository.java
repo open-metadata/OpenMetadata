@@ -1,6 +1,5 @@
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.resources.teams.UserResource.getUser;
 
 import java.util.ArrayList;
@@ -21,7 +20,6 @@ import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.service.resources.apps.AppResource;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.EntityUtil;
@@ -54,14 +52,7 @@ public class AppRepository extends EntityRepository<App> {
 
   @Override
   protected List<EntityReference> getIngestionPipelines(App service) {
-    List<CollectionDAO.EntityRelationshipRecord> pipelines =
-        findToRecords(service.getId(), entityType, Relationship.HAS, Entity.INGESTION_PIPELINE);
-    List<EntityReference> ingestionPipelines = new ArrayList<>();
-    for (CollectionDAO.EntityRelationshipRecord entityRelationshipRecord : pipelines) {
-      ingestionPipelines.add(
-          Entity.getEntityReferenceById(Entity.INGESTION_PIPELINE, entityRelationshipRecord.getId(), ALL));
-    }
-    return ingestionPipelines;
+    return findTo(service.getId(), entityType, Relationship.HAS, Entity.INGESTION_PIPELINE);
   }
 
   public AppMarketPlaceRepository getMarketPlace() {

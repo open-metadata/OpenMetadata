@@ -16,6 +16,7 @@ package org.openmetadata.service.resources.teams;
 import static javax.ws.rs.core.Response.Status.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.*;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.*;
 import static org.openmetadata.service.security.SecurityUtil.getPrincipalName;
@@ -195,7 +196,7 @@ public class PersonaResourceTest extends EntityResourceTest<Persona, CreatePerso
 
   @Override
   public Persona validateGetWithDifferentFields(Persona expectedPersona, boolean byName) throws HttpResponseException {
-    if (expectedPersona.getUsers() == null) {
+    if (nullOrEmpty(expectedPersona.getUsers())) {
       UserResourceTest userResourceTest = new UserResourceTest();
       CreateUser create =
           userResourceTest

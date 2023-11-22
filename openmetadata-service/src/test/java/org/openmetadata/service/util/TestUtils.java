@@ -514,7 +514,7 @@ public final class TestUtils {
   public static void assertListNotEmpty(List<?>... values) {
     int index = 0;
     for (List<?> value : values) {
-      Assertions.assertFalse(value.isEmpty(), "List at index " + index + "is empty");
+      Assertions.assertFalse(value.isEmpty(), "List at index " + index + " is empty");
       index++;
     }
   }

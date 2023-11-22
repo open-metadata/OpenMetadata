@@ -16,6 +16,7 @@ package org.openmetadata.service.resources.databases;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
@@ -58,7 +59,7 @@ class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchema, Crea
   public DatabaseSchema validateGetWithDifferentFields(DatabaseSchema schema, boolean byName)
       throws HttpResponseException {
     // Add tables to the database schema
-    if (schema.getTables() == null) {
+    if (nullOrEmpty(schema.getTables())) {
       TableResourceTest tableResourceTest = new TableResourceTest();
       CreateTable create =
           tableResourceTest.createRequest("t1", "", "", null).withDatabaseSchema(schema.getFullyQualifiedName());

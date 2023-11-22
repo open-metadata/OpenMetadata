@@ -16,6 +16,7 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
@@ -139,7 +140,7 @@ public class TopicRepository extends EntityRepository<Topic> {
 
   public Topic getSampleData(UUID topicId, boolean authorizePII) {
     // Validate the request content
-    Topic topic = dao.findEntityById(topicId);
+    Topic topic = find(topicId, NON_DELETED);
 
     TopicSampleData sampleData =
         JsonUtils.readValue(

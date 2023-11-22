@@ -65,7 +65,6 @@ import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MigrationDAO;
-import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.jdbi3.TestSuiteRepository;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
@@ -429,10 +428,7 @@ public class MigrationUtil {
             .withDisplayName(create.getDisplayName())
             .withName(create.getName());
     if (create.getExecutableEntityReference() != null) {
-      TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(Entity.TABLE);
-      Table table =
-          JsonUtils.readValue(
-              tableRepository.getDao().findJsonByFqn(create.getExecutableEntityReference(), Include.ALL), Table.class);
+      Table table = Entity.getEntityByName(Entity.TABLE, create.getExecutableEntityReference(), "", Include.ALL);
       EntityReference entityReference =
           new EntityReference()
               .withId(table.getId())
