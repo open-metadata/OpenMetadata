@@ -1,0 +1,2 @@
+-- DataInsightsApplication should not allow configuration
+-- TODO MIGRATIONS FOR POSTGRES
