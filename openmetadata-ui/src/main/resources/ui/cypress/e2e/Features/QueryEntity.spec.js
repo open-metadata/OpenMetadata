@@ -21,12 +21,12 @@ import {
   createQueryByTableName,
   generateRandomTable,
   hardDeleteService,
-} from '../../common/entityUtils';
+} from '../../common/EntityUtils';
 import { DATA_ASSETS } from '../../constants/constants';
 import {
   DATABASE_SERVICE,
   DATABASE_SERVICE_DETAILS,
-} from '../../constants/entityConstant';
+} from '../../constants/EntityConstant';
 import { SERVICE_CATEGORIES } from '../../constants/service.constants';
 
 const queryTable = {

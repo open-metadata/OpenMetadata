@@ -15,7 +15,7 @@ import {
   DATABASE_DETAILS,
   DATABASE_SERVICE_DETAILS,
   SCHEMA_DETAILS,
-} from '../constants/entityConstant';
+} from '../constants/EntityConstant';
 import { uuid } from './common';
 
 /**

@@ -16,11 +16,11 @@ import {
   DASHBOARD_SERVICE,
   DATABASE_SERVICE,
   MESSAGING_SERVICE,
-  MLMODEL_SERVICE,
+  ML_MODEL_SERVICE,
   PIPELINE_SERVICE,
   STORAGE_SERVICE,
   STORED_PROCEDURE_DETAILS,
-} from './entityConstant';
+} from './EntityConstant';
 
 export const SERVICES = {
   databaseServices: {
@@ -45,7 +45,7 @@ export const SERVICES = {
   },
   mlmodelServices: {
     type: SERVICE_TYPE.MLModels,
-    name: MLMODEL_SERVICE.service.name,
+    name: ML_MODEL_SERVICE.service.name,
     displayName: 'ML Flow Service',
   },
   storageServices: {
@@ -65,7 +65,7 @@ const DATABASE_AND_SCHEMA = {
 
 export const ENTITIES_DISPLAY_NAME = {
   table: {
-    name: DATABASE_SERVICE.tables.name,
+    name: DATABASE_SERVICE.entity.name,
     oldDisplayName: 'dim.shop',
     displayName: 'Dim Shop Test',
     entity: DATA_ASSETS.tables,
@@ -101,7 +101,7 @@ export const ENTITIES_DISPLAY_NAME = {
     breadcrumb: [SERVICES.pipelineServices.displayName],
   },
   mlmodel: {
-    name: MLMODEL_SERVICE.entity.name,
+    name: ML_MODEL_SERVICE.entity.name,
     oldDisplayName: 'ETA Predictions',
     displayName: 'Predictions ETA',
     entity: DATA_ASSETS.mlmodels,

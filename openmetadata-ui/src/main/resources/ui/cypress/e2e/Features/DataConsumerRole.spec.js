@@ -24,13 +24,13 @@ import {
   createEntityTable,
   createSingleLevelEntity,
   hardDeleteService,
-} from '../../common/entityUtils';
+} from '../../common/EntityUtils';
 import { BASE_URL } from '../../constants/constants';
 import {
   DATABASE_SERVICE,
   SINGLE_LEVEL_SERVICE,
   VISIT_ENTITIES_DATA,
-} from '../../constants/entityConstant';
+} from '../../constants/EntityConstant';
 import { NAVBAR_DETAILS } from '../../constants/redirections.constants';
 import { SERVICE_CATEGORIES } from '../../constants/service.constants';
 

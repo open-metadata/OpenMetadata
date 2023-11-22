@@ -32,18 +32,21 @@ import {
   createEntityTable,
   createSingleLevelEntity,
   hardDeleteService,
-} from '../../common/entityUtils';
+} from '../../common/EntityUtils';
 import {
   deletedTeamChecks,
   nonDeletedTeamChecks,
   softDeletedEntityCommonChecks,
 } from '../../common/SoftDeleteFlowUtils';
+import {
+  DASHBOARD_DATA_MODEL_DETAILS,
+  STORED_PROCEDURE_DETAILS,
+} from '../../constants/EntityConstant';
 import { SERVICE_CATEGORIES } from '../../constants/service.constants';
 import {
   ALL_SERVICES_SOFT_DELETE_TEST,
   CUSTOM_ATTRIBUTE_ASSETS_SOFT_DELETE_TEST,
   CUSTOM_ATTRIBUTE_NAME,
-  DASHBOARD_DATA_MODEL_SOFT_DELETE_TEST,
   DATABASE_SCHEMA_SOFT_DELETE_TEST,
   DATABASE_SERVICE_DETAILS_SOFT_DELETE_TEST,
   DATABASE_SERVICE_SOFT_DELETE_TEST,
@@ -52,7 +55,6 @@ import {
   POLICY_NAME,
   ROLE_NAME,
   SINGLE_LEVEL_SERVICE_SOFT_DELETE_TEST,
-  STORED_PROCEDURE_SOFT_DELETE_TEST,
   TEAM_1_DETAILS_SOFT_DELETE_TEST,
   TEAM_1_NAME,
   TEAM_2_DETAILS_SOFT_DELETE_TEST,
@@ -101,14 +103,14 @@ describe(`Soft delete flow should work for all entities`, () => {
         method: 'POST',
         url: `/api/v1/dashboard/datamodels`,
         headers: { Authorization: `Bearer ${token}` },
-        body: DASHBOARD_DATA_MODEL_SOFT_DELETE_TEST,
+        body: DASHBOARD_DATA_MODEL_DETAILS,
       });
       // creating stored procedure
       cy.request({
         method: 'POST',
         url: `/api/v1/storedProcedures`,
         headers: { Authorization: `Bearer ${token}` },
-        body: STORED_PROCEDURE_SOFT_DELETE_TEST,
+        body: STORED_PROCEDURE_DETAILS,
       });
 
       createTeams({
@@ -126,14 +128,7 @@ describe(`Soft delete flow should work for all entities`, () => {
   });
 
   ALL_SERVICES_SOFT_DELETE_TEST.map(
-    ({
-      service,
-      entity,
-      entityType,
-      firstTabKey,
-      entityTypeDisplay,
-      entitySchemaName,
-    }) => {
+    ({ service, entity, entityType, firstTabKey, entitySchemaName }) => {
       it(`Soft delete flow should work properly for ${entityType}`, () => {
         visitEntityDetailsPage({
           term: entity.name,

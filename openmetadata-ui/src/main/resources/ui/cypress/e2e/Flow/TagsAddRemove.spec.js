@@ -22,7 +22,7 @@ import {
 import {
   createEntityTable,
   createSingleLevelEntity,
-} from '../../common/entityUtils';
+} from '../../common/EntityUtils';
 import {
   DASHBOARD_CHART_DETAILS,
   DASHBOARD_DATA_MODEL_DETAILS,
@@ -34,7 +34,7 @@ import {
   PIPELINE_SERVICE,
   STORAGE_SERVICE,
   STORED_PROCEDURE_DETAILS,
-} from '../../constants/entityConstant';
+} from '../../constants/EntityConstant';
 import {
   TAGS_ADD_REMOVE_ENTITIES,
   TAGS_ADD_REMOVE_TABLE,

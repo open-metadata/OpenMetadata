@@ -33,10 +33,10 @@ export const checkIsEditButtonNotAvailable = ({
   });
 };
 
-export const checkCustomPropertyEditButton = (
+export const checkCustomPropertyEditButton = ({
   verifyAPIResponse = false,
-  checkIsActionEnabled = true
-) => {
+  checkIsActionEnabled = true,
+}) => {
   interceptURL(
     'GET',
     `/api/v1/metadata/types/name/*fields=customProperties`,
@@ -63,12 +63,12 @@ export const checkCustomPropertyEditButton = (
   }
 };
 
-const checkForEditActions = (
+export const checkForEditActions = ({
   entityType,
   entitySchemaName,
   verifyAPIResponse = false,
-  checkIsActionEnabled = true
-) => {
+  checkIsActionEnabled = true,
+}) => {
   LIST_OF_FIELDS_TO_EDIT_TO_BE_DISABLED.filter(({ elementSelector }) => {
     if (elementSelector === '[data-testid="entity-follow-button"]') {
       return !ENTITIES_WITHOUT_FOLLOWING_BUTTON.includes(entityType);
@@ -97,14 +97,14 @@ const checkForEditActions = (
   );
 
   if (entitySchemaName) {
-    checkCustomPropertyEditButton(verifyAPIResponse, checkIsActionEnabled);
+    checkCustomPropertyEditButton({ verifyAPIResponse, checkIsActionEnabled });
   }
 };
 
-const checkLineageTabActions = (
+export const checkLineageTabActions = ({
   verifyAPIResponse = false,
-  checkIsActionEnabled = true
-) => {
+  checkIsActionEnabled = true,
+}) => {
   interceptURL(
     'GET',
     `/api/v1/lineage/*/name/*?upstreamDepth=1&downstreamDepth=1`,
@@ -126,10 +126,10 @@ const checkLineageTabActions = (
   }
 };
 
-const checkForTableSpecificFields = (
+export const checkForTableSpecificFields = ({
   verifyAPIResponse = false,
-  checkIsActionEnabled = true
-) => {
+  checkIsActionEnabled = true,
+}) => {
   interceptURL('GET', `/api/v1/queries*`, 'getQueryData');
 
   cy.get('[data-testid="table_queries"]').click();
@@ -176,16 +176,22 @@ export const softDeletedEntityCommonChecks = ({
 }) => {
   const isTableEntity = entityType === DATA_ASSETS.tables;
 
-  checkForEditActions(entityType, entitySchemaName, true);
+  // Check if all the edit actions are available for the entity
+  checkForEditActions({
+    entityType,
+    entitySchemaName,
+    verifyAPIResponse: true,
+  });
 
   if (isLineageTabPresent) {
-    checkLineageTabActions(true);
+    checkLineageTabActions({ verifyAPIResponse: true });
   }
 
   if (isTableEntity) {
-    checkForTableSpecificFields(true);
+    checkForTableSpecificFields({ verifyAPIResponse: true });
   }
 
+  // Soft delete the entity
   cy.get('[data-testid="manage-button"]').click();
   cy.get('[data-testid="delete-button-title"]').click();
   cy.get('[data-testid="confirm-button"]').should('be.disabled');
@@ -197,16 +203,21 @@ export const softDeletedEntityCommonChecks = ({
   cy.get('.Toastify__close-button').click();
   cy.get('[data-testid="deleted-badge"]').should('be.visible');
 
+  // Check if all the edit actions are disabled or removed for soft deleted entity
   cy.get(`[data-testid="${firstTabKey}"]`).click();
 
-  checkForEditActions(entityType, entitySchemaName, false, false);
+  checkForEditActions({
+    entityType,
+    entitySchemaName,
+    checkIsActionEnabled: false,
+  });
 
   if (isLineageTabPresent) {
-    checkLineageTabActions(false, false);
+    checkLineageTabActions({ checkIsActionEnabled: false });
   }
 
   if (isTableEntity) {
-    checkForTableSpecificFields(false, false);
+    checkForTableSpecificFields({ checkIsActionEnabled: false });
   }
 
   cy.get('[data-testid="manage-button"]').click();
@@ -224,6 +235,7 @@ export const softDeletedEntityCommonChecks = ({
     '[data-testid="manage-dropdown-list-container"] [data-testid="delete-button"]'
   );
 
+  // Restore the soft deleted entity
   cy.get('[data-testid="restore-button-title"]').click();
 
   interceptURL(
@@ -239,16 +251,17 @@ export const softDeletedEntityCommonChecks = ({
 
   verifyResponseStatusCode('@restoreEntity', 200);
 
+  // Check if all the edit actions are available for the restored entity
   cy.get(`[data-testid="${firstTabKey}"]`).click();
 
-  checkForEditActions(entityType, entitySchemaName);
+  checkForEditActions({ entityType, entitySchemaName });
 
   if (isLineageTabPresent) {
-    checkLineageTabActions(true);
+    checkLineageTabActions({ verifyAPIResponse: true });
   }
 
   if (isTableEntity) {
-    checkForTableSpecificFields(true);
+    checkForTableSpecificFields({ verifyAPIResponse: true });
   }
 };
 

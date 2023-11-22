@@ -19,14 +19,14 @@ import {
   verifyResponseStatusCode,
   visitEntityDetailsPage,
 } from '../../common/common';
-import { createEntityTable, hardDeleteService } from '../../common/entityUtils';
+import { createEntityTable, hardDeleteService } from '../../common/EntityUtils';
 import {
   createAndUpdateDescriptionTask,
   editAssignee,
   verifyTaskDetails,
 } from '../../common/TaskUtils';
 import { DATA_ASSETS } from '../../constants/constants';
-import { DATABASE_SERVICE } from '../../constants/entityConstant';
+import { DATABASE_SERVICE } from '../../constants/EntityConstant';
 import { SERVICE_CATEGORIES } from '../../constants/service.constants';
 
 const ENTITY_TABLE = {
