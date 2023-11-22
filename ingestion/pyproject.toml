@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "openmetadata-ingestion"
 version = "1.3.0.0.dev0"
-dynamic = ["readme"]
+dynamic = ["readme", "optional-dependencies"]
 authors = [
     {name = "OpenMetadata Committers"}
 ]
