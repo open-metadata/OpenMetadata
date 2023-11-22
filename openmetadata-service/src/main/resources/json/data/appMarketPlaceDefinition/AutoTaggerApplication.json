@@ -19,8 +19,6 @@
     "enabled": "true"
   },
   "appConfiguration": {
-    "config": {
-      "confidenceLevel": 80
-    }
+    "confidenceLevel": 80
   }
 }
