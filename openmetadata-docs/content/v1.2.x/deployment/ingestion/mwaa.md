@@ -32,9 +32,9 @@ To install the package, we need to update the `requirements.txt` file from the M
 openmetadata-ingestion[<plugin>]==x.y.z
 ```
 
-Where `x.y.z` is the version of the OpenMetadata ingestion package. Note that the version needs to match the server version. If we are using the server at 1.2.0, then the ingestion package needs to also be 1.2.0.
+Where `x.y.z` is the version of the OpenMetadata ingestion package. Note that the version needs to match the server version. If we are using the server at 1.2.2, then the ingestion package needs to also be 1.2.2.
 
-The plugin parameter is a list of the sources that we want to ingest. An example would look like this `openmetadata-ingestion[mysql,snowflake,s3]==1.2.0`.
+The plugin parameter is a list of the sources that we want to ingest. An example would look like this `openmetadata-ingestion[mysql,snowflake,s3]==1.2.2`.
 
 A DAG deployed using a Python Operator would then look like follows
 
@@ -106,7 +106,7 @@ We will now describe the steps, following the official AWS documentation.
 
 - The cluster needs a task to run in `FARGATE` mode.
 - The required image is `docker.getcollate.io/openmetadata/ingestion-base:x.y.z`
-  - The same logic as above applies. The `x.y.z` version needs to match the server version. For example, `docker.getcollate.io/openmetadata/ingestion-base:1.2.0`
+  - The same logic as above applies. The `x.y.z` version needs to match the server version. For example, `docker.getcollate.io/openmetadata/ingestion-base:1.2.2`
   
 We have tested this process with a Task Memory of 512MB and Task CPU (unit) of 256. This can be tuned depending on the amount of metadata that needs to be ingested.
 
