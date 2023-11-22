@@ -319,7 +319,9 @@ describe('Teams flow should work properly', () => {
     cy.get('[data-testid="team-heading"]')
       .should('be.visible')
       .contains(TEAM_DETAILS.updatedName);
-    cy.get('[data-testid="manage-button"]').click();
+    cy.get(
+      '[data-testid="team-detail-header"] [data-testid="manage-button"]'
+    ).click();
 
     cy.get('[data-menu-id*="delete-button"]').should('be.visible');
 
@@ -381,10 +383,9 @@ describe('Teams flow should work properly', () => {
       .should('be.visible')
       .contains(TEAM_DETAILS.updatedName);
 
-    cy.get('[data-testid="manage-button"]')
-      .should('exist')
-      .should('be.visible')
-      .click();
+    cy.get(
+      '[data-testid="team-detail-header"] [data-testid="manage-button"]'
+    ).click();
 
     cy.get('[data-menu-id*="delete-button"]').should('be.visible');
 
@@ -435,10 +436,9 @@ describe('Teams flow should work properly', () => {
       .click();
 
     verifyResponseStatusCode('@getSelectedTeam', 200);
-    cy.get('[data-testid="manage-button"]')
-      .should('exist')
-      .should('be.visible')
-      .click();
+    cy.get(
+      '[data-testid="team-detail-header"] [data-testid="manage-button"]'
+    ).click();
 
     cy.get('[data-menu-id*="delete-button"]').should('be.visible');
 

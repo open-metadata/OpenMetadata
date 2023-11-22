@@ -34,7 +34,7 @@ describe('Custom Properties should work properly', () => {
 
   describe('Add update and delete Integer custom properties', () => {
     Object.values(ENTITIES).forEach((entity) => {
-      const propertyName = `entity${entity.name}test${uuid()}`;
+      const propertyName = `addcyentity${entity.name}test${uuid()}`;
 
       it(`Add Integer custom property for ${entity.name}  Entities`, () => {
         interceptURL(
@@ -106,7 +106,7 @@ describe('Custom Properties should work properly', () => {
 
   describe('Add update and delete String custom properties', () => {
     Object.values(ENTITIES).forEach((entity) => {
-      const propertyName = `entity${entity.name}test${uuid()}`;
+      const propertyName = `addcyentity${entity.name}test${uuid()}`;
 
       it(`Add String custom property for ${entity.name} Entities`, () => {
         interceptURL(
@@ -182,7 +182,7 @@ describe('Custom Properties should work properly', () => {
 
   describe('Add update and delete Markdown custom properties', () => {
     Object.values(ENTITIES).forEach((entity) => {
-      const propertyName = `entity${entity.name}test${uuid()}`;
+      const propertyName = `addcyentity${entity.name}test${uuid()}`;
 
       it(`Add Markdown custom property for ${entity.name} Entities`, () => {
         interceptURL(
