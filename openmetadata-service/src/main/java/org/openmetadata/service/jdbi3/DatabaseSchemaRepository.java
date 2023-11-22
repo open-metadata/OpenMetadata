@@ -163,7 +163,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   public DatabaseSchema addDatabaseSchemaProfilerConfig(
       UUID databaseSchemaId, DatabaseSchemaProfilerConfig databaseSchemaProfilerConfig) {
     // Validate the request content
-    DatabaseSchema databaseSchema = dao.findEntityById(databaseSchemaId);
+    DatabaseSchema databaseSchema = find(databaseSchemaId, Include.NON_DELETED);
 
     if (databaseSchemaProfilerConfig.getProfileSampleType() != null
         && databaseSchemaProfilerConfig.getProfileSample() != null) {
@@ -193,7 +193,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
 
   public DatabaseSchema deleteDatabaseSchemaProfilerConfig(UUID databaseSchemaId) {
     // Validate the request content
-    DatabaseSchema database = dao.findEntityById(databaseSchemaId);
+    DatabaseSchema database = find(databaseSchemaId, Include.NON_DELETED);
     daoCollection.entityExtensionDAO().delete(databaseSchemaId, DATABASE_SCHEMA_PROFILER_CONFIG_EXTENSION);
     setFieldsInternal(database, Fields.EMPTY_FIELDS);
     return database;

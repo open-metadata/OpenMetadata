@@ -771,8 +771,7 @@ public interface CollectionDAO {
     //
     @SqlQuery(
         "SELECT toId, toEntity, json FROM entity_relationship "
-            + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation IN (<relation>) "
-            + "ORDER BY toId")
+            + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation IN (<relation>)")
     @RegisterRowMapper(ToRelationshipMapper.class)
     List<EntityRelationshipRecord> findTo(
         @BindUUID("fromId") UUID fromId,
@@ -783,11 +782,9 @@ public interface CollectionDAO {
       return findTo(fromId, fromEntity, List.of(relation));
     }
 
-    // TODO delete this
     @SqlQuery(
         "SELECT toId, toEntity, json FROM entity_relationship "
-            + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation = :relation AND toEntity = :toEntity "
-            + "ORDER BY toId")
+            + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation = :relation AND toEntity = :toEntity")
     @RegisterRowMapper(ToRelationshipMapper.class)
     List<EntityRelationshipRecord> findTo(
         @BindUUID("fromId") UUID fromId,
@@ -815,8 +812,7 @@ public interface CollectionDAO {
     //
     @SqlQuery(
         "SELECT fromId, fromEntity, json FROM entity_relationship "
-            + "WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation AND fromEntity = :fromEntity "
-            + "ORDER BY fromId")
+            + "WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation AND fromEntity = :fromEntity ")
     @RegisterRowMapper(FromRelationshipMapper.class)
     List<EntityRelationshipRecord> findFrom(
         @BindUUID("toId") UUID toId,
@@ -826,8 +822,7 @@ public interface CollectionDAO {
 
     @SqlQuery(
         "SELECT fromId, fromEntity, json FROM entity_relationship "
-            + "WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation "
-            + "ORDER BY fromId")
+            + "WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation")
     @RegisterRowMapper(FromRelationshipMapper.class)
     List<EntityRelationshipRecord> findFrom(
         @BindUUID("toId") UUID toId, @Bind("toEntity") String toEntity, @Bind("relation") int relation);
