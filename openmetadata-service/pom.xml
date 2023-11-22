@@ -560,9 +560,6 @@
               </configuration>
               <executions>
                 <execution>
-                  <goals>
-                    <goal>test</goal>
-                  </goals>
                   <id>postgres-integration-tests</id>
                   <phase>test</phase>
                   <configuration>
@@ -599,9 +596,6 @@
               </configuration>
               <executions>
                 <execution>
-                  <goals>
-                    <goal>test</goal>
-                  </goals>
                   <id>mysql-integration-tests</id>
                   <phase>test</phase>
                   <configuration>
