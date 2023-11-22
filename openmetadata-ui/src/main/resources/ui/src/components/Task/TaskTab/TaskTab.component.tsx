@@ -484,8 +484,6 @@ export const TaskTab = ({
                 </Typography.Text>
                 <AssigneeList
                   assignees={taskDetails?.assignees ?? []}
-                  className="d-flex gap-1"
-                  profilePicType="circle"
                   profileWidth="24"
                   showUserName={false}
                 />

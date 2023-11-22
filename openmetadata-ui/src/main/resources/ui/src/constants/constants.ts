@@ -98,7 +98,6 @@ export const PLACEHOLDER_ROUTE_SERVICE_CAT = ':serviceCategory';
 export const PLACEHOLDER_ROUTE_TAB = ':tab';
 export const PLACEHOLDER_ROUTE_SUB_TAB = ':subTab';
 export const PLACEHOLDER_ROUTE_FQN = ':fqn';
-export const PLACEHOLDER_ROUTE_TEAM_AND_USER = ':teamAndUser';
 export const PLACEHOLDER_ROUTE_VERSION = ':version';
 export const PLACEHOLDER_ROUTE_ENTITY_TYPE = ':entityType';
 

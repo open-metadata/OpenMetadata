@@ -32,7 +32,6 @@ import { getEntityName } from '../../../utils/EntityUtils';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import BrandImage from '../../common/BrandImage/BrandImage';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
-import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import AppLogo from '../AppLogo/AppLogo.component';
 import './app-install-verify-card.less';
 import { AppInstallVerifyCardProps } from './AppInstallVerifyCard.interface';
@@ -76,16 +75,8 @@ const AppInstallVerifyCard = ({
       <Card className="w-500 m-t-md">
         <Space size={12}>
           <UserPopOverCard
-            userName={currentUser?.displayName ?? currentUser?.name ?? ''}>
-            <span className="d-flex cursor-pointer" data-testid="authorAvatar">
-              <ProfilePicture
-                className="d-flex"
-                name={currentUser?.displayName ?? currentUser?.name ?? ''}
-                type="circle"
-                width="32"
-              />
-            </span>
-          </UserPopOverCard>
+            userName={currentUser?.displayName ?? currentUser?.name ?? ''}
+          />
           <div className="d-flex flex-col">
             <Typography.Text className="font-medium">
               <Transi18next

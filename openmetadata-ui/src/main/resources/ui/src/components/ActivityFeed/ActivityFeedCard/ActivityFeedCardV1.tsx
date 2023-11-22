@@ -17,7 +17,6 @@ import { noop } from 'lodash';
 import React, { useState } from 'react';
 import { ReactComponent as ThreadIcon } from '../../../assets/svg/thread.svg';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
-import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import Reactions from '../../../components/Reactions/Reactions';
 import { ReactionOperation } from '../../../enums/reactions.enum';
 import {
@@ -117,17 +116,7 @@ const ActivityFeedCardV1 = ({
                   <>
                     <div className="thread-users-profile-pic">
                       {repliedUniqueUsersList.map((user) => (
-                        <UserPopOverCard key={user} userName={user}>
-                          <span
-                            className="profile-image-span cursor-pointer"
-                            data-testid="authorAvatar">
-                            <ProfilePicture
-                              name={user}
-                              type="circle"
-                              width="22"
-                            />
-                          </span>
-                        </UserPopOverCard>
+                        <UserPopOverCard key={user} userName={user} />
                       ))}
                     </div>
                     <div

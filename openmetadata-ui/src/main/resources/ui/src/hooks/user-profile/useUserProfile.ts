@@ -14,50 +14,80 @@ import { useCallback, useEffect, useState } from 'react';
 import { useApplicationConfigContext } from '../../components/ApplicationConfigProvider/ApplicationConfigProvider';
 import { User } from '../../generated/entity/teams/user';
 import { getUserByName } from '../../rest/userAPI';
+import {
+  getImageWithResolutionAndFallback,
+  ImageQuality,
+} from '../../utils/ProfilerUtils';
+
+let userProfilePicsLoading: string[] = [];
 
 export const useUserProfile = ({
   permission,
   name,
+  isTeam,
 }: {
   permission: boolean;
   name: string;
-}): [string, boolean, User | undefined] => {
-  const { userProfilePics, updateUserProfilePics, userProfilePicsLoading } =
+  isTeam?: boolean;
+}): [string | null, boolean, User | undefined] => {
+  const { userProfilePics, updateUserProfilePics } =
     useApplicationConfigContext();
 
   const user = userProfilePics[name];
-  const [profielPic, setProfilePic] = useState(
-    (user?.profile?.images?.image512 || '') ?? ''
+  const [profilePic, setProfilePic] = useState(
+    getImageWithResolutionAndFallback(
+      ImageQuality['6x'],
+      user?.profile?.images
+    ) ?? null
   );
 
+  useEffect(() => {
+    if (user && !profilePic) {
+      setProfilePic(
+        getImageWithResolutionAndFallback(
+          ImageQuality['6x'],
+          user?.profile?.images
+        ) ?? ''
+      );
+    }
+  }, [user, profilePic]);
+
   const fetchProfileIfRequired = useCallback(() => {
-    !userProfilePicsLoading.current.includes(name)
-      ? (userProfilePicsLoading.current = [
-          ...userProfilePicsLoading.current,
-          name,
-        ])
-      : null;
+    if (isTeam || userProfilePics[name]) {
+      return;
+    }
+
+    if (userProfilePicsLoading.includes(name)) {
+      return;
+    }
+
+    userProfilePicsLoading = [...userProfilePicsLoading, name];
+
     getUserByName(name, 'profile')
       .then((user) => {
-        const profile = user.profile?.images?.image512 || '';
+        const profile =
+          getImageWithResolutionAndFallback(
+            ImageQuality['6x'],
+            user.profile?.images
+          ) ?? '';
 
         updateUserProfilePics({
           id: user.name,
           user,
         });
+        userProfilePicsLoading = userProfilePicsLoading.filter(
+          (p) => p !== name
+        );
 
         setProfilePic(profile);
       })
       .catch(() => {
         // Error
-      })
-      .finally(() => {
-        if (userProfilePicsLoading.current.includes(name)) {
-          userProfilePicsLoading.current =
-            userProfilePicsLoading.current.filter((p) => p !== name);
-        }
+        userProfilePicsLoading = userProfilePicsLoading.filter(
+          (p) => p !== name
+        );
       });
-  }, []);
+  }, [updateUserProfilePics, userProfilePics, name, isTeam]);
 
   useEffect(() => {
     if (!permission) {
@@ -68,13 +98,8 @@ export const useUserProfile = ({
       return;
     }
 
-    if (
-      !userProfilePicsLoading.current.includes(name) &&
-      !userProfilePics[name]
-    ) {
-      fetchProfileIfRequired();
-    }
-  }, [permission, name, userProfilePicsLoading, userProfilePics]);
+    fetchProfileIfRequired();
+  }, [name, permission, fetchProfileIfRequired]);
 
-  return [profielPic, userProfilePicsLoading.current.includes(name), user];
+  return [profilePic, userProfilePicsLoading.includes(name), user];
 };

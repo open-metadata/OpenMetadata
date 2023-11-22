@@ -12,7 +12,6 @@
  */
 
 import classNames from 'classnames';
-import { observer } from 'mobx-react';
 import { ImageShape } from 'Models';
 import React, { useMemo } from 'react';
 import { EntityReference, User } from '../../../generated/entity/teams/user';
@@ -33,6 +32,7 @@ interface Props extends UserData {
   className?: string;
   height?: string;
   profileImgClasses?: string;
+  isTeam?: boolean;
 }
 
 const ProfilePicture = ({
@@ -44,6 +44,7 @@ const ProfilePicture = ({
   width = '36',
   height,
   profileImgClasses,
+  isTeam = false,
 }: Props) => {
   const { permissions } = usePermissionProvider();
 
@@ -54,6 +55,7 @@ const ProfilePicture = ({
   const [profileURL, isPicLoading] = useUserProfile({
     permission: viewUserPermission,
     name,
+    isTeam,
   });
 
   const getAvatarByName = () => {
@@ -111,4 +113,4 @@ const ProfilePicture = ({
   );
 };
 
-export default observer(ProfilePicture);
+export default React.memo(ProfilePicture);

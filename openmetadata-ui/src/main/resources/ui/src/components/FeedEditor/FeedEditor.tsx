@@ -24,6 +24,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import ReactDOM from 'react-dom';
 import ReactDOMServer from 'react-dom/server';
 import { useTranslation } from 'react-i18next';
 import ReactQuill, { Quill } from 'react-quill';
@@ -32,13 +33,20 @@ import {
   MENTION_DENOTATION_CHARS,
   TOOLBAR_ITEMS,
 } from '../../constants/Feeds.constants';
-import { HTMLToMarkdown, matcher } from '../../utils/FeedUtils';
+import { getUserByName } from '../../rest/userAPI';
+import { getRandomColor } from '../../utils/CommonUtils';
+import { HTMLToMarkdown, suggestions } from '../../utils/FeedUtils';
+import {
+  getImageWithResolutionAndFallback,
+  ImageQuality,
+} from '../../utils/ProfilerUtils';
 import { LinkBlot } from '../../utils/QuillLink/QuillLink';
 import { insertMention, insertRef } from '../../utils/QuillUtils';
 import { getEntityIcon } from '../../utils/TableUtils';
+import { useApplicationConfigContext } from '../ApplicationConfigProvider/ApplicationConfigProvider';
 import { editorRef } from '../common/RichTextEditor/RichTextEditor.interface';
 import './feed-editor.less';
-import { FeedEditorProp } from './FeedEditor.interface';
+import { FeedEditorProp, MentionSuggestionsItem } from './FeedEditor.interface';
 
 Quill.register('modules/markdownOptions', QuillMarkdown);
 Quill.register('modules/emoji', Emoji);
@@ -66,6 +74,31 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
     const [value, setValue] = useState<string>(defaultValue ?? '');
     const [isMentionListOpen, toggleMentionList] = useState(false);
     const [isFocused, toggleFocus] = useState(false);
+    const { userProfilePics, updateUserProfilePics } =
+      useApplicationConfigContext();
+
+    const userSuggestionRenderer = async (
+      searchTerm: string,
+      renderList: (matches: MentionSuggestionsItem[], search: string) => void,
+      mentionChar: string
+    ) => {
+      const matches = await suggestions(searchTerm, mentionChar);
+
+      // Fetch profile images in case of user listing
+      const promises = matches.map(async ({ type, name }) => {
+        if (type === 'user' && !userProfilePics[name]) {
+          const res = await getUserByName(name, 'profile');
+
+          return updateUserProfilePics({ id: name, user: res });
+        }
+
+        return Promise.resolve();
+      });
+
+      await Promise.all(promises);
+
+      renderList(matches, searchTerm);
+    };
 
     /**
      * Prepare modules for editor
@@ -99,20 +132,47 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
             toggleMentionList(true);
             insertItem(item);
           },
-          source: matcher,
+          source: userSuggestionRenderer,
           showDenotationChar: false,
           renderLoading: () => `${t('label.loading')}...`,
-          renderItem: (item: Record<string, any>) => {
-            if (!item.type) {
-              const userResult = `<div class="d-flex gap-2"> 
-                ${item.avatarEle}
-                <span class="d-flex items-center truncate w-56">${item.name}</span>
-              </div>`;
+          renderItem: (item: MentionSuggestionsItem) => {
+            if (['user', 'team'].includes(item.type as string)) {
+              const wrapper = document.createElement('div');
+              const profileUrl =
+                getImageWithResolutionAndFallback(
+                  ImageQuality['6x'],
+                  userProfilePics[item.name]?.profile?.images
+                ) ?? '';
 
-              const userWrapper = document.createElement('div');
-              userWrapper.innerHTML = userResult;
+              const { color, character } = getRandomColor(item.name);
 
-              return userWrapper;
+              ReactDOM.render(
+                <div className="d-flex gap-2">
+                  <div className="mention-profile-image">
+                    {profileUrl ? (
+                      <img
+                        alt={item.name}
+                        data-testid="profile-image"
+                        referrerPolicy="no-referrer"
+                        src={profileUrl}
+                      />
+                    ) : (
+                      <div
+                        className="flex-center flex-shrink align-middle mention-avatar"
+                        data-testid="avatar"
+                        style={{ backgroundColor: color }}>
+                        <span>{character}</span>
+                      </div>
+                    )}
+                  </div>
+                  <span className="d-flex items-center truncate w-56">
+                    {item.name}
+                  </span>
+                </div>,
+                wrapper
+              );
+
+              return wrapper;
             }
 
             const breadcrumbsData = item.breadcrumbs
@@ -128,7 +188,7 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
               : '';
 
             const icon = ReactDOMServer.renderToString(
-              getEntityIcon(item.type)
+              getEntityIcon(item.type as string)
             );
 
             const typeSpan = !breadcrumbEle
@@ -157,7 +217,7 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
           matchers: [['del, strike', strikethrough]],
         },
       }),
-      []
+      [userProfilePics]
     );
 
     const onSaveHandle = () => {

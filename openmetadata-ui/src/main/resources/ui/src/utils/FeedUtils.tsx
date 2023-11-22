@@ -61,7 +61,6 @@ import {
   getEntityPlaceHolder,
   getPartialNameFromFQN,
   getPartialNameFromTableFQN,
-  getRandomColor,
 } from './CommonUtils';
 import { getRelativeCalendar } from './date-time/DateTimeUtils';
 import EntityLink from './EntityLink';
@@ -169,31 +168,6 @@ export const buildMentionLink = (entityType: string, entityFqn: string) => {
   return `${document.location.protocol}//${document.location.host}/${entityType}/${entityFqn}`;
 };
 
-const getAvatarElementAsString = async (userName: string) => {
-  const res = await getUserProfilePic(true, '', userName);
-  let avatarEle = '';
-  if (!res) {
-    const { color, character } = getRandomColor(userName);
-    avatarEle = `<div
-      class="flex-center flex-shrink align-middle mention-avatar"
-      data-testid="avatar" style="background-color: ${color}">
-      <span>${character}</span>
-    </div>`;
-  } else {
-    avatarEle = `<div
-    class="mention-profile-image">
-    <img
-      alt="user"
-      data-testid="profile-image"
-      referrerPolicy="no-referrer"
-      src="${res}"
-    />
-  </div>`;
-  }
-
-  return avatarEle;
-};
-
 export async function suggestions(
   searchTerm: string,
   mentionChar: string
@@ -207,8 +181,6 @@ export async function suggestions(
 
       atValues = await Promise.all(
         hits.map(async (hit) => {
-          const avatarEle =
-            (await getAvatarElementAsString(hit._source.name)) ?? '';
           const entityType = hit._source.entityType;
           const name = getEntityPlaceHolder(
             `@${hit._source.name ?? hit._source.displayName}`,
@@ -222,8 +194,8 @@ export async function suggestions(
               ENTITY_URL_MAP[entityType as EntityUrlMapType],
               hit._source.name
             ),
+            type: hit._index === 'user_search_index' ? 'user' : 'team',
             name: hit._source.name,
-            avatarEle,
           };
         })
       );
@@ -240,8 +212,6 @@ export async function suggestions(
             hit._source.deleted
           );
 
-          const avatarEle = await getAvatarElementAsString(hit._source.name);
-
           return {
             id: hit._id,
             value: name,
@@ -249,8 +219,8 @@ export async function suggestions(
               ENTITY_URL_MAP[entityType as EntityUrlMapType],
               hit._source.name
             ),
+            type: hit._index === 'user_search_index' ? 'user' : 'team',
             name: hit._source.name,
-            avatarEle,
           };
         })
       );
@@ -311,15 +281,6 @@ export async function suggestions(
 
     return hashValues;
   }
-}
-
-export async function matcher(
-  searchTerm: string,
-  renderList: (matches: MentionSuggestionsItem[], search: string) => void,
-  mentionChar: string
-) {
-  const matches = await suggestions(searchTerm, mentionChar);
-  renderList(matches, searchTerm);
 }
 
 const getMentionList = (message: string) => {

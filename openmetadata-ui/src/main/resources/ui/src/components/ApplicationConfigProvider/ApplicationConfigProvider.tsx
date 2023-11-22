@@ -19,7 +19,6 @@ import React, {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react';
 import { LoginConfiguration } from '../../generated/configuration/loginConfiguration';
@@ -28,11 +27,13 @@ import { User } from '../../generated/entity/teams/user';
 import { EntityReference } from '../../generated/entity/type';
 import { getCustomLogoConfig } from '../../rest/settingConfigAPI';
 
-interface ContextConfig extends LogoConfiguration, LoginConfiguration {
+export interface ApplicationContextConfig
+  extends LogoConfiguration,
+    LoginConfiguration {
   routeElements?: ReactNode;
   userProfilePics: Record<string, User>;
   updateUserProfilePics: (data: { id: string; user: User }) => void;
-  userProfilePicsLoading: React.MutableRefObject<string[]>;
+
   selectedPersona: EntityReference;
   updateSelectedPersona: (personaFqn: EntityReference) => void;
 }
@@ -49,8 +50,8 @@ export interface UserProfileMap {
   status: UserProfileLoadingStatus;
 }
 
-export const ApplicationConfigContext = createContext<ContextConfig>(
-  {} as ContextConfig
+export const ApplicationConfigContext = createContext<ApplicationContextConfig>(
+  {} as ApplicationContextConfig
 );
 
 export const useApplicationConfigContext = () =>
@@ -74,7 +75,6 @@ const ApplicationConfigProvider: FC<ApplicationConfigProviderProps> = ({
   const [userProfilePics, setUserProfilePics] = useState<Record<string, User>>(
     {}
   );
-  const userProfilePicsLoading = useRef<string[]>([]);
 
   const fetchApplicationConfig = async () => {
     try {
@@ -100,7 +100,7 @@ const ApplicationConfigProvider: FC<ApplicationConfigProviderProps> = ({
     ({ id, user }: { id: string; user: User }) => {
       setUserProfilePics((prev) => {
         const updatedMap = cloneDeep(prev);
-        updatedMap[id] = user;
+        updatedMap[id] = { ...(prev[id] ?? {}), ...user };
 
         return updatedMap;
       });
@@ -131,7 +131,6 @@ const ApplicationConfigProvider: FC<ApplicationConfigProviderProps> = ({
       updateSelectedPersona,
       userProfilePics,
       updateUserProfilePics,
-      userProfilePicsLoading,
     }),
     [
       applicationConfig,

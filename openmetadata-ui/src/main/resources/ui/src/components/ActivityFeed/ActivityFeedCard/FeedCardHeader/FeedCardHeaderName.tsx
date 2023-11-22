@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { observer } from 'mobx-react';
 import React from 'react';
 import UserPopOverCard from '../../../../components/common/PopOverCard/UserPopOverCard';
 import { useUserProfile } from '../../../../hooks/user-profile/useUserProfile';
@@ -45,4 +44,4 @@ const FeedCardHeaderName = ({
   );
 };
 
-export default observer(FeedCardHeaderName);
+export default FeedCardHeaderName;

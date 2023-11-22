@@ -13,18 +13,23 @@
 
 import { Button, Popover, Space } from 'antd';
 import { t } from 'i18next';
-import { isEmpty } from 'lodash';
+import { get, isEmpty } from 'lodash';
 import React, {
   FC,
   Fragment,
   HTMLAttributes,
+  useCallback,
   useEffect,
   useState,
 } from 'react';
-import { useHistory } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 import { ReactComponent as IconTeams } from '../../../assets/svg/teams-grey.svg';
 import { ReactComponent as IconUsers } from '../../../assets/svg/user.svg';
-import { getUserPath, TERM_ADMIN } from '../../../constants/constants';
+import {
+  getTeamAndUserDetailsPath,
+  getUserPath,
+  TERM_ADMIN,
+} from '../../../constants/constants';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import { getUserByName } from '../../../rest/userAPI';
@@ -34,7 +39,7 @@ import { useApplicationConfigContext } from '../../ApplicationConfigProvider/App
 import Loader from '../../Loader/Loader';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 
-const UserTeams = ({ userName }: { userName: string }) => {
+const UserTeams = React.memo(({ userName }: { userName: string }) => {
   const { userProfilePics } = useApplicationConfigContext();
   const userData = userProfilePics[userName];
   const teams = getNonDeletedTeams(userData?.teams ?? []);
@@ -59,9 +64,9 @@ const UserTeams = ({ userName }: { userName: string }) => {
       </p>
     </div>
   ) : null;
-};
+});
 
-const UserRoles = ({ userName }: { userName: string }) => {
+const UserRoles = React.memo(({ userName }: { userName: string }) => {
   const { userProfilePics } = useApplicationConfigContext();
   const userData = userProfilePics[userName];
   const roles = userData?.roles;
@@ -92,80 +97,97 @@ const UserRoles = ({ userName }: { userName: string }) => {
       </span>
     </div>
   ) : null;
-};
+});
 
-const PopoverContent = ({ userName }: { userName: string }) => {
-  const { userProfilePics, updateUserProfilePics } =
-    useApplicationConfigContext();
-  const [isLoading, setIsLoading] = useState(true);
-  const user = userProfilePics[userName];
+const PopoverContent = React.memo(
+  ({
+    userName,
+    type = 'user',
+  }: {
+    userName: string;
+    type: 'user' | 'team';
+  }) => {
+    const isTeam = type === 'team';
+    const [, , user = {}] = useUserProfile({
+      permission: true,
+      name: userName,
+      isTeam,
+    });
+    const { updateUserProfilePics } = useApplicationConfigContext();
+    const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    const getUserWithAdditionalDetails = (userName: string) => {
-      setIsLoading(true);
-      getUserByName(userName, 'teams, roles, profile')
+    const teamDetails = get(user, 'teams', null);
+
+    const getUserWithAdditionalDetails = useCallback(() => {
+      setLoading(true);
+      getUserByName(userName, 'teams, roles')
         .then((user) => {
           updateUserProfilePics({
             id: userName,
             user,
           });
-          setIsLoading(false);
         })
         .finally(() => {
-          setIsLoading(false);
+          setLoading(false);
         });
+    }, [userName]);
+
+    useEffect(() => {
+      if (!teamDetails && !isTeam) {
+        getUserWithAdditionalDetails();
+      } else {
+        setLoading(false);
+      }
+    }, [teamDetails, isTeam]);
+
+    return (
+      <Fragment>
+        {loading ? (
+          <Loader size="small" />
+        ) : (
+          <div className="w-40">
+            {isEmpty(user) ? (
+              <span>{t('message.no-data-available')}</span>
+            ) : (
+              <Fragment>
+                <UserTeams userName={userName} />
+                <UserRoles userName={userName} />
+              </Fragment>
+            )}
+          </div>
+        )}
+      </Fragment>
+    );
+  }
+);
+
+const PopoverTitle = React.memo(
+  ({
+    userName,
+    profilePicture,
+    type = 'user',
+  }: {
+    userName: string;
+    profilePicture: JSX.Element;
+    type: 'user' | 'team';
+  }) => {
+    const history = useHistory();
+
+    const [, , userData] = useUserProfile({
+      permission: true,
+      name: userName,
+      isTeam: type === 'team',
+    });
+
+    const onTitleClickHandler = (path: string) => {
+      history.push(path);
     };
-
-    if (!('teams' in user)) {
-      getUserWithAdditionalDetails(userName);
-    } else {
-      setIsLoading(false);
-    }
-  }, [user, userName]);
-
-  return (
-    <Fragment>
-      {isLoading ? (
-        <Loader size="small" />
-      ) : (
-        <div className="w-40">
-          {isEmpty(user) ? (
-            <span>{t('message.no-data-available')}</span>
-          ) : (
-            <Fragment>
-              <UserTeams userName={userName} />
-              <UserRoles userName={userName} />
-            </Fragment>
-          )}
-        </div>
-      )}
-    </Fragment>
-  );
-};
-
-interface Props extends HTMLAttributes<HTMLDivElement> {
-  userName: string;
-  type?: string;
-}
-
-const UserPopOverCard: FC<Props> = ({ children, userName, type = 'user' }) => {
-  const history = useHistory();
-
-  const [, , userData] = useUserProfile({
-    permission: true,
-    name: userName,
-  });
-
-  const onTitleClickHandler = (path: string) => {
-    history.push(path);
-  };
-  const PopoverTitle = () => {
     const name = userData?.name ?? '';
     const displayName = getEntityName(userData as unknown as EntityReference);
 
     return (
       <Space align="center">
-        <ProfilePicture name={userName} type="circle" width="24" />
+        {profilePicture}
         <div className="self-center">
           <Button
             className="text-info p-0"
@@ -183,19 +205,61 @@ const UserPopOverCard: FC<Props> = ({ children, userName, type = 'user' }) => {
         </div>
       </Space>
     );
-  };
+  }
+);
 
-  const container = document.getElementById('app-container') || document.body;
+interface Props extends HTMLAttributes<HTMLDivElement> {
+  userName: string;
+  type?: 'user' | 'team';
+  showUserName?: boolean;
+  showUserProfile?: boolean;
+}
+
+const UserPopOverCard: FC<Props> = ({
+  userName,
+  type = 'user',
+  showUserName = false,
+  showUserProfile = true,
+  children,
+}) => {
+  const container = document.getElementById('app-container') ?? document.body;
+
+  const profilePicture = (
+    <ProfilePicture
+      isTeam={type === 'team'}
+      name={userName}
+      type="circle"
+      width="24"
+    />
+  );
 
   return (
     <Popover
       align={{ targetOffset: [0, -10] }}
-      content={() => <PopoverContent userName={userName} />}
+      content={() => <PopoverContent type={type} userName={userName} />}
       getPopupContainer={() => container}
       overlayClassName="ant-popover-card"
-      title={<PopoverTitle />}
+      title={() => (
+        <PopoverTitle
+          profilePicture={profilePicture}
+          type={type}
+          userName={userName}
+        />
+      )}
       trigger="hover">
-      {children}
+      {children ?? (
+        <Link
+          className="assignee-item d-flex gap-1 m-r-xs cursor-pointer"
+          data-testid={`assignee-${userName}`}
+          to={
+            type === 'team'
+              ? getTeamAndUserDetailsPath(userName)
+              : getUserPath(userName ?? '')
+          }>
+          {showUserProfile ? profilePicture : null}
+          {showUserName ? <span className="">{userName ?? ''}</span> : null}
+        </Link>
+      )}
     </Popover>
   );
 };

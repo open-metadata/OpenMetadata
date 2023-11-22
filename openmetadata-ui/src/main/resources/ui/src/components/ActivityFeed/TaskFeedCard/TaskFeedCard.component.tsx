@@ -23,7 +23,6 @@ import { ReactComponent as ThreadIcon } from '../../../assets/svg/thread.svg';
 import AssigneeList from '../../../components/common/AssigneeList/AssigneeList';
 import EntityPopOverCard from '../../../components/common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
-import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import {
   Post,
   Thread,
@@ -185,17 +184,7 @@ const TaskFeedCard = ({
                   <>
                     <div className="thread-users-profile-pic">
                       {repliedUniqueUsersList.map((user) => (
-                        <UserPopOverCard key={user} userName={user}>
-                          <span
-                            className="profile-image-span cursor-pointer"
-                            data-testid="authorAvatar">
-                            <ProfilePicture
-                              name={user}
-                              type="circle"
-                              width="24"
-                            />
-                          </span>
-                        </UserPopOverCard>
+                        <UserPopOverCard key={user} userName={user} />
                       ))}
                     </div>
                     <div
@@ -217,7 +206,6 @@ const TaskFeedCard = ({
                 </Typography.Text>
                 <AssigneeList
                   assignees={feed?.task?.assignees || []}
-                  className="d-flex gap-1"
                   profilePicType="circle"
                   profileWidth="24"
                   showUserName={false}

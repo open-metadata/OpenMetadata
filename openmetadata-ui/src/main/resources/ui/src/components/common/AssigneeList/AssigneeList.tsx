@@ -11,14 +11,10 @@
  *  limitations under the License.
  */
 
-import { uniqueId } from 'lodash';
 import { ImageShape } from 'Models';
 import React, { FC, HTMLAttributes } from 'react';
-import { useHistory } from 'react-router-dom';
 import { EntityReference } from '../../../generated/type/entityReference';
-import { getOwnerValue } from '../../../utils/CommonUtils';
 import UserPopOverCard from '../PopOverCard/UserPopOverCard';
-import ProfilePicture from '../ProfilePicture/ProfilePicture';
 
 interface Props extends HTMLAttributes<HTMLDivElement> {
   assignees: EntityReference[];
@@ -27,44 +23,18 @@ interface Props extends HTMLAttributes<HTMLDivElement> {
   profileWidth?: string;
 }
 
-const AssigneeList: FC<Props> = ({
-  assignees,
-  className,
-  profilePicType = 'square',
-  showUserName = true,
-  profileWidth = '20',
-}) => {
-  const history = useHistory();
-
-  const handleClick = (e: React.MouseEvent, assignee: EntityReference) => {
-    e.stopPropagation();
-    const linkPath = getOwnerValue(assignee);
-    history.push(linkPath);
-  };
-
+const AssigneeList: FC<Props> = ({ assignees, showUserName = true }) => {
   return (
-    <span className={className}>
+    <div className="d-flex gap-1 flex-wrap">
       {assignees.map((assignee) => (
         <UserPopOverCard
-          key={uniqueId()}
-          type={assignee.type}
-          userName={assignee.name || ''}>
-          <span
-            className="assignee-item d-flex m-xss m-t-0 cursor-pointer"
-            data-testid={`assignee-${assignee.name}`}
-            onClick={(e) => handleClick(e, assignee)}>
-            <ProfilePicture
-              name={assignee.name ?? ''}
-              type={profilePicType}
-              width={profileWidth}
-            />
-            {showUserName && (
-              <span className="m-l-xs">{assignee.name ?? ''}</span>
-            )}
-          </span>
-        </UserPopOverCard>
+          key={assignee.name}
+          showUserName={showUserName}
+          type={assignee.type as 'user' | 'team'}
+          userName={assignee.name || ''}
+        />
       ))}
-    </span>
+    </div>
   );
 };
 

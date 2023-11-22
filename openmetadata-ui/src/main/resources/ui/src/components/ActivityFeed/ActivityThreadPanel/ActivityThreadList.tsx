@@ -172,7 +172,6 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                           </span>
                           <AssigneeList
                             assignees={thread.task.assignees || []}
-                            className="flex-wrap"
                           />
                         </div>
                       )}
