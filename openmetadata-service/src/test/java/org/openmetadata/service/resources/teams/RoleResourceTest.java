@@ -16,6 +16,7 @@ package org.openmetadata.service.resources.teams;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.service.security.SecurityUtil.getPrincipalName;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
@@ -156,7 +157,7 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
   @Override
   public Role validateGetWithDifferentFields(Role role, boolean byName) throws HttpResponseException {
     // Assign two arbitrary users this role for testing.
-    if (role.getUsers() == null) {
+    if (nullOrEmpty(role.getUsers())) {
       UserResourceTest userResourceTest = new UserResourceTest();
       userResourceTest.createEntity(
           userResourceTest.createRequest("roleUser1", "", "", null).withRoles(List.of(role.getId())),

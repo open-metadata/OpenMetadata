@@ -281,14 +281,14 @@ public class DatabaseServiceResource
                 @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseService.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Database service for instance {id} and version " + "{version} is not found")
+            description = "Database service for instance {id} and version {version} is not found")
       })
   public DatabaseService getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the database service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
-              description = "database service version number in the form `major`" + ".`minor`",
+              description = "database service version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
@@ -355,9 +355,7 @@ public class DatabaseServiceResource
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
@@ -367,11 +365,10 @@ public class DatabaseServiceResource
   @Operation(
       operationId = "deleteDatabaseService",
       summary = "Delete a database service by Id",
-      description =
-          "Delete a database services. If databases (and tables) belong the service, it can't be " + "deleted.",
+      description = "Delete a database services. If databases (and tables) belong the service, it can't be deleted.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "DatabaseService service for instance {id} " + "is not found")
+        @ApiResponse(responseCode = "404", description = "DatabaseService service for instance {id} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
@@ -399,9 +396,7 @@ public class DatabaseServiceResource
               + "deleted.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(
-            responseCode = "404",
-            description = "DatabaseService service for instance {name} " + "is not found")
+        @ApiResponse(responseCode = "404", description = "DatabaseService service for instance {name} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,

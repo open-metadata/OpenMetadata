@@ -391,8 +391,8 @@ public final class EntityUtil {
     return Math.round((version + 1.0) * 10.0) / 10.0;
   }
 
-  public static EntityReference copy(EntityReference from, EntityReference to) {
-    return to.withType(from.getType())
+  public static void copy(EntityReference from, EntityReference to) {
+    to.withType(from.getType())
         .withId(from.getId())
         .withName(from.getName())
         .withDisplayName(from.getDisplayName())

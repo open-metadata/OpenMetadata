@@ -16,6 +16,7 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.CONTAINER;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.util.EntityUtil.taskMatch;
@@ -125,17 +126,17 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Override
-  public Pipeline setFields(Pipeline pipeline, Fields fields) {
+  public void setFields(Pipeline pipeline, Fields fields) {
     pipeline.setService(getContainer(pipeline.getId()));
     getTaskTags(fields.contains(FIELD_TAGS), pipeline.getTasks());
-    return pipeline.withPipelineStatus(
+    pipeline.withPipelineStatus(
         fields.contains("pipelineStatus") ? getPipelineStatus(pipeline) : pipeline.getPipelineStatus());
   }
 
   @Override
-  public Pipeline clearFields(Pipeline pipeline, Fields fields) {
+  public void clearFields(Pipeline pipeline, Fields fields) {
     pipeline.withTasks(fields.contains(TASKS_FIELD) ? pipeline.getTasks() : null);
-    return pipeline.withPipelineStatus(fields.contains("pipelineStatus") ? pipeline.getPipelineStatus() : null);
+    pipeline.withPipelineStatus(fields.contains("pipelineStatus") ? pipeline.getPipelineStatus() : null);
   }
 
   private PipelineStatus getPipelineStatus(Pipeline pipeline) {
@@ -178,7 +179,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   public Pipeline deletePipelineStatus(String fqn, Long timestamp) {
     // Validate the request content
-    Pipeline pipeline = dao.findEntityByName(fqn);
+    Pipeline pipeline = findByName(fqn, NON_DELETED);
     pipeline.setService(getContainer(pipeline.getId()));
     PipelineStatus storedPipelineStatus =
         JsonUtils.readValue(getExtensionAtTimestamp(fqn, PIPELINE_STATUS_EXTENSION, timestamp), PipelineStatus.class);

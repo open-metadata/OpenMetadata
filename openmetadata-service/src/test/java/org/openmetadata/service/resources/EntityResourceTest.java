@@ -2112,8 +2112,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return deletedEntity;
   }
 
-  public final T deleteEntity(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
-    return deleteEntity(id, false, false, authHeaders);
+  public final void deleteEntity(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
+    deleteEntity(id, false, false, authHeaders);
   }
 
   public final T deleteEntity(UUID id, boolean recursive, boolean hardDelete, Map<String, String> authHeaders)
@@ -2227,14 +2227,13 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return updated;
   }
 
-  protected final T restoreAndCheckEntity(
+  protected final void restoreAndCheckEntity(
       T entity, Map<String, String> authHeaders, ChangeDescription changeDescription) throws IOException {
     T updated = restoreEntity(new RestoreEntity().withId(entity.getId()), Status.OK, authHeaders);
     validateLatestVersion(updated, MINOR_UPDATE, changeDescription, authHeaders);
     // GET the newly updated entity and validate
     T getEntity = getEntity(updated.getId(), authHeaders);
     validateChangeDescription(getEntity, MINOR_UPDATE, changeDescription);
-    return updated;
   }
 
   protected void validateEntityHistory(
