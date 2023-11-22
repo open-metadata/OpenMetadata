@@ -300,13 +300,13 @@ e2e_test = {
 setup(
     install_requires=list(base_requirements),
     extras_require={
-        "base": list(base_requirements),
-        "dev": list(dev),
-        "test": list(test),
-        "e2e_test": list(e2e_test),
-        "data-insight": list(plugins["elasticsearch"]),
-        **{plugin: list(dependencies) for (plugin, dependencies) in plugins.items()},
-        "all": list(
+        "base": base_requirements,
+        "dev": dev,
+        "test": test,
+        "e2e_test": e2e_test,
+        "data-insight": plugins["elasticsearch"],
+        **{plugin: dependencies for (plugin, dependencies) in plugins.items()},
+        "all": set(
             base_requirements.union(
                 *[
                     requirements
