@@ -23,6 +23,7 @@ import { usePermissionProvider } from '../../components/PermissionProvider/Permi
 import TestCaseResolutionCenterTable from '../../components/ResolutionCenter/TestCaseResolutionCenterTable/TestCaseResolutionCenterTable.component';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { TestCase } from '../../generated/tests/testCase';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getListTestCase, ListTestCaseParams } from '../../rest/testAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -76,6 +77,23 @@ const ResolutionCenterPage = () => {
     } finally {
       setTestCaseListData((prev) => ({ ...prev, isLoading: false }));
     }
+  };
+
+  const handelTestCaseUpdate = (testCase: TestCase) => {
+    setTestCaseListData((prev) => {
+      const testCaseList = prev.data.map((item) => {
+        if (item.fullyQualifiedName === testCase.fullyQualifiedName) {
+          return testCase;
+        }
+
+        return item;
+      });
+
+      return {
+        ...prev,
+        data: testCaseList,
+      };
+    });
   };
 
   const handlePagingClick = ({
@@ -173,6 +191,7 @@ const ResolutionCenterPage = () => {
 
         <Col span={24}>
           <TestCaseResolutionCenterTable
+            handleTestCaseUpdate={handelTestCaseUpdate}
             pagingData={pagingData}
             showPagination={showPagination}
             testCaseListData={testCaseListData}

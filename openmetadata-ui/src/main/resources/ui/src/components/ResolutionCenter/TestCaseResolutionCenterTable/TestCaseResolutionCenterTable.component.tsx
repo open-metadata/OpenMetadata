@@ -13,7 +13,7 @@
 import { Col, Row, Space, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
+import { compare } from 'fast-json-patch';
 import { sortBy } from 'lodash';
 import QueryString from 'qs';
 import React, { useMemo } from 'react';
@@ -27,21 +27,19 @@ import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/entity/type';
 import {
   TestCase,
+  TestCaseFailureStatus,
   TestCaseResult,
   TestCaseStatus,
 } from '../../../generated/tests/testCase';
+import { patchTestCaseResult } from '../../../rest/testAPI';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
-import {
-  formatDate,
-  formatDateTime,
-} from '../../../utils/date-time/DateTimeUtils';
+import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getResolutionCenterDetailPagePath } from '../../../utils/RouterUtils';
 import { getEncodedFqn, replacePlus } from '../../../utils/StringsUtils';
 import { getEntityFqnFromEntityLink } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import AppBadge from '../../common/Badge/Badge.component';
 import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { StatusBox } from '../../common/LastRunGraph/LastRunGraph.component';
 import NextPrevious from '../../common/NextPrevious/NextPrevious';
@@ -52,16 +50,17 @@ import { ResourceEntity } from '../../PermissionProvider/PermissionProvider.inte
 import { TableProfilerTab } from '../../ProfilerDashboard/profilerDashboard.interface';
 import '../resolution-center.style.less';
 import Severity from '../Severity/Severity.component';
+import TestCaseResolutionCenterStatus from '../TestCaseStatus/TestCaseResolutionCenterStatus.component';
 import { TestCaseResolutionCenterTableProps } from './TestCaseResolutionCenterTable.interface';
 
 const TestCaseResolutionCenterTable = ({
   testCaseListData,
   pagingData,
   showPagination,
+  handleTestCaseUpdate,
 }: TestCaseResolutionCenterTableProps) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
-  const [isLoading, setIsLoading] = React.useState<boolean>(false);
 
   const testCaseEditPermission = useMemo(() => {
     return checkPermission(
@@ -89,18 +88,46 @@ const TestCaseResolutionCenterTable = ({
     [testCaseListData.data]
   );
 
-  const handleSeveritySave = (
-    values: { severity: string },
+  const handleSeveritySubmit = async (
+    updatedSeverity: { severity: string },
     record: TestCase
   ) => {
-    setIsLoading(true);
     try {
       // onSave(values.severity);
+      //   handleTestCaseUpdate({
+      //     ...record,
+      //     testCaseResult: updatedResult,
+      //   });
     } catch (error) {
       showErrorToast(error as AxiosError);
-    } finally {
-      setIsLoading(false);
     }
+  };
+
+  const handleStatusSubmit = async (
+    updatedData: TestCaseFailureStatus,
+    record: TestCase
+  ) => {
+    if (record.testCaseResult) {
+      const timestamp = record.testCaseResult?.timestamp ?? 0;
+      const updatedResult: TestCaseResult = {
+        ...record.testCaseResult,
+        testCaseFailureStatus: updatedData,
+      };
+      const testCaseFqn = record.fullyQualifiedName ?? '';
+      const patch = compare(record.testCaseResult, updatedResult);
+      try {
+        await patchTestCaseResult({ testCaseFqn, patch, timestamp });
+
+        handleTestCaseUpdate({
+          ...record,
+          testCaseResult: updatedResult,
+        });
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    }
+
+    return;
   };
 
   const columns: ColumnsType<TestCase> = useMemo(
@@ -196,38 +223,14 @@ const TestCaseResolutionCenterTable = ({
       {
         title: t('label.status'),
         dataIndex: 'testCaseResult',
-        key: 'resolution',
+        key: 'testCaseResult',
         width: 100,
-        render: (value: TestCaseResult) => {
-          const label = value?.testCaseFailureStatus?.testCaseFailureStatusType;
-          const failureStatus = value?.testCaseFailureStatus;
-
-          return label ? (
-            <Tooltip
-              placement="bottom"
-              title={
-                failureStatus?.updatedAt &&
-                `${formatDate(failureStatus.updatedAt)}
-                        ${
-                          failureStatus.updatedBy
-                            ? 'by ' + failureStatus.updatedBy
-                            : ''
-                        }`
-              }>
-              <div>
-                <AppBadge
-                  className={classNames(
-                    'resolution',
-                    label.toLocaleLowerCase()
-                  )}
-                  label={label}
-                />
-              </div>
-            </Tooltip>
-          ) : (
-            '--'
-          );
-        },
+        render: (value: TestCaseResult, record: TestCase) => (
+          <TestCaseResolutionCenterStatus
+            testCaseResult={value}
+            onSubmit={(status) => handleStatusSubmit(status, record)}
+          />
+        ),
       },
       {
         title: t('label.severity'),
@@ -236,9 +239,8 @@ const TestCaseResolutionCenterTable = ({
         width: 150,
         render: (severity: string, record) => (
           <Severity
-            isLoading={isLoading}
             severity={severity}
-            onSave={(severity) => handleSeveritySave(severity, record)}
+            onSubmit={(severity) => handleSeveritySubmit(severity, record)}
           />
         ),
       },

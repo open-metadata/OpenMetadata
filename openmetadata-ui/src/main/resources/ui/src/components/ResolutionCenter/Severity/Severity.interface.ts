@@ -12,8 +12,7 @@
  */
 
 export interface SeverityFormProps {
-  isLoading: boolean;
-  onSave: (data: { severity: string }) => void;
+  onSubmit: (data: { severity: string }) => Promise<void>;
 }
 
 export interface SeverityProps extends SeverityFormProps {

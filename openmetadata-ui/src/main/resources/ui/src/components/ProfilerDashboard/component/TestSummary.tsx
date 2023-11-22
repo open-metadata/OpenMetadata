@@ -233,7 +233,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
         className="m-t-0"
         icon={
           <FilterPlaceHolderIcon
-            className="h-32 w-32"
+            className="w-24"
             data-testid="no-search-image"
           />
         }

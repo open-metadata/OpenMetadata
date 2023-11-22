@@ -22,12 +22,20 @@ import AppBadge from '../../common/Badge/Badge.component';
 import { SeverityProps } from './Severity.interface';
 import SeverityModal from './SeverityModal.component';
 
-const Severity = ({ severity, isLoading, onSave }: SeverityProps) => {
+const Severity = ({ severity, onSubmit }: SeverityProps) => {
   const label = severity || 'severity_3';
   const [isEditSeverity, setIsEditSeverity] = useState<boolean>(false);
 
   const onEditSeverity = useCallback(() => setIsEditSeverity(true), []);
   const onCancel = useCallback(() => setIsEditSeverity(false), []);
+
+  const handleSubmit = useCallback(
+    async (data) => {
+      await onSubmit(data);
+      onCancel();
+    },
+    [onCancel, onSubmit]
+  );
 
   return (
     <>
@@ -47,9 +55,8 @@ const Severity = ({ severity, isLoading, onSave }: SeverityProps) => {
       {isEditSeverity && (
         <SeverityModal
           initialSeverity={label}
-          isLoading={isLoading}
           onCancel={onCancel}
-          onSave={onSave}
+          onSubmit={handleSubmit}
         />
       )}
     </>

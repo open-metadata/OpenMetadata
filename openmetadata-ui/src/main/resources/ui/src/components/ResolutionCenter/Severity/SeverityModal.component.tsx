@@ -12,20 +12,27 @@
  */
 
 import { Form, Modal, Select } from 'antd';
-import { useForm } from 'antd/lib/form/Form';
-import React from 'react';
+import { FormProps, useForm } from 'antd/lib/form/Form';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { severityOptions } from '../../../utils/SeverityUtils';
 import { SeverityModalProps } from './Severity.interface';
 
 const SeverityModal = ({
   initialSeverity,
-  isLoading,
   onCancel,
-  onSave,
+  onSubmit,
 }: SeverityModalProps) => {
   const [form] = useForm();
   const { t } = useTranslation();
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  const handleFormSubmit: FormProps['onFinish'] = (data) => {
+    setIsLoading(true);
+    onSubmit(data).finally(() => {
+      setIsLoading(false);
+    });
+  };
 
   return (
     <Modal
@@ -49,7 +56,7 @@ const SeverityModal = ({
         initialValues={{ severity: initialSeverity }}
         layout="vertical"
         name="severity"
-        onFinish={onSave}>
+        onFinish={handleFormSubmit}>
         <Form.Item label={t('label.severity')} name="severity">
           <Select options={severityOptions()} />
         </Form.Item>

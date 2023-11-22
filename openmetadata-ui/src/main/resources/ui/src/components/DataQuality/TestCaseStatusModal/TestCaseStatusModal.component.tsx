@@ -40,6 +40,7 @@ export const TestCaseStatusModal = ({
   const statusType = Form.useWatch('testCaseFailureStatusType', form);
 
   const handleFormSubmit = (data: TestCaseFailureStatus) => {
+    setIsLoading(true);
     const updatedData: TestCaseFailureStatus = {
       ...data,
       updatedAt: getCurrentMillis(),
