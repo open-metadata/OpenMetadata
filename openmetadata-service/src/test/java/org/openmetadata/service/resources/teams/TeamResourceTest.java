@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.recordToString;
 import static org.openmetadata.csv.EntityCsvTest.assertRows;
 import static org.openmetadata.csv.EntityCsvTest.assertSummary;
@@ -836,7 +837,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
 
   @Override
   public Team validateGetWithDifferentFields(Team expectedTeam, boolean byName) throws HttpResponseException {
-    if (expectedTeam.getUsers() == null) {
+    if (nullOrEmpty(expectedTeam.getUsers())) {
       UserResourceTest userResourceTest = new UserResourceTest();
       CreateUser create = userResourceTest.createRequest("user", "", "", null).withTeams(List.of(expectedTeam.getId()));
       userResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);

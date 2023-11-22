@@ -198,9 +198,7 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
             responseCode = "200",
             description = "domain",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Domain.class))),
-        @ApiResponse(
-            responseCode = "404",
-            description = "Domain for instance {id} and version {version} is " + "not found")
+        @ApiResponse(responseCode = "404", description = "Domain for instance {id} and version {version} is not found")
       })
   public Domain getVersion(
       @Context UriInfo uriInfo,
@@ -267,9 +265,7 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }

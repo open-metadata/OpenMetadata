@@ -41,7 +41,11 @@ import {
   ImageQuality,
 } from '../../utils/ProfilerUtils';
 import { LinkBlot } from '../../utils/QuillLink/QuillLink';
-import { insertMention, insertRef } from '../../utils/QuillUtils';
+import {
+  directionHandler,
+  insertMention,
+  insertRef,
+} from '../../utils/QuillUtils';
 import { getEntityIcon } from '../../utils/TableUtils';
 import { useApplicationConfigContext } from '../ApplicationConfigProvider/ApplicationConfigProvider';
 import { editorRef } from '../common/RichTextEditor/RichTextEditor.interface';
@@ -110,6 +114,7 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
           handlers: {
             insertMention: insertMention,
             insertRef: insertRef,
+            direction: directionHandler,
           },
         },
         'emoji-toolbar': true,
@@ -286,7 +291,10 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
     }, [focused, editorRef]);
 
     return (
-      <div className={className} data-testid="editor-wrapper">
+      <div
+        className={className}
+        data-testid="editor-wrapper"
+        id="om-quill-editor">
         <ReactQuill
           className={classNames('editor-container', editorClass)}
           modules={modules}

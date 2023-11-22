@@ -111,7 +111,7 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(description = "Limit the number report Definition returned. (1 to 1000000, default = " + "10)")
+      @Parameter(description = "Limit the number report Definition returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
           @Min(0)
@@ -225,9 +225,7 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
@@ -363,7 +361,7 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
                 @Content(mediaType = "application/json", schema = @Schema(implementation = WebAnalyticEvent.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Web Analytic event type for instance {id} and version {version} is " + "not found")
+            description = "Web Analytic event type for instance {id} and version {version} is not found")
       })
   public WebAnalyticEvent getVersion(
       @Context UriInfo uriInfo,
