@@ -421,19 +421,25 @@ const DashboardDetails = ({
         }),
         dataIndex: 'chartName',
         key: 'chartName',
-        width: 200,
+        width: 220,
+        fixed: 'left',
         render: (_, record) => {
           const chartName = getEntityName(record);
 
           return record.sourceUrl ? (
             <Typography.Link href={record.sourceUrl} target="_blank">
-              <Space>
-                {chartName}
-                <ExternalLinkIcon height={14} width={14} />
-              </Space>
+              <div className="d-flex items-center">
+                <span className="break-all">{chartName}</span>
+
+                <ExternalLinkIcon
+                  className="m-l-xs flex-none"
+                  height={14}
+                  width={14}
+                />
+              </div>
             </Typography.Link>
           ) : (
-            <Typography.Text>{chartName}</Typography.Text>
+            <Typography.Text className="w-full">{chartName}</Typography.Text>
           );
         },
       },
