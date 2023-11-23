@@ -190,7 +190,7 @@ const DomainDetailsPage = ({
     async (formData: CreateDataProduct) => {
       const data = {
         ...formData,
-        domain: domain.name,
+        domain: domain.fullyQualifiedName,
       };
 
       try {
@@ -238,7 +238,7 @@ const DomainDetailsPage = ({
           '',
           1,
           0,
-          `(domain.fullyQualifiedName:"${domainFqn}")`,
+          `(domain.fullyQualifiedName:${domainFqn})`,
           '',
           '',
           SearchIndex.DATA_PRODUCT
@@ -258,7 +258,7 @@ const DomainDetailsPage = ({
           '',
           1,
           0,
-          `(domain.fullyQualifiedName:"${fqn}")`,
+          `(domain.fullyQualifiedName:${fqn})`,
           '',
           '',
           SearchIndex.ALL

@@ -18,6 +18,7 @@ import { Glossary } from '../../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
 import { ChangeDescription } from '../../../../generated/entity/type';
 import { TagLabel } from '../../../../generated/type/tagLabel';
+import { getEntityName } from '../../../../utils/EntityUtils';
 import {
   getEntityVersionByField,
   getEntityVersionTags,
@@ -109,7 +110,7 @@ const GlossaryOverviewTab = ({
           <Col span={24}>
             <DescriptionV1
               description={glossaryDescription}
-              entityName={selectedData?.displayName ?? selectedData?.name}
+              entityName={getEntityName(selectedData)}
               entityType={EntityType.GLOSSARY}
               hasEditAccess={permissions.EditDescription || permissions.EditAll}
               isEdit={isDescriptionEditable}

@@ -24,6 +24,7 @@ import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.DIVISION;
 import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.GROUP;
 import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.ORGANIZATION;
 import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.FIELD_DOMAIN;
 import static org.openmetadata.service.Entity.ORGANIZATION_NAME;
@@ -73,7 +74,6 @@ import org.openmetadata.service.resources.teams.TeamResource;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
@@ -206,7 +206,7 @@ public class TeamRepository extends EntityRepository<Team> {
   protected void cleanup(Team team) {
     // When a team is deleted, if the children team don't have another parent, set Organization as the parent
     for (EntityReference child : listOrEmpty(team.getChildren())) {
-      Team childTeam = dao.findEntityById(child.getId());
+      Team childTeam = find(child.getId(), NON_DELETED);
       getParents(childTeam);
       if (childTeam.getParents().size() == 1) { // Only parent is being deleted, move the parent to Organization
         addRelationship(organization.getId(), childTeam.getId(), TEAM, TEAM, Relationship.PARENT_OF);
@@ -479,13 +479,13 @@ public class TeamRepository extends EntityRepository<Team> {
     List<Team> teams = new ArrayList<>();
     for (EntityReference teamRef : teamRefs) {
       try {
-        Team team = dao.findEntityById(teamRef.getId());
+        Team team = find(teamRef.getId(), NON_DELETED);
         teams.add(team);
       } catch (EntityNotFoundException ex) {
         // Team was soft-deleted
         LOG.debug("Failed to populate team since it might be soft deleted.", ex);
         // Ensure that the team was soft-deleted otherwise throw an exception
-        dao.findEntityById(teamRef.getId(), Include.DELETED);
+        find(teamRef.getId(), Include.DELETED);
       }
     }
     return teams;
@@ -518,8 +518,8 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   public void initOrganization() {
-    String json = dao.findJsonByFqn(ORGANIZATION_NAME, Include.ALL);
-    if (json == null) {
+    organization = findByNameOrNull(ORGANIZATION_NAME, ALL);
+    if (organization == null) {
       LOG.debug("Organization {} is not initialized", ORGANIZATION_NAME);
       // Teams
       try {
@@ -543,7 +543,6 @@ public class TeamRepository extends EntityRepository<Team> {
         throw e;
       }
     } else {
-      organization = JsonUtils.readValue(json, Team.class);
       LOG.info("Organization is already initialized");
     }
   }

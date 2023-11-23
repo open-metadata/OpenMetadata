@@ -16,6 +16,7 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
@@ -139,8 +140,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
 
   public SearchIndex getSampleData(UUID searchIndexId, boolean authorizePII) {
     // Validate the request content
-    SearchIndex searchIndex = dao.findEntityById(searchIndexId);
-
+    SearchIndex searchIndex = find(searchIndexId, NON_DELETED);
     SearchIndexSampleData sampleData =
         JsonUtils.readValue(
             daoCollection.entityExtensionDAO().getExtension(searchIndex.getId(), "searchIndex.sampleData"),
