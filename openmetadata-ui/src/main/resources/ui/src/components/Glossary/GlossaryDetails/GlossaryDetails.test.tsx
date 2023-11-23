@@ -38,12 +38,19 @@ jest.mock('react-router-dom', () => ({
 }));
 
 jest.mock(
-  '../..//ActivityFeed/ActivityFeedTab/ActivityFeedTab.component',
+  '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component',
   () => ({
     ActivityFeedTab: jest
       .fn()
       .mockImplementation(() => <p>testActivityFeedTab</p>),
   })
+);
+
+jest.mock(
+  '../GlossaryDetailsRightPanel/GlossaryDetailsRightPanel.component',
+  () => {
+    return jest.fn().mockImplementation(() => <>testGlossaryRightPanel</>);
+  }
 );
 
 const mockProps = {

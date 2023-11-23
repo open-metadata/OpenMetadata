@@ -51,6 +51,10 @@ jest.mock('../../../utils/TagsUtils', () => ({
     .mockImplementation(() => Promise.resolve({ data: [] })),
 }));
 
+jest.mock('../../../components/common/ProfilePicture/ProfilePicture', () => {
+  return jest.fn().mockImplementation(() => <>testProfilePicture</>);
+});
+
 describe('TableQueryRightPanel component test', () => {
   it('Component should render', async () => {
     render(<TableQueryRightPanel {...mockProps} />, {

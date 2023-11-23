@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { findByTestId, findByText, render } from '@testing-library/react';
+import { findByText, render } from '@testing-library/react';
 import React from 'react';
 import ProfilePicture from './ProfilePicture';
 
@@ -28,32 +28,20 @@ jest.mock('../../../utils/UserDataUtils', () => {
   };
 });
 
+jest.mock('../../../hooks/user-profile/useUserProfile', () => ({
+  useUserProfile: jest.fn().mockImplementation(() => ['', false, {}]),
+}));
+
 const mockData = {
   name: 'test-name',
 };
 
 describe('Test ProfilePicture component', () => {
   it('ProfilePicture component should render with Avatar', async () => {
-    const { container } = render(
-      <ProfilePicture
-        {...mockData}
-        className=""
-        textClass=""
-        type="square"
-        width="36"
-      />
-    );
+    const { container } = render(<ProfilePicture {...mockData} width="36" />);
 
     const avatar = await findByText(container, 'Avatar');
 
     expect(avatar).toBeInTheDocument();
-  });
-
-  it('Profile Avatar should be loading', async () => {
-    const { container } = render(<ProfilePicture {...mockData} />);
-
-    const loader = await findByTestId(container, 'loader-cntnr');
-
-    expect(loader).toBeInTheDocument();
   });
 });
