@@ -155,14 +155,14 @@ jobs:
         echo "import os" >> $SITE_CUSTOMIZE_PATH
         echo "try:" >> $SITE_CUSTOMIZE_PATH
         echo "    import coverage" >> $SITE_CUSTOMIZE_PATH
-        echo "    os.environ['COVERAGE_PROCESS_START'] = 'ingestion/.coveragerc'" >> $SITE_CUSTOMIZE_PATH
+        echo "    os.environ['COVERAGE_PROCESS_START'] = 'ingestion/pyproject.toml'" >> $SITE_CUSTOMIZE_PATH
         echo "    coverage.process_startup()" >> $SITE_CUSTOMIZE_PATH
         echo "except ImportError:" >> $SITE_CUSTOMIZE_PATH
         echo "    pass" >> $SITE_CUSTOMIZE_PATH
-        sed -i "5i concurrency = multiprocessing" ingestion/.coveragerc
-        coverage run --rcfile ingestion/.coveragerc -a --branch -m pytest -c ingestion/setup.cfg --junitxml=ingestion/junit/test-results-$E2E_TEST.xml --ignore=ingestion/tests/unit/source ingestion/tests/cli_e2e/test_cli_$E2E_TEST.py
-        coverage combine --data-file=.coverage.$E2E_TEST --rcfile=ingestion/.coveragerc --keep -a .coverage*   
-        coverage report --rcfile ingestion/.coveragerc --data-file .coverage.$E2E_TEST || true
+        sed -i "5i concurrency = multiprocessing" ingestion/pyproject.toml
+        coverage run --rcfile ingestion/pyproject.toml -a --branch -m pytest -c ingestion/setup.cfg --junitxml=ingestion/junit/test-results-$E2E_TEST.xml --ignore=ingestion/tests/unit/source ingestion/tests/cli_e2e/test_cli_$E2E_TEST.py
+        coverage combine --data-file=.coverage.$E2E_TEST --rcfile=ingestion//pyproject.toml --keep -a .coverage*   
+        coverage report --rcfile ingestion/pyproject.toml --data-file .coverage.$E2E_TEST || true
 
     - name: Upload coverage artifact for Python tests
       if: matrix.e2e-test == 'python' && steps.python-e2e-test.outcome == 'success'
@@ -191,17 +191,17 @@ jobs:
         docker compose down --remove-orphans
         sudo rm -rf ${PWD}/docker-volume
 
-    - name: Slack on Failure
-      if: steps.e2e-test.outcome != 'success' && steps.python-e2e-test.outcome != 'success'
-      uses: slackapi/slack-github-action@v1.23.0
-      with:
-        payload: |
-          {
-            "text": "🔥 Failed E2E Test for: ${{ matrix.e2e-test }} 🔥"
-          }
-      env:
-        SLACK_WEBHOOK_URL: ${{ secrets.E2E_SLACK_WEBHOOK }}
-        SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+    # - name: Slack on Failure
+    #   if: steps.e2e-test.outcome != 'success' && steps.python-e2e-test.outcome != 'success'
+    #   uses: slackapi/slack-github-action@v1.23.0
+    #   with:
+    #     payload: |
+    #       {
+    #         "text": "🔥 Failed E2E Test for: ${{ matrix.e2e-test }} 🔥"
+    #       }
+    #   env:
+    #     SLACK_WEBHOOK_URL: ${{ secrets.E2E_SLACK_WEBHOOK }}
+    #     SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
 
     - name: Force failure
       if: steps.e2e-test.outcome != 'success' && steps.python-e2e-test.outcome != 'success'
