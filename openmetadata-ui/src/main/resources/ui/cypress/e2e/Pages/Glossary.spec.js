@@ -41,10 +41,12 @@ import {
   SEARCH_ENTITY_TABLE,
 } from '../../constants/constants';
 
+const name = `test_dataconsumer${uuid()}`;
+
 const CREDENTIALS = {
   firstName: 'Cypress',
   lastName: 'UserDC',
-  email: `test_dataconsumer${uuid()}@openmetadata.org`,
+  email: `${name}@openmetadata.org`,
   password: 'User@OMD123',
   username: 'CypressUserDC',
 };
@@ -426,9 +428,7 @@ const updateTags = (inTerm) => {
     '/api/v1/search/query?q=*&index=tag_search_index&from=0&size=*&query_filter=*',
     'tags'
   );
-  cy.get(
-    '[data-testid="tags-input-container"] [data-testid="add-tag"]'
-  ).click();
+  cy.get('[data-testid="tags-container"] [data-testid="add-tag"]').click();
 
   verifyResponseStatusCode('@tags', 200);
 
@@ -442,7 +442,7 @@ const updateTags = (inTerm) => {
 
   cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
   const container = inTerm
-    ? '[data-testid="tags-input-container"]'
+    ? '[data-testid="tags-container"]'
     : '[data-testid="glossary-details"]';
   cy.wait(1000);
   cy.get(container).scrollIntoView().contains('Personal').should('be.visible');
@@ -660,7 +660,7 @@ describe('Glossary page should work properly', () => {
 
     // Remove Tag
     cy.get(
-      '[data-testid="tags-input-container"] [data-testid="edit-button"]'
+      '[data-testid="tags-container"] [data-testid="edit-button"]'
     ).click();
 
     cy.get('[data-testid="remove-tags"]').should('be.visible').click();
@@ -790,6 +790,64 @@ describe('Glossary page should work properly', () => {
 
     // updating voting for glossary term
     voteGlossary();
+  });
+
+  it('Request Tags workflow for Glossary', function () {
+    cy.get('[data-testid="glossary-left-panel"]')
+      .contains(NEW_GLOSSARY_1.name)
+      .click();
+
+    interceptURL(
+      'GET',
+      `/api/v1/search/query?q=*%20AND%20disabled:false&index=tag_search_index*`,
+      'suggestTag'
+    );
+    interceptURL('POST', '/api/v1/feed', 'taskCreated');
+    interceptURL('PUT', '/api/v1/feed/tasks/*/resolve', 'taskResolve');
+
+    cy.get('[data-testid="request-entity-tags"]').should('exist').click();
+
+    // set assignees for task
+    cy.get(
+      '[data-testid="select-assignee"] > .ant-select-selector > .ant-select-selection-overflow'
+    )
+      .click()
+      .type(name);
+    cy.get(`[data-testid="assignee-option-${name}"]`).click();
+    cy.clickOutside();
+
+    cy.get('[data-testid="tag-selector"]')
+      .click()
+      .type('{backspace}')
+      .type('{backspace}')
+      .type('Personal');
+
+    verifyResponseStatusCode('@suggestTag', 200);
+    cy.get(
+      '.ant-select-dropdown [data-testid="tag-PersonalData.Personal"]'
+    ).click();
+    cy.clickOutside();
+
+    cy.get('[data-testid="submit-tag-request"]').click();
+    verifyResponseStatusCode('@taskCreated', 201);
+
+    // Accept the tag suggestion which is created
+    cy.get('.ant-btn-compact-first-item').contains('Accept Suggestion').click();
+
+    verifyResponseStatusCode('@taskResolve', 200);
+
+    cy.reload();
+
+    cy.get('[data-testid="glossary-left-panel"]')
+      .contains(NEW_GLOSSARY_1.name)
+      .click();
+
+    checkDisplayName(NEW_GLOSSARY_1.name);
+
+    // Verify Tags which is added at the time of creating glossary
+    cy.get('[data-testid="tags-container"]')
+      .contains('Personal')
+      .should('be.visible');
   });
 
   it('Assets Tab should work properly', () => {

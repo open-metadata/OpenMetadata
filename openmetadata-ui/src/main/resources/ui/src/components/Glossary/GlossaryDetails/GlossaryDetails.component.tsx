@@ -48,6 +48,7 @@ const GlossaryDetails = ({
   onAddGlossaryTerm,
   onEditGlossaryTerm,
   isVersionView,
+  onThreadLinkSelect,
 }: GlossaryDetailsProps) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -143,11 +144,14 @@ const GlossaryDetails = ({
               entityType={EntityType.GLOSSARY}
               hasEditAccess={permissions.EditDescription || permissions.EditAll}
               isEdit={isDescriptionEditable}
-              showCommentsIcon={false}
+              owner={glossary?.owner}
+              showActions={!glossary.deleted}
               onCancel={() => setIsDescriptionEditable(false)}
               onDescriptionEdit={() => setIsDescriptionEditable(true)}
               onDescriptionUpdate={onDescriptionUpdate}
+              onThreadLinkSelect={onThreadLinkSelect}
             />
+
             <GlossaryTermTab
               isGlossary
               childGlossaryTerms={glossaryTerms}
@@ -166,6 +170,7 @@ const GlossaryDetails = ({
             isVersionView={isVersionView}
             permissions={permissions}
             selectedData={glossary}
+            onThreadLinkSelect={onThreadLinkSelect}
             onUpdate={(data) => handleGlossaryUpdate(data as Glossary)}
           />
         </Col>

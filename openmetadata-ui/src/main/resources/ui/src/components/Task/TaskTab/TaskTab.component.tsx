@@ -379,6 +379,7 @@ export const TaskTab = ({
               </Button>
             ) : (
               <Dropdown.Button
+                data-testid="edit-accept-task-dropdown"
                 icon={<DownOutlined />}
                 menu={{
                   items: TASK_ACTION_LIST,
