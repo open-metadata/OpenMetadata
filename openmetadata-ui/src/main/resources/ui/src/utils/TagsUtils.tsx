@@ -29,6 +29,7 @@ import { ExplorePageTabs } from '../enums/Explore.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { Classification } from '../generated/entity/classification/classification';
 import { Tag } from '../generated/entity/classification/tag';
+import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import { Column } from '../generated/entity/data/table';
 import { Paging } from '../generated/type/paging';
 import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
@@ -335,6 +336,39 @@ export const fetchTagsElasticSearch = async (
     }, []),
     paging: {
       total: res.hits.total.value,
+    },
+  };
+};
+
+export const fetchGlossaryList = async (
+  searchQueryParam: string,
+  page: number
+): Promise<{
+  data: {
+    label: string;
+    value: string;
+    data: GlossaryTerm;
+  }[];
+  paging: Paging;
+}> => {
+  const glossaryResponse = await searchQuery({
+    query: searchQueryParam ? `*${searchQueryParam}*` : '*',
+    pageNumber: page,
+    pageSize: 10,
+    queryFilter: {},
+    searchIndex: SearchIndex.GLOSSARY,
+  });
+
+  const hits = glossaryResponse.hits.hits;
+
+  return {
+    data: hits.map(({ _source }) => ({
+      label: _source.fullyQualifiedName ?? '',
+      value: _source.fullyQualifiedName ?? '',
+      data: _source,
+    })),
+    paging: {
+      total: glossaryResponse.hits.total.value,
     },
   };
 };
