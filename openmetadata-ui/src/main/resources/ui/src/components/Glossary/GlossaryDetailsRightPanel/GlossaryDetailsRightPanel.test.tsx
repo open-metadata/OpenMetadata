@@ -48,6 +48,7 @@ describe('GlossaryDetailsRightPanel', () => {
           isGlossary
           permissions={mockPermissions}
           selectedData={mockedGlossaries[0]}
+          onThreadLinkSelect={jest.fn()}
           onUpdate={jest.fn()}
         />
       </BrowserRouter>

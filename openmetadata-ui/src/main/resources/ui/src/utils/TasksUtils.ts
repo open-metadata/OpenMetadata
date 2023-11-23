@@ -53,6 +53,7 @@ import {
   getDatabaseSchemaDetailsByFQN,
 } from '../rest/databaseAPI';
 import { getDataModelDetailsByFQN } from '../rest/dataModelsAPI';
+import { getGlossariesByName, getGlossaryTermByFQN } from '../rest/glossaryAPI';
 import { getUserSuggestions } from '../rest/miscAPI';
 import { getMlModelByFQN } from '../rest/mlModelAPI';
 import { getPipelineByFqn } from '../rest/pipelineAPI';
@@ -73,11 +74,12 @@ import { defaultFields as DataModelFields } from './DataModelsUtils';
 import { defaultFields as TableFields } from './DatasetDetailsUtils';
 import { getEntityName } from './EntityUtils';
 import { getEntityFQN, getEntityType } from './FeedUtils';
+import { getGlossaryBreadcrumbs } from './GlossaryUtils';
 import { defaultFields as MlModelFields } from './MlModelDetailsUtils';
 import { defaultFields as PipelineFields } from './PipelineDetailsUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import { STORED_PROCEDURE_DEFAULT_FIELDS } from './StoredProceduresUtils';
-import { getEncodedFqn } from './StringsUtils';
+import { getDecodedFqn, getEncodedFqn } from './StringsUtils';
 import { getEntityLink } from './TableUtils';
 import { showErrorToast } from './ToastUtils';
 
@@ -275,6 +277,8 @@ export const TASK_ENTITIES = [
   EntityType.DASHBOARD_DATA_MODEL,
   EntityType.STORED_PROCEDURE,
   EntityType.SEARCH_INDEX,
+  EntityType.GLOSSARY,
+  EntityType.GLOSSARY_TERM,
 ];
 
 export const getBreadCrumbList = (
@@ -308,12 +312,17 @@ export const getBreadCrumbList = (
 
   const service = (serviceCategory: ServiceCategory) => {
     return {
-      name: getEntityName(entityData.service),
-      url: getEntityName(entityData.service)
-        ? getServiceDetailsPath(entityData.service?.name || '', serviceCategory)
+      name: getEntityName((entityData as Table).service),
+      url: getEntityName((entityData as Table).service)
+        ? getServiceDetailsPath(
+            (entityData as Table).service?.name ?? '',
+            serviceCategory
+          )
         : '',
-      imgSrc: entityData.serviceType
-        ? serviceUtilClassBase.getServiceTypeLogo(entityData.serviceType)
+      imgSrc: (entityData as Table).serviceType
+        ? serviceUtilClassBase.getServiceTypeLogo(
+            (entityData as Table).serviceType as string
+          )
         : undefined,
     };
   };
@@ -370,6 +379,11 @@ export const getBreadCrumbList = (
         databaseSchema,
         activeEntity,
       ];
+    }
+
+    case EntityType.GLOSSARY:
+    case EntityType.GLOSSARY_TERM: {
+      return getGlossaryBreadcrumbs(entityData.fullyQualifiedName ?? '');
     }
 
     default:
@@ -479,6 +493,22 @@ export const fetchEntityDetail = (
         entityFQN,
         STORED_PROCEDURE_DEFAULT_FIELDS
       )
+        .then((res) => {
+          setEntityData(res);
+        })
+        .catch((err: AxiosError) => showErrorToast(err));
+
+      break;
+    case EntityType.GLOSSARY:
+      getGlossariesByName(entityFQN, TabSpecificField.TAGS)
+        .then((res) => {
+          setEntityData(res);
+        })
+        .catch((err: AxiosError) => showErrorToast(err));
+
+      break;
+    case EntityType.GLOSSARY_TERM:
+      getGlossaryTermByFQN(getDecodedFqn(entityFQN), TabSpecificField.TAGS)
         .then((res) => {
           setEntityData(res);
         })

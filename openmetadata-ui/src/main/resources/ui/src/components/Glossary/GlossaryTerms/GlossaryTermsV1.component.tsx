@@ -63,6 +63,7 @@ const GlossaryTermsV1 = ({
   updateVote,
   refreshActiveGlossaryTerm,
   isVersionView,
+  onThreadLinkSelect,
 }: GlossaryTermsV1Props) => {
   const {
     fqn: glossaryFqn,
@@ -130,6 +131,7 @@ const GlossaryTermsV1 = ({
             isVersionView={isVersionView}
             permissions={permissions}
             selectedData={glossaryTerm}
+            onThreadLinkSelect={onThreadLinkSelect}
             onUpdate={(data) => handleGlossaryTermUpdate(data as GlossaryTerm)}
           />
         ),

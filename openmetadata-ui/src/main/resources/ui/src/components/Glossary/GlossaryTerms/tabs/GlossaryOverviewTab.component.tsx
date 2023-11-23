@@ -17,7 +17,7 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { Glossary } from '../../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
 import { ChangeDescription } from '../../../../generated/entity/type';
-import { TagLabel } from '../../../../generated/type/tagLabel';
+import { TagLabel, TagSource } from '../../../../generated/type/tagLabel';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import {
   getEntityVersionByField,
@@ -25,7 +25,8 @@ import {
 } from '../../../../utils/EntityVersionUtils';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
 import { OperationPermission } from '../../../PermissionProvider/PermissionProvider.interface';
-import TagsInput from '../../../TagsInput/TagsInput.component';
+import TagsContainerV2 from '../../../Tag/TagsContainerV2/TagsContainerV2';
+import { DisplayType } from '../../../Tag/TagsViewer/TagsViewer.interface';
 import GlossaryDetailsRightPanel from '../../GlossaryDetailsRightPanel/GlossaryDetailsRightPanel.component';
 import GlossaryTermReferences from './GlossaryTermReferences';
 import GlossaryTermSynonyms from './GlossaryTermSynonyms';
@@ -37,6 +38,7 @@ type Props = {
   onUpdate: (data: GlossaryTerm | Glossary) => Promise<void>;
   isGlossary: boolean;
   isVersionView?: boolean;
+  onThreadLinkSelect: (value: string) => void;
 };
 
 const GlossaryOverviewTab = ({
@@ -45,6 +47,7 @@ const GlossaryOverviewTab = ({
   onUpdate,
   isGlossary,
   isVersionView,
+  onThreadLinkSelect,
 }: Props) => {
   const [isDescriptionEditable, setIsDescriptionEditable] =
     useState<boolean>(false);
@@ -110,14 +113,17 @@ const GlossaryOverviewTab = ({
           <Col span={24}>
             <DescriptionV1
               description={glossaryDescription}
+              entityFqn={selectedData.fullyQualifiedName}
               entityName={getEntityName(selectedData)}
-              entityType={EntityType.GLOSSARY}
+              entityType={EntityType.GLOSSARY_TERM}
               hasEditAccess={permissions.EditDescription || permissions.EditAll}
               isEdit={isDescriptionEditable}
-              showCommentsIcon={false}
+              owner={selectedData?.owner}
+              showActions={!selectedData.deleted}
               onCancel={() => setIsDescriptionEditable(false)}
               onDescriptionEdit={() => setIsDescriptionEditable(true)}
               onDescriptionUpdate={onDescriptionUpdate}
+              onThreadLinkSelect={onThreadLinkSelect}
             />
           </Col>
           <Col span={24}>
@@ -153,11 +159,15 @@ const GlossaryOverviewTab = ({
 
               <Col span={12}>
                 <Space className="w-full" direction="vertical">
-                  <TagsInput
-                    editable={hasEditTagsPermissions}
-                    isVersionView={isVersionView}
-                    tags={tags}
-                    onTagsUpdate={handleTagsUpdate}
+                  <TagsContainerV2
+                    displayType={DisplayType.READ_MORE}
+                    entityFqn={selectedData.fullyQualifiedName}
+                    entityType={EntityType.GLOSSARY_TERM}
+                    permission={hasEditTagsPermissions}
+                    selectedTags={tags ?? []}
+                    tagType={TagSource.Classification}
+                    onSelectionChange={handleTagsUpdate}
+                    onThreadLinkSelect={onThreadLinkSelect}
                   />
                 </Space>
               </Col>
@@ -171,6 +181,7 @@ const GlossaryOverviewTab = ({
           isVersionView={isVersionView}
           permissions={permissions}
           selectedData={selectedData}
+          onThreadLinkSelect={onThreadLinkSelect}
           onUpdate={onUpdate}
         />
       </Col>
