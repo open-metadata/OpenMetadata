@@ -23,8 +23,8 @@ import { DATABASE_SERVICE } from '../../constants/EntityConstant';
 import { SERVICE_CATEGORIES } from '../../constants/service.constants';
 
 const ENTITY_TABLE = {
-  term: DATABASE_SERVICE.tables.name,
-  displayName: DATABASE_SERVICE.tables.name,
+  term: DATABASE_SERVICE.entity.name,
+  displayName: DATABASE_SERVICE.entity.name,
   entity: DATA_ASSETS.tables,
   serviceName: DATABASE_SERVICE.service.name,
   schemaName: DATABASE_SERVICE.schema.name,
@@ -40,7 +40,7 @@ describe('Restore entity functionality should work properly', () => {
       createEntityTable({
         token,
         ...DATABASE_SERVICE,
-        tables: [DATABASE_SERVICE.tables],
+        tables: [DATABASE_SERVICE.entity],
       });
     });
   });

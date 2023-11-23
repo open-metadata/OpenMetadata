@@ -50,7 +50,7 @@ describe('Recently viwed data assets', () => {
       createEntityTable({
         token,
         ...DATABASE_SERVICE,
-        tables: [DATABASE_SERVICE.tables],
+        tables: [DATABASE_SERVICE.entity],
       });
       SINGLE_LEVEL_SERVICE.forEach((data) => {
         createSingleLevelEntity({

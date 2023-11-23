@@ -49,7 +49,7 @@ describe('Check if voting work properly in entities', () => {
       createEntityTable({
         token,
         ...DATABASE_SERVICE,
-        tables: [DATABASE_SERVICE.tables],
+        tables: [DATABASE_SERVICE.entity],
       });
       SINGLE_LEVEL_SERVICE.forEach((data) => {
         createSingleLevelEntity({

@@ -30,8 +30,8 @@ import {
 import { SERVICE_CATEGORIES } from '../../constants/service.constants';
 
 const queryTable = {
-  term: DATABASE_SERVICE.tables.name,
-  displayName: DATABASE_SERVICE.tables.name,
+  term: DATABASE_SERVICE.entity.name,
+  displayName: DATABASE_SERVICE.entity.name,
   entity: DATA_ASSETS.tables,
   serviceName: DATABASE_SERVICE.service.name,
   entityType: 'Table',
@@ -60,7 +60,7 @@ describe('Query Entity', () => {
       createEntityTable({
         token,
         ...DATABASE_SERVICE,
-        tables: [DATABASE_SERVICE.tables, table1, table2],
+        tables: [DATABASE_SERVICE.entity, table1, table2],
       });
       // get Table by name and create query in the table
       createQueryByTableName(token, table1);
