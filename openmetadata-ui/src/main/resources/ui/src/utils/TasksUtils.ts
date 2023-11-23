@@ -500,7 +500,7 @@ export const fetchEntityDetail = (
 
       break;
     case EntityType.GLOSSARY:
-      getGlossariesByName(entityFQN, '')
+      getGlossariesByName(entityFQN, TabSpecificField.TAGS)
         .then((res) => {
           setEntityData(res);
         })
@@ -508,7 +508,7 @@ export const fetchEntityDetail = (
 
       break;
     case EntityType.GLOSSARY_TERM:
-      getGlossaryTermByFQN(getDecodedFqn(entityFQN), '')
+      getGlossaryTermByFQN(getDecodedFqn(entityFQN), TabSpecificField.TAGS)
         .then((res) => {
           setEntityData(res);
         })
