@@ -22,24 +22,13 @@ import {
 } from '../constants/SoftDeleteFlow.constants';
 import { interceptURL, verifyResponseStatusCode } from './common';
 
-export const checkIsEditButtonNotAvailable = ({
-  containerSelector,
-  elementSelector,
-}) => {
-  cy.get(containerSelector).then(($body) => {
-    const editField = $body.find(elementSelector);
-
-    expect(editField.length).to.equal(0);
-  });
-};
-
 export const checkCustomPropertyEditButton = ({
   verifyAPIResponse = false,
   checkIsActionEnabled = true,
 }) => {
   interceptURL(
     'GET',
-    `/api/v1/metadata/types/name/*fields=customProperties`,
+    `/api/v1/metadata/types/name/*fields=customProperties*`,
     'getCustomProperties'
   );
 
@@ -88,10 +77,7 @@ export const checkForEditActions = ({
           .scrollIntoView()
           .should('be.visible');
       } else {
-        checkIsEditButtonNotAvailable({
-          containerSelector,
-          elementSelector,
-        });
+        cy.get(`${containerSelector} ${elementSelector}`).should('not.exist');
       }
     }
   );
@@ -107,7 +93,7 @@ export const checkLineageTabActions = ({
 }) => {
   interceptURL(
     'GET',
-    `/api/v1/lineage/*/name/*?upstreamDepth=1&downstreamDepth=1`,
+    `/api/v1/lineage/*/name/*?upstreamDepth=1&downstreamDepth=1*`,
     'getLineageData'
   );
 
@@ -120,7 +106,8 @@ export const checkLineageTabActions = ({
   if (checkIsActionEnabled) {
     cy.get('[data-testid="edit-lineage"]').should('be.visible');
   } else {
-    cy.get('[data-testid="no-data-placeholder"]').contains(
+    cy.get('[data-testid="no-data-placeholder"]').should(
+      'contain',
       'Lineage data is not available for deleted entities.'
     );
   }
@@ -141,7 +128,8 @@ export const checkForTableSpecificFields = ({
   if (checkIsActionEnabled) {
     cy.get('[data-testid="add-query-btn"]').should('be.enabled');
   } else {
-    cy.get('[data-testid="no-data-placeholder"]').contains(
+    cy.get('[data-testid="no-data-placeholder"]').should(
+      'contain',
       'Queries data is not available for deleted entities.'
     );
   }
@@ -156,15 +144,8 @@ export const checkForTableSpecificFields = ({
     cy.get('[data-testid="profiler-add-table-test-btn"]').should('be.visible');
     cy.get('[data-testid="profiler-setting-btn"]').should('be.visible');
   } else {
-    cy.get('[data-testid="table-profiler-container"]').then(($body) => {
-      const addTestButton = $body.find(
-        '[data-testid="profiler-add-table-test-btn"]'
-      );
-      const settingsButton = $body.find('[data-testid="profiler-setting-btn"]');
-
-      expect(addTestButton.length).to.equal(0);
-      expect(settingsButton.length).to.equal(0);
-    });
+    cy.get('[data-testid="profiler-add-table-test-btn"]').should('not.exist');
+    cy.get('[data-testid="profiler-setting-btn"]').should('not.exist');
   }
 };
 
@@ -196,7 +177,10 @@ export const softDeletedEntityCommonChecks = ({
   cy.get('[data-testid="delete-button-title"]').click();
   cy.get('[data-testid="confirm-button"]').should('be.disabled');
   cy.get('[data-testid="confirmation-text-input"]').type('DEL{enter}');
-  cy.get('#deleteTextInput_help').contains('Please type DELETE to confirm.');
+  cy.get('#deleteTextInput_help').should(
+    'contain',
+    'Please type DELETE to confirm.'
+  );
   cy.get('[data-testid="confirm-button"]').should('be.disabled');
   cy.get('[data-testid="confirmation-text-input"]').clear().type('DELETE');
   cy.get('[data-testid="confirm-button"]').click();
@@ -223,17 +207,21 @@ export const softDeletedEntityCommonChecks = ({
   cy.get('[data-testid="manage-button"]').click();
 
   // only two menu options (restore and delete) should be present
-  cy.get('[data-testid="manage-dropdown-list-container"]').then(($body) => {
-    const editTier = $body.find(`[data-menu-id*="rc-menu"]`);
-
-    expect(editTier.length).to.equal(2);
-  });
+  cy.get(
+    '[data-testid="manage-dropdown-list-container"] [data-testid="announcement-button"]'
+  ).should('not.exist');
+  cy.get(
+    '[data-testid="manage-dropdown-list-container"] [data-testid="rename-button"]'
+  ).should('not.exist');
+  cy.get(
+    '[data-testid="manage-dropdown-list-container"] [data-testid="profiler-setting-button"]'
+  ).should('not.exist');
   cy.get(
     '[data-testid="manage-dropdown-list-container"] [data-testid="restore-button"]'
-  );
+  ).should('be.visible');
   cy.get(
     '[data-testid="manage-dropdown-list-container"] [data-testid="delete-button"]'
-  );
+  ).should('be.visible');
 
   // Restore the soft deleted entity
   cy.get('[data-testid="restore-button-title"]').click();
@@ -279,7 +267,7 @@ export const nonDeletedTeamChecks = () => {
   cy.get('[data-testid="add-domain"]').scrollIntoView().should('be.visible');
   cy.get('[data-testid="edit-owner"]').scrollIntoView().should('be.visible');
   cy.get('[data-testid="edit-email"]').scrollIntoView().should('be.visible');
-  cy.get('[data-testid="teams-subscription"] .cursor-pointer')
+  cy.get('[data-testid="edit-team-subscription"]')
     .scrollIntoView()
     .should('be.visible');
   cy.get('[data-testid="edit-team-type-icon"]')
@@ -301,85 +289,41 @@ export const nonDeletedTeamChecks = () => {
 
 export const deletedTeamChecks = () => {
   cy.get('[data-testid="manage-button"]').scrollIntoView().click();
-  cy.get('[data-testid="manage-dropdown-list-container"]').then(($body) => {
-    const importButton = $body.find('[data-testid="import-button-title"]');
-
-    expect(importButton.length).to.equal(0);
-  });
-  cy.get('[data-testid="manage-dropdown-list-container"]').then(($body) => {
-    const exportButton = $body.find('[data-testid="export-title"]');
-
-    expect(exportButton.length).to.equal(0);
-  });
-  cy.get('[data-testid="manage-dropdown-list-container"]').then(($body) => {
-    const openGroupButton = $body.find('[data-testid="open-group-label"]');
-
-    expect(openGroupButton.length).to.equal(0);
-  });
+  cy.get(
+    '[data-testid="manage-dropdown-list-container"] [data-testid="import-button-title"]'
+  ).should('not.exist');
+  cy.get(
+    '[data-testid="manage-dropdown-list-container"] [data-testid="export-title"]'
+  ).should('not.exist');
+  cy.get(
+    '[data-testid="manage-dropdown-list-container"] [data-testid="open-group-label"]'
+  ).should('not.exist');
   cy.get('[data-testid="restore-team-dropdown-title"]').should('be.visible');
   cy.get('[data-testid="delete-button-title"]').should('be.visible');
   cy.clickOutside();
 
-  cy.get('[data-testid="team-details-collapse"]').then(($body) => {
-    const editTeamButton = $body.find('[data-testid="edit-team-name"]');
-
-    expect(editTeamButton.length).to.equal(0);
-  });
-  cy.get('[data-testid="team-details-collapse"]').then(($body) => {
-    const addDomainButton = $body.find('[data-testid="add-domain"]');
-
-    expect(addDomainButton.length).to.equal(0);
-  });
-  cy.get('[data-testid="team-details-collapse"]').then(($body) => {
-    const editOwnerButton = $body.find('[data-testid="edit-owner"]');
-
-    expect(editOwnerButton.length).to.equal(0);
-  });
-  cy.get('[data-testid="team-details-collapse"]').then(($body) => {
-    const editEmailButton = $body.find('[data-testid="edit-email"]');
-
-    expect(editEmailButton.length).to.equal(0);
-  });
-  cy.get('[data-testid="teams-subscription"]').then(($body) => {
-    const teamSubscriptionEditButton = $body.find('.cursor-pointer');
-
-    expect(teamSubscriptionEditButton.length).to.equal(0);
-  });
-  cy.get('[data-testid="team-details-collapse"]').then(($body) => {
-    const editTeamTypeButton = $body.find(
-      '[data-testid="edit-team-type-icon"]'
-    );
-
-    expect(editTeamTypeButton.length).to.equal(0);
-  });
-  cy.get('[data-testid="team-details-collapse"]').then(($body) => {
-    const editDescription = $body.find('[data-testid="edit-description"]');
-
-    expect(editDescription.length).to.equal(0);
-  });
+  cy.get('[data-testid="edit-team-name"]').should('not.exist');
+  cy.get('[data-testid="add-domain"]').should('not.exist');
+  cy.get('[data-testid="edit-owner"]').should('not.exist');
+  cy.get('[data-testid="edit-email"]').should('not.exist');
+  cy.get('[data-testid="edit-team-subscription"]').should('not.exist');
+  cy.get('[data-testid="edit-team-type-icon"]').should('not.exist');
+  cy.get('[data-testid="edit-description"]').should('not.exist');
 
   cy.get('[data-testid="teams"]').scrollIntoView().click();
-  cy.get('[data-testid=" team-details-container"]').then(($body) => {
-    const editDescription = $body.find('[data-testid="add-team"]');
-
-    expect(editDescription.length).to.equal(0);
-  });
+  cy.get(
+    '[data-testid=" team-details-container"] [data-testid="add-team"]'
+  ).should('not.exist');
   cy.get('[data-testid="users"]').scrollIntoView().click();
-  cy.get('[data-testid=" team-details-container"]').then(($body) => {
-    const editDescription = $body.find('[data-testid="add-new-user"]');
-
-    expect(editDescription.length).to.equal(0);
-  });
+  cy.get(
+    '[data-testid=" team-details-container"] [data-testid="add-new-user"]'
+  ).should('not.exist');
   cy.get('[data-testid="roles"]').scrollIntoView().click();
-  cy.get('[data-testid=" team-details-container"]').then(($body) => {
-    const editDescription = $body.find('[data-testid="add-role"]');
-
-    expect(editDescription.length).to.equal(0);
-  });
+  cy.get(
+    '[data-testid=" team-details-container"] [data-testid="add-role"]'
+  ).should('not.exist');
   cy.get('[data-testid="policies"]').scrollIntoView().click();
-  cy.get('[data-testid=" team-details-container"]').then(($body) => {
-    const editDescription = $body.find('[data-testid="add-policy"]');
-
-    expect(editDescription.length).to.equal(0);
-  });
+  cy.get(
+    '[data-testid=" team-details-container"] [data-testid="add-policy"]'
+  ).should('not.exist');
 };

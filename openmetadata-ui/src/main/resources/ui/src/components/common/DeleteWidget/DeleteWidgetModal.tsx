@@ -130,7 +130,7 @@ const DeleteWidgetModal = ({
       deleteConfirmationText === DELETE_CONFIRMATION_TEXT &&
       (value === DeleteType.SOFT_DELETE || value === DeleteType.HARD_DELETE)
     );
-  }, [deleteConfirmationText]);
+  }, [deleteConfirmationText, value]);
 
   const handleOnEntityDeleteConfirm = useCallback(async () => {
     try {

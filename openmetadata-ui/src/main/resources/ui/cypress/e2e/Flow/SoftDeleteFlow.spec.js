@@ -200,7 +200,7 @@ describe(`Soft delete flow should work for all entities`, () => {
   it('Soft delete flow should work properly for teams', () => {
     interceptURL(
       'GET',
-      `/api/v1/teams?fields=userCount%2CchildrenCount%2Cowns%2Cparents&limit=100000&parentTeam=Organization&include=all`,
+      `/api/v1/teams?*parentTeam=Organization*`,
       'getAllTeams'
     );
 
@@ -210,7 +210,7 @@ describe(`Soft delete flow should work for all entities`, () => {
 
     interceptURL(
       'GET',
-      `/api/v1/teams?fields=userCount%2CchildrenCount%2Cowns%2Cparents&limit=100000&parentTeam=${TEAM_1_NAME}&include=all`,
+      `/api/v1/teams*parentTeam=${TEAM_1_NAME}*`,
       'getChildTeams'
     );
 

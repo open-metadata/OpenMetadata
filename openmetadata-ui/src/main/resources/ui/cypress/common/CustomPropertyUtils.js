@@ -27,7 +27,7 @@ export const createCustomAttribute = ({
   // Fetch the service type metadata object to get the id
   cy.request({
     method: 'GET',
-    url: `/api/v1/metadata/types/name/${serviceType}?fields=customProperties`,
+    url: `/api/v1/metadata/types/name/${serviceType}`,
     headers: { Authorization: `Bearer ${token}` },
   }).then((response) => {
     expect(response.status).to.eq(200);
