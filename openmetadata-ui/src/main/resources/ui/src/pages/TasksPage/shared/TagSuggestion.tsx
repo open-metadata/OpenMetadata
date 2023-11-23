@@ -29,7 +29,7 @@ export interface TagSuggestionProps {
   placeholder?: string;
   tagType?: TagSource;
   value?: TagLabel[];
-  initialData?: SelectOption[];
+  initialOptions?: SelectOption[];
   onChange?: (newTags: TagLabel[]) => void;
 }
 
@@ -37,7 +37,7 @@ const TagSuggestion: React.FC<TagSuggestionProps> = ({
   onChange,
   value,
   placeholder,
-  initialData,
+  initialOptions,
   tagType = TagSource.Classification,
 }) => {
   const isGlossaryType = useMemo(
@@ -85,7 +85,7 @@ const TagSuggestion: React.FC<TagSuggestionProps> = ({
     <AsyncSelectList
       defaultValue={value?.map((item) => item.tagFQN) || []}
       fetchOptions={isGlossaryType ? fetchGlossaryList : fetchTagsElasticSearch}
-      initialData={initialData}
+      initialOptions={initialOptions}
       mode="multiple"
       placeholder={
         placeholder ??
