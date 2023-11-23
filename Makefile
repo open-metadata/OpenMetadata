@@ -69,8 +69,8 @@ SNYK_ARGS := --severity-threshold=high
 .PHONY: snyk-ingestion-report
 snyk-ingestion-report:  ## Uses Snyk CLI to validate the ingestion code and container. Don't stop the execution
 	@echo "Validating Ingestion container..."
-	docker build -t openmetadata-ingestion:scan -f ingestion/Dockerfile .
-	snyk container test openmetadata-ingestion:scan --file=ingestion/Dockerfile $(SNYK_ARGS) --json > security-report/ingestion-docker-scan.json | true;
+	docker build -t openmetadata-ingestion:scan -f ingestion/Dockerfile.ci .
+	snyk container test openmetadata-ingestion:scan --file=ingestion/Dockerfile.ci $(SNYK_ARGS) --json > security-report/ingestion-docker-scan.json | true;
 	@echo "Validating ALL ingestion dependencies. Make sure the venv is activated."
 	cd ingestion; \
 		pip freeze > scan-requirements.txt; \
