@@ -546,9 +546,6 @@
     </profile>
       <profile>
         <id>postgres-tests</id>
-        <activation>
-          <activeByDefault>true</activeByDefault>
-        </activation>
         <build>
           <plugins>
             <plugin>
@@ -563,6 +560,9 @@
                 <systemPropertyVariables>
                   <jdbcContainerClassName>org.testcontainers.containers.PostgreSQLContainer</jdbcContainerClassName>
                   <jdbcContainerImage>postgres:15</jdbcContainerImage>
+                  <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:8.10.2</elasticSearchContainerClassName>
+                  <openSearchContainerClassName>opensearchproject/opensearch:2.7.0</openSearchContainerClassName>
+                  <runESTestCases>false</runESTestCases>
                 </systemPropertyVariables>
               </configuration>
               <executions>
@@ -581,6 +581,9 @@
         </build>
       </profile>
       <profile>
+        <activation>
+          <activeByDefault>true</activeByDefault>
+        </activation>
         <id>mysql-tests</id>
         <build>
           <plugins>
@@ -596,6 +599,9 @@
                 <systemPropertyVariables>
                   <jdbcContainerClassName>org.testcontainers.containers.MySQLContainer</jdbcContainerClassName>
                   <jdbcContainerImage>mysql:8</jdbcContainerImage>
+                  <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:8.10.2</elasticSearchContainerClassName>
+                  <openSearchContainerClassName>opensearchproject/opensearch:2.7.0</openSearchContainerClassName>
+                  <runESTestCases>false</runESTestCases>
                 </systemPropertyVariables>
               </configuration>
               <executions>
@@ -614,7 +620,6 @@
         </build>
       </profile>
   </profiles>
-
   <build>
     <plugins>
       <plugin>
