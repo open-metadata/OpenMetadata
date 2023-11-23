@@ -44,11 +44,9 @@ export const checkCustomPropertyEditButton = ({
       .scrollIntoView()
       .should(`be.visible`);
   } else {
-    cy.get(`[data-row-key="${CUSTOM_ATTRIBUTE_NAME}"]`).then(($body) => {
-      const editField = $body.find('[data-testid="edit-icon"]');
-
-      expect(editField.length).to.equal(0);
-    });
+    cy.get(
+      `[data-row-key="${CUSTOM_ATTRIBUTE_NAME}"] [data-testid="edit-icon"]`
+    ).should(`not.exist`);
   }
 };
 
@@ -140,13 +138,12 @@ export const checkForTableSpecificFields = ({
 
   verifyResponseStatusCode('@getSystemProfile', 200);
 
-  if (checkIsActionEnabled) {
-    cy.get('[data-testid="profiler-add-table-test-btn"]').should('be.visible');
-    cy.get('[data-testid="profiler-setting-btn"]').should('be.visible');
-  } else {
-    cy.get('[data-testid="profiler-add-table-test-btn"]').should('not.exist');
-    cy.get('[data-testid="profiler-setting-btn"]').should('not.exist');
-  }
+  cy.get('[data-testid="profiler-add-table-test-btn"]').should(
+    checkIsActionEnabled ? 'be.visible' : 'not.exist'
+  );
+  cy.get('[data-testid="profiler-setting-btn"]').should(
+    checkIsActionEnabled ? 'be.visible' : 'not.exist'
+  );
 };
 
 export const softDeletedEntityCommonChecks = ({
