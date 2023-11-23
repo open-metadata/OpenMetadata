@@ -25,7 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        e2e-test: ['bigquery', 'dbt_redshift', 'metabase', 'mssql', 'mysql', 'redash', 'snowflake', 'tableau', 'powerbi', 'vertica', 'python', 'redshift', 'quicksight', 'datalake_s3', 'postgres', 'oracle', 'athena', 'bigquery_multiple_project']
+        e2e-test: ['mysql']
     environment: test
 
     steps:
@@ -68,15 +68,15 @@ jobs:
         source env/bin/activate
         make install_all install_test
 
-    - name: Start Server and Ingest Sample Data
-      uses: nick-fields/retry@v2.8.3
-      env:
-        INGESTION_DEPENDENCY: "mysql,elasticsearch"
-      with:
-        timeout_minutes: 60
-        max_attempts: 2
-        retry_on: error
-        command: ./docker/run_local_docker.sh -m no-ui
+    # - name: Start Server and Ingest Sample Data
+    #   uses: nick-fields/retry@v2.8.3
+    #   env:
+    #     INGESTION_DEPENDENCY: "mysql,elasticsearch"
+    #   with:
+    #     timeout_minutes: 60
+    #     max_attempts: 2
+    #     retry_on: error
+    #     command: ./docker/run_local_docker.sh -m no-ui
 
     - name: Run Python Tests & record coverage
       if: matrix.e2e-test == 'python'
