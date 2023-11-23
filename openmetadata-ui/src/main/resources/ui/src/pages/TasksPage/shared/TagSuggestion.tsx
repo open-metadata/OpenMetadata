@@ -17,6 +17,7 @@ import { isArray, isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useMemo } from 'react';
 import AsyncSelectList from '../../../components/AsyncSelectList/AsyncSelectList';
+import { SelectOption } from '../../../components/AsyncSelectList/AsyncSelectList.interface';
 import { TagSource } from '../../../generated/entity/data/container';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import {
@@ -28,6 +29,7 @@ export interface TagSuggestionProps {
   placeholder?: string;
   tagType?: TagSource;
   value?: TagLabel[];
+  initialData?: SelectOption[];
   onChange?: (newTags: TagLabel[]) => void;
 }
 
@@ -35,6 +37,7 @@ const TagSuggestion: React.FC<TagSuggestionProps> = ({
   onChange,
   value,
   placeholder,
+  initialData,
   tagType = TagSource.Classification,
 }) => {
   const isGlossaryType = useMemo(
@@ -82,6 +85,7 @@ const TagSuggestion: React.FC<TagSuggestionProps> = ({
     <AsyncSelectList
       defaultValue={value?.map((item) => item.tagFQN) || []}
       fetchOptions={isGlossaryType ? fetchGlossaryList : fetchTagsElasticSearch}
+      initialData={initialData}
       mode="multiple"
       placeholder={
         placeholder ??
