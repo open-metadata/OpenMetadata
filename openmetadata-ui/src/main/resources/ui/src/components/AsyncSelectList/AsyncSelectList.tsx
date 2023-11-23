@@ -42,7 +42,7 @@ const AsyncSelectList: FC<AsyncSelectListProps> = ({
   onChange,
   fetchOptions,
   debounceTimeout = 800,
-  initialData,
+  initialOptions,
   className,
   ...props
 }) => {
@@ -52,7 +52,7 @@ const AsyncSelectList: FC<AsyncSelectListProps> = ({
   const [searchValue, setSearchValue] = useState<string>('');
   const [paging, setPaging] = useState<Paging>({} as Paging);
   const [currentPage, setCurrentPage] = useState(1);
-  const selectedTagsRef = useRef<SelectOption[]>(initialData ?? []);
+  const selectedTagsRef = useRef<SelectOption[]>(initialOptions ?? []);
 
   const loadOptions = useCallback(
     async (value: string) => {
@@ -204,7 +204,7 @@ const AsyncSelectList: FC<AsyncSelectListProps> = ({
         data ?? {
           value,
           label: value,
-          data: initialData?.find((item) => item.value === value)?.data,
+          data: initialOptions?.find((item) => item.value === value)?.data,
         }
       );
     });
