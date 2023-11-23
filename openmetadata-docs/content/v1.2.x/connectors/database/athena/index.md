@@ -72,6 +72,7 @@ And is defined as:
             "Action": [
                 "athena:BatchGetQueryExecution",
                 "athena:GetQueryExecution",
+                "athena:ListWorkGroups",
                 "athena:GetQueryResults",
                 "athena:GetQueryResultsStream",
                 "athena:ListQueryExecutions",
