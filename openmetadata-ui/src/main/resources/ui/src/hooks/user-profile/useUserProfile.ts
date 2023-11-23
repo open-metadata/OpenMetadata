@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useState } from 'react';
 import { useApplicationConfigContext } from '../../components/ApplicationConfigProvider/ApplicationConfigProvider';
 import { User } from '../../generated/entity/teams/user';
@@ -101,5 +102,5 @@ export const useUserProfile = ({
     fetchProfileIfRequired();
   }, [name, permission, fetchProfileIfRequired]);
 
-  return [profilePic, userProfilePicsLoading.includes(name), user];
+  return [profilePic, isUndefined(user), user];
 };
