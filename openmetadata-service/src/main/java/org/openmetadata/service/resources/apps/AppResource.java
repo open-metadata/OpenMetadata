@@ -80,7 +80,6 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.ResultList;
 import org.quartz.SchedulerException;
@@ -124,15 +123,10 @@ public class AppResource extends EntityResource<App, AppRepository> {
                   .getByName(
                       null, createApp.getName(), new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
 
-          String existingJson = repository.getDao().findJsonByFqn(createApp.getName(), ALL);
-
-          App app;
-
-          if (existingJson == null) {
+          App app = repository.findByNameOrNull(createApp.getName(), ALL);
+          if (app == null) {
             app = getApplication(definition, createApp, "admin").withFullyQualifiedName(createApp.getName());
             repository.initializeEntity(app);
-          } else {
-            app = JsonUtils.readValue(existingJson, App.class);
           }
 
           // Schedule
@@ -184,7 +178,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(description = "Limit the number of installed applications returned. (1 to 1000000, default = " + "10)")
+      @Parameter(description = "Limit the number of installed applications returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
           @Min(0)
@@ -225,13 +219,13 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the App", schema = @Schema(type = "string")) @PathParam("name") String name,
-      @Parameter(description = "Limit records. (1 to 1000000, default = " + "10)")
+      @Parameter(description = "Limit records. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
           @Min(0)
           @Max(1000000)
           int limitParam,
-      @Parameter(description = "Offset records. (0 to 1000000, default = " + "0)")
+      @Parameter(description = "Offset records. (0 to 1000000, default = 0)")
           @DefaultValue("0")
           @QueryParam("offset")
           @Min(0)
@@ -443,9 +437,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
             responseCode = "200",
             description = "App",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = App.class))),
-        @ApiResponse(
-            responseCode = "404",
-            description = "App for instance {id} and version {version} is " + "not found")
+        @ApiResponse(responseCode = "404", description = "App for instance {id} and version {version} is not found")
       })
   public App getVersion(
       @Context UriInfo uriInfo,
@@ -478,9 +470,14 @@ public class AppResource extends EntityResource<App, AppRepository> {
             .getByName(
                 uriInfo, create.getName(), new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
     App app = getApplication(definition, create, securityContext.getUserPrincipal().getName());
+    app.setOpenMetadataServerConnection(
+        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, app.getBot().getName()).build());
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
       ApplicationHandler.scheduleApplication(app, Entity.getCollectionDAO(), searchRepository);
+      ApplicationHandler.configureApplication(app, Entity.getCollectionDAO(), searchRepository);
     }
+    // We don't want to store this information
+    app.setOpenMetadataServerConnection(null);
     return create(uriInfo, securityContext, app);
   }
 
@@ -501,9 +498,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
@@ -634,6 +629,37 @@ public class AppResource extends EntityResource<App, AppRepository> {
   }
 
   @POST
+  @Path("/configure/{name}")
+  @Operation(
+      operationId = "configureApplication",
+      summary = "Configure an Application",
+      description = "Schedule a application to be run on demand.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The Application",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Response.class))),
+        @ApiResponse(responseCode = "404", description = "Application for instance {id} is not found")
+      })
+  public Response configureApplication(
+      @Context UriInfo uriInfo,
+      @Parameter(description = "Name of the App", schema = @Schema(type = "string")) @PathParam("name") String name,
+      @Context SecurityContext securityContext) {
+    App app = repository.getByName(uriInfo, name, new EntityUtil.Fields(repository.getAllowedFields()));
+    // The application will have the updated appConfiguration we can use to run the `configure` logic
+    app.setOpenMetadataServerConnection(
+        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, app.getBot().getName()).build());
+    try {
+      ApplicationHandler.configureApplication(app, repository.getDaoCollection(), searchRepository);
+      return Response.status(Response.Status.OK).entity("App has been configured.").build();
+    } catch (RuntimeException e) {
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity(String.format("Error configuring app [%s]", e.getMessage()))
+          .build();
+    }
+  }
+
+  @POST
   @Path("/trigger/{name}")
   @Operation(
       operationId = "triggerApplicationRun",
@@ -722,7 +748,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
   }
 
   private void decryptOrNullify(
-      SecurityContext securityContext, IngestionPipeline ingestionPipeline, String botname, boolean forceNotMask) {
+      SecurityContext securityContext, IngestionPipeline ingestionPipeline, String botName, boolean forceNotMask) {
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     try {
       authorizer.authorize(
@@ -734,7 +760,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
     }
     secretsManager.decryptIngestionPipeline(ingestionPipeline);
     OpenMetadataConnection openMetadataServerConnection =
-        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, botname).build();
+        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, botName).build();
     ingestionPipeline.setOpenMetadataServerConnection(
         secretsManager.encryptOpenMetadataConnection(openMetadataServerConnection, false));
     if (authorizer.shouldMaskPasswords(securityContext) && !forceNotMask) {

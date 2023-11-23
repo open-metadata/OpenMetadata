@@ -57,7 +57,7 @@ permissions policy includes all of the actions listed in [AWS managed policy: AW
 This policy groups the following permissions:
 
 - `athena` – Allows the principal to run queries on Athena resources.
-- `glue` – Allows principals access to AWS Glue databases, tables, and partitions. This is required so that the principal can use the AWS Glue Data Catalog with Athena.
+- `glue` – Allows principals access to AWS Glue databases, tables, and partitions. This is required so that the principal can use the AWS Glue Data Catalog with Athena. Resources of each table and database needs to be added as resource for each database user wants to ingest.
 - `lakeformation` – Allows principals to request temporary credentials to access data in a data lake location that is registered with Lake Formation.
 
 And is defined as:
@@ -67,21 +67,46 @@ And is defined as:
     "Version": "2012-10-17",
     "Statement": [
         {
-            "Effect": "Allow",
             "Action": [
-                "athena:GetTableMetadata",
-                "athena:ListDatabases",
                 "athena:ListTableMetadata",
-                "athena:GetQueryExecution",
+                "athena:ListDatabases",
+                "athena:GetTableMetadata",
+                "athena:ListQueryExecutions",
                 "athena:StartQueryExecution",
+                "athena:GetQueryExecution",
+                "athena:ListWorkGroups",
                 "athena:GetQueryResults",
-                "glue:GetDatabases",
+                "athena:BatchGetQueryExecution"
+            ],
+            "Effect": "Allow",
+            "Resource": [
+                "arn:aws:athena:<<AWS_REGION>>:<<ACCOUNT_ID>>:workgroup/<<WORKGROUP_NAME>>",
+                "arn:aws:athena:<<AWS_REGION>>:<<ACCOUNT_ID>>:datacatalog/<<DATA_CATALOG_NAME>>"
+            ]
+        },
+        {
+            "Action": [
                 "glue:GetTables",
                 "glue:GetTable",
-                "lakeformation:GetDataAccess"
+                "glue:GetDatabases"
             ],
+            "Effect": "Allow",
             "Resource": [
-                "*"
+                "arn:aws:glue:<AWS_REGION>:<ACCOUNT_ID>:table/<<DATABASE_NAME>>/*",
+                "arn:aws:glue:<AWS_REGION>:<ACCOUNT_ID>:database/<<DATABASE_NAME>>",
+                "arn:aws:glue:<AWS_REGION>:<ACCOUNT_ID>:catalog"
+            ]
+        },
+        {
+            "Action": [
+                "s3:ListBucket",
+                "s3:GetObject",
+                "s3:GetBucketLocation",
+                "s3:PutObject"
+            ],
+            "Effect": "Allow",
+            "Resource": [
+                "arn:aws:s3:::<<ATHENA_S3_BUCKET>>/*"
             ]
         }
     ]

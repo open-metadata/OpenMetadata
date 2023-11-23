@@ -24,6 +24,7 @@ import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.DIVISION;
 import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.GROUP;
 import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.ORGANIZATION;
 import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.FIELD_DOMAIN;
 import static org.openmetadata.service.Entity.ORGANIZATION_NAME;
@@ -73,7 +74,6 @@ import org.openmetadata.service.resources.teams.TeamResource;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
@@ -97,7 +97,7 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   @Override
-  public Team setFields(Team team, Fields fields) {
+  public void setFields(Team team, Fields fields) {
     team.setUsers(fields.contains("users") ? getUsers(team) : team.getUsers());
     team.setOwns(fields.contains("owns") ? getOwns(team) : team.getOwns());
     team.setDefaultRoles(fields.contains(DEFAULT_ROLES) ? getDefaultRoles(team) : team.getDefaultRoles());
@@ -106,11 +106,10 @@ public class TeamRepository extends EntityRepository<Team> {
     team.setPolicies(fields.contains("policies") ? getPolicies(team) : team.getPolicies());
     team.setChildrenCount(fields.contains("childrenCount") ? getChildrenCount(team) : team.getChildrenCount());
     team.setUserCount(fields.contains("userCount") ? getUserCount(team.getId()) : team.getUserCount());
-    return team;
   }
 
   @Override
-  public Team clearFields(Team team, Fields fields) {
+  public void clearFields(Team team, Fields fields) {
     team.setProfile(fields.contains("profile") ? team.getProfile() : null);
     team.setUsers(fields.contains("users") ? team.getUsers() : null);
     team.setOwns(fields.contains("owns") ? team.getOwns() : null);
@@ -119,7 +118,7 @@ public class TeamRepository extends EntityRepository<Team> {
     team.setParents(fields.contains(PARENTS_FIELD) ? team.getParents() : null);
     team.setPolicies(fields.contains("policies") ? team.getPolicies() : null);
     team.setChildrenCount(fields.contains("childrenCount") ? team.getChildrenCount() : null);
-    return team.withUserCount(fields.contains("userCount") ? team.getUserCount() : null);
+    team.withUserCount(fields.contains("userCount") ? team.getUserCount() : null);
   }
 
   @Override
@@ -207,7 +206,7 @@ public class TeamRepository extends EntityRepository<Team> {
   protected void cleanup(Team team) {
     // When a team is deleted, if the children team don't have another parent, set Organization as the parent
     for (EntityReference child : listOrEmpty(team.getChildren())) {
-      Team childTeam = dao.findEntityById(child.getId());
+      Team childTeam = find(child.getId(), NON_DELETED);
       getParents(childTeam);
       if (childTeam.getParents().size() == 1) { // Only parent is being deleted, move the parent to Organization
         addRelationship(organization.getId(), childTeam.getId(), TEAM, TEAM, Relationship.PARENT_OF);
@@ -480,13 +479,13 @@ public class TeamRepository extends EntityRepository<Team> {
     List<Team> teams = new ArrayList<>();
     for (EntityReference teamRef : teamRefs) {
       try {
-        Team team = dao.findEntityById(teamRef.getId());
+        Team team = find(teamRef.getId(), NON_DELETED);
         teams.add(team);
       } catch (EntityNotFoundException ex) {
         // Team was soft-deleted
         LOG.debug("Failed to populate team since it might be soft deleted.", ex);
         // Ensure that the team was soft-deleted otherwise throw an exception
-        dao.findEntityById(teamRef.getId(), Include.DELETED);
+        find(teamRef.getId(), Include.DELETED);
       }
     }
     return teams;
@@ -519,8 +518,8 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   public void initOrganization() {
-    String json = dao.findJsonByFqn(ORGANIZATION_NAME, Include.ALL);
-    if (json == null) {
+    organization = findByNameOrNull(ORGANIZATION_NAME, ALL);
+    if (organization == null) {
       LOG.debug("Organization {} is not initialized", ORGANIZATION_NAME);
       // Teams
       try {
@@ -544,7 +543,6 @@ public class TeamRepository extends EntityRepository<Team> {
         throw e;
       }
     } else {
-      organization = JsonUtils.readValue(json, Team.class);
       LOG.info("Organization is already initialized");
     }
   }
@@ -678,7 +676,7 @@ public class TeamRepository extends EntityRepository<Team> {
           throw new IllegalArgumentException(INVALID_GROUP_TEAM_CHILDREN_UPDATE);
         }
       }
-      recordChange("profile", original.getProfile(), updated.getProfile());
+      recordChange("profile", original.getProfile(), updated.getProfile(), true);
       recordChange("isJoinable", original.getIsJoinable(), updated.getIsJoinable());
       recordChange("teamType", original.getTeamType(), updated.getTeamType());
       // If the team is empty then email should be null, not be empty

@@ -190,7 +190,7 @@ const DomainDetailsPage = ({
     async (formData: CreateDataProduct) => {
       const data = {
         ...formData,
-        domain: domain.name,
+        domain: domain.fullyQualifiedName,
       };
 
       try {
@@ -238,7 +238,7 @@ const DomainDetailsPage = ({
           '',
           1,
           0,
-          `(domain.fullyQualifiedName:"${domainFqn}")`,
+          `(domain.fullyQualifiedName:${domainFqn})`,
           '',
           '',
           SearchIndex.DATA_PRODUCT
@@ -258,7 +258,7 @@ const DomainDetailsPage = ({
           '',
           1,
           0,
-          `(domain.fullyQualifiedName:"${fqn}")`,
+          `(domain.fullyQualifiedName:${fqn})`,
           '',
           '',
           SearchIndex.ALL
@@ -300,12 +300,11 @@ const DomainDetailsPage = ({
   }, []);
 
   const onNameSave = (obj: { name: string; displayName: string }) => {
-    const { name, displayName } = obj;
+    const { displayName } = obj;
     let updatedDetails = cloneDeep(domain);
 
     updatedDetails = {
       ...domain,
-      name: name?.trim() || domain.name,
       displayName: displayName?.trim(),
     };
 
@@ -650,10 +649,9 @@ const DomainDetailsPage = ({
         />
       )}
       <EntityNameModal
-        allowRename
         entity={domain}
         title={t('label.edit-entity', {
-          entity: t('label.name'),
+          entity: t('label.display-name'),
         })}
         visible={isNameEditing}
         onCancel={() => setIsNameEditing(false)}

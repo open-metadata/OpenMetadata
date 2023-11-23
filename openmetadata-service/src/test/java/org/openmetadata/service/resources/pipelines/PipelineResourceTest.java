@@ -14,19 +14,24 @@
 package org.openmetadata.service.resources.pipelines;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.service.Entity.TAG;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.UpdateType.CHANGE_CONSOLIDATED;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
+import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
 import java.io.IOException;
@@ -43,6 +48,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.joda.time.DateTime;
@@ -56,12 +62,13 @@ import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Status;
 import org.openmetadata.schema.type.StatusType;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.Task;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.pipelines.PipelineResource.PipelineList;
 import org.openmetadata.service.resources.services.PipelineServiceResourceTest;
@@ -154,7 +161,8 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     }
     if (fieldName.contains("tasks") && !fieldName.contains(".")) {
       @SuppressWarnings("unchecked")
-      List<Task> expectedTasks = (List<Task>) expected;
+      List<Task> expectedTasks =
+          expected instanceof List ? (List<Task>) expected : JsonUtils.readObjects(expected.toString(), Task.class);
       List<Task> actualTasks = JsonUtils.readObjects(actual.toString(), Task.class);
       validateTasks(expectedTasks, actualTasks);
     } else {
@@ -237,7 +245,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     Pipeline pipeline = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     // Add description and tasks
-    ChangeDescription change = getChangeDescription(pipeline.getVersion());
+    ChangeDescription change = getChangeDescription(pipeline, MINOR_UPDATE);
     fieldAdded(change, "description", "newDescription");
     fieldAdded(change, "tasks", TASKS);
 
@@ -246,7 +254,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
             request.withDescription("newDescription").withTasks(TASKS), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Add a task without description
-    change = getChangeDescription(pipeline.getVersion());
+    change = getChangeDescription(pipeline, MINOR_UPDATE);
     List<Task> tasks = new ArrayList<>();
     Task taskEmptyDesc = new Task().withName("taskEmpty").withSourceUrl("http://localhost:0");
     tasks.add(taskEmptyDesc);
@@ -254,12 +262,14 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     // Create new request with all the Tasks
     List<Task> updatedTasks = Stream.concat(TASKS.stream(), tasks.stream()).collect(Collectors.toList());
     pipeline = updateAndCheckEntity(request.withTasks(updatedTasks), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-    change = getChangeDescription(pipeline.getVersion());
+
+    change = getChangeDescription(pipeline, NO_CHANGE);
     // create a request with same tasks we shouldn't see any change
     updateAndCheckEntity(request.withTasks(updatedTasks), OK, ADMIN_AUTH_HEADERS, NO_CHANGE, change);
+
     // create new request with few tasks removed
     updatedTasks.remove(taskEmptyDesc);
-    change = getChangeDescription(pipeline.getVersion());
+    change = getChangeDescription(pipeline, MINOR_UPDATE);
     fieldDeleted(change, "tasks", List.of(taskEmptyDesc));
     updateAndCheckEntity(request.withTasks(updatedTasks), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     pipeline = getPipeline(pipeline.getId(), "tasks", ADMIN_AUTH_HEADERS);
@@ -281,7 +291,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
                 .withDisplayName("displayName")
                 .withSourceUrl("http://localhost:0"));
 
-    ChangeDescription change = getChangeDescription(pipeline.getVersion());
+    ChangeDescription change = getChangeDescription(pipeline, MINOR_UPDATE);
     fieldAdded(change, "tasks", newTask);
     fieldDeleted(change, "tasks", TASKS);
     updateAndCheckEntity(request.withTasks(newTask), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
@@ -427,65 +437,63 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     CreatePipeline request = createRequest(test).withService(AIRFLOW_REFERENCE.getFullyQualifiedName());
     Pipeline pipeline = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
+    // Add a new task without description or tags
     String origJson = JsonUtils.pojoToJson(pipeline);
-    // Add a task without description
-    ChangeDescription change = getChangeDescription(pipeline.getVersion());
+    ChangeDescription change = getChangeDescription(pipeline, MINOR_UPDATE);
     List<Task> tasks = new ArrayList<>();
     Task taskEmptyDesc = new Task().withName("taskEmpty").withSourceUrl("http://localhost:0");
     tasks.add(taskEmptyDesc);
     fieldAdded(change, "tasks", tasks);
     fieldUpdated(change, "description", "", "newDescription");
-    // Create new request with all the Tasks
     List<Task> updatedTasks = Stream.concat(TASKS.stream(), tasks.stream()).collect(Collectors.toList());
     pipeline.setTasks(updatedTasks);
     pipeline.setDescription("newDescription");
     pipeline = patchEntityAndCheck(pipeline, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     pipeline = getPipeline(pipeline.getId(), "*", ADMIN_AUTH_HEADERS);
-    // validate tasks
     validateTasks(updatedTasks, pipeline.getTasks());
 
-    // add a description to an existing task
+    // add description and tags to an existing task - taskEmpty
+    // Changes from this PATCH is consolidated with the previous changes
     origJson = JsonUtils.pojoToJson(pipeline);
-    change = getChangeDescription(pipeline.getVersion());
+    change = getChangeDescription(pipeline, CHANGE_CONSOLIDATED);
     List<Task> newTasks = new ArrayList<>();
     Task taskWithDesc =
         taskEmptyDesc
             .withDescription("taskDescription")
             .withTags(List.of(USER_ADDRESS_TAG_LABEL, PII_SENSITIVE_TAG_LABEL));
     newTasks.add(taskWithDesc);
-    fieldAdded(change, "tasks.taskEmpty.description", "taskDescription");
-    fieldAdded(change, "tasks.taskEmpty.tags", List.of(USER_ADDRESS_TAG_LABEL, PII_SENSITIVE_TAG_LABEL));
+    fieldAdded(change, "tasks", newTasks);
+    fieldUpdated(change, "description", "", "newDescription");
     List<Task> updatedNewTasks = Stream.concat(TASKS.stream(), newTasks.stream()).collect(Collectors.toList());
     pipeline.setTasks(updatedNewTasks);
-    pipeline = patchEntityAndCheck(pipeline, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    pipeline = patchEntityAndCheck(pipeline, origJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
 
-    // update the descriptions of pipeline and task and add tags to tasks
+    // Update the descriptions of pipeline and task and add tags to tasks
+    // Changes from this PATCH is consolidated with the previous changes
     origJson = JsonUtils.pojoToJson(pipeline);
-    change = getChangeDescription(pipeline.getVersion());
+    change = getChangeDescription(pipeline, CHANGE_CONSOLIDATED);
     newTasks = new ArrayList<>();
     taskWithDesc = taskEmptyDesc.withDescription("newTaskDescription");
     newTasks.add(taskWithDesc);
-    fieldUpdated(change, "tasks.taskEmpty.description", "taskDescription", "newTaskDescription");
-    fieldUpdated(change, "description", "newDescription", "newDescription2");
-
+    fieldAdded(change, "tasks", tasks);
+    fieldUpdated(change, "description", "", "newDescription2");
     updatedNewTasks = Stream.concat(TASKS.stream(), newTasks.stream()).collect(Collectors.toList());
     pipeline.setTasks(updatedNewTasks);
     pipeline.setDescription("newDescription2");
-    pipeline = patchEntityAndCheck(pipeline, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    pipeline = patchEntityAndCheck(pipeline, origJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
 
-    // delete task and pipeline description by setting them to null
+    // Delete task and pipeline description by setting them to null
+    // Changes from this PATCH is consolidated with the previous changes
     origJson = JsonUtils.pojoToJson(pipeline);
-    change = getChangeDescription(pipeline.getVersion());
+    change = getChangeDescription(pipeline, CHANGE_CONSOLIDATED);
     newTasks = new ArrayList<>();
     Task taskWithoutDesc = taskEmptyDesc.withDescription(null);
     newTasks.add(taskWithoutDesc);
-    fieldDeleted(change, "tasks.taskEmpty.description", "newTaskDescription");
-    fieldDeleted(change, "description", "newDescription2");
-
     updatedNewTasks = Stream.concat(TASKS.stream(), newTasks.stream()).collect(Collectors.toList());
+    fieldAdded(change, "tasks", newTasks);
     pipeline.setTasks(updatedNewTasks);
-    pipeline.setDescription(null);
-    patchEntityAndCheck(pipeline, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    pipeline.setDescription(""); // Since description started out to be empty, during consolidation, no change
+    patchEntityAndCheck(pipeline, origJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
   }
 
   @Test
@@ -500,7 +508,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     Pipeline pipeline = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     // Add tasks and description
-    ChangeDescription change = getChangeDescription(pipeline.getVersion());
+    ChangeDescription change = getChangeDescription(pipeline, MINOR_UPDATE);
     fieldAdded(change, "description", "newDescription");
     fieldAdded(change, "tasks", TASKS);
     fieldAdded(change, "concurrency", 5);
@@ -530,8 +538,6 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
       new_tasks.add(task);
     }
     request.setTasks(new_tasks);
-    change = getChangeDescription(pipeline.getVersion());
-    change.getFieldsUpdated().add(new FieldChange().withNewValue(new_tasks).withOldValue(TASKS));
     pipeline = updateEntity(request, OK, ADMIN_AUTH_HEADERS);
     assertEquals(2, pipeline.getTasks().size());
   }
@@ -559,6 +565,47 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     // Data consumer as an owner of the service can create pipeline under it
     createEntity(
         createRequest("pipeline").withService(service.getFullyQualifiedName()), authHeaders(DATA_CONSUMER.getName()));
+  }
+
+  @Test
+  void test_TaskWithInvalidTag(TestInfo test) throws HttpResponseException {
+    // Add an entity with invalid tag
+    TagLabel invalidTag = new TagLabel().withTagFQN("invalidTag");
+    List<Task> invalidTagTasks =
+        List.of(new Task().withName("task").withDescription("desc").withTags(listOf(invalidTag)));
+    CreatePipeline create = createRequest(getEntityName(test)).withTasks(invalidTagTasks);
+
+    // Entity can't be created with PUT or POST
+    assertResponse(
+        () -> createEntity(create, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+
+    assertResponse(
+        () -> updateEntity(create, Response.Status.CREATED, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+
+    // Create an entity and update the columns with PUT and PATCH with an invalid tag
+    List<Task> validTagTasks = List.of(new Task().withName("task").withDescription("desc"));
+    create.withTasks(validTagTasks);
+    Pipeline entity = createEntity(create, ADMIN_AUTH_HEADERS);
+    String json = JsonUtils.pojoToJson(entity);
+
+    create.setTasks(invalidTagTasks);
+    assertResponse(
+        () -> updateEntity(create, Response.Status.CREATED, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+
+    entity.setTags(listOf(invalidTag));
+    assertResponse(
+        () -> patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+
+    // No lingering relationships should cause error in listing the entity
+    listEntities(null, ADMIN_AUTH_HEADERS);
   }
 
   @Override
@@ -607,10 +654,10 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     return TestUtils.put(target, data, Pipeline.class, OK, authHeaders);
   }
 
-  public Pipeline deletePipelineStatus(String fqn, Long timestamp, Map<String, String> authHeaders)
+  public void deletePipelineStatus(String fqn, Long timestamp, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource("pipelines/").path(fqn).path("/status/").path(String.valueOf(timestamp));
-    return TestUtils.delete(target, Pipeline.class, authHeaders);
+    TestUtils.delete(target, Pipeline.class, authHeaders);
   }
 
   public ResultList<PipelineStatus> getPipelineStatues(

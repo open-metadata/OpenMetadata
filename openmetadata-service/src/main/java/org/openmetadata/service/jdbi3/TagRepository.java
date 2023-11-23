@@ -100,17 +100,16 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   @Override
-  public Tag setFields(Tag tag, Fields fields) {
+  public void setFields(Tag tag, Fields fields) {
     tag.withClassification(getClassification(tag)).withParent(getParent(tag));
     if (fields.contains("usageCount")) {
       tag.withUsageCount(getUsageCount(tag));
     }
-    return tag;
   }
 
   @Override
-  public Tag clearFields(Tag tag, Fields fields) {
-    return tag.withUsageCount(fields.contains("usageCount") ? tag.getUsageCount() : null);
+  public void clearFields(Tag tag, Fields fields) {
+    tag.withUsageCount(fields.contains("usageCount") ? tag.getUsageCount() : null);
   }
 
   private Integer getUsageCount(Tag tag) {
@@ -178,6 +177,9 @@ public class TagRepository extends EntityRepository<Tag> {
       UUID oldCategoryId = getId(original.getClassification());
       UUID newCategoryId = getId(updated.getClassification());
       boolean classificationChanged = !Objects.equals(oldCategoryId, newCategoryId);
+      if (!parentChanged && !classificationChanged) {
+        return;
+      }
 
       setFullyQualifiedName(updated);
       daoCollection.tagDAO().updateFqn(original.getFullyQualifiedName(), updated.getFullyQualifiedName());

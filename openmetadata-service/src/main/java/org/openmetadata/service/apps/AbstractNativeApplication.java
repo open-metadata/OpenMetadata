@@ -42,7 +42,6 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.quartz.JobExecutionContext;
-import org.quartz.JobExecutionException;
 import org.quartz.SchedulerException;
 
 @Slf4j
@@ -176,7 +175,7 @@ public class AbstractNativeApplication implements NativeApplication {
   }
 
   @Override
-  public void execute(JobExecutionContext jobExecutionContext) throws JobExecutionException {
+  public void execute(JobExecutionContext jobExecutionContext) {
     // This is the part of the code that is executed by the scheduler
     App jobApp = (App) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_INFO_KEY);
     CollectionDAO dao = (CollectionDAO) jobExecutionContext.getJobDetail().getJobDataMap().get(COLLECTION_DAO_KEY);
@@ -189,15 +188,20 @@ public class AbstractNativeApplication implements NativeApplication {
     this.startApp(jobExecutionContext);
   }
 
+  @Override
+  public void configure() {
+    /* Not needed by default */
+  }
+
   public static AppRuntime getAppRuntime(App app) {
     return JsonUtils.convertValue(app.getRuntime(), ScheduledExecutionContext.class);
   }
 
-  protected IngestionPipeline getIngestionPipeline(CreateIngestionPipeline create, String botname, String user) {
+  protected IngestionPipeline getIngestionPipeline(CreateIngestionPipeline create, String botName, String user) {
     IngestionPipelineRepository ingestionPipelineRepository =
         (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
     OpenMetadataConnection openMetadataServerConnection =
-        new OpenMetadataConnectionBuilder(ingestionPipelineRepository.getOpenMetadataApplicationConfig(), botname)
+        new OpenMetadataConnectionBuilder(ingestionPipelineRepository.getOpenMetadataApplicationConfig(), botName)
             .build();
     return ingestionPipelineRepository
         .copy(new IngestionPipeline(), create, user)
@@ -220,8 +224,8 @@ public class AbstractNativeApplication implements NativeApplication {
   }
 
   @SneakyThrows
-  protected void pushAppStausUpdates(JobExecutionContext jobExecutionContext, AppRunRecord record, boolean update) {
+  protected void pushAppStatusUpdates(JobExecutionContext jobExecutionContext, AppRunRecord appRecord, boolean update) {
     OmAppJobListener listener = getJobListener(jobExecutionContext);
-    listener.pushApplicationStatusUpdates(jobExecutionContext, record, update);
+    listener.pushApplicationStatusUpdates(jobExecutionContext, appRecord, update);
   }
 }

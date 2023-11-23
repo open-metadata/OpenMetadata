@@ -8,7 +8,7 @@ import org.openmetadata.schema.dataInsight.type.PercentageOfServicesWithDescript
 public abstract class ServicesDescriptionAggregator<A, B, M, S> implements DataInsightAggregatorInterface {
   private final A aggregations;
 
-  public ServicesDescriptionAggregator(A aggregations) {
+  protected ServicesDescriptionAggregator(A aggregations) {
     this.aggregations = aggregations;
   }
 

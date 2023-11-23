@@ -16,6 +16,7 @@ package org.openmetadata.service.resources.teams;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.service.security.SecurityUtil.getPrincipalName;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
@@ -23,6 +24,7 @@ import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_USER_NAME;
+import static org.openmetadata.service.util.TestUtils.UpdateType.CHANGE_CONSOLIDATED;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
@@ -40,7 +42,6 @@ import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.type.ChangeDescription;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -111,24 +112,24 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
     // Add new DATA_STEWARD_POLICY to role in addition to DATA_CONSUMER_POLICY
     String originalJson = JsonUtils.pojoToJson(role);
     role.getPolicies().addAll(DATA_STEWARD_ROLE.getPolicies());
-    ChangeDescription change = getChangeDescription(role.getVersion());
+    ChangeDescription change = getChangeDescription(role, MINOR_UPDATE);
     fieldAdded(change, "policies", DATA_STEWARD_ROLE.getPolicies());
     role = patchEntityAndCheck(role, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Remove new DATA_CONSUMER_POLICY
+    // Changes from this PATCH is consolidated with the previous changes
     originalJson = JsonUtils.pojoToJson(role);
     role.setPolicies(DATA_STEWARD_ROLE.getPolicies());
-    change = getChangeDescription(role.getVersion());
+    change = getChangeDescription(role, CHANGE_CONSOLIDATED);
     fieldDeleted(change, "policies", DATA_CONSUMER_ROLE.getPolicies());
-    role = patchEntityAndCheck(role, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    fieldAdded(change, "policies", DATA_STEWARD_ROLE.getPolicies());
+    role = patchEntityAndCheck(role, originalJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
 
     // Remove all the policies. It should be disallowed
     final String originalJson1 = JsonUtils.pojoToJson(role);
     final UUID id = role.getId();
     final Role role1 = role;
     role1.setPolicies(null);
-    change = getChangeDescription(role1.getVersion());
-    fieldAdded(change, "policies", DATA_CONSUMER_ROLE.getPolicies());
     assertResponse(
         () -> patchEntity(id, originalJson1, role1, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
@@ -156,7 +157,7 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
   @Override
   public Role validateGetWithDifferentFields(Role role, boolean byName) throws HttpResponseException {
     // Assign two arbitrary users this role for testing.
-    if (role.getUsers() == null) {
+    if (nullOrEmpty(role.getUsers())) {
       UserResourceTest userResourceTest = new UserResourceTest();
       userResourceTest.createEntity(
           userResourceTest.createRequest("roleUser1", "", "", null).withRoles(List.of(role.getId())),
@@ -219,10 +220,7 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
       return;
     }
     if (fieldName.equals("policies")) {
-      @SuppressWarnings("unchecked")
-      List<EntityReference> expectedRefs = (List<EntityReference>) expected;
-      List<EntityReference> actualRefs = JsonUtils.readObjects(actual.toString(), EntityReference.class);
-      assertEntityReferences(expectedRefs, actualRefs);
+      assertEntityReferencesFieldChange(expected, actual);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }

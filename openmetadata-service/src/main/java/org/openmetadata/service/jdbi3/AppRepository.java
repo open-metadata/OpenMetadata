@@ -1,6 +1,5 @@
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.resources.teams.UserResource.getUser;
 
 import java.util.ArrayList;
@@ -29,7 +28,7 @@ import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 public class AppRepository extends EntityRepository<App> {
-  public static String APP_BOT_ROLE = "ApplicationBotRole";
+  public static final String APP_BOT_ROLE = "ApplicationBotRole";
 
   public static final String UPDATE_FIELDS = "appConfiguration,appSchedule";
 
@@ -46,21 +45,14 @@ public class AppRepository extends EntityRepository<App> {
   }
 
   @Override
-  public App setFields(App entity, EntityUtil.Fields fields) {
+  public void setFields(App entity, EntityUtil.Fields fields) {
     entity.setPipelines(fields.contains("pipelines") ? getIngestionPipelines(entity) : entity.getPipelines());
-    return entity.withBot(getBotUser(entity));
+    entity.withBot(getBotUser(entity));
   }
 
   @Override
   protected List<EntityReference> getIngestionPipelines(App service) {
-    List<CollectionDAO.EntityRelationshipRecord> pipelines =
-        findToRecords(service.getId(), entityType, Relationship.HAS, Entity.INGESTION_PIPELINE);
-    List<EntityReference> ingestionPipelines = new ArrayList<>();
-    for (CollectionDAO.EntityRelationshipRecord entityRelationshipRecord : pipelines) {
-      ingestionPipelines.add(
-          Entity.getEntityReferenceById(Entity.INGESTION_PIPELINE, entityRelationshipRecord.getId(), ALL));
-    }
-    return ingestionPipelines;
+    return findTo(service.getId(), entityType, Relationship.HAS, Entity.INGESTION_PIPELINE);
   }
 
   public AppMarketPlaceRepository getMarketPlace() {
@@ -68,8 +60,8 @@ public class AppRepository extends EntityRepository<App> {
   }
 
   @Override
-  public App clearFields(App entity, EntityUtil.Fields fields) {
-    return entity;
+  public void clearFields(App entity, EntityUtil.Fields fields) {
+    /* Nothing to do */
   }
 
   @Override
@@ -199,8 +191,7 @@ public class AppRepository extends EntityRepository<App> {
   protected void cleanup(App app) {
     // Remove the Pipelines for Application
     List<EntityReference> pipelineRef = getIngestionPipelines(app);
-    pipelineRef.forEach(
-        (reference) -> Entity.deleteEntity("admin", reference.getType(), reference.getId(), true, true));
+    pipelineRef.forEach(reference -> Entity.deleteEntity("admin", reference.getType(), reference.getId(), true, true));
     super.cleanup(app);
   }
 

@@ -218,7 +218,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = DataProduct.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "DataProduct for instance {id} and version {version} is " + "not found")
+            description = "DataProduct for instance {id} and version {version} is not found")
       })
   public DataProduct getVersion(
       @Context UriInfo uriInfo,
@@ -255,7 +255,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
       operationId = "createOrUpdateDataProduct",
       summary = "Create or update a dataProduct",
       description =
-          "Create a dataProduct. if it does not exist. If a dataProduct already exists, update the " + "dataProduct.",
+          "Create a dataProduct. if it does not exist. If a dataProduct already exists, update the dataProduct.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -286,9 +286,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
@@ -340,6 +338,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     for (EntityReference asset : listOrEmpty(create.getAssets())) {
       asset = Entity.getEntityReference(asset, Include.NON_DELETED);
       dataProduct.getAssets().add(asset);
+      dataProduct.getAssets().sort(EntityUtil.compareEntityReference);
     }
     return dataProduct;
   }

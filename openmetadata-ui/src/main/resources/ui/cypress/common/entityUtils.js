@@ -142,3 +142,79 @@ export const generateRandomTable = () => {
 
   return table;
 };
+
+/**
+ * get Table by name and create query in the table
+ */
+export const createQueryByTableName = (token, table) => {
+  cy.request({
+    method: 'GET',
+    url: `/api/v1/tables/name/${table.databaseSchema}.${table.name}`,
+    headers: { Authorization: `Bearer ${token}` },
+  }).then((response) => {
+    cy.request({
+      method: 'POST',
+      url: `/api/v1/queries`,
+      headers: { Authorization: `Bearer ${token}` },
+      body: {
+        query: 'SELECT * FROM SALES',
+        description: 'this is query description',
+        queryUsedIn: [
+          {
+            id: response.body.id,
+            type: 'table',
+          },
+        ],
+        duration: 6199,
+        queryDate: 1700225667191,
+        service: DATABASE_SERVICE_DETAILS.name,
+      },
+    }).then((response) => {
+      expect(response.status).to.eq(201);
+    });
+  });
+};
+
+/**
+ * Create a new user
+ */
+export const createUserEntity = ({ token, user }) => {
+  cy.request({
+    method: 'POST',
+    url: `/api/v1/users/signup`,
+    headers: { Authorization: `Bearer ${token}` },
+    body: user,
+  }).then((response) => {
+    user.id = response.body.id;
+  });
+};
+
+/**
+ * Delete a user by id
+ */
+export const deleteUserEntity = ({ token, id }) => {
+  cy.request({
+    method: 'DELETE',
+    url: `/api/v1/users/${id}?hardDelete=true&recursive=false`,
+    headers: { Authorization: `Bearer ${token}` },
+  });
+};
+
+/**
+ * Delete any entity by id
+ */
+export const deleteEntityById = ({ entityType, token, entityFqn }) => {
+  cy.request({
+    method: 'GET',
+    url: `/api/v1/${entityType}/name/${entityFqn}`,
+    headers: { Authorization: `Bearer ${token}` },
+  }).then((response) => {
+    cy.request({
+      method: 'DELETE',
+      url: `/api/v1/${entityType}/${response.body.id}?hardDelete=true&recursive=true`,
+      headers: { Authorization: `Bearer ${token}` },
+    }).then((response) => {
+      expect(response.status).to.eq(200);
+    });
+  });
+};

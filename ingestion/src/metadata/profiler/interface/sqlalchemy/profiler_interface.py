@@ -22,13 +22,15 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
-from sqlalchemy import Column, inspect
+from sqlalchemy import Column, inspect, text
 from sqlalchemy.exc import ProgrammingError, ResourceClosedError
 from sqlalchemy.orm import scoped_session
 
-from metadata.generated.schema.entity.data.table import TableData
+from metadata.generated.schema.entity.data.table import CustomMetricProfile, TableData
+from metadata.generated.schema.tests.customMetric import CustomMetric
 from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
 from metadata.mixins.sqalchemy.sqa_mixin import SQAInterfaceMixin
+from metadata.profiler.api.models import ThreadPoolMetrics
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.profiler.metrics.core import MetricTypes
 from metadata.profiler.metrics.registry import Metrics
@@ -42,6 +44,7 @@ from metadata.profiler.orm.registry import Dialects
 from metadata.profiler.processor.runner import QueryRunner
 from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 from metadata.utils.custom_thread_pool import CustomThreadPoolExecutor
+from metadata.utils.helpers import is_safe_sql_query
 from metadata.utils.logger import profiler_interface_registry_logger
 
 logger = profiler_interface_registry_logger()
@@ -307,6 +310,8 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             row = runner.select_first_from_sample(
                 *[metric(column).fn() for metric in metrics],
             )
+            if row:
+                return dict(row)
         except ProgrammingError as exc:
             logger.info(
                 f"Skipping metrics for {runner.table.__tablename__}.{column.name} due to {exc}"
@@ -314,8 +319,43 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         except Exception as exc:
             msg = f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
             handle_query_exception(msg, exc, session)
-        if row:
-            return dict(row)
+        return None
+
+    def _compute_custom_metrics(
+        self, metrics: List[CustomMetric], runner, session, *args, **kwargs
+    ):
+        """Compute custom metrics
+
+        Args:
+            metrics (List[Metrics]): list of customMetrics
+            runner (_type_): runner
+        """
+        if not metrics:
+            return None
+
+        custom_metrics = []
+
+        for metric in metrics:
+            try:
+                if not is_safe_sql_query(metric.expression):
+                    raise RuntimeError(
+                        f"SQL expression is not safe\n\n{metric.expression}"
+                    )
+
+                crs = session.execute(text(metric.expression))
+                row = (
+                    crs.scalar()
+                )  # raise MultipleResultsFound if more than one row is returned
+                custom_metrics.append(
+                    CustomMetricProfile(name=metric.name.__root__, value=row)
+                )
+
+            except Exception as exc:
+                msg = f"Error trying to compute profile for {runner.table.__tablename__}.{metric.columnName}: {exc}"
+                logger.debug(traceback.format_exc())
+                logger.warning(msg)
+        if custom_metrics:
+            return {"customMetrics": custom_metrics}
         return None
 
     def _compute_system_metrics(
@@ -376,14 +416,11 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
 
     def compute_metrics_in_thread(
         self,
-        metrics,
-        metric_type,
-        column,
-        table,
+        metric_func: ThreadPoolMetrics,
     ):
         """Run metrics in processor worker"""
         logger.debug(
-            f"Running profiler for {table.__tablename__} on thread {threading.current_thread()}"
+            f"Running profiler for {metric_func.table.__tablename__} on thread {threading.current_thread()}"
         )
         Session = self.session_factory  # pylint: disable=invalid-name
         with Session() as session:
@@ -391,36 +428,40 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             self.set_catalog(session)
             sampler = self._create_thread_safe_sampler(
                 session,
-                table,
+                metric_func.table,
             )
             sample = sampler.random_sample()
             runner = self._create_thread_safe_runner(
                 session,
-                table,
+                metric_func.table,
                 sample,
             )
 
             try:
-                row = self._get_metric_fn[metric_type.value](
-                    metrics,
+                row = self._get_metric_fn[metric_func.metric_type.value](
+                    metric_func.metrics,
                     runner=runner,
                     session=session,
-                    column=column,
+                    column=metric_func.column,
                     sample=sample,
                 )
             except Exception as exc:
-                error = f"{column if column is not None else runner.table.__tablename__} metric_type.value: {exc}"
+                error = (
+                    f"{metric_func.column if metric_func.column is not None else metric_func.table.__tablename__} "
+                    f"metric_type.value: {exc}"
+                )
                 logger.error(error)
                 self.status.failed_profiler(error, traceback.format_exc())
                 row = None
 
-            if column is not None:
-                column = column.name
-                self.status.scanned(f"{table.__tablename__}.{column}")
+            if metric_func.column is not None:
+                column = metric_func.column.name
+                self.status.scanned(f"{metric_func.table.__tablename__}.{column}")
             else:
-                self.status.scanned(table.__tablename__)
+                self.status.scanned(metric_func.table.__tablename__)
+                column = None
 
-            return row, column, metric_type.value
+            return row, column, metric_func.metric_type.value
 
     # pylint: disable=use-dict-literal
     def get_all_metrics(
@@ -434,7 +475,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             futures = [
                 pool.submit(
                     self.compute_metrics_in_thread,
-                    *metric_func,
+                    metric_func,
                 )
                 for metric_func in metric_funcs
             ]
@@ -455,6 +496,8 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                         profile_results["table"].update(profile)
                     elif metric_type == MetricTypes.System.value:
                         profile_results["system"] = profile
+                    elif metric_type == MetricTypes.Custom.value and column is None:
+                        profile_results["table"].update(profile)
                     else:
                         profile_results["columns"][column].update(
                             {

@@ -126,7 +126,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
               schema = @Schema(type = "string", example = "kafkaWestCoast"))
           @QueryParam("service")
           String serviceParam,
-      @Parameter(description = "Limit the number topics returned. (1 to 1000000, default = " + "10)")
+      @Parameter(description = "Limit the number topics returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
           @Min(0)
@@ -240,9 +240,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
             responseCode = "200",
             description = "topic",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Topic.class))),
-        @ApiResponse(
-            responseCode = "404",
-            description = "Topic for instance {id} and version {version} is " + "not found")
+        @ApiResponse(responseCode = "404", description = "Topic for instance {id} and version {version} is not found")
       })
   public Topic getVersion(
       @Context UriInfo uriInfo,
@@ -291,9 +289,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
@@ -501,7 +497,6 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
         .withRetentionTime(create.getRetentionTime())
         .withReplicationFactor(create.getReplicationFactor())
         .withTopicConfig(create.getTopicConfig())
-        .withSourceUrl(create.getSourceUrl())
-        .withTags(create.getTags());
+        .withSourceUrl(create.getSourceUrl());
   }
 }

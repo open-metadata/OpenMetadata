@@ -4,7 +4,7 @@ include ingestion/Makefile
 
 .PHONY: help
 help:
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[35m%-30s\033[0m %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":"}; {printf "\033[35m%-35s\033[0m %s\n", $$2, $$3}'
 
 .PHONY: install_e2e_tests
 install_e2e_tests:  ## Install the ingestion module with e2e test dependencies (playwright)
@@ -23,40 +23,6 @@ yarn_install_cache:  ## Use Yarn to install UI dependencies
 .PHONY: yarn_start_dev_ui
 yarn_start_dev_ui:  ## Run the UI locally with Yarn
 	cd openmetadata-ui/src/main/resources/ui && yarn start
-
-## Ingestion Core
-.PHONY: core_install_dev
-core_install_dev:  ## Prepare a venv for the ingestion-core module
-	cd ingestion-core; \
-		rm -rf venv; \
-		python3 -m venv venv; \
-		. venv/bin/activate; \
-		python3 -m pip install ".[dev]"
-
-.PHONY: core_clean
-core_clean:  ## Clean the ingestion-core generated files
-	rm -rf ingestion-core/src/metadata/generated
-	rm -rf ingestion-core/build
-	rm -rf ingestion-core/dist
-
-.PHONY: core_generate
-core_generate:  ## Generate the pydantic models from the JSON Schemas to the ingestion-core module
-	$(MAKE) core_install_dev
-	mkdir -p ingestion-core/src/metadata/generated; \
-	. ingestion-core/venv/bin/activate; \
-	datamodel-codegen --input openmetadata-spec/src/main/resources/json/schema  --input-file-type jsonschema --output ingestion-core/src/metadata/generated/schema
-	$(MAKE) core_py_antlr
-
-.PHONY: core_bump_version_dev
-core_bump_version_dev:  ## Bump a `dev` version to the ingestion-core module. To be used when schemas are updated
-	$(MAKE) core_install_dev
-	cd ingestion-core; \
-		. venv/bin/activate; \
-		python -m incremental.update metadata --dev
-
-.PHONY: core_py_antlr
-core_py_antlr:  ## Generate the Python core code for parsing FQNs under ingestion-core
-	antlr4 -Dlanguage=Python3 -o ingestion-core/src/metadata/generated/antlr ${PWD}/openmetadata-spec/src/main/antlr4/org/openmetadata/schema/*.g4
 
 .PHONY: py_antlr
 py_antlr:  ## Generate the Python code for parsing FQNs
@@ -103,8 +69,8 @@ SNYK_ARGS := --severity-threshold=high
 .PHONY: snyk-ingestion-report
 snyk-ingestion-report:  ## Uses Snyk CLI to validate the ingestion code and container. Don't stop the execution
 	@echo "Validating Ingestion container..."
-	docker build -t openmetadata-ingestion:scan -f ingestion/Dockerfile .
-	snyk container test openmetadata-ingestion:scan --file=ingestion/Dockerfile $(SNYK_ARGS) --json > security-report/ingestion-docker-scan.json | true;
+	docker build -t openmetadata-ingestion:scan -f ingestion/Dockerfile.ci .
+	snyk container test openmetadata-ingestion:scan --file=ingestion/Dockerfile.ci $(SNYK_ARGS) --json > security-report/ingestion-docker-scan.json | true;
 	@echo "Validating ALL ingestion dependencies. Make sure the venv is activated."
 	cd ingestion; \
 		pip freeze > scan-requirements.txt; \
@@ -171,7 +137,7 @@ generate-schema-docs:  ## Generates markdown files for documenting the JSON Sche
 
 #Upgrade release automation scripts below	
 .PHONY: update_all
-update_all: ## To update all the release related files run make update_all RELEASE_VERSION=2.2.2 PY_RELEASE_VERSION=2.2.2.2
+update_all:  ## To update all the release related files run make update_all RELEASE_VERSION=2.2.2 PY_RELEASE_VERSION=2.2.2.2
 	@echo "The release version is: $(RELEASE_VERSION)" ; \
 	echo "The python metadata release version: $(PY_RELEASE_VERSION)" ; \
 	$(MAKE) update_maven ; \
@@ -184,7 +150,7 @@ update_all: ## To update all the release related files run make update_all RELEA
 #make update_all RELEASE_VERSION=2.2.2 PY_RELEASE_VERSION=2.2.2.2
 
 .PHONY: update_maven
-update_maven: ## To update the common and pom.xml maven version
+update_maven:  ## To update the common and pom.xml maven version
 	@echo "Updating Maven projects to version $(RELEASE_VERSION)..."; \
 	mvn versions:set -DnewVersion=$(RELEASE_VERSION)
 #remove comment and use the below section when want to use this sub module "update_maven" independently to update github actions
@@ -192,7 +158,7 @@ update_maven: ## To update the common and pom.xml maven version
 
 
 .PHONY: update_github_action_paths
-update_github_action_paths: ## To update the github action ci docker files
+update_github_action_paths:  ## To update the github action ci docker files
 	@echo "Updating docker github action release version to $(RELEASE_VERSION)... "; \
 	file_paths="docker/docker-compose-quickstart/Dockerfile \
 	            .github/workflows/docker-openmetadata-db.yml \
@@ -212,7 +178,7 @@ update_github_action_paths: ## To update the github action ci docker files
 #make update_github_action_paths RELEASE_VERSION=2.2.2
 
 .PHONY: update_python_release_paths
-update_python_release_paths: ## To update the setup.py files
+update_python_release_paths:  ## To update the setup.py files
 	file_paths="ingestion/setup.py \
 				openmetadata-airflow-apis/setup.py"; \
 	echo "Updating Python setup file versions to $(PY_RELEASE_VERSION)... "; \
@@ -223,9 +189,8 @@ update_python_release_paths: ## To update the setup.py files
 #make update_python_release_paths PY_RELEASE_VERSION=2.2.2.2
 
 .PHONY: update_dockerfile_version
-update_dockerfile_version: ## To update the dockerfiles version
-	@file_paths="docker/docker-compose-ingestion/docker-compose-ingestion-postgres.yml \
-		     docker/docker-compose-ingestion/docker-compose-ingestion.yml \
+update_dockerfile_version:  ## To update the dockerfiles version
+	@file_paths="docker/docker-compose-ingestion/docker-compose-ingestion.yml \
 		     docker/docker-compose-openmetadata/docker-compose-openmetadata.yml \
 		     docker/docker-compose-quickstart/docker-compose-postgres.yml \
 		     docker/docker-compose-quickstart/docker-compose.yml"; \
@@ -237,7 +202,7 @@ update_dockerfile_version: ## To update the dockerfiles version
 #make update_dockerfile_version RELEASE_VERSION=2.2.2
 
 .PHONY: update_ingestion_dockerfile_version
-update_ingestion_dockerfile_version: ## To update the ingestion dockerfiles version
+update_ingestion_dockerfile_version:  ## To update the ingestion dockerfiles version
 	@file_paths="ingestion/Dockerfile \
 	             ingestion/operators/docker/Dockerfile"; \
 	echo "Updating ingestion dockerfile release version to $(PY_RELEASE_VERSION)... "; \

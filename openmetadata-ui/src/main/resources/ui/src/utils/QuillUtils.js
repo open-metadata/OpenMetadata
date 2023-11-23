@@ -21,3 +21,19 @@ export function insertRef() {
   const ref = this.quill.getModule('mention');
   ref.openMenu('#');
 }
+
+export function directionHandler(value) {
+  const { align } = this.quill.getFormat();
+
+  // get the editor container
+  const container = document.getElementById('om-quill-editor');
+
+  if (value === 'rtl' && align == null) {
+    container.setAttribute('data-dir', value);
+    this.quill.format('align', 'right', 'user');
+  } else if (!value && align === 'right') {
+    this.quill.format('align', false, 'user');
+    container.setAttribute('data-dir', 'ltr');
+  }
+  this.quill.format('direction', value, 'user');
+}

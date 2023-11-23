@@ -125,9 +125,6 @@ public class ClassificationResourceTest extends EntityResourceTest<Classificatio
 
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) {
-    if (expected == actual) {
-      return;
-    }
     assertCommonFieldChange(fieldName, expected, actual);
   }
 
@@ -135,7 +132,7 @@ public class ClassificationResourceTest extends EntityResourceTest<Classificatio
     // User PATCH operation to rename a classification
     String oldName = classification.getName();
     String json = JsonUtils.pojoToJson(classification);
-    ChangeDescription change = getChangeDescription(classification.getVersion());
+    ChangeDescription change = getChangeDescription(classification, MINOR_UPDATE);
     fieldUpdated(change, "name", oldName, newName);
     classification.setName(newName);
     Classification ret = patchEntityAndCheck(classification, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);

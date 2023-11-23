@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import LTRIcon from '../../../assets/svg/ic-ltr.svg';
+import RTLIcon from '../../../assets/svg/ic-rtl.svg';
 import MarkdownIcon from '../../../assets/svg/markdown.svg';
 import i18n from '../../../utils/i18next/LocalUtil';
 
@@ -41,6 +43,55 @@ const markdownButton = (): HTMLButtonElement => {
   return button;
 };
 
+const getRTLButtonIcon = (mode: 'rtl' | 'ltr') => `
+  <img
+    alt="rtl-icon"
+    class="svg-icon"
+    height="24px"
+    width="24px"
+    src="${mode === 'rtl' ? RTLIcon : LTRIcon}" />`;
+
+const toggleEditorDirection = (button: HTMLButtonElement) => {
+  const editorElement = document.querySelector(
+    '.toastui-editor.md-mode.active'
+  );
+
+  if (editorElement) {
+    const editorElementDir = editorElement.getAttribute('dir');
+    const newDir = editorElementDir === 'rtl' ? 'ltr' : 'rtl';
+    const textAlign = newDir === 'rtl' ? 'right' : 'left';
+
+    editorElement.setAttribute('dir', newDir);
+    editorElement.setAttribute('style', `text-align: ${textAlign};`);
+    button.innerHTML = getRTLButtonIcon(newDir === 'rtl' ? 'ltr' : 'rtl');
+  }
+};
+
+const rtlButton = (): HTMLButtonElement => {
+  const button = document.createElement('button');
+
+  button.onclick = () => toggleEditorDirection(button);
+
+  button.className = 'toastui-editor-toolbar-icons rtl-icon';
+  button.id = 'rtl-button';
+  button.style.cssText = 'background-image: none; margin: 0; margin-top: 4px;';
+  button.type = 'button';
+  button.innerHTML = getRTLButtonIcon('rtl');
+
+  return button;
+};
+
+const rtlButtonUpdateHandler = (toolbarState: {
+  active: boolean;
+  disabled?: boolean;
+}) => {
+  const rtlButtonElement = document.getElementById('rtl-button');
+  if (rtlButtonElement) {
+    (rtlButtonElement as HTMLButtonElement).disabled =
+      toolbarState.disabled || false;
+  }
+};
+
 export const EDITOR_TOOLBAR_ITEMS = [
   'heading',
   'bold',
@@ -53,6 +104,12 @@ export const EDITOR_TOOLBAR_ITEMS = [
   'quote',
   'code',
   'codeblock',
+  {
+    name: i18n.t('label.rtl-ltr-direction'),
+    el: rtlButton(),
+    tooltip: i18n.t('label.rtl-ltr-direction'),
+    onUpdated: rtlButtonUpdateHandler,
+  },
   {
     name: i18n.t('label.markdown-guide'),
     el: markdownButton(),

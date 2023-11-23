@@ -187,12 +187,12 @@ public class ListFilter {
 
     switch (testSuiteType) {
       case ("executable"):
-        if (DatasourceConfig.getInstance().isMySQL()) {
+        if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
           return "(JSON_UNQUOTE(JSON_EXTRACT(json, '$.executable')) = 'true')";
         }
         return "(json->>'executable' = 'true')";
       case ("logical"):
-        if (DatasourceConfig.getInstance().isMySQL()) {
+        if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
           return "(JSON_UNQUOTE(JSON_EXTRACT(json, '$.executable')) = 'false' OR JSON_UNQUOTE(JSON_EXTRACT(json, '$.executable')) IS NULL)";
         }
         return "(json->>'executable' = 'false' or json -> 'executable' is null)";
@@ -218,7 +218,7 @@ public class ListFilter {
   private String getPipelineTypePrefixCondition(String tableName, String pipelineType) {
     pipelineType = escape(pipelineType);
     String inCondition = getInConditionFromString(pipelineType);
-    if (DatasourceConfig.getInstance().isMySQL()) {
+    if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
       return tableName == null
           ? String.format(
               "JSON_UNQUOTE(JSON_EXTRACT(ingestion_pipeline_entity.json, '$.pipelineType')) IN (%s)", inCondition)
