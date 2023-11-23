@@ -74,6 +74,7 @@ And is defined as:
                 "athena:ListQueryExecutions",
                 "athena:StartQueryExecution",
                 "athena:GetQueryExecution",
+                "athena:ListWorkGroups",
                 "athena:GetQueryResults",
                 "athena:BatchGetQueryExecution"
             ],
