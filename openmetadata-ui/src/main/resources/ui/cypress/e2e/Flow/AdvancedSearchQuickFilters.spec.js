@@ -19,12 +19,18 @@ import { SEARCH_ENTITY_TABLE } from '../../constants/constants';
 const ownerName = 'Aaron Johnson';
 
 describe(`Advanced search quick filters should work properly for assets`, () => {
-  beforeEach(() => {
+  before(() => {
     cy.login();
+    addOwner({ ownerName, ...SEARCH_ENTITY_TABLE.table_1 });
   });
 
-  it('Add owner', () => {
-    addOwner({ ownerName, ...SEARCH_ENTITY_TABLE.table_1 });
+  after(() => {
+    cy.login();
+    removeOwner();
+  });
+
+  beforeEach(() => {
+    cy.login();
   });
 
   it(`should show the quick filters for respective assets`, () => {
@@ -70,9 +76,5 @@ describe(`Advanced search quick filters should work properly for assets`, () => 
 
         verifyResponseStatusCode('@querySearchAPI', 200);
       });
-  });
-
-  it('Remove owner', () => {
-    removeOwner();
   });
 });
