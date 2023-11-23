@@ -28,6 +28,7 @@ import {
   verifyResponseStatusCode,
   visitEntityDetailsPage,
 } from '../../common/common';
+import { createEntityTable, hardDeleteService } from '../../common/entityUtils';
 import { searchServiceFromSettingPage } from '../../common/serviceUtils';
 import {
   API_SERVICE,
@@ -41,9 +42,25 @@ import {
   SERVICE_TYPE,
   TEAM_ENTITY,
 } from '../../constants/constants';
+import { DATABASE_SERVICE } from '../../constants/entityConstant';
+import { SERVICE_CATEGORIES } from '../../constants/service.constants';
 
 const serviceType = 'Mysql';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
+const tableFqn = `${DATABASE_SERVICE.tables.databaseSchema}.${DATABASE_SERVICE.tables.name}`;
+const testSuite = {
+  name: `${tableFqn}.testSuite`,
+  executableEntityReference: tableFqn,
+};
+const testCase = {
+  name: `user_tokens_table_column_name_to_exist_${uuid()}`,
+  entityLink: `<#E::table::${testSuite.executableEntityReference}>`,
+  parameterValues: [{ name: 'columnName', value: 'id' }],
+  testDefinition: 'tableColumnNameToExist',
+  description: 'test case description',
+  testSuite: testSuite.name,
+};
+let testCaseId = '';
 
 const goToProfilerTab = () => {
   interceptURL(
@@ -88,7 +105,53 @@ const visitTestSuiteDetailsPage = (testSuiteName) => {
   clickOnTestSuite(testSuiteName);
 };
 
-describe.skip('Data Quality and Profiler should work properly', () => {
+describe('Data Quality and Profiler should work properly', () => {
+  before(() => {
+    cy.login();
+    cy.getAllLocalStorage().then((data) => {
+      const token = Object.values(data)[0].oidcIdToken;
+
+      createEntityTable({
+        token,
+        ...DATABASE_SERVICE,
+        tables: [DATABASE_SERVICE.tables],
+      });
+
+      cy.request({
+        method: 'POST',
+        url: `/api/v1/dataQuality/testSuites/executable`,
+        headers: { Authorization: `Bearer ${token}` },
+        body: testSuite,
+      }).then(() => {
+        cy.request({
+          method: 'POST',
+          url: `/api/v1/dataQuality/testCases`,
+          headers: { Authorization: `Bearer ${token}` },
+          body: testCase,
+        }).then((response) => {
+          testCaseId = response.body.id;
+        });
+      });
+    });
+  });
+
+  after(() => {
+    cy.login();
+    cy.getAllLocalStorage().then((data) => {
+      const token = Object.values(data)[0].oidcIdToken;
+      cy.request({
+        method: 'DELETE',
+        url: `/api/v1/dataQuality/testCases/${testCaseId}?hardDelete=true&recursive=false`,
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      hardDeleteService({
+        token,
+        serviceFqn: DATABASE_SERVICE.service.name,
+        serviceType: SERVICE_CATEGORIES.DATABASE_SERVICES,
+      });
+    });
+  });
+
   beforeEach(() => {
     cy.login();
     interceptURL('GET', `/api/v1/tables/*/systemProfile?*`, 'systemProfile');
@@ -704,5 +767,36 @@ describe.skip('Data Quality and Profiler should work properly', () => {
       .scrollIntoView()
       .should('be.visible')
       .contains(sqlQuery);
+  });
+
+  it('Update displayName of test case', () => {
+    interceptURL('GET', '/api/v1/dataQuality/testCases?*', 'getTestCase');
+    cy.get('[data-testid="app-bar-item-data-quality"]').click();
+    cy.get('[data-testid="by-test-cases"]').click();
+    verifyResponseStatusCode('@getTestCase', 200);
+    interceptURL(
+      'GET',
+      `/api/v1/search/query?q=*${testCase.name}*&index=test_case_search_index*`,
+      'searchTestCase'
+    );
+    cy.get(
+      '[data-testid="test-case-container"] [data-testid="searchbar"]'
+    ).type(testCase.name);
+    verifyResponseStatusCode('@searchTestCase', 200);
+    cy.get(`[data-testid="${testCase.name}"]`)
+      .scrollIntoView()
+      .should('be.visible');
+    cy.get(`[data-testid="edit-${testCase.name}"]`).click();
+    cy.get('.ant-modal-body').should('be.visible');
+    cy.get('#tableTestForm_displayName').type('Table test case display name');
+    interceptURL('PATCH', '/api/v1/dataQuality/testCases/*', 'updateTestCase');
+    cy.get('.ant-modal-footer').contains('Submit').click();
+    verifyResponseStatusCode('@updateTestCase', 200);
+    cy.get(`[data-testid="${testCase.name}"]`)
+      .scrollIntoView()
+      .invoke('text')
+      .then((text) => {
+        expect(text).to.eq('Table test case display name');
+      });
   });
 });
