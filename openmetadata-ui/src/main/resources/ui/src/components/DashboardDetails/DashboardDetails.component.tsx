@@ -427,8 +427,8 @@ const DashboardDetails = ({
           const chartName = getEntityName(record);
 
           return record.sourceUrl ? (
-            <Typography.Link href={record.sourceUrl} target="_blank">
-              <div className="d-flex items-center">
+            <div className="d-flex items-center">
+              <Typography.Link href={record.sourceUrl} target="_blank">
                 <span className="break-all">{chartName}</span>
 
                 <ExternalLinkIcon
@@ -436,8 +436,8 @@ const DashboardDetails = ({
                   height={14}
                   width={14}
                 />
-              </div>
-            </Typography.Link>
+              </Typography.Link>
+            </div>
           ) : (
             <Typography.Text className="w-full">{chartName}</Typography.Text>
           );
