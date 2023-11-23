@@ -85,7 +85,7 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
           test.id === data.id ? { ...test, ...data } : test
         );
 
-        return { ...prev, data: updatedTestCase };
+        return updatedTestCase;
       });
     }
   };
@@ -118,7 +118,7 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
         return test;
       });
 
-      return { ...prev, data };
+      return data;
     });
   };
 
