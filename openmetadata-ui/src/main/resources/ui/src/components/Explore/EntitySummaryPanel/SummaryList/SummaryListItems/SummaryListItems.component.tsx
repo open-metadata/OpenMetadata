@@ -34,7 +34,7 @@ function SummaryListItem({
       <div className="summary-list-item-container">
         <Row gutter={[0, 8]}>
           <Col
-            className="d-flex items-center"
+            className="d-flex items-baseline"
             data-testid="title-container"
             span={24}>
             {isColumnsData &&

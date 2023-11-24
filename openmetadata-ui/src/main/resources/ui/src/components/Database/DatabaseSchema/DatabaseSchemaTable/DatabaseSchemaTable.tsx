@@ -29,6 +29,7 @@ import { usePaging } from '../../../../hooks/paging/usePaging';
 import { getDatabaseSchemas } from '../../../../rest/databaseAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { schemaTableColumns } from '../../../../utils/DatabaseDetails.utils';
+import { getDecodedFqn } from '../../../../utils/StringsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
@@ -43,6 +44,8 @@ export const DatabaseSchemaTable = () => {
   const [schemas, setSchemas] = useState<DatabaseSchema[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showDeletedSchemas, setShowDeletedSchemas] = useState<boolean>(false);
+
+  const decodedDatabaseFQN = useMemo(() => getDecodedFqn(fqn), [fqn]);
   const searchValue = useMemo(() => {
     const param = location.search;
     const searchData = QueryString.parse(
@@ -63,14 +66,14 @@ export const DatabaseSchemaTable = () => {
 
   const fetchDatabaseSchema = useCallback(
     async (params?: Partial<Paging>) => {
-      if (isEmpty(fqn)) {
+      if (isEmpty(decodedDatabaseFQN)) {
         return;
       }
 
       try {
         setIsLoading(true);
         const { data, paging } = await getDatabaseSchemas({
-          databaseName: fqn,
+          databaseName: decodedDatabaseFQN,
           limit: pageSize,
           after: params?.after,
           before: params?.before,
@@ -81,12 +84,12 @@ export const DatabaseSchemaTable = () => {
         setSchemas(data);
         handlePagingChange(paging);
       } catch (error) {
-        showErrorToast(error);
+        showErrorToast(error as AxiosError);
       } finally {
         setIsLoading(false);
       }
     },
-    [pageSize, fqn, showDeletedSchemas]
+    [pageSize, decodedDatabaseFQN, showDeletedSchemas]
   );
 
   const searchSchema = async (
