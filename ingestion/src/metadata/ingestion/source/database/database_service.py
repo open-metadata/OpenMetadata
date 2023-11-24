@@ -134,6 +134,8 @@ class DatabaseServiceTopology(ServiceTopology):
                 context="database_schema",
                 processor="yield_database_schema",
                 consumer=["database_service", "database"],
+                entities_list="table_entities",
+                entities_cache="get_all_entities",
             ),
         ],
         children=["table", "stored_procedure"],
@@ -154,6 +156,7 @@ class DatabaseServiceTopology(ServiceTopology):
                 context="table",
                 processor="yield_table",
                 consumer=["database_service", "database", "database_schema"],
+                entities_list="table_entities",
             ),
             NodeStage(
                 type_=OMetaLifeCycleData,
@@ -361,9 +364,9 @@ class DatabaseServiceSource(
         table_fqn = fqn.build(
             self.metadata,
             entity_type=Table,
-            service_name=self.context.database_service.name.__root__,
-            database_name=self.context.database.name.__root__,
-            schema_name=self.context.database_schema.name.__root__,
+            service_name=self.context.database_service,
+            database_name=self.context.database,
+            schema_name=self.context.database_schema,
             table_name=table_name,
             skip_es_search=True,
         )
@@ -379,9 +382,9 @@ class DatabaseServiceSource(
         col_fqn = fqn.build(
             self.metadata,
             entity_type=Column,
-            service_name=self.context.database_service.name.__root__,
-            database_name=self.context.database.name.__root__,
-            schema_name=self.context.database_schema.name.__root__,
+            service_name=self.context.database_service,
+            database_name=self.context.database,
+            schema_name=self.context.database_schema,
             table_name=table_name,
             column_name=column["name"],
         )
@@ -394,9 +397,9 @@ class DatabaseServiceSource(
         table_fqn = fqn.build(
             self.metadata,
             entity_type=Table,
-            service_name=self.context.database_service.name.__root__,
-            database_name=self.context.database.name.__root__,
-            schema_name=self.context.database_schema.name.__root__,
+            service_name=self.context.database_service,
+            database_name=self.context.database,
+            schema_name=self.context.database_schema,
             table_name=table_request.name.__root__,
             skip_es_search=True,
         )
@@ -410,8 +413,8 @@ class DatabaseServiceSource(
             schema_fqn = fqn.build(
                 self.metadata,
                 entity_type=DatabaseSchema,
-                service_name=self.context.database_service.name.__root__,
-                database_name=self.context.database.name.__root__,
+                service_name=self.context.database_service,
+                database_name=self.context.database,
                 schema_name=schema_name,
             )
             if filter_by_schema(
@@ -429,7 +432,7 @@ class DatabaseServiceSource(
         """
         if self.source_config.markDeletedTables:
             logger.info(
-                f"Mark Deleted Tables set to True. Processing database [{self.context.database.name.__root__}]"
+                f"Mark Deleted Tables set to True. Processing database [{self.context.database}]"
             )
             schema_fqn_list = self._get_filtered_schema_names(
                 return_fqn=True, add_to_status=False

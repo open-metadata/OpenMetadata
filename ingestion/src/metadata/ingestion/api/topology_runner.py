@@ -22,6 +22,7 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.ingestion.api.models import Either, Entity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.models.patch_request import PatchRequest
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
@@ -32,6 +33,7 @@ from metadata.ingestion.models.topology import (
     get_topology_root,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
 
@@ -169,19 +171,19 @@ class TopologyRunnerMixin(Generic[C]):
         :return: Entity FQN derived from context
         """
         context_names = [
-            self.context.__dict__[dependency].name.__root__
+            self.context.__dict__[dependency]
             for dependency in stage.consumer or []  # root nodes do not have consumers
         ]
         return fqn._build(  # pylint: disable=protected-access
             *context_names, entity_request.name.__root__
         )
 
-    def update_context(self, stage: NodeStage, entity: Entity):
+    def update_context(self, stage: NodeStage, entity_name: str):
         """Append or update context"""
         if stage.context and not stage.cache_all:
-            self._replace_context(key=stage.context, value=entity)
+            self._replace_context(key=stage.context, value=entity_name)
         if stage.context and stage.cache_all:
-            self._append_context(key=stage.context, value=entity)
+            self._append_context(key=stage.context, value=entity_name)
 
     @singledispatchmethod
     def yield_and_update_context(
@@ -197,39 +199,19 @@ class TopologyRunnerMixin(Generic[C]):
         The default implementation is based on a get_by_name validation
         """
 
-        entity = None
-
-        entity_fqn = self.fqn_from_context(stage=stage, entity_request=right)
-
-        # we get entity from OM if we do not want to overwrite existing data in OM
-        if not stage.overwrite and not self._is_force_overwrite_enabled():
-            entity = self.metadata.get_by_name(
-                entity=stage.type_,
-                fqn=entity_fqn,
-                fields=["*"],  # Get all the available data from the Entity
-            )
-        # if entity does not exist in OM, or we want to overwrite, we will yield the entity_request
-        if entity is None:
-            tries = 3
-            while not entity and tries > 0:
-                yield entity_request
-                entity = self.metadata.get_by_name(
-                    entity=stage.type_,
-                    fqn=entity_fqn,
-                    fields=["*"],  # Get all the available data from the Entity
-                )
-                tries -= 1
+        entity_name = model_str(right.name)
+        yield entity_request
 
         # We have ack the sink waiting for a response, but got nothing back
-        if stage.must_return and entity is None:
+        if stage.must_return and entity_name is None:
             # Safe access to Entity Request name
             raise MissingExpectedEntityAckException(
-                f"Missing ack back from [{stage.type_.__name__}: {entity_fqn}] - "
+                f"Missing ack back from [{stage.type_.__name__}: {entity_name}] - "
                 "Possible causes are changes in the server Fernet key or mismatched JSON Schemas "
                 "for the service connection."
             )
 
-        self.update_context(stage=stage, entity=entity)
+        self.update_context(stage=stage, entity_name=entity_name)
 
     @yield_and_update_context.register
     def _(
@@ -245,7 +227,7 @@ class TopologyRunnerMixin(Generic[C]):
         lineage has been properly drawn. We'll skip the process for now.
         """
         yield entity_request
-        self.update_context(stage=stage, entity=right)
+        self.update_context(stage=stage, entity_name=right)
 
     @yield_and_update_context.register
     def _(
@@ -283,7 +265,7 @@ class TopologyRunnerMixin(Generic[C]):
             )
 
         # We want to keep the full payload in the context
-        self.update_context(stage=stage, entity=right)
+        self.update_context(stage=stage, entity_name=right)
 
     def sink_request(
         self, stage: NodeStage, entity_request: Either[C]
