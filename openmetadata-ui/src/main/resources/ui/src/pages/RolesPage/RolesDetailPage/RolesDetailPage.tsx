@@ -68,6 +68,8 @@ const RolesDetailPage = () => {
     GlobalSettingOptions.ROLES
   );
 
+  const roleName = useMemo(() => getEntityName(role), [role]);
+
   const breadcrumb = useMemo(
     () => [
       {
@@ -75,11 +77,11 @@ const RolesDetailPage = () => {
         url: rolesPath,
       },
       {
-        name: getEntityName(role),
+        name: roleName,
         url: '',
       },
     ],
-    [role]
+    [rolesPath, roleName]
   );
 
   const fetchRole = async () => {
@@ -251,14 +253,14 @@ const RolesDetailPage = () => {
               className="m-b-0 m-t-xs"
               data-testid="heading"
               level={5}>
-              {getEntityName(role)}
+              {roleName}
             </Typography.Title>
             <Description
               hasEditAccess
               className="m-b-md"
               description={role.description || ''}
               entityFqn={role.fullyQualifiedName}
-              entityName={getEntityName(role)}
+              entityName={roleName}
               entityType={EntityType.ROLE}
               isEdit={editDescription}
               onCancel={() => setEditDescription(false)}
@@ -328,7 +330,7 @@ const RolesDetailPage = () => {
           open={!isUndefined(selectedEntity.record)}
           title={`${t('label.remove-entity', {
             entity: getEntityName(selectedEntity.record),
-          })} ${t('label.from-lowercase')} ${getEntityName(role)}`}
+          })} ${t('label.from-lowercase')} ${roleName}`}
           onCancel={() => setEntity(undefined)}
           onOk={async () => {
             await handleDelete(selectedEntity.record, selectedEntity.attribute);
@@ -337,7 +339,7 @@ const RolesDetailPage = () => {
           <Typography.Text>
             {t('message.are-you-sure-you-want-to-remove-child-from-parent', {
               child: getEntityName(selectedEntity.record),
-              parent: getEntityName(role),
+              parent: roleName,
             })}
           </Typography.Text>
         </Modal>

@@ -83,6 +83,8 @@ const PoliciesDetailPage = () => {
     GlobalSettingOptions.POLICIES
   );
 
+  const policyName = useMemo(() => getEntityName(policy), [policy]);
+
   const breadcrumb = useMemo(
     () => [
       {
@@ -90,11 +92,11 @@ const PoliciesDetailPage = () => {
         url: policiesPath,
       },
       {
-        name: getEntityName(policy),
+        name: policyName,
         url: '',
       },
     ],
-    [policy]
+    [policyName, policiesPath]
   );
 
   const fetchPolicy = async () => {
@@ -329,14 +331,14 @@ const PoliciesDetailPage = () => {
               className="m-b-0 m-t-xs"
               data-testid="heading"
               level={5}>
-              {getEntityName(policy)}
+              {policyName}
             </Typography.Title>
             <Description
               hasEditAccess
               className="m-b-md"
               description={policy.description || ''}
               entityFqn={policy.fullyQualifiedName}
-              entityName={getEntityName(policy)}
+              entityName={policyName}
               entityType={EntityType.POLICY}
               isEdit={editDescription}
               onCancel={() => setEditDescription(false)}
@@ -486,7 +488,7 @@ const PoliciesDetailPage = () => {
           open={!isUndefined(selectedEntity.record)}
           title={`${t('label.remove-entity', {
             entity: getEntityName(selectedEntity.record),
-          })} ${t('label.from-lowercase')} ${getEntityName(policy)}`}
+          })} ${t('label.from-lowercase')} ${policyName}`}
           onCancel={() => setEntity(undefined)}
           onOk={async () => {
             await handleDelete(selectedEntity.record, selectedEntity.attribute);
@@ -495,7 +497,7 @@ const PoliciesDetailPage = () => {
           <Typography.Text>
             {t('message.are-you-sure-you-want-to-remove-child-from-parent', {
               child: getEntityName(selectedEntity.record),
-              parent: getEntityName(policy),
+              parent: policyName,
             })}
           </Typography.Text>
         </Modal>

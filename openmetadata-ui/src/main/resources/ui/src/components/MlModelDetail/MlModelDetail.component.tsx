@@ -97,6 +97,11 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     [mlModelFqn]
   );
 
+  const mlModelName = useMemo(
+    () => getEntityName(mlModelDetail),
+    [mlModelDetail]
+  );
+
   const fetchResourcePermission = useCallback(async () => {
     try {
       const entityPermission = await getEntityPermission(
@@ -124,12 +129,12 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       ...mlModelDetail,
       tier: getTierTags(mlModelDetail.tags ?? []),
       mlModelTags: getTagsWithoutTier(mlModelDetail.tags ?? []),
-      entityName: getEntityName(mlModelDetail),
+      entityName: mlModelName,
       isFollowing: mlModelDetail.followers?.some(
         ({ id }: { id: string }) => id === currentUser?.id
       ),
     };
-  }, [mlModelDetail]);
+  }, [mlModelDetail, mlModelName]);
 
   const fetchEntityFeedCount = () => {
     getFeedCounts(EntityType.MLMODEL, decodedMlModelFqn, setFeedCount);
@@ -392,7 +397,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                 <DescriptionV1
                   description={mlModelDetail.description}
                   entityFqn={decodedMlModelFqn}
-                  entityName={mlModelDetail.name}
+                  entityName={mlModelName}
                   entityType={EntityType.MLMODEL}
                   hasEditAccess={editDescriptionPermission}
                   isEdit={isEdit}
@@ -514,6 +519,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       feedCount,
       activeTab,
       mlModelDetail,
+      mlModelName,
       mlModelPermissions,
       isEdit,
       getMlHyperParameters,

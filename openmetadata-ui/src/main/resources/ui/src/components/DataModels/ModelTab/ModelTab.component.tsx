@@ -188,7 +188,7 @@ const ModelTab = ({
         <ModalWithMarkdownEditor
           header={`${t('label.edit-entity', {
             entity: t('label.column'),
-          })}: "${editColumnDescription.name}"`}
+          })}: "${getEntityName(editColumnDescription)}"`}
           placeholder={t('label.enter-field-description', {
             field: t('label.column'),
           })}

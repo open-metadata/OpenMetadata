@@ -818,7 +818,7 @@
     "relevance": "相关性",
     "remove": "删除",
     "remove-entity": "删除{{entity}}",
-    "remove-lowecase": "remove",
+    "remove-lowercase": "remove",
     "removed": "已删除",
     "removing-user": "正在删除用户",
     "rename": "重命名",

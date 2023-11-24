@@ -186,7 +186,7 @@ const DatabaseDetails: FunctionComponent = () => {
 
       setSchemaInstanceCount(paging.total);
     } catch (error) {
-      showErrorToast(error);
+      showErrorToast(error as AxiosError);
     } finally {
       setIsLoading(false);
     }
@@ -515,7 +515,7 @@ const DatabaseDetails: FunctionComponent = () => {
                   <DescriptionV1
                     description={description}
                     entityFqn={decodedDatabaseFQN}
-                    entityName={databaseName}
+                    entityName={getEntityName(database)}
                     entityType={EntityType.DATABASE}
                     hasEditAccess={editDescriptionPermission}
                     isEdit={isEdit}

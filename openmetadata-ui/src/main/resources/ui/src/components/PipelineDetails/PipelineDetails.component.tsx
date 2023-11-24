@@ -767,9 +767,9 @@ const PipelineDetails = ({
 
       {editTask && (
         <ModalWithMarkdownEditor
-          header={`${t('label.edit-entity', { entity: t('label.task') })}: "${
-            editTask.task.displayName ?? editTask.task.name
-          }"`}
+          header={`${t('label.edit-entity', {
+            entity: t('label.task'),
+          })}: "${getEntityName(editTask.task)}"`}
           placeholder={t('label.enter-field-description', {
             field: t('label.task-lowercase'),
           })}

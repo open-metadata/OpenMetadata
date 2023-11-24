@@ -52,6 +52,7 @@ import {
   getClassificationExtraDropdownContent,
   getTagsTableColumn,
 } from '../../utils/ClassificationUtils';
+import { getEntityName } from '../../utils/EntityUtils';
 import {
   getEntityVersionByField,
   getMutuallyExclusiveDiff,
@@ -501,10 +502,7 @@ function ClassificationDetails({
             'opacity-60': isClassificationDisabled,
           })}
           description={description}
-          entityName={
-            currentClassification?.displayName ??
-            currentClassification?.fullyQualifiedName
-          }
+          entityName={getEntityName(currentClassification)}
           hasEditAccess={editDescriptionPermission}
           isEdit={isEditClassification}
           onCancel={handleCancelEditDescription}

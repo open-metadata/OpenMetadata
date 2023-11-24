@@ -21,6 +21,7 @@ import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { ChangeDescription } from '../../../generated/entity/type';
 import { getFeedCounts } from '../../../utils/CommonUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
@@ -133,7 +134,7 @@ const GlossaryDetails = ({
             <DescriptionV1
               description={description}
               entityFqn={glossary.fullyQualifiedName}
-              entityName={glossary.displayName ?? glossary.name}
+              entityName={getEntityName(glossary)}
               entityType={EntityType.GLOSSARY}
               hasEditAccess={permissions.EditDescription || permissions.EditAll}
               isEdit={isDescriptionEditable}
