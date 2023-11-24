@@ -557,33 +557,22 @@
                 <parallel>classes</parallel>
                 <forkCount>1C</forkCount>
                 <argLine>-Xmx1G</argLine>
+                <systemPropertyVariables>
+                  <jdbcContainerClassName>org.testcontainers.containers.PostgreSQLContainer</jdbcContainerClassName>
+                  <jdbcContainerImage>postgres:15</jdbcContainerImage>
+                  <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:8.10.2</elasticSearchContainerClassName>
+                  <openSearchContainerClassName>opensearchproject/opensearch:2.7.0</openSearchContainerClassName>
+                  <runESTestCases>false</runESTestCases>
+                </systemPropertyVariables>
               </configuration>
               <executions>
                 <execution>
-                  <id>default-test</id>
-                  <configuration>
-                    <skip>true</skip>
-                    <systemPropertyVariables>
-                      <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:7.16.3</elasticSearchContainerClassName>
-                      <openSearchContainerClassName>opensearchproject/opensearch:1.3.0</openSearchContainerClassName>
-                      <runESTestCases>false</runESTestCases>
-                    </systemPropertyVariables>
-                  </configuration>
-                </execution>
-                <execution>
-                  <goals>
-                    <goal>test</goal>
-                  </goals>
                   <id>postgres-integration-tests</id>
                   <phase>test</phase>
                   <configuration>
                     <includes>
                       <include>**/*ResourceTest.java</include>
                     </includes>
-                    <systemPropertyVariables>
-                      <jdbcContainerClassName>org.testcontainers.containers.PostgreSQLContainer</jdbcContainerClassName>
-                      <jdbcContainerImage>postgres:15</jdbcContainerImage>
-                    </systemPropertyVariables>
                   </configuration>
                 </execution>
               </executions>
@@ -592,10 +581,10 @@
         </build>
       </profile>
       <profile>
-        <id>mysql-tests</id>
         <activation>
           <activeByDefault>true</activeByDefault>
         </activation>
+        <id>mysql-tests</id>
         <build>
           <plugins>
             <plugin>
@@ -607,47 +596,22 @@
                 <parallel>classes</parallel>
                 <forkCount>1C</forkCount>
                 <argLine>-Xmx1G</argLine>
+                <systemPropertyVariables>
+                  <jdbcContainerClassName>org.testcontainers.containers.MySQLContainer</jdbcContainerClassName>
+                  <jdbcContainerImage>mysql:8</jdbcContainerImage>
+                  <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:8.10.2</elasticSearchContainerClassName>
+                  <openSearchContainerClassName>opensearchproject/opensearch:2.7.0</openSearchContainerClassName>
+                  <runESTestCases>false</runESTestCases>
+                </systemPropertyVariables>
               </configuration>
               <executions>
                 <execution>
-                  <id>default-test</id>
-                  <configuration>
-                    <skip>true</skip>
-                    <systemPropertyVariables>
-                      <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:7.16.3</elasticSearchContainerClassName>
-                      <openSearchContainerClassName>opensearchproject/opensearch:1.3.0</openSearchContainerClassName>
-                      <runESTestCases>false</runESTestCases>
-                    </systemPropertyVariables>
-                  </configuration>
-                </execution>
-                <execution>
-                  <goals>
-                    <goal>test</goal>
-                  </goals>
-                  <id>unit-tests</id>
-                  <configuration>
-                    <includes>**/*Test.java</includes>
-                    <excludes>**/*ResourceTest.java</excludes>
-                    <systemPropertyVariables>
-                      <jdbcContainerClassName>org.testcontainers.containers.MySQLContainer</jdbcContainerClassName>
-                      <jdbcContainerImage>mysql:8</jdbcContainerImage>
-                    </systemPropertyVariables>
-                  </configuration>
-                </execution>
-                <execution>
-                  <goals>
-                    <goal>test</goal>
-                  </goals>
                   <id>mysql-integration-tests</id>
                   <phase>test</phase>
                   <configuration>
                     <includes>
                       <include>**/*ResourceTest.java</include>
                     </includes>
-                    <systemPropertyVariables>
-                      <jdbcContainerClassName>org.testcontainers.containers.MySQLContainer</jdbcContainerClassName>
-                      <jdbcContainerImage>mysql:8</jdbcContainerImage>
-                    </systemPropertyVariables>
                   </configuration>
                 </execution>
               </executions>
@@ -656,7 +620,6 @@
         </build>
       </profile>
   </profiles>
-
   <build>
     <plugins>
       <plugin>
