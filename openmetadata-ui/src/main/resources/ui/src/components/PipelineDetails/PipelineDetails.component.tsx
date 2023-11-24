@@ -370,7 +370,8 @@ const PipelineDetails = ({
         key: t('label.name'),
         dataIndex: 'name',
         title: t('label.name'),
-        width: 200,
+        width: 220,
+        fixed: 'left',
         render: (_, record) =>
           isEmpty(record.sourceUrl) ? (
             <span>{getEntityName(record)}</span>
@@ -379,8 +380,15 @@ const PipelineDetails = ({
               className="flex items-center gap-2"
               target="_blank"
               to={{ pathname: record.sourceUrl }}>
-              <span>{getEntityName(record)}</span>
-              <ExternalLinkIcon height={14} width={14} />
+              <div className="d-flex items-center">
+                <span className="break-all">{getEntityName(record)}</span>
+
+                <ExternalLinkIcon
+                  className="m-l-xs flex-none"
+                  height={14}
+                  width={14}
+                />
+              </div>
             </Link>
           ),
       },
@@ -759,9 +767,9 @@ const PipelineDetails = ({
 
       {editTask && (
         <ModalWithMarkdownEditor
-          header={`${t('label.edit-entity', { entity: t('label.task') })}: "${
-            editTask.task.displayName ?? editTask.task.name
-          }"`}
+          header={`${t('label.edit-entity', {
+            entity: t('label.task'),
+          })}: "${getEntityName(editTask.task)}"`}
           placeholder={t('label.enter-field-description', {
             field: t('label.task-lowercase'),
           })}
