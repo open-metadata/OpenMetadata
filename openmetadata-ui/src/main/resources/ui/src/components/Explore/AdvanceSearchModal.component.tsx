@@ -91,14 +91,21 @@ export const AdvancedSearchModal: FunctionComponent<Props> = ({
       destroyOnClose
       className="advanced-search-modal"
       closeIcon={null}
+      data-testid="advanced-search-modal"
       footer={
         <Space className="justify-between w-full">
-          <Button className="float-right" size="small" onClick={onReset}>
+          <Button
+            className="float-right"
+            data-testid="reset-btn"
+            size="small"
+            onClick={onReset}>
             {t('label.reset')}
           </Button>
           <div>
-            <Button onClick={onCancel}>{t('label.cancel')}</Button>
-            <Button type="primary" onClick={onSubmit}>
+            <Button data-testid="cancel-btn" onClick={onCancel}>
+              {t('label.cancel')}
+            </Button>
+            <Button data-testid="apply-btn" type="primary" onClick={onSubmit}>
               {t('label.apply')}
             </Button>
           </div>

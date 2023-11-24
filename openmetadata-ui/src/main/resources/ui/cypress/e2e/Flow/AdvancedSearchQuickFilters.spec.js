@@ -11,22 +11,24 @@
  *  limitations under the License.
  */
 
-import { addOwner, FIELDS, removeOwner } from '../../common/advancedSearch';
+import { addOwner, removeOwner } from '../../common/advancedSearch';
 import { searchAndClickOnOption } from '../../common/advancedSearchQuickFilters';
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import { QUICK_FILTERS_BY_ASSETS } from '../../constants/advancedSearchQuickFilters.constants';
-
-describe('Initial Setup for Advanced Search Quick Filters', () => {
-  beforeEach(() => {
-    cy.login();
-  });
-
-  it('Pre-requisite for advance search', () => {
-    addOwner(FIELDS.Owner.searchCriteriaFirstGroup);
-  });
-});
+import { SEARCH_ENTITY_TABLE } from '../../constants/constants';
+const ownerName = 'Aaron Johnson';
 
 describe(`Advanced search quick filters should work properly for assets`, () => {
+  before(() => {
+    cy.login();
+    addOwner({ ownerName, ...SEARCH_ENTITY_TABLE.table_1 });
+  });
+
+  after(() => {
+    cy.login();
+    removeOwner();
+  });
+
   beforeEach(() => {
     cy.login();
   });
@@ -74,15 +76,5 @@ describe(`Advanced search quick filters should work properly for assets`, () => 
 
         verifyResponseStatusCode('@querySearchAPI', 200);
       });
-  });
-});
-
-describe('Cleanup for Advanced Search Quick Filters', () => {
-  beforeEach(() => {
-    cy.login();
-  });
-
-  it('Cleanup of owners', () => {
-    removeOwner(FIELDS.Owner.searchCriteriaFirstGroup);
   });
 });
