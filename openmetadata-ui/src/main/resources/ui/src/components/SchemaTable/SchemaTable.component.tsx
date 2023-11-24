@@ -323,7 +323,8 @@ const SchemaTable = ({
 
                 <Typography.Text
                   className="m-b-0 d-block text-grey-muted"
-                  data-testid="column-name">
+                  data-testid="column-name"
+                  ellipsis={{ tooltip: true }}>
                   {name}
                 </Typography.Text>
               </div>
