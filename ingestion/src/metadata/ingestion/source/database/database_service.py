@@ -134,8 +134,6 @@ class DatabaseServiceTopology(ServiceTopology):
                 context="database_schema",
                 processor="yield_database_schema",
                 consumer=["database_service", "database"],
-                entities_list="table_entities",
-                entities_cache="get_all_entities",
             ),
         ],
         children=["table", "stored_procedure"],
@@ -156,7 +154,6 @@ class DatabaseServiceTopology(ServiceTopology):
                 context="table",
                 processor="yield_table",
                 consumer=["database_service", "database", "database_schema"],
-                entities_list="table_entities",
             ),
             NodeStage(
                 type_=OMetaLifeCycleData,
