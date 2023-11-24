@@ -41,15 +41,17 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({
       {
         title: t('label.name'),
         dataIndex: 'name',
-        width: '200px',
+        width: 400,
         key: 'name',
         render: (_, record) => (
-          <Link
-            className="link-hover"
-            data-testid="container-name"
-            to={getContainerDetailPath(record.fullyQualifiedName || '')}>
-            {getEntityName(record)}
-          </Link>
+          <div className="d-inline-flex w-max-90">
+            <Link
+              className="break-word"
+              data-testid="container-name"
+              to={getContainerDetailPath(record.fullyQualifiedName ?? '')}>
+              {getEntityName(record)}
+            </Link>
+          </div>
         ),
       },
       {

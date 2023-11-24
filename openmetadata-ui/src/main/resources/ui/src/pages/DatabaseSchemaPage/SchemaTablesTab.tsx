@@ -74,18 +74,21 @@ function SchemaTablesTab({
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
+        width: 500,
         render: (_, record: Table) => {
           return (
-            <Link
-              to={getEntityLink(
-                EntityType.TABLE,
-                record.fullyQualifiedName as string
-              )}>
-              {getEntityName(record)}
-            </Link>
+            <div className="d-inline-flex w-max-90">
+              <Link
+                className="break-word"
+                to={getEntityLink(
+                  EntityType.TABLE,
+                  record.fullyQualifiedName as string
+                )}>
+                {getEntityName(record)}
+              </Link>
+            </div>
           );
         },
-        className: 'truncate w-max-500',
       },
       {
         title: t('label.description'),

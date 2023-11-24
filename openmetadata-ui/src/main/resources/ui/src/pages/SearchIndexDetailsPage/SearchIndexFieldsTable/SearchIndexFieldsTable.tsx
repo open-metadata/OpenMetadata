@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Space, Tooltip, Typography } from 'antd';
+import { Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { cloneDeep, isEmpty, isUndefined, toLower } from 'lodash';
 import { EntityTags } from 'Models';
@@ -171,15 +171,12 @@ const SearchIndexFieldsTable = ({
         dataIndex: 'name',
         key: 'name',
         accessor: 'name',
-        width: 180,
+        width: 220,
         fixed: 'left',
         render: (_, record: SearchIndexField) => (
-          <Space
-            align="start"
-            className="w-max-90 vertical-align-inherit"
-            size={2}>
+          <div className="d-inline-flex w-max-90">
             <span className="break-word">{getEntityName(record)}</span>
-          </Space>
+          </div>
         ),
       },
       {
