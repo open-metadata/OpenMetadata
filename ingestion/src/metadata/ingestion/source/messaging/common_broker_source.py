@@ -41,6 +41,7 @@ from metadata.parsers.schema_parsers import (
     InvalidSchemaTypeException,
     schema_parser_config_registry,
 )
+from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -99,7 +100,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
             logger.info(f"Fetching topic config {topic_details.topic_name}")
             topic = CreateTopicRequest(
                 name=topic_details.topic_name,
-                service=self.context.messaging_service.fullyQualifiedName.__root__,
+                service=self.context.messaging_service,
                 partitions=len(topic_details.topic_metadata.partitions),
                 replicationFactor=len(
                     topic_details.topic_metadata.partitions.get(0).replicas
@@ -211,7 +212,14 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
         """
         Method to Get Sample Data of Messaging Entity
         """
-        if self.context.topic and self.generate_sample_data:
+        topic_fqn = fqn.build(
+            metadata=self.metadata,
+            entity_type=Topic,
+            service_name=self.context.messaging_service,
+            topic_name=self.context.topic,
+        )
+        topic_entity = self.metadata.get_by_name(entity=Topic, fqn=topic_fqn)
+        if topic_entity and self.generate_sample_data:
             topic_name = topic_details.topic_name
             sample_data = []
             try:
@@ -234,12 +242,13 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 if messages:
                     for message in messages:
                         try:
+
                             value = message.value()
                             sample_data.append(
                                 self.decode_message(
                                     value,
-                                    self.context.topic.messageSchema.schemaText,
-                                    self.context.topic.messageSchema.schemaType,
+                                    topic_entity.messageSchema.schemaText,
+                                    topic_entity.messageSchema.schemaType,
                                 )
                             )
                         except Exception as exc:
@@ -250,7 +259,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 self.consumer_client.unsubscribe()
             yield Either(
                 right=OMetaTopicSampleData(
-                    topic=self.context.topic,
+                    topic=topic_entity,
                     sample_data=TopicSampleData(messages=sample_data),
                 )
             )
