@@ -743,7 +743,7 @@ const AssetsTabs = forwardRef(
         <ConfirmationModal
           bodyText={t('message.are-you-sure-action-property', {
             propertyName: getEntityName(assetToDelete),
-            action: t('label.remove-lowecase'),
+            action: t('label.remove-lowercase'),
           })}
           cancelText={t('label.cancel')}
           confirmText={t('label.delete')}

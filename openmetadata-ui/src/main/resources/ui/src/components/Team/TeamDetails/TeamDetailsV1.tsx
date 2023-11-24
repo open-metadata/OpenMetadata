@@ -1138,7 +1138,7 @@ const TeamDetailsV1 = ({
                     }>
                     <Description
                       description={currentTeam.description ?? ''}
-                      entityName={currentTeam.displayName ?? currentTeam.name}
+                      entityName={getEntityName(currentTeam)}
                       isEdit={isDescriptionEditable}
                       onCancel={() => descriptionHandler(false)}
                       onDescriptionUpdate={onDescriptionUpdate}

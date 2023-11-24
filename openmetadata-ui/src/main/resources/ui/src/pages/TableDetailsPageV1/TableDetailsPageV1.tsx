@@ -277,7 +277,7 @@ const TableDetailsPageV1 = () => {
         setLoading(false);
       }
     },
-    [getEntityPermissionByFqn, setTablePermissions]
+    [tableFqn, getEntityPermissionByFqn, setTablePermissions]
   );
 
   useEffect(() => {
@@ -559,6 +559,7 @@ const TableDetailsPageV1 = () => {
     [
       isEdit,
       tableDetails,
+      entityName,
       onDescriptionEdit,
       onDescriptionUpdate,
       editTagsPermission,
@@ -807,11 +808,11 @@ const TableDetailsPageV1 = () => {
       showErrorToast(
         error as AxiosError,
         t('server.entity-follow-error', {
-          entity: getEntityName(tableDetails),
+          entity: entityName,
         })
       );
     }
-  }, [USERId, tableId, setTableDetails, getEntityFeedCount]);
+  }, [USERId, tableId, entityName, setTableDetails, getEntityFeedCount]);
 
   const unFollowTable = useCallback(async () => {
     try {
@@ -834,11 +835,11 @@ const TableDetailsPageV1 = () => {
       showErrorToast(
         error as AxiosError,
         t('server.entity-unfollow-error', {
-          entity: getEntityName(tableDetails),
+          entity: entityName,
         })
       );
     }
-  }, [USERId, tableId, getEntityFeedCount, setTableDetails]);
+  }, [USERId, tableId, entityName, getEntityFeedCount, setTableDetails]);
 
   const { isFollowing } = useMemo(() => {
     return {
@@ -853,7 +854,7 @@ const TableDetailsPageV1 = () => {
   const versionHandler = useCallback(() => {
     version &&
       history.push(getVersionPath(EntityType.TABLE, tableFqn, version + ''));
-  }, [version]);
+  }, [version, tableFqn]);
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) =>
