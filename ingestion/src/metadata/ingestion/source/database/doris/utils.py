@@ -12,12 +12,15 @@
 """
 MySQL SQLAlchemy Helper Methods
 """
-# pylint: disable=protected-access,too-many-branches,too-many-statements,too-many-locals
 import textwrap
 
-from metadata.ingestion.source.database.doris.queries import DORIS_VIEW_DEFINITIONS, DORIS_TABLE_COMMENTS
 from sqlalchemy import sql
 from sqlalchemy.engine import reflection
+
+from metadata.ingestion.source.database.doris.queries import (
+    DORIS_TABLE_COMMENTS,
+    DORIS_VIEW_DEFINITIONS,
+)
 from metadata.utils.sqlalchemy_utils import get_view_definition_wrapper
 
 query = textwrap.dedent(
@@ -29,9 +32,7 @@ query = textwrap.dedent(
 
 
 @reflection.cache
-def get_view_definition(
-        self, connection, table_name, schema=None, **kw  # pylint: disable=unused-argument
-):
+def get_view_definition(self, connection, table_name, schema=None):
     return get_view_definition_wrapper(
         self,
         connection,
@@ -41,19 +42,23 @@ def get_view_definition(
     )
 
 
-def get_table_names_and_type(self, connection, schema=None, **kw):
+def get_table_names_and_type(_, connection, schema=None, **kw):
     if schema:
         query_sql = query + f" WHERE TABLE_SCHEMA = '{schema}'"
     database = schema or connection.engine.url.database
-    rows = connection.execute(query_sql, database=database)
-    return [row for row in rows]
+    rows = connection.execute(query_sql, database=database, **kw)
+    return list(rows)
 
 
 @reflection.cache
-def get_table_comment(self, connection, table_name, schema=None, **kw):
+def get_table_comment(_, connection, table_name, schema=None, **kw):
     comment = None
-    rows = connection.execute(sql.text(DORIS_TABLE_COMMENTS), {"table_name": table_name, "schema": schema})
-    for TABLE_COMMENT in rows:
-        comment = TABLE_COMMENT
+    rows = connection.execute(
+        sql.text(DORIS_TABLE_COMMENTS),
+        {"table_name": table_name, "schema": schema},
+        **kw,
+    )
+    for table_comment in rows:
+        comment = table_comment
         break
     return {"text": comment}

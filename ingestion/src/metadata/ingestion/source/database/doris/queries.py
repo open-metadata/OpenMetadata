@@ -4,7 +4,6 @@ SQL Queries used during ingestion
 
 import textwrap
 
-
 DORIS_GET_SCHEMA_COLUMN_INFO = textwrap.dedent(
     """
 SELECT COLUMN_NAME,COLUMN_DEFAULT,IS_NULLABLE,DATA_TYPE,CHARACTER_MAXIMUM_LENGTH,

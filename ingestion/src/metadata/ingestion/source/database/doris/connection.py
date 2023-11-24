@@ -13,6 +13,7 @@
 Source connection handler
 """
 from typing import Optional
+
 from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -31,6 +32,7 @@ from metadata.ingestion.connections.test_connections import (
     test_connection_db_schema_sources,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+
 
 def get_connection(connection: DorisConnection) -> Engine:
     """
