@@ -247,8 +247,8 @@ jobs:
             cp -rT $folder/ ingestion/junit ;
           done
           source env/bin/activate
-          coverage combine --rcfile=ingestion/.coveragerc --keep -a .coverage*
-          coverage xml --rcfile=ingestion/.coveragerc --data-file=.coverage -o ingestion/coverage.xml
+          coverage combine --rcfile=ingestion/pyproject.toml --keep -a .coverage*
+          coverage xml --rcfile=ingestion/pyproject.toml --data-file=.coverage -o ingestion/coverage.xml
           sed -e "s/$(python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")/src/g" ingestion/coverage.xml >> ingestion/ci-coverage.xml
           sed -i 's/src\/metadata/\/github\/workspace\/ingestion\/src\/metadata/g' ingestion/ci-coverage.xml
         shell: bash
