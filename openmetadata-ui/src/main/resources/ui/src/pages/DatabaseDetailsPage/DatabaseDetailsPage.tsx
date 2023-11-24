@@ -517,7 +517,7 @@ const DatabaseDetails: FunctionComponent = () => {
                   <DescriptionV1
                     description={description}
                     entityFqn={decodedDatabaseFQN}
-                    entityName={databaseName}
+                    entityName={getEntityName(database)}
                     entityType={EntityType.DATABASE}
                     hasEditAccess={editDescriptionPermission}
                     isEdit={isEdit}

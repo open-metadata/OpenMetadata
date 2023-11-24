@@ -818,7 +818,7 @@
     "relevance": "Relevance",
     "remove": "除外",
     "remove-entity": "{{entity}}を除外",
-    "remove-lowecase": "remove",
+    "remove-lowercase": "remove",
     "removed": "除外",
     "removing-user": "ユーザを除外する",
     "rename": "Rename",

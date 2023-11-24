@@ -361,7 +361,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         <ModalWithMarkdownEditor
           header={`${t('label.edit-entity', {
             entity: t('label.schema-field'),
-          })}: "${editFieldDescription.name}"`}
+          })}: "${getEntityName(editFieldDescription)}"`}
           placeholder={t('label.enter-field-description', {
             field: t('label.schema-field'),
           })}
