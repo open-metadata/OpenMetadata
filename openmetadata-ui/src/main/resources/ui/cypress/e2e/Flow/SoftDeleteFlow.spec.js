@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-// / <reference types="cypress" />
+// eslint-disable-next-line spaced-comment
+/// <reference types="cypress" />
 
 import {
   interceptURL,
@@ -24,9 +25,7 @@ import {
 } from '../../common/common';
 import {
   createCustomAttribute,
-  createTeams,
   deleteCustomAttribute,
-  deleteTeam,
 } from '../../common/CustomPropertyUtils';
 import {
   createEntityTable,
@@ -38,6 +37,7 @@ import {
   nonDeletedTeamChecks,
   softDeletedEntityCommonChecks,
 } from '../../common/SoftDeleteFlowUtils';
+import { createTeams, deleteTeam } from '../../common/TeamsUtils';
 import {
   DASHBOARD_DATA_MODEL_DETAILS,
   STORED_PROCEDURE_DETAILS,

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-// / <reference types="cypress" />
+// eslint-disable-next-line spaced-comment
+/// <reference types="cypress" />
 
 import { DATA_ASSETS } from '../constants/constants';
 import {
