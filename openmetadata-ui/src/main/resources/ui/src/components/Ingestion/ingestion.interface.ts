@@ -13,7 +13,6 @@
 
 import { ServiceCategory } from '../../enums/service.enum';
 import { PipelineType } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
-import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Paging } from '../../generated/type/paging';
 import { ServicesType } from '../../interface/service.interface';
@@ -39,7 +38,6 @@ export interface IngestionProps {
   isRequiredDetailsAvailable: boolean;
   paging: Paging;
   ingestionList: Array<IngestionPipeline>;
-  serviceList: Array<DatabaseService>;
   permissions: OperationPermission;
   pipelineNameColWidth?: number;
   pipelineType?: PipelineType;

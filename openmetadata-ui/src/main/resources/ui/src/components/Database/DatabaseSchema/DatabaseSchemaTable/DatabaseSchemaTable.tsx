@@ -35,8 +35,11 @@ import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
 import Table from '../../../common/Table/Table';
+import { DatabaseSchemaTableProps } from './DatabaseSchemaTable.interface';
 
-export const DatabaseSchemaTable = () => {
+export const DatabaseSchemaTable = ({
+  isDatabaseDeleted,
+}: Readonly<DatabaseSchemaTableProps>) => {
   const { fqn } = useParams<{ fqn: string }>();
   const history = useHistory();
   const location = useLocation();
@@ -81,7 +84,7 @@ export const DatabaseSchemaTable = () => {
         setSchemas(data);
         handlePagingChange(paging);
       } catch (error) {
-        showErrorToast(error);
+        showErrorToast(error as AxiosError);
       } finally {
         setIsLoading(false);
       }
@@ -153,7 +156,7 @@ export const DatabaseSchemaTable = () => {
 
   useEffect(() => {
     fetchDatabaseSchema();
-  }, [fqn, pageSize, showDeletedSchemas]);
+  }, [fqn, pageSize, showDeletedSchemas, isDatabaseDeleted]);
 
   return (
     <Row gutter={[16, 16]}>
