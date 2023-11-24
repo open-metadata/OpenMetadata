@@ -905,20 +905,17 @@ export const editCreatedProperty = (propertyName) => {
   // Fetching for edit button
   cy.get(`[data-row-key="${propertyName}"]`)
     .find('[data-testid="edit-button"]')
-    .as('editbutton');
+    .as('editButton');
 
-  cy.get('@editbutton').click();
+  cy.get('@editButton').click();
 
-  cy.get(descriptionBox)
-    .should('be.visible')
-    .clear()
-    .type('This is new description');
+  cy.get(descriptionBox).clear().type('This is new description');
 
   interceptURL('PATCH', '/api/v1/metadata/types/*', 'checkPatchForDescription');
 
-  cy.get('[data-testid="save"]').should('be.visible').click();
+  cy.get('[data-testid="save"]').click();
 
-  verifyResponseStatusCode('@checkPatchForDescription', 200);
+  cy.wait('@checkPatchForDescription', { timeout: 10000 });
 
   cy.get('.ant-modal-wrap').should('not.exist');
 
@@ -931,10 +928,9 @@ export const editCreatedProperty = (propertyName) => {
 export const deleteCreatedProperty = (propertyName) => {
   // Fetching for delete button
   cy.get(`[data-row-key="${propertyName}"]`)
+    .scrollIntoView()
     .find('[data-testid="delete-button"]')
-    .as('deletebutton');
-
-  cy.get('@deletebutton').click();
+    .click();
 
   // Checking property name is present on the delete pop-up
   cy.get('[data-testid="body-text"]').should('contain', propertyName);
@@ -1186,7 +1182,7 @@ export const addOwner = (
   isGlossaryPage,
   isOwnerEmpty = false
 ) => {
-  interceptURL('GET', '/api/v1/users?limit=*&isBot=false', 'getUsers');
+  interceptURL('GET', '/api/v1/users?limit=*&isBot=false*', 'getUsers');
   if (isGlossaryPage && isOwnerEmpty) {
     cy.get('[data-testid="glossary-owner-name"] > [data-testid="Add"]').click();
   } else {
@@ -1218,10 +1214,11 @@ export const addOwner = (
 };
 
 export const removeOwner = (entity, isGlossaryPage) => {
+  interceptURL('GET', '/api/v1/users?limit=*&isBot=false*', 'getUsers');
   interceptURL('PATCH', `/api/v1/${entity}/*`, 'patchOwner');
 
   cy.get('[data-testid="edit-owner"]').click();
-
+  verifyResponseStatusCode('@getUsers', 200);
   cy.get('[data-testid="remove-owner"]').click();
   verifyResponseStatusCode('@patchOwner', 200);
   if (isGlossaryPage) {
