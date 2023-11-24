@@ -226,6 +226,19 @@ const DeleteWidgetModal = ({
     );
   }, [handleOnEntityDeleteCancel, isDeleteTextPresent, isLoading]);
 
+  useEffect(() => {
+    // Resetting the form values on visibility change
+    // Using setFieldsValue instead of resetValue as the default value to be set
+    // is dynamic i.e. dependent on allowSoftDelete prop which sets it to undefined
+    // if reset using resetValue
+    form.setFieldsValue({
+      deleteType: allowSoftDelete
+        ? DeleteType.SOFT_DELETE
+        : DeleteType.HARD_DELETE,
+      deleteTextInput: '',
+    });
+  }, [visible]);
+
   return (
     <Modal
       destroyOnClose
@@ -240,11 +253,7 @@ const DeleteWidgetModal = ({
       onCancel={handleOnEntityDeleteCancel}>
       <Form form={form} onFinish={handleOnEntityDeleteConfirm}>
         <Form.Item<DeleteWidgetFormFields> className="m-0" name="deleteType">
-          <Radio.Group
-            defaultValue={
-              allowSoftDelete ? DeleteType.SOFT_DELETE : DeleteType.HARD_DELETE
-            }
-            onChange={onChange}>
+          <Radio.Group onChange={onChange}>
             {(deleteOptions ?? DELETE_OPTION).map(
               (option) =>
                 option.isAllowed && (
