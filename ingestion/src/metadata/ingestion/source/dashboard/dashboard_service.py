@@ -365,6 +365,9 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
             )
 
     def process_owner(self, dashboard_details):
+        """
+        Method to process the dashboard onwers
+        """
         try:
             if self.source_config.includeOwners:
                 owner = self.get_owner_details(  # pylint: disable=assignment-from-none

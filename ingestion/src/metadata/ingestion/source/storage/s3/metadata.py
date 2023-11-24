@@ -99,7 +99,7 @@ class S3Source(StorageServiceSource):
                 yield self._generate_unstructured_container(
                     bucket_response=bucket_response
                 )
-                container_fqn = fqn._build(
+                container_fqn = fqn._build(  # pylint: disable=protected-access
                     *(self.context.objectstore_service, self.context.container)
                 )
                 container_entity = self.metadata.get_by_name(
