@@ -180,13 +180,13 @@ const DatabaseDetails: FunctionComponent = () => {
     try {
       setIsLoading(true);
       const { paging } = await getDatabaseSchemas({
-        databaseName: databaseFQN,
+        databaseName: decodedDatabaseFQN,
         limit: 0,
       });
 
       setSchemaInstanceCount(paging.total);
     } catch (error) {
-      showErrorToast(error);
+      showErrorToast(error as AxiosError);
     } finally {
       setIsLoading(false);
     }
@@ -282,6 +282,7 @@ const DatabaseDetails: FunctionComponent = () => {
 
         return res;
       });
+      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
