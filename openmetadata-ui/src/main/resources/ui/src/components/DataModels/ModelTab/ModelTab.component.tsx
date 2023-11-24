@@ -78,6 +78,7 @@ const ModelTab = ({
         dataIndex: 'name',
         key: 'name',
         width: 250,
+        fixed: 'left',
         render: (_, record) => (
           <Typography.Text>{getEntityName(record)}</Typography.Text>
         ),

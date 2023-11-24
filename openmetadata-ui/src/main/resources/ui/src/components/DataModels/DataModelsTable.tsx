@@ -64,11 +64,14 @@ const DataModelTable = () => {
           const dataModelDisplayName = getEntityName(record);
 
           return (
-            <Link
-              data-testid={`data-model-${dataModelDisplayName}`}
-              to={getDataModelDetailsPath(record.fullyQualifiedName || '')}>
-              {dataModelDisplayName}
-            </Link>
+            <div className="d-inline-flex w-max-90">
+              <Link
+                className="break-word"
+                data-testid={`data-model-${dataModelDisplayName}`}
+                to={getDataModelDetailsPath(record.fullyQualifiedName || '')}>
+                {dataModelDisplayName}
+              </Link>
+            </div>
           );
         },
       },

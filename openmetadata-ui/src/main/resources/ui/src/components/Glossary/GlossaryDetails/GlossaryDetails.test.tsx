@@ -65,6 +65,7 @@ const mockProps = {
   onAddGlossaryTerm: jest.fn(),
   onEditGlossaryTerm: jest.fn(),
   updateVote: jest.fn(),
+  onThreadLinkSelect: jest.fn(),
 };
 
 describe('Test Glossary-details component', () => {
