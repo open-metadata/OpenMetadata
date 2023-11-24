@@ -273,7 +273,7 @@ const SearchIndexFieldsTable = ({
         <ModalWithMarkdownEditor
           header={`${t('label.edit-entity', {
             entity: t('label.field'),
-          })}: "${editField.field.name}"`}
+          })}: "${getEntityName(editField.field)}"`}
           placeholder={t('label.enter-field-description', {
             field: t('label.field'),
           })}
