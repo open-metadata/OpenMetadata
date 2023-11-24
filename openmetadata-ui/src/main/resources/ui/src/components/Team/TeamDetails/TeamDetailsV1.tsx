@@ -34,7 +34,7 @@ import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import Qs from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useLocation } from 'react-router-dom';
+import { useHistory, useLocation } from 'react-router-dom';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/add-placeholder.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as ExportIcon } from '../../../assets/svg/ic-export.svg';
@@ -621,11 +621,7 @@ const TeamDetailsV1 = ({
           <Transi18next
             i18nKey="message.refer-to-our-doc"
             renderElement={
-              <Link
-                rel="noreferrer"
-                target="_blank"
-                to={{ pathname: GLOSSARIES_DOCS }}
-              />
+              <a href={GLOSSARIES_DOCS} rel="noreferrer" target="_blank" />
             }
             values={{
               doc: t('label.doc-plural-lowercase'),
