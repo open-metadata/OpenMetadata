@@ -320,7 +320,7 @@ class BigquerySource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource)
             )
 
             query_result = [result.schema_description for result in query_resp.result()]
-            return query_result[0]
+            return fqn.unquote_name(query_result[0])
         except IndexError:
             logger.debug(f"No dataset description found for {schema_name}")
         except Exception as err:
