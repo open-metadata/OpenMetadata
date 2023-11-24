@@ -189,9 +189,7 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
                 entity_type=SearchIndex,
                 entity_source_state=self.index_source_state,
                 mark_deleted_entity=self.source_config.markDeletedSearchIndexes,
-                params={
-                    "service": self.context.search_service.fullyQualifiedName.__root__
-                },
+                params={"service": self.context.search_service},
             )
 
     def register_record(self, search_index_request: CreateSearchIndexRequest) -> None:
