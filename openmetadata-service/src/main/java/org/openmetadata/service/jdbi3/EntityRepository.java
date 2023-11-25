@@ -1363,14 +1363,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     // Finally set entity deleted flag to false
     LOG.info("Restoring the {} {}", entityType, id);
-    T original = find(id, DELETED);
-    setFieldsInternal(original, putFields);
-    T updated = JsonUtils.readValue(JsonUtils.pojoToJson(original), entityClass);
-    updated.setUpdatedBy(updatedBy);
-    updated.setUpdatedAt(System.currentTimeMillis());
-    EntityUpdater updater = getUpdater(original, updated, Operation.PUT);
-    updater.update();
-    return new PutResponse<>(Status.OK, updated, RestUtil.ENTITY_RESTORED);
+
+    try {
+      T original = find(id, DELETED);
+      setFieldsInternal(original, putFields);
+      T updated = JsonUtils.readValue(JsonUtils.pojoToJson(original), entityClass);
+      updated.setUpdatedBy(updatedBy);
+      updated.setUpdatedAt(System.currentTimeMillis());
+      EntityUpdater updater = getUpdater(original, updated, Operation.PUT);
+      updater.update();
+      return new PutResponse<>(Status.OK, updated, RestUtil.ENTITY_RESTORED);
+    } catch (EntityNotFoundException e) {
+      LOG.info("Entity is not in deleted state {} {}", entityType, id);
+      return null;
+    }
   }
 
   public void addRelationship(UUID fromId, UUID toId, String fromEntity, String toEntity, Relationship relationship) {

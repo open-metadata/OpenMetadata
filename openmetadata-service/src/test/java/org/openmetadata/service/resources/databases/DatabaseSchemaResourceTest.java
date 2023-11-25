@@ -22,14 +22,18 @@ import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
+import java.io.IOException;
 import java.util.Map;
+import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
@@ -53,6 +57,30 @@ class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchema, Crea
   void post_schemaWithoutRequiredDatabase_400(TestInfo test) {
     CreateDatabaseSchema create = createRequest(test).withDatabase(null);
     assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "database must not be null");
+  }
+
+  @Test
+  void delete_schemaWithTables_200(TestInfo test) throws IOException {
+    CreateDatabaseSchema create = createRequest(test).withDatabase(DATABASE.getFullyQualifiedName());
+    DatabaseSchema createdSchema = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    CreateTable createTable =
+        tableResourceTest.createRequest("t1", "", "", null).withDatabaseSchema(createdSchema.getFullyQualifiedName());
+    Table table1 = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+    createTable =
+        tableResourceTest.createRequest("t2", "", "", null).withDatabaseSchema(createdSchema.getFullyQualifiedName());
+    Table table2 = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+
+    // recursively soft delete schema
+    deleteAndCheckEntity(createdSchema, true, false, ADMIN_AUTH_HEADERS);
+
+    // Restore one of the tables.
+    tableResourceTest.restoreEntity(new RestoreEntity().withId(table2.getId()), Response.Status.OK, ADMIN_AUTH_HEADERS);
+
+    // Restore Schema
+    restoreEntity(new RestoreEntity().withId(createdSchema.getId()), Response.Status.OK, ADMIN_AUTH_HEADERS);
+    DatabaseSchema schema = getEntity(createdSchema.getId(), ADMIN_AUTH_HEADERS);
+    assertNotNull(schema);
   }
 
   @Override
