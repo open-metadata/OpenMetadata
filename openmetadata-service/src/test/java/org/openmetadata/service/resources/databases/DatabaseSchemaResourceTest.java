@@ -23,8 +23,8 @@ import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.Map;
+import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
@@ -40,8 +40,6 @@ import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.DatabaseSchemaResource.DatabaseSchemaList;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.TestUtils;
-
-import javax.ws.rs.core.Response;
 
 @Slf4j
 class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchema, CreateDatabaseSchema> {
@@ -73,7 +71,7 @@ class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchema, Crea
         tableResourceTest.createRequest("t2", "", "", null).withDatabaseSchema(createdSchema.getFullyQualifiedName());
     Table table2 = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
 
-    //recursively soft delete schema
+    // recursively soft delete schema
     deleteAndCheckEntity(createdSchema, true, false, ADMIN_AUTH_HEADERS);
 
     // Restore one of the tables.
@@ -120,7 +118,6 @@ class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchema, Crea
     // Checks for other owner, tags, and followers is done in the base class
     return schema;
   }
-
 
   @Override
   public CreateDatabaseSchema createRequest(String name) {
