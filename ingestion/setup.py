@@ -119,7 +119,6 @@ base_requirements = {
     "wheel~=0.38.4",
 }
 
-
 plugins: Dict[str, Set[str]] = {
     "airflow": {VERSIONS["airflow"]},  # Same as ingestion container. For development.
     "amundsen": {VERSIONS["neo4j"]},
@@ -174,6 +173,7 @@ plugins: Dict[str, Set[str]] = {
     "deltalake": {"delta-spark<=2.3.0"},
     "docker": {"python_on_whales==0.55.0"},
     "domo": {VERSIONS["pydomo"]},
+    "doris": {"pydoris==1.0.2"},
     "druid": {"pydruid>=0.6.5"},
     "dynamodb": {VERSIONS["boto3"]},
     "elasticsearch": {
@@ -247,6 +247,7 @@ plugins: Dict[str, Set[str]] = {
     "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5"},
     "pii-processor": pii_requirements,
 }
+
 
 dev = {
     "black==22.3.0",
