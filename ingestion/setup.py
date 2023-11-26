@@ -119,6 +119,7 @@ base_requirements = {
     "wheel~=0.38.4",
 }
 
+
 plugins: Dict[str, Set[str]] = {
     "airflow": {VERSIONS["airflow"]},  # Same as ingestion container. For development.
     "amundsen": {VERSIONS["neo4j"]},
@@ -247,7 +248,6 @@ plugins: Dict[str, Set[str]] = {
     "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5"},
     "pii-processor": pii_requirements,
 }
-
 
 dev = {
     "black==22.3.0",
