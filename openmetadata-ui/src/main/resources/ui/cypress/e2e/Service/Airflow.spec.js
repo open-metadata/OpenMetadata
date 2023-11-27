@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-// / <reference types="Cypress" />
+// eslint-disable-next-line spaced-comment
+/// <reference types="cypress" />
 
 import {
   deleteCreatedService,
@@ -21,7 +22,7 @@ import {
 } from '../../common/common';
 import {
   API_SERVICE,
-  MYDATA_SUMMARY_OPTIONS,
+  DATA_ASSETS,
   SERVICE_TYPE,
 } from '../../constants/constants';
 
@@ -60,7 +61,7 @@ describe('Airflow Ingestion', () => {
       tableName,
       description,
       SERVICE_TYPE.Pipeline,
-      MYDATA_SUMMARY_OPTIONS.pipelines
+      DATA_ASSETS.pipelines
     );
   });
 

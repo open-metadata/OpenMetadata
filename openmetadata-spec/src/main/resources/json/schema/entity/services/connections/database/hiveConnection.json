@@ -87,7 +87,8 @@
         },
         {
           "title": "None",
-          "type": "object"
+          "type": "object",
+          "additionalProperties": false
         }
       ]
     },

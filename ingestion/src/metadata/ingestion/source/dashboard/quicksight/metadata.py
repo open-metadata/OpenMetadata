@@ -138,12 +138,12 @@ class QuicksightSource(DashboardServiceSource):
                 fqn.build(
                     self.metadata,
                     entity_type=Chart,
-                    service_name=self.context.dashboard_service.fullyQualifiedName.__root__,
-                    chart_name=chart.name.__root__,
+                    service_name=self.context.dashboard_service,
+                    chart_name=chart,
                 )
                 for chart in self.context.charts
             ],
-            service=self.context.dashboard_service.fullyQualifiedName.__root__,
+            service=self.context.dashboard_service,
         )
         yield Either(right=dashboard_request)
         self.register_record(dashboard_request=dashboard_request)
@@ -174,7 +174,7 @@ class QuicksightSource(DashboardServiceSource):
                         displayName=chart["Name"],
                         chartType=ChartType.Other.value,
                         sourceUrl=self.dashboard_url,
-                        service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                        service=self.context.dashboard_service,
                     )
                 )
             except Exception as exc:

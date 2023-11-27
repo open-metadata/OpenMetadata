@@ -11,20 +11,6 @@
  *  limitations under the License.
  */
 
-import { App } from '../../../generated/entity/applications/app';
-import { AppRunRecord } from '../../../generated/entity/applications/appRunRecord';
-
-export interface AppRunRecordWithId extends AppRunRecord {
-  id: string;
-}
-
-export interface AppRunsHistoryRef {
-  refreshAppHistory: () => void;
-}
-
-export interface AppRunsHistoryProps {
-  maxRecords?: number;
-  appData?: App;
-  showPagination?: boolean;
-  runsData?: AppRunRecordWithId[];
+export interface DatabaseSchemaTableProps {
+  isDatabaseDeleted?: boolean;
 }

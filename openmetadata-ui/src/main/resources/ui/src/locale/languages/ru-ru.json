@@ -1511,6 +1511,7 @@
     "pipeline-will-trigger-manually": "Пайплайн будет запускаться только вручную.",
     "pipeline-will-triggered-manually": "Пайплайн будет запускаться только вручную.",
     "please-enter-to-find-data-assets": "Press Enter to find data assets containing <0>{{keyword}}<0>",
+    "please-type-text-to-confirm": "Please type {{text}} to confirm.",
     "process-pii-sensitive-column-message": "Проверьте имена столбцов, чтобы автоматически пометить столбцы с конфиденциальной/неконфиденциальной информацией PII.",
     "process-pii-sensitive-column-message-profiler": "Если эта функция включена, образцы данных будут проанализированы для определения соответствующих тегов PII для каждого столбца.",
     "profile-sample-percentage-message": "Установите значение профайлера в процентах",

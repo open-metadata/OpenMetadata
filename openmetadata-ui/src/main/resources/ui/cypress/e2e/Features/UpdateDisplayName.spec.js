@@ -22,14 +22,14 @@ import {
   createEntityTable,
   createSingleLevelEntity,
   hardDeleteService,
-} from '../../common/entityUtils';
+} from '../../common/EntityUtils';
 import { visitServiceDetailsPage } from '../../common/serviceUtils';
 import {
   DASHBOARD_DATA_MODEL_DETAILS,
   DATABASE_SERVICE,
   SINGLE_LEVEL_SERVICE,
   STORED_PROCEDURE_DETAILS,
-} from '../../constants/entityConstant';
+} from '../../constants/EntityConstant';
 import { SERVICE_CATEGORIES } from '../../constants/service.constants';
 import {
   DASHBOARD_DATA_MODEL,
@@ -77,7 +77,7 @@ describe('Edit displayName for all the entities, services and verify breadcrumb'
       createEntityTable({
         token,
         ...DATABASE_SERVICE,
-        tables: [DATABASE_SERVICE.tables],
+        tables: [DATABASE_SERVICE.entity],
       });
       SINGLE_LEVEL_SERVICE.forEach((data) => {
         createSingleLevelEntity({
