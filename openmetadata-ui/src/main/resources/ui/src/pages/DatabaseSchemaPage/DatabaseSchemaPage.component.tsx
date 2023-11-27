@@ -134,7 +134,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     setCurrentTablesPage(INITIAL_PAGING_VALUE);
   };
 
-  const { version: currentVersion } = useMemo(
+  const { version: currentVersion, deleted } = useMemo(
     () => databaseSchema,
     [databaseSchema]
   );
@@ -499,7 +499,12 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     if (viewDatabaseSchemaPermission && databaseSchemaFQN) {
       getSchemaTables();
     }
-  }, [showDeletedTables, databaseSchemaFQN, viewDatabaseSchemaPermission]);
+  }, [
+    showDeletedTables,
+    databaseSchemaFQN,
+    viewDatabaseSchemaPermission,
+    deleted,
+  ]);
 
   // always Keep this useEffect at the end...
   useEffect(() => {

@@ -102,8 +102,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const [description, setDescription] = useState('');
   const [databaseId, setDatabaseId] = useState('');
 
-  const [databaseSchemaInstanceCount, setSchemaInstanceCount] =
-    useState<number>(0);
+  const [schemaInstanceCount, setSchemaInstanceCount] = useState<number>(0);
 
   const [feedCount, setFeedCount] = useState<number>(0);
   const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
@@ -118,7 +117,10 @@ const DatabaseDetails: FunctionComponent = () => {
   const history = useHistory();
   const isMounting = useRef(true);
 
-  const { version: currentVersion } = useMemo(() => database, [database]);
+  const { version: currentVersion, deleted } = useMemo(
+    () => database,
+    [database]
+  );
 
   const tier = getTierTags(database?.tags ?? []);
   const tags = getTagsWithoutTier(database?.tags ?? []);
@@ -498,7 +500,7 @@ const DatabaseDetails: FunctionComponent = () => {
       {
         label: (
           <TabsLabel
-            count={databaseSchemaInstanceCount}
+            count={schemaInstanceCount}
             id={EntityTabs.SCHEMA}
             isActive={activeTab === EntityTabs.SCHEMA}
             name={t('label.schema-plural')}
@@ -525,7 +527,7 @@ const DatabaseDetails: FunctionComponent = () => {
                   />
                 </Col>
                 <Col span={24}>
-                  <DatabaseSchemaTable />
+                  <DatabaseSchemaTable isDatabaseDeleted={deleted} />
                 </Col>
               </Row>
             </Col>
@@ -596,12 +598,13 @@ const DatabaseDetails: FunctionComponent = () => {
       decodedDatabaseFQN,
       activeTab,
       databasePermission,
-      databaseSchemaInstanceCount,
+      schemaInstanceCount,
       feedCount,
       editTagsPermission,
       editDescriptionPermission,
       editCustomAttributePermission,
       viewAllPermission,
+      deleted,
     ]
   );
 
