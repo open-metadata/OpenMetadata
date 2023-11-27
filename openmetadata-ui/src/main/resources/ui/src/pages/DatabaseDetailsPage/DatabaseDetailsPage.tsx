@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Tabs } from 'antd';
+import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined, toString } from 'lodash';
@@ -37,7 +37,7 @@ import DescriptionV1 from '../../components/common/EntityDescription/Description
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { DatabaseSchemaTable } from '../../components/Database/DatabaseSchema/DatabaseSchemaTable/DatabaseSchemaTable';
-import DataProductsContainer from '../../components/DataProductsContainer/DataProductsContainer.component';
+import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRightPanel';
 import Loader from '../../components/Loader/Loader';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -49,8 +49,6 @@ import {
 import ProfilerSettings from '../../components/ProfilerSettings/ProfilerSettings';
 import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
 import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
-import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
-import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getDatabaseDetailsPath,
@@ -63,7 +61,6 @@ import { CreateThread } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Database } from '../../generated/entity/data/database';
 import { Include } from '../../generated/type/include';
-import { TagSource } from '../../generated/type/tagLabel';
 import { EntityFieldThreadCount } from '../../interface/feed.interface';
 import {
   getDatabaseDetailsByFQN,
@@ -180,13 +177,13 @@ const DatabaseDetails: FunctionComponent = () => {
     try {
       setIsLoading(true);
       const { paging } = await getDatabaseSchemas({
-        databaseName: databaseFQN,
+        databaseName: decodedDatabaseFQN,
         limit: 0,
       });
 
       setSchemaInstanceCount(paging.total);
     } catch (error) {
-      showErrorToast(error);
+      showErrorToast(error as AxiosError);
     } finally {
       setIsLoading(false);
     }
@@ -282,6 +279,7 @@ const DatabaseDetails: FunctionComponent = () => {
 
         return res;
       });
+      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -515,7 +513,7 @@ const DatabaseDetails: FunctionComponent = () => {
                   <DescriptionV1
                     description={description}
                     entityFqn={decodedDatabaseFQN}
-                    entityName={databaseName}
+                    entityName={getEntityName(database)}
                     entityType={EntityType.DATABASE}
                     hasEditAccess={editDescriptionPermission}
                     isEdit={isEdit}
@@ -535,33 +533,16 @@ const DatabaseDetails: FunctionComponent = () => {
               className="entity-tag-right-panel-container"
               data-testid="entity-right-panel"
               flex="320px">
-              <Space className="w-full" direction="vertical" size="large">
-                <DataProductsContainer
-                  activeDomain={database?.domain}
-                  dataProducts={database?.dataProducts ?? []}
-                  hasPermission={false}
-                />
-                <TagsContainerV2
-                  displayType={DisplayType.READ_MORE}
-                  entityFqn={decodedDatabaseFQN}
-                  entityType={EntityType.DATABASE}
-                  permission={editTagsPermission}
-                  selectedTags={tags}
-                  tagType={TagSource.Classification}
-                  onSelectionChange={handleTagSelection}
-                  onThreadLinkSelect={onThreadLinkSelect}
-                />
-                <TagsContainerV2
-                  displayType={DisplayType.READ_MORE}
-                  entityFqn={decodedDatabaseFQN}
-                  entityType={EntityType.DATABASE}
-                  permission={editTagsPermission}
-                  selectedTags={tags}
-                  tagType={TagSource.Glossary}
-                  onSelectionChange={handleTagSelection}
-                  onThreadLinkSelect={onThreadLinkSelect}
-                />
-              </Space>
+              <EntityRightPanel
+                dataProducts={database?.dataProducts ?? []}
+                domain={database?.domain}
+                editTagPermission={editTagsPermission}
+                entityFQN={decodedDatabaseFQN}
+                entityType={EntityType.DATABASE}
+                selectedTags={tags}
+                onTagSelectionChange={handleTagSelection}
+                onThreadLinkSelect={onThreadLinkSelect}
+              />
             </Col>
           </Row>
         ),

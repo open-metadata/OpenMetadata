@@ -66,7 +66,7 @@ const TagSelectForm = ({
             <AsyncSelectList
               className="tag-select-box"
               fetchOptions={fetchApi}
-              initialData={tagData}
+              initialOptions={tagData}
               mode="multiple"
               placeholder={placeholder}
             />

@@ -332,23 +332,6 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
     }
   }, [isTourOpen]);
 
-  const handleResultUpdate = (testCase: TestCase) => {
-    setTableTests((prev) => {
-      const tests = prev.tests.map((test) => {
-        if (test.fullyQualifiedName === testCase.fullyQualifiedName) {
-          return testCase;
-        }
-
-        return test;
-      });
-
-      return {
-        ...prev,
-        tests,
-      };
-    });
-  };
-
   const handleDateRangeChange = (value: DateRangeObject) => {
     if (!isEqual(value, dateRangeObject)) {
       setDateRangeObject(value);
@@ -702,7 +685,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
               showTableColumn={false}
               testCases={filteredTestCase}
               testSuite={testSuite}
-              onTestCaseResultUpdate={handleResultUpdate}
+              onTestCaseResultUpdate={handleTestUpdate}
               onTestUpdate={handleTestUpdate}
             />
           )}

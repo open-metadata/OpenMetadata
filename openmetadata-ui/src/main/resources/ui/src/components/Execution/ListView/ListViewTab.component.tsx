@@ -71,7 +71,7 @@ const ListView = ({ executions, status, loading }: ListViewProps) => {
         emptyText: <FilterTablePlaceHolder />,
       }}
       pagination={false}
-      rowKey="name"
+      rowKey={(record) => record.name.concat(record.timestamp as string)}
     />
   );
 };

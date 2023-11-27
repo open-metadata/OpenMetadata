@@ -57,6 +57,7 @@ describe('GlossaryOverviewTab', () => {
           isGlossary={isGlossary}
           permissions={permissions}
           selectedData={selectedData}
+          onThreadLinkSelect={jest.fn()}
           onUpdate={onUpdate}
         />
       </BrowserRouter>
