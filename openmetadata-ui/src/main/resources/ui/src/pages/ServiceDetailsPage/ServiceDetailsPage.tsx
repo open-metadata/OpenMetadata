@@ -65,7 +65,6 @@ import { SearchIndex } from '../../generated/entity/data/searchIndex';
 import { StoredProcedure } from '../../generated/entity/data/storedProcedure';
 import { Topic } from '../../generated/entity/data/topic';
 import { DashboardConnection } from '../../generated/entity/services/dashboardService';
-import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
@@ -184,7 +183,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const [ingestionPipelines, setIngestionPipelines] = useState<
     IngestionPipeline[]
   >([]);
-  const [serviceList] = useState<Array<DatabaseService>>([]);
   const [ingestionPaging, setIngestionPaging] = useState<Paging>({} as Paging);
   const [showDeleted, setShowDeleted] = useState<boolean>(false);
   const [airflowEndpoint, setAirflowEndpoint] = useState<string>();
@@ -202,7 +200,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     return shouldTestConnection(serviceCategory);
   }, [serviceCategory]);
 
-  const { version: currentVersion } = useMemo(
+  const { version: currentVersion, deleted } = useMemo(
     () => serviceDetails,
     [serviceDetails]
   );
@@ -620,7 +618,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   useEffect(() => {
     getOtherDetails();
-  }, [activeTab, showDeleted, serviceDetails.deleted]);
+  }, [activeTab, showDeleted, deleted]);
 
   useEffect(() => {
     // fetch count for data modal tab, its need only when its dashboard page and data modal tab is not active
@@ -780,7 +778,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
             permissions={servicePermission}
             serviceCategory={serviceCategory as ServiceCategory}
             serviceDetails={serviceDetails}
-            serviceList={serviceList}
             serviceName={serviceFQN}
             triggerIngestion={triggerIngestionById}
             onIngestionWorkflowsUpdate={getAllIngestionWorkflows}
@@ -800,7 +797,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
       ingestionPaging,
       servicePermission,
       serviceCategory,
-      serviceList,
       serviceFQN,
       triggerIngestionById,
       getAllIngestionWorkflows,
@@ -1038,7 +1034,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
     getOtherDetails,
     saveUpdatedServiceData,
     dataModelPaging,
-
     ingestionPaging,
     ingestionTab,
     testConnectionTab,

@@ -1509,6 +1509,7 @@
     "pipeline-will-trigger-manually": "工作流仅能手动触发",
     "pipeline-will-triggered-manually": "工作流仅能手动触发",
     "please-enter-to-find-data-assets": "Press Enter to find data assets containing <0>{{keyword}}<0>",
+    "please-type-text-to-confirm": "Please type {{text}} to confirm.",
     "process-pii-sensitive-column-message": "检查列名以自动标记PII敏感/非敏感列",
     "process-pii-sensitive-column-message-profiler": "启用后，将分析样本数据以确定每个列的适当PII标记",
     "profile-sample-percentage-message": "将分析器值设置为百分比",

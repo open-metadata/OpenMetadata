@@ -1509,6 +1509,7 @@
     "pipeline-will-trigger-manually": "Die Pipeline wird nur manuell ausgelöst.",
     "pipeline-will-triggered-manually": "Die Pipeline wird nur manuell ausgelöst",
     "please-enter-to-find-data-assets": "Drücke Enter, um Datenvermögenswerte mit <0>{{keyword}}<0> zu finden.",
+    "please-type-text-to-confirm": "Please type {{text}} to confirm.",
     "process-pii-sensitive-column-message": "Überprüfe die Spaltennamen, um PII-sensitive/nicht sensitive Spalten automatisch zu taggen.",
     "process-pii-sensitive-column-message-profiler": "Wenn aktiviert, wird die Beispiel-Daten analysiert, um geeignete PII-Tags für jede Spalte zu bestimmen.",
     "profile-sample-percentage-message": "Setze den Profiler-Wert als Prozentsatz",

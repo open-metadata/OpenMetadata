@@ -21,6 +21,7 @@ import {
   removeTier,
   toastNotification,
   verifyResponseStatusCode,
+  visitDatabaseSchemaDetailsPage,
   visitServiceDetailsPage,
 } from '../../common/common';
 import { DELETE_TERM } from '../../constants/constants';
@@ -132,19 +133,15 @@ describe(`Database schema version page should work properly`, () => {
   });
 
   it(`Database Schema version page should show edited tags and description changes properly`, () => {
-    visitServiceDetailsPage(
-      serviceDetails.settingsMenuId,
-      serviceDetails.serviceCategory,
-      serviceDetails.serviceName
-    );
-
-    cy.get(`[data-row-key="${databaseId}"]`)
-      .contains(DATABASE_DETAILS_FOR_VERSION_TEST.name)
-      .click();
-
-    cy.get(`[data-row-key="${databaseSchemaId}"]`)
-      .contains(DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST.name)
-      .click();
+    visitDatabaseSchemaDetailsPage({
+      settingsMenuId: serviceDetails.settingsMenuId,
+      serviceCategory: serviceDetails.serviceCategory,
+      serviceName: serviceDetails.serviceName,
+      databaseRowKey: databaseId,
+      databaseName: DATABASE_DETAILS_FOR_VERSION_TEST.name,
+      databaseSchemaRowKey: databaseSchemaId,
+      databaseSchemaName: DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST.name,
+    });
 
     interceptURL(
       'GET',
@@ -234,19 +231,15 @@ describe(`Database schema version page should work properly`, () => {
   });
 
   it(`Database Schema version page should show owner changes properly`, () => {
-    visitServiceDetailsPage(
-      serviceDetails.settingsMenuId,
-      serviceDetails.serviceCategory,
-      serviceDetails.serviceName
-    );
-
-    cy.get(`[data-row-key="${databaseId}"]`)
-      .contains(DATABASE_DETAILS_FOR_VERSION_TEST.name)
-      .click();
-
-    cy.get(`[data-row-key="${databaseSchemaId}"]`)
-      .contains(DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST.name)
-      .click();
+    visitDatabaseSchemaDetailsPage({
+      settingsMenuId: serviceDetails.settingsMenuId,
+      serviceCategory: serviceDetails.serviceCategory,
+      serviceName: serviceDetails.serviceName,
+      databaseRowKey: databaseId,
+      databaseName: DATABASE_DETAILS_FOR_VERSION_TEST.name,
+      databaseSchemaRowKey: databaseSchemaId,
+      databaseSchemaName: DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST.name,
+    });
 
     cy.get('[data-testid="version-button"]').as('versionButton');
 
@@ -300,19 +293,15 @@ describe(`Database schema version page should work properly`, () => {
   });
 
   it(`Database Schema version page should show tier changes properly`, () => {
-    visitServiceDetailsPage(
-      serviceDetails.settingsMenuId,
-      serviceDetails.serviceCategory,
-      serviceDetails.serviceName
-    );
-
-    cy.get(`[data-row-key="${databaseId}"]`)
-      .contains(DATABASE_DETAILS_FOR_VERSION_TEST.name)
-      .click();
-
-    cy.get(`[data-row-key="${databaseSchemaId}"]`)
-      .contains(DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST.name)
-      .click();
+    visitDatabaseSchemaDetailsPage({
+      settingsMenuId: serviceDetails.settingsMenuId,
+      serviceCategory: serviceDetails.serviceCategory,
+      serviceName: serviceDetails.serviceName,
+      databaseRowKey: databaseId,
+      databaseName: DATABASE_DETAILS_FOR_VERSION_TEST.name,
+      databaseSchemaRowKey: databaseSchemaId,
+      databaseSchemaName: DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST.name,
+    });
 
     cy.get('[data-testid="version-button"]').as('versionButton');
 
@@ -366,19 +355,15 @@ describe(`Database schema version page should work properly`, () => {
   });
 
   it(`Cleanup for Database  Schema version page tests`, () => {
-    visitServiceDetailsPage(
-      serviceDetails.settingsMenuId,
-      serviceDetails.serviceCategory,
-      serviceDetails.serviceName
-    );
-
-    cy.get(`[data-row-key="${databaseId}"]`)
-      .contains(DATABASE_DETAILS_FOR_VERSION_TEST.name)
-      .click();
-
-    cy.get(`[data-row-key="${databaseSchemaId}"]`)
-      .contains(DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST.name)
-      .click();
+    visitDatabaseSchemaDetailsPage({
+      settingsMenuId: serviceDetails.settingsMenuId,
+      serviceCategory: serviceDetails.serviceCategory,
+      serviceName: serviceDetails.serviceName,
+      databaseRowKey: databaseId,
+      databaseName: DATABASE_DETAILS_FOR_VERSION_TEST.name,
+      databaseSchemaRowKey: databaseSchemaId,
+      databaseSchemaName: DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST.name,
+    });
 
     // Clicking on permanent delete radio button and checking the service name
     cy.get('[data-testid="manage-button"]')
