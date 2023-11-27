@@ -177,7 +177,7 @@ const DatabaseDetails: FunctionComponent = () => {
     try {
       setIsLoading(true);
       const { paging } = await getDatabaseSchemas({
-        databaseName: databaseFQN,
+        databaseName: decodedDatabaseFQN,
         limit: 0,
       });
 
@@ -279,6 +279,7 @@ const DatabaseDetails: FunctionComponent = () => {
 
         return res;
       });
+      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -512,7 +513,7 @@ const DatabaseDetails: FunctionComponent = () => {
                   <DescriptionV1
                     description={description}
                     entityFqn={decodedDatabaseFQN}
-                    entityName={databaseName}
+                    entityName={getEntityName(database)}
                     entityType={EntityType.DATABASE}
                     hasEditAccess={editDescriptionPermission}
                     isEdit={isEdit}

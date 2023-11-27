@@ -473,7 +473,7 @@ const SchemaTable = ({
         <ModalWithMarkdownEditor
           header={`${t('label.edit-entity', {
             entity: t('label.column'),
-          })}: "${editColumn.name}"`}
+          })}: "${getEntityName(editColumn)}"`}
           placeholder={t('message.enter-column-description')}
           value={editColumn.description as string}
           visible={Boolean(editColumn)}

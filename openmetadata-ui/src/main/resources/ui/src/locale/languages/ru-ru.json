@@ -818,7 +818,7 @@
     "relevance": "Актуальность",
     "remove": "Удалить",
     "remove-entity": "Удалить {{entity}}",
-    "remove-lowecase": "remove",
+    "remove-lowercase": "remove",
     "removed": "Удаленный",
     "removing-user": "Удаление пользователя",
     "rename": "Переименовать",
