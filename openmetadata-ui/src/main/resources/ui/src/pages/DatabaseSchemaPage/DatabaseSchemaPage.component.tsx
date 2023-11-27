@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Skeleton, Space, Tabs, TabsProps } from 'antd';
+import { Col, Row, Skeleton, Tabs, TabsProps } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
@@ -38,7 +38,7 @@ import { CustomPropertyTable } from '../../components/common/CustomPropertyTable
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import DataProductsContainer from '../../components/DataProductsContainer/DataProductsContainer.component';
+import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRightPanel';
 import Loader from '../../components/Loader/Loader';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -50,8 +50,6 @@ import {
 import ProfilerSettings from '../../components/ProfilerSettings/ProfilerSettings';
 import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
 import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
-import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
-import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
 import {
   getDatabaseSchemaDetailsPath,
   getVersionPathWithTab,
@@ -65,7 +63,7 @@ import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { Table } from '../../generated/entity/data/table';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { Include } from '../../generated/type/include';
-import { TagLabel, TagSource } from '../../generated/type/tagLabel';
+import { TagLabel } from '../../generated/type/tagLabel';
 import StoredProcedureTab from '../../pages/StoredProcedure/StoredProcedureTab';
 import {
   getDatabaseSchemaDetailsByFQN,
@@ -583,33 +581,16 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             className="entity-tag-right-panel-container"
             data-testid="entity-right-panel"
             flex="320px">
-            <Space className="w-full" direction="vertical" size="large">
-              <DataProductsContainer
-                activeDomain={databaseSchema?.domain}
-                dataProducts={databaseSchema?.dataProducts ?? []}
-                hasPermission={false}
-              />
-              <TagsContainerV2
-                displayType={DisplayType.READ_MORE}
-                entityFqn={decodedDatabaseSchemaFQN}
-                entityType={EntityType.DATABASE_SCHEMA}
-                permission={editTagsPermission}
-                selectedTags={tags}
-                tagType={TagSource.Classification}
-                onSelectionChange={handleTagSelection}
-                onThreadLinkSelect={onThreadLinkSelect}
-              />
-              <TagsContainerV2
-                displayType={DisplayType.READ_MORE}
-                entityFqn={decodedDatabaseSchemaFQN}
-                entityType={EntityType.DATABASE_SCHEMA}
-                permission={editTagsPermission}
-                selectedTags={tags}
-                tagType={TagSource.Glossary}
-                onSelectionChange={handleTagSelection}
-                onThreadLinkSelect={onThreadLinkSelect}
-              />
-            </Space>
+            <EntityRightPanel
+              dataProducts={databaseSchema?.dataProducts ?? []}
+              domain={databaseSchema?.domain}
+              editTagPermission={editTagsPermission}
+              entityFQN={decodedDatabaseSchemaFQN}
+              entityType={EntityType.DATABASE_SCHEMA}
+              selectedTags={tags}
+              onTagSelectionChange={handleTagSelection}
+              onThreadLinkSelect={onThreadLinkSelect}
+            />
           </Col>
         </Row>
       ),

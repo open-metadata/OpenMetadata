@@ -125,9 +125,9 @@ curl -sL -o docker-compose-postgres.yml https://github.com/open-metadata/OpenMet
 ```
 
 ```commandline
-wget -O https://github.com/open-metadata/OpenMetadata/releases/download/1.2.2-release/docker-compose.yml
+wget https://github.com/open-metadata/OpenMetadata/releases/download/1.2.2-release/docker-compose.yml
 
-wget -O https://github.com/open-metadata/OpenMetadata/releases/download/1.2.2-release/docker-compose-postgres.yml
+wget https://github.com/open-metadata/OpenMetadata/releases/download/1.2.2-release/docker-compose-postgres.yml
 ```
 
 ### 3. Start the Docker Compose Services
