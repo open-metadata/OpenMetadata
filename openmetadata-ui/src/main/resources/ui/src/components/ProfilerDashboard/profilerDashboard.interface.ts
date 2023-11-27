@@ -55,6 +55,7 @@ export interface ProfilerDetailsCardProps {
   title?: string;
   tickFormatter?: string;
   curveType?: CurveType;
+  isLoading?: boolean;
 }
 
 export enum ProfilerDashboardTab {

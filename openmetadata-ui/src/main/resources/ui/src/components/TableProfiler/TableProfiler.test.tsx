@@ -21,12 +21,10 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 // internal imports
-import { TableProfilerTab } from '../../components/ProfilerDashboard/profilerDashboard.interface';
 import { TEST_CASE } from '../../mocks/TableData.mock';
-import { getTableDetailsByFQN } from '../../rest/tableAPI';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
+import TableProfilerV1 from './TableProfiler';
 import { TableProfilerProps } from './TableProfiler.interface';
-import TableProfilerV1 from './TableProfilerV1';
 
 const mockLocation = {
   search: '?activeTab=Table Profile',
@@ -149,27 +147,5 @@ describe('Test TableProfiler component', () => {
     expect(
       await screen.findByText('ProfilerSettingsModal.component')
     ).toBeInTheDocument();
-  });
-
-  it('should fetch testSuite details when data quality tab is active', async () => {
-    mockLocation.search = `?activeTab=${TableProfilerTab.DATA_QUALITY}`;
-
-    (getTableDetailsByFQN as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve({
-        name: 'test',
-        id: '123',
-        tableFqn: 'fqn',
-        testSuite: { name: 'testSuite1' },
-      })
-    );
-
-    await act(async () => {
-      render(<TableProfilerV1 {...mockProps} />);
-    });
-
-    expect(getTableDetailsByFQN).toHaveBeenCalledWith(
-      'sample_data.ecommerce_db.shopify.dim_address',
-      'testSuite'
-    );
   });
 });

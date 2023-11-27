@@ -230,10 +230,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
         }
       />
       {isTableFqn && (
-        <TableProfilerChart
-          dateRangeObject={DEFAULT_RANGE_DATA}
-          entityFqn={entityTypeFQN}
-        />
+        <TableProfilerChart entityFqn={entityTypeFQN} showHeader={false} />
       )}
       {isColumnFqn && (
         <SingleColumnProfile

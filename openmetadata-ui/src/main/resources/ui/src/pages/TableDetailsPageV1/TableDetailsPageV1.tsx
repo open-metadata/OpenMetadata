@@ -42,7 +42,7 @@ import {
 import SampleDataTableComponent from '../../components/SampleDataTable/SampleDataTable.component';
 import SchemaTab from '../../components/SchemaTab/SchemaTab.component';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
-import TableProfilerV1 from '../../components/TableProfiler/TableProfilerV1';
+import TableProfiler from '../../components/TableProfiler/TableProfiler';
 import TableQueries from '../../components/TableQueries/TableQueries';
 import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
 import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
@@ -637,7 +637,7 @@ const TableDetailsPageV1 = () => {
           !isTourOpen && !viewProfilerPermission ? (
             <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
           ) : (
-            <TableProfilerV1
+            <TableProfiler
               isTableDeleted={deleted}
               permissions={tablePermissions}
             />

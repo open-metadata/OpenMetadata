@@ -11,50 +11,85 @@
  *  limitations under the License.
  */
 
-import { Button, Space, Typography } from 'antd';
+import { DownOutlined } from '@ant-design/icons';
+import { Button, Col, Dropdown, Row, Space, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { isEmpty, isUndefined } from 'lodash';
+import classNames from 'classnames';
+import {
+  filter,
+  find,
+  groupBy,
+  isEmpty,
+  isEqual,
+  isUndefined,
+  map,
+  toLower,
+} from 'lodash';
 import Qs from 'qs';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useLocation } from 'react-router-dom';
+import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
+import { ReactComponent as DropDownIcon } from '../../../assets/svg/DropDown.svg';
+import { ReactComponent as SettingIcon } from '../../../assets/svg/ic-settings-primery.svg';
 import FilterTablePlaceHolder from '../../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import Table from '../../../components/common/Table/Table';
 import { TableProfilerTab } from '../../../components/ProfilerDashboard/profilerDashboard.interface';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
+import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import {
+  DEFAULT_RANGE_DATA,
   DEFAULT_TEST_VALUE,
   INITIAL_TEST_RESULT_SUMMARY,
 } from '../../../constants/profiler.constant';
+import { ProfilerDashboardType } from '../../../enums/table.enum';
 import { Column, ColumnProfile } from '../../../generated/entity/data/table';
-import { formatNumberWithComma } from '../../../utils/CommonUtils';
+import { TestCase, TestCaseStatus } from '../../../generated/tests/testCase';
+import {
+  formatNumberWithComma,
+  getNameFromFQN,
+} from '../../../utils/CommonUtils';
 import { updateTestResults } from '../../../utils/DataQualityAndProfilerUtils';
-import { getEncodedFqn } from '../../../utils/StringsUtils';
+import { getAddDataQualityTableTestPath } from '../../../utils/RouterUtils';
+import { getDecodedFqn, getEncodedFqn } from '../../../utils/StringsUtils';
 import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
+import { SummaryCard } from '../../common/SummaryCard/SummaryCard.component';
+import { SummaryCardProps } from '../../common/SummaryCard/SummaryCard.interface';
 import TestIndicator from '../../common/TestIndicator/TestIndicator';
+import DatePickerMenu from '../../DatePickerMenu/DatePickerMenu.component';
+import PageHeader from '../../PageHeader/PageHeader.component';
+import { DateRangeObject } from '../../ProfilerDashboard/component/TestSummary';
+import TabsLabel from '../../TabsLabel/TabsLabel.component';
 import {
   ColumnProfileTableProps,
   columnTestResultType,
   ModifiedColumn,
 } from '../TableProfiler.interface';
+import ColumnPickerMenu from './ColumnPickerMenu';
+import ColumnSummary from './ColumnSummary';
 import ProfilerProgressWidget from './ProfilerProgressWidget';
 import SingleColumnProfile from './SingleColumnProfile';
 
 const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
   columnTests,
   columns = [],
-  dateRangeObject,
   isLoading,
+  overallSummary,
+  isTableDeleted,
+  permissions,
+  onSettingButtonClick,
 }) => {
   const location = useLocation();
   const { t } = useTranslation();
   const history = useHistory();
+  const { fqn } = useParams<{ fqn: string }>();
 
   const [searchText, setSearchText] = useState<string>('');
   const [data, setData] = useState<ModifiedColumn[]>(columns);
   const [columnTestSummary, setColumnTestSummary] =
     useState<columnTestResultType>();
+  const [dateRangeObject, setDateRangeObject] =
+    useState<DateRangeObject>(DEFAULT_RANGE_DATA);
 
   const { activeColumnFqn, activeTab } = useMemo(() => {
     const param = location.search;
@@ -64,6 +99,13 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
 
     return searchData as { activeColumnFqn: string; activeTab: string };
   }, [location.search]);
+
+  const { editTest, editDataProfile } = useMemo(() => {
+    return {
+      editTest: permissions?.EditAll || permissions?.EditTests,
+      editDataProfile: permissions?.EditAll || permissions?.EditDataProfile,
+    };
+  }, [permissions]);
 
   const updateActiveColumnFqn = (key: string) =>
     history.push({ search: Qs.stringify({ activeColumnFqn: key, activeTab }) });
@@ -210,6 +252,83 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
     ];
   }, [columns, columnTestSummary]);
 
+  const selectedColumn = useMemo(() => {
+    return find(
+      columns,
+      (column: Column) => column.fullyQualifiedName === activeColumnFqn
+    );
+  }, [columns, activeColumnFqn]);
+
+  const addButtonContent = [
+    {
+      label: <TabsLabel id="test-case" name={t('label.test-case')} />,
+      key: '1',
+      onClick: () => {
+        history.push({
+          pathname: getAddDataQualityTableTestPath(
+            ProfilerDashboardType.COLUMN,
+            getDecodedFqn(fqn)
+          ),
+          search: activeColumnFqn
+            ? Qs.stringify({ column: getNameFromFQN(activeColumnFqn) })
+            : '',
+        });
+      },
+    },
+    {
+      label: <TabsLabel id="matrix" name={t('label.matrix')} />,
+      key: '2',
+      // onClick: () => handleAddTestClick(ProfilerDashboardType.COLUMN),
+    },
+  ];
+
+  const selectedColumnTestsObj = useMemo(() => {
+    const temp = filter(
+      columnTests,
+      (test: TestCase) => test.entityFQN === activeColumnFqn
+    );
+
+    const statusDict = {
+      [TestCaseStatus.Success]: [],
+      [TestCaseStatus.Aborted]: [],
+      [TestCaseStatus.Failed]: [],
+      ...groupBy(temp, 'testCaseResult.testCaseStatus'),
+    };
+
+    return { statusDict, totalTests: temp.length };
+  }, [activeColumnFqn, columnTests]);
+
+  const pageHeader = useMemo(() => {
+    return {
+      ...PAGE_HEADERS.COLUMN_PROFILE,
+      header: isEmpty(activeColumnFqn) ? (
+        PAGE_HEADERS.COLUMN_PROFILE.header
+      ) : (
+        <Button
+          className="p-0 text-md font-medium"
+          type="link"
+          onClick={() =>
+            history.push({
+              search: Qs.stringify({
+                activeTab: TableProfilerTab.COLUMN_PROFILE,
+              }),
+            })
+          }>
+          <Space>
+            <DropDownIcon className="transform-90" height={16} width={16} />
+            {PAGE_HEADERS.COLUMN_PROFILE.header}
+          </Space>
+        </Button>
+      ),
+    };
+  }, [activeColumnFqn]);
+
+  const handleDateRangeChange = (value: DateRangeObject) => {
+    if (!isEqual(value, dateRangeObject)) {
+      setDateRangeObject(value);
+    }
+  };
+
   const handleSearchAction = (searchText: string) => {
     setSearchText(searchText);
     if (searchText) {
@@ -237,6 +356,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
       setData(
         columns.map((col) => ({
           ...col,
+          key: col.name,
           testCount:
             colResult?.[getEncodedFqn(col.fullyQualifiedName || '', true)]
               ?.count,
@@ -249,9 +369,112 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
   }, [columnTests, columns]);
 
   return (
-    <div data-testid="column-profile-table-container">
+    <Row data-testid="column-profile-table-container" gutter={[16, 16]}>
+      <Col span={24}>
+        <Row>
+          <Col span={10}>
+            <PageHeader data={pageHeader} />
+          </Col>
+          <Col span={14}>
+            <Space align="center" className="w-full justify-end">
+              {!isEmpty(activeColumnFqn) && (
+                <DatePickerMenu
+                  showSelectedCustomRange
+                  handleDateRangeChange={handleDateRangeChange}
+                />
+              )}
+
+              {!isTableDeleted && (
+                <>
+                  {!isEmpty(activeColumnFqn) && (
+                    <ColumnPickerMenu
+                      activeColumnFqn={activeColumnFqn}
+                      columns={columns}
+                      handleChange={updateActiveColumnFqn}
+                    />
+                  )}
+
+                  {editTest && (
+                    <Dropdown
+                      menu={{
+                        items: addButtonContent,
+                      }}
+                      placement="bottomRight"
+                      trigger={['click']}>
+                      <Button
+                        data-testid="profiler-add-table-test-btn"
+                        type="primary">
+                        <Space>
+                          {t('label.add')}
+                          <DownOutlined />
+                        </Space>
+                      </Button>
+                    </Dropdown>
+                  )}
+                  {editDataProfile && (
+                    <Tooltip
+                      placement="topRight"
+                      title={t('label.setting-plural')}>
+                      <Button
+                        className="flex-center"
+                        data-testid="profiler-setting-btn"
+                        onClick={onSettingButtonClick}>
+                        <SettingIcon />
+                      </Button>
+                    </Tooltip>
+                  )}
+                </>
+              )}
+            </Space>
+          </Col>
+        </Row>
+      </Col>
+      <Col span={24}>
+        <Row gutter={[16, 16]}>
+          {!isUndefined(selectedColumn) && (
+            <Col span={10}>
+              <ColumnSummary column={selectedColumn} />
+            </Col>
+          )}
+
+          <Col span={selectedColumn ? 14 : 24}>
+            <Row
+              wrap
+              className={classNames(
+                activeColumnFqn ? 'justify-start' : 'justify-between'
+              )}
+              gutter={[16, 16]}>
+              {overallSummary?.map((summery) => (
+                <Col key={summery.title}>
+                  <SummaryCard
+                    className={classNames(summery.className, 'h-full')}
+                    isLoading={isLoading}
+                    showProgressBar={false}
+                    title={summery.title}
+                    total={0}
+                    value={summery.value}
+                  />
+                </Col>
+              ))}
+              {!isEmpty(activeColumnFqn) &&
+                map(selectedColumnTestsObj.statusDict, (data, key) => (
+                  <Col key={key}>
+                    <SummaryCard
+                      showProgressBar
+                      isLoading={isLoading}
+                      title={key}
+                      total={selectedColumnTestsObj.totalTests}
+                      type={toLower(key) as SummaryCardProps['type']}
+                      value={data.length}
+                    />
+                  </Col>
+                ))}
+            </Row>
+          </Col>
+        </Row>
+      </Col>
       {isEmpty(activeColumnFqn) ? (
-        <>
+        <Col span={24}>
           <div className="w-max-400">
             <Searchbar
               placeholder={t('message.find-in-table')}
@@ -275,14 +498,16 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
             scroll={{ x: true }}
             size="small"
           />
-        </>
+        </Col>
       ) : (
-        <SingleColumnProfile
-          activeColumnFqn={activeColumnFqn}
-          dateRangeObject={dateRangeObject}
-        />
+        <Col span={24}>
+          <SingleColumnProfile
+            activeColumnFqn={activeColumnFqn}
+            dateRangeObject={dateRangeObject}
+          />
+        </Col>
       )}
-    </div>
+    </Row>
   );
 };
 

@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 import { DataQualityTabProps } from '../../../components/ProfilerDashboard/profilerDashboard.interface';
-import { Table } from '../../../generated/entity/data/table';
+import { OperationPermission } from '../../PermissionProvider/PermissionProvider.interface';
 
 export interface QualityTabProps extends DataQualityTabProps {
-  testSuite: Table['testSuite'];
+  isTableDeleted?: boolean;
+  permissions: OperationPermission;
 }

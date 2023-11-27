@@ -21,34 +21,29 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { DateRangeObject } from '../../../components/ProfilerDashboard/component/TestSummary';
 import { Column } from '../../../generated/entity/data/table';
 import { MOCK_TABLE } from '../../../mocks/TableData.mock';
 import { ColumnProfileTableProps } from '../TableProfiler.interface';
 import ColumnProfileTable from './ColumnProfileTable';
 
-jest.mock('antd', () => ({
-  Typography: {
-    Text: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-  },
-  Button: jest
-    .fn()
-    .mockImplementation(({ children, ...props }) => (
-      <button {...props}>{children}</button>
-    )),
-
-  Space: jest
-    .fn()
-    .mockImplementation(({ children, ...props }) => (
-      <div {...props}>{children}</div>
-    )),
-  Tooltip: jest
-    .fn()
-    .mockImplementation(({ children }) => <span>{children}</span>),
-}));
 jest.mock('../../../components/common/Table/Table', () =>
   jest.fn().mockImplementation(() => <div>Table</div>)
 );
+jest.mock('../../PageHeader/PageHeader.component', () =>
+  jest.fn().mockImplementation(() => <div>PageHeader</div>)
+);
+jest.mock('../../DatePickerMenu/DatePickerMenu.component', () =>
+  jest.fn().mockImplementation(() => <div>DatePickerMenu</div>)
+);
+jest.mock('./ColumnPickerMenu', () =>
+  jest.fn().mockImplementation(() => <div>ColumnPickerMenu</div>)
+);
+jest.mock('./ColumnSummary', () =>
+  jest.fn().mockImplementation(() => <div>ColumnSummary</div>)
+);
+jest.mock('../../common/SummaryCard/SummaryCard.component', () => ({
+  SummaryCard: jest.fn().mockImplementation(() => <div>SummaryCard</div>),
+}));
 
 jest.mock('../../../utils/CommonUtils', () => ({
   formatNumberWithComma: jest.fn(),
@@ -83,8 +78,6 @@ jest.mock('../../../utils/DatasetDetailsUtils');
 const mockProps: ColumnProfileTableProps = {
   columns: MOCK_TABLE.columns,
   columnTests: [],
-  hasEditAccess: true,
-  dateRangeObject: {} as DateRangeObject,
 };
 
 describe('Test ColumnProfileTable component', () => {

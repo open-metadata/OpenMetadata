@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { DateRangeObject } from '../../components/ProfilerDashboard/component/TestSummary';
 import { SystemProfile } from '../../generated/api/data/createTableProfile';
 import {
   Column,
@@ -47,11 +46,13 @@ export type columnTestResultType = {
 };
 
 export interface ColumnProfileTableProps {
+  overallSummary?: OverallTableSummaryType[];
   columns: Column[];
-  hasEditAccess: boolean;
   columnTests: TestCase[];
-  dateRangeObject: DateRangeObject;
   isLoading?: boolean;
+  isTableDeleted?: boolean;
+  permissions?: OperationPermission;
+  onSettingButtonClick?: () => void;
 }
 
 export interface ProfilerProgressWidgetProps {
@@ -71,7 +72,7 @@ export interface TestIndicatorProps {
   type: string;
 }
 
-export type OverallTableSummeryType = {
+export type OverallTableSummaryType = {
   title: string;
   value: number | string;
   className?: string;
@@ -83,8 +84,14 @@ export type TableProfilerData = {
 };
 
 export type TableProfilerChartProps = {
-  dateRangeObject: DateRangeObject;
   entityFqn?: string;
+  overallSummary?: OverallTableSummaryType[];
+  isSummaryLoading?: boolean;
+  isProfilingEnabled?: boolean;
+  isTableDeleted?: boolean;
+  showHeader?: boolean;
+  permissions?: OperationPermission;
+  onSettingButtonClick?: () => void;
 };
 
 export interface ProfilerSettingModalState {
