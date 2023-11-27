@@ -153,7 +153,7 @@ class QlikSenseUnitTest(TestCase):
             )
             self.qliksense.context.__dict__[
                 "dashboard_service"
-            ] = MOCK_DASHBOARD_SERVICE
+            ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.__root__
 
     @pytest.mark.order(1)
     def test_dashboard(self):

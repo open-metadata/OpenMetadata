@@ -281,8 +281,27 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         if hasattr(self.context, "dataModels") and self.context.dataModels:
             for datamodel in self.context.dataModels:
                 try:
+                    datamodel_fqn = fqn.build(
+                        metadata=self.metadata,
+                        entity_type=DashboardDataModel,
+                        service_name=self.context.dashboard_service,
+                        data_model_name=datamodel,
+                    )
+                    datamodel_entity = self.metadata.get_by_name(
+                        entity=DashboardDataModel, fqn=datamodel_fqn
+                    )
+
+                    dashboard_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Dashboard,
+                        service_name=self.context.dashboard_service,
+                        dashboard_name=self.context.dashboard,
+                    )
+                    dashboard_entity = self.metadata.get_by_name(
+                        entity=Dashboard, fqn=dashboard_fqn
+                    )
                     yield self._get_add_lineage_request(
-                        to_entity=self.context.dashboard, from_entity=datamodel
+                        to_entity=dashboard_entity, from_entity=datamodel_entity
                     )
                 except Exception as err:
                     logger.debug(traceback.format_exc())
@@ -342,21 +361,31 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 entity_type=Dashboard,
                 entity_source_state=self.dashboard_source_state,
                 mark_deleted_entity=self.source_config.markDeletedDashboards,
-                params={
-                    "service": self.context.dashboard_service.fullyQualifiedName.__root__
-                },
+                params={"service": self.context.dashboard_service},
             )
 
     def process_owner(self, dashboard_details):
+        """
+        Method to process the dashboard onwers
+        """
         try:
             if self.source_config.includeOwners:
                 owner = self.get_owner_details(  # pylint: disable=assignment-from-none
                     dashboard_details=dashboard_details
                 )
                 if owner:
+                    dashboard_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Dashboard,
+                        service_name=self.context.dashboard_service,
+                        dashboard_name=self.context.dashboard,
+                    )
+                    dashboard_entity = self.metadata.get_by_name(
+                        entity=Dashboard, fqn=dashboard_fqn
+                    )
                     self.metadata.patch_owner(
                         entity=Dashboard,
-                        source=self.context.dashboard,
+                        source=dashboard_entity,
                         owner=owner,
                         force=False,
                     )
@@ -475,7 +504,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         :return: Entity FQN derived from context
         """
         context_names = [
-            self.context.__dict__[dependency].name.__root__
+            self.context.__dict__[dependency]
             for dependency in stage.consumer or []  # root nodes do not have consumers
         ]
 

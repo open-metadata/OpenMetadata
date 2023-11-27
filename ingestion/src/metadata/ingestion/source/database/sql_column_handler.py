@@ -19,6 +19,7 @@ from sqlalchemy.engine.reflection import Inspector
 
 from metadata.generated.schema.entity.data.table import (
     Column,
+    ColumnName,
     Constraint,
     ConstraintType,
     DataType,
@@ -269,10 +270,13 @@ class SqlColumnHandlerMixin:
                     )
                     col_data_length = 1 if col_data_length is None else col_data_length
                     om_column = Column(
-                        name=column["name"]
-                        # Passing whitespace if column name is an empty string
-                        # since pydantic doesn't accept empty string
-                        if column["name"] else " ",
+                        name=ColumnName(
+                            __root__=column["name"]
+                            # Passing whitespace if column name is an empty string
+                            # since pydantic doesn't accept empty string
+                            if column["name"]
+                            else " "
+                        ),
                         description=column.get("comment"),
                         dataType=col_type,
                         dataTypeDisplay=column.get(

@@ -173,9 +173,7 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
                 entity_type=MlModel,
                 entity_source_state=self.mlmodel_source_state,
                 mark_deleted_entity=self.source_config.markDeletedMlModels,
-                params={
-                    "service": self.context.mlmodel_service.fullyQualifiedName.__root__
-                },
+                params={"service": self.context.mlmodel_service},
             )
 
     def register_record(self, mlmodel_request: CreateMlModelRequest) -> None:

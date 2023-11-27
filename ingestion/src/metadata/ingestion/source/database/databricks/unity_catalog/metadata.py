@@ -144,7 +144,7 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource, MultiDBSource):
                     database_fqn = fqn.build(
                         self.metadata,
                         entity_type=Database,
-                        service_name=self.context.database_service.name.__root__,
+                        service_name=self.context.database_service,
                         database_name=catalog_name,
                     )
                     if filter_by_database(
@@ -178,7 +178,7 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource, MultiDBSource):
         yield Either(
             right=CreateDatabaseRequest(
                 name=database_name,
-                service=self.context.database_service.fullyQualifiedName,
+                service=self.context.database_service,
             )
         )
 
@@ -186,14 +186,14 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource, MultiDBSource):
         """
         return schema names
         """
-        catalog_name = self.context.database.name.__root__
+        catalog_name = self.context.database
         for schema in self.client.schemas.list(catalog_name=catalog_name):
             try:
                 schema_fqn = fqn.build(
                     self.metadata,
                     entity_type=DatabaseSchema,
-                    service_name=self.context.database_service.name.__root__,
-                    database_name=self.context.database.name.__root__,
+                    service_name=self.context.database_service,
+                    database_name=self.context.database,
                     schema_name=schema.name,
                 )
                 if filter_by_schema(
@@ -224,7 +224,12 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource, MultiDBSource):
         yield Either(
             right=CreateDatabaseSchemaRequest(
                 name=schema_name,
-                database=self.context.database.fullyQualifiedName,
+                database=fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.database_service,
+                    database_name=self.context.database,
+                ),
             )
         )
 
@@ -237,8 +242,8 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource, MultiDBSource):
 
         :return: tables or views, depending on config
         """
-        schema_name = self.context.database_schema.name.__root__
-        catalog_name = self.context.database.name.__root__
+        schema_name = self.context.database_schema
+        catalog_name = self.context.database
         for table in self.client.tables.list(
             catalog_name=catalog_name,
             schema_name=schema_name,
@@ -248,9 +253,9 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource, MultiDBSource):
                 table_fqn = fqn.build(
                     self.metadata,
                     entity_type=Table,
-                    service_name=self.context.database_service.name.__root__,
-                    database_name=self.context.database.name.__root__,
-                    schema_name=self.context.database_schema.name.__root__,
+                    service_name=self.context.database_service,
+                    database_name=self.context.database,
+                    schema_name=self.context.database_schema,
                     table_name=table_name,
                 )
                 if filter_by_table(
@@ -289,8 +294,8 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource, MultiDBSource):
         """
         table_name, table_type = table_name_and_type
         table = self.client.tables.get(self.context.table_data.full_name)
-        schema_name = self.context.database_schema.name.__root__
-        db_name = self.context.database.name.__root__
+        schema_name = self.context.database_schema
+        db_name = self.context.database
         table_constraints = None
         try:
             columns = self.get_columns(table.columns)
@@ -309,7 +314,13 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource, MultiDBSource):
                 description=table.comment,
                 columns=columns,
                 tableConstraints=table_constraints,
-                databaseSchema=self.context.database_schema.fullyQualifiedName,
+                databaseSchema=fqn.build(
+                    metadata=self.metadata,
+                    entity_type=DatabaseSchema,
+                    service_name=self.context.database_service,
+                    database_name=self.context.database,
+                    schema_name=schema_name,
+                ),
             )
             yield Either(right=table_request)
 
@@ -381,7 +392,7 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource, MultiDBSource):
                 table_name=table_fqn_list[2],
                 schema_name=table_fqn_list[1],
                 database_name=table_fqn_list[0],
-                service_name=self.context.database_service.name.__root__,
+                service_name=self.context.database_service,
             )
             if referred_table:
                 for parent_column in column.parent_columns:
@@ -486,7 +497,7 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource, MultiDBSource):
             yield from get_view_lineage(
                 view=view,
                 metadata=self.metadata,
-                service_name=self.context.database_service.name.__root__,
+                service_name=self.context.database_service,
                 connection_type=self.service_connection.type.value,
             )
 

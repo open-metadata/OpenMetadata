@@ -197,9 +197,7 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
                 entity_type=Topic,
                 entity_source_state=self.topic_source_state,
                 mark_deleted_entity=self.source_config.markDeletedTopics,
-                params={
-                    "service": self.context.messaging_service.fullyQualifiedName.__root__
-                },
+                params={"service": self.context.messaging_service},
             )
 
     def register_record(self, topic_request: CreateTopicRequest) -> None:

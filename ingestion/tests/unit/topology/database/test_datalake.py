@@ -418,10 +418,10 @@ class DatalakeUnitTest(TestCase):
             mock_datalake_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
-        self.datalake_source.context.__dict__["database"] = MOCK_DATABASE
+        self.datalake_source.context.__dict__["database"] = MOCK_DATABASE.name.__root__
         self.datalake_source.context.__dict__[
             "database_service"
-        ] = MOCK_DATABASE_SERVICE
+        ] = MOCK_DATABASE_SERVICE.name.__root__
 
     def test_s3_schema_filer(self):
         self.datalake_source.client.list_buckets = lambda: MOCK_S3_SCHEMA

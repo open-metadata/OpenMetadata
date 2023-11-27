@@ -24,6 +24,7 @@ from sqlalchemy.orm import Session
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import (
+    Pipeline,
     PipelineStatus,
     StatusType,
     Task,
@@ -51,6 +52,7 @@ from metadata.ingestion.source.pipeline.airflow.models import (
 )
 from metadata.ingestion.source.pipeline.airflow.utils import get_schedule_interval
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
+from metadata.utils import fqn
 from metadata.utils.helpers import clean_uri, datetime_to_ts
 from metadata.utils.logger import ingestion_logger
 
@@ -224,9 +226,15 @@ class AirflowSource(PipelineServiceSource):
                         ),
                         timestamp=datetime_to_ts(dag_run.execution_date),
                     )
+                    pipeline_fqn = fqn.build(
+                        metadata=self.metadata,
+                        entity_type=Pipeline,
+                        service_name=self.context.pipeline_service,
+                        pipeline_name=self.context.pipeline,
+                    )
                     yield Either(
                         right=OMetaPipelineStatus(
-                            pipeline_fqn=self.context.pipeline.fullyQualifiedName.__root__,
+                            pipeline_fqn=pipeline_fqn,
                             pipeline_status=pipeline_status,
                         )
                     )
@@ -364,7 +372,7 @@ class AirflowSource(PipelineServiceSource):
                 tasks=self.get_tasks_from_dag(
                     pipeline_details, self.service_connection.hostPort
                 ),
-                service=self.context.pipeline_service.fullyQualifiedName.__root__,
+                service=self.context.pipeline_service,
                 owner=self.get_owner(pipeline_details.owners),
                 scheduleInterval=pipeline_details.schedule_interval,
             )
@@ -410,13 +418,18 @@ class AirflowSource(PipelineServiceSource):
 
         # If the context is not set because of an error upstream,
         # we don't want to continue the processing
-        if not self.context.pipeline:
+        pipeline_fqn = fqn.build(
+            metadata=self.metadata,
+            entity_type=Pipeline,
+            service_name=self.context.pipeline_service,
+            pipeline_name=self.context.pipeline,
+        )
+        pipeline_entity = self.metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn)
+        if not pipeline_entity:
             return
 
         lineage_details = LineageDetails(
-            pipeline=EntityReference(
-                id=self.context.pipeline.id.__root__, type="pipeline"
-            ),
+            pipeline=EntityReference(id=pipeline_entity.id.__root__, type="pipeline"),
             source=LineageSource.PipelineLineage,
         )
 
@@ -443,12 +456,12 @@ class AirflowSource(PipelineServiceSource):
                         else:
                             logger.warning(
                                 f"Could not find Table [{to_fqn}] from "
-                                f"[{self.context.pipeline.fullyQualifiedName.__root__}] outlets"
+                                f"[{pipeline_entity.fullyQualifiedName.__root__}] outlets"
                             )
                 else:
                     logger.warning(
                         f"Could not find Table [{from_fqn}] from "
-                        f"[{self.context.pipeline.fullyQualifiedName.__root__}] inlets"
+                        f"[{pipeline_entity.fullyQualifiedName.__root__}] inlets"
                     )
 
     def close(self):

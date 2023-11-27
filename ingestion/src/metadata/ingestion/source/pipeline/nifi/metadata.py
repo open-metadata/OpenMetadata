@@ -142,7 +142,7 @@ class NifiSource(PipelineServiceSource):
             displayName=pipeline_details.name,
             sourceUrl=f"{clean_uri(self.service_connection.hostPort)}{pipeline_details.uri}",
             tasks=self._get_tasks_from_details(pipeline_details),
-            service=self.context.pipeline_service.fullyQualifiedName.__root__,
+            service=self.context.pipeline_service,
         )
         yield Either(right=pipeline_request)
         self.register_record(pipeline_request=pipeline_request)

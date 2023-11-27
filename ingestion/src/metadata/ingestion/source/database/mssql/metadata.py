@@ -91,7 +91,7 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
                 database_fqn = fqn.build(
                     self.metadata,
                     entity_type=Database,
-                    service_name=self.context.database_service.name.__root__,
+                    service_name=self.context.database_service,
                     database_name=new_database,
                 )
 

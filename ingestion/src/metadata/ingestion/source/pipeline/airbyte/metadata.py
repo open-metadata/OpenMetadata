@@ -19,6 +19,7 @@ from pydantic import BaseModel
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import (
+    Pipeline,
     PipelineStatus,
     StatusType,
     Task,
@@ -115,7 +116,7 @@ class AirbyteSource(PipelineServiceSource):
             tasks=self.get_connections_jobs(
                 pipeline_details.connection, connection_url
             ),
-            service=self.context.pipeline_service.fullyQualifiedName.__root__,
+            service=self.context.pipeline_service,
         )
         yield Either(right=pipeline_request)
         self.register_record(pipeline_request=pipeline_request)
@@ -167,9 +168,15 @@ class AirbyteSource(PipelineServiceSource):
                     taskStatus=task_status,
                     timestamp=created_at,
                 )
+                pipeline_fqn = fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Pipeline,
+                    service_name=self.context.pipeline_service,
+                    pipeline_name=self.context.pipeline,
+                )
                 yield Either(
                     right=OMetaPipelineStatus(
-                        pipeline_fqn=self.context.pipeline.fullyQualifiedName.__root__,
+                        pipeline_fqn=pipeline_fqn,
                         pipeline_status=pipeline_status,
                     )
                 )
@@ -225,9 +232,19 @@ class AirbyteSource(PipelineServiceSource):
             if not from_entity and not to_entity:
                 continue
 
+            pipeline_fqn = fqn.build(
+                metadata=self.metadata,
+                entity_type=Pipeline,
+                service_name=self.context.pipeline_service,
+                pipeline_name=self.context.pipeline,
+            )
+            pipeline_entity = self.metadata.get_by_name(
+                entity=Pipeline, fqn=pipeline_fqn
+            )
+
             lineage_details = LineageDetails(
                 pipeline=EntityReference(
-                    id=self.context.pipeline.id.__root__, type="pipeline"
+                    id=pipeline_entity.id.__root__, type="pipeline"
                 ),
                 source=LineageSource.PipelineLineage,
             )

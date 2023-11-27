@@ -153,7 +153,7 @@ class StoredProcedureMixin(ABC):
             for either_lineage in get_lineage_by_query(
                 self.metadata,
                 query=query_by_procedure.query_text,
-                service_name=self.context.database_service.name.__root__,
+                service_name=self.context.database_service,
                 database_name=query_by_procedure.query_database_name,
                 schema_name=query_by_procedure.query_schema_name,
                 dialect=ConnectionTypeDialectMapper.dialect_of(
@@ -190,7 +190,7 @@ class StoredProcedureMixin(ABC):
                     type="storedProcedure",
                 ),
                 processedLineage=bool(self.context.stored_procedure_query_lineage),
-                service=self.context.database_service.name.__root__,
+                service=self.context.database_service,
             )
         )
 

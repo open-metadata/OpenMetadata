@@ -28,6 +28,7 @@ from metadata.generated.schema.api.data.createStoredProcedure import (
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Column, Table, TableType
 from metadata.generated.schema.entity.services.connections.database.deltaLakeConnection import (
@@ -144,7 +145,7 @@ class DeltalakeSource(DatabaseServiceSource):
         yield Either(
             right=CreateDatabaseRequest(
                 name=database_name,
-                service=self.context.database_service.fullyQualifiedName,
+                service=self.context.database_service,
             )
         )
 
@@ -157,8 +158,8 @@ class DeltalakeSource(DatabaseServiceSource):
             schema_fqn = fqn.build(
                 self.metadata,
                 entity_type=DatabaseSchema,
-                service_name=self.context.database_service.name.__root__,
-                database_name=self.context.database.name.__root__,
+                service_name=self.context.database_service,
+                database_name=self.context.database,
                 schema_name=schema.name,
             )
             if filter_by_schema(
@@ -181,7 +182,12 @@ class DeltalakeSource(DatabaseServiceSource):
         yield Either(
             right=CreateDatabaseSchemaRequest(
                 name=schema_name,
-                database=self.context.database.fullyQualifiedName,
+                database=fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.database_service,
+                    database_name=self.context.database,
+                ),
             )
         )
 
@@ -194,16 +200,16 @@ class DeltalakeSource(DatabaseServiceSource):
 
         :return: tables or views, depending on config
         """
-        schema_name = self.context.database_schema.name.__root__
+        schema_name = self.context.database_schema
         for table in self.spark.catalog.listTables(schema_name):
             try:
                 table_name = table.name
                 table_fqn = fqn.build(
                     self.metadata,
                     entity_type=Table,
-                    service_name=self.context.database_service.name.__root__,
-                    database_name=self.context.database.name.__root__,
-                    schema_name=self.context.database_schema.name.__root__,
+                    service_name=self.context.database_service,
+                    database_name=self.context.database,
+                    schema_name=self.context.database_schema,
                     table_name=table.name,
                 )
                 if filter_by_table(
@@ -251,7 +257,7 @@ class DeltalakeSource(DatabaseServiceSource):
         Prepare a table request and pass it to the sink
         """
         table_name, table_type = table_name_and_type
-        schema_name = self.context.database_schema.name.__root__
+        schema_name = self.context.database_schema
         try:
             columns = self.get_columns(schema_name, table_name)
             view_definition = (
@@ -266,7 +272,13 @@ class DeltalakeSource(DatabaseServiceSource):
                 description=self.context.table_description,
                 columns=columns,
                 tableConstraints=None,
-                databaseSchema=self.context.database_schema.fullyQualifiedName,
+                databaseSchema=fqn.build(
+                    metadata=self.metadata,
+                    entity_type=DatabaseSchema,
+                    service_name=self.context.database_service,
+                    database_name=self.context.database,
+                    schema_name=schema_name,
+                ),
                 viewDefinition=view_definition,
             )
 

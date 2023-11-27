@@ -123,7 +123,7 @@ class MlflowSource(MlModelServiceSource):
                 run.data, latest_version.run_id, model.name
             ),
             mlStore=self._get_ml_store(latest_version),
-            service=self.context.mlmodel_service.fullyQualifiedName,
+            service=self.context.mlmodel_service,
             sourceUrl=source_url,
         )
         yield Either(right=mlmodel_request)

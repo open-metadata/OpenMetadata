@@ -198,7 +198,7 @@ MOCK_DB_POSTGRES_SERVICE = DatabaseService(
     serviceType=DatabaseServiceType.Postgres,
 )
 
-EXPECTED_CHATRT_ENTITY = [
+EXPECTED_CHART_ENTITY = [
     Chart(
         id=uuid.uuid4(),
         name=37,
@@ -213,7 +213,7 @@ EXPECTED_DASH = CreateDashboardRequest(
     name=14,
     displayName="My DASH",
     sourceUrl="https://my-superset.com/superset/dashboard/14/",
-    charts=[chart.fullyQualifiedName for chart in EXPECTED_CHATRT_ENTITY],
+    charts=[chart.fullyQualifiedName for chart in EXPECTED_CHART_ENTITY],
     service=EXPECTED_DASH_SERVICE.fullyQualifiedName,
 )
 
@@ -256,7 +256,7 @@ class SupersetUnitTest(TestCase):
 
             self.superset_api.context.__dict__[
                 "dashboard_service"
-            ] = EXPECTED_DASH_SERVICE
+            ] = EXPECTED_DASH_SERVICE.fullyQualifiedName.__root__
 
             with patch.object(
                 SupersetAPIClient, "fetch_total_charts", return_value=1
@@ -279,7 +279,7 @@ class SupersetUnitTest(TestCase):
 
             self.superset_db.context.__dict__[
                 "dashboard_service"
-            ] = EXPECTED_DASH_SERVICE
+            ] = EXPECTED_DASH_SERVICE.fullyQualifiedName.__root__
 
             with patch.object(Engine, "execute", return_value=mock_data["chart-db"]):
                 self.superset_db.prepare()
@@ -351,7 +351,9 @@ class SupersetUnitTest(TestCase):
         with patch.object(
             SupersetAPISource, "_get_user_by_email", return_value=EXPECTED_USER
         ):
-            self.superset_api.context.__dict__["charts"] = EXPECTED_CHATRT_ENTITY
+            self.superset_api.context.__dict__["charts"] = [
+                chart.name.__root__ for chart in EXPECTED_CHART_ENTITY
+            ]
             dashboard = next(self.superset_api.yield_dashboard(MOCK_DASHBOARD)).right
             self.assertEqual(dashboard, EXPECTED_DASH)
 
@@ -359,7 +361,9 @@ class SupersetUnitTest(TestCase):
         with patch.object(
             SupersetDBSource, "_get_user_by_email", return_value=EXPECTED_USER
         ):
-            self.superset_db.context.__dict__["charts"] = EXPECTED_CHATRT_ENTITY
+            self.superset_db.context.__dict__["charts"] = [
+                chart.name.__root__ for chart in EXPECTED_CHART_ENTITY
+            ]
             dashboard = next(self.superset_db.yield_dashboard(MOCK_DASHBOARD_DB)).right
             self.assertEqual(dashboard, EXPECTED_DASH)
 

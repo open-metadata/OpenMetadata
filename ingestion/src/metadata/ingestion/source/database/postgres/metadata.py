@@ -165,7 +165,7 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
                 database_fqn = fqn.build(
                     self.metadata,
                     entity_type=Database,
-                    service_name=self.context.database_service.name.__root__,
+                    service_name=self.context.database_service,
                     database_name=new_database,
                 )
 
@@ -214,7 +214,7 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
         try:
             result = self.engine.execute(
                 POSTGRES_GET_ALL_TABLE_PG_POLICY.format(
-                    database_name=self.context.database.name.__root__,
+                    database_name=self.context.database,
                     schema_name=schema_name,
                 )
             ).all()
@@ -223,7 +223,7 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
                 fqn_elements = [name for name in row[2:] if name]
                 yield from get_ometa_tag_and_classification(
                     tag_fqn=fqn._build(  # pylint: disable=protected-access
-                        self.context.database_service.name.__root__, *fqn_elements
+                        self.context.database_service, *fqn_elements
                     ),
                     tags=[row[1]],
                     classification_name=self.service_connection.classificationName,

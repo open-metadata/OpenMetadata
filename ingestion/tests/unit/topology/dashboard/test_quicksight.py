@@ -161,8 +161,12 @@ class QuickSightUnitTest(TestCase):
         self.quicksight.dashboard_url = (
             "https://us-east-2.quicksight.aws.amazon.com/sn/dashboards/552315335"
         )
-        self.quicksight.context.__dict__["dashboard"] = MOCK_DASHBOARD
-        self.quicksight.context.__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE
+        self.quicksight.context.__dict__[
+            "dashboard"
+        ] = MOCK_DASHBOARD.fullyQualifiedName.__root__
+        self.quicksight.context.__dict__[
+            "dashboard_service"
+        ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.__root__
 
     @pytest.mark.order(1)
     def test_dashboard(self):

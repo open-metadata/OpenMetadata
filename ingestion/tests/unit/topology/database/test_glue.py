@@ -137,9 +137,13 @@ class GlueUnitTest(TestCase):
             mock_glue_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
-        self.glue_source.context.__dict__["database_service"] = MOCK_DATABASE_SERVICE
-        self.glue_source.context.__dict__["database"] = MOCK_DATABASE
-        self.glue_source.context.__dict__["database_schema"] = MOCK_DATABASE_SCHEMA
+        self.glue_source.context.__dict__[
+            "database_service"
+        ] = MOCK_DATABASE_SERVICE.name.__root__
+        self.glue_source.context.__dict__["database"] = MOCK_DATABASE.name.__root__
+        self.glue_source.context.__dict__[
+            "database_schema"
+        ] = MOCK_DATABASE_SCHEMA.name.__root__
         self.glue_source._get_glue_database_and_schemas = lambda: [
             DatabasePage(**mock_data.get("mock_database_paginator"))
         ]
