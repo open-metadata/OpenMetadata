@@ -47,7 +47,7 @@ import { SERVICE_CATEGORIES } from '../../constants/service.constants';
 
 const serviceType = 'Mysql';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
-const tableFqn = `${DATABASE_SERVICE.tables.databaseSchema}.${DATABASE_SERVICE.tables.name}`;
+const tableFqn = `${DATABASE_SERVICE.entity.databaseSchema}.${DATABASE_SERVICE.entity.name}`;
 const testSuite = {
   name: `${tableFqn}.testSuite`,
   executableEntityReference: tableFqn,
@@ -114,7 +114,7 @@ describe('Data Quality and Profiler should work properly', () => {
       createEntityTable({
         token,
         ...DATABASE_SERVICE,
-        tables: [DATABASE_SERVICE.tables],
+        tables: [DATABASE_SERVICE.entity],
       });
 
       cy.request({
