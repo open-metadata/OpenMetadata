@@ -26,6 +26,8 @@ from metadata.generated.schema.api.data.createStoredProcedure import (
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Column, Table, TableType
 from metadata.generated.schema.entity.services.connections.database.domoDatabaseConnection import (
     DomoDatabaseConnection,
@@ -97,7 +99,7 @@ class DomodatabaseSource(DatabaseServiceSource):
         yield Either(
             right=CreateDatabaseRequest(
                 name=database_name,
-                service=self.context.database_service.fullyQualifiedName,
+                service=self.context.database_service,
             )
         )
 
@@ -111,12 +113,17 @@ class DomodatabaseSource(DatabaseServiceSource):
         yield Either(
             right=CreateDatabaseSchemaRequest(
                 name=schema_name,
-                database=self.context.database.fullyQualifiedName,
+                database=fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.database_service,
+                    database_name=self.context.database,
+                ),
             )
         )
 
     def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
-        schema_name = self.context.database_schema.name.__root__
+        schema_name = self.context.database_schema
         try:
             tables = list(self.domo_client.datasets.list())
             for table in tables:
@@ -125,9 +132,9 @@ class DomodatabaseSource(DatabaseServiceSource):
                 table_fqn = fqn.build(
                     self.metadata,
                     entity_type=Table,
-                    service_name=self.context.database_service.name.__root__,
-                    database_name=self.context.database.name.__root__,
-                    schema_name=self.context.database_schema.name.__root__,
+                    service_name=self.context.database_service,
+                    database_name=self.context.database,
+                    schema_name=self.context.database_schema,
                     table_name=table["name"],
                 )
 
@@ -183,7 +190,13 @@ class DomodatabaseSource(DatabaseServiceSource):
                 columns=columns,
                 owner=self.get_owners(owner=table_object.owner),
                 tableConstraints=table_constraints,
-                databaseSchema=self.context.database_schema.fullyQualifiedName,
+                databaseSchema=fqn.build(
+                    metadata=self.metadata,
+                    entity_type=DatabaseSchema,
+                    service_name=self.context.database_service,
+                    database_name=self.context.database,
+                    schema_name=self.context.database_schema,
+                ),
                 sourceUrl=self.get_source_url(
                     table_name=table_id,
                 ),
