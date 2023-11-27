@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Col, Row, Space, Tabs } from 'antd';
+import { Card, Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { EntityTags } from 'Models';
@@ -26,8 +26,8 @@ import { CustomPropertyTable } from '../../components/common/CustomPropertyTable
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import DataProductsContainer from '../../components/DataProductsContainer/DataProductsContainer.component';
 import EntityLineageComponent from '../../components/Entity/EntityLineage/EntityLineage.component';
+import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRightPanel';
 import Loader from '../../components/Loader/Loader';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -40,8 +40,6 @@ import SchemaEditor from '../../components/SchemaEditor/SchemaEditor';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
 import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
 import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
-import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
-import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
 import {
   getStoredProcedureDetailPath,
   getVersionPath,
@@ -58,7 +56,7 @@ import {
   StoredProcedure,
   StoredProcedureCodeObject,
 } from '../../generated/entity/data/storedProcedure';
-import { TagLabel, TagSource } from '../../generated/type/tagLabel';
+import { TagLabel } from '../../generated/type/tagLabel';
 import { postThread } from '../../rest/feedsAPI';
 import {
   addStoredProceduresFollower,
@@ -553,34 +551,16 @@ const StoredProcedurePage = () => {
               className="entity-tag-right-panel-container"
               data-testid="entity-right-panel"
               flex="320px">
-              <Space className="w-full" direction="vertical" size="large">
-                <DataProductsContainer
-                  activeDomain={storedProcedure?.domain}
-                  dataProducts={storedProcedure?.dataProducts ?? []}
-                  hasPermission={false}
-                />
-                <TagsContainerV2
-                  displayType={DisplayType.READ_MORE}
-                  entityFqn={decodedStoredProcedureFQN}
-                  entityType={EntityType.STORED_PROCEDURE}
-                  permission={editTagsPermission}
-                  selectedTags={tags}
-                  tagType={TagSource.Classification}
-                  onSelectionChange={handleTagSelection}
-                  onThreadLinkSelect={onThreadLinkSelect}
-                />
-
-                <TagsContainerV2
-                  displayType={DisplayType.READ_MORE}
-                  entityFqn={decodedStoredProcedureFQN}
-                  entityType={EntityType.STORED_PROCEDURE}
-                  permission={editTagsPermission}
-                  selectedTags={tags}
-                  tagType={TagSource.Glossary}
-                  onSelectionChange={handleTagSelection}
-                  onThreadLinkSelect={onThreadLinkSelect}
-                />
-              </Space>
+              <EntityRightPanel
+                dataProducts={storedProcedure?.dataProducts ?? []}
+                domain={storedProcedure?.domain}
+                editTagPermission={editTagsPermission}
+                entityFQN={decodedStoredProcedureFQN}
+                entityType={EntityType.STORED_PROCEDURE}
+                selectedTags={tags}
+                onTagSelectionChange={handleTagSelection}
+                onThreadLinkSelect={onThreadLinkSelect}
+              />
             </Col>
           </Row>
         ),
