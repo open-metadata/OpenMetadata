@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Tabs } from 'antd';
+import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEqual } from 'lodash';
@@ -30,8 +30,8 @@ import DescriptionV1 from '../../components/common/EntityDescription/Description
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import QueryViewer from '../../components/common/QueryViewer/QueryViewer.component';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import DataProductsContainer from '../../components/DataProductsContainer/DataProductsContainer.component';
 import EntityLineageComponent from '../../components/Entity/EntityLineage/EntityLineage.component';
+import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRightPanel';
 import Loader from '../../components/Loader/Loader';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -44,8 +44,6 @@ import SampleDataWithMessages from '../../components/SampleDataWithMessages/Samp
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
 import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
 import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
-import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
-import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
 import { getVersionPath } from '../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
@@ -55,7 +53,6 @@ import {
 } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
 import { SearchIndex, TagLabel } from '../../generated/entity/data/searchIndex';
-import { TagSource } from '../../generated/type/tagLabel';
 import { postThread } from '../../rest/feedsAPI';
 import {
   addFollower,
@@ -393,34 +390,16 @@ function SearchIndexDetailsPage() {
           className="entity-tag-right-panel-container"
           data-testid="entity-right-panel"
           flex="320px">
-          <Space className="w-full" direction="vertical" size="large">
-            <DataProductsContainer
-              activeDomain={searchIndexDetails?.domain}
-              dataProducts={searchIndexDetails?.dataProducts ?? []}
-              hasPermission={false}
-            />
-            <TagsContainerV2
-              displayType={DisplayType.READ_MORE}
-              entityFqn={decodedSearchIndexFQN}
-              entityType={EntityType.SEARCH_INDEX}
-              permission={editTagsPermission}
-              selectedTags={searchIndexTags}
-              tagType={TagSource.Classification}
-              onSelectionChange={handleTagSelection}
-              onThreadLinkSelect={onThreadLinkSelect}
-            />
-
-            <TagsContainerV2
-              displayType={DisplayType.READ_MORE}
-              entityFqn={decodedSearchIndexFQN}
-              entityType={EntityType.SEARCH_INDEX}
-              permission={editTagsPermission}
-              selectedTags={searchIndexTags}
-              tagType={TagSource.Glossary}
-              onSelectionChange={handleTagSelection}
-              onThreadLinkSelect={onThreadLinkSelect}
-            />
-          </Space>
+          <EntityRightPanel
+            dataProducts={searchIndexDetails?.dataProducts ?? []}
+            domain={searchIndexDetails?.domain}
+            editTagPermission={editTagsPermission}
+            entityFQN={decodedSearchIndexFQN}
+            entityType={EntityType.SEARCH_INDEX}
+            selectedTags={searchIndexTags}
+            onTagSelectionChange={handleTagSelection}
+            onThreadLinkSelect={onThreadLinkSelect}
+          />
         </Col>
       </Row>
     ),
