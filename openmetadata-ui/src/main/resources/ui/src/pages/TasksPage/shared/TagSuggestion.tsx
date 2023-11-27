@@ -83,7 +83,6 @@ const TagSuggestion: React.FC<TagSuggestionProps> = ({
 
   return (
     <AsyncSelectList
-      defaultValue={value?.map((item) => item.tagFQN) || []}
       fetchOptions={isGlossaryType ? fetchGlossaryList : fetchTagsElasticSearch}
       initialOptions={initialOptions}
       mode="multiple"
@@ -93,6 +92,7 @@ const TagSuggestion: React.FC<TagSuggestionProps> = ({
           field: t('label.tag-plural'),
         })
       }
+      value={value?.map((item) => item.tagFQN) ?? []}
       onChange={(value) => handleTagSelection(value)}
     />
   );
