@@ -19,7 +19,7 @@ from pydantic import BaseModel
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.pipeline import Task
+from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.pipeline.fivetranConnection import (
     FivetranConnection,
@@ -97,7 +97,7 @@ class FivetranSource(PipelineServiceSource):
             name=pipeline_details.pipeline_name,
             displayName=pipeline_details.pipeline_display_name,
             tasks=self.get_connections_jobs(pipeline_details),
-            service=self.context.pipeline_service.fullyQualifiedName.__root__,
+            service=self.context.pipeline_service,
             sourceUrl=self.get_source_url(
                 connector_id=pipeline_details.source.get("id"),
                 group_id=pipeline_details.group.get("id"),
@@ -160,9 +160,18 @@ class FivetranSource(PipelineServiceSource):
                 if not from_entity or not to_entity:
                     logger.info(f"Lineage Skipped for {from_fqn} - {to_fqn}")
                     continue
+                pipeline_fqn = fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Pipeline,
+                    service_name=self.context.pipeline_service,
+                    pipeline_name=self.context.pipeline,
+                )
+                pipeline_entity = self.metadata.get_by_name(
+                    entity=Pipeline, fqn=pipeline_fqn
+                )
                 lineage_details = LineageDetails(
                     pipeline=EntityReference(
-                        id=self.context.pipeline.id.__root__, type="pipeline"
+                        id=pipeline_entity.id.__root__, type="pipeline"
                     ),
                     source=LineageSource.PipelineLineage,
                 )
