@@ -15,7 +15,7 @@ import {
   DATABASE_DETAILS,
   DATABASE_SERVICE_DETAILS,
   SCHEMA_DETAILS,
-} from '../constants/entityConstant';
+} from '../constants/EntityConstant';
 import { uuid } from './common';
 
 /**
@@ -28,6 +28,11 @@ export const createEntityTable = ({
   tables,
   token,
 }) => {
+  const createdEntityIds = {
+    databaseId: undefined,
+    databaseSchemaId: undefined,
+  };
+
   // Create service
   cy.request({
     method: 'POST',
@@ -46,6 +51,8 @@ export const createEntityTable = ({
     body: database,
   }).then((response) => {
     expect(response.status).to.eq(201);
+
+    createdEntityIds.databaseId = response.body.id;
   });
 
   // Create Database Schema
@@ -56,6 +63,8 @@ export const createEntityTable = ({
     body: schema,
   }).then((response) => {
     expect(response.status).to.eq(201);
+
+    createdEntityIds.databaseSchemaId = response.body.id;
   });
 
   tables.forEach((body) => {
@@ -68,6 +77,8 @@ export const createEntityTable = ({
       expect(response.status).to.eq(201);
     });
   });
+
+  return createdEntityIds;
 };
 
 /**

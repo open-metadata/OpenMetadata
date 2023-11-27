@@ -79,6 +79,7 @@ const TeamsSubscription = ({
             <EditIcon
               className="cursor-pointer"
               color={DE_ACTIVE_COLOR}
+              data-testid="edit-team-subscription"
               width={14}
               onClick={() => setEditSubscription(true)}
             />
@@ -138,7 +139,7 @@ const TeamsSubscription = ({
         <EditIcon
           className="cursor-pointer align-middle"
           color={DE_ACTIVE_COLOR}
-          data-testid="edit-roles"
+          data-testid="edit-team-subscription"
           {...ICON_DIMENSION}
           onClick={() => setEditSubscription(true)}
         />

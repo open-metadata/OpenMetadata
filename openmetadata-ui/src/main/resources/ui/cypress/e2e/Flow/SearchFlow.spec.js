@@ -25,7 +25,7 @@ import {
   FIELDS,
   OPERATOR,
 } from '../../common/advancedSearch';
-import { hardDeleteService } from '../../common/entityUtils';
+import { hardDeleteService } from '../../common/EntityUtils';
 import { USER_CREDENTIALS } from '../../constants/SearchIndexDetails.constants';
 import { SERVICE_CATEGORIES } from '../../constants/service.constants';
 

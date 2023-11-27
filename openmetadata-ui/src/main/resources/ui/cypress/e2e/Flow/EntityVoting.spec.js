@@ -20,14 +20,14 @@ import {
   createEntityTable,
   createSingleLevelEntity,
   hardDeleteService,
-} from '../../common/entityUtils';
+} from '../../common/EntityUtils';
 import {
   DASHBOARD_DATA_MODEL_DETAILS,
   DATABASE_SERVICE,
   SINGLE_LEVEL_SERVICE,
   STORED_PROCEDURE_DETAILS,
   VISIT_ENTITIES_DATA,
-} from '../../constants/entityConstant';
+} from '../../constants/EntityConstant';
 import { SERVICE_CATEGORIES } from '../../constants/service.constants';
 
 const VOTING_ENTITIES = [
@@ -49,7 +49,7 @@ describe('Check if voting work properly in entities', () => {
       createEntityTable({
         token,
         ...DATABASE_SERVICE,
-        tables: [DATABASE_SERVICE.tables],
+        tables: [DATABASE_SERVICE.entity],
       });
       SINGLE_LEVEL_SERVICE.forEach((data) => {
         createSingleLevelEntity({

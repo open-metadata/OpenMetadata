@@ -28,13 +28,13 @@ import {
   verifyResponseStatusCode,
   visitEntityDetailsPage,
 } from '../../common/common';
-import { createEntityTable, hardDeleteService } from '../../common/entityUtils';
+import { createEntityTable, hardDeleteService } from '../../common/EntityUtils';
 import { searchServiceFromSettingPage } from '../../common/serviceUtils';
 import {
   API_SERVICE,
+  DATA_ASSETS,
   DATA_QUALITY_SAMPLE_DATA_TABLE,
   DELETE_TERM,
-  MYDATA_SUMMARY_OPTIONS,
   NEW_COLUMN_TEST_CASE,
   NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE,
   NEW_TABLE_TEST_CASE,
@@ -42,12 +42,12 @@ import {
   SERVICE_TYPE,
   TEAM_ENTITY,
 } from '../../constants/constants';
-import { DATABASE_SERVICE } from '../../constants/entityConstant';
+import { DATABASE_SERVICE } from '../../constants/EntityConstant';
 import { SERVICE_CATEGORIES } from '../../constants/service.constants';
 
 const serviceType = 'Mysql';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
-const tableFqn = `${DATABASE_SERVICE.tables.databaseSchema}.${DATABASE_SERVICE.tables.name}`;
+const tableFqn = `${DATABASE_SERVICE.entity.databaseSchema}.${DATABASE_SERVICE.entity.name}`;
 const testSuite = {
   name: `${tableFqn}.testSuite`,
   executableEntityReference: tableFqn,
@@ -71,7 +71,7 @@ const goToProfilerTab = () => {
   visitEntityDetailsPage({
     term: TEAM_ENTITY,
     serviceName,
-    entity: MYDATA_SUMMARY_OPTIONS.tables,
+    entity: DATA_ASSETS.tables,
   });
   verifyResponseStatusCode('@waitForPageLoad', 200);
 
@@ -114,7 +114,7 @@ describe('Data Quality and Profiler should work properly', () => {
       createEntityTable({
         token,
         ...DATABASE_SERVICE,
-        tables: [DATABASE_SERVICE.tables],
+        tables: [DATABASE_SERVICE.entity],
       });
 
       cy.request({

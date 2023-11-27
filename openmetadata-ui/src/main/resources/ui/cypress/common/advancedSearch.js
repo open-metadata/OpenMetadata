@@ -17,7 +17,7 @@ import {
   DATABASE_SERVICE_DETAILS,
   SCHEMA_DETAILS,
   TABLE_DETAILS,
-} from '../constants/entityConstant';
+} from '../constants/EntityConstant';
 import { USER_CREDENTIALS } from '../constants/SearchIndexDetails.constants';
 import {
   interceptURL,
@@ -25,7 +25,7 @@ import {
   verifyResponseStatusCode,
   visitEntityDetailsPage,
 } from './common';
-import { createEntityTable } from './entityUtils';
+import { createEntityTable } from './EntityUtils';
 
 export const ADVANCE_SEARCH_TABLES = {
   table1: TABLE_DETAILS,

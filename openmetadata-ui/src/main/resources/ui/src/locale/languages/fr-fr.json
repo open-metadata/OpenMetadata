@@ -1510,6 +1510,7 @@
     "pipeline-will-trigger-manually": "Le pipeline ne sera déclenché manuellement que.",
     "pipeline-will-triggered-manually": "Le pipeline ne sera déclenché manuellement que.",
     "please-enter-to-find-data-assets": "Appuyez sur Entrée pour trouver les actifs de données contenant <0>{{keyword}}</0>",
+    "please-type-text-to-confirm": "Please type {{text}} to confirm.",
     "process-pii-sensitive-column-message": "Vérifiez les noms de colonne pour marquer automatiquement les colonnes sensibles/non sensibles.",
     "process-pii-sensitive-column-message-profiler": "Quand activé, les données d'échantillon seront analysées pour déterminer les balises PII appropriées pour chaque colonne.",
     "profile-sample-percentage-message": "Configurez la valeur du profilage en pourcentage.",

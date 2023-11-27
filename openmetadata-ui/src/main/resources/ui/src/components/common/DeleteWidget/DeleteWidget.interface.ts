@@ -52,3 +52,8 @@ export enum DeleteType {
   SOFT_DELETE = 'soft-delete',
   HARD_DELETE = 'hard-delete',
 }
+
+export type DeleteWidgetFormFields = {
+  deleteType: DeleteType;
+  deleteTextInput: string;
+};

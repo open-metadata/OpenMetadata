@@ -20,7 +20,7 @@ import {
 } from '../../common/common';
 import {
   API_SERVICE,
-  MYDATA_SUMMARY_OPTIONS,
+  DATA_ASSETS,
   SERVICE_TYPE,
 } from '../../constants/constants';
 
@@ -69,7 +69,7 @@ describe('S3Storage Ingestion', () => {
       tableName,
       description,
       SERVICE_TYPE.Storage,
-      MYDATA_SUMMARY_OPTIONS.containers
+      DATA_ASSETS.containers
     );
   });
 

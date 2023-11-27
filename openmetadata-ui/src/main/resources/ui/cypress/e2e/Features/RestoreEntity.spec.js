@@ -17,15 +17,15 @@ import {
   verifyResponseStatusCode,
   visitEntityDetailsPage,
 } from '../../common/common';
-import { createEntityTable, hardDeleteService } from '../../common/entityUtils';
-import { DELETE_TERM, MYDATA_SUMMARY_OPTIONS } from '../../constants/constants';
-import { DATABASE_SERVICE } from '../../constants/entityConstant';
+import { createEntityTable, hardDeleteService } from '../../common/EntityUtils';
+import { DATA_ASSETS, DELETE_TERM } from '../../constants/constants';
+import { DATABASE_SERVICE } from '../../constants/EntityConstant';
 import { SERVICE_CATEGORIES } from '../../constants/service.constants';
 
 const ENTITY_TABLE = {
-  term: DATABASE_SERVICE.tables.name,
-  displayName: DATABASE_SERVICE.tables.name,
-  entity: MYDATA_SUMMARY_OPTIONS.tables,
+  term: DATABASE_SERVICE.entity.name,
+  displayName: DATABASE_SERVICE.entity.name,
+  entity: DATA_ASSETS.tables,
   serviceName: DATABASE_SERVICE.service.name,
   schemaName: DATABASE_SERVICE.schema.name,
   entityType: 'Table',
@@ -40,7 +40,7 @@ describe('Restore entity functionality should work properly', () => {
       createEntityTable({
         token,
         ...DATABASE_SERVICE,
-        tables: [DATABASE_SERVICE.tables],
+        tables: [DATABASE_SERVICE.entity],
       });
     });
   });
