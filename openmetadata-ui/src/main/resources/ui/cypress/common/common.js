@@ -77,7 +77,6 @@ const getTeamType = (currentTeam) => {
 };
 
 const checkTeamTypeOptions = (type) => {
-  cy.log('check', type);
   for (const teamType of getTeamType(type).teamTypeOptions) {
     cy.get(`.ant-select-dropdown [title="${teamType}"]`)
       .should('exist')
@@ -1696,4 +1695,38 @@ export const updateTableFieldDescription = (
   cy.get('[data-testid="save"]').click();
 
   verifyResponseStatusCode('@updateDescription', 200);
+};
+
+export const visitDatabaseDetailsPage = ({
+  settingsMenuId,
+  serviceCategory,
+  serviceName,
+  databaseRowKey,
+  databaseName,
+}) => {
+  visitServiceDetailsPage(settingsMenuId, serviceCategory, serviceName);
+
+  cy.get(`[data-row-key="${databaseRowKey}"]`).contains(databaseName).click();
+};
+
+export const visitDatabaseSchemaDetailsPage = ({
+  settingsMenuId,
+  serviceCategory,
+  serviceName,
+  databaseRowKey,
+  databaseName,
+  databaseSchemaRowKey,
+  databaseSchemaName,
+}) => {
+  visitDatabaseDetailsPage({
+    settingsMenuId,
+    serviceCategory,
+    serviceName,
+    databaseRowKey,
+    databaseName,
+  });
+
+  cy.get(`[data-row-key="${databaseSchemaRowKey}"]`)
+    .contains(databaseSchemaName)
+    .click();
 };
