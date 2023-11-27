@@ -29,7 +29,7 @@ MSSQL_SQL_STATEMENT = textwrap.dedent(
       FROM sys.dm_exec_cached_plans AS p
       INNER JOIN sys.dm_exec_query_stats AS s
         ON p.plan_handle = s.plan_handle
-      CROSS APPLY sys.Dm_exec_sql_text(p.plan_handle) AS t
+      CROSS APPLY sys.dm_exec_sql_text(p.plan_handle) AS t
       INNER JOIN sys.databases db
         ON db.database_id = t.dbid
       WHERE s.last_execution_time between '{start_time}' and '{end_time}'
