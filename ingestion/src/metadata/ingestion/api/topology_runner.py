@@ -179,6 +179,9 @@ class TopologyRunnerMixin(Generic[C]):
 
     def update_context(self, stage: NodeStage, entity_name: str):
         """Append or update context"""
+        # We'll store the entity_name in the topology context instead of the entity_fqn
+        # and build the fqn on the fly wherever required.
+        # This is mainly because we need the entity_name in other places
         if stage.context and not stage.cache_all:
             self._replace_context(key=stage.context, value=entity_name)
         if stage.context and stage.cache_all:
@@ -197,18 +200,31 @@ class TopologyRunnerMixin(Generic[C]):
 
         The default implementation is based on a get_by_name validation
         """
-
+        entity = None
         entity_name = model_str(right.name)
+        entity_fqn = self.fqn_from_context(stage=stage, entity_request=right)
         yield entity_request
 
         # We have ack the sink waiting for a response, but got nothing back
-        if stage.must_return and entity_name is None:
-            # Safe access to Entity Request name
-            raise MissingExpectedEntityAckException(
-                f"Missing ack back from [{stage.type_.__name__}: {entity_name}] - "
-                "Possible causes are changes in the server Fernet key or mismatched JSON Schemas "
-                "for the service connection."
-            )
+        if stage.must_return:
+            # we'll only check the get by name for entities like database service
+            # without which we cannot proceed ahead in the ingestion
+            tries = 3
+            while not entity and tries > 0:
+                entity = self.metadata.get_by_name(
+                    entity=stage.type_,
+                    fqn=entity_fqn,
+                    fields=["*"],  # Get all the available data from the Entity
+                )
+                tries -= 1
+
+            if not entity:
+                # Safe access to Entity Request name
+                raise MissingExpectedEntityAckException(
+                    f"Missing ack back from [{stage.type_.__name__}: {entity_fqn}] - "
+                    "Possible causes are changes in the server Fernet key or mismatched JSON Schemas "
+                    "for the service connection."
+                )
 
         self.update_context(stage=stage, entity_name=entity_name)
 
@@ -226,7 +242,9 @@ class TopologyRunnerMixin(Generic[C]):
         lineage has been properly drawn. We'll skip the process for now.
         """
         yield entity_request
-        self.update_context(stage=stage, entity_name=right)
+        self.update_context(
+            stage=stage, entity_name=right.edge.fromEntity.name.__root__
+        )
 
     @yield_and_update_context.register
     def _(
@@ -238,33 +256,15 @@ class TopologyRunnerMixin(Generic[C]):
         """Tag implementation for the context information"""
         yield entity_request
 
-        tag = None
+        tag_fqn = fqn.build(
+            metadata=self.metadata,
+            entity_type=Tag,
+            classification_name=right.tag_request.classification.__root__,
+            tag_name=right.tag_request.name.__root__,
+        )
 
-        tries = 3
-        while not tag and tries > 0:
-            yield entity_request
-            tag = self.metadata.get_by_name(
-                entity=Tag,
-                fqn=fqn.build(
-                    metadata=self.metadata,
-                    entity_type=Tag,
-                    classification_name=right.tag_request.classification.__root__,
-                    tag_name=right.tag_request.name.__root__,
-                ),
-            )
-            tries -= 1
-
-        # We have ack the sink waiting for a response, but got nothing back
-        if stage.must_return and tag is None:
-            # Safe access to Entity Request name
-            raise MissingExpectedEntityAckException(
-                f"Missing ack back from [Tag: {right.tag_request.name}] - "
-                "Possible causes are changes in the server Fernet key or mismatched JSON Schemas "
-                "for the service connection."
-            )
-
-        # We want to keep the full payload in the context
-        self.update_context(stage=stage, entity_name=right)
+        # We'll keep the tag fqn in the context and use if required
+        self.update_context(stage=stage, entity_name=tag_fqn)
 
     def sink_request(
         self, stage: NodeStage, entity_request: Either[C]

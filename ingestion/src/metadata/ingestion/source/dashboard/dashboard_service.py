@@ -504,7 +504,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         :return: Entity FQN derived from context
         """
         context_names = [
-            self.context.__dict__[dependency].name.__root__
+            self.context.__dict__[dependency]
             for dependency in stage.consumer or []  # root nodes do not have consumers
         ]
 
