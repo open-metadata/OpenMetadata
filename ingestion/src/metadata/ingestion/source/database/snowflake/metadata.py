@@ -26,6 +26,7 @@ from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
 )
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureCode
 from metadata.generated.schema.entity.data.table import (
     IntervalType,
@@ -209,9 +210,7 @@ class SnowflakeSource(
         """
         Method to fetch the schema description
         """
-        return self.schema_desc_map.get(
-            (self.context.database.name.__root__, schema_name)
-        )
+        return self.schema_desc_map.get((self.context.database, schema_name))
 
     def get_database_description(self, database_name: str) -> Optional[str]:
         """
@@ -242,7 +241,7 @@ class SnowflakeSource(
                 database_fqn = fqn.build(
                     self.metadata,
                     entity_type=Database,
-                    service_name=self.context.database_service.name.__root__,
+                    service_name=self.context.database_service,
                     database_name=new_database,
                 )
 
@@ -339,7 +338,7 @@ class SnowflakeSource(
             try:
                 result = self.connection.execute(
                     SNOWFLAKE_FETCH_ALL_TAGS.format(
-                        database_name=self.context.database.name.__root__,
+                        database_name=self.context.database,
                         schema_name=schema_name,
                     )
                 )
@@ -352,8 +351,8 @@ class SnowflakeSource(
                     )
                     result = self.connection.execute(
                         SNOWFLAKE_FETCH_ALL_TAGS.format(
-                            database_name=f'"{self.context.database.name.__root__}"',
-                            schema_name=f'"{self.context.database_schema.name.__root__}"',
+                            database_name=f'"{self.context.database}"',
+                            schema_name=f'"{self.context.database_schema}"',
                         )
                     )
                 except Exception as inner_exc:
@@ -370,7 +369,7 @@ class SnowflakeSource(
                 fqn_elements = [name for name in row[2:] if name]
                 yield from get_ometa_tag_and_classification(
                     tag_fqn=fqn._build(  # pylint: disable=protected-access
-                        self.context.database_service.name.__root__, *fqn_elements
+                        self.context.database_service, *fqn_elements
                     ),
                     tags=[row[1]],
                     classification_name=row[0],
@@ -511,8 +510,8 @@ class SnowflakeSource(
         if self.source_config.includeStoredProcedures:
             results = self.engine.execute(
                 SNOWFLAKE_GET_STORED_PROCEDURES.format(
-                    database_name=self.context.database.name.__root__,
-                    schema_name=self.context.database_schema.name.__root__,
+                    database_name=self.context.database,
+                    schema_name=self.context.database_schema,
                 )
             ).all()
             for row in results:
@@ -539,8 +538,8 @@ class SnowflakeSource(
         """
         res = self.engine.execute(
             SNOWFLAKE_DESC_STORED_PROCEDURE.format(
-                database_name=self.context.database.name.__root__,
-                schema_name=self.context.database_schema.name.__root__,
+                database_name=self.context.database,
+                schema_name=self.context.database_schema,
                 procedure_name=stored_procedure.name,
                 procedure_signature=urllib.parse.unquote(stored_procedure.signature),
             )
@@ -563,11 +562,17 @@ class SnowflakeSource(
                         ),
                         code=stored_procedure.definition,
                     ),
-                    databaseSchema=self.context.database_schema.fullyQualifiedName,
+                    databaseSchema=fqn.build(
+                        metadata=self.metadata,
+                        entity_type=DatabaseSchema,
+                        service_name=self.context.database_service,
+                        database_name=self.context.database,
+                        schema_name=self.context.database_schema,
+                    ),
                     sourceUrl=SourceUrl(
                         __root__=self._get_source_url_root(
-                            database_name=self.context.database.name.__root__,
-                            schema_name=self.context.database_schema.name.__root__,
+                            database_name=self.context.database,
+                            schema_name=self.context.database_schema,
                         )
                         + f"/procedure/{stored_procedure.name}"
                         + f"{stored_procedure.signature if stored_procedure.signature else ''}"
