@@ -21,6 +21,7 @@ import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { ChangeDescription } from '../../../generated/entity/type';
 import { getFeedCounts } from '../../../utils/CommonUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
@@ -46,6 +47,7 @@ const GlossaryDetails = ({
   onAddGlossaryTerm,
   onEditGlossaryTerm,
   isVersionView,
+  onThreadLinkSelect,
 }: GlossaryDetailsProps) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -131,15 +133,19 @@ const GlossaryDetails = ({
           <Space className="w-full" direction="vertical" size={24}>
             <DescriptionV1
               description={description}
-              entityName={glossary.displayName ?? glossary.name}
+              entityFqn={glossary.fullyQualifiedName}
+              entityName={getEntityName(glossary)}
               entityType={EntityType.GLOSSARY}
               hasEditAccess={permissions.EditDescription || permissions.EditAll}
               isEdit={isDescriptionEditable}
-              showCommentsIcon={false}
+              owner={glossary?.owner}
+              showActions={!glossary.deleted}
               onCancel={() => setIsDescriptionEditable(false)}
               onDescriptionEdit={() => setIsDescriptionEditable(true)}
               onDescriptionUpdate={onDescriptionUpdate}
+              onThreadLinkSelect={onThreadLinkSelect}
             />
+
             <GlossaryTermTab
               isGlossary
               childGlossaryTerms={glossaryTerms}
@@ -158,6 +164,7 @@ const GlossaryDetails = ({
             isVersionView={isVersionView}
             permissions={permissions}
             selectedData={glossary}
+            onThreadLinkSelect={onThreadLinkSelect}
             onUpdate={updateGlossary}
           />
         </Col>

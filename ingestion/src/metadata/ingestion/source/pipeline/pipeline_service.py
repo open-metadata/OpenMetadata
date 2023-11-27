@@ -222,9 +222,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
                 entity_type=Pipeline,
                 entity_source_state=self.pipeline_source_state,
                 mark_deleted_entity=self.source_config.markDeletedPipelines,
-                params={
-                    "service": self.context.pipeline_service.fullyQualifiedName.__root__
-                },
+                params={"service": self.context.pipeline_service},
             )
 
     def prepare(self):

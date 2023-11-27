@@ -231,7 +231,7 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Document.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Document for instance {id} and version {version} is " + "not found")
+            description = "Document for instance {id} and version {version} is not found")
       })
   public Document getVersion(
       @Context UriInfo uriInfo,
@@ -297,9 +297,7 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }

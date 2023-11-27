@@ -40,6 +40,7 @@ import static org.openmetadata.schema.type.ColumnDataType.VARCHAR;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.TABLE;
+import static org.openmetadata.service.Entity.TAG;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidColumnFQN;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
@@ -836,7 +837,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         invalidColumnFQN(invalidColumnFQN1));
 
     // Invalid table name
-    String invalidColumnFQN2 = table2.getDatabase().getName() + ".invalidTable" + ".c1";
+    String invalidColumnFQN2 = table2.getDatabase().getName() + ".invalidTable.c1";
     TableJoins tableJoins2 = getTableJoins(getColumnJoin(C1, invalidColumnFQN2));
     assertResponse(
         () -> putJoins(table1.getId(), tableJoins2, ADMIN_AUTH_HEADERS),
@@ -957,7 +958,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertResponseContains(
         () -> putSampleData(table.getId(), tableData, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "Number of columns is 3 but row " + "has 4 sample values");
+        "Number of columns is 3 but row has 4 sample values");
 
     // Send sample data that has fewer samples than the number of columns
     columns = Arrays.asList(C1, C2, C3);
@@ -966,7 +967,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertResponseContains(
         () -> putSampleData(table.getId(), tableData, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "Number of columns is 3 but row h" + "as 2 sample values");
+        "Number of columns is 3 but row has 2 sample values");
   }
 
   @Test
@@ -1002,7 +1003,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertResponseContains(
         () -> createAndCheckEntity(createTable, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "ViewDefinition can only be set on " + "TableType View, SecureView or MaterializedView");
+        "ViewDefinition can only be set on TableType View, SecureView or MaterializedView");
   }
 
   @Test
@@ -1369,6 +1370,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   void createUpdateDeleteCustomMetrics(Table table, Map<String, String> authHeaders) throws IOException {
+    // ===========================
+    // Check Column custom metrics
     Column c1 = table.getColumns().get(0);
 
     CreateCustomMetric createMetric =
@@ -1379,7 +1382,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     Table putResponse = putCustomMetric(table.getId(), createMetric, authHeaders);
     verifyCustomMetrics(putResponse, c1, List.of(createMetric));
 
-    table = getEntity(table.getId(), "customMetrics", authHeaders);
+    table = getEntity(table.getId(), "customMetrics,columns", authHeaders);
     verifyCustomMetrics(table, c1, List.of(createMetric));
 
     // Update Custom Metric
@@ -1398,15 +1401,56 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .withColumnName(c1.getName())
             .withExpression("Yet another statement");
     putResponse = putCustomMetric(table.getId(), createMetric2, authHeaders);
-    verifyCustomMetrics(putResponse, c1, List.of(createMetric2));
+    verifyCustomMetrics(putResponse, c1, List.of(createMetric2, updatedMetric));
 
-    table = getEntity(table.getId(), "customMetrics", authHeaders);
+    table = getEntity(table.getId(), "customMetrics,columns", authHeaders);
     verifyCustomMetrics(table, c1, List.of(updatedMetric, createMetric2));
 
-    // Delete Custom Metric
+    // Delete Column Custom Metric
     deleteCustomMetric(table.getId(), c1.getName(), updatedMetric.getName(), authHeaders);
-    table = getEntity(table.getId(), "customMetrics", authHeaders);
+    table = getEntity(table.getId(), "customMetrics,columns", authHeaders);
     verifyCustomMetrics(table, c1, List.of(createMetric2));
+
+    // ===========================
+    // Check Table custom metrics
+    // Create table custom metric
+    CreateCustomMetric createTableMetric =
+        new CreateCustomMetric().withName("customTable").withExpression("SELECT SUM(xyz) + SUM(def) FROM abc");
+    Table tablePutResponse = putCustomMetric(table.getId(), createTableMetric, authHeaders);
+    assertEquals(1, tablePutResponse.getCustomMetrics().size());
+
+    // Add another table custom metric
+    CreateCustomMetric createTableMetric2 =
+        new CreateCustomMetric().withName("custom2Table").withExpression("SELECT SUM(xyz) / SUM(def) FROM abc");
+    tablePutResponse = putCustomMetric(table.getId(), createTableMetric2, authHeaders);
+    assertEquals(2, tablePutResponse.getCustomMetrics().size());
+
+    // check we can get the custom metrics
+    Map<String, Object> customMetrics =
+        tablePutResponse.getCustomMetrics().stream()
+            .collect(Collectors.toMap(CustomMetric::getName, (metric) -> metric));
+
+    for (CreateCustomMetric metric : List.of(createTableMetric, createTableMetric2)) {
+      CustomMetric customMetric = (CustomMetric) customMetrics.get(metric.getName());
+      assertEquals(customMetric.getExpression(), metric.getExpression());
+    }
+
+    // Update table custom metric
+    CreateCustomMetric updatedTableMetric =
+        new CreateCustomMetric().withName("customTable").withExpression("SELECT SUM(xyz) - SUM(def) FROM abc");
+    tablePutResponse = putCustomMetric(table.getId(), updatedTableMetric, authHeaders);
+    CustomMetric updatedCustomMetric =
+        tablePutResponse.getCustomMetrics().stream()
+            .filter(metric -> metric.getName().equals(updatedTableMetric.getName()))
+            .findFirst()
+            .orElseThrow();
+    assertEquals(updatedCustomMetric.getExpression(), updatedTableMetric.getExpression());
+
+    // Delete table custom metric
+    deleteTableCustomMetric(table.getId(), updatedTableMetric.getName(), authHeaders);
+    table = getEntity(table.getId(), "customMetrics,columns", authHeaders);
+    assertEquals(1, table.getCustomMetrics().size());
+    assertEquals(createTableMetric2.getName(), table.getCustomMetrics().get(0).getName());
   }
 
   @Test
@@ -1902,6 +1946,46 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     createEntity(createTable, authHeaders(USER1.getName()));
   }
 
+  @Test
+  void test_columnWithInvalidTag(TestInfo test) throws HttpResponseException {
+    // Add an entity with invalid tag
+    TagLabel invalidTag = new TagLabel().withTagFQN("invalidTag");
+    List<Column> invalidTagColumns = List.of(getColumn(C1, BIGINT, invalidTag));
+    CreateTable create = createRequest(getEntityName(test)).withColumns(invalidTagColumns);
+
+    // Entity can't be created with PUT or POST
+    assertResponse(
+        () -> createEntity(create, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+
+    assertResponse(
+        () -> updateEntity(create, Status.CREATED, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+
+    // Create an entity and update the columns with PUT and PATCH with an invalid tag
+    List<Column> validColumns = List.of(getColumn(C1, BIGINT, TIER1_TAG_LABEL));
+    create.setColumns(validColumns);
+    Table entity = createEntity(create, ADMIN_AUTH_HEADERS);
+    String json = JsonUtils.pojoToJson(entity);
+
+    create.setColumns(invalidTagColumns);
+    assertResponse(
+        () -> updateEntity(create, Status.CREATED, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+
+    entity.setTags(listOf(invalidTag));
+    assertResponse(
+        () -> patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+
+    // No lingering relationships should cause error in listing the entity
+    listEntities(null, ADMIN_AUTH_HEADERS);
+  }
+
   void assertFields(List<Table> tableList, String fieldsParam) {
     tableList.forEach(t -> assertFields(t, fieldsParam));
   }
@@ -2100,10 +2184,10 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     return TestUtils.get(target, TableResource.ColumnProfileList.class, authHeaders);
   }
 
-  public ChangeEvent putTableQueriesData(UUID queryId, List<EntityReference> data, Map<String, String> authHeaders)
+  public void putTableQueriesData(UUID queryId, List<EntityReference> data, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource(String.format("queries/%s/usage", queryId));
-    return TestUtils.put(target, data, ChangeEvent.class, CREATED, authHeaders);
+    TestUtils.put(target, data, ChangeEvent.class, CREATED, authHeaders);
   }
 
   public List<Query> getTableQueriesData(UUID entityId, Map<String, String> authHeaders) throws HttpResponseException {
@@ -2123,10 +2207,16 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     return TestUtils.put(target, data, Table.class, OK, authHeaders);
   }
 
-  public Table deleteCustomMetric(UUID tableId, String columnName, String metricName, Map<String, String> authHeaders)
+  public void deleteCustomMetric(UUID tableId, String columnName, String metricName, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource(tableId).path("/customMetric/" + columnName + "/" + metricName);
-    return TestUtils.delete(target, Table.class, authHeaders);
+    TestUtils.delete(target, Table.class, authHeaders);
+  }
+
+  public void deleteTableCustomMetric(UUID tableId, String metricName, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource(tableId).path("/customMetric/" + metricName);
+    TestUtils.delete(target, Table.class, authHeaders);
   }
 
   private int getTagUsageCount(String tagFqn, Map<String, String> authHeaders) throws HttpResponseException {

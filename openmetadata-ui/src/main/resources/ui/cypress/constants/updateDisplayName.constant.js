@@ -10,17 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { MYDATA_SUMMARY_OPTIONS, SERVICE_TYPE } from './constants';
+import { DATA_ASSETS, SERVICE_TYPE } from './constants';
 import {
   DASHBOARD_DATA_MODEL_DETAILS,
   DASHBOARD_SERVICE,
   DATABASE_SERVICE,
   MESSAGING_SERVICE,
-  MLMODEL_SERVICE,
+  ML_MODEL_SERVICE,
   PIPELINE_SERVICE,
   STORAGE_SERVICE,
   STORED_PROCEDURE_DETAILS,
-} from './entityConstant';
+} from './EntityConstant';
 
 export const SERVICES = {
   databaseServices: {
@@ -45,7 +45,7 @@ export const SERVICES = {
   },
   mlmodelServices: {
     type: SERVICE_TYPE.MLModels,
-    name: MLMODEL_SERVICE.service.name,
+    name: ML_MODEL_SERVICE.service.name,
     displayName: 'ML Flow Service',
   },
   storageServices: {
@@ -65,10 +65,10 @@ const DATABASE_AND_SCHEMA = {
 
 export const ENTITIES_DISPLAY_NAME = {
   table: {
-    name: DATABASE_SERVICE.tables.name,
+    name: DATABASE_SERVICE.entity.name,
     oldDisplayName: 'dim.shop',
     displayName: 'Dim Shop Test',
-    entity: MYDATA_SUMMARY_OPTIONS.tables,
+    entity: DATA_ASSETS.tables,
     serviceName: DB_SERVICE,
     breadcrumb: [
       DATABASE_AND_SCHEMA.schemaDisplayName,
@@ -80,7 +80,7 @@ export const ENTITIES_DISPLAY_NAME = {
     name: MESSAGING_SERVICE.entity.name,
     oldDisplayName: 'address_book',
     displayName: 'Kafka Address Book',
-    entity: MYDATA_SUMMARY_OPTIONS.topics,
+    entity: DATA_ASSETS.topics,
     serviceName: SERVICES.messagingServices.name,
     breadcrumb: [SERVICES.messagingServices.displayName],
   },
@@ -88,7 +88,7 @@ export const ENTITIES_DISPLAY_NAME = {
     name: DASHBOARD_SERVICE.entity.name,
     oldDisplayName: 'Customers dashboard',
     displayName: 'Looker Customers Dashboard',
-    entity: MYDATA_SUMMARY_OPTIONS.dashboards,
+    entity: DATA_ASSETS.dashboards,
     serviceName: SERVICES.dashboardServices.name,
     breadcrumb: [SERVICES.dashboardServices.displayName],
   },
@@ -96,15 +96,15 @@ export const ENTITIES_DISPLAY_NAME = {
     name: PIPELINE_SERVICE.entity.name,
     oldDisplayName: 'dim_address_etl',
     displayName: 'Dim Address ETL',
-    entity: MYDATA_SUMMARY_OPTIONS.pipelines,
+    entity: DATA_ASSETS.pipelines,
     serviceName: SERVICES.pipelineServices.name,
     breadcrumb: [SERVICES.pipelineServices.displayName],
   },
   mlmodel: {
-    name: MLMODEL_SERVICE.entity.name,
+    name: ML_MODEL_SERVICE.entity.name,
     oldDisplayName: 'ETA Predictions',
     displayName: 'Predictions ETA',
-    entity: MYDATA_SUMMARY_OPTIONS.mlmodels,
+    entity: DATA_ASSETS.mlmodels,
     serviceName: SERVICES.mlmodelServices.name,
     breadcrumb: [SERVICES.mlmodelServices.displayName],
   },
@@ -112,7 +112,7 @@ export const ENTITIES_DISPLAY_NAME = {
     name: STORAGE_SERVICE.entity.name,
     oldDisplayName: 'Company departments',
     displayName: 'Company Departments Test',
-    entity: MYDATA_SUMMARY_OPTIONS.containers,
+    entity: DATA_ASSETS.containers,
     serviceName: SERVICES.storageServices.name,
     breadcrumb: [SERVICES.storageServices.displayName],
   },
@@ -120,7 +120,7 @@ export const ENTITIES_DISPLAY_NAME = {
     name: STORED_PROCEDURE_DETAILS.name,
     oldDisplayName: 'update_dim_address_table',
     displayName: 'Update_Dim_Address_Table',
-    entity: MYDATA_SUMMARY_OPTIONS.storedProcedures,
+    entity: DATA_ASSETS.storedProcedures,
     serviceName: DB_SERVICE,
     breadcrumb: [
       DATABASE_AND_SCHEMA.schemaDisplayName,

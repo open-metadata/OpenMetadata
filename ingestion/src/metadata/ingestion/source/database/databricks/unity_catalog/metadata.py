@@ -61,6 +61,7 @@ from metadata.ingestion.source.database.databricks.models import (
     ForeignConstrains,
     Type,
 )
+from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
 from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
@@ -84,7 +85,7 @@ def from_dict(cls, dct: Dict[str, Any]) -> "TableConstraintList":
 TableConstraintList.from_dict = from_dict
 
 
-class DatabricksUnityCatalogSource(DatabaseServiceSource):
+class DatabricksUnityCatalogSource(DatabaseServiceSource, MultiDBSource):
     """
     Implements the necessary methods to extract
     Database metadata from Databricks Source using
@@ -106,6 +107,13 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
         self.connection_obj = self.client
         self.table_constraints = []
         self.test_connection()
+
+    def get_configured_database(self) -> Optional[str]:
+        return self.service_connection.catalog
+
+    def get_database_names_raw(self) -> Iterable[str]:
+        for catalog in self.client.catalogs.list():
+            yield catalog.name
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata):
@@ -131,31 +139,31 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
         if self.service_connection.catalog:
             yield self.service_connection.catalog
         else:
-            for catalog in self.client.catalogs.list():
+            for catalog_name in self.get_database_names_raw():
                 try:
                     database_fqn = fqn.build(
                         self.metadata,
                         entity_type=Database,
-                        service_name=self.context.database_service.name.__root__,
-                        database_name=catalog.name,
+                        service_name=self.context.database_service,
+                        database_name=catalog_name,
                     )
                     if filter_by_database(
                         self.config.sourceConfig.config.databaseFilterPattern,
                         database_fqn
                         if self.config.sourceConfig.config.useFqnForFiltering
-                        else catalog.name,
+                        else catalog_name,
                     ):
                         self.status.filter(
                             database_fqn,
                             "Database (Catalog ID) Filtered Out",
                         )
                         continue
-                    yield catalog.name
+                    yield catalog_name
                 except Exception as exc:
                     self.status.failed(
                         StackTraceError(
-                            name=catalog.name,
-                            error=f"Unexpected exception to get database name [{catalog.name}]: {exc}",
+                            name=catalog_name,
+                            error=f"Unexpected exception to get database name [{catalog_name}]: {exc}",
                             stack_trace=traceback.format_exc(),
                         )
                     )
@@ -170,7 +178,7 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
         yield Either(
             right=CreateDatabaseRequest(
                 name=database_name,
-                service=self.context.database_service.fullyQualifiedName,
+                service=self.context.database_service,
             )
         )
 
@@ -178,14 +186,14 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
         """
         return schema names
         """
-        catalog_name = self.context.database.name.__root__
+        catalog_name = self.context.database
         for schema in self.client.schemas.list(catalog_name=catalog_name):
             try:
                 schema_fqn = fqn.build(
                     self.metadata,
                     entity_type=DatabaseSchema,
-                    service_name=self.context.database_service.name.__root__,
-                    database_name=self.context.database.name.__root__,
+                    service_name=self.context.database_service,
+                    database_name=self.context.database,
                     schema_name=schema.name,
                 )
                 if filter_by_schema(
@@ -216,7 +224,12 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
         yield Either(
             right=CreateDatabaseSchemaRequest(
                 name=schema_name,
-                database=self.context.database.fullyQualifiedName,
+                database=fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.database_service,
+                    database_name=self.context.database,
+                ),
             )
         )
 
@@ -229,8 +242,8 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
 
         :return: tables or views, depending on config
         """
-        schema_name = self.context.database_schema.name.__root__
-        catalog_name = self.context.database.name.__root__
+        schema_name = self.context.database_schema
+        catalog_name = self.context.database
         for table in self.client.tables.list(
             catalog_name=catalog_name,
             schema_name=schema_name,
@@ -240,9 +253,9 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
                 table_fqn = fqn.build(
                     self.metadata,
                     entity_type=Table,
-                    service_name=self.context.database_service.name.__root__,
-                    database_name=self.context.database.name.__root__,
-                    schema_name=self.context.database_schema.name.__root__,
+                    service_name=self.context.database_service,
+                    database_name=self.context.database,
+                    schema_name=self.context.database_schema,
                     table_name=table_name,
                 )
                 if filter_by_table(
@@ -281,8 +294,8 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
         """
         table_name, table_type = table_name_and_type
         table = self.client.tables.get(self.context.table_data.full_name)
-        schema_name = self.context.database_schema.name.__root__
-        db_name = self.context.database.name.__root__
+        schema_name = self.context.database_schema
+        db_name = self.context.database
         table_constraints = None
         try:
             columns = self.get_columns(table.columns)
@@ -301,7 +314,13 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
                 description=table.comment,
                 columns=columns,
                 tableConstraints=table_constraints,
-                databaseSchema=self.context.database_schema.fullyQualifiedName,
+                databaseSchema=fqn.build(
+                    metadata=self.metadata,
+                    entity_type=DatabaseSchema,
+                    service_name=self.context.database_service,
+                    database_name=self.context.database,
+                    schema_name=schema_name,
+                ),
             )
             yield Either(right=table_request)
 
@@ -373,7 +392,7 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
                 table_name=table_fqn_list[2],
                 schema_name=table_fqn_list[1],
                 database_name=table_fqn_list[0],
-                service_name=self.context.database_service.name.__root__,
+                service_name=self.context.database_service,
             )
             if referred_table:
                 for parent_column in column.parent_columns:
@@ -478,7 +497,7 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
             yield from get_view_lineage(
                 view=view,
                 metadata=self.metadata,
-                service_name=self.context.database_service.name.__root__,
+                service_name=self.context.database_service,
                 connection_type=self.service_connection.type.value,
             )
 

@@ -514,25 +514,24 @@ public final class TestUtils {
   public static void assertListNotEmpty(List<?>... values) {
     int index = 0;
     for (List<?> value : values) {
-      Assertions.assertFalse(value.isEmpty(), "List at index " + index + "is empty");
+      Assertions.assertFalse(value.isEmpty(), "List at index " + index + " is empty");
       index++;
     }
   }
 
-  public static <T> boolean validateAlphabeticalOrdering(List<T> list, Comparator<T> comparator) {
+  public static <T> void validateAlphabeticalOrdering(List<T> list, Comparator<T> comparator) {
     Iterator<T> iterator = listOrEmpty(list).iterator();
     if (!iterator.hasNext()) {
-      return true;
+      return;
     }
     T prev = iterator.next();
     while (iterator.hasNext()) {
       T next = iterator.next();
       if (comparator.compare(prev, next) > 0) {
-        return false;
+        return;
       }
       prev = next;
     }
-    return true;
   }
 
   public static Long dateToTimestamp(String dateStr) throws ParseException {

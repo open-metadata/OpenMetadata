@@ -93,7 +93,7 @@
     "indexName": "data_product_search_index",
     "indexMappingFile": "/elasticsearch/%s/data_products_index_mapping.json",
     "alias": "dataProduct",
-    "parentAliases": ["domain"]
+    "parentAliases": ["domain","all"]
   },
   "domain": {
     "indexName": "domain_search_index",

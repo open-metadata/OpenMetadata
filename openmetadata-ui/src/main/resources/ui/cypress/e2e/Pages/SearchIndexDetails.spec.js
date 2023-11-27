@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-// / <reference types="Cypress" />
+// eslint-disable-next-line spaced-comment
+/// <reference types="cypress" />
 
 import {
   addAnnouncement,
@@ -207,22 +208,17 @@ describe('SearchIndexDetails page should work properly for data consumer role', 
       term: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.name,
       serviceName: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.service,
       entity: 'searchIndexes',
-      entityType: 'Search Index',
     });
 
     // Edit domain option should not be available
-    cy.get(`[data-testid="entity-page-header"]`).then(($body) => {
-      const editDomain = $body.find(`[data-testid="add-domain"]`);
-
-      expect(editDomain.length).to.equal(0);
-    });
+    cy.get(
+      `[data-testid="entity-page-header"] [data-testid="add-domain"]`
+    ).should('not.exist');
 
     // Manage button should not be visible on service page
-    cy.get('[data-testid="asset-header-btn-group"]').then(($body) => {
-      const manageButton = $body.find(`[data-testid="manage-button"]`);
-
-      expect(manageButton.length).to.equal(0);
-    });
+    cy.get(
+      '[data-testid="asset-header-btn-group"] [data-testid="manage-button"]'
+    ).should('not.exist');
 
     performCommonOperations();
   });
@@ -286,7 +282,6 @@ describe('SearchIndexDetails page should work properly for data steward role', (
       term: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.name,
       serviceName: SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.service,
       entity: 'searchIndexes',
-      entityType: 'Search Index',
     });
 
     // Edit domain option should not be available
@@ -372,38 +367,23 @@ describe('SearchIndexDetails page should work properly for admin role', () => {
       SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.service,
       'searchIndexes',
       'Search Index',
-      'Search Index',
       'soft'
     );
 
     cy.get('[data-testid="deleted-badge"]').should('be.visible');
 
     // Edit options for domain owner and tier should not be visible
-    cy.get(`[data-testid="entity-page-header"]`).then(($body) => {
-      const editDomain = $body.find(`[data-testid="add-domain"]`);
-      const editOwner = $body.find(`[data-testid="edit-owner"]`);
-      const editTier = $body.find(`[data-testid="edit-tier"]`);
-
-      expect(editDomain.length).to.equal(0);
-      expect(editOwner.length).to.equal(0);
-      expect(editTier.length).to.equal(0);
-    });
+    cy.get('[data-testid="add-domain"]').should('not.exist');
+    cy.get('[data-testid="edit-owner"]').should('not.exist');
+    cy.get('[data-testid="edit-tier"]').should('not.exist');
 
     // Edit description button should not be visible
-    cy.get(`[data-testid="asset-description-container"]`).then(($body) => {
-      const editDescription = $body.find(`[data-testid="edit-description"]`);
-
-      expect(editDescription.length).to.equal(0);
-    });
+    cy.get('[data-testid="edit-description"]').should('not.exist');
 
     // Edit tags button should not be visible
     cy.get(
-      `[data-testid="entity-right-panel"] [data-testid="tags-container"]`
-    ).then(($body) => {
-      const addTag = $body.find(`[data-testid="add-tag"]`);
-
-      expect(addTag.length).to.equal(0);
-    });
+      `[data-testid="entity-right-panel"] [data-testid="tags-container"] [data-testid="add-tag"]`
+    ).should('not.exist');
 
     // Edit description and tags button for fields should not be visible
     cy.get(
@@ -443,7 +423,6 @@ describe('SearchIndexDetails page should work properly for admin role', () => {
       SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.name,
       SEARCH_INDEX_DETAILS_FOR_DETAILS_PAGE_TEST.service,
       'searchIndexes',
-      'Search Index',
       'Search Index'
     );
   });

@@ -63,6 +63,7 @@ const GlossaryTermsV1 = ({
   updateVote,
   refreshActiveGlossaryTerm,
   isVersionView,
+  onThreadLinkSelect,
 }: GlossaryTermsV1Props) => {
   const {
     fqn: glossaryFqn,
@@ -109,12 +110,15 @@ const GlossaryTermsV1 = ({
     tab !== 'assets' && activeTabHandler('assets');
   }, [assetTabRef, tab]);
 
-  const onExtensionUpdate = async (updatedTable: GlossaryTerm) => {
-    await handleGlossaryTermUpdate({
-      ...glossaryTerm,
-      extension: updatedTable.extension,
-    });
-  };
+  const onExtensionUpdate = useCallback(
+    async (updatedTable: GlossaryTerm) => {
+      await handleGlossaryTermUpdate({
+        ...glossaryTerm,
+        extension: updatedTable.extension,
+      });
+    },
+    [glossaryTerm, handleGlossaryTermUpdate]
+  );
 
   const tabItems = useMemo(() => {
     const items = [
@@ -127,6 +131,7 @@ const GlossaryTermsV1 = ({
             isVersionView={isVersionView}
             permissions={permissions}
             selectedData={glossaryTerm}
+            onThreadLinkSelect={onThreadLinkSelect}
             onUpdate={(data) => handleGlossaryTermUpdate(data as GlossaryTerm)}
           />
         ),
@@ -241,6 +246,7 @@ const GlossaryTermsV1 = ({
     isVersionView,
     assetPermissions,
     handleAssetSave,
+    onExtensionUpdate,
   ]);
 
   const fetchGlossaryTermAssets = async () => {

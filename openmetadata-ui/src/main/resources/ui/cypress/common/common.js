@@ -77,7 +77,6 @@ const getTeamType = (currentTeam) => {
 };
 
 const checkTeamTypeOptions = (type) => {
-  cy.log('check', type);
   for (const teamType of getTeamType(type).teamTypeOptions) {
     cy.get(`.ant-select-dropdown [title="${teamType}"]`)
       .should('exist')
@@ -253,6 +252,7 @@ export const testServiceCreationAndIngestion = ({
   testIngestionButton = true,
   serviceCategory,
   shouldAddIngestion = true,
+  allowTestConnection = true,
 }) => {
   // Storing the created service name and the type of service
   // Select Service in step 1
@@ -322,28 +322,30 @@ export const testServiceCreationAndIngestion = ({
 
   interceptURL('GET', '/api/v1/automations/workflows/*', 'getWorkflow');
 
-  cy.get('[data-testid="test-connection-btn"]').should('exist').click();
+  if (allowTestConnection) {
+    cy.get('[data-testid="test-connection-btn"]').should('exist').click();
 
-  verifyResponseStatusCode('@testConnectionStepDefinition', 200);
+    verifyResponseStatusCode('@testConnectionStepDefinition', 200);
 
-  verifyResponseStatusCode('@createWorkflow', 201);
-  // added extra buffer time as triggerWorkflow API can take up to 2minute to provide result
-  verifyResponseStatusCode('@triggerWorkflow', 200, {
-    responseTimeout: 120000,
-  });
-  cy.get('[data-testid="test-connection-modal"]').should('exist');
-  cy.get('.ant-modal-footer > .ant-btn-primary')
-    .should('exist')
-    .contains('OK')
-    .click();
-  verifyResponseStatusCode('@getWorkflow', 200);
-  cy.get('[data-testid="messag-text"]').then(($message) => {
-    if ($message.text().includes('partially successful')) {
-      cy.contains('Test connection partially successful').should('exist');
-    } else {
-      cy.contains('Connection test was successful').should('exist');
-    }
-  });
+    verifyResponseStatusCode('@createWorkflow', 201);
+    // added extra buffer time as triggerWorkflow API can take up to 2minute to provide result
+    verifyResponseStatusCode('@triggerWorkflow', 200, {
+      responseTimeout: 120000,
+    });
+    cy.get('[data-testid="test-connection-modal"]').should('exist');
+    cy.get('.ant-modal-footer > .ant-btn-primary')
+      .should('exist')
+      .contains('OK')
+      .click();
+    verifyResponseStatusCode('@getWorkflow', 200);
+    cy.get('[data-testid="messag-text"]').then(($message) => {
+      if ($message.text().includes('partially successful')) {
+        cy.contains('Test connection partially successful').should('exist');
+      } else {
+        cy.contains('Connection test was successful').should('exist');
+      }
+    });
+  }
   interceptURL(
     'GET',
     '/api/v1/services/ingestionPipelines/status',
@@ -905,20 +907,17 @@ export const editCreatedProperty = (propertyName) => {
   // Fetching for edit button
   cy.get(`[data-row-key="${propertyName}"]`)
     .find('[data-testid="edit-button"]')
-    .as('editbutton');
+    .as('editButton');
 
-  cy.get('@editbutton').click();
+  cy.get('@editButton').click();
 
-  cy.get(descriptionBox)
-    .should('be.visible')
-    .clear()
-    .type('This is new description');
+  cy.get(descriptionBox).clear().type('This is new description');
 
   interceptURL('PATCH', '/api/v1/metadata/types/*', 'checkPatchForDescription');
 
-  cy.get('[data-testid="save"]').should('be.visible').click();
+  cy.get('[data-testid="save"]').click();
 
-  verifyResponseStatusCode('@checkPatchForDescription', 200);
+  cy.wait('@checkPatchForDescription', { timeout: 10000 });
 
   cy.get('.ant-modal-wrap').should('not.exist');
 
@@ -931,10 +930,9 @@ export const editCreatedProperty = (propertyName) => {
 export const deleteCreatedProperty = (propertyName) => {
   // Fetching for delete button
   cy.get(`[data-row-key="${propertyName}"]`)
+    .scrollIntoView()
     .find('[data-testid="delete-button"]')
-    .as('deletebutton');
-
-  cy.get('@deletebutton').click();
+    .click();
 
   // Checking property name is present on the delete pop-up
   cy.get('[data-testid="body-text"]').should('contain', propertyName);
@@ -1186,13 +1184,13 @@ export const addOwner = (
   isGlossaryPage,
   isOwnerEmpty = false
 ) => {
+  interceptURL('GET', '/api/v1/users?limit=*&isBot=false*', 'getUsers');
   if (isGlossaryPage && isOwnerEmpty) {
     cy.get('[data-testid="glossary-owner-name"] > [data-testid="Add"]').click();
   } else {
     cy.get('[data-testid="edit-owner"]').click();
   }
 
-  interceptURL('GET', '/api/v1/users?limit=25&isBot=false', 'getUsers');
   cy.get('.ant-tabs [id*=tab-users]').click();
   verifyResponseStatusCode('@getUsers', 200);
 
@@ -1218,10 +1216,11 @@ export const addOwner = (
 };
 
 export const removeOwner = (entity, isGlossaryPage) => {
+  interceptURL('GET', '/api/v1/users?limit=*&isBot=false*', 'getUsers');
   interceptURL('PATCH', `/api/v1/${entity}/*`, 'patchOwner');
 
   cy.get('[data-testid="edit-owner"]').click();
-
+  verifyResponseStatusCode('@getUsers', 200);
   cy.get('[data-testid="remove-owner"]').click();
   verifyResponseStatusCode('@patchOwner', 200);
   if (isGlossaryPage) {
@@ -1265,7 +1264,6 @@ export const deleteEntity = (
   entityName,
   serviceName,
   entity,
-  entityType,
   successMessageEntityName,
   deletionType = 'hard'
 ) => {
@@ -1273,7 +1271,6 @@ export const deleteEntity = (
     term: entityName,
     serviceName,
     entity,
-    entityType,
   });
 
   cy.get('[data-testid="manage-button"]').click();
@@ -1417,7 +1414,7 @@ export const signupAndLogin = (email, password, firstName, lastName) => {
 
     // Login with the created user
     login(email, password);
-    cy.goToHomePage(true);
+    // cy.goToHomePage(true);
     cy.url().should('eq', `${BASE_URL}/my-data`);
 
     // Verify user profile
@@ -1698,4 +1695,38 @@ export const updateTableFieldDescription = (
   cy.get('[data-testid="save"]').click();
 
   verifyResponseStatusCode('@updateDescription', 200);
+};
+
+export const visitDatabaseDetailsPage = ({
+  settingsMenuId,
+  serviceCategory,
+  serviceName,
+  databaseRowKey,
+  databaseName,
+}) => {
+  visitServiceDetailsPage(settingsMenuId, serviceCategory, serviceName);
+
+  cy.get(`[data-row-key="${databaseRowKey}"]`).contains(databaseName).click();
+};
+
+export const visitDatabaseSchemaDetailsPage = ({
+  settingsMenuId,
+  serviceCategory,
+  serviceName,
+  databaseRowKey,
+  databaseName,
+  databaseSchemaRowKey,
+  databaseSchemaName,
+}) => {
+  visitDatabaseDetailsPage({
+    settingsMenuId,
+    serviceCategory,
+    serviceName,
+    databaseRowKey,
+    databaseName,
+  });
+
+  cy.get(`[data-row-key="${databaseSchemaRowKey}"]`)
+    .contains(databaseSchemaName)
+    .click();
 };

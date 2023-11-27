@@ -621,12 +621,7 @@ const TeamDetailsV1 = ({
           <Transi18next
             i18nKey="message.refer-to-our-doc"
             renderElement={
-              <a
-                href={GLOSSARIES_DOCS}
-                rel="noreferrer"
-                style={{ color: '#1890ff' }}
-                target="_blank"
-              />
+              <a href={GLOSSARIES_DOCS} rel="noreferrer" target="_blank" />
             }
             values={{
               doc: t('label.doc-plural-lowercase'),
@@ -1103,8 +1098,11 @@ const TeamDetailsV1 = ({
 
   return (
     <div className="teams-layout">
-      <Row className="h-full" data-testid=" team-details-container">
-        <Col className="teams-profile-container" span={24}>
+      <Row className="h-full" data-testid="team-details-container">
+        <Col
+          className="teams-profile-container"
+          data-testid="team-detail-header"
+          span={24}>
           <Collapse
             accordion
             bordered={false}
@@ -1113,6 +1111,7 @@ const TeamDetailsV1 = ({
             <Collapse.Panel
               className="header-collapse-custom-panel"
               collapsible="icon"
+              data-testid="team-details-collapse"
               header={teamsCollapseHeader}
               key="1">
               <Row>
@@ -1138,7 +1137,7 @@ const TeamDetailsV1 = ({
                     }>
                     <Description
                       description={currentTeam.description ?? ''}
-                      entityName={currentTeam.displayName ?? currentTeam.name}
+                      entityName={getEntityName(currentTeam)}
                       isEdit={isDescriptionEditable}
                       onCancel={() => descriptionHandler(false)}
                       onDescriptionUpdate={onDescriptionUpdate}

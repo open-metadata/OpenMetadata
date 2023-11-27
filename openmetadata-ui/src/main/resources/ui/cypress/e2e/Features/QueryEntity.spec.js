@@ -18,17 +18,21 @@ import {
 } from '../../common/common';
 import {
   createEntityTable,
+  createQueryByTableName,
   generateRandomTable,
   hardDeleteService,
-} from '../../common/entityUtils';
-import { MYDATA_SUMMARY_OPTIONS } from '../../constants/constants';
-import { DATABASE_SERVICE } from '../../constants/entityConstant';
+} from '../../common/EntityUtils';
+import { DATA_ASSETS } from '../../constants/constants';
+import {
+  DATABASE_SERVICE,
+  DATABASE_SERVICE_DETAILS,
+} from '../../constants/EntityConstant';
 import { SERVICE_CATEGORIES } from '../../constants/service.constants';
 
 const queryTable = {
-  term: DATABASE_SERVICE.tables.name,
-  displayName: DATABASE_SERVICE.tables.name,
-  entity: MYDATA_SUMMARY_OPTIONS.tables,
+  term: DATABASE_SERVICE.entity.name,
+  displayName: DATABASE_SERVICE.entity.name,
+  entity: DATA_ASSETS.tables,
   serviceName: DATABASE_SERVICE.service.name,
   entityType: 'Table',
 };
@@ -56,8 +60,10 @@ describe('Query Entity', () => {
       createEntityTable({
         token,
         ...DATABASE_SERVICE,
-        tables: [DATABASE_SERVICE.tables, table1, table2],
+        tables: [DATABASE_SERVICE.entity, table1, table2],
       });
+      // get Table by name and create query in the table
+      createQueryByTableName(token, table1);
     });
   });
 
@@ -217,5 +223,23 @@ describe('Query Entity', () => {
     cy.get('.ant-dropdown').should('be.visible');
     cy.get('[data-menu-id*="delete-query"]').click();
     cy.get('[data-testid="save-button"]').click();
+  });
+
+  it('Verify query duration', () => {
+    interceptURL('GET', '/api/v1/queries?*', 'fetchQuery');
+
+    visitEntityDetailsPage({
+      term: table1.name,
+      serviceName: DATABASE_SERVICE_DETAILS.name,
+      entity: DATA.entity,
+    });
+
+    cy.get('[data-testid="table_queries"]').click();
+    verifyResponseStatusCode('@fetchQuery', 200);
+
+    // Validate that the duration is in sec or not
+    cy.get('[data-testid="query-run-duration"]')
+      .should('be.visible')
+      .should('contain', '6.199 sec');
   });
 });

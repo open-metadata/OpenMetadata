@@ -1097,6 +1097,48 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   @Test
+  void test_entityWithInvalidTag(TestInfo test) throws HttpResponseException {
+    if (!supportsTags) {
+      return;
+    }
+    // Add an entity with invalid tag
+    TagLabel invalidTag = new TagLabel().withTagFQN("invalidTag");
+    CreateEntity create = createRequest(getEntityName(test));
+    create.setTags(listOf(invalidTag));
+
+    // Entity can't be created with PUT or POST
+    assertResponse(
+        () -> createEntity(create, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+
+    assertResponse(
+        () -> updateEntity(create, Status.CREATED, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+
+    // Create an entity and update it with PUT and PATCH with an invalid flag
+    create.setTags(null);
+    T entity = createEntity(create, ADMIN_AUTH_HEADERS);
+    String json = JsonUtils.pojoToJson(entity);
+
+    create.setTags(listOf(invalidTag));
+    assertResponse(
+        () -> updateEntity(create, Status.CREATED, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+
+    entity.setTags(listOf(invalidTag));
+    assertResponse(
+        () -> patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+
+    // No lingering relationships should cause error in listing the entity
+    listEntities(null, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
   @Execution(ExecutionMode.CONCURRENT)
   void patch_validEntityOwner_200(TestInfo test) throws IOException {
     if (!supportsOwner || !supportsPatch) {
@@ -2070,8 +2112,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return deletedEntity;
   }
 
-  public final T deleteEntity(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
-    return deleteEntity(id, false, false, authHeaders);
+  public final void deleteEntity(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
+    deleteEntity(id, false, false, authHeaders);
   }
 
   public final T deleteEntity(UUID id, boolean recursive, boolean hardDelete, Map<String, String> authHeaders)
@@ -2185,14 +2227,13 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return updated;
   }
 
-  protected final T restoreAndCheckEntity(
+  protected final void restoreAndCheckEntity(
       T entity, Map<String, String> authHeaders, ChangeDescription changeDescription) throws IOException {
     T updated = restoreEntity(new RestoreEntity().withId(entity.getId()), Status.OK, authHeaders);
     validateLatestVersion(updated, MINOR_UPDATE, changeDescription, authHeaders);
     // GET the newly updated entity and validate
     T getEntity = getEntity(updated.getId(), authHeaders);
     validateChangeDescription(getEntity, MINOR_UPDATE, changeDescription);
-    return updated;
   }
 
   protected void validateEntityHistory(

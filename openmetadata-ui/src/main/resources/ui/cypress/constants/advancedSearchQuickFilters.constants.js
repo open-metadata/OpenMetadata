@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { MYDATA_SUMMARY_OPTIONS } from './constants';
+import { DATA_ASSETS } from './constants';
 
 export const COMMON_DROPDOWN_ITEMS = [
   {
@@ -132,7 +132,7 @@ export const QUICK_FILTERS_BY_ASSETS = [
     searchIndex: 'table_search_index',
     filters: TABLE_DROPDOWN_ITEMS,
     tab: 'tables-tab',
-    entity: MYDATA_SUMMARY_OPTIONS.tables,
+    entity: DATA_ASSETS.tables,
     serviceName: 'sample_data',
     tag1: 'PersonalData.Personal',
     tag2: 'PII.Sensitive',
@@ -142,7 +142,7 @@ export const QUICK_FILTERS_BY_ASSETS = [
     searchIndex: 'topic_search_index',
     filters: COMMON_DROPDOWN_ITEMS,
     tab: 'topics-tab',
-    entity: MYDATA_SUMMARY_OPTIONS.topics,
+    entity: DATA_ASSETS.topics,
     serviceName: 'sample_kafka',
     tag: 'PersonalData.Personal',
   },
@@ -152,7 +152,7 @@ export const QUICK_FILTERS_BY_ASSETS = [
     filters: DASHBOARD_DROPDOWN_ITEMS,
     tab: 'dashboards-tab',
     dashboardName: '8',
-    entity: MYDATA_SUMMARY_OPTIONS.dashboards,
+    entity: DATA_ASSETS.dashboards,
     serviceName: 'sample_superset',
     tag: 'PersonalData.Personal',
   },
@@ -161,7 +161,7 @@ export const QUICK_FILTERS_BY_ASSETS = [
     searchIndex: 'pipeline_search_index',
     filters: PIPELINE_DROPDOWN_ITEMS,
     tab: 'pipelines-tab',
-    entity: MYDATA_SUMMARY_OPTIONS.pipelines,
+    entity: DATA_ASSETS.pipelines,
     serviceName: 'sample_airflow',
     tag: 'PersonalData.Personal',
   },
@@ -170,7 +170,7 @@ export const QUICK_FILTERS_BY_ASSETS = [
     searchIndex: 'mlmodel_search_index',
     filters: COMMON_DROPDOWN_ITEMS,
     tab: 'ml models-tab',
-    entity: MYDATA_SUMMARY_OPTIONS.mlmodels,
+    entity: DATA_ASSETS.mlmodels,
     serviceName: 'mlflow_svc',
     tag: 'PersonalData.Personal',
   },
@@ -179,20 +179,20 @@ export const QUICK_FILTERS_BY_ASSETS = [
     searchIndex: 'container_search_index',
     filters: CONTAINER_DROPDOWN_ITEMS,
     tab: 'containers-tab',
-    entity: MYDATA_SUMMARY_OPTIONS.containers,
+    entity: DATA_ASSETS.containers,
   },
   {
     label: 'Glossaries',
     searchIndex: 'glossary_search_index',
     filters: GLOSSARY_DROPDOWN_ITEMS,
     tab: 'glossaries-tab',
-    entity: MYDATA_SUMMARY_OPTIONS.glossaryTerms,
+    entity: DATA_ASSETS.glossaryTerms,
   },
   {
     label: 'Tags',
     searchIndex: 'tag_search_index',
     filters: TAG_DROPDOWN_ITEMS,
     tab: 'tags-tab',
-    entity: MYDATA_SUMMARY_OPTIONS.tags,
+    entity: DATA_ASSETS.tags,
   },
 ];

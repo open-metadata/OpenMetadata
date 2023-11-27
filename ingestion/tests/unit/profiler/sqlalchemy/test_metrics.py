@@ -27,6 +27,7 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
     SQLiteConnection,
     SQLiteScheme,
 )
+from metadata.generated.schema.tests.customMetric import CustomMetric
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
@@ -864,6 +865,102 @@ class MetricsTest(TestCase):
         system = add_props(table=User)(Metrics.SYSTEM.value)
         session = self.sqa_profiler_interface.session
         system().sql(session)
+
+    def test_table_custom_metric(self):
+        table_entity = Table(
+            id=uuid4(),
+            name="user",
+            columns=[
+                EntityColumn(
+                    name=ColumnName(__root__="id"),
+                    dataType=DataType.INT,
+                )
+            ],
+            customMetrics=[
+                CustomMetric(
+                    name="CustomerBornedAfter1991",
+                    expression="SELECT COUNT(id) FROM users WHERE dob > '1991-01-01'",
+                ),
+                CustomMetric(
+                    name="AverageAge",
+                    expression="SELECT SUM(age)/COUNT(*) FROM users",
+                ),
+            ],
+        )
+        with patch.object(
+            SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
+        ):
+            self.sqa_profiler_interface = SQAProfilerInterface(
+                self.sqlite_conn,
+                None,
+                table_entity,
+                None,
+                None,
+                None,
+                None,
+                None,
+                thread_count=1,
+            )
+
+        profiler = Profiler(
+            profiler_interface=self.sqa_profiler_interface,
+        )
+        metrics = profiler.compute_metrics()
+        for k, v in metrics._table_results.items():
+            for metric in v:
+                if metric.name == "CustomerBornedAfter1991":
+                    assert metric.value == 2
+                if metric.name == "AverageAge":
+                    assert metric.value == 20.0
+
+    def test_column_custom_metric(self):
+        table_entity = Table(
+            id=uuid4(),
+            name="user",
+            columns=[
+                EntityColumn(
+                    name=ColumnName(__root__="id"),
+                    dataType=DataType.INT,
+                    customMetrics=[
+                        CustomMetric(
+                            name="CustomerBornedAfter1991",
+                            columnName="id",
+                            expression="SELECT SUM(id) FROM users WHERE dob > '1991-01-01'",
+                        ),
+                        CustomMetric(
+                            name="AverageAge",
+                            columnName="id",
+                            expression="SELECT SUM(age)/COUNT(*) FROM users",
+                        ),
+                    ],
+                )
+            ],
+        )
+        with patch.object(
+            SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
+        ):
+            self.sqa_profiler_interface = SQAProfilerInterface(
+                self.sqlite_conn,
+                None,
+                table_entity,
+                None,
+                None,
+                None,
+                None,
+                None,
+                thread_count=1,
+            )
+
+        profiler = Profiler(
+            profiler_interface=self.sqa_profiler_interface,
+        )
+        metrics = profiler.compute_metrics()
+        for k, v in metrics._column_results.items():
+            for metric in v.get("customMetrics", []):
+                if metric.name == "CustomerBornedAfter1991":
+                    assert metric.value == 3.0
+                if metric.name == "AverageAge":
+                    assert metric.value == 20.0
 
     @classmethod
     def tearDownClass(cls) -> None:

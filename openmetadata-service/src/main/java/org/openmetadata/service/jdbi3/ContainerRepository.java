@@ -1,7 +1,6 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.CONTAINER;
 import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
@@ -51,20 +50,19 @@ public class ContainerRepository extends EntityRepository<Container> {
   }
 
   @Override
-  public Container setFields(Container container, EntityUtil.Fields fields) {
+  public void setFields(Container container, EntityUtil.Fields fields) {
     setDefaultFields(container);
     container.setParent(fields.contains(FIELD_PARENT) ? getParent(container) : container.getParent());
     if (container.getDataModel() != null) {
       populateDataModelColumnTags(
           fields.contains(FIELD_TAGS), container.getFullyQualifiedName(), container.getDataModel().getColumns());
     }
-    return container;
   }
 
   @Override
-  public Container clearFields(Container container, EntityUtil.Fields fields) {
+  public void clearFields(Container container, EntityUtil.Fields fields) {
     container.setParent(fields.contains(FIELD_PARENT) ? container.getParent() : null);
-    return container.withDataModel(fields.contains("dataModel") ? container.getDataModel() : null);
+    container.withDataModel(fields.contains("dataModel") ? container.getDataModel() : null);
   }
 
   private void populateDataModelColumnTags(boolean setTags, String fqnPrefix, List<Column> columns) {
@@ -112,11 +110,6 @@ public class ContainerRepository extends EntityRepository<Container> {
     if (container.getParent() != null) {
       Container parent = Entity.getEntity(container.getParent(), "owner", ALL);
       container.withParent(parent.getEntityReference());
-    }
-    // Validate field tags
-    if (container.getDataModel() != null) {
-      addDerivedColumnTags(container.getDataModel().getColumns());
-      validateColumnTags(container.getDataModel().getColumns());
     }
   }
 
@@ -173,23 +166,21 @@ public class ContainerRepository extends EntityRepository<Container> {
     // Add container level tags by adding tag to container relationship
     super.applyTags(container);
     if (container.getDataModel() != null) {
-      applyTags(container.getDataModel().getColumns());
+      applyColumnTags(container.getDataModel().getColumns());
+    }
+  }
+
+  @Override
+  public void validateTags(Container container) {
+    super.validateTags(container);
+    if (container.getDataModel() != null) {
+      validateColumnTags(container.getDataModel().getColumns());
     }
   }
 
   @Override
   public EntityInterface getParentEntity(Container entity, String fields) {
     return Entity.getEntity(entity.getService(), fields, Include.NON_DELETED);
-  }
-
-  private void applyTags(List<Column> columns) {
-    // Add column level tags by adding tag to column relationship
-    for (Column column : columns) {
-      applyTags(column.getTags(), column.getFullyQualifiedName());
-      if (column.getChildren() != null) {
-        applyTags(column.getChildren());
-      }
-    }
   }
 
   @Override
@@ -256,29 +247,6 @@ public class ContainerRepository extends EntityRepository<Container> {
       List<TagLabel> tags = JsonUtils.readObjects(resolveTask.getNewValue(), TagLabel.class);
       column.setTags(tags);
       return threadContext.getAboutEntity();
-    }
-  }
-
-  private void addDerivedColumnTags(List<Column> columns) {
-    if (nullOrEmpty(columns)) {
-      return;
-    }
-
-    for (Column column : columns) {
-      column.setTags(addDerivedTags(column.getTags()));
-      if (column.getChildren() != null) {
-        addDerivedColumnTags(column.getChildren());
-      }
-    }
-  }
-
-  private void validateColumnTags(List<Column> columns) {
-    // Add column level tags by adding tag to column relationship
-    for (Column column : columns) {
-      checkMutuallyExclusive(column.getTags());
-      if (column.getChildren() != null) {
-        validateColumnTags(column.getChildren());
-      }
     }
   }
 

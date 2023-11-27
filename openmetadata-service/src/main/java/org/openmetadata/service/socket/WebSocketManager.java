@@ -113,7 +113,7 @@ public class WebSocketManager {
     }
   }
 
-  public void sendToManyWithUUID(HashSet<UUID> receivers, String event, String message) {
+  public void sendToManyWithUUID(Set<UUID> receivers, String event, String message) {
     receivers.forEach(e -> sendToOne(e, event, message));
   }
 
