@@ -673,10 +673,32 @@
           <swaggerConfig>
             <servers>
               <server>
+                <url>/api</url>
+                <description>Current Host</description>
+              </server>
+              <server>
                 <url>http://localhost:8585/api</url>
                 <description>Endpoint URL</description>
               </server>
             </servers>
+            <securityRequirements>
+              <securityRequirement>
+                <entries>
+                  <entry>
+                    <name>BearerAuth</name>
+                  </entry>
+                </entries>
+              </securityRequirement>
+            </securityRequirements>
+            <components>
+              <securitySchemes>
+                <BearerAuth>
+                  <type>http</type>
+                  <description>Provide Token from Bots settings section in OMD or your Authorization Provider</description>
+                  <scheme>bearer</scheme>
+                </BearerAuth>
+              </securitySchemes>
+            </components>
             <info>
               <title>OpenMetadata Apis</title>
               <version>${project.parent.version}</version>
