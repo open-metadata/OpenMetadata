@@ -107,7 +107,6 @@ jobs:
         env:
           INGESTION_DEPENDENCY: "all"
         run: |
-          yarn global remove node-gyp
           yarn global add node-gyp
           ./docker/run_local_docker.sh -d mysql
         timeout-minutes: 60
