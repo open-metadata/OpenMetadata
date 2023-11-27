@@ -13,7 +13,7 @@
   "supportEmail": "support@getcollate.io",
   "scheduleType": "Scheduled",
   "permission": "All",
-  "className": "org.openmetadata.service.apps.ExternalApplicationHandler",
+  "className": "org.openmetadata.service.apps.AbstractNativeApplication",
   "sourcePythonClass": "metadata.applications.auto_tagger.AutoTaggerApp",
   "runtime": {
     "enabled": "true"
