@@ -38,6 +38,7 @@ class DatabricksQueryParserSource(QueryParserSource, ABC):
     def _init_super(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__(config, metadata, False)
 
+    # pylint: disable=super-init-not-called
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         self._init_super(config=config, metadata=metadata)
         self.client = DatabricksClient(self.service_connection)
