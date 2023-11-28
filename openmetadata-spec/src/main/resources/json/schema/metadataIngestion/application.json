@@ -14,7 +14,7 @@
       "type": "string"
     },
     "appConfig": {
-      "$ref": "../entity/applications/configuration/externalApplicationConfig.json#/definitions/appConfig",
+      "$ref": "../entity/applications/configuration/applicationConfig.json#/definitions/appConfig",
       "description": "External Application configuration"
     },
     "ingestionPipelineFQN": {
