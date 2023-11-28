@@ -203,10 +203,20 @@ class TopologyRunnerMixin(Generic[C]):
         entity = None
         entity_name = model_str(right.name)
         entity_fqn = self.fqn_from_context(stage=stage, entity_request=right)
-        yield entity_request
+
+        # we get entity from OM if we do not want to overwrite existing data in OM
+        # This will be applicable for service entities since we do not want to overwrite the data
+        if not stage.overwrite and not self._is_force_overwrite_enabled():
+            entity = self.metadata.get_by_name(
+                entity=stage.type_,
+                fqn=entity_fqn,
+                fields=["*"],  # Get all the available data from the Entity
+            )
+        if entity is None:
+            yield entity_request
 
         # We have ack the sink waiting for a response, but got nothing back
-        if stage.must_return:
+        if stage.must_return and entity is None:
             # we'll only check the get by name for entities like database service
             # without which we cannot proceed ahead in the ingestion
             tries = 3
