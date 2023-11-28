@@ -65,13 +65,13 @@ const checkDisplayName = (displayName) => {
 const checkDataProductsCount = (dataProductsCount) => {
   cy.get('[data-testid="data_products"] [data-testid="count"]')
     .scrollIntoView()
-    .eq(dataProductsCount);
+    .should('have.text', dataProductsCount);
 };
 
 const checkAssetsCount = (assetsCount) => {
   cy.get('[data-testid="assets"] [data-testid="count"]')
     .scrollIntoView()
-    .eq(assetsCount);
+    .should('have.text', assetsCount);
 };
 
 const updateOwner = (newOwner) => {
@@ -384,4 +384,50 @@ export const renameDomain = (domainObj) => {
   verifyResponseStatusCode('@patchName&DisplayName', 200);
 
   checkDisplayName(domainObj.updatedDisplayName);
+};
+
+export const addAssets = (domainObj) => {
+  goToAssetsTab(domainObj);
+  checkAssetsCount(0);
+  cy.contains('Adding a new Asset is easy, just give it a spin!').should(
+    'be.visible'
+  );
+
+  cy.get('[data-testid="domain-details-add-button"]').click();
+  cy.get('.ant-dropdown-menu .ant-dropdown-menu-title-content')
+    .contains('Assets')
+    .click();
+
+  cy.get('[data-testid="asset-selection-modal"] .ant-modal-title').should(
+    'contain',
+    'Add Assets'
+  );
+
+  domainObj.assets.forEach((asset) => {
+    interceptURL('GET', '/api/v1/search/query*', 'searchAssets');
+    cy.get('[data-testid="asset-selection-modal"] [data-testid="searchbar"]')
+      .click()
+      .clear()
+      .type(asset.name);
+
+    verifyResponseStatusCode('@searchAssets', 200);
+
+    cy.get(
+      `[data-testid="table-data-card_${asset.fullyQualifiedName}"] input[type="checkbox"]`
+    ).click();
+  });
+
+  cy.get('[data-testid="save-btn"]').click();
+
+  // cy.intercept({
+  //   method: 'GET',
+  //   url: '/api/v1/search/query*',
+  //   query: { from: '0', size: '0' },
+  // }).as('searchAssetsCount');
+
+  // goToAssetsTab(domainObj);
+
+  // verifyResponseStatusCode('@searchAssetsCount', 200);
+
+  checkAssetsCount(domainObj.assets.length);
 };

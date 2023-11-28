@@ -392,10 +392,14 @@ export const AssetSelectionModal = ({
       destroyOnClose
       closable={false}
       closeIcon={null}
+      data-testid="asset-selection-modal"
       footer={
         <>
-          <Button onClick={onCancel}>{t('label.cancel')}</Button>
+          <Button data-testid="cancel-btn" onClick={onCancel}>
+            {t('label.cancel')}
+          </Button>
           <Button
+            data-testid="save-btn"
             disabled={isLoading}
             loading={isSaveLoading}
             type="primary"

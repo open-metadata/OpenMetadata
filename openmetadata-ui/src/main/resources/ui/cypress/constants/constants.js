@@ -553,4 +553,18 @@ export const DOMAIN_2 = {
   experts: 'Alex Pollard',
   owner: 'Alex Pollard',
   domainType: 'Source-aligned',
+  assets: [
+    {
+      name: 'dim_customer',
+      fullyQualifiedName: 'sample_data.ecommerce_db.shopify.dim_address',
+    },
+    {
+      name: 'raw_order',
+      fullyQualifiedName: 'sample_data.ecommerce_db.shopify.raw_order',
+    },
+    {
+      name: 'presto_etl',
+      fullyQualifiedName: 'sample_airflow.presto_etl',
+    },
+  ],
 };

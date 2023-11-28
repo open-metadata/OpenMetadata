@@ -14,6 +14,7 @@
 /// <reference types="Cypress" />
 
 import {
+  addAssets,
   createDataProducts,
   createDomain,
   deleteDomain,
@@ -42,6 +43,10 @@ describe('Domain page should work properly', () => {
   it('Verify domain after creation', () => {
     verifyDomain(DOMAIN_1);
     verifyDomain(DOMAIN_2);
+  });
+
+  it('Add assets to domain should work properly', () => {
+    addAssets(DOMAIN_2);
   });
 
   it('Create new data product should work properly', () => {
