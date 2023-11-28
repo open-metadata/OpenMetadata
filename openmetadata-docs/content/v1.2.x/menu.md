@@ -351,6 +351,12 @@ site_menu:
     url: /connectors/database/trino
   - category: Connectors / Database / Trino / Run Externally
     url: /connectors/database/trino/yaml
+  - category: Connectors / Database / Unity Catalog
+    url: /connectors/database/unity-catalog
+  - category: Connectors / Database / Unity Catalog / Run Externally
+    url: /connectors/database/unity-catalog/yaml
+  - category: Connectors / Database / Unity Catalog / Troubleshooting
+    url: /connectors/database/unity-catalog/troubleshooting
   - category: Connectors / Database / Vertica
     url: /connectors/database/vertica
   - category: Connectors / Database / Vertica / Run Externally
