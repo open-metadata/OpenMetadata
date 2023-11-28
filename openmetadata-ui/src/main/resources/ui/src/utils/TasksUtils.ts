@@ -193,6 +193,7 @@ export const fetchOptions = (
         label: hit._source.name ?? hit._source.displayName,
         value: hit._id,
         type: hit._source.entityType,
+        name: hit._source.name,
       }));
 
       setOptions(suggestOptions);

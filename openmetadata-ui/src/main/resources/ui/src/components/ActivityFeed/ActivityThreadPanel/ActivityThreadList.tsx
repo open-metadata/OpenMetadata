@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card } from 'antd';
+import { Card, Space } from 'antd';
 import { isEqual } from 'lodash';
 import React, { FC, Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -166,14 +166,14 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                         </div>
                       ) : null}
                       {thread.task && (
-                        <div>
+                        <Space wrap className="m-y-xs" size={4}>
                           <span className="text-grey-muted">
                             {t('label.assignee-plural')}:{' '}
                           </span>
                           <AssigneeList
                             assignees={thread.task.assignees || []}
                           />
-                        </div>
+                        </Space>
                       )}
                     </Card>
                   </Fragment>

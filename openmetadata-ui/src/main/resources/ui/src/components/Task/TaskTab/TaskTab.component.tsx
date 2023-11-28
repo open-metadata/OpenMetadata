@@ -103,6 +103,7 @@ export const TaskTab = ({
         label: getEntityName(assignee),
         value: assignee.id || '',
         type: assignee.type,
+        name: assignee.name,
       })) ?? [],
     [taskDetails]
   );
