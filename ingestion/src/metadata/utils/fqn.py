@@ -94,7 +94,7 @@ def _build(*args, quote: bool = True) -> str:
 
 
 def unquote_name(name: str) -> str:
-    return name[1:-1] if name is not None and '"' in name else name
+    return name[1:-1] if name and name[0] == '"' and name[-1] == '"' else name
 
 
 def quote_name(name: str) -> str:
