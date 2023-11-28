@@ -14,7 +14,7 @@
 import { Alert, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isEmpty, lowerCase } from 'lodash';
+import { isEmpty, isUndefined, lowerCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ErrorPlaceHolderIngestion from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion';
@@ -141,7 +141,7 @@ const Ingestion: React.FC<IngestionProps> = ({
       : ingestionList;
 
     setIngestionData(data);
-    handleIngestionDataChange && handleIngestionDataChange(data);
+    !isUndefined(handleIngestionDataChange) && handleIngestionDataChange(data);
   };
 
   const showAddIngestionButton = useMemo(

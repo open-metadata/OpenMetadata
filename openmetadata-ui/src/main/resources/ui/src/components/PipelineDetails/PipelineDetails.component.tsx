@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Radio, Row, Space, Tabs, Typography } from 'antd';
+import { Card, Col, Radio, Row, Tabs, Typography } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -34,8 +34,6 @@ import { ColumnFilter } from '../../components/Table/ColumnFilter/ColumnFilter.c
 import TableDescription from '../../components/TableDescription/TableDescription.component';
 import TableTags from '../../components/TableTags/TableTags.component';
 import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
-import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
-import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
 import TasksDAGView from '../../components/TasksDAGView/TasksDAGView';
 import {
   getPipelineDetailsPath,
@@ -73,7 +71,7 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { withActivityFeed } from '../AppRouter/withActivityFeed';
 import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
-import DataProductsContainer from '../DataProductsContainer/DataProductsContainer.component';
+import EntityRightPanel from '../Entity/EntityRightPanel/EntityRightPanel';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
@@ -370,7 +368,8 @@ const PipelineDetails = ({
         key: t('label.name'),
         dataIndex: 'name',
         title: t('label.name'),
-        width: 200,
+        width: 220,
+        fixed: 'left',
         render: (_, record) =>
           isEmpty(record.sourceUrl) ? (
             <span>{getEntityName(record)}</span>
@@ -379,8 +378,15 @@ const PipelineDetails = ({
               className="flex items-center gap-2"
               target="_blank"
               to={{ pathname: record.sourceUrl }}>
-              <span>{getEntityName(record)}</span>
-              <ExternalLinkIcon height={14} width={14} />
+              <div className="d-flex items-center">
+                <span className="break-all">{getEntityName(record)}</span>
+
+                <ExternalLinkIcon
+                  className="m-l-xs flex-none"
+                  height={14}
+                  width={14}
+                />
+              </div>
             </Link>
           ),
       },
@@ -594,34 +600,16 @@ const PipelineDetails = ({
               className="entity-tag-right-panel-container"
               data-testid="entity-right-panel"
               flex="320px">
-              <Space className="w-full" direction="vertical" size="large">
-                <DataProductsContainer
-                  activeDomain={pipelineDetails?.domain}
-                  dataProducts={pipelineDetails?.dataProducts ?? []}
-                  hasPermission={false}
-                />
-                <TagsContainerV2
-                  displayType={DisplayType.READ_MORE}
-                  entityFqn={pipelineFQN}
-                  entityType={EntityType.PIPELINE}
-                  permission={editTagsPermission}
-                  selectedTags={tags}
-                  tagType={TagSource.Classification}
-                  onSelectionChange={handleTagSelection}
-                  onThreadLinkSelect={onThreadLinkSelect}
-                />
-
-                <TagsContainerV2
-                  displayType={DisplayType.READ_MORE}
-                  entityFqn={pipelineFQN}
-                  entityType={EntityType.PIPELINE}
-                  permission={editTagsPermission}
-                  selectedTags={tags}
-                  tagType={TagSource.Glossary}
-                  onSelectionChange={handleTagSelection}
-                  onThreadLinkSelect={onThreadLinkSelect}
-                />
-              </Space>
+              <EntityRightPanel
+                dataProducts={pipelineDetails?.dataProducts ?? []}
+                domain={pipelineDetails?.domain}
+                editTagPermission={editTagsPermission}
+                entityFQN={pipelineFQN}
+                entityType={EntityType.PIPELINE}
+                selectedTags={tags}
+                onTagSelectionChange={handleTagSelection}
+                onThreadLinkSelect={onThreadLinkSelect}
+              />
             </Col>
           </Row>
         ),
@@ -759,9 +747,9 @@ const PipelineDetails = ({
 
       {editTask && (
         <ModalWithMarkdownEditor
-          header={`${t('label.edit-entity', { entity: t('label.task') })}: "${
-            editTask.task.displayName ?? editTask.task.name
-          }"`}
+          header={`${t('label.edit-entity', {
+            entity: t('label.task'),
+          })}: "${getEntityName(editTask.task)}"`}
           placeholder={t('label.enter-field-description', {
             field: t('label.task-lowercase'),
           })}

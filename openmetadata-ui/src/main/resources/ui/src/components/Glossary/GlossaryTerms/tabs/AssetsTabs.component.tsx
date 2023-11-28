@@ -71,6 +71,7 @@ import {
 import { getCountBadge, Transi18next } from '../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getEntityTypeFromSearchIndex } from '../../../../utils/SearchUtils';
+import { getDecodedFqn } from '../../../../utils/StringsUtils';
 import { getEntityIcon } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -148,7 +149,7 @@ const AssetsTabs = forwardRef(
     const queryParam = useMemo(() => {
       switch (type) {
         case AssetsOfEntity.DOMAIN:
-          return `(domain.fullyQualifiedName:${fqn})`;
+          return `(domain.fullyQualifiedName:${fqn}) AND !(entityType:"dataProduct")`;
 
         case AssetsOfEntity.DATA_PRODUCT:
           return `(dataProducts.fullyQualifiedName:${fqn})`;
@@ -248,7 +249,7 @@ const AssetsTabs = forwardRef(
 
           break;
         case AssetsOfEntity.GLOSSARY:
-          data = await getGlossaryTermByFQN(fqn);
+          data = await getGlossaryTermByFQN(getDecodedFqn(fqn));
 
           break;
         default:
@@ -741,7 +742,7 @@ const AssetsTabs = forwardRef(
         <ConfirmationModal
           bodyText={t('message.are-you-sure-action-property', {
             propertyName: getEntityName(assetToDelete),
-            action: t('label.remove-lowecase'),
+            action: t('label.remove-lowercase'),
           })}
           cancelText={t('label.cancel')}
           confirmText={t('label.delete')}
