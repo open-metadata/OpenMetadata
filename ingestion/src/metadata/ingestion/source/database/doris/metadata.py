@@ -72,8 +72,9 @@ def extract_number(data):
     DECIMAL[9,0] return ['9', '0']
     """
     result = re.findall(r"\((.*?)\)", data)
+    # doris view column may be VARCHAR(*), check data length if not digit then return 1
     if result:
-        result = result[0].split(", ")
+        result = [i.strip() if i.strip().isdigit() else 1 for i in result[0].split(",")]
         return result
     return []
 
