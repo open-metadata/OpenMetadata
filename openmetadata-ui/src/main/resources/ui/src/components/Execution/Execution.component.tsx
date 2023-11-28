@@ -18,7 +18,6 @@ import {
   Col,
   DatePicker,
   Dropdown,
-  Menu,
   MenuProps,
   Radio,
   Row,
@@ -85,22 +84,17 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
     }
   };
 
-  const handleMenuClick: MenuProps['onClick'] = (event) => {
-    if (event?.key) {
-      setStatus(MenuOptions[event.key as keyof typeof MenuOptions]);
-    }
-  };
+  const handleMenuClick: MenuProps['onClick'] = (event) =>
+    setStatus(MenuOptions[event.key as keyof typeof MenuOptions]);
 
-  const menu = useMemo(
-    () => (
-      <Menu
-        items={map(MenuOptions, (value, key) => ({
-          key: key,
-          label: value,
-        }))}
-        onClick={handleMenuClick}
-      />
-    ),
+  const statusMenuItems = useMemo(
+    () => ({
+      items: map(MenuOptions, (value, key) => ({
+        key: key,
+        label: value,
+      })),
+      onClick: handleMenuClick,
+    }),
     [handleMenuClick]
   );
 
@@ -152,7 +146,7 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
                 onChange={(e) => setView(e.target.value)}
               />
               <Space>
-                <Dropdown overlay={menu} placement="bottom">
+                <Dropdown menu={statusMenuItems} placement="bottom">
                   <Button
                     ghost
                     icon={<Icon component={FilterIcon} size={12} />}
