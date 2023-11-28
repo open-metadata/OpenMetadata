@@ -485,7 +485,6 @@ export const TaskTab = ({
                 </Typography.Text>
                 <AssigneeList
                   assignees={taskDetails?.assignees ?? []}
-                  profileWidth="24"
                   showUserName={false}
                 />
                 {(isCreator || hasEditAccess) && !isTaskClosed ? (

@@ -12,34 +12,35 @@
  */
 
 import classNames from 'classnames';
+import { debounce } from 'lodash';
 import Emoji from 'quill-emoji';
 import 'quill-emoji/dist/quill-emoji.css';
 import 'quill-mention';
 import QuillMarkdown from 'quilljs-markdown';
 import React, {
   forwardRef,
+  useCallback,
   useEffect,
   useImperativeHandle,
   useMemo,
   useRef,
   useState,
 } from 'react';
-import ReactDOM from 'react-dom';
 import ReactDOMServer from 'react-dom/server';
 import { useTranslation } from 'react-i18next';
 import ReactQuill, { Quill } from 'react-quill';
+import { BORDER_COLOR } from '../../constants/constants';
 import {
   MENTION_ALLOWED_CHARS,
   MENTION_DENOTATION_CHARS,
   TOOLBAR_ITEMS,
 } from '../../constants/Feeds.constants';
 import { getUserByName } from '../../rest/userAPI';
-import { getRandomColor } from '../../utils/CommonUtils';
-import { HTMLToMarkdown, suggestions } from '../../utils/FeedUtils';
 import {
-  getImageWithResolutionAndFallback,
-  ImageQuality,
-} from '../../utils/ProfilerUtils';
+  HTMLToMarkdown,
+  suggestions,
+  userMentionItemWithAvatar,
+} from '../../utils/FeedUtils';
 import { LinkBlot } from '../../utils/QuillLink/QuillLink';
 import {
   directionHandler,
@@ -87,22 +88,85 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
       mentionChar: string
     ) => {
       const matches = await suggestions(searchTerm, mentionChar);
+      const newMatches: MentionSuggestionsItem[] = [];
+      try {
+        // Fetch profile images in case of user listing
+        const promises = matches.map(async (item) => {
+          if (item.type === 'user') {
+            return getUserByName(item.name, 'profile').then((res) => {
+              updateUserProfilePics({ id: item.name, user: res });
 
-      // Fetch profile images in case of user listing
-      const promises = matches.map(async ({ type, name }) => {
-        if (type === 'user' && !userProfilePics[name]) {
-          const res = await getUserByName(name, 'profile');
+              newMatches.push({
+                ...item,
+                avatarEle: userMentionItemWithAvatar(
+                  item,
+                  userProfilePics[item.name] ?? res
+                ),
+              });
+            });
+          } else if (item.type === 'team') {
+            newMatches.push({
+              ...item,
+              avatarEle: userMentionItemWithAvatar(item),
+            });
+          } else {
+            newMatches.push({
+              ...item,
+            });
+          }
 
-          return updateUserProfilePics({ id: name, user: res });
+          return Promise.resolve();
+        });
+        await Promise.allSettled(promises);
+      } catch (error) {
+        // Empty
+      } finally {
+        renderList(newMatches, searchTerm);
+      }
+    };
+
+    const renderItems = useCallback(
+      (item: MentionSuggestionsItem) => {
+        if (['user', 'team'].includes(item.type as string)) {
+          return item.avatarEle;
         }
 
-        return Promise.resolve();
-      });
+        const breadcrumbsData = item.breadcrumbs
+          ? item.breadcrumbs.map((obj: { name: string }) => obj.name).join('/')
+          : '';
 
-      await Promise.all(promises);
+        const breadcrumbEle = breadcrumbsData
+          ? `<div class="d-flex flex-wrap">
+              <span class="text-grey-muted truncate w-max-200 text-xss">${breadcrumbsData}</span>
+            </div>`
+          : '';
 
-      renderList(matches, searchTerm);
-    };
+        const icon = ReactDOMServer.renderToString(
+          getEntityIcon(item.type as string)
+        );
+
+        const typeSpan = !breadcrumbEle
+          ? `<span class="text-grey-muted text-xs">${item.type}</span>`
+          : '';
+
+        const result = `<div class="d-flex items-center gap-2">
+          <div class="flex-center mention-icon-image">${icon}</div>
+          <div>
+            ${breadcrumbEle}
+            <div class="d-flex flex-col">
+              ${typeSpan}
+              <span class="font-medium truncate w-56">${item.name}</span>
+            </div>
+          </div>
+        </div>`;
+
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = result;
+
+        return wrapper;
+      },
+      [userProfilePics]
+    );
 
     /**
      * Prepare modules for editor
@@ -137,92 +201,17 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
             toggleMentionList(true);
             insertItem(item);
           },
-          source: userSuggestionRenderer,
+          source: debounce(userSuggestionRenderer, 300),
           showDenotationChar: false,
           renderLoading: () => `${t('label.loading')}...`,
-          renderItem: (item: MentionSuggestionsItem) => {
-            if (['user', 'team'].includes(item.type as string)) {
-              const wrapper = document.createElement('div');
-              const profileUrl =
-                getImageWithResolutionAndFallback(
-                  ImageQuality['6x'],
-                  userProfilePics[item.name]?.profile?.images
-                ) ?? '';
-
-              const { color, character } = getRandomColor(item.name);
-
-              ReactDOM.render(
-                <div className="d-flex gap-2">
-                  <div className="mention-profile-image">
-                    {profileUrl ? (
-                      <img
-                        alt={item.name}
-                        data-testid="profile-image"
-                        referrerPolicy="no-referrer"
-                        src={profileUrl}
-                      />
-                    ) : (
-                      <div
-                        className="flex-center flex-shrink align-middle mention-avatar"
-                        data-testid="avatar"
-                        style={{ backgroundColor: color }}>
-                        <span>{character}</span>
-                      </div>
-                    )}
-                  </div>
-                  <span className="d-flex items-center truncate w-56">
-                    {item.name}
-                  </span>
-                </div>,
-                wrapper
-              );
-
-              return wrapper;
-            }
-
-            const breadcrumbsData = item.breadcrumbs
-              ? item.breadcrumbs
-                  .map((obj: { name: string }) => obj.name)
-                  .join('/')
-              : '';
-
-            const breadcrumbEle = breadcrumbsData
-              ? `<div class="d-flex flex-wrap">
-                  <span class="text-grey-muted truncate w-max-200 text-xss">${breadcrumbsData}</span>
-                </div>`
-              : '';
-
-            const icon = ReactDOMServer.renderToString(
-              getEntityIcon(item.type as string)
-            );
-
-            const typeSpan = !breadcrumbEle
-              ? `<span class="text-grey-muted text-xs">${item.type}</span>`
-              : '';
-
-            const result = `<div class="d-flex items-center gap-2">
-              <div class="flex-center mention-icon-image">${icon}</div>
-              <div>
-                ${breadcrumbEle}
-                <div class="d-flex flex-col">
-                  ${typeSpan}
-                  <span class="font-medium truncate w-56">${item.name}</span>
-                </div>
-              </div>
-            </div>`;
-
-            const wrapper = document.createElement('div');
-            wrapper.innerHTML = result;
-
-            return wrapper;
-          },
+          renderItem: renderItems,
         },
         markdownOptions: {},
         clipboard: {
           matchers: [['del, strike', strikethrough]],
         },
       }),
-      [userProfilePics]
+      []
     );
 
     const onSaveHandle = () => {
@@ -240,7 +229,7 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
     };
 
     const getEditorStyles = () => {
-      return isFocused ? { border: '1px solid #868687' } : {};
+      return isFocused ? { border: `1px solid ${BORDER_COLOR}` } : {};
     };
 
     /**

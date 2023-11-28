@@ -17,6 +17,7 @@ import { Operation } from 'fast-json-patch';
 import i18next from 'i18next';
 import { isEqual } from 'lodash';
 import React from 'react';
+import ReactDOM from 'react-dom';
 import Showdown from 'showdown';
 import TurndownService from 'turndown';
 import { MentionSuggestionsItem } from '../components/FeedEditor/FeedEditor.interface';
@@ -39,6 +40,7 @@ import {
 import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { Thread, ThreadType } from '../generated/entity/feed/thread';
+import { User } from '../generated/entity/teams/user';
 import {
   EntityFieldThreadCount,
   EntityFieldThreads,
@@ -61,11 +63,16 @@ import {
   getEntityPlaceHolder,
   getPartialNameFromFQN,
   getPartialNameFromTableFQN,
+  getRandomColor,
 } from './CommonUtils';
 import { getRelativeCalendar } from './date-time/DateTimeUtils';
 import EntityLink from './EntityLink';
 import { ENTITY_LINK_SEPARATOR, getEntityBreadcrumbs } from './EntityUtils';
 import Fqn from './Fqn';
+import {
+  getImageWithResolutionAndFallback,
+  ImageQuality,
+} from './ProfilerUtils';
 import { getEncodedFqn } from './StringsUtils';
 import { getEntityLink } from './TableUtils';
 import { showErrorToast } from './ToastUtils';
@@ -282,6 +289,52 @@ export async function suggestions(
     return hashValues;
   }
 }
+
+/**
+ *
+ * @param item  - MentionSuggestionsItem
+ * @param user - User
+ * @returns HTMLDIVELEMENT
+ */
+export const userMentionItemWithAvatar = (
+  item: MentionSuggestionsItem,
+  user?: User
+) => {
+  const wrapper = document.createElement('div');
+  const profileUrl =
+    getImageWithResolutionAndFallback(
+      ImageQuality['6x'],
+      user?.profile?.images
+    ) ?? '';
+
+  const { color, character } = getRandomColor(item.name);
+
+  ReactDOM.render(
+    <div className="d-flex gap-2">
+      <div className="mention-profile-image">
+        {profileUrl ? (
+          <img
+            alt={item.name}
+            data-testid="profile-image"
+            referrerPolicy="no-referrer"
+            src={profileUrl}
+          />
+        ) : (
+          <div
+            className="flex-center flex-shrink align-middle mention-avatar"
+            data-testid="avatar"
+            style={{ backgroundColor: color }}>
+            <span>{character}</span>
+          </div>
+        )}
+      </div>
+      <span className="d-flex items-center truncate w-56">{item.name}</span>
+    </div>,
+    wrapper
+  );
+
+  return wrapper;
+};
 
 const getMentionList = (message: string) => {
   return message.match(mentionRegEx);

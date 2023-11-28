@@ -11,27 +11,22 @@
  *  limitations under the License.
  */
 
-import { ImageShape } from 'Models';
-import React, { FC, HTMLAttributes } from 'react';
-import { EntityReference } from '../../../generated/type/entityReference';
+import React, { FC } from 'react';
 import UserPopOverCard from '../PopOverCard/UserPopOverCard';
+import { AssigneeListProps, UserTeam } from './AssigneeList.interface';
 
-interface Props extends HTMLAttributes<HTMLDivElement> {
-  assignees: EntityReference[];
-  profilePicType?: ImageShape;
-  showUserName?: boolean;
-  profileWidth?: string;
-}
-
-const AssigneeList: FC<Props> = ({ assignees, showUserName = true }) => {
+const AssigneeList: FC<AssigneeListProps> = ({
+  assignees,
+  showUserName = true,
+}) => {
   return (
     <div className="d-flex gap-1 flex-wrap">
       {assignees.map((assignee) => (
         <UserPopOverCard
           key={assignee.name}
           showUserName={showUserName}
-          type={assignee.type as 'user' | 'team'}
-          userName={assignee.name || ''}
+          type={assignee.type as UserTeam}
+          userName={assignee.name ?? ''}
         />
       ))}
     </div>

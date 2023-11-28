@@ -97,7 +97,7 @@ const TopViewEntities: FC<Props> = ({ chartFilter }) => {
         render: (owner: string) =>
           owner ? (
             <Space>
-              <ProfilePicture name={owner} type="circle" width="24" />
+              <ProfilePicture name={owner} width="24" />
               <Typography.Text>{owner}</Typography.Text>
             </Space>
           ) : (

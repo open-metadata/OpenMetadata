@@ -236,16 +236,16 @@ const UserPopOverCard: FC<Props> = ({
   return (
     <Popover
       align={{ targetOffset: [0, -10] }}
-      content={() => <PopoverContent type={type} userName={userName} />}
+      content={<PopoverContent type={type} userName={userName} />}
       getPopupContainer={() => container}
       overlayClassName="ant-popover-card"
-      title={() => (
+      title={
         <PopoverTitle
           profilePicture={profilePicture}
           type={type}
           userName={userName}
         />
-      )}
+      }
       trigger="hover">
       {children ?? (
         <Link

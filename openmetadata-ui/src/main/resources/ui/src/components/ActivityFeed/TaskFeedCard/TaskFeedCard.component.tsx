@@ -206,8 +206,6 @@ const TaskFeedCard = ({
                 </Typography.Text>
                 <AssigneeList
                   assignees={feed?.task?.assignees || []}
-                  profilePicType="circle"
-                  profileWidth="24"
                   showUserName={false}
                 />
               </div>

@@ -53,7 +53,7 @@ export const useUserProfile = ({
     }
   }, [user, profilePic]);
 
-  const fetchProfileIfRequired = useCallback(() => {
+  const fetchProfileIfRequired = useCallback(async () => {
     if (isTeam || userProfilePics[name]) {
       return;
     }
@@ -64,30 +64,25 @@ export const useUserProfile = ({
 
     userProfilePicsLoading = [...userProfilePicsLoading, name];
 
-    getUserByName(name, 'profile')
-      .then((user) => {
-        const profile =
-          getImageWithResolutionAndFallback(
-            ImageQuality['6x'],
-            user.profile?.images
-          ) ?? '';
+    try {
+      const user = await getUserByName(name, 'profile');
+      const profile =
+        getImageWithResolutionAndFallback(
+          ImageQuality['6x'],
+          user.profile?.images
+        ) ?? '';
 
-        updateUserProfilePics({
-          id: user.name,
-          user,
-        });
-        userProfilePicsLoading = userProfilePicsLoading.filter(
-          (p) => p !== name
-        );
-
-        setProfilePic(profile);
-      })
-      .catch(() => {
-        // Error
-        userProfilePicsLoading = userProfilePicsLoading.filter(
-          (p) => p !== name
-        );
+      updateUserProfilePics({
+        id: user.name,
+        user,
       });
+      userProfilePicsLoading = userProfilePicsLoading.filter((p) => p !== name);
+
+      setProfilePic(profile);
+    } catch (error) {
+      // Error
+      userProfilePicsLoading = userProfilePicsLoading.filter((p) => p !== name);
+    }
   }, [updateUserProfilePics, userProfilePics, name, isTeam]);
 
   useEffect(() => {
@@ -102,5 +97,5 @@ export const useUserProfile = ({
     fetchProfileIfRequired();
   }, [name, permission, fetchProfileIfRequired]);
 
-  return [profilePic, isUndefined(user), user];
+  return [profilePic, Boolean(!isTeam && isUndefined(user)), user];
 };
