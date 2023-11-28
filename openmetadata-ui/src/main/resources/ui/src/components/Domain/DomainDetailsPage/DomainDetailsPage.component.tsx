@@ -239,7 +239,9 @@ const DomainDetailsPage = ({
           '',
           1,
           0,
-          `(domain.fullyQualifiedName:${domainFqn})`,
+          `(domain.fullyQualifiedName:${escapeESReservedCharacters(
+            domain.fullyQualifiedName
+          )})`,
           '',
           '',
           SearchIndex.DATA_PRODUCT
