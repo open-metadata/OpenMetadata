@@ -14,8 +14,8 @@
 /// <reference types="Cypress" />
 
 import {
-  addAssetsToDomain,
   addAssetsToDataProduct,
+  addAssetsToDomain,
   createDataProducts,
   createDomain,
   deleteDomain,
