@@ -12,12 +12,16 @@
 Test lineage parser to get inlets and outlets information
 """
 from datetime import datetime
+from typing import List, Set
 from unittest import TestCase
 
 from airflow import DAG
+from airflow.lineage import entities
 from airflow.operators.bash import BashOperator
 
+from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.source.pipeline.airflow.lineage_parser import (
+    OMEntity,
     XLets,
     XLetsMode,
     get_xlets_from_dag,
@@ -25,11 +29,47 @@ from metadata.ingestion.source.pipeline.airflow.lineage_parser import (
     parse_xlets,
 )
 
+SLEEP = "sleep 1"
+
+
+def xlet_fqns(xlet: XLets, xlet_mode: XLetsMode) -> Set[str]:
+    """Helper method to get a set of FQNs out of the xlet"""
+    return set(elem.fqn for elem in getattr(xlet, xlet_mode.value))
+
 
 class TestAirflowLineageParser(TestCase):
     """
     Handle airflow lineage parser validations
     """
+
+    def assertXLetsEquals(self, first: List[XLets], second: List[XLets]):
+        """
+        Check that both XLet lists are the same
+
+        Even if they are lists, we don't care about the order.
+
+        Note that we cannot use sets since `OMEntity` is not hashable.
+
+        For this test, we will assume that by having the same FQN, the
+        entity type will also be the same.
+        """
+        self.assertEquals(len(first), len(second))
+
+        for xlet1 in first:
+            match = False
+
+            first_inlets = xlet_fqns(xlet1, XLetsMode.INLETS)
+            first_outlets = xlet_fqns(xlet1, XLetsMode.OUTLETS)
+
+            for xlet2 in second:
+                second_inlets = xlet_fqns(xlet2, XLetsMode.INLETS)
+                second_outlets = xlet_fqns(xlet2, XLetsMode.OUTLETS)
+
+                if first_inlets == second_inlets and first_outlets == second_outlets:
+                    match = True
+                    break
+
+            self.assertTrue(match)
 
     def test_parse_xlets(self):
         """
@@ -40,13 +80,19 @@ class TestAirflowLineageParser(TestCase):
         }],
         """
         raw_xlet = [{"tables": ["A"], "more_tables": ["X"]}]
-        self.assertEqual(parse_xlets(raw_xlet), {"tables": ["A"], "more_tables": ["X"]})
+        self.assertEqual(
+            parse_xlets(raw_xlet),
+            {
+                "tables": [OMEntity(entity=Table, fqn="A")],
+                "more_tables": [OMEntity(entity=Table, fqn="X")],
+            },
+        )
 
         raw_xlet_without_list = [{"tables": ["A"], "more_tables": "random"}]
         self.assertEqual(
             parse_xlets(raw_xlet_without_list),
             {
-                "tables": ["A"],
+                "tables": [OMEntity(entity=Table, fqn="A")],
             },
         )
 
@@ -67,7 +113,7 @@ class TestAirflowLineageParser(TestCase):
         # But the outlets are parsed correctly
         self.assertEqual(
             get_xlets_from_operator(operator, xlet_mode=XLetsMode.OUTLETS),
-            {"tables": ["A"]},
+            {"tables": [OMEntity(entity=Table, fqn="A")]},
         )
 
         operator = BashOperator(
@@ -78,19 +124,20 @@ class TestAirflowLineageParser(TestCase):
 
         self.assertEqual(
             get_xlets_from_operator(operator, xlet_mode=XLetsMode.INLETS),
-            {"tables": ["A"], "more_tables": ["X"]},
+            {
+                "tables": [OMEntity(entity=Table, fqn="A")],
+                "more_tables": [OMEntity(entity=Table, fqn="X")],
+            },
         )
         self.assertIsNone(
             get_xlets_from_operator(operator, xlet_mode=XLetsMode.OUTLETS)
         )
 
-    def test_get_xlets_from_dag(self):
+    def test_get_string_xlets_from_dag(self):
         """
         Check that we can properly join the xlet information from
         all operators in the DAG
         """
-
-        sleep_1 = "sleep 1"
 
         with DAG("test_dag", start_date=datetime(2021, 1, 1)) as dag:
             BashOperator(
@@ -101,12 +148,18 @@ class TestAirflowLineageParser(TestCase):
 
             BashOperator(
                 task_id="sleep",
-                bash_command=sleep_1,
+                bash_command=SLEEP,
                 outlets={"tables": ["B"]},
             )
 
-            self.assertEqual(
-                get_xlets_from_dag(dag), [XLets(inlets={"A"}, outlets={"B"})]
+            self.assertXLetsEquals(
+                get_xlets_from_dag(dag),
+                [
+                    XLets(
+                        inlets=[OMEntity(entity=Table, fqn="A")],
+                        outlets=[OMEntity(entity=Table, fqn="B")],
+                    )
+                ],
             )
 
         with DAG("test_dag", start_date=datetime(2021, 1, 1)) as dag:
@@ -118,12 +171,18 @@ class TestAirflowLineageParser(TestCase):
 
             BashOperator(
                 task_id="sleep",
-                bash_command=sleep_1,
+                bash_command=SLEEP,
                 outlets={"tables": ["B"]},
             )
 
-            self.assertEqual(
-                get_xlets_from_dag(dag), [XLets(inlets={"A"}, outlets={"B"})]
+            self.assertXLetsEquals(
+                get_xlets_from_dag(dag),
+                [
+                    XLets(
+                        inlets=[OMEntity(entity=Table, fqn="A")],
+                        outlets=[OMEntity(entity=Table, fqn="B")],
+                    )
+                ],
             )
 
         with DAG("test_dag", start_date=datetime(2021, 1, 1)) as dag:
@@ -139,18 +198,27 @@ class TestAirflowLineageParser(TestCase):
 
             BashOperator(
                 task_id="sleep",
-                bash_command=sleep_1,
+                bash_command=SLEEP,
                 outlets={
                     "tables": ["B"],
                     "more_tables": ["Z"],
                 },
             )
 
-            self.assertEqual(
+            self.assertXLetsEquals(
                 get_xlets_from_dag(dag),
                 [
-                    XLets(inlets={"A"}, outlets={"B"}),
-                    XLets(inlets={"X", "Y"}, outlets={"Z"}),
+                    XLets(
+                        inlets=[OMEntity(entity=Table, fqn="A")],
+                        outlets=[OMEntity(entity=Table, fqn="B")],
+                    ),
+                    XLets(
+                        inlets=[
+                            OMEntity(entity=Table, fqn="X"),
+                            OMEntity(entity=Table, fqn="Y"),
+                        ],
+                        outlets=[OMEntity(entity=Table, fqn="Z")],
+                    ),
                 ],
             )
 
@@ -165,15 +233,46 @@ class TestAirflowLineageParser(TestCase):
 
             BashOperator(
                 task_id="sleep",
-                bash_command=sleep_1,
+                bash_command=SLEEP,
                 outlets={
                     "tables": ["B"],
                 },
             )
 
-            self.assertEqual(
+            self.assertXLetsEquals(
                 get_xlets_from_dag(dag),
                 [
-                    XLets(inlets={"A", "B"}, outlets={"B"}),
+                    XLets(
+                        inlets=[
+                            OMEntity(entity=Table, fqn="A"),
+                            OMEntity(entity=Table, fqn="B"),
+                        ],
+                        outlets=[OMEntity(entity=Table, fqn="B")],
+                    ),
                 ],
             )
+
+    def test_get_dataset_xlets_from_dag(self):
+        """
+        Check that we can properly join the xlet information from
+        all operators in the DAG
+        """
+        with DAG("test_dag", start_date=datetime(2021, 1, 1)) as dag:
+            BashOperator(
+                task_id="print_date",
+                bash_command="date",
+                inlets={"tables": ["A"]},
+            )
+
+            BashOperator(
+                task_id="sleep",
+                bash_command=SLEEP,
+                outlets=[
+                    entities.Table(name="name", database="schema", cluster="database"),
+                    entities.File("FQN"),
+                ],
+            )
+
+            # self.assertEqual(
+            #    get_xlets_from_dag(dag), [XLets(inlets={"A"}, outlets={"B"})]
+            # )

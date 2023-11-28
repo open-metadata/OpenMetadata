@@ -65,9 +65,15 @@ and we'll treat this as independent sets of lineage
 import logging
 import traceback
 from enum import Enum
-from typing import Dict, List, Optional, Set
+from functools import singledispatch
+from typing import Any, Dict, List, Optional, Type
 
+import attr
 from pydantic import BaseModel
+
+from metadata.generated.schema.entity.data.table import Table
+from metadata.ingestion.ometa.models import T
+from metadata.utils.deprecation import deprecated
 
 logger = logging.getLogger("airflow.task")
 
@@ -85,41 +91,124 @@ class XLetsAttr(Enum):
     PRIVATE_OUTLETS = "_outlets"
 
 
+@attr.s(auto_attribs=True, kw_only=True)
+class OMEntity:
+    """
+    Identifies one entity in OpenMetadata.
+    We use attr annotated object similar to https://github.com/apache/airflow/blob/main/airflow/lineage/entities.py
+    based on https://airflow.apache.org/docs/apache-airflow/stable/administration-and-deployment/lineage.html
+    """
+
+    # Entity Type, such as Table, Container or Dashboard.
+    entity: Type[T] = attr.ib()
+    # Entity Fully Qualified Name, e.g., service.database.schema.table
+    fqn: str = attr.ib()
+
+
 class XLets(BaseModel):
     """
     Group inlets and outlets from all tasks in a DAG
     """
 
-    inlets: Set[str]
-    outlets: Set[str]
+    inlets: List[OMEntity]
+    outlets: List[OMEntity]
+
+    class Config:
+        arbitrary_types_allowed = True
 
 
-def parse_xlets(xlet: List[dict]) -> Optional[Dict[str, List[str]]]:
+def parse_xlets(xlet: List[dict]) -> Optional[Dict[str, List[OMEntity]]]:
     """
-    Parse airflow xlets for V1
     :param xlet: airflow v2 xlet dict
     :return: dictionary of xlet list or None
 
-    [{'__var': {'tables': ['sample_data.ecommerce_db.shopify.fact_order']},
-        '__type': 'dict'}]
+    If our operators are like
+    ```
+    BashOperator(
+        task_id="print_date",
+        bash_command="date",
+        inlets={"tables": ["A"]},
+    )
+    ```
+    the inlets/outlets will still be processed in airflow as a `List`.
 
+    Note that when picking them up from Serialized DAGs, the shape is:
+    ```
+    [{'__var': {'tables': ['sample_data.ecommerce_db.shopify.fact_order']}, '__type': 'dict'}]
+    ```
+
+    If using Datasets, we get something like:
+    ```
+    [Dataset(uri='s3://dataset-bucket/input.csv', extra=None)]
+    ```
+    We need to figure out how we want to handle information coming in this format.
     """
     # This branch is for lineage parser op
-    if isinstance(xlet, list) and len(xlet) and isinstance(xlet[0], dict):
-        xlet_dict = xlet[0]
-        # This is how the Serialized DAG is giving us the info from _inlets & _outlets
-        if isinstance(xlet_dict, dict) and xlet_dict.get("__var"):
-            xlet_dict = xlet_dict["__var"]
-        return {
-            key: value for key, value in xlet_dict.items() if isinstance(value, list)
-        }
+    if isinstance(xlet, list) and len(xlet):
+        _parsed_xlets = {}
+        for element in xlet:
+            parsed_element = _parse_xlets(element) or {}
+
+            # Update our xlet dict based on each parsed element
+            _parsed_xlets.update(parsed_element)
+
+        return _parsed_xlets
 
     return None
 
 
+@singledispatch
+def _parse_xlets(xlet: Any) -> Optional[Dict[str, List[OMEntity]]]:
+    """
+    Default behavior to handle lineage.
+
+    We can use this function to register further inlets/outlets
+    representations, e.g., https://github.com/open-metadata/OpenMetadata/issues/11626
+    """
+    logger.warning(f"Inlet/Outlet type {type(xlet)} is not supported.")
+    return None
+
+
+@_parse_xlets.register
+@deprecated(
+    message="Please update your inlets/outlets to become follow <TODO DOCS>",
+    release="1.4.0",
+)
+def _(xlet: dict) -> Dict[str, List[OMEntity]]:
+    """
+    Handle OM specific inlet/outlet information. E.g.,
+
+    ```
+    BashOperator(
+        task_id="print_date",
+        bash_command="date",
+        inlets={
+            "tables": ["A", "A"],
+            "more_tables": ["X", "Y"],
+            "this is a bit random": "foo",
+        },
+    )
+    ```
+    """
+    xlet_dict = xlet
+    # This is how the Serialized DAG is giving us the info from _inlets & _outlets
+    if isinstance(xlet_dict, dict) and xlet_dict.get("__var"):
+        xlet_dict = xlet_dict["__var"]
+
+    return {
+        key: [
+            # We will convert the old dict lineage method into Tables
+            OMEntity(entity=Table, fqn=fqn)
+            for fqn in set(value)  # Remove duplicates
+        ]
+        for key, value in xlet_dict.items()
+        if isinstance(value, list)
+    }
+
+
 def get_xlets_from_operator(
     operator: "BaseOperator", xlet_mode: XLetsMode
-) -> Optional[Dict[str, List[str]]]:
+) -> Optional[Dict[str, List[OMEntity]]]:
     """
     Given an Airflow DAG Task, obtain the tables
     set in inlets or outlets.
@@ -197,7 +286,7 @@ def get_xlets_from_dag(dag: "DAG") -> List[XLets]:
     # We expect to have the same keys in both inlets and outlets dicts
     # We will then iterate over the inlet keys to build the list of XLets
     return [
-        XLets(inlets=set(value), outlets=set(_outlets[key]))
+        XLets(inlets=value, outlets=_outlets[key])
         for key, value in _inlets.items()
         if value and _outlets.get(key)
     ]
