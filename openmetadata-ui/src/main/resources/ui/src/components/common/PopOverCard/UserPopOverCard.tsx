@@ -120,18 +120,20 @@ const PopoverContent = React.memo(
 
     const teamDetails = get(user, 'teams', null);
 
-    const getUserWithAdditionalDetails = useCallback(() => {
-      setLoading(true);
-      getUserByName(userName, 'teams, roles')
-        .then((user) => {
-          updateUserProfilePics({
-            id: userName,
-            user,
-          });
-        })
-        .finally(() => {
-          setLoading(false);
+    const getUserWithAdditionalDetails = useCallback(async () => {
+      try {
+        setLoading(true);
+        const user = await getUserByName(userName, 'teams, roles');
+
+        updateUserProfilePics({
+          id: userName,
+          user,
         });
+      } catch (error) {
+        // Error
+      } finally {
+        setLoading(false);
+      }
     }, [userName]);
 
     useEffect(() => {
