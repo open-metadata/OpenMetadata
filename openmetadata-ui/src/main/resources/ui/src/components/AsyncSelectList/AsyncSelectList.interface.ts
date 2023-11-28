@@ -28,6 +28,7 @@ export interface AsyncSelectListProps {
   placeholder?: string;
   debounceTimeout?: number;
   defaultValue?: string[];
+  value?: string[];
   initialOptions?: SelectOption[];
   onChange?: (option: DefaultOptionType | DefaultOptionType[]) => void;
   fetchOptions: (

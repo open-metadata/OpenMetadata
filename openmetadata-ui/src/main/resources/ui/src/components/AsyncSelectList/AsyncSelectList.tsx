@@ -236,7 +236,7 @@ const AsyncSelectList: FC<AsyncSelectListProps> = ({
       {...props}>
       {tagOptions.map(({ label, value, displayName, data }) => (
         <Select.Option
-          className={className}
+          className={`${className} w-full`}
           data={data}
           data-testid={`tag-${value}`}
           key={label}
