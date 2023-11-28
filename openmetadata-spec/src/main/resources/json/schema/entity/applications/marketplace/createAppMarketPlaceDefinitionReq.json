@@ -76,8 +76,14 @@
       "description": "If app type is live, user can provide additional runtime context.",
       "$ref": "../app.json#/definitions/executionContext"
     },
+    "allowConfiguration": {
+      "description": "Allow users to configure the app from the UI. If `false`, the `configure` step will be hidden.",
+      "type": "boolean",
+      "default": true
+    },
     "appConfiguration": {
-      "description": "Application Configuration object."
+      "description": "Application Configuration object.",
+      "$ref": "../configuration/applicationConfig.json#/definitions/appConfig"
     },
     "appLogoUrl": {
       "description": "Application Logo Url.",

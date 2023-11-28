@@ -25,7 +25,10 @@ import FormBuilder from '../../components/common/FormBuilder/FormBuilder';
 import IngestionStepper from '../../components/IngestionStepper/IngestionStepper.component';
 import Loader from '../../components/Loader/Loader';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { STEPS_FOR_APP_INSTALL } from '../../constants/Applications.constant';
+import {
+  APPLICATION_UI_SCHEMA,
+  STEPS_FOR_APP_INSTALL,
+} from '../../constants/Applications.constant';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -69,11 +72,10 @@ const AppInstall = () => {
 
   const stepperList = useMemo(
     () =>
-      isExternalApp
+      !appData?.allowConfiguration
         ? STEPS_FOR_APP_INSTALL.filter((item) => item.step !== 2)
         : STEPS_FOR_APP_INSTALL,
-
-    [isExternalApp]
+    [appData]
   );
 
   const fetchAppDetails = useCallback(async () => {
@@ -143,10 +145,14 @@ const AppInstall = () => {
           <AppInstallVerifyCard
             appData={appData}
             nextButtonLabel={
-              isExternalApp ? t('label.schedule') : t('label.configure')
+              appData?.allowConfiguration
+                ? t('label.configure')
+                : t('label.schedule')
             }
             onCancel={onCancel}
-            onSave={() => setActiveServiceStep(isExternalApp ? 3 : 2)}
+            onSave={() =>
+              setActiveServiceStep(appData?.allowConfiguration ? 2 : 3)
+            }
           />
         );
 
@@ -163,6 +169,7 @@ const AppInstall = () => {
               serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
               serviceType=""
               showTestConnection={false}
+              uiSchema={APPLICATION_UI_SCHEMA}
               validator={validator}
               onCancel={() => setActiveServiceStep(1)}
               onSubmit={onSaveConfiguration}
@@ -177,7 +184,9 @@ const AppInstall = () => {
               isQuartzCron
               includePeriodOptions={isExternalApp ? ['Day'] : undefined}
               initialData={getIngestionFrequency(PipelineType.Application)}
-              onCancel={() => setActiveServiceStep(isExternalApp ? 1 : 2)}
+              onCancel={() =>
+                setActiveServiceStep(appData.allowConfiguration ? 2 : 1)
+              }
               onSubmit={onSubmit}
             />
           </div>

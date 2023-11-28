@@ -4,7 +4,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.app.App;
-import org.openmetadata.schema.entity.app.AppType;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchRepository;
 
@@ -17,24 +16,20 @@ public class ApplicationHandler {
 
   public static void triggerApplicationOnDemand(
       App app, CollectionDAO daoCollection, SearchRepository searchRepository) {
-    runMethodFromApplication(app, daoCollection, searchRepository, "triggerOnDemand", "triggerOnDemand");
+    runMethodFromApplication(app, daoCollection, searchRepository, "triggerOnDemand");
   }
 
-  public static void scheduleApplication(App app, CollectionDAO daoCollection, SearchRepository searchRepository) {
-    runMethodFromApplication(app, daoCollection, searchRepository, "scheduleInternal", "initializeExternalApp");
+  public static void installApplication(App app, CollectionDAO daoCollection, SearchRepository searchRepository) {
+    runMethodFromApplication(app, daoCollection, searchRepository, "install");
   }
 
   public static void configureApplication(App app, CollectionDAO daoCollection, SearchRepository searchRepository) {
-    runMethodFromApplication(app, daoCollection, searchRepository, "configure", "configure");
+    runMethodFromApplication(app, daoCollection, searchRepository, "configure");
   }
 
   /** Load an App from its className and call its methods dynamically */
   public static void runMethodFromApplication(
-      App app,
-      CollectionDAO daoCollection,
-      SearchRepository searchRepository,
-      String internalMethodName,
-      String externalMethodName) {
+      App app, CollectionDAO daoCollection, SearchRepository searchRepository, String methodName) {
     // Native Application
     try {
       Class<?> clz = Class.forName(app.getClassName());
@@ -44,14 +39,10 @@ public class ApplicationHandler {
       Method initMethod = resource.getClass().getMethod("init", App.class, CollectionDAO.class, SearchRepository.class);
       initMethod.invoke(resource, app, daoCollection, searchRepository);
 
-      // Call Trigger On Demand Method
-      if (app.getAppType() == AppType.Internal) {
-        Method scheduleMethod = resource.getClass().getMethod(internalMethodName);
-        scheduleMethod.invoke(resource);
-      } else if (app.getAppType() == AppType.External) {
-        Method scheduleMethod = resource.getClass().getMethod(externalMethodName);
-        scheduleMethod.invoke(resource);
-      }
+      // Call method on demand
+      Method scheduleMethod = resource.getClass().getMethod(methodName);
+      scheduleMethod.invoke(resource);
+
     } catch (NoSuchMethodException | InstantiationException | IllegalAccessException | InvocationTargetException e) {
       LOG.error("Exception encountered", e);
       throw new RuntimeException(e);

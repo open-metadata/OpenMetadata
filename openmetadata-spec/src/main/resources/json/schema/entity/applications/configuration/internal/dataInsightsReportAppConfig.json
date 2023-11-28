@@ -1,0 +1,33 @@
+{
+  "$id": "DataInsightsReportApplication.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DataInsightsReportAppConfig",
+  "description": "This schema defines configuration for Data Insights Report Application.",
+  "definitions": {
+    "dataInsightsReportAppType": {
+      "description": "Application type.",
+      "type": "string",
+      "enum": ["DataInsightsReport"],
+      "default": "DataInsightsReport"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Application Type",
+      "description": "Application Type",
+      "$ref": "#/definitions/dataInsightsReportAppType",
+      "default": "DataInsightsReport"
+    },
+    "sendToAdmins": {
+      "title": "Send To Admins",
+      "type": "boolean",
+      "default": true
+    },
+    "sendToTeams": {
+      "title": "Send To Teams",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false
+}

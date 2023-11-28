@@ -10,7 +10,7 @@
       "description": "Configuration Object.",
       "oneOf": [
         {
-          "$ref": "./configuration/searchIndexingApp.json"
+          "$ref": "configuration/internal/searchIndexingAppConfig.json"
         }
       ]
     }

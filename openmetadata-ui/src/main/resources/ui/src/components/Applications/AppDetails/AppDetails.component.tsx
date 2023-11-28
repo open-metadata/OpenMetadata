@@ -43,6 +43,7 @@ import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import Loader from '../../../components/Loader/Loader';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import TabsLabel from '../../../components/TabsLabel/TabsLabel.component';
+import { APPLICATION_UI_SCHEMA } from '../../../constants/Applications.constant';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import {
   GlobalSettingOptions,
@@ -51,11 +52,11 @@ import {
 import { ServiceCategory } from '../../../enums/service.enum';
 import {
   App,
-  AppType,
   ScheduleTimeline,
 } from '../../../generated/entity/applications/app';
 import { Include } from '../../../generated/type/include';
 import {
+  configureApp,
   deployApp,
   getApplicationByName,
   patchApplication,
@@ -243,6 +244,8 @@ const AppDetails = () => {
 
       try {
         const response = await patchApplication(appData.id, jsonPatch);
+        // call configure endpoint also to update configuration
+        await configureApp(appData.fullyQualifiedName ?? '', updatedFormData);
         setAppData(response);
         showSuccessToast(
           t('message.entity-saved-successfully', {
@@ -310,9 +313,7 @@ const AppDetails = () => {
 
   const tabs = useMemo(() => {
     const tabConfiguration =
-      appData?.appConfiguration &&
-      appData.appType === AppType.Internal &&
-      jsonSchema
+      appData?.appConfiguration && appData.allowConfiguration && jsonSchema
         ? [
             {
               label: (
@@ -334,6 +335,7 @@ const AppDetails = () => {
                     serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
                     serviceType=""
                     showTestConnection={false}
+                    uiSchema={APPLICATION_UI_SCHEMA}
                     validator={validator}
                     onCancel={noop}
                     onSubmit={onConfigSave}

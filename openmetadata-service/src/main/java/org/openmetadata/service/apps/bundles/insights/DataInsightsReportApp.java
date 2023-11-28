@@ -37,7 +37,7 @@ import org.openmetadata.schema.dataInsight.type.TotalEntitiesByTier;
 import org.openmetadata.schema.dataInsight.type.TotalEntitiesByType;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppSchedule;
-import org.openmetadata.schema.entity.app.DataInsightsReportAppConfig;
+import org.openmetadata.schema.entity.applications.configuration.internal.DataInsightsReportAppConfig;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
