@@ -30,6 +30,7 @@ export interface AsyncSelectListProps {
   defaultValue?: string[];
   value?: string[];
   initialOptions?: SelectOption[];
+  filterOptions?: string[]; // array of fqn
   onChange?: (option: DefaultOptionType | DefaultOptionType[]) => void;
   fetchOptions: (
     search: string,
