@@ -59,7 +59,7 @@ if [[ $skipMaven == "false" ]]; then
         mvn -q -DskipTests -DonlyBackend clean package -pl !openmetadata-ui
     else
         echo "Maven Build - Skipping Tests"
-        mvn -q -DskipTests clean package
+        mvn -DskipTests clean package
     fi
 else
     echo "Skipping Maven Build"
