@@ -44,10 +44,7 @@ import {
 import { ProfilerDashboardType } from '../../../enums/table.enum';
 import { Column, ColumnProfile } from '../../../generated/entity/data/table';
 import { TestCase, TestCaseStatus } from '../../../generated/tests/testCase';
-import {
-  formatNumberWithComma,
-  getNameFromFQN,
-} from '../../../utils/CommonUtils';
+import { formatNumberWithComma } from '../../../utils/CommonUtils';
 import { updateTestResults } from '../../../utils/DataQualityAndProfilerUtils';
 import { getAddDataQualityTableTestPath } from '../../../utils/RouterUtils';
 import { getDecodedFqn, getEncodedFqn } from '../../../utils/StringsUtils';
@@ -275,9 +272,7 @@ const ColumnProfileTable = () => {
             ProfilerDashboardType.COLUMN,
             getDecodedFqn(fqn)
           ),
-          search: activeColumnFqn
-            ? Qs.stringify({ column: getNameFromFQN(activeColumnFqn) })
-            : '',
+          search: activeColumnFqn ? Qs.stringify({ activeColumnFqn }) : '',
         });
       },
     },

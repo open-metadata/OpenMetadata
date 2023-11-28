@@ -84,7 +84,7 @@ const TableProfiler = (props: TableProfilerProps) => {
         icon: <DataQualityIcon />,
       },
     ],
-    [viewTest, viewTest]
+    [viewTest, viewProfiler]
   );
 
   const handleTabChange: MenuProps['onClick'] = (value) => {
