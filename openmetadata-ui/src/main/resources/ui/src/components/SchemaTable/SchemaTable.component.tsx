@@ -325,7 +325,8 @@ const SchemaTable = ({
 
                 <Typography.Text
                   className="m-b-0 d-block text-grey-muted"
-                  data-testid="column-name">
+                  data-testid="column-name"
+                  ellipsis={{ tooltip: true }}>
                   {name}
                 </Typography.Text>
               </div>
@@ -472,7 +473,7 @@ const SchemaTable = ({
         <ModalWithMarkdownEditor
           header={`${t('label.edit-entity', {
             entity: t('label.column'),
-          })}: "${editColumn.name}"`}
+          })}: "${getEntityName(editColumn)}"`}
           placeholder={t('message.enter-column-description')}
           value={editColumn.description as string}
           visible={Boolean(editColumn)}

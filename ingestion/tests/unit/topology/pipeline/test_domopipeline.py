@@ -43,7 +43,7 @@ MOCK_PIPELINE_SERVICE = PipelineService(
 MOCK_PIPELINE = Pipeline(
     id="a58b1856-729c-493b-bc87-6d2269b43ec0",
     name="do_it_all_with_default_config",
-    fullyQualifiedName="local_domo_pipeline.1",
+    fullyQualifiedName="domopipeline_source_test.do_it_all_with_default_config",
     displayName="do_it_all_with_default_config",
     tasks=[
         Task(
@@ -94,7 +94,7 @@ mock_domopipeline_config = {
 
 EXPECTED_PIPELINE_STATUS = [
     OMetaPipelineStatus(
-        pipeline_fqn="local_domo_pipeline.1",
+        pipeline_fqn="domopipeline_source_test.do_it_all_with_default_config",
         pipeline_status=PipelineStatus(
             timestamp=1665476792000,
             executionStatus="Successful",
@@ -110,7 +110,7 @@ EXPECTED_PIPELINE_STATUS = [
         ),
     ),
     OMetaPipelineStatus(
-        pipeline_fqn="local_domo_pipeline.1",
+        pipeline_fqn="domopipeline_source_test.do_it_all_with_default_config",
         pipeline_status=PipelineStatus(
             timestamp=1665470252000,
             executionStatus="Successful",
@@ -126,7 +126,7 @@ EXPECTED_PIPELINE_STATUS = [
         ),
     ),
     OMetaPipelineStatus(
-        pipeline_fqn="local_domo_pipeline.1",
+        pipeline_fqn="domopipeline_source_test.do_it_all_with_default_config",
         pipeline_status=PipelineStatus(
             timestamp=1665148827000,
             executionStatus="Successful",
@@ -252,8 +252,10 @@ class DomoPipelineUnitTest(TestCase):
             mock_domopipeline_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
-        self.domopipeline.context.__dict__["pipeline"] = MOCK_PIPELINE
-        self.domopipeline.context.__dict__["pipeline_service"] = MOCK_PIPELINE_SERVICE
+        self.domopipeline.context.__dict__["pipeline"] = MOCK_PIPELINE.name.__root__
+        self.domopipeline.context.__dict__[
+            "pipeline_service"
+        ] = MOCK_PIPELINE_SERVICE.name.__root__
 
     @patch("metadata.clients.domo_client.DomoClient.get_runs")
     def test_pipeline(self, get_runs):

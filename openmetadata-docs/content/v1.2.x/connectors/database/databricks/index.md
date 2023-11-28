@@ -31,6 +31,7 @@ In this section, we provide guides and references to use the Databricks connecto
 Configure and schedule Databricks metadata and profiler workflows from the OpenMetadata UI:
 
 - [Requirements](#requirements)
+- [Unity Catalog](#unity-catalog)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Query Usage](/connectors/ingestion/workflows/usage)
 - [Data Profiler](/connectors/ingestion/workflows/profiler)
@@ -45,6 +46,17 @@ Configure and schedule Databricks metadata and profiler workflows from the OpenM
 {%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
 To deploy OpenMetadata, check the Deployment guides.
 {%/inlineCallout%}
+
+## Unity Catalog
+
+If you are using unity catalog in Data Bricks, You can enable "use Unity catalog" option while configuring the DataBricks connection.
+
+OpenMetadata extracts following metadata from Unity Catalog
+
+1. Table and Column Descriptions
+2. Ownership
+3. Column Level Lineage
+4. Queries
 
 ## Metadata Ingestion
 

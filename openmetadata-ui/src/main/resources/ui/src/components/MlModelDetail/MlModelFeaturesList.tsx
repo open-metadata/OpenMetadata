@@ -21,6 +21,7 @@ import TableTags from '../../components/TableTags/TableTags.component';
 import { EntityType } from '../../enums/entity.enum';
 import { MlFeature } from '../../generated/entity/data/mlmodel';
 import { TagSource } from '../../generated/type/schema';
+import { getEntityName } from '../../utils/EntityUtils';
 import { createTagObject } from '../../utils/TagsUtils';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
@@ -228,7 +229,7 @@ const MlModelFeaturesList = ({
           <ModalWithMarkdownEditor
             header={t('label.edit-entity-name', {
               entityType: t('label.feature'),
-              entityName: selectedFeature.name,
+              entityName: getEntityName(selectedFeature),
             })}
             placeholder={t('label.enter-field-description', {
               field: t('label.feature-lowercase'),

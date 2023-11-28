@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Table, Tabs, Typography } from 'antd';
+import { Col, Row, Table, Tabs, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
@@ -28,15 +28,13 @@ import EntityLineageComponent from '../../components/Entity/EntityLineage/Entity
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
-import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
-import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
 import { getMlModelDetailsPath } from '../../constants/constants';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { MlHyperParameter } from '../../generated/api/data/createMlModel';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Mlmodel, MlStore } from '../../generated/entity/data/mlmodel';
 import { ThreadType } from '../../generated/entity/feed/thread';
-import { TagLabel, TagSource } from '../../generated/type/schema';
+import { TagLabel } from '../../generated/type/schema';
 import { restoreMlmodel } from '../../rest/mlModelAPI';
 import { getEmptyPlaceholder, getFeedCounts } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
@@ -49,7 +47,7 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
-import DataProductsContainer from '../DataProductsContainer/DataProductsContainer.component';
+import EntityRightPanel from '../Entity/EntityRightPanel/EntityRightPanel';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
 import { MlModelDetailProp } from './MlModelDetail.interface';
@@ -97,6 +95,11 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     [mlModelFqn]
   );
 
+  const mlModelName = useMemo(
+    () => getEntityName(mlModelDetail),
+    [mlModelDetail]
+  );
+
   const fetchResourcePermission = useCallback(async () => {
     try {
       const entityPermission = await getEntityPermission(
@@ -124,12 +127,12 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       ...mlModelDetail,
       tier: getTierTags(mlModelDetail.tags ?? []),
       mlModelTags: getTagsWithoutTier(mlModelDetail.tags ?? []),
-      entityName: getEntityName(mlModelDetail),
+      entityName: mlModelName,
       isFollowing: mlModelDetail.followers?.some(
         ({ id }: { id: string }) => id === currentUser?.id
       ),
     };
-  }, [mlModelDetail]);
+  }, [mlModelDetail, mlModelName]);
 
   const fetchEntityFeedCount = () => {
     getFeedCounts(EntityType.MLMODEL, decodedMlModelFqn, setFeedCount);
@@ -392,7 +395,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                 <DescriptionV1
                   description={mlModelDetail.description}
                   entityFqn={decodedMlModelFqn}
-                  entityName={mlModelDetail.name}
+                  entityName={mlModelName}
                   entityType={EntityType.MLMODEL}
                   hasEditAccess={editDescriptionPermission}
                   isEdit={isEdit}
@@ -417,34 +420,16 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
               className="entity-tag-right-panel-container"
               data-testid="entity-right-panel"
               flex="320px">
-              <Space className="w-full" direction="vertical" size="large">
-                <DataProductsContainer
-                  activeDomain={mlModelDetail?.domain}
-                  dataProducts={mlModelDetail?.dataProducts ?? []}
-                  hasPermission={false}
-                />
-                <TagsContainerV2
-                  displayType={DisplayType.READ_MORE}
-                  entityFqn={decodedMlModelFqn}
-                  entityType={EntityType.MLMODEL}
-                  permission={editTagsPermission}
-                  selectedTags={mlModelTags}
-                  tagType={TagSource.Classification}
-                  onSelectionChange={handleTagSelection}
-                  onThreadLinkSelect={handleThreadLinkSelect}
-                />
-
-                <TagsContainerV2
-                  displayType={DisplayType.READ_MORE}
-                  entityFqn={decodedMlModelFqn}
-                  entityType={EntityType.MLMODEL}
-                  permission={editTagsPermission}
-                  selectedTags={mlModelTags}
-                  tagType={TagSource.Glossary}
-                  onSelectionChange={handleTagSelection}
-                  onThreadLinkSelect={handleThreadLinkSelect}
-                />
-              </Space>
+              <EntityRightPanel
+                dataProducts={mlModelDetail?.dataProducts ?? []}
+                domain={mlModelDetail?.domain}
+                editTagPermission={editTagsPermission}
+                entityFQN={decodedMlModelFqn}
+                entityType={EntityType.MLMODEL}
+                selectedTags={mlModelTags}
+                onTagSelectionChange={handleTagSelection}
+                onThreadLinkSelect={handleThreadLinkSelect}
+              />
             </Col>
           </Row>
         ),
@@ -514,6 +499,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       feedCount,
       activeTab,
       mlModelDetail,
+      mlModelName,
       mlModelPermissions,
       isEdit,
       getMlHyperParameters,
