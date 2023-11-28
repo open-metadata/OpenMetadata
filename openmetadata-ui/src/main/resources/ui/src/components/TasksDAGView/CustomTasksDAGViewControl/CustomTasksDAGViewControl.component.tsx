@@ -47,7 +47,7 @@ const CustomTasksDAGViewControl = ({
 
       return zoomInValue;
     });
-  }, [onZoomHandler]);
+  }, [onZoomHandler, setZoom]);
 
   const onZoomOutHandler = useCallback(() => {
     setZoom((pre) => {
@@ -56,7 +56,7 @@ const CustomTasksDAGViewControl = ({
 
       return zoomOutValue;
     });
-  }, [onZoomHandler]);
+  }, [onZoomHandler, setZoom]);
 
   const onFitViewHandler = useCallback(() => {
     fitView?.(fitViewParams);
