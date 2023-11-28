@@ -104,12 +104,12 @@ const UserRoles = React.memo(({ userName }: { userName: string }) => {
 const PopoverContent = React.memo(
   ({
     userName,
-    type = 'user',
+    type = UserTeam.User,
   }: {
     userName: string;
-    type: 'user' | 'team';
+    type: UserTeam;
   }) => {
-    const isTeam = type === 'team';
+    const isTeam = type === UserTeam.Team;
     const [, , user = {}] = useUserProfile({
       permission: true,
       name: userName,
