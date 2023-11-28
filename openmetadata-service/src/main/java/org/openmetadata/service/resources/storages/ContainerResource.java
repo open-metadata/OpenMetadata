@@ -374,9 +374,9 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
           @DefaultValue("false")
           boolean hardDelete,
       @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
-      @QueryParam("recursive")
-      @DefaultValue("false")
-      boolean recursive,
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
       @Parameter(description = "Container Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }

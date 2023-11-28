@@ -412,9 +412,9 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
           @DefaultValue("false")
           boolean hardDelete,
       @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
-      @QueryParam("recursive")
-      @DefaultValue("false")
-      boolean recursive,
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
       @Parameter(description = "Fully qualified name of the dashboard", schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {

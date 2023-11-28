@@ -404,9 +404,9 @@ public class MlModelServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
-        @DefaultValue("false")
-        @QueryParam("recursive")
-        boolean recursive,
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
       @Parameter(description = "Hard delete the entity. (Default = `false`)")
           @QueryParam("hardDelete")
           @DefaultValue("false")

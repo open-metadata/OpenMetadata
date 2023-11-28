@@ -410,9 +410,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @DefaultValue("false")
           boolean hardDelete,
       @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
-      @QueryParam("recursive")
-      @DefaultValue("false")
-      boolean recursive,
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
       @Parameter(description = "Name of the table", schema = @Schema(type = "string")) @PathParam("fqn") String fqn) {
     return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
   }
