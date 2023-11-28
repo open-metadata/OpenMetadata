@@ -43,7 +43,7 @@ const AsyncSelectList: FC<AsyncSelectListProps> = ({
   fetchOptions,
   debounceTimeout = 800,
   initialOptions,
-  filterOptions,
+  filterOptions = [],
   className,
   ...props
 }) => {
@@ -58,7 +58,7 @@ const AsyncSelectList: FC<AsyncSelectListProps> = ({
   const [optionFilteredCount, setOptionFilteredCount] = useState(0);
 
   const getFilteredOptions = (data: SelectOption[]) => {
-    if (!filterOptions) {
+    if (isEmpty(filterOptions)) {
       return data;
     }
 
