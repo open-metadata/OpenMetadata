@@ -21,9 +21,7 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { Column } from '../../../generated/entity/data/table';
 import { MOCK_TABLE } from '../../../mocks/TableData.mock';
-import { ColumnProfileTableProps } from '../TableProfiler.interface';
 import ColumnProfileTable from './ColumnProfileTable';
 
 jest.mock('../../../components/common/Table/Table', () =>
@@ -73,12 +71,13 @@ jest.mock('../../common/TestIndicator/TestIndicator', () => {
     </span>
   ));
 });
+jest.mock('../TableProfilerProvider', () => ({
+  useTableProfiler: jest.fn().mockImplementation(() => ({
+    tableProfiler: MOCK_TABLE,
+    splitTestCases: { column: [] },
+  })),
+}));
 jest.mock('../../../utils/DatasetDetailsUtils');
-
-const mockProps: ColumnProfileTableProps = {
-  columns: MOCK_TABLE.columns,
-  columnTests: [],
-};
 
 describe('Test ColumnProfileTable component', () => {
   beforeEach(() => {
@@ -86,7 +85,7 @@ describe('Test ColumnProfileTable component', () => {
   });
 
   it('should render without crashing', async () => {
-    render(<ColumnProfileTable {...mockProps} />, {
+    render(<ColumnProfileTable />, {
       wrapper: MemoryRouter,
     });
 
@@ -100,15 +99,9 @@ describe('Test ColumnProfileTable component', () => {
   });
 
   it('should render without crashing even if column is undefined', async () => {
-    render(
-      <ColumnProfileTable
-        {...mockProps}
-        columns={undefined as unknown as Column[]}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+    render(<ColumnProfileTable />, {
+      wrapper: MemoryRouter,
+    });
 
     const container = await screen.findByTestId(
       'column-profile-table-container'
@@ -120,7 +113,7 @@ describe('Test ColumnProfileTable component', () => {
   });
 
   it('search box should work as expected', async () => {
-    render(<ColumnProfileTable {...mockProps} />, {
+    render(<ColumnProfileTable />, {
       wrapper: MemoryRouter,
     });
 
