@@ -12,6 +12,7 @@
  */
 
 import { CloseCircleOutlined } from '@ant-design/icons';
+import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Button,
   Col,
@@ -123,6 +124,12 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
       }
 
       setDatesSelected(true);
+    } else {
+      setDatesSelected(false);
+      setStartTime(
+        getEpochMillisForPastDays(EXECUTION_FILTER_RANGE.last365days.days)
+      );
+      setEndTime(getCurrentMillis());
     }
   };
 
@@ -146,11 +153,11 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
               />
               <Space>
                 <Dropdown overlay={menu} placement="bottom">
-                  <Button ghost type="primary">
-                    <Space>
-                      <FilterIcon />
-                      {status === MenuOptions.all ? t('label.status') : status}
-                    </Space>
+                  <Button
+                    ghost
+                    icon={<Icon component={FilterIcon} size={12} />}
+                    type="primary">
+                    {status === MenuOptions.all ? t('label.status') : status}
                   </Button>
                 </Dropdown>
                 {view === PIPELINE_EXECUTION_TABS.LIST_VIEW ? (
@@ -161,12 +168,12 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
                         'range-picker-button-width delay-100':
                           !datesSelected && !isClickedCalendar,
                       })}
+                      icon={<Icon component={Calendar} size={12} />}
                       type="primary"
                       onClick={() => {
                         setIsClickedCalendar(true);
                       }}>
-                      <Space>
-                        <Calendar />
+                      <span>
                         {!datesSelected && (
                           <label>{t('label.date-filter')}</label>
                         )}
@@ -184,7 +191,7 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
                             setIsClickedCalendar(isOpen);
                           }}
                         />
-                      </Space>
+                      </span>
                     </Button>
                   </>
                 ) : null}
