@@ -83,6 +83,10 @@ import {
 } from '../../../SearchedData/SearchedData.interface';
 
 import { FilterOutlined, PlusOutlined } from '@ant-design/icons';
+import {
+  escapeESReservedCharacters,
+  getDecodedFqn,
+} from '../../../../utils/StringsUtils';
 import './assets-tabs.less';
 import { AssetsOfEntity, AssetsTabsProps } from './AssetsTabs.interface';
 
@@ -149,10 +153,14 @@ const AssetsTabs = forwardRef(
     const queryParam = useMemo(() => {
       switch (type) {
         case AssetsOfEntity.DOMAIN:
-          return `(domain.fullyQualifiedName:${fqn})`;
+          return `(domain.fullyQualifiedName:"${escapeESReservedCharacters(
+            entityFqn
+          )}")`;
 
         case AssetsOfEntity.DATA_PRODUCT:
-          return `(dataProducts.fullyQualifiedName:${fqn})`;
+          return `(dataProducts.fullyQualifiedName:"${escapeESReservedCharacters(
+            entityFqn
+          )}")`;
 
         case AssetsOfEntity.TEAM:
           return `(owner.fullyQualifiedName:"${fqn}")`;
@@ -162,9 +170,9 @@ const AssetsTabs = forwardRef(
           return queryFilter ?? '';
 
         default:
-          return `(tags.tagFQN:"${fqn}")`;
+          return `(tags.tagFQN:"${escapeESReservedCharacters(entityFqn)}")`;
       }
-    }, [type, fqn]);
+    }, [type, fqn, entityFqn]);
 
     const fetchAssets = useCallback(
       async ({
@@ -249,7 +257,7 @@ const AssetsTabs = forwardRef(
 
           break;
         case AssetsOfEntity.GLOSSARY:
-          data = await getGlossaryTermByFQN(fqn);
+          data = await getGlossaryTermByFQN(getDecodedFqn(fqn));
 
           break;
         default:

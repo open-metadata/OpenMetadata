@@ -36,6 +36,7 @@ import { getCountBadge, getFeedCounts } from '../../../utils/CommonUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import { getQueryFilterToExcludeTerm } from '../../../utils/GlossaryUtils';
 import { getGlossaryTermsVersionsPath } from '../../../utils/RouterUtils';
+import { escapeESReservedCharacters } from '../../../utils/StringsUtils';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { AssetSelectionModal } from '../../Assets/AssetsSelectionModal/AssetSelectionModal';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
@@ -244,13 +245,15 @@ const GlossaryTermsV1 = ({
   ]);
 
   const fetchGlossaryTermAssets = async () => {
-    if (glossaryFqn) {
+    if (glossaryTerm) {
       try {
         const res = await searchData(
           '',
           1,
           0,
-          `(tags.tagFQN:"${glossaryFqn}")`,
+          `(tags.tagFQN:"${escapeESReservedCharacters(
+            glossaryTerm.fullyQualifiedName
+          )}")`,
           '',
           '',
           SearchIndex.ALL
