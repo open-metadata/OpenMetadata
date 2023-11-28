@@ -175,6 +175,7 @@ plugins: Dict[str, Set[str]] = {
     "deltalake": {"delta-spark<=2.3.0"},
     "docker": {"python_on_whales==0.55.0"},
     "domo": {VERSIONS["pydomo"]},
+    "doris": {"pydoris==1.0.2"},
     "druid": {"pydruid>=0.6.5"},
     "dynamodb": {VERSIONS["boto3"]},
     "elasticsearch": {

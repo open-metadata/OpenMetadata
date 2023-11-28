@@ -33,6 +33,7 @@ import {
   DEFAULT_SERVICE,
   DELTALAKE,
   DOMO,
+  DORIS,
   DRUID,
   DYNAMODB,
   ELASTIC_SEARCH,
@@ -201,6 +202,9 @@ class ServiceUtilClassBase {
 
       case DatabaseServiceType.Db2:
         return IBMDB2;
+
+      case DatabaseServiceType.Doris:
+        return DORIS;
 
       case DatabaseServiceType.Druid:
         return DRUID;
