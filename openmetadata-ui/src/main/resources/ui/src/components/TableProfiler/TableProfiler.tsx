@@ -289,7 +289,8 @@ const TableProfiler = ({ isTableDeleted, permissions }: TableProfilerProps) => {
             <ColumnProfileTable
               columnTests={columnTests}
               columns={tableProfiler?.columns ?? []}
-              isLoading={isProfilerDataLoading}
+              isLoading={isProfilerDataLoading || isTestsLoading}
+              isProfilingEnabled={!isUndefined(tableProfiler?.profile)}
               isTableDeleted={isTableDeleted}
               overallSummary={overallSummary}
               permissions={permissions}

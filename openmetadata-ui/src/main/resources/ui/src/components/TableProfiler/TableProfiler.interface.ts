@@ -51,6 +51,7 @@ export interface ColumnProfileTableProps {
   columnTests: TestCase[];
   isLoading?: boolean;
   isTableDeleted?: boolean;
+  isProfilingEnabled?: boolean;
   permissions?: OperationPermission;
   onSettingButtonClick?: () => void;
 }

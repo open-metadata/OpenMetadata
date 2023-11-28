@@ -67,6 +67,7 @@ import {
 } from '../TableProfiler.interface';
 import ColumnPickerMenu from './ColumnPickerMenu';
 import ColumnSummary from './ColumnSummary';
+import NoProfilerBanner from './NoProfilerBanner.component';
 import ProfilerProgressWidget from './ProfilerProgressWidget';
 import SingleColumnProfile from './SingleColumnProfile';
 
@@ -78,6 +79,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
   isTableDeleted,
   permissions,
   onSettingButtonClick,
+  isProfilingEnabled,
 }) => {
   const location = useLocation();
   const { t } = useTranslation();
@@ -429,6 +431,11 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
           </Col>
         </Row>
       </Col>
+      {!isLoading && !isProfilingEnabled && (
+        <Col span={24}>
+          <NoProfilerBanner />
+        </Col>
+      )}
       <Col span={24}>
         <Row gutter={[16, 16]}>
           {!isUndefined(selectedColumn) && (

@@ -54,6 +54,7 @@ export const QualityTab = ({
     useState<string>('');
   const [selectedTestType, setSelectedTestType] = useState('');
   const [testSuite, setTestSuite] = useState<Table['testSuite']>();
+  const [isTestSuiteLoading, setIsTestSuiteLoading] = useState(true);
   const [splitTestCases, setSplitTestCases] = useState<{
     column: TestCase[];
     table: TestCase[];
@@ -176,6 +177,7 @@ export const QualityTab = ({
   );
 
   const fetchTestSuiteDetails = async () => {
+    setIsTestSuiteLoading(true);
     try {
       const details = await getTableDetailsByFQN(
         datasetFQN,
@@ -184,12 +186,16 @@ export const QualityTab = ({
       setTestSuite(details.testSuite);
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsTestSuiteLoading(false);
     }
   };
 
   useEffect(() => {
     if (isUndefined(testSuite)) {
       fetchTestSuiteDetails();
+    } else {
+      setIsTestSuiteLoading(false);
     }
   }, [testSuite]);
   useEffect(() => {
@@ -247,6 +253,7 @@ export const QualityTab = ({
       </Col>
       <Col span={24}>
         <SummaryPanel
+          isLoading={isTestSuiteLoading}
           testSummary={testSuite?.summary ?? INITIAL_TEST_SUMMARY}
         />
       </Col>
