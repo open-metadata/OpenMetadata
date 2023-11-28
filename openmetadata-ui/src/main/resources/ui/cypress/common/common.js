@@ -253,6 +253,7 @@ export const testServiceCreationAndIngestion = ({
   testIngestionButton = true,
   serviceCategory,
   shouldAddIngestion = true,
+  allowTestConnection = true,
 }) => {
   // Storing the created service name and the type of service
   // Select Service in step 1
@@ -322,28 +323,30 @@ export const testServiceCreationAndIngestion = ({
 
   interceptURL('GET', '/api/v1/automations/workflows/*', 'getWorkflow');
 
-  cy.get('[data-testid="test-connection-btn"]').should('exist').click();
+  if (allowTestConnection) {
+    cy.get('[data-testid="test-connection-btn"]').should('exist').click();
 
-  verifyResponseStatusCode('@testConnectionStepDefinition', 200);
+    verifyResponseStatusCode('@testConnectionStepDefinition', 200);
 
-  verifyResponseStatusCode('@createWorkflow', 201);
-  // added extra buffer time as triggerWorkflow API can take up to 2minute to provide result
-  verifyResponseStatusCode('@triggerWorkflow', 200, {
-    responseTimeout: 120000,
-  });
-  cy.get('[data-testid="test-connection-modal"]').should('exist');
-  cy.get('.ant-modal-footer > .ant-btn-primary')
-    .should('exist')
-    .contains('OK')
-    .click();
-  verifyResponseStatusCode('@getWorkflow', 200);
-  cy.get('[data-testid="messag-text"]').then(($message) => {
-    if ($message.text().includes('partially successful')) {
-      cy.contains('Test connection partially successful').should('exist');
-    } else {
-      cy.contains('Connection test was successful').should('exist');
-    }
-  });
+    verifyResponseStatusCode('@createWorkflow', 201);
+    // added extra buffer time as triggerWorkflow API can take up to 2minute to provide result
+    verifyResponseStatusCode('@triggerWorkflow', 200, {
+      responseTimeout: 120000,
+    });
+    cy.get('[data-testid="test-connection-modal"]').should('exist');
+    cy.get('.ant-modal-footer > .ant-btn-primary')
+      .should('exist')
+      .contains('OK')
+      .click();
+    verifyResponseStatusCode('@getWorkflow', 200);
+    cy.get('[data-testid="messag-text"]').then(($message) => {
+      if ($message.text().includes('partially successful')) {
+        cy.contains('Test connection partially successful').should('exist');
+      } else {
+        cy.contains('Connection test was successful').should('exist');
+      }
+    });
+  }
   interceptURL(
     'GET',
     '/api/v1/services/ingestionPipelines/status',
@@ -1186,13 +1189,13 @@ export const addOwner = (
   isGlossaryPage,
   isOwnerEmpty = false
 ) => {
+  interceptURL('GET', '/api/v1/users?limit=*&isBot=false', 'getUsers');
   if (isGlossaryPage && isOwnerEmpty) {
     cy.get('[data-testid="glossary-owner-name"] > [data-testid="Add"]').click();
   } else {
     cy.get('[data-testid="edit-owner"]').click();
   }
 
-  interceptURL('GET', '/api/v1/users?limit=25&isBot=false', 'getUsers');
   cy.get('.ant-tabs [id*=tab-users]').click();
   verifyResponseStatusCode('@getUsers', 200);
 
@@ -1265,7 +1268,6 @@ export const deleteEntity = (
   entityName,
   serviceName,
   entity,
-  entityType,
   successMessageEntityName,
   deletionType = 'hard'
 ) => {
@@ -1273,7 +1275,6 @@ export const deleteEntity = (
     term: entityName,
     serviceName,
     entity,
-    entityType,
   });
 
   cy.get('[data-testid="manage-button"]').click();
@@ -1417,7 +1418,7 @@ export const signupAndLogin = (email, password, firstName, lastName) => {
 
     // Login with the created user
     login(email, password);
-    cy.goToHomePage(true);
+    // cy.goToHomePage(true);
     cy.url().should('eq', `${BASE_URL}/my-data`);
 
     // Verify user profile

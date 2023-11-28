@@ -27,15 +27,11 @@ import {
   KNOWLEDGE_CENTER_CLASSIFICATION,
 } from '../../../constants/constants';
 import { TAG_CONSTANT, TAG_START_WITH } from '../../../constants/Tag.constants';
-import { SearchIndex } from '../../../enums/search.enum';
-import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
-import { Paging } from '../../../generated/type/paging';
 import { TagSource } from '../../../generated/type/tagLabel';
-import { getGlossaryTerms } from '../../../rest/glossaryAPI';
-import { searchQuery } from '../../../rest/searchAPI';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import {
+  fetchGlossaryList,
   fetchTagsElasticSearch,
   getTagPlaceholder,
 } from '../../../utils/TagsUtils';
@@ -96,42 +92,6 @@ const TagsContainerV2 = ({
     [tagType, permission, tags?.[tagType], tags, layoutType]
   );
 
-  const fetchGlossaryList = useCallback(
-    async (
-      searchQueryParam: string,
-      page: number
-    ): Promise<{
-      data: {
-        label: string;
-        value: string;
-        data: GlossaryTerm;
-      }[];
-      paging: Paging;
-    }> => {
-      const glossaryResponse = await searchQuery({
-        query: searchQueryParam ? `*${searchQueryParam}*` : '*',
-        pageNumber: page,
-        pageSize: 10,
-        queryFilter: {},
-        searchIndex: SearchIndex.GLOSSARY,
-      });
-
-      const hits = glossaryResponse.hits.hits;
-
-      return {
-        data: hits.map(({ _source }) => ({
-          label: _source.fullyQualifiedName ?? '',
-          value: _source.fullyQualifiedName ?? '',
-          data: _source,
-        })),
-        paging: {
-          total: glossaryResponse.hits.total.value,
-        },
-      };
-    },
-    [searchQuery, getGlossaryTerms]
-  );
-
   const fetchAPI = useCallback(
     (searchValue: string, page: number) => {
       if (tagType === TagSource.Classification) {
@@ -140,7 +100,7 @@ const TagsContainerV2 = ({
         return fetchGlossaryList(searchValue, page);
       }
     },
-    [tagType, fetchGlossaryList]
+    [tagType, filterClassifications]
   );
 
   const showNoDataPlaceholder = useMemo(

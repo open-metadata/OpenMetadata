@@ -303,9 +303,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
             responseCode = "200",
             description = "team",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Team.class))),
-        @ApiResponse(
-            responseCode = "404",
-            description = "Team for instance {id} and version {version} is " + "not found")
+        @ApiResponse(responseCode = "404", description = "Team for instance {id} and version {version} is not found")
       })
   public Team getVersion(
       @Context UriInfo uriInfo,
@@ -371,9 +369,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }

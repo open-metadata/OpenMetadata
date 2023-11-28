@@ -83,7 +83,7 @@ public final class DatabaseUtil {
         && viewDefinition != null
         && !viewDefinition.isEmpty()) {
       throw new IllegalArgumentException(
-          "ViewDefinition can only be set on TableType View, " + "SecureView or MaterializedView");
+          "ViewDefinition can only be set on TableType View, SecureView or MaterializedView");
     }
   }
 
@@ -149,7 +149,7 @@ public final class DatabaseUtil {
     ColumnDataType dataType = column.getDataType();
     if (dataType == ColumnDataType.STRUCT) {
       if (column.getChildren() == null) {
-        throw new IllegalArgumentException("For column data type struct, children " + "must not be null");
+        throw new IllegalArgumentException("For column data type struct, children must not be null");
       }
 
       validateColumnNames(column.getChildren());

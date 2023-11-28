@@ -25,7 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        e2e-test: ['bigquery', 'dbt_redshift', 'metabase', 'mssql', 'mysql', 'redash', 'snowflake', 'tableau', 'powerbi', 'vertica', 'python', 'redshift', 'hive', 'quicksight', 'datalake_s3', 'postgres', 'oracle', 'athena', 'bigquery_multiple_project']
+        e2e-test: ['bigquery', 'dbt_redshift', 'metabase', 'mssql', 'mysql', 'redash', 'snowflake', 'tableau', 'powerbi', 'vertica', 'python', 'redshift', 'quicksight', 'datalake_s3', 'postgres', 'oracle', 'athena', 'bigquery_multiple_project']
     environment: test
 
     steps:

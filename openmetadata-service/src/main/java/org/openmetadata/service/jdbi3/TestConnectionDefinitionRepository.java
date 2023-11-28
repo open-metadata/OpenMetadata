@@ -6,6 +6,7 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.services.connections.TestConnectionDefinition;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.service.resources.services.connections.TestConnectionDefinitionResource;
 import org.openmetadata.service.util.EntityUtil;
 
@@ -38,13 +39,13 @@ public class TestConnectionDefinitionRepository extends EntityRepository<TestCon
   }
 
   @Override
-  public TestConnectionDefinition setFields(TestConnectionDefinition entity, EntityUtil.Fields fields) {
-    return entity; // Nothing to set
+  public void setFields(TestConnectionDefinition entity, EntityUtil.Fields fields) {
+    /* Nothing to do */
   }
 
   @Override
-  public TestConnectionDefinition clearFields(TestConnectionDefinition entity, EntityUtil.Fields fields) {
-    return entity; // Nothing to set
+  public void clearFields(TestConnectionDefinition entity, EntityUtil.Fields fields) {
+    /* Nothing to do */
   }
 
   @Override

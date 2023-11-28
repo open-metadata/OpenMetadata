@@ -85,16 +85,16 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   @Override
-  public GlossaryTerm setFields(GlossaryTerm entity, Fields fields) {
+  public void setFields(GlossaryTerm entity, Fields fields) {
     entity.withParent(getParent(entity)).withGlossary(getGlossary(entity));
     entity.setRelatedTerms(fields.contains("relatedTerms") ? getRelatedTerms(entity) : entity.getRelatedTerms());
-    return entity.withUsageCount(fields.contains("usageCount") ? getUsageCount(entity) : entity.getUsageCount());
+    entity.withUsageCount(fields.contains("usageCount") ? getUsageCount(entity) : entity.getUsageCount());
   }
 
   @Override
-  public GlossaryTerm clearFields(GlossaryTerm entity, Fields fields) {
+  public void clearFields(GlossaryTerm entity, Fields fields) {
     entity.setRelatedTerms(fields.contains("relatedTerms") ? entity.getRelatedTerms() : null);
-    return entity.withUsageCount(fields.contains("usageCount") ? entity.getUsageCount() : null);
+    entity.withUsageCount(fields.contains("usageCount") ? entity.getUsageCount() : null);
   }
 
   @Override
@@ -244,6 +244,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     daoCollection.tagUsageDAO().deleteTagLabels(TagSource.GLOSSARY.ordinal(), entity.getFullyQualifiedName());
   }
 
+  @Override
   public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
     validateTaskThread(threadContext);
     TaskType taskType = threadContext.getThread().getTask().getType();
@@ -338,7 +339,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         new Thread()
             .withId(UUID.randomUUID())
             .withThreadTs(System.currentTimeMillis())
-            .withMessage("Approval required for ") // TODO fix this
+            .withMessage("Approval required for ")
             .withCreatedBy(entity.getUpdatedBy())
             .withAbout(about.getLinkString())
             .withType(ThreadType.Task)

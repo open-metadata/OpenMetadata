@@ -14,7 +14,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.ResultSummary;
-import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.tests.type.TestSummary;
@@ -46,17 +45,17 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   }
 
   @Override
-  public TestSuite setFields(TestSuite entity, EntityUtil.Fields fields) {
+  public void setFields(TestSuite entity, EntityUtil.Fields fields) {
     entity.setPipelines(fields.contains("pipelines") ? getIngestionPipelines(entity) : entity.getPipelines());
     entity.setSummary(fields.contains("summary") ? getTestCasesExecutionSummary(entity) : entity.getSummary());
-    return entity.withTests(fields.contains("tests") ? getTestCases(entity) : entity.getTests());
+    entity.withTests(fields.contains("tests") ? getTestCases(entity) : entity.getTests());
   }
 
   @Override
-  public TestSuite clearFields(TestSuite entity, EntityUtil.Fields fields) {
+  public void clearFields(TestSuite entity, EntityUtil.Fields fields) {
     entity.setPipelines(fields.contains("pipelines") ? entity.getPipelines() : null);
     entity.setSummary(fields.contains("summary") ? entity.getSummary() : null);
-    return entity.withTests(fields.contains("tests") ? entity.getTests() : null);
+    entity.withTests(fields.contains("tests") ? entity.getTests() : null);
   }
 
   private TestSummary buildTestSummary(HashMap<String, Integer> testCaseSummary, int total) {
@@ -86,13 +85,6 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     }
 
     return testCaseSummary;
-  }
-
-  private ResultSummary getResultSummary(TestCase testCase, Long timestamp, TestCaseStatus testCaseStatus) {
-    return new ResultSummary()
-        .withTestCaseName(testCase.getFullyQualifiedName())
-        .withStatus(testCaseStatus)
-        .withTimestamp(timestamp);
   }
 
   private TestSummary getTestCasesExecutionSummary(TestSuite entity) {

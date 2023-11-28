@@ -120,7 +120,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
           @QueryParam("root")
           @DefaultValue("false")
           Boolean root,
-      @Parameter(description = "Limit the number containers returned. (1 to 1000000, " + "default = 10)")
+      @Parameter(description = "Limit the number containers returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @Min(0)
           @Max(1000000)
@@ -242,9 +242,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
@@ -344,7 +342,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Container.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Container for instance {id} and version {version} is " + "not found")
+            description = "Container for instance {id} and version {version} is not found")
       })
   public Container getVersion(
       @Context UriInfo uriInfo,
@@ -449,7 +447,6 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
         .withNumberOfObjects(create.getNumberOfObjects())
         .withSize(create.getSize())
         .withFileFormats(create.getFileFormats())
-        .withSourceUrl(create.getSourceUrl())
-        .withTags(create.getTags());
+        .withSourceUrl(create.getSourceUrl());
   }
 }

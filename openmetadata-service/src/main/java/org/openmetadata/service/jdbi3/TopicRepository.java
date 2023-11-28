@@ -16,6 +16,7 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
@@ -45,6 +46,9 @@ import org.openmetadata.schema.type.topic.CleanupPolicy;
 import org.openmetadata.schema.type.topic.TopicSampleData;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.jdbi3.EntityRepository.DescriptionTaskWorkflow;
+import org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater;
+import org.openmetadata.service.jdbi3.EntityRepository.TagTaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
@@ -106,7 +110,7 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   @Override
-  public Topic setFields(Topic topic, Fields fields) {
+  public void setFields(Topic topic, Fields fields) {
     topic.setService(getContainer(topic.getId()));
     if (topic.getMessageSchema() != null) {
       populateEntityFieldTags(
@@ -115,12 +119,11 @@ public class TopicRepository extends EntityRepository<Topic> {
           topic.getFullyQualifiedName(),
           fields.contains(FIELD_TAGS));
     }
-    return topic;
   }
 
   @Override
-  public Topic clearFields(Topic topic, Fields fields) {
-    return topic;
+  public void clearFields(Topic topic, Fields fields) {
+    /* Nothing to do */
   }
 
   @Override
@@ -137,7 +140,7 @@ public class TopicRepository extends EntityRepository<Topic> {
 
   public Topic getSampleData(UUID topicId, boolean authorizePII) {
     // Validate the request content
-    Topic topic = dao.findEntityById(topicId);
+    Topic topic = find(topicId, NON_DELETED);
 
     TopicSampleData sampleData =
         JsonUtils.readValue(
@@ -176,19 +179,6 @@ public class TopicRepository extends EntityRepository<Topic> {
             setFieldFQN(fieldFqn, c.getChildren());
           }
         });
-  }
-
-  private void addDerivedFieldTags(List<Field> fields) {
-    if (nullOrEmpty(fields)) {
-      return;
-    }
-
-    for (Field field : fields) {
-      field.setTags(addDerivedTags(field.getTags()));
-      if (field.getChildren() != null) {
-        addDerivedFieldTags(field.getChildren());
-      }
-    }
   }
 
   List<Field> cloneWithoutTags(List<Field> fields) {

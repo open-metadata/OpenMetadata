@@ -185,7 +185,7 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
-  public boolean createIndex(IndexMapping indexMapping, String indexMappingContent) {
+  public void createIndex(IndexMapping indexMapping, String indexMappingContent) {
     if (Boolean.TRUE.equals(isClientAvailable)) {
       try {
         CreateIndexRequest request = new CreateIndexRequest(indexMapping.getIndexName());
@@ -196,13 +196,10 @@ public class OpenSearchClient implements SearchClient {
         createAliases(indexMapping);
       } catch (Exception e) {
         LOG.error("Failed to create Open Search indexes due to", e);
-        return false;
       }
-      return true;
     } else {
       LOG.error(
           "Failed to create Open Search index as client is not property configured, Please check your OpenMetadata configuration");
-      return false;
     }
   }
 

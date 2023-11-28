@@ -98,6 +98,7 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.VoteRequest;
+import org.openmetadata.schema.api.VoteRequest.VoteType;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.entity.data.Table;
@@ -299,13 +300,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * Set the requested fields in an entity. This is used for requesting specific fields in the object during GET
    * operations. It is also used during PUT and PATCH operations to set up fields that can be updated.
    */
-  public abstract T setFields(T entity, Fields fields);
+  public abstract void setFields(T entity, Fields fields);
 
   /**
    * Set the requested fields in an entity. This is used for requesting specific fields in the object during GET
    * operations. It is also used during PUT and PATCH operations to set up fields that can be updated.
    */
-  public abstract T clearFields(T entity, Fields fields);
+  public abstract void clearFields(T entity, Fields fields);
 
   /**
    * This method is used for validating an entity to be created during POST, PUT, and PATCH operations and prepare the
@@ -421,8 +422,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
   /** Initialize a given entity if it does not exist. */
   @Transaction
   public void initializeEntity(T entity) {
-    String existingJson = dao.findJsonByFqn(entity.getFullyQualifiedName(), ALL);
-    if (existingJson != null) {
+    T existingEntity = findByNameOrNull(entity.getFullyQualifiedName(), ALL);
+    if (existingEntity != null) {
       LOG.info("{} {} is already initialized", entityType, entity.getFullyQualifiedName());
       return;
     }
@@ -657,7 +658,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return JsonUtils.readValue(json, entityClass);
     }
     // If requested the latest version, return it from current version of the entity
-    T entity = setFieldsInternal(dao.findEntityById(id, ALL), putFields);
+    T entity = setFieldsInternal(find(id, ALL), putFields);
     if (entity.getVersion().equals(requestedVersion)) {
       return entity;
     }
@@ -666,7 +667,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public EntityHistory listVersions(UUID id) {
-    T latest = setFieldsInternal(dao.findEntityById(id, ALL), putFields);
+    T latest = setFieldsInternal(find(id, ALL), putFields);
     String extensionPrefix = EntityUtil.getVersionExtensionPrefix(entityType);
     List<ExtensionRecord> records = daoCollection.entityExtensionDAO().getExtensions(id, extensionPrefix);
     List<EntityVersionPair> oldVersions = new ArrayList<>();
@@ -737,7 +738,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @Transaction
   public final PutResponse<T> createOrUpdate(UriInfo uriInfo, T updated) {
-    T original = JsonUtils.readValue(dao.findJsonByFqn(updated.getFullyQualifiedName(), ALL), entityClass);
+    T original = findByNameOrNull(updated.getFullyQualifiedName(), ALL);
     if (original == null) { // If an original entity does not exist then create it, else update
       return new PutResponse<>(Status.CREATED, withHref(uriInfo, createNewEntity(updated)), RestUtil.ENTITY_CREATED);
     }
@@ -779,7 +780,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Transaction
   public final PatchResponse<T> patch(UriInfo uriInfo, UUID id, String user, JsonPatch patch) {
     // Get all the fields in the original entity that can be updated during PATCH operation
-    T original = setFieldsInternal(dao.findEntityById(id), patchFields);
+    T original = setFieldsInternal(find(id, NON_DELETED), patchFields);
     setInheritedFields(original, patchFields);
 
     // Apply JSON patch to the original entity to get the updated entity
@@ -804,8 +805,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @Transaction
   public PutResponse<T> addFollower(String updatedBy, UUID entityId, UUID userId) {
-    // Get entity
-    T entity = dao.findEntityById(entityId);
+    T entity = find(entityId, NON_DELETED);
 
     // Validate follower
     User user = daoCollection.userDAO().findEntityById(userId);
@@ -838,7 +838,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @Transaction
   public PutResponse<T> updateVote(String updatedBy, UUID entityId, VoteRequest request) {
-    T originalEntity = dao.findEntityById(entityId);
+    T originalEntity = find(entityId, NON_DELETED);
 
     // Validate User
     User user = daoCollection.userDAO().findEntityByName(FullyQualifiedName.quoteName(updatedBy));
@@ -851,7 +851,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     fieldUpdated(change, FIELD_VOTES, null, request.getUpdatedVoteType());
 
     // Add or Delete relationship
-    if (request.getUpdatedVoteType() == VoteRequest.VoteType.UN_VOTED) {
+    if (request.getUpdatedVoteType() == VoteType.UN_VOTED) {
       deleteRelationship(userId, Entity.USER, entityId, entityType, Relationship.VOTED);
     } else {
       addRelationship(
@@ -947,14 +947,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public final DeleteResponse<T> deleteInternalByName(
       String updatedBy, String name, boolean recursive, boolean hardDelete) {
     // Validate entity
-    T entity = dao.findEntityByName(name, ALL);
+    T entity = findByName(name, ALL);
     return delete(updatedBy, entity, recursive, hardDelete);
   }
 
   @Transaction
   public final DeleteResponse<T> deleteInternal(String updatedBy, UUID id, boolean recursive, boolean hardDelete) {
     // Validate entity
-    T entity = dao.findEntityById(id, ALL);
+    T entity = find(id, ALL);
     return delete(updatedBy, entity, recursive, hardDelete);
   }
 
@@ -1315,20 +1315,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (!supportsVotes || entity == null) {
       return new Votes();
     }
-    List<EntityReference> upVoters = new ArrayList<>();
-    List<EntityReference> downVoters = new ArrayList<>();
+    List<EntityRelationshipRecord> upVoterRecords = new ArrayList<>();
+    List<EntityRelationshipRecord> downVoterRecords = new ArrayList<>();
     List<EntityRelationshipRecord> records =
         findFromRecords(entity.getId(), entityType, Relationship.VOTED, Entity.USER);
     for (EntityRelationshipRecord entityRelationshipRecord : records) {
-      VoteRequest.VoteType type;
-      type = JsonUtils.readValue(entityRelationshipRecord.getJson(), VoteRequest.VoteType.class);
-      EntityReference user = Entity.getEntityReferenceById(Entity.USER, entityRelationshipRecord.getId(), ALL);
-      if (type == VoteRequest.VoteType.VOTED_UP) {
-        upVoters.add(user);
-      } else if (type == VoteRequest.VoteType.VOTED_DOWN) {
-        downVoters.add(user);
+      VoteType type = JsonUtils.readValue(entityRelationshipRecord.getJson(), VoteType.class);
+      if (type == VoteType.VOTED_UP) {
+        upVoterRecords.add(entityRelationshipRecord);
+      } else if (type == VoteType.VOTED_DOWN) {
+        downVoterRecords.add(entityRelationshipRecord);
       }
     }
+    List<EntityReference> upVoters = getEntityReferences(upVoterRecords);
+    List<EntityReference> downVoters = getEntityReferences(downVoterRecords);
     return new Votes()
         .withUpVotes(upVoters.size())
         .withDownVotes(downVoters.size())
@@ -1363,7 +1363,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     // Finally set entity deleted flag to false
     LOG.info("Restoring the {} {}", entityType, id);
-    T original = dao.findEntityById(id, DELETED);
+    T original = find(id, DELETED);
     setFieldsInternal(original, putFields);
     T updated = JsonUtils.readValue(JsonUtils.pojoToJson(original), entityClass);
     updated.setUpdatedBy(updatedBy);
@@ -1699,14 +1699,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected List<EntityReference> getIngestionPipelines(T service) {
-    List<EntityRelationshipRecord> pipelines =
-        findToRecords(service.getId(), entityType, Relationship.CONTAINS, Entity.INGESTION_PIPELINE);
-    List<EntityReference> ingestionPipelines = new ArrayList<>();
-    for (EntityRelationshipRecord entityRelationshipRecord : pipelines) {
-      ingestionPipelines.add(
-          Entity.getEntityReferenceById(Entity.INGESTION_PIPELINE, entityRelationshipRecord.getId(), ALL));
-    }
-    return ingestionPipelines;
+    return findTo(service.getId(), entityType, Relationship.CONTAINS, Entity.INGESTION_PIPELINE);
   }
 
   protected void checkSystemEntityDeletion(T entity) {
@@ -1853,7 +1846,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     protected T previous;
     protected T original;
     protected T updated;
-    protected Operation operation;
+    protected final Operation operation;
     protected ChangeDescription changeDescription = null;
     protected boolean majorVersionChange = false;
     protected final User updatingUser;

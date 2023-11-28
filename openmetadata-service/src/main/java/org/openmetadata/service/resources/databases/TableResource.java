@@ -176,7 +176,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @QueryParam("includeEmptyTestSuite")
           @DefaultValue("true")
           boolean includeEmptyTestSuite,
-      @Parameter(description = "Limit the number tables returned. (1 to 1000000, default = " + "10) ")
+      @Parameter(description = "Limit the number tables returned. (1 to 1000000, default = 10) ")
           @DefaultValue("10")
           @Min(0)
           @Max(1000000)
@@ -295,9 +295,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
             responseCode = "200",
             description = "table",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class))),
-        @ApiResponse(
-            responseCode = "404",
-            description = "Table for instance {id} and version {version} is " + "not found")
+        @ApiResponse(responseCode = "404", description = "Table for instance {id} and version {version} is not found")
       })
   public Table getVersion(
       @Context UriInfo uriInfo,
@@ -364,9 +362,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
@@ -470,7 +466,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
             description = "Successfully updated the Table",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class))),
         @ApiResponse(responseCode = "404", description = "Table for instance {id} is not found"),
-        @ApiResponse(responseCode = "400", description = "Date range can only include past 30 days starting" + " today")
+        @ApiResponse(responseCode = "400", description = "Date range can only include past 30 days starting today")
       })
   public Table addJoins(
       @Context UriInfo uriInfo,
@@ -968,7 +964,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
                 .withTableConstraints(create.getTableConstraints())
                 .withTablePartition(create.getTablePartition())
                 .withTableType(create.getTableType())
-                .withTags(create.getTags())
                 .withFileFormat(create.getFileFormat())
                 .withViewDefinition(create.getViewDefinition())
                 .withTableProfilerConfig(create.getTableProfilerConfig())

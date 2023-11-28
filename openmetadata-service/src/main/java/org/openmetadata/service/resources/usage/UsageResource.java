@@ -87,13 +87,12 @@ public class UsageResource {
           String entity,
       @Parameter(description = "Entity id", required = true, schema = @Schema(type = "string")) @PathParam("id")
           UUID id,
-      @Parameter(
-              description = "Usage for number of days going back from the given date " + "(default=1, min=1, max=30)")
+      @Parameter(description = "Usage for number of days going back from the given date (default=1, min=1, max=30)")
           @QueryParam("days")
           int days,
       @Parameter(
               description =
-                  "Usage for number of days going back from this date in ISO 8601 format. " + "(default = currentDate)")
+                  "Usage for number of days going back from this date in ISO 8601 format. (default = currentDate)")
           @QueryParam("date")
           String date) {
     OperationContext operationContext = new OperationContext(entity, MetadataOperation.VIEW_USAGE);
@@ -133,13 +132,12 @@ public class UsageResource {
               schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn,
-      @Parameter(
-              description = "Usage for number of days going back from the given date " + "(default=1, min=1, max=30)")
+      @Parameter(description = "Usage for number of days going back from the given date (default=1, min=1, max=30)")
           @QueryParam("days")
           int days,
       @Parameter(
               description =
-                  "Usage for number of days going back from this date in ISO 8601 format " + "(default = currentDate)")
+                  "Usage for number of days going back from this date in ISO 8601 format (default = currentDate)")
           @QueryParam("date")
           String date) {
     OperationContext operationContext = new OperationContext(entity, MetadataOperation.VIEW_USAGE);

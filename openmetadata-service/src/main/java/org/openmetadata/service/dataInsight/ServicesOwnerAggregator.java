@@ -8,7 +8,7 @@ import org.openmetadata.schema.dataInsight.type.PercentageOfServicesWithOwner;
 public abstract class ServicesOwnerAggregator<A, B, M, S> implements DataInsightAggregatorInterface {
   protected final A aggregations;
 
-  public ServicesOwnerAggregator(A aggregations) {
+  protected ServicesOwnerAggregator(A aggregations) {
     this.aggregations = aggregations;
   }
 
