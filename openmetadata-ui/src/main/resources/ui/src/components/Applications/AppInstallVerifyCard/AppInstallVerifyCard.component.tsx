@@ -75,7 +75,8 @@ const AppInstallVerifyCard = ({
       <Card className="w-500 m-t-md">
         <Space size={12}>
           <UserPopOverCard
-            userName={currentUser?.displayName ?? currentUser?.name ?? ''}
+            profileWidth={32}
+            userName={currentUser?.name ?? ''}
           />
           <div className="d-flex flex-col">
             <Typography.Text className="font-medium">

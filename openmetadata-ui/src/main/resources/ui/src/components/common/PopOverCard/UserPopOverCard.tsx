@@ -12,6 +12,7 @@
  */
 
 import { Button, Popover, Space } from 'antd';
+import classNames from 'classnames';
 import { t } from 'i18next';
 import { get, isEmpty } from 'lodash';
 import React, {
@@ -37,6 +38,7 @@ import { getNonDeletedTeams } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { useApplicationConfigContext } from '../../ApplicationConfigProvider/ApplicationConfigProvider';
 import Loader from '../../Loader/Loader';
+import { UserTeam } from '../AssigneeList/AssigneeList.interface';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 
 const UserTeams = React.memo(({ userName }: { userName: string }) => {
@@ -213,23 +215,23 @@ interface Props extends HTMLAttributes<HTMLDivElement> {
   type?: 'user' | 'team';
   showUserName?: boolean;
   showUserProfile?: boolean;
+  profileWidth?: number;
 }
 
 const UserPopOverCard: FC<Props> = ({
   userName,
-  type = 'user',
+  type = UserTeam.User,
   showUserName = false,
   showUserProfile = true,
   children,
+  profileWidth = 24,
 }) => {
-  const container = document.getElementById('app-container') ?? document.body;
-
   const profilePicture = (
     <ProfilePicture
-      isTeam={type === 'team'}
+      isTeam={type === UserTeam.Team}
       name={userName}
       type="circle"
-      width="24"
+      width={`${profileWidth}`}
     />
   );
 
@@ -237,7 +239,6 @@ const UserPopOverCard: FC<Props> = ({
     <Popover
       align={{ targetOffset: [0, -10] }}
       content={<PopoverContent type={type} userName={userName} />}
-      getPopupContainer={() => container}
       overlayClassName="ant-popover-card"
       title={
         <PopoverTitle
@@ -249,7 +250,9 @@ const UserPopOverCard: FC<Props> = ({
       trigger="hover">
       {children ?? (
         <Link
-          className="assignee-item d-flex gap-1 m-r-xs cursor-pointer"
+          className={classNames('assignee-item d-flex gap-1 cursor-pointer', {
+            'm-r-xs': showUserName && showUserProfile,
+          })}
           data-testid={`assignee-${userName}`}
           to={
             type === 'team'

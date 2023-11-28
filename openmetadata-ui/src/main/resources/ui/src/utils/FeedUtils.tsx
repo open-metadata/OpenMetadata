@@ -20,6 +20,7 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import Showdown from 'showdown';
 import TurndownService from 'turndown';
+import { UserTeam } from '../components/common/AssigneeList/AssigneeList.interface';
 import { MentionSuggestionsItem } from '../components/FeedEditor/FeedEditor.interface';
 import { SearchedDataProps } from '../components/SearchedData/SearchedData.interface';
 import {
@@ -201,7 +202,8 @@ export async function suggestions(
               ENTITY_URL_MAP[entityType as EntityUrlMapType],
               hit._source.name
             ),
-            type: hit._index === 'user_search_index' ? 'user' : 'team',
+            type:
+              hit._index === SearchIndex.USER ? UserTeam.User : UserTeam.Team,
             name: hit._source.name,
           };
         })
@@ -226,7 +228,8 @@ export async function suggestions(
               ENTITY_URL_MAP[entityType as EntityUrlMapType],
               hit._source.name
             ),
-            type: hit._index === 'user_search_index' ? 'user' : 'team',
+            type:
+              hit._index === SearchIndex.USER ? UserTeam.User : UserTeam.Team,
             name: hit._source.name,
           };
         })
