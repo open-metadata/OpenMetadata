@@ -123,7 +123,7 @@
           "description": {
             "type": "text",
             "index_options": "docs",
-            "analyzer": "om_analyzer",
+            "analyzer": "om_analyzer_jp",
             "norms": false
           },
           "fullyQualifiedName": {
