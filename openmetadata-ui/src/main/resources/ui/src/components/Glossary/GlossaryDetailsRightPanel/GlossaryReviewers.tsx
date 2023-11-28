@@ -72,7 +72,6 @@ function GlossaryReviewers({
             displayName={getEntityName(reviewer)}
             name={reviewer.name ?? ''}
             textClass="text-xs"
-            type="circle"
             width="20"
           />
           <Link to={getUserPath(reviewer.name ?? '')}>

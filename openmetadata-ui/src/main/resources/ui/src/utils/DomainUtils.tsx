@@ -45,7 +45,6 @@ export const getOwner = (
           displayName={getEntityName(owner)}
           name={owner?.name ?? ''}
           textClass="text-xs"
-          type="circle"
           width="20"
         />
         <Link

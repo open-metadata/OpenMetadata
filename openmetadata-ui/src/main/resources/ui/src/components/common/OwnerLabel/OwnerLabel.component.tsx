@@ -67,7 +67,6 @@ export const OwnerLabel = ({
         displayName={displayName}
         key="profile-picture"
         name={owner.name ?? ''}
-        type="circle"
         width="18"
       />
     );

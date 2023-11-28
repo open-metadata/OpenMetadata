@@ -58,7 +58,7 @@ export const UserTag = ({
       )}
       data-testid="user-tag"
       size={8}>
-      <ProfilePicture name={id} type="circle" width={toString(width[size])} />
+      <ProfilePicture name={id} width={toString(width[size])} />
       <Typography.Text className={fontSizes[size]}>{name}</Typography.Text>
       {closable && <CloseOutlined size={width[size]} onClick={onRemove} />}
     </Space>

@@ -172,7 +172,7 @@ describe('Activity feed', () => {
     interceptURL('POST', '/api/v1/feed/*/posts', 'postReply');
     interceptURL(
       'GET',
-      '/api/v1/search/suggest?q=aa&index=user_search_index%2Cteam_search_index',
+      '/api/v1/search/suggest?q=*&index=user_search_index%2Cteam_search_index',
       'suggestUser'
     );
     interceptURL(

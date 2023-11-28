@@ -17,27 +17,21 @@ import { t } from 'i18next';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import React from 'react';
 import { Link } from 'react-router-dom';
-import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
-import { getUserPath } from '../constants/constants';
+import UserPopOverCard from '../components/common/PopOverCard/UserPopOverCard';
 import { EntityReference, User } from '../generated/entity/teams/user';
 import { getEntityName } from './EntityUtils';
 import { LIST_CAP } from './PermissionsUtils';
 import { getRoleWithFqnPath, getTeamsWithFqnPath } from './RouterUtils';
 
 export const userCellRenderer = (user: EntityReference | User) => {
-  return (
-    <Link
-      className="d-flex gap-2 items-center "
+  return user.name ? (
+    <UserPopOverCard
       data-testid={user.name}
-      to={getUserPath(user.fullyQualifiedName ?? user.name ?? '')}>
-      <ProfilePicture
-        displayName={user.displayName}
-        name={user.name ?? ''}
-        type="circle"
-        width="16"
-      />
-      {getEntityName(user)}
-    </Link>
+      profileWidth={16}
+      userName={user.name}
+    />
+  ) : (
+    getEntityName(user)
   );
 };
 

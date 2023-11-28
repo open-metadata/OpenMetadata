@@ -64,7 +64,6 @@ function DomainExperts({
             displayName={getEntityName(expert)}
             name={expert.name ?? ''}
             textClass="text-xs"
-            type="circle"
             width="20"
           />
           <Link to={getUserPath(expert.name ?? '')}>

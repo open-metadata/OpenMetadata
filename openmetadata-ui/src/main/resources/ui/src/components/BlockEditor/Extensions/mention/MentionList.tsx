@@ -110,7 +110,7 @@ export default forwardRef<ExtensionRef, SuggestionProps<SuggestionItem>>(
             id={`mention-item-${item.id}`}
             key={item.id}
             onClick={() => selectItem(index)}>
-            <ProfilePicture name={item.name} type="circle" width="20" />
+            <ProfilePicture name={item.name} width="20" />
             <Typography className="truncate w-max-200">{item.label}</Typography>
           </Space>
         ))}

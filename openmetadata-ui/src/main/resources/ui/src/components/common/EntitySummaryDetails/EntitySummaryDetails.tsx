@@ -112,7 +112,6 @@ const EntitySummaryDetails = ({
                     <ProfilePicture
                       displayName={userDetails.ownerName}
                       name={userDetails.ownerName ?? ''}
-                      type="circle"
                       width="24"
                     />
                     <span data-testid="owner-link">
@@ -133,7 +132,6 @@ const EntitySummaryDetails = ({
                   <ProfilePicture
                     displayName={displayVal}
                     name={data.profileName ?? ''}
-                    type="circle"
                     width={data.avatarWidth ?? '24'}
                   />
                 )}

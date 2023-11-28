@@ -60,7 +60,7 @@ const UserTeams = React.memo(({ userName }: { userName: string }) => {
           <span
             className="bg-grey rounded-4 p-x-xs text-grey-body text-xs m-b-xss"
             key={team.id}>
-            {team?.displayName ?? team?.name}
+            {getEntityName(team)}
           </span>
         ))}
       </p>
@@ -169,18 +169,18 @@ const PopoverTitle = React.memo(
   ({
     userName,
     profilePicture,
-    type = 'user',
+    type = UserTeam.User,
   }: {
     userName: string;
     profilePicture: JSX.Element;
-    type: 'user' | 'team';
+    type: UserTeam;
   }) => {
     const history = useHistory();
 
     const [, , userData] = useUserProfile({
       permission: true,
       name: userName,
-      isTeam: type === 'team',
+      isTeam: type === UserTeam.Team,
     });
 
     const onTitleClickHandler = (path: string) => {
@@ -214,7 +214,7 @@ const PopoverTitle = React.memo(
 
 interface Props extends HTMLAttributes<HTMLDivElement> {
   userName: string;
-  type?: 'user' | 'team';
+  type?: UserTeam;
   showUserName?: boolean;
   showUserProfile?: boolean;
   profileWidth?: number;
@@ -232,7 +232,6 @@ const UserPopOverCard: FC<Props> = ({
     <ProfilePicture
       isTeam={type === UserTeam.Team}
       name={userName}
-      type="circle"
       width={`${profileWidth}`}
     />
   );
@@ -252,12 +251,15 @@ const UserPopOverCard: FC<Props> = ({
       trigger="hover">
       {children ?? (
         <Link
-          className={classNames('assignee-item d-flex gap-1 cursor-pointer', {
-            'm-r-xs': showUserName && showUserProfile,
-          })}
+          className={classNames(
+            'assignee-item d-flex gap-1 cursor-pointer align-center',
+            {
+              'm-r-xs': showUserName && showUserProfile,
+            }
+          )}
           data-testid={`assignee-${userName}`}
           to={
-            type === 'team'
+            type === UserTeam.Team
               ? getTeamAndUserDetailsPath(userName)
               : getUserPath(userName ?? '')
           }>

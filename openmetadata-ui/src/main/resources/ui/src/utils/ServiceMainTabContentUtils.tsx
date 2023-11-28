@@ -91,7 +91,7 @@ export const getServiceMainTabColumns = (
     render: (owner: ServicePageData['owner']) =>
       !isUndefined(owner) ? (
         <Space data-testid="owner-data">
-          <ProfilePicture name={owner.name ?? ''} type="circle" width="24" />
+          <ProfilePicture name={owner.name ?? ''} width="24" />
           <Typography.Text data-testid={`${owner.name}-owner-name`}>
             {getEntityName(owner)}
           </Typography.Text>
