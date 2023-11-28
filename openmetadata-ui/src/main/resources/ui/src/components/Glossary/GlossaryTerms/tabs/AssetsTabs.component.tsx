@@ -70,6 +70,7 @@ import {
 import { getCountBadge, Transi18next } from '../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getEntityTypeFromSearchIndex } from '../../../../utils/SearchUtils';
+import { getDecodedFqn } from '../../../../utils/StringsUtils';
 import { getEntityIcon } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -249,7 +250,7 @@ const AssetsTabs = forwardRef(
 
           break;
         case AssetsOfEntity.GLOSSARY:
-          data = await getGlossaryTermByFQN(fqn);
+          data = await getGlossaryTermByFQN(getDecodedFqn(fqn));
 
           break;
         default:
