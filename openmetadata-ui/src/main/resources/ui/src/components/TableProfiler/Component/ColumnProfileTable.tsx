@@ -26,7 +26,7 @@ import {
   toLower,
 } from 'lodash';
 import Qs from 'qs';
-import React, { FC, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
 import { ReactComponent as DropDownIcon } from '../../../assets/svg/DropDown.svg';
@@ -61,31 +61,35 @@ import PageHeader from '../../PageHeader/PageHeader.component';
 import { DateRangeObject } from '../../ProfilerDashboard/component/TestSummary';
 import TabsLabel from '../../TabsLabel/TabsLabel.component';
 import {
-  ColumnProfileTableProps,
   columnTestResultType,
   ModifiedColumn,
 } from '../TableProfiler.interface';
+import { useTableProfiler } from '../TableProfilerProvider';
 import ColumnPickerMenu from './ColumnPickerMenu';
 import ColumnSummary from './ColumnSummary';
 import NoProfilerBanner from './NoProfilerBanner.component';
 import ProfilerProgressWidget from './ProfilerProgressWidget';
 import SingleColumnProfile from './SingleColumnProfile';
 
-const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
-  columnTests,
-  columns = [],
-  isLoading,
-  overallSummary,
-  isTableDeleted,
-  permissions,
-  onSettingButtonClick,
-  isProfilingEnabled,
-}) => {
+const ColumnProfileTable = () => {
   const location = useLocation();
   const { t } = useTranslation();
   const history = useHistory();
   const { fqn } = useParams<{ fqn: string }>();
-
+  const {
+    isTestsLoading,
+    isProfilerDataLoading,
+    overallSummary,
+    isTableDeleted,
+    permissions,
+    onSettingButtonClick,
+    isProfilingEnabled,
+    tableProfiler,
+    splitTestCases,
+  } = useTableProfiler();
+  const isLoading = isTestsLoading || isProfilerDataLoading;
+  const columnTests = splitTestCases.column ?? [];
+  const columns = tableProfiler?.columns ?? [];
   const [searchText, setSearchText] = useState<string>('');
   const [data, setData] = useState<ModifiedColumn[]>(columns);
   const [columnTestSummary, setColumnTestSummary] =

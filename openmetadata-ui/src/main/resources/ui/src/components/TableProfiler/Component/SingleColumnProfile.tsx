@@ -16,7 +16,6 @@ import { first, isString, last, sortBy } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import DataDistributionHistogram from '../../../components/Chart/DataDistributionHistogram.component';
-import Loader from '../../../components/Loader/Loader';
 import ProfilerDetailsCard from '../../../components/ProfilerDashboard/component/ProfilerDetailsCard';
 import { DateRangeObject } from '../../../components/ProfilerDashboard/component/TestSummary';
 import { MetricChartType } from '../../../components/ProfilerDashboard/profilerDashboard.interface';
@@ -44,7 +43,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
   dateRangeObject,
 }) => {
   const { t } = useTranslation();
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [columnProfilerData, setColumnProfilerData] = useState<ColumnProfile[]>(
     []
   );
@@ -213,10 +212,6 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
     fetchColumnProfilerData(activeColumnFqn, dateRangeObject);
   }, [activeColumnFqn, dateRangeObject]);
 
-  if (isLoading) {
-    return <Loader />;
-  }
-
   return (
     <Row
       className="m-b-lg"
@@ -225,6 +220,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
       <Col span={24}>
         <ProfilerDetailsCard
           chartCollection={countMetrics}
+          isLoading={isLoading}
           name="count"
           title={t('label.data-count-plural')}
         />
@@ -232,6 +228,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
       <Col span={24}>
         <ProfilerDetailsCard
           chartCollection={proportionMetrics}
+          isLoading={isLoading}
           name="proportion"
           tickFormatter="%"
           title={t('label.data-proportion-plural')}
@@ -240,6 +237,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
       <Col span={24}>
         <ProfilerDetailsCard
           chartCollection={mathMetrics}
+          isLoading={isLoading}
           name="math"
           showYAxisCategory={isMinMaxStringData}
           // only min/max category can be string
@@ -249,6 +247,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
       <Col span={24}>
         <ProfilerDetailsCard
           chartCollection={sumMetrics}
+          isLoading={isLoading}
           name="sum"
           title={t('label.data-aggregate')}
         />
@@ -256,6 +255,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
       <Col span={24}>
         <ProfilerDetailsCard
           chartCollection={quartileMetrics}
+          isLoading={isLoading}
           name="quartile"
           title={t('label.data-quartile-plural')}
         />
@@ -263,7 +263,8 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
       <Col span={24}>
         <Card
           className="shadow-none global-border-radius"
-          data-testid="histogram-metrics">
+          data-testid="histogram-metrics"
+          loading={isLoading}>
           <Row gutter={[16, 16]}>
             <Col span={24}>
               <Typography.Title data-testid="data-distribution-title" level={5}>

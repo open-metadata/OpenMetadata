@@ -11,16 +11,19 @@
  *  limitations under the License.
  */
 
+import { ReactNode } from 'react';
 import { SystemProfile } from '../../generated/api/data/createTableProfile';
 import {
   Column,
   ColumnProfilerConfig,
   PartitionProfilerConfig,
   ProfileSampleType,
+  Table,
   TableProfile,
   TableProfilerConfig,
 } from '../../generated/entity/data/table';
 import { TestCase } from '../../generated/tests/testCase';
+import { ListTestCaseParams } from '../../rest/testAPI';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 
 export interface TableProfilerProps {
@@ -28,6 +31,29 @@ export interface TableProfilerProps {
   permissions: OperationPermission;
 }
 
+export interface TableProfilerProviderProps extends TableProfilerProps {
+  children: ReactNode;
+}
+
+export type TableProfilerContextType = {
+  isTableDeleted?: boolean;
+  permissions: OperationPermission;
+  isTestsLoading: boolean;
+  isProfilerDataLoading: boolean;
+  tableProfiler?: Table;
+  allTestCases: TestCase[];
+  overallSummary: OverallTableSummaryType[];
+  onTestCaseUpdate: (testCase?: TestCase) => void;
+  onSettingButtonClick: () => void;
+  fetchAllTests: (params?: ListTestCaseParams) => Promise<void>;
+  isProfilingEnabled: boolean;
+  splitTestCases: SplitTestCasesType;
+};
+
+export type SplitTestCasesType = {
+  column: TestCase[];
+  table: TestCase[];
+};
 export type TableTestsType = {
   tests: TestCase[];
   results: {
@@ -44,17 +70,6 @@ export type ModifiedColumn = Column & {
 export type columnTestResultType = {
   [key: string]: { results: TableTestsType['results']; count: number };
 };
-
-export interface ColumnProfileTableProps {
-  overallSummary?: OverallTableSummaryType[];
-  columns: Column[];
-  columnTests: TestCase[];
-  isLoading?: boolean;
-  isTableDeleted?: boolean;
-  isProfilingEnabled?: boolean;
-  permissions?: OperationPermission;
-  onSettingButtonClick?: () => void;
-}
 
 export interface ProfilerProgressWidgetProps {
   value: number;
@@ -86,11 +101,11 @@ export type TableProfilerData = {
 
 export type TableProfilerChartProps = {
   entityFqn?: string;
+  showHeader?: boolean;
   overallSummary?: OverallTableSummaryType[];
   isSummaryLoading?: boolean;
   isProfilingEnabled?: boolean;
   isTableDeleted?: boolean;
-  showHeader?: boolean;
   permissions?: OperationPermission;
   onSettingButtonClick?: () => void;
 };

@@ -34,17 +34,19 @@ import { getDecodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import PageHeader from '../../PageHeader/PageHeader.component';
 import TabsLabel from '../../TabsLabel/TabsLabel.component';
-import { QualityTabProps } from './QualityTab.interface';
+import { useTableProfiler } from '../TableProfilerProvider';
 
-export const QualityTab = ({
-  isLoading,
-  testCases,
-  onTestCaseResultUpdate,
-  onTestUpdate,
-  afterDeleteAction,
-  permissions,
-  isTableDeleted,
-}: QualityTabProps) => {
+export const QualityTab = () => {
+  const {
+    permissions,
+    fetchAllTests,
+    onTestCaseUpdate,
+    allTestCases,
+    splitTestCases,
+    isTestsLoading,
+    isTableDeleted,
+  } = useTableProfiler();
+
   const editTest = permissions.EditAll || permissions.EditTests;
   const { fqn: datasetFQN } = useParams<{ fqn: string }>();
   const history = useHistory();
@@ -55,26 +57,9 @@ export const QualityTab = ({
   const [selectedTestType, setSelectedTestType] = useState('');
   const [testSuite, setTestSuite] = useState<Table['testSuite']>();
   const [isTestSuiteLoading, setIsTestSuiteLoading] = useState(true);
-  const [splitTestCases, setSplitTestCases] = useState<{
-    column: TestCase[];
-    table: TestCase[];
-  }>({ column: [], table: [] });
-
-  const splitTableAndColumnTest = (data: TestCase[]) => {
-    const columnTestsCase: TestCase[] = [];
-    const tableTests: TestCase[] = [];
-    data.forEach((test) => {
-      if (test.entityFQN === datasetFQN) {
-        tableTests.push(test);
-      } else {
-        columnTestsCase.push(test);
-      }
-    });
-    setSplitTestCases({ column: columnTestsCase, table: tableTests });
-  };
 
   const filteredTestCase = useMemo(() => {
-    let tests: TestCase[] = testCases ?? [];
+    let tests: TestCase[] = allTestCases ?? [];
     if (selectedTestType === TestType.Table) {
       tests = splitTestCases.table;
     } else if (selectedTestType === TestType.Column) {
@@ -86,7 +71,7 @@ export const QualityTab = ({
         selectedTestCaseStatus === '' ||
         data.testCaseResult?.testCaseStatus === selectedTestCaseStatus
     );
-  }, [selectedTestCaseStatus, selectedTestType, testCases, splitTestCases]);
+  }, [selectedTestCaseStatus, selectedTestType, allTestCases, splitTestCases]);
   const tabs = useMemo(
     () => [
       {
@@ -95,12 +80,12 @@ export const QualityTab = ({
         children: (
           <div className="p-t-md">
             <DataQualityTab
-              afterDeleteAction={afterDeleteAction}
-              isLoading={isLoading}
+              afterDeleteAction={fetchAllTests}
+              isLoading={isTestsLoading}
               showTableColumn={false}
               testCases={filteredTestCase}
-              onTestCaseResultUpdate={onTestCaseResultUpdate}
-              onTestUpdate={onTestUpdate}
+              onTestCaseResultUpdate={onTestCaseUpdate}
+              onTestUpdate={onTestCaseUpdate}
             />
           </div>
         ),
@@ -111,7 +96,7 @@ export const QualityTab = ({
         children: <TestSuitePipelineTab testSuite={testSuite} />,
       },
     ],
-    [isLoading, filteredTestCase, onTestUpdate, onTestCaseResultUpdate]
+    [isTestsLoading, filteredTestCase, onTestCaseUpdate]
   );
 
   const testCaseTypeOption = useMemo(() => {
@@ -198,9 +183,6 @@ export const QualityTab = ({
       setIsTestSuiteLoading(false);
     }
   }, [testSuite]);
-  useEffect(() => {
-    splitTableAndColumnTest(testCases);
-  }, [testCases]);
 
   return (
     <Row gutter={[0, 16]}>

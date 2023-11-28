@@ -58,18 +58,21 @@ import ProfilerLatestValue from '../../ProfilerDashboard/component/ProfilerLates
 import { MetricChartType } from '../../ProfilerDashboard/profilerDashboard.interface';
 import TabsLabel from '../../TabsLabel/TabsLabel.component';
 import { TableProfilerChartProps } from '../TableProfiler.interface';
+import { useTableProfiler } from '../TableProfilerProvider';
 import NoProfilerBanner from './NoProfilerBanner.component';
 
 const TableProfilerChart = ({
   entityFqn = '',
-  overallSummary,
-  isSummaryLoading,
-  isProfilingEnabled,
-  isTableDeleted = false,
-  permissions,
   showHeader = true,
-  onSettingButtonClick,
 }: TableProfilerChartProps) => {
+  const {
+    isProfilerDataLoading: isSummaryLoading,
+    permissions,
+    isTableDeleted = false,
+    overallSummary,
+    onSettingButtonClick,
+    isProfilingEnabled,
+  } = useTableProfiler();
   const { fqn: datasetFQN } = useParams<{ fqn: string }>();
   const history = useHistory();
   const { t } = useTranslation();
