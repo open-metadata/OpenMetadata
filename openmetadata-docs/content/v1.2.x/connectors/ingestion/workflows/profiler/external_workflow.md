@@ -90,32 +90,46 @@ source:
       #   # - .*om_glue_test.*
 processor:
   type: "orm-profiler"
-  config: {}
-    # tableConfig:
-    # - fullyQualifiedName: local_snowflake.mydatabase.mydschema.mytable
-    #   sampleDataCount: 50
+  config:
+    tableConfig:
+    - fullyQualifiedName: local_snowflake.mydatabase.mydschema.mytable
+      sampleDataCount: 50
     # schemaConfig:
     # - fullyQualifiedName: demo_snowflake.new_database.new_dschema
     #   sampleDataCount: 50
     #   profileSample: 1
     #   profileSampleType: ROWS
     #   sampleDataStorageConfig:
-    #     bucketName: awsdatalake-testing
-    #     prefix: data/sales/demo1
-    #     overwriteData: false
-    #     storageConfig:
-    #       awsRegion: us-east-2
+    #     config:
+    #       bucketName: awsdatalake-testing
+    #       prefix: data/sales/demo1
+    #       overwriteData: false
+    #       storageConfig:
+    #         awsRegion: us-east-2
+    #         awsAccessKeyId: <your-access-key-id>
+    #         awsSecretAccessKey: <your-secrest-access-key>
+    #         awsSessionToken: <your-session-token>
+    #         assumeRoleArn: <assume-role-arn>
+    #         assumeRoleSessionName: <session-name>
+    #         assumeRoleSourceIdentity: <source-identity-assume-role>
     # databaseConfig:
     # - fullyQualifiedName: snowflake_prod.prod_db
     #   sampleDataCount: 50
     #   profileSample: 1
     #   profileSampleType: ROWS
     #   sampleDataStorageConfig:
-    #     bucketName: awsdatalake-testing
-    #     prefix: data/sales/demo1
-    #     overwriteData: false
-    #     storageConfig:
-    #       awsRegion: us-east-2
+    #     config:
+    #       bucketName: awsdatalake-testing
+    #       prefix: data/sales/demo1
+    #       overwriteData: false
+    #       storageConfig:
+    #         awsRegion: us-east-2
+    #         awsAccessKeyId: <your-access-key-id>
+    #         awsSecretAccessKey: <your-secrest-access-key>
+    #         awsSessionToken: <your-session-token>
+    #         assumeRoleArn: <assume-role-arn>
+    #         assumeRoleSessionName: <session-name>
+    #         assumeRoleSourceIdentity: <source-identity-assume-role>
 sink:
   type: metadata-rest
   config: {}
