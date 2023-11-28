@@ -49,7 +49,8 @@
         "SapHana",
         "MongoDB",
         "Couchbase",
-        "Greenplum"
+        "Greenplum",
+        "Doris"
       ],
       "javaEnums": [
         {
@@ -156,6 +157,9 @@
         },
         {
           "name": "Greenplum"
+        },
+        {
+          "name": "Doris"
         }
       ]
     },
@@ -267,6 +271,9 @@
             },
             {
               "$ref": "./connections/database/greenplumConnection.json"
+            },
+            {
+              "$ref": "./connections/database/dorisConnection.json"
             }
           ]
         }
