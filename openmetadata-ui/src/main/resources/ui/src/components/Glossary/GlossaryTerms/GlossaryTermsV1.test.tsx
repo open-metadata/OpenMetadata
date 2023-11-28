@@ -98,7 +98,7 @@ describe('Test Glossary-term component', () => {
     expect(tabs.map((tab) => tab.textContent)).toStrictEqual([
       'label.overview',
       'label.glossary-term-plural0',
-      'label.asset-plural0', // 1 added as its count for assets
+      'label.asset-plural1', // 1 added as its count for assets
       'label.activity-feed-and-task-plural0',
       'label.custom-property-plural',
     ]);
