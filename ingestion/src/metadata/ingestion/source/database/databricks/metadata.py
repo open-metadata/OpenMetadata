@@ -308,7 +308,7 @@ class DatabricksSource(CommonDbSourceService, MultiDBSource):
                 database_fqn = fqn.build(
                     self.metadata,
                     entity_type=Database,
-                    service_name=self.context.database_service.name.__root__,
+                    service_name=self.context.database_service,
                     database_name=new_catalog,
                 )
                 if filter_by_database(
@@ -333,7 +333,7 @@ class DatabricksSource(CommonDbSourceService, MultiDBSource):
             yield self.service_connection.databaseSchema
         else:
             for schema_name in self.inspector.get_schema_names(
-                database=self.context.database.name.__root__,
+                database=self.context.database,
                 is_old_version=self.is_older_version,
             ):
                 yield schema_name
