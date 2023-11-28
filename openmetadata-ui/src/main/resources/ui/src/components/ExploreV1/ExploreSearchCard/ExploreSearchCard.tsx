@@ -176,7 +176,11 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
               </div>
             </Col>
           )}
-          <Col data-testid={`${source.service?.name}-${source.name}`} span={24}>
+          <Col
+            data-testid={`${
+              source.service?.name ? `${source.service.name}-` : 'explore-card-'
+            }${source.name}`}
+            span={24}>
             {isTourOpen ? (
               <Button data-testid={source.fullyQualifiedName} type="link">
                 <Typography.Text

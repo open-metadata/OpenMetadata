@@ -106,6 +106,13 @@ const goToAssetsTab = (domainObj) => {
   cy.get('.ant-tabs-tab-active').contains('Assets').should('be.visible');
 };
 
+const goToDataProductsTab = (domainObj) => {
+  cy.get('[data-testid="domain-left-panel"]').contains(domainObj.name).click();
+  checkDisplayName(domainObj.name);
+  cy.get('[data-testid="data_products"]').click();
+  cy.get('.ant-tabs-tab-active').contains('Data Products').should('be.visible');
+};
+
 export const updateAssets = (domainObj) => {
   interceptURL(
     'GET',
@@ -361,7 +368,7 @@ export const createDataProducts = (dataProduct, domainObj) => {
 
   cy.wait('@createDataProducts').then(({ request }) => {
     expect(request.body.name).equals(dataProduct.name);
-    expect(request.body.domain).equals(domainObj.name);
+    expect(request.body.domain).equals(domainObj.fullyQualifiedName);
     expect(request.body.description).equals(dataProduct.description);
     expect(request.body.experts).has.length(1);
   });
@@ -386,7 +393,7 @@ export const renameDomain = (domainObj) => {
   checkDisplayName(domainObj.updatedDisplayName);
 };
 
-export const addAssets = (domainObj) => {
+export const addAssetsToDomain = (domainObj) => {
   goToAssetsTab(domainObj);
   checkAssetsCount(0);
   cy.contains('Adding a new Asset is easy, just give it a spin!').should(
@@ -419,15 +426,46 @@ export const addAssets = (domainObj) => {
 
   cy.get('[data-testid="save-btn"]').click();
 
-  // cy.intercept({
-  //   method: 'GET',
-  //   url: '/api/v1/search/query*',
-  //   query: { from: '0', size: '0' },
-  // }).as('searchAssetsCount');
-
-  // goToAssetsTab(domainObj);
-
-  // verifyResponseStatusCode('@searchAssetsCount', 200);
-
   checkAssetsCount(domainObj.assets.length);
+};
+
+export const addAssetsToDataProduct = (dataProductObj, domainObj) => {
+  interceptURL('GET', `/api/v1/search/query**`, 'getDataProductAssets');
+
+  goToDataProductsTab(domainObj);
+  cy.get(`[data-testid="explore-card-${dataProductObj.name}"]`).click();
+
+  cy.get('[data-testid="assets"]').should('be.visible').click();
+  cy.get('.ant-tabs-tab-active').contains('Assets').should('be.visible');
+
+  verifyResponseStatusCode('@getDataProductAssets', 200);
+
+  cy.contains('Adding a new Asset is easy, just give it a spin!').should(
+    'be.visible'
+  );
+
+  cy.get('[data-testid="data-product-details-add-button"]').click();
+
+  cy.get('[data-testid="asset-selection-modal"] .ant-modal-title').should(
+    'contain',
+    'Add Assets'
+  );
+
+  dataProductObj.assets.forEach((asset) => {
+    interceptURL('GET', '/api/v1/search/query*', 'searchAssets');
+    cy.get('[data-testid="asset-selection-modal"] [data-testid="searchbar"]')
+      .click()
+      .clear()
+      .type(asset.name);
+
+    verifyResponseStatusCode('@searchAssets', 200);
+
+    cy.get(
+      `[data-testid="table-data-card_${asset.fullyQualifiedName}"] input[type="checkbox"]`
+    ).click();
+  });
+
+  cy.get('[data-testid="save-btn"]').click();
+
+  checkAssetsCount(dataProductObj.assets.length);
 };

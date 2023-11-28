@@ -14,7 +14,8 @@
 /// <reference types="Cypress" />
 
 import {
-  addAssets,
+  addAssetsToDomain,
+  addAssetsToDataProduct,
   createDataProducts,
   createDomain,
   deleteDomain,
@@ -46,7 +47,7 @@ describe('Domain page should work properly', () => {
   });
 
   it('Add assets to domain should work properly', () => {
-    addAssets(DOMAIN_2);
+    addAssetsToDomain(DOMAIN_2);
   });
 
   it('Create new data product should work properly', () => {
@@ -56,6 +57,17 @@ describe('Domain page should work properly', () => {
         .should('be.visible')
         .click({ force: true });
     });
+  });
+
+  it('Add data product assets should work properly', () => {
+    DOMAIN_2.dataProducts.forEach((dp) => {
+      createDataProducts(dp, DOMAIN_2);
+      cy.get('[data-testid="app-bar-item-domain"]')
+        .should('be.visible')
+        .click({ force: true });
+    });
+
+    addAssetsToDataProduct(DOMAIN_2.dataProducts[0], DOMAIN_2);
   });
 
   it('Update domain details should work properly', () => {
