@@ -327,6 +327,26 @@ export const NEW_GLOSSARY_TERMS = {
     synonyms: 'give,disposal,deal',
     fullyQualifiedName: 'Cypress Glossary.CypressSales',
   },
+  term_3: {
+    name: 'Cypress Space',
+    description: 'This is the Cypress with space',
+    synonyms: 'tea,coffee,water',
+    fullyQualifiedName: 'Cypress Glossary.Cypress Space',
+    assets: [
+      {
+        name: 'dim_customer',
+        fullyQualifiedName: 'sample_data.ecommerce_db.shopify.dim_address',
+      },
+      {
+        name: 'raw_order',
+        fullyQualifiedName: 'sample_data.ecommerce_db.shopify.raw_order',
+      },
+      {
+        name: 'presto_etl',
+        fullyQualifiedName: 'sample_airflow.presto_etl',
+      },
+    ],
+  },
 };
 export const GLOSSARY_TERM_WITH_DETAILS = {
   name: 'Accounts',
