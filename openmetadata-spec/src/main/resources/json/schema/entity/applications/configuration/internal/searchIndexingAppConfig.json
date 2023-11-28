@@ -4,7 +4,21 @@
   "title": "SearchIndexingApp",
   "type": "object",
   "description": "Search Indexing App.",
+  "definitions": {
+    "searchIndexingType": {
+      "description": "Application type.",
+      "type": "string",
+      "enum": ["SearchIndexing"],
+      "default": "SearchIndexing"
+    }
+  },
   "properties" : {
+    "type": {
+      "title": "Application Type",
+      "description": "Application Type",
+      "$ref": "#/definitions/searchIndexingType",
+      "default": "SearchIndexing"
+    },
     "entities": {
       "description": "List of Entities to Reindex",
       "type": "array",
@@ -26,7 +40,7 @@
     },
     "searchIndexMappingLanguage": {
       "description": "Recreate Indexes with updated Language",
-      "$ref": "../../../configuration/elasticSearchConfiguration.json#/definitions/searchIndexMappingLanguage"
+      "$ref": "../../../../configuration/elasticSearchConfiguration.json#/definitions/searchIndexMappingLanguage"
     }
   },
   "additionalProperties": false

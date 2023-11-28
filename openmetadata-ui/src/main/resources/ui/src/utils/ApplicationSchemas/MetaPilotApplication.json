@@ -6,7 +6,7 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.app.external.MetaPilotAppConfig",
   "definitions": {
-    "metaPilotAppType": {
+    "metaPilotApp": {
       "description": "Application type.",
       "type": "string",
       "enum": ["MetaPilot"],
@@ -37,9 +37,9 @@
   },
   "properties": {
     "type": {
-      "title": "Application Type",
-      "description": "Application Type",
-      "$ref": "#/definitions/metaPilotAppType",
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/metaPilotApp",
       "default": "MetaPilot"
     },
     "waiiInstance": {
