@@ -78,6 +78,7 @@ const ModelTab = ({
         dataIndex: 'name',
         key: 'name',
         width: 250,
+        fixed: 'left',
         render: (_, record) => (
           <Typography.Text>{getEntityName(record)}</Typography.Text>
         ),
@@ -187,7 +188,7 @@ const ModelTab = ({
         <ModalWithMarkdownEditor
           header={`${t('label.edit-entity', {
             entity: t('label.column'),
-          })}: "${editColumnDescription.name}"`}
+          })}: "${getEntityName(editColumnDescription)}"`}
           placeholder={t('label.enter-field-description', {
             field: t('label.column'),
           })}

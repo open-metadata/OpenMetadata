@@ -258,7 +258,7 @@ const DomainDetailsPage = ({
           '',
           1,
           0,
-          `(domain.fullyQualifiedName:${fqn})`,
+          `(domain.fullyQualifiedName:${fqn}) AND !(entityType:"dataProduct")`,
           '',
           '',
           SearchIndex.ALL

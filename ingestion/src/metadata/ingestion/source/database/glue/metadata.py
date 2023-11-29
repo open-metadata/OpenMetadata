@@ -94,7 +94,7 @@ class GlueSource(DatabaseServiceSource):
             yield DatabasePage(**page)
 
     def _get_glue_tables(self):
-        schema_name = self.context.database_schema.name.__root__
+        schema_name = self.context.database_schema
         paginator = self.glue.get_paginator("get_tables")
         paginator_response = paginator.paginate(DatabaseName=schema_name)
         for page in paginator_response:
@@ -121,7 +121,7 @@ class GlueSource(DatabaseServiceSource):
                         database_fqn = fqn.build(
                             self.metadata,
                             entity_type=Database,
-                            service_name=self.context.database_service.name.__root__,
+                            service_name=self.context.database_service,
                             database_name=schema.CatalogId,
                         )
                         if filter_by_database(
@@ -159,7 +159,7 @@ class GlueSource(DatabaseServiceSource):
         yield Either(
             right=CreateDatabaseRequest(
                 name=database_name,
-                service=self.context.database_service.fullyQualifiedName,
+                service=self.context.database_service,
             )
         )
 
@@ -173,8 +173,8 @@ class GlueSource(DatabaseServiceSource):
                     schema_fqn = fqn.build(
                         self.metadata,
                         entity_type=DatabaseSchema,
-                        service_name=self.context.database_service.name.__root__,
-                        database_name=self.context.database.name.__root__,
+                        service_name=self.context.database_service,
+                        database_name=self.context.database,
                         schema_name=schema.Name,
                     )
                     if filter_by_schema(
@@ -205,9 +205,14 @@ class GlueSource(DatabaseServiceSource):
         yield Either(
             right=CreateDatabaseSchemaRequest(
                 name=schema_name,
-                database=self.context.database.fullyQualifiedName,
+                database=fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.database_service,
+                    database_name=self.context.database,
+                ),
                 sourceUrl=self.get_source_url(
-                    database_name=self.context.database.name.__root__,
+                    database_name=self.context.database,
                     schema_name=schema_name,
                 ),
             )
@@ -222,7 +227,7 @@ class GlueSource(DatabaseServiceSource):
 
         :return: tables or views, depending on config
         """
-        schema_name = self.context.database_schema.name.__root__
+        schema_name = self.context.database_schema
 
         for page in self._get_glue_tables():
             for table in page.TableList:
@@ -232,9 +237,9 @@ class GlueSource(DatabaseServiceSource):
                     table_fqn = fqn.build(
                         self.metadata,
                         entity_type=Table,
-                        service_name=self.context.database_service.name.__root__,
-                        database_name=self.context.database.name.__root__,
-                        schema_name=self.context.database_schema.name.__root__,
+                        service_name=self.context.database_service,
+                        database_name=self.context.database,
+                        schema_name=self.context.database_schema,
                         table_name=table_name,
                     )
                     if filter_by_table(
@@ -291,11 +296,17 @@ class GlueSource(DatabaseServiceSource):
                 description=table.Description,
                 columns=columns,
                 tableConstraints=table_constraints,
-                databaseSchema=self.context.database_schema.fullyQualifiedName,
+                databaseSchema=fqn.build(
+                    metadata=self.metadata,
+                    entity_type=DatabaseSchema,
+                    service_name=self.context.database_service,
+                    database_name=self.context.database,
+                    schema_name=self.context.database_schema,
+                ),
                 sourceUrl=self.get_source_url(
                     table_name=table_name,
-                    schema_name=self.context.database_schema.name.__root__,
-                    database_name=self.context.database.name.__root__,
+                    schema_name=self.context.database_schema,
+                    database_name=self.context.database,
                 ),
             )
             yield Either(right=table_request)

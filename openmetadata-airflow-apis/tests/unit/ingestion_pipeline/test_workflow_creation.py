@@ -36,11 +36,11 @@ from openmetadata_managed_apis.workflows.ingestion.usage import (
     build_usage_workflow_config,
 )
 
+from metadata.generated.schema.entity.applications.configuration.applicationConfig import (
+    AppConfig,
+)
 from metadata.generated.schema.entity.applications.configuration.external.autoTaggerAppConfig import (
     AutoTaggerAppConfig,
-)
-from metadata.generated.schema.entity.applications.configuration.externalApplicationConfig import (
-    AppConfig,
 )
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,

@@ -92,13 +92,16 @@ const StoredProcedureTab = () => {
         key: 'name',
         width: 350,
         render: (_, record) => (
-          <Link
-            to={getEntityLink(
-              EntityType.STORED_PROCEDURE,
-              record.fullyQualifiedName ?? ''
-            )}>
-            {getEntityName(record)}
-          </Link>
+          <div className="d-inline-flex w-max-90">
+            <Link
+              className="break-word"
+              to={getEntityLink(
+                EntityType.STORED_PROCEDURE,
+                record.fullyQualifiedName ?? ''
+              )}>
+              {getEntityName(record)}
+            </Link>
+          </div>
         ),
       },
       {

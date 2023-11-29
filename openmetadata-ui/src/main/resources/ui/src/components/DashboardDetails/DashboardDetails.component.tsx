@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Table, Tabs, Typography } from 'antd';
+import { Col, Row, Table, Tabs, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -27,7 +27,6 @@ import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import DataProductsContainer from '../../components/DataProductsContainer/DataProductsContainer.component';
 import EntityLineageComponent from '../../components/Entity/EntityLineage/EntityLineage.component';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -35,8 +34,6 @@ import { ColumnFilter } from '../../components/Table/ColumnFilter/ColumnFilter.c
 import TableDescription from '../../components/TableDescription/TableDescription.component';
 import TableTags from '../../components/TableTags/TableTags.component';
 import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
-import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
-import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
 import { getDashboardDetailsPath } from '../../constants/constants';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
@@ -64,6 +61,7 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
+import EntityRightPanel from '../Entity/EntityRightPanel/EntityRightPanel';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
@@ -421,19 +419,25 @@ const DashboardDetails = ({
         }),
         dataIndex: 'chartName',
         key: 'chartName',
-        width: 200,
+        width: 220,
+        fixed: 'left',
         render: (_, record) => {
           const chartName = getEntityName(record);
 
           return record.sourceUrl ? (
-            <Typography.Link href={record.sourceUrl} target="_blank">
-              <Space>
-                {chartName}
-                <ExternalLinkIcon height={14} width={14} />
-              </Space>
-            </Typography.Link>
+            <div className="d-flex items-center">
+              <Typography.Link href={record.sourceUrl} target="_blank">
+                <span className="break-all">{chartName}</span>
+
+                <ExternalLinkIcon
+                  className="m-l-xs flex-none"
+                  height={14}
+                  width={14}
+                />
+              </Typography.Link>
+            </div>
           ) : (
-            <Typography.Text>{chartName}</Typography.Text>
+            <Typography.Text className="w-full">{chartName}</Typography.Text>
           );
         },
       },
@@ -615,35 +619,16 @@ const DashboardDetails = ({
               className="entity-tag-right-panel-container"
               data-testid="entity-right-panel"
               flex="320px">
-              <Space className="w-full" direction="vertical" size="large">
-                <DataProductsContainer
-                  activeDomain={dashboardDetails?.domain}
-                  dataProducts={dashboardDetails?.dataProducts ?? []}
-                  hasPermission={false}
-                />
-
-                <TagsContainerV2
-                  displayType={DisplayType.READ_MORE}
-                  entityFqn={decodedDashboardFQN}
-                  entityType={EntityType.DASHBOARD}
-                  permission={editTagsPermission}
-                  selectedTags={dashboardTags}
-                  tagType={TagSource.Classification}
-                  onSelectionChange={handleTagSelection}
-                  onThreadLinkSelect={onThreadLinkSelect}
-                />
-
-                <TagsContainerV2
-                  displayType={DisplayType.READ_MORE}
-                  entityFqn={decodedDashboardFQN}
-                  entityType={EntityType.DASHBOARD}
-                  permission={editTagsPermission}
-                  selectedTags={dashboardTags}
-                  tagType={TagSource.Glossary}
-                  onSelectionChange={handleTagSelection}
-                  onThreadLinkSelect={onThreadLinkSelect}
-                />
-              </Space>
+              <EntityRightPanel
+                dataProducts={dashboardDetails?.dataProducts ?? []}
+                domain={dashboardDetails?.domain}
+                editTagPermission={editTagsPermission}
+                entityFQN={decodedDashboardFQN}
+                entityType={EntityType.DASHBOARD}
+                selectedTags={dashboardTags}
+                onTagSelectionChange={handleTagSelection}
+                onThreadLinkSelect={onThreadLinkSelect}
+              />
             </Col>
           </Row>
         ),
@@ -760,7 +745,7 @@ const DashboardDetails = ({
       {editChart && (
         <ModalWithMarkdownEditor
           header={t('label.edit-chart-name', {
-            name: editChart.chart.displayName,
+            name: getEntityName(editChart.chart),
           })}
           placeholder={t('label.enter-field-description', {
             field: t('label.chart'),
