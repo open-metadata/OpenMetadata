@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, List, Modal, Space, Typography } from 'antd';
+import { Button, List, Modal, Select, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
+import { map, startCase } from 'lodash';
 import { EntityDetailUnion } from 'Models';
 import VirtualList from 'rc-virtual-list';
 import {
@@ -20,6 +21,7 @@ import {
   UIEventHandler,
   useCallback,
   useEffect,
+  useMemo,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -37,6 +39,7 @@ import { searchQuery } from '../../../rest/searchAPI';
 import {
   getAPIfromSource,
   getAssetsFields,
+  getAssetsSearchIndex,
   getEntityAPIfromSource,
 } from '../../../utils/Assets/AssetsUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityUtils';
@@ -358,6 +361,10 @@ export const AssetSelectionModal = ({
     }
   }, [type, handleSave, domainAndDataProductsSave]);
 
+  const mapAssetsSearchIndex = useMemo(() => {
+    return getAssetsSearchIndex(type);
+  }, [type]);
+
   const onScroll: UIEventHandler<HTMLElement> = useCallback(
     (e) => {
       const scrollHeight =
@@ -417,6 +424,20 @@ export const AssetSelectionModal = ({
         <Searchbar
           removeMargin
           showClearSearch
+          inputProps={{
+            addonBefore: (
+              <Select
+                bordered={false}
+                options={map(mapAssetsSearchIndex, (value, key) => ({
+                  label: startCase(key),
+                  value: value,
+                }))}
+                style={{ minWidth: '100px' }}
+                value={activeFilter}
+                onChange={setActiveFilter}
+              />
+            ),
+          }}
           placeholder={t('label.search-entity', {
             entity: t('label.asset-plural'),
           })}
