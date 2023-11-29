@@ -203,14 +203,18 @@ class StoredProcedureMixin(ABC):
             # First, get all the query history
             queries_dict = self.get_stored_procedure_queries_dict()
             # Then for each procedure, iterate over all its queries
-            for procedure in self.context.stored_procedures:
-                logger.debug(f"Processing Lineage for [{procedure.name}]")
-                for query_by_procedure in (
-                    queries_dict.get(procedure.name.__root__.lower()) or []
-                ):
-                    yield from self.yield_procedure_lineage(
-                        query_by_procedure=query_by_procedure, procedure=procedure
-                    )
-                    yield from self.yield_procedure_query(
-                        query_by_procedure=query_by_procedure, procedure=procedure
-                    )
+            for procedure_fqn in self.context.stored_procedures:
+                procedure = self.metadata.get_by_name(
+                    entity=StoredProcedure, fqn=procedure_fqn
+                )
+                if procedure:
+                    logger.debug(f"Processing Lineage for [{procedure.name}]")
+                    for query_by_procedure in (
+                        queries_dict.get(procedure.name.__root__.lower()) or []
+                    ):
+                        yield from self.yield_procedure_lineage(
+                            query_by_procedure=query_by_procedure, procedure=procedure
+                        )
+                        yield from self.yield_procedure_query(
+                            query_by_procedure=query_by_procedure, procedure=procedure
+                        )
