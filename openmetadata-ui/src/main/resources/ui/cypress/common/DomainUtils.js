@@ -429,6 +429,35 @@ export const addAssetsToDomain = (domainObj) => {
   checkAssetsCount(domainObj.assets.length);
 };
 
+export const removeAssetsFromDomain = (domainObj) => {
+  goToAssetsTab(domainObj);
+  checkAssetsCount(domainObj.assets.length);
+
+  domainObj.assets.forEach((asset, index) => {
+    interceptURL('GET', '/api/v1/search/query*', 'searchAssets');
+
+    cy.get(
+      `[data-testid="table-data-card_${asset.fullyQualifiedName}"]`
+    ).within(() => {
+      cy.get('.explore-card-actions').invoke('show');
+      cy.get('.explore-card-actions').within(() => {
+        cy.get('[data-testid="delete-tag"]').click();
+      });
+    });
+
+    cy.get("[data-testid='save-button']").click();
+
+    goToDataProductsTab(domainObj);
+
+    interceptURL('GET', '/api/v1/search/query*', 'assetTab');
+    // go assets tab
+    goToAssetsTab(domainObj);
+    verifyResponseStatusCode('@assetTab', 200);
+
+    checkAssetsCount(domainObj.assets.length - (index + 1));
+  });
+};
+
 export const addAssetsToDataProduct = (dataProductObj, domainObj) => {
   interceptURL('GET', `/api/v1/search/query**`, 'getDataProductAssets');
 
@@ -468,4 +497,31 @@ export const addAssetsToDataProduct = (dataProductObj, domainObj) => {
   cy.get('[data-testid="save-btn"]').click();
 
   checkAssetsCount(dataProductObj.assets.length);
+};
+
+export const removeAssetsFromDataProduct = (dataProductObj, domainObj) => {
+  goToDataProductsTab(domainObj);
+  cy.get(`[data-testid="explore-card-${dataProductObj.name}"]`).click();
+
+  cy.get('[data-testid="assets"]').should('be.visible').click();
+  cy.get('.ant-tabs-tab-active').contains('Assets').should('be.visible');
+
+  checkAssetsCount(dataProductObj.assets.length);
+
+  dataProductObj.assets.forEach((asset, index) => {
+    interceptURL('GET', '/api/v1/search/query*', 'searchAssets');
+
+    cy.get(
+      `[data-testid="table-data-card_${asset.fullyQualifiedName}"]`
+    ).within(() => {
+      cy.get('.explore-card-actions').invoke('show');
+      cy.get('.explore-card-actions').within(() => {
+        cy.get('[data-testid="delete-tag"]').click();
+      });
+    });
+
+    cy.get("[data-testid='save-button']").click();
+
+    checkAssetsCount(domainObj.assets.length - (index + 1));
+  });
 };

@@ -221,7 +221,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
     return (
       <div
         className={classNames('explore-search-card', className)}
-        data-testid="table-data-card"
+        data-testid={'table-data-card_' + (source.fullyQualifiedName ?? '')}
         id={id}
         ref={ref}
         onClick={() => {

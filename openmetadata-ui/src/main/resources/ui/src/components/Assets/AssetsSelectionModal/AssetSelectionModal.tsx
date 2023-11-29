@@ -424,9 +424,7 @@ export const AssetSelectionModal = ({
           onSearch={setSearch}
         />
 
-        {isLoading && <Loader />}
-
-        {!isLoading && items.length > 0 && (
+        {items.length > 0 && (
           <List>
             <VirtualList
               data={items}
@@ -457,6 +455,8 @@ export const AssetSelectionModal = ({
             )}
           </ErrorPlaceHolder>
         )}
+
+        {isLoading && <Loader size="small" />}
       </Space>
     </Modal>
   );

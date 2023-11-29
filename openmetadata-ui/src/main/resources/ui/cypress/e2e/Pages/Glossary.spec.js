@@ -1015,6 +1015,44 @@ describe('Glossary page should work properly', () => {
     checkAssetsCount(NEW_GLOSSARY_TERMS.term_3.assets);
   });
 
+  it('Remove asset from glossary term using asset modal', () => {
+    selectActiveGlossary(NEW_GLOSSARY.name);
+    goToAssetsTab(
+      NEW_GLOSSARY_TERMS.term_3.name,
+      NEW_GLOSSARY_TERMS.term_3.fullyQualifiedName,
+      true
+    );
+
+    checkAssetsCount(NEW_GLOSSARY_TERMS.term_3.assets.length);
+    NEW_GLOSSARY_TERMS.term_3.assets.assets.forEach((asset, index) => {
+      interceptURL('GET', '/api/v1/search/query*', 'searchAssets');
+
+      cy.get(
+        `[data-testid="table-data-card_${asset.fullyQualifiedName}"]`
+      ).within(() => {
+        cy.get('.explore-card-actions').invoke('show');
+        cy.get('.explore-card-actions').within(() => {
+          cy.get('[data-testid="delete-tag"]').click();
+        });
+      });
+
+      cy.get("[data-testid='save-button']").click();
+
+      selectActiveGlossary(NEW_GLOSSARY.name);
+
+      interceptURL('GET', '/api/v1/search/query*', 'assetTab');
+      // go assets tab
+      goToAssetsTab(
+        NEW_GLOSSARY_TERMS.term_3.name,
+        NEW_GLOSSARY_TERMS.term_3.fullyQualifiedName,
+        true
+      );
+      verifyResponseStatusCode('@assetTab', 200);
+
+      checkAssetsCount(NEW_GLOSSARY_TERMS.term_3.assets.length - (index + 1));
+    });
+  });
+
   it('Remove Glossary term from entity should work properly', () => {
     const glossaryName = NEW_GLOSSARY_1.name;
     const { name, fullyQualifiedName } = NEW_GLOSSARY_1_TERMS.term_1;
