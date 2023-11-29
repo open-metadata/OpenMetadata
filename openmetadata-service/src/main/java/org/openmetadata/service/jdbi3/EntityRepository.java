@@ -578,6 +578,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       for (String json : jsons) {
         T entity = setFieldsInternal(JsonUtils.readValue(json, entityClass), fields);
+        entity = setInheritedFields(entity, fields);
         entity = clearFieldsInternal(entity, fields);
         entities.add(withHref(uriInfo, entity));
       }
@@ -610,6 +611,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       for (String json : jsons) {
         try {
           T entity = setFieldsInternal(JsonUtils.readValue(json, entityClass), fields);
+          entity = setInheritedFields(entity, fields);
           entity = clearFieldsInternal(entity, fields);
           entities.add(withHref(uriInfo, entity));
         } catch (Exception e) {
