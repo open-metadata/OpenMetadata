@@ -34,7 +34,6 @@ from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequ
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
-from metadata.generated.schema.api.tests.createCustomMetric import CreateCustomMetricRequest
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.data.createSearchIndex import (
@@ -52,6 +51,9 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
+from metadata.generated.schema.api.tests.createCustomMetric import (
+    CreateCustomMetricRequest,
+)
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.entity.data.container import Container

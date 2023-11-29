@@ -15,13 +15,15 @@ To be used by OpenMetadata class
 """
 import traceback
 from typing import List, Optional, Type, TypeVar
-from metadata.generated.schema.api.tests.createCustomMetric import CreateCustomMetricRequest
 
 from pydantic import BaseModel
 from requests.utils import quote
 
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
+)
+from metadata.generated.schema.api.tests.createCustomMetric import (
+    CreateCustomMetricRequest,
 )
 from metadata.generated.schema.entity.data.table import (
     ColumnProfile,
@@ -290,8 +292,9 @@ class OMetaTableMixin:
         """
         return self._get(Table, f"{quote(model_str(fqn))}/tableProfile/latest")
 
-
-    def create_or_update_custom_metric(self, custom_metric: CreateCustomMetricRequest, table_id: str) -> Table:
+    def create_or_update_custom_metric(
+        self, custom_metric: CreateCustomMetricRequest, table_id: str
+    ) -> Table:
         """Create or update custom metric. If custom metric name matches an existing
         one then it will be updated.
 
