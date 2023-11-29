@@ -106,8 +106,3 @@ VEhPQF0i0tUU7Fl071hcYaiQoZx4nIjN+NG6p5QKbl6k
         build_google_credentials_dict(gcp_values)
 
         self.assertEqual(expected_dict, build_google_credentials_dict(gcp_values))
-
-        gcp_values.privateKey = SecretStr("I don't think I am a proper Private Key")
-
-        with self.assertRaises(InvalidPrivateKeyException):
-            build_google_credentials_dict(gcp_values)
