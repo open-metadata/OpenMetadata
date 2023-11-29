@@ -113,10 +113,10 @@ def build_google_credentials_dict(gcp_values: GcpCredentialsValues) -> Dict[str,
     elif gcp_values.type == "external_account":
         return {
             "type": gcp_values.type,
-            "audience": gcp_values.authenticated,
+            "audience": gcp_values.audience,
             "subject_token_type": gcp_values.subjectTokenType,
             "token_url": gcp_values.tokenURL,
-            "credential_source": gcp_values.credential,
+            "credential_source": gcp_values.credentialSource,
         }
     else:
         raise InvalidGcpConfigException(
