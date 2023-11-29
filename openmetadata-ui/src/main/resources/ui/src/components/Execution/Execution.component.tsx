@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { CloseCircleOutlined } from '@ant-design/icons';
-import Icon from '@ant-design/icons/lib/components/Icon';
+import Icon, { CloseCircleOutlined } from '@ant-design/icons';
 import {
   Button,
   Col,
@@ -27,7 +26,7 @@ import { RangePickerProps } from 'antd/lib/date-picker';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isNaN, map } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as Calendar } from '../../assets/svg/calendar.svg';
 import { ReactComponent as FilterIcon } from '../../assets/svg/filter.svg';
@@ -84,8 +83,10 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
     }
   };
 
-  const handleMenuClick: MenuProps['onClick'] = (event) =>
-    setStatus(MenuOptions[event.key as keyof typeof MenuOptions]);
+  const handleMenuClick: MenuProps['onClick'] = useCallback(
+    (event) => setStatus(MenuOptions[event.key as keyof typeof MenuOptions]),
+    []
+  );
 
   const statusMenuItems = useMemo(
     () => ({
