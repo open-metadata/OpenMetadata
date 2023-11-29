@@ -174,7 +174,7 @@ public class DatabaseServiceResourceTest extends ServiceResourceTest<DatabaseSer
     assertResponseContains(
         () -> createEntity(createRequest(test).withDescription(null).withConnection(dbConn), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "InvalidServiceConnectionException for service [Snowflake] due to [Failed to encrypt connection instance of Snowflake]");
+        "InvalidServiceConnectionException for service [Snowflake] due to [Failed to encrypt connection instance of Snowflake. Did the Fernet Key change?]");
     DatabaseService service = createAndCheckEntity(createRequest(test).withDescription(null), ADMIN_AUTH_HEADERS);
     // Update database description and ingestion service that are null
     CreateDatabaseService update = createRequest(test).withDescription("description1");
