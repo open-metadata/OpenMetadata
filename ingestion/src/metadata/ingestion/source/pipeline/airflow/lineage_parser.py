@@ -108,7 +108,7 @@ class OMEntity:
     # We will use the key in case we need to group different lineages from the same DAG
     key: str = "default"
 
-    def __repr__(self):
+    def __str__(self):
         """Custom serialization"""
         _dict = self.__dict__
         _dict["entity"] = f"{Table.__module__}.{Table.__name__}"
