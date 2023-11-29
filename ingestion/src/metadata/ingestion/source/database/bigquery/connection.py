@@ -13,6 +13,7 @@
 Source connection handler
 """
 import os
+from datetime import datetime
 from functools import partial
 from typing import Optional
 
@@ -122,7 +123,8 @@ def test_connection(
                 test_query,
                 engine=engine,
                 statement=BIGQUERY_TEST_STATEMENT.format(
-                    region=service_connection.usageLocation
+                    region=service_connection.usageLocation,
+                    creation_date=datetime.now().strftime("%Y-%m-%d"),
                 ),
             ),
         }
