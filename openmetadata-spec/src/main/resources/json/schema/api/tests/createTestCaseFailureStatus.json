@@ -1,0 +1,29 @@
+{
+  "$id": "https://open-metadata.org/schema/tests/createTestCaseFailureStatus.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateTestCaseFailureStatus",
+  "description": "Schema to create a new test case result failure status.",
+  "javaType": "org.openmetadata.schema.api.tests.CreateTestCaseFailureStatus",
+  "type": "object",
+  "properties": {
+    "testCaseFailureStatusType": {
+      "description": "Status of Test Case.",
+      "$ref": "../../tests/basic.json#/definitions/testCaseFailureStatusType"
+    },
+    "testCaseFailureStatusDetails": {
+      "description": "Details of the test case failure status.",
+      "oneOf": [
+        {"$ref": "../../tests/resolved.json"},
+        {"$ref": "../../tests/inReview.json"},
+        {"$ref": "../../tests/assigned.json"}
+      ],
+      "default": null
+    },
+    "testCaseReference": {
+      "description": "Test case reference FQN",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    }
+  },
+  "required": ["testCaseFailureStatusType", "testCaseReference"],
+  "additionalProperties": false
+}

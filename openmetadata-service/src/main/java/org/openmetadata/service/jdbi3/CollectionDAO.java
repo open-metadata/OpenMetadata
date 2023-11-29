@@ -168,6 +168,9 @@ public interface CollectionDAO {
   DataQualityDataTimeSeriesDAO dataQualityDataTimeSeriesDao();
 
   @CreateSqlObject
+  TestCaseFailureStatusTimeSeriesDAO testCaseFailureStatusTimeSeriesDao();
+
+  @CreateSqlObject
   RoleDAO roleDAO();
 
   @CreateSqlObject
@@ -3439,6 +3442,19 @@ public interface CollectionDAO {
     default String getTimeSeriesTableName() {
       return "data_quality_data_time_series";
     }
+  }
+
+  interface TestCaseFailureStatusTimeSeriesDAO extends EntityTimeSeriesDAO {
+    @Override
+    default String getTimeSeriesTableName() {
+      return "data_quality_failure_status_extension_time_series";
+    }
+
+    @SqlQuery(
+        value =
+            "SELECT json FROM data_quality_failure_status_extension_time_series "
+                + "WHERE sequenceId = :sequenceId ORDER BY timestamp DESC")
+    List<String> listTestCaseFailureStatusesForSequenceId(@Bind("sequenceId") UUID sequenceId);
   }
 
   class EntitiesCountRowMapper implements RowMapper<EntitiesCount> {

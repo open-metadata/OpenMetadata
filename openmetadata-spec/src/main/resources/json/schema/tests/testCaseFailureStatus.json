@@ -1,0 +1,51 @@
+{
+  "$id": "https://open-metadata.org/schema/tests/testCaseFailureStatus.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TestCaseFailureStatus",
+  "description": "Schema to capture test case result failure status.",
+  "javaType": "org.openmetadata.schema.tests.type.TestCaseFailureStatus",
+  "javaInterfaces": ["org.openmetadata.schema.EntityTimeSeriesInterface"],
+  "type": "object",
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this failure instance (unique across a failure cycle, i.e. new -> ack -> ... -> resolved.",
+      "$ref": "../type/basic.json#/definitions/uuid"
+    },
+    "sequenceId": {
+      "description": "Sequence ID for a failure status. Statuses belonging to the same sequence will have the same ID",
+      "$ref": "../type/basic.json#/definitions/uuid"
+    },
+    "timestamp": {
+      "description": "Timestamp on which the failure was created.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "testCaseFailureStatusType": {
+      "description": "Status of Test Case Acknowledgement.",
+      "$ref": "./basic.json#/definitions/testCaseFailureStatusType"
+    },
+    "testCaseFailureStatusDetails": {
+      "description": "Details of the test case failure status.",
+      "oneOf": [
+        {"$ref": "./assigned.json"},
+        {"$ref": "./inReview.json"},
+        {"$ref": "./resolved.json"}
+      ],
+      "default": null
+    },
+    "updatedBy": {
+      "description": "User who updated the test case failure status.",
+      "$ref": "../type/entityReference.json",
+      "default": null
+    },
+    "updatedAt": {
+      "description": "Time when test case failure status was updated.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "testCaseReference": {
+      "description": "Test case reference",
+      "$ref": "../type/entityReference.json"
+    }
+  },
+  "required": ["id", "timestamp", "testCaseReference", "testCaseFailureStatusType"],
+  "additionalProperties": false
+}

@@ -45,7 +45,7 @@ public class PaginatedDataInsightSource implements Source<ResultList<ReportData>
     this.batchSize = batchSize;
     this.stats
         .withTotalRecords(
-            dao.reportDataTimeSeriesDao().listCount(new ListFilter().addQueryParam("entityFQN", entityType)))
+            dao.reportDataTimeSeriesDao().listCount(new ListFilter(null).addQueryParam("entityFQNHash", entityType)))
         .withSuccessRecords(0)
         .withFailedRecords(0);
   }
@@ -110,7 +110,7 @@ public class PaginatedDataInsightSource implements Source<ResultList<ReportData>
 
   public ResultList<ReportData> getReportDataPagination(String entityFQN, int limit, String after) {
     int reportDataCount =
-        dao.reportDataTimeSeriesDao().listCount(new ListFilter().addQueryParam("entityFQN", entityFQN));
+        dao.reportDataTimeSeriesDao().listCount(new ListFilter(null).addQueryParam("entityFQNHash", entityFQN));
     List<CollectionDAO.ReportDataRow> reportDataList =
         dao.reportDataTimeSeriesDao()
             .getAfterExtension(entityFQN, limit + 1, after == null ? "0" : RestUtil.decodeCursor(after));

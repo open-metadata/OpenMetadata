@@ -59,7 +59,26 @@ public class ListFilter {
     condition = addCondition(condition, getTestSuiteTypeCondition());
     condition = addCondition(condition, getTestSuiteFQNCondition());
     condition = addCondition(condition, getDomainCondition());
+    condition = addCondition(condition, getEntityFQNHashCondition());
+    condition = addCondition(condition, getTestCaseFailureStatus());
+    condition = addCondition(condition, getAssignee());
+    condition = addCondition(condition, getReviewer());
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
+  }
+
+  private String getAssignee() {
+    String assignee = queryParams.get("assignee");
+    return assignee == null ? "" : String.format("assignee = '%s'", assignee);
+  }
+
+  private String getReviewer() {
+    String reviewer = queryParams.get("reviewer");
+    return reviewer == null ? "" : String.format("reviewer = '%s'", reviewer);
+  }
+
+  private String getTestCaseFailureStatus() {
+    String testFailureStatus = queryParams.get("testCaseFailureStatus");
+    return testFailureStatus == null ? "" : String.format("testCaseFailureStatusType = '%s'", testFailureStatus);
   }
 
   public String getIncludeCondition(String tableName) {
@@ -103,6 +122,11 @@ public class ListFilter {
             "(id in (SELECT toId FROM entity_relationship WHERE fromEntity='domain' AND fromId='%s' AND "
                 + "relation=10))",
             domainId);
+  }
+
+  private String getEntityFQNHashCondition() {
+    String entityFQN = getQueryParam("entityFQNHash");
+    return entityFQN == null ? "" : String.format("entityFQNHash = '%s'", FullyQualifiedName.buildHash(entityFQN));
   }
 
   public String getParentCondition(String tableName) {

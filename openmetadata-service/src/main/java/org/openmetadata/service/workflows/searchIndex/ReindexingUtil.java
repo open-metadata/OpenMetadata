@@ -45,7 +45,8 @@ public class ReindexingUtil {
         EntityRepository<?> repository = Entity.getEntityRepository(entityType);
         total += repository.getDao().listTotalCount();
       } else {
-        total += dao.reportDataTimeSeriesDao().listCount(new ListFilter().addQueryParam("entityFQN", entityType));
+        total +=
+            dao.reportDataTimeSeriesDao().listCount(new ListFilter(null).addQueryParam("entityFQNHash", entityType));
       }
     }
     return total;
