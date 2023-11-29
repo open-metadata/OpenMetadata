@@ -1,1 +1,9 @@
-{}
+{
+  "name": "DataInsightsApplication",
+  "displayName": "Data Insights",
+  "appConfiguration": {},
+  "appSchedule": {
+    "scheduleType": "Custom",
+    "cronExpression": "0 0 0 1/1 * ? *"
+  }
+}
