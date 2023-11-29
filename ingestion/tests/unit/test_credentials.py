@@ -92,9 +92,7 @@ VEhPQF0i0tUU7Fl071hcYaiQoZx4nIjN+NG6p5QKbl6k
             audience="audience",
             subjectTokenType="subject_token_type",
             tokenURL="token_url",
-            credentialSource={
-                "environmentId": "environment_id"
-            }
+            credentialSource={"environmentId": "environment_id"},
         )
 
         expected_dict = {
@@ -102,9 +100,7 @@ VEhPQF0i0tUU7Fl071hcYaiQoZx4nIjN+NG6p5QKbl6k
             "audience": "audience",
             "subject_token_type": "subject_token_type",
             "token_url": "token_url",
-            "credential_source": {
-                "environmentId": "environment_id"
-            }
+            "credential_source": {"environmentId": "environment_id"},
         }
 
         build_google_credentials_dict(gcp_values)
@@ -115,4 +111,3 @@ VEhPQF0i0tUU7Fl071hcYaiQoZx4nIjN+NG6p5QKbl6k
 
         with self.assertRaises(InvalidPrivateKeyException):
             build_google_credentials_dict(gcp_values)
-
