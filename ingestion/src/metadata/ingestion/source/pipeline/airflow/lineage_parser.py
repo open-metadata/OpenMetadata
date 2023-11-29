@@ -62,6 +62,7 @@ we'll join the keys and get [
 ]
 and we'll treat this as independent sets of lineage
 """
+import json
 import logging
 import traceback
 from collections import defaultdict
@@ -106,6 +107,12 @@ class OMEntity:
     fqn: str = attr.ib()
     # We will use the key in case we need to group different lineages from the same DAG
     key: str = "default"
+
+    def __repr__(self):
+        """Custom serialization"""
+        _dict = self.__dict__
+        _dict["entity"] = f"{Table.__module__}.{Table.__name__}"
+        return json.dumps(self.__dict__)
 
 
 class XLets(BaseModel):
