@@ -211,7 +211,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   const handleRestoreMlmodel = async () => {
     try {
-      await restoreMlmodel(mlModelDetail.id);
+      const { version: newVersion } = await restoreMlmodel(mlModelDetail.id);
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.ml-model'),
@@ -219,7 +219,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         // Autoclose timer
         2000
       );
-      handleToggleDelete();
+      handleToggleDelete(newVersion);
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -348,8 +348,8 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   };
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) =>
-      isSoftDelete ? handleToggleDelete() : history.push('/'),
+    (isSoftDelete?: boolean, version?: number) =>
+      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
     []
   );
 

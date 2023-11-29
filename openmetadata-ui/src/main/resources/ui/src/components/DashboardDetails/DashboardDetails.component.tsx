@@ -284,14 +284,16 @@ const DashboardDetails = ({
 
   const handleRestoreDashboard = async () => {
     try {
-      await restoreDashboard(dashboardDetails.id);
+      const { version: newVersion } = await restoreDashboard(
+        dashboardDetails.id
+      );
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.dashboard'),
         }),
         2000
       );
-      handleToggleDelete();
+      handleToggleDelete(newVersion);
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -397,8 +399,8 @@ const DashboardDetails = ({
   };
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) =>
-      isSoftDelete ? handleToggleDelete() : history.push('/'),
+    (isSoftDelete?: boolean, version?: number) =>
+      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
     []
   );
 

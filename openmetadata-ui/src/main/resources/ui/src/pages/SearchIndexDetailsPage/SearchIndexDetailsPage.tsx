@@ -542,26 +542,30 @@ function SearchIndexDetailsPage() {
     [searchIndexDetails, onSearchIndexUpdate, searchIndexTags]
   );
 
-  const handleToggleDelete = () => {
+  const handleToggleDelete = (version?: number) => {
     setSearchIndexDetails((prev) => {
       if (!prev) {
         return prev;
       }
 
-      return { ...prev, deleted: !prev?.deleted };
+      return {
+        ...prev,
+        deleted: !prev?.deleted,
+        ...(version ? { version } : {}),
+      };
     });
   };
 
   const handleRestoreSearchIndex = async () => {
     try {
-      await restoreSearchIndex(searchIndexId);
+      const { version: newVersion } = await restoreSearchIndex(searchIndexId);
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.search-index'),
         }),
         2000
       );
-      handleToggleDelete();
+      handleToggleDelete(newVersion);
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -653,8 +657,8 @@ function SearchIndexDetailsPage() {
   }, [version]);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) =>
-      isSoftDelete ? handleToggleDelete() : history.push('/'),
+    (isSoftDelete?: boolean, version?: number) =>
+      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
     []
   );
 

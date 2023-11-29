@@ -153,14 +153,16 @@ const DataModelDetails = ({
 
   const handleRestoreDataModel = async () => {
     try {
-      await restoreDataModel(dataModelData.id ?? '');
+      const { version: newVersion } = await restoreDataModel(
+        dataModelData.id ?? ''
+      );
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.data-model'),
         }),
         2000
       );
-      handleToggleDelete();
+      handleToggleDelete(newVersion);
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -172,8 +174,8 @@ const DataModelDetails = ({
   };
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) =>
-      isSoftDelete ? handleToggleDelete() : history.push('/'),
+    (isSoftDelete?: boolean, version?: number) =>
+      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
     []
   );
 
