@@ -168,7 +168,7 @@ public interface CollectionDAO {
   DataQualityDataTimeSeriesDAO dataQualityDataTimeSeriesDao();
 
   @CreateSqlObject
-  TestCaseFailureStatusTimeSeriesDAO testCaseFailureStatusTimeSeriesDao();
+  TestCaseResolutionStatusTimeSeriesDAO testCaseResolutionStatusTimeSeriesDao();
 
   @CreateSqlObject
   RoleDAO roleDAO();
@@ -3444,15 +3444,15 @@ public interface CollectionDAO {
     }
   }
 
-  interface TestCaseFailureStatusTimeSeriesDAO extends EntityTimeSeriesDAO {
+  interface TestCaseResolutionStatusTimeSeriesDAO extends EntityTimeSeriesDAO {
     @Override
     default String getTimeSeriesTableName() {
-      return "data_quality_failure_status_extension_time_series";
+      return "test_case_resolution_status_time_series";
     }
 
     @SqlQuery(
         value =
-            "SELECT json FROM data_quality_failure_status_extension_time_series "
+            "SELECT json FROM test_case_resolution_status_time_series "
                 + "WHERE sequenceId = :sequenceId ORDER BY timestamp DESC")
     List<String> listTestCaseFailureStatusesForSequenceId(@Bind("sequenceId") UUID sequenceId);
   }

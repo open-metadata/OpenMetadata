@@ -33,14 +33,14 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.api.tests.CreateTestCaseFailureStatus;
-import org.openmetadata.schema.tests.type.TestCaseFailureStatus;
-import org.openmetadata.schema.tests.type.TestCaseFailureStatusType;
+import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
+import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
+import org.openmetadata.schema.tests.type.TestCaseResolutionStatusType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.TestCaseFailureStatusRepository;
+import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityTimeSeriesResource;
 import org.openmetadata.service.security.Authorizer;
@@ -52,21 +52,21 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
-@Path("/v1/dataQuality/testCases/testCaseFailureStatus")
+@Path("/v1/dataQuality/testCases/testCaseResolutionStatus")
 @Tag(name = "Test Case Failure Status", description = "APIs to test case failure status from resolution center.")
 @Hidden
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "TestCases")
-public class TestCaseFailureStatusResource
-    extends EntityTimeSeriesResource<TestCaseFailureStatus, TestCaseFailureStatusRepository> {
-  public static final String COLLECTION_PATH = "/v1/dataQuality/testCases/testCaseFailureStatus";
+public class TestCaseResolutionStatusResource
+    extends EntityTimeSeriesResource<TestCaseResolutionStatus, TestCaseResolutionStatusRepository> {
+  public static final String COLLECTION_PATH = "/v1/dataQuality/testCases/testCaseResolutionStatus";
 
-  public TestCaseFailureStatusResource(Authorizer authorizer) {
+  public TestCaseResolutionStatusResource(Authorizer authorizer) {
     super(Entity.ENTITY_TEST_CASE_FAILURE_STATUS, authorizer);
   }
 
-  public static class TestCaseFailureStatusResultList extends ResultList<TestCaseFailureStatus> {
+  public static class TestCaseFailureStatusResultList extends ResultList<TestCaseResolutionStatus> {
     /* Required for serde */
   }
 
@@ -88,7 +88,7 @@ public class TestCaseFailureStatusResource
                     mediaType = "application/json",
                     schema = @Schema(implementation = TestCaseFailureStatusResultList.class)))
       })
-  public ResultList<TestCaseFailureStatus> list(
+  public ResultList<TestCaseResolutionStatus> list(
       @Context SecurityContext securityContext,
       @Parameter(description = "Test Case ID", schema = @Schema(type = "UUID")) @QueryParam("testCaseId")
           UUID testCaseId,
@@ -115,7 +115,7 @@ public class TestCaseFailureStatusResource
           Long endTs,
       @Parameter(
               description = "Filter test case statuses by status",
-              schema = @Schema(implementation = TestCaseFailureStatusType.class))
+              schema = @Schema(implementation = TestCaseResolutionStatusType.class))
           @QueryParam("testCaseFailureStatus")
           String testCaseFailureStatus,
       @Parameter(description = "Only list the latest statuses", schema = @Schema(type = "Boolean"))
@@ -157,9 +157,9 @@ public class TestCaseFailureStatusResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = TestCaseFailureStatus.class)))
+                    schema = @Schema(implementation = TestCaseResolutionStatus.class)))
       })
-  public ResultList<TestCaseFailureStatus> listForSequenceId(
+  public ResultList<TestCaseResolutionStatus> listForSequenceId(
       @Context SecurityContext securityContext,
       @Parameter(description = "Sequence ID", schema = @Schema(type = "UUID")) @NonNull @QueryParam("sequenceId")
           UUID sequenceId) {
@@ -183,9 +183,9 @@ public class TestCaseFailureStatusResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = TestCaseFailureStatus.class)))
+                    schema = @Schema(implementation = TestCaseResolutionStatus.class)))
       })
-  public TestCaseFailureStatus get(
+  public TestCaseResolutionStatus get(
       @Context SecurityContext securityContext,
       @Parameter(description = "Test Case Failure Status ID", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID testCaseFailureStatusId) {
@@ -208,25 +208,25 @@ public class TestCaseFailureStatusResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = CreateTestCaseFailureStatus.class)))
+                    schema = @Schema(implementation = CreateTestCaseResolutionStatus.class)))
       })
   public Response create(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Valid CreateTestCaseFailureStatus createTestCaseFailureStatus) {
+      @Valid CreateTestCaseResolutionStatus createTestCaseFailureStatus) {
     OperationContext operationContext = new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_TESTS);
     ResourceContextInterface resourceContext = ReportDataContext.builder().build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
     EntityReference testCaseReference =
         EntityUtil.getEntityReference("TestCase", createTestCaseFailureStatus.getTestCaseReference());
-    TestCaseFailureStatus testCaseFailureStatus =
+    TestCaseResolutionStatus testCaseFailureStatus =
         getTestCaseFailureStatus(
             testCaseReference, createTestCaseFailureStatus, securityContext.getUserPrincipal().getName());
 
     return create(
         testCaseFailureStatus,
-        TestCaseFailureStatusRepository.TESTCASE_FAILURE_STATUS_EXTENSION,
+        TestCaseResolutionStatusRepository.TESTCASE_RESOLUTION_STATUS_EXTENSION,
         testCaseReference.getFullyQualifiedName());
   }
 
@@ -255,22 +255,22 @@ public class TestCaseFailureStatusResource
     OperationContext operationContext = new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_TESTS);
     ResourceContextInterface resourceContext = ReportDataContext.builder().build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    RestUtil.PatchResponse<TestCaseFailureStatus> response =
+    RestUtil.PatchResponse<TestCaseResolutionStatus> response =
         repository.patch(id, patch, securityContext.getUserPrincipal().getName());
     return response.toResponse();
   }
 
-  private TestCaseFailureStatus getTestCaseFailureStatus(
-      EntityReference testCaseReference, CreateTestCaseFailureStatus createTestCaseFailureStatus, String user) {
+  private TestCaseResolutionStatus getTestCaseFailureStatus(
+      EntityReference testCaseReference, CreateTestCaseResolutionStatus createTestCaseFailureStatus, String user) {
     EntityReference userReference = EntityUtil.getEntityReference("User", user);
-    TestCaseFailureStatus latestTestCaseFailure =
+    TestCaseResolutionStatus latestTestCaseFailure =
         repository.getLatestRecord(
             testCaseReference.getFullyQualifiedName(),
-            TestCaseFailureStatusRepository.TESTCASE_FAILURE_STATUS_EXTENSION);
+            TestCaseResolutionStatusRepository.TESTCASE_RESOLUTION_STATUS_EXTENSION);
     UUID sequenceId;
 
     if ((latestTestCaseFailure != null)
-        && (latestTestCaseFailure.getTestCaseFailureStatusType() != TestCaseFailureStatusType.Resolved)) {
+        && (latestTestCaseFailure.getTestCaseResolutionStatusType() != TestCaseResolutionStatusType.Resolved)) {
       // if the latest status is not resolved then use the same sequence id
       sequenceId = latestTestCaseFailure.getSequenceId();
     } else {
@@ -279,11 +279,11 @@ public class TestCaseFailureStatusResource
       sequenceId = UUID.randomUUID();
     }
 
-    return new TestCaseFailureStatus()
+    return new TestCaseResolutionStatus()
         .withSequenceId(sequenceId)
         .withTimestamp(System.currentTimeMillis())
-        .withTestCaseFailureStatusType(createTestCaseFailureStatus.getTestCaseFailureStatusType())
-        .withTestCaseFailureStatusDetails(createTestCaseFailureStatus.getTestCaseFailureStatusDetails())
+        .withTestCaseResolutionStatusType(createTestCaseFailureStatus.getTestCaseResolutionStatusType())
+        .withTestCaseResolutionStatusDetails(createTestCaseFailureStatus.getTestCaseResolutionStatusDetails())
         .withUpdatedBy(userReference)
         .withUpdatedAt(System.currentTimeMillis())
         .withTestCaseReference(testCaseReference);

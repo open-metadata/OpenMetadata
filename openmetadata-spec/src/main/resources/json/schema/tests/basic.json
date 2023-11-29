@@ -86,7 +86,7 @@
             "$ref": "#/definitions/testResultValue"
           }
         },
-        "testCaseFailureStatusReference": {
+        "testCaseResolutionStatusReference": {
             "description": "Reference to the failure status object for the test case result.",
             "$ref": "../type/entityReference.json"
         }
@@ -110,9 +110,9 @@
         }
       ]
     },
-    "testCaseFailureStatusType": {
-      "description": "Status of Test Case Acknowledgement.",
-      "javaType": "org.openmetadata.schema.tests.type.TestCaseFailureStatusType",
+    "testCaseResolutionStatusType": {
+      "description": "Test case resolution status type.",
+      "javaType": "org.openmetadata.schema.tests.type.TestCaseResolutionStatusType",
       "type": "string",
       "enum": ["Ack", "Assigned", "InReview", "New", "Resolved"],
       "javaEnums": [

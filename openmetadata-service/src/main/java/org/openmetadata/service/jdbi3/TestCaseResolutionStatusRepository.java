@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response;
-import org.openmetadata.schema.tests.type.TestCaseFailureStatus;
+import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.util.EntityUtil;
@@ -17,35 +17,36 @@ import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
-public class TestCaseFailureStatusRepository extends EntityTimeSeriesRepository<TestCaseFailureStatus> {
+public class TestCaseResolutionStatusRepository extends EntityTimeSeriesRepository<TestCaseResolutionStatus> {
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases/testCaseFailureStatus";
-  public static final String TESTCASE_FAILURE_STATUS_EXTENSION = "testCase.testCaseFailureStatus";
+  public static final String TESTCASE_RESOLUTION_STATUS_EXTENSION = "testCase.testCaseResolutionStatus";
 
-  public TestCaseFailureStatusRepository() {
+  public TestCaseResolutionStatusRepository() {
     super(
         COLLECTION_PATH,
-        Entity.getCollectionDAO().testCaseFailureStatusTimeSeriesDao(),
-        TestCaseFailureStatus.class,
+        Entity.getCollectionDAO().testCaseResolutionStatusTimeSeriesDao(),
+        TestCaseResolutionStatus.class,
         Entity.ENTITY_TEST_CASE_FAILURE_STATUS);
   }
 
-  public ResultList<TestCaseFailureStatus> listTestCaseFailureStatusesForSequenceId(UUID sequenceId) {
+  public ResultList<TestCaseResolutionStatus> listTestCaseFailureStatusesForSequenceId(UUID sequenceId) {
     List<String> jsons =
-        ((CollectionDAO.TestCaseFailureStatusTimeSeriesDAO) timeSeriesDao)
+        ((CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO) timeSeriesDao)
             .listTestCaseFailureStatusesForSequenceId(sequenceId);
-    List<TestCaseFailureStatus> testCaseFailureStatuses = JsonUtils.readObjects(jsons, TestCaseFailureStatus.class);
+    List<TestCaseResolutionStatus> testCaseFailureStatuses =
+        JsonUtils.readObjects(jsons, TestCaseResolutionStatus.class);
 
     return getResultList(testCaseFailureStatuses, null, null, testCaseFailureStatuses.size());
   }
 
-  public RestUtil.PatchResponse<TestCaseFailureStatus> patch(UUID id, JsonPatch patch, String user)
+  public RestUtil.PatchResponse<TestCaseResolutionStatus> patch(UUID id, JsonPatch patch, String user)
       throws IntrospectionException, InvocationTargetException, IllegalAccessException {
     String originalJson = timeSeriesDao.getById(id);
     if (originalJson == null) {
       throw new EntityNotFoundException(String.format("Entity with id %s not found", id));
     }
-    TestCaseFailureStatus original = JsonUtils.readValue(originalJson, entityClass);
-    TestCaseFailureStatus updated = JsonUtils.applyPatch(original, patch, entityClass);
+    TestCaseResolutionStatus original = JsonUtils.readValue(originalJson, entityClass);
+    TestCaseResolutionStatus updated = JsonUtils.applyPatch(original, patch, entityClass);
 
     updated.setUpdatedAt(System.currentTimeMillis());
     updated.setUpdatedBy(EntityUtil.getEntityReference("User", user));
@@ -55,10 +56,10 @@ public class TestCaseFailureStatusRepository extends EntityTimeSeriesRepository<
     return new RestUtil.PatchResponse<>(Response.Status.OK, updated, RestUtil.ENTITY_UPDATED);
   }
 
-  private void validatePatchFields(TestCaseFailureStatus updated, TestCaseFailureStatus original)
+  private void validatePatchFields(TestCaseResolutionStatus updated, TestCaseResolutionStatus original)
       throws IntrospectionException, InvocationTargetException, IllegalAccessException {
     // Validate that only updatedAt and updatedBy fields are updated
-    BeanInfo beanInfo = Introspector.getBeanInfo(TestCaseFailureStatus.class);
+    BeanInfo beanInfo = Introspector.getBeanInfo(TestCaseResolutionStatus.class);
 
     for (PropertyDescriptor propertyDescriptor : beanInfo.getPropertyDescriptors()) {
       String propertyName = propertyDescriptor.getName();

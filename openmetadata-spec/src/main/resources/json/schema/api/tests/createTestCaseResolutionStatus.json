@@ -1,16 +1,16 @@
 {
-  "$id": "https://open-metadata.org/schema/tests/createTestCaseFailureStatus.json",
+  "$id": "https://open-metadata.org/schema/tests/createTestCaseResolutionStatus.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "CreateTestCaseFailureStatus",
-  "description": "Schema to create a new test case result failure status.",
-  "javaType": "org.openmetadata.schema.api.tests.CreateTestCaseFailureStatus",
+  "title": "CreateTestCaseResolutionStatus",
+  "description": "Schema to create a new test case result resolution status.",
+  "javaType": "org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus",
   "type": "object",
   "properties": {
-    "testCaseFailureStatusType": {
+    "testCaseResolutionStatusType": {
       "description": "Status of Test Case.",
-      "$ref": "../../tests/basic.json#/definitions/testCaseFailureStatusType"
+      "$ref": "../../tests/basic.json#/definitions/testCaseResolutionStatusType"
     },
-    "testCaseFailureStatusDetails": {
+    "testCaseResolutionStatusDetails": {
       "description": "Details of the test case failure status.",
       "oneOf": [
         {"$ref": "../../tests/resolved.json"},
@@ -24,6 +24,6 @@
       "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     }
   },
-  "required": ["testCaseFailureStatusType", "testCaseReference"],
+  "required": ["testCaseResolutionStatusType", "testCaseReference"],
   "additionalProperties": false
 }

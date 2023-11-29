@@ -1,29 +1,29 @@
 {
-  "$id": "https://open-metadata.org/schema/tests/testCaseFailureStatus.json",
+  "$id": "https://open-metadata.org/schema/tests/testCaseResolutionStatus.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "TestCaseFailureStatus",
-  "description": "Schema to capture test case result failure status.",
-  "javaType": "org.openmetadata.schema.tests.type.TestCaseFailureStatus",
+  "title": "TestCaseResolutionStatus",
+  "description": "Schema to capture test case resolution status.",
+  "javaType": "org.openmetadata.schema.tests.type.TestCaseResolutionStatus",
   "javaInterfaces": ["org.openmetadata.schema.EntityTimeSeriesInterface"],
   "type": "object",
   "properties": {
     "id": {
-      "description": "Unique identifier of this failure instance (unique across a failure cycle, i.e. new -> ack -> ... -> resolved.",
+      "description": "Unique identifier of this failure instance",
       "$ref": "../type/basic.json#/definitions/uuid"
     },
     "sequenceId": {
-      "description": "Sequence ID for a failure status. Statuses belonging to the same sequence will have the same ID",
+      "description": "Sequence ID for a failure status. Statuses belonging to the same sequence will have the same ID. Unique across a failure cycle, i.e. new -> ack -> ... -> resolved.",
       "$ref": "../type/basic.json#/definitions/uuid"
     },
     "timestamp": {
       "description": "Timestamp on which the failure was created.",
       "$ref": "../type/basic.json#/definitions/timestamp"
     },
-    "testCaseFailureStatusType": {
+    "testCaseResolutionStatusType": {
       "description": "Status of Test Case Acknowledgement.",
-      "$ref": "./basic.json#/definitions/testCaseFailureStatusType"
+      "$ref": "./basic.json#/definitions/testCaseResolutionStatusType"
     },
-    "testCaseFailureStatusDetails": {
+    "testCaseResolutionStatusDetails": {
       "description": "Details of the test case failure status.",
       "oneOf": [
         {"$ref": "./assigned.json"},
@@ -38,7 +38,7 @@
       "default": null
     },
     "updatedAt": {
-      "description": "Time when test case failure status was updated.",
+      "description": "Time when test case resolution was updated.",
       "$ref": "../type/basic.json#/definitions/timestamp"
     },
     "testCaseReference": {
@@ -46,6 +46,6 @@
       "$ref": "../type/entityReference.json"
     }
   },
-  "required": ["id", "timestamp", "testCaseReference", "testCaseFailureStatusType"],
+  "required": ["id", "timestamp", "testCaseReference", "testCaseResolutionStatusType"],
   "additionalProperties": false
 }
