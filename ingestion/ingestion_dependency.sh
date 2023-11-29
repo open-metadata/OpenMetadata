@@ -17,6 +17,7 @@ AIRFLOW_DB=${AIRFLOW_DB:-airflow_db}
 DB_USER=${DB_USER:-airflow_user}
 DB_SCHEME=${DB_SCHEME:-mysql+pymysql}
 DB_PASSWORD=${DB_PASSWORD:-airflow_pass}
+DB_PROPERTIES=${DB_PROPERTIES}
 
 AIRFLOW_ADMIN_USER=${AIRFLOW_ADMIN_USER:-admin}
 AIRFLOW_ADMIN_PASSWORD=${AIRFLOW_ADMIN_PASSWORD:-admin}
@@ -24,7 +25,7 @@ AIRFLOW_ADMIN_PASSWORD=${AIRFLOW_ADMIN_PASSWORD:-admin}
 DB_USER_VAR=`echo "${DB_USER}" | python3 -c "import urllib.parse; encoded_user = urllib.parse.quote(input()); print(encoded_user)"`
 DB_PASSWORD_VAR=`echo "${DB_PASSWORD}" | python3 -c "import urllib.parse; encoded_user = urllib.parse.quote(input()); print(encoded_user)"`
 
-DB_CONN=`echo -n "${DB_SCHEME}://${DB_USER_VAR}:${DB_PASSWORD_VAR}@${DB_HOST}:${DB_PORT}/${AIRFLOW_DB}"`
+DB_CONN=`echo -n "${DB_SCHEME}://${DB_USER_VAR}:${DB_PASSWORD_VAR}@${DB_HOST}:${DB_PORT}/${AIRFLOW_DB}${DB_PROPERTIES}"`
 
 export AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=$DB_CONN
 
