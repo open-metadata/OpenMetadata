@@ -204,7 +204,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       const response = await getDatabaseSchemaDetailsByFQN(
         databaseSchemaFQN,
         ['owner', 'usageSummary', 'tags', 'domain', 'votes'],
-        'include=all'
+        Include.All
       );
       const { description: schemaDescription = '' } = response;
       setDatabaseSchema(response);
@@ -655,7 +655,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       const response = await getDatabaseSchemaDetailsByFQN(
         databaseSchemaFQN,
         ['owner', 'usageSummary', 'tags', 'votes'],
-        'include=all'
+        Include.All
       );
       setDatabaseSchema(response);
     } catch (error) {

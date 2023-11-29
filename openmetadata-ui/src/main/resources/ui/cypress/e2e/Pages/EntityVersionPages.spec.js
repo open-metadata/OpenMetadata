@@ -238,13 +238,53 @@ describe('Common prerequisite for entity version test', () => {
             .should('be.visible');
         });
 
-        it(`Cleanup for ${entityType} version page test`, () => {
+        it(`${entityType} version page should show changes after soft deleted`, () => {
           deleteEntity(
             entityDetails.name,
             entityDetails.serviceName,
             entityDetails.entity,
-            successMessageEntityName
+            successMessageEntityName,
+            'soft'
           );
+
+          interceptURL(
+            'GET',
+            `/api/v1/${entityDetails.entity}/name/${entityFQN}?*include=all`,
+            `get${entityType}Details`
+          );
+          interceptURL(
+            'GET',
+            `/api/v1/${entityDetails.entity}/${entityId}/versions`,
+            'getVersionsList'
+          );
+          interceptURL(
+            'GET',
+            `/api/v1/${entityDetails.entity}/${entityId}/versions/0.2`,
+            'getSelectedVersionDetails'
+          );
+
+          cy.get('[data-testid="version-button"]').contains('0.2').click();
+
+          verifyResponseStatusCode(`@get${entityType}Details`, 200);
+          verifyResponseStatusCode('@getVersionsList', 200);
+          verifyResponseStatusCode('@getSelectedVersionDetails', 200);
+
+          cy.get('[data-testid="deleted-badge"]')
+            .scrollIntoView()
+            .should('be.visible');
+        });
+
+        after(() => {
+          cy.getAllLocalStorage().then((data) => {
+            const token = Object.values(data)[0].oidcIdToken;
+            cy.request({
+              method: 'DELETE',
+              url: `/api/v1/${entityDetails.entity}/${entityId}`,
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            });
+          });
         });
       });
     }

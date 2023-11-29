@@ -79,7 +79,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   const [isEdit, setIsEdit] = useState<boolean>(false);
   const [feedCount, setFeedCount] = useState<number>(0);
 
-  const [mlModelPermissions, setPipelinePermissions] = useState(
+  const [mlModelPermissions, setMlModelPermissions] = useState(
     DEFAULT_ENTITY_PERMISSION
   );
 
@@ -106,7 +106,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         ResourceEntity.ML_MODEL,
         mlModelDetail.id
       );
-      setPipelinePermissions(entityPermission);
+      setMlModelPermissions(entityPermission);
     } catch (error) {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
@@ -114,7 +114,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         })
       );
     }
-  }, [mlModelDetail.id, getEntityPermission, setPipelinePermissions]);
+  }, [mlModelDetail.id, getEntityPermission, setMlModelPermissions]);
 
   useEffect(() => {
     if (mlModelDetail.id) {
@@ -529,6 +529,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
+            isRecursiveDelete
             afterDeleteAction={afterDeleteAction}
             afterDomainUpdateAction={updateMlModelDetailsState}
             dataAsset={mlModelDetail}

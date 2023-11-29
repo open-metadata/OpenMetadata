@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Col, Radio, Row } from 'antd';
+import { Col, Radio, Row, Space, Switch, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -23,9 +23,11 @@ import { ListViewOptions, ListViewProps } from './ListView.interface';
 
 // eslint-disable-next-line @typescript-eslint/ban-types, @typescript-eslint/no-explicit-any
 export const ListView = <T extends object = any>({
-  tableprops,
+  tableProps,
   cardRenderer,
   searchProps: { search, onSearch },
+  handleDeletedSwitchChange,
+  deleted,
 }: ListViewProps<T>) => {
   const [currentView, setCurrentView] = useState<ListViewOptions>(
     ListViewOptions.TABLE
@@ -33,18 +35,18 @@ export const ListView = <T extends object = any>({
   const { t } = useTranslation();
 
   const cardRender = useMemo(() => {
-    if (isEmpty(tableprops.dataSource)) {
-      return tableprops.locale?.emptyText;
+    if (isEmpty(tableProps.dataSource)) {
+      return tableProps.locale?.emptyText;
     }
 
     return (
       <Row gutter={[16, 16]}>
-        {(tableprops.dataSource ?? []).map((dataSource) =>
+        {(tableProps.dataSource ?? []).map((dataSource) =>
           cardRenderer(dataSource)
         )}
       </Row>
     );
-  }, [tableprops, cardRenderer]);
+  }, [tableProps, cardRenderer]);
 
   return (
     <Row gutter={[16, 16]}>
@@ -59,20 +61,33 @@ export const ListView = <T extends object = any>({
         />
       </Col>
       <Col className="text-right" span={14}>
-        <Radio.Group
-          value={currentView}
-          onChange={(e) => setCurrentView(e.target.value)}>
-          <Radio.Button value={ListViewOptions.CARD}>
-            <Icon component={GridIcon} data-testid="grid" />
-          </Radio.Button>
-          <Radio.Button value={ListViewOptions.TABLE}>
-            <Icon component={ListIcon} data-testid="list" />
-          </Radio.Button>
-        </Radio.Group>
+        <Space align="center">
+          <span>
+            <Switch
+              checked={deleted}
+              data-testid="show-deleted-switch"
+              onChange={handleDeletedSwitchChange}
+            />
+            <Typography.Text className="m-l-xs">
+              {t('label.deleted')}
+            </Typography.Text>
+          </span>
+
+          <Radio.Group
+            value={currentView}
+            onChange={(e) => setCurrentView(e.target.value)}>
+            <Radio.Button value={ListViewOptions.CARD}>
+              <Icon component={GridIcon} data-testid="grid" />
+            </Radio.Button>
+            <Radio.Button value={ListViewOptions.TABLE}>
+              <Icon component={ListIcon} data-testid="list" />
+            </Radio.Button>
+          </Radio.Group>
+        </Space>
       </Col>
       <Col span={24}>
         {currentView === ListViewOptions.TABLE ? (
-          <Table {...tableprops} />
+          <Table {...tableProps} />
         ) : (
           cardRender
         )}

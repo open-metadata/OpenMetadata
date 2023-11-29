@@ -35,6 +35,7 @@ export const TIER = 'Tier1';
 
 export const POLICY_NAME = `soft_del_policy_${uuid()}`;
 export const ROLE_NAME = `soft_del_role_${uuid()}`;
+export const TEST_CASE_NAME = `soft_del_test_case_${uuid()}`;
 export const TEAM_1_NAME = `soft_del_team_1_${uuid()}`;
 export const TEAM_2_NAME = `soft_del_team_2_${uuid()}`;
 export const CUSTOM_ATTRIBUTE_NAME = `softDeleteTestProperty${uuid()}`;
@@ -195,4 +196,20 @@ export const TEAM_2_DETAILS_SOFT_DELETE_TEST = {
   name: TEAM_2_NAME,
   displayName: TEAM_2_NAME,
   teamType: 'Group',
+};
+
+// eslint-disable-next-line max-len
+export const TABLE_FQN = `${DATABASE_SERVICE_SOFT_DELETE_TEST.service.name}.${DATABASE_SERVICE_SOFT_DELETE_TEST.database.name}.${DATABASE_SERVICE_SOFT_DELETE_TEST.schema.name}.${DATABASE_SERVICE_SOFT_DELETE_TEST.entity.name}`;
+
+export const TEST_CASE_DETAILS = {
+  name: TEST_CASE_NAME,
+  entityLink: `<#E::table::${TABLE_FQN}>`,
+  testDefinition: 'tableColumnCountToEqual',
+  testSuite: `${TABLE_FQN}.testSuite`,
+  parameterValues: [
+    {
+      name: 'columnCount',
+      value: 5,
+    },
+  ],
 };
