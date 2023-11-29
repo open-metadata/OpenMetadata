@@ -29,7 +29,7 @@ class TestCredentials(TestCase):
     Validate credentials handling
     """
 
-    def test_build_google_credentials_dict(self):
+    def test_build_service_account_google_credentials_dict(self):
         """
         Check how we can validate GCS values
         """
@@ -52,7 +52,7 @@ VEhPQF0i0tUU7Fl071hcYaiQoZx4nIjN+NG6p5QKbl6k
 -----END RSA PRIVATE KEY-----"""
 
         gcp_values = GcpCredentialsValues(
-            type="my_type",
+            type="service_account",
             projectId=["project_id"],
             privateKeyId="private_key_id",
             privateKey=private_key,
@@ -62,7 +62,7 @@ VEhPQF0i0tUU7Fl071hcYaiQoZx4nIjN+NG6p5QKbl6k
         )
 
         expected_dict = {
-            "type": "my_type",
+            "type": "service_account",
             "project_id": ["project_id"],
             "private_key_id": "private_key_id",
             "private_key": private_key,
@@ -82,3 +82,37 @@ VEhPQF0i0tUU7Fl071hcYaiQoZx4nIjN+NG6p5QKbl6k
 
         with self.assertRaises(InvalidPrivateKeyException):
             build_google_credentials_dict(gcp_values)
+
+    def test_build_external_account_google_credentials_dict(self):
+        """
+        Check how we can validate GCS values
+        """
+        gcp_values = GcpCredentialsValues(
+            type="service_account",
+            audience="audience",
+            subjectTokenType="subject_token_type",
+            tokenURL="token_url",
+            credentialSource={
+                "environmentId": "environment_id"
+            }
+        )
+
+        expected_dict = {
+            "type": "service_account",
+            "audience": "audience"
+            "subject_token_type": "subject_token_type",
+            "token_url": "token_url",
+            "credential_source":{
+                "environmentId": "environment_id"
+            }
+        }
+
+        build_google_credentials_dict(gcp_values)
+
+        self.assertEqual(expected_dict, build_google_credentials_dict(gcp_values))
+
+        gcp_values.privateKey = SecretStr("I don't think I am a proper Private Key")
+
+        with self.assertRaises(InvalidPrivateKeyException):
+            build_google_credentials_dict(gcp_values)
+
