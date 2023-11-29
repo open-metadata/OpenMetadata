@@ -178,7 +178,7 @@ server_config = OpenMetadataConnection(
 metadata = OpenMetadata(server_config)
 ```
 
-Make sure to get a JWT token for the ingestion bot as described [here](/deployment/security/enable-jwt-tokens#generate-token) and use that when you specify `jwtToken`.
+For local development, we can get a JWT token for the ingestion bot as described [here](/deployment/security/enable-jwt-tokens#generate-token) and use that when we specify the `jwtToken`. For a real-world deployment, we can also use [different authentication methods](/deployment/security) and specify other settings of the connection (such as `sslConfig`).
 
 {% note %}
 
