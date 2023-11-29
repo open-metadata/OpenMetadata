@@ -76,7 +76,7 @@ const CustomTasksDAGViewControl = ({
 
   return (
     <Space
-      className="justify-end w-full z-10 absolute top-1 right-1 bottom-full p-y-md"
+      className="justify-end w-full z-10 absolute top-4 right-1 bottom-full p-md"
       data-testid="custom-tasks-dag-view-control"
       size={16}>
       <div className="flow-control custom-control-fit-screen-button custom-control-zoom-slide items-center">
