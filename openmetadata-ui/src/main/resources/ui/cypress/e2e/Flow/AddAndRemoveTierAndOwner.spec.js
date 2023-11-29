@@ -30,14 +30,14 @@ import {
   deleteEntityById,
   deleteUserEntity,
   hardDeleteService,
-} from '../../common/entityUtils';
+} from '../../common/EntityUtils';
 import { DELETE_TERM, uuid } from '../../constants/constants';
 import {
   DATABASE_SERVICE,
   SINGLE_LEVEL_SERVICE,
   STORED_PROCEDURE_DETAILS,
   VISIT_ENTITIES_DATA,
-} from '../../constants/entityConstant';
+} from '../../constants/EntityConstant';
 import { USER_CREDENTIALS } from '../../constants/SearchIndexDetails.constants';
 import { SERVICE_CATEGORIES } from '../../constants/service.constants';
 
@@ -80,7 +80,7 @@ describe('Add and Remove Owner', () => {
       createEntityTable({
         token,
         ...DATABASE_SERVICE,
-        tables: [DATABASE_SERVICE.tables],
+        tables: [DATABASE_SERVICE.entity],
       });
       SINGLE_LEVEL_SERVICE.forEach((data) => {
         createSingleLevelEntity({

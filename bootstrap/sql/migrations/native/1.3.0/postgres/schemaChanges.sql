@@ -13,3 +13,20 @@ CREATE TABLE data_quality_failure_status_extension_time_series (
   INDEX (testCaseFailureStatusType),
   INDEX (id, testCaseFailureStatusType)
 )
+
+-- DataInsightsApplication should not allow configuration
+UPDATE apps_marketplace
+SET json = jsonb_set(
+	json::jsonb,
+	'{allowConfiguration}',
+	to_jsonb(false)
+)
+where name = 'DataInsightsApplication';
+
+UPDATE installed_apps
+SET json = jsonb_set(
+	json::jsonb,
+	'{allowConfiguration}',
+	to_jsonb(false)
+)
+where name = 'DataInsightsApplication';

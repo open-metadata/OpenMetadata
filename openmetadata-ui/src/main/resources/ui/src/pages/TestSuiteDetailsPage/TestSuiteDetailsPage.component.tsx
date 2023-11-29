@@ -97,8 +97,8 @@ const TestSuiteDetailsPage = () => {
   const { testSuiteDescription, testSuiteId, testOwner } = useMemo(() => {
     return {
       testOwner: testSuite?.owner,
-      testSuiteId: testSuite?.id,
-      testSuiteDescription: testSuite?.description,
+      testSuiteId: testSuite?.id ?? '',
+      testSuiteDescription: testSuite?.description ?? '',
     };
   }, [testSuite]);
 
@@ -132,7 +132,7 @@ const TestSuiteDetailsPage = () => {
     try {
       const response = await getListTestCase({
         fields: 'testCaseResult,testDefinition,testSuite',
-        testSuiteId: testSuiteId,
+        testSuiteId,
         orderByLastExecutionDate: true,
         ...param,
         limit: pageSize,
@@ -156,7 +156,7 @@ const TestSuiteDetailsPage = () => {
     try {
       await addTestCaseToLogicalTestSuite({
         testCaseIds,
-        testSuiteId: testSuite?.id ?? '',
+        testSuiteId,
       });
       setIsTestCaseModalOpen(false);
       fetchTestCases();
@@ -289,8 +289,8 @@ const TestSuiteDetailsPage = () => {
   }, [testSuiteFQN]);
 
   useEffect(() => {
-    if (testSuite?.id) {
-      fetchTestCases({ testSuiteId: testSuite.id });
+    if (testSuiteId) {
+      fetchTestCases({ testSuiteId });
     }
   }, [testSuite, pageSize]);
 
@@ -360,8 +360,8 @@ const TestSuiteDetailsPage = () => {
 
           <Description
             className="test-suite-description"
-            description={testSuiteDescription || ''}
-            entityName={testSuite?.displayName ?? testSuite?.name}
+            description={testSuiteDescription}
+            entityName={getEntityName(testSuite)}
             hasEditAccess={hasAccess}
             isEdit={isDescriptionEditable}
             onCancel={() => descriptionHandler(false)}

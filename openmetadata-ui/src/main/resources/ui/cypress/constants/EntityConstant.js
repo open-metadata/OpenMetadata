@@ -10,7 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { MYDATA_SUMMARY_OPTIONS, uuid } from './constants';
+
+// eslint-disable-next-line spaced-comment
+/// <reference types="cypress" />
+
+import { DATA_ASSETS, uuid } from './constants';
 import { SERVICE_CATEGORIES } from './service.constants';
 
 const DATABASE_SERVICE_NAME = `cy-database-service-${uuid()}`;
@@ -322,54 +326,63 @@ export const DATABASE_SERVICE = {
   service: DATABASE_SERVICE_DETAILS,
   database: DATABASE_DETAILS,
   schema: SCHEMA_DETAILS,
-  tables: TABLE_DETAILS,
+  entity: TABLE_DETAILS,
+  serviceType: SERVICE_CATEGORIES.DATABASE_SERVICES,
+  entityType: DATA_ASSETS.tables,
 };
 export const MESSAGING_SERVICE = {
   service: MESSAGING_SERVICE_DETAILS,
   entity: TOPIC_DETAILS,
   serviceType: SERVICE_CATEGORIES.MESSAGING_SERVICES,
-  entityType: 'topics',
+  entityType: DATA_ASSETS.topics,
 };
 export const DASHBOARD_SERVICE = {
   service: DASHBOARD_SERVICE_DETAILS,
   entity: DASHBOARD_DETAILS,
   serviceType: SERVICE_CATEGORIES.DASHBOARD_SERVICES,
-  entityType: 'dashboards',
+  entityType: DATA_ASSETS.dashboards,
 };
 export const PIPELINE_SERVICE = {
   service: PIPELINE_SERVICE_DETAILS,
   entity: PIPELINE_DETAILS,
   serviceType: SERVICE_CATEGORIES.PIPELINE_SERVICES,
-  entityType: 'pipelines',
+  entityType: DATA_ASSETS.pipelines,
 };
-export const MLMODEL_SERVICE = {
+export const ML_MODEL_SERVICE = {
   service: ML_MODEL_SERVICE_DETAILS,
   entity: ML_MODEL_DETAILS,
   serviceType: SERVICE_CATEGORIES.ML_MODEL_SERVICES,
-  entityType: 'mlmodels',
+  entityType: DATA_ASSETS.mlmodels,
 };
 
 export const STORAGE_SERVICE = {
   service: STORAGE_SERVICE_DETAILS,
   entity: CONTAINER_DETAILS,
   serviceType: SERVICE_CATEGORIES.STORAGE_SERVICES,
-  entityType: 'containers',
+  entityType: DATA_ASSETS.containers,
+};
+
+export const SEARCH_SERVICE = {
+  service: SEARCH_SERVICE_DETAILS,
+  entity: SEARCH_INDEX_DETAILS,
+  serviceType: SERVICE_CATEGORIES.SEARCH_SERVICES,
+  entityType: DATA_ASSETS.searchIndexes,
 };
 
 export const SINGLE_LEVEL_SERVICE = [
   MESSAGING_SERVICE,
   DASHBOARD_SERVICE,
   PIPELINE_SERVICE,
-  MLMODEL_SERVICE,
+  ML_MODEL_SERVICE,
   STORAGE_SERVICE,
 ];
 
 // visit entity details page object
 export const VISIT_ENTITIES_DATA = {
   table: {
-    term: DATABASE_SERVICE.tables.name,
-    displayName: DATABASE_SERVICE.tables.name,
-    entity: MYDATA_SUMMARY_OPTIONS.tables,
+    term: DATABASE_SERVICE.entity.name,
+    displayName: DATABASE_SERVICE.entity.name,
+    entity: DATA_ASSETS.tables,
     serviceName: DATABASE_SERVICE.service.name,
     schemaName: DATABASE_SERVICE.schema.name,
     entityType: 'Table',
@@ -377,41 +390,41 @@ export const VISIT_ENTITIES_DATA = {
   topic: {
     term: MESSAGING_SERVICE.entity.name,
     displayName: MESSAGING_SERVICE.entity.name,
-    entity: MYDATA_SUMMARY_OPTIONS.topics,
+    entity: DATA_ASSETS.topics,
     serviceName: MESSAGING_SERVICE.service.name,
     entityType: 'Topic',
   },
   dashboard: {
     term: DASHBOARD_SERVICE.entity.name,
     displayName: DASHBOARD_SERVICE.entity.name,
-    entity: MYDATA_SUMMARY_OPTIONS.dashboards,
+    entity: DATA_ASSETS.dashboards,
     serviceName: DASHBOARD_SERVICE.service.name,
     entityType: 'Dashboard',
   },
   pipeline: {
     term: PIPELINE_SERVICE.entity.name,
     displayName: PIPELINE_SERVICE.entity.name,
-    entity: MYDATA_SUMMARY_OPTIONS.pipelines,
+    entity: DATA_ASSETS.pipelines,
     serviceName: PIPELINE_SERVICE.service.name,
     entityType: 'Pipeline',
   },
   mlmodel: {
-    term: MLMODEL_SERVICE.entity.name,
-    displayName: MLMODEL_SERVICE.entity.name,
-    entity: MYDATA_SUMMARY_OPTIONS.mlmodels,
-    serviceName: MLMODEL_SERVICE.service.name,
+    term: ML_MODEL_SERVICE.entity.name,
+    displayName: ML_MODEL_SERVICE.entity.name,
+    entity: DATA_ASSETS.mlmodels,
+    serviceName: ML_MODEL_SERVICE.service.name,
     entityType: 'ML Model',
   },
   storedProcedure: {
     term: STORED_PROCEDURE_DETAILS.name,
     displayName: STORED_PROCEDURE_DETAILS.name,
-    entity: MYDATA_SUMMARY_OPTIONS.storedProcedures,
+    entity: DATA_ASSETS.storedProcedures,
     serviceName: DATABASE_SERVICE_DETAILS.name,
     entityType: 'Stored Procedure',
   },
   dataModel: {
     term: DASHBOARD_DATA_MODEL_DETAILS.name,
-    entity: MYDATA_SUMMARY_OPTIONS.dataModel,
+    entity: DATA_ASSETS.dataModel,
     serviceName: DASHBOARD_DATA_MODEL_DETAILS.service,
     displayName: DASHBOARD_DATA_MODEL_DETAILS.name,
     entityType: 'Data Model',

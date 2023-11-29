@@ -14,3 +14,20 @@ CREATE TABLE data_quality_failure_status_extension_time_series (
   INDEX(id, testCaseFailureStatusType)
 
 ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- DataInsightsApplication should not allow configuration
+update apps_marketplace
+set json = JSON_INSERT(
+  JSON_REMOVE(json, '$.allowConfiguration'),
+  '$.allowConfiguration',
+  false
+)
+where name = 'DataInsightsApplication';
+
+update installed_apps
+set json = JSON_INSERT(
+  JSON_REMOVE(json, '$.allowConfiguration'),
+  '$.allowConfiguration',
+  false
+)
+where name = 'DataInsightsApplication';

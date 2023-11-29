@@ -17,6 +17,7 @@ from typing import Iterable, List, Optional
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import (
+    Pipeline,
     PipelineStatus,
     StatusType,
     Task,
@@ -40,6 +41,7 @@ from metadata.ingestion.source.pipeline.dagster.models import (
     SolidHandle,
 )
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
+from metadata.utils import fqn
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
@@ -121,7 +123,7 @@ class DagsterSource(PipelineServiceSource):
                 displayName=pipeline_details.name,
                 description=pipeline_details.description,
                 tasks=self._get_task_list(pipeline_name=pipeline_details.name),
-                service=self.context.pipeline_service.fullyQualifiedName.__root__,
+                service=self.context.pipeline_service,
                 tags=get_tag_labels(
                     metadata=self.metadata,
                     tags=[self.context.repository_name],
@@ -179,8 +181,14 @@ class DagsterSource(PipelineServiceSource):
                 if run.endTime
                 else None,
             )
+            pipeline_fqn = fqn.build(
+                metadata=self.metadata,
+                entity_type=Pipeline,
+                service_name=self.context.pipeline_service,
+                pipeline_name=self.context.pipeline,
+            )
             pipeline_status_yield = OMetaPipelineStatus(
-                pipeline_fqn=self.context.pipeline.fullyQualifiedName.__root__,
+                pipeline_fqn=pipeline_fqn,
                 pipeline_status=pipeline_status,
             )
             yield Either(right=pipeline_status_yield)
@@ -197,7 +205,14 @@ class DagsterSource(PipelineServiceSource):
         self, pipeline_details: DagsterPipeline
     ) -> Iterable[Either[OMetaPipelineStatus]]:
         """Yield the pipeline and task status"""
-        for task in self.context.pipeline.tasks or []:
+        pipeline_fqn = fqn.build(
+            metadata=self.metadata,
+            entity_type=Pipeline,
+            service_name=self.context.pipeline_service,
+            pipeline_name=self.context.pipeline,
+        )
+        pipeline_entity = self.metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn)
+        for task in pipeline_entity.tasks or []:
             try:
                 runs = self.client.get_task_runs(
                     task.name,
