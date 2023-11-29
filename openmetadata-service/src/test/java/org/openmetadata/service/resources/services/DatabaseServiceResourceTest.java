@@ -188,7 +188,7 @@ public class DatabaseServiceResourceTest extends ServiceResourceTest<DatabaseSer
     assertResponseContains(
         () -> updateEntity(update, OK, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "InvalidServiceConnectionException for service [Snowflake] due to [Failed to unmask connection instance of Snowflake. Did the Fernet Key change?].");
+        "InvalidServiceConnectionException for service [Snowflake] due to [Failed to unmask connection instance of Snowflake].");
   }
 
   @Test
