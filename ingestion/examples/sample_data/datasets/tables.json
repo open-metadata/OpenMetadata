@@ -129,7 +129,7 @@
                       "customMetrics": [
                         {
                             "name": "CountOfNonUsPhoneNumbers",
-                            "columnName": "zip",
+                            "columnName": "phone",
                             "expression": "SELECT COUNT(phone) FROM dim_address WHERE phone NOT LIKE '1%'"
                         }
                     ]

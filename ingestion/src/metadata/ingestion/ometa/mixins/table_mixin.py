@@ -22,6 +22,9 @@ from requests.utils import quote
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
 )
+from metadata.generated.schema.api.tests.createCustomMetric import (
+    CreateCustomMetricRequest,
+)
 from metadata.generated.schema.entity.data.table import (
     ColumnProfile,
     DataModel,
@@ -288,3 +291,18 @@ class OMetaTableMixin:
             Optional[Table]: OM table object
         """
         return self._get(Table, f"{quote(model_str(fqn))}/tableProfile/latest")
+
+    def create_or_update_custom_metric(
+        self, custom_metric: CreateCustomMetricRequest, table_id: str
+    ) -> Table:
+        """Create or update custom metric. If custom metric name matches an existing
+        one then it will be updated.
+
+        Args:
+            custom_metric (CreateCustomMetricRequest): custom metric to be create or updated
+        """
+        resp = self.client.put(
+            f"{self.get_suffix(Table)}/{table_id}/customMetric",
+            data=custom_metric.json(),
+        )
+        return Table(**resp)
