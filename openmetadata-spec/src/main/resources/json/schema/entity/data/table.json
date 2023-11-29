@@ -151,7 +151,12 @@
         "IMAGE",
         "IPV4",
         "IPV6",
-        "DATETIMERANGE"
+        "DATETIMERANGE",
+        "HLL",
+        "LARGEINT",
+        "QUANTILE_STATE",
+        "AGG_STATE",
+        "BITMAP"
       ]
     },
     "constraint": {
