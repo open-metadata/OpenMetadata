@@ -16,9 +16,9 @@ from typing import List, Set
 from unittest import TestCase
 
 from airflow import DAG
-from airflow.lineage import entities
 from airflow.operators.bash import BashOperator
 
+from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.source.pipeline.airflow.lineage_parser import (
     OMEntity,
@@ -252,7 +252,7 @@ class TestAirflowLineageParser(TestCase):
                 ],
             )
 
-    def test_get_dataset_xlets_from_dag(self):
+    def test_get_attrs_xlets_from_dag(self):
         """
         Check that we can properly join the xlet information from
         all operators in the DAG
@@ -261,18 +261,36 @@ class TestAirflowLineageParser(TestCase):
             BashOperator(
                 task_id="print_date",
                 bash_command="date",
-                inlets={"tables": ["A"]},
+                inlets=[
+                    OMEntity(entity=Table, fqn="A"),
+                    OMEntity(entity=Table, fqn="B"),
+                ],
             )
 
             BashOperator(
                 task_id="sleep",
                 bash_command=SLEEP,
-                outlets=[
-                    entities.Table(name="name", database="schema", cluster="database"),
-                    entities.File("FQN"),
-                ],
+                outlets=[OMEntity(entity=Table, fqn="C")],
             )
 
-            # self.assertEqual(
-            #    get_xlets_from_dag(dag), [XLets(inlets={"A"}, outlets={"B"})]
-            # )
+            BashOperator(
+                task_id="sleep2",
+                bash_command=SLEEP,
+                outlets=[OMEntity(entity=Container, fqn="D")],
+            )
+
+            self.assertXLetsEquals(
+                get_xlets_from_dag(dag),
+                [
+                    XLets(
+                        inlets=[
+                            OMEntity(entity=Table, fqn="A"),
+                            OMEntity(entity=Table, fqn="B"),
+                        ],
+                        outlets=[
+                            OMEntity(entity=Table, fqn="C"),
+                            OMEntity(entity=Container, fqn="D"),
+                        ],
+                    )
+                ],
+            )

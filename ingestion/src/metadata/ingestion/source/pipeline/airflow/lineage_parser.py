@@ -64,9 +64,10 @@ and we'll treat this as independent sets of lineage
 """
 import logging
 import traceback
+from collections import defaultdict
 from enum import Enum
 from functools import singledispatch
-from typing import Any, Dict, List, Optional, Type
+from typing import Any, DefaultDict, Dict, List, Optional, Type
 
 import attr
 from pydantic import BaseModel
@@ -103,6 +104,8 @@ class OMEntity:
     entity: Type[T] = attr.ib()
     # Entity Fully Qualified Name, e.g., service.database.schema.table
     fqn: str = attr.ib()
+    # We will use the key in case we need to group different lineages from the same DAG
+    key: str = "default"
 
 
 class XLets(BaseModel):
@@ -117,7 +120,20 @@ class XLets(BaseModel):
         arbitrary_types_allowed = True
 
 
-def parse_xlets(xlet: List[dict]) -> Optional[Dict[str, List[OMEntity]]]:
+def concat_dict_values(
+    d1: DefaultDict[str, List[Any]], d2: Optional[Dict[str, List[Any]]]
+) -> DefaultDict[str, List[Any]]:
+    """
+    Update d1 based on d2 values concatenating their results.
+    """
+    if d2:
+        for key, value in d2.items():
+            d1[key] = d1[key] + value
+
+    return d1
+
+
+def parse_xlets(xlet: List[Any]) -> Optional[Dict[str, List[OMEntity]]]:
     """
     :param xlet: airflow v2 xlet dict
     :return: dictionary of xlet list or None
@@ -145,12 +161,13 @@ def parse_xlets(xlet: List[dict]) -> Optional[Dict[str, List[OMEntity]]]:
     """
     # This branch is for lineage parser op
     if isinstance(xlet, list) and len(xlet):
-        _parsed_xlets = {}
+        _parsed_xlets = defaultdict(list)
         for element in xlet:
             parsed_element = _parse_xlets(element) or {}
 
             # Update our xlet dict based on each parsed element
-            _parsed_xlets.update(parsed_element)
+            # Since we can get a list of elements, concatenate the results from multiple xlets
+            _parsed_xlets = concat_dict_values(_parsed_xlets, parsed_element)
 
         return _parsed_xlets
 
@@ -171,10 +188,10 @@ def _parse_xlets(xlet: Any) -> Optional[Dict[str, List[OMEntity]]]:
 
 @_parse_xlets.register
 @deprecated(
-    message="Please update your inlets/outlets to become follow <TODO DOCS>",
+    message="Please update your inlets/outlets to follow <TODO DOCS>",
     release="1.4.0",
 )
-def _(xlet: dict) -> Dict[str, List[OMEntity]]:
+def dictionary_lineage_annotation(xlet: dict) -> Dict[str, List[OMEntity]]:
     """
     Handle OM specific inlet/outlet information. E.g.,
 
@@ -204,6 +221,25 @@ def _(xlet: dict) -> Dict[str, List[OMEntity]]:
         for key, value in xlet_dict.items()
         if isinstance(value, list)
     }
+
+
+@_parse_xlets.register
+def _(xlet: OMEntity) -> Dict[str, List[OMEntity]]:
+    """
+    Handle OM specific inlet/outlet information. E.g.,
+
+    ```
+    BashOperator(
+        task_id="sleep",
+        bash_command=SLEEP,
+        outlets=[OMEntity(entity=Table, fqn="B")],
+    )
+    ```
+
+    We'll be able to simplify this method once we can deprecate
+    the logic for dict-based xlets above.
+    """
+    return {xlet.key: [xlet]}
 
 
 def get_xlets_from_operator(
@@ -255,25 +291,26 @@ def get_xlets_from_dag(dag: "DAG") -> List[XLets]:
     Fill the inlets and outlets of the Pipeline by iterating
     over all its tasks
     """
-    _inlets = {}
-    _outlets = {}
+    _inlets = defaultdict(list)
+    _outlets = defaultdict(list)
 
     # First, grab all the inlets and outlets from all tasks grouped by keys
     for task in dag.tasks:
         try:
-            _inlets.update(
+            _inlets = concat_dict_values(
+                _inlets,
                 get_xlets_from_operator(
                     operator=task,
                     xlet_mode=XLetsMode.INLETS,
-                )
-                or []
+                ),
             )
-            _outlets.update(
+
+            _outlets = concat_dict_values(
+                _outlets,
                 get_xlets_from_operator(
                     operator=task,
                     xlet_mode=XLetsMode.OUTLETS,
-                )
-                or []
+                ),
             )
 
         except Exception as exc:

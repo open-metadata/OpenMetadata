@@ -254,14 +254,14 @@ class AirflowLineageRunner:
             pipeline=EntityReference(id=pipeline.id, type="pipeline")
         )
 
-        for from_fqn in xlets.inlets or []:
+        for from_xlet in xlets.inlets or []:
             from_entity: Optional[Table] = self.metadata.get_by_name(
-                entity=Table, fqn=from_fqn
+                entity=from_xlet.entity, fqn=from_xlet.fqn
             )
             if from_entity:
-                for to_fqn in xlets.outlets or []:
+                for to_xlet in xlets.outlets or []:
                     to_entity: Optional[Table] = self.metadata.get_by_name(
-                        entity=Table, fqn=to_fqn
+                        entity=to_xlet.entity, fqn=to_xlet.fqn
                     )
                     if to_entity:
                         lineage = AddLineageRequest(
@@ -276,12 +276,12 @@ class AirflowLineageRunner:
                         self.metadata.add_lineage(lineage)
                     else:
                         self.dag.log.warning(
-                            f"Could not find Table [{to_fqn}] from "
+                            f"Could not find [{to_xlet.entity.__name__}] [{to_xlet.fqn}] from "
                             f"[{pipeline.fullyQualifiedName.__root__}] outlets"
                         )
             else:
                 self.dag.log.warning(
-                    f"Could not find Table [{from_fqn}] from "
+                    f"Could not find [{from_xlet.entity.__name__}] [{from_xlet.fqn}] from "
                     f"[{pipeline.fullyQualifiedName.__root__}] inlets"
                 )
 

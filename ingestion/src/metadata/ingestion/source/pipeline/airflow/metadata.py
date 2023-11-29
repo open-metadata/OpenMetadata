@@ -30,7 +30,6 @@ from metadata.generated.schema.entity.data.pipeline import (
     Task,
     TaskStatus,
 )
-from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.pipeline.airflowConnection import (
     AirflowConnection,
 )
@@ -45,7 +44,10 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.connections.session import create_and_bind_session
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.pipeline.airflow.lineage_parser import get_xlets_from_dag
+from metadata.ingestion.source.pipeline.airflow.lineage_parser import (
+    XLets,
+    get_xlets_from_dag,
+)
 from metadata.ingestion.source.pipeline.airflow.models import (
     AirflowDag,
     AirflowDagDetails,
@@ -264,7 +266,7 @@ class AirflowSource(PipelineServiceSource):
             SerializedDagModel.dag_id,
             json_data_column,
             SerializedDagModel.fileloc,
-        ).all():
+        ).yield_per(100):
             try:
                 data = serialized_dag[1]["dag"]
                 dag = AirflowDagDetails(
@@ -433,13 +435,19 @@ class AirflowSource(PipelineServiceSource):
             source=LineageSource.PipelineLineage,
         )
 
-        xlets = get_xlets_from_dag(dag=pipeline_details) if pipeline_details else []
+        xlets: List[XLets] = (
+            get_xlets_from_dag(dag=pipeline_details) if pipeline_details else []
+        )
         for xlet in xlets:
-            for from_fqn in xlet.inlets or []:
-                from_entity = self.metadata.get_by_name(entity=Table, fqn=from_fqn)
+            for from_xlet in xlet.inlets or []:
+                from_entity = self.metadata.get_by_name(
+                    entity=from_xlet.entity, fqn=from_xlet.fqn
+                )
                 if from_entity:
-                    for to_fqn in xlet.outlets or []:
-                        to_entity = self.metadata.get_by_name(entity=Table, fqn=to_fqn)
+                    for to_xlet in xlet.outlets or []:
+                        to_entity = self.metadata.get_by_name(
+                            entity=to_xlet.entity, fqn=to_xlet.fqn
+                        )
                         if to_entity:
                             lineage = AddLineageRequest(
                                 edge=EntitiesEdge(
@@ -455,12 +463,12 @@ class AirflowSource(PipelineServiceSource):
                             yield Either(right=lineage)
                         else:
                             logger.warning(
-                                f"Could not find Table [{to_fqn}] from "
+                                f"Could not find [{to_xlet.entity.__name__}] [{to_xlet.fqn}] from "
                                 f"[{pipeline_entity.fullyQualifiedName.__root__}] outlets"
                             )
                 else:
                     logger.warning(
-                        f"Could not find Table [{from_fqn}] from "
+                        f"Could not find [{from_xlet.entity.__name__}] [{from_xlet.fqn}] from "
                         f"[{pipeline_entity.fullyQualifiedName.__root__}] inlets"
                     )
 
