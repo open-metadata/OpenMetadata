@@ -55,6 +55,7 @@ from metadata.ingestion.source.pipeline.airflow.models import (
 from metadata.ingestion.source.pipeline.airflow.utils import get_schedule_interval
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils import fqn
+from metadata.utils.constants import ENTITY_REFERENCE_TYPE_MAP
 from metadata.utils.helpers import clean_uri, datetime_to_ts
 from metadata.utils.logger import ingestion_logger
 
@@ -431,7 +432,7 @@ class AirflowSource(PipelineServiceSource):
             return
 
         lineage_details = LineageDetails(
-            pipeline=EntityReference(id=pipeline_entity.id.__root__, type="pipeline"),
+            pipeline=EntityReference(id=pipeline_entity.id.__root__, type=ENTITY_REFERENCE_TYPE_MAP[Pipeline.__name__]),
             source=LineageSource.PipelineLineage,
         )
 
@@ -452,10 +453,12 @@ class AirflowSource(PipelineServiceSource):
                             lineage = AddLineageRequest(
                                 edge=EntitiesEdge(
                                     fromEntity=EntityReference(
-                                        id=from_entity.id, type="table"
+                                        id=from_entity.id,
+                                        type=ENTITY_REFERENCE_TYPE_MAP[from_xlet.entity.__name__],
                                     ),
                                     toEntity=EntityReference(
-                                        id=to_entity.id, type="table"
+                                        id=to_entity.id,
+                                        type=ENTITY_REFERENCE_TYPE_MAP[to_xlet.entity.__name__],
                                     ),
                                     lineageDetails=lineage_details,
                                 )

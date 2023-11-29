@@ -76,6 +76,7 @@ from pydantic import BaseModel
 from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.ometa.models import T
 from metadata.utils.deprecation import deprecated
+from metadata.utils.importer import import_from_module
 
 logger = logging.getLogger("airflow.task")
 
@@ -111,7 +112,7 @@ class OMEntity:
     def __str__(self):
         """Custom serialization"""
         _dict = self.__dict__
-        _dict["entity"] = f"{Table.__module__}.{Table.__name__}"
+        _dict["entity"] = f"{self.entity.__module__}.{self.entity.__name__}"
         return json.dumps(self.__dict__)
 
 
@@ -231,7 +232,23 @@ def dictionary_lineage_annotation(xlet: dict) -> Dict[str, List[OMEntity]]:
 
 
 @_parse_xlets.register
-def _(xlet: OMEntity) -> Dict[str, List[OMEntity]]:
+def _(xlet: OMEntity) -> Optional[Dict[str, List[OMEntity]]]:
+    """
+    Handle OM specific inlet/outlet information. E.g.,
+
+    ```
+    BashOperator(
+        task_id="sleep",
+        bash_command=SLEEP,
+        outlets=[OMEntity(entity=Table, fqn="B")],
+    )
+    ```
+    """
+    return {xlet.key: [xlet]}
+
+
+@_parse_xlets.register
+def _(xlet: str) -> Optional[Dict[str, List[OMEntity]]]:
     """
     Handle OM specific inlet/outlet information. E.g.,
 
@@ -243,10 +260,33 @@ def _(xlet: OMEntity) -> Dict[str, List[OMEntity]]:
     )
     ```
 
-    We'll be able to simplify this method once we can deprecate
-    the logic for dict-based xlets above.
+    Once a DAG is serialized, the xlet info will be stored as:
+    ```
+    ['{"entity": "metadata.generated.schema.entity.data.table.Table", "fqn": "FQN", "key": "test"}']
+    ```
+    based on our custom serialization logic.
+
+    In this method, we need to revert this back to the actual instance of OMEntity.
+    Note that we need to properly validate that the string is following the constraints of:
+    - Being a JSON representation
+    - Following the structure of an OMEntity
+
+    Otherwise, we could be having any other attr-based xlet native from Airflow.
     """
-    return {xlet.key: [xlet]}
+    try:
+        body = json.loads(xlet)
+        om_entity = OMEntity(
+            entity=import_from_module(body.get("entity")),
+            fqn=body.get("fqn"),
+            key=body.get("key"),
+        )
+
+        return {om_entity.key: [om_entity]}
+    except Exception as exc:
+        logger.error(
+            f"We could not parse the inlet/outlet information from [{xlet}] due to [{exc}]"
+        )
+        return None
 
 
 def get_xlets_from_operator(

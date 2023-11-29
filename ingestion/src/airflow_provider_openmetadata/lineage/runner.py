@@ -47,6 +47,7 @@ from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDe
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.airflow.lineage_parser import XLets
+from metadata.utils.constants import ENTITY_REFERENCE_TYPE_MAP
 from metadata.utils.helpers import clean_uri, datetime_to_ts
 
 
@@ -251,7 +252,7 @@ class AirflowLineageRunner:
         """
 
         lineage_details = LineageDetails(
-            pipeline=EntityReference(id=pipeline.id, type="pipeline")
+            pipeline=EntityReference(id=pipeline.id, type=ENTITY_REFERENCE_TYPE_MAP[Pipeline.__name__])
         )
 
         for from_xlet in xlets.inlets or []:
@@ -267,9 +268,13 @@ class AirflowLineageRunner:
                         lineage = AddLineageRequest(
                             edge=EntitiesEdge(
                                 fromEntity=EntityReference(
-                                    id=from_entity.id, type="table"
+                                    id=from_entity.id,
+                                    type=ENTITY_REFERENCE_TYPE_MAP[from_xlet.entity.__name__],
                                 ),
-                                toEntity=EntityReference(id=to_entity.id, type="table"),
+                                toEntity=EntityReference(
+                                    id=to_entity.id,
+                                    type=ENTITY_REFERENCE_TYPE_MAP[to_xlet.entity.__name__],
+                                ),
                                 lineageDetails=lineage_details,
                             )
                         )

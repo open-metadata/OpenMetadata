@@ -19,11 +19,13 @@ from airflow import DAG
 from airflow.operators.bash import BashOperator
 
 from metadata.generated.schema.entity.data.container import Container
+from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.source.pipeline.airflow.lineage_parser import (
     OMEntity,
     XLets,
     XLetsMode,
+    _parse_xlets,
     get_xlets_from_dag,
     get_xlets_from_operator,
     parse_xlets,
@@ -294,3 +296,82 @@ class TestAirflowLineageParser(TestCase):
                     )
                 ],
             )
+
+    def test_om_entity_serializer(self):
+        """To ensure the serialized DAGs will have the right shape"""
+        om_entity = OMEntity(
+            entity=Table,
+            fqn="FQN",
+            key="test",
+        )
+        self.assertEquals(
+            str(om_entity),
+            '{"entity": "metadata.generated.schema.entity.data.table.Table", "fqn": "FQN", "key": "test"}',
+        )
+
+        om_entity = OMEntity(
+            entity=Container,
+            fqn="FQN",
+            key="test",
+        )
+        self.assertEquals(
+            str(om_entity),
+            '{"entity": "metadata.generated.schema.entity.data.container.Container", "fqn": "FQN", "key": "test"}',
+        )
+
+    def test_str_deserializer(self):
+        """
+        Once a DAG is serialized, the xlet info will be stored as:
+        ```
+        ['{"entity": "metadata.generated.schema.entity.data.table.Table", "fqn": "FQN", "key": "test"}']
+        ```
+        based on our custom serialization logic.
+
+        Validate the deserialization process.
+        """
+        self.assertIsNone(_parse_xlets("random"))
+
+        self.assertEquals(
+            _parse_xlets(
+                '{"entity": "metadata.generated.schema.entity.data.table.Table", "fqn": "FQN", "key": "test"}'
+            ),
+            {
+                "test": [
+                    OMEntity(
+                        entity=Table,
+                        fqn="FQN",
+                        key="test",
+                    )
+                ]
+            },
+        )
+
+        self.assertEquals(
+            _parse_xlets(
+                '{"entity": "metadata.generated.schema.entity.data.container.Container", "fqn": "FQN", "key": "test"}'
+            ),
+            {
+                "test": [
+                    OMEntity(
+                        entity=Container,
+                        fqn="FQN",
+                        key="test",
+                    )
+                ]
+            },
+        )
+
+        self.assertEquals(
+            _parse_xlets(
+                '{"entity": "metadata.generated.schema.entity.data.dashboard.Dashboard", "fqn": "FQN", "key": "test"}'
+            ),
+            {
+                "test": [
+                    OMEntity(
+                        entity=Dashboard,
+                        fqn="FQN",
+                        key="test",
+                    )
+                ]
+            },
+        )
