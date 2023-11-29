@@ -92,12 +92,12 @@ def build_google_credentials_dict(gcp_values: GcpCredentialsValues) -> Dict[str,
     :param gcp_values: GCP credentials
     :return: Dictionary with credentials
     """
-    private_key_str = gcp_values.privateKey.get_secret_value()
-    # adding the replace string here to escape line break if passed from env
-    private_key_str = private_key_str.replace("\\n", "\n")
-    validate_private_key(private_key_str)
-
     if gcp_values.type == "service_account":
+        private_key_str = gcp_values.privateKey.get_secret_value()
+        # adding the replace string here to escape line break if passed from env
+        private_key_str = private_key_str.replace("\\n", "\n")
+        validate_private_key(private_key_str)
+
         return {
             "type": gcp_values.type,
             "project_id": gcp_values.projectId.__root__,

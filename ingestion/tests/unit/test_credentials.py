@@ -88,7 +88,7 @@ VEhPQF0i0tUU7Fl071hcYaiQoZx4nIjN+NG6p5QKbl6k
         Check how we can validate GCS values
         """
         gcp_values = GcpCredentialsValues(
-            type="service_account",
+            type="external_account",
             audience="audience",
             subjectTokenType="subject_token_type",
             tokenURL="token_url",
@@ -98,11 +98,11 @@ VEhPQF0i0tUU7Fl071hcYaiQoZx4nIjN+NG6p5QKbl6k
         )
 
         expected_dict = {
-            "type": "service_account",
-            "audience": "audience"
+            "type": "external_account",
+            "audience": "audience",
             "subject_token_type": "subject_token_type",
             "token_url": "token_url",
-            "credential_source":{
+            "credential_source": {
                 "environmentId": "environment_id"
             }
         }
