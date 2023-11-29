@@ -34,6 +34,7 @@ from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequ
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
+from metadata.generated.schema.api.tests.createCustomMetric import CreateCustomMetricRequest
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.data.createSearchIndex import (
@@ -716,6 +717,21 @@ class SampleDataSource(
                         columns=table["sampleData"]["columns"],
                     ),
                 )
+
+            if table.get("customMetrics"):
+                for custom_metric in table["customMetrics"]:
+                    self.metadata.create_or_update_custom_metric(
+                        CreateCustomMetricRequest(**custom_metric),
+                        table_entity.id.__root__,
+                    )
+
+            for column in table.get("columns"):
+                if column.get("customMetrics"):
+                    for custom_metric in column["customMetrics"]:
+                        self.metadata.create_or_update_custom_metric(
+                            CreateCustomMetricRequest(**custom_metric),
+                            table_entity.id.__root__,
+                        )
 
     def ingest_stored_procedures(self) -> Iterable[Either[Entity]]:
         """Ingest Sample Stored Procedures"""
