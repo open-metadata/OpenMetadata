@@ -6,7 +6,7 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.app.external.MetaPilotAppConfig",
   "definitions": {
-    "metaPilotApp": {
+    "metaPilotAppType": {
       "description": "Application type.",
       "type": "string",
       "enum": ["MetaPilot"],
@@ -37,9 +37,9 @@
   },
   "properties": {
     "type": {
-      "title": "Service Type",
-      "description": "Service Type",
-      "$ref": "#/definitions/metaPilotApp",
+      "title": "Application Type",
+      "description": "Application Type",
+      "$ref": "#/definitions/metaPilotAppType",
       "default": "MetaPilot"
     },
     "waiiInstance": {
@@ -48,6 +48,12 @@
       "type": "string",
       "format": "URI",
       "default": "https://tweakit.waii.ai/api/"
+    },
+    "collateURL": {
+      "title": "Collate URL",
+      "description": "Collate Server public URL. WAII will use this information to interact with the server. E.g., https://sandbox.getcollate.io",
+      "type": "string",
+      "format": "URI"
     },
     "token": {
       "title": "WAII API Token",
