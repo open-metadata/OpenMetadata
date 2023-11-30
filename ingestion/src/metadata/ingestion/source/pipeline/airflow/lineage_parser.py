@@ -188,7 +188,7 @@ def parse_xlets(xlet: List[Any]) -> Optional[Dict[str, List[OMEntity]]]:
 
 
 @singledispatch
-def _parse_xlets(xlet: Any) -> Optional[Dict[str, List[OMEntity]]]:
+def _parse_xlets(xlet: Any) -> None:
     """
     Default behavior to handle lineage.
 
@@ -196,7 +196,6 @@ def _parse_xlets(xlet: Any) -> Optional[Dict[str, List[OMEntity]]]:
     representations, e.g., https://github.com/open-metadata/OpenMetadata/issues/11626
     """
     logger.warning(f"Inlet/Outlet type {type(xlet)} is not supported.")
-    return None
 
 
 @_parse_xlets.register

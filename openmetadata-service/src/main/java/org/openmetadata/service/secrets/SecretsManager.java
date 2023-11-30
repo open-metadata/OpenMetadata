@@ -66,7 +66,8 @@ public abstract class SecretsManager {
         throw new InvalidServiceConnectionException(message);
       }
       throw InvalidServiceConnectionException.byMessage(
-          connectionType, String.format("Failed to encrypt connection instance of %s. Did the Fernet Key change?", connectionType));
+          connectionType,
+          String.format("Failed to encrypt connection instance of %s. Did the Fernet Key change?", connectionType));
     }
   }
 
@@ -82,7 +83,8 @@ public abstract class SecretsManager {
         throw new InvalidServiceConnectionException(message);
       }
       throw InvalidServiceConnectionException.byMessage(
-          connectionType, String.format("Failed to decrypt connection instance of %s. Did the Fernet Key change?", connectionType));
+          connectionType,
+          String.format("Failed to decrypt connection instance of %s. Did the Fernet Key change?", connectionType));
     }
   }
 
