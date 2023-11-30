@@ -561,6 +561,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     List<T> entities = new ArrayList<>();
     for (String json : jsons) {
       T entity = setFieldsInternal(JsonUtils.readValue(json, entityClass), fields);
+      entity = setInheritedFields(entity, fields);
       entity = clearFieldsInternal(entity, fields);
       entities.add(entity);
     }
@@ -576,6 +577,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       for (String json : jsons) {
         T entity = setFieldsInternal(JsonUtils.readValue(json, entityClass), fields);
+        entity = setInheritedFields(entity, fields);
         entity = clearFieldsInternal(entity, fields);
         entities.add(withHref(uriInfo, entity));
       }
@@ -635,6 +637,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     List<T> entities = new ArrayList<>();
     for (String json : jsons) {
       T entity = setFieldsInternal(JsonUtils.readValue(json, entityClass), fields);
+      entity = setInheritedFields(entity, fields);
       entity = clearFieldsInternal(entity, fields);
       entities.add(withHref(uriInfo, entity));
     }
@@ -669,7 +672,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public EntityHistory listVersions(UUID id) {
-    T latest = setFieldsInternal(dao.findEntityById(id, ALL), putFields);
+    T latest = setFieldsInternal(find(id, ALL), putFields);
+    latest = setInheritedFields(latest, putFields);
     String extensionPrefix = EntityUtil.getVersionExtensionPrefix(entityType);
     List<ExtensionRecord> records = daoCollection.entityExtensionDAO().getExtensions(id, extensionPrefix);
     List<EntityVersionPair> oldVersions = new ArrayList<>();
