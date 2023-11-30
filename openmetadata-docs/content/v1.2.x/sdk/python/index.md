@@ -164,14 +164,21 @@ OpenMetadata is the class holding the connection to the API and handling the req
 ```python
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
+    OpenMetadataConnection, AuthProvider,
 )
+from metadata.generated.schema.security.client.openMetadataJWTClientConfig import OpenMetadataJWTClientConfig
 
-server_config = OpenMetadataConnection(hostPort="http://localhost:8585/api")
+server_config = OpenMetadataConnection(
+    hostPort="http://localhost:8585/api",
+    authProvider=AuthProvider.openmetadata,
+    securityConfig=OpenMetadataJWTClientConfig(
+        jwtToken="<YOUR-INGESTION-BOT-JWT-TOKEN>",
+    ),
+)
 metadata = OpenMetadata(server_config)
 ```
 
-As this is just using a local development, the `OpenMetadataConnection` is rather simple. However, in there we would prepare settings such as `authProvider` or `securityConfig`.
+For local development, we can get a JWT token for the ingestion bot as described [here](/deployment/security/enable-jwt-tokens#generate-token) and use that when we specify the `jwtToken`. For a real-world deployment, we can also use [different authentication methods](/deployment/security) and specify other settings of the connection (such as `sslConfig`).
 
 {% note %}
 
