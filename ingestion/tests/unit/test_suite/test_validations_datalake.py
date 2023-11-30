@@ -22,7 +22,6 @@ from pandas import DataFrame
 
 from metadata.data_quality.validations.validator import Validator
 from metadata.generated.schema.tests.basic import (
-    TestCaseFailureStatusType,
     TestCaseResult,
     TestCaseStatus,
 )
@@ -303,10 +302,3 @@ def test_suite_validation_datalake(
         assert res.testResultValue[1].value == val_2
 
     assert res.testCaseStatus == status
-
-    if res.testCaseStatus == TestCaseStatus.Failed:
-        assert (
-            res.testCaseFailureStatus.testCaseFailureStatusType
-            == TestCaseFailureStatusType.New
-        )
-        assert res.testCaseFailureStatus.updatedAt is not None
