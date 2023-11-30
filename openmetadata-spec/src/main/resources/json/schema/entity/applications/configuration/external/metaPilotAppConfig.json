@@ -49,6 +49,12 @@
       "format": "URI",
       "default": "https://tweakit.waii.ai/api/"
     },
+    "collateURL": {
+      "title": "Collate URL",
+      "description": "Collate Server public URL. WAII will use this information to interact with the server. E.g., https://sandbox.getcollate.io",
+      "type": "string",
+      "format": "URI"
+    },
     "token": {
       "title": "WAII API Token",
       "description": "WAII API Token",
