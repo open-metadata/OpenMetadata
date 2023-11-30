@@ -1,5 +1,6 @@
 {
   "name": "SearchIndexingApplication",
+  "displayName": "Search Indexing",
   "appConfiguration": {
     "entities": [
       "table",

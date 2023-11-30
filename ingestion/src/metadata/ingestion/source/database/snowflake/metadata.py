@@ -30,6 +30,7 @@ from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureCode
 from metadata.generated.schema.entity.data.table import (
     IntervalType,
+    Table,
     TablePartition,
     TableType,
 )
@@ -477,33 +478,43 @@ class SnowflakeSource(
         """
         Get the life cycle data of the table
         """
-        table = self.context.table
-        try:
-            life_cycle_data = self.life_cycle_query_dict(
-                query=SNOWFLAKE_LIFE_CYCLE_QUERY.format(
-                    database_name=table.database.name,
-                    schema_name=table.databaseSchema.name,
-                )
-            ).get(table.name.__root__)
-            if life_cycle_data:
-                life_cycle = LifeCycle(
-                    created=AccessDetails(
-                        timestamp=convert_timestamp_to_milliseconds(
-                            life_cycle_data.created_at.timestamp()
+        table_fqn = fqn.build(
+            self.metadata,
+            entity_type=Table,
+            service_name=self.context.database_service,
+            database_name=self.context.database,
+            schema_name=self.context.database_schema,
+            table_name=self.context.table,
+            skip_es_search=True,
+        )
+        table = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
+        if table:
+            try:
+                life_cycle_data = self.life_cycle_query_dict(
+                    query=SNOWFLAKE_LIFE_CYCLE_QUERY.format(
+                        database_name=table.database.name,
+                        schema_name=table.databaseSchema.name,
+                    )
+                ).get(table.name.__root__)
+                if life_cycle_data:
+                    life_cycle = LifeCycle(
+                        created=AccessDetails(
+                            timestamp=convert_timestamp_to_milliseconds(
+                                life_cycle_data.created_at.timestamp()
+                            )
                         )
                     )
-                )
+                    yield Either(
+                        right=OMetaLifeCycleData(entity=table, life_cycle=life_cycle)
+                    )
+            except Exception as exc:
                 yield Either(
-                    right=OMetaLifeCycleData(entity=table, life_cycle=life_cycle)
+                    left=StackTraceError(
+                        name=table.name.__root__,
+                        error=f"Unable to get the table life cycle data for table {table.name.__root__}: {exc}",
+                        stack_trace=traceback.format_exc(),
+                    )
                 )
-        except Exception as exc:
-            yield Either(
-                left=StackTraceError(
-                    name=table.name.__root__,
-                    error=f"Unable to get the table life cycle data for table {table.name.__root__}: {exc}",
-                    stack_trace=traceback.format_exc(),
-                )
-            )
 
     def get_stored_procedures(self) -> Iterable[SnowflakeStoredProcedure]:
         """List Snowflake stored procedures"""
