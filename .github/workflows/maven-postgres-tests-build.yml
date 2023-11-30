@@ -46,7 +46,7 @@ permissions:
   checks: write
 
 concurrency: 
-  group: maven-postgres-tests-build-${{ github.head_ref || github.run_id }}
+  group: maven-postgres-build-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 jobs:
   maven-postgresql-ci:

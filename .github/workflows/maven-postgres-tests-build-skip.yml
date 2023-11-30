@@ -30,9 +30,6 @@ permissions:
   contents: read
   checks: write
 
-concurrency: 
-  group: maven-postgres-tests-skip-build-${{ github.head_ref || github.run_id }}
-  cancel-in-progress: true
 jobs:
     maven-postgresql-ci:
         runs-on: ubuntu-latest
