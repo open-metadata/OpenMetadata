@@ -10,30 +10,29 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 import { DefaultOptionType } from 'antd/lib/select';
-import { PagingResponse } from 'Models';
-import { Tag } from '../../generated/entity/classification/tag';
-import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
+import { SearchIndex } from '../../enums/search.enum';
+import { EntityReference } from '../../generated/entity/type';
+import { Paging } from '../../generated/type/paging';
 
-export type SelectOption = {
-  label: string;
-  value: string;
-  data?: Tag | GlossaryTerm;
-};
+export interface DataAssetOption extends DefaultOptionType {
+  reference: EntityReference;
+  displayName: string;
+}
 
-export interface AsyncSelectListProps {
+export interface FetchOptionsResponse {
+  data: DataAssetOption[];
+  paging: Paging;
+}
+
+export interface DataAssetAsyncSelectListProps {
   mode?: 'multiple';
+  id?: string;
   className?: string;
   placeholder?: string;
   debounceTimeout?: number;
   defaultValue?: string[];
-  value?: string[];
-  initialOptions?: SelectOption[];
-  filterOptions?: string[]; // array of fqn
-  onChange?: (option: DefaultOptionType | DefaultOptionType[]) => void;
-  fetchOptions: (
-    search: string,
-    page: number
-  ) => Promise<PagingResponse<SelectOption[]>>;
+  initialOptions?: DataAssetOption[];
+  searchIndex?: SearchIndex;
+  onChange?: (option: DataAssetOption | DataAssetOption[]) => void;
 }
