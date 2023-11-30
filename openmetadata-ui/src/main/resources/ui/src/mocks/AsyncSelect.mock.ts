@@ -10,19 +10,25 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+const getOptions = (initialValue: number, endValue: number) => {
+  const data = [];
 
-export const mockTagList = [
-  {
-    id: 'e649c601-44d3-449d-bc04-fbbaf83baf19',
-    name: 'PersonalData',
-    fullyQualifiedName: 'PersonalData',
-    description: 'description',
-    version: 0.1,
-    updatedAt: 1672922279939,
-    updatedBy: 'admin',
-    href: 'http://localhost:8585/api/v1/classifications/e649c601-44d3-449d-bc04-fbbaf83baf19',
-    deleted: false,
-    provider: 'system',
-    mutuallyExclusive: true,
+  for (let i = initialValue; i < endValue; i++) {
+    data.push({
+      label: `tags-${i}`,
+      value: `tags-${i}`,
+      data: {
+        fullyQualifiedName: `tags-${i}`,
+      },
+    });
+  }
+
+  return data;
+};
+
+export const ASYNC_SELECT_MOCK = {
+  data: getOptions(0, 10),
+  paging: {
+    total: 20,
   },
-];
+};
