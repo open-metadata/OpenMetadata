@@ -126,7 +126,7 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
         <div
           className="d-flex items-center gap-2"
           data-testid={`option-${option.value}`}>
-          <div className="flex-center">
+          <div className="flex-center data-asset-icon">
             {getEntityIcon(option.reference.type)}
           </div>
           <div className="d-flex flex-col">
