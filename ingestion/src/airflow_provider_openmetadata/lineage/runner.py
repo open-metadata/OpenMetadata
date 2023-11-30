@@ -316,7 +316,8 @@ class AirflowLineageRunner:
                     for node in lineage_data.get("nodes") or []
                     if node["id"] == upstream_edge["fromEntity"]
                     and node["type"] == "table"
-                )
+                ),
+                None
             )
             for upstream_edge in lineage_data.get("upstreamEdges") or []
         ]
@@ -327,12 +328,13 @@ class AirflowLineageRunner:
                     for node in lineage_data.get("nodes") or []
                     if node["id"] == downstream_edge["toEntity"]
                     and node["type"] == "table"
-                )
+                ),
+                None
             )
             for downstream_edge in lineage_data.get("downstreamEdges") or []
         ]
 
-        for edge in upstream_edges:
+        for edge in upstream_edges or []:
             if edge.fqn not in xlets.inlets:
                 self.dag.log.info(f"Removing upstream edge with {edge.fqn}")
                 edge_to_remove = EntitiesEdge(
@@ -341,7 +343,7 @@ class AirflowLineageRunner:
                 )
                 self.metadata.delete_lineage_edge(edge=edge_to_remove)
 
-        for edge in downstream_edges:
+        for edge in downstream_edges or []:
             if edge.fqn not in xlets.outlets:
                 self.dag.log.info(f"Removing downstream edge with {edge.fqn}")
                 edge_to_remove = EntitiesEdge(
