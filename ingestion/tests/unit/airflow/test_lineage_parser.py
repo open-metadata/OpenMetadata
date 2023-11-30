@@ -17,6 +17,7 @@ from unittest import TestCase
 
 from airflow import DAG
 from airflow.operators.bash import BashOperator
+from airflow.serialization.serde import serialize
 
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.dashboard import Dashboard
@@ -375,3 +376,14 @@ class TestAirflowLineageParser(TestCase):
                 ]
             },
         )
+
+    def test_airflow_serializer(self):
+        """It should be able to serialize our models"""
+        om_entity = OMEntity(
+            entity=Table,
+            fqn="FQN",
+            key="test",
+        )
+
+        res = serialize(om_entity)
+
