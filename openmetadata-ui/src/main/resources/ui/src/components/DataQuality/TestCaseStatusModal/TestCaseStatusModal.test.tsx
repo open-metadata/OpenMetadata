@@ -13,7 +13,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React, { forwardRef } from 'react';
-import { TestCaseFailureStatusType } from '../../../generated/tests/testCase';
+import { TestCaseResolutionStatusTypes } from '../../../generated/tests/testCaseResolutionStatus';
 import { TestCaseStatusModal } from './TestCaseStatusModal.component';
 import { TestCaseStatusModalProps } from './TestCaseStatusModal.interface';
 
@@ -28,7 +28,7 @@ jest.mock('../../../components/common/RichTextEditor/RichTextEditor', () => {
 });
 jest.mock('../../../generated/tests/testCase', () => ({
   ...jest.requireActual('../../../generated/tests/testCase'),
-  TestCaseFailureStatusType: {
+  TestCaseResolutionStatusTypes: {
     ACK: 'Ack',
     New: 'New',
     Resolved: 'Resolved',
@@ -49,7 +49,9 @@ describe('TestCaseStatusModal component', () => {
     render(
       <TestCaseStatusModal
         {...mockProps}
-        data={{ testCaseFailureStatusType: TestCaseFailureStatusType.Resolved }}
+        data={{
+          testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Resolved,
+        }}
       />
     );
 
@@ -62,7 +64,9 @@ describe('TestCaseStatusModal component', () => {
     render(
       <TestCaseStatusModal
         {...mockProps}
-        data={{ testCaseFailureStatusType: TestCaseFailureStatusType.Resolved }}
+        data={{
+          testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Resolved,
+        }}
       />
     );
     const cancelBtn = await screen.findByText('label.cancel');
