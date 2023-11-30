@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { renderHook } from '@testing-library/react-hooks';
+import { getUserByName } from '../../rest/userAPI';
 import { useUserProfile } from './useUserProfile';
 
 jest.mock(
@@ -18,15 +19,23 @@ jest.mock(
   () => ({
     useApplicationConfigContext: jest.fn().mockImplementation(() => ({
       userProfilePics: {
-        chirag: {},
+        chirag: {
+          profile: {
+            iamge512: 'profile512',
+          },
+        },
       },
       updateUserProfilePics: jest.fn(),
     })),
   })
 );
 
+jest.mock('../../rest/userAPI', () => ({
+  getUserByName: jest.fn(),
+}));
+
 describe('useUserProfile hook', () => {
-  it('useUserProfile should not hit API if permission is not granted', () => {
+  it('should not call api if permission is not there', () => {
     const { result } = renderHook(() =>
       useUserProfile({ permission: false, name: '' })
     );
@@ -34,5 +43,53 @@ describe('useUserProfile hook', () => {
     expect(result.current[0]).toBeNull();
     expect(result.current[1]).toBe(true);
     expect(result.current[2]).toBeUndefined();
+    expect(getUserByName).not.toHaveBeenCalled();
+  });
+
+  it('should call api if permission is there', () => {
+    const { result } = renderHook(() =>
+      useUserProfile({ permission: true, name: 'test' })
+    );
+
+    expect(result.current[0]).toBeNull();
+    expect(result.current[1]).toBe(true);
+    expect(result.current[2]).toBeUndefined();
+    expect(getUserByName).toHaveBeenCalledWith('test', 'profile');
+  });
+
+  it('should not call api if name is empty', () => {
+    const { result } = renderHook(() =>
+      useUserProfile({ permission: true, name: '' })
+    );
+
+    expect(result.current[0]).toBeNull();
+    expect(result.current[1]).toBe(true);
+    expect(result.current[2]).toBeUndefined();
+    expect(getUserByName).not.toHaveBeenCalledWith();
+  });
+
+  it('should not call api if isTeam is true', () => {
+    const { result } = renderHook(() =>
+      useUserProfile({ permission: true, name: 'test', isTeam: true })
+    );
+
+    expect(result.current[0]).toBeNull();
+    expect(result.current[1]).toBe(false);
+    expect(result.current[2]).toBeUndefined();
+    expect(getUserByName).not.toHaveBeenCalledWith();
+  });
+
+  it('should return profileURL & user data for name mentioned if already present', async () => {
+    const { result } = renderHook(() =>
+      useUserProfile({ permission: true, name: 'chirag' })
+    );
+
+    expect(result.current[0]).toBe('');
+    expect(result.current[1]).toBe(false);
+    expect(result.current[2]).toStrictEqual({
+      profile: {
+        iamge512: 'profile512',
+      },
+    });
   });
 });
