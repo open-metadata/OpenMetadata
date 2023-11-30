@@ -66,6 +66,7 @@ import json
 import logging
 import traceback
 from collections import defaultdict
+from copy import deepcopy
 from enum import Enum
 from functools import singledispatch
 from typing import Any, DefaultDict, Dict, List, Optional, Type
@@ -111,9 +112,13 @@ class OMEntity:
 
     def __str__(self):
         """Custom serialization"""
-        _dict = self.__dict__
+        _dict = deepcopy(self.__dict__)
         _dict["entity"] = f"{self.entity.__module__}.{self.entity.__name__}"
-        return json.dumps(self.__dict__)
+        return json.dumps(_dict)
+
+    def serialize(self) -> str:
+        """Custom serialization to be called in airflow internals"""
+        return str(self)
 
 
 class XLets(BaseModel):

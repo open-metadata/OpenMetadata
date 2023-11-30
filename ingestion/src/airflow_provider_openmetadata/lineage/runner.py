@@ -252,7 +252,9 @@ class AirflowLineageRunner:
         """
 
         lineage_details = LineageDetails(
-            pipeline=EntityReference(id=pipeline.id, type=ENTITY_REFERENCE_TYPE_MAP[Pipeline.__name__])
+            pipeline=EntityReference(
+                id=pipeline.id, type=ENTITY_REFERENCE_TYPE_MAP[Pipeline.__name__]
+            )
         )
 
         for from_xlet in xlets.inlets or []:
@@ -269,11 +271,15 @@ class AirflowLineageRunner:
                             edge=EntitiesEdge(
                                 fromEntity=EntityReference(
                                     id=from_entity.id,
-                                    type=ENTITY_REFERENCE_TYPE_MAP[from_xlet.entity.__name__],
+                                    type=ENTITY_REFERENCE_TYPE_MAP[
+                                        from_xlet.entity.__name__
+                                    ],
                                 ),
                                 toEntity=EntityReference(
                                     id=to_entity.id,
-                                    type=ENTITY_REFERENCE_TYPE_MAP[to_xlet.entity.__name__],
+                                    type=ENTITY_REFERENCE_TYPE_MAP[
+                                        to_xlet.entity.__name__
+                                    ],
                                 ),
                                 lineageDetails=lineage_details,
                             )

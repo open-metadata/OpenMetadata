@@ -432,7 +432,10 @@ class AirflowSource(PipelineServiceSource):
             return
 
         lineage_details = LineageDetails(
-            pipeline=EntityReference(id=pipeline_entity.id.__root__, type=ENTITY_REFERENCE_TYPE_MAP[Pipeline.__name__]),
+            pipeline=EntityReference(
+                id=pipeline_entity.id.__root__,
+                type=ENTITY_REFERENCE_TYPE_MAP[Pipeline.__name__],
+            ),
             source=LineageSource.PipelineLineage,
         )
 
@@ -454,11 +457,15 @@ class AirflowSource(PipelineServiceSource):
                                 edge=EntitiesEdge(
                                     fromEntity=EntityReference(
                                         id=from_entity.id,
-                                        type=ENTITY_REFERENCE_TYPE_MAP[from_xlet.entity.__name__],
+                                        type=ENTITY_REFERENCE_TYPE_MAP[
+                                            from_xlet.entity.__name__
+                                        ],
                                     ),
                                     toEntity=EntityReference(
                                         id=to_entity.id,
-                                        type=ENTITY_REFERENCE_TYPE_MAP[to_xlet.entity.__name__],
+                                        type=ENTITY_REFERENCE_TYPE_MAP[
+                                            to_xlet.entity.__name__
+                                        ],
                                     ),
                                     lineageDetails=lineage_details,
                                 )

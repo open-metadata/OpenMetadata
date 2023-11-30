@@ -385,5 +385,7 @@ class TestAirflowLineageParser(TestCase):
             key="test",
         )
 
-        res = serialize(om_entity)
-
+        self.assertEquals(
+            serialize(om_entity).get("__data__"),
+            '{"entity": "metadata.generated.schema.entity.data.table.Table", "fqn": "FQN", "key": "test"}',
+        )
