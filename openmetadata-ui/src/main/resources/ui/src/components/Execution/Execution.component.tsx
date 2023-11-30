@@ -133,7 +133,7 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
   }, [pipelineFQN, datesSelected, startTime, endTime]);
 
   return (
-    <Row className="h-full p-md" gutter={16}>
+    <Row className="h-full p-md" data-testid="execution-tab" gutter={16}>
       <Col flex="auto">
         <Row gutter={[16, 16]}>
           <Col span={24}>
@@ -141,6 +141,7 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
               <Radio.Group
                 buttonStyle="solid"
                 className="radio-switch"
+                data-testid="radio-switch"
                 optionType="button"
                 options={Object.values(PIPELINE_EXECUTION_TABS)}
                 value={view}
@@ -150,6 +151,7 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
                 <Dropdown menu={statusMenuItems} placement="bottom">
                   <Button
                     ghost
+                    data-testid="status-button"
                     icon={<Icon component={FilterIcon} size={12} />}
                     type="primary">
                     {status === MenuOptions.all ? t('label.status') : status}
@@ -163,6 +165,7 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
                         'range-picker-button-width delay-100':
                           !datesSelected && !isClickedCalendar,
                       })}
+                      data-testid="data-range-picker-button"
                       icon={<Icon component={Calendar} size={12} />}
                       type="primary"
                       onClick={() => {
@@ -178,6 +181,7 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
                           bordered={false}
                           className="executions-date-picker"
                           clearIcon={<CloseCircleOutlined />}
+                          data-testid="data-range-picker"
                           open={isClickedCalendar}
                           placeholder={['', '']}
                           suffixIcon={null}
