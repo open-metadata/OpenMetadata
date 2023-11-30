@@ -791,22 +791,13 @@ class SampleDataSource(
                         fromEntity=EntityReference(
                             id=from_table.id.__root__, type="table"
                         ),
-                        toEntity=EntityReference(
-                            id=stored_procedure_entity.id.__root__,
-                            type="storedProcedure",
-                        ),
-                    )
-                )
-            )
-
-            yield Either(
-                right=AddLineageRequest(
-                    edge=EntitiesEdge(
-                        fromEntity=EntityReference(
-                            id=stored_procedure_entity.id.__root__,
-                            type="storedProcedure",
-                        ),
                         toEntity=EntityReference(id=to_table.id.__root__, type="table"),
+                        lineageDetails=LineageDetails(
+                            pipeline=EntityReference(
+                                id=stored_procedure_entity.id.__root__,
+                                type="storedProcedure",
+                            )
+                        ),
                     )
                 )
             )
