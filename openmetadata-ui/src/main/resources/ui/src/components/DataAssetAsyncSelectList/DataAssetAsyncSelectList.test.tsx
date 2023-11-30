@@ -13,9 +13,8 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { searchQuery } from '../../rest/searchAPI';
-import DataAssetAsyncSelectList, {
-  DataAssetOption,
-} from './DataAssetAsyncSelectList';
+import DataAssetAsyncSelectList from './DataAssetAsyncSelectList';
+import { DataAssetOption } from './DataAssetAsyncSelectList.interface';
 
 jest.mock('../../rest/searchAPI');
 jest.mock('../../utils/TableUtils');

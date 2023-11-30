@@ -11,46 +11,29 @@
  *  limitations under the License.
  */
 import { Select, SelectProps } from 'antd';
-import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
 import React, { FC, useCallback, useMemo, useRef, useState } from 'react';
 import Loader from '../../components/Loader/Loader';
 import { PAGE_SIZE } from '../../constants/constants';
 import { SearchIndex } from '../../enums/search.enum';
-import { EntityReference } from '../../generated/entity/type';
-import { Paging } from '../../generated/type/paging';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { searchQuery } from '../../rest/searchAPI';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getEntityIcon } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-
-export interface DataAssetOption extends DefaultOptionType {
-  reference: EntityReference;
-  displayName: string;
-}
-
-export interface DataAssetAsyncSelectListProps {
-  mode?: 'multiple';
-  className?: string;
-  placeholder?: string;
-  debounceTimeout?: number;
-  defaultValue?: string[];
-  initialOptions?: DataAssetOption[];
-  onChange?: (option: DataAssetOption | DataAssetOption[]) => void;
-}
-
-interface FetchOptionsResponse {
-  data: DataAssetOption[];
-  paging: Paging;
-}
+import {
+  DataAssetAsyncSelectListProps,
+  DataAssetOption,
+  FetchOptionsResponse,
+} from './DataAssetAsyncSelectList.interface';
 
 const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
   mode,
   onChange,
   debounceTimeout = 800,
   initialOptions,
+  searchIndex = SearchIndex.ALL,
   ...props
 }) => {
   const {
@@ -78,7 +61,7 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
         pageNumber: page,
         pageSize: pageSize,
         queryFilter: {},
-        searchIndex: SearchIndex.ALL,
+        searchIndex: searchIndex,
       });
 
       const hits = dataAssetsResponse.hits.hits;
@@ -91,7 +74,7 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
           label: entityName,
           value: _source.id,
           reference: {
-            id: _source.id,
+            id: _source.id ?? '',
             type: _source.entityType,
           },
           displayName: entityName,
