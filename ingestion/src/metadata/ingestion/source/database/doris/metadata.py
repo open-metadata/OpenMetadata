@@ -117,10 +117,10 @@ def _get_column(ordinal, field, _type, null, default, comment):
         arr_data_type = _parse_type(extract_child(_type))
     if system_data_type == "STRUCT":
         children = []
-        for k, child in enumerate(extract_child(_type).split(",")):
+        for key_, child in enumerate(extract_child(_type).split(",")):
             name_type = child.split(":")
             children.append(
-                _get_column(k, name_type[0], name_type[1], "YES", None, None)
+                _get_column(key_, name_type[0], name_type[1], "YES", None, None)
             )
     return {
         "name": field,
