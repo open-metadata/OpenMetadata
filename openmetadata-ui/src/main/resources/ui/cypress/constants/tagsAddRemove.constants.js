@@ -1,6 +1,3 @@
-import { generateRandomTable } from '../common/entityUtils';
-import { DATABASE_SERVICE, VISIT_ENTITIES_DATA } from './entityConstant';
-
 /*
  *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,6 +10,9 @@ import { DATABASE_SERVICE, VISIT_ENTITIES_DATA } from './entityConstant';
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+import { generateRandomTable } from '../common/EntityUtils';
+import { DATABASE_SERVICE, VISIT_ENTITIES_DATA } from './EntityConstant';
 
 export const TAGS_ADD_REMOVE_TABLE = generateRandomTable();
 

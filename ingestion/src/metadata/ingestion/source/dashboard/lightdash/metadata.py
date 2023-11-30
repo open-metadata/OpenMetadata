@@ -111,12 +111,12 @@ class LightdashSource(DashboardServiceSource):
                     fqn.build(
                         self.metadata,
                         entity_type=Chart,
-                        service_name=self.context.dashboard_service.fullyQualifiedName.__root__,
-                        chart_name=chart.name.__root__,
+                        service_name=self.context.dashboard_service,
+                        chart_name=chart,
                     )
                     for chart in self.context.charts
                 ],
-                service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                service=self.context.dashboard_service,
             )
             yield dashboard_request
             self.register_record(dashboard_request=dashboard_request)
@@ -128,7 +128,7 @@ class LightdashSource(DashboardServiceSource):
 
     def yield_dashboard_chart(
         self, dashboard_details: LightdashChart
-    ) -> Optional[Iterable[CreateChartRequest]]:
+    ) -> Iterable[Optional[CreateChartRequest]]:
         """Get chart method
 
         Args:
@@ -151,7 +151,7 @@ class LightdashSource(DashboardServiceSource):
                     displayName=chart.name,
                     description=chart.description,
                     sourceUrl=chart_url,
-                    service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                    service=self.context.dashboard_service,
                 )
                 self.status.scanned(chart.name)
             except Exception as exc:  # pylint: disable=broad-except
