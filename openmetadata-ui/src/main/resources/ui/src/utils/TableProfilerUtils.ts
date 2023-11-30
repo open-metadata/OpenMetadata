@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { findLast, sortBy } from 'lodash';
+import { findLast, isUndefined, sortBy } from 'lodash';
 import { MetricChartType } from '../components/ProfilerDashboard/profilerDashboard.interface';
 import { SystemProfile } from '../generated/api/data/createTableProfile';
-import { TableProfile } from '../generated/entity/data/table';
+import { Table, TableProfile } from '../generated/entity/data/table';
+import { CustomMetric } from '../generated/tests/customMetric';
 import { customFormatDateTime } from './date-time/DateTimeUtils';
 
 export const calculateRowCountMetrics = (
@@ -103,4 +104,43 @@ export const calculateSystemMetrics = (
       information: operationDateMetricsInfo,
     },
   };
+};
+
+export const calculateCustomMetrics = (
+  profiler: TableProfile[],
+  customMetrics: CustomMetric[]
+) => {
+  const updateProfilerData = sortBy(profiler, 'timestamp');
+  const customMetricsData: Record<string, MetricChartType['data']> =
+    customMetrics.reduce((acc, metric) => {
+      acc[metric.name] = [];
+
+      return acc;
+    }, {} as Record<string, MetricChartType['data']>);
+
+  updateProfilerData.forEach((data) => {
+    const timestamp = customFormatDateTime(data.timestamp, 'MMM dd, hh:mm');
+    data?.customMetrics?.forEach((metric) => {
+      if (!isUndefined(metric.name)) {
+        const updatedMetric = {
+          [metric.name]: metric.value,
+          formattedTimestamp: timestamp,
+          timestamp: data.timestamp,
+        };
+        if (isUndefined(customMetricsData?.[metric.name])) {
+          customMetricsData[metric.name] = [updatedMetric];
+        } else {
+          customMetricsData[metric.name].push(updatedMetric);
+        }
+      }
+    });
+  });
+
+  return customMetricsData;
+};
+
+export const getColumnCustomMetric = (table?: Table, columnFqn?: string) => {
+  return table?.columns.find(
+    (column) => column.fullyQualifiedName === columnFqn
+  )?.customMetrics;
 };

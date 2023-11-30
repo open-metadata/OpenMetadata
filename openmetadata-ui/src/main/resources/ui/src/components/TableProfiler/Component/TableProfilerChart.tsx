@@ -25,7 +25,7 @@ import {
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEqual } from 'lodash';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as SettingIcon } from '../../../assets/svg/ic-settings-primery.svg';
@@ -37,6 +37,7 @@ import {
   INITIAL_ROW_METRIC_VALUE,
 } from '../../../constants/profiler.constant';
 import { ProfilerDashboardType } from '../../../enums/table.enum';
+import { TableProfile } from '../../../generated/entity/data/table';
 import {
   getSystemProfileList,
   getTableProfilesList,
@@ -44,6 +45,7 @@ import {
 import { getAddDataQualityTableTestPath } from '../../../utils/RouterUtils';
 import { getDecodedFqn } from '../../../utils/StringsUtils';
 import {
+  calculateCustomMetrics,
   calculateRowCountMetrics,
   calculateSystemMetrics,
 } from '../../../utils/TableProfilerUtils';
@@ -57,6 +59,7 @@ import ProfilerDetailsCard from '../../ProfilerDashboard/component/ProfilerDetai
 import ProfilerLatestValue from '../../ProfilerDashboard/component/ProfilerLatestValue';
 import { MetricChartType } from '../../ProfilerDashboard/profilerDashboard.interface';
 import TabsLabel from '../../TabsLabel/TabsLabel.component';
+import CustomMetricGraphs from '../CustomMetricGraphs/CustomMetricGraphs.component';
 import { TableProfilerChartProps } from '../TableProfiler.interface';
 import { useTableProfiler } from '../TableProfilerProvider';
 import NoProfilerBanner from './NoProfilerBanner.component';
@@ -64,6 +67,7 @@ import NoProfilerBanner from './NoProfilerBanner.component';
 const TableProfilerChart = ({
   entityFqn = '',
   showHeader = true,
+  tableDetails,
 }: TableProfilerChartProps) => {
   const {
     isProfilerDataLoading: isSummaryLoading,
@@ -72,10 +76,16 @@ const TableProfilerChart = ({
     overallSummary,
     onSettingButtonClick,
     isProfilingEnabled,
+    customMetric: tableCustomMetric,
   } = useTableProfiler();
   const { fqn: datasetFQN } = useParams<{ fqn: string }>();
   const history = useHistory();
   const { t } = useTranslation();
+  const customMetrics = useMemo(
+    () => tableDetails?.customMetrics ?? tableCustomMetric?.customMetrics ?? [],
+    [tableCustomMetric, tableDetails]
+  );
+
   const editDataProfile = permissions?.EditAll || permissions?.EditDataProfile;
   const [dateRangeObject, setDateRangeObject] =
     useState<DateRangeObject>(DEFAULT_RANGE_DATA);
@@ -88,6 +98,7 @@ const TableProfilerChart = ({
   const [operationDateMetrics, setOperationDateMetrics] =
     useState<MetricChartType>(INITIAL_OPERATION_METRIC_VALUE);
   const [isLoading, setIsLoading] = useState(true);
+  const [profileMetrics, setProfileMetrics] = useState<TableProfile[]>([]);
 
   const addButtonContent = [
     {
@@ -109,6 +120,11 @@ const TableProfilerChart = ({
     },
   ];
 
+  const tableCustomMetricsProfiling = useMemo(
+    () => calculateCustomMetrics(profileMetrics, customMetrics),
+    [profileMetrics, customMetrics]
+  );
+
   const handleDateRangeChange = (value: DateRangeObject) => {
     if (!isEqual(value, dateRangeObject)) {
       setDateRangeObject(value);
@@ -123,6 +139,7 @@ const TableProfilerChart = ({
       const { data } = await getTableProfilesList(fqn, dateRangeObj);
       const rowMetricsData = calculateRowCountMetrics(data, rowCountMetrics);
       setRowCountMetrics(rowMetricsData);
+      setProfileMetrics(data);
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -149,10 +166,7 @@ const TableProfilerChart = ({
   ) => {
     setIsLoading(true);
     await fetchTableProfiler(fqn, dateRangeObj);
-    await fetchSystemProfiler(fqn, {
-      startTs: dateRangeObj.startTs,
-      endTs: dateRangeObj.endTs,
-    });
+    await fetchSystemProfiler(fqn, dateRangeObj);
     setIsLoading(false);
   };
 
@@ -293,6 +307,13 @@ const TableProfilerChart = ({
             </Col>
           </Row>
         </Card>
+      </Col>
+      <Col span={24}>
+        <CustomMetricGraphs
+          customMetrics={customMetrics}
+          customMetricsGraphData={tableCustomMetricsProfiling}
+          isLoading={isLoading || isSummaryLoading}
+        />
       </Col>
     </Row>
   );

@@ -45,7 +45,7 @@ export type MetricChartType = {
     color: string;
     latestValue?: string | number;
   }[];
-  data: Record<string, string | number>[];
+  data: Record<string, string | number | undefined>[];
 };
 
 export interface ProfilerDetailsCardProps {

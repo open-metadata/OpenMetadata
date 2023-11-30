@@ -41,6 +41,7 @@ export type TableProfilerContextType = {
   isTestsLoading: boolean;
   isProfilerDataLoading: boolean;
   tableProfiler?: Table;
+  customMetric?: Table;
   allTestCases: TestCase[];
   overallSummary: OverallTableSummaryType[];
   onTestCaseUpdate: (testCase?: TestCase) => void;
@@ -102,12 +103,7 @@ export type TableProfilerData = {
 export type TableProfilerChartProps = {
   entityFqn?: string;
   showHeader?: boolean;
-  overallSummary?: OverallTableSummaryType[];
-  isSummaryLoading?: boolean;
-  isProfilingEnabled?: boolean;
-  isTableDeleted?: boolean;
-  permissions?: OperationPermission;
-  onSettingButtonClick?: () => void;
+  tableDetails?: Table;
 };
 
 export interface ProfilerSettingModalState {

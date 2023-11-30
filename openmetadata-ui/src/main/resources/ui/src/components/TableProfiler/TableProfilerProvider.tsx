@@ -29,7 +29,10 @@ import { mockDatasetData } from '../../constants/mockTourData.constants';
 import { Table } from '../../generated/entity/data/table';
 import { ProfileSampleType } from '../../generated/metadataIngestion/databaseServiceProfilerPipeline';
 import { TestCase } from '../../generated/tests/testCase';
-import { getLatestTableProfileByFqn } from '../../rest/tableAPI';
+import {
+  getLatestTableProfileByFqn,
+  getTableDetailsByFQN,
+} from '../../rest/tableAPI';
 import { getListTestCase, ListTestCaseParams } from '../../rest/testAPI';
 import { bytesToSize, getDecodedFqn } from '../../utils/StringsUtils';
 import { generateEntityLink } from '../../utils/TableUtils';
@@ -56,7 +59,10 @@ export const TableProfilerProvider = ({
   const { t } = useTranslation();
   const { fqn: datasetFQN } = useParams<{ fqn: string }>();
   const { isTourOpen } = useTourProvider();
+  // profiler has its own api but sent's the data in Table type
   const [tableProfiler, setTableProfiler] = useState<Table>();
+  // customMetric is fetch from table api and has response type of Table
+  const [customMetric, setCustomMetric] = useState<Table>();
   const [isTestsLoading, setIsTestsLoading] = useState(true);
   const [isProfilerDataLoading, setIsProfilerDataLoading] = useState(true);
   const [allTestCases, setAllTestCases] = useState<TestCase[]>([]);
@@ -183,8 +189,14 @@ export const TableProfilerProvider = ({
     const decodedDatasetFQN = decodeURIComponent(datasetFQN);
     setIsProfilerDataLoading(true);
     try {
-      const response = await getLatestTableProfileByFqn(decodedDatasetFQN);
-      setTableProfiler(response);
+      const profiler = await getLatestTableProfileByFqn(decodedDatasetFQN);
+      const customMetricResponse = await getTableDetailsByFQN(
+        decodedDatasetFQN,
+        'customMetrics,columns'
+      );
+
+      setTableProfiler(profiler);
+      setCustomMetric(customMetricResponse);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -257,6 +269,7 @@ export const TableProfilerProvider = ({
       fetchAllTests,
       isProfilingEnabled: !isUndefined(tableProfiler?.profile),
       splitTestCases,
+      customMetric,
     };
   }, [
     isTestsLoading,
@@ -268,6 +281,7 @@ export const TableProfilerProvider = ({
     overallSummary,
     onTestCaseUpdate,
     splitTestCases,
+    customMetric,
   ]);
 
   return (
