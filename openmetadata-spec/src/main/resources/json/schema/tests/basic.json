@@ -88,7 +88,7 @@
         },
         "testCaseResolutionStatusReference": {
             "description": "Reference to the failure status object for the test case result.",
-            "$ref": "../type/entityReference.json"
+            "$ref": "./testCaseResolutionStatus.json"
         }
       },
       "additionalProperties": false
@@ -108,19 +108,6 @@
         {
           "name": "Weekly"
         }
-      ]
-    },
-    "testCaseResolutionStatusType": {
-      "description": "Test case resolution status type.",
-      "javaType": "org.openmetadata.schema.tests.type.TestCaseResolutionStatusType",
-      "type": "string",
-      "enum": ["Ack", "Assigned", "InReview", "New", "Resolved"],
-      "javaEnums": [
-        {"name": "Ack"},
-        {"name":  "Assigned"},
-        {"name": "InReview"},
-        {"name": "New"},
-        {"name": "Resolved"}
       ]
     }
   }

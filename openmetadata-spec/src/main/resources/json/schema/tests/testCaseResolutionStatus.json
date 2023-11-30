@@ -6,6 +6,34 @@
   "javaType": "org.openmetadata.schema.tests.type.TestCaseResolutionStatus",
   "javaInterfaces": ["org.openmetadata.schema.EntityTimeSeriesInterface"],
   "type": "object",
+  "definitions": {
+    "testCaseResolutionStatusTypes": {
+      "description": "Test case resolution status type.",
+      "javaType": "org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes",
+      "type": "string",
+      "enum": ["Ack", "Assigned", "InReview", "New", "Resolved"],
+      "javaEnums": [
+        {"name": "Ack"},
+        {"name":  "Assigned"},
+        {"name": "InReview"},
+        {"name": "New"},
+        {"name": "Resolved"}
+      ]
+    },
+    "severities": {
+      "description": "Test case resolution status type.",
+      "javaType": "org.openmetadata.schema.tests.type.Severity",
+      "type": "string",
+      "enum": ["Severity1", "Severity2", "Severity3", "Severity4", "Severity5"],
+      "javaEnums": [
+        {"name": "Severity1"},
+        {"name":  "Severity2"},
+        {"name": "Severity3"},
+        {"name": "Severity4"},
+        {"name": "Severity5"}
+      ]
+    }
+  },
   "properties": {
     "id": {
       "description": "Unique identifier of this failure instance",
@@ -21,7 +49,7 @@
     },
     "testCaseResolutionStatusType": {
       "description": "Status of Test Case Acknowledgement.",
-      "$ref": "./basic.json#/definitions/testCaseResolutionStatusType"
+      "$ref": "#/definitions/testCaseResolutionStatusTypes"
     },
     "testCaseResolutionStatusDetails": {
       "description": "Details of the test case failure status.",
@@ -44,6 +72,10 @@
     "testCaseReference": {
       "description": "Test case reference",
       "$ref": "../type/entityReference.json"
+    },
+    "severity": {
+      "description": "Severity failure for the test associated with the resolution.",
+      "$ref": "#/definitions/severities"
     }
   },
   "required": ["id", "timestamp", "testCaseReference", "testCaseResolutionStatusType"],

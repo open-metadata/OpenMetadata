@@ -8,7 +8,7 @@
   "properties": {
     "testCaseResolutionStatusType": {
       "description": "Status of Test Case.",
-      "$ref": "../../tests/basic.json#/definitions/testCaseResolutionStatusType"
+      "$ref": "../../tests/testCaseResolutionStatus.json#/definitions/testCaseResolutionStatusTypes"
     },
     "testCaseResolutionStatusDetails": {
       "description": "Details of the test case failure status.",
@@ -22,6 +22,10 @@
     "testCaseReference": {
       "description": "Test case reference FQN",
       "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "severity": {
+      "description": "Severity failure for the test associated with the resolution.",
+      "$ref": "../../tests/testCaseResolutionStatus.json#/definitions/severities"
     }
   },
   "required": ["testCaseResolutionStatusType", "testCaseReference"],
