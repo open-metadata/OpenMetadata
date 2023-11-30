@@ -16,9 +16,11 @@ import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
 import React, { FC, useCallback, useMemo, useRef, useState } from 'react';
 import Loader from '../../components/Loader/Loader';
+import { PAGE_SIZE } from '../../constants/constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { EntityReference } from '../../generated/entity/type';
 import { Paging } from '../../generated/type/paging';
+import { usePaging } from '../../hooks/paging/usePaging';
 import { searchQuery } from '../../rest/searchAPI';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getEntityIcon } from '../../utils/TableUtils';
@@ -51,14 +53,19 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
   initialOptions,
   ...props
 }) => {
+  const {
+    currentPage,
+    handlePagingChange,
+    handlePageChange,
+    paging,
+    pageSize,
+  } = usePaging(PAGE_SIZE);
   const [isLoading, setIsLoading] = useState(false);
   const [hasContentLoading, setHasContentLoading] = useState(false);
   const [options, setOptions] = useState<DataAssetOption[]>(
     initialOptions ?? []
   );
   const [searchValue, setSearchValue] = useState<string>('');
-  const [paging, setPaging] = useState<Paging>({} as Paging);
-  const [currentPage, setCurrentPage] = useState(1);
   const selectedDataAssetsRef = useRef<DataAssetOption[]>(initialOptions ?? []);
 
   const fetchOptions = useCallback(
@@ -69,7 +76,7 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
       const dataAssetsResponse = await searchQuery({
         query: searchQueryParam ? `*${searchQueryParam}*` : '*',
         pageNumber: page,
-        pageSize: 10,
+        pageSize: pageSize,
         queryFilter: {},
         searchIndex: SearchIndex.ALL,
       });
@@ -98,7 +105,7 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
         },
       };
     },
-    []
+    [pageSize]
   );
 
   const loadOptions = useCallback(
@@ -108,16 +115,16 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
       try {
         const res = await fetchOptions(value, 1);
         setOptions(res.data);
-        setPaging(res.paging);
+        handlePagingChange(res.paging);
         setSearchValue(value);
-        setCurrentPage(1);
+        handlePageChange(1);
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
         setIsLoading(false);
       }
     },
-    [fetchOptions]
+    [fetchOptions, handlePagingChange, handlePageChange]
   );
 
   const optionList = useMemo(() => {
@@ -165,8 +172,8 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
           setHasContentLoading(true);
           const res = await fetchOptions(searchValue, currentPage + 1);
           setOptions((prev) => [...prev, ...res.data]);
-          setPaging(res.paging);
-          setCurrentPage((prev) => prev + 1);
+          handlePagingChange(res.paging);
+          handlePageChange((prev) => prev + 1);
         } catch (error) {
           showErrorToast(error as AxiosError);
         } finally {
@@ -212,7 +219,7 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
       options={optionList}
       style={{ width: '100%' }}
       onBlur={() => {
-        setCurrentPage(1);
+        handlePageChange(1);
         setSearchValue('');
         setOptions([]);
       }}
