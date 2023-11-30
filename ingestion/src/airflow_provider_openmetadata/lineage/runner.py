@@ -317,7 +317,7 @@ class AirflowLineageRunner:
                     if node["id"] == upstream_edge["fromEntity"]
                     and node["type"] == "table"
                 ),
-                None
+                None,
             )
             for upstream_edge in lineage_data.get("upstreamEdges") or []
         ]
@@ -329,26 +329,36 @@ class AirflowLineageRunner:
                     if node["id"] == downstream_edge["toEntity"]
                     and node["type"] == "table"
                 ),
-                None
+                None,
             )
             for downstream_edge in lineage_data.get("downstreamEdges") or []
         ]
 
         for edge in upstream_edges or []:
-            if edge.fqn not in xlets.inlets:
+            if edge.fqn not in (inlet.fqn for inlet in xlets.inlets):
                 self.dag.log.info(f"Removing upstream edge with {edge.fqn}")
                 edge_to_remove = EntitiesEdge(
-                    fromEntity=EntityReference(id=edge.id, type="table"),
-                    toEntity=EntityReference(id=pipeline.id, type="pipeline"),
+                    fromEntity=EntityReference(
+                        id=edge.id, type=ENTITY_REFERENCE_TYPE_MAP[Table.__name__]
+                    ),
+                    toEntity=EntityReference(
+                        id=pipeline.id,
+                        type=ENTITY_REFERENCE_TYPE_MAP[Pipeline.__name__],
+                    ),
                 )
                 self.metadata.delete_lineage_edge(edge=edge_to_remove)
 
         for edge in downstream_edges or []:
-            if edge.fqn not in xlets.outlets:
+            if edge.fqn not in (outlet.fqn for outlet in xlets.outlets):
                 self.dag.log.info(f"Removing downstream edge with {edge.fqn}")
                 edge_to_remove = EntitiesEdge(
-                    fromEntity=EntityReference(id=pipeline.id, type="pipeline"),
-                    toEntity=EntityReference(id=edge.id, type="table"),
+                    fromEntity=EntityReference(
+                        id=pipeline.id,
+                        type=ENTITY_REFERENCE_TYPE_MAP[Pipeline.__name__],
+                    ),
+                    toEntity=EntityReference(
+                        id=edge.id, type=ENTITY_REFERENCE_TYPE_MAP[Table.__name__]
+                    ),
                 )
                 self.metadata.delete_lineage_edge(edge=edge_to_remove)
 

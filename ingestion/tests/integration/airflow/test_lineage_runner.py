@@ -19,27 +19,38 @@ from airflow import DAG
 from airflow.operators.bash import BashOperator
 
 from airflow_provider_openmetadata.lineage.runner import AirflowLineageRunner
-from metadata.generated.schema.entity.services.pipelineService import PipelineService
-
-from metadata.generated.schema.api.data.createTable import CreateTableRequest
-
-from metadata.generated.schema.api.data.createDatabaseSchema import CreateDatabaseSchemaRequest
-
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
-
-from metadata.generated.schema.entity.services.connections.database.common.basicAuth import BasicAuth
-
-from metadata.generated.schema.entity.services.connections.database.mysqlConnection import MysqlConnection
-
-from metadata.generated.schema.api.services.createDatabaseService import CreateDatabaseServiceRequest
-
-from metadata.generated.schema.entity.data.table import Table, Column, DataType
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import OpenMetadataConnection
-from metadata.generated.schema.entity.services.databaseService import DatabaseServiceType, DatabaseConnection, \
-    DatabaseService
-from metadata.generated.schema.security.client.openMetadataJWTClientConfig import OpenMetadataJWTClientConfig
+from metadata.generated.schema.api.data.createDatabaseSchema import (
+    CreateDatabaseSchemaRequest,
+)
+from metadata.generated.schema.api.data.createTable import CreateTableRequest
+from metadata.generated.schema.api.services.createDatabaseService import (
+    CreateDatabaseServiceRequest,
+)
+from metadata.generated.schema.entity.data.table import Column, DataType, Table
+from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
+    BasicAuth,
+)
+from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
+    MysqlConnection,
+)
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseConnection,
+    DatabaseService,
+    DatabaseServiceType,
+)
+from metadata.generated.schema.entity.services.pipelineService import PipelineService
+from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
+    OpenMetadataJWTClientConfig,
+)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.pipeline.airflow.lineage_parser import OMEntity, get_xlets_from_dag
+from metadata.ingestion.source.pipeline.airflow.lineage_parser import (
+    OMEntity,
+    get_xlets_from_dag,
+)
 
 SLEEP = "sleep 1"
 PIPELINE_SERVICE_NAME = "test-lineage-runner"
@@ -114,9 +125,9 @@ class TestAirflowLineageRuner(TestCase):
             columns=[Column(name="id", dataType=DataType.BIGINT)],
         )
 
-        cls.metadata.create_or_update(data=create_inlet)
-        cls.metadata.create_or_update(data=create_inlet_2)
-        cls.table_outlet = cls.metadata.create_or_update(data=create_outlet)
+        cls.table_inlet1: Table = cls.metadata.create_or_update(data=create_inlet)
+        cls.table_inlet2: Table = cls.metadata.create_or_update(data=create_inlet_2)
+        cls.table_outlet: Table = cls.metadata.create_or_update(data=create_outlet)
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -159,8 +170,14 @@ class TestAirflowLineageRuner(TestCase):
                 task_id="print_date",
                 bash_command="date",
                 inlets=[
-                    OMEntity(entity=Table, fqn="test-service-lineage-runner.test-db.test-schema.lineage-test-inlet"),
-                    OMEntity(entity=Table, fqn="test-service-lineage-runner.test-db.test-schema.lineage-test-inlet2"),
+                    OMEntity(
+                        entity=Table,
+                        fqn="test-service-lineage-runner.test-db.test-schema.lineage-test-inlet",
+                    ),
+                    OMEntity(
+                        entity=Table,
+                        fqn="test-service-lineage-runner.test-db.test-schema.lineage-test-inlet2",
+                    ),
                 ],
             )
 
@@ -168,12 +185,17 @@ class TestAirflowLineageRuner(TestCase):
                 task_id="sleep",
                 bash_command=SLEEP,
                 outlets=[
-                    OMEntity(entity=Table, fqn="test-service-lineage-runner.test-db.test-schema.lineage-test-outlet")
+                    OMEntity(
+                        entity=Table,
+                        fqn="test-service-lineage-runner.test-db.test-schema.lineage-test-outlet",
+                    )
                 ],
             )
 
         # skip the statuses since they require getting data from airflow's db
-        with patch.object(AirflowLineageRunner, "add_all_pipeline_status", return_value=None):
+        with patch.object(
+            AirflowLineageRunner, "add_all_pipeline_status", return_value=None
+        ):
             runner = AirflowLineageRunner(
                 metadata=self.metadata,
                 service_name=PIPELINE_SERVICE_NAME,
@@ -183,3 +205,14 @@ class TestAirflowLineageRuner(TestCase):
             )
 
             runner.execute()
+
+        lineage_data = self.metadata.get_lineage_by_name(
+            entity=Table,
+            fqn=self.table_outlet.fullyQualifiedName.__root__,
+            up_depth=1,
+            down_depth=1,
+        )
+
+        upstream_ids = [edge["fromEntity"] for edge in lineage_data["upstreamEdges"]]
+        self.assertIn(str(self.table_inlet1.id.__root__), upstream_ids)
+        self.assertIn(str(self.table_inlet2.id.__root__), upstream_ids)
