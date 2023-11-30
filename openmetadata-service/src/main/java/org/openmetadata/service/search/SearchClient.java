@@ -5,6 +5,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.NOT_IMP
 import java.io.IOException;
 import java.security.KeyStoreException;
 import java.text.ParseException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -63,6 +64,8 @@ public interface SearchClient {
 
   Response searchBySourceUrl(String sourceUrl) throws IOException;
 
+  Response searchLineage(String fqn, int Depth, String queryFilter) throws IOException;
+
   Response searchByField(String fieldName, String fieldValue, String index) throws IOException;
 
   Response aggregate(String index, String fieldName, String value, String query) throws IOException;
@@ -86,6 +89,9 @@ public interface SearchClient {
   void softDeleteOrRestoreChildren(String indexName, String scriptTxt, List<Pair<String, String>> fieldAndValue);
 
   void updateChildren(String indexName, Pair<String, String> fieldAndValue, Pair<String, Map<String, Object>> updates);
+  //  void updateLineage(String indexName, Pair<String, String> fieldAndValue, Pair<String, Map<String, Object>>
+  // lineagaData);
+  void updateLineage(String indexName, Pair<String, String> fieldAndValue, HashMap<String, Object> lineagaData);
 
   TreeMap<Long, List<Object>> getSortedDate(
       String team,

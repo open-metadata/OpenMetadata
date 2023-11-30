@@ -287,6 +287,9 @@
       "serviceType": {
         "type": "keyword"
       },
+      "lineage": {
+        "type" : "object"
+      },
       "dataModelType": {
         "type": "keyword"
       },

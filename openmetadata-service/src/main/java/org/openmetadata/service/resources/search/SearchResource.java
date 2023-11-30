@@ -208,6 +208,32 @@ public class SearchResource {
   }
 
   @GET
+  @Path("/getLineage")
+  @Operation(
+      operationId = "searchLineage",
+      summary = "Search lineage",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "search response",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SearchResponse.class)))
+      })
+  public Response searchLineage(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "fqn") @QueryParam("fqn") String fqn,
+      @Parameter(description = "depth") @QueryParam("depth") int depth,
+      @Parameter(
+              description =
+                  "Elasticsearch query that will be combined with the query_string query generator from the `query` argument")
+          @QueryParam("query_filter")
+          String queryFilter)
+      throws IOException {
+
+    return searchRepository.searchLineage(fqn, depth, queryFilter);
+  }
+
+  @GET
   @Path("/suggest")
   @Operation(
       operationId = "getSuggestedEntities",

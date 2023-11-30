@@ -90,6 +90,9 @@
       "sourceUrl": {
         "type": "keyword"
       },
+      "lineage": {
+        "type" : "object"
+      },
       "parent": {
         "properties": {
           "id": {

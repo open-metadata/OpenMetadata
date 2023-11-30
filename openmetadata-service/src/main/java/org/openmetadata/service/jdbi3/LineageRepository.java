@@ -14,10 +14,15 @@
 package org.openmetadata.service.jdbi3;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.ColumnsEntityInterface;
 import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.entity.data.Table;
@@ -30,12 +35,16 @@ import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
+import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 
 @Repository
 public class LineageRepository {
   private final CollectionDAO dao;
+
+  public SearchClient searchClient = Entity.getSearchRepository().getSearchClient();
 
   public LineageRepository() {
     this.dao = Entity.getCollectionDAO();
@@ -79,6 +88,55 @@ public class LineageRepository {
     // Finally, add lineage relationship
     dao.relationshipDAO()
         .insert(from.getId(), to.getId(), from.getType(), to.getType(), Relationship.UPSTREAM.ordinal(), detailsJson);
+    addLineageToSearch(from, to, addLineage.getEdge().getLineageDetails());
+  }
+
+  private void addLineageToSearch(EntityReference fromEntity, EntityReference toEntity, LineageDetails lineageDetails) {
+    IndexMapping sourceIndexMapping = Entity.getSearchRepository().getIndexMapping(fromEntity.getType());
+    String sourceIndexName = sourceIndexMapping.getIndexName();
+    IndexMapping destinationIndexMapping = Entity.getSearchRepository().getIndexMapping(toEntity.getType());
+    String destinationIndexName = destinationIndexMapping.getIndexName();
+    //    HashMap<String, Object> data = new HashMap<>();
+    HashMap<String, Object> relationshipDetails = new HashMap<>();
+    Pair<String, String> from = new ImmutablePair<>("_id", fromEntity.getId().toString());
+    Pair<String, String> to = new ImmutablePair<>("_id", toEntity.getId().toString());
+    processLineageData(fromEntity, toEntity, lineageDetails, relationshipDetails);
+    searchClient.updateLineage(sourceIndexName, from, relationshipDetails);
+    searchClient.updateLineage(destinationIndexName, to, relationshipDetails);
+  }
+
+  private void processLineageData(
+      EntityReference fromEntity,
+      EntityReference toEntity,
+      LineageDetails lineageDetails,
+      HashMap<String, Object> relationshipDetails) {
+    HashMap<String, Object> fromDetails = new HashMap<>();
+    HashMap<String, Object> toDetails = new HashMap<>();
+    //    HashMap<String, Object> relationshipDetails = new HashMap<>();
+    fromDetails.put("id", fromEntity.getId().toString());
+    fromDetails.put("type", fromEntity.getType());
+    fromDetails.put("fqn", fromEntity.getFullyQualifiedName());
+    toDetails.put("id", toEntity.getId().toString());
+    toDetails.put("type", toEntity.getType());
+    toDetails.put("fqn", toEntity.getFullyQualifiedName());
+    relationshipDetails.put("fromEntity", fromDetails);
+    relationshipDetails.put("toEntity", toDetails);
+    if (lineageDetails != null) {
+      relationshipDetails.put(
+          "pipeline",
+          JsonUtils.getMap(CommonUtil.nullOrEmpty(lineageDetails.getPipeline()) ? null : lineageDetails.getPipeline()));
+      if (!CommonUtil.nullOrEmpty(lineageDetails.getColumnsLineage())) {
+        List<Map<String, Object>> colummnLineageList = new ArrayList<>();
+        for (ColumnLineage columnLineage : lineageDetails.getColumnsLineage()) {
+          colummnLineageList.add(JsonUtils.getMap(columnLineage));
+        }
+        relationshipDetails.put("columns", colummnLineageList);
+      }
+      relationshipDetails.put(
+          "sqlQuery", CommonUtil.nullOrEmpty(lineageDetails.getSqlQuery()) ? null : lineageDetails.getSqlQuery());
+      relationshipDetails.put(
+          "source", CommonUtil.nullOrEmpty(lineageDetails.getSource()) ? null : lineageDetails.getSource());
+    }
   }
 
   private String validateLineageDetails(EntityReference from, EntityReference to, LineageDetails details) {

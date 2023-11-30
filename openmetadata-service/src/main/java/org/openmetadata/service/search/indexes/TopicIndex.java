@@ -70,6 +70,7 @@ public class TopicIndex implements SearchIndex {
     doc.put("service_suggest", serviceSuggest);
     doc.put("entityType", Entity.TOPIC);
     doc.put("serviceType", topic.getServiceType());
+    doc.put("lineage", SearchIndex.getLineageData(topic.getEntityReference()));
     doc.put("messageSchema", topic.getMessageSchema() != null ? topic.getMessageSchema() : null);
     doc.put(
         "fqnParts",

@@ -508,6 +508,10 @@ public class SearchRepository {
     return searchClient.searchBySourceUrl(sourceUrl);
   }
 
+  public Response searchLineage(String fqn, int depth, String queryFilter) throws IOException {
+    return searchClient.searchLineage(fqn, depth, queryFilter);
+  }
+
   public Response searchByField(String fieldName, String fieldValue, String index) throws IOException {
     return searchClient.searchByField(fieldName, fieldValue, index);
   }

@@ -402,6 +402,69 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
+  public Response searchLineage(String fqn, int depth, String queryFilter) throws IOException {
+    Map<String, Object> responseMap = new HashMap<>();
+    List<Map<String, Object>> edges = new ArrayList<>();
+    List<Map<String, Object>> nodes = new ArrayList<>();
+    getLineage(fqn, depth, edges, nodes, queryFilter, "lineage.fromEntity.fqn");
+    getLineage(fqn, depth, edges, nodes, queryFilter, "lineage.toEntity.fqn");
+    responseMap.put("edges", edges);
+    responseMap.put("nodes", nodes);
+    return Response.status(OK).entity(responseMap).build();
+  }
+
+  private void getLineage(
+      String fqn,
+      int depth,
+      List<Map<String, Object>> edges,
+      List<Map<String, Object>> nodes,
+      String queryFilter,
+      String direction)
+      throws IOException {
+    if (depth <= 0) {
+      return;
+    }
+    es.org.elasticsearch.action.search.SearchRequest searchRequest =
+        new es.org.elasticsearch.action.search.SearchRequest("all");
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    searchSourceBuilder.query(QueryBuilders.boolQuery().must(QueryBuilders.termQuery(direction, fqn)));
+    if (!nullOrEmpty(queryFilter) && !queryFilter.equals("{}")) {
+      try {
+        XContentParser filterParser =
+            XContentType.JSON
+                .xContent()
+                .createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, queryFilter);
+        QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
+        BoolQueryBuilder newQuery = QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(filter);
+        searchSourceBuilder.query(newQuery);
+      } catch (Exception ex) {
+        LOG.warn("Error parsing query_filter from query parameters, ignoring filter", ex);
+      }
+    }
+    searchRequest.source(searchSourceBuilder);
+    SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+    for (var hit : searchResponse.getHits().getHits()) {
+      List<Map<String, Object>> lineage = (List<Map<String, Object>>) hit.getSourceAsMap().get("lineage");
+      nodes.add(hit.getSourceAsMap());
+      for (Map<String, Object> lin : lineage) {
+        HashMap<String, String> fromEntity = (HashMap<String, String>) lin.get("fromEntity");
+        HashMap<String, String> toEntity = (HashMap<String, String>) lin.get("toEntity");
+        if (direction.equalsIgnoreCase("lineage.fromEntity.fqn")) {
+          if (!edges.contains(lin) && fromEntity.get("fqn").equals(fqn)) {
+            edges.add(lin);
+          }
+          getLineage(toEntity.get("fqn"), depth - 1, edges, nodes, queryFilter, direction);
+        } else {
+          if (!edges.contains(lin) && toEntity.get("fqn").equals(fqn)) {
+            edges.add(lin);
+          }
+          getLineage(fromEntity.get("fqn"), depth - 1, edges, nodes, queryFilter, direction);
+        }
+      }
+    }
+  }
+
+  @Override
   public Response searchBySourceUrl(String sourceUrl) throws IOException {
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
         new es.org.elasticsearch.action.search.SearchRequest(GLOBAL_SEARCH_ALIAS);
@@ -1051,6 +1114,24 @@ public class ElasticSearchClient implements SearchClient {
               Script.DEFAULT_SCRIPT_LANG,
               updates.getKey(),
               JsonUtils.getMap(updates.getValue() == null ? new HashMap<>() : updates.getValue()));
+      updateByQueryRequest.setScript(script);
+      updateElasticSearchByQuery(updateByQueryRequest);
+    }
+  }
+
+  /**
+   * @param indexName
+   * @param fieldAndValue
+   */
+  @Override
+  public void updateLineage(String indexName, Pair<String, String> fieldAndValue, HashMap<String, Object> lineageData) {
+    if (isClientAvailable) {
+      UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexName);
+      updateByQueryRequest.setQuery(
+          new MatchQueryBuilder(fieldAndValue.getKey(), fieldAndValue.getValue()).operator(Operator.AND));
+      String scriptTxt = "ctx._source.lineage.add(params.lineageData)";
+      Map<String, Object> params = Collections.singletonMap("lineageData", lineageData);
+      Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, params);
       updateByQueryRequest.setScript(script);
       updateElasticSearchByQuery(updateByQueryRequest);
     }

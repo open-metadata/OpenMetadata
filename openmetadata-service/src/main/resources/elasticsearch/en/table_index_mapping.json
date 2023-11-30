@@ -517,6 +517,9 @@
           }
         }
       },
+      "lineage": {
+        "type" : "object"
+      },
       "serviceType": {
         "type": "keyword"
       },

@@ -363,6 +363,9 @@
       "serviceType": {
         "type": "keyword"
       },
+      "lineage": {
+        "type" : "object"
+      },
       "entityType": {
         "type": "keyword"
       },

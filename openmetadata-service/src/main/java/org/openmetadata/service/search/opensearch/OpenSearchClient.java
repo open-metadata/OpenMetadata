@@ -405,6 +405,17 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
+  public Response searchLineage(String fqn, int Depth, String queryFilter) throws IOException {
+    os.org.opensearch.action.search.SearchRequest searchRequest =
+        new os.org.opensearch.action.search.SearchRequest(GLOBAL_SEARCH_ALIAS);
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    searchSourceBuilder.query(QueryBuilders.boolQuery().must(QueryBuilders.termQuery("sourceUrl", fqn)));
+    searchRequest.source(searchSourceBuilder);
+    String response = client.search(searchRequest, RequestOptions.DEFAULT).toString();
+    return Response.status(OK).entity(response).build();
+  }
+
+  @Override
   public Response searchByField(String fieldName, String fieldValue, String index) throws IOException {
     os.org.opensearch.action.search.SearchRequest searchRequest =
         new os.org.opensearch.action.search.SearchRequest(index);
@@ -1059,6 +1070,15 @@ public class OpenSearchClient implements SearchClient {
       updateOpenSearchByQuery(updateByQueryRequest);
     }
   }
+
+  /**
+   * @param indexName
+   * @param fieldAndValue
+   * @param updates
+   */
+  @Override
+  public void updateLineage(
+      String indexName, Pair<String, String> fieldAndValue, HashMap<String, Object> lineagaData) {}
 
   private void updateOpenSearchByQuery(UpdateByQueryRequest updateByQueryRequest) {
     if (updateByQueryRequest != null && isClientAvailable) {

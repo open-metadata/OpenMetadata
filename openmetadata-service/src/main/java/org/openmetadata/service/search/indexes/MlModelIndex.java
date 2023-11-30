@@ -34,6 +34,7 @@ public class MlModelIndex implements SearchIndex {
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.MLMODEL);
     doc.put("serviceType", mlModel.getServiceType());
+    doc.put("lineage", SearchIndex.getLineageData(mlModel.getEntityReference()));
     doc.put(
         "fqnParts",
         getFQNParts(

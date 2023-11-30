@@ -38,6 +38,7 @@ public class SearchEntityIndex implements SearchIndex {
     doc.put("tier", parseTags.getTierTag());
     doc.put("owner", getEntityWithDisplayName(searchIndex.getOwner()));
     doc.put("service", getEntityWithDisplayName(searchIndex.getService()));
+    doc.put("lineage", SearchIndex.getLineageData(searchIndex.getEntityReference()));
     doc.put("domain", getEntityWithDisplayName(searchIndex.getDomain()));
     return doc;
   }
