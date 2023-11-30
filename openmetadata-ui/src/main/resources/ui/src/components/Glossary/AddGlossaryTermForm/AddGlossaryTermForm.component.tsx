@@ -62,7 +62,7 @@ const AddGlossaryTermForm = ({
       tags = [],
       mutuallyExclusive = false,
       references = [],
-      relatedTerms,
+      relatedTerms = [],
       color,
       iconURL,
     } = formObj;
@@ -252,6 +252,7 @@ const AddGlossaryTermForm = ({
           value: data.fullyQualifiedName,
           data,
         })),
+        filterOptions: [glossaryTerm?.fullyQualifiedName ?? ''],
       },
     },
     {
