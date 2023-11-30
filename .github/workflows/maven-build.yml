@@ -47,7 +47,7 @@ permissions:
   checks: write
 
 concurrency: 
-  group: maven-build-${{ github.head_ref || github.run_id }}
+  group: maven-build-mysql-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 jobs:
   maven-mysql-ci:
