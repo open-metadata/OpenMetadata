@@ -127,7 +127,7 @@ class ApplicationWorkflow(BaseWorkflow, ABC):
         return self.runner.get_status().calculate_success()
 
     def get_failures(self) -> List[StackTraceError]:
-        return self.source.get_status().failures
+        return self.workflow_steps()[0].get_status().failures
 
     def workflow_steps(self) -> List[Step]:
         return [self.runner]
@@ -139,7 +139,7 @@ class ApplicationWorkflow(BaseWorkflow, ABC):
             and self.calculate_success() < SUCCESS_THRESHOLD_VALUE
         ):
             raise WorkflowExecutionError(
-                "Source reported errors", self.source.get_status()
+                "Source reported errors", self.workflow_steps()[0].get_status()
             )
 
         if raise_warnings and self.runner.get_status().warnings:
