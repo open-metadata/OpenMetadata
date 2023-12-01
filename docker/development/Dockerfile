@@ -10,7 +10,7 @@
 #  limitations under the License.
 
 # Build stage
-FROM alpine:3 AS build
+FROM alpine:3.18.5 AS build
 
 COPY openmetadata-dist/target/openmetadata-*.tar.gz /
 
@@ -19,7 +19,7 @@ RUN mkdir -p /opt/openmetadata && \
     rm openmetadata-*.tar.gz
 
 # Final stage
-FROM alpine:3
+FROM alpine:3.18.5
 
 EXPOSE 8585
 
