@@ -1,9 +1,9 @@
 ---
-title: Admin Guide for Roles and Policies
-slug: /how-to-guides/admin-guide-roles-policies
+title: Advanced Guide for Roles and Policies
+slug: /how-to-guides/admin-guide/roles-policies
 ---
 
-# Admin Guide for Roles and Policies
+# Advanced Guide for Roles and Policies
 
 ## Users and Teams
 
@@ -12,7 +12,7 @@ OpenMetadata introduces a versatile hierarchical team structure that aligns with
 **Organization** serves as the foundation of the team hierarchy representing the entire company. Under Organization, you can add Business Units, Divisions, Departments, Groups, and Users. For instance, if your company is Facebook, then the Organization represents entire Facebook itself, which further houses diverse teams like Engineering, Sales, Finance, and Marketing.
 
 {% image
-src="/images/v1.1/how-to-guides/roles-policies/all-teams.png"
+src="/images/v1.2/how-to-guides/roles-policies/all-teams.png"
 alt="Teams Hierarchy"
 caption="Teams Hierarchy"
 /%}
@@ -20,7 +20,7 @@ caption="Teams Hierarchy"
 **BusinessUnit** is positioned one level below the Organization and can contain other Business Units, Divisions, Departments, and Groups. To illustrate, the Engineering Business Unit could be one of the top-tier Business Units in the Organization. It contains other teams like Groups and additional Business Units.
 
 {% image
-src="/images/v1.1/how-to-guides/roles-policies/b-u.png"
+src="/images/v1.2/how-to-guides/roles-policies/b-u.png"
 alt="Business Unit"
 caption="Business Unit"
 /%}
@@ -51,7 +51,7 @@ Bots, on the other hand, are equipped with a JWT token generated based on SSL ce
 ## Authentication Flow
 
 {% image
-src="/images/v1.1/how-to-guides/roles-policies/auth.png"
+src="/images/v1.2/how-to-guides/roles-policies/auth.png"
 alt="Authentication Flow"
 caption="Authentication Flow"
 /%}
@@ -65,7 +65,7 @@ caption="Authentication Flow"
 OpenMetadata's authorization is a result of evaluating three crucial factors:
 
 {% image
-src="/images/v1.1/how-to-guides/roles-policies/access.png"
+src="/images/v1.2/how-to-guides/roles-policies/access.png"
 alt="Authorization Framework"
 caption="Authorization Framework"
 /%}
@@ -77,7 +77,7 @@ caption="Authorization Framework"
 Below is a list of resources that correspond to Entities such as Table, Topic, Pipeline, etc.
 
 {% image
-src="/images/v1.1/how-to-guides/roles-policies/rules1.png"
+src="/images/v1.2/how-to-guides/roles-policies/rules1.png"
 alt="Resources Correspond to Entities"
 caption="Resources Correspond to Entities"
 /%}
@@ -87,7 +87,7 @@ caption="Resources Correspond to Entities"
 There are common operations such as Create, Delete, and ViewAll that apply to all the resources. Each resource can also have its specific operation, such as ViewTests, ViewQueries for Table.
 
 {% image
-src="/images/v1.1/how-to-guides/roles-policies/rules2.png"
+src="/images/v1.2/how-to-guides/roles-policies/rules2.png"
 alt="Each Resource has its Own Set of Granular Operations"
 caption="Each Resource has its Own Set of Granular Operations"
 /%}
@@ -97,15 +97,15 @@ By synthesizing these components, OpenMetadata dynamically ascertains whether a 
 {%inlineCallout
   color="violet-70"
   bold="Building Blocks of Authorization: Rules, Policies, and Roles"
-  icon="add_moderator"
-  href="/how-to-guides/admin-guide-roles-policies/authorization"%}
+  icon="MdArrowForward"
+  href="/how-to-guides/admin-guide/roles-policies/authorization"%}
   Learn all the details of Rules, Policies, and Roles
 {%/inlineCallout%}
 
 {%inlineCallout
   color="violet-70"
   bold="Use Cases: Creating Roles & Policies in OpenMetadata"
-  icon="add_moderator"
-  href="/how-to-guides/admin-guide-roles-policies/use-cases"%}
+  icon="MdArrowForward"
+  href="/how-to-guides/admin-guide/roles-policies/use-cases"%}
   Tailor you policies to meet your organizational and team needs.
 {%/inlineCallout%}

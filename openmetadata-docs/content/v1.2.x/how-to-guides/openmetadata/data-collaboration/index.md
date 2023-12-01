@@ -1,6 +1,6 @@
 ---
 title: Data Collaboration
-slug: /how-to-guides/openmetadata/data-collaboration
+slug: /how-to-guides/data-collaboration
 ---
 
 # Overview of Data Collaboration
@@ -23,35 +23,35 @@ Watch the video on how to use the collaboration features in OpenMetadata.
   color="violet-70"
   bold="Understanding Activity Feeds"
   icon="MdConnectWithoutContact"
-  href="/how-to-guides/openmetadata/data-collaboration/activity-feeds"%}
+  href="/how-to-guides/data-collaboration/activity-feeds"%}
   Learn more about the announcements in OpenMetadata
  {%/inlineCallout%}
  {%inlineCallout
   color="violet-70"
   bold="Request for Description"
   icon="MdDescription"
-  href="/how-to-guides/openmetadata/data-collaboration/request-description"%}
+  href="/how-to-guides/data-collaboration/request-description"%}
   Request for a description and discuss the same within OpenMetadata
  {%/inlineCallout%}
  {%inlineCallout
   color="violet-70"
   bold="Request for Tags"
   icon="MdDiscount"
-  href="/how-to-guides/openmetadata/data-collaboration/request-tags"%}
+  href="/how-to-guides/data-collaboration/request-tags"%}
   Request for tags and discuss about the same, all within OpenMetadata.
  {%/inlineCallout%}
  {%inlineCallout
   color="violet-70"
   bold="Overview of Announcements"
   icon="MdVolumeUp"
-  href="/how-to-guides/openmetadata/data-collaboration/announcements"%}
+  href="/how-to-guides/data-collaboration/announcements"%}
   Learn more about the announcements in OpenMetadata
  {%/inlineCallout%}
  {%inlineCallout
   color="violet-70"
   bold="Create an Announcement"
   icon="MdVolumeUp"
-  href="/how-to-guides/openmetadata/data-collaboration/add-announcement"%}
+  href="/how-to-guides/data-collaboration/add-announcement"%}
   Follow the steps to add an announcement
  {%/inlineCallout%}
 {%/inlineCalloutContainer%}
