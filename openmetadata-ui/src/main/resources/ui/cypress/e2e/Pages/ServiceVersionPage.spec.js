@@ -21,7 +21,7 @@ import {
   verifyResponseStatusCode,
   visitServiceDetailsPage,
 } from '../../common/common';
-import { hardDeleteService } from '../../common/entityUtils';
+import { hardDeleteService } from '../../common/EntityUtils';
 import { DELETE_TERM } from '../../constants/constants';
 import {
   DOMAIN_CREATION_DETAILS,
@@ -50,7 +50,7 @@ const navigateToVersionPageFromServicePage = (
   );
   interceptURL(
     'GET',
-    `/api/v1/services/${serviceCategory}/${serviceId}/versions/0.2`,
+    `/api/v1/services/${serviceCategory}/${serviceId}/versions/${versionNumber}`,
     'getSelectedVersionDetails'
   );
 
@@ -281,14 +281,17 @@ describe('Common prerequisite for service version test', () => {
             `${successMessageEntityName} Service deleted successfully!`
           );
 
-          cy.get('[data-testid="version-button"]').as('versionButton');
-
           navigateToVersionPageFromServicePage(
             serviceCategory,
             serviceName,
             serviceId,
-            '0.2'
+            '0.3'
           );
+
+          // Deleted badge should be visible
+          cy.get('[data-testid="deleted-badge"]')
+            .scrollIntoView()
+            .should('be.visible');
         });
       });
     }

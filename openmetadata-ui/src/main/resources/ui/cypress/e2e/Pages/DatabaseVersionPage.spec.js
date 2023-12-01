@@ -250,6 +250,56 @@ describe(`Database version page should work properly`, () => {
       .should('be.visible');
   });
 
+  it(`Database  Schema version page should show version details after soft deleted`, () => {
+    visitDatabaseDetailsPage({
+      settingsMenuId: serviceDetails.settingsMenuId,
+      serviceCategory: serviceDetails.serviceCategory,
+      serviceName: serviceDetails.serviceName,
+      databaseRowKey: databaseId,
+      databaseName: DATABASE_DETAILS_FOR_VERSION_TEST.name,
+    });
+
+    // Clicking on permanent delete radio button and checking the service name
+    cy.get('[data-testid="manage-button"]')
+      .should('exist')
+      .should('be.visible')
+      .click();
+
+    cy.get('[data-menu-id*="delete-button"]')
+      .should('exist')
+      .should('be.visible');
+    cy.get('[data-testid="delete-button-title"]')
+      .should('be.visible')
+      .click()
+      .as('deleteBtn');
+
+    // Clicking on permanent delete radio button and checking the service name
+    cy.get('[data-testid="hard-delete-option"]')
+      .contains(DATABASE_DETAILS_FOR_VERSION_TEST.name)
+      .should('be.visible')
+      .click();
+
+    cy.get('[data-testid="confirmation-text-input"]')
+      .should('be.visible')
+      .type(DELETE_TERM);
+    interceptURL('DELETE', `/api/v1/databases/*`, 'deleteService');
+    interceptURL(
+      'GET',
+      '/api/v1/services/*/name/*?fields=owner',
+      'serviceDetails'
+    );
+
+    cy.get('[data-testid="confirm-button"]').should('be.visible').click();
+    verifyResponseStatusCode('@deleteService', 200);
+
+    // Closing the toast notification
+    toastNotification(`Database deleted successfully!`);
+
+    cy.get(
+      `[data-testid="service-name-${DATABASE_DETAILS_FOR_VERSION_TEST.name}"]`
+    ).should('not.exist');
+  });
+
   it(`Cleanup for Database version page tests`, () => {
     visitDatabaseDetailsPage({
       settingsMenuId: serviceDetails.settingsMenuId,
