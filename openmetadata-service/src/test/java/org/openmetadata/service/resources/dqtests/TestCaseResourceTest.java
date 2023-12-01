@@ -59,7 +59,7 @@ import org.openmetadata.schema.tests.type.InReview;
 import org.openmetadata.schema.tests.type.Resolved;
 import org.openmetadata.schema.tests.type.TestCaseFailureReasonType;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
-import org.openmetadata.schema.tests.type.TestCaseResolutionStatusType;
+import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.tests.type.TestSummary;
@@ -1010,16 +1010,16 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     // Create a test case failure status for each status type
     List<CreateTestCaseResolutionStatus> testCaseFailureStatuses = new ArrayList<>();
     List<CreateTestCaseResolutionStatus> resolvedTestCaseFailureStatus = new ArrayList<>();
-    for (TestCaseResolutionStatusType statusType : TestCaseResolutionStatusType.values()) {
+    for (TestCaseResolutionStatusTypes statusType : TestCaseResolutionStatusTypes.values()) {
       CreateTestCaseResolutionStatus createTestCaseFailureStatus =
           new CreateTestCaseResolutionStatus()
               .withTestCaseReference(testCaseEntity.getFullyQualifiedName())
               .withTestCaseResolutionStatusType(statusType)
               .withTestCaseResolutionStatusDetails(null);
-      if (statusType.equals(TestCaseResolutionStatusType.Assigned)) {
+      if (statusType.equals(TestCaseResolutionStatusTypes.Assigned)) {
         createTestCaseFailureStatus.setTestCaseResolutionStatusDetails(new Assigned().withAssignee(USER1_REF));
       }
-      if (statusType.equals(TestCaseResolutionStatusType.Resolved)) {
+      if (statusType.equals(TestCaseResolutionStatusTypes.Resolved)) {
         createTestCaseFailureStatus.setTestCaseResolutionStatusDetails(
             new Resolved()
                 .withTestCaseFailureComment("resolved")
@@ -1028,7 +1028,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         resolvedTestCaseFailureStatus.add(createTestCaseFailureStatus);
         continue;
       }
-      if (statusType.equals(TestCaseResolutionStatusType.InReview)) {
+      if (statusType.equals(TestCaseResolutionStatusTypes.InReview)) {
         createTestCaseFailureStatus.setTestCaseResolutionStatusDetails(new InReview().withReviewer(USER1_REF));
       }
       testCaseFailureStatuses.add(createTestCaseFailureStatus);
@@ -1064,30 +1064,30 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     int maxEntities = rand.nextInt(16) + 5;
 
     TestCase testCaseEntity = createEntity(createRequest(getEntityName(test)), ADMIN_AUTH_HEADERS);
-    TestCaseResolutionStatusType[] testCaseFailureStatusTypes = TestCaseResolutionStatusType.values();
+    TestCaseResolutionStatusTypes[] testCaseFailureStatusTypes = TestCaseResolutionStatusTypes.values();
     List<CreateTestCaseResolutionStatus> testCaseFailureStatuses = new ArrayList<>();
 
     for (int i = 0; i < maxEntities; i++) {
       // randomly pick a status type
       int rnd = new Random().nextInt(testCaseFailureStatusTypes.length);
-      TestCaseResolutionStatusType testCaseFailureStatusType = testCaseFailureStatusTypes[rnd];
+      TestCaseResolutionStatusTypes testCaseFailureStatusType = testCaseFailureStatusTypes[rnd];
 
       CreateTestCaseResolutionStatus createTestCaseFailureStatus =
           new CreateTestCaseResolutionStatus()
               .withTestCaseReference(testCaseEntity.getFullyQualifiedName())
               .withTestCaseResolutionStatusType(testCaseFailureStatusType)
               .withTestCaseResolutionStatusDetails(null);
-      if (testCaseFailureStatusType.equals(TestCaseResolutionStatusType.Assigned)) {
+      if (testCaseFailureStatusType.equals(TestCaseResolutionStatusTypes.Assigned)) {
         createTestCaseFailureStatus.setTestCaseResolutionStatusDetails(new Assigned().withAssignee(USER1_REF));
       }
-      if (testCaseFailureStatusType.equals(TestCaseResolutionStatusType.Resolved)) {
+      if (testCaseFailureStatusType.equals(TestCaseResolutionStatusTypes.Resolved)) {
         createTestCaseFailureStatus.setTestCaseResolutionStatusDetails(
             new Resolved()
                 .withTestCaseFailureComment("resolved")
                 .withTestCaseFailureReason(TestCaseFailureReasonType.MissingData)
                 .withResolvedBy(USER1_REF));
       }
-      if (testCaseFailureStatusType.equals(TestCaseResolutionStatusType.InReview)) {
+      if (testCaseFailureStatusType.equals(TestCaseResolutionStatusTypes.InReview)) {
         createTestCaseFailureStatus.setTestCaseResolutionStatusDetails(new InReview().withReviewer(USER1_REF));
       }
       testCaseFailureStatuses.add(createTestCaseFailureStatus);
@@ -1109,7 +1109,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     TestCase testCaseEntity;
     int maxEntities = rand.nextInt(16) + 5;
 
-    TestCaseResolutionStatusType[] testCaseFailureStatusTypes = TestCaseResolutionStatusType.values();
+    TestCaseResolutionStatusTypes[] testCaseFailureStatusTypes = TestCaseResolutionStatusTypes.values();
     List<CreateTestCaseResolutionStatus> testCaseFailureStatuses = new ArrayList<>();
 
     for (int i = 0; i < maxEntities; i++) {
@@ -1120,24 +1120,24 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         // create 5 test case failure statuses for each test case
         // randomly pick a status type
         int rnd = new Random().nextInt(testCaseFailureStatusTypes.length);
-        TestCaseResolutionStatusType testCaseFailureStatusType = testCaseFailureStatusTypes[rnd];
+        TestCaseResolutionStatusTypes testCaseFailureStatusType = testCaseFailureStatusTypes[rnd];
 
         CreateTestCaseResolutionStatus createTestCaseFailureStatus =
             new CreateTestCaseResolutionStatus()
                 .withTestCaseReference(testCaseEntity.getFullyQualifiedName())
                 .withTestCaseResolutionStatusType(testCaseFailureStatusType)
                 .withTestCaseResolutionStatusDetails(null);
-        if (testCaseFailureStatusType.equals(TestCaseResolutionStatusType.Assigned)) {
+        if (testCaseFailureStatusType.equals(TestCaseResolutionStatusTypes.Assigned)) {
           createTestCaseFailureStatus.setTestCaseResolutionStatusDetails(new Assigned().withAssignee(USER1_REF));
         }
-        if (testCaseFailureStatusType.equals(TestCaseResolutionStatusType.Resolved)) {
+        if (testCaseFailureStatusType.equals(TestCaseResolutionStatusTypes.Resolved)) {
           createTestCaseFailureStatus.setTestCaseResolutionStatusDetails(
               new Resolved()
                   .withTestCaseFailureComment("resolved")
                   .withTestCaseFailureReason(TestCaseFailureReasonType.MissingData)
                   .withResolvedBy(USER1_REF));
         }
-        if (testCaseFailureStatusType.equals(TestCaseResolutionStatusType.InReview)) {
+        if (testCaseFailureStatusType.equals(TestCaseResolutionStatusTypes.InReview)) {
           createTestCaseFailureStatus.setTestCaseResolutionStatusDetails(new InReview().withReviewer(USER1_REF));
         }
         testCaseFailureStatuses.add(createTestCaseFailureStatus);
@@ -1159,7 +1159,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     CreateTestCaseResolutionStatus createTestCaseFailureStatus =
         new CreateTestCaseResolutionStatus()
             .withTestCaseReference(testCaseEntity.getFullyQualifiedName())
-            .withTestCaseResolutionStatusType(TestCaseResolutionStatusType.Ack)
+            .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Ack)
             .withTestCaseResolutionStatusDetails(null);
     TestCaseResolutionStatus testCaseFailureStatus = createTestCaseFailureStatus(createTestCaseFailureStatus);
     String original = JsonUtils.pojoToJson(testCaseFailureStatus);
@@ -1181,7 +1181,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     CreateTestCaseResolutionStatus createTestCaseFailureStatus =
         new CreateTestCaseResolutionStatus()
             .withTestCaseReference(testCaseEntity.getFullyQualifiedName())
-            .withTestCaseResolutionStatusType(TestCaseResolutionStatusType.Ack)
+            .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Ack)
             .withTestCaseResolutionStatusDetails(null);
     TestCaseResolutionStatus testCaseFailureStatus = createTestCaseFailureStatus(createTestCaseFailureStatus);
     String original = JsonUtils.pojoToJson(testCaseFailureStatus);
@@ -1190,7 +1190,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             testCaseFailureStatus
                 .withUpdatedAt(System.currentTimeMillis())
                 .withUpdatedBy(USER1_REF)
-                .withTestCaseResolutionStatusType(TestCaseResolutionStatusType.Assigned));
+                .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Assigned));
     JsonPatch patch = JsonUtils.getJsonPatch(original, updated);
 
     assertResponse(

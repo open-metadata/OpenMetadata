@@ -4,6 +4,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_DEFINITION;
 import static org.openmetadata.service.Entity.TEST_SUITE;
+import static org.openmetadata.service.Entity.getEntityReferenceByName;
 import static org.openmetadata.service.util.RestUtil.ENTITY_NO_CHANGE;
 import static org.openmetadata.service.util.RestUtil.LOGICAL_TEST_CASES_ADDED;
 
@@ -24,6 +25,8 @@ import org.openmetadata.schema.tests.TestCaseParameter;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
+import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -202,6 +205,12 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     // Validate the request content
     TestCase testCase = findByName(fqn, Include.NON_DELETED);
 
+    // set the test case resolution status reference if test failed
+    testCaseResult.setTestCaseResolutionStatusReference(
+        testCaseResult.getTestCaseStatus() != TestCaseStatus.Failed
+            ? null
+            : setTestCaseFailureStatus(testCase, updatedBy));
+
     daoCollection
         .dataQualityDataTimeSeriesDao()
         .insert(
@@ -220,8 +229,30 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
-  private void setTestCaseFailureStatus(TestCase testCase, TestCaseResult testCaseResult, String updatedBy) {
-    // To implement
+  private TestCaseResolutionStatus setTestCaseFailureStatus(TestCase testCase, String updatedBy) {
+    String json =
+        daoCollection
+            .testCaseResolutionStatusTimeSeriesDao()
+            .getLatestExtension(testCase.getFullyQualifiedName(), TESTCASE_RESULT_EXTENSION);
+
+    TestCaseResolutionStatus storedTestCaseResolutionStatus =
+        json != null ? JsonUtils.readValue(json, TestCaseResolutionStatus.class) : null;
+
+    if ((storedTestCaseResolutionStatus != null)
+        && (storedTestCaseResolutionStatus.getTestCaseResolutionStatusType()
+            != TestCaseResolutionStatusTypes.Resolved)) {
+      // if we already have a non resolve status then we'll simply return it
+      return storedTestCaseResolutionStatus;
+    }
+
+    // if the test case resolution is null or resolved then we'll create a new one
+    return new TestCaseResolutionStatus()
+        .withSequenceId(UUID.randomUUID())
+        .withTimestamp(System.currentTimeMillis())
+        .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New)
+        .withUpdatedBy(getEntityReferenceByName(Entity.USER, updatedBy, Include.ALL))
+        .withUpdatedAt(System.currentTimeMillis())
+        .withTestCaseReference(testCase.getEntityReference());
   }
 
   public RestUtil.PutResponse<TestCaseResult> deleteTestCaseResult(String updatedBy, String fqn, Long timestamp) {

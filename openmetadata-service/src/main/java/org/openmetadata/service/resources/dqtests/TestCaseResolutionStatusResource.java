@@ -34,9 +34,11 @@ import javax.ws.rs.core.UriInfo;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
-import org.openmetadata.schema.tests.type.TestCaseResolutionStatusType;
-import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -47,7 +49,6 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ReportDataContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
@@ -63,7 +64,7 @@ public class TestCaseResolutionStatusResource
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases/testCaseResolutionStatus";
 
   public TestCaseResolutionStatusResource(Authorizer authorizer) {
-    super(Entity.ENTITY_TEST_CASE_FAILURE_STATUS, authorizer);
+    super(Entity.TEST_CASE_RESOLUTION_STATUS, authorizer);
   }
 
   public static class TestCaseFailureStatusResultList extends ResultList<TestCaseResolutionStatus> {
@@ -115,7 +116,7 @@ public class TestCaseResolutionStatusResource
           Long endTs,
       @Parameter(
               description = "Filter test case statuses by status",
-              schema = @Schema(implementation = TestCaseResolutionStatusType.class))
+              schema = @Schema(implementation = TestCaseResolutionStatusTypes.class))
           @QueryParam("testCaseFailureStatus")
           String testCaseFailureStatus,
       @Parameter(description = "Only list the latest statuses", schema = @Schema(type = "Boolean"))
@@ -218,16 +219,16 @@ public class TestCaseResolutionStatusResource
     ResourceContextInterface resourceContext = ReportDataContext.builder().build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
-    EntityReference testCaseReference =
-        EntityUtil.getEntityReference("TestCase", createTestCaseFailureStatus.getTestCaseReference());
+    TestCase testCaseEntity =
+        Entity.getEntityByName(Entity.TEST_CASE, createTestCaseFailureStatus.getTestCaseReference(), null, Include.ALL);
     TestCaseResolutionStatus testCaseFailureStatus =
         getTestCaseFailureStatus(
-            testCaseReference, createTestCaseFailureStatus, securityContext.getUserPrincipal().getName());
+            testCaseEntity, createTestCaseFailureStatus, securityContext.getUserPrincipal().getName());
 
     return create(
         testCaseFailureStatus,
         TestCaseResolutionStatusRepository.TESTCASE_RESOLUTION_STATUS_EXTENSION,
-        testCaseReference.getFullyQualifiedName());
+        testCaseEntity.getFullyQualifiedName());
   }
 
   @PATCH
@@ -261,16 +262,16 @@ public class TestCaseResolutionStatusResource
   }
 
   private TestCaseResolutionStatus getTestCaseFailureStatus(
-      EntityReference testCaseReference, CreateTestCaseResolutionStatus createTestCaseFailureStatus, String user) {
-    EntityReference userReference = EntityUtil.getEntityReference("User", user);
+      TestCase testCaseEntity, CreateTestCaseResolutionStatus createTestCaseFailureStatus, String user) {
+    User userEntity = Entity.getEntityByName(Entity.USER, user, null, Include.ALL);
     TestCaseResolutionStatus latestTestCaseFailure =
         repository.getLatestRecord(
-            testCaseReference.getFullyQualifiedName(),
+            testCaseEntity.getFullyQualifiedName(),
             TestCaseResolutionStatusRepository.TESTCASE_RESOLUTION_STATUS_EXTENSION);
     UUID sequenceId;
 
     if ((latestTestCaseFailure != null)
-        && (latestTestCaseFailure.getTestCaseResolutionStatusType() != TestCaseResolutionStatusType.Resolved)) {
+        && (latestTestCaseFailure.getTestCaseResolutionStatusType() != TestCaseResolutionStatusTypes.Resolved)) {
       // if the latest status is not resolved then use the same sequence id
       sequenceId = latestTestCaseFailure.getSequenceId();
     } else {
@@ -284,8 +285,8 @@ public class TestCaseResolutionStatusResource
         .withTimestamp(System.currentTimeMillis())
         .withTestCaseResolutionStatusType(createTestCaseFailureStatus.getTestCaseResolutionStatusType())
         .withTestCaseResolutionStatusDetails(createTestCaseFailureStatus.getTestCaseResolutionStatusDetails())
-        .withUpdatedBy(userReference)
+        .withUpdatedBy(userEntity.getEntityReference())
         .withUpdatedAt(System.currentTimeMillis())
-        .withTestCaseReference(testCaseReference);
+        .withTestCaseReference(testCaseEntity.getEntityReference());
   }
 }

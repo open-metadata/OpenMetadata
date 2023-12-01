@@ -78,6 +78,6 @@
       "$ref": "#/definitions/severities"
     }
   },
-  "required": ["id", "timestamp", "testCaseReference", "testCaseResolutionStatusType"],
+  "required": ["testCaseResolutionStatusType"],
   "additionalProperties": false
 }
