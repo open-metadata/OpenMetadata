@@ -36,6 +36,7 @@ from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.query import Query
 from metadata.generated.schema.entity.data.searchIndex import SearchIndex
+from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
 from metadata.generated.schema.entity.data.table import Column, DataModel, Table
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.teams.team import Team
@@ -321,6 +322,18 @@ def _(
     model_name: str,
 ) -> str:
     return _build(service_name, database_name, schema_name, model_name)
+
+
+@fqn_build_registry.add(StoredProcedure)
+def _(
+    _: Optional[OpenMetadata],
+    *,
+    service_name: str,
+    database_name: str,
+    schema_name: str,
+    procedure_name: str,
+) -> str:
+    return _build(service_name, database_name, schema_name, procedure_name)
 
 
 @fqn_build_registry.add(Pipeline)
