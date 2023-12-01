@@ -243,9 +243,10 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       List<TagLabel> allAssetTags = addDerivedTags(asset.getTags());
 
       try {
-        allAssetTags.addAll(request.getGlossaryTags());
+        List<TagLabel> tempList = new ArrayList<>(allAssetTags);
+        tempList.addAll(request.getGlossaryTags());
         // Check Mutually Exclusive
-        checkMutuallyExclusive(getUniqueTags(allAssetTags));
+        checkMutuallyExclusive(getUniqueTags(tempList));
         success.add(ref);
         result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
       } catch (Exception ex) {
