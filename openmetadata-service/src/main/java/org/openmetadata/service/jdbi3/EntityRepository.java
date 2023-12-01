@@ -1274,15 +1274,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public void applyTags(List<TagLabel> tagLabels, String targetFQN) {
     for (TagLabel tagLabel : listOrEmpty(tagLabels)) {
       // Apply tagLabel to targetFQN that identifies an entity or field
-      daoCollection
-          .tagUsageDAO()
-          .applyTag(
-              tagLabel.getSource().ordinal(),
-              tagLabel.getTagFQN(),
-              tagLabel.getTagFQN(),
-              targetFQN,
-              tagLabel.getLabelType().ordinal(),
-              tagLabel.getState().ordinal());
+      boolean isTagDerived = tagLabel.getLabelType().equals(TagLabel.LabelType.DERIVED);
+      // Derived Tags should not create Relationships, and needs to be built on the during Read
+      if (!isTagDerived) {
+        daoCollection
+            .tagUsageDAO()
+            .applyTag(
+                tagLabel.getSource().ordinal(),
+                tagLabel.getTagFQN(),
+                tagLabel.getTagFQN(),
+                targetFQN,
+                tagLabel.getLabelType().ordinal(),
+                tagLabel.getState().ordinal());
+      }
     }
   }
 
@@ -1303,7 +1307,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected List<TagLabel> getTags(String fqn) {
-    return !supportsTags ? null : daoCollection.tagUsageDAO().getTags(fqn);
+    if (!supportsTags) {
+      return null;
+    }
+
+    // Populate Glossary Tags on Read
+    return addDerivedTags(daoCollection.tagUsageDAO().getTags(fqn));
   }
 
   public Map<String, List<TagLabel>> getTagsByPrefix(String prefix) {

@@ -15,6 +15,7 @@ package org.openmetadata.service;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
 import static org.openmetadata.service.util.EntityUtil.getFlattenedEntityField;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
@@ -543,7 +544,11 @@ public final class Entity {
     for (T c : listOrEmpty(flattenedFields)) {
       if (setTags) {
         List<TagLabel> columnTag = allTags.get(FullyQualifiedName.buildHash(c.getFullyQualifiedName()));
-        c.setTags(columnTag == null ? new ArrayList<>() : columnTag);
+        if (columnTag == null) {
+          c.setTags(new ArrayList<>());
+        } else {
+          c.setTags(addDerivedTags(columnTag));
+        }
       } else {
         c.setTags(c.getTags());
       }

@@ -378,13 +378,17 @@ public class SearchServiceResource
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
       @Parameter(description = "Hard delete the entity. (Default = `false`)")
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
       @Parameter(description = "Name of the SearchService", schema = @Schema(type = "string")) @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, EntityInterfaceUtil.quoteName(fqn), false, hardDelete);
+    return deleteByName(uriInfo, securityContext, EntityInterfaceUtil.quoteName(fqn), recursive, hardDelete);
   }
 
   @PUT

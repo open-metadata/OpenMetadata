@@ -13,8 +13,15 @@
 
 package org.openmetadata.service.resources.tags;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
+import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
@@ -23,6 +30,7 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
@@ -81,5 +89,35 @@ public class TagLabelUtil {
     } else {
       throw new IllegalArgumentException("Invalid source type " + label.getSource());
     }
+  }
+
+  // TODO: Below two methods :addDerivedTags and :getDerivedTags can be removed from Entity Repository
+  public static List<TagLabel> addDerivedTags(List<TagLabel> tagLabels) {
+    if (nullOrEmpty(tagLabels)) {
+      return tagLabels;
+    }
+
+    List<TagLabel> updatedTagLabels = new ArrayList<>();
+    EntityUtil.mergeTags(updatedTagLabels, tagLabels);
+    for (TagLabel tagLabel : tagLabels) {
+      EntityUtil.mergeTags(updatedTagLabels, getDerivedTags(tagLabel));
+    }
+    updatedTagLabels.sort(compareTagLabel);
+    return updatedTagLabels;
+  }
+
+  private static List<TagLabel> getDerivedTags(TagLabel tagLabel) {
+    if (tagLabel.getSource() == TagLabel.TagSource.GLOSSARY) { // Related tags are only supported for Glossary
+      List<TagLabel> derivedTags = Entity.getCollectionDAO().tagUsageDAO().getTags(tagLabel.getTagFQN());
+      derivedTags.forEach(tag -> tag.setLabelType(TagLabel.LabelType.DERIVED));
+      return derivedTags;
+    }
+    return Collections.emptyList();
+  }
+
+  public static List<TagLabel> getUniqueTags(List<TagLabel> tags) {
+    Set<TagLabel> uniqueTags = new TreeSet<>(compareTagLabel);
+    uniqueTags.addAll(tags);
+    return uniqueTags.stream().toList();
   }
 }

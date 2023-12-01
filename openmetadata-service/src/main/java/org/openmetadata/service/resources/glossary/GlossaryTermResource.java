@@ -49,6 +49,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import org.openmetadata.schema.api.AddGlossaryToAssetsRequest;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.LoadGlossary;
@@ -415,6 +416,34 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     return repository.updateVote(securityContext.getUserPrincipal().getName(), id, request).toResponse();
   }
 
+  @PUT
+  @Path("/{id}/assets/add")
+  @Operation(
+      operationId = "bulkAddGlossaryToAssets",
+      summary = "Bulk Add Glossary to Assets",
+      description = "Bulk Add Glossary to Assets",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
+      })
+  public Response bulkAddGlossaryToAssets(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(
+              description =
+                  "Dry-run when true is used for validating the glossary without really applying it. (default=true)",
+              schema = @Schema(type = "boolean"))
+          @DefaultValue("true")
+          @QueryParam("dryRun")
+          boolean dryRun,
+      @Valid AddGlossaryToAssetsRequest request) {
+    return Response.ok().entity(repository.bulkAddAndValidateGlossaryToAssets(id, request)).build();
+  }
+
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -456,10 +485,14 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
+      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
       @Parameter(description = "Fully qualified name of the glossary term", schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+    return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
   }
 
   @PUT
