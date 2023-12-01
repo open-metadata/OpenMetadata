@@ -149,6 +149,7 @@ import org.openmetadata.service.search.indexes.StoredProcedureIndex;
 import org.openmetadata.service.search.indexes.TableIndex;
 import org.openmetadata.service.search.indexes.TagIndex;
 import org.openmetadata.service.search.indexes.TestCaseIndex;
+import org.openmetadata.service.search.indexes.TestCaseResolutionStatusIndex;
 import org.openmetadata.service.search.indexes.TopicIndex;
 import org.openmetadata.service.search.indexes.UserIndex;
 import org.openmetadata.service.search.models.IndexMapping;
@@ -309,6 +310,10 @@ public class ElasticSearchClient implements SearchClient {
         break;
       case "data_product_search_index":
         searchSourceBuilder = buildDataProductSearch(request.getQuery(), request.getFrom(), request.getSize());
+        break;
+      case "test_case_resolution_status_search_index":
+        searchSourceBuilder =
+            buildTestCaseResolutionStatusSearch(request.getQuery(), request.getFrom(), request.getSize());
         break;
       default:
         searchSourceBuilder = buildAggregateSearchBuilder(request.getQuery(), request.getFrom(), request.getSize());
@@ -827,6 +832,28 @@ public class ElasticSearchClient implements SearchClient {
     return addAggregation(searchSourceBuilder);
   }
 
+  private static SearchSourceBuilder buildTestCaseResolutionStatusSearch(String query, int from, int size) {
+    QueryStringQueryBuilder queryBuilder = buildSearchQueryBuilder(query, TestCaseResolutionStatusIndex.getFields());
+
+    HighlightBuilder hb = new HighlightBuilder();
+    HighlightBuilder.Field highlightTestCaseDescription = new HighlightBuilder.Field("testCaseReference.description");
+    highlightTestCaseDescription.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightTestCaseName = new HighlightBuilder.Field("testCaseReference.name");
+    highlightTestCaseName.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightResolutionComment =
+        new HighlightBuilder.Field("testCaseResolutionStatusDetails.resolved.testCaseFailureComment");
+    highlightResolutionComment.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightResolutionType = new HighlightBuilder.Field("testCaseResolutionStatusType");
+    highlightResolutionType.highlighterType(UNIFIED);
+
+    hb.field(highlightTestCaseDescription);
+    hb.field(highlightTestCaseName);
+    hb.field(highlightResolutionComment);
+    hb.field(highlightResolutionType);
+
+    return searchBuilder(queryBuilder, hb, from, size);
+  }
+
   private static SearchSourceBuilder buildDataProductSearch(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder = buildSearchQueryBuilder(query, DataProductIndex.getFields());
 
@@ -851,10 +878,7 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   private static QueryStringQueryBuilder buildSearchQueryBuilder(String query, Map<String, Float> fields) {
-    return QueryBuilders.queryStringQuery(query)
-        .fields(fields)
-        .defaultOperator(Operator.AND)
-        .fuzziness(Fuzziness.AUTO);
+    return QueryBuilders.queryStringQuery(query).fields(fields).defaultOperator(Operator.AND).fuzziness(Fuzziness.AUTO);
   }
 
   private static SearchSourceBuilder buildAggregateSearchBuilder(String query, int from, int size) {

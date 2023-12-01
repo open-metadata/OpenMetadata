@@ -26,7 +26,7 @@ public class TestCaseResolutionStatusRepository extends EntityTimeSeriesReposito
         COLLECTION_PATH,
         Entity.getCollectionDAO().testCaseResolutionStatusTimeSeriesDao(),
         TestCaseResolutionStatus.class,
-        Entity.ENTITY_TEST_CASE_FAILURE_STATUS);
+        Entity.TEST_CASE_RESOLUTION_STATUS);
   }
 
   public ResultList<TestCaseResolutionStatus> listTestCaseFailureStatusesForSequenceId(UUID sequenceId) {
