@@ -121,7 +121,7 @@ def print_status(workflow: "IngestionWorkflow") -> None:
     print_workflow_summary(workflow)
 
     # Get the time to execute the first step
-    if workflow.workflow_steps[0].get_status().source_start_time:
+    if workflow.workflow_steps()[0].get_status().source_start_time:
         log_ansi_encoded_string(
             color=ANSI.BRIGHT_CYAN,
             bold=True,
