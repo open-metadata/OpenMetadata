@@ -117,16 +117,15 @@ const TagsPage = () => {
   );
 
   const fetchCurrentClassificationPermission = async () => {
+    if (!currentClassification?.id) {
+      return;
+    }
     try {
-      if (currentClassification?.id) {
-        const response = await getEntityPermission(
-          ResourceEntity.CLASSIFICATION,
-          currentClassification.id as string
-        );
-        setClassificationPermissions(response);
-      } else {
-        return;
-      }
+      const response = await getEntityPermission(
+        ResourceEntity.CLASSIFICATION,
+        currentClassification?.id as string
+      );
+      setClassificationPermissions(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
     }

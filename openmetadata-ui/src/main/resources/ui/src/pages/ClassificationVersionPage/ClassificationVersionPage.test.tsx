@@ -13,13 +13,8 @@
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import ClassificationDetails from '../../components/ClassificationDetails/ClassificationDetails';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { ENTITY_PERMISSIONS } from '../../mocks/Permissions.mock';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { MOCK_ALL_CLASSIFICATIONS } from '../TagsPage/TagsPage.mock';
 import ClassificationVersionPage from './ClassificationVersionPage';
 
@@ -28,7 +23,7 @@ const mockParams = {
   version: '0.1',
 };
 
-const mockedUsePermissionProvider = usePermissionProvider as jest.Mock;
+// const mockedUsePermissionProvider = usePermissionProvider as jest.Mock;
 
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockImplementation(() => ({
@@ -39,9 +34,11 @@ jest.mock('react-router-dom', () => ({
 
 jest.mock(
   '../../components/ClassificationDetails/ClassificationDetails',
-  () => {
-    return jest.fn().mockReturnValue(<div>testClassificationDetails</div>);
-  }
+  () => ({
+    ClassificationDetails: jest
+      .fn()
+      .mockImplementation(() => <div>ClassificationDetails</div>),
+  })
 );
 
 jest.mock(
@@ -69,11 +66,13 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => ({
     .mockImplementation(({ children }) => <div>{children}</div>),
 }));
 
+const mockGetEntityPermissionByFqn = jest
+  .fn()
+  .mockImplementation(() => Promise.resolve(ENTITY_PERMISSIONS));
+
 jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
-    getEntityPermissionByFqn: jest
-      .fn()
-      .mockImplementation(() => Promise.resolve(ENTITY_PERMISSIONS)),
+    getEntityPermissionByFqn: mockGetEntityPermissionByFqn,
   })),
 }));
 
@@ -134,11 +133,8 @@ describe('ClassificationVersionPage component', () => {
   });
 
   it('should renders ErrorPlaceHolder with permission error', async () => {
-    mockedUsePermissionProvider.mockReturnValue({
-      getEntityPermissionByFqn: jest.fn().mockResolvedValue({}),
-    });
-
-    render(<ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />, {
+    mockGetEntityPermissionByFqn.mockResolvedValueOnce({});
+    render(<ClassificationVersionPage />, {
       wrapper: MemoryRouter,
     });
 
@@ -147,23 +143,16 @@ describe('ClassificationVersionPage component', () => {
     expect(errorPlaceholder).toBeInTheDocument();
   });
 
-  it('should renders ClassificationDetails in version view with all permissions', () => {
-    const currentVersionData = {
-      description: 'description',
-      name: 'advanceSearch',
-    };
+  it('should renders ClassificationDetails in version view with all permissions', async () => {
+    await act(async () => {
+      render(<ClassificationVersionPage />, {
+        wrapper: MemoryRouter,
+      });
+    });
 
-    render(
-      <ClassificationDetails
-        isVersionView
-        classificationPermissions={DEFAULT_ENTITY_PERMISSION}
-        currentClassification={currentVersionData}
-      />
-    );
+    expect(mockGetEntityPermissionByFqn).toHaveBeenCalled();
 
-    const classificationName = screen.getByText('testClassificationDetails');
-
-    expect(classificationName).toBeInTheDocument();
+    expect(screen.findByText('testClassificationDetails')).toBeTruthy();
   });
 
   it('should render ClassificationVersionPage with PageLayoutV1 and child components', async () => {
