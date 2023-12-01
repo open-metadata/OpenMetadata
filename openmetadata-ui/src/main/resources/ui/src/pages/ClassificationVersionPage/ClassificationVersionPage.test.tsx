@@ -23,8 +23,6 @@ const mockParams = {
   version: '0.1',
 };
 
-// const mockedUsePermissionProvider = usePermissionProvider as jest.Mock;
-
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockImplementation(() => ({
     push: jest.fn(),
