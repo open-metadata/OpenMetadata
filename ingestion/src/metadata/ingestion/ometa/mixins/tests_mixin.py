@@ -23,15 +23,19 @@ from metadata.generated.schema.api.tests.createLogicalTestCases import (
     CreateLogicalTestCases,
 )
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
+from metadata.generated.schema.api.tests.createTestCaseResolutionStatus import (
+    CreateTestCaseResolutionStatus,
+)
 from metadata.generated.schema.api.tests.createTestDefinition import (
     CreateTestDefinitionRequest,
 )
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.tests.basic import TestCaseResult
-from metadata.generated.schema.tests.testCaseResolutionStatus import TestCaseResolutionStatus
-from metadata.generated.schema.api.tests.createTestCaseResolutionStatus import CreateTestCaseResolutionStatus
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
+from metadata.generated.schema.tests.testCaseResolutionStatus import (
+    TestCaseResolutionStatus,
+)
 from metadata.generated.schema.tests.testDefinition import (
     EntityType,
     TestCaseParameterDefinition,
@@ -305,7 +309,9 @@ class OMetaTestsMixin:
         path = self.get_suffix(TestCase) + "/logicalTestCases"
         self.client.put(path, data=data.json(encoder=show_secrets_encoder))
 
-    def create_test_case_resolution(self, data: CreateTestCaseResolutionStatus) -> TestCaseResolutionStatus:
+    def create_test_case_resolution(
+        self, data: CreateTestCaseResolutionStatus
+    ) -> TestCaseResolutionStatus:
         """Create a test case resolution
 
         Args:
@@ -313,7 +319,7 @@ class OMetaTestsMixin:
 
         Returns:
             TestCaseResolutionStatus
-        """        
+        """
         path = self.get_suffix(TestCase) + "/testCaseResolutionStatus"
         response = self.client.post(path, data=data.json(encoder=show_secrets_encoder))
 

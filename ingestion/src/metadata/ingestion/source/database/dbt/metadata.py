@@ -12,7 +12,6 @@
 DBT source methods.
 """
 import traceback
-from datetime import datetime
 from typing import Iterable, List, Optional, Union
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -44,7 +43,7 @@ from metadata.generated.schema.tests.testDefinition import (
     TestDefinition,
     TestPlatform,
 )
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Timestamp
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
@@ -813,7 +812,6 @@ class DbtSource(DbtServiceSource):
                 )
             )
 
-    # pylint: disable=too-many-locals
     def add_dbt_test_result(self, dbt_test: dict):
         """
         After test cases has been processed, add the tests results info
@@ -860,7 +858,6 @@ class DbtSource(DbtServiceSource):
                             value=str(test_result_value),
                         )
                     ],
-                    testCaseFailureStatus=test_case_failure_status,
                     sampleData=None,
                     result=None,
                 )

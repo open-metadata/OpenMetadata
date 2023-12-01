@@ -20,15 +20,10 @@ import traceback
 from collections import namedtuple
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Iterable, List, Optional, Union
-import uuid
 
 from pydantic import ValidationError
 
 from metadata.generated.schema.analytics.reportData import ReportData, ReportDataType
-from metadata.generated.schema.tests.assigned import Assigned
-from metadata.generated.schema.tests.resolved import Resolved, TestCaseFailureReasonType
-from metadata.generated.schema.tests.inReview import InReview
-from metadata.generated.schema.api.tests.createTestCaseResolutionStatus import CreateTestCaseResolutionStatus
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createContainer import CreateContainerRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -60,6 +55,9 @@ from metadata.generated.schema.api.tests.createCustomMetric import (
     CreateCustomMetricRequest,
 )
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
+from metadata.generated.schema.api.tests.createTestCaseResolutionStatus import (
+    CreateTestCaseResolutionStatus,
+)
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.dashboard import Dashboard
@@ -101,7 +99,10 @@ from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.tests.assigned import Assigned
 from metadata.generated.schema.tests.basic import TestCaseResult, TestResultValue
+from metadata.generated.schema.tests.inReview import InReview
+from metadata.generated.schema.tests.resolved import Resolved, TestCaseFailureReasonType
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.basic import Timestamp
@@ -128,14 +129,12 @@ from metadata.parsers.schema_parsers import (
     InvalidSchemaTypeException,
     schema_parser_config_registry,
 )
-from metadata.utils import fqn
+from metadata.utils import entity_link, fqn
 from metadata.utils.constants import UTF_8
 from metadata.utils.fqn import FQN_SEPARATOR
 from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.time_utils import convert_timestamp_to_milliseconds
-
-from metadata.utils import entity_link
 
 logger = ingestion_logger()
 
@@ -1389,6 +1388,7 @@ class SampleDataSource(
             )
 
     def ingest_test_case(self) -> Iterable[Either[OMetaTestCaseSample]]:
+        """Ingest test cases"""
         for test_suite in self.tests_suites["tests"]:
             suite = self.metadata.get_by_name(
                 fqn=test_suite["testSuiteName"], entity=TestSuite
@@ -1405,7 +1405,7 @@ class SampleDataSource(
                             TestCaseParameterValue(**param_values)
                             for param_values in test_case["parameterValues"]
                         ],
-                    ) # type: ignore
+                    )  # type: ignore
                 )
                 yield Either(right=test_case_req)
 
@@ -1414,27 +1414,48 @@ class SampleDataSource(
                 for _, resolutions in test_case["resolutions"].items():
                     for resolution in resolutions:
                         create_test_case_resolution = CreateTestCaseResolutionStatus(
-                            testCaseResolutionStatusType=resolution["testCaseResolutionStatusType"],
+                            testCaseResolutionStatusType=resolution[
+                                "testCaseResolutionStatusType"
+                            ],
                             testCaseReference=test_case_fqn,
                             severity=resolution["severity"],
                         )
 
                         if resolution["testCaseResolutionStatusType"] == "Assigned":
-                            user: User = self.metadata.get_by_name(User, fqn=resolution["assignee"])
-                            create_test_case_resolution.testCaseResolutionStatusDetails = Assigned(assignee=EntityReference(id=user.id.__root__, type="user"))
+                            user: User = self.metadata.get_by_name(
+                                User, fqn=resolution["assignee"]
+                            )
+                            create_test_case_resolution.testCaseResolutionStatusDetails = Assigned(
+                                assignee=EntityReference(
+                                    id=user.id.__root__, type="user"
+                                )
+                            )
                         if resolution["testCaseResolutionStatusType"] == "InReview":
-                            user: User = self.metadata.get_by_name(User, fqn=resolution["reviewer"])
-                            create_test_case_resolution.testCaseResolutionStatusDetails = InReview(reviewer=EntityReference(id=user.id.__root__, type="user"))
+                            user: User = self.metadata.get_by_name(
+                                User, fqn=resolution["reviewer"]
+                            )
+                            create_test_case_resolution.testCaseResolutionStatusDetails = InReview(
+                                reviewer=EntityReference(
+                                    id=user.id.__root__, type="user"
+                                )
+                            )
                         if resolution["testCaseResolutionStatusType"] == "Resolved":
-                            user: User = self.metadata.get_by_name(User, fqn=resolution["resolver"])
+                            user: User = self.metadata.get_by_name(
+                                User, fqn=resolution["resolver"]
+                            )
                             create_test_case_resolution.testCaseResolutionStatusDetails = Resolved(
-                                resolvedBy=EntityReference(id=user.id.__root__, type="user"),
-                                testCaseFailureReason=random.choice(list(TestCaseFailureReasonType)),
-                                testCaseFailureComment="Resolution comment"
+                                resolvedBy=EntityReference(
+                                    id=user.id.__root__, type="user"
+                                ),
+                                testCaseFailureReason=random.choice(
+                                    list(TestCaseFailureReasonType)
+                                ),
+                                testCaseFailureComment="Resolution comment",
                             )
 
-                        self.metadata.create_test_case_resolution(create_test_case_resolution)
-
+                        self.metadata.create_test_case_resolution(
+                            create_test_case_resolution
+                        )
 
     def ingest_test_case_results(self) -> Iterable[Either[OMetaTestCaseResultsSample]]:
         """Iterate over all the testSuite and testCase and ingest them"""
