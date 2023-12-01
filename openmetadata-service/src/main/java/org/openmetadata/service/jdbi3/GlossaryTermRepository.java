@@ -33,11 +33,11 @@ import static org.openmetadata.service.util.EntityUtil.tagLabelMatch;
 import static org.openmetadata.service.util.EntityUtil.termReferenceMatch;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import lombok.extern.slf4j.Slf4j;
@@ -261,12 +261,12 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
 
     // Apply the tags of glossary to the glossary term
-    if (!dryRun && CommonUtil.nullOrEmpty(result.getFailedRequest())) {
-      if (!(term.getTags().isEmpty() && request.getGlossaryTags().isEmpty())) {
-        // Remove current entity tags in the database. It will be added back later from the merged tag list.
-        daoCollection.tagUsageDAO().deleteTagsByTarget(term.getFullyQualifiedName());
-        applyTags(getUniqueTags(request.getGlossaryTags()), term.getFullyQualifiedName());
-      }
+    if (!dryRun
+        && CommonUtil.nullOrEmpty(result.getFailedRequest())
+        && (!(term.getTags().isEmpty() && request.getGlossaryTags().isEmpty()))) {
+      // Remove current entity tags in the database. It will be added back later from the merged tag list.
+      daoCollection.tagUsageDAO().deleteTagsByTarget(term.getFullyQualifiedName());
+      applyTags(getUniqueTags(request.getGlossaryTags()), term.getFullyQualifiedName());
     }
 
     // Add Failed And Suceess Request
@@ -479,7 +479,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       }
 
       // Get the list of tags that are used by
-      Set<TagLabel> entityTags = new HashSet<>(daoCollection.tagUsageDAO().getEntityTagsFromTag(fqn));
+      Set<TagLabel> entityTags = new TreeSet<>(compareTagLabel);
+      entityTags.addAll(daoCollection.tagUsageDAO().getEntityTagsFromTag(fqn));
       entityTags.addAll(updatedTags);
 
       // Check if the tags are mutually exclusive
