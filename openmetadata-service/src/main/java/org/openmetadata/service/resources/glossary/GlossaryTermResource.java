@@ -49,6 +49,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import org.openmetadata.schema.api.AddGlossaryToAssetsRequest;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.LoadGlossary;
@@ -439,8 +440,8 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           @DefaultValue("true")
           @QueryParam("dryRun")
           boolean dryRun,
-      @Valid List<EntityReference> request) {
-    return Response.ok().entity(repository.bulkAddGlossaryToAssets(id, dryRun, request)).build();
+      @Valid AddGlossaryToAssetsRequest request) {
+    return Response.ok().entity(repository.bulkAddAndValidateGlossaryToAssets(id, request)).build();
   }
 
   @DELETE

@@ -24,6 +24,7 @@ import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 import static org.openmetadata.service.Entity.getEntity;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidGlossaryTermMove;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.getUniqueTags;
 import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getId;
@@ -42,7 +43,9 @@ import javax.json.JsonPatch;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.AddGlossaryToAssetsRequest;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.api.feed.CloseTask;
 import org.openmetadata.schema.api.feed.ResolveTask;
@@ -202,50 +205,66 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
   }
 
-  public BulkOperationResult bulkAddGlossaryToAssets(
-      UUID glossaryTermId, boolean dryRun, List<EntityReference> entityReferences) {
+  public BulkOperationResult bulkAddAndValidateGlossaryToAssets(
+      UUID glossaryTermId, AddGlossaryToAssetsRequest request) {
+    boolean dryRun = Boolean.TRUE.equals(request.getDryRun());
+
     GlossaryTerm term = this.get(null, glossaryTermId, getFields("id,tags"));
+
+    // Check if the tags are mutually exclusive for the glossary
+    checkMutuallyExclusive(request.getGlossaryTags());
+
+    BulkOperationResult result = new BulkOperationResult().withDryRun(dryRun);
+    List<FailureRequest> failures = new ArrayList<>();
+    List<EntityReference> success = new ArrayList<>();
+
+    if (dryRun && (CommonUtil.nullOrEmpty(request.getGlossaryTags()) || CommonUtil.nullOrEmpty(request.getAssets()))) {
+      // Nothing to Validate
+      return result.withStatus(BulkOperationResult.Status.SUCCESS).withSuccessRequest("Nothing to Validate.");
+    }
+
+    // Validation for entityReferences
+    EntityUtil.populateEntityReferences(request.getAssets());
+
     TagLabel tagLabel =
         new TagLabel()
             .withTagFQN(term.getFullyQualifiedName())
             .withSource(TagSource.GLOSSARY)
             .withLabelType(TagLabel.LabelType.MANUAL);
 
-    BulkOperationResult result = new BulkOperationResult().withDryRun(dryRun);
-    List<FailureRequest> failures = new ArrayList<>();
-    List<EntityReference> success = new ArrayList<>();
-
-    if (dryRun) {
-      // Validation for entityReferences
-      EntityUtil.populateEntityReferences(entityReferences);
-    }
-
-    for (EntityReference ref : entityReferences) {
+    for (EntityReference ref : request.getAssets()) {
       // Update Result Processed
       result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
 
       EntityRepository<?> entityRepository = Entity.getEntityRepository(ref.getType());
-      EntityInterface original = entityRepository.get(null, ref.getId(), entityRepository.getFields("tags"));
-      // Original tags
-      List<TagLabel> entityTags = new ArrayList<>(original.getTags());
-      entityTags.add(tagLabel);
-      // Check if the Tags can be applied
-      if (dryRun) {
-        try {
-          checkMutuallyExclusive(addDerivedTags(entityTags));
-          success.add(ref);
-          result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
-        } catch (Exception ex) {
-          failures.add(new FailureRequest().withRequest(ref).withError(ex.getMessage()));
-          result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
-        }
-      } else {
-        // Apply Tags to Entities
-        entityRepository.applyTags(addDerivedTags(entityTags), original.getFullyQualifiedName());
+      EntityInterface asset = entityRepository.get(null, ref.getId(), entityRepository.getFields("tags"));
 
-        // Update Result
+      List<TagLabel> allAssetTags = addDerivedTags(asset.getTags());
+
+      try {
+        allAssetTags.addAll(request.getGlossaryTags());
+        // Check Mutually Exclusive
+        checkMutuallyExclusive(getUniqueTags(allAssetTags));
         success.add(ref);
         result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
+      } catch (Exception ex) {
+        failures.add(new FailureRequest().withRequest(ref).withError(ex.getMessage()));
+        result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
+      }
+      // Validate and Store Tags
+      if (!dryRun && CommonUtil.nullOrEmpty(result.getFailedRequest())) {
+        allAssetTags.add(tagLabel);
+        // Apply Tags to Entities
+        entityRepository.applyTags(getUniqueTags(allAssetTags), asset.getFullyQualifiedName());
+      }
+    }
+
+    // Apply the tags of glossary to the glossary term
+    if (!dryRun && CommonUtil.nullOrEmpty(result.getFailedRequest())) {
+      if (!(term.getTags().isEmpty() && request.getGlossaryTags().isEmpty())) {
+        // Remove current entity tags in the database. It will be added back later from the merged tag list.
+        daoCollection.tagUsageDAO().deleteTagsByTarget(term.getFullyQualifiedName());
+        applyTags(getUniqueTags(request.getGlossaryTags()), term.getFullyQualifiedName());
       }
     }
 

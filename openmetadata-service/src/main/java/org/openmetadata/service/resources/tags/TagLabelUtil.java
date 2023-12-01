@@ -20,6 +20,8 @@ import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
@@ -111,5 +113,11 @@ public class TagLabelUtil {
       return derivedTags;
     }
     return Collections.emptyList();
+  }
+
+  public static List<TagLabel> getUniqueTags(List<TagLabel> tags) {
+    Set<TagLabel> uniqueTags = new TreeSet<>(compareTagLabel);
+    uniqueTags.addAll(tags);
+    return uniqueTags.stream().toList();
   }
 }
