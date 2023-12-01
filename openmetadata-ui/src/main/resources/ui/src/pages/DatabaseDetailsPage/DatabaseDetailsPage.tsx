@@ -540,6 +540,7 @@ const DatabaseDetails: FunctionComponent = () => {
                 domain={database?.domain}
                 editTagPermission={editTagsPermission}
                 entityFQN={decodedDatabaseFQN}
+                entityId={database?.id ?? ''}
                 entityType={EntityType.DATABASE}
                 selectedTags={tags}
                 onTagSelectionChange={handleTagSelection}

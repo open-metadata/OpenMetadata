@@ -624,6 +624,7 @@ const DashboardDetails = ({
                 domain={dashboardDetails?.domain}
                 editTagPermission={editTagsPermission}
                 entityFQN={decodedDashboardFQN}
+                entityId={dashboardDetails.id}
                 entityType={EntityType.DASHBOARD}
                 selectedTags={dashboardTags}
                 onTagSelectionChange={handleTagSelection}
