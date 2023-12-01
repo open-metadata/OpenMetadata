@@ -31,6 +31,7 @@ import Loader from '../../components/Loader/Loader';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import WelcomeScreen from '../../components/WelcomeScreen/WelcomeScreen.component';
 import { LOGGED_IN_USER_STORAGE_KEY } from '../../constants/constants';
+import { LandingPageWidgetKeys } from '../../enums/CustomizablePage.enum';
 import { AssetsType, EntityType } from '../../enums/entity.enum';
 import { Thread } from '../../generated/entity/feed/thread';
 import { PageType } from '../../generated/system/ui/page';
@@ -151,17 +152,25 @@ const MyDataPageV1 = () => {
 
   const widgets = useMemo(
     () =>
-      layout.map((widget) => (
-        <div data-grid={widget} key={widget.i}>
-          {getWidgetFromKey({
-            announcements: announcements,
-            followedData: followedData ?? [],
-            followedDataCount: followedDataCount,
-            isLoadingOwnedData: isLoadingOwnedData,
-            widgetConfig: widget,
-          })}
-        </div>
-      )),
+      // Adding announcement widget to the layout
+      // Since the widget wont be in the layout config of the page
+      [customizePageClassBase.announcementWidget, ...layout]
+        .filter((widget) =>
+          widget.i.startsWith(LandingPageWidgetKeys.ANNOUNCEMENTS)
+            ? !isEmpty(announcements) // Display announcement widget only when announcements are present
+            : true
+        )
+        .map((widget) => (
+          <div data-grid={widget} key={widget.i}>
+            {getWidgetFromKey({
+              announcements: announcements,
+              followedData: followedData ?? [],
+              followedDataCount: followedDataCount,
+              isLoadingOwnedData: isLoadingOwnedData,
+              widgetConfig: widget,
+            })}
+          </div>
+        )),
     [
       layout,
       isAnnouncementLoading,
