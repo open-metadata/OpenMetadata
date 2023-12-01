@@ -71,7 +71,10 @@ import {
 import { getCountBadge, Transi18next } from '../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getEntityTypeFromSearchIndex } from '../../../../utils/SearchUtils';
-import { getDecodedFqn } from '../../../../utils/StringsUtils';
+import {
+  escapeESReservedCharacters,
+  getDecodedFqn,
+} from '../../../../utils/StringsUtils';
 import { getEntityIcon } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -149,10 +152,14 @@ const AssetsTabs = forwardRef(
     const queryParam = useMemo(() => {
       switch (type) {
         case AssetsOfEntity.DOMAIN:
-          return `(domain.fullyQualifiedName:${fqn}) AND !(entityType:"dataProduct")`;
+          return `(domain.fullyQualifiedName:"${escapeESReservedCharacters(
+            entityFqn
+          )}") AND !(entityType:"dataProduct")`;
 
         case AssetsOfEntity.DATA_PRODUCT:
-          return `(dataProducts.fullyQualifiedName:${fqn})`;
+          return `(dataProducts.fullyQualifiedName:"${escapeESReservedCharacters(
+            entityFqn
+          )}")`;
 
         case AssetsOfEntity.TEAM:
           return `(owner.fullyQualifiedName:"${fqn}")`;
@@ -162,9 +169,9 @@ const AssetsTabs = forwardRef(
           return queryFilter ?? '';
 
         default:
-          return `(tags.tagFQN:"${fqn}")`;
+          return `(tags.tagFQN:"${escapeESReservedCharacters(entityFqn)}")`;
       }
-    }, [type, fqn]);
+    }, [type, fqn, entityFqn]);
 
     const fetchAssets = useCallback(
       async ({

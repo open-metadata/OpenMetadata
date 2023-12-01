@@ -146,7 +146,7 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
           'table-data-card-container',
           className
         )}
-        data-testid="table-data-card"
+        data-testid={'table-data-card_' + (source.fullyQualifiedName ?? '')}
         id={id}
         ref={ref}
         onClick={() => {
