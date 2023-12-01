@@ -1,6 +1,6 @@
 ---
 title: How to Write and Deploy No-Code Test Cases
-slug: /how-to-guides/openmetadata/data-quality-profiler/test
+slug: /how-to-guides/data-quality-profiler/test
 ---
 
 # How to Write and Deploy No-Code Test Cases
@@ -15,7 +15,7 @@ To create a test in OpenMetadata:
 - Click on **Add Test** to select a `Table` or `Column` level test.
 
 {% image
-src="/images/v1.1/how-to-guides/quality/test1.png"
+src="/images/v1.2/how-to-guides/quality/test1.png"
 alt="Write and Deploy No-Code Test Cases"
 caption="Write and Deploy No-Code Test Cases"
 /%}
@@ -39,7 +39,7 @@ OpenMetadata currently supports the following table level test types:
 8. Table Row Inserted Count to be Between: : Define the Min. and Max. row count. This test will work for columns whose values are of the type Timestamp, Date, and Date Time field. Specify the range type in terms of Hour, Day, Month, or Year. Define the interval based on the range type selected.
 
 {% image
-src="/images/v1.1/how-to-guides/quality/test4.png"
+src="/images/v1.2/how-to-guides/quality/test4.png"
 alt="Configure a Table Level Test"
 caption="Configure a Table Level Test"
 /%}
@@ -71,7 +71,7 @@ OpenMetadata currently supports the following column level test types:
 15. Column Values to Not Match Regex: Define the regular expression that the column entries should not match.
 
 {% image
-src="/images/v1.1/how-to-guides/quality/test2.png"
+src="/images/v1.2/how-to-guides/quality/test2.png"
 alt="Configure a Column Level Test"
 caption="Configure a Column Level Test"
 /%}
@@ -79,7 +79,7 @@ caption="Configure a Column Level Test"
 Once the test has been created, you can view the test suite. The test case will be displayed in the Data Quality tab. You can also edit the Display Name and Description for the test.
 
 {% image
-src="/images/v1.1/how-to-guides/quality/test3.png"
+src="/images/v1.2/how-to-guides/quality/test3.png"
 alt="Column Level Test Created"
 caption="Column Level Test Created"
 /%}
@@ -89,7 +89,7 @@ A pipeline can be set up for the tests to run at a regular cadence.
 - Add a pipeline
 
 {% image
-src="/images/v1.1/how-to-guides/quality/test5.png"
+src="/images/v1.2/how-to-guides/quality/test5.png"
 alt="Set up a Pipeline"
 caption="Set up a Pipeline"
 /%}
@@ -98,7 +98,7 @@ caption="Set up a Pipeline"
 - Click on **Submit**.
 
 {% image
-src="/images/v1.1/how-to-guides/quality/test6.png"
+src="/images/v1.2/how-to-guides/quality/test6.png"
 alt="Schedule the Pipeline"
 caption="Schedule the Pipeline"
 /%}
@@ -106,7 +106,7 @@ caption="Schedule the Pipeline"
 The pipeline has been set up and will run at the scheduled time.
 
 {% image
-src="/images/v1.1/how-to-guides/quality/test7.png"
+src="/images/v1.2/how-to-guides/quality/test7.png"
 alt="Pipeline Scheduled"
 caption="Pipeline Scheduled"
 /%}
@@ -114,7 +114,7 @@ caption="Pipeline Scheduled"
 The tests will be run and the results will be updated in the Data Quality tab.
 
 {% image
-src="/images/v1.1/how-to-guides/quality/test8.png"
+src="/images/v1.2/how-to-guides/quality/test8.png"
 alt="Data Quality Tests"
 caption="Data Quality Tests"
 /%}
@@ -122,14 +122,14 @@ caption="Data Quality Tests"
 If a **test fails**, you can **Edit the Test Status** to New, Acknowledged, or Resolved status by clicking on the Status icon.
 
 {% image
-src="/images/v1.1/how-to-guides/quality/test9.png"
+src="/images/v1.2/how-to-guides/quality/test9.png"
 alt="Failed Test: Edit Status"
 caption="Failed Test: Edit Status"
 /%}
 
 - Select the Test Status
 {% image
-src="/images/v1.1/how-to-guides/quality/test10.png"
+src="/images/v1.2/how-to-guides/quality/test10.png"
 alt="Edit Test Status"
 caption="Edit Test Status"
 /%}
@@ -137,9 +137,17 @@ caption="Edit Test Status"
 - If you are marking the test status as **Resolved**, you must specify the **Reason** for the failure and add a **Comment**. The reasons for failure can be Duplicates, False Positive, Missing Data, Other, or Out of Bounds.
 - Click on **Submit**.
 {% image
-src="/images/v1.1/how-to-guides/quality/test11.png"
+src="/images/v1.2/how-to-guides/quality/test11.png"
 alt="Resolved Status: Reason"
 caption="Resolved Status: Reason"
 /%}
 
-Users can also set up [alerts](/how-to-guides/openmetadata/data-quality-profiler/alerts) to be notified when a test fails.
+Users can also set up [alerts](/how-to-guides/data-quality-profiler/alerts) to be notified when a test fails.
+
+ {%inlineCallout
+  color="violet-70"
+  bold="How to Set Alerts for Test Case Fails"
+  icon="MdArrowForward"
+  href="/how-to-guides/data-quality-profiler/alerts"%}
+  Get notified when a data quality test fails.
+ {%/inlineCallout%}

@@ -1,6 +1,6 @@
 ---
 title: How to Manually Add or Edit Lineage
-slug: /how-to-guides/openmetadata/data-lineage/manual
+slug: /how-to-guides/data-lineage/manual
 ---
 
 # How to Manually Add or Edit Lineage
@@ -15,7 +15,7 @@ Once you have ingested your database and dashboard services.
 - Select the type of data asset (table, topic, dashboard, ML model, container, pipeline) to connect to as the destination.
 
 {% image
-src="/images/v1.1/how-to-guides/lineage/l1.png"
+src="/images/v1.2/how-to-guides/lineage/l1.png"
 alt="Data Asset: Lineage Tab"
 caption="Data Asset: Lineage Tab"
 /%}
@@ -24,7 +24,7 @@ caption="Data Asset: Lineage Tab"
 - Create an edge between these two data assets.
 
 {% image
-src="/images/v1.1/how-to-guides/lineage/l2.png"
+src="/images/v1.2/how-to-guides/lineage/l2.png"
 alt="Link the Table to the Dashboard to Add Lineage Manually"
 caption="Link the Table to the Dashboard to Add Lineage Manually"
 /%}
@@ -33,7 +33,7 @@ caption="Link the Table to the Dashboard to Add Lineage Manually"
 - Link the relevant columns together by connecting the column edges to trace column-level lineage.
 
 {% image
-src="/images/v1.1/how-to-guides/lineage/l3.png"
+src="/images/v1.2/how-to-guides/lineage/l3.png"
 alt="Column-Level Lineage"
 caption="Column-Level Lineage"
 /%}

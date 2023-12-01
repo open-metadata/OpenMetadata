@@ -1,6 +1,6 @@
 ---
 title: What is Tiering
-slug: /how-to-guides/openmetadata/data-insights/tiering
+slug: /how-to-guides/data-insights/tiering
 ---
 
 # What is Tiering
@@ -10,7 +10,7 @@ Tiering is an important concept of data classification in OpenMetadata. Data Pro
 In OpenMetadata, Tiers are System Classification tags and can be accessed from **Govern > Classification > Tier**.
 
 {% image
-src="/images/v1.1/how-to-guides/governance/tier1.png"
+src="/images/v1.2/how-to-guides/governance/tier1.png"
 alt="Classification Tags: Tiers"
 caption="Classification Tags: Tiers"
 /%}
@@ -30,7 +30,7 @@ In case of tiering, it is easiest to start with the most important (Tier 1) and 
 From the **Explore** page, select a data asset and click on the edit icon for **Tier**. Select the appropriate tier. Clicking on the arrow next to the tier will provide a description of the tier.
 
 {% image
-src="/images/v1.1/how-to-guides/governance/tier2.png"
+src="/images/v1.2/how-to-guides/governance/tier2.png"
 alt="Add a Tier to Data Asset"
 caption="Add a Tier to Data Asset"
 /%}
@@ -39,6 +39,6 @@ caption="Add a Tier to Data Asset"
   color="violet-70"
   bold="Set Up Data Insights Ingestion"
   icon="MdArrowForward"
-  href="/how-to-guides/openmetadata/data-insights/ingestion"%}
+  href="/how-to-guides/data-insights/ingestion"%}
   Set up the ingestion pipeline right from the UI.
 {%/inlineCallout%}

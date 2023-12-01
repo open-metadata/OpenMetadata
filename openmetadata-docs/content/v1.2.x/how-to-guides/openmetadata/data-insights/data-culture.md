@@ -1,6 +1,6 @@
 ---
 title: How to Transform the Data Culture of Your Company
-slug: /how-to-guides/openmetadata/data-insights/data-culture
+slug: /how-to-guides/data-insights/data-culture
 ---
 
 # How to Transform the Data Culture of Your Company
@@ -60,11 +60,11 @@ Data without description is hard to use, resulting in the loss of productivity. 
 
 ### 4. Develop Data Vocabulary
 
-Data vocabulary helps in the consistent understanding of data. In OpenMetdata, using the [Glossary](/how-to-guides/openmetadata/data-governance/glossary-classification) feature, you can describe business terms and concepts in a single place. Also, the data assets can be labelled using these glossary terms in order to provide semantic meaning.
+Data vocabulary helps in the consistent understanding of data. In OpenMetdata, using the [Glossary](/how-to-guides/data-governance/glossary) feature, you can describe business terms and concepts in a single place. Also, the data assets can be labelled using these glossary terms in order to provide semantic meaning.
 
 ### 5 Identify Important Data with Tiers
 
-Tiering is an important concept of data classification in OpenMetadata. Using [Tiers](/how-to-guides/openmetadata/data-governance/glossary-classification/tiers), data producers or owners can define the importance of data to an organization.
+Tiering is an important concept of data classification in OpenMetadata. Using [Tiers](/how-to-guides/data-governance/classification/tiers), data producers or owners can define the importance of data to an organization.
 
 In case of tiering, it is easiest to start with the most important (Tier 1) and the least important (Tier 5) data. Once the **Tier 1** or most important data is identified, organizations can focus on improving the descriptions and data quality. The Data Insights in OpenMetadata helps identify the unused datasets as **Tier 5**. The Tier 5 datasets can be deleted periodically to declutter.
 
