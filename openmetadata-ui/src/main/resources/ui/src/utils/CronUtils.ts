@@ -52,6 +52,8 @@ export const getQuartzCronExpression = (state: StateValue) => {
       return `0 ${selectedDayOption.min} ${selectedDayOption.hour} * * ?`;
     case 'week':
       return `0 ${selectedWeekOption.min} ${selectedWeekOption.hour} ? * ${
+        // Quartz cron format accepts 1-7 or SUN-SAT so need to increment index by 1
+        // Ref: https://www.quartz-scheduler.org/api/2.1.7/org/quartz/CronExpression.html
         selectedWeekOption.dow + 1
       }`;
     case 'month':

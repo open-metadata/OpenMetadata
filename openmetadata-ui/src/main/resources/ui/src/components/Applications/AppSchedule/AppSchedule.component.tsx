@@ -158,6 +158,8 @@ const AppSchedule = ({
 
       return cronstrue.toString(cronExp, {
         throwExceptionOnParseError: false,
+        // Quartz cron format accepts 1-7 or SUN-SAT so need to increment index by 1
+        // Ref: https://www.quartz-scheduler.org/api/2.1.7/org/quartz/CronExpression.html
         dayOfWeekStartIndexZero: false,
         monthStartIndexZero: false,
       });
