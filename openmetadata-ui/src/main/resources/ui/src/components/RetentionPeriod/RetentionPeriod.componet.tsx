@@ -71,7 +71,7 @@ const RetentionPeriod = ({
       // Format the duration in ISO 8601 format
       const iso8601Duration = duration.toISO();
 
-      await onUpdate(days ? iso8601Duration : days);
+      await onUpdate?.(days ? iso8601Duration : days);
       onCancel();
     } catch (error) {
       showErrorToast(error as AxiosError);
