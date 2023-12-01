@@ -19,15 +19,21 @@
       "properties": {
         "serviceName": {
           "title": "Service Name",
+          "placeholder": "Search Service",
           "description": "Service Name to get descriptions from.",
-          "type": "string"
+          "type": "string",
+          "format": "autoComplete",
+          "autoCompleteType": "database_service_search_index"
         },
         "databases": {
           "title": "Databases",
           "description": "List of database names from the Service to get descriptions from.",
           "type": "array",
           "items": {
-            "type": "string"
+            "placeholder": "Search Databases",
+            "type": "string",
+            "format": "autoComplete",
+            "autoCompleteType": "database_search_index"
           }
         }
       },
