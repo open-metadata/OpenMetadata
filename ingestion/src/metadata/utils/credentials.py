@@ -110,7 +110,7 @@ def build_google_credentials_dict(gcp_values: GcpCredentialsValues) -> Dict[str,
             "auth_provider_x509_cert_url": str(gcp_values.authProviderX509CertUrl),
             "client_x509_cert_url": str(gcp_values.clientX509CertUrl),
         }
-    elif gcp_values.type == "external_account":
+    if gcp_values.type == "external_account":
         return {
             "type": gcp_values.type,
             "audience": gcp_values.audience,
@@ -118,10 +118,10 @@ def build_google_credentials_dict(gcp_values: GcpCredentialsValues) -> Dict[str,
             "token_url": gcp_values.tokenURL,
             "credential_source": gcp_values.credentialSource,
         }
-    else:
-        raise InvalidGcpConfigException(
-            f"Error not support credential type {gcp_values.type}"
-        )
+
+    raise InvalidGcpConfigException(
+        f"Error not support credential type {gcp_values.type}"
+    )
 
 
 def set_google_credentials(gcp_credentials: GCPCredentials) -> None:
