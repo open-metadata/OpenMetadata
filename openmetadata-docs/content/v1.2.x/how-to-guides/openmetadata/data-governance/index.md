@@ -9,10 +9,19 @@ OpenMetadata is a rich collaborative platform for data teams. Data producers and
 
 Apart from well-defined access control roles and policies, a common vocabulary within the organization fosters effective collaboration and helps in data governance. A **Business Glossary** plays an important role in defining the common terminology in the organization. Data also needs be classified and tagged for policy enforcement purposes like privacy policy, data management policy, data retention policy, and so on. Using **Classification** you can manage access to the PII sensitive data in OpenMetadata.
 
-{%inlineCallout
-color="violet-70"
-bold="Glossary and Classification"
-icon="MdMenuBook"
-href="/how-to-guides/openmetadata/data-governance/glossary-classification"%}
-Learn more about the Glossaries and Classification Tags in OpenMetadata.
-{%/inlineCallout%}
+{%inlineCalloutContainer%}
+ {%inlineCallout
+  color="violet-70"
+  bold="Glossary"
+  icon="MdMenuBook"
+  href="/how-to-guides/openmetadata/data-governance/glossary"%}
+  Set up business glossaries in OpenMetadata.
+ {%/inlineCallout%}
+ {%inlineCallout
+  color="violet-70"
+  bold="Classification"
+  icon="MdDiscount"
+  href="/how-to-guides/openmetadata/data-governance/classification"%}
+  Learn about the classification tags.
+ {%/inlineCallout%}
+{%/inlineCalloutContainer%}

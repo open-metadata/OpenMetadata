@@ -1,6 +1,6 @@
 ---
 title: How to Deploy a Lineage Workflow
-slug: /how-to-guides/openmetadata/data-lineage/workflow
+slug: /how-to-guides/data-lineage/workflow
 ---
 
 # How to Deploy a Lineage Workflow
@@ -14,7 +14,7 @@ Once the metadata ingestion runs correctly, and we are able to explore the servi
 
 If the database has views, then the view lineage would be generated automatically, along with the column-level lineage. In such a case, the table type is **View** as shown in the example below.
  {% image
- src="/images/v1.1/how-to-guides/lineage/view.png"
+ src="/images/v1.2/how-to-guides/lineage/view.png"
  alt="View Lineage through Metadata Ingestion"
  caption="View Lineage through Metadata Ingestion"
  /%}
@@ -26,14 +26,14 @@ Apart from the Metadata ingestion, we can create a workflow that will obtain the
 
 Navigate to **Settings >> Services**. Select the required service
  {% image
- src="/images/v1.1/how-to-guides/lineage/wkf1.png"
+ src="/images/v1.2/how-to-guides/lineage/wkf1.png"
  alt="Select a Service"
  caption="Select a Service"
  /%}
 
 Go the the **Ingestions** tab. Click on **Add Ingestion** and select **Add Lineage Ingestion**.
  {% image
- src="/images/v1.1/how-to-guides/lineage/wkf2.png"
+ src="/images/v1.2/how-to-guides/lineage/wkf2.png"
  alt="Add a Lineage Ingestion"
  caption="Add a Lineage Ingestion"
  /%}
@@ -42,7 +42,7 @@ Go the the **Ingestions** tab. Click on **Add Ingestion** and select **Add Linea
 
 Here you can enter the Lineage Ingestion details:
  {% image
- src="/images/v1.1/how-to-guides/lineage/wkf3.png"
+ src="/images/v1.2/how-to-guides/lineage/wkf3.png"
  alt="Configure the Lineage Ingestion"
  caption="Configure the Lineage Ingestion"
  /%}
@@ -61,7 +61,7 @@ Here you can enter the Lineage Ingestion details:
 
 After clicking Next, you will be redirected to the Scheduling form. This will be the same as the Metadata Ingestion. Select your desired schedule and click on Deploy to find the lineage pipeline being added to the Service Ingestions.
  {% image
- src="/images/v1.1/how-to-guides/lineage/wkf4.png"
+ src="/images/v1.2/how-to-guides/lineage/wkf4.png"
  alt="Schedule and Deploy the Lineage Ingestion"
  caption="Schedule and Deploy the Lineage Ingestion"
  /%}
@@ -78,12 +78,12 @@ Lineage ingestion is supported for a few connectors as mentioned earlier. For th
 
 ## Manual Lineage
 
-Lineage can also be added and edited manually in OpenMetadata. Refer for more information on [adding lineage manually](/how-to-guides/openmetadata/data-lineage/manual).
+Lineage can also be added and edited manually in OpenMetadata. Refer for more information on [adding lineage manually](/how-to-guides/data-lineage/manual).
 
 {%inlineCallout
   color="violet-70"
-  bold="Explore Lineage"
+  bold="Explore the Lineage View"
   icon="MdArrowForward"
-  href="/how-to-guides/openmetadata/data-lineage/explore"%}
+  href="/how-to-guides/data-lineage/explore"%}
   Explore the rich lineage view in OpenMetadata.
 {%/inlineCallout%}

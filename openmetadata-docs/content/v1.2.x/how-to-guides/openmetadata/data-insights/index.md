@@ -1,6 +1,6 @@
 ---
 title: Data Insights
-slug: /how-to-guides/openmetadata/data-insights
+slug: /how-to-guides/data-insights
 ---
 
 # Overview of Data Insights
@@ -22,35 +22,42 @@ Watch a demo of Data Insights in OpenMetadata
   color="violet-70"
   bold="What is Tiering"
   icon="MdInsights"
-  href="/how-to-guides/openmetadata/data-insights/tiering"%}
+  href="/how-to-guides/data-insights/tiering"%}
   Set business importance of data using Tiers.
  {%/inlineCallout%}
  {%inlineCallout
   color="violet-70"
   bold="Set Up Data Insights Ingestion"
   icon="MdInsights"
-  href="/how-to-guides/openmetadata/data-insights/ingestion"%}
+  href="/how-to-guides/data-insights/ingestion"%}
   Set up the ingestion pipeline right from the UI.
  {%/inlineCallout%}
  {%inlineCallout
   color="violet-70"
   bold="Key Performance Indicators (KPI)"
   icon="MdInsights"
-  href="/how-to-guides/openmetadata/data-insights/kpi"%}
+  href="/how-to-guides/data-insights/kpi"%}
   Define the KPIs and set goals for documentation, and ownership.
  {%/inlineCallout%}
  {%inlineCallout
   color="violet-70"
   bold="Data Insights Report"
   icon="MdInsights"
-  href="/how-to-guides/openmetadata/data-insights/report"%}
+  href="/how-to-guides/data-insights/report"%}
   Get a quick glance of data asset description, ownership, and tiering coverage.
+ {%/inlineCallout%}
+ {%inlineCallout
+  color="violet-70"
+  bold="Configure the Data Insights Report"
+  icon="MdInsights"
+  href="/how-to-guides/data-insights/email-report"%}
+  Email the report to Admins and Teams at the desired frequency.
  {%/inlineCallout%}
  {%inlineCallout
   color="violet-70"
   bold="How to Transform the Data Culture of Your Company"
   icon="MdInsights"
-  href="/how-to-guides/openmetadata/data-insights/data-culture"%}
+  href="/how-to-guides/data-insights/data-culture"%}
   Improve your data culture for data-driven decision making.
  {%/inlineCallout%}
 {%/inlineCalloutContainer%}
