@@ -25,6 +25,7 @@
     "add-custom-entity-property": "Add Custom {{entity}} Property",
     "add-deploy": "追加＆デプロイ",
     "add-entity": "{{entity}}を追加",
+    "add-entity-metric": "Add {{entity}} metric",
     "add-entity-test": "{{entity}}のテストを追加",
     "add-new-entity": "新しい{{entity}}を追加",
     "add-suggestion": "Add suggestion",

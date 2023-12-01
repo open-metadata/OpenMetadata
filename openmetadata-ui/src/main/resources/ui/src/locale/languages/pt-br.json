@@ -25,6 +25,7 @@
     "add-custom-entity-property": "Adicionar Propriedade Personalizada {{entity}}",
     "add-deploy": "Adicionar & Implementar",
     "add-entity": "Adicionar {{entity}}",
+    "add-entity-metric": "Add {{entity}} metric",
     "add-entity-test": "Adicionar teste {{entity}}",
     "add-new-entity": "Adicionar Novo {{entity}}",
     "add-suggestion": "Adicionar sugestão",

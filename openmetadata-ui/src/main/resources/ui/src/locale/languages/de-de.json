@@ -25,6 +25,7 @@
     "add-custom-entity-property": "Benutzerdefinierte Eigenschaft zu {{entity}} hinzufügen",
     "add-deploy": "Hinzufügen und Bereitstellen",
     "add-entity": "{{entity}} hinzufügen",
+    "add-entity-metric": "Add {{entity}} metric",
     "add-entity-test": "Test zu {{entity}} hinzufügen",
     "add-new-entity": "Neues {{entity}} hinzufügen",
     "add-suggestion": "Vorschlag hinzufügen",

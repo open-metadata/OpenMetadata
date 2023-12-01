@@ -25,6 +25,7 @@
     "add-custom-entity-property": "Добавить пользовательское свойство {{entity}}",
     "add-deploy": "Добавить & Развернуть",
     "add-entity": "Добавить {{entity}}",
+    "add-entity-metric": "Add {{entity}} metric",
     "add-entity-test": "Добавить тестовый {{entity}}",
     "add-new-entity": "Добавить новый {{entity}}",
     "add-suggestion": "Добавить предложение",
