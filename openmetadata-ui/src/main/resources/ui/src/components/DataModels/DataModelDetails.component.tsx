@@ -235,6 +235,7 @@ const DataModelDetails = ({
             domain={dataModelData?.domain}
             editTagPermission={editTagsPermission}
             entityFQN={decodedDataModelFQN}
+            entityId={dataModelData.id}
             entityType={EntityType.DASHBOARD_DATA_MODEL}
             selectedTags={tags}
             onTagSelectionChange={handleTagSelection}

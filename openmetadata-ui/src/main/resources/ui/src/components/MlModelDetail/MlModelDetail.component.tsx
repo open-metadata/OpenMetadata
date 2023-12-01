@@ -425,6 +425,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                 domain={mlModelDetail?.domain}
                 editTagPermission={editTagsPermission}
                 entityFQN={decodedMlModelFqn}
+                entityId={mlModelDetail.id}
                 entityType={EntityType.MLMODEL}
                 selectedTags={mlModelTags}
                 onTagSelectionChange={handleTagSelection}

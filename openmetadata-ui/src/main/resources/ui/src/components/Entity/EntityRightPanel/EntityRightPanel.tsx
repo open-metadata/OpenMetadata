@@ -17,6 +17,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../generated/entity/type';
 import { TagSource } from '../../../generated/type/tagLabel';
+import entityRightPanelClassBase from '../../../utils/EntityRightPanelClassBase';
 import DataProductsContainer from '../../DataProductsContainer/DataProductsContainer.component';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
@@ -26,6 +27,7 @@ interface EntityRightPanelProps {
   editTagPermission: boolean;
   entityType: EntityType;
   entityFQN: string;
+  entityId: string;
   selectedTags: EntityTags[];
   beforeSlot?: React.ReactNode;
   showTaskHandler?: boolean;
@@ -47,9 +49,13 @@ const EntityRightPanel: FC<EntityRightPanelProps> = ({
   onThreadLinkSelect,
   beforeSlot,
   afterSlot,
+  entityId,
   showTaskHandler = true,
   showDataProductContainer = true,
 }) => {
+  const KnowledgeArticles =
+    entityRightPanelClassBase.getKnowLedgeArticlesWidget();
+
   return (
     <>
       {beforeSlot}
@@ -85,6 +91,9 @@ const EntityRightPanel: FC<EntityRightPanelProps> = ({
           onSelectionChange={onTagSelectionChange}
           onThreadLinkSelect={onThreadLinkSelect}
         />
+        {KnowledgeArticles && (
+          <KnowledgeArticles entityId={entityId} entityType={entityType} />
+        )}
       </Space>
       {afterSlot}
     </>

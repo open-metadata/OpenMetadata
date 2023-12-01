@@ -395,6 +395,7 @@ function SearchIndexDetailsPage() {
             domain={searchIndexDetails?.domain}
             editTagPermission={editTagsPermission}
             entityFQN={decodedSearchIndexFQN}
+            entityId={searchIndexDetails?.id ?? ''}
             entityType={EntityType.SEARCH_INDEX}
             selectedTags={searchIndexTags}
             onTagSelectionChange={handleTagSelection}

@@ -220,6 +220,7 @@ function ServiceMainTabContent({
           domain={(serviceDetails as DatabaseService)?.domain}
           editTagPermission={editTagsPermission}
           entityFQN={serviceFQN}
+          entityId={serviceDetails.id}
           entityType={entityType}
           selectedTags={tags}
           showDataProductContainer={entityType !== EntityType.METADATA_SERVICE}
