@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Select, SelectProps } from 'antd';
+import { Select, SelectProps, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
 import React, { FC, useCallback, useMemo, useRef, useState } from 'react';
@@ -22,6 +22,7 @@ import { searchQuery } from '../../rest/searchAPI';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getEntityIcon } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import {
   DataAssetAsyncSelectListProps,
   DataAssetOption,
@@ -78,6 +79,7 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
             type: _source.entityType,
           },
           displayName: entityName,
+          name: _source.name,
         };
       });
 
@@ -112,32 +114,41 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
 
   const optionList = useMemo(() => {
     return options.map((option) => {
-      const label = (
-        <div
-          className="d-flex items-center gap-2"
-          data-testid={`option-${option.value}`}>
-          <div className="flex-center data-asset-icon">
-            {getEntityIcon(option.reference.type)}
-          </div>
-          <div className="d-flex flex-col">
-            <span className="text-grey-muted text-xs">
-              {option.reference.type}
-            </span>
-            <span className="font-medium truncate w-56">
-              {option.displayName}
-            </span>
-          </div>
-        </div>
-      );
+      const { value, reference, displayName } = option;
 
-      return {
-        label,
-        value: option.value,
-        reference: option.reference,
-        displayName: option.displayName,
-      };
+      let label;
+      if (searchIndex === SearchIndex.USER) {
+        label = (
+          <Space>
+            <ProfilePicture
+              className="d-flex"
+              id=""
+              name={option.name ?? ''}
+              type="circle"
+              width="24"
+            />
+            <span className="m-l-xs">{getEntityName(option)}</span>
+          </Space>
+        );
+      } else {
+        label = (
+          <div
+            className="d-flex items-center gap-2"
+            data-testid={`option-${value}`}>
+            <div className="flex-center data-asset-icon">
+              {getEntityIcon(reference.type)}
+            </div>
+            <div className="d-flex flex-col">
+              <span className="text-grey-muted text-xs">{reference.type}</span>
+              <span className="font-medium truncate w-56">{displayName}</span>
+            </div>
+          </div>
+        );
+      }
+
+      return { label, value, reference, displayName };
     });
-  }, [options]);
+  }, [options, searchIndex]);
 
   const debounceFetcher = useMemo(
     () => debounce(loadOptions, debounceTimeout),

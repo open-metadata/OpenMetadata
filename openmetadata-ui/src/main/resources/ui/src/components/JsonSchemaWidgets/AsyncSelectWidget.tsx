@@ -11,51 +11,24 @@
  *  limitations under the License.
  */
 import { WidgetProps } from '@rjsf/utils';
-import React, { useCallback } from 'react';
-import { PAGE_SIZE_MEDIUM } from '../../constants/constants';
+import React from 'react';
 import { SearchIndex } from '../../enums/search.enum';
-import { searchQuery } from '../../rest/searchAPI';
-import { getEntityName } from '../../utils/EntityUtils';
-import { AsyncSelect } from '../AsyncSelect/AsyncSelect';
+import DataAssetAsyncSelectList from '../DataAssetAsyncSelectList/DataAssetAsyncSelectList';
+import { DataAssetOption } from '../DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 
-const AsyncSelectWidget = ({
-  onFocus,
-  onBlur,
-  onChange,
-  schema,
-  ...rest
-}: WidgetProps) => {
-  const type = rest?.uiSchema?.['ui:options']?.autoCompleteType as SearchIndex;
-
-  const fetchEntities = useCallback(async (searchText: string) => {
-    try {
-      const res = await searchQuery({
-        pageNumber: 1,
-        pageSize: PAGE_SIZE_MEDIUM,
-        searchIndex: type ?? SearchIndex.TABLE,
-        query: searchText,
-      });
-
-      return res.hits.hits.map((value) => ({
-        label: getEntityName(value._source),
-        value: value._source.id,
-      }));
-    } catch (_) {
-      return [];
-    }
-  }, []);
+const AsyncSelectWidget = ({ onChange, schema }: WidgetProps) => {
+  const handleChange = (value: DataAssetOption | DataAssetOption[]) => {
+    const data = value.map((item: DataAssetOption) => item.reference);
+    onChange(data);
+  };
 
   return (
-    <AsyncSelect
-      api={fetchEntities}
-      className="d-block"
-      data-testid="edit-query-used-in"
+    <DataAssetAsyncSelectList
       defaultValue={schema.value}
       mode="multiple"
       placeholder={schema.placeholder ?? ''}
-      onChange={(value) => {
-        onChange(value);
-      }}
+      searchIndex={schema?.autoCompleteType ?? SearchIndex.TABLE}
+      onChange={handleChange}
     />
   );
 };
