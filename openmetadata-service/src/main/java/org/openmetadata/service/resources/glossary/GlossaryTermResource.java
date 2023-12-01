@@ -415,6 +415,34 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     return repository.updateVote(securityContext.getUserPrincipal().getName(), id, request).toResponse();
   }
 
+  @PUT
+  @Path("/{id}/assets/add")
+  @Operation(
+      operationId = "bulkAddGlossaryToAssets",
+      summary = "Bulk Add Glossary to Assets",
+      description = "Bulk Add Glossary to Assets",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
+      })
+  public Response bulkAddGlossaryToAssets(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(
+              description =
+                  "Dry-run when true is used for validating the glossary without really applying it. (default=true)",
+              schema = @Schema(type = "boolean"))
+          @DefaultValue("true")
+          @QueryParam("dryRun")
+          boolean dryRun,
+      @Valid List<EntityReference> request) {
+    return Response.ok().entity(repository.bulkAddGlossaryToAssets(id, dryRun, request)).build();
+  }
+
   @DELETE
   @Path("/{id}")
   @Operation(

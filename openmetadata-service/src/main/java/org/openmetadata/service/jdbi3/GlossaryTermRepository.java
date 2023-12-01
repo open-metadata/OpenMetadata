@@ -21,16 +21,22 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.GLOSSARY;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
+import static org.openmetadata.service.Entity.getEntity;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidGlossaryTermMove;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
+import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getId;
 import static org.openmetadata.service.util.EntityUtil.stringMatch;
+import static org.openmetadata.service.util.EntityUtil.tagLabelMatch;
 import static org.openmetadata.service.util.EntityUtil.termReferenceMatch;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import lombok.extern.slf4j.Slf4j;
@@ -48,11 +54,14 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.type.TaskDetails;
 import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.ThreadType;
+import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.type.api.FailureRequest;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
@@ -120,7 +129,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     // Validate parent term
     GlossaryTerm parentTerm =
         entity.getParent() != null
-            ? Entity.getEntity(entity.getParent().withType(GLOSSARY_TERM), "owner,reviewers", Include.NON_DELETED)
+            ? getEntity(entity.getParent().withType(GLOSSARY_TERM), "owner,reviewers", Include.NON_DELETED)
             : null;
     if (parentTerm != null) {
       parentReviewers = parentTerm.getReviewers();
@@ -128,7 +137,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
 
     // Validate glossary
-    Glossary glossary = Entity.getEntity(entity.getGlossary(), "reviewers", Include.NON_DELETED);
+    Glossary glossary = getEntity(entity.getGlossary(), "reviewers", Include.NON_DELETED);
     entity.setGlossary(glossary.getEntityReference());
     parentReviewers = parentReviewers != null ? parentReviewers : glossary.getReviewers();
 
@@ -191,6 +200,68 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       EntityReference parent = entity.getParent();
       entity.setFullyQualifiedName(FullyQualifiedName.add(parent.getFullyQualifiedName(), entity.getName()));
     }
+  }
+
+  public BulkOperationResult bulkAddGlossaryToAssets(
+      UUID glossaryTermId, boolean dryRun, List<EntityReference> entityReferences) {
+    GlossaryTerm term = this.get(null, glossaryTermId, getFields("id,tags"));
+    TagLabel tagLabel =
+        new TagLabel()
+            .withTagFQN(term.getFullyQualifiedName())
+            .withSource(TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+
+    BulkOperationResult result = new BulkOperationResult().withDryRun(dryRun);
+    List<FailureRequest> failures = new ArrayList<>();
+    List<EntityReference> success = new ArrayList<>();
+
+    if (dryRun) {
+      // Validation for entityReferences
+      EntityUtil.populateEntityReferences(entityReferences);
+    }
+
+    for (EntityReference ref : entityReferences) {
+      // Update Result Processed
+      result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
+
+      EntityRepository<?> entityRepository = Entity.getEntityRepository(ref.getType());
+      EntityInterface original = entityRepository.get(null, ref.getId(), entityRepository.getFields("tags"));
+      // Original tags
+      List<TagLabel> entityTags = new ArrayList<>(original.getTags());
+      entityTags.add(tagLabel);
+      // Check if the Tags can be applied
+      if (dryRun) {
+        try {
+          checkMutuallyExclusive(addDerivedTags(entityTags));
+          success.add(ref);
+          result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
+        } catch (Exception ex) {
+          failures.add(new FailureRequest().withRequest(ref).withError(ex.getMessage()));
+          result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
+        }
+      } else {
+        // Apply Tags to Entities
+        entityRepository.applyTags(addDerivedTags(entityTags), original.getFullyQualifiedName());
+
+        // Update Result
+        success.add(ref);
+        result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
+      }
+    }
+
+    // Add Failed And Suceess Request
+    result.withFailedRequest(failures).withSuccessRequest(success);
+
+    // Set Final Status
+    if (result.getNumberOfRowsPassed().equals(result.getNumberOfRowsProcessed())) {
+      result.withStatus(BulkOperationResult.Status.SUCCESS);
+    } else if (result.getNumberOfRowsPassed() > 1) {
+      result.withStatus(BulkOperationResult.Status.PARTIAL_SUCCESS);
+    } else {
+      result.withStatus(BulkOperationResult.Status.FAILURE);
+    }
+
+    return result;
   }
 
   protected EntityReference getGlossary(GlossaryTerm term) {
@@ -284,8 +355,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   @Override
   public EntityInterface getParentEntity(GlossaryTerm entity, String fields) {
     return entity.getParent() != null
-        ? Entity.getEntity(entity.getParent(), fields, Include.NON_DELETED)
-        : Entity.getEntity(entity.getGlossary(), fields, Include.NON_DELETED);
+        ? getEntity(entity.getParent(), fields, Include.NON_DELETED)
+        : getEntity(entity.getGlossary(), fields, Include.NON_DELETED);
   }
 
   private void addGlossaryRelationship(GlossaryTerm term) {
@@ -375,6 +446,39 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       updateRelatedTerms(original, updated);
       updateName(original, updated);
       updateParent(original, updated);
+    }
+
+    @Override
+    protected void updateTags(String fqn, String fieldName, List<TagLabel> origTags, List<TagLabel> updatedTags) {
+      // Remove current entity tags in the database. It will be added back later from the merged tag list.
+      origTags = listOrEmpty(origTags);
+      // updatedTags cannot be immutable list, as we are adding the origTags to updatedTags even if its empty.
+      updatedTags = Optional.ofNullable(updatedTags).orElse(new ArrayList<>());
+      if (origTags.isEmpty() && updatedTags.isEmpty()) {
+        return; // Nothing to update
+      }
+
+      // Get the list of tags that are used by
+      Set<TagLabel> entityTags = new HashSet<>(daoCollection.tagUsageDAO().getEntityTagsFromTag(fqn));
+      entityTags.addAll(updatedTags);
+
+      // Check if the tags are mutually exclusive
+      checkMutuallyExclusive(entityTags.stream().toList());
+
+      // Remove current entity tags in the database. It will be added back later from the merged tag list.
+      daoCollection.tagUsageDAO().deleteTagsByTarget(fqn);
+
+      if (operation.isPut()) {
+        // PUT operation merges tags in the request with what already exists
+        EntityUtil.mergeTags(updatedTags, origTags);
+        checkMutuallyExclusive(updatedTags);
+      }
+
+      List<TagLabel> addedTags = new ArrayList<>();
+      List<TagLabel> deletedTags = new ArrayList<>();
+      recordListChange(fieldName, origTags, updatedTags, addedTags, deletedTags, tagLabelMatch);
+      updatedTags.sort(compareTagLabel);
+      applyTags(updatedTags, fqn);
     }
 
     private void updateStatus(GlossaryTerm origTerm, GlossaryTerm updatedTerm) {

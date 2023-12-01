@@ -2333,6 +2333,11 @@ public interface CollectionDAO {
     @SqlUpdate("<update>")
     void updateTagPrefixInternal(@Define("update") String update);
 
+    @SqlQuery(
+        "select * from tag_usage where targetFQNHash in (select targetFQNHash FROM tag_usage where tagFQNHash = :tagFQNHash) and tagFQNHash != :tagFQNHash")
+    @RegisterRowMapper(TagLabelMapper.class)
+    List<TagLabel> getEntityTagsFromTag(@BindFQN("tagFQNHash") String tagFQNHash);
+
     class TagLabelMapper implements RowMapper<TagLabel> {
       @Override
       public TagLabel map(ResultSet r, StatementContext ctx) throws SQLException {
