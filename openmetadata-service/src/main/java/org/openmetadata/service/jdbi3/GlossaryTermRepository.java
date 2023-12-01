@@ -53,6 +53,7 @@ import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.GlossaryTerm.Status;
 import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
@@ -220,7 +221,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
     if (dryRun && (CommonUtil.nullOrEmpty(request.getGlossaryTags()) || CommonUtil.nullOrEmpty(request.getAssets()))) {
       // Nothing to Validate
-      return result.withStatus(BulkOperationResult.Status.SUCCESS).withSuccessRequest("Nothing to Validate.");
+      return result.withStatus(ApiStatus.SUCCESS).withSuccessRequest("Nothing to Validate.");
     }
 
     // Validation for entityReferences
@@ -273,11 +274,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
     // Set Final Status
     if (result.getNumberOfRowsPassed().equals(result.getNumberOfRowsProcessed())) {
-      result.withStatus(BulkOperationResult.Status.SUCCESS);
+      result.withStatus(ApiStatus.SUCCESS);
     } else if (result.getNumberOfRowsPassed() > 1) {
-      result.withStatus(BulkOperationResult.Status.PARTIAL_SUCCESS);
+      result.withStatus(ApiStatus.PARTIAL_SUCCESS);
     } else {
-      result.withStatus(BulkOperationResult.Status.FAILURE);
+      result.withStatus(ApiStatus.FAILURE);
     }
 
     return result;

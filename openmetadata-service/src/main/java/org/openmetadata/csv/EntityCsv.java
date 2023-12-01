@@ -38,11 +38,11 @@ import org.apache.commons.csv.CSVRecord;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
-import org.openmetadata.schema.type.api.BulkOperationResult.Status;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvErrorType;
 import org.openmetadata.schema.type.csv.CsvFile;
@@ -413,7 +413,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
   }
 
   private void documentFailure(String error) {
-    importResult.withStatus(Status.ABORTED);
+    importResult.withStatus(ApiStatus.ABORTED);
     importResult.withAbortReason(error);
   }
 
@@ -435,11 +435,11 @@ public abstract class EntityCsv<T extends EntityInterface> {
   }
 
   private void setFinalStatus() {
-    Status status = Status.FAILURE;
+    ApiStatus status = ApiStatus.FAILURE;
     if (importResult.getNumberOfRowsPassed().equals(importResult.getNumberOfRowsProcessed())) {
-      status = Status.SUCCESS;
+      status = ApiStatus.SUCCESS;
     } else if (importResult.getNumberOfRowsPassed() > 1) {
-      status = Status.PARTIAL_SUCCESS;
+      status = ApiStatus.PARTIAL_SUCCESS;
     }
     importResult.setStatus(status);
   }
