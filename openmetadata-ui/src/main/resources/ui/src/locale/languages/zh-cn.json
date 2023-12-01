@@ -278,6 +278,7 @@
     "date-filter": "日期筛选",
     "day": "日",
     "day-left": "剩余{{day}}天",
+    "day-plural": "Days",
     "days-change-lowercase": "{{days}}天更改",
     "dbt-bucket-name": "dbt Bucket 名称",
     "dbt-catalog-file-path": "dbt Catalog 文件路径",

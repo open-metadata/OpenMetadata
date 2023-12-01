@@ -278,6 +278,7 @@
     "date-filter": "Date Filter",
     "day": "Day",
     "day-left": "{{day}} left",
+    "day-plural": "Days",
     "days-change-lowercase": "{{days}}-days change",
     "dbt-bucket-name": "dbt Bucket Name",
     "dbt-catalog-file-path": "dbt Catalog File Path",

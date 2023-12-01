@@ -278,6 +278,7 @@
     "date-filter": "Filtro de fecha",
     "day": "Día",
     "day-left": "{{day}} restantes",
+    "day-plural": "Days",
     "days-change-lowercase": "Cambio de {{days}} días",
     "dbt-bucket-name": "Nombre del bucket de dbt",
     "dbt-catalog-file-path": "Ruta del archivo de catálogo de dbt",

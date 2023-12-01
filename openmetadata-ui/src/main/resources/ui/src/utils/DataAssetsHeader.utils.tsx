@@ -14,7 +14,6 @@
 
 import { t } from 'i18next';
 import { isObject, isUndefined } from 'lodash';
-import { Duration, DurationObjectUnits } from 'luxon';
 import React from 'react';
 import {
   ExtraInfoLabel,
@@ -60,27 +59,6 @@ import {
 } from './EntityUtils';
 import { bytesToSize } from './StringsUtils';
 import { getUsagePercentile } from './TableUtils';
-
-const getRetentionDuration = (duration?: string) => {
-  if (!duration) {
-    return undefined;
-  }
-
-  const durationObject = Duration.fromISO(duration);
-  const durationObjectToObj = durationObject.toObject();
-
-  let durationString = '';
-
-  const durationKeysArray = Object.keys(durationObjectToObj);
-
-  durationKeysArray.forEach((key, index) => {
-    durationString += ` ${
-      durationObjectToObj[key as keyof DurationObjectUnits]
-    } ${key} ${durationKeysArray.length === index + 1 ? '' : 'and'}`;
-  });
-
-  return durationString;
-};
 
 export const getDataAssetsHeaderInfo = (
   entityType: DataAssetsHeaderProps['entityType'],
@@ -422,10 +400,6 @@ export const getDataAssetsHeaderInfo = (
     default:
       const tableDetails = dataAsset as Table;
 
-      const retentionDuration = getRetentionDuration(
-        tableDetails?.retentionPeriod
-      );
-
       returnData.extraInfo = (
         <>
           {tableDetails.tableType && (
@@ -453,12 +427,6 @@ export const getDataAssetsHeaderInfo = (
             <ExtraInfoLabel
               label={t('label.row-plural')}
               value={tableDetails.profile?.rowCount}
-            />
-          )}
-          {retentionDuration && (
-            <ExtraInfoLabel
-              label={t('label.retention-period')}
-              value={retentionDuration}
             />
           )}
         </>

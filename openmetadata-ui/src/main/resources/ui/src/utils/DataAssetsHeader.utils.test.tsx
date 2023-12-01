@@ -115,13 +115,6 @@ describe('Tests for DataAssetsHeaderUtils', () => {
     expect(JSON.stringify(assetData.extraInfo)).toContain('label.row-plural');
     expect(JSON.stringify(assetData.extraInfo)).toContain('14567');
 
-    expect(JSON.stringify(assetData.extraInfo)).toContain(
-      'label.retention-period'
-    );
-    expect(JSON.stringify(assetData.extraInfo)).toContain(
-      '23 days and 23 hours'
-    );
-
     //  If Data does not present
     const assetWithNoExtraData = getDataAssetsHeaderInfo(
       EntityType.TABLE,
@@ -162,13 +155,6 @@ describe('Tests for DataAssetsHeaderUtils', () => {
     );
     expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
       '14567'
-    );
-
-    expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
-      'label.retention-period'
-    );
-    expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
-      '23 days and 23 hours'
     );
   });
 

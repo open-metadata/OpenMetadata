@@ -37,6 +37,7 @@ import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { SERVICE_TYPES } from '../../../constants/Services.constant';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Container } from '../../../generated/entity/data/container';
+import { Table } from '../../../generated/entity/data/table';
 import {
   Thread,
   ThreadTaskStatus,
@@ -60,6 +61,7 @@ import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/Anno
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
+import RetentionPeriod from '../../RetentionPeriod/RetentionPeriod.componet';
 import {
   DataAssetHeaderInfo,
   DataAssetsHeaderProps,
@@ -127,6 +129,7 @@ export const DataAssetsHeader = ({
   onDisplayNameUpdate,
   afterDomainUpdateAction,
   onProfilerSettingUpdate,
+  onUpdateRetentionPeriod,
 }: DataAssetsHeaderProps) => {
   const { currentUser } = useAuthContext();
   const USER_ID = currentUser?.id ?? '';
@@ -393,6 +396,14 @@ export const DataAssetsHeader = ({
                     )}
                   </Space>
                 </TierCard>
+
+                {entityType === EntityType.TABLE && (
+                  <RetentionPeriod
+                    retentionPeriod={(dataAsset as Table).retentionPeriod}
+                    onUpdate={onUpdateRetentionPeriod}
+                  />
+                )}
+
                 {extraInfo}
               </div>
             </Col>

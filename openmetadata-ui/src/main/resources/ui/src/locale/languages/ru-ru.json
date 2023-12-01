@@ -278,6 +278,7 @@
     "date-filter": "Фильтр по дате",
     "day": "День",
     "day-left": "{{day}} осталось",
+    "day-plural": "Days",
     "days-change-lowercase": "изменено {{days}} дней назад",
     "dbt-bucket-name": "Имя корзины dbt",
     "dbt-catalog-file-path": "Путь к файлу каталога dbt",
