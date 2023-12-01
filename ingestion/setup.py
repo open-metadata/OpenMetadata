@@ -124,14 +124,17 @@ base_requirements = {
     "collate-sqllineage>=1.0.4",
     "tabulate==0.9.0",
     "typing-compat~=0.1.0",  # compatibility requirements for 3.7
-    "typing_extensions<=4.5.0",  # We need to have this fixed due to a yanked release 4.6.0
+    "typing_extensions>=4.8.0",
     "typing-inspect",
     "wheel~=0.38.4",
 }
 
 
 plugins: Dict[str, Set[str]] = {
-    "airflow": {VERSIONS["airflow"]},  # Same as ingestion container. For development.
+    "airflow": {
+        VERSIONS["airflow"],
+        "attrs",
+    },  # Same as ingestion container. For development.
     "amundsen": {VERSIONS["neo4j"]},
     "athena": {"pyathena==3.0.8"},
     "atlas": {},
