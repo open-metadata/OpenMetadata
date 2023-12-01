@@ -394,9 +394,13 @@ public class MessagingServiceResource
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
+      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
       @Parameter(description = "Name of the messaging service", schema = @Schema(type = "string")) @PathParam("name")
           String name) {
-    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
+    return deleteByName(uriInfo, securityContext, name, recursive, hardDelete);
   }
 
   @PUT

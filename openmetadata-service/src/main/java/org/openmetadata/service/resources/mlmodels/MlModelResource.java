@@ -417,6 +417,10 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
+      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
       @Parameter(description = "Name of the ML Model", schema = @Schema(type = "string")) @PathParam("fqn")
           String fqn) {
     return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
