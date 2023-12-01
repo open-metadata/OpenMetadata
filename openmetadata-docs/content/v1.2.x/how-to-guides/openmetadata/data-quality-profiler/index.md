@@ -1,6 +1,6 @@
 ---
 title: Data Quality and Profiler
-slug: /how-to-guides/openmetadata/data-quality-profiler
+slug: /how-to-guides/data-quality-profiler
 ---
 
 # Overview of Data Quality and Profiler
@@ -18,7 +18,7 @@ OpenMetadata provides Data Quality workflows, which helps with:
 The data quality in OpenMetadata is also **extensible** to adapt to your needs. 
 
 {% image
-src="/images/v1.1/how-to-guides/quality/quality1.png"
+src="/images/v1.2/how-to-guides/quality/quality1.png"
 alt="Profiler & Data Quality"
 caption="Profiler & Data Quality"
 /%}
@@ -36,21 +36,21 @@ Watch the video on Data Quality Simplified to effortlessly build, deploy, monito
   color="violet-70"
   bold="Profiler and Data Quality Tab"
   icon="MdSecurity"
-  href="/how-to-guides/openmetadata/data-quality-profiler/tab"%}
+  href="/how-to-guides/data-quality-profiler/tab"%}
   Get a complete picture of the Table Profile, Column Profile, and Data Quality details.
  {%/inlineCallout%}
  {%inlineCallout
   color="violet-70"
   bold="Write and Deploy No-Code Test Cases"
   icon="MdSecurity"
-  href="/how-to-guides/openmetadata/data-quality-profiler/test"%}
+  href="/how-to-guides/data-quality-profiler/test"%}
   Verify your data quality with table and column level tests.
  {%/inlineCallout%}
  {%inlineCallout
   color="violet-70"
   bold="Set Alerts for Test Case Fails"
   icon="MdSecurity"
-  href="/how-to-guides/openmetadata/data-quality-profiler/alerts"%}
+  href="/how-to-guides/data-quality-profiler/alerts"%}
   Get notified when a data quality test fails.
  {%/inlineCallout%}
 {%/inlineCalloutContainer%}

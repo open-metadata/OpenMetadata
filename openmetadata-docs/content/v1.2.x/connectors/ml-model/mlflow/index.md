@@ -1,13 +1,13 @@
 ---
-title: Mlflow
+title: MLflow
 slug: /connectors/ml-model/mlflow
 ---
 
-# Mlflow
+# MLflow
 
-In this section, we provide guides and references to use the Mlflow connector.
+In this section, we provide guides and references to use the MLflow connector.
 
-Configure and schedule Mlflow metadata and profiler workflows from the OpenMetadata UI:
+Configure and schedule MLflow metadata and profiler workflows from the OpenMetadata UI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
@@ -17,7 +17,7 @@ Configure and schedule Mlflow metadata and profiler workflows from the OpenMetad
 ## Requirements
 
 To extract metadata, OpenMetadata needs two elements:
-- **Tracking URI**: Address of local or remote tracking server. More information on the MLFlow documentation [here](https://www.mlflow.org/docs/latest/tracking.html#where-runs-are-recorded)
+- **Tracking URI**: Address of local or remote tracking server. More information on the MLflow documentation [here](https://www.mlflow.org/docs/latest/tracking.html#where-runs-are-recorded)
 - **Registry URI**: Address of local or remote model registry server.
 
 ## Metadata Ingestion

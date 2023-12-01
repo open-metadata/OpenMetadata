@@ -1,20 +1,20 @@
 ---
-title: ElasticSearch
+title: Elasticsearch
 slug: /connectors/search/elasticsearch
 ---
 
-# ElasticSearch
+# Elasticsearch
 
 | Feature            | Status               |
 |------------|------------------------------|
 | Search Indexes | {% icon iconName="check" /%} |
 | Sample Data | {% icon iconName="check" /%} |
-| Supported Versions | ElasticSearch 7.0 and above |
+| Supported Versions | Elasticsearch 7.0 and above |
 | Stage              | BETA                      |
 
-In this section, we provide guides and references to use the ElasticSearch connector.
+In this section, we provide guides and references to use the Elasticsearch connector.
 
-Configure and schedule ElasticSearch metadata workflow from the OpenMetadata UI:
+Configure and schedule Elasticsearch metadata workflow from the OpenMetadata UI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
@@ -23,7 +23,7 @@ Configure and schedule ElasticSearch metadata workflow from the OpenMetadata UI:
 
 ## Requirements
 
-We extract ElasticSearch's metadata by using its [API](https://www.elastic.co/guide/en/elasticsearch/reference/current/rest-apis.html). To run this ingestion, you just need a user with permissions to the ElasticSearch instance.
+We extract Elasticsearch's metadata by using its [API](https://www.elastic.co/guide/en/elasticsearch/reference/current/rest-apis.html). To run this ingestion, you just need a user with permissions to the ElasticSearch instance.
 
 
 ## Metadata Ingestion
@@ -43,13 +43,13 @@ We extract ElasticSearch's metadata by using its [API](https://www.elastic.co/gu
 
 #### Connection Details
 
-- **Host and Port**: This parameter specifies the host and port of the ElasticSearch instance. This should be specified as a URI string in the format `http://hostname:port` or `https://hostname:port`. For example, you might set it to `https://localhost:9200`.
+- **Host and Port**: This parameter specifies the host and port of the Elasticsearch instance. This should be specified as a URI string in the format `http://hostname:port` or `https://hostname:port`. For example, you might set it to `https://localhost:9200`.
 - **Authentication Types**:
     1. Basic Authentication
-    - Username: Username to connect to ElasticSearch required when Basic Authentication is enabled on ElasticSearch.
-    - Password: Password of the user account to connect with ElasticSearch.
+    - Username: Username to connect to Elasticsearch required when Basic Authentication is enabled on Elasticsearch.
+    - Password: Password of the user account to connect with Elasticsearch.
     2. API Key Authentication
-    - API Key: API Key to connect to ElasticSearch required when API Key Authentication is enabled on ElasticSearch.
+    - API Key: API Key to connect to Elasticsearch required when API Key Authentication is enabled on Elasticsearch.
     - API Key Id: Enter API Key ID In case of API Key Authentication if there is any API Key ID associated with the API Key, otherwise this field can be left blank.
 - **SSL Certificates**:
     1. SSL Certificates By Path
@@ -79,7 +79,7 @@ We extract ElasticSearch's metadata by using its [API](https://www.elastic.co/gu
     ```
     -----BEGIN CERTIFICATE-----\nMII..\nMBQ...\nCgU..\n8Lt..\n...\nh+4=\n-----END CERTIFICATE-----\n
 
-- **Connection Timeout in Seconds**: Connection timeout configuration for communicating with ElasticSearch APIs.
+- **Connection Timeout in Seconds**: Connection timeout configuration for communicating with Elasticsearch APIs.
 
 {% /extraContent %}
 

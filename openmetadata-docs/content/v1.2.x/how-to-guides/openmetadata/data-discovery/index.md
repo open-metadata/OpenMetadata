@@ -1,6 +1,6 @@
 ---
 title: Data Discovery
-slug: /how-to-guides/openmetadata/data-discovery
+slug: /how-to-guides/data-discovery
 ---
 
 # Overview of Data Discovery
@@ -10,7 +10,7 @@ Discovering data among thousands of datasets is hard without rich metadata and f
 OpenMetadata provides a user-friendly interface for **data discovery**. OpenMetadata enables you to discover your data using a variety of strategies, including: keyword search, data associations (e.g., frequently joined tables, lineage), and complex queries. Using OpenMetadata you can search across tables, topics, dashboards, pipelines, ML models, containers, glossaries, and tags. OpenMetadata supports detailed metadata for assets and their components (e.g., columns, charts), including support for complex data types such as arrays and structs. Users can get a complete picture of their data by viewing the **data evolution** tracked using lineage and metadata versioning.
 
 {% image
-  src="/images/v1.1/features/data-discovery.gif"
+  src="/images/v1.2/features/data-discovery.gif"
 /%}
 
 Watch the video on how easy it is to discovery your data in OpenMetadata.
@@ -22,28 +22,28 @@ Watch the video on how easy it is to discovery your data in OpenMetadata.
   color="violet-70"
   bold="How to Discover Assets of Interest"
   icon="MdSearch"
-  href="/how-to-guides/openmetadata/data-discovery/discover"%}
+  href="/how-to-guides/data-discovery/discover"%}
   Discover the right data assets quickly.
  {%/inlineCallout%}
  {%inlineCallout
   color="violet-70"
   bold="Get a Quick Glance of the Data Assets"
   icon="MdSearch"
-  href="/how-to-guides/openmetadata/data-discovery/preview"%}
+  href="/how-to-guides/data-discovery/preview"%}
   Quick preview of the selected data asset.
  {%/inlineCallout%}
  {%inlineCallout
   color="violet-70"
   bold="Data Asset Details"
   icon="MdSearch"
-  href="/how-to-guides/openmetadata/data-discovery/details"%}
+  href="/how-to-guides/data-discovery/details"%}
   Get a holistic view of the data assets.
  {%/inlineCallout%}
  {%inlineCallout
   color="violet-70"
   bold="Advanced Search"
   icon="MdSearch"
-  href="/how-to-guides/openmetadata/data-discovery/advanced"%}
+  href="/how-to-guides/data-discovery/advanced"%}
   Add complex queries using advanced search.
  {%/inlineCallout%}
 {%/inlineCalloutContainer%}

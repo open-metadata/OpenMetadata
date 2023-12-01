@@ -1,6 +1,6 @@
 ---
 title: How to Create an Announcement
-slug: /how-to-guides/openmetadata/data-collaboration/add-announcement
+slug: /how-to-guides/data-collaboration/add-announcement
 ---
 
 # How to Create an Announcement
@@ -12,7 +12,7 @@ To add an announcement:
 - Click on the vertical ellipsis icon **⋮** located on the top right and select **Announcements**.
 
 {% image
-src="/images/v1.1/how-to-guides/user-guide-for-data-stewards/announce5.png"
+src="/images/v1.2/how-to-guides/user-guide-for-data-stewards/announce5.png"
 alt="Announcements Option"
 caption="Announcements Option"
 /%}
@@ -20,7 +20,7 @@ caption="Announcements Option"
 - Click on **Add Announcement**.
 
 {% image
-src="/images/v1.1/how-to-guides/user-guide-for-data-stewards/announce6.png"
+src="/images/v1.2/how-to-guides/user-guide-for-data-stewards/announce6.png"
 alt="Add an Announcement"
 caption="Add an Announcement"
 /%}
@@ -32,7 +32,7 @@ caption="Add an Announcement"
   - Description
 
 {% image
-src="/images/v1.1/how-to-guides/user-guide-for-data-stewards/announce7.png"
+src="/images/v1.2/how-to-guides/user-guide-for-data-stewards/announce7.png"
 alt="Add the Announcement Details"
 caption="Add the Announcement Details"
 /%}

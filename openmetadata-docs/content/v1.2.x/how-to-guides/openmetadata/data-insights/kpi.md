@@ -1,6 +1,6 @@
 ---
 title: Key Performance Indicators (KPI)
-slug: /how-to-guides/openmetadata/data-insights/kpi
+slug: /how-to-guides/data-insights/kpi
 ---
 
 # Key Performance Indicators (KPI)
@@ -25,7 +25,7 @@ To add KPIs:
 - Navigate to **Insights** and click on **Add KPI**.
 
 {% image
-src="/images/v1.1/how-to-guides/insights/kpi1.png"
+src="/images/v1.2/how-to-guides/insights/kpi1.png"
 alt="Add a KPI"
 caption="Add a KPI"
 /%}
@@ -39,13 +39,13 @@ caption="Add a KPI"
 - Click on **Submit**.
 
 {% image
-src="/images/v1.1/how-to-guides/insights/kpi2.png"
+src="/images/v1.2/how-to-guides/insights/kpi2.png"
 alt="Details of the KPI"
 caption="Details of the KPI"
 /%}
 
 {% image
-src="/images/v1.1/how-to-guides/insights/kpi3.png"
+src="/images/v1.2/how-to-guides/insights/kpi3.png"
 alt="Ownership Coverage KPI Added"
 caption="Ownership Coverage KPI Added"
 /%}
@@ -56,6 +56,6 @@ The line graph represents the progress made on a daily basis. It also displays t
   color="violet-70"
   bold="Data Insights Report"
   icon="MdArrowForward"
-  href="/how-to-guides/openmetadata/data-insights/report"%}
+  href="/how-to-guides/data-insights/report"%}
   Get a quick glance of data asset description, ownership, and tiering coverage.
 {%/inlineCallout%}

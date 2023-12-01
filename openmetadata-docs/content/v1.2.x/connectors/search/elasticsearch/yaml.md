@@ -1,13 +1,13 @@
 ---
-title: Run the ElasticSearch Connector Externally
+title: Run the Elasticsearch Connector Externally
 slug: /connectors/search/elasticsearch/yaml
 ---
 
-# Run the ElasticSearch Connector Externally
+# Run the Elasticsearch Connector Externally
 
-In this section, we provide guides and references to use the ElasticSearch connector.
+In this section, we provide guides and references to use the Elasticsearch connector.
 
-Configure and schedule ElasticSearch metadata and profiler workflows from the OpenMetadata UI:
+Configure and schedule Elasticsearch metadata and profiler workflows from the OpenMetadata UI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
@@ -24,7 +24,7 @@ To deploy OpenMetadata, check the Deployment guides.
 
 ### Python Requirements
 
-To run the ElasticSearch ingestion, you will need to install:
+To run the Elasticsearch ingestion, you will need to install:
 
 ```bash
 pip3 install "openmetadata-ingestion[elasticsearch]"
@@ -45,7 +45,7 @@ The workflow is modeled around the following
 
 ### 1. Define the YAML Config
 
-This is a sample config for ElasticSearch:
+This is a sample config for Elasticsearch:
 
 {% codePreview %}
 
@@ -55,7 +55,7 @@ This is a sample config for ElasticSearch:
 
 {% codeInfo srNumber=1 %}
 
-**hostPort**: This parameter specifies the host and port of the ElasticSearch instance. This should be specified as a URI string in the format `http://hostname:port` or `https://hostname:port`. For example, you might set it to `https://localhost:9200`.
+**hostPort**: This parameter specifies the host and port of the Elasticsearch instance. This should be specified as a URI string in the format `http://hostname:port` or `https://hostname:port`. For example, you might set it to `https://localhost:9200`.
 
 {% /codeInfo %}
 
@@ -63,8 +63,8 @@ This is a sample config for ElasticSearch:
 {% codeInfo srNumber=2 %}
 **Basic Authentication**
 
-**username**: Username to connect to ElasticSearch required when Basic Authentication is enabled on ElasticSearch.
-**password**: Password of the user account to connect with ElasticSearch.
+**username**: Username to connect to Elasticsearch required when Basic Authentication is enabled on Elasticsearch.
+**password**: Password of the user account to connect with Elasticsearch.
 
 {% /codeInfo %}
 
@@ -72,7 +72,7 @@ This is a sample config for ElasticSearch:
 
 **API Key Authentication**
 
-**apiKey**:  API Key to connect to ElasticSearch required when API Key Authentication is enabled on ElasticSearch.
+**apiKey**:  API Key to connect to Elasticsearch required when API Key Authentication is enabled on Elasticsearch.
 **apiKeyId**: Enter API Key ID In case of API Key Authentication if there is any API Key ID associated with the API Key, otherwise this field can be left blank or skipped.
 
 {% /codeInfo %}
@@ -110,7 +110,7 @@ This is a sample config for ElasticSearch:
 
 
 {% codeInfo srNumber=5 %}
-**connectionTimeoutSecs**: Connection timeout configuration for communicating with ElasticSearch APIs.
+**connectionTimeoutSecs**: Connection timeout configuration for communicating with Elasticsearch APIs.
 {% /codeInfo %}
 
 {% partial file="/v1.2/connectors/yaml/search/source-config-def.md" /%}

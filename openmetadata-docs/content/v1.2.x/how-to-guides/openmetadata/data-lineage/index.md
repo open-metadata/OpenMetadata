@@ -1,6 +1,6 @@
 ---
 title: Data Lineage
-slug: /how-to-guides/openmetadata/data-lineage
+slug: /how-to-guides/data-lineage
 ---
 
 # Overview of Data Lineage
@@ -8,7 +8,7 @@ slug: /how-to-guides/openmetadata/data-lineage
 OpenMetadata tracks data lineage, showing how data moves through the organization's systems. Users can visualize how data is transformed and where it is used, helping with data traceability and impact analysis. OpenMetadata supports lineage for Database, Dashboard, and Pipelines.
 
 {% image
-src="/images/v1.1/how-to-guides/lineage/lineage1.png"
+src="/images/v1.2/how-to-guides/lineage/lineage1.png"
 alt="Data Lineage in OpenMetadata"
 caption="Data Lineage in OpenMetadata"
 /%}
@@ -22,28 +22,28 @@ Watch the video on data lineage to understand the different options to automatic
   color="violet-70"
   bold="Lineage Workflow"
   icon="MdPolyline"
-  href="/how-to-guides/openmetadata/data-lineage/workflow"%}
+  href="/how-to-guides/data-lineage/workflow"%}
   Configure a lineage workflow right from the UI.
  {%/inlineCallout%}
  {%inlineCallout
   color="violet-70"
   bold="Explore Lineage"
   icon="MdPolyline"
-  href="/how-to-guides/openmetadata/data-lineage/explore"%}
+  href="/how-to-guides/data-lineage/explore"%}
   Explore the rich lineage view in OpenMetadata.
  {%/inlineCallout%}
  {%inlineCallout
   color="violet-70"
   bold="Column-Level Lineage"
   icon="MdViewColumn"
-  href="/how-to-guides/openmetadata/data-lineage/column"%}
+  href="/how-to-guides/data-lineage/column"%}
   Explore and edit the rich column-level lineage.
  {%/inlineCallout%}
  {%inlineCallout
   color="violet-70"
   bold="Manual Lineage"
   icon="MdPolyline"
-  href="/how-to-guides/openmetadata/data-lineage/manual"%}
+  href="/how-to-guides/data-lineage/manual"%}
   Edit the table and column level lineage manually.
  {%/inlineCallout%}
 {%/inlineCalloutContainer%}
