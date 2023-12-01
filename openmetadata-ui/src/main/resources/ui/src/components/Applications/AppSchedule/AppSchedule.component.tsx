@@ -158,6 +158,8 @@ const AppSchedule = ({
 
       return cronstrue.toString(cronExp, {
         throwExceptionOnParseError: false,
+        dayOfWeekStartIndexZero: false,
+        monthStartIndexZero: false,
       });
     }
 

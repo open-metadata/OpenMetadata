@@ -51,7 +51,9 @@ export const getQuartzCronExpression = (state: StateValue) => {
     case 'day':
       return `0 ${selectedDayOption.min} ${selectedDayOption.hour} * * ?`;
     case 'week':
-      return `0 ${selectedWeekOption.min} ${selectedWeekOption.hour} ? * ${selectedWeekOption.dow}`;
+      return `0 ${selectedWeekOption.min} ${selectedWeekOption.hour} ? * ${
+        selectedWeekOption.dow + 1
+      }`;
     case 'month':
       return `0 ${selectedMonthOption.min} ${selectedMonthOption.hour} ${selectedMonthOption.dom} * ?`;
     case 'year':
