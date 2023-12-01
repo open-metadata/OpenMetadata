@@ -67,7 +67,7 @@ public class TestCaseResolutionStatusResource
     super(Entity.TEST_CASE_RESOLUTION_STATUS, authorizer);
   }
 
-  public static class TestCaseFailureStatusResultList extends ResultList<TestCaseResolutionStatus> {
+  public static class TestCaseResolutionStatusResultList extends ResultList<TestCaseResolutionStatus> {
     /* Required for serde */
   }
 
@@ -87,7 +87,7 @@ public class TestCaseResolutionStatusResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = TestCaseFailureStatusResultList.class)))
+                    schema = @Schema(implementation = TestCaseResolutionStatusResultList.class)))
       })
   public ResultList<TestCaseResolutionStatus> list(
       @Context SecurityContext securityContext,
@@ -117,8 +117,8 @@ public class TestCaseResolutionStatusResource
       @Parameter(
               description = "Filter test case statuses by status",
               schema = @Schema(implementation = TestCaseResolutionStatusTypes.class))
-          @QueryParam("testCaseFailureStatus")
-          String testCaseFailureStatus,
+          @QueryParam("testCaseResolutionStatusType")
+          String testCaseResolutionStatusType,
       @Parameter(description = "Only list the latest statuses", schema = @Schema(type = "Boolean"))
           @DefaultValue("false")
           @QueryParam("latest")
@@ -137,7 +137,7 @@ public class TestCaseResolutionStatusResource
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
     ListFilter filter = new ListFilter(null);
-    filter.addQueryParam("testCaseFailureStatus", testCaseFailureStatus);
+    filter.addQueryParam("testCaseResolutionStatusType", testCaseResolutionStatusType);
     filter.addQueryParam("assignee", assignee);
     filter.addQueryParam("reviewer", reviewer);
     filter.addQueryParam("entityFQNHash", testCaseFQN);
@@ -162,7 +162,7 @@ public class TestCaseResolutionStatusResource
       })
   public ResultList<TestCaseResolutionStatus> listForSequenceId(
       @Context SecurityContext securityContext,
-      @Parameter(description = "Sequence ID", schema = @Schema(type = "UUID")) @NonNull @QueryParam("sequenceId")
+      @Parameter(description = "Sequence ID", schema = @Schema(type = "UUID")) @PathParam("sequenceId")
           UUID sequenceId) {
     OperationContext operationContext = new OperationContext(Entity.TEST_CASE, MetadataOperation.VIEW_ALL);
     ResourceContextInterface resourceContext = ReportDataContext.builder().build();

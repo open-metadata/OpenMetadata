@@ -32,7 +32,7 @@ public class TestCaseResolutionStatusRepository extends EntityTimeSeriesReposito
   public ResultList<TestCaseResolutionStatus> listTestCaseFailureStatusesForSequenceId(UUID sequenceId) {
     List<String> jsons =
         ((CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO) timeSeriesDao)
-            .listTestCaseFailureStatusesForSequenceId(sequenceId);
+            .listTestCaseFailureStatusesForSequenceId(sequenceId.toString());
     List<TestCaseResolutionStatus> testCaseFailureStatuses =
         JsonUtils.readObjects(jsons, TestCaseResolutionStatus.class);
 

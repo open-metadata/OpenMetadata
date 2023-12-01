@@ -1029,7 +1029,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         continue;
       }
       if (statusType.equals(TestCaseResolutionStatusTypes.InReview)) {
-        createTestCaseFailureStatus.setTestCaseResolutionStatusDetails(new InReview().withReviewer(USER1_REF));
+        createTestCaseFailureStatus.setTestCaseResolutionStatusDetails(new InReview().withReviewer(USER2_REF));
       }
       testCaseFailureStatuses.add(createTestCaseFailureStatus);
     }
@@ -1047,7 +1047,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     // Get the test case failure statuses
     Long startTs = System.currentTimeMillis() - 1000;
     Long endTs = System.currentTimeMillis() + 1000;
-    ResultList<TestCaseResolutionStatus> testCaseFailureStatusResultList = getTestCaseFailureStatus(startTs, endTs);
+    ResultList<TestCaseResolutionStatus> testCaseFailureStatusResultList =
+        getTestCaseFailureStatus(startTs, endTs, null, null, null);
     assertEquals(10, testCaseFailureStatusResultList.getData().size());
 
     // check we have only 2 distinct sequence IDs
@@ -1055,6 +1056,33 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         testCaseFailureStatusResultList.getData().stream().map(TestCaseResolutionStatus::getSequenceId).toList();
     Set<UUID> sequenceIdSet = new HashSet<>(sequenceIds);
     assertEquals(2, sequenceIdSet.size());
+
+    TestCaseResolutionStatus testCaseResolutionStatus = testCaseFailureStatusResultList.getData().get(0);
+    UUID sequenceId = sequenceIds.get(0);
+
+    // Get the test case failure statuses by ID
+    TestCaseResolutionStatus storedTestCaseResolution = getTestCaseFailureStatusById(testCaseResolutionStatus.getId());
+    assertEquals(storedTestCaseResolution.getId(), testCaseResolutionStatus.getId());
+
+    // Get the test case failure statuses by sequence ID
+    ResultList<TestCaseResolutionStatus> storedTestCaseResolutions = getTestCaseFailureStatusBySequenceId(sequenceId);
+    assertEquals(storedTestCaseResolutions.getData().size(), 5);
+    assertEquals(sequenceId, storedTestCaseResolutions.getData().get(0).getSequenceId());
+
+    // Get the test case resolution statuses by status type
+    storedTestCaseResolutions =
+        getTestCaseFailureStatus(startTs, endTs, null, TestCaseResolutionStatusTypes.Assigned, null);
+    assertEquals(storedTestCaseResolutions.getData().size(), 2);
+    assertEquals(
+        TestCaseResolutionStatusTypes.Assigned,
+        storedTestCaseResolutions.getData().get(0).getTestCaseResolutionStatusType());
+
+    // Get test case resolution statuses by assignee name
+    storedTestCaseResolutions = getTestCaseFailureStatus(startTs, endTs, USER1.getName(), null, null);
+    assertEquals(storedTestCaseResolutions.getData().size(), 2);
+
+    storedTestCaseResolutions = getTestCaseFailureStatus(startTs, endTs, null, null, USER2.getName());
+    assertEquals(storedTestCaseResolutions.getData().size(), 2);
   }
 
   @Test
@@ -1292,6 +1320,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertEquals(expectedTestCaseResults.size(), actualTestCaseResults.getData().size());
     Map<Long, TestCaseResult> testCaseResultMap = new HashMap<>();
     for (TestCaseResult result : actualTestCaseResults.getData()) {
+      result.setTestCaseResolutionStatusReference(null);
       testCaseResultMap.put(result.getTimestamp(), result);
     }
     for (TestCaseResult result : expectedTestCaseResults) {
@@ -1424,13 +1453,38 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     }
   }
 
-  private ResultList<TestCaseResolutionStatus> getTestCaseFailureStatus(Long startTs, Long endTs)
+  private ResultList<TestCaseResolutionStatus> getTestCaseFailureStatus(
+      Long startTs,
+      Long endTs,
+      String assignee,
+      TestCaseResolutionStatusTypes testCaseResolutionStatusType,
+      String reviewer)
       throws HttpResponseException {
     WebTarget target = getCollection().path("/testCaseResolutionStatus");
     target = target.queryParam("startTs", startTs);
     target = target.queryParam("endTs", endTs);
+    target = assignee != null ? target.queryParam("assignee", assignee) : target;
+    target = reviewer != null ? target.queryParam("reviewer", reviewer) : target;
+    target =
+        testCaseResolutionStatusType != null
+            ? target.queryParam("testCaseResolutionStatusType", testCaseResolutionStatusType)
+            : target;
     return TestUtils.get(
-        target, TestCaseResolutionStatusResource.TestCaseFailureStatusResultList.class, ADMIN_AUTH_HEADERS);
+        target, TestCaseResolutionStatusResource.TestCaseResolutionStatusResultList.class, ADMIN_AUTH_HEADERS);
+  }
+
+  private TestCaseResolutionStatus getTestCaseFailureStatusById(UUID id) throws HttpResponseException {
+    String pathUrl = "/testCaseResolutionStatus/" + id;
+    WebTarget target = getCollection().path(pathUrl);
+    return TestUtils.get(target, TestCaseResolutionStatus.class, ADMIN_AUTH_HEADERS);
+  }
+
+  private ResultList<TestCaseResolutionStatus> getTestCaseFailureStatusBySequenceId(UUID id)
+      throws HttpResponseException {
+    String pathUrl = "/testCaseResolutionStatus/sequenceId/" + id;
+    WebTarget target = getCollection().path(pathUrl);
+    return TestUtils.get(
+        target, TestCaseResolutionStatusResource.TestCaseResolutionStatusResultList.class, ADMIN_AUTH_HEADERS);
   }
 
   private ResultList<TestCaseResolutionStatus> getTestCaseFailureStatus(
@@ -1450,7 +1504,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             : target.queryParam("endTs", System.currentTimeMillis() + 100000);
 
     return TestUtils.get(
-        target, TestCaseResolutionStatusResource.TestCaseFailureStatusResultList.class, ADMIN_AUTH_HEADERS);
+        target, TestCaseResolutionStatusResource.TestCaseResolutionStatusResultList.class, ADMIN_AUTH_HEADERS);
   }
 
   private TestCaseResolutionStatus createTestCaseFailureStatus(

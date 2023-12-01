@@ -3454,7 +3454,7 @@ public interface CollectionDAO {
         value =
             "SELECT json FROM test_case_resolution_status_time_series "
                 + "WHERE sequenceId = :sequenceId ORDER BY timestamp DESC")
-    List<String> listTestCaseFailureStatusesForSequenceId(@Bind("sequenceId") UUID sequenceId);
+    List<String> listTestCaseFailureStatusesForSequenceId(@Bind("sequenceId") String sequenceId);
   }
 
   class EntitiesCountRowMapper implements RowMapper<EntitiesCount> {
