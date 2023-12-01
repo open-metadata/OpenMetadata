@@ -23,7 +23,8 @@
           "description": "Service Name to get descriptions from.",
           "type": "string",
           "format": "autoComplete",
-          "autoCompleteType": "database_service_search_index"
+          "autoCompleteType": "database_service_search_index",
+          "additionalProperties": true
         },
         "databases": {
           "title": "Databases",
@@ -33,7 +34,8 @@
             "placeholder": "Search Databases",
             "type": "string",
             "format": "autoComplete",
-            "autoCompleteType": "database_search_index"
+            "autoCompleteType": "database_search_index",
+            "additionalProperties": true
           }
         }
       },
