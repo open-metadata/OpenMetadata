@@ -117,10 +117,13 @@ const TagsPage = () => {
   );
 
   const fetchCurrentClassificationPermission = async () => {
+    if (!currentClassification?.id) {
+      return;
+    }
     try {
       const response = await getEntityPermission(
         ResourceEntity.CLASSIFICATION,
-        currentClassification?.id as string
+        currentClassification?.id
       );
       setClassificationPermissions(response);
     } catch (error) {
