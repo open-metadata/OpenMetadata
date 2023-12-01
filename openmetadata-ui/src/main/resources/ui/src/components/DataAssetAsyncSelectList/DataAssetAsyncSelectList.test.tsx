@@ -12,6 +12,7 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
+import { SearchIndex } from '../../enums/search.enum';
 import { searchQuery } from '../../rest/searchAPI';
 import DataAssetAsyncSelectList from './DataAssetAsyncSelectList';
 import { DataAssetOption } from './DataAssetAsyncSelectList.interface';
@@ -21,6 +22,41 @@ jest.mock('../../utils/TableUtils');
 jest.mock('../../utils/EntityUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('Test'),
 }));
+jest.mock('../common/ProfilePicture/ProfilePicture', () => {
+  return jest
+    .fn()
+    .mockReturnValue(<p data-testid="profile-pic">ProfilePicture</p>);
+});
+
+const mockUserData = {
+  data: {
+    hits: {
+      hits: [
+        {
+          _source: {
+            id: '4d499590-89ef-438d-9c49-3f05c4041144',
+            name: 'admin',
+            fullyQualifiedName: 'admin',
+            entityType: 'user',
+            displayName: 'admin',
+          },
+        },
+        {
+          _source: {
+            id: '93057069-3836-4fc0-b85e-a456e52b4424',
+            name: 'user1',
+            fullyQualifiedName: 'user1',
+            entityType: 'user',
+            displayName: 'user1',
+          },
+        },
+      ],
+      total: {
+        value: 2,
+      },
+    },
+  },
+};
 
 const mockSearchAPIResponse = {
   data: {
@@ -86,6 +122,28 @@ describe('DataAssetAsyncSelectList', () => {
     });
 
     expect(searchQuery).toHaveBeenCalledTimes(1);
+  });
+
+  it('should render profile picture if search index is user', async () => {
+    const mockSearchQuery = searchQuery as jest.Mock;
+    mockSearchQuery.mockImplementationOnce((params) => {
+      expect(params).toEqual(
+        expect.objectContaining({ searchIndex: SearchIndex.USER })
+      );
+
+      return Promise.resolve(mockUserData.data);
+    });
+
+    const { container } = render(
+      <DataAssetAsyncSelectList searchIndex={SearchIndex.USER} />
+    );
+
+    await act(async () => {
+      toggleOpen(container);
+    });
+
+    expect(searchQuery).toHaveBeenCalledTimes(1);
+    expect(screen.getAllByTestId('profile-pic')).toHaveLength(2);
   });
 
   it('should call onChange when an option is selected', async () => {
