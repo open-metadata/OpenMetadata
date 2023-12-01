@@ -10,16 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CustomMetric } from '../../../generated/tests/customMetric';
-import { MetricChartType } from '../../ProfilerDashboard/profilerDashboard.interface';
+import { FormInstance } from 'antd';
+import { Column } from '../../generated/entity/data/table';
+import { CustomMetric } from '../../generated/tests/customMetric';
 
-export interface CustomMetricGraphsProps {
-  customMetricsGraphData?: Record<string, MetricChartType['data']>;
-  customMetrics?: CustomMetric[];
-  isLoading: boolean;
-}
-
-export enum MenuOptions {
-  EDIT = 'edit',
-  DELETE = 'delete',
+export interface CustomMetricFormProps {
+  isColumnMetric: boolean;
+  initialValues?: CustomMetric;
+  onFinish: (values: CustomMetric) => void;
+  form?: FormInstance<CustomMetric>;
+  columnOptions?: Column[];
 }

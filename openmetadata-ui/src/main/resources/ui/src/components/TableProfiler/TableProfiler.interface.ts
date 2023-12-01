@@ -47,6 +47,7 @@ export type TableProfilerContextType = {
   onTestCaseUpdate: (testCase?: TestCase) => void;
   onSettingButtonClick: () => void;
   fetchAllTests: (params?: ListTestCaseParams) => Promise<void>;
+  onCustomMetricUpdate: (table: Table) => void;
   isProfilingEnabled: boolean;
   splitTestCases: SplitTestCasesType;
 };

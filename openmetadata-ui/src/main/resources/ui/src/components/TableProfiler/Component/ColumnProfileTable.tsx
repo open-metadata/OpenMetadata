@@ -46,7 +46,10 @@ import { Column, ColumnProfile } from '../../../generated/entity/data/table';
 import { TestCase, TestCaseStatus } from '../../../generated/tests/testCase';
 import { formatNumberWithComma } from '../../../utils/CommonUtils';
 import { updateTestResults } from '../../../utils/DataQualityAndProfilerUtils';
-import { getAddDataQualityTableTestPath } from '../../../utils/RouterUtils';
+import {
+  getAddCustomMetricPath,
+  getAddDataQualityTableTestPath,
+} from '../../../utils/RouterUtils';
 import { getDecodedFqn, getEncodedFqn } from '../../../utils/StringsUtils';
 import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
@@ -279,7 +282,15 @@ const ColumnProfileTable = () => {
     {
       label: <TabsLabel id="matrix" name={t('label.matrix')} />,
       key: '2',
-      // onClick: () => handleAddTestClick(ProfilerDashboardType.COLUMN),
+      onClick: () => {
+        history.push({
+          pathname: getAddCustomMetricPath(
+            ProfilerDashboardType.COLUMN,
+            getDecodedFqn(fqn)
+          ),
+          search: activeColumnFqn ? Qs.stringify({ activeColumnFqn }) : '',
+        });
+      },
     },
   ];
 

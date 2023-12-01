@@ -10,9 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Card, Col, Dropdown, Row, Typography } from 'antd';
-import { isEmpty, last, toPairs } from 'lodash';
-import React, { useMemo } from 'react';
+import {
+  Button,
+  Card,
+  Col,
+  Dropdown,
+  Form,
+  Modal,
+  Row,
+  Typography,
+} from 'antd';
+import { AxiosError } from 'axios';
+import { isEmpty, isUndefined, last, omit, toPairs } from 'lodash';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   CartesianGrid,
@@ -27,42 +37,135 @@ import {
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { GRAPH_BACKGROUND_COLOR } from '../../../constants/constants';
 import { TOTAL_ENTITY_CHART_COLOR } from '../../../constants/DataInsight.constants';
+import { EntityType } from '../../../enums/entity.enum';
+import { CustomMetric } from '../../../generated/entity/data/table';
+import {
+  deleteCustomMetric,
+  putCustomMetric,
+} from '../../../rest/customMetricAPI';
 import { axisTickFormatter, tooltipFormatter } from '../../../utils/ChartUtils';
 import { getRandomHexColor } from '../../../utils/DataInsightUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import CustomMetricForm from '../../CustomMetricForm/CustomMetricForm.component';
 import ProfilerLatestValue from '../../ProfilerDashboard/component/ProfilerLatestValue';
 import { useTableProfiler } from '../TableProfilerProvider';
 import './custom-metric-graphs.style.less';
-import { CustomMetricGraphsProps } from './CustomMetricGraphs.interface';
+import {
+  CustomMetricGraphsProps,
+  MenuOptions,
+} from './CustomMetricGraphs.interface';
 
 const CustomMetricGraphs = ({
   customMetricsGraphData,
   isLoading,
-}: // customMetrics,
-CustomMetricGraphsProps) => {
+  customMetrics,
+}: CustomMetricGraphsProps) => {
   const { t } = useTranslation();
-  const { permissions } = useTableProfiler();
+  const [form] = Form.useForm<CustomMetric>();
+  const {
+    permissions,
+    customMetric: tableDetails,
+    onCustomMetricUpdate,
+  } = useTableProfiler();
   const editPermission =
     permissions?.EditAll || permissions?.EditDataProfile || false;
   const deletePermission = permissions?.Delete || false;
 
+  const [selectedMetrics, setSelectedMetrics] = useState<CustomMetric>();
+  const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
+  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+  const [isActionLoading, setIsActionLoading] = useState(false);
+
   const items = useMemo(
     () => [
       {
-        key: 'edit',
+        key: MenuOptions.EDIT,
         label: t('label.edit'),
-        // onClick: () => console.log('edit'),
         disabled: !editPermission,
       },
       {
-        key: 'delete',
+        key: MenuOptions.DELETE,
         label: t('label.delete'),
-        // onClick: () => console.log('delete'),
         disabled: !deletePermission,
       },
     ],
     []
   );
+
+  const handleModalCancel = () => {
+    setIsDeleteModalVisible(false);
+    setIsEditModalVisible(false);
+    setSelectedMetrics(undefined);
+  };
+
+  const handleDeleteClick = async () => {
+    if (tableDetails && selectedMetrics) {
+      setIsActionLoading(true);
+      try {
+        const { data } = await deleteCustomMetric({
+          tableId: tableDetails.id,
+          customMetricName: selectedMetrics.name,
+          columnName: selectedMetrics.columnName,
+        });
+        showSuccessToast(
+          t('server.entity-deleted-successfully', {
+            entity: selectedMetrics.name,
+          })
+        );
+        onCustomMetricUpdate(data);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        handleModalCancel();
+        setIsActionLoading(false);
+      }
+    }
+  };
+
+  const handleEditFormSubmit = async (values: CustomMetric) => {
+    if (tableDetails) {
+      setIsActionLoading(true);
+      const updatedMetric = {
+        ...omit(selectedMetrics, ['id']),
+        ...values,
+      };
+
+      try {
+        const { data } = await putCustomMetric(tableDetails.id, updatedMetric);
+        showSuccessToast(
+          t('server.update-entity-success', {
+            entity: selectedMetrics?.name,
+          })
+        );
+        onCustomMetricUpdate(data);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        handleModalCancel();
+        setIsActionLoading(false);
+      }
+    }
+  };
+
+  const handleMenuClick = (key: string, metricName: string) => {
+    setSelectedMetrics(
+      customMetrics?.find((metric) => metric.name === metricName)
+    );
+    switch (key) {
+      case MenuOptions.EDIT:
+        setIsEditModalVisible(true);
+
+        break;
+      case MenuOptions.DELETE:
+        setIsDeleteModalVisible(true);
+
+        break;
+      default:
+        break;
+    }
+  };
 
   return (
     <Row gutter={[16, 16]}>
@@ -77,7 +180,10 @@ CustomMetricGraphsProps) => {
               extra={
                 editPermission || deletePermission ? (
                   <Dropdown
-                    menu={{ items }}
+                    menu={{
+                      items,
+                      onClick: (info) => handleMenuClick(info.key, key),
+                    }}
                     placement="bottomLeft"
                     trigger={['click']}>
                     <Button
@@ -163,6 +269,37 @@ CustomMetricGraphsProps) => {
           </Col>
         );
       })}
+      <DeleteWidgetModal
+        allowSoftDelete={false}
+        entityName={selectedMetrics?.name ?? t('label.custom-metric')}
+        entityType={EntityType.CUSTOM_METRIC}
+        loading={isActionLoading}
+        visible={isDeleteModalVisible}
+        onCancel={handleModalCancel}
+        onDelete={handleDeleteClick}
+      />
+      {isEditModalVisible && !isUndefined(selectedMetrics) && (
+        <Modal
+          centered
+          destroyOnClose
+          cancelButtonProps={{ disabled: isActionLoading }}
+          closable={false}
+          okButtonProps={{ loading: isActionLoading }}
+          okText={t('label.save')}
+          open={isEditModalVisible}
+          title={t('label.edit-entity', { entity: selectedMetrics.name })}
+          width={650}
+          onCancel={handleModalCancel}
+          onOk={() => form.submit()}>
+          <CustomMetricForm
+            columnOptions={tableDetails?.columns}
+            form={form}
+            initialValues={selectedMetrics}
+            isColumnMetric={!isUndefined(selectedMetrics.columnName)}
+            onFinish={handleEditFormSubmit}
+          />
+        </Modal>
+      )}
     </Row>
   );
 };

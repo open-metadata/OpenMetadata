@@ -42,7 +42,10 @@ import {
   getSystemProfileList,
   getTableProfilesList,
 } from '../../../rest/tableAPI';
-import { getAddDataQualityTableTestPath } from '../../../utils/RouterUtils';
+import {
+  getAddCustomMetricPath,
+  getAddDataQualityTableTestPath,
+} from '../../../utils/RouterUtils';
 import { getDecodedFqn } from '../../../utils/StringsUtils';
 import {
   calculateCustomMetrics,
@@ -116,7 +119,14 @@ const TableProfilerChart = ({
     {
       label: <TabsLabel id="matrix" name={t('label.matrix')} />,
       key: '2',
-      // onClick: () => handleAddTestClick(ProfilerDashboardType.COLUMN),
+      onClick: () => {
+        history.push(
+          getAddCustomMetricPath(
+            ProfilerDashboardType.TABLE,
+            getDecodedFqn(datasetFQN)
+          )
+        );
+      },
     },
   ];
 

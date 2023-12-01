@@ -181,6 +181,9 @@ export const TableProfilerProvider = ({
   const handleSettingModal = (visible: boolean) => {
     setSettingModalVisible(visible);
   };
+  const handleUpdateCustomMetrics = (customMetric: Table) => {
+    setCustomMetric(customMetric);
+  };
 
   const fetchLatestProfilerData = async () => {
     // As we are encoding the fqn in API function to apply all over the application
@@ -270,6 +273,7 @@ export const TableProfilerProvider = ({
       isProfilingEnabled: !isUndefined(tableProfiler?.profile),
       splitTestCases,
       customMetric,
+      onCustomMetricUpdate: handleUpdateCustomMetrics,
     };
   }, [
     isTestsLoading,
