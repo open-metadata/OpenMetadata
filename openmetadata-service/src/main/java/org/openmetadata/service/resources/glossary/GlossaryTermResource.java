@@ -118,6 +118,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     for (LoadGlossary loadGlossary : loadGlossaries) {
       Glossary glossary =
           GlossaryResource.getGlossary(glossaryRepository, loadGlossary.getCreateGlossary(), ADMIN_USER_NAME);
+      glossary.setFullyQualifiedName(glossary.getName());
       glossaryRepository.initializeEntity(glossary);
 
       List<GlossaryTerm> termsToCreate = new ArrayList<>();
@@ -201,7 +202,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     EntityReference glossary = null;
     if (glossaryIdParam != null) {
       glossary = repository.getGlossary(glossaryIdParam);
-      fqn = glossary.getName();
+      fqn = glossary.getFullyQualifiedName();
     }
 
     // Filter by glossary parent term
