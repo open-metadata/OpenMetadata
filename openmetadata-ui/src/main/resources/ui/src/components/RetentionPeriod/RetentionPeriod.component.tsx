@@ -39,8 +39,12 @@ const RetentionPeriod = ({
     if (!retentionPeriod) {
       return NO_DATA_PLACEHOLDER;
     }
-
     const durationObject = Duration.fromISO(retentionPeriod);
+
+    if (!durationObject.isValid) {
+      return NO_DATA_PLACEHOLDER;
+    }
+
     const durationObjectToObj = durationObject.toObject();
 
     if (durationObjectToObj.days) {
@@ -95,7 +99,7 @@ const RetentionPeriod = ({
 
         <Button
           className="flex-center p-0"
-          data-testid="edit-tier"
+          data-testid="edit-retention-period-button"
           icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
           size="small"
           type="text"

@@ -61,7 +61,7 @@ import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/Anno
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
-import RetentionPeriod from '../../RetentionPeriod/RetentionPeriod.componet';
+import RetentionPeriod from '../../RetentionPeriod/RetentionPeriod.component';
 import {
   DataAssetHeaderInfo,
   DataAssetsHeaderProps,
