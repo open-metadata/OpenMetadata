@@ -12,36 +12,42 @@
  */
 import { Button, Form, Space } from 'antd';
 import { AxiosError } from 'axios';
-import { noop } from 'lodash';
 import QueryString from 'qs';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
+import { useHistory, useLocation, useParams } from 'react-router-dom';
 import RightPanel from '../../components/AddDataQualityTest/components/RightPanel';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import CustomMetricForm from '../../components/CustomMetricForm/CustomMetricForm.component';
 import Loader from '../../components/Loader/Loader';
+import { TableProfilerTab } from '../../components/ProfilerDashboard/profilerDashboard.interface';
 import SingleColumnProfile from '../../components/TableProfiler/Component/SingleColumnProfile';
 import TableProfilerChart from '../../components/TableProfiler/Component/TableProfilerChart';
 import { getTableTabPath } from '../../constants/constants';
 import { DEFAULT_RANGE_DATA } from '../../constants/profiler.constant';
-import { EntityType } from '../../enums/entity.enum';
+import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { ProfilerDashboardType } from '../../enums/table.enum';
 import { CustomMetric, Table } from '../../generated/entity/data/table';
+import { putCustomMetric } from '../../rest/customMetricAPI';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
+import { getNameFromFQN } from '../../utils/CommonUtils';
 import { getEntityBreadcrumbs, getEntityName } from '../../utils/EntityUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const AddCustomMetricPage = () => {
   const { fqn, dashboardType } =
     useParams<{ fqn: string; dashboardType: ProfilerDashboardType }>();
+  const history = useHistory();
+  const location = useLocation();
   const isColumnMetric = dashboardType === ProfilerDashboardType.COLUMN;
   const { t } = useTranslation();
   const [form] = Form.useForm<CustomMetric>();
   const [table, setTable] = useState<Table>();
   const [isLoading, setIsLoading] = useState(true);
+  const [isActionLoading, setIsActionLoading] = useState(false);
+  const columnName = Form.useWatch('columnName', form);
 
   const breadcrumb = useMemo(() => {
     const data: TitleBreadcrumbProps['titleLinks'] = table
@@ -64,6 +70,60 @@ const AddCustomMetricPage = () => {
     return data;
   }, [table, isColumnMetric]);
 
+  const { activeColumnFqn } = useMemo(() => {
+    const param = location.search;
+    const searchData = QueryString.parse(
+      param.startsWith('?') ? param.substring(1) : param
+    );
+
+    return searchData as { activeColumnFqn: string };
+  }, [location.search]);
+
+  const initialValues = useMemo(
+    () =>
+      activeColumnFqn
+        ? ({ columnName: getNameFromFQN(activeColumnFqn) } as CustomMetric)
+        : undefined,
+    [activeColumnFqn]
+  );
+
+  const handleBackClick = () => {
+    if (isColumnMetric) {
+      history.push({
+        pathname: getTableTabPath(
+          table?.fullyQualifiedName ?? '',
+          EntityTabs.PROFILER
+        ),
+        search: QueryString.stringify({
+          activeTab: TableProfilerTab.COLUMN_PROFILE,
+          activeColumnFqn,
+        }),
+      });
+    } else {
+      history.push(
+        getTableTabPath(table?.fullyQualifiedName ?? '', EntityTabs.PROFILER)
+      );
+    }
+  };
+
+  const handleFormSubmit = async (values: CustomMetric) => {
+    if (table) {
+      setIsActionLoading(true);
+      try {
+        await putCustomMetric(table.id, values);
+        showSuccessToast(
+          t('server.create-entity-success', {
+            entity: values.name,
+          })
+        );
+        handleBackClick();
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+        setIsActionLoading(false);
+      }
+    }
+  };
+
   const fetchTableData = async () => {
     setIsLoading(true);
     try {
@@ -83,14 +143,18 @@ const AddCustomMetricPage = () => {
     fetchTableData();
   }, [fqn]);
 
-  const { activeColumnFqn } = useMemo(() => {
-    const param = location.search;
-    const searchData = QueryString.parse(
-      param.startsWith('?') ? param.substring(1) : param
+  useEffect(() => {
+    const selectedColumn = table?.columns.find(
+      (column) => column.name === columnName
     );
-
-    return searchData as { activeColumnFqn: string };
-  }, [location.search]);
+    if (selectedColumn) {
+      history.push({
+        search: QueryString.stringify({
+          activeColumnFqn: selectedColumn?.fullyQualifiedName,
+        }),
+      });
+    }
+  }, [columnName]);
 
   const secondPanel = (
     <>
@@ -123,21 +187,25 @@ const AddCustomMetricPage = () => {
             <TitleBreadcrumb titleLinks={breadcrumb} />
             <div className="m-t-md">
               <CustomMetricForm
-                columnOptions={table?.columns}
                 form={form}
+                initialValues={initialValues}
                 isColumnMetric={isColumnMetric}
-                onFinish={noop}
+                table={table}
+                onFinish={handleFormSubmit}
               />
-              <Form form={form}>
-                <Form.Item>
-                  <Space className="w-full justify-end">
-                    <Button>{t('label.cancel')}</Button>
-                    <Button htmlType="submit" type="primary">
-                      {t('label.submit')}
-                    </Button>
-                  </Space>
-                </Form.Item>
-              </Form>
+
+              <Space className="w-full justify-end">
+                <Button disabled={isActionLoading} onClick={handleBackClick}>
+                  {t('label.cancel')}
+                </Button>
+                <Button
+                  htmlType="submit"
+                  loading={isActionLoading}
+                  type="primary"
+                  onClick={() => form.submit()}>
+                  {t('label.submit')}
+                </Button>
+              </Space>
             </div>
           </div>
         ),

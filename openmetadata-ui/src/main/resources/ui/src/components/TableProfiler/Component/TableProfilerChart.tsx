@@ -117,7 +117,7 @@ const TableProfilerChart = ({
       },
     },
     {
-      label: <TabsLabel id="matrix" name={t('label.matrix')} />,
+      label: <TabsLabel id="metric" name={t('label.custom-metric')} />,
       key: '2',
       onClick: () => {
         history.push(

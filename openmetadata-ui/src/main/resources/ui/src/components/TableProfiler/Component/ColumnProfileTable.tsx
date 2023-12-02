@@ -280,7 +280,7 @@ const ColumnProfileTable = () => {
       },
     },
     {
-      label: <TabsLabel id="matrix" name={t('label.matrix')} />,
+      label: <TabsLabel id="metric" name={t('label.custom-metric')} />,
       key: '2',
       onClick: () => {
         history.push({
@@ -297,7 +297,8 @@ const ColumnProfileTable = () => {
   const selectedColumnTestsObj = useMemo(() => {
     const temp = filter(
       columnTests,
-      (test: TestCase) => test.entityFQN === activeColumnFqn
+      (test: TestCase) =>
+        test.entityFQN === activeColumnFqn && !isUndefined(test.testCaseResult)
     );
 
     const statusDict = {

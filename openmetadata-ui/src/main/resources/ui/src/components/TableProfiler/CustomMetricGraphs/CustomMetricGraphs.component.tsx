@@ -292,10 +292,11 @@ const CustomMetricGraphs = ({
           onCancel={handleModalCancel}
           onOk={() => form.submit()}>
           <CustomMetricForm
-            columnOptions={tableDetails?.columns}
+            isEditMode
             form={form}
             initialValues={selectedMetrics}
             isColumnMetric={!isUndefined(selectedMetrics.columnName)}
+            table={tableDetails}
             onFinish={handleEditFormSubmit}
           />
         </Modal>

@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 import { Form, Input, Select } from 'antd';
-import { isUndefined } from 'lodash';
-import React, { useEffect, useState } from 'react';
+import QueryString from 'qs';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLocation } from 'react-router-dom';
+import { ENTITY_NAME_REGEX } from '../../constants/regex.constants';
 import { CSMode } from '../../enums/codemirror.enum';
 import { CustomMetric } from '../../generated/entity/data/table';
 import { getEntityName } from '../../utils/EntityUtils';
@@ -26,10 +28,37 @@ const CustomMetricForm = ({
   initialValues,
   onFinish,
   form,
-  columnOptions,
+  table,
+  isEditMode = false,
 }: CustomMetricFormProps) => {
   const { t } = useTranslation();
+  const location = useLocation();
   const [isLoading, setIsLoading] = useState(true);
+
+  const { activeColumnFqn } = useMemo(() => {
+    const param = location.search;
+    const searchData = QueryString.parse(
+      param.startsWith('?') ? param.substring(1) : param
+    );
+
+    return searchData as { activeColumnFqn: string };
+  }, [location.search]);
+
+  const { metricNames, columnOptions } = useMemo(() => {
+    let customMetrics = table?.customMetrics ?? [];
+
+    if (isColumnMetric) {
+      customMetrics =
+        table?.columns?.find(
+          (column) => column.fullyQualifiedName === activeColumnFqn
+        )?.customMetrics ?? [];
+    }
+
+    return {
+      metricNames: customMetrics.map((metric) => metric.name),
+      columnOptions: table ? table.columns : [],
+    };
+  }, [activeColumnFqn, isColumnMetric, table]);
 
   useEffect(() => {
     if (form && initialValues) {
@@ -54,16 +83,51 @@ const CustomMetricForm = ({
               field: t('label.name'),
             }),
           },
+          {
+            pattern: ENTITY_NAME_REGEX,
+            message: t('message.entity-name-validation'),
+          },
+          {
+            min: 1,
+            max: 128,
+            message: `${t('message.entity-maximum-size', {
+              entity: `${t('label.name')}`,
+              max: '128',
+            })}`,
+          },
+          {
+            validator: (_, value) => {
+              if (metricNames.includes(value) && !isEditMode) {
+                return Promise.reject(
+                  t('message.entity-already-exists', {
+                    entity: t('label.custom-metric'),
+                  })
+                );
+              }
+
+              return Promise.resolve();
+            },
+          },
         ]}>
         <Input
-          disabled={!isUndefined(initialValues)}
+          disabled={isEditMode}
           placeholder={t('label.enter-entity', { entity: t('label.name') })}
         />
       </Form.Item>
       {isColumnMetric && (
-        <Form.Item label={t('label.column')} name="columnName">
+        <Form.Item
+          label={t('label.column')}
+          name="columnName"
+          rules={[
+            {
+              required: true,
+              message: t('label.field-required', {
+                field: t('label.column'),
+              }),
+            },
+          ]}>
           <Select
-            disabled={!isUndefined(initialValues)}
+            disabled={isEditMode}
             placeholder={t('label.please-select-entity', {
               entity: t('label.column'),
             })}>

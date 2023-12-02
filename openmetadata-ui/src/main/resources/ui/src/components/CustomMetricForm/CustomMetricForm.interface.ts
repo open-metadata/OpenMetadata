@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { FormInstance } from 'antd';
-import { Column } from '../../generated/entity/data/table';
+import { Table } from '../../generated/entity/data/table';
 import { CustomMetric } from '../../generated/tests/customMetric';
 
 export interface CustomMetricFormProps {
@@ -19,5 +19,6 @@ export interface CustomMetricFormProps {
   initialValues?: CustomMetric;
   onFinish: (values: CustomMetric) => void;
   form?: FormInstance<CustomMetric>;
-  columnOptions?: Column[];
+  table?: Table;
+  isEditMode?: boolean;
 }
