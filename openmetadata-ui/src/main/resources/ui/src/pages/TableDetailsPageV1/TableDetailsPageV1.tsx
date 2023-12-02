@@ -531,7 +531,10 @@ const TableDetailsPageV1 = () => {
           flex="320px">
           <EntityRightPanel
             afterSlot={
-              <Space className="w-full" direction="vertical" size="large">
+              <Space
+                className="w-full m-t-lg"
+                direction="vertical"
+                size="large">
                 <TableConstraints
                   constraints={tableDetails?.tableConstraints}
                 />
@@ -551,6 +554,7 @@ const TableDetailsPageV1 = () => {
             domain={tableDetails?.domain}
             editTagPermission={editTagsPermission}
             entityFQN={decodedTableFQN}
+            entityId={tableDetails?.id ?? ''}
             entityType={EntityType.TABLE}
             selectedTags={tableTags}
             onTagSelectionChange={handleTagSelection}
