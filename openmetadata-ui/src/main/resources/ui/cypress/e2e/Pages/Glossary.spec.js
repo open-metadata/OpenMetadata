@@ -86,6 +86,12 @@ const checkDisplayName = (displayName) => {
     });
 };
 
+const checkAssetsCount = (assetsCount) => {
+  cy.get('[data-testid="assets"] [data-testid="count"]')
+    .scrollIntoView()
+    .should('have.text', assetsCount);
+};
+
 const validateForm = () => {
   // error messages
   cy.get('#name_help')
@@ -907,6 +913,86 @@ describe('Glossary page should work properly', () => {
     cy.get('[data-testid="entity-header-display-name"]')
       .contains(entity.term)
       .should('be.visible');
+  });
+
+  it('Add asset to glossary term using asset modal', () => {
+    selectActiveGlossary(NEW_GLOSSARY.name);
+    goToAssetsTab(
+      NEW_GLOSSARY_TERMS.term_3.name,
+      NEW_GLOSSARY_TERMS.term_3.fullyQualifiedName,
+      true
+    );
+
+    checkAssetsCount(0);
+    cy.contains('Adding a new Asset is easy, just give it a spin!').should(
+      'be.visible'
+    );
+
+    cy.get('[data-testid="glossary-term-add-button-menu"]').click();
+    cy.get('.ant-dropdown-menu .ant-dropdown-menu-title-content')
+      .contains('Assets')
+      .click();
+
+    cy.get('[data-testid="asset-selection-modal"] .ant-modal-title').should(
+      'contain',
+      'Add Assets'
+    );
+
+    NEW_GLOSSARY_TERMS.term_3.assets.forEach((asset) => {
+      interceptURL('GET', '/api/v1/search/query*', 'searchAssets');
+      cy.get('[data-testid="asset-selection-modal"] [data-testid="searchbar"]')
+        .click()
+        .clear()
+        .type(asset.name);
+
+      verifyResponseStatusCode('@searchAssets', 200);
+
+      cy.get(
+        `[data-testid="table-data-card_${asset.fullyQualifiedName}"] input[type="checkbox"]`
+      ).click();
+    });
+
+    cy.get('[data-testid="save-btn"]').click();
+
+    checkAssetsCount(NEW_GLOSSARY_TERMS.term_3.assets);
+  });
+
+  it('Remove asset from glossary term using asset modal', () => {
+    selectActiveGlossary(NEW_GLOSSARY.name);
+    goToAssetsTab(
+      NEW_GLOSSARY_TERMS.term_3.name,
+      NEW_GLOSSARY_TERMS.term_3.fullyQualifiedName,
+      true
+    );
+
+    checkAssetsCount(NEW_GLOSSARY_TERMS.term_3.assets.length);
+    NEW_GLOSSARY_TERMS.term_3.assets.assets.forEach((asset, index) => {
+      interceptURL('GET', '/api/v1/search/query*', 'searchAssets');
+
+      cy.get(
+        `[data-testid="table-data-card_${asset.fullyQualifiedName}"]`
+      ).within(() => {
+        cy.get('.explore-card-actions').invoke('show');
+        cy.get('.explore-card-actions').within(() => {
+          cy.get('[data-testid="delete-tag"]').click();
+        });
+      });
+
+      cy.get("[data-testid='save-button']").click();
+
+      selectActiveGlossary(NEW_GLOSSARY.name);
+
+      interceptURL('GET', '/api/v1/search/query*', 'assetTab');
+      // go assets tab
+      goToAssetsTab(
+        NEW_GLOSSARY_TERMS.term_3.name,
+        NEW_GLOSSARY_TERMS.term_3.fullyQualifiedName,
+        true
+      );
+      verifyResponseStatusCode('@assetTab', 200);
+
+      checkAssetsCount(NEW_GLOSSARY_TERMS.term_3.assets.length - (index + 1));
+    });
   });
 
   it('Remove Glossary term from entity should work properly', () => {
