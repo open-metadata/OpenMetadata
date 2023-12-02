@@ -111,6 +111,7 @@ import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.security.client.GoogleSSOClientConfig;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ImageList;
@@ -991,7 +992,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     String record = "invalid::User,,,user@domain.com,,,team-invalidCsv,";
     String csv = createCsv(UserCsv.HEADERS, listOf(record), null);
     CsvImportResult result = importCsv(team.getName(), csv, false);
-    assertSummary(result, CsvImportResult.Status.FAILURE, 2, 1, 1);
+    assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
     String[] expectedRows = {resultsHeader, getFailedRecord(record, "[name must match \"\"^(?U)[\\w\\-.]+$\"\"]")};
     assertRows(result, expectedRows);
 
@@ -1000,7 +1001,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     record = "user,,,user@domain.com,,,invalidTeam,";
     csv = createCsv(UserCsv.HEADERS, listOf(record), null);
     result = importCsv(team.getName(), csv, false);
-    assertSummary(result, CsvImportResult.Status.FAILURE, 2, 1, 1);
+    assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
     expectedRows = new String[] {resultsHeader, getFailedRecord(record, EntityCsv.entityNotFound(6, "invalidTeam"))};
     assertRows(result, expectedRows);
 
@@ -1008,7 +1009,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     record = "user,,,user@domain.com,,,team-invalidCsv,invalidRole";
     csv = createCsv(UserCsv.HEADERS, listOf(record), null);
     result = importCsv(team.getName(), csv, false);
-    assertSummary(result, CsvImportResult.Status.FAILURE, 2, 1, 1);
+    assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
     expectedRows = new String[] {resultsHeader, getFailedRecord(record, EntityCsv.entityNotFound(7, "invalidRole"))};
     assertRows(result, expectedRows);
   }
