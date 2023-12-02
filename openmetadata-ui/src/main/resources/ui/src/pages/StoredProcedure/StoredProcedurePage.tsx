@@ -562,6 +562,7 @@ const StoredProcedurePage = () => {
                 domain={storedProcedure?.domain}
                 editTagPermission={editTagsPermission}
                 entityFQN={decodedStoredProcedureFQN}
+                entityId={storedProcedure?.id ?? ''}
                 entityType={EntityType.STORED_PROCEDURE}
                 selectedTags={tags}
                 onTagSelectionChange={handleTagSelection}

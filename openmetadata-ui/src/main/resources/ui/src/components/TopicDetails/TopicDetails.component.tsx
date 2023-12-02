@@ -330,6 +330,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                 domain={topicDetails?.domain}
                 editTagPermission={editTagsPermission}
                 entityFQN={decodedTopicFQN}
+                entityId={topicDetails.id}
                 entityType={EntityType.TOPIC}
                 selectedTags={topicTags}
                 onTagSelectionChange={handleTagSelection}

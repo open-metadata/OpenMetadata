@@ -605,6 +605,7 @@ const PipelineDetails = ({
                 domain={pipelineDetails?.domain}
                 editTagPermission={editTagsPermission}
                 entityFQN={pipelineFQN}
+                entityId={pipelineDetails.id}
                 entityType={EntityType.PIPELINE}
                 selectedTags={tags}
                 onTagSelectionChange={handleTagSelection}

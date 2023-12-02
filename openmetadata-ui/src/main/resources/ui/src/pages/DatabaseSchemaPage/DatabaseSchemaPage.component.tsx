@@ -592,6 +592,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
               domain={databaseSchema?.domain}
               editTagPermission={editTagsPermission}
               entityFQN={decodedDatabaseSchemaFQN}
+              entityId={databaseSchema?.id ?? ''}
               entityType={EntityType.DATABASE_SCHEMA}
               selectedTags={tags}
               onTagSelectionChange={handleTagSelection}

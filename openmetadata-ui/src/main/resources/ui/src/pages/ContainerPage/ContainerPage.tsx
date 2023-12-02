@@ -551,6 +551,7 @@ const ContainerPage = () => {
                   editTagsPermission && !containerData?.deleted
                 }
                 entityFQN={decodedContainerName}
+                entityId={containerData?.id ?? ''}
                 entityType={EntityType.CONTAINER}
                 selectedTags={tags}
                 onTagSelectionChange={handleTagSelection}
