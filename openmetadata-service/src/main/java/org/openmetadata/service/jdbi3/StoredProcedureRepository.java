@@ -100,7 +100,7 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
 
   @Override
   public EntityInterface getParentEntity(StoredProcedure entity, String fields) {
-    return Entity.getEntity(entity.getDatabaseSchema(), fields, Include.NON_DELETED);
+    return Entity.getEntity(entity.getDatabaseSchema(), fields, Include.ALL);
   }
 
   public void setService(StoredProcedure storedProcedure, EntityReference service) {

@@ -86,7 +86,7 @@ public class ChartRepository extends EntityRepository<Chart> {
 
   @Override
   public EntityInterface getParentEntity(Chart entity, String fields) {
-    return Entity.getEntity(entity.getService(), fields, Include.NON_DELETED);
+    return Entity.getEntity(entity.getService(), fields, Include.ALL);
   }
 
   public class ChartUpdater extends ColumnEntityUpdater {
