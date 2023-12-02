@@ -247,7 +247,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
             asset.getFullyQualifiedName(),
             FullyQualifiedName.buildHash(asset.getFullyQualifiedName()),
             allAssetTags,
-            request.getGlossaryTags());
+            request.getGlossaryTags(),
+            false);
         success.add(ref);
         result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
       } catch (Exception ex) {
@@ -520,7 +521,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         Map<String, List<TagLabel>> allAssetTags = daoCollection.tagUsageDAO().getTagsByPrefix(fqnHash, "%", false);
 
         // Assets FQN is not available / we can use fqnHash for now
-        checkMutuallyExclusiveForParentAndSubField("", fqnHash, allAssetTags, updatedTags);
+        checkMutuallyExclusiveForParentAndSubField("", fqnHash, allAssetTags, updatedTags, true);
       }
 
       // Remove current entity tags in the database. It will be added back later from the merged tag list.

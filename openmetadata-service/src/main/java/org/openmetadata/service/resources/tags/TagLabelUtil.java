@@ -138,7 +138,11 @@ public class TagLabelUtil {
   }
 
   public static void checkMutuallyExclusiveForParentAndSubField(
-      String assetFqn, String assetFqnHash, Map<String, List<TagLabel>> allAssetTags, List<TagLabel> glossaryTags) {
+      String assetFqn,
+      String assetFqnHash,
+      Map<String, List<TagLabel>> allAssetTags,
+      List<TagLabel> glossaryTags,
+      boolean validateSubFields) {
     boolean failed = false;
     StringBuilder errorMessage = new StringBuilder();
 
@@ -164,18 +168,20 @@ public class TagLabelUtil {
       }
     }
 
-    // Check SubFields Tags
-    Set<TagLabel> subFieldTags = filteredTags.values().stream().flatMap(List::stream).collect(Collectors.toSet());
-    List<TagLabel> tempList = new ArrayList<>(addDerivedTags(subFieldTags.stream().toList()));
-    tempList.addAll(glossaryTags);
-    try {
-      checkMutuallyExclusive(getUniqueTags(tempList));
-    } catch (IllegalArgumentException ex) {
-      failed = true;
-      errorMessage.append(
-          String.format(
-              "Asset %s has a Subfield Column/Schema/Field containing tags %s which is mutually exclusive with the one of the glossary tags %s",
-              assetFqn, converTagLabelArrayToString(tempList), converTagLabelArrayToString(glossaryTags)));
+    if (validateSubFields) {
+      // Check SubFields Tags
+      Set<TagLabel> subFieldTags = filteredTags.values().stream().flatMap(List::stream).collect(Collectors.toSet());
+      List<TagLabel> tempList = new ArrayList<>(addDerivedTags(subFieldTags.stream().toList()));
+      tempList.addAll(glossaryTags);
+      try {
+        checkMutuallyExclusive(getUniqueTags(tempList));
+      } catch (IllegalArgumentException ex) {
+        failed = true;
+        errorMessage.append(
+            String.format(
+                "Asset %s has a Subfield Column/Schema/Field containing tags %s which is mutually exclusive with the one of the glossary tags %s",
+                assetFqn, converTagLabelArrayToString(tempList), converTagLabelArrayToString(glossaryTags)));
+      }
     }
 
     // Throw Exception if failed
