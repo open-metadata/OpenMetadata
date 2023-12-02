@@ -1596,7 +1596,6 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     change = getChangeDescription(table, CHANGE_CONSOLIDATED);
     fieldAdded(change, "retentionPeriod", "10D");
     patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
-    
   }
 
   @Test
