@@ -249,7 +249,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
 
   @Override
   public EntityInterface getParentEntity(SearchIndex entity, String fields) {
-    return Entity.getEntity(entity.getService(), fields, Include.NON_DELETED);
+    return Entity.getEntity(entity.getService(), fields, Include.ALL);
   }
 
   @Override

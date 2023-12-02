@@ -379,8 +379,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   @Override
   public EntityInterface getParentEntity(GlossaryTerm entity, String fields) {
     return entity.getParent() != null
-        ? getEntity(entity.getParent(), fields, Include.NON_DELETED)
-        : getEntity(entity.getGlossary(), fields, Include.NON_DELETED);
+        ? Entity.getEntity(entity.getParent(), fields, Include.ALL)
+        : Entity.getEntity(entity.getGlossary(), fields, Include.ALL);
   }
 
   private void addGlossaryRelationship(GlossaryTerm term) {

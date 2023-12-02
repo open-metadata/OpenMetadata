@@ -250,7 +250,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   @Override
   public EntityInterface getParentEntity(Pipeline entity, String fields) {
-    return Entity.getEntity(entity.getService(), fields, Include.NON_DELETED);
+    return Entity.getEntity(entity.getService(), fields, Include.ALL);
   }
 
   @Override
