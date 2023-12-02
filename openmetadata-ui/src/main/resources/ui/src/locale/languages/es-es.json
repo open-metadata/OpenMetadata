@@ -1260,6 +1260,7 @@
     "data-insight-report-send-success-message": "Data Insight Report sent successfully.",
     "data-insight-subtitle": "Obtenga una vista global de la salud de todos sus activos de datos a lo largo del tiempo.",
     "database-service-name-message": "Agregue los nombres de servicio de la base de datos para crear la dependencia de linaje.",
+    "day-must-be-greater-than-zero": "Day must be greater than zero",
     "dbt-catalog-file-extract-path": "Archivo de catálogo de dbt para extraer modelos de dbt con sus esquemas de columnas.",
     "dbt-cloud-type": "En caso de que haya múltiples {{type}} en una cuenta de dbt cloud, especifique el id del {{type}} del que desea extraer los artefactos de ejecución dbt.",
     "dbt-ingestion-description": "Se puede configurar y desplegar un flujo de trabajo dbt después de haber establecido una ingestión de metadatos. Se pueden establecer múltiples pipelines de dbt para el mismo servicio de base de datos. La pipeline alimenta la pestaña dbt de la entidad Tabla, crea dependencias de linaje a partir de los nodos dbt y agrega pruebas de dbt. Agregue la configuración de origen de los archivos dbt para comenzar.",

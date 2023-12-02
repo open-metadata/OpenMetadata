@@ -1260,6 +1260,7 @@
     "data-insight-report-send-success-message": "Rapport de l'Aperçu des Données envoyé avec succès.",
     "data-insight-subtitle": "Obtenir une vue à 360 de la santé de vos ressources de données au fil du temps.",
     "database-service-name-message": "Ajouter les noms de service de base de données pour créer la traçabilité.",
+    "day-must-be-greater-than-zero": "Day must be greater than zero",
     "dbt-catalog-file-extract-path": "fichier catalog.yml de dbt pour extraire les modèles dbt avec leurs schémas de colonnes.",
     "dbt-cloud-type": "En cas de multiples {{type}}s dans un compte dbt cloud, spécifiez l'identifiant du {{type}} à partir duquel vous souhaitez extraire les artefacts d'exécution dbt",
     "dbt-ingestion-description": "Un flux de travail dbt peut être configuré et déployé après qu'une ingestion de métadonnées a été configurée. Plusieurs pipelines dbt peuvent être configurés pour le même service de base de données. Le pipeline alimente l'onglet dbt de l'entité Table, crée la linéarité à partir des nœuds dbt et ajoute les tests de dbt. Ajoutez la configuration source des fichiers dbt pour commencer.",

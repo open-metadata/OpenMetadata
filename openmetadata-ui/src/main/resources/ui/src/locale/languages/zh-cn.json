@@ -1260,6 +1260,7 @@
     "data-insight-report-send-success-message": "数据洞察报告发送成功。",
     "data-insight-subtitle": "查看所有数据资产的健康状况",
     "database-service-name-message": "添加数据库服务名称以创建血缘关系图",
+    "day-must-be-greater-than-zero": "Day must be greater than zero",
     "dbt-catalog-file-extract-path": "dbt 目录文件，用于提取带有 Column Schema（列模式）的 dbt 模型",
     "dbt-cloud-type": "如果在 dbt 云帐号中有多个{{type}}，请指定要从中提取 dbt 运行 artifacts 的{{type}}的 ID",
     "dbt-ingestion-description": "在设置了元数据提取之后，可以配置和部署 dbt 工作流。可以为同一数据库服务设置多个 dbt 工作流。该工作流为数据表的 dbt 选项卡提供数据，从 dbt 节点创建血缘并从 dbt 添加测试。添加 dbt 文件的源配置以开始。",

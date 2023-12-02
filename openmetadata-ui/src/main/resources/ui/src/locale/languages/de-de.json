@@ -1260,6 +1260,7 @@
     "data-insight-report-send-success-message": "Dateninsight-Bericht erfolgreich gesendet.",
     "data-insight-subtitle": "Erhalten Sie einen einzigen Überblick über die Gesundheit aller Ihrer Datenvermögenswerte im Laufe der Zeit.",
     "database-service-name-message": "Fügen Sie die Namen der Datenbankdienste hinzu, um die Lineage zu erstellen.",
+    "day-must-be-greater-than-zero": "Day must be greater than zero",
     "dbt-catalog-file-extract-path": " Pfad zur dbt-Katalogdatei, um dbt-Modelle mit ihren Spaltenschemata zu extrahieren.",
     "dbt-cloud-type": "Im Falle mehrerer {{type}}s in einem dbt-Cloud-Konto geben Sie die {{type}}-ID an, von der Sie die dbt-Run-Artefakte extrahieren möchten",
     "dbt-ingestion-description": "Nachdem eine Metadateninjektion eingerichtet wurde, kann ein dbt-Workflow konfiguriert und bereitgestellt werden. Für denselben Datenbankdienst können mehrere dbt-Pipelines eingerichtet werden. Die Pipeline speist den dbt-Tab der Tabellenentität, erstellt Lineage von dbt-Knoten und fügt Tests von dbt hinzu. Fügen Sie die Quellkonfiguration der dbt-Dateien hinzu, um zu starten.",

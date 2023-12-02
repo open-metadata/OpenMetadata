@@ -397,7 +397,7 @@ export const DataAssetsHeader = ({
                   </Space>
                 </TierCard>
 
-                {entityType === EntityType.TABLE && (
+                {entityType === EntityType.TABLE && onUpdateRetentionPeriod && (
                   <RetentionPeriod
                     retentionPeriod={(dataAsset as Table).retentionPeriod}
                     onUpdate={onUpdateRetentionPeriod}

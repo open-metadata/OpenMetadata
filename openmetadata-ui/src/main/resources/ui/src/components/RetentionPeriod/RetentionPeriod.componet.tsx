@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Form, FormProps, Input, Modal, Space } from 'antd';
+import { Button, Form, FormProps, InputNumber, Modal, Space } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { Duration, DurationObjectUnits } from 'luxon';
@@ -65,19 +65,23 @@ const RetentionPeriod = ({
   const handleSubmit: FormProps['onFinish'] = async ({ days }) => {
     setIsLoading(true);
     try {
-      // create a duration object with provided days
-      const duration = Duration.fromObject({ days: days });
+      if (days) {
+        // create a duration object with provided days
+        const duration = Duration.fromObject({ days: days });
 
-      // Format the duration in ISO 8601 format
-      const iso8601Duration = duration.toISO();
+        // Format the duration in ISO 8601 format
+        const iso8601Duration = duration.toISO();
 
-      await onUpdate?.(days ? iso8601Duration : days);
+        await onUpdate(iso8601Duration);
+      } else {
+        await onUpdate(undefined);
+      }
+
       onCancel();
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
       setIsLoading(false);
-      form.resetFields();
     }
   };
 
@@ -104,10 +108,9 @@ const RetentionPeriod = ({
         destroyOnClose
         closable={false}
         confirmLoading={isLoading}
-        data-testid="confirmation-modal"
+        data-testid="retention-period-modal"
         maskClosable={false}
         okButtonProps={{
-          id: 'retention-period-form',
           form: 'retention-period-form',
           type: 'primary',
           htmlType: 'submit',
@@ -124,8 +127,20 @@ const RetentionPeriod = ({
           id="retention-period-form"
           validateMessages={VALIDATION_MESSAGES}
           onFinish={handleSubmit}>
-          <Form.Item label={t('label.day-plural')} name="days">
-            <Input type="number" />
+          <Form.Item
+            label={t('label.day-plural')}
+            name="days"
+            rules={[
+              {
+                min: 1,
+                type: 'number',
+                message: t('message.day-must-be-greater-than-zero'),
+              },
+            ]}>
+            <InputNumber
+              className="w-full"
+              data-testid="retention-period-input"
+            />
           </Form.Item>
         </Form>
       </Modal>
