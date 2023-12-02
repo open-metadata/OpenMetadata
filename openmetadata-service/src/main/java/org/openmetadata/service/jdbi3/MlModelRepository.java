@@ -223,7 +223,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
   @Override
   public EntityInterface getParentEntity(MlModel entity, String fields) {
-    return Entity.getEntity(entity.getService(), fields, Include.NON_DELETED);
+    return Entity.getEntity(entity.getService(), fields, Include.ALL);
   }
 
   @Override
