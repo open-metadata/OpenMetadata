@@ -77,6 +77,7 @@ import AppSchedule from '../AppSchedule/AppSchedule.component';
 import { ApplicationTabs } from '../MarketPlaceAppDetails/MarketPlaceAppDetails.interface';
 import './app-details.less';
 import { AppAction } from './AppDetails.interface';
+import applicationSchemaClassBase from './ApplicationSchemaClassBase';
 
 const AppDetails = () => {
   const { t } = useTranslation();
@@ -97,9 +98,9 @@ const AppDetails = () => {
         include: Include.All,
       });
       setAppData(data);
-      const schema = await import(
-        `../../../utils/ApplicationSchemas/${fqn}.json`
-      );
+
+      const schema = await applicationSchemaClassBase.schema(fqn);
+
       setJsonSchema(schema);
     } catch (error) {
       showErrorToast(error as AxiosError);
