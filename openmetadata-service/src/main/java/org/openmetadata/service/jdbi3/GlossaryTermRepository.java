@@ -252,6 +252,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
       } catch (Exception ex) {
         failures.add(new FailureRequest().withRequest(ref).withError(ex.getMessage()));
+        result.withFailedRequest(failures);
         result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
       }
       // Validate and Store Tags
