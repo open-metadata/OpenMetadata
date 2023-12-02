@@ -384,6 +384,7 @@ export const AssetSelectionModal = ({
   return (
     <Modal
       destroyOnClose
+      className="asset-selection-modal"
       closable={false}
       closeIcon={null}
       data-testid="asset-selection-modal"

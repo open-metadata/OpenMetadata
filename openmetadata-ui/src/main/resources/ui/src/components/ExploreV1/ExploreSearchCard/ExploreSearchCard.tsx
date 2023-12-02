@@ -101,6 +101,11 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           isLink: true,
           openInNewTab: false,
         });
+      } else {
+        _otherDetails.push({
+          key: 'Domain',
+          value: '',
+        });
       }
 
       if (
