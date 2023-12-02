@@ -1299,11 +1299,12 @@ export const deleteEntity = (
 export const visitServiceDetailsPage = (
   settingsMenuId,
   serviceCategory,
-  serviceName
+  serviceName,
+  isServiceDeleted = false
 ) => {
   interceptURL(
     'GET',
-    'api/v1/search/query?q=*&from=0&size=15&index=*',
+    `/api/v1/search/query?q=*${isServiceDeleted ? 'deleted=true' : ''}`,
     'searchService'
   );
   interceptURL('GET', '/api/v1/teams/name/*', 'getOrganization');
@@ -1318,9 +1319,13 @@ export const visitServiceDetailsPage = (
 
   verifyResponseStatusCode('@getServices', 200);
 
+  if (isServiceDeleted) {
+    cy.get('[data-testid="show-deleted-switch"]').click();
+  }
+
   interceptURL(
     'GET',
-    `api/v1/services/${serviceCategory}/name/${serviceName}?fields=*`,
+    `api/v1/services/${serviceCategory}/name/${serviceName}*`,
     'getServiceDetails'
   );
 
@@ -1703,8 +1708,20 @@ export const visitDatabaseDetailsPage = ({
   serviceName,
   databaseRowKey,
   databaseName,
+  isDeleted = false,
 }) => {
-  visitServiceDetailsPage(settingsMenuId, serviceCategory, serviceName);
+  visitServiceDetailsPage(
+    settingsMenuId,
+    serviceCategory,
+    serviceName,
+    isDeleted
+  );
+
+  if (isDeleted) {
+    interceptURL('GET', `/api/v1/databases*include=deleted*`, 'getDatabases');
+    cy.get('[data-testid="show-deleted"]').click();
+    verifyResponseStatusCode('@getDatabases', 200);
+  }
 
   cy.get(`[data-row-key="${databaseRowKey}"]`).contains(databaseName).click();
 };
@@ -1717,6 +1734,7 @@ export const visitDatabaseSchemaDetailsPage = ({
   databaseName,
   databaseSchemaRowKey,
   databaseSchemaName,
+  isDeleted = false,
 }) => {
   visitDatabaseDetailsPage({
     settingsMenuId,
@@ -1724,7 +1742,18 @@ export const visitDatabaseSchemaDetailsPage = ({
     serviceName,
     databaseRowKey,
     databaseName,
+    isDeleted,
   });
+
+  if (isDeleted) {
+    interceptURL(
+      'GET',
+      `/api/v1/databaseSchemas*include=deleted*`,
+      'getDatabaseSchemas'
+    );
+    cy.get('[data-testid="show-deleted"]').click();
+    verifyResponseStatusCode('@getDatabaseSchemas', 200);
+  }
 
   cy.get(`[data-row-key="${databaseSchemaRowKey}"]`)
     .contains(databaseSchemaName)

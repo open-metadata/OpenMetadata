@@ -35,6 +35,7 @@ import {
 import {
   deletedTeamChecks,
   nonDeletedTeamChecks,
+  softDeletedEntityChecksForServices,
   softDeletedEntityCommonChecks,
 } from '../../common/SoftDeleteFlowUtils';
 import { createTeams, deleteTeam } from '../../common/TeamsUtils';
@@ -48,12 +49,12 @@ import {
   CUSTOM_ATTRIBUTE_ASSETS_SOFT_DELETE_TEST,
   CUSTOM_ATTRIBUTE_NAME,
   DATABASE_SCHEMA_SOFT_DELETE_TEST,
-  DATABASE_SERVICE_DETAILS_SOFT_DELETE_TEST,
   DATABASE_SERVICE_SOFT_DELETE_TEST,
   DATABASE_SOFT_DELETE_TEST,
   OMIT_SERVICE_CREATION_FOR_ENTITIES,
   POLICY_NAME,
   ROLE_NAME,
+  SERVICES_LIST,
   SINGLE_LEVEL_SERVICE_SOFT_DELETE_TEST,
   TABLE_FQN,
   TEAM_1_DETAILS_SOFT_DELETE_TEST,
@@ -202,18 +203,15 @@ describe(`Soft delete flow should work for all entities`, () => {
     });
   });
 
-  it(`Soft delete flow should work properly for services`, () => {
-    visitServiceDetailsPage(
-      DATABASE_SERVICE_DETAILS_SOFT_DELETE_TEST.settingsMenuId,
+  SERVICES_LIST.forEach((service) => {
+    it(`Soft delete flow should work properly for ${service.serviceCategory}`, () => {
+      visitServiceDetailsPage(
+        service.settingsMenuId,
+        service.serviceCategory,
+        service.serviceName
+      );
 
-      DATABASE_SERVICE_DETAILS_SOFT_DELETE_TEST.serviceCategory,
-      DATABASE_SERVICE_DETAILS_SOFT_DELETE_TEST.serviceName
-    );
-
-    softDeletedEntityCommonChecks({
-      entityType: 'services/databaseServices',
-      firstTabKey: 'databases',
-      isLineageTabPresent: false,
+      softDeletedEntityChecksForServices({ ...service, createdEntityIds });
     });
   });
 

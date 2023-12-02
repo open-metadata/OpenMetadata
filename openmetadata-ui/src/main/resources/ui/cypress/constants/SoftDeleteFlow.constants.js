@@ -44,7 +44,60 @@ export const DATABASE_SERVICE_DETAILS_SOFT_DELETE_TEST = {
   settingsMenuId: 'services.databases',
   serviceCategory: SERVICE_CATEGORIES.DATABASE_SERVICES,
   serviceName: DATABASE_SERVICE.service.name,
+  childName: DATABASE_SERVICE.database.name,
 };
+
+export const MESSAGING_SERVICE_DETAILS_SOFT_DELETE_TEST = {
+  settingsMenuId: 'services.messaging',
+  serviceCategory: SERVICE_CATEGORIES.MESSAGING_SERVICES,
+  serviceName: MESSAGING_SERVICE.service.name,
+  childName: MESSAGING_SERVICE.entity.name,
+};
+
+export const DASHBOARD_SERVICE_DETAILS_SOFT_DELETE_TEST = {
+  settingsMenuId: 'services.dashboards',
+  serviceCategory: SERVICE_CATEGORIES.DASHBOARD_SERVICES,
+  serviceName: DASHBOARD_SERVICE.service.name,
+  childName: DASHBOARD_SERVICE.entity.name,
+};
+
+export const PIPELINE_SERVICE_DETAILS_SOFT_DELETE_TEST = {
+  settingsMenuId: 'services.pipelines',
+  serviceCategory: SERVICE_CATEGORIES.PIPELINE_SERVICES,
+  serviceName: PIPELINE_SERVICE.service.name,
+  childName: PIPELINE_SERVICE.entity.name,
+};
+
+export const ML_MODEL_SERVICE_DETAILS_SOFT_DELETE_TEST = {
+  settingsMenuId: 'services.mlModels',
+  serviceCategory: SERVICE_CATEGORIES.ML_MODEL_SERVICES,
+  serviceName: ML_MODEL_SERVICE.service.name,
+  childName: ML_MODEL_SERVICE.entity.name,
+};
+
+export const STORAGE_SERVICE_DETAILS_SOFT_DELETE_TEST = {
+  settingsMenuId: 'services.storages',
+  serviceCategory: SERVICE_CATEGORIES.STORAGE_SERVICES,
+  serviceName: STORAGE_SERVICE.service.name,
+  childName: STORAGE_SERVICE.entity.name,
+};
+
+export const SEARCH_SERVICE_DETAILS_SOFT_DELETE_TEST = {
+  settingsMenuId: 'services.search',
+  serviceCategory: SERVICE_CATEGORIES.SEARCH_SERVICES,
+  serviceName: SEARCH_SERVICE.service.name,
+  childName: SEARCH_SERVICE.entity.name,
+};
+
+export const SERVICES_LIST = [
+  DATABASE_SERVICE_DETAILS_SOFT_DELETE_TEST,
+  MESSAGING_SERVICE_DETAILS_SOFT_DELETE_TEST,
+  DASHBOARD_SERVICE_DETAILS_SOFT_DELETE_TEST,
+  PIPELINE_SERVICE_DETAILS_SOFT_DELETE_TEST,
+  ML_MODEL_SERVICE_DETAILS_SOFT_DELETE_TEST,
+  STORAGE_SERVICE_DETAILS_SOFT_DELETE_TEST,
+  SEARCH_SERVICE_DETAILS_SOFT_DELETE_TEST,
+];
 
 export const DATABASE_SOFT_DELETE_TEST = {
   ...DATABASE_SERVICE_DETAILS_SOFT_DELETE_TEST,
@@ -184,6 +237,13 @@ export const ENTITIES_WITHOUT_FOLLOWING_BUTTON = [
   'databases',
   'databaseSchemas',
   'services/databaseServices',
+  'services/messagingServices',
+  'services/pipelineServices',
+  'services/dashboardServices',
+  'services/mlmodelServices',
+  'services/storageServices',
+  'services/metadataServices',
+  'services/searchServices',
 ];
 
 export const TEAM_1_DETAILS_SOFT_DELETE_TEST = {
