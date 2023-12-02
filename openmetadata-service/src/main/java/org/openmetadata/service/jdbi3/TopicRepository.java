@@ -253,7 +253,7 @@ public class TopicRepository extends EntityRepository<Topic> {
 
   @Override
   public EntityInterface getParentEntity(Topic entity, String fields) {
-    return Entity.getEntity(entity.getService(), fields, Include.NON_DELETED);
+    return Entity.getEntity(entity.getService(), fields, Include.ALL);
   }
 
   @Override

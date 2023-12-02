@@ -267,6 +267,11 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
   }
 
   @Override
+  public EntityInterface getParentEntity(SearchIndex entity, String fields) {
+    return Entity.getEntity(entity.getService(), fields, Include.ALL);
+  }
+
+  @Override
   public List<TagLabel> getAllTags(EntityInterface entity) {
     List<TagLabel> allTags = new ArrayList<>();
     SearchIndex searchIndex = (SearchIndex) entity;
