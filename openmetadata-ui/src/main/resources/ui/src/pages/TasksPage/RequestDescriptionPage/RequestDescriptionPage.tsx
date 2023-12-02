@@ -14,7 +14,7 @@
 import { Button, Form, FormProps, Input, Space, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
+import { capitalize, isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
@@ -46,6 +46,7 @@ import {
   fetchEntityDetail,
   fetchOptions,
   getBreadCrumbList,
+  getEntityTableName,
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import Assignees from '../shared/Assignees';
@@ -72,11 +73,30 @@ const RequestDescription = () => {
   const [assignees, setAssignees] = useState<Array<Option>>([]);
   const [suggestion, setSuggestion] = useState<string>('');
 
-  const getSanitizeValue = value?.replaceAll(/^"|"$/g, '') || '';
+  const sanitizeValue = useMemo(
+    () => value?.replaceAll(/^"|"$/g, '') || '',
+    [value]
+  );
 
-  const message = `Request description for ${getSanitizeValue || entityType} ${
-    field !== EntityField.COLUMNS ? getEntityName(entityData) : ''
-  }`;
+  const fileMessage = useMemo(
+    () =>
+      field
+        ? `${field}/${getEntityTableName(
+            entityType,
+            sanitizeValue,
+            entityData
+          )}`
+        : '',
+    [field, sanitizeValue, entityType, entityData]
+  );
+
+  const taskMessage = useMemo(
+    () =>
+      `Request description for ${capitalize(entityType)} ${getEntityName(
+        entityData
+      )} ${fileMessage}`,
+    [sanitizeValue, entityType, field, entityData]
+  );
 
   const decodedEntityFQN = useMemo(
     () => getDecodedFqn(entityFQN),
@@ -105,7 +125,7 @@ const RequestDescription = () => {
     if (assignees.length) {
       const data: CreateThread = {
         from: currentUser?.name as string,
-        message: value.title || message,
+        message: value.title || taskMessage,
         about: getEntityFeedLink(entityType, decodedEntityFQN, getTaskAbout()),
         taskDetails: {
           assignees: assignees.map((assignee) => ({
@@ -159,7 +179,7 @@ const RequestDescription = () => {
       setOptions(defaultAssignee);
     }
     form.setFieldsValue({
-      title: message.trimEnd(),
+      title: taskMessage.trimEnd(),
       assignees: defaultAssignee,
     });
   }, [entityData]);

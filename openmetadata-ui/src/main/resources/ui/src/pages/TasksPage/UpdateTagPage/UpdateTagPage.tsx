@@ -14,7 +14,7 @@
 import { Button, Form, FormProps, Input, Space, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
-import { isEmpty, isUndefined } from 'lodash';
+import { capitalize, isEmpty, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
@@ -49,6 +49,7 @@ import {
   getBreadCrumbList,
   getColumnObject,
   getEntityColumnsDetails,
+  getEntityTableName,
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import Assignees from '../shared/Assignees';
@@ -78,17 +79,37 @@ const UpdateTag = () => {
   const [currentTags, setCurrentTags] = useState<TagLabel[]>([]);
   const [suggestion, setSuggestion] = useState<TagLabel[]>([]);
 
-  const getSanitizeValue = value?.replaceAll(/^"|"$/g, '') || '';
+  const sanitizeValue = useMemo(
+    () => value?.replaceAll(/^"|"$/g, '') || '',
+    [value]
+  );
 
-  const message = `Update tags for ${getSanitizeValue || entityType} ${
-    field !== EntityField.COLUMNS ? getEntityName(entityData) : ''
-  }`;
+  const fileMessage = useMemo(
+    () =>
+      field
+        ? `${field}/${getEntityTableName(
+            entityType,
+            sanitizeValue,
+            entityData
+          )}`
+        : '',
+    [field, sanitizeValue, entityType, entityData]
+  );
+
+  const taskMessage = useMemo(
+    () =>
+      `Update tags for ${capitalize(entityType)} ${getEntityName(
+        entityData
+      )} ${fileMessage}`,
+    [sanitizeValue, entityType, field, entityData]
+  );
+
   const decodedEntityFQN = useMemo(() => getDecodedFqn(entityFQN), [entityFQN]);
 
   const back = () => history.goBack();
 
   const columnObject = useMemo(() => {
-    const column = getSanitizeValue.split(FQN_SEPARATOR_CHAR).slice(-1);
+    const column = sanitizeValue.split(FQN_SEPARATOR_CHAR).slice(-1);
 
     return getColumnObject(
       column[0],
@@ -121,7 +142,7 @@ const UpdateTag = () => {
   const onCreateTask: FormProps['onFinish'] = (value) => {
     const data: CreateThread = {
       from: currentUser?.name as string,
-      message: value.title || message,
+      message: value.title || taskMessage,
       about: getEntityFeedLink(entityType, decodedEntityFQN, getTaskAbout()),
       taskDetails: {
         assignees: assignees.map((assignee) => ({
@@ -177,7 +198,7 @@ const UpdateTag = () => {
       setOptions(defaultAssignee);
     }
     form.setFieldsValue({
-      title: message.trimEnd(),
+      title: taskMessage.trimEnd(),
       updatedTags: getTags(),
       assignees: defaultAssignee,
     });

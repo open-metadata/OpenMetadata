@@ -35,8 +35,10 @@ import { ServiceCategory } from '../enums/service.enum';
 import { Chart } from '../generated/entity/data/chart';
 import { Container } from '../generated/entity/data/container';
 import { Dashboard } from '../generated/entity/data/dashboard';
+import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
 import { MlFeature, Mlmodel } from '../generated/entity/data/mlmodel';
 import { Pipeline, Task } from '../generated/entity/data/pipeline';
+import { SearchIndex } from '../generated/entity/data/searchIndex';
 import { Column, Table } from '../generated/entity/data/table';
 import { Field, Topic } from '../generated/entity/data/topic';
 import { TaskType, Thread } from '../generated/entity/feed/thread';
@@ -589,4 +591,78 @@ export const getEntityTaskDetails = (
   }
 
   return { fqnPart: [fqnPartTypes], entityField };
+};
+
+export const getEntityTableName = (
+  entityType: EntityType,
+  name: string,
+  entityData: EntityData
+): string => {
+  if (name.includes('.')) {
+    return name;
+  }
+  let entityReference;
+
+  switch (entityType) {
+    case EntityType.TABLE:
+      entityReference = (entityData as Table).columns?.find(
+        (item) => item.name === name
+      );
+
+      break;
+
+    case EntityType.TOPIC:
+      entityReference = (entityData as Topic).messageSchema?.schemaFields?.find(
+        (item) => item.name === name
+      );
+
+      break;
+
+    case EntityType.DASHBOARD:
+      entityReference = (entityData as Dashboard).charts?.find(
+        (item) => item.name === name
+      );
+
+      break;
+
+    case EntityType.PIPELINE:
+      entityReference = (entityData as Pipeline).tasks?.find(
+        (item) => item.name === name
+      );
+
+      break;
+
+    case EntityType.MLMODEL:
+      entityReference = (entityData as Mlmodel).mlFeatures?.find(
+        (item) => item.name === name
+      );
+
+      break;
+
+    case EntityType.CONTAINER:
+      entityReference = (entityData as Container).dataModel?.columns?.find(
+        (item) => item.name === name
+      );
+
+      break;
+
+    case EntityType.SEARCH_INDEX:
+      entityReference = (entityData as SearchIndex).fields?.find(
+        (item) => item.name === name
+      );
+
+      break;
+
+    case EntityType.DASHBOARD_DATA_MODEL:
+      entityReference = (entityData as DashboardDataModel).columns?.find(
+        (item) => item.name === name
+      );
+
+      break;
+
+    default:
+      return name;
+  }
+
+  return getEntityName(entityReference);
 };

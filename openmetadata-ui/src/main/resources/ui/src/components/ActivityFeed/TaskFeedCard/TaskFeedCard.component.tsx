@@ -28,6 +28,7 @@ import {
   Post,
   Thread,
   ThreadTaskStatus,
+  ThreadType,
 } from '../../../generated/entity/feed/thread';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
 import {
@@ -108,34 +109,41 @@ const TaskFeedCard = ({
 
   const getTaskLinkElement = entityCheck && (
     <Typography.Text>
-      <Button
-        className="p-0"
-        type="link"
-        onClick={handleTaskLinkClick}>{`#${taskDetails?.id} `}</Button>
+      <Button className="p-0" type="link" onClick={handleTaskLinkClick}>
+        {`#${taskDetails?.id} `}
+      </Button>
 
-      <Typography.Text className="p-l-xss">{taskDetails?.type}</Typography.Text>
-      <span className="m-x-xss">{t('label.for-lowercase')}</span>
-
-      {isForFeedTab ? null : (
+      {feed.type === ThreadType.Task && isForFeedTab ? (
+        <Typography.Text className="p-l-xss">{feed.message}</Typography.Text>
+      ) : (
         <>
-          <span className="p-r-xss">{entityType}</span>
-          <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
-            <Link
-              className="break-all"
-              data-testid="entitylink"
-              to={prepareFeedLink(entityType, entityFQN)}
-              onClick={(e) => e.stopPropagation()}>
-              {getNameFromFQN(entityFQN)}
-            </Link>
-          </EntityPopOverCard>
+          <Typography.Text className="p-l-xss">
+            {taskDetails?.type}
+          </Typography.Text>
+          <span className="m-x-xss">{t('label.for-lowercase')}</span>
+
+          {isForFeedTab ? null : (
+            <>
+              <span className="p-r-xss">{entityType}</span>
+              <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
+                <Link
+                  className="break-all"
+                  data-testid="entitylink"
+                  to={prepareFeedLink(entityType, entityFQN)}
+                  onClick={(e) => e.stopPropagation()}>
+                  {getNameFromFQN(entityFQN)}
+                </Link>
+              </EntityPopOverCard>
+            </>
+          )}
+
+          {!isEmpty(taskField) ? (
+            <span className={classNames({ 'p-l-xss': !isForFeedTab })}>
+              {taskField}
+            </span>
+          ) : null}
         </>
       )}
-
-      {!isEmpty(taskField) ? (
-        <span className={classNames({ 'p-l-xss': !isForFeedTab })}>
-          {taskField}
-        </span>
-      ) : null}
     </Typography.Text>
   );
 

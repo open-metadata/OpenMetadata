@@ -46,6 +46,7 @@ import { TaskType } from '../../../generated/api/feed/createThread';
 import {
   TaskDetails,
   ThreadTaskStatus,
+  ThreadType,
 } from '../../../generated/entity/feed/thread';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { useAuth } from '../../../hooks/authHooks';
@@ -146,10 +147,16 @@ export const TaskTab = ({
     <Typography.Text className="font-medium text-md" data-testid="task-title">
       <span>{`#${taskDetails?.id} `}</span>
 
-      <Typography.Text>{taskDetails?.type}</Typography.Text>
-      <span className="m-x-xss">{t('label.for-lowercase')}</span>
+      {taskThread.type === ThreadType.Task ? (
+        <Typography.Text>{taskThread.message}</Typography.Text>
+      ) : (
+        <>
+          <Typography.Text>{taskDetails?.type}</Typography.Text>
+          <span className="m-x-xss">{t('label.for-lowercase')}</span>
 
-      {!isEmpty(taskField) ? <span>{taskField}</span> : null}
+          {!isEmpty(taskField) ? <span>{taskField}</span> : null}
+        </>
+      )}
     </Typography.Text>
   );
 
