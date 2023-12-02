@@ -121,6 +121,11 @@ const GlossaryTermsV1 = ({
     [glossaryTerm, handleGlossaryTermUpdate]
   );
 
+  const onTermUpdate = async (data: GlossaryTerm) => {
+    await handleGlossaryTermUpdate(data);
+    getEntityFeedCount();
+  };
+
   const tabItems = useMemo(() => {
     const items = [
       {
@@ -133,7 +138,7 @@ const GlossaryTermsV1 = ({
             permissions={permissions}
             selectedData={glossaryTerm}
             onThreadLinkSelect={onThreadLinkSelect}
-            onUpdate={(data) => handleGlossaryTermUpdate(data as GlossaryTerm)}
+            onUpdate={(data) => onTermUpdate(data as GlossaryTerm)}
           />
         ),
       },
@@ -316,7 +321,7 @@ const GlossaryTermsV1 = ({
             onAddGlossaryTerm={onAddGlossaryTerm}
             onAssetAdd={() => setAssetModelVisible(true)}
             onDelete={handleGlossaryTermDelete}
-            onUpdate={(data) => handleGlossaryTermUpdate(data as GlossaryTerm)}
+            onUpdate={(data) => onTermUpdate(data as GlossaryTerm)}
           />
         </Col>
 

@@ -13,7 +13,6 @@
  */
 
 import { FilterOutlined, PlusOutlined } from '@ant-design/icons';
-import Context from '@ant-design/icons/lib/components/Context';
 import {
   Badge,
   Button,
@@ -73,15 +72,18 @@ import {
   patchDataProduct,
 } from '../../../../rest/dataProductAPI';
 import { getDomainByName } from '../../../../rest/domainAPI';
-import { getGlossaryTermByFQN } from '../../../../rest/glossaryAPI';
+import {
+  getGlossaryTermByFQN,
+  removeAssetsFromGlossaryTerm,
+} from '../../../../rest/glossaryAPI';
 import { searchData } from '../../../../rest/miscAPI';
 import { getAssetsPageQuickFilters } from '../../../../utils/AdvancedSearchUtils';
-import {
-  removeGlossaryTermAssets,
-  updateDomainAssets,
-} from '../../../../utils/Assets/AssetsUtils';
+import { updateDomainAssets } from '../../../../utils/Assets/AssetsUtils';
 import { getCountBadge, Transi18next } from '../../../../utils/CommonUtils';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import {
+  getEntityName,
+  getEntityReferenceFromEntity,
+} from '../../../../utils/EntityUtils';
 import {
   getAggregations,
   getSelectedValuesFromQuickFilter,
@@ -135,7 +137,6 @@ const AssetsTabs = forwardRef(
     const [itemCount, setItemCount] = useState<Record<EntityType, number>>(
       {} as Record<EntityType, number>
     );
-    const [api, contextHolder] = notification.useNotification();
 
     const [activeFilter, setActiveFilter] = useState<SearchIndex[]>([]);
     const { fqn } = useParams<{ fqn: string }>();
@@ -264,6 +265,11 @@ const AssetsTabs = forwardRef(
       },
       [activeFilter, currentPage, pageSize, searchValue]
     );
+
+    const hideNotification = () => {
+      notification.close('asset-tab-notification-key');
+    };
+
     const onOpenChange: MenuProps['onOpenChange'] = (keys) => {
       const latestOpenKey = keys.find(
         (key) => openKeys.indexOf(key as EntityType) === -1
@@ -496,9 +502,9 @@ const AssetsTabs = forwardRef(
     };
 
     const deleteSelectedItems = useCallback(() => {
-      selectedItems?.forEach((item) => {
-        onAssetRemove(item);
-      });
+      if (selectedItems) {
+        onAssetRemove(Array.from(selectedItems.values()));
+      }
     }, [selectedItems]);
 
     useEffect(() => {
@@ -517,7 +523,7 @@ const AssetsTabs = forwardRef(
 
     useEffect(() => {
       if (selectedItems) {
-        notification.close('asset-tab-notification-key');
+        hideNotification();
         if (selectedItems.size > 1) {
           openNotification();
         }
@@ -677,9 +683,39 @@ const AssetsTabs = forwardRef(
       ]
     );
 
+    const onSelectAll = (selectAll: boolean) => {
+      setSelectedItems((prevItems) => {
+        const selectedItemMap = new Map(prevItems ?? []);
+
+        if (selectAll) {
+          data.forEach(({ _source }) => {
+            const id = _source.id;
+            if (id) {
+              selectedItemMap.set(id, _source);
+            }
+          });
+        } else {
+          // Clear selection
+          selectedItemMap.clear();
+        }
+
+        return selectedItemMap;
+      });
+    };
+
     const assetsHeader = useMemo(() => {
       return (
-        <div className="w-full d-flex justify-end">
+        <div className="w-full d-flex justify-between items-center p-l-sm">
+          {data.length > 0 && (
+            <Checkbox
+              className="assets-checkbox p-x-sm"
+              onChange={(e) => onSelectAll(e.target.checked)}>
+              {t('label.select-field', {
+                field: t('label.all'),
+              })}
+            </Checkbox>
+          )}
+
           <Popover
             align={{ targetOffset: [0, 10] }}
             content={
@@ -735,6 +771,7 @@ const AssetsTabs = forwardRef(
       itemCount,
       onOpenChange,
       handleAssetButtonVisibleChange,
+      onSelectAll,
     ]);
 
     const layout = useMemo(() => {
@@ -747,7 +784,7 @@ const AssetsTabs = forwardRef(
     }, [assetsHeader, assetListing, selectedCard]);
 
     const onAssetRemove = useCallback(
-      async (data: SourceType) => {
+      async (assetsData: SourceType[]) => {
         if (!activeEntity) {
           return;
         }
@@ -758,7 +795,10 @@ const AssetsTabs = forwardRef(
             case AssetsOfEntity.DATA_PRODUCT:
               const updatedAssets = (
                 (activeEntity as DataProduct)?.assets ?? []
-              ).filter((asset) => asset.id !== data?.id);
+              ).filter(
+                (asset) => !assetsData.some((item) => item.id === asset.id)
+              );
+
               updatedEntity = {
                 ...activeEntity,
                 assets: updatedAssets,
@@ -772,20 +812,26 @@ const AssetsTabs = forwardRef(
 
               break;
 
-            case AssetsOfEntity.DOMAIN:
             case AssetsOfEntity.GLOSSARY:
-              const selectedItemMap = new Map();
-              selectedItemMap.set(data?.id, data);
-
-              if (type === AssetsOfEntity.DOMAIN) {
-                await updateDomainAssets(undefined, type, selectedItemMap);
-              } else if (type === AssetsOfEntity.GLOSSARY) {
-                await removeGlossaryTermAssets(
-                  entityFqn ?? '',
-                  type,
-                  selectedItemMap
+              const entities = [...(assetsData?.values() ?? [])].map((item) => {
+                return getEntityReferenceFromEntity(
+                  item,
+                  (item as EntityDetailUnion).entityType
                 );
-              }
+              });
+              await removeAssetsFromGlossaryTerm(
+                activeEntity as GlossaryTerm,
+                entities
+              );
+
+              break;
+
+            case AssetsOfEntity.DOMAIN:
+              const selectedItemMap = new Map();
+              assetsData.forEach((item) => {
+                selectedItemMap.set(item.id, item);
+              });
+              await updateDomainAssets(undefined, type, selectedItemMap);
 
               break;
             default:
@@ -803,13 +849,15 @@ const AssetsTabs = forwardRef(
         } finally {
           setShowDeleteModal(false);
           onRemoveAsset?.();
+          hideNotification();
+          setSelectedItems(new Map()); // Reset selected items
         }
       },
       [type, activeEntity, entityFqn]
     );
 
     const openNotification = () => {
-      api.warning({
+      notification.warning({
         key: 'asset-tab-notification-key',
         message: (
           <div className="d-flex justify-between">
@@ -875,63 +923,60 @@ const AssetsTabs = forwardRef(
     }, [isSummaryPanelOpen]);
 
     return (
-      <Context.Provider value={{}}>
-        {contextHolder}
-        <div
-          className={classNames('assets-tab-container p-md')}
-          data-testid="table-container">
-          <Row className="filters-row gap-2">
+      <div
+        className={classNames('assets-tab-container p-md')}
+        data-testid="table-container">
+        <Row className="filters-row gap-2">
+          <Col span={24}>
+            <Searchbar
+              removeMargin
+              showClearSearch
+              placeholder={t('label.search-entity', {
+                entity: t('label.asset-plural'),
+              })}
+              searchValue={searchValue}
+              onSearch={setSearchValue}
+            />
+          </Col>
+          <Col className="searched-data-container" span={24}>
+            <ExploreQuickFilters
+              aggregations={aggregations}
+              fields={selectedQuickFilters}
+              index={SearchIndex.ALL}
+              showDeleted={false}
+              onFieldValueSelect={noop}
+            />
+          </Col>
+        </Row>
+
+        {isLoading || isCountLoading ? (
+          <Row className="p-lg" gutter={[0, 16]}>
             <Col span={24}>
-              <Searchbar
-                removeMargin
-                showClearSearch
-                placeholder={t('label.search-entity', {
-                  entity: t('label.asset-plural'),
-                })}
-                searchValue={searchValue}
-                onSearch={setSearchValue}
-              />
+              <Skeleton />
             </Col>
-            <Col className="searched-data-container" span={24}>
-              <ExploreQuickFilters
-                aggregations={aggregations}
-                fields={selectedQuickFilters}
-                index={SearchIndex.ALL}
-                showDeleted={false}
-                onFieldValueSelect={noop}
-              />
+            <Col span={24}>
+              <Skeleton />
             </Col>
           </Row>
+        ) : (
+          layout
+        )}
 
-          {isLoading || isCountLoading ? (
-            <Row className="p-lg" gutter={[0, 16]}>
-              <Col span={24}>
-                <Skeleton />
-              </Col>
-              <Col span={24}>
-                <Skeleton />
-              </Col>
-            </Row>
-          ) : (
-            layout
-          )}
-
-          <ConfirmationModal
-            bodyText={t('message.are-you-sure-action-property', {
-              propertyName: getEntityName(assetToDelete),
-              action: t('label.remove-lowercase'),
-            })}
-            cancelText={t('label.cancel')}
-            confirmText={t('label.delete')}
-            header={t('label.remove-entity', {
-              entity: getEntityName(assetToDelete) + '?',
-            })}
-            visible={showDeleteModal}
-            onCancel={() => setShowDeleteModal(false)}
-            onConfirm={() => onAssetRemove(assetToDelete as SourceType)}
-          />
-        </div>
-      </Context.Provider>
+        <ConfirmationModal
+          bodyText={t('message.are-you-sure-action-property', {
+            propertyName: getEntityName(assetToDelete),
+            action: t('label.remove-lowercase'),
+          })}
+          cancelText={t('label.cancel')}
+          confirmText={t('label.delete')}
+          header={t('label.remove-entity', {
+            entity: getEntityName(assetToDelete) + '?',
+          })}
+          visible={showDeleteModal}
+          onCancel={() => setShowDeleteModal(false)}
+          onConfirm={() => onAssetRemove(assetToDelete ? [assetToDelete] : [])}
+        />
+      </div>
     );
   }
 );

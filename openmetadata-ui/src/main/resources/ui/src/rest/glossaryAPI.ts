@@ -15,13 +15,10 @@ import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
 import { VotingDataProps } from '../components/Voting/voting.interface';
+import { AddGlossaryToAssetsRequest } from '../generated/api/addGlossaryToAssetsRequest';
 import { CreateGlossary } from '../generated/api/data/createGlossary';
 import { CreateGlossaryTerm } from '../generated/api/data/createGlossaryTerm';
-import {
-  EntityReference,
-  Glossary,
-  TagLabel,
-} from '../generated/entity/data/glossary';
+import { EntityReference, Glossary } from '../generated/entity/data/glossary';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import { CSVImportResult } from '../generated/type/csvImportResult';
 import { EntityHistory } from '../generated/type/entityHistory';
@@ -254,12 +251,6 @@ export const updateGlossaryTermVotes = async (
   return response.data;
 };
 
-type AssetsData = {
-  assets: EntityReference[];
-  dryRun: boolean;
-  glossaryTags: TagLabel[];
-};
-
 export const addAssetsToGlossaryTerm = async (
   glossaryTerm: GlossaryTerm,
   assets: EntityReference[]
@@ -270,10 +261,28 @@ export const addAssetsToGlossaryTerm = async (
     glossaryTags: glossaryTerm.tags ?? [],
   };
 
-  const response = await APIClient.put<AssetsData, AxiosResponse<GlossaryTerm>>(
-    `/glossaryTerms/${glossaryTerm.id}/assets/add`,
-    data
-  );
+  const response = await APIClient.put<
+    AddGlossaryToAssetsRequest,
+    AxiosResponse<GlossaryTerm>
+  >(`/glossaryTerms/${glossaryTerm.id}/assets/add`, data);
+
+  return response.data;
+};
+
+export const removeAssetsFromGlossaryTerm = async (
+  glossaryTerm: GlossaryTerm,
+  assets: EntityReference[]
+) => {
+  const data = {
+    assets: assets,
+    dryRun: false,
+    glossaryTags: glossaryTerm.tags ?? [],
+  };
+
+  const response = await APIClient.put<
+    AddGlossaryToAssetsRequest,
+    AxiosResponse<GlossaryTerm>
+  >(`/glossaryTerms/${glossaryTerm.id}/assets/remove`, data);
 
   return response.data;
 };
