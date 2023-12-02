@@ -219,9 +219,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     List<FailureRequest> failures = new ArrayList<>();
     List<EntityReference> success = new ArrayList<>();
 
-    if (CommonUtil.nullOrEmpty(request.getGlossaryTags()) || CommonUtil.nullOrEmpty(request.getAssets())) {
+    if (dryRun && (CommonUtil.nullOrEmpty(request.getGlossaryTags()) || CommonUtil.nullOrEmpty(request.getAssets()))) {
       // Nothing to Validate
-      return result.withStatus(ApiStatus.SUCCESS).withSuccessRequest("Nothing to Add or Validate.");
+      return result.withStatus(ApiStatus.SUCCESS).withSuccessRequest("Nothing to Validate.");
     }
 
     // Validation for entityReferences
@@ -260,6 +260,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         tempList.add(tagLabel);
         // Apply Tags to Entities
         entityRepository.applyTags(getUniqueTags(tempList), asset.getFullyQualifiedName());
+
+        searchRepository.updateEntity(ref);
       }
     }
 
@@ -270,6 +272,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       // Remove current entity tags in the database. It will be added back later from the merged tag list.
       daoCollection.tagUsageDAO().deleteTagsByTarget(term.getFullyQualifiedName());
       applyTags(getUniqueTags(request.getGlossaryTags()), term.getFullyQualifiedName());
+
+      searchRepository.updateEntity(term.getEntityReference());
     }
 
     // Add Failed And Suceess Request
@@ -308,6 +312,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
           .deleteTagsByTagAndTargetEntity(term.getFullyQualifiedName(), asset.getFullyQualifiedName());
       success.add(ref);
       result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
+
+      // Update ES
+      searchRepository.updateEntity(ref);
     }
 
     return result.withSuccessRequest(success);
