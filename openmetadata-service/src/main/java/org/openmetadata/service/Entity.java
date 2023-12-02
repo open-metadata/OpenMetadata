@@ -540,7 +540,7 @@ public final class Entity {
     List<T> flattenedFields = getFlattenedEntityField(fields);
 
     // Fetch All tags belonging to Prefix
-    Map<String, List<TagLabel>> allTags = repository.getTagsByPrefix(fqnPrefix);
+    Map<String, List<TagLabel>> allTags = repository.getTagsByPrefix(fqnPrefix, ".%");
     for (T c : listOrEmpty(flattenedFields)) {
       if (setTags) {
         List<TagLabel> columnTag = allTags.get(FullyQualifiedName.buildHash(c.getFullyQualifiedName()));

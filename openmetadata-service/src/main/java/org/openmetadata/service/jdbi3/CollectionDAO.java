@@ -2195,9 +2195,11 @@ public interface CollectionDAO {
       return tags;
     }
 
-    default Map<String, List<TagLabel>> getTagsByPrefix(String targetFQNPrefix) {
+    default Map<String, List<TagLabel>> getTagsByPrefix(
+        String targetFQNPrefix, String postfix, boolean requiresFqnHash) {
+      String fqnHash = requiresFqnHash ? FullyQualifiedName.buildHash(targetFQNPrefix) : targetFQNPrefix;
       Map<String, List<TagLabel>> resultSet = new LinkedHashMap<>();
-      List<Pair<String, TagLabel>> tags = getTagsInternalByPrefix(targetFQNPrefix);
+      List<Pair<String, TagLabel>> tags = getTagsInternalByPrefix(fqnHash, postfix);
       tags.forEach(
           pair -> {
             String targetHash = pair.getLeft();
@@ -2234,7 +2236,7 @@ public interface CollectionDAO {
                 + "  ON ta.fqnHash = tu.tagFQNHash "
                 + "  WHERE tu.source = 0 "
                 + ") AS combined_data "
-                + "WHERE combined_data.targetFQNHash  LIKE CONCAT(:targetFQNHashPrefix, '.%')",
+                + "WHERE combined_data.targetFQNHash  LIKE CONCAT(:targetFQNHashPrefix, :postfix)",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
@@ -2250,10 +2252,11 @@ public interface CollectionDAO {
                 + "  JOIN tag_usage AS tu ON ta.fqnHash = tu.tagFQNHash "
                 + "  WHERE tu.source = 0 "
                 + ") AS combined_data "
-                + "WHERE combined_data.targetFQNHash LIKE CONCAT(:targetFQNHashPrefix, '.%')",
+                + "WHERE combined_data.targetFQNHash LIKE CONCAT(:targetFQNHashPrefix, :postfix)",
         connectionType = POSTGRES)
     @RegisterRowMapper(TagLabelRowMapperWithTargetFqnHash.class)
-    List<Pair<String, TagLabel>> getTagsInternalByPrefix(@BindFQN("targetFQNHashPrefix") String targetFQNHashPrefix);
+    List<Pair<String, TagLabel>> getTagsInternalByPrefix(
+        @Bind("targetFQNHashPrefix") String targetFQNHashPrefix, @Bind("postfix") String postfix);
 
     @SqlQuery("SELECT * FROM tag_usage")
     @Deprecated(since = "Release 1.1")
@@ -2337,6 +2340,10 @@ public interface CollectionDAO {
         "select * from tag_usage where targetFQNHash in (select targetFQNHash FROM tag_usage where tagFQNHash = :tagFQNHash) and tagFQNHash != :tagFQNHash")
     @RegisterRowMapper(TagLabelMapper.class)
     List<TagLabel> getEntityTagsFromTag(@BindFQN("tagFQNHash") String tagFQNHash);
+
+    @SqlQuery("select targetFQNHash FROM tag_usage where tagFQNHash = :tagFQNHash")
+    @RegisterRowMapper(TagLabelMapper.class)
+    List<String> getTargetFQNHashForTag(@BindFQN("tagFQNHash") String tagFQNHash);
 
     class TagLabelMapper implements RowMapper<TagLabel> {
       @Override

@@ -21,6 +21,8 @@ import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 import static org.openmetadata.service.util.EntityUtil.getSearchIndexField;
 
 import java.util.ArrayList;

@@ -42,6 +42,8 @@ import static org.openmetadata.service.Entity.getEntityByName;
 import static org.openmetadata.service.Entity.getEntityFields;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.csvNotSupported;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
@@ -69,7 +71,6 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -1227,31 +1228,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return objectNode;
   }
 
-  /** Validate given list of tags and add derived tags to it */
-  public final List<TagLabel> addDerivedTags(List<TagLabel> tagLabels) {
-    if (nullOrEmpty(tagLabels)) {
-      return tagLabels;
-    }
-
-    List<TagLabel> updatedTagLabels = new ArrayList<>();
-    EntityUtil.mergeTags(updatedTagLabels, tagLabels);
-    for (TagLabel tagLabel : tagLabels) {
-      EntityUtil.mergeTags(updatedTagLabels, getDerivedTags(tagLabel));
-    }
-    updatedTagLabels.sort(compareTagLabel);
-    return updatedTagLabels;
-  }
-
-  /** Get tags associated with a given set of tags */
-  private List<TagLabel> getDerivedTags(TagLabel tagLabel) {
-    if (tagLabel.getSource() == TagLabel.TagSource.GLOSSARY) { // Related tags are only supported for Glossary
-      List<TagLabel> derivedTags = daoCollection.tagUsageDAO().getTags(tagLabel.getTagFQN());
-      derivedTags.forEach(tag -> tag.setLabelType(TagLabel.LabelType.DERIVED));
-      return derivedTags;
-    }
-    return Collections.emptyList();
-  }
-
   protected void applyColumnTags(List<Column> columns) {
     // Add column level tags by adding tag to column relationship
     for (Column column : columns) {
@@ -1290,18 +1266,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  void checkMutuallyExclusive(List<TagLabel> tagLabels) {
-    Map<String, TagLabel> map = new HashMap<>();
-    for (TagLabel tagLabel : listOrEmpty(tagLabels)) {
-      // When two tags have the same parent that is mutuallyExclusive, then throw an error
-      String parentFqn = FullyQualifiedName.getParentFQN(tagLabel.getTagFQN());
-      TagLabel stored = map.put(parentFqn, tagLabel);
-      if (stored != null && TagLabelUtil.mutuallyExclusive(tagLabel)) {
-        throw new IllegalArgumentException(CatalogExceptionMessage.mutuallyExclusiveLabels(tagLabel, stored));
-      }
-    }
-  }
-
   protected List<TagLabel> getTags(T entity) {
     return !supportsTags ? null : getTags(entity.getFullyQualifiedName());
   }
@@ -1315,8 +1279,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return addDerivedTags(daoCollection.tagUsageDAO().getTags(fqn));
   }
 
-  public Map<String, List<TagLabel>> getTagsByPrefix(String prefix) {
-    return !supportsTags ? null : daoCollection.tagUsageDAO().getTagsByPrefix(prefix);
+  public Map<String, List<TagLabel>> getTagsByPrefix(String prefix, String postfix) {
+    return !supportsTags ? null : daoCollection.tagUsageDAO().getTagsByPrefix(prefix, postfix, true);
   }
 
   protected List<EntityReference> getFollowers(T entity) {
