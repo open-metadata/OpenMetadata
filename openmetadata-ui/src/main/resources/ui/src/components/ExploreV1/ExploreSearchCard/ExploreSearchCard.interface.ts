@@ -32,4 +32,5 @@ export interface ExploreSearchCardProps {
   openEntityInNewPage?: boolean;
   hideBreadcrumbs?: boolean;
   actionPopoverContent?: React.ReactNode;
+  onCheckboxChange?: (checked: boolean) => void;
 }

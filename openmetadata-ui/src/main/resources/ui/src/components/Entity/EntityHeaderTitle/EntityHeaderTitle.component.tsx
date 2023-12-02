@@ -34,6 +34,7 @@ const EntityHeaderTitle = ({
   isDisabled,
   className,
   color,
+  showName = true,
 }: EntityHeaderTitleProps) => {
   const { t } = useTranslation();
   const location = useLocation();
@@ -51,9 +52,9 @@ const EntityHeaderTitle = ({
       gutter={12}
       wrap={false}>
       <Col>{icon}</Col>
-      <Col className={deleted || badge ? 'w-max-full-140' : 'w-max-full-45'}>
+      <Col className={deleted || badge ? 'w-max-full-140' : ''}>
         {/* If we do not have displayName name only be shown in the bold from the below code */}
-        {!isEmpty(displayName) ? (
+        {!isEmpty(displayName) && showName ? (
           <Typography.Text
             className="m-b-0 d-block text-grey-muted"
             data-testid="entity-header-name">
@@ -98,7 +99,7 @@ const EntityHeaderTitle = ({
 
   return link && !isTourRoute ? (
     <Link
-      className="no-underline"
+      className="no-underline d-inline-block"
       data-testid="entity-link"
       target={openEntityInNewPage ? '_blank' : '_self'}
       to={link}>

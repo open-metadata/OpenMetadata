@@ -14,10 +14,14 @@
 /// <reference types="Cypress" />
 
 import {
+  addAssetsToDataProduct,
+  addAssetsToDomain,
   createDataProducts,
   createDomain,
   deleteDomain,
   removeAssets,
+  removeAssetsFromDataProduct,
+  removeAssetsFromDomain,
   renameDomain,
   updateAssets,
   updateDomainDetails,
@@ -44,6 +48,10 @@ describe('Domain page should work properly', () => {
     verifyDomain(DOMAIN_2);
   });
 
+  it('Add assets to domain using asset selection modal should work properly', () => {
+    addAssetsToDomain(DOMAIN_2);
+  });
+
   it('Create new data product should work properly', () => {
     DOMAIN_1.dataProducts.forEach((dataProduct) => {
       createDataProducts(dataProduct, DOMAIN_1);
@@ -53,15 +61,34 @@ describe('Domain page should work properly', () => {
     });
   });
 
+  it('Add data product assets using asset selection modal should work properly', () => {
+    DOMAIN_2.dataProducts.forEach((dp) => {
+      createDataProducts(dp, DOMAIN_2);
+      cy.get('[data-testid="app-bar-item-domain"]')
+        .should('be.visible')
+        .click({ force: true });
+    });
+
+    addAssetsToDataProduct(DOMAIN_2.dataProducts[0], DOMAIN_2);
+  });
+
+  it('Remove data product assets using asset selection modal should work properly', () => {
+    removeAssetsFromDataProduct(DOMAIN_2.dataProducts[0], DOMAIN_2);
+  });
+
   it('Update domain details should work properly', () => {
     updateDomainDetails(DOMAIN_1);
+  });
+
+  it('Remove assets to domain using asset selection modal should work properly', () => {
+    removeAssetsFromDomain(DOMAIN_2);
   });
 
   it('Assets Tab should work properly', () => {
     updateAssets(DOMAIN_1);
   });
 
-  it.skip('Remove Domain from entity should work properly', () => {
+  it('Remove Domain from entity should work properly', () => {
     removeAssets(DOMAIN_1);
   });
 

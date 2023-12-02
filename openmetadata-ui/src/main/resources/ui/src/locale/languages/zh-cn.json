@@ -1268,6 +1268,7 @@
     "deeply-understand-table-relations-message": "通过列级血缘关系图，深入了解数据表之间的关系",
     "define-custom-property-for-entity": "为{{entity}}添加自定义属性以满足您的组织需求",
     "delete-action-description": "删除此{{entityType}}将永久删除其在 OpenMetadata 中的元数据",
+    "delete-asset-from-entity-type": "Deleting this will remove {{entityType}} from the entity.",
     "delete-entity-permanently": "一旦您删除此{{entityType}}，它将被永久删除",
     "delete-entity-type-action-description": "删除此{{entityType}}将永久删除其在 OpenMetadata 中的元数据",
     "delete-message-question-mark": "删除消息?",

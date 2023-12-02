@@ -35,6 +35,7 @@ interface Props {
   serviceName: string;
   titleColor?: string;
   badge?: React.ReactNode;
+  showName?: boolean;
 }
 
 export const EntityHeader = ({
@@ -48,6 +49,7 @@ export const EntityHeader = ({
   serviceName,
   badge,
   titleColor,
+  showName = true,
 }: Props) => {
   return (
     <div className="w-full">
@@ -74,6 +76,7 @@ export const EntityHeader = ({
         name={entityData.name}
         openEntityInNewPage={openEntityInNewPage}
         serviceName={serviceName}
+        showName={showName}
       />
     </div>
   );

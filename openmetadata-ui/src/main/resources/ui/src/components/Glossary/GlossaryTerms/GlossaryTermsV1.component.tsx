@@ -36,6 +36,7 @@ import { getCountBadge, getFeedCounts } from '../../../utils/CommonUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import { getQueryFilterToExcludeTerm } from '../../../utils/GlossaryUtils';
 import { getGlossaryTermsVersionsPath } from '../../../utils/RouterUtils';
+import { escapeESReservedCharacters } from '../../../utils/StringsUtils';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { AssetSelectionModal } from '../../Assets/AssetsSelectionModal/AssetSelectionModal';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
@@ -120,6 +121,11 @@ const GlossaryTermsV1 = ({
     [glossaryTerm, handleGlossaryTermUpdate]
   );
 
+  const onTermUpdate = async (data: GlossaryTerm) => {
+    await handleGlossaryTermUpdate(data);
+    getEntityFeedCount();
+  };
+
   const tabItems = useMemo(() => {
     const items = [
       {
@@ -132,7 +138,7 @@ const GlossaryTermsV1 = ({
             permissions={permissions}
             selectedData={glossaryTerm}
             onThreadLinkSelect={onThreadLinkSelect}
-            onUpdate={(data) => handleGlossaryTermUpdate(data as GlossaryTerm)}
+            onUpdate={(data) => onTermUpdate(data as GlossaryTerm)}
           />
         ),
       },
@@ -250,13 +256,15 @@ const GlossaryTermsV1 = ({
   ]);
 
   const fetchGlossaryTermAssets = async () => {
-    if (glossaryFqn) {
+    if (glossaryTerm) {
       try {
         const res = await searchData(
           '',
           1,
           0,
-          `(tags.tagFQN:"${glossaryFqn}")`,
+          `(tags.tagFQN:"${escapeESReservedCharacters(
+            glossaryTerm.fullyQualifiedName
+          )}")`,
           '',
           '',
           SearchIndex.ALL
@@ -313,7 +321,7 @@ const GlossaryTermsV1 = ({
             onAddGlossaryTerm={onAddGlossaryTerm}
             onAssetAdd={() => setAssetModelVisible(true)}
             onDelete={handleGlossaryTermDelete}
-            onUpdate={(data) => handleGlossaryTermUpdate(data as GlossaryTerm)}
+            onUpdate={(data) => onTermUpdate(data as GlossaryTerm)}
           />
         </Col>
 

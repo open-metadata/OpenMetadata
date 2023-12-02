@@ -1268,6 +1268,7 @@
     "deeply-understand-table-relations-message": "Get the Producers and Consumers of data in a single platform and accelerate productivity. Collaboration just gets better with people and data from multiple tools in a centralized location.",
     "define-custom-property-for-entity": "Define custom properties for {{entity}} to serve your organizational needs.",
     "delete-action-description": "Deleting this {{entityType}} will permanently remove its metadata from OpenMetadata.",
+    "delete-asset-from-entity-type": "Deleting this will remove {{entityType}} from the entity.",
     "delete-entity-permanently": "Once you delete this {{entityType}}, it will be removed permanently.",
     "delete-entity-type-action-description": "Deleting this {{entityType}} will permanently remove its metadata from OpenMetadata.",
     "delete-message-question-mark": "Delete Message?",

@@ -77,6 +77,7 @@ import {
   getDataProductVersionsPath,
   getDomainPath,
 } from '../../../utils/RouterUtils';
+import { escapeESReservedCharacters } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
@@ -202,13 +203,15 @@ const DataProductsDetailsPage = ({
   }, [permissions, isVersionsView]);
 
   const fetchDataProductAssets = async () => {
-    if (fqn) {
+    if (dataProduct) {
       try {
         const res = await searchData(
           '',
           1,
           0,
-          `(dataProducts.fullyQualifiedName:${fqn})`,
+          `(dataProducts.fullyQualifiedName:"${escapeESReservedCharacters(
+            dataProduct.fullyQualifiedName
+          )}")`,
           '',
           '',
           SearchIndex.ALL

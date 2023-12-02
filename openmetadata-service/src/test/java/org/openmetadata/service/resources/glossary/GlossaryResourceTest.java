@@ -63,6 +63,7 @@ import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
@@ -348,7 +349,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     String csv = createCsv(GlossaryCsv.HEADERS, listOf(record), null);
     CsvImportResult result = importCsv(glossaryName, csv, false);
     Awaitility.await().atMost(4, TimeUnit.SECONDS).until(() -> true);
-    assertSummary(result, CsvImportResult.Status.FAILURE, 2, 1, 1);
+    assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
     String[] expectedRows = {
       resultsHeader, getFailedRecord(record, "[name must match \"\"^(?U)[\\w'\\- .&()%]+$\"\"]")
     };
@@ -359,7 +360,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     csv = createCsv(GlossaryCsv.HEADERS, listOf(record), null);
     result = importCsv(glossaryName, csv, false);
     Awaitility.await().atMost(4, TimeUnit.SECONDS).until(() -> true);
-    assertSummary(result, CsvImportResult.Status.FAILURE, 2, 1, 1);
+    assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
     expectedRows = new String[] {resultsHeader, getFailedRecord(record, entityNotFound(0, "invalidParent"))};
     assertRows(result, expectedRows);
 
@@ -367,7 +368,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     record = ",g1,dsp1,dsc1,h1;h2;h3,,term1;http://term1,Tag.invalidTag,,,";
     csv = createCsv(GlossaryCsv.HEADERS, listOf(record), null);
     result = importCsv(glossaryName, csv, false);
-    assertSummary(result, CsvImportResult.Status.FAILURE, 2, 1, 1);
+    assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
     expectedRows = new String[] {resultsHeader, getFailedRecord(record, entityNotFound(7, "Tag.invalidTag"))};
     assertRows(result, expectedRows);
   }

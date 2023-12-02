@@ -1268,6 +1268,7 @@
     "deeply-understand-table-relations-message": "Глубокое понимание связей между таблицами; благодаря отслеживанию происхождения на уровне столбцов.",
     "define-custom-property-for-entity": "Определите настраиваемые свойства для {{entity}} в соответствии с потребностями вашей организации.",
     "delete-action-description": "Удаление этого {{entityType}} навсегда удалит его метаданные из OpenMetadata.",
+    "delete-asset-from-entity-type": "Deleting this will remove {{entityType}} from the entity.",
     "delete-entity-permanently": "Как только вы удалите этот {{entityType}}, он будет удален навсегда.",
     "delete-entity-type-action-description": "Удаление этого {{entityType}} навсегда удалит его метаданные из OpenMetadata.",
     "delete-message-question-mark": "Удалить сообщение?",

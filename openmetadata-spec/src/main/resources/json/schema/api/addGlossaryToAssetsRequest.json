@@ -1,0 +1,28 @@
+{
+  "$id": "https://open-metadata.org/schema/api/createBot.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AddGlossaryToAssetsRequest",
+  "description": "Create Request for adding a glossary to assets",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.AddGlossaryToAssetsRequest",
+  "properties": {
+    "dryRun": {
+      "description": "If true, the request will be validated but no changes will be made",
+      "type": "boolean",
+      "default": true
+    },
+    "glossaryTags": {
+      "description": "Glossary Tags to be added",
+      "type": "array",
+      "items": {
+        "$ref": "../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "assets": {
+      "description": "List of assets to be created against which the glossary needs to be added.",
+      "$ref": "../type/entityReferenceList.json"
+    }
+  },
+  "additionalProperties": false
+}

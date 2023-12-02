@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, List, Modal, Space, Typography } from 'antd';
+import { Button, Checkbox, List, Modal, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { EntityDetailUnion } from 'Models';
@@ -25,6 +25,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
+import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Table } from '../../../generated/entity/data/table';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../generated/entity/domains/domain';
@@ -33,6 +34,10 @@ import {
   patchDataProduct,
 } from '../../../rest/dataProductAPI';
 import { getDomainByName } from '../../../rest/domainAPI';
+import {
+  addAssetsToGlossaryTerm,
+  getGlossaryTermByFQN,
+} from '../../../rest/glossaryAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import {
   getAPIfromSource,
@@ -40,6 +45,7 @@ import {
   getEntityAPIfromSource,
 } from '../../../utils/Assets/AssetsUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityUtils';
+import { getDecodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
@@ -108,6 +114,9 @@ export const AssetSelectionModal = ({
         encodeURIComponent(entityFqn),
         'domain,assets'
       );
+      setActiveEntity(data);
+    } else if (type === AssetsOfEntity.GLOSSARY) {
+      const data = await getGlossaryTermByFQN(getDecodedFqn(entityFqn), 'tags');
       setActiveEntity(data);
     }
   }, [type, entityFqn]);
@@ -240,9 +249,37 @@ export const AssetSelectionModal = ({
     }
   };
 
-  const domainAndDataProductsSave = async () => {
+  const glossarySave = async () => {
+    try {
+      setIsSaveLoading(true);
+      if (!activeEntity) {
+        return;
+      }
+
+      const entities = [...(selectedItems?.values() ?? [])].map((item) => {
+        return getEntityReferenceFromEntity(item, item.entityType);
+      });
+
+      await addAssetsToGlossaryTerm(activeEntity as GlossaryTerm, entities);
+      await new Promise((resolve) => {
+        setTimeout(() => {
+          resolve('');
+          onSave?.();
+        }, ES_UPDATE_DELAY);
+      });
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    } finally {
+      setIsSaveLoading(false);
+      onCancel();
+    }
+  };
+
+  const handleSave = async () => {
     if (type === AssetsOfEntity.DATA_PRODUCT) {
       dataProductsSave();
+    } else if (type === AssetsOfEntity.GLOSSARY) {
+      glossarySave();
     } else {
       try {
         setIsSaveLoading(true);
@@ -291,72 +328,9 @@ export const AssetSelectionModal = ({
     }
   };
 
-  const handleSave = async () => {
-    setIsSaveLoading(true);
-    const entityDetails = [...(selectedItems?.values() ?? [])].map((item) =>
-      getEntityAPIfromSource(item.entityType)(
-        item.fullyQualifiedName,
-        getAssetsFields(type)
-      )
-    );
-
-    try {
-      const entityDetailsResponse = await Promise.allSettled(entityDetails);
-      const map = new Map();
-
-      entityDetailsResponse.forEach((response) => {
-        if (response.status === 'fulfilled') {
-          const entity = response.value;
-          entity && map.set(entity.fullyQualifiedName, (entity as Table).tags);
-        }
-      });
-      const patchAPIPromises = [...(selectedItems?.values() ?? [])]
-        .map((item) => {
-          if (map.has(item.fullyQualifiedName)) {
-            const jsonPatch = compare(
-              { tags: map.get(item.fullyQualifiedName) },
-              {
-                tags: [
-                  ...(item.tags ?? []),
-                  {
-                    tagFQN: entityFqn,
-                    source: 'Glossary',
-                    labelType: 'Manual',
-                  },
-                ],
-              }
-            );
-            const api = getAPIfromSource(item.entityType);
-
-            return api(item.id, jsonPatch);
-          }
-
-          return;
-        })
-        .filter(Boolean);
-
-      await Promise.all(patchAPIPromises);
-      await new Promise((resolve) => {
-        setTimeout(() => {
-          resolve('');
-          onSave?.();
-        }, ES_UPDATE_DELAY);
-      });
-    } catch (err) {
-      showErrorToast(err as AxiosError);
-    } finally {
-      setIsSaveLoading(false);
-      onCancel();
-    }
-  };
-
   const onSaveAction = useCallback(() => {
-    if (type === AssetsOfEntity.GLOSSARY) {
-      handleSave();
-    } else {
-      domainAndDataProductsSave();
-    }
-  }, [type, handleSave, domainAndDataProductsSave]);
+    handleSave();
+  }, [type, handleSave]);
 
   const onScroll: UIEventHandler<HTMLElement> = useCallback(
     (e) => {
@@ -387,27 +361,62 @@ export const AssetSelectionModal = ({
     ]
   );
 
+  const onSelectAll = (selectAll: boolean) => {
+    setSelectedItems((prevItems) => {
+      const selectedItemMap = new Map(prevItems ?? []);
+
+      if (selectAll) {
+        items.forEach(({ _source }) => {
+          const id = _source.id;
+          if (id) {
+            selectedItemMap.set(id, _source);
+          }
+        });
+      } else {
+        // Clear selection
+        selectedItemMap.clear();
+      }
+
+      return selectedItemMap;
+    });
+  };
+
   return (
     <Modal
       destroyOnClose
+      className="asset-selection-modal"
       closable={false}
       closeIcon={null}
+      data-testid="asset-selection-modal"
       footer={
-        <>
-          <Button onClick={onCancel}>{t('label.cancel')}</Button>
-          <Button
-            disabled={isLoading}
-            loading={isSaveLoading}
-            type="primary"
-            onClick={onSaveAction}>
-            {t('label.save')}
-          </Button>
-        </>
+        <div className="d-flex justify-between">
+          <div>
+            {selectedItems && selectedItems.size > 1 && (
+              <Typography.Text>
+                {selectedItems.size} {t('label.selected-lowercase')}
+              </Typography.Text>
+            )}
+          </div>
+
+          <div>
+            <Button data-testid="cancel-btn" onClick={onCancel}>
+              {t('label.cancel')}
+            </Button>
+            <Button
+              data-testid="save-btn"
+              disabled={isLoading}
+              loading={isSaveLoading}
+              type="primary"
+              onClick={onSaveAction}>
+              {t('label.save')}
+            </Button>
+          </div>
+        </div>
       }
       open={open}
       style={{ top: 40 }}
       title={t('label.add-entity', { entity: t('label.asset-plural') })}
-      width={750}
+      width={675}
       onCancel={onCancel}>
       <Space className="w-full h-full" direction="vertical" size={16}>
         <Searchbar
@@ -420,30 +429,40 @@ export const AssetSelectionModal = ({
           onSearch={setSearch}
         />
 
-        {isLoading && <Loader />}
-
-        {!isLoading && items.length > 0 && (
-          <List>
-            <VirtualList
-              data={items}
-              height={500}
-              itemKey="id"
-              onScroll={onScroll}>
-              {({ _source: item }) => (
-                <TableDataCardV2
-                  openEntityInNewPage
-                  showCheckboxes
-                  checked={selectedItems?.has(item.id ?? '')}
-                  className="m-b-sm asset-selection-model-card cursor-pointer"
-                  handleSummaryPanelDisplay={handleCardClick}
-                  id={`tabledatacard-${item.id}`}
-                  key={item.id}
-                  source={{ ...item, tags: [] }}
-                />
-              )}
-            </VirtualList>
-          </List>
+        {items.length > 0 && (
+          <div className="border p-xs">
+            <Checkbox
+              className="assets-checkbox p-x-sm"
+              onChange={(e) => onSelectAll(e.target.checked)}>
+              {t('label.select-field', {
+                field: t('label.all'),
+              })}
+            </Checkbox>
+            <List>
+              <VirtualList
+                data={items}
+                height={500}
+                itemKey="id"
+                onScroll={onScroll}>
+                {({ _source: item }) => (
+                  <TableDataCardV2
+                    openEntityInNewPage
+                    showCheckboxes
+                    checked={selectedItems?.has(item.id ?? '')}
+                    className="border-none asset-selection-model-card cursor-pointer"
+                    handleSummaryPanelDisplay={handleCardClick}
+                    id={`tabledatacard-${item.id}`}
+                    key={item.id}
+                    showBody={false}
+                    showName={false}
+                    source={{ ...item, tags: [] }}
+                  />
+                )}
+              </VirtualList>
+            </List>
+          </div>
         )}
+
         {!isLoading && items.length === 0 && (
           <ErrorPlaceHolder>
             {emptyPlaceHolderText && (
@@ -453,6 +472,8 @@ export const AssetSelectionModal = ({
             )}
           </ErrorPlaceHolder>
         )}
+
+        {isLoading && <Loader size="small" />}
       </Space>
     </Modal>
   );

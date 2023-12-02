@@ -91,6 +91,7 @@ import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.TeamHierarchy;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ImageList;
@@ -735,7 +736,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     String record = getRecord(1, GROUP, team.getName(), "", false, "", "invalidPolicy");
     String csv = createCsv(TeamCsv.HEADERS, listOf(record), null);
     CsvImportResult result = importCsv(team.getName(), csv, false);
-    assertSummary(result, CsvImportResult.Status.FAILURE, 2, 1, 1);
+    assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
     String[] expectedRows = {resultsHeader, getFailedRecord(record, EntityCsv.entityNotFound(8, "invalidPolicy"))};
     assertRows(result, expectedRows);
 
@@ -743,7 +744,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     record = getRecord(1, GROUP, team.getName(), "", false, "invalidRole", "");
     csv = createCsv(TeamCsv.HEADERS, listOf(record), null);
     result = importCsv(team.getName(), csv, false);
-    assertSummary(result, CsvImportResult.Status.FAILURE, 2, 1, 1);
+    assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
     expectedRows = new String[] {resultsHeader, getFailedRecord(record, EntityCsv.entityNotFound(7, "invalidRole"))};
     assertRows(result, expectedRows);
 
@@ -751,7 +752,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     record = getRecord(1, GROUP, team.getName(), "invalidOwner", false, "", "");
     csv = createCsv(TeamCsv.HEADERS, listOf(record), null);
     result = importCsv(team.getName(), csv, false);
-    assertSummary(result, CsvImportResult.Status.FAILURE, 2, 1, 1);
+    assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
     expectedRows = new String[] {resultsHeader, getFailedRecord(record, EntityCsv.entityNotFound(5, "invalidOwner"))};
     assertRows(result, expectedRows);
 
@@ -759,7 +760,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     record = getRecord(1, GROUP, "invalidParent", "", false, "", "");
     csv = createCsv(TeamCsv.HEADERS, listOf(record), null);
     result = importCsv(team.getName(), csv, false);
-    assertSummary(result, CsvImportResult.Status.FAILURE, 2, 1, 1);
+    assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
     expectedRows = new String[] {resultsHeader, getFailedRecord(record, EntityCsv.entityNotFound(4, "invalidParent"))};
     assertRows(result, expectedRows);
 
@@ -767,7 +768,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     record = getRecord(1, GROUP, TEAM21.getName(), "", false, "", "");
     csv = createCsv(TeamCsv.HEADERS, listOf(record), null);
     result = importCsv(team.getName(), csv, false);
-    assertSummary(result, CsvImportResult.Status.FAILURE, 2, 1, 1);
+    assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
     expectedRows =
         new String[] {
           resultsHeader, getFailedRecord(record, TeamCsv.invalidTeam(4, team.getName(), "x1", TEAM21.getName()))

@@ -18,10 +18,10 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
-import org.openmetadata.schema.type.csv.CsvImportResult.Status;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.TableRepository;
 
@@ -56,14 +56,14 @@ public class EntityCsvTest {
     String csv = ",h2,h3" + LINE_SEPARATOR; // Header h1 is missing in the CSV file
     TestCsv testCsv = new TestCsv();
     CsvImportResult importResult = testCsv.importCsv(csv, true);
-    assertSummary(importResult, Status.ABORTED, 1, 0, 1);
+    assertSummary(importResult, ApiStatus.ABORTED, 1, 0, 1);
     assertNull(importResult.getImportResultsCsv());
     assertEquals(TestCsv.invalidHeader("h1*,h2,h3", ",h2,h3"), importResult.getAbortReason());
   }
 
   public static void assertSummary(
       CsvImportResult importResult,
-      Status expectedStatus,
+      ApiStatus expectedStatus,
       int expectedRowsProcessed,
       int expectedRowsPassed,
       int expectedRowsFailed) {

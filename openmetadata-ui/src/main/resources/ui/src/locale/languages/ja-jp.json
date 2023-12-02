@@ -1268,6 +1268,7 @@
     "deeply-understand-table-relations-message": "カラムレベルのリネージによりテーブルの関係をより深く理解できます。",
     "define-custom-property-for-entity": "Define custom properties for {{entity}} to serve your organizational needs.",
     "delete-action-description": "{{entityType}}の削除によってOpenMetadataからこのメタデータが削除されます。",
+    "delete-asset-from-entity-type": "Deleting this will remove {{entityType}} from the entity.",
     "delete-entity-permanently": "この{{entityType}}を1度削除すると、これは永久に取り除かれます。",
     "delete-entity-type-action-description": "{{entityType}}を削除するとOpenMetadataからこのメタデータが永久に削除されます。",
     "delete-message-question-mark": "このメッセージを削除しますか？",
