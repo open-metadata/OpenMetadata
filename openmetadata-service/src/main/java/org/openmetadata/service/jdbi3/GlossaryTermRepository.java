@@ -21,7 +21,6 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.GLOSSARY;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
-import static org.openmetadata.service.Entity.getEntity;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidGlossaryTermMove;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
@@ -134,7 +133,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     // Validate parent term
     GlossaryTerm parentTerm =
         entity.getParent() != null
-            ? getEntity(entity.getParent().withType(GLOSSARY_TERM), "owner,reviewers", Include.NON_DELETED)
+            ? Entity.getEntity(entity.getParent().withType(GLOSSARY_TERM), "owner,reviewers", Include.NON_DELETED)
             : null;
     if (parentTerm != null) {
       parentReviewers = parentTerm.getReviewers();
@@ -142,7 +141,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
 
     // Validate glossary
-    Glossary glossary = getEntity(entity.getGlossary(), "reviewers", Include.NON_DELETED);
+    Glossary glossary = Entity.getEntity(entity.getGlossary(), "reviewers", Include.NON_DELETED);
     entity.setGlossary(glossary.getEntityReference());
     parentReviewers = parentReviewers != null ? parentReviewers : glossary.getReviewers();
 
