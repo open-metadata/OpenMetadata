@@ -66,9 +66,7 @@ const RetentionPeriod = ({
 
   const onCancel = useCallback(() => setIsEdit(false), []);
 
-  const handleSubmit: FormProps['onFinish'] = async ({
-    days,
-  }): Promise<void> => {
+  const handleSubmit: FormProps['onFinish'] = async ({ days }) => {
     setIsLoading(true);
     try {
       if (days) {

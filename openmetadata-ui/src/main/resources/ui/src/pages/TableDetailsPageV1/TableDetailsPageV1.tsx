@@ -373,7 +373,7 @@ const TableDetailsPageV1 = () => {
       };
       await onTableUpdate(updatedTableDetails, 'retentionPeriod');
     },
-    [owner, tableDetails]
+    [tableDetails]
   );
 
   const onDescriptionUpdate = async (updatedHTML: string) => {
