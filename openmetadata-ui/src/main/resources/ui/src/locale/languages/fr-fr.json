@@ -1271,6 +1271,7 @@
     "deeply-understand-table-relations-message": "Comprenez en profondeur la relation entre vos tables avec la traçabilité au niveau de la colonne.",
     "define-custom-property-for-entity": "Définir les propriétés personnalisées pour {{entity}} pour répondre à vos besoins organisationnels.",
     "delete-action-description": "Supprimer cette {{entityType}} supprimera de manière permanente les métadonnées dans OpenMetadata.",
+    "delete-asset-from-entity-type": "Deleting this will remove {{entityType}} from the entity.",
     "delete-entity-permanently": "Une fois que vous supprimez {{entityType}}, il sera supprimé de manière permanente",
     "delete-entity-type-action-description": "Supprimer cette {{entityType}} supprimera définitivement ses métadonnées d'OpenMetadata.",
     "delete-message-question-mark": "Supprimer le Message ?",

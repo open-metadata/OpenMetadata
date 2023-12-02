@@ -327,6 +327,26 @@ export const NEW_GLOSSARY_TERMS = {
     synonyms: 'give,disposal,deal',
     fullyQualifiedName: 'Cypress Glossary.CypressSales',
   },
+  term_3: {
+    name: 'Cypress Space',
+    description: 'This is the Cypress with space',
+    synonyms: 'tea,coffee,water',
+    fullyQualifiedName: 'Cypress Glossary.Cypress Space',
+    assets: [
+      {
+        name: 'dim_customer',
+        fullyQualifiedName: 'sample_data.ecommerce_db.shopify.dim_address',
+      },
+      {
+        name: 'raw_order',
+        fullyQualifiedName: 'sample_data.ecommerce_db.shopify.raw_order',
+      },
+      {
+        name: 'presto_etl',
+        fullyQualifiedName: 'sample_airflow.presto_etl',
+      },
+    ],
+  },
 };
 export const GLOSSARY_TERM_WITH_DETAILS = {
   name: 'Accounts',
@@ -518,6 +538,7 @@ export const NAME_MAX_LENGTH_VALIDATION_ERROR =
 export const DOMAIN_1 = {
   name: 'Cypress%Domain',
   updatedName: 'Cypress_Domain_Name',
+  fullyQualifiedName: 'Cypress%Domain',
   updatedDisplayName: 'Cypress_Domain_Display_Name',
   description:
     'This is the Cypress for testing domain creation with percent and dot',
@@ -549,8 +570,46 @@ export const DOMAIN_2 = {
   name: 'Cypress.Domain.New',
   updatedName: 'Cypress.Domain.New',
   updatedDisplayName: 'Cypress.Domain.New',
+  fullyQualifiedName: '"Cypress.Domain.New"',
   description: 'This is the Cypress for testing domain creation',
   experts: 'Alex Pollard',
   owner: 'Alex Pollard',
   domainType: 'Source-aligned',
+  dataProducts: [
+    {
+      name: 'Cypress DataProduct Assets',
+      description:
+        'This is the data product description for Cypress DataProduct Assets',
+      experts: 'Aaron Johnson',
+      owner: 'Aaron Johnson',
+      assets: [
+        {
+          name: 'dim_customer',
+          fullyQualifiedName: 'sample_data.ecommerce_db.shopify.dim_address',
+        },
+        {
+          name: 'raw_order',
+          fullyQualifiedName: 'sample_data.ecommerce_db.shopify.raw_order',
+        },
+        {
+          name: 'presto_etl',
+          fullyQualifiedName: 'sample_airflow.presto_etl',
+        },
+      ],
+    },
+  ],
+  assets: [
+    {
+      name: 'dim_customer',
+      fullyQualifiedName: 'sample_data.ecommerce_db.shopify.dim_address',
+    },
+    {
+      name: 'raw_order',
+      fullyQualifiedName: 'sample_data.ecommerce_db.shopify.raw_order',
+    },
+    {
+      name: 'presto_etl',
+      fullyQualifiedName: 'sample_airflow.presto_etl',
+    },
+  ],
 };

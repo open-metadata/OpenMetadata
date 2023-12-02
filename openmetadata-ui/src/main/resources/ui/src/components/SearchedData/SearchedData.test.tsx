@@ -125,10 +125,13 @@ describe('Test SearchedData Component', () => {
     const { container } = render(<SearchedData {...MOCK_PROPS} />, {
       wrapper: MemoryRouter,
     });
+    const card1 = getByTestId(container, 'table-data-card_fullyQualifiedName1');
+    const card2 = getByTestId(container, 'table-data-card_fullyQualifiedName2');
+    const card3 = getByTestId(container, 'table-data-card_fullyQualifiedName3');
 
-    const searchedDataContainer = getAllByTestId(container, 'table-data-card');
-
-    expect(searchedDataContainer).toHaveLength(3);
+    expect(card1).toBeInTheDocument();
+    expect(card2).toBeInTheDocument();
+    expect(card3).toBeInTheDocument();
   });
 
   it('Should display table card with name and display name highlighted', () => {
@@ -136,9 +139,13 @@ describe('Test SearchedData Component', () => {
       wrapper: MemoryRouter,
     });
 
-    const searchedDataContainer = getAllByTestId(container, 'table-data-card');
+    const card1 = getByTestId(container, 'table-data-card_fullyQualifiedName1');
+    const card2 = getByTestId(container, 'table-data-card_fullyQualifiedName2');
+    const card3 = getByTestId(container, 'table-data-card_fullyQualifiedName3');
 
-    expect(searchedDataContainer).toHaveLength(3);
+    expect(card1).toBeInTheDocument();
+    expect(card2).toBeInTheDocument();
+    expect(card3).toBeInTheDocument();
 
     const headerDisplayName = getAllByTestId(
       container,

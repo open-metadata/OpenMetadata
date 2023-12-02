@@ -1271,6 +1271,7 @@
     "deeply-understand-table-relations-message": "Comprenda profundamente las relaciones de tabla; gracias al linaje a nivel de columna.",
     "define-custom-property-for-entity": "Defina propiedades personalizadas para {{entity}} para satisfacer las necesidades de su organización.",
     "delete-action-description": "Eliminar esta {{entityType}} eliminará permanentemente sus metadatos de OpenMetadata.",
+    "delete-asset-from-entity-type": "Deleting this will remove {{entityType}} from the entity.",
     "delete-entity-permanently": "Una vez que elimine esta {{entityType}}, se eliminará permanentemente.",
     "delete-entity-type-action-description": "Eliminar esta {{entityType}} eliminará permanentemente sua metadatoa de OpenMetadata.",
     "delete-message-question-mark": "¿Eliminar mensaje?",
