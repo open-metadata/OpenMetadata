@@ -47,6 +47,7 @@ from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDe
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.airflow.lineage_parser import XLets
+from metadata.utils.constants import ENTITY_REFERENCE_TYPE_MAP
 from metadata.utils.helpers import clean_uri, datetime_to_ts
 
 
@@ -251,37 +252,47 @@ class AirflowLineageRunner:
         """
 
         lineage_details = LineageDetails(
-            pipeline=EntityReference(id=pipeline.id, type="pipeline")
+            pipeline=EntityReference(
+                id=pipeline.id, type=ENTITY_REFERENCE_TYPE_MAP[Pipeline.__name__]
+            )
         )
 
-        for from_fqn in xlets.inlets or []:
+        for from_xlet in xlets.inlets or []:
             from_entity: Optional[Table] = self.metadata.get_by_name(
-                entity=Table, fqn=from_fqn
+                entity=from_xlet.entity, fqn=from_xlet.fqn
             )
             if from_entity:
-                for to_fqn in xlets.outlets or []:
+                for to_xlet in xlets.outlets or []:
                     to_entity: Optional[Table] = self.metadata.get_by_name(
-                        entity=Table, fqn=to_fqn
+                        entity=to_xlet.entity, fqn=to_xlet.fqn
                     )
                     if to_entity:
                         lineage = AddLineageRequest(
                             edge=EntitiesEdge(
                                 fromEntity=EntityReference(
-                                    id=from_entity.id, type="table"
+                                    id=from_entity.id,
+                                    type=ENTITY_REFERENCE_TYPE_MAP[
+                                        from_xlet.entity.__name__
+                                    ],
                                 ),
-                                toEntity=EntityReference(id=to_entity.id, type="table"),
+                                toEntity=EntityReference(
+                                    id=to_entity.id,
+                                    type=ENTITY_REFERENCE_TYPE_MAP[
+                                        to_xlet.entity.__name__
+                                    ],
+                                ),
                                 lineageDetails=lineage_details,
                             )
                         )
                         self.metadata.add_lineage(lineage)
                     else:
                         self.dag.log.warning(
-                            f"Could not find Table [{to_fqn}] from "
+                            f"Could not find [{to_xlet.entity.__name__}] [{to_xlet.fqn}] from "
                             f"[{pipeline.fullyQualifiedName.__root__}] outlets"
                         )
             else:
                 self.dag.log.warning(
-                    f"Could not find Table [{from_fqn}] from "
+                    f"Could not find [{from_xlet.entity.__name__}] [{from_xlet.fqn}] from "
                     f"[{pipeline.fullyQualifiedName.__root__}] inlets"
                 )
 
@@ -305,7 +316,8 @@ class AirflowLineageRunner:
                     for node in lineage_data.get("nodes") or []
                     if node["id"] == upstream_edge["fromEntity"]
                     and node["type"] == "table"
-                )
+                ),
+                None,
             )
             for upstream_edge in lineage_data.get("upstreamEdges") or []
         ]
@@ -316,26 +328,37 @@ class AirflowLineageRunner:
                     for node in lineage_data.get("nodes") or []
                     if node["id"] == downstream_edge["toEntity"]
                     and node["type"] == "table"
-                )
+                ),
+                None,
             )
             for downstream_edge in lineage_data.get("downstreamEdges") or []
         ]
 
-        for edge in upstream_edges:
-            if edge.fqn not in xlets.inlets:
+        for edge in upstream_edges or []:
+            if edge.fqn not in (inlet.fqn for inlet in xlets.inlets):
                 self.dag.log.info(f"Removing upstream edge with {edge.fqn}")
                 edge_to_remove = EntitiesEdge(
-                    fromEntity=EntityReference(id=edge.id, type="table"),
-                    toEntity=EntityReference(id=pipeline.id, type="pipeline"),
+                    fromEntity=EntityReference(
+                        id=edge.id, type=ENTITY_REFERENCE_TYPE_MAP[Table.__name__]
+                    ),
+                    toEntity=EntityReference(
+                        id=pipeline.id,
+                        type=ENTITY_REFERENCE_TYPE_MAP[Pipeline.__name__],
+                    ),
                 )
                 self.metadata.delete_lineage_edge(edge=edge_to_remove)
 
-        for edge in downstream_edges:
-            if edge.fqn not in xlets.outlets:
+        for edge in downstream_edges or []:
+            if edge.fqn not in (outlet.fqn for outlet in xlets.outlets):
                 self.dag.log.info(f"Removing downstream edge with {edge.fqn}")
                 edge_to_remove = EntitiesEdge(
-                    fromEntity=EntityReference(id=pipeline.id, type="pipeline"),
-                    toEntity=EntityReference(id=edge.id, type="table"),
+                    fromEntity=EntityReference(
+                        id=pipeline.id,
+                        type=ENTITY_REFERENCE_TYPE_MAP[Pipeline.__name__],
+                    ),
+                    toEntity=EntityReference(
+                        id=edge.id, type=ENTITY_REFERENCE_TYPE_MAP[Table.__name__]
+                    ),
                 )
                 self.metadata.delete_lineage_edge(edge=edge_to_remove)
 
