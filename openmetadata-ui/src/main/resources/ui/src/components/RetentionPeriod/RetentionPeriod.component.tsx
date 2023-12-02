@@ -48,7 +48,10 @@ const RetentionPeriod = ({
     const durationObjectToObj = durationObject.toObject();
 
     if (durationObjectToObj.days) {
-      form.setFieldsValue({ days: durationObjectToObj.days });
+      form.setFieldsValue({
+        days: durationObjectToObj.days,
+        hours: durationObjectToObj.hours,
+      });
     }
 
     let durationString = '';
@@ -66,12 +69,12 @@ const RetentionPeriod = ({
 
   const onCancel = useCallback(() => setIsEdit(false), []);
 
-  const handleSubmit: FormProps['onFinish'] = async ({ days }) => {
+  const handleSubmit: FormProps['onFinish'] = async ({ days, hours }) => {
     setIsLoading(true);
     try {
-      if (days) {
-        // create a duration object with provided days
-        const duration = Duration.fromObject({ days: days });
+      if (days || hours) {
+        // create a duration object with provided days and hour
+        const duration = Duration.fromObject({ days, hours });
 
         // Format the duration in ISO 8601 format
         const iso8601Duration = duration.toISO();
@@ -138,13 +141,25 @@ const RetentionPeriod = ({
               {
                 min: 1,
                 type: 'number',
-                message: t('message.day-must-be-greater-than-zero'),
+                message: t('message.entity-must-be-greater-than-zero', {
+                  entity: t('label.day-plural'),
+                }),
               },
             ]}>
-            <InputNumber
-              className="w-full"
-              data-testid="retention-period-input"
-            />
+            <InputNumber className="w-full" data-testid="days-period-input" />
+          </Form.Item>
+
+          <Form.Item
+            label={t('label.hour-plural')}
+            name="hours"
+            rules={[
+              {
+                min: 0,
+                max: 23,
+                type: 'number',
+              },
+            ]}>
+            <InputNumber className="w-full" data-testid="hours-period-input" />
           </Form.Item>
         </Form>
       </Modal>
