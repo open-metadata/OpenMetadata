@@ -61,6 +61,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -419,9 +420,31 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   @PUT
   @Path("/{id}/assets/add")
   @Operation(
-      operationId = "bulkAddGlossaryToAssets",
-      summary = "Bulk Add Glossary to Assets",
-      description = "Bulk Add Glossary to Assets",
+      operationId = "bulkAddGlossaryTermToAssets",
+      summary = "Bulk Add Glossary Term to Assets",
+      description = "Bulk Add Glossary Term to Assets",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = BulkOperationResult.class))),
+        @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
+      })
+  public Response bulkAddGlossaryToAssets(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Valid AddGlossaryToAssetsRequest request) {
+    return Response.ok().entity(repository.bulkAddAndValidateGlossaryToAssets(id, request)).build();
+  }
+
+  @PUT
+  @Path("/{id}/assets/remove")
+  @Operation(
+      operationId = "bulkRemoveGlossaryTermFromAssets",
+      summary = "Bulk Remove Glossary Term from Assets",
+      description = "Bulk Remove Glossary Term from Assets",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -429,19 +452,12 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
         @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
       })
-  public Response bulkAddGlossaryToAssets(
+  public Response bulkRemoveGlossaryFromAssets(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Parameter(
-              description =
-                  "Dry-run when true is used for validating the glossary without really applying it. (default=true)",
-              schema = @Schema(type = "boolean"))
-          @DefaultValue("true")
-          @QueryParam("dryRun")
-          boolean dryRun,
       @Valid AddGlossaryToAssetsRequest request) {
-    return Response.ok().entity(repository.bulkAddAndValidateGlossaryToAssets(id, request)).build();
+    return Response.ok().entity(repository.bulkRemoveGlossaryToAssets(id, request)).build();
   }
 
   @DELETE

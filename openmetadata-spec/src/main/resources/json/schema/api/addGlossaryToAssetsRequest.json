@@ -24,6 +24,5 @@
       "$ref": "../type/entityReferenceList.json"
     }
   },
-  "required": ["glossaryTags, assets"],
   "additionalProperties": false
 }

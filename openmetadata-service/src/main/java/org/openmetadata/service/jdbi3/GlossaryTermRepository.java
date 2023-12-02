@@ -287,6 +287,32 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     return result;
   }
 
+  public BulkOperationResult bulkRemoveGlossaryToAssets(UUID glossaryTermId, AddGlossaryToAssetsRequest request) {
+    GlossaryTerm term = this.get(null, glossaryTermId, getFields("id,tags"));
+
+    BulkOperationResult result = new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(false);
+    List<EntityReference> success = new ArrayList<>();
+
+    // Validation for entityReferences
+    EntityUtil.populateEntityReferences(request.getAssets());
+
+    for (EntityReference ref : request.getAssets()) {
+      // Update Result Processed
+      result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
+
+      EntityRepository<?> entityRepository = Entity.getEntityRepository(ref.getType());
+      EntityInterface asset = entityRepository.get(null, ref.getId(), entityRepository.getFields("id"));
+
+      daoCollection
+          .tagUsageDAO()
+          .deleteTagsByTagAndTargetEntity(term.getFullyQualifiedName(), asset.getFullyQualifiedName());
+      success.add(ref);
+      result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
+    }
+
+    return result.withSuccessRequest(success);
+  }
+
   protected EntityReference getGlossary(GlossaryTerm term) {
     Relationship relationship = term.getParent() != null ? Relationship.HAS : Relationship.CONTAINS;
     return term.getGlossary() != null
