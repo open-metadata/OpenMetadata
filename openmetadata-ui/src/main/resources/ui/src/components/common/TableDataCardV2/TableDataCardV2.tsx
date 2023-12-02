@@ -18,6 +18,7 @@ import { ExtraInfo } from 'Models';
 import React, { forwardRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
+import { PRIMERY_COLOR } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { OwnerType } from '../../../enums/user.enum';
 import { EntityReference } from '../../../generated/entity/type';
@@ -51,6 +52,8 @@ export interface TableDataCardPropsV2 {
   checked?: boolean;
   showCheckboxes?: boolean;
   openEntityInNewPage?: boolean;
+  showBody?: boolean;
+  showName?: boolean;
 }
 
 /**
@@ -68,6 +71,8 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
       matches,
       handleSummaryPanelDisplay,
       showCheckboxes,
+      showBody = true,
+      showName = true,
       checked,
       openEntityInNewPage,
     },
@@ -152,7 +157,12 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
         onClick={() => {
           handleSummaryPanelDisplay && handleSummaryPanelDisplay(source, tab);
         }}>
-        <Row wrap={false}>
+        <Row className="data-asset-info-row" wrap={false}>
+          {showCheckboxes && (
+            <Col className="flex-center" flex="20px">
+              <Checkbox checked={checked} />
+            </Col>
+          )}
           <Col flex="auto">
             <EntityHeader
               titleIsLink
@@ -162,22 +172,22 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
               icon={serviceIcon}
               openEntityInNewPage={openEntityInNewPage}
               serviceName={source?.service?.name ?? ''}
+              showName={showName}
+              titleColor={PRIMERY_COLOR}
             />
           </Col>
-          {showCheckboxes && (
-            <Col flex="20px">
-              <Checkbox checked={checked} className="m-l-auto" />
-            </Col>
-          )}
         </Row>
 
-        <div className="p-t-sm">
-          <TableDataCardBody
-            description={source.description || ''}
-            extraInfo={otherDetails}
-            tags={source.tags}
-          />
-        </div>
+        {showBody && (
+          <div className="p-t-sm">
+            <TableDataCardBody
+              description={source.description || ''}
+              extraInfo={otherDetails}
+              tags={source.tags}
+            />
+          </div>
+        )}
+
         {matches && matches.length > 0 ? (
           <div className="p-t-xs" data-testid="matches-stats">
             <span className="text-grey-muted">{`${t('label.matches')}:`}</span>
