@@ -37,6 +37,7 @@ import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { SERVICE_TYPES } from '../../../constants/Services.constant';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Container } from '../../../generated/entity/data/container';
+import { Table } from '../../../generated/entity/data/table';
 import {
   Thread,
   ThreadTaskStatus,
@@ -398,7 +399,7 @@ export const DataAssetsHeader = ({
 
                 {entityType === EntityType.TABLE && onUpdateRetentionPeriod && (
                   <RetentionPeriod
-                    retentionPeriod={dataAsset.retentionPeriod}
+                    retentionPeriod={(dataAsset as Table).retentionPeriod}
                     onUpdate={onUpdateRetentionPeriod}
                   />
                 )}
