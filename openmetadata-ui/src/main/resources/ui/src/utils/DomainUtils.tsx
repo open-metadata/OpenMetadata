@@ -134,6 +134,17 @@ export const getQueryFilterToIncludeDomain = (
             ],
           },
         },
+        {
+          bool: {
+            must_not: [
+              {
+                term: {
+                  entityType: 'dataProduct',
+                },
+              },
+            ],
+          },
+        },
       ],
     },
   },

@@ -14,7 +14,14 @@
 import { Button, Space } from 'antd';
 import Tooltip, { RenderFunction } from 'antd/lib/tooltip';
 import classNames from 'classnames';
-import { isString, isUndefined, lowerCase, noop, toLower } from 'lodash';
+import {
+  isEmpty,
+  isString,
+  isUndefined,
+  lowerCase,
+  noop,
+  toLower,
+} from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -185,7 +192,7 @@ const EntitySummaryDetails = ({
 
     case 'Domain':
       {
-        retVal = (
+        retVal = !isEmpty(displayVal) ? (
           <DomainIcon
             className="d-flex"
             color={DE_ACTIVE_COLOR}
@@ -193,6 +200,10 @@ const EntitySummaryDetails = ({
             name="folder"
             width={16}
           />
+        ) : (
+          <span className="d-flex gap-1 items-center" data-testid="owner-link">
+            {t('label.no-entity', { entity: t('label.domain') })}
+          </span>
         );
       }
 

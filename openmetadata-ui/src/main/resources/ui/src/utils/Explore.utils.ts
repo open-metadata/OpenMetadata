@@ -18,6 +18,7 @@ import {
   SearchHitCounts,
 } from '../components/Explore/ExplorePage.interface';
 import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
+import { Aggregations } from '../interface/search.interface';
 import {
   QueryFieldInterface,
   QueryFieldValueInterface,
@@ -102,4 +103,13 @@ export const findActiveSearchIndex = (
   const filteredKeys = keys.filter((key) => obj[key] > 0);
 
   return filteredKeys.length > 0 ? filteredKeys[0] : null;
+};
+
+export const getAggregations = (data: Aggregations) => {
+  return Object.fromEntries(
+    Object.entries(data).map(([key, value]) => [
+      key.replace('sterms#', ''),
+      value,
+    ])
+  ) as Aggregations;
 };

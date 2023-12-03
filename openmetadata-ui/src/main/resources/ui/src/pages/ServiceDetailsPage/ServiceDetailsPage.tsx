@@ -907,32 +907,39 @@ const ServiceDetailsPage: FunctionComponent = () => {
     [paging, getOtherDetails]
   );
 
-  const handleToggleDelete = () => {
+  const handleToggleDelete = (version?: number) => {
     setServiceDetails((prev) => {
       if (!prev) {
         return prev;
       }
 
-      return { ...prev, deleted: !prev?.deleted };
+      return {
+        ...prev,
+        deleted: !prev?.deleted,
+        ...(version ? { version } : {}),
+      };
     });
   };
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) =>
-      isSoftDelete ? handleToggleDelete() : history.push('/'),
+    (isSoftDelete?: boolean, version?: number) =>
+      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
     [handleToggleDelete]
   );
 
   const handleRestoreService = useCallback(async () => {
     try {
-      await restoreService(serviceCategory, serviceDetails.id);
+      const { version: newVersion } = await restoreService(
+        serviceCategory,
+        serviceDetails.id
+      );
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.service'),
         }),
         2000
       );
-      handleToggleDelete();
+      handleToggleDelete(newVersion);
     } catch (error) {
       showErrorToast(
         error as AxiosError,

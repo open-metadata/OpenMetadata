@@ -10,17 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export interface EntityHeaderTitleProps {
-  className?: string;
-  icon: React.ReactNode;
-  name: string;
-  displayName?: string;
-  link?: string;
-  color?: string;
-  openEntityInNewPage?: boolean;
-  deleted?: boolean;
-  serviceName: string;
-  badge?: React.ReactNode;
-  isDisabled?: boolean;
-  showName?: boolean;
+import { FC } from 'react';
+
+class EntityRightPanelClassBase {
+  public getKnowLedgeArticlesWidget(): FC<{
+    entityId: string;
+    entityType: string;
+  }> | null {
+    return null;
+  }
 }
+
+const entityRightPanelClassBase = new EntityRightPanelClassBase();
+
+export default entityRightPanelClassBase;
+
+export { EntityRightPanelClassBase };

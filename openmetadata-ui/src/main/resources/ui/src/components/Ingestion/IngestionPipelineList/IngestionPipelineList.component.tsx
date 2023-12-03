@@ -263,6 +263,7 @@ export const IngestionPipelineList = ({
       </Col>
       <Col span={24}>
         <Table
+          bordered
           columns={tableColumn}
           dataSource={pipelines}
           loading={loading}
