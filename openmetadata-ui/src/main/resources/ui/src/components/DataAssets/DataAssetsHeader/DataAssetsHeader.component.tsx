@@ -187,7 +187,7 @@ export const DataAssetsHeader = ({
     [votes, USER_ID]
   );
 
-  const [isAnnouncementDrawerOpen, setIsAnnouncementDrawer] =
+  const [isAnnouncementDrawerOpen, setIsAnnouncementDrawerOpen] =
     useState<boolean>(false);
   const [activeAnnouncement, setActiveAnnouncement] = useState<Thread>();
 
@@ -313,6 +313,16 @@ export const DataAssetsHeader = ({
   const handleVoteChange = (data: VotingDataProps) => {
     onUpdateVote?.(data, dataAsset.id ?? '');
   };
+
+  const handleOpenAnnouncementDrawer = useCallback(
+    () => setIsAnnouncementDrawerOpen(true),
+    []
+  );
+
+  const handleCloseAnnouncementDrawer = useCallback(
+    () => setIsAnnouncementDrawerOpen(false),
+    []
+  );
 
   const { editDomainPermission, editOwnerPermission, editTierPermission } =
     useMemo(
@@ -468,7 +478,7 @@ export const DataAssetsHeader = ({
                   isRecursiveDelete={isRecursiveDelete}
                   onAnnouncementClick={
                     permissions?.EditAll
-                      ? () => setIsAnnouncementDrawer(true)
+                      ? handleOpenAnnouncementDrawer
                       : undefined
                   }
                   onEditDisplayName={onDisplayNameUpdate}
@@ -482,7 +492,7 @@ export const DataAssetsHeader = ({
               {activeAnnouncement && (
                 <AnnouncementCard
                   announcement={activeAnnouncement}
-                  onClick={() => setIsAnnouncementDrawer(true)}
+                  onClick={handleOpenAnnouncementDrawer}
                 />
               )}
             </div>
@@ -497,7 +507,7 @@ export const DataAssetsHeader = ({
           entityName={entityName ?? ''}
           entityType={entityType}
           open={isAnnouncementDrawerOpen}
-          onClose={() => setIsAnnouncementDrawer(false)}
+          onClose={handleCloseAnnouncementDrawer}
         />
       )}
     </>

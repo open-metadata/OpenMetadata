@@ -26,19 +26,21 @@
   .explore-card-actions {
     position: absolute;
     right: 10px;
-    top: -12px;
+    top: 8px;
     transition: width 0.3s;
-    background: @white;
-    border: @global-border;
     padding: 4px;
     border-radius: 6px;
-    display: none;
+    display: flex;
   }
 
   &:hover {
     background-color: @grey-1;
-    .explore-card-actions {
-      display: flex;
-    }
   }
+}
+
+.assets-checkbox .ant-checkbox-inner {
+  border-width: 2px;
+  height: 18px;
+  width: 18px;
+  border-color: @primary-color;
 }
