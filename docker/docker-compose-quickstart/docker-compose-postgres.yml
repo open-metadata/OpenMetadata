@@ -370,7 +370,7 @@ services:
       DB_PASSWORD: ${AIRFLOW_DB_PASSWORD:-airflow_pass}
     entrypoint: /bin/bash
     command:
-      - "source /opt/airflow/ingestion_dependency.sh"
+      - "/opt/airflow/ingestion_dependency.sh"
     expose:
       - 8080
     ports:

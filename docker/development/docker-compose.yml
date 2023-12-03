@@ -367,7 +367,7 @@ services:
 
     entrypoint: /bin/bash
     command:
-      - "source /opt/airflow/ingestion_dependency.sh"
+      - "/opt/airflow/ingestion_dependency.sh"
     depends_on:
       elasticsearch:
         condition: service_started

@@ -359,7 +359,7 @@ services:
       DB_PASSWORD: ${AIRFLOW_DB_PASSWORD:-airflow_pass}
     entrypoint: /bin/bash
     command:
-      - "source /opt/airflow/ingestion_dependency.sh"
+      - "/opt/airflow/ingestion_dependency.sh"
     depends_on:
       opensearch:
         condition: service_started
