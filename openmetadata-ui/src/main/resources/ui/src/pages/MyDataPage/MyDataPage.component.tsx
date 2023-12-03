@@ -48,7 +48,7 @@ import './my-data.less';
 
 const ReactGridLayout = WidthProvider(RGL);
 
-const MyDataPageV1 = () => {
+const MyDataPage = () => {
   const location = useLocation();
   const { t } = useTranslation();
   const { isAuthDisabled } = useAuth(location.pathname);
@@ -232,4 +232,4 @@ const MyDataPageV1 = () => {
   );
 };
 
-export default MyDataPageV1;
+export default MyDataPage;
