@@ -35,6 +35,7 @@ import { usePermissionProvider } from '../../../components/PermissionProvider/Pe
 import { ResourceEntity } from '../../../components/PermissionProvider/PermissionProvider.interface';
 import { getTableTabPath } from '../../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
+import { EntityType } from '../../../enums/entity.enum';
 import { TestCaseStatus } from '../../../generated/configuration/testResultNotificationConfiguration';
 import { Operation } from '../../../generated/entity/policies/policy';
 import {
@@ -458,7 +459,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
             allowSoftDelete={false}
             entityId={selectedTestCase?.data?.id ?? ''}
             entityName={selectedTestCase?.data?.name ?? ''}
-            entityType="testCase"
+            entityType={EntityType.TEST_CASE}
             visible={selectedTestCase?.action === 'DELETE'}
             onCancel={handleCancel}
           />
