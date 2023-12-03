@@ -28,7 +28,6 @@ import {
   Post,
   Thread,
   ThreadTaskStatus,
-  ThreadType,
 } from '../../../generated/entity/feed/thread';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
 import {
@@ -113,37 +112,29 @@ const TaskFeedCard = ({
         {`#${taskDetails?.id} `}
       </Button>
 
-      {feed.type === ThreadType.Task && isForFeedTab ? (
-        <Typography.Text className="p-l-xss">{feed.message}</Typography.Text>
-      ) : (
+      <Typography.Text className="p-l-xss">{taskDetails?.type}</Typography.Text>
+      <span className="m-x-xss">{t('label.for-lowercase')}</span>
+
+      {isForFeedTab ? null : (
         <>
-          <Typography.Text className="p-l-xss">
-            {taskDetails?.type}
-          </Typography.Text>
-          <span className="m-x-xss">{t('label.for-lowercase')}</span>
-
-          {isForFeedTab ? null : (
-            <>
-              <span className="p-r-xss">{entityType}</span>
-              <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
-                <Link
-                  className="break-all"
-                  data-testid="entitylink"
-                  to={prepareFeedLink(entityType, entityFQN)}
-                  onClick={(e) => e.stopPropagation()}>
-                  {getNameFromFQN(entityFQN)}
-                </Link>
-              </EntityPopOverCard>
-            </>
-          )}
-
-          {!isEmpty(taskField) ? (
-            <span className={classNames({ 'p-l-xss': !isForFeedTab })}>
-              {taskField}
-            </span>
-          ) : null}
+          <span className="p-r-xss">{entityType}</span>
+          <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
+            <Link
+              className="break-all"
+              data-testid="entitylink"
+              to={prepareFeedLink(entityType, entityFQN)}
+              onClick={(e) => e.stopPropagation()}>
+              {getNameFromFQN(entityFQN)}
+            </Link>
+          </EntityPopOverCard>
         </>
       )}
+
+      {!isEmpty(taskField) ? (
+        <span className={classNames({ 'p-l-xss': !isForFeedTab })}>
+          {taskField}
+        </span>
+      ) : null}
     </Typography.Text>
   );
 

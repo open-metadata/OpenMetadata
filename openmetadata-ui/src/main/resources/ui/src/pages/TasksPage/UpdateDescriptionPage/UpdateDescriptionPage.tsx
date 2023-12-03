@@ -14,7 +14,7 @@
 import { Button, Form, FormProps, Input, Space, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
-import { capitalize, isEmpty, isUndefined } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
@@ -95,7 +95,7 @@ const UpdateDescription = () => {
 
   const taskMessage = useMemo(
     () =>
-      `Update description for ${capitalize(entityType)} ${getEntityName(
+      `Update description for ${entityType} ${getEntityName(
         entityData
       )} ${fileMessage}`,
     [sanitizeValue, entityType, field, entityData]

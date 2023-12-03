@@ -14,7 +14,7 @@
 import { Button, Form, FormProps, Input, Space, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
-import { capitalize, isEmpty } from 'lodash';
+import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
@@ -90,7 +90,7 @@ const RequestTag = () => {
 
   const taskMessage = useMemo(
     () =>
-      `Request tags for ${capitalize(entityType)} ${getEntityName(
+      `Request tags for ${entityType} ${getEntityName(
         entityData
       )} ${fileMessage}`,
     [sanitizeValue, entityType, field, entityData]

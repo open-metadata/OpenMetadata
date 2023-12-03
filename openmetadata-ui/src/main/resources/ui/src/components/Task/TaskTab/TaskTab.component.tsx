@@ -31,6 +31,7 @@ import { isEmpty, isEqual, isUndefined, noop } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link, useHistory } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/ic-close-task.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
@@ -46,7 +47,6 @@ import { TaskType } from '../../../generated/api/feed/createThread';
 import {
   TaskDetails,
   ThreadTaskStatus,
-  ThreadType,
 } from '../../../generated/entity/feed/thread';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { useAuth } from '../../../hooks/authHooks';
@@ -59,17 +59,20 @@ import {
   TaskActionMode,
 } from '../../../pages/TasksPage/TasksPage.interface';
 import { updateTask, updateThread } from '../../../rest/feedsAPI';
+import { getNameFromFQN } from '../../../utils/CommonUtils';
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { getEntityFQN } from '../../../utils/FeedUtils';
+import { getEntityFQN, prepareFeedLink } from '../../../utils/FeedUtils';
 import {
   fetchOptions,
+  getTaskDetailPath,
   isDescriptionTask,
   isTagsTask,
   TASK_ACTION_LIST,
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+import EntityPopOverCard from '../../common/PopOverCard/EntityPopOverCard';
 import './task-tab.less';
 import { TaskTabProps } from './TaskTab.interface';
 
@@ -77,8 +80,10 @@ export const TaskTab = ({
   taskThread,
   owner,
   entityType,
+  isForFeedTab,
   ...rest
 }: TaskTabProps) => {
+  const history = useHistory();
   const [assigneesForm] = useForm();
   const { currentUser } = useAuthContext();
   const updatedAssignees = Form.useWatch('assignees', assigneesForm);
@@ -143,20 +148,38 @@ export const TaskTab = ({
 
   const isTaskGlossaryApproval = taskDetails?.type === TaskType.RequestApproval;
 
+  const handleTaskLinkClick = () => {
+    history.push({
+      pathname: getTaskDetailPath(taskThread),
+    });
+  };
+
   const getTaskLinkElement = entityCheck && (
     <Typography.Text className="font-medium text-md" data-testid="task-title">
-      <span>{`#${taskDetails?.id} `}</span>
+      <Button className="p-r-xss" type="link" onClick={handleTaskLinkClick}>
+        {`#${taskDetails?.id} `}
+      </Button>
 
-      {taskThread.type === ThreadType.Task ? (
-        <Typography.Text>{taskThread.message}</Typography.Text>
-      ) : (
+      <Typography.Text>{taskDetails?.type}</Typography.Text>
+      <span className="m-x-xss">{t('label.for-lowercase')}</span>
+
+      {!isForFeedTab && (
         <>
-          <Typography.Text>{taskDetails?.type}</Typography.Text>
-          <span className="m-x-xss">{t('label.for-lowercase')}</span>
-
-          {!isEmpty(taskField) ? <span>{taskField}</span> : null}
+          <span className="p-r-xss">{entityType}</span>
+          <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
+            <Link
+              className="break-all p-r-xss"
+              data-testid="entitylink"
+              to={prepareFeedLink(entityType, entityFQN)}
+              onClick={(e) => e.stopPropagation()}>
+              {getNameFromFQN(entityFQN)}
+            </Link>
+          </EntityPopOverCard>
         </>
       )}
+      {!isEmpty(taskField) ? (
+        <span className="break-all">{taskField}</span>
+      ) : null}
     </Typography.Text>
   );
 
