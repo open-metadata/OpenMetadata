@@ -51,6 +51,9 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
+from metadata.generated.schema.api.tests.createCustomMetric import (
+    CreateCustomMetricRequest,
+)
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.entity.data.container import Container
@@ -717,6 +720,21 @@ class SampleDataSource(
                     ),
                 )
 
+            if table.get("customMetrics"):
+                for custom_metric in table["customMetrics"]:
+                    self.metadata.create_or_update_custom_metric(
+                        CreateCustomMetricRequest(**custom_metric),
+                        table_entity.id.__root__,
+                    )
+
+            for column in table.get("columns"):
+                if column.get("customMetrics"):
+                    for custom_metric in column["customMetrics"]:
+                        self.metadata.create_or_update_custom_metric(
+                            CreateCustomMetricRequest(**custom_metric),
+                            table_entity.id.__root__,
+                        )
+
     def ingest_stored_procedures(self) -> Iterable[Either[Entity]]:
         """Ingest Sample Stored Procedures"""
 
@@ -791,22 +809,13 @@ class SampleDataSource(
                         fromEntity=EntityReference(
                             id=from_table.id.__root__, type="table"
                         ),
-                        toEntity=EntityReference(
-                            id=stored_procedure_entity.id.__root__,
-                            type="storedProcedure",
-                        ),
-                    )
-                )
-            )
-
-            yield Either(
-                right=AddLineageRequest(
-                    edge=EntitiesEdge(
-                        fromEntity=EntityReference(
-                            id=stored_procedure_entity.id.__root__,
-                            type="storedProcedure",
-                        ),
                         toEntity=EntityReference(id=to_table.id.__root__, type="table"),
+                        lineageDetails=LineageDetails(
+                            pipeline=EntityReference(
+                                id=stored_procedure_entity.id.__root__,
+                                type="storedProcedure",
+                            )
+                        ),
                     )
                 )
             )
