@@ -250,7 +250,7 @@ export const deleteEntity = async (
     recursive: isRecursive,
   };
 
-  return APIClient.delete(`/${entityType}/${entityId}`, {
+  return APIClient.delete<{ version?: number }>(`/${entityType}/${entityId}`, {
     params,
   });
 };

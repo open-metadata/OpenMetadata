@@ -951,7 +951,7 @@ const TeamDetailsV1 = ({
                   entityName={
                     currentTeam.fullyQualifiedName ?? currentTeam.name
                   }
-                  entityType="team"
+                  entityType={EntityType.TEAM}
                   extraDropdownContent={extraDropdownContent}
                   hardDeleteMessagePostFix={getDeleteMessagePostFix(
                     currentTeam.fullyQualifiedName ?? currentTeam.name,
@@ -967,6 +967,7 @@ const TeamDetailsV1 = ({
               <ManageButton
                 canDelete={false}
                 entityName={currentTeam.fullyQualifiedName ?? currentTeam.name}
+                entityType={EntityType.TEAM}
                 extraDropdownContent={[...IMPORT_EXPORT_MENU_ITEM]}
               />
             )}

@@ -765,16 +765,15 @@ export const ENTITY_DETAILS_FOR_VERSION_TEST = {
     entityChildRemovedDescription: 'Description for schema field first_name',
     entityChildAddedDescription: 'Description for schema field last_name',
   },
-  // TODO - Remove the comment after this issue is resolved https://github.com/open-metadata/OpenMetadata/issues/12924
-  // Dashboard: {
-  //   name: DASHBOARD_NAME,
-  //   serviceName: 'sample_superset',
-  //   entity: 'dashboards',
-  //   entityCreationDetails: DASHBOARD_DETAILS_FOR_VERSION_TEST,
-  //   entityPatchPayload: DASHBOARD_PATCH_PAYLOAD,
-  //   isChildrenExist: false,
-  //   entityAddedDescription: `Description for ${DASHBOARD_NAME}`,
-  // },
+  Dashboard: {
+    name: DASHBOARD_NAME,
+    serviceName: 'sample_superset',
+    entity: 'dashboards',
+    entityCreationDetails: DASHBOARD_DETAILS_FOR_VERSION_TEST,
+    entityPatchPayload: DASHBOARD_PATCH_PAYLOAD,
+    isChildrenExist: false,
+    entityAddedDescription: `Description for ${DASHBOARD_NAME}`,
+  },
   Pipeline: {
     name: PIPELINE_NAME,
     serviceName: 'sample_airflow',

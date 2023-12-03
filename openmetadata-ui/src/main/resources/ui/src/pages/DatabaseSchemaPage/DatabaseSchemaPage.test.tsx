@@ -243,7 +243,7 @@ describe('Tests for DatabaseSchemaPage', () => {
     expect(getDatabaseSchemaDetailsByFQN).toHaveBeenCalledWith(
       mockParams.fqn,
       API_FIELDS,
-      'include=all'
+      'all'
     );
   });
 
@@ -278,7 +278,7 @@ describe('Tests for DatabaseSchemaPage', () => {
     expect(getDatabaseSchemaDetailsByFQN).toHaveBeenCalledWith(
       mockParams.fqn,
       API_FIELDS,
-      'include=all'
+      'all'
     );
 
     expect(await screen.findByText('testDataAssetsHeader')).toBeInTheDocument();
@@ -300,7 +300,7 @@ describe('Tests for DatabaseSchemaPage', () => {
     expect(getDatabaseSchemaDetailsByFQN).toHaveBeenCalledWith(
       mockParams.fqn,
       API_FIELDS,
-      'include=all'
+      'all'
     );
 
     expect(await screen.findByText('testSchemaTablesTab')).toBeInTheDocument();

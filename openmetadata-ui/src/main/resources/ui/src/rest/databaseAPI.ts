@@ -136,16 +136,18 @@ export const getDatabaseSchemas = async ({
 
 export const getDatabaseSchemaDetailsByFQN = async (
   databaseSchemaName: string,
-  arrQueryFields?: string | string[],
-  qParams?: string
+  fields?: string | string[],
+  include: Include = Include.NonDeleted
 ) => {
-  const url = `${getURLWithQueryFields(
+  const response = await APIClient.get<DatabaseSchema>(
     `/databaseSchemas/name/${databaseSchemaName}`,
-    arrQueryFields,
-    qParams
-  )}`;
-
-  const response = await APIClient.get<DatabaseSchema>(url);
+    {
+      params: {
+        fields,
+        include,
+      },
+    }
+  );
 
   return response.data;
 };

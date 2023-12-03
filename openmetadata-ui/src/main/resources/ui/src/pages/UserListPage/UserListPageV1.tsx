@@ -38,6 +38,7 @@ import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
 import { ADMIN_ONLY_ACTION } from '../../constants/HelperTextUtil';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { CreateUser } from '../../generated/api/teams/createUser';
 import { User } from '../../generated/entity/teams/user';
@@ -468,7 +469,7 @@ const UserListPageV1 = () => {
         allowSoftDelete={!showDeletedUser}
         entityId={selectedUser?.id || ''}
         entityName={selectedUser?.name || ''}
-        entityType="user"
+        entityType={EntityType.USER}
         visible={showDeleteModal}
         onCancel={() => {
           setShowDeleteModal(false);

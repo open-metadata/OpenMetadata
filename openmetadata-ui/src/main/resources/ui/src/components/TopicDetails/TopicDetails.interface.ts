@@ -29,7 +29,7 @@ export interface TopicDetailsProps {
   versionHandler: () => void;
   onUpdateVote: (data: QueryVote, id: string) => Promise<void>;
   onTopicUpdate: (updatedData: Topic, key: keyof Topic) => Promise<void>;
-  handleToggleDelete: () => void;
+  handleToggleDelete: (version?: number) => void;
 }
 
 export interface TopicConfigObjectInterface {

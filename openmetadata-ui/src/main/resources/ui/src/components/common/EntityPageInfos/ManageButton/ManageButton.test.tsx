@@ -13,6 +13,7 @@
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
+import { EntityType } from '../../../../enums/entity.enum';
 import ManageButton from './ManageButton';
 
 jest.mock('../../../../utils/AnnouncementsUtils', () => ({
@@ -31,7 +32,7 @@ const mockProps = {
   entityName: 'string',
   entityId: 'string-id',
   canDelete: true,
-  entityType: 'table',
+  entityType: EntityType.TABLE,
   entityFQN: 'x.y.z',
   isRecursiveDelete: true,
   deleteMessage: 'string',

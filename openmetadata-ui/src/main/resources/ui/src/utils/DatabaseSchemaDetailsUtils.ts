@@ -13,5 +13,5 @@
 
 import { TabSpecificField } from '../enums/entity.enum';
 
-export const defaultFields = `${TabSpecificField.TAGS}, ${TabSpecificField.OWNER},
-${TabSpecificField.USAGE_SUMMARY}, ${TabSpecificField.DOMAIN},${TabSpecificField.DATA_PRODUCTS}`;
+// eslint-disable-next-line max-len
+export const defaultFields = `${TabSpecificField.TAGS},${TabSpecificField.OWNER},${TabSpecificField.USAGE_SUMMARY},${TabSpecificField.DOMAIN},${TabSpecificField.DATA_PRODUCTS}`;

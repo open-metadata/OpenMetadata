@@ -56,8 +56,7 @@ jest.mock('../../utils/EntityUtils', () => ({
 }));
 
 jest.mock('../../utils/StringsUtils', () => ({
-  getEncodedFqn: jest.fn().mockImplementation((fqn) => fqn),
-  getErrorText: jest.fn().mockImplementation(() => 'test'),
+  getDecodedFqn: jest.fn().mockImplementation((fqn) => fqn),
 }));
 
 jest.mock('../../utils/TableUtils', () => ({

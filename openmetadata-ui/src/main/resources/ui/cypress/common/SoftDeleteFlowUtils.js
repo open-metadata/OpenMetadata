@@ -15,13 +15,21 @@
 /// <reference types="cypress" />
 
 import { DATA_ASSETS } from '../constants/constants';
+import { DATABASE_SERVICE } from '../constants/EntityConstant';
+import { SERVICE_CATEGORIES } from '../constants/service.constants';
 import {
   CUSTOM_ATTRIBUTE_NAME,
+  DATABASE_SCHEMA_SOFT_DELETE_TEST,
   ENTITIES_WITHOUT_FOLLOWING_BUTTON,
   LIST_OF_FIELDS_TO_EDIT_NOT_TO_BE_PRESENT,
   LIST_OF_FIELDS_TO_EDIT_TO_BE_DISABLED,
 } from '../constants/SoftDeleteFlow.constants';
-import { interceptURL, verifyResponseStatusCode } from './common';
+import {
+  interceptURL,
+  verifyResponseStatusCode,
+  visitDatabaseSchemaDetailsPage,
+  visitServiceDetailsPage,
+} from './common';
 
 export const checkCustomPropertyEditButton = ({
   verifyAPIResponse = false,
@@ -62,7 +70,7 @@ export const checkForEditActions = ({
       return !ENTITIES_WITHOUT_FOLLOWING_BUTTON.includes(entityType);
     }
 
-    return entityType !== 'services/databaseServices';
+    return !entityType.startsWith('services/');
   }).map(({ containerSelector, elementSelector }) => {
     cy.get(`${containerSelector} ${elementSelector}`).should(
       `${checkIsActionEnabled ? 'not.' : ''}be.disabled`
@@ -249,6 +257,142 @@ export const softDeletedEntityCommonChecks = ({
   if (isTableEntity) {
     checkForTableSpecificFields({ verifyAPIResponse: true });
   }
+};
+
+export const softDeletedEntityChecksForServices = ({
+  serviceName,
+  serviceCategory,
+  settingsMenuId,
+  childName,
+  createdEntityIds,
+}) => {
+  const entityType = `services/${serviceCategory}`;
+
+  // Check if all the edit actions are available for the service
+  checkForEditActions({
+    entityType,
+    verifyAPIResponse: true,
+  });
+
+  // Soft delete the service
+  cy.get('[data-testid="manage-button"]').click();
+  cy.get('[data-testid="delete-button-title"]').click();
+  cy.get('[data-testid="confirmation-text-input"]').type('DELETE');
+  cy.get('[data-testid="confirm-button"]').click();
+  cy.get('.Toastify__close-button').click();
+  cy.get('[data-testid="deleted-badge"]').should('be.visible');
+
+  checkForEditActions({
+    entityType,
+    checkIsActionEnabled: false,
+  });
+
+  // For database services follow restoring chronologically as
+  // table - schema - database(service child asset) - service
+  if (serviceCategory === SERVICE_CATEGORIES.DATABASE_SERVICES) {
+    // Restoring table
+    visitDatabaseSchemaDetailsPage({
+      settingsMenuId: DATABASE_SCHEMA_SOFT_DELETE_TEST.settingsMenuId,
+      serviceCategory: DATABASE_SCHEMA_SOFT_DELETE_TEST.serviceCategory,
+      serviceName: DATABASE_SCHEMA_SOFT_DELETE_TEST.serviceName,
+      databaseRowKey: createdEntityIds.databaseId,
+      databaseName: DATABASE_SCHEMA_SOFT_DELETE_TEST.databaseName,
+      databaseSchemaRowKey: createdEntityIds.databaseSchemaId,
+      databaseSchemaName: DATABASE_SCHEMA_SOFT_DELETE_TEST.databaseSchemaName,
+      isDeleted: true,
+    });
+
+    cy.get('[data-testid="table-name-link"]')
+      .should('contain', DATABASE_SERVICE.entity.name)
+      .click();
+
+    cy.get('[data-testid="manage-button"]').click();
+    cy.get('[data-testid="restore-button-title"]').click();
+
+    interceptURL('PUT', '/api/v1/tables/restore', 'restoreTable');
+
+    cy.get('.ant-modal-footer .ant-btn-primary').contains('Restore').click();
+
+    verifyResponseStatusCode('@restoreTable', 200);
+    cy.get('.Toastify__close-button').click();
+
+    // Restoring schema
+    visitDatabaseSchemaDetailsPage({
+      settingsMenuId: DATABASE_SCHEMA_SOFT_DELETE_TEST.settingsMenuId,
+      serviceCategory: DATABASE_SCHEMA_SOFT_DELETE_TEST.serviceCategory,
+      serviceName: DATABASE_SCHEMA_SOFT_DELETE_TEST.serviceName,
+      databaseRowKey: createdEntityIds.databaseId,
+      databaseName: DATABASE_SCHEMA_SOFT_DELETE_TEST.databaseName,
+      databaseSchemaRowKey: createdEntityIds.databaseSchemaId,
+      databaseSchemaName: DATABASE_SCHEMA_SOFT_DELETE_TEST.databaseSchemaName,
+      isDeleted: true,
+    });
+
+    cy.get('[data-testid="manage-button"]').click();
+    cy.get('[data-testid="restore-button-title"]').click();
+
+    interceptURL('PUT', '/api/v1/databaseSchemas/restore', 'restoreSchema');
+
+    cy.get('.ant-modal-footer .ant-btn-primary').contains('Restore').click();
+
+    verifyResponseStatusCode('@restoreSchema', 200);
+    cy.get('.Toastify__close-button').click();
+
+    visitServiceDetailsPage(settingsMenuId, serviceCategory, serviceName, true);
+  }
+
+  // Restore child asset
+  interceptURL('GET', '/api/v1/*include=deleted*', 'fetchDeletedChildren');
+
+  cy.get('[data-testid="show-deleted"]').click();
+
+  verifyResponseStatusCode('@fetchDeletedChildren', 200);
+
+  cy.get(`[data-testid="child-asset-name-link"]`)
+    .should('contain', childName)
+    .click();
+
+  cy.get('[data-testid="manage-button"]').click();
+  cy.get('[data-testid="restore-button-title"]').click();
+
+  interceptURL('PUT', '/api/v1/*/restore', 'restoreChild');
+
+  cy.get('.ant-modal-footer .ant-btn-primary').contains('Restore').click();
+
+  verifyResponseStatusCode('@restoreChild', 200);
+  cy.get('.Toastify__close-button').click();
+
+  visitServiceDetailsPage(settingsMenuId, serviceCategory, serviceName, true);
+
+  cy.get('[data-testid="manage-button"]').click();
+
+  // only two menu options (restore and delete) should be present
+  cy.get(
+    '[data-testid="manage-dropdown-list-container"] [data-testid="announcement-button"]'
+  ).should('not.exist');
+  cy.get(
+    '[data-testid="manage-dropdown-list-container"] [data-testid="rename-button"]'
+  ).should('not.exist');
+  cy.get(
+    '[data-testid="manage-dropdown-list-container"] [data-testid="profiler-setting-button"]'
+  ).should('not.exist');
+  cy.get(
+    '[data-testid="manage-dropdown-list-container"] [data-testid="restore-button"]'
+  ).should('be.visible');
+  cy.get(
+    '[data-testid="manage-dropdown-list-container"] [data-testid="delete-button"]'
+  ).should('be.visible');
+
+  // Restore service
+  cy.get('[data-testid="restore-button-title"]').click();
+
+  interceptURL('PUT', '/api/v1/*/*/restore', 'restoreEntity');
+
+  cy.get('.ant-modal-footer .ant-btn-primary').contains('Restore').click();
+
+  verifyResponseStatusCode('@restoreEntity', 200);
+
+  checkForEditActions({ entityType });
 };
 
 export const nonDeletedTeamChecks = () => {

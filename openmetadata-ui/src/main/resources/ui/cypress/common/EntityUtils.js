@@ -119,7 +119,7 @@ export const createSingleLevelEntity = ({
 export const hardDeleteService = ({ serviceFqn, token, serviceType }) => {
   cy.request({
     method: 'GET',
-    url: `/api/v1/services/${serviceType}/name/${serviceFqn}`,
+    url: `/api/v1/services/${serviceType}/name/${serviceFqn}?include=all`,
     headers: { Authorization: `Bearer ${token}` },
   }).then((response) => {
     cy.request({

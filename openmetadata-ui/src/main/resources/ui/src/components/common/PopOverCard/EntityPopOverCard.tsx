@@ -106,7 +106,7 @@ const PopoverContent: React.FC<{
         promise = getDatabaseSchemaDetailsByFQN(
           entityFQN,
           'owner',
-          'include=all'
+          Include.All
         );
 
         break;
