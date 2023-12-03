@@ -19,6 +19,7 @@ import { useHistory, useParams } from 'react-router-dom';
 import { getGlossaryTermDetailsPath } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
+import { Glossary } from '../../../generated/entity/data/glossary';
 import { ChangeDescription } from '../../../generated/entity/type';
 import { getFeedCounts } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
@@ -56,13 +57,18 @@ const GlossaryDetails = ({
   const [isDescriptionEditable, setIsDescriptionEditable] =
     useState<boolean>(false);
 
+  const handleGlossaryUpdate = async (updatedGlossary: Glossary) => {
+    await updateGlossary(updatedGlossary);
+    getEntityFeedCount();
+  };
+
   const onDescriptionUpdate = async (updatedHTML: string) => {
     if (glossary.description !== updatedHTML) {
-      const updatedTableDetails = {
+      const updatedGlossaryDetails = {
         ...glossary,
         description: updatedHTML,
       };
-      updateGlossary(updatedTableDetails);
+      handleGlossaryUpdate(updatedGlossaryDetails);
       setIsDescriptionEditable(false);
     } else {
       setIsDescriptionEditable(false);
@@ -165,7 +171,7 @@ const GlossaryDetails = ({
             permissions={permissions}
             selectedData={glossary}
             onThreadLinkSelect={onThreadLinkSelect}
-            onUpdate={updateGlossary}
+            onUpdate={(data) => handleGlossaryUpdate(data as Glossary)}
           />
         </Col>
       </Row>
@@ -243,7 +249,7 @@ const GlossaryDetails = ({
           updateVote={updateVote}
           onAddGlossaryTerm={onAddGlossaryTerm}
           onDelete={handleGlossaryDelete}
-          onUpdate={updateGlossary}
+          onUpdate={(data) => handleGlossaryUpdate(data as Glossary)}
         />
       </Col>
       <Col span={24}>

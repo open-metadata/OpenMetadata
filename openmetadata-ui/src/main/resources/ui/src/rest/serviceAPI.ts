@@ -45,6 +45,7 @@ interface ServiceRequestParams {
   serviceName: string;
   after?: string;
   before?: string;
+  include?: Include;
 }
 
 export const getServices = async ({
@@ -52,6 +53,7 @@ export const getServices = async ({
   limit,
   after,
   before,
+  include = Include.NonDeleted,
 }: ServiceRequestParams) => {
   const url = `/services/${serviceName}`;
 
@@ -60,6 +62,7 @@ export const getServices = async ({
     limit,
     after,
     before,
+    include,
   };
 
   const response = await APIClient.get<ServiceResponse>(url, { params });
@@ -194,12 +197,14 @@ export const searchService = async ({
   currentPage = 1,
   limit = PAGE_SIZE,
   filters,
+  deleted = false,
 }: {
   search?: string;
   searchIndex: SearchIndex | SearchIndex[];
   limit?: number;
   currentPage?: number;
   filters?: string;
+  deleted?: boolean;
 }) => {
   const response = await searchData(
     search ?? WILD_CARD_CHAR,
@@ -208,7 +213,8 @@ export const searchService = async ({
     filters ?? '',
     '',
     '',
-    searchIndex
+    searchIndex,
+    deleted
   );
 
   return response.data;

@@ -517,7 +517,10 @@ const TableDetailsPageV1 = () => {
           flex="320px">
           <EntityRightPanel
             afterSlot={
-              <Space className="w-full" direction="vertical" size="large">
+              <Space
+                className="w-full m-t-lg"
+                direction="vertical"
+                size="large">
                 <TableConstraints
                   constraints={tableDetails?.tableConstraints}
                 />
@@ -537,6 +540,7 @@ const TableDetailsPageV1 = () => {
             domain={tableDetails?.domain}
             editTagPermission={editTagsPermission}
             entityFQN={decodedTableFQN}
+            entityId={tableDetails?.id ?? ''}
             entityType={EntityType.TABLE}
             selectedTags={tableTags}
             onTagSelectionChange={handleTagSelection}
@@ -750,26 +754,32 @@ const TableDetailsPageV1 = () => {
     [tableDetails, onTableUpdate, tableTags]
   );
 
-  const handleToggleDelete = () => {
+  const handleToggleDelete = (version?: number) => {
     setTableDetails((prev) => {
       if (!prev) {
         return prev;
       }
 
-      return { ...prev, deleted: !prev?.deleted };
+      return {
+        ...prev,
+        deleted: !prev?.deleted,
+        ...(version ? { version } : {}),
+      };
     });
   };
 
   const handleRestoreTable = async () => {
     try {
-      await restoreTable(tableDetails?.id ?? '');
+      const { version: newVersion } = await restoreTable(
+        tableDetails?.id ?? ''
+      );
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.table'),
         }),
         2000
       );
-      handleToggleDelete();
+      handleToggleDelete(newVersion);
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -846,8 +856,8 @@ const TableDetailsPageV1 = () => {
   }, [version, tableFqn]);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) =>
-      isSoftDelete ? handleToggleDelete() : history.push('/'),
+    (isSoftDelete?: boolean, version?: number) =>
+      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
     []
   );
 
@@ -926,6 +936,7 @@ const TableDetailsPageV1 = () => {
         {/* Entity Heading */}
         <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
           <DataAssetsHeader
+            isRecursiveDelete
             afterDeleteAction={afterDeleteAction}
             afterDomainUpdateAction={updateTableDetailsState}
             dataAsset={tableDetails}

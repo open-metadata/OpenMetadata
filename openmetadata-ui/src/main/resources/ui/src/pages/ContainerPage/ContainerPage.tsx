@@ -367,19 +367,23 @@ const ContainerPage = () => {
     }
   };
 
-  const handleToggleDelete = () => {
+  const handleToggleDelete = (version?: number) => {
     setContainerData((prev) => {
       if (!prev) {
         return prev;
       }
 
-      return { ...prev, deleted: !prev?.deleted };
+      return {
+        ...prev,
+        deleted: !prev?.deleted,
+        ...(version ? { version } : {}),
+      };
     });
   };
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) =>
-      isSoftDelete ? handleToggleDelete() : history.push('/'),
+    (isSoftDelete?: boolean, version?: number) =>
+      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
     []
   );
 
@@ -394,14 +398,16 @@ const ContainerPage = () => {
 
   const handleRestoreContainer = async () => {
     try {
-      await restoreContainer(containerData?.id ?? '');
+      const { version: newVersion } = await restoreContainer(
+        containerData?.id ?? ''
+      );
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.container'),
         }),
         2000
       );
-      handleToggleDelete();
+      handleToggleDelete(newVersion);
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -545,6 +551,7 @@ const ContainerPage = () => {
                   editTagsPermission && !containerData?.deleted
                 }
                 entityFQN={decodedContainerName}
+                entityId={containerData?.id ?? ''}
                 entityType={EntityType.CONTAINER}
                 selectedTags={tags}
                 onTagSelectionChange={handleTagSelection}
@@ -716,6 +723,7 @@ const ContainerPage = () => {
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
+            isRecursiveDelete
             afterDeleteAction={afterDeleteAction}
             afterDomainUpdateAction={afterDomainUpdateAction}
             dataAsset={containerData}

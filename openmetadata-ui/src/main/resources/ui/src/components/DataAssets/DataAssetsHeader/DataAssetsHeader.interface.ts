@@ -91,7 +91,7 @@ export type DataAssetsHeaderProps = {
   showDomain?: boolean;
   isRecursiveDelete?: boolean;
   afterDomainUpdateAction?: (asset: DataAssetWithDomains) => void;
-  afterDeleteAction?: (isSoftDelete?: boolean) => void;
+  afterDeleteAction?: (isSoftDelete?: boolean, version?: number) => void;
   onTierUpdate: (tier?: Tag) => Promise<void>;
   onOwnerUpdate: (owner?: EntityReference) => Promise<void>;
   onVersionClick?: () => void;

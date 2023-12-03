@@ -37,7 +37,7 @@ import {
   GlobalSettingsMenuCategory,
 } from '../../../../constants/GlobalSettings.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
-import { EntityAction } from '../../../../enums/entity.enum';
+import { EntityAction, EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { User } from '../../../../generated/entity/teams/user';
 import { EntityReference } from '../../../../generated/entity/type';
@@ -323,6 +323,7 @@ export const UserTab = ({
               <ManageButton
                 canDelete={false}
                 entityName={currentTeam.name}
+                entityType={EntityType.USER}
                 extraDropdownContent={IMPORT_EXPORT_MENU_ITEM}
               />
             )}
@@ -367,6 +368,7 @@ export const UserTab = ({
                 <ManageButton
                   canDelete={false}
                   entityName={currentTeam.name}
+                  entityType={EntityType.USER}
                   extraDropdownContent={IMPORT_EXPORT_MENU_ITEM}
                 />
               </Space>
