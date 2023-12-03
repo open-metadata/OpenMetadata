@@ -301,15 +301,11 @@ describe(`Database schema version page should work properly`, () => {
     cy.get('[data-testid="confirmation-text-input"]')
       .should('be.visible')
       .type(DELETE_TERM);
-    interceptURL('DELETE', `/api/v1/databaseSchemas/*`, 'deleteService');
-    interceptURL(
-      'GET',
-      '/api/v1/services/*/name/*?fields=owner',
-      'serviceDetails'
-    );
+    interceptURL('DELETE', `/api/v1/databaseSchemas/*`, 'deleteSchema');
 
     cy.get('[data-testid="confirm-button"]').should('be.visible').click();
-    verifyResponseStatusCode('@deleteService', 200);
+
+    verifyResponseStatusCode('@deleteSchema', 200);
 
     // Closing the toast notification
     toastNotification(`Database Schema deleted successfully!`);

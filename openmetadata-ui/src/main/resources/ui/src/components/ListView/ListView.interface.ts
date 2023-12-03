@@ -22,8 +22,8 @@ export interface ListViewProps<T> {
   tableProps: TableProps<T>;
   cardRenderer: (data: T) => ReactNode;
   searchProps: SearchProps;
-  deleted: boolean;
-  handleDeletedSwitchChange: () => void;
+  deleted?: boolean;
+  handleDeletedSwitchChange?: () => void;
 }
 
 export enum ListViewOptions {

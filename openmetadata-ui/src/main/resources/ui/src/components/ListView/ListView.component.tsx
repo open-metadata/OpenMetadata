@@ -12,7 +12,7 @@
  */
 import Icon from '@ant-design/icons';
 import { Col, Radio, Row, Space, Switch, Typography } from 'antd';
-import { isEmpty } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as GridIcon } from '../../assets/svg/ic-grid.svg';
@@ -27,7 +27,7 @@ export const ListView = <T extends object = any>({
   cardRenderer,
   searchProps: { search, onSearch },
   handleDeletedSwitchChange,
-  deleted,
+  deleted = false,
 }: ListViewProps<T>) => {
   const [currentView, setCurrentView] = useState<ListViewOptions>(
     ListViewOptions.TABLE
@@ -62,16 +62,18 @@ export const ListView = <T extends object = any>({
       </Col>
       <Col className="text-right" span={14}>
         <Space align="center">
-          <span>
-            <Switch
-              checked={deleted}
-              data-testid="show-deleted-switch"
-              onChange={handleDeletedSwitchChange}
-            />
-            <Typography.Text className="m-l-xs">
-              {t('label.deleted')}
-            </Typography.Text>
-          </span>
+          {!isUndefined(handleDeletedSwitchChange) && (
+            <span>
+              <Switch
+                checked={deleted}
+                data-testid="show-deleted-switch"
+                onChange={handleDeletedSwitchChange}
+              />
+              <Typography.Text className="m-l-xs">
+                {t('label.deleted')}
+              </Typography.Text>
+            </span>
+          )}
 
           <Radio.Group
             value={currentView}

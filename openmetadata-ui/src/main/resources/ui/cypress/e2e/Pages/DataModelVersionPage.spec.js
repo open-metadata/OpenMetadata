@@ -277,12 +277,12 @@ describe('Data model version page should work properly', () => {
 
     interceptURL(
       'DELETE',
-      `api/v1/dashboard/datamodels/*?hardDelete=true&recursive=false`,
-      `hardDeleteTable`
+      `api/v1/dashboard/datamodels/*?hardDelete=true&recursive=true`,
+      `hardDeleteDataModel`
     );
     cy.get('[data-testid="confirm-button"]').should('not.be.disabled');
     cy.get('[data-testid="confirm-button"]').click();
-    verifyResponseStatusCode(`@hardDeleteTable`, 200);
+    verifyResponseStatusCode(`@hardDeleteDataModel`, 200);
 
     toastNotification(`Dashboard Data Model deleted successfully!`, false);
   });
