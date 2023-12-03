@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 // eslint-disable-next-line spaced-comment
 /// <reference types="Cypress" />
 
@@ -31,7 +32,7 @@ import {
 
 let domainId;
 
-describe('Common prerequisite for entity version test', () => {
+describe('Version page tests for data assets', () => {
   before(() => {
     cy.login();
     cy.getAllLocalStorage().then((data) => {
@@ -238,13 +239,54 @@ describe('Common prerequisite for entity version test', () => {
             .should('be.visible');
         });
 
-        it(`Cleanup for ${entityType} version page test`, () => {
+        it(`${entityType} version page should show changes after soft deleted`, () => {
           deleteEntity(
             entityDetails.name,
             entityDetails.serviceName,
             entityDetails.entity,
-            successMessageEntityName
+            successMessageEntityName,
+            'soft'
           );
+
+          interceptURL(
+            'GET',
+            `/api/v1/${entityDetails.entity}/name/${entityFQN}?*include=all`,
+            `get${entityType}Details`
+          );
+          interceptURL(
+            'GET',
+            `/api/v1/${entityDetails.entity}/${entityId}/versions`,
+            'getVersionsList'
+          );
+          interceptURL(
+            'GET',
+            `/api/v1/${entityDetails.entity}/${entityId}/versions/0.3`,
+            'getSelectedVersionDetails'
+          );
+
+          cy.get('[data-testid="version-button"]').contains('0.3').click();
+
+          verifyResponseStatusCode(`@get${entityType}Details`, 200);
+          verifyResponseStatusCode('@getVersionsList', 200);
+          verifyResponseStatusCode('@getSelectedVersionDetails', 200);
+
+          // Deleted badge should be visible
+          cy.get('[data-testid="deleted-badge"]')
+            .scrollIntoView()
+            .should('be.visible');
+        });
+
+        after(() => {
+          cy.getAllLocalStorage().then((data) => {
+            const token = Object.values(data)[0].oidcIdToken;
+            cy.request({
+              method: 'DELETE',
+              url: `/api/v1/${entityDetails.entity}/${entityId}`,
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            });
+          });
         });
       });
     }

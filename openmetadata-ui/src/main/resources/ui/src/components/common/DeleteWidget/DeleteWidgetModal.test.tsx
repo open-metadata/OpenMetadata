@@ -14,6 +14,7 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
+import { EntityType } from '../../../enums/entity.enum';
 import { DeleteWidgetModalProps } from './DeleteWidget.interface';
 import DeleteWidgetModal from './DeleteWidgetModal';
 
@@ -21,7 +22,7 @@ const mockProps: DeleteWidgetModalProps = {
   visible: true,
   onCancel: jest.fn(),
   entityName: 'entityName',
-  entityType: 'entityType',
+  entityType: EntityType.TABLE,
   entityId: 'entityId',
 };
 

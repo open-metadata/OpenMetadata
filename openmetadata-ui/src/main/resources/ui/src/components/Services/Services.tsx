@@ -36,6 +36,7 @@ import { SearchIndex } from '../../enums/search.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { Operation } from '../../generated/entity/policies/policy';
 import { EntityReference } from '../../generated/entity/type';
+import { Include } from '../../generated/type/include';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { DatabaseServiceSearchSource } from '../../interface/search.interface';
 import { ServicesType } from '../../interface/service.interface';
@@ -84,6 +85,7 @@ const Services = ({ serviceName }: ServicesProps) => {
     handlePageSizeChange,
     showPagination,
   } = usePaging();
+  const [deleted, setDeleted] = useState<boolean>(false);
   const { permissions } = usePermissionProvider();
 
   const searchIndex = useMemo(() => {
@@ -138,6 +140,7 @@ const Services = ({ serviceName }: ServicesProps) => {
             limit: limit ?? pageSize,
             currentPage,
             filters,
+            deleted,
           });
 
           services = hits.map(
@@ -150,6 +153,7 @@ const Services = ({ serviceName }: ServicesProps) => {
             limit: limit ?? pageSize,
             after,
             before,
+            include: deleted ? Include.Deleted : Include.NonDeleted,
           });
 
           services = data;
@@ -174,7 +178,7 @@ const Services = ({ serviceName }: ServicesProps) => {
         setIsLoading(false);
       }
     },
-    [searchIndex, serviceName]
+    [searchIndex, serviceName, deleted]
   );
 
   const handleServicePageChange = ({
@@ -196,6 +200,11 @@ const Services = ({ serviceName }: ServicesProps) => {
         permissions
       ),
     [permissions, serviceName]
+  );
+
+  const handleDeletedSwitchChange = useCallback(
+    () => setDeleted((prevValue) => !prevValue),
+    []
   );
 
   const getServicePageHeader = useCallback(() => {
@@ -401,7 +410,14 @@ const Services = ({ serviceName }: ServicesProps) => {
             .join(' ')})`
         : undefined,
     });
-  }, [searchIndex, pageSize, serviceName, searchTerm, serviceTypeFilter]);
+  }, [
+    searchIndex,
+    pageSize,
+    serviceName,
+    searchTerm,
+    serviceTypeFilter,
+    deleted,
+  ]);
 
   const handleTableChange: TableProps<ServicesType>['onChange'] = (
     _pagination,
@@ -445,11 +461,13 @@ const Services = ({ serviceName }: ServicesProps) => {
       <Col span={24}>
         <ListView<ServicesType>
           cardRenderer={serviceCardRenderer}
+          deleted={deleted}
+          handleDeletedSwitchChange={handleDeletedSwitchChange}
           searchProps={{
             onSearch: handleServiceSearch,
             search: searchTerm,
           }}
-          tableprops={{
+          tableProps={{
             bordered: true,
             columns,
             dataSource: serviceDetails,

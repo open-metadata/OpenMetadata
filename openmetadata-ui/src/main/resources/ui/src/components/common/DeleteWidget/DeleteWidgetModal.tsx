@@ -143,7 +143,10 @@ const DeleteWidgetModal = ({
               })
           );
           if (afterDeleteAction) {
-            afterDeleteAction(deletionType === DeleteType.SOFT_DELETE);
+            afterDeleteAction(
+              deletionType === DeleteType.SOFT_DELETE,
+              response.data.version
+            );
           }
         } else {
           showErrorToast(t('server.unexpected-response'));
