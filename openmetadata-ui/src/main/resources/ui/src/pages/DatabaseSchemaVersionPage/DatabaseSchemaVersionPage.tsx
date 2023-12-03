@@ -45,6 +45,7 @@ import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { Table } from '../../generated/entity/data/table';
 import { ChangeDescription } from '../../generated/entity/type';
 import { EntityHistory } from '../../generated/type/entityHistory';
+import { Include } from '../../generated/type/include';
 import { TagSource } from '../../generated/type/tagLabel';
 import SchemaTablesTab from '../../pages/DatabaseSchemaPage/SchemaTablesTab';
 import {
@@ -144,7 +145,11 @@ function DatabaseSchemaVersionPage() {
     try {
       setIsLoading(true);
 
-      const { id } = await getDatabaseSchemaDetailsByFQN(databaseSchemaFQN, '');
+      const { id } = await getDatabaseSchemaDetailsByFQN(
+        databaseSchemaFQN,
+        '',
+        Include.All
+      );
       setDatabaseId(id ?? '');
 
       const versions = await getDatabaseSchemaVersions(id ?? '');
