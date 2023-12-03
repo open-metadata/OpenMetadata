@@ -158,7 +158,12 @@ function ServiceVersionPage() {
     try {
       setIsLoading(true);
 
-      const { id } = await getServiceByFQN(serviceCategory, serviceFQN);
+      const { id } = await getServiceByFQN(
+        serviceCategory,
+        serviceFQN,
+        '',
+        Include.All
+      );
       setServiceId(id);
 
       const versions = await getServiceVersions(serviceCategory, id);

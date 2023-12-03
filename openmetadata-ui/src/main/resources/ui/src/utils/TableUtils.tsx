@@ -304,22 +304,38 @@ export const getEntityLink = (
 
 export const getServiceIcon = (source: SourceType) => {
   if (source.entityType === EntityType.GLOSSARY_TERM) {
-    return <GlossaryIcon className="h-7" style={{ color: DE_ACTIVE_COLOR }} />;
+    return (
+      <GlossaryIcon
+        className="service-icon h-7"
+        style={{ color: DE_ACTIVE_COLOR }}
+      />
+    );
   } else if (source.entityType === EntityType.TAG) {
     return (
-      <ClassificationIcon className="h-7" style={{ color: DE_ACTIVE_COLOR }} />
+      <ClassificationIcon
+        className="service-icon h-7"
+        style={{ color: DE_ACTIVE_COLOR }}
+      />
     );
   } else if (source.entityType === EntityType.DATA_PRODUCT) {
     return (
-      <DataProductIcon className="h-7" style={{ color: DE_ACTIVE_COLOR }} />
+      <DataProductIcon
+        className="service-icon h-7"
+        style={{ color: DE_ACTIVE_COLOR }}
+      />
     );
   } else if (source.entityType === EntityType.DOMAIN) {
-    return <DomainIcon className="h-7" style={{ color: DE_ACTIVE_COLOR }} />;
+    return (
+      <DomainIcon
+        className="service-icon h-7"
+        style={{ color: DE_ACTIVE_COLOR }}
+      />
+    );
   } else {
     return (
       <img
         alt="service-icon"
-        className="inline h-7"
+        className="inline service-icon h-7"
         src={serviceUtilClassBase.getServiceTypeLogo(source.serviceType ?? '')}
       />
     );
