@@ -563,26 +563,30 @@ function SearchIndexDetailsPage() {
     [searchIndexDetails, onSearchIndexUpdate, searchIndexTags]
   );
 
-  const handleToggleDelete = () => {
+  const handleToggleDelete = (version?: number) => {
     setSearchIndexDetails((prev) => {
       if (!prev) {
         return prev;
       }
 
-      return { ...prev, deleted: !prev?.deleted };
+      return {
+        ...prev,
+        deleted: !prev?.deleted,
+        ...(version ? { version } : {}),
+      };
     });
   };
 
   const handleRestoreSearchIndex = async () => {
     try {
-      await restoreSearchIndex(searchIndexId);
+      const { version: newVersion } = await restoreSearchIndex(searchIndexId);
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.search-index'),
         }),
         2000
       );
-      handleToggleDelete();
+      handleToggleDelete(newVersion);
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -674,8 +678,8 @@ function SearchIndexDetailsPage() {
   }, [version]);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) =>
-      isSoftDelete ? handleToggleDelete() : history.push('/'),
+    (isSoftDelete?: boolean, version?: number) =>
+      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
     []
   );
 
@@ -743,6 +747,7 @@ function SearchIndexDetailsPage() {
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
           <DataAssetsHeader
+            isRecursiveDelete
             afterDeleteAction={afterDeleteAction}
             afterDomainUpdateAction={afterDomainUpdateAction}
             dataAsset={searchIndexDetails}

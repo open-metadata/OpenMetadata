@@ -206,7 +206,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       const response = await getDatabaseSchemaDetailsByFQN(
         databaseSchemaFQN,
         ['owner', 'usageSummary', 'tags', 'domain', 'votes'],
-        'include=all'
+        Include.All
       );
       const { description: schemaDescription = '' } = response;
       setDatabaseSchema(response);
@@ -405,26 +405,32 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     [getEntityFeedCount]
   );
 
-  const handleToggleDelete = () => {
+  const handleToggleDelete = (version?: number) => {
     setDatabaseSchema((prev) => {
       if (!prev) {
         return prev;
       }
 
-      return { ...prev, deleted: !prev?.deleted };
+      return {
+        ...prev,
+        deleted: !prev?.deleted,
+        ...(version ? { version } : {}),
+      };
     });
   };
 
   const handleRestoreDatabaseSchema = useCallback(async () => {
     try {
-      await restoreDatabaseSchema(databaseSchemaId);
+      const { version: newVersion } = await restoreDatabaseSchema(
+        databaseSchemaId
+      );
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.database-schema'),
         }),
         2000
       );
-      handleToggleDelete();
+      handleToggleDelete(newVersion);
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -458,8 +464,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   }, [currentVersion, databaseSchemaFQN]);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) =>
-      isSoftDelete ? handleToggleDelete() : history.push('/'),
+    (isSoftDelete?: boolean, version?: number) =>
+      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
     []
   );
 
@@ -674,7 +680,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       const response = await getDatabaseSchemaDetailsByFQN(
         databaseSchemaFQN,
         ['owner', 'usageSummary', 'tags', 'votes'],
-        'include=all'
+        Include.All
       );
       setDatabaseSchema(response);
     } catch (error) {

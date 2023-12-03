@@ -23,6 +23,7 @@ import {
   verifyResponseStatusCode,
   visitServiceDetailsPage,
 } from '../../common/common';
+import { hardDeleteService } from '../../common/EntityUtils';
 import { DELETE_TERM } from '../../constants/constants';
 import {
   DOMAIN_CREATION_DETAILS,
@@ -32,6 +33,35 @@ import {
 } from '../../constants/Version.constants';
 
 let domainId;
+
+const navigateToVersionPageFromServicePage = (
+  serviceCategory,
+  serviceName,
+  serviceId,
+  versionNumber
+) => {
+  interceptURL(
+    'GET',
+    `/api/v1/services/${serviceCategory}/name/${serviceName}?*`,
+    `getServiceDetails`
+  );
+  interceptURL(
+    'GET',
+    `/api/v1/services/${serviceCategory}/${serviceId}/versions`,
+    'getVersionsList'
+  );
+  interceptURL(
+    'GET',
+    `/api/v1/services/${serviceCategory}/${serviceId}/versions/${versionNumber}`,
+    'getSelectedVersionDetails'
+  );
+
+  cy.get('[data-testid="version-button"]').contains(versionNumber).click();
+
+  verifyResponseStatusCode(`@getServiceDetails`, 200);
+  verifyResponseStatusCode('@getVersionsList', 200);
+  verifyResponseStatusCode('@getSelectedVersionDetails', 200);
+};
 
 describe('Common prerequisite for service version test', () => {
   beforeEach(() => {
@@ -60,79 +90,78 @@ Object.entries(SERVICE_DETAILS_FOR_VERSION_TEST).map(
       const successMessageEntityName =
         serviceType === 'ML Model' ? 'Mlmodel' : serviceType;
       let serviceId;
+      const {
+        serviceCategory,
+        serviceName,
+        settingsMenuId,
+        entityCreationDetails,
+        entityPatchPayload,
+      } = serviceDetails;
+
+      before(() => {
+        cy.login();
+        cy.getAllLocalStorage().then((data) => {
+          const token = Object.values(data)[0].oidcIdToken;
+          cy.request({
+            method: 'POST',
+            url: `/api/v1/services/${serviceCategory}`,
+            headers: { Authorization: `Bearer ${token}` },
+            body: entityCreationDetails,
+          }).then((response) => {
+            serviceId = response.body.id;
+
+            cy.request({
+              method: 'PATCH',
+              url: `/api/v1/services/${serviceCategory}/${serviceId}`,
+              headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json-patch+json',
+              },
+              body: [
+                ...entityPatchPayload,
+                {
+                  op: 'add',
+                  path: '/domain',
+                  value: {
+                    id: domainId,
+                    type: 'domain',
+                    name: DOMAIN_CREATION_DETAILS.name,
+                    description: DOMAIN_CREATION_DETAILS.description,
+                  },
+                },
+              ],
+            });
+          });
+        });
+      });
 
       beforeEach(() => {
         cy.login();
       });
 
-      it(`Prerequisite for ${serviceType} service version page`, () => {
-        const token = localStorage.getItem('oidcIdToken');
+      after(() => {
+        cy.login();
+        cy.getAllLocalStorage().then((data) => {
+          const token = Object.values(data)[0].oidcIdToken;
 
-        cy.request({
-          method: 'POST',
-          url: `/api/v1/services/${serviceDetails.serviceCategory}`,
-          headers: { Authorization: `Bearer ${token}` },
-          body: serviceDetails.entityCreationDetails,
-        }).then((response) => {
-          expect(response.status).to.eq(201);
-
-          serviceId = response.body.id;
-
-          cy.request({
-            method: 'PATCH',
-            url: `/api/v1/services/${serviceDetails.serviceCategory}/${serviceId}`,
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json-patch+json',
-            },
-            body: [
-              ...serviceDetails.entityPatchPayload,
-              {
-                op: 'add',
-                path: '/domain',
-                value: {
-                  id: domainId,
-                  type: 'domain',
-                  name: DOMAIN_CREATION_DETAILS.name,
-                  description: DOMAIN_CREATION_DETAILS.description,
-                },
-              },
-            ],
-          }).then((response) => {
-            expect(response.status).to.eq(200);
+          hardDeleteService({
+            token,
+            serviceFqn: serviceName,
+            serviceType: serviceCategory,
           });
         });
       });
 
       serviceType !== 'Metadata' &&
         it(`${serviceType} service version page should show edited tags and description changes properly`, () => {
-          visitServiceDetailsPage(
-            serviceDetails.settingsMenuId,
-            serviceDetails.serviceCategory,
-            serviceDetails.serviceName
-          );
+          visitServiceDetailsPage(settingsMenuId, serviceCategory, serviceName);
 
-          interceptURL(
-            'GET',
-            `/api/v1/services/${serviceDetails.serviceCategory}/name/${serviceDetails.serviceName}?*`,
-            `getServiceDetails`
+          navigateToVersionPageFromServicePage(
+            serviceCategory,
+            serviceName,
+            serviceId,
+            '0.2'
           );
-          interceptURL(
-            'GET',
-            `/api/v1/services/${serviceDetails.serviceCategory}/${serviceId}/versions`,
-            'getVersionsList'
-          );
-          interceptURL(
-            'GET',
-            `/api/v1/services/${serviceDetails.serviceCategory}/${serviceId}/versions/0.2`,
-            'getSelectedVersionDetails'
-          );
-
-          cy.get('[data-testid="version-button"]').contains('0.2').click();
-
-          verifyResponseStatusCode(`@getServiceDetails`, 200);
-          verifyResponseStatusCode('@getVersionsList', 200);
-          verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
           cy.get(`[data-testid="domain-link"]`)
             .within(($this) => $this.find(`[data-testid="diff-added"]`))
@@ -157,211 +186,311 @@ Object.entries(SERVICE_DETAILS_FOR_VERSION_TEST).map(
             .should('be.visible');
         });
 
-      it(`${serviceType} version page should show removed tags changes properly`, () => {
-        visitServiceDetailsPage(
-          serviceDetails.settingsMenuId,
-          serviceDetails.serviceCategory,
-          serviceDetails.serviceName
-        );
-
-        cy.get(
-          '[data-testid="entity-right-panel"]  [data-testid="edit-button"]'
-        ).click();
-
-        cy.get(
-          '[data-testid="selected-tag-PersonalData.SpecialCategory"] [data-testid="remove-tags"]'
-        ).click();
-
-        interceptURL(
-          'PATCH',
-          `/api/v1/services/${serviceDetails.serviceCategory}/${serviceId}`,
-          `patch${serviceType}`
-        );
-
-        cy.get('[data-testid="saveAssociatedTag"]').click();
-
-        verifyResponseStatusCode(`@patch${serviceType}`, 200);
-
-        cy.get('[data-testid="version-button"]').contains('0.3').click();
-
-        cy.get(
-          `[data-testid="entity-right-panel"] .diff-removed [data-testid="tag-PersonalData.SpecialCategory"]`
-        )
-          .scrollIntoView()
-          .should('be.visible');
-      });
-
       it(`${serviceType} version page should show owner changes properly`, () => {
-        visitServiceDetailsPage(
-          serviceDetails.settingsMenuId,
-          serviceDetails.serviceCategory,
-          serviceDetails.serviceName
-        );
+        visitServiceDetailsPage(settingsMenuId, serviceCategory, serviceName);
 
         cy.get('[data-testid="version-button"]').as('versionButton');
 
-        cy.get('@versionButton').contains('0.3');
+        cy.get('@versionButton').contains('0.2');
 
-        addOwner(OWNER, `services/${serviceDetails.serviceCategory}`);
+        addOwner(OWNER, `services/${serviceCategory}`);
 
-        interceptURL(
-          'GET',
-          `/api/v1/services/${serviceDetails.serviceCategory}/name/${serviceDetails.serviceName}?*`,
-          `get${serviceType}Details`
-        );
-        interceptURL(
-          'GET',
-          `/api/v1/services/${serviceDetails.serviceCategory}/${serviceId}/versions`,
-          'getVersionsList'
-        );
-        interceptURL(
-          'GET',
-          `/api/v1/services/${serviceDetails.serviceCategory}/${serviceId}/versions/0.4`,
-          'getSelectedVersionDetails'
+        navigateToVersionPageFromServicePage(
+          serviceCategory,
+          serviceName,
+          serviceId,
+          '0.2'
         );
 
-        cy.get('@versionButton').contains('0.4').click();
-
-        verifyResponseStatusCode(`@get${serviceType}Details`, 200);
-        verifyResponseStatusCode('@getVersionsList', 200);
-        verifyResponseStatusCode('@getSelectedVersionDetails', 200);
-
-        cy.get(`[data-testid="diff-added"]`)
+        cy.get(`[data-testid="domain-link"]`)
+          .within(($this) => $this.find(`[data-testid="diff-added"]`))
           .scrollIntoView()
           .should('be.visible');
 
-        cy.get('@versionButton').contains('0.4').click();
+        it(`${serviceType} version page should show tier changes properly`, () => {
+          visitServiceDetailsPage(settingsMenuId, serviceCategory, serviceName);
 
-        removeOwner(`services/${serviceDetails.serviceCategory}`);
+          cy.get('[data-testid="version-button"]').as('versionButton');
 
-        interceptURL(
-          'GET',
-          `/api/v1/services/${serviceDetails.serviceCategory}/${serviceId}/versions/0.5`,
-          'getSelectedVersionDetails'
-        );
+          cy.get('@versionButton').contains('0.2');
 
-        cy.get('@versionButton').contains('0.5').click();
+          addTier(TIER, `services/${serviceCategory}`);
 
-        verifyResponseStatusCode(`@get${serviceType}Details`, 200);
-        verifyResponseStatusCode('@getVersionsList', 200);
-        verifyResponseStatusCode('@getSelectedVersionDetails', 200);
+          navigateToVersionPageFromServicePage(
+            serviceCategory,
+            serviceName,
+            serviceId,
+            '0.2'
+          );
 
-        cy.get(`[data-testid="diff-removed"]`)
-          .scrollIntoView()
-          .should('be.visible');
-      });
+          cy.get('[data-testid="Tier"] > [data-testid="diff-added"]')
+            .scrollIntoView()
+            .should('be.visible');
+        });
 
-      it(`${serviceType} version page should show tier changes properly`, () => {
-        visitServiceDetailsPage(
-          serviceDetails.settingsMenuId,
-          serviceDetails.serviceCategory,
-          serviceDetails.serviceName
-        );
+        it(`${serviceType} version page should show version details after soft deleted`, () => {
+          visitServiceDetailsPage(settingsMenuId, serviceCategory, serviceName);
 
-        cy.get('[data-testid="version-button"]').as('versionButton');
+          cy.get('[data-testid="manage-button"]')
+            .should('exist')
+            .should('be.visible')
+            .click();
 
-        cy.get('@versionButton').contains('0.5');
+          cy.get('[data-menu-id*="delete-button"]')
+            .should('exist')
+            .should('be.visible');
+          cy.get('[data-testid="delete-button-title"]')
+            .should('be.visible')
+            .click()
+            .as('deleteBtn');
 
-        addTier(TIER, `services/${serviceDetails.serviceCategory}`);
+          // Clicking on soft delete radio button and checking the service name
+          cy.get('[data-testid="soft-delete-option"]')
+            .contains(serviceName)
+            .should('be.visible')
+            .click();
 
-        interceptURL(
-          'GET',
-          `/api/v1/services/${serviceDetails.serviceCategory}/name/${serviceDetails.serviceName}?*`,
-          `get${serviceType}Details`
-        );
-        interceptURL(
-          'GET',
-          `/api/v1/services/${serviceDetails.serviceCategory}/${serviceId}/versions`,
-          'getVersionsList'
-        );
-        interceptURL(
-          'GET',
-          `/api/v1/services/${serviceDetails.serviceCategory}/${serviceId}/versions/0.6`,
-          'getSelectedVersionDetails'
-        );
+          cy.get('[data-testid="confirmation-text-input"]')
+            .should('be.visible')
+            .type(DELETE_TERM);
+          interceptURL(
+            'DELETE',
+            `/api/v1/services/${serviceCategory}/*hardDelete=false*`,
+            'deleteService'
+          );
+          interceptURL(
+            'GET',
+            '/api/v1/services/*/name/*?fields=owner',
+            'serviceDetails'
+          );
 
-        cy.get('@versionButton').contains('0.6').click();
+          cy.get('[data-testid="confirm-button"]').should('be.visible').click();
+          verifyResponseStatusCode('@deleteService', 200);
 
-        verifyResponseStatusCode(`@get${serviceType}Details`, 200);
-        verifyResponseStatusCode('@getVersionsList', 200);
-        verifyResponseStatusCode('@getSelectedVersionDetails', 200);
+          // Closing the toast notification
+          toastNotification(
+            `${successMessageEntityName} Service deleted successfully!`
+          );
 
-        cy.get(`[data-testid="diff-added"]`)
-          .scrollIntoView()
-          .should('be.visible');
+          navigateToVersionPageFromServicePage(
+            serviceCategory,
+            serviceName,
+            serviceId,
+            '0.3'
+          );
 
-        cy.get('@versionButton').contains('0.6').click();
+          // Deleted badge should be visible
+          cy.get('[data-testid="deleted-badge"]')
+            .scrollIntoView()
+            .should('be.visible');
+        });
 
-        removeTier(`services/${serviceDetails.serviceCategory}`);
+        it(`${serviceType} version page should show removed tags changes properly`, () => {
+          visitServiceDetailsPage(
+            serviceDetails.settingsMenuId,
+            serviceDetails.serviceCategory,
+            serviceDetails.serviceName
+          );
 
-        interceptURL(
-          'GET',
-          `/api/v1/services/${serviceDetails.serviceCategory}/${serviceId}/versions/0.7`,
-          'getSelectedVersionDetails'
-        );
+          cy.get(
+            '[data-testid="entity-right-panel"]  [data-testid="edit-button"]'
+          ).click();
 
-        cy.get('@versionButton').contains('0.7').click();
+          cy.get(
+            '[data-testid="selected-tag-PersonalData.SpecialCategory"] [data-testid="remove-tags"]'
+          ).click();
 
-        verifyResponseStatusCode(`@get${serviceType}Details`, 200);
-        verifyResponseStatusCode('@getVersionsList', 200);
-        verifyResponseStatusCode('@getSelectedVersionDetails', 200);
+          interceptURL(
+            'PATCH',
+            `/api/v1/services/${serviceDetails.serviceCategory}/${serviceId}`,
+            `patch${serviceType}`
+          );
 
-        cy.get(`[data-testid="diff-removed"]`)
-          .scrollIntoView()
-          .should('be.visible');
-      });
+          cy.get('[data-testid="saveAssociatedTag"]').click();
 
-      it(`Cleanup for ${serviceType} service version page tests`, () => {
-        visitServiceDetailsPage(
-          serviceDetails.settingsMenuId,
-          serviceDetails.serviceCategory,
-          serviceDetails.serviceName
-        );
-        // Clicking on permanent delete radio button and checking the service name
-        cy.get('[data-testid="manage-button"]')
-          .should('exist')
-          .should('be.visible')
-          .click();
+          verifyResponseStatusCode(`@patch${serviceType}`, 200);
 
-        cy.get('[data-menu-id*="delete-button"]')
-          .should('exist')
-          .should('be.visible');
-        cy.get('[data-testid="delete-button-title"]')
-          .should('be.visible')
-          .click()
-          .as('deleteBtn');
+          cy.get('[data-testid="version-button"]').contains('0.3').click();
 
-        // Clicking on permanent delete radio button and checking the service name
-        cy.get('[data-testid="hard-delete-option"]')
-          .contains(serviceDetails.serviceName)
-          .should('be.visible')
-          .click();
+          cy.get(
+            `[data-testid="entity-right-panel"] .diff-removed [data-testid="tag-PersonalData.SpecialCategory"]`
+          )
+            .scrollIntoView()
+            .should('be.visible');
+        });
 
-        cy.get('[data-testid="confirmation-text-input"]')
-          .should('be.visible')
-          .type(DELETE_TERM);
-        interceptURL(
-          'DELETE',
-          `/api/v1/services/${serviceDetails.serviceCategory}/*`,
-          'deleteService'
-        );
-        interceptURL(
-          'GET',
-          '/api/v1/services/*/name/*?fields=owner',
-          'serviceDetails'
-        );
+        it(`${serviceType} version page should show owner changes properly`, () => {
+          visitServiceDetailsPage(
+            serviceDetails.settingsMenuId,
+            serviceDetails.serviceCategory,
+            serviceDetails.serviceName
+          );
 
-        cy.get('[data-testid="confirm-button"]').should('be.visible').click();
-        verifyResponseStatusCode('@deleteService', 200);
+          cy.get('[data-testid="version-button"]').as('versionButton');
 
-        // Closing the toast notification
-        toastNotification(
-          `${successMessageEntityName} Service deleted successfully!`
-        );
+          cy.get('@versionButton').contains('0.3');
 
-        cy.get(
-          `[data-testid="service-name-${serviceDetails.serviceName}"]`
-        ).should('not.exist');
+          addOwner(OWNER, `services/${serviceDetails.serviceCategory}`);
+
+          interceptURL(
+            'GET',
+            `/api/v1/services/${serviceDetails.serviceCategory}/name/${serviceDetails.serviceName}?*`,
+            `get${serviceType}Details`
+          );
+          interceptURL(
+            'GET',
+            `/api/v1/services/${serviceDetails.serviceCategory}/${serviceId}/versions`,
+            'getVersionsList'
+          );
+          interceptURL(
+            'GET',
+            `/api/v1/services/${serviceDetails.serviceCategory}/${serviceId}/versions/0.4`,
+            'getSelectedVersionDetails'
+          );
+
+          cy.get('@versionButton').contains('0.4').click();
+
+          verifyResponseStatusCode(`@get${serviceType}Details`, 200);
+          verifyResponseStatusCode('@getVersionsList', 200);
+          verifyResponseStatusCode('@getSelectedVersionDetails', 200);
+
+          cy.get(`[data-testid="diff-added"]`)
+            .scrollIntoView()
+            .should('be.visible');
+
+          cy.get('@versionButton').contains('0.4').click();
+
+          removeOwner(`services/${serviceDetails.serviceCategory}`);
+
+          interceptURL(
+            'GET',
+            `/api/v1/services/${serviceDetails.serviceCategory}/${serviceId}/versions/0.5`,
+            'getSelectedVersionDetails'
+          );
+
+          cy.get('@versionButton').contains('0.5').click();
+
+          verifyResponseStatusCode(`@get${serviceType}Details`, 200);
+          verifyResponseStatusCode('@getVersionsList', 200);
+          verifyResponseStatusCode('@getSelectedVersionDetails', 200);
+
+          cy.get(`[data-testid="diff-removed"]`)
+            .scrollIntoView()
+            .should('be.visible');
+        });
+
+        it(`${serviceType} version page should show tier changes properly`, () => {
+          visitServiceDetailsPage(
+            serviceDetails.settingsMenuId,
+            serviceDetails.serviceCategory,
+            serviceDetails.serviceName
+          );
+
+          cy.get('[data-testid="version-button"]').as('versionButton');
+
+          cy.get('@versionButton').contains('0.5');
+
+          addTier(TIER, `services/${serviceDetails.serviceCategory}`);
+
+          interceptURL(
+            'GET',
+            `/api/v1/services/${serviceDetails.serviceCategory}/name/${serviceDetails.serviceName}?*`,
+            `get${serviceType}Details`
+          );
+          interceptURL(
+            'GET',
+            `/api/v1/services/${serviceDetails.serviceCategory}/${serviceId}/versions`,
+            'getVersionsList'
+          );
+          interceptURL(
+            'GET',
+            `/api/v1/services/${serviceDetails.serviceCategory}/${serviceId}/versions/0.6`,
+            'getSelectedVersionDetails'
+          );
+
+          cy.get('@versionButton').contains('0.6').click();
+
+          verifyResponseStatusCode(`@get${serviceType}Details`, 200);
+          verifyResponseStatusCode('@getVersionsList', 200);
+          verifyResponseStatusCode('@getSelectedVersionDetails', 200);
+
+          cy.get(`[data-testid="diff-added"]`)
+            .scrollIntoView()
+            .should('be.visible');
+
+          cy.get('@versionButton').contains('0.6').click();
+
+          removeTier(`services/${serviceDetails.serviceCategory}`);
+
+          interceptURL(
+            'GET',
+            `/api/v1/services/${serviceDetails.serviceCategory}/${serviceId}/versions/0.7`,
+            'getSelectedVersionDetails'
+          );
+
+          cy.get('@versionButton').contains('0.7').click();
+
+          verifyResponseStatusCode(`@get${serviceType}Details`, 200);
+          verifyResponseStatusCode('@getVersionsList', 200);
+          verifyResponseStatusCode('@getSelectedVersionDetails', 200);
+
+          cy.get(`[data-testid="diff-removed"]`)
+            .scrollIntoView()
+            .should('be.visible');
+        });
+
+        it(`Cleanup for ${serviceType} service version page tests`, () => {
+          visitServiceDetailsPage(
+            serviceDetails.settingsMenuId,
+            serviceDetails.serviceCategory,
+            serviceDetails.serviceName
+          );
+          // Clicking on permanent delete radio button and checking the service name
+          cy.get('[data-testid="manage-button"]')
+            .should('exist')
+            .should('be.visible')
+            .click();
+
+          cy.get('[data-menu-id*="delete-button"]')
+            .should('exist')
+            .should('be.visible');
+          cy.get('[data-testid="delete-button-title"]')
+            .should('be.visible')
+            .click()
+            .as('deleteBtn');
+
+          // Clicking on permanent delete radio button and checking the service name
+          cy.get('[data-testid="hard-delete-option"]')
+            .contains(serviceDetails.serviceName)
+            .should('be.visible')
+            .click();
+
+          cy.get('[data-testid="confirmation-text-input"]')
+            .should('be.visible')
+            .type(DELETE_TERM);
+          interceptURL(
+            'DELETE',
+            `/api/v1/services/${serviceDetails.serviceCategory}/*`,
+            'deleteService'
+          );
+          interceptURL(
+            'GET',
+            '/api/v1/services/*/name/*?fields=owner',
+            'serviceDetails'
+          );
+
+          cy.get('[data-testid="confirm-button"]').should('be.visible').click();
+          verifyResponseStatusCode('@deleteService', 200);
+
+          // Closing the toast notification
+          toastNotification(
+            `${successMessageEntityName} Service deleted successfully!`
+          );
+
+          cy.get(
+            `[data-testid="service-name-${serviceDetails.serviceName}"]`
+          ).should('not.exist');
+        });
       });
     });
   }

@@ -242,6 +242,94 @@ describe('Data model version page should work properly', () => {
       .should('be.visible');
   });
 
+  it('Data model version page should show version details after soft deleted', () => {
+    visitDataModelPage(dataModelFQN, dataModelName);
+
+    cy.get('[data-testid="manage-button"]')
+      .should('exist')
+      .should('be.visible')
+      .click();
+
+    cy.get('[data-menu-id*="delete-button"]')
+      .should('exist')
+      .should('be.visible');
+    cy.get('[data-testid="delete-button-title"]')
+      .should('be.visible')
+      .click()
+      .as('deleteBtn');
+
+    // Clicking on permanent delete radio button and checking the service name
+    cy.get('[data-testid="soft-delete-option"]')
+      .contains(DATA_MODEL_DETAILS.name)
+      .should('be.visible')
+      .click();
+
+    cy.get('[data-testid="confirmation-text-input"]')
+      .should('be.visible')
+      .type(DELETE_TERM);
+
+    interceptURL('DELETE', `/api/v1/dashboard/datamodels/*`, 'deleteDataModel');
+
+    cy.get('[data-testid="confirm-button"]').should('be.visible').click();
+
+    verifyResponseStatusCode('@deleteDataModel', 200);
+
+    // Closing the toast notification
+    toastNotification(`Dashboard Data Model deleted successfully!`);
+
+    interceptURL(
+      'GET',
+      `/api/v1/dashboard/datamodels/name/${dataModelFQN}*`,
+      `getDataModelDetails`
+    );
+    interceptURL(
+      'GET',
+      `/api/v1/dashboard/datamodels/${dataModelId}/versions`,
+      'getVersionsList'
+    );
+    interceptURL(
+      'GET',
+      `/api/v1/dashboard/datamodels/${dataModelId}/versions/0.3`,
+      'getSelectedVersionDetails'
+    );
+
+    cy.get('[data-testid="version-button"]').as('versionButton');
+
+    cy.get('@versionButton').contains('0.3').click();
+
+    verifyResponseStatusCode(`@getDataModelDetails`, 200);
+    verifyResponseStatusCode('@getVersionsList', 200);
+    verifyResponseStatusCode('@getSelectedVersionDetails', 200);
+
+    // Deleted badge should be visible
+    cy.get('[data-testid="deleted-badge"]')
+      .scrollIntoView()
+      .should('be.visible');
+
+    cy.get('@versionButton').click();
+
+    cy.get('[data-testid="manage-button"]')
+      .should('exist')
+      .should('be.visible')
+      .click();
+
+    cy.get('[data-testid="restore-button-title"]').click();
+
+    interceptURL(
+      'PUT',
+      `/api/v1/dashboard/datamodels/restore`,
+      'restoreDataModel'
+    );
+
+    cy.get('.ant-modal-footer .ant-btn-primary').contains('Restore').click();
+
+    verifyResponseStatusCode('@restoreDataModel', 200);
+
+    toastNotification(`Data Model restored successfully`);
+
+    cy.get('@versionButton').should('contain', '0.4');
+  });
+
   it(`Cleanup for data model version page test`, () => {
     visitDataModelPage(dataModelFQN, dataModelName);
 
@@ -258,12 +346,12 @@ describe('Data model version page should work properly', () => {
 
     interceptURL(
       'DELETE',
-      `api/v1/dashboard/datamodels/*?hardDelete=true&recursive=false`,
-      `hardDeleteTable`
+      `api/v1/dashboard/datamodels/*?hardDelete=true&recursive=true`,
+      `hardDeleteDataModel`
     );
     cy.get('[data-testid="confirm-button"]').should('not.be.disabled');
     cy.get('[data-testid="confirm-button"]').click();
-    verifyResponseStatusCode(`@hardDeleteTable`, 200);
+    verifyResponseStatusCode(`@hardDeleteDataModel`, 200);
 
     toastNotification(`Dashboard Data Model deleted successfully!`, false);
   });
