@@ -53,11 +53,6 @@
                                 "assignee": "christopher_campbell7"
                             },
                             {
-                                "testCaseResolutionStatusType": "InReview",
-                                "severity": "Severity1",
-                                "reviewer": "christine_day7"
-                            },
-                            {
                                 "testCaseResolutionStatusType": "Resolved",
                                 "severity": "Severity1",
                                 "resolver": "christopher_campbell7"
@@ -76,11 +71,6 @@
                                 "testCaseResolutionStatusType": "Assigned",
                                 "severity": "Severity3",
                                 "assignee": "christopher_campbell7"
-                            },
-                            {
-                                "testCaseResolutionStatusType": "InReview",
-                                "severity": "Severity3",
-                                "reviewer": "christine_day7"
                             },
                             {
                                 "testCaseResolutionStatusType": "Assigned",
@@ -152,11 +142,6 @@
                                 "assignee": "christopher_campbell7"
                             },
                             {
-                                "testCaseResolutionStatusType": "InReview",
-                                "severity": "Severity1",
-                                "reviewer": "christine_day7"
-                            },
-                            {
                                 "testCaseResolutionStatusType": "Resolved",
                                 "severity": "Severity1",
                                 "resolver": "christopher_campbell7"
@@ -175,11 +160,6 @@
                                 "testCaseResolutionStatusType": "Assigned",
                                 "severity": "Severity3",
                                 "assignee": "christopher_campbell7"
-                            },
-                            {
-                                "testCaseResolutionStatusType": "InReview",
-                                "severity": "Severity3",
-                                "reviewer": "christine_day7"
                             },
                             {
                                 "testCaseResolutionStatusType": "Assigned",
@@ -318,11 +298,6 @@
                                 "assignee": "christopher_campbell7"
                             },
                             {
-                                "testCaseResolutionStatusType": "InReview",
-                                "severity": "Severity1",
-                                "reviewer": "christine_day7"
-                            },
-                            {
                                 "testCaseResolutionStatusType": "Resolved",
                                 "severity": "Severity1",
                                 "resolver": "christopher_campbell7"
@@ -341,11 +316,6 @@
                                 "testCaseResolutionStatusType": "Assigned",
                                 "severity": "Severity3",
                                 "assignee": "christopher_campbell7"
-                            },
-                            {
-                                "testCaseResolutionStatusType": "InReview",
-                                "severity": "Severity3",
-                                "reviewer": "christine_day7"
                             },
                             {
                                 "testCaseResolutionStatusType": "Assigned",

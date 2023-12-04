@@ -8,7 +8,7 @@ CREATE TABLE test_case_resolution_status_time_series (
   jsonSchema varchar(256) NOT NULL,
   json json NOT NULL,
   entityFQNHash varchar(768) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
-  CONSTRAINT test_case_resolution_status_unique_constraint UNIQUE (id,timestamp,extension),
+  CONSTRAINT test_case_resolution_status_unique_constraint UNIQUE (id,timestamp,entityFQNHash),
   INDEX (id),
   INDEX(testCaseResolutionStatusType),
   INDEX(id, testCaseResolutionStatusType)

@@ -16,7 +16,7 @@ CREATE TABLE test_case_resolution_status_time_series (
   jsonSchema varchar(256) NOT NULL,
   json jsonb NOT NULL,
   entityFQNHash varchar(768) COLLATE "C" DEFAULT NULL,
-  CONSTRAINT test_case_resolution_status_unique_constraint UNIQUE (id, timestamp, extension)
+  CONSTRAINT test_case_resolution_status_unique_constraint UNIQUE (id, timestamp, entityFQNHash)
 );
 create index test_case_resolution_status_time_series_id on test_case_resolution_status_time_series (id);
 create index test_case_resolution_status_time_series_status_type on test_case_resolution_status_time_series  (testCaseResolutionStatusType);

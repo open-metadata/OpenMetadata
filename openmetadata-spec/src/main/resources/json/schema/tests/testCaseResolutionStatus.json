@@ -11,11 +11,10 @@
       "description": "Test case resolution status type.",
       "javaType": "org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes",
       "type": "string",
-      "enum": ["Ack", "Assigned", "InReview", "New", "Resolved"],
+      "enum": ["Ack", "Assigned", "New", "Resolved"],
       "javaEnums": [
         {"name": "Ack"},
         {"name":  "Assigned"},
-        {"name": "InReview"},
         {"name": "New"},
         {"name": "Resolved"}
       ]

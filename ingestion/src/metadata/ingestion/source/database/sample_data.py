@@ -1430,15 +1430,6 @@ class SampleDataSource(
                                     id=user.id.__root__, type="user"
                                 )
                             )
-                        if resolution["testCaseResolutionStatusType"] == "InReview":
-                            user: User = self.metadata.get_by_name(
-                                User, fqn=resolution["reviewer"]
-                            )
-                            create_test_case_resolution.testCaseResolutionStatusDetails = InReview(
-                                reviewer=EntityReference(
-                                    id=user.id.__root__, type="user"
-                                )
-                            )
                         if resolution["testCaseResolutionStatusType"] == "Resolved":
                             user: User = self.metadata.get_by_name(
                                 User, fqn=resolution["resolver"]
