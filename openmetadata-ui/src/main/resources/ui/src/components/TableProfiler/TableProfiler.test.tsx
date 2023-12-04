@@ -61,6 +61,7 @@ jest.mock('../../utils/CommonUtils', () => ({
   formatNumberWithComma: jest.fn(),
   formTwoDigitNmber: jest.fn(),
   getStatisticsDisplayValue: jest.fn(),
+  getEntityDeleteMessage: jest.fn(),
 }));
 
 jest.mock('../../rest/testAPI', () => ({
