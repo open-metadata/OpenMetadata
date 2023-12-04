@@ -406,14 +406,14 @@ class LookerSource(DashboardServiceSource):
                 self.register_record_datamodel(datamodel_requst=explore_datamodel)
 
                 # build datamodel by our hand since ack_sink=False
-                self.context.dataModels = self._build_data_model(datamodel_name)
-                self._view_data_model = copy.deepcopy(self.context.dataModels)
+                self.context.dataModel = self._build_data_model(datamodel_name)
+                self._view_data_model = copy.deepcopy(self.context.dataModel)
 
                 # Maybe use the project_name as key too?
                 # Save the explores for when we create the lineage with the dashboards and views
                 self._explores_cache[
                     explore_datamodel.name.__root__
-                ] = self.context.dataModels  # This is the newly created explore
+                ] = self.context.dataModel  # This is the newly created explore
 
                 # We can get VIEWs from the JOINs to know the dependencies
                 # We will only try and fetch if we have the credentials
