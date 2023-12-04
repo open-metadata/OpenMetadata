@@ -1,9 +1,9 @@
 ---
-title: Run the Databricks Connector Externally
-slug: /connectors/database/databricks/yaml
+title: Run the Unity Catalog Connector Externally
+slug: /connectors/database/unity-catalog/yaml
 ---
 
-# Run the Databricks Connector Externally
+# Run the Unity Catalog Connector Externally
 
 {% multiTablesWrapper %}
 
@@ -12,7 +12,7 @@ slug: /connectors/database/databricks/yaml
 | Stage              | PROD                         |
 | Metadata           | {% icon iconName="check" /%} |
 | Query Usage        | {% icon iconName="check" /%} |
-| Data Profiler      | {% icon iconName="check" /%} |
+| Data Profiler      | {% icon iconName="cross" /%} |
 | Data Quality       | {% icon iconName="check" /%} |
 | Stored Procedures            | {% icon iconName="cross" /%} |
 | DBT                | {% icon iconName="check" /%} |
@@ -26,14 +26,13 @@ slug: /connectors/database/databricks/yaml
 
 {% /multiTablesWrapper %}
 
-In this section, we provide guides and references to use the Databricks connector.
+In this section, we provide guides and references to use the Unity Catalog connector.
 
-Configure and schedule Databricks metadata and profiler workflows from the OpenMetadata UI:
+Configure and schedule Unity Catalog metadata workflow from the OpenMetadata UI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Query Usage](#query-usage)
-- [Data Profiler](#data-profiler)
 - [Lineage](#lineage)
 - [dbt Integration](#dbt-integration)
 
@@ -50,7 +49,7 @@ To deploy OpenMetadata, check the Deployment guides.
 
 ### Python Requirements
 
-To run the Databricks ingestion, you will need to install:
+To run the Unity Catalog ingestion, you will need to install:
 
 ```bash
 pip3 install "openmetadata-ingestion[databricks]"
@@ -71,7 +70,7 @@ The workflow is modeled around the following
 
 ### 1. Define the YAML Config
 
-This is a sample config for Databricks:
+This is a sample config for Unity Catalog:
 
 {% codePreview %}
 
@@ -144,11 +143,11 @@ This is a sample config for Databricks:
 
 ```yaml
 source:
-  type: databricks
-  serviceName: local_databricks
+  type: unitycatalog
+  serviceName: local_unitycatalog
   serviceConnection:
     config:
-      type: Databricks
+      type: UnityCatalog
 ```
 ```yaml {% srNumber=1 %}
       catalog: hive_metastore
@@ -190,9 +189,7 @@ source:
 
 {% partial file="/v1.2/connectors/yaml/ingestion-cli.md" /%}
 
-{% partial file="/v1.2/connectors/yaml/query-usage.md" variables={connector: "databricks"} /%}
-
-{% partial file="/v1.2/connectors/yaml/data-profiler.md" variables={connector: "databricks"} /%}
+{% partial file="/v1.2/connectors/yaml/query-usage.md" variables={connector: "unitycatalog"} /%}
 
 ## Lineage
 
