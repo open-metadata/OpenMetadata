@@ -25,6 +25,7 @@ from confluent_kafka.schema_registry.avro import AvroDeserializer
 from confluent_kafka.schema_registry.schema_registry_client import Schema
 
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
+from metadata.generated.schema.entity.data.topic import Topic as TopicEntity
 from metadata.generated.schema.entity.data.topic import TopicSampleData
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -218,7 +219,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
             service_name=self.context.messaging_service,
             topic_name=self.context.topic,
         )
-        topic_entity = self.metadata.get_by_name(entity=Topic, fqn=topic_fqn)
+        topic_entity = self.metadata.get_by_name(entity=TopicEntity, fqn=topic_fqn)
         if topic_entity and self.generate_sample_data:
             topic_name = topic_details.topic_name
             sample_data = []
