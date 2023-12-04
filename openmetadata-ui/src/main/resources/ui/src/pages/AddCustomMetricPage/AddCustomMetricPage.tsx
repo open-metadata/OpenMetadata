@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Form, Space } from 'antd';
+import { Button, Col, Form, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import QueryString from 'qs';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -158,7 +158,14 @@ const AddCustomMetricPage = () => {
 
   const secondPanel = (
     <>
-      <RightPanel data={{ title: '', body: '' }} />
+      <RightPanel
+        data={{
+          title: t('label.add-entity-metric', {
+            entity: isColumnMetric ? t('label.column') : t('label.table'),
+          }),
+          body: '',
+        }}
+      />
       {isColumnMetric ? (
         <SingleColumnProfile
           activeColumnFqn={activeColumnFqn}
@@ -184,36 +191,48 @@ const AddCustomMetricPage = () => {
       firstPanel={{
         children: (
           <div className="max-width-md w-9/10 service-form-container">
-            <TitleBreadcrumb titleLinks={breadcrumb} />
-            <div className="m-t-md">
-              <CustomMetricForm
-                form={form}
-                initialValues={initialValues}
-                isColumnMetric={isColumnMetric}
-                table={table}
-                onFinish={handleFormSubmit}
-              />
-
-              <Space className="w-full justify-end">
-                <Button disabled={isActionLoading} onClick={handleBackClick}>
-                  {t('label.cancel')}
-                </Button>
-                <Button
-                  htmlType="submit"
-                  loading={isActionLoading}
-                  type="primary"
-                  onClick={() => form.submit()}>
-                  {t('label.submit')}
-                </Button>
-              </Space>
-            </div>
+            <Row gutter={[16, 16]}>
+              <Col span={24}>
+                <TitleBreadcrumb titleLinks={breadcrumb} />
+              </Col>
+              <Col span={24}>
+                <Typography.Title className="m-b-0" level={5}>
+                  {t('label.add-entity-metric', {
+                    entity: isColumnMetric
+                      ? t('label.column')
+                      : t('label.table'),
+                  })}
+                </Typography.Title>
+              </Col>
+              <Col span={24}>
+                <CustomMetricForm
+                  form={form}
+                  initialValues={initialValues}
+                  isColumnMetric={isColumnMetric}
+                  table={table}
+                  onFinish={handleFormSubmit}
+                />
+                <Space className="w-full justify-end">
+                  <Button disabled={isActionLoading} onClick={handleBackClick}>
+                    {t('label.cancel')}
+                  </Button>
+                  <Button
+                    htmlType="submit"
+                    loading={isActionLoading}
+                    type="primary"
+                    onClick={() => form.submit()}>
+                    {t('label.submit')}
+                  </Button>
+                </Space>
+              </Col>
+            </Row>
           </div>
         ),
         minWidth: 700,
         flex: 0.5,
       }}
       pageTitle={t('label.add-entity', {
-        entity: t('label.data-quality-test'),
+        entity: t('label.custom-metric'),
       })}
       secondPanel={{
         children: secondPanel,
