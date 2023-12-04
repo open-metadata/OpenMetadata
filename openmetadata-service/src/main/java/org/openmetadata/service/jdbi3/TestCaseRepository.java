@@ -209,7 +209,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     testCaseResult.setTestCaseResolutionStatusReference(
         testCaseResult.getTestCaseStatus() != TestCaseStatus.Failed
             ? null
-            : setTestCaseFailureStatus(testCase, updatedBy));
+            : setTestCaseResolutionStatus(testCase, updatedBy));
 
     daoCollection
         .dataQualityDataTimeSeriesDao()
@@ -229,7 +229,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
-  private TestCaseResolutionStatus setTestCaseFailureStatus(TestCase testCase, String updatedBy) {
+  private TestCaseResolutionStatus setTestCaseResolutionStatus(TestCase testCase, String updatedBy) {
     String json =
         daoCollection
             .testCaseResolutionStatusTimeSeriesDao()

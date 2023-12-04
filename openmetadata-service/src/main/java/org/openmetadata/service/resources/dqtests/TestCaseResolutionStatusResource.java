@@ -73,7 +73,7 @@ public class TestCaseResolutionStatusResource
 
   @GET
   @Operation(
-      operationId = "getTestCaseFailureStatus",
+      operationId = "getTestCaseResolutionStatus",
       summary = "List the test case failure statuses",
       description =
           "Get a list of all the test case failure statuses, optionally filtered by `startTs` and `endTs` of the status creation, "
@@ -148,7 +148,7 @@ public class TestCaseResolutionStatusResource
   @GET
   @Path("/sequenceId/{sequenceId}")
   @Operation(
-      operationId = "getTestCaseFailureStatusesForASequenceId",
+      operationId = "getTestCaseResolutionStatusesForASequenceId",
       summary = "Get test case failure statuses for a sequence id",
       description = "Get a test case failure statuses for a sequence id",
       responses = {
@@ -168,13 +168,13 @@ public class TestCaseResolutionStatusResource
     ResourceContextInterface resourceContext = ReportDataContext.builder().build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
-    return repository.listTestCaseFailureStatusesForSequenceId(sequenceId);
+    return repository.listTestCaseResolutionStatusesForStateId(sequenceId);
   }
 
   @GET
   @Path("/{id}")
   @Operation(
-      operationId = "getTestCaseFailureStatusById",
+      operationId = "getTestCaseResolutionStatusById",
       summary = "Get test case failure status by id",
       description = "Get a test case failure status by id",
       responses = {
@@ -189,17 +189,17 @@ public class TestCaseResolutionStatusResource
   public TestCaseResolutionStatus get(
       @Context SecurityContext securityContext,
       @Parameter(description = "Test Case Failure Status ID", schema = @Schema(type = "UUID")) @PathParam("id")
-          UUID testCaseFailureStatusId) {
+          UUID testCaseResolutionStatusId) {
     OperationContext operationContext = new OperationContext(Entity.TEST_CASE, MetadataOperation.VIEW_ALL);
     ResourceContextInterface resourceContext = ReportDataContext.builder().build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
-    return repository.getById(testCaseFailureStatusId);
+    return repository.getById(testCaseResolutionStatusId);
   }
 
   @POST
   @Operation(
-      operationId = "createTestCaseFailureStatus",
+      operationId = "createTestCaseResolutionStatus",
       summary = "Create a new test case failure status",
       description = "Create a new test case failure status",
       responses = {
@@ -214,19 +214,19 @@ public class TestCaseResolutionStatusResource
   public Response create(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Valid CreateTestCaseResolutionStatus createTestCaseFailureStatus) {
+      @Valid CreateTestCaseResolutionStatus createTestCaseResolutionStatus) {
     OperationContext operationContext = new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_TESTS);
     ResourceContextInterface resourceContext = ReportDataContext.builder().build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
     TestCase testCaseEntity =
-        Entity.getEntityByName(Entity.TEST_CASE, createTestCaseFailureStatus.getTestCaseReference(), null, Include.ALL);
-    TestCaseResolutionStatus testCaseFailureStatus =
-        getTestCaseFailureStatus(
-            testCaseEntity, createTestCaseFailureStatus, securityContext.getUserPrincipal().getName());
+        Entity.getEntityByName(Entity.TEST_CASE, createTestCaseResolutionStatus.getTestCaseReference(), null, Include.ALL);
+    TestCaseResolutionStatus testCaseResolutionStatus =
+        getTestCaseResolutionStatus(
+            testCaseEntity, createTestCaseResolutionStatus, securityContext.getUserPrincipal().getName());
 
     return create(
-        testCaseFailureStatus,
+        testCaseResolutionStatus,
         null,
         testCaseEntity.getFullyQualifiedName());
   }
@@ -234,7 +234,7 @@ public class TestCaseResolutionStatusResource
   @PATCH
   @Path("/{id}")
   @Operation(
-      operationId = "updateTestCaseFailureStatus",
+      operationId = "updateTestCaseResolutionStatus",
       summary = "Update an existing test case failure status",
       description = "Update an existing test case failure status",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
@@ -261,8 +261,8 @@ public class TestCaseResolutionStatusResource
     return response.toResponse();
   }
 
-  private TestCaseResolutionStatus getTestCaseFailureStatus(
-      TestCase testCaseEntity, CreateTestCaseResolutionStatus createTestCaseFailureStatus, String user) {
+  private TestCaseResolutionStatus getTestCaseResolutionStatus(
+      TestCase testCaseEntity, CreateTestCaseResolutionStatus createTestCaseResolutionStatus, String user) {
     User userEntity = Entity.getEntityByName(Entity.USER, user, null, Include.ALL);
     TestCaseResolutionStatus latestTestCaseFailure =
         repository.getLatestRecord(
@@ -282,8 +282,8 @@ public class TestCaseResolutionStatusResource
     return new TestCaseResolutionStatus()
         .withSequenceId(sequenceId)
         .withTimestamp(System.currentTimeMillis())
-        .withTestCaseResolutionStatusType(createTestCaseFailureStatus.getTestCaseResolutionStatusType())
-        .withTestCaseResolutionStatusDetails(createTestCaseFailureStatus.getTestCaseResolutionStatusDetails())
+        .withTestCaseResolutionStatusType(createTestCaseResolutionStatus.getTestCaseResolutionStatusType())
+        .withTestCaseResolutionStatusDetails(createTestCaseResolutionStatus.getTestCaseResolutionStatusDetails())
         .withUpdatedBy(userEntity.getEntityReference())
         .withUpdatedAt(System.currentTimeMillis())
         .withTestCaseReference(testCaseEntity.getEntityReference());

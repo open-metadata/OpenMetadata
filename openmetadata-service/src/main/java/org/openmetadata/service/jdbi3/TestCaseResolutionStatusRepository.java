@@ -18,7 +18,7 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 public class TestCaseResolutionStatusRepository extends EntityTimeSeriesRepository<TestCaseResolutionStatus> {
-  public static final String COLLECTION_PATH = "/v1/dataQuality/testCases/testCaseFailureStatus";
+  public static final String COLLECTION_PATH = "/v1/dataQuality/testCases/testCaseResolutionStatus";
 
   public TestCaseResolutionStatusRepository() {
     super(
@@ -28,14 +28,14 @@ public class TestCaseResolutionStatusRepository extends EntityTimeSeriesReposito
         Entity.TEST_CASE_RESOLUTION_STATUS);
   }
 
-  public ResultList<TestCaseResolutionStatus> listTestCaseFailureStatusesForSequenceId(UUID sequenceId) {
+  public ResultList<TestCaseResolutionStatus> listTestCaseResolutionStatusesForStateId(UUID sequenceId) {
     List<String> jsons =
         ((CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO) timeSeriesDao)
-            .listTestCaseFailureStatusesForSequenceId(sequenceId.toString());
-    List<TestCaseResolutionStatus> testCaseFailureStatuses =
+            .listTestCaseResolutionStatusesForStateId(sequenceId.toString());
+    List<TestCaseResolutionStatus> testCaseResolutionStatuses =
         JsonUtils.readObjects(jsons, TestCaseResolutionStatus.class);
 
-    return getResultList(testCaseFailureStatuses, null, null, testCaseFailureStatuses.size());
+    return getResultList(testCaseResolutionStatuses, null, null, testCaseResolutionStatuses.size());
   }
 
   public RestUtil.PatchResponse<TestCaseResolutionStatus> patch(UUID id, JsonPatch patch, String user)
