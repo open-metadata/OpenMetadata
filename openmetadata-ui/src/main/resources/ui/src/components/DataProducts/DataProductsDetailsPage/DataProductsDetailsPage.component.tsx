@@ -63,6 +63,7 @@ import {
 import { Domain } from '../../../generated/entity/domains/domain';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { Style } from '../../../generated/type/tagLabel';
+import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { searchData } from '../../../rest/miscAPI';
 import { getEntityDeleteMessage } from '../../../utils/CommonUtils';
 import { getQueryFilterToIncludeDomain } from '../../../utils/DomainUtils';
@@ -575,10 +576,12 @@ const DataProductsDetailsPage = ({
           })}
           entityFqn={dataProductFqn}
           open={assetModalVisible}
-          queryFilter={getQueryFilterToIncludeDomain(
-            dataProduct.domain?.fullyQualifiedName ?? '',
-            dataProduct.fullyQualifiedName ?? ''
-          )}
+          queryFilter={
+            getQueryFilterToIncludeDomain(
+              dataProduct.domain?.fullyQualifiedName ?? '',
+              dataProduct.fullyQualifiedName ?? ''
+            ) as QueryFilterInterface
+          }
           type={AssetsOfEntity.DATA_PRODUCT}
           onCancel={() => setAssetModelVisible(false)}
           onSave={handleAssetSave}

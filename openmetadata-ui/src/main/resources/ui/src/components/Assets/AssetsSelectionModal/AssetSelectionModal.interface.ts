@@ -33,7 +33,7 @@ import { PipelineService } from '../../../generated/entity/services/pipelineServ
 import { SearchService } from '../../../generated/entity/services/searchService';
 import { StorageService } from '../../../generated/entity/services/storageService';
 import { Team } from '../../../generated/entity/teams/team';
-import { ElasticSearchQuery } from '../../../interface/search.interface';
+import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 
 export interface AssetSelectionModalProps {
   entityFqn: string;
@@ -41,7 +41,7 @@ export interface AssetSelectionModalProps {
   type?: AssetsOfEntity;
   onCancel: () => void;
   onSave?: () => void;
-  queryFilter?: ElasticSearchQuery;
+  queryFilter?: QueryFilterInterface;
   emptyPlaceHolderText?: string;
 }
 

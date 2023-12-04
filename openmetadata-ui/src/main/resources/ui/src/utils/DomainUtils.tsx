@@ -25,7 +25,7 @@ import { EntityField } from '../constants/Feeds.constants';
 import { DataProduct } from '../generated/entity/domains/dataProduct';
 import { Domain } from '../generated/entity/domains/domain';
 import { ChangeDescription, EntityReference } from '../generated/entity/type';
-import { ElasticSearchQuery } from '../interface/search.interface';
+import { QueryFilterInterface } from '../pages/ExplorePage/ExplorePage.interface';
 import { getEntityName } from './EntityUtils';
 import {
   getChangedEntityNewValue,
@@ -117,7 +117,7 @@ export const getUserNames = (
 export const getQueryFilterToIncludeDomain = (
   domainFqn: string,
   dataProductFqn: string
-): ElasticSearchQuery => ({
+) => ({
   query: {
     bool: {
       must: [
@@ -155,13 +155,19 @@ export const getQueryFilterToIncludeDomain = (
 
 export const getQueryFilterToExcludeDomainTerms = (
   fqn: string
-): ElasticSearchQuery => ({
+): QueryFilterInterface => ({
   query: {
     bool: {
-      must_not: [
+      must: [
         {
-          term: {
-            'domain.fullyQualifiedName': fqn,
+          bool: {
+            must_not: [
+              {
+                term: {
+                  'domain.fullyQualifiedName': fqn,
+                },
+              },
+            ],
           },
         },
       ],

@@ -27,10 +27,8 @@ import { SearchIndex } from '../../../enums/search.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../generated/entity/domains/domain';
-import {
-  Aggregations,
-  ElasticSearchQuery,
-} from '../../../interface/search.interface';
+import { Aggregations } from '../../../interface/search.interface';
+import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 import {
   addAssetsToDataProduct,
   getDataProductByName,
@@ -47,6 +45,7 @@ import {
   getAggregations,
   getSelectedValuesFromQuickFilter,
 } from '../../../utils/Explore.utils';
+import { getCombinedQueryFilterObject } from '../../../utils/ExplorePage/ExplorePageUtils';
 import { getDecodedFqn, getEncodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import AssetFilters from '../../AssetFilters/AssetFilters.component';
@@ -66,7 +65,7 @@ export const AssetSelectionModal = ({
   onSave,
   open,
   type = AssetsOfEntity.GLOSSARY,
-  queryFilter = {},
+  queryFilter,
   emptyPlaceHolderText,
 }: AssetSelectionModalProps) => {
   const { t } = useTranslation();
@@ -89,10 +88,10 @@ export const AssetSelectionModal = ({
     ExploreQuickFilterField[]
   >([] as ExploreQuickFilterField[]);
   const [quickFilterQuery, setQuickFilterQuery] = useState<
-    ElasticSearchQuery | undefined
+    QueryFilterInterface | undefined
   >();
   const [updatedQueryFilter, setUpdatedQueryFilter] =
-    useState<ElasticSearchQuery>(queryFilter);
+    useState<QueryFilterInterface>();
 
   const fetchEntities = useCallback(
     async ({
@@ -258,33 +257,12 @@ export const AssetSelectionModal = ({
   }, [type, handleSave]);
 
   const mergeFilters = useCallback(() => {
-    const mergedFilter: ElasticSearchQuery = {
-      query: {
-        bool: {
-          must: [],
-        },
-      },
-    };
-
-    // Merge must clauses
-    mergedFilter.query.bool.must = [
-      ...(queryFilter?.query?.bool?.must || []),
-      ...(quickFilterQuery?.query?.bool?.must || []),
-    ];
-
-    // Merge must_not clauses
-    if (
-      queryFilter?.query?.bool?.must_not ||
-      quickFilterQuery?.query?.bool?.should
-    ) {
-      mergedFilter.query.bool.must_not = [
-        ...(queryFilter?.query?.bool?.must_not || []),
-        ...(quickFilterQuery?.query?.bool?.should || []),
-      ];
-    }
-
-    setUpdatedQueryFilter(mergedFilter);
-  }, [quickFilterQuery, queryFilter]);
+    const res = getCombinedQueryFilterObject(
+      queryFilter as QueryFilterInterface,
+      quickFilterQuery as QueryFilterInterface
+    );
+    setUpdatedQueryFilter(res);
+  }, [queryFilter, quickFilterQuery]);
 
   useEffect(() => {
     mergeFilters();

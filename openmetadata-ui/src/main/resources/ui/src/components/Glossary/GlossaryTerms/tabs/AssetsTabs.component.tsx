@@ -61,11 +61,11 @@ import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../../generated/entity/domains/domain';
 import { usePaging } from '../../../../hooks/paging/usePaging';
+import { Aggregations } from '../../../../interface/search.interface';
 import {
-  Aggregations,
-  ElasticSearchQuery,
-  EsQuery,
-} from '../../../../interface/search.interface';
+  QueryFieldInterface,
+  QueryFieldValueInterface,
+} from '../../../../pages/ExplorePage/ExplorePage.interface';
 import {
   getDataProductByName,
   removeAssetsFromDataProduct,
@@ -142,9 +142,8 @@ const AssetsTabs = forwardRef(
     const { fqn } = useParams<{ fqn: string }>();
     const [isLoading, setIsLoading] = useState(true);
     const [data, setData] = useState<SearchedDataProps['data']>([]);
-    const [quickFilterQuery, setQuickFilterQuery] = useState<
-      ElasticSearchQuery | undefined
-    >();
+    const [quickFilterQuery, setQuickFilterQuery] =
+      useState<Record<string, unknown>>();
     const {
       currentPage,
       pageSize,
@@ -531,10 +530,10 @@ const AssetsTabs = forwardRef(
     }, []);
 
     const handleQuickFiltersChange = (data: ExploreQuickFilterField[]) => {
-      const must: EsQuery[] = [];
+      const must: QueryFieldInterface[] = [];
       data.forEach((filter) => {
         if (!isEmpty(filter.value)) {
-          const should: EsQuery[] = [];
+          const should: QueryFieldValueInterface[] = [];
           if (filter.value) {
             filter.value.forEach((filterValue) => {
               const term: Record<string, string> = {};

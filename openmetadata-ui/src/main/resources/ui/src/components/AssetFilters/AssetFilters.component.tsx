@@ -16,7 +16,10 @@ import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SearchIndex } from '../../enums/search.enum';
-import { EsQuery } from '../../interface/search.interface';
+import {
+  QueryFieldInterface,
+  QueryFieldValueInterface,
+} from '../../pages/ExplorePage/ExplorePage.interface';
 import { getAssetsPageQuickFilters } from '../../utils/AdvancedSearchUtils';
 import { getSelectedValuesFromQuickFilter } from '../../utils/Explore.utils';
 import { ExploreQuickFilterField } from '../Explore/ExplorePage.interface';
@@ -55,10 +58,10 @@ const AssetFilters = ({
   );
 
   const handleQuickFiltersChange = (data: ExploreQuickFilterField[]) => {
-    const must: EsQuery[] = [];
+    const must: QueryFieldInterface[] = [];
     data.forEach((filter) => {
       if (!isEmpty(filter.value)) {
-        const should: EsQuery[] = [];
+        const should: QueryFieldValueInterface[] = [];
         if (filter.value) {
           filter.value.forEach((filterValue) => {
             const term: Record<string, string> = {};
