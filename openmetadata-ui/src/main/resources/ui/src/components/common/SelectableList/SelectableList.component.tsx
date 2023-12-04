@@ -279,7 +279,10 @@ export const SelectableList = ({
               {customTagRenderer ? (
                 customTagRenderer(item)
               ) : (
-                <UserTag id={item.id} name={item.name ?? ''} />
+                <UserTag
+                  id={item.name ?? ''}
+                  name={item.displayName ?? item.name ?? ''}
+                />
               )}
             </List.Item>
           )}

@@ -652,9 +652,8 @@ export const addUser = (username, email) => {
     .type('Adding user');
   interceptURL('GET', ' /api/v1/users/generateRandomPwd', 'generatePassword');
   cy.get('[data-testid="password-generator"]').should('be.visible').click();
-  verifyResponseStatusCode('@generatePassword', 200);
-  cy.wait(1000);
   interceptURL('POST', ' /api/v1/users', 'add-user');
+  verifyResponseStatusCode('@generatePassword', 200);
   cy.get('[data-testid="save-user"]').scrollIntoView().click();
   verifyResponseStatusCode('@add-user', 201);
 };

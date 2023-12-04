@@ -26,6 +26,7 @@ import { getRoleWithFqnPath, getTeamsWithFqnPath } from './RouterUtils';
 export const userCellRenderer = (user: EntityReference | User) => {
   return user.name ? (
     <UserPopOverCard
+      showUserName
       data-testid={user.name}
       profileWidth={16}
       userName={user.name}

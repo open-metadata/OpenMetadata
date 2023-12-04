@@ -70,7 +70,7 @@ export const OwnerLabel = ({
         width="18"
       />
     );
-  }, [owner]);
+  }, [owner, displayName]);
 
   return (
     <div className="d-flex gap-2 items-center" data-testid="owner-label">

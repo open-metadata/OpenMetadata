@@ -321,6 +321,6 @@ describe('Activity feed', () => {
         expect(matches).to.not.be.null;
       });
 
-    cy.get(`[data-testid="assignee-admin"]`).should('be.visible');
+    cy.get(`[data-testid="admin"]`).should('be.visible');
   });
 });

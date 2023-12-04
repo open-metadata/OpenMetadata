@@ -252,12 +252,12 @@ const UserPopOverCard: FC<Props> = ({
       {children ?? (
         <Link
           className={classNames(
-            'assignee-item d-flex gap-1 cursor-pointer align-center',
+            'assignee-item d-flex gap-1 cursor-pointer items-center',
             {
-              'm-r-xs': showUserName && showUserProfile,
+              'm-r-xs': !showUserName && showUserProfile,
             }
           )}
-          data-testid={`assignee-${userName}`}
+          data-testid={userName}
           to={
             type === UserTeam.Team
               ? getTeamAndUserDetailsPath(userName)

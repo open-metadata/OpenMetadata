@@ -113,4 +113,4 @@ const ProfilePicture = ({
   );
 };
 
-export default React.memo(ProfilePicture);
+export default ProfilePicture;
