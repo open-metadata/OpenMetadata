@@ -227,7 +227,7 @@ public class TestCaseResolutionStatusResource
 
     return create(
         testCaseFailureStatus,
-        TestCaseResolutionStatusRepository.TESTCASE_RESOLUTION_STATUS_EXTENSION,
+        null,
         testCaseEntity.getFullyQualifiedName());
   }
 
@@ -266,8 +266,7 @@ public class TestCaseResolutionStatusResource
     User userEntity = Entity.getEntityByName(Entity.USER, user, null, Include.ALL);
     TestCaseResolutionStatus latestTestCaseFailure =
         repository.getLatestRecord(
-            testCaseEntity.getFullyQualifiedName(),
-            TestCaseResolutionStatusRepository.TESTCASE_RESOLUTION_STATUS_EXTENSION);
+            testCaseEntity.getFullyQualifiedName());
     UUID sequenceId;
 
     if ((latestTestCaseFailure != null)

@@ -2,7 +2,6 @@
 CREATE TABLE test_case_resolution_status_time_series (
   id varchar(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
   sequenceId varchar(36) GENERATED ALWAYS AS (json ->> 'sequenceId') STORED NOT NULL,
-  extension varchar(256) NOT NULL,
   assignee varchar(256) GENERATED ALWAYS AS (
       CASE
           WHEN json->'testCaseResolutionStatusDetails' IS NOT NULL AND

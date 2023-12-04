@@ -2,7 +2,6 @@
 CREATE TABLE test_case_resolution_status_time_series (
   id varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(json,'$.id'))) VIRTUAL NOT NULL,
   sequenceId varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(json,'$.sequenceId'))) VIRTUAL NOT NULL,
-  extension varchar(256) NOT NULL,
   assignee varchar(256) GENERATED ALWAYS AS (json_unquote(json_extract(json,'$.testCaseResolutionStatusDetails.assignee.name'))) VIRTUAL NULL,
   reviewer varchar(256) GENERATED ALWAYS AS (json_unquote(json_extract(json,'$.testCaseResolutionStatusDetails.reviewer.name'))) VIRTUAL NULL,
   timestamp bigint unsigned GENERATED ALWAYS AS (json_unquote(json_extract(json,'$.timestamp'))) VIRTUAL NOT NULL,

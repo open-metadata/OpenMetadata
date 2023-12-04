@@ -65,6 +65,26 @@ public interface EntityTimeSeriesDAO {
   }
 
   @ConnectionAwareSqlUpdate(
+          value =
+                  "INSERT INTO <table>(entityFQNHash, jsonSchema, json) "
+                          + "VALUES (:entityFQNHash, :jsonSchema, :json)",
+          connectionType = MYSQL)
+  @ConnectionAwareSqlUpdate(
+          value =
+                  "INSERT INTO <table>(entityFQNHash, jsonSchema, json) "
+                          + "VALUES (:entityFQNHash, :jsonSchema, (:json :: jsonb))",
+          connectionType = POSTGRES)
+  void insertWithoutExtension(
+          @Define("table") String table,
+          @BindFQN("entityFQNHash") String entityFQNHash,
+          @Bind("jsonSchema") String jsonSchema,
+          @Bind("json") String json);
+
+  default void insert(String entityFQNHash, String jsonSchema, String json) {
+    insertWithoutExtension(getTimeSeriesTableName(), entityFQNHash, jsonSchema, json);
+  }
+
+  @ConnectionAwareSqlUpdate(
       value =
           "UPDATE <table> set json = :json where entityFQNHash=:entityFQNHash and extension=:extension and timestamp=:timestamp",
       connectionType = MYSQL)
@@ -272,6 +292,17 @@ public interface EntityTimeSeriesDAO {
 
   default String getLatestExtension(String entityFQNHash, String extension) {
     return getLatestExtension(getTimeSeriesTableName(), entityFQNHash, extension);
+  }
+
+  @SqlQuery(
+          "SELECT json FROM <table> WHERE entityFQNHash = :entityFQNHash "
+                  + "ORDER BY timestamp DESC LIMIT 1")
+  String getLatestRecord(
+          @Define("table") String table,
+          @BindFQN("entityFQNHash") String entityFQNHash);
+
+  default String getLatestRecord(String entityFQNHash) {
+    return getLatestRecord(getTimeSeriesTableName(), entityFQNHash);
   }
 
   @SqlUpdate("DELETE FROM <table> WHERE entityFQNHash = :entityFQNHash AND extension = :extension")

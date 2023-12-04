@@ -233,7 +233,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     String json =
         daoCollection
             .testCaseResolutionStatusTimeSeriesDao()
-            .getLatestExtension(testCase.getFullyQualifiedName(), TESTCASE_RESULT_EXTENSION);
+            .getLatestRecord(testCase.getFullyQualifiedName());
 
     TestCaseResolutionStatus storedTestCaseResolutionStatus =
         json != null ? JsonUtils.readValue(json, TestCaseResolutionStatus.class) : null;

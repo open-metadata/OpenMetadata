@@ -35,7 +35,11 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
   @Transaction
   public T createNewRecord(T recordEntity, String extension, String recordFQN) {
     recordEntity.setId(UUID.randomUUID());
-    timeSeriesDao.insert(recordFQN, extension, entityType, JsonUtils.pojoToJson(recordEntity));
+    if (extension != null ) {
+      timeSeriesDao.insert(recordFQN, extension, entityType, JsonUtils.pojoToJson(recordEntity));
+    } else {
+        timeSeriesDao.insert(recordFQN, entityType, JsonUtils.pojoToJson(recordEntity));
+    }
     postCreate(recordEntity);
     return recordEntity;
   }
@@ -94,6 +98,14 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
 
   public T getLatestRecord(String recordFQN, String extension) {
     String jsonRecord = timeSeriesDao.getLatestExtension(recordFQN, extension);
+    if (jsonRecord == null) {
+      return null;
+    }
+    return JsonUtils.readValue(jsonRecord, entityClass);
+  }
+
+  public T getLatestRecord(String recordFQN) {
+    String jsonRecord = timeSeriesDao.getLatestRecord(recordFQN);
     if (jsonRecord == null) {
       return null;
     }
