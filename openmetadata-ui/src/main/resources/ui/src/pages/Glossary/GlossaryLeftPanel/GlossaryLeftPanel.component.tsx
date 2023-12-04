@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Menu, MenuProps, Row, Typography } from 'antd';
+import { Button, Col, Menu, MenuProps, Row, Switch, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -30,7 +30,12 @@ import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
 import { GlossaryLeftPanelProps } from './GlossaryLeftPanel.interface';
 
-const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
+const GlossaryLeftPanel = ({
+  isLoading,
+  glossaries,
+  showDeleted,
+  onShowDeletedChange,
+}: GlossaryLeftPanelProps) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
   const { fqn: glossaryName } = useParams<{ fqn: string }>();
@@ -47,7 +52,7 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
       return Fqn.split(glossaryFqn)[0];
     }
 
-    return glossaries[0].fullyQualifiedName;
+    return glossaries[0]?.fullyQualifiedName;
   }, [glossaryFqn]);
 
   const menuItems: ItemType[] = useMemo(() => {
@@ -72,12 +77,27 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
 
   return (
     <LeftPanelCard id="glossary">
-      <GlossaryV1Skeleton loading={glossaries.length === 0}>
+      <GlossaryV1Skeleton loading={isLoading}>
         <Row className="p-y-xs" gutter={[0, 16]}>
           <Col className="p-x-sm" span={24}>
-            <Typography.Text strong className="m-b-0">
-              {t('label.glossary')}
-            </Typography.Text>
+            <Row justify="space-between">
+              <Col>
+                <Typography.Text strong className="m-b-0">
+                  {t('label.glossary')}
+                </Typography.Text>
+              </Col>
+              <Col>
+                <Switch
+                  checked={showDeleted}
+                  data-testid="show-deleted"
+                  size="small"
+                  onClick={onShowDeletedChange}
+                />
+                <Typography.Text className="m-l-xs text-sm">
+                  {t('label.deleted')}
+                </Typography.Text>
+              </Col>
+            </Row>
           </Col>
 
           {createGlossaryPermission && (

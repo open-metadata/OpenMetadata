@@ -18,10 +18,12 @@ import {
   Radio,
   RadioChangeEvent,
   Space,
+  Tooltip,
   Typography,
 } from 'antd';
 import Input, { InputRef } from 'antd/lib/input/Input';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { startCase } from 'lodash';
 import React, {
   ChangeEvent,
@@ -41,6 +43,7 @@ import {
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import './delete-widget-modal.style.less';
 import {
+  DeleteOption,
   DeleteType,
   DeleteWidgetFormFields,
   DeleteWidgetModalProps,
@@ -63,6 +66,7 @@ const DeleteWidgetModal = ({
   afterDeleteAction,
   successMessage,
   deleteOptions,
+  disabledOptionTypes = [],
 }: DeleteWidgetModalProps) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
@@ -242,6 +246,52 @@ const DeleteWidgetModal = ({
     });
   }, [visible]);
 
+  const getOptionElement = useCallback(
+    (option: DeleteOption, disabled = false) => (
+      <Radio
+        data-testid={option.type}
+        disabled={disabled}
+        key={option.type}
+        value={option.type}>
+        <Typography.Paragraph
+          className={classNames('delete-widget-title break-all', {
+            'text-grey-muted': disabled,
+          })}
+          data-testid={`${option.type}-option`}>
+          {option.title}
+        </Typography.Paragraph>
+        <Typography.Paragraph className="text-grey-muted text-xs break-all">
+          {option.description}
+        </Typography.Paragraph>
+      </Radio>
+    ),
+    []
+  );
+
+  const getOption = useCallback(
+    (option: DeleteOption) => {
+      if (option.isAllowed) {
+        const disabledOption = disabledOptionTypes.find(
+          (disabledOption) => disabledOption.type === option.type
+        );
+        const isDisabled = Boolean(disabledOption);
+
+        const optionElement = getOptionElement(option, isDisabled);
+
+        return isDisabled ? (
+          <Tooltip placement="left" title={disabledOption?.message}>
+            {optionElement}
+          </Tooltip>
+        ) : (
+          optionElement
+        );
+      }
+
+      return null;
+    },
+    [disabledOptionTypes, getOptionElement]
+  );
+
   return (
     <Modal
       destroyOnClose
@@ -257,23 +307,8 @@ const DeleteWidgetModal = ({
       <Form form={form} onFinish={handleOnEntityDeleteConfirm}>
         <Form.Item<DeleteWidgetFormFields> className="m-0" name="deleteType">
           <Radio.Group onChange={onChange}>
-            {(deleteOptions ?? DELETE_OPTION).map(
-              (option) =>
-                option.isAllowed && (
-                  <Radio
-                    data-testid={option.type}
-                    key={option.type}
-                    value={option.type}>
-                    <Typography.Paragraph
-                      className="delete-widget-title break-all"
-                      data-testid={`${option.type}-option`}>
-                      {option.title}
-                    </Typography.Paragraph>
-                    <Typography.Paragraph className="text-grey-muted text-xs break-all">
-                      {option.description}
-                    </Typography.Paragraph>
-                  </Radio>
-                )
+            {(deleteOptions ?? DELETE_OPTION).map((option) =>
+              getOption(option)
             )}
           </Radio.Group>
         </Form.Item>

@@ -16,6 +16,7 @@ import {
   Col,
   Divider,
   Dropdown,
+  Modal,
   Row,
   Space,
   Tooltip,
@@ -25,7 +26,7 @@ import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { cloneDeep, toString } from 'lodash';
+import { cloneDeep, isUndefined, toString } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -34,6 +35,7 @@ import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg';
 import { ReactComponent as ExportIcon } from '../../../assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from '../../../assets/svg/ic-import.svg';
+import { ReactComponent as IconRestore } from '../../../assets/svg/ic-restore.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
@@ -41,20 +43,24 @@ import { ManageButtonItemLabel } from '../../../components/common/ManageButtonCo
 import StatusBadge from '../../../components/common/StatusBadge/StatusBadge.component';
 import { useEntityExportModalProvider } from '../../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { EntityHeader } from '../../../components/Entity/EntityHeader/EntityHeader.component';
-import EntityDeleteModal from '../../../components/Modals/EntityDeleteModal/EntityDeleteModal';
 import EntityNameModal from '../../../components/Modals/EntityNameModal/EntityNameModal.component';
 import { OperationPermission } from '../../../components/PermissionProvider/PermissionProvider.interface';
 import Voting from '../../../components/Voting/Voting.component';
 import { VotingDataProps } from '../../../components/Voting/voting.interface';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { DROPDOWN_ICON_SIZE_PROPS } from '../../../constants/ManageButton.constants';
 import { EntityAction, EntityType } from '../../../enums/entity.enum';
-import { Glossary } from '../../../generated/entity/data/glossary';
+import {
+  Glossary,
+  ProviderType,
+} from '../../../generated/entity/data/glossary';
 import {
   EntityReference,
   GlossaryTerm,
   Status,
 } from '../../../generated/entity/data/glossaryTerm';
+import { Include } from '../../../generated/type/include';
 import { Style } from '../../../generated/type/tagLabel';
 import {
   exportGlossaryInCSVFormat,
@@ -62,7 +68,7 @@ import {
   getGlossaryTermsById,
 } from '../../../rest/glossaryAPI';
 import { getEntityDeleteMessage } from '../../../utils/CommonUtils';
-import { getEntityVoteStatus } from '../../../utils/EntityUtils';
+import { getEntityName, getEntityVoteStatus } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
 import { StatusClass } from '../../../utils/GlossaryUtils';
 import {
@@ -74,6 +80,8 @@ import {
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+import { DeleteType } from '../../common/DeleteWidget/DeleteWidget.interface';
+import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
 
@@ -84,7 +92,8 @@ export interface GlossaryHeaderProps {
   permissions: OperationPermission;
   isGlossary: boolean;
   onUpdate: (data: GlossaryTerm | Glossary) => void;
-  onDelete: (id: string) => void;
+  onRestoreConfirm?: () => Promise<void>;
+  afterDeleteAction?: (isSoftDelete?: boolean, version?: number) => void;
   onAssetAdd?: () => void;
   updateVote?: (data: VotingDataProps) => Promise<void>;
   onAddGlossaryTerm: (glossaryTerm: GlossaryTerm | undefined) => void;
@@ -94,12 +103,13 @@ const GlossaryHeader = ({
   selectedData,
   permissions,
   onUpdate,
-  onDelete,
   isGlossary,
   onAssetAdd,
   onAddGlossaryTerm,
   updateVote,
   isVersionView,
+  onRestoreConfirm,
+  afterDeleteAction,
 }: GlossaryHeaderProps) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -115,6 +125,8 @@ const GlossaryHeader = ({
   >([]);
   const [showActions, setShowActions] = useState(false);
   const [isDelete, setIsDelete] = useState<boolean>(false);
+  const [isRestoring, setIsRestoring] = useState<boolean>(false);
+  const [showRestoreModal, setShowRestoreModal] = useState<boolean>(false);
   const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
   const [latestGlossaryData, setLatestGlossaryData] = useState<
     Glossary | GlossaryTerm
@@ -125,9 +137,10 @@ const GlossaryHeader = ({
   // necessary to handle back click functionality to work properly in version page
   const fetchCurrentGlossaryInfo = async () => {
     try {
+      const include = isVersionView ? Include.All : Include.NonDeleted;
       const res = isGlossary
-        ? await getGlossariesById(fqn)
-        : await getGlossaryTermsById(fqn);
+        ? await getGlossariesById(fqn, '', include)
+        : await getGlossaryTermsById(fqn, '', include);
 
       setLatestGlossaryData(res);
     } catch (error) {
@@ -219,12 +232,6 @@ const GlossaryHeader = ({
     history.push(path);
   };
 
-  const handleDelete = () => {
-    const { id } = selectedData;
-    onDelete(id);
-    setIsDelete(false);
-  };
-
   const onNameSave = (obj: { name: string; displayName: string }) => {
     const { name, displayName } = obj;
     let updatedDetails = cloneDeep(selectedData);
@@ -279,7 +286,33 @@ const GlossaryHeader = ({
   }, [selectedData]);
 
   const manageButtonContent: ItemType[] = [
-    ...(isGlossary
+    ...(selectedData.deleted
+      ? [
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t('message.restore-action-description', {
+                  entityType: isGlossary
+                    ? t('label.glossary')
+                    : t('label.glossary-term'),
+                })}
+                icon={
+                  <IconRestore
+                    className="m-t-xss"
+                    name="Restore"
+                    {...DROPDOWN_ICON_SIZE_PROPS}
+                  />
+                }
+                id="restore-button"
+                name={t('label.restore')}
+              />
+            ),
+            key: 'restore-button',
+            onClick: () => setShowRestoreModal(true),
+          },
+        ]
+      : []),
+    ...(isGlossary && !selectedData.deleted
       ? ([
           {
             label: (
@@ -319,7 +352,7 @@ const GlossaryHeader = ({
           },
         ] as ItemType[])
       : []),
-    ...(editDisplayNamePermission
+    ...(editDisplayNamePermission && !selectedData.deleted
       ? ([
           {
             label: (
@@ -343,7 +376,7 @@ const GlossaryHeader = ({
           },
         ] as ItemType[])
       : []),
-    ...(permissions?.EditAll && !isGlossary
+    ...(permissions?.EditAll && !isGlossary && !selectedData.deleted
       ? ([
           {
             label: (
@@ -481,6 +514,20 @@ const GlossaryHeader = ({
     setBreadcrumb(newData);
   };
 
+  const handleRestore = useCallback(async () => {
+    if (!isUndefined(onRestoreConfirm)) {
+      try {
+        setIsRestoring(true);
+        await onRestoreConfirm();
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsRestoring(false);
+        setShowRestoreModal(false);
+      }
+    }
+  }, []);
+
   useEffect(() => {
     const { fullyQualifiedName, name } = selectedData;
     handleBreadcrumb(fullyQualifiedName ? fullyQualifiedName : name);
@@ -569,16 +616,59 @@ const GlossaryHeader = ({
           </div>
         </Col>
       </Row>
-      {selectedData && (
-        <EntityDeleteModal
-          bodyText={getEntityDeleteMessage(selectedData.name, '')}
-          entityName={selectedData.name}
-          entityType="Glossary"
-          loadingState="success"
+
+      {isDelete && (
+        <DeleteWidgetModal
+          isRecursiveDelete
+          prepareType
+          afterDeleteAction={afterDeleteAction}
+          allowSoftDelete={!selectedData.deleted}
+          deleteMessage={getEntityDeleteMessage(selectedData.name, '')}
+          disabledOptionTypes={
+            selectedData.provider === ProviderType.System
+              ? [
+                  {
+                    type: DeleteType.HARD_DELETE,
+                    message: t('message.system-glossary-hard-delete-message'),
+                  },
+                ]
+              : []
+          }
+          entityId={selectedData.id ?? ''}
+          entityName={selectedData.name ?? ''}
+          entityType={
+            isGlossary ? EntityType.GLOSSARY : EntityType.GLOSSARY_TERM
+          }
           visible={isDelete}
           onCancel={() => setIsDelete(false)}
-          onConfirm={handleDelete}
         />
+      )}
+
+      {showRestoreModal && (
+        <Modal
+          centered
+          cancelButtonProps={{
+            type: 'link',
+          }}
+          closable={false}
+          confirmLoading={isRestoring}
+          data-testid="restore-glossary-modal"
+          maskClosable={false}
+          okText={t('label.restore')}
+          open={showRestoreModal}
+          title={t('label.restore-entity', {
+            entity: isGlossary ? t('label.glossary') : t('label.glossary-term'),
+          })}
+          onCancel={() => {
+            setShowRestoreModal(false);
+          }}
+          onOk={handleRestore}>
+          <Typography.Text data-testid="restore-modal-body">
+            {t('message.are-you-want-to-restore', {
+              entity: getEntityName(selectedData),
+            })}
+          </Typography.Text>
+        </Modal>
       )}
 
       <EntityNameModal

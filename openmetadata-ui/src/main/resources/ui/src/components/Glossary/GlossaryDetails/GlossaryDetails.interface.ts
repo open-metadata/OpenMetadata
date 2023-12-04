@@ -29,9 +29,12 @@ export type GlossaryDetailsProps = {
   termsLoading: boolean;
   updateGlossary: (value: Glossary) => Promise<void>;
   updateVote?: (data: VotingDataProps) => Promise<void>;
-  handleGlossaryDelete: (id: string) => void;
   refreshGlossaryTerms: () => void;
   onAddGlossaryTerm: (glossaryTerm: GlossaryTerm | undefined) => void;
   onEditGlossaryTerm: (glossaryTerm: GlossaryTerm) => void;
   onThreadLinkSelect: (value: string) => void;
+  showDeleted: boolean;
+  onShowDeletedChange: () => void;
+  afterDeleteAction?: (isSoftDelete?: boolean, version?: number) => void;
+  onRestoreConfirm?: () => Promise<void>;
 };

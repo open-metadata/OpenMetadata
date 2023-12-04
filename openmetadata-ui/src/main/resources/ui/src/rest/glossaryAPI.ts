@@ -13,7 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { PagingResponse } from 'Models';
+import { PagingResponse, RestoreRequestType } from 'Models';
 import { VotingDataProps } from '../components/Voting/voting.interface';
 import { AddGlossaryToAssetsRequest } from '../generated/api/addGlossaryToAssetsRequest';
 import { CreateGlossary } from '../generated/api/data/createGlossary';
@@ -22,6 +22,7 @@ import { EntityReference, Glossary } from '../generated/entity/data/glossary';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import { CSVImportResult } from '../generated/type/csvImportResult';
 import { EntityHistory } from '../generated/type/entityHistory';
+import { Include } from '../generated/type/include';
 import { ListParams } from '../interface/API.interface';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
@@ -90,11 +91,15 @@ export const getGlossariesByName = async (
 
 export const getGlossariesById = async (
   id: string,
-  arrQueryFields?: string | string[]
+  fields?: string | string[],
+  include = Include.NonDeleted
 ) => {
-  const url = getURLWithQueryFields(`/glossaries/${id}`, arrQueryFields);
-
-  const response = await APIClient.get<Glossary>(url);
+  const response = await APIClient.get<Glossary>(`/glossaries/${id}`, {
+    params: {
+      fields,
+      include,
+    },
+  });
 
   return response.data;
 };
@@ -112,28 +117,36 @@ export const getGlossaryTerms = async (params: ListGlossaryTermsParams) => {
 
 export const getGlossaryTermsById = async (
   glossaryTermId = '',
-  arrQueryFields = ''
+  fields = '',
+  include = Include.NonDeleted
 ) => {
-  const url = getURLWithQueryFields(
+  const response = await APIClient.get<GlossaryTerm>(
     `/glossaryTerms/${glossaryTermId}`,
-    arrQueryFields
+    {
+      params: {
+        fields,
+        include,
+      },
+    }
   );
-
-  const response = await APIClient.get<GlossaryTerm>(url);
 
   return response.data;
 };
 
 export const getGlossaryTermByFQN = async (
   glossaryTermFQN = '',
-  arrQueryFields: string | string[] = ''
+  fields: string | string[] = '',
+  include = Include.NonDeleted
 ) => {
-  const url = getURLWithQueryFields(
+  const response = await APIClient.get<GlossaryTerm>(
     `/glossaryTerms/name/${encodeURIComponent(glossaryTermFQN)}`,
-    arrQueryFields
+    {
+      params: {
+        fields,
+        include,
+      },
+    }
   );
-
-  const response = await APIClient.get<GlossaryTerm>(url);
 
   return response.data;
 };
@@ -283,6 +296,24 @@ export const removeAssetsFromGlossaryTerm = async (
     AddGlossaryToAssetsRequest,
     AxiosResponse<GlossaryTerm>
   >(`/glossaryTerms/${glossaryTerm.id}/assets/remove`, data);
+
+  return response.data;
+};
+
+export const restoreGlossary = async (id: string) => {
+  const response = await APIClient.put<
+    RestoreRequestType,
+    AxiosResponse<Glossary>
+  >('/glossaries/restore', { id });
+
+  return response.data;
+};
+
+export const restoreGlossaryTerm = async (id: string) => {
+  const response = await APIClient.put<
+    RestoreRequestType,
+    AxiosResponse<GlossaryTerm>
+  >('/glossaryTerms/restore', { id });
 
   return response.data;
 };

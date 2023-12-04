@@ -25,6 +25,8 @@ export interface GlossaryTermTabProps {
   onAddGlossaryTerm: (glossaryTerm: GlossaryTerm | undefined) => void;
   onEditGlossaryTerm: (glossaryTerm: GlossaryTerm) => void;
   className?: string;
+  showDeleted: boolean;
+  onShowDeletedChange: () => void;
 }
 
 export type ModifiedGlossaryTerm = Omit<GlossaryTerm, 'children'> & {

@@ -53,7 +53,6 @@ const GlossaryTermsV1 = ({
   glossaryTerm,
   childGlossaryTerms,
   handleGlossaryTermUpdate,
-  handleGlossaryTermDelete,
   permissions,
   refreshGlossaryTerms,
   onAssetClick,
@@ -65,6 +64,10 @@ const GlossaryTermsV1 = ({
   refreshActiveGlossaryTerm,
   isVersionView,
   onThreadLinkSelect,
+  onRestoreConfirm,
+  showDeleted,
+  onShowDeletedChange,
+  afterDeleteAction,
 }: GlossaryTermsV1Props) => {
   const {
     fqn: glossaryFqn,
@@ -73,7 +76,7 @@ const GlossaryTermsV1 = ({
   } = useParams<{ fqn: string; tab: string; version: string }>();
   const history = useHistory();
   const assetTabRef = useRef<AssetsTabRef>(null);
-  const [assetModalVisible, setAssetModelVisible] = useState(false);
+  const [assetModalVisible, setAssetModalVisible] = useState(false);
   const [feedCount, setFeedCount] = useState<number>(0);
   const [assetCount, setAssetCount] = useState<number>(0);
 
@@ -166,9 +169,11 @@ const GlossaryTermsV1 = ({
                   permissions={permissions}
                   refreshGlossaryTerms={refreshGlossaryTerms}
                   selectedData={glossaryTerm}
+                  showDeleted={showDeleted}
                   termsLoading={termsLoading}
                   onAddGlossaryTerm={onAddGlossaryTerm}
                   onEditGlossaryTerm={onEditGlossaryTerm}
+                  onShowDeletedChange={onShowDeletedChange}
                 />
               ),
             },
@@ -189,7 +194,7 @@ const GlossaryTermsV1 = ({
                   isSummaryPanelOpen={isSummaryPanelOpen}
                   permissions={assetPermissions}
                   ref={assetTabRef}
-                  onAddAsset={() => setAssetModelVisible(true)}
+                  onAddAsset={() => setAssetModalVisible(true)}
                   onAssetClick={onAssetClick}
                   onRemoveAsset={handleAssetSave}
                 />
@@ -253,6 +258,8 @@ const GlossaryTermsV1 = ({
     assetPermissions,
     handleAssetSave,
     onExtensionUpdate,
+    showDeleted,
+    onShowDeletedChange,
   ]);
 
   const fetchGlossaryTermAssets = async () => {
@@ -313,14 +320,15 @@ const GlossaryTermsV1 = ({
       <Row data-testid="glossary-term" gutter={[0, 8]}>
         <Col className="p-x-md" span={24}>
           <GlossaryHeader
+            afterDeleteAction={afterDeleteAction}
             isGlossary={false}
             isVersionView={isVersionView}
             permissions={permissions}
             selectedData={{ ...glossaryTerm, displayName, name }}
             updateVote={updateVote}
             onAddGlossaryTerm={onAddGlossaryTerm}
-            onAssetAdd={() => setAssetModelVisible(true)}
-            onDelete={handleGlossaryTermDelete}
+            onAssetAdd={() => setAssetModalVisible(true)}
+            onRestoreConfirm={onRestoreConfirm}
             onUpdate={(data) => onTermUpdate(data as GlossaryTerm)}
           />
         </Col>
@@ -343,7 +351,7 @@ const GlossaryTermsV1 = ({
             glossaryTerm.fullyQualifiedName
           )}
           type={AssetsOfEntity.GLOSSARY}
-          onCancel={() => setAssetModelVisible(false)}
+          onCancel={() => setAssetModalVisible(false)}
           onSave={handleAssetSave}
         />
       )}

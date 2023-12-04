@@ -14,5 +14,8 @@
 import { Glossary } from '../../../generated/entity/data/glossary';
 
 export interface GlossaryLeftPanelProps {
+  isLoading: boolean;
   glossaries: Glossary[];
+  showDeleted: boolean;
+  onShowDeletedChange: () => void;
 }

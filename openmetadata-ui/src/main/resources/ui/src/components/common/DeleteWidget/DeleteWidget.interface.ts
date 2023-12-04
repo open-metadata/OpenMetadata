@@ -22,6 +22,7 @@ export interface DeleteOption {
 
 export interface DeleteWidgetModalProps {
   visible: boolean;
+  disabledOptionTypes?: { type: DeleteType; message: string }[];
   onCancel: () => void;
   allowSoftDelete?: boolean;
   deleteMessage?: string;

@@ -21,7 +21,10 @@ export interface GlossaryTermsV1Props {
   glossaryTerm: GlossaryTerm;
   childGlossaryTerms: GlossaryTerm[];
   handleGlossaryTermUpdate: (data: GlossaryTerm) => Promise<void>;
-  handleGlossaryTermDelete: (id: string) => void;
+  showDeleted: boolean;
+  onShowDeletedChange: () => void;
+  afterDeleteAction?: (isSoftDelete?: boolean, version?: number) => void;
+  onRestoreConfirm?: () => Promise<void>;
   refreshGlossaryTerms: () => void;
   onAssetClick?: (asset?: EntityDetailsObjectInterface) => void;
   isSummaryPanelOpen: boolean;

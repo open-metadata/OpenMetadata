@@ -11,10 +11,9 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
-import { noop, toString } from 'lodash';
+import { toString } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { LOADING_STATE } from '../../../enums/common.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { EntityHistory } from '../../../generated/type/entityHistory';
@@ -102,19 +101,15 @@ const GlossaryVersion = ({ isGlossary = false }: GlossaryVersionProps) => {
   return (
     <PageLayoutV1 pageTitle="Glossary version">
       <div className="version-data">
-        {/* TODO: Need to implement version component for Glossary */}
         {isVersionLoading ? (
           <Loader />
         ) : (
           <GlossaryV1Component
             isVersionsView
-            deleteStatus={LOADING_STATE.INITIAL}
             isGlossaryActive={isGlossary}
             isSummaryPanelOpen={false}
             selectedData={selectedData as Glossary}
             updateGlossary={() => Promise.resolve()}
-            onGlossaryDelete={noop}
-            onGlossaryTermDelete={noop}
             onGlossaryTermUpdate={() => Promise.resolve()}
           />
         )}

@@ -17,15 +17,17 @@ import {
   Modal,
   Row,
   Space,
+  Switch,
   Table,
   TableProps,
   Tooltip,
+  Typography,
 } from 'antd';
 import { ColumnsType, ExpandableConfig } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isUndefined } from 'lodash';
+import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
@@ -81,6 +83,8 @@ const GlossaryTermTab = ({
   onAddGlossaryTerm,
   onEditGlossaryTerm,
   className,
+  showDeleted,
+  onShowDeletedChange,
 }: GlossaryTermTabProps) => {
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(true);
@@ -342,70 +346,78 @@ const GlossaryTermTab = ({
     return <Loader />;
   }
 
-  if (isEmpty(glossaryTerms)) {
-    return (
-      <ErrorPlaceHolder
-        className="m-t-xlg"
-        doc={GLOSSARIES_DOCS}
-        heading={t('label.glossary-term')}
-        permission={permissions.Create}
-        type={
-          permissions.Create && glossaryTermStatus === Status.Approved
-            ? ERROR_PLACEHOLDER_TYPE.CREATE
-            : ERROR_PLACEHOLDER_TYPE.NO_DATA
-        }
-        onClick={handleAddGlossaryTermClick}
-      />
-    );
-  }
-
   return (
     <Row className={className} gutter={[0, 16]}>
       <Col span={24}>
-        <div className="d-flex justify-end">
-          <Button
-            className="text-primary m-b-sm"
-            size="small"
-            type="text"
-            onClick={toggleExpandAll}>
-            <Space align="center" size={4}>
-              {expandedRowKeys.length === childGlossaryTerms.length ? (
-                <DownUpArrowIcon color={DE_ACTIVE_COLOR} height="14px" />
-              ) : (
-                <UpDownArrowIcon color={DE_ACTIVE_COLOR} height="14px" />
-              )}
-
-              {expandedRowKeys.length === childGlossaryTerms.length
-                ? t('label.collapse-all')
-                : t('label.expand-all')}
-            </Space>
-          </Button>
-        </div>
-
-        {glossaryTerms.length > 0 ? (
-          <DndProvider backend={HTML5Backend}>
-            <Table
-              bordered
-              className={classNames('drop-over-background', {
-                'drop-over-table': isTableHovered,
-              })}
-              columns={columns}
-              components={TABLE_CONSTANTS}
-              dataSource={glossaryTerms}
-              expandable={expandableConfig}
-              loading={isTableLoading}
-              pagination={false}
-              rowKey="fullyQualifiedName"
-              scroll={{ x: true }}
-              size="small"
-              tableLayout="auto"
-              onHeaderRow={onTableHeader}
-              onRow={onTableRow}
+        <Row className="m-b-sm" justify="end">
+          <Col>
+            <Switch
+              checked={showDeleted}
+              data-testid="show-deleted"
+              onClick={onShowDeletedChange}
             />
-          </DndProvider>
-        ) : (
-          <ErrorPlaceHolder />
-        )}
+            <Typography.Text className="m-l-xs">
+              {t('label.deleted')}
+            </Typography.Text>
+          </Col>
+          <Col>
+            <Button
+              className="text-primary"
+              size="small"
+              type="text"
+              onClick={toggleExpandAll}>
+              <Space align="center" size={4}>
+                {expandedRowKeys.length === childGlossaryTerms.length ? (
+                  <DownUpArrowIcon color={DE_ACTIVE_COLOR} height="14px" />
+                ) : (
+                  <UpDownArrowIcon color={DE_ACTIVE_COLOR} height="14px" />
+                )}
+
+                {expandedRowKeys.length === childGlossaryTerms.length
+                  ? t('label.collapse-all')
+                  : t('label.expand-all')}
+              </Space>
+            </Button>
+          </Col>
+        </Row>
+
+        <DndProvider backend={HTML5Backend}>
+          <Table
+            bordered
+            className={classNames('drop-over-background', {
+              'drop-over-table': isTableHovered,
+            })}
+            columns={columns}
+            components={TABLE_CONSTANTS}
+            dataSource={glossaryTerms}
+            expandable={expandableConfig}
+            loading={isTableLoading}
+            locale={{
+              emptyText: (
+                <ErrorPlaceHolder
+                  className="m-t-xlg"
+                  doc={GLOSSARIES_DOCS}
+                  heading={t('label.glossary-term')}
+                  permission={permissions.Create}
+                  type={
+                    permissions.Create && glossaryTermStatus === Status.Approved
+                      ? ERROR_PLACEHOLDER_TYPE.CREATE
+                      : ERROR_PLACEHOLDER_TYPE.NO_DATA
+                  }
+                  onClick={handleAddGlossaryTermClick}
+                />
+              ),
+            }}
+            pagination={false}
+            rowKey="fullyQualifiedName"
+            scroll={{ x: true }}
+            size="small"
+            tableLayout="auto"
+            onHeaderRow={onTableHeader}
+            onRow={onTableRow}
+          />
+        </DndProvider>
+
         <Modal
           centered
           destroyOnClose

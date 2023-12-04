@@ -41,7 +41,6 @@ const GlossaryDetails = ({
   glossary,
   updateGlossary,
   updateVote,
-  handleGlossaryDelete,
   glossaryTerms,
   termsLoading,
   refreshGlossaryTerms,
@@ -49,6 +48,10 @@ const GlossaryDetails = ({
   onEditGlossaryTerm,
   isVersionView,
   onThreadLinkSelect,
+  showDeleted,
+  onShowDeletedChange,
+  onRestoreConfirm,
+  afterDeleteAction,
 }: GlossaryDetailsProps) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -158,9 +161,11 @@ const GlossaryDetails = ({
               permissions={permissions}
               refreshGlossaryTerms={refreshGlossaryTerms}
               selectedData={glossary}
+              showDeleted={showDeleted}
               termsLoading={termsLoading}
               onAddGlossaryTerm={onAddGlossaryTerm}
               onEditGlossaryTerm={onEditGlossaryTerm}
+              onShowDeletedChange={onShowDeletedChange}
             />
           </Space>
         </Col>
@@ -184,6 +189,8 @@ const GlossaryDetails = ({
     termsLoading,
     description,
     isDescriptionEditable,
+    showDeleted,
+    onShowDeletedChange,
   ]);
 
   const tabs = useMemo(() => {
@@ -243,12 +250,13 @@ const GlossaryDetails = ({
       <Col className="p-x-md" span={24}>
         <GlossaryHeader
           isGlossary
+          afterDeleteAction={afterDeleteAction}
           isVersionView={isVersionView}
           permissions={permissions}
           selectedData={{ ...glossary, displayName, name }}
           updateVote={updateVote}
           onAddGlossaryTerm={onAddGlossaryTerm}
-          onDelete={handleGlossaryDelete}
+          onRestoreConfirm={onRestoreConfirm}
           onUpdate={(data) => handleGlossaryUpdate(data as Glossary)}
         />
       </Col>
