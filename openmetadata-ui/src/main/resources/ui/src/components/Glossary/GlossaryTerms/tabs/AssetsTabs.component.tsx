@@ -129,6 +129,7 @@ const AssetsTabs = forwardRef(
       type = AssetsOfEntity.GLOSSARY,
       noDataPlaceholder,
       entityFqn,
+      assetCount,
     }: AssetsTabsProps,
     ref
   ) => {
@@ -456,7 +457,7 @@ const AssetsTabs = forwardRef(
             type={ERROR_PLACEHOLDER_TYPE.FILTER}
           />
         );
-      } else if (noDataPlaceholder || searchValue) {
+      } else if (noDataPlaceholder || searchValue || !permissions.Create) {
         return (
           <ErrorPlaceHolder>
             {isObject(noDataPlaceholder) && (
@@ -492,23 +493,28 @@ const AssetsTabs = forwardRef(
                 }}
               />
             </Typography.Paragraph>
-            <Tooltip
-              placement="top"
-              title={
-                isEntityDeleted
-                  ? t('message.this-action-is-not-allowed-for-deleted-entities')
-                  : t('label.add')
-              }>
-              <Button
-                ghost
-                data-testid="add-placeholder-button"
-                disabled={isEntityDeleted}
-                icon={<PlusOutlined />}
-                type="primary"
-                onClick={onAddAsset}>
-                {t('label.add')}
-              </Button>
-            </Tooltip>
+
+            {permissions.Create && (
+              <Tooltip
+                placement="top"
+                title={
+                  isEntityDeleted
+                    ? t(
+                        'message.this-action-is-not-allowed-for-deleted-entities'
+                      )
+                    : t('label.add')
+                }>
+                <Button
+                  ghost
+                  data-testid="add-placeholder-button"
+                  disabled={isEntityDeleted}
+                  icon={<PlusOutlined />}
+                  type="primary"
+                  onClick={onAddAsset}>
+                  {t('label.add')}
+                </Button>
+              </Tooltip>
+            )}
           </ErrorPlaceHolder>
         );
       }
@@ -880,46 +886,48 @@ const AssetsTabs = forwardRef(
       <div
         className={classNames('assets-tab-container p-md')}
         data-testid="table-container">
-        <Row className="filters-row gap-2 p-l-lg">
-          <Col span={18}>
-            <div className="d-flex items-center gap-3">
-              <Dropdown overlay={filterMenu} trigger={['click']}>
-                <Button icon={<PlusOutlined />} size="small" type="primary" />
-              </Dropdown>
-              <div className="flex-1">
-                <Searchbar
-                  removeMargin
-                  showClearSearch
-                  placeholder={t('label.search-entity', {
-                    entity: t('label.asset-plural'),
-                  })}
-                  searchValue={searchValue}
-                  onSearch={setSearchValue}
-                />
+        {assetCount > 0 && (
+          <Row className="filters-row gap-2 p-l-lg">
+            <Col span={18}>
+              <div className="d-flex items-center gap-3">
+                <Dropdown overlay={filterMenu} trigger={['click']}>
+                  <Button icon={<PlusOutlined />} size="small" type="primary" />
+                </Dropdown>
+                <div className="flex-1">
+                  <Searchbar
+                    removeMargin
+                    showClearSearch
+                    placeholder={t('label.search-entity', {
+                      entity: t('label.asset-plural'),
+                    })}
+                    searchValue={searchValue}
+                    onSearch={setSearchValue}
+                  />
+                </div>
               </div>
-            </div>
-          </Col>
-          <Col className="searched-data-container m-b-xs" span={24}>
-            <div className="d-flex justify-between">
-              <ExploreQuickFilters
-                aggregations={aggregations}
-                fields={selectedQuickFilters}
-                index={SearchIndex.ALL}
-                showDeleted={false}
-                onFieldValueSelect={handleQuickFiltersValueSelect}
-              />
-              {quickFilterQuery && (
-                <Typography.Text
-                  className="text-primary self-center cursor-pointer"
-                  onClick={clearFilters}>
-                  {t('label.clear-entity', {
-                    entity: '',
-                  })}
-                </Typography.Text>
-              )}
-            </div>
-          </Col>
-        </Row>
+            </Col>
+            <Col className="searched-data-container m-b-xs" span={24}>
+              <div className="d-flex justify-between">
+                <ExploreQuickFilters
+                  aggregations={aggregations}
+                  fields={selectedQuickFilters}
+                  index={SearchIndex.ALL}
+                  showDeleted={false}
+                  onFieldValueSelect={handleQuickFiltersValueSelect}
+                />
+                {quickFilterQuery && (
+                  <Typography.Text
+                    className="text-primary self-center cursor-pointer"
+                    onClick={clearFilters}>
+                    {t('label.clear-entity', {
+                      entity: '',
+                    })}
+                  </Typography.Text>
+                )}
+              </div>
+            </Col>
+          </Row>
+        )}
 
         {isLoading || isCountLoading ? (
           <Row className="p-lg" gutter={[0, 16]}>
