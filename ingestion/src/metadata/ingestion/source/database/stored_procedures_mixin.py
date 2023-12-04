@@ -157,7 +157,7 @@ class StoredProcedureMixin(ABC):
                 database_name=query_by_procedure.query_database_name,
                 schema_name=query_by_procedure.query_schema_name,
                 dialect=ConnectionTypeDialectMapper.dialect_of(
-                    self.context.database_service.serviceType.value
+                    self.service_connection.type.value
                 ),
                 timeout_seconds=self.source_config.queryParsingTimeoutLimit,
                 lineage_source=LineageSource.QueryLineage,
