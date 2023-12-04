@@ -196,7 +196,10 @@ const AddCustomMetricPage = () => {
                 <TitleBreadcrumb titleLinks={breadcrumb} />
               </Col>
               <Col span={24}>
-                <Typography.Title className="m-b-0" level={5}>
+                <Typography.Title
+                  className="m-b-0"
+                  data-testid="heading"
+                  level={5}>
                   {t('label.add-entity-metric', {
                     entity: isColumnMetric
                       ? t('label.column')
@@ -213,10 +216,14 @@ const AddCustomMetricPage = () => {
                   onFinish={handleFormSubmit}
                 />
                 <Space className="w-full justify-end">
-                  <Button disabled={isActionLoading} onClick={handleBackClick}>
+                  <Button
+                    data-testid="cancel-button"
+                    disabled={isActionLoading}
+                    onClick={handleBackClick}>
                     {t('label.cancel')}
                   </Button>
                   <Button
+                    data-testid="submit-button"
                     htmlType="submit"
                     loading={isActionLoading}
                     type="primary"
