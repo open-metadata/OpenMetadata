@@ -625,6 +625,7 @@ class OMetaTableTest(TestCase):
                     entity=Table,
                     limit=1,  # paginate in batches of pairs
                 )
+                list(res)
 
         with patch.object(REST, "get", return_value=BAD_RESPONSE):
             res = self.metadata.list_all_entities(
