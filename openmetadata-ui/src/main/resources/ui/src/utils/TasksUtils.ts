@@ -25,6 +25,7 @@ import {
   ROUTES,
 } from '../constants/constants';
 import { EntityField } from '../constants/Feeds.constants';
+import { TASK_SANITIZE_VALUE_REGEX } from '../constants/regex.constants';
 import {
   EntityTabs,
   EntityType,
@@ -669,4 +670,28 @@ export const getEntityTableName = (
   }
 
   return getEntityName(entityReference);
+};
+
+export const getTaskMessage = ({
+  value,
+  entityType,
+  entityData,
+  field,
+  startMessage,
+}: {
+  value: string | null;
+  entityType: EntityType;
+  entityData: EntityData;
+  field: string | null;
+  startMessage: string;
+}) => {
+  const sanitizeValue = value?.replaceAll(TASK_SANITIZE_VALUE_REGEX, '') ?? '';
+
+  const entityColumnsName = field
+    ? `${field}/${getEntityTableName(entityType, sanitizeValue, entityData)}`
+    : '';
+
+  return `${startMessage} for ${entityType} ${getEntityName(
+    entityData
+  )} ${entityColumnsName}`;
 };

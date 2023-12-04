@@ -26,7 +26,6 @@ import ExploreSearchCard from '../../../components/ExploreV1/ExploreSearchCard/E
 import Loader from '../../../components/Loader/Loader';
 import { SearchedDataProps } from '../../../components/SearchedData/SearchedData.interface';
 import { EntityField } from '../../../constants/Feeds.constants';
-import { TASK_SANITIZE_VALUE_REGEX } from '../../../constants/regex.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import {
   CreateThread,
@@ -46,7 +45,7 @@ import {
   fetchEntityDetail,
   fetchOptions,
   getBreadCrumbList,
-  getEntityTableName,
+  getTaskMessage,
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import Assignees from '../shared/Assignees';
@@ -72,29 +71,16 @@ const RequestTag = () => {
   const [assignees, setAssignees] = useState<Option[]>([]);
   const [suggestion] = useState<TagLabel[]>([]);
 
-  const sanitizeValue = useMemo(
-    () => value?.replaceAll(TASK_SANITIZE_VALUE_REGEX, '') ?? '',
-    [value]
-  );
-
-  const fileMessage = useMemo(
-    () =>
-      field
-        ? `${field}/${getEntityTableName(
-            entityType,
-            sanitizeValue,
-            entityData
-          )}`
-        : '',
-    [field, sanitizeValue, entityType, entityData]
-  );
-
   const taskMessage = useMemo(
     () =>
-      `Request tags for ${entityType} ${getEntityName(
-        entityData
-      )} ${fileMessage}`,
-    [sanitizeValue, entityType, field, entityData]
+      getTaskMessage({
+        value,
+        entityType,
+        entityData,
+        field,
+        startMessage: 'Request tags',
+      }),
+    [value, entityType, field, entityData]
   );
 
   const decodedEntityFQN = useMemo(

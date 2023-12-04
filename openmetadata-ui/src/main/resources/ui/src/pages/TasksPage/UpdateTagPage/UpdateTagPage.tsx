@@ -50,7 +50,7 @@ import {
   getBreadCrumbList,
   getColumnObject,
   getEntityColumnsDetails,
-  getEntityTableName,
+  getTaskMessage,
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import Assignees from '../shared/Assignees';
@@ -85,24 +85,16 @@ const UpdateTag = () => {
     [value]
   );
 
-  const fileMessage = useMemo(
-    () =>
-      field
-        ? `${field}/${getEntityTableName(
-            entityType,
-            sanitizeValue,
-            entityData
-          )}`
-        : '',
-    [field, sanitizeValue, entityType, entityData]
-  );
-
   const taskMessage = useMemo(
     () =>
-      `Update tags for ${entityType} ${getEntityName(
-        entityData
-      )} ${fileMessage}`,
-    [sanitizeValue, entityType, field, entityData]
+      getTaskMessage({
+        value,
+        entityType,
+        entityData,
+        field,
+        startMessage: 'Update tags',
+      }),
+    [value, entityType, field, entityData]
   );
 
   const decodedEntityFQN = useMemo(() => getDecodedFqn(entityFQN), [entityFQN]);

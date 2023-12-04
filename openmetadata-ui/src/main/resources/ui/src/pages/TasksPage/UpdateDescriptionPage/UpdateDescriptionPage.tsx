@@ -48,7 +48,7 @@ import {
   getBreadCrumbList,
   getColumnObject,
   getEntityColumnsDetails,
-  getEntityTableName,
+  getTaskMessage,
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import Assignees from '../shared/Assignees';
@@ -82,24 +82,16 @@ const UpdateDescription = () => {
 
   const decodedEntityFQN = useMemo(() => getDecodedFqn(entityFQN), [entityFQN]);
 
-  const fileMessage = useMemo(
-    () =>
-      field
-        ? `${field}/${getEntityTableName(
-            entityType,
-            sanitizeValue,
-            entityData
-          )}`
-        : '',
-    [field, sanitizeValue, entityType, entityData]
-  );
-
   const taskMessage = useMemo(
     () =>
-      `Update description for ${entityType} ${getEntityName(
-        entityData
-      )} ${fileMessage}`,
-    [sanitizeValue, entityType, field, entityData]
+      getTaskMessage({
+        value,
+        entityType,
+        entityData,
+        field,
+        startMessage: 'Update description',
+      }),
+    [value, entityType, field, entityData]
   );
 
   const back = () => history.goBack();

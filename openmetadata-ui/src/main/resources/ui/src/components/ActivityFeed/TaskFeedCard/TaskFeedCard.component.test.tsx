@@ -50,19 +50,11 @@ jest.mock('../../../components/common/ProfilePicture/ProfilePicture', () => {
   return jest.fn().mockImplementation(() => <p>ProfilePicture</p>);
 });
 
-jest.mock('../../../components/common/AssigneeList/AssigneeList', () => {
-  return jest.fn().mockImplementation(() => <p>AssigneeList</p>);
-});
-
-jest.mock('./Shared/ActivityFeedActions', () => {
+jest.mock('../Shared/ActivityFeedActions', () => {
   return jest.fn().mockImplementation(() => <p>ActivityFeedActions</p>);
 });
 
-jest.mock('../../../utils/EntityLink', () => {
-  return jest.fn().mockImplementation(() => <p>EntityLink</p>);
-});
-
-jest.mock('./Shared/ActivityFeedActions', () => ({
+jest.mock('../../../utils/TasksUtils', () => ({
   getTaskDetailPath: jest.fn().mockReturnValue('/'),
 }));
 

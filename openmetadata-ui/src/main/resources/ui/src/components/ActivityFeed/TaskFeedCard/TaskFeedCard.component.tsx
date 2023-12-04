@@ -13,7 +13,7 @@
 import Icon from '@ant-design/icons';
 import { Button, Col, Row, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
-import { isEmpty, isUndefined, noop } from 'lodash';
+import { isEmpty, isUndefined, lowerCase, noop } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
@@ -156,7 +156,7 @@ const TaskFeedCard = ({
                 ? TaskOpenIcon
                 : TaskCloseIcon
             }
-            data-testid={`task-status-icon-${taskDetails?.status}`}
+            data-testid={`task-status-icon-${lowerCase(taskDetails?.status)}`}
             style={{ fontSize: '18px' }}
           />
 

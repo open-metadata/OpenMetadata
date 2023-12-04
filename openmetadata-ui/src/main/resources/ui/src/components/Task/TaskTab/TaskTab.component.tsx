@@ -157,7 +157,10 @@ export const TaskTab = ({
 
   const getTaskLinkElement = entityCheck && (
     <Typography.Text className="font-medium text-md" data-testid="task-title">
-      <Button className="p-r-xss" type="link" onClick={handleTaskLinkClick}>
+      <Button
+        className="p-r-xss text-md font-medium"
+        type="link"
+        onClick={handleTaskLinkClick}>
         {`#${taskDetails?.id} `}
       </Button>
 
@@ -173,7 +176,10 @@ export const TaskTab = ({
               data-testid="entitylink"
               to={getEntityLink(entityType, entityFQN)}
               onClick={(e) => e.stopPropagation()}>
-              {getNameFromFQN(entityFQN)}
+              <Typography.Text className="text-md font-medium text-color-inherit">
+                {' '}
+                {getNameFromFQN(entityFQN)}
+              </Typography.Text>
             </Link>
           </EntityPopOverCard>
         </>

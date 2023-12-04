@@ -20,6 +20,11 @@ import { mockUserData } from '../../Users/mocks/User.mocks';
 import { TaskTab } from './TaskTab.component';
 import { TaskTabProps } from './TaskTab.interface';
 
+jest.mock('../../../rest/feedsAPI', () => ({
+  updateTask: jest.fn().mockImplementation(() => Promise.resolve()),
+  updateThread: jest.fn().mockImplementation(() => Promise.resolve()),
+}));
+
 jest.mock('react-router-dom', () => ({
   Link: jest
     .fn()
@@ -47,9 +52,9 @@ jest.mock('../../../components/common/AssigneeList/AssigneeList', () => {
   return jest.fn().mockImplementation(() => <p>AssigneeList</p>);
 });
 
-jest.mock('../../../components/common/OwnerLabel/OwnerLabel.component', () => {
-  return jest.fn().mockImplementation(() => <p>OwnerLabel</p>);
-});
+jest.mock('../../../components/common/OwnerLabel/OwnerLabel.component', () => ({
+  OwnerLabel: jest.fn().mockImplementation(() => <p>OwnerLabel</p>),
+}));
 
 jest.mock('../../../components/InlineEdit/InlineEdit.component', () => {
   return jest.fn().mockImplementation(() => <p>InlineEdit</p>);
@@ -71,9 +76,8 @@ jest.mock('../../common/PopOverCard/EntityPopOverCard', () => {
   return jest.fn().mockImplementation(() => <p>EntityPopOverCard</p>);
 });
 
-jest.mock('../../../utils/FeedUtils', () => ({
+jest.mock('../../../utils/CommonUtils', () => ({
   getNameFromFQN: jest.fn().mockReturnValue('getNameFromFQN'),
-  getEntityType: jest.fn().mockReturnValue('entityType'),
 }));
 
 jest.mock('../../../utils/EntityUtils', () => ({
@@ -93,6 +97,7 @@ jest.mock('../../../utils/TasksUtils', () => ({
   getTaskDetailPath: jest.fn().mockReturnValue('/'),
   isDescriptionTask: jest.fn().mockReturnValue(false),
   isTagsTask: jest.fn().mockReturnValue(true),
+  TASK_ACTION_LIST: jest.fn().mockReturnValue([]),
 }));
 
 jest.mock('../../../utils/ToastUtils', () => ({
@@ -106,7 +111,7 @@ jest.mock('../../Auth/AuthProviders/AuthProvider', () => ({
   })),
 }));
 
-jest.mock('../../../../utils/FeedUtils', () => ({
+jest.mock('../../../rest/feedsAPI', () => ({
   updateTask: jest.fn(),
   updateThread: jest.fn(),
 }));
@@ -126,10 +131,7 @@ jest.mock(
 jest.mock('../../../hooks/authHooks', () => ({
   useAuth: () => {
     return {
-      isSignedIn: true,
-      isSignedOut: false,
-      isAuthenticatedRoute: true,
-      isAuthDisabled: true,
+      isAdminUser: false,
     };
   },
 }));
