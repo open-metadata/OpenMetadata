@@ -1541,6 +1541,7 @@
     "restore-entities-error": "Error while restoring {{entity}}",
     "restore-entities-success": "{{entity}} restored successfully",
     "result-limit-message": "Configuration to set the limit for query logs.",
+    "retention-period-description": "Retention period refers to the duration for which data is retained before it is considered eligible for deletion or archival. Example: 30 days, 6 months, 1 year or any ISO 8601 format in UTC like P23DT23H will be valid.",
     "run-sample-data-to-ingest-sample-data": "'Run sample data to ingest sample data assets into your OpenMetadata.'",
     "schedule-for-ingestion-description": "Scheduling can be set up at an hourly, daily, or weekly cadence. The timezone is in UTC.",
     "scheduled-run-every": "Scheduled to run every",

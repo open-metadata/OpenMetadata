@@ -363,7 +363,7 @@ const TableDetailsPageV1 = () => {
   );
 
   const handleUpdateRetentionPeriod = useCallback(
-    async (newRetentionPeriod?: Table['retentionPeriod']) => {
+    async (newRetentionPeriod: Table['retentionPeriod']) => {
       if (!tableDetails) {
         return;
       }

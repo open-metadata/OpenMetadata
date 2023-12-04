@@ -51,7 +51,7 @@ describe('Test Retention Period Component', () => {
     render(
       <RetentionPeriod
         {...mockRetentionPeriodProps}
-        retentionPeriod="P69DT16H"
+        retentionPeriod="69 days and 16 hours"
       />
     );
 
@@ -74,11 +74,11 @@ describe('Test Retention Period Component', () => {
     expect(screen.getByTestId('retention-period-modal')).toBeInTheDocument();
   });
 
-  it('Should render Modal day input with value', async () => {
+  it('Should render Modal with input and value', async () => {
     render(
       <RetentionPeriod
         {...mockRetentionPeriodProps}
-        retentionPeriod="P13DT23H"
+        retentionPeriod="69 days and 16 hours"
       />
     );
 
@@ -90,11 +90,12 @@ describe('Test Retention Period Component', () => {
 
     expect(screen.getByTestId('retention-period-modal')).toBeInTheDocument();
 
-    expect(screen.getByTestId('days-period-input')).toHaveValue('13');
-    expect(screen.getByTestId('hours-period-input')).toHaveValue('23');
+    expect(screen.getByTestId('retention-period-input')).toHaveValue(
+      '69 days and 16 hours'
+    );
   });
 
-  it('Should call onUpdate on submit form', async () => {
+  it('Should call onUpdate  with no value and on submit form', async () => {
     render(<RetentionPeriod {...mockRetentionPeriodProps} />);
 
     const editButton = screen.getByTestId('edit-retention-period-button');
@@ -114,7 +115,7 @@ describe('Test Retention Period Component', () => {
     expect(mockOnUpdate).toHaveBeenCalledWith(undefined);
   });
 
-  it('Should call onUpdate with days only value on submit form', async () => {
+  it('Should call onUpdate with value on submit form', async () => {
     render(<RetentionPeriod {...mockRetentionPeriodProps} />);
 
     const editButton = screen.getByTestId('edit-retention-period-button');
@@ -125,8 +126,8 @@ describe('Test Retention Period Component', () => {
 
     expect(screen.getByTestId('retention-period-modal')).toBeInTheDocument();
 
-    fireEvent.change(screen.getByTestId('days-period-input'), {
-      target: { value: 12 },
+    fireEvent.change(screen.getByTestId('retention-period-input'), {
+      target: { value: '69 days and 16 hours' },
     });
 
     const saveButton = screen.getByText('label.save');
@@ -135,121 +136,6 @@ describe('Test Retention Period Component', () => {
       fireEvent.click(saveButton);
     });
 
-    // value converted to ISO 8601 duration format
-    expect(mockOnUpdate).toHaveBeenCalledWith('P12D');
-  });
-
-  it('Should call onUpdate with hours only value on submit form', async () => {
-    render(<RetentionPeriod {...mockRetentionPeriodProps} />);
-
-    const editButton = screen.getByTestId('edit-retention-period-button');
-
-    act(() => {
-      fireEvent.click(editButton);
-    });
-
-    expect(screen.getByTestId('retention-period-modal')).toBeInTheDocument();
-
-    fireEvent.change(screen.getByTestId('hours-period-input'), {
-      target: { value: 13 },
-    });
-
-    const saveButton = screen.getByText('label.save');
-
-    await act(async () => {
-      fireEvent.click(saveButton);
-    });
-
-    // value converted to ISO 8601 duration format
-    expect(mockOnUpdate).toHaveBeenCalledWith('PT13H');
-  });
-
-  it('Should call onUpdate with both days and hours only value on submit form', async () => {
-    render(<RetentionPeriod {...mockRetentionPeriodProps} />);
-
-    const editButton = screen.getByTestId('edit-retention-period-button');
-
-    act(() => {
-      fireEvent.click(editButton);
-    });
-
-    expect(screen.getByTestId('retention-period-modal')).toBeInTheDocument();
-
-    fireEvent.change(screen.getByTestId('days-period-input'), {
-      target: { value: 24 },
-    });
-
-    fireEvent.change(screen.getByTestId('hours-period-input'), {
-      target: { value: 4 },
-    });
-
-    const saveButton = screen.getByText('label.save');
-
-    await act(async () => {
-      fireEvent.click(saveButton);
-    });
-
-    // value converted to ISO 8601 duration format
-    expect(mockOnUpdate).toHaveBeenCalledWith('P24DT4H');
-  });
-
-  it('Should not break component if retention period is not valid ISO 8601 duration', async () => {
-    render(
-      <RetentionPeriod {...mockRetentionPeriodProps} retentionPeriod="data" />
-    );
-
-    expect(
-      screen.getByTestId('retention-period-container')
-    ).toBeInTheDocument();
-
-    expect(screen.getByText(NO_DATA_PLACEHOLDER)).toBeInTheDocument();
-  });
-
-  it('Should call onUpdate handler if provided negative input to days', async () => {
-    render(<RetentionPeriod {...mockRetentionPeriodProps} />);
-
-    const editButton = screen.getByTestId('edit-retention-period-button');
-
-    act(() => {
-      fireEvent.click(editButton);
-    });
-
-    expect(screen.getByTestId('retention-period-modal')).toBeInTheDocument();
-
-    fireEvent.change(screen.getByTestId('days-period-input'), {
-      target: { value: -10 },
-    });
-
-    const saveButton = screen.getByText('label.save');
-
-    await act(async () => {
-      fireEvent.click(saveButton);
-    });
-
-    expect(mockOnUpdate).not.toHaveBeenCalled();
-  });
-
-  it('Should call onUpdate handler if provided negative input to hours', async () => {
-    render(<RetentionPeriod {...mockRetentionPeriodProps} />);
-
-    const editButton = screen.getByTestId('edit-retention-period-button');
-
-    act(() => {
-      fireEvent.click(editButton);
-    });
-
-    expect(screen.getByTestId('retention-period-modal')).toBeInTheDocument();
-
-    fireEvent.change(screen.getByTestId('hours-period-input'), {
-      target: { value: -10 },
-    });
-
-    const saveButton = screen.getByText('label.save');
-
-    await act(async () => {
-      fireEvent.click(saveButton);
-    });
-
-    expect(mockOnUpdate).not.toHaveBeenCalled();
+    expect(mockOnUpdate).toHaveBeenCalledWith('69 days and 16 hours');
   });
 });

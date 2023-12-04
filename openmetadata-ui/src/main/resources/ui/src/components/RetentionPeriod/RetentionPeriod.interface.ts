@@ -13,5 +13,5 @@
 
 export interface RetentionPeriodProps {
   retentionPeriod?: string;
-  onUpdate: (retentionPeriod?: string) => Promise<void>;
+  onUpdate: (retentionPeriod: string) => Promise<void>;
 }
