@@ -15,9 +15,19 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { mockedGlossaries } from '../../../mocks/Glossary.mock';
 import GlossaryLeftPanel from './GlossaryLeftPanel.component';
+import { GlossaryLeftPanelProps } from './GlossaryLeftPanel.interface';
 
 const mockHistory = {
   push: jest.fn(),
+};
+
+const mockOnShowDeletedChange = jest.fn();
+
+const mockProps: GlossaryLeftPanelProps = {
+  glossaries: mockedGlossaries,
+  isLoading: false,
+  showDeleted: false,
+  onShowDeletedChange: mockOnShowDeletedChange,
 };
 
 jest.mock('react-router-dom', () => ({
@@ -75,7 +85,7 @@ jest.mock('../../../components/common/LeftPanelCard/LeftPanelCard', () => {
 describe('Test GlossaryLeftPanel component', () => {
   it('GlossaryLeftPanel Page Should render', async () => {
     act(() => {
-      render(<GlossaryLeftPanel glossaries={mockedGlossaries} />);
+      render(<GlossaryLeftPanel {...mockProps} />);
     });
 
     expect(
@@ -93,7 +103,7 @@ describe('Test GlossaryLeftPanel component', () => {
 
   it('Add Glossary button should work properly', async () => {
     act(() => {
-      render(<GlossaryLeftPanel glossaries={mockedGlossaries} />);
+      render(<GlossaryLeftPanel {...mockProps} />);
     });
 
     const addButton = await screen.findByTestId('add-glossary');
@@ -109,7 +119,7 @@ describe('Test GlossaryLeftPanel component', () => {
 
   it('Menu click should work properly', async () => {
     act(() => {
-      render(<GlossaryLeftPanel glossaries={mockedGlossaries} />);
+      render(<GlossaryLeftPanel {...mockProps} />);
     });
 
     const menuItem = await screen.findByText(mockedGlossaries[0].displayName);

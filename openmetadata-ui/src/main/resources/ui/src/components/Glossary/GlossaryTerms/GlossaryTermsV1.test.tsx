@@ -19,6 +19,7 @@ import {
 } from '../../../mocks/Glossary.mock';
 import { OperationPermission } from '../../PermissionProvider/PermissionProvider.interface';
 import GlossaryTerms from './GlossaryTermsV1.component';
+import { GlossaryTermsV1Props } from './GlossaryTermsV1.interface';
 
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
@@ -63,7 +64,7 @@ jest.mock('../GlossaryHeader/GlossaryHeader.component', () =>
   jest.fn().mockReturnValue(<div>GlossaryHeader.component</div>)
 );
 
-const mockProps = {
+const mockProps: GlossaryTermsV1Props = {
   isSummaryPanelOpen: false,
   permissions: {
     Create: true,
@@ -75,10 +76,11 @@ const mockProps = {
     EditCustomFields: true,
   } as OperationPermission,
   glossaryTerm: mockedGlossaryTerms[0],
+  childGlossaryTerms: mockedGlossaryTerms,
+  showDeleted: false,
+  onShowDeletedChange: jest.fn(),
   termsLoading: false,
   handleGlossaryTermUpdate: jest.fn(),
-  onRelatedTermClick: jest.fn(),
-  handleGlossaryTermDelete: jest.fn(),
   refreshGlossaryTerms: jest.fn(),
   refreshActiveGlossaryTerm: jest.fn(),
   onAddGlossaryTerm: jest.fn(),

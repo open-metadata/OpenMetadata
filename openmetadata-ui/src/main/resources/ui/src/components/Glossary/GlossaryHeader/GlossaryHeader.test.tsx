@@ -63,7 +63,6 @@ describe('GlossaryHeader component', () => {
         selectedData={{ displayName: 'glossaryTest' } as Glossary}
         updateVote={mockOnUpdateVote}
         onAddGlossaryTerm={mockOnDelete}
-        onDelete={mockOnDelete}
         onUpdate={mockOnUpdate}
       />
     );

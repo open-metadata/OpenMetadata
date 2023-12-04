@@ -16,6 +16,7 @@ import React from 'react';
 import { mockedGlossaries } from '../../../mocks/Glossary.mock';
 import { OperationPermission } from '../../PermissionProvider/PermissionProvider.interface';
 import GlossaryDetails from './GlossaryDetails.component';
+import { GlossaryDetailsProps } from './GlossaryDetails.interface';
 
 jest.mock('../GlossaryTermTab/GlossaryTermTab.component', () => {
   return jest.fn().mockReturnValue(<p>GlossaryTermTab.component</p>);
@@ -46,7 +47,7 @@ jest.mock(
   })
 );
 
-const mockProps = {
+const mockProps: GlossaryDetailsProps = {
   glossary: mockedGlossaries[0],
   glossaryTerms: [],
   termsLoading: false,
@@ -59,8 +60,9 @@ const mockProps = {
     EditDisplayName: true,
     EditCustomFields: true,
   } as OperationPermission,
+  showDeleted: false,
+  onShowDeletedChange: jest.fn(),
   updateGlossary: jest.fn(),
-  handleGlossaryDelete: jest.fn(),
   refreshGlossaryTerms: jest.fn(),
   onAddGlossaryTerm: jest.fn(),
   onEditGlossaryTerm: jest.fn(),

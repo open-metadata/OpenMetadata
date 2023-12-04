@@ -12,7 +12,6 @@
  */
 
 import {
-  fireEvent,
   getAllByTestId,
   getAllByText,
   getByTestId,
@@ -26,20 +25,24 @@ import {
   MOCK_PERMISSIONS,
 } from '../../../mocks/Glossary.mock';
 import GlossaryTermTab from './GlossaryTermTab.component';
+import { GlossaryTermTabProps } from './GlossaryTermTab.interface';
 
 const mockOnAddGlossaryTerm = jest.fn();
 const mockRefreshGlossaryTerms = jest.fn();
 const mockOnEditGlossaryTerm = jest.fn();
+const mockOnShowDeletedChange = jest.fn();
 
-const mockProps1 = {
+const mockProps1: GlossaryTermTabProps = {
   childGlossaryTerms: [],
   isGlossary: false,
+  showDeleted: false,
   permissions: MOCK_PERMISSIONS,
   refreshGlossaryTerms: mockRefreshGlossaryTerms,
   selectedData: mockedGlossaryTerms[0],
   termsLoading: false,
   onAddGlossaryTerm: mockOnAddGlossaryTerm,
   onEditGlossaryTerm: mockOnEditGlossaryTerm,
+  onShowDeletedChange: mockOnShowDeletedChange,
 };
 
 const mockProps2 = {
@@ -77,23 +80,9 @@ jest.mock('../../common/OwnerLabel/OwnerLabel.component', () => ({
 }));
 
 describe('Test GlossaryTermTab component', () => {
-  it('should show the ErrorPlaceHolder component, if no glossary is present', () => {
-    const { container } = render(<GlossaryTermTab {...mockProps1} />, {
-      wrapper: MemoryRouter,
-    });
-
-    expect(getByText(container, 'ErrorPlaceHolder')).toBeInTheDocument();
-  });
-
-  it('should call the onAddGlossaryTerm fn onClick of add button in ErrorPlaceHolder', () => {
-    const { container } = render(<GlossaryTermTab {...mockProps1} />, {
-      wrapper: MemoryRouter,
-    });
-
-    fireEvent.click(getByText(container, 'ErrorPlaceHolder'));
-
-    expect(mockOnAddGlossaryTerm).toHaveBeenCalled();
-  });
+  // Change description
+  // Removed ErrorPlaceholder check because the placeholder will be displayed in the
+  // antd table itself
 
   it('should contain all necessary fields value in table when glossary data is not empty', async () => {
     const { container } = render(<GlossaryTermTab {...mockProps2} />, {

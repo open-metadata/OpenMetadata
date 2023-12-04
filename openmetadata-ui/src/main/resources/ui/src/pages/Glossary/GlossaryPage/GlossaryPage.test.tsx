@@ -14,11 +14,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MOCK_GLOSSARY } from '../../../mocks/Glossary.mock';
-import {
-  deleteGlossary,
-  deleteGlossaryTerm,
-  patchGlossaryTerm,
-} from '../../../rest/glossaryAPI';
+import { patchGlossaryTerm } from '../../../rest/glossaryAPI';
 import GlossaryPage from './GlossaryPage.component';
 
 jest.mock('react-router-dom', () => ({
@@ -54,16 +50,6 @@ jest.mock('../../../components/Glossary/GlossaryV1.component', () => {
         data-testid="handleGlossaryTermUpdate"
         onClick={() => props.onGlossaryTermUpdate(MOCK_GLOSSARY)}>
         handleGlossaryTermUpdate
-      </button>
-      <button
-        data-testid="handleGlossaryDelete"
-        onClick={() => props.onGlossaryDelete(MOCK_GLOSSARY.id)}>
-        handleGlossaryDelete
-      </button>
-      <button
-        data-testid="handleGlossaryTermDelete"
-        onClick={() => props.onGlossaryTermDelete(MOCK_GLOSSARY.id)}>
-        handleGlossaryTermDelete
       </button>
       <button
         data-testid="updateGlossary"
@@ -128,58 +114,10 @@ describe('Test GlossaryComponent page', () => {
 
     fireEvent.click(updateGlossary);
   });
-
-  it('All Function call should work properly - part 2', async () => {
-    render(<GlossaryPage />);
-
-    const glossaryComponent = await screen.findByText(/Glossary.component/i);
-
-    const handleGlossaryTermUpdate = await screen.findByTestId(
-      'handleGlossaryTermUpdate'
-    );
-    const handleGlossaryTermDelete = await screen.findByTestId(
-      'handleGlossaryTermDelete'
-    );
-
-    expect(glossaryComponent).toBeInTheDocument();
-
-    fireEvent.click(handleGlossaryTermUpdate);
-    fireEvent.click(handleGlossaryTermDelete);
-  });
+  // Change description
+  // Removing the glossary delete API checks as the deletion will now be handled by DeleteWidgetModal
 
   describe('Render Sad Paths', () => {
-    it('show error if deleteGlossaryTerm API fails', async () => {
-      (deleteGlossaryTerm as jest.Mock).mockImplementationOnce(() =>
-        Promise.reject()
-      );
-      render(<GlossaryPage />);
-      const handleGlossaryTermDelete = await screen.findByTestId(
-        'handleGlossaryTermDelete'
-      );
-
-      expect(handleGlossaryTermDelete).toBeInTheDocument();
-
-      await act(async () => {
-        fireEvent.click(handleGlossaryTermDelete);
-      });
-    });
-
-    it('show error if deleteGlossary API fails', async () => {
-      (deleteGlossary as jest.Mock).mockImplementationOnce(() =>
-        Promise.reject()
-      );
-      render(<GlossaryPage />);
-      const handleGlossaryDelete = await screen.findByTestId(
-        'handleGlossaryDelete'
-      );
-
-      expect(handleGlossaryDelete).toBeInTheDocument();
-
-      await act(async () => {
-        fireEvent.click(handleGlossaryDelete);
-      });
-    });
-
     it('show error if patchGlossaryTerm API resolves without data', async () => {
       (patchGlossaryTerm as jest.Mock).mockImplementation(() =>
         Promise.resolve({ data: '' })
