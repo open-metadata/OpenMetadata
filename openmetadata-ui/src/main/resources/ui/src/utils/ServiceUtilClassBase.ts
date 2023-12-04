@@ -82,6 +82,7 @@ import {
   TABLEAU,
   TOPIC_DEFAULT,
   TRINO,
+  UNITYCATALOG,
   VERTICA,
 } from '../constants/Services.constant';
 import { StorageServiceType } from '../generated/entity/data/container';
@@ -199,6 +200,9 @@ class ServiceUtilClassBase {
 
       case DatabaseServiceType.Databricks:
         return DATABRICK;
+
+      case DatabaseServiceType.UnityCatalog:
+        return UNITYCATALOG;
 
       case DatabaseServiceType.Db2:
         return IBMDB2;
