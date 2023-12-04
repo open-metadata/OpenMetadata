@@ -35,11 +35,8 @@ import {
   getRelativeTime,
 } from '../../../utils/date-time/DateTimeUtils';
 import EntityLink from '../../../utils/EntityLink';
-import {
-  getEntityFQN,
-  getEntityType,
-  prepareFeedLink,
-} from '../../../utils/FeedUtils';
+import { getEntityFQN, getEntityType } from '../../../utils/FeedUtils';
+import { getEntityLink } from '../../../utils/TableUtils';
 import { getTaskDetailPath } from '../../../utils/TasksUtils';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import ActivityFeedActions from '../Shared/ActivityFeedActions';
@@ -122,7 +119,7 @@ const TaskFeedCard = ({
             <Link
               className="break-all"
               data-testid="entitylink"
-              to={prepareFeedLink(entityType, entityFQN)}
+              to={getEntityLink(entityType, entityFQN)}
               onClick={(e) => e.stopPropagation()}>
               {getNameFromFQN(entityFQN)}
             </Link>

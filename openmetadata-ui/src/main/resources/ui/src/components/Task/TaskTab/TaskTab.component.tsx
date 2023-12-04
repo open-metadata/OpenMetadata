@@ -62,7 +62,8 @@ import { updateTask, updateThread } from '../../../rest/feedsAPI';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { getEntityFQN, prepareFeedLink } from '../../../utils/FeedUtils';
+import { getEntityFQN } from '../../../utils/FeedUtils';
+import { getEntityLink } from '../../../utils/TableUtils';
 import {
   fetchOptions,
   getTaskDetailPath,
@@ -170,7 +171,7 @@ export const TaskTab = ({
             <Link
               className="break-all p-r-xss"
               data-testid="entitylink"
-              to={prepareFeedLink(entityType, entityFQN)}
+              to={getEntityLink(entityType, entityFQN)}
               onClick={(e) => e.stopPropagation()}>
               {getNameFromFQN(entityFQN)}
             </Link>

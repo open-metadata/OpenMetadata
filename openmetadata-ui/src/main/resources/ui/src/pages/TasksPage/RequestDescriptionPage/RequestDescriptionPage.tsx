@@ -28,6 +28,7 @@ import ExploreSearchCard from '../../../components/ExploreV1/ExploreSearchCard/E
 import Loader from '../../../components/Loader/Loader';
 import { SearchedDataProps } from '../../../components/SearchedData/SearchedData.interface';
 import { EntityField } from '../../../constants/Feeds.constants';
+import { TASK_SANITIZE_VALUE_REGEX } from '../../../constants/regex.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import {
   CreateThread,
@@ -74,7 +75,7 @@ const RequestDescription = () => {
   const [suggestion, setSuggestion] = useState<string>('');
 
   const sanitizeValue = useMemo(
-    () => value?.replaceAll(/^"|"$/g, '') || '',
+    () => value?.replaceAll(TASK_SANITIZE_VALUE_REGEX, '') ?? '',
     [value]
   );
 
