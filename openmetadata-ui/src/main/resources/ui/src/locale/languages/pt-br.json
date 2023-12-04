@@ -1271,6 +1271,7 @@
     "deeply-understand-table-relations-message": "Obtenha os Produtores e Consumidores de dados em uma única plataforma e acelere a produtividade. A colaboração fica ainda melhor com pessoas e dados de múltiplas ferramentas em um local centralizado.",
     "define-custom-property-for-entity": "Defina propriedades personalizadas para {{entity}} para atender às necessidades da sua organização.",
     "delete-action-description": "Excluir este {{entityType}} removerá permanentemente seus metadados do OpenMetadata.",
+    "delete-asset-from-entity-type": "Deleting this will remove {{entityType}} from the entity.",
     "delete-entity-permanently": "Uma vez que você exclua este {{entityType}}, ele será removido permanentemente.",
     "delete-entity-type-action-description": "Excluir este {{entityType}} removerá permanentemente seus metadados do OpenMetadata.",
     "delete-message-question-mark": "Excluir Mensagem?",

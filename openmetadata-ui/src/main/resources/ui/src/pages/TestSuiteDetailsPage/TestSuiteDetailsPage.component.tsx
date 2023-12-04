@@ -38,6 +38,7 @@ import {
 } from '../../components/PermissionProvider/PermissionProvider.interface';
 import DataQualityTab from '../../components/ProfilerDashboard/component/DataQualityTab';
 import { ACTION_TYPE, ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { EntityType } from '../../enums/entity.enum';
 import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
 import { Include } from '../../generated/type/include';
@@ -345,7 +346,7 @@ const TestSuiteDetailsPage = () => {
                 deleted={testSuite?.deleted}
                 entityId={testSuite?.id}
                 entityName={testSuite?.fullyQualifiedName as string}
-                entityType="testSuite"
+                entityType={EntityType.TEST_SUITE}
               />
             </Space>
           </Space>

@@ -1271,6 +1271,7 @@
     "deeply-understand-table-relations-message": "Erhalten Sie die Produzenten und Verbraucher von Daten auf einer einzigen Plattform und steigern Sie die Produktivität. Die Zusammenarbeit wird besser mit Menschen und Daten aus verschiedenen Tools an zentraler Stelle.",
     "define-custom-property-for-entity": "Definieren Sie benutzerdefinierte Eigenschaften für {{entity}}, um Ihren organisatorischen Anforderungen gerecht zu werden.",
     "delete-action-description": "Das Löschen dieser {{entityType}} entfernt ihre Metadaten dauerhaft aus OpenMetadata.",
+    "delete-asset-from-entity-type": "Deleting this will remove {{entityType}} from the entity.",
     "delete-entity-permanently": "Nach dem Löschen dieser {{entityType}} wird sie dauerhaft entfernt.",
     "delete-entity-type-action-description": "Das Löschen dieser {{entityType}} entfernt ihre Metadaten dauerhaft aus OpenMetadata.",
     "delete-message-question-mark": "Nachricht löschen?",
