@@ -13,7 +13,7 @@
 import { Alert, Button, Form, FormProps, Input, Modal, Space } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import {
@@ -47,6 +47,10 @@ const RetentionPeriod = ({
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    form.setFieldsValue({ retentionPeriod });
+  }, [retentionPeriod]);
 
   return (
     <div>
