@@ -181,7 +181,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
   @Override
   public EntityInterface getParentEntity(Dashboard entity, String fields) {
-    return Entity.getEntity(entity.getService(), fields, Include.NON_DELETED);
+    return Entity.getEntity(entity.getService(), fields, Include.ALL);
   }
 
   private List<EntityReference> getRelatedEntities(Dashboard dashboard, String entityType) {

@@ -152,14 +152,14 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
 
   const handleRestoreTopic = async () => {
     try {
-      await restoreTopic(topicDetails.id);
+      const { version: newVersion } = await restoreTopic(topicDetails.id);
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.topic'),
         }),
         2000
       );
-      handleToggleDelete();
+      handleToggleDelete(newVersion);
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -250,8 +250,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     getFeedCounts(EntityType.TOPIC, decodedTopicFQN, setFeedCount);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) =>
-      isSoftDelete ? handleToggleDelete() : history.push('/'),
+    (isSoftDelete?: boolean, version?: number) =>
+      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
     []
   );
 
@@ -330,6 +330,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                 domain={topicDetails?.domain}
                 editTagPermission={editTagsPermission}
                 entityFQN={decodedTopicFQN}
+                entityId={topicDetails.id}
                 entityType={EntityType.TOPIC}
                 selectedTags={topicTags}
                 onTagSelectionChange={handleTagSelection}
@@ -456,6 +457,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
+            isRecursiveDelete
             afterDeleteAction={afterDeleteAction}
             afterDomainUpdateAction={updateTopicDetailsState}
             dataAsset={topicDetails}

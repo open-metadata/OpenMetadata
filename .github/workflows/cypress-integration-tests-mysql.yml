@@ -106,9 +106,7 @@ jobs:
       - name: Start Server and Ingest Sample Data
         env:
           INGESTION_DEPENDENCY: "all"
-        run: |
-          yarn global add node-gyp
-          ./docker/run_local_docker.sh -d mysql
+        run: ./docker/run_local_docker.sh -d mysql
         timeout-minutes: 60
 
       - name: Run Cypress Tests

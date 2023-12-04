@@ -254,7 +254,7 @@ class DatabricksUnitTest(TestCase):
         "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
     )
     @patch(
-        "metadata.ingestion.source.database.databricks.legacy.metadata.DatabricksLegacySource._init_version"
+        "metadata.ingestion.source.database.databricks.metadata.DatabricksSource._init_version"
     )
     def __init__(self, methodName, test_connection, db_init_version) -> None:
         super().__init__(methodName)

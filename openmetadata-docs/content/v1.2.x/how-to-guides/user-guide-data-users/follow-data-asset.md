@@ -13,7 +13,7 @@ To follow a data asset,
 - Select a data asset.
 
 {% image
-src="/images/v1.1/how-to-guides/user-guide-for-data-stewards/data4.png"
+src="/images/v1.2/how-to-guides/user-guide-for-data-stewards/data4.png"
 alt="Select a Data Asset"
 caption="Select a Data Asset"
 /%}
@@ -21,7 +21,7 @@ caption="Select a Data Asset"
 - **Star** the data asset to start following it.
 
 {% image
-src="/images/v1.1/how-to-guides/user-guide-for-data-stewards/data5.png"
+src="/images/v1.2/how-to-guides/user-guide-for-data-stewards/data5.png"
 alt="Star the Data Asset"
 caption="Star the Data Asset"
 /%}
@@ -29,7 +29,7 @@ caption="Star the Data Asset"
 The data assets you are following will be displayed in the ‘My Data’ page on the right-hand side.
 
 {% image
-src="/images/v1.1/how-to-guides/user-guide-for-data-stewards/data6.png"
+src="/images/v1.2/how-to-guides/user-guide-for-data-stewards/data6.png"
 alt="Data Assets you are Following"
 caption="Data Assets you are Following"
 /%}
@@ -37,7 +37,7 @@ caption="Data Assets you are Following"
 Clicking on **View All** to check all the data assets you are following will redirect to the **Profile Page > Following Tab**.
 
 {% image
-src="/images/v1.1/how-to-guides/user-guide-for-data-stewards/profile1.png"
+src="/images/v1.2/how-to-guides/user-guide-for-data-stewards/profile1.png"
 alt="Profile Page: Following Tab"
 caption="Profile Page: Following Tab"
 /%}

@@ -14,6 +14,7 @@
 /// <reference types="cypress" />
 
 import {
+  addOwner,
   interceptURL,
   toastNotification,
   verifyResponseStatusCode,
@@ -22,6 +23,7 @@ import {
 import { createEntityTable, hardDeleteService } from '../../common/EntityUtils';
 import {
   createAndUpdateDescriptionTask,
+  createDescriptionTask,
   editAssignee,
   verifyTaskDetails,
 } from '../../common/TaskUtils';
@@ -191,6 +193,40 @@ describe('Task flow should work', () => {
         term: entity.displayName ?? entity.name,
         tagCount: entity.tags.length ?? 0,
       });
+    });
+  });
+
+  it('Asignee field should be disabled for owned entity tasks', () => {
+    interceptURL(
+      'GET',
+      `/api/v1/${ENTITY_TABLE.entity}/name/*`,
+      'getEntityDetails'
+    );
+
+    visitEntityDetailsPage({
+      term: ENTITY_TABLE.term,
+      serviceName: ENTITY_TABLE.serviceName,
+      entity: ENTITY_TABLE.entity,
+    });
+
+    addOwner('Adam Rodriguez', 'tables');
+
+    cy.get('[data-testid="request-description"]').click();
+
+    cy.wait('@getEntityDetails').then((res) => {
+      const entity = res.response.body;
+
+      // create description task and verify asignee field to have owner
+      // and should be disbaled
+
+      createDescriptionTask(
+        {
+          ...ENTITY_TABLE,
+          assignee: 'Adam Rodriguez',
+          term: entity.displayName ?? entity.name,
+        },
+        true
+      );
     });
   });
 });
