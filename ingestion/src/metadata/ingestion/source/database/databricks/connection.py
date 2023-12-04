@@ -13,9 +13,8 @@
 Source connection handler
 """
 from functools import partial
-from typing import Optional, Union
+from typing import Optional
 
-from databricks.sdk import WorkspaceClient
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import DatabaseError
 from sqlalchemy.inspection import inspect
@@ -37,11 +36,9 @@ from metadata.ingestion.connections.test_connections import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.databricks.client import DatabricksClient
-from metadata.ingestion.source.database.databricks.models import DatabricksTable
 from metadata.ingestion.source.database.databricks.queries import (
     DATABRICKS_GET_CATALOGS,
 )
-from metadata.utils.db_utils import get_host_from_host_port
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -52,16 +49,10 @@ def get_connection_url(connection: DatabricksConnection) -> str:
     return url
 
 
-def get_connection(connection: DatabricksConnection) -> Union[Engine, WorkspaceClient]:
+def get_connection(connection: DatabricksConnection) -> Engine:
     """
     Create connection
     """
-
-    if connection.useUnityCatalog:
-        return WorkspaceClient(
-            host=get_host_from_host_port(connection.hostPort),
-            token=connection.token.get_secret_value(),
-        )
 
     if connection.httpPath:
         if not connection.connectionArguments:
@@ -77,7 +68,7 @@ def get_connection(connection: DatabricksConnection) -> Union[Engine, WorkspaceC
 
 def test_connection(
     metadata: OpenMetadata,
-    connection: Union[Engine, WorkspaceClient],
+    connection: Engine,
     service_connection: DatabricksConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
 ) -> None:
@@ -99,49 +90,19 @@ def test_connection(
         except DatabaseError as soe:
             logger.debug(f"Failed to fetch catalogs due to: {soe}")
 
-    if service_connection.useUnityCatalog:
-        table_obj = DatabricksTable()
-
-        def get_catalogs(connection: WorkspaceClient, table_obj: DatabricksTable):
-            for catalog in connection.catalogs.list():
-                table_obj.catalog_name = catalog.name
-                break
-
-        def get_schemas(connection: WorkspaceClient, table_obj: DatabricksTable):
-            for schema in connection.schemas.list(catalog_name=table_obj.catalog_name):
-                table_obj.schema_name = schema.name
-                break
-
-        def get_tables(connection: WorkspaceClient, table_obj: DatabricksTable):
-            for table in connection.tables.list(
-                catalog_name=table_obj.catalog_name, schema_name=table_obj.schema_name
-            ):
-                table_obj.name = table.name
-                break
-
-        test_fn = {
-            "CheckAccess": connection.catalogs.list,
-            "GetDatabases": partial(get_catalogs, connection, table_obj),
-            "GetSchemas": partial(get_schemas, connection, table_obj),
-            "GetTables": partial(get_tables, connection, table_obj),
-            "GetViews": partial(get_tables, connection, table_obj),
-            "GetQueries": client.test_query_api_access,
-        }
-
-    else:
-        inspector = inspect(connection)
-        test_fn = {
-            "CheckAccess": partial(test_connection_engine_step, connection),
-            "GetSchemas": inspector.get_schema_names,
-            "GetTables": inspector.get_table_names,
-            "GetViews": inspector.get_view_names,
-            "GetDatabases": partial(
-                test_database_query,
-                engine=connection,
-                statement=DATABRICKS_GET_CATALOGS,
-            ),
-            "GetQueries": client.test_query_api_access,
-        }
+    inspector = inspect(connection)
+    test_fn = {
+        "CheckAccess": partial(test_connection_engine_step, connection),
+        "GetSchemas": inspector.get_schema_names,
+        "GetTables": inspector.get_table_names,
+        "GetViews": inspector.get_view_names,
+        "GetDatabases": partial(
+            test_database_query,
+            engine=connection,
+            statement=DATABRICKS_GET_CATALOGS,
+        ),
+        "GetQueries": client.test_query_api_access,
+    }
 
     test_connection_steps(
         metadata=metadata,

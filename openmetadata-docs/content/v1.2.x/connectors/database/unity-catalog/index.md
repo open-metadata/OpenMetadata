@@ -1,9 +1,9 @@
 ---
-title: Databricks
-slug: /connectors/database/databricks
+title: Unity Catalog
+slug: /connectors/database/unity-catalog
 ---
 
-# Databricks
+# Unity Catalog
 
 {% multiTablesWrapper %}
 
@@ -12,7 +12,7 @@ slug: /connectors/database/databricks
 | Stage              | PROD                         |
 | Metadata           | {% icon iconName="check" /%} |
 | Query Usage        | {% icon iconName="check" /%} |
-| Data Profiler      | {% icon iconName="check" /%} |
+| Data Profiler      | {% icon iconName="cross" /%} |
 | Data Quality       | {% icon iconName="check" /%} |
 | Stored Procedures            | {% icon iconName="cross" /%} |
 | DBT                | {% icon iconName="check" /%} |
@@ -26,20 +26,18 @@ slug: /connectors/database/databricks
 
 {% /multiTablesWrapper %}
 
-In this section, we provide guides and references to use the Databricks connector.
+In this section, we provide guides and references to use the Unity Catalog connector.
 
-Configure and schedule Databricks metadata and profiler workflows from the OpenMetadata UI:
+Configure and schedule Unity Catalog metadata workflow from the OpenMetadata UI:
 
 - [Requirements](#requirements)
-- [Unity Catalog](#unity-catalog)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Query Usage](/connectors/ingestion/workflows/usage)
-- [Data Profiler](/connectors/ingestion/workflows/profiler)
 - [Data Quality](/connectors/ingestion/workflows/data-quality)
 - [Lineage](/connectors/ingestion/lineage)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 
-{% partial file="/v1.2/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/databricks/yaml"} /%}
+{% partial file="/v1.2/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/unity-catalog/yaml"} /%}
 
 {% partial file="/v1.2/connectors/external-ingestion-deployment.md" /%}
 
@@ -47,19 +45,16 @@ Configure and schedule Databricks metadata and profiler workflows from the OpenM
 To deploy OpenMetadata, check the Deployment guides.
 {%/inlineCallout%}
 
-## Unity Catalog
-
-If you are using unity catalog in Databricks, then checkout the [Unity Catalog](/connectors/database/unity-catalog) connector.
 
 ## Metadata Ingestion
 
 {% partial 
   file="/v1.2/connectors/metadata-ingestion-ui.md" 
   variables={
-    connector: "Databricks", 
-    selectServicePath: "/images/v1.2/connectors/databricks/select-service.png",
-    addNewServicePath: "/images/v1.2/connectors/databricks/add-new-service.png",
-    serviceConnectionPath: "/images/v1.2/connectors/databricks/service-connection.png",
+    connector: "Unity Catalog", 
+    selectServicePath: "/images/v1.2/connectors/unitycatalog/select-service.png",
+    addNewServicePath: "/images/v1.2/connectors/unitycatalog/add-new-service.png",
+    serviceConnectionPath: "/images/v1.2/connectors/unitycatalog/service-connection.png",
 } 
 /%}
 

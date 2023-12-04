@@ -142,6 +142,7 @@ export const METABASE = metabase;
 export const AZURESQL = azuresql;
 export const CLICKHOUSE = clickhouse;
 export const DATABRICK = databrick;
+export const UNITYCATALOG = databrick;
 export const IBMDB2 = ibmdb2;
 export const DORIS = doris;
 export const DRUID = druid;

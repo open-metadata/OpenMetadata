@@ -50,7 +50,8 @@
         "MongoDB",
         "Couchbase",
         "Greenplum",
-        "Doris"
+        "Doris",
+        "UnityCatalog"
       ],
       "javaEnums": [
         {
@@ -160,7 +161,11 @@
         },
         {
           "name": "Doris"
+        },
+        {
+          "name": "UnityCatalog"
         }
+        
       ]
     },
     "databaseConnection": {
@@ -274,6 +279,9 @@
             },
             {
               "$ref": "./connections/database/dorisConnection.json"
+            },
+            {
+              "$ref": "./connections/database/unityCatalogConnection.json"
             }
           ]
         }

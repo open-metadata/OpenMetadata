@@ -62,6 +62,7 @@ the following docs to run the Ingestion Framework in any orchestrator externally
 - [Snowflake](/connectors/database/snowflake)
 - [SQLite](/connectors/database/sqlite)
 - [Trino](/connectors/database/trino)
+- [Unity Catalog](/connectors/database/unity-catalog)
 - [Vertica](/connectors/database/vertica)
 
 ## Dashboard Services

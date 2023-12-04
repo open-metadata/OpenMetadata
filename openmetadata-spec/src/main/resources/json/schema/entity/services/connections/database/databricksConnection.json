@@ -64,12 +64,6 @@
       "type": "integer",
       "default": 120
     },
-    "useUnityCatalog": {
-      "title": "Use Unity Catalog",
-      "description": "Use unity catalog for fetching the metadata instead of using the hive metastore",
-      "type": "boolean",
-      "default": false
-    },
     "connectionOptions": {
       "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
