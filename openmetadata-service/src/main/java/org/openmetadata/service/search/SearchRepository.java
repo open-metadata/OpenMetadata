@@ -36,6 +36,7 @@ import java.util.SortedMap;
 import javax.json.JsonObject;
 import javax.ws.rs.core.Response;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -68,6 +69,8 @@ public class SearchRepository {
 
   private final String language;
 
+  @Getter @Setter private SearchIndexFactory searchIndexFactory;
+
   private final List<String> inheritableFields =
       List.of(Entity.FIELD_OWNER, Entity.FIELD_DOMAIN, Entity.FIELD_DISABLED);
 
@@ -83,13 +86,14 @@ public class SearchRepository {
 
   public static final String ELASTIC_SEARCH_EXTENSION = "service.eventPublisher";
 
-  public SearchRepository(ElasticSearchConfiguration config) {
+  public SearchRepository(ElasticSearchConfiguration config, SearchIndexFactory searchIndexFactory) {
     elasticSearchConfiguration = config;
     if (config != null && config.getSearchType() == ElasticSearchConfiguration.SearchType.OPENSEARCH) {
       searchClient = new OpenSearchClient(config);
     } else {
       searchClient = new ElasticSearchClient(config);
     }
+    this.searchIndexFactory = searchIndexFactory;
     this.language = config != null ? config.getSearchIndexMappingLanguage().value() : "en";
     loadIndexMappings();
     Entity.setSearchRepository(this);
@@ -104,16 +108,27 @@ public class SearchRepository {
   }
 
   private void loadIndexMappings() {
+    Set<String> entities;
     entityIndexMap = new HashMap<>();
     try (InputStream in = getClass().getResourceAsStream("/elasticsearch/indexMapping.json")) {
       assert in != null;
       JsonObject jsonPayload = JsonUtils.readJson(new String(in.readAllBytes())).asJsonObject();
-      Set<String> entities = jsonPayload.keySet();
+      entities = jsonPayload.keySet();
       for (String s : entities) {
         entityIndexMap.put(s, JsonUtils.readValue(jsonPayload.get(s).toString(), IndexMapping.class));
       }
     } catch (Exception e) {
       throw new RuntimeException("Failed to load indexMapping.json");
+    }
+    try (InputStream in2 = getClass().getResourceAsStream("/elasticsearch/collate/indexMapping.json")) {
+      assert in2 != null;
+      JsonObject jsonPayload = JsonUtils.readJson(new String(in2.readAllBytes())).asJsonObject();
+      entities = jsonPayload.keySet();
+      for (String s : entities) {
+        entityIndexMap.put(s, JsonUtils.readValue(jsonPayload.get(s).toString(), IndexMapping.class));
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to load indexMapping.json");
     }
   }
 
@@ -200,7 +215,7 @@ public class SearchRepository {
       String entityType = entity.getEntityReference().getType();
       try {
         IndexMapping indexMapping = entityIndexMap.get(entityType);
-        SearchIndex index = SearchIndexFactory.buildIndex(entityType, entity);
+        SearchIndex index = searchIndexFactory.buildIndex(entityType, entity);
         String doc = JsonUtils.pojoToJson(index.buildESDoc());
         searchClient.createEntity(indexMapping.getIndexName(), entityId, doc);
       } catch (Exception ie) {
@@ -224,7 +239,7 @@ public class SearchRepository {
       String entityId = entity.getId().toString();
       try {
         IndexMapping indexMapping = entityIndexMap.get(entityType);
-        SearchIndex index = SearchIndexFactory.buildIndex(entityType, entity);
+        SearchIndex index = searchIndexFactory.buildIndex(entityType, entity);
         String doc = JsonUtils.pojoToJson(index.buildESDoc());
         searchClient.createTimeSeriesEntity(indexMapping.getIndexName(), entityId, doc);
       } catch (Exception ie) {
@@ -248,7 +263,7 @@ public class SearchRepository {
             && Objects.equals(entity.getVersion(), entity.getChangeDescription().getPreviousVersion())) {
           scriptTxt = getScriptWithParams(entity, doc);
         } else {
-          SearchIndex elasticSearchIndex = SearchIndexFactory.buildIndex(entityType, entity);
+          SearchIndex elasticSearchIndex = searchIndexFactory.buildIndex(entityType, entity);
           doc = elasticSearchIndex.buildESDoc();
         }
         searchClient.updateEntity(indexMapping.getIndexName(), entityId, doc, scriptTxt);
