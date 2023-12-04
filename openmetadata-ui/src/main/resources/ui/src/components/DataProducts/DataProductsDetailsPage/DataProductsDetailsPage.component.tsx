@@ -568,20 +568,22 @@ const DataProductsDetailsPage = ({
         onConfirm={onDelete}
       />
 
-      <AssetSelectionModal
-        emptyPlaceHolderText={t('message.domain-does-not-have-assets', {
-          name: getEntityName(dataProduct.domain),
-        })}
-        entityFqn={dataProductFqn}
-        open={assetModalVisible}
-        queryFilter={getQueryFilterToIncludeDomain(
-          dataProduct.domain?.fullyQualifiedName ?? '',
-          dataProduct.fullyQualifiedName ?? ''
-        )}
-        type={AssetsOfEntity.DATA_PRODUCT}
-        onCancel={() => setAssetModelVisible(false)}
-        onSave={handleAssetSave}
-      />
+      {assetModalVisible && (
+        <AssetSelectionModal
+          emptyPlaceHolderText={t('message.domain-does-not-have-assets', {
+            name: getEntityName(dataProduct.domain),
+          })}
+          entityFqn={dataProductFqn}
+          open={assetModalVisible}
+          queryFilter={getQueryFilterToIncludeDomain(
+            dataProduct.domain?.fullyQualifiedName ?? '',
+            dataProduct.fullyQualifiedName ?? ''
+          )}
+          type={AssetsOfEntity.DATA_PRODUCT}
+          onCancel={() => setAssetModelVisible(false)}
+          onSave={handleAssetSave}
+        />
+      )}
 
       <StyleModal
         open={isStyleEditing}

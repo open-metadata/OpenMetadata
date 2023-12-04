@@ -631,15 +631,17 @@ const DomainDetailsPage = ({
           }
         />
       )}
+      {assetModalVisible && (
+        <AssetSelectionModal
+          entityFqn={domainFqn}
+          open={assetModalVisible}
+          queryFilter={getQueryFilterToExcludeDomainTerms(domainFqn)}
+          type={AssetsOfEntity.DOMAIN}
+          onCancel={() => setAssetModelVisible(false)}
+          onSave={handleAssetSave}
+        />
+      )}
 
-      <AssetSelectionModal
-        entityFqn={domainFqn}
-        open={assetModalVisible}
-        queryFilter={getQueryFilterToExcludeDomainTerms(domainFqn)}
-        type={AssetsOfEntity.DOMAIN}
-        onCancel={() => setAssetModelVisible(false)}
-        onSave={handleAssetSave}
-      />
       {domain && (
         <DeleteWidgetModal
           afterDeleteAction={() => onDelete(domain.id)}

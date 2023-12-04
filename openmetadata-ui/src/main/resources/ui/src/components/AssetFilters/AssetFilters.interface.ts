@@ -10,24 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import {
+  Aggregations,
+  ElasticSearchQuery,
+} from '../../interface/search.interface';
+import { ExploreQuickFilterField } from '../Explore/ExplorePage.interface';
+import { AssetsOfEntity } from '../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 
-export interface QueryFieldValueInterface {
-  term: Record<string, string>;
-}
-
-export interface QueryFieldInterface {
-  bool: {
-    must?: Array<QueryFieldValueInterface>;
-    should?: Array<QueryFieldValueInterface>;
-  };
-}
-
-export interface QueryFilterInterface {
-  query: {
-    bool: {
-      must?: QueryFieldInterface[];
-      must_not?: QueryFieldInterface[];
-      should?: QueryFieldInterface[];
-    };
-  };
+export interface AssetFiltersProps {
+  filterData?: ExploreQuickFilterField[];
+  defaultFilter?: string[];
+  aggregations?: Aggregations;
+  onQuickFilterChange?: (query: ElasticSearchQuery | undefined) => void;
+  type: AssetsOfEntity;
+  quickFilterQuery?: ElasticSearchQuery;
 }

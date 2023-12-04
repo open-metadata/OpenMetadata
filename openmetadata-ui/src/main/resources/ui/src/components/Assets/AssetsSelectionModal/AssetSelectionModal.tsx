@@ -12,7 +12,6 @@
  */
 import { Button, Checkbox, List, Modal, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { compare } from 'fast-json-patch';
 import { EntityDetailUnion } from 'Models';
 import VirtualList from 'rc-virtual-list';
 import {
@@ -26,30 +25,35 @@ import { useTranslation } from 'react-i18next';
 import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
-import { Table } from '../../../generated/entity/data/table';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../generated/entity/domains/domain';
 import {
+  Aggregations,
+  ElasticSearchQuery,
+} from '../../../interface/search.interface';
+import {
+  addAssetsToDataProduct,
   getDataProductByName,
-  patchDataProduct,
 } from '../../../rest/dataProductAPI';
-import { getDomainByName } from '../../../rest/domainAPI';
+import { addAssetsToDomain, getDomainByName } from '../../../rest/domainAPI';
 import {
   addAssetsToGlossaryTerm,
   getGlossaryTermByFQN,
 } from '../../../rest/glossaryAPI';
 import { searchQuery } from '../../../rest/searchAPI';
-import {
-  getAPIfromSource,
-  getAssetsFields,
-  getEntityAPIfromSource,
-} from '../../../utils/Assets/AssetsUtils';
+import { getAssetsPageQuickFilters } from '../../../utils/AdvancedSearchUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityUtils';
-import { getDecodedFqn } from '../../../utils/StringsUtils';
+import {
+  getAggregations,
+  getSelectedValuesFromQuickFilter,
+} from '../../../utils/Explore.utils';
+import { getDecodedFqn, getEncodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import AssetFilters from '../../AssetFilters/AssetFilters.component';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import TableDataCardV2 from '../../common/TableDataCardV2/TableDataCardV2';
+import { ExploreQuickFilterField } from '../../Explore/ExplorePage.interface';
 import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import Loader from '../../Loader/Loader';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
@@ -80,9 +84,23 @@ export const AssetSelectionModal = ({
   const [totalCount, setTotalCount] = useState(0);
 
   const [isSaveLoading, setIsSaveLoading] = useState<boolean>(false);
+  const [aggregations, setAggregations] = useState<Aggregations>();
+  const [selectedQuickFilters, setSelectedQuickFilters] = useState<
+    ExploreQuickFilterField[]
+  >([] as ExploreQuickFilterField[]);
+  const [quickFilterQuery, setQuickFilterQuery] = useState<
+    ElasticSearchQuery | undefined
+  >();
+  const [updatedQueryFilter, setUpdatedQueryFilter] =
+    useState<ElasticSearchQuery>(queryFilter);
 
   const fetchEntities = useCallback(
-    async ({ searchText = '', page = 1, index = activeFilter }) => {
+    async ({
+      searchText = '',
+      page = 1,
+      index = activeFilter,
+      updatedQueryFilter,
+    }) => {
       try {
         setIsLoading(true);
         const res = await searchQuery({
@@ -90,12 +108,13 @@ export const AssetSelectionModal = ({
           pageSize: PAGE_SIZE_MEDIUM,
           searchIndex: index,
           query: searchText,
-          queryFilter: queryFilter,
+          queryFilter: updatedQueryFilter,
         });
         const hits = res.hits.hits as SearchedDataProps['data'];
         setTotalCount(res.hits.total.value ?? 0);
         setItems(page === 1 ? hits : (prevItems) => [...prevItems, ...hits]);
         setPageNumber(page);
+        setAggregations(getAggregations(res?.aggregations));
       } catch (_) {
         // Nothing here
       } finally {
@@ -122,10 +141,29 @@ export const AssetSelectionModal = ({
   }, [type, entityFqn]);
 
   useEffect(() => {
+    const dropdownItems = getAssetsPageQuickFilters(type);
+
+    setSelectedQuickFilters(
+      dropdownItems.map((item) => ({
+        ...item,
+        value: getSelectedValuesFromQuickFilter(
+          item,
+          dropdownItems,
+          undefined // pass in state variable
+        ),
+      }))
+    );
+  }, [type]);
+
+  useEffect(() => {
     if (open) {
-      fetchEntities({ index: activeFilter, searchText: search });
+      fetchEntities({
+        index: activeFilter,
+        searchText: search,
+        updatedQueryFilter,
+      });
     }
-  }, [open, activeFilter, search, type]);
+  }, [open, activeFilter, search, type, updatedQueryFilter]);
 
   useEffect(() => {
     if (open) {
@@ -166,171 +204,91 @@ export const AssetSelectionModal = ({
     }
   };
 
-  const getJsonPatchObject = (entity: Table) => {
-    if (!activeEntity) {
-      return [];
-    }
-    const { id, description, fullyQualifiedName, name, displayName } =
-      activeEntity;
-    const patchObj = {
-      id,
-      description,
-      fullyQualifiedName,
-      name,
-      displayName,
-      type: type === AssetsOfEntity.DATA_PRODUCT ? 'dataProduct' : 'domain',
-    };
-
-    if (type === AssetsOfEntity.DATA_PRODUCT) {
-      const jsonPatch = compare(entity, {
-        ...entity,
-        dataProducts: [...(entity.dataProducts ?? []), patchObj],
-      });
-
-      return jsonPatch;
-    } else {
-      const jsonPatch = compare(entity, {
-        ...entity,
-        domain: patchObj,
-      });
-
-      return jsonPatch;
-    }
-  };
-
-  const dataProductsSave = async () => {
-    try {
-      setIsSaveLoading(true);
-      if (!activeEntity) {
-        return;
-      }
-
-      const entities = [...(selectedItems?.values() ?? [])].map((item) => {
-        return getEntityReferenceFromEntity(item, item.entityType);
-      });
-
-      const newEntities = entities.filter((entity) => {
-        const entityKey = entity.id;
-
-        return !((activeEntity as DataProduct).assets ?? []).some(
-          (asset) => asset.id === entityKey
-        );
-      });
-
-      if (newEntities.length === 0) {
-        onSave?.();
-        onCancel();
-        setIsSaveLoading(false);
-
-        return;
-      }
-
-      const updatedActiveEntity = {
-        ...activeEntity,
-        assets: [
-          ...((activeEntity as DataProduct).assets ?? []),
-          ...newEntities,
-        ],
-      };
-
-      const jsonPatch = compare(activeEntity, updatedActiveEntity);
-      await patchDataProduct(activeEntity.id, jsonPatch);
-      await new Promise((resolve) => {
-        setTimeout(() => {
-          resolve('');
-          onSave?.();
-        }, ES_UPDATE_DELAY);
-      });
-    } catch (err) {
-      showErrorToast(err as AxiosError);
-    } finally {
-      setIsSaveLoading(false);
-      onCancel();
-    }
-  };
-
-  const glossarySave = async () => {
-    try {
-      setIsSaveLoading(true);
-      if (!activeEntity) {
-        return;
-      }
-
-      const entities = [...(selectedItems?.values() ?? [])].map((item) => {
-        return getEntityReferenceFromEntity(item, item.entityType);
-      });
-
-      await addAssetsToGlossaryTerm(activeEntity as GlossaryTerm, entities);
-      await new Promise((resolve) => {
-        setTimeout(() => {
-          resolve('');
-          onSave?.();
-        }, ES_UPDATE_DELAY);
-      });
-    } catch (err) {
-      showErrorToast(err as AxiosError);
-    } finally {
-      setIsSaveLoading(false);
-      onCancel();
-    }
-  };
-
   const handleSave = async () => {
-    if (type === AssetsOfEntity.DATA_PRODUCT) {
-      dataProductsSave();
-    } else if (type === AssetsOfEntity.GLOSSARY) {
-      glossarySave();
-    } else {
-      try {
-        setIsSaveLoading(true);
-        const entityDetails = [...(selectedItems?.values() ?? [])].map((item) =>
-          getEntityAPIfromSource(item.entityType)(
-            item.fullyQualifiedName,
-            getAssetsFields(type)
-          )
-        );
-        const entityDetailsResponse = await Promise.allSettled(entityDetails);
-        const map = new Map();
-
-        entityDetailsResponse.forEach((response) => {
-          if (response.status === 'fulfilled') {
-            const entity = response.value;
-            entity && map.set(entity.fullyQualifiedName, entity);
-          }
-        });
-        const patchAPIPromises = [...(selectedItems?.values() ?? [])]
-          .map((item) => {
-            if (map.has(item.fullyQualifiedName) && activeEntity) {
-              const entity = map.get(item.fullyQualifiedName);
-              const jsonPatch = getJsonPatchObject(entity);
-              const api = getAPIfromSource(item.entityType);
-
-              return api(item.id, jsonPatch);
-            }
-
-            return;
-          })
-          .filter(Boolean);
-
-        await Promise.all(patchAPIPromises);
-        await new Promise((resolve) => {
-          setTimeout(() => {
-            resolve('');
-            onSave?.();
-          }, ES_UPDATE_DELAY);
-        });
-      } catch (err) {
-        showErrorToast(err as AxiosError);
-      } finally {
-        setIsSaveLoading(false);
-        onCancel();
+    try {
+      setIsSaveLoading(true);
+      if (!activeEntity) {
+        return;
       }
+
+      const entities = [...(selectedItems?.values() ?? [])].map((item) => {
+        return getEntityReferenceFromEntity(item, item.entityType);
+      });
+
+      switch (type) {
+        case AssetsOfEntity.DATA_PRODUCT:
+          await addAssetsToDataProduct(
+            getEncodedFqn(activeEntity.fullyQualifiedName ?? ''),
+            entities
+          );
+
+          break;
+        case AssetsOfEntity.GLOSSARY:
+          await addAssetsToGlossaryTerm(activeEntity as GlossaryTerm, entities);
+
+          break;
+        case AssetsOfEntity.DOMAIN:
+          await addAssetsToDomain(
+            getEncodedFqn(activeEntity.fullyQualifiedName ?? ''),
+            entities
+          );
+
+          break;
+        default:
+          // Handle other entity types here
+          break;
+      }
+
+      await new Promise((resolve) => {
+        setTimeout(() => {
+          resolve('');
+          onSave?.();
+        }, ES_UPDATE_DELAY);
+      });
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    } finally {
+      setIsSaveLoading(false);
+      onCancel();
     }
   };
 
   const onSaveAction = useCallback(() => {
     handleSave();
   }, [type, handleSave]);
+
+  const mergeFilters = useCallback(() => {
+    const mergedFilter: ElasticSearchQuery = {
+      query: {
+        bool: {
+          must: [],
+        },
+      },
+    };
+
+    // Merge must clauses
+    mergedFilter.query.bool.must = [
+      ...(queryFilter?.query?.bool?.must || []),
+      ...(quickFilterQuery?.query?.bool?.must || []),
+    ];
+
+    // Merge must_not clauses
+    if (
+      queryFilter?.query?.bool?.must_not ||
+      quickFilterQuery?.query?.bool?.should
+    ) {
+      mergedFilter.query.bool.must_not = [
+        ...(queryFilter?.query?.bool?.must_not || []),
+        ...(quickFilterQuery?.query?.bool?.should || []),
+      ];
+    }
+
+    setUpdatedQueryFilter(mergedFilter);
+  }, [quickFilterQuery, queryFilter]);
+
+  useEffect(() => {
+    mergeFilters();
+  }, [quickFilterQuery, queryFilter]);
 
   const onScroll: UIEventHandler<HTMLElement> = useCallback(
     (e) => {
@@ -428,6 +386,16 @@ export const AssetSelectionModal = ({
           searchValue={search}
           onSearch={setSearch}
         />
+
+        <div className="d-flex items-center">
+          <AssetFilters
+            aggregations={aggregations}
+            filterData={selectedQuickFilters}
+            quickFilterQuery={quickFilterQuery}
+            type={type}
+            onQuickFilterChange={(data) => setQuickFilterQuery(data)}
+          />
+        </div>
 
         {items.length > 0 && (
           <div className="border p-xs">

@@ -12,9 +12,8 @@
  *  limitations under the License.
  */
 
-import { FilterOutlined, PlusOutlined } from '@ant-design/icons';
+import { PlusOutlined } from '@ant-design/icons';
 import {
-  Badge,
   Button,
   Checkbox,
   Col,
@@ -22,7 +21,6 @@ import {
   Menu,
   MenuProps,
   notification,
-  Popover,
   Row,
   Skeleton,
   Space,
@@ -32,11 +30,9 @@ import {
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { compare } from 'fast-json-patch';
 import { t } from 'i18next';
-import { isEmpty, isObject, isString, noop } from 'lodash';
+import { isEmpty, isObject } from 'lodash';
 import { EntityDetailUnion } from 'Models';
-import Qs from 'qs';
 import React, {
   forwardRef,
   useCallback,
@@ -52,7 +48,6 @@ import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg'
 import {
   AssetsFilterOptions,
   ASSET_MENU_KEYS,
-  ASSET_SUB_MENU_FILTER,
 } from '../../../../constants/Assets.constants';
 import {
   DE_ACTIVE_COLOR,
@@ -66,19 +61,26 @@ import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../../generated/entity/domains/domain';
 import { usePaging } from '../../../../hooks/paging/usePaging';
-import { Aggregations } from '../../../../interface/search.interface';
+import {
+  Aggregations,
+  ElasticSearchQuery,
+  EsQuery,
+} from '../../../../interface/search.interface';
 import {
   getDataProductByName,
-  patchDataProduct,
+  removeAssetsFromDataProduct,
 } from '../../../../rest/dataProductAPI';
-import { getDomainByName } from '../../../../rest/domainAPI';
+import {
+  getDomainByName,
+  removeAssetsFromDomain,
+} from '../../../../rest/domainAPI';
 import {
   getGlossaryTermByFQN,
   removeAssetsFromGlossaryTerm,
 } from '../../../../rest/glossaryAPI';
 import { searchData } from '../../../../rest/miscAPI';
+import { searchQuery } from '../../../../rest/searchAPI';
 import { getAssetsPageQuickFilters } from '../../../../utils/AdvancedSearchUtils';
-import { updateDomainAssets } from '../../../../utils/Assets/AssetsUtils';
 import { getCountBadge, Transi18next } from '../../../../utils/CommonUtils';
 import {
   getEntityName,
@@ -92,8 +94,8 @@ import { getEntityTypeFromSearchIndex } from '../../../../utils/SearchUtils';
 import {
   escapeESReservedCharacters,
   getDecodedFqn,
+  getEncodedFqn,
 } from '../../../../utils/StringsUtils';
-import { getEntityIcon } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/ManageButtonContentItem.component';
@@ -124,7 +126,6 @@ const AssetsTabs = forwardRef(
       isSummaryPanelOpen,
       onAddAsset,
       onRemoveAsset,
-      assetCount,
       queryFilter,
       isEntityDeleted = false,
       type = AssetsOfEntity.GLOSSARY,
@@ -133,15 +134,17 @@ const AssetsTabs = forwardRef(
     }: AssetsTabsProps,
     ref
   ) => {
-    const popupRef = React.useRef<HTMLElement>(null);
     const [itemCount, setItemCount] = useState<Record<EntityType, number>>(
       {} as Record<EntityType, number>
     );
 
-    const [activeFilter, setActiveFilter] = useState<SearchIndex[]>([]);
+    const [activeFilter, _] = useState<SearchIndex[]>([]);
     const { fqn } = useParams<{ fqn: string }>();
     const [isLoading, setIsLoading] = useState(true);
     const [data, setData] = useState<SearchedDataProps['data']>([]);
+    const [quickFilterQuery, setQuickFilterQuery] = useState<
+      ElasticSearchQuery | undefined
+    >();
     const {
       currentPage,
       pageSize,
@@ -175,21 +178,29 @@ const AssetsTabs = forwardRef(
     const [selectedItems, setSelectedItems] =
       useState<Map<string, EntityDetailUnion>>();
     const [aggregations, setAggregations] = useState<Aggregations>();
+    const [selectedFilter, setSelectedFilter] = useState<string[]>([]); // Contains menu selection
     const [selectedQuickFilters, setSelectedQuickFilters] = useState<
       ExploreQuickFilterField[]
     >([] as ExploreQuickFilterField[]);
-
-    const parsedQueryString = Qs.parse(
-      location.search.startsWith('?')
-        ? location.search.substr(1)
-        : location.search
+    const [filters, setFilters] = useState<ExploreQuickFilterField[]>(
+      [] as ExploreQuickFilterField[]
     );
+    const [searchValue, setSearchValue] = useState('');
 
-    const searchQuery = isString(parsedQueryString.search)
-      ? parsedQueryString.search
-      : '';
+    const handleMenuClick = ({ key }: { key: string }) => {
+      setSelectedFilter((prevSelected) => [...prevSelected, key]);
+    };
 
-    const [searchValue, setSearchValue] = useState(searchQuery);
+    const filterMenu = useMemo(
+      () => (
+        <Menu selectedKeys={selectedFilter} onClick={handleMenuClick}>
+          {filters.map((filter) => (
+            <Menu.Item key={filter.key}>{filter.label}</Menu.Item>
+          ))}
+        </Menu>
+      ),
+      [selectedFilter, filters]
+    );
 
     const queryParam = useMemo(() => {
       switch (type) {
@@ -204,7 +215,9 @@ const AssetsTabs = forwardRef(
           )}")`;
 
         case AssetsOfEntity.TEAM:
-          return `(owner.fullyQualifiedName:"${fqn}")`;
+          return `(owner.fullyQualifiedName:"${escapeESReservedCharacters(
+            fqn
+          )}")`;
 
         case AssetsOfEntity.MY_DATA:
         case AssetsOfEntity.FOLLOWING:
@@ -225,37 +238,32 @@ const AssetsTabs = forwardRef(
       }) => {
         try {
           setIsLoading(true);
-          const res = await searchData(
-            searchValue,
-            page,
-            pageSize,
-            queryParam,
-            '',
-            '',
-            index
-          );
-
-          setAggregations(getAggregations(res?.data.aggregations));
-
-          // Extract useful details from the Response
-          const totalCount = res?.data?.hits?.total.value ?? 0;
-          const hits = res?.data?.hits?.hits;
+          const res = await searchQuery({
+            pageNumber: page,
+            pageSize: pageSize,
+            searchIndex: index,
+            query: searchValue,
+            filters: queryParam,
+            queryFilter: quickFilterQuery,
+          });
+          const hits = res.hits.hits as SearchedDataProps['data'];
+          const totalCount = res?.hits?.total.value ?? 0;
 
           // Find EntityType for selected searchIndex
           const entityType = AssetsFilterOptions.find((f) =>
             activeFilter.includes(f.value)
           )?.label;
 
-          // Update states
-          handlePagingChange({ total: totalCount });
           entityType &&
             setItemCount((prevCount) => ({
               ...prevCount,
               [entityType]: totalCount,
             }));
-          setData(hits as SearchedDataProps['data']);
 
-          // Select first card to show summary right panel
+          handlePagingChange({ total: res.hits.total.value ?? 0 });
+          setData(hits);
+          setAggregations(getAggregations(res?.aggregations));
+
           hits[0] && setSelectedCard(hits[0]._source as SourceType);
         } catch (_) {
           // Nothing here
@@ -263,7 +271,14 @@ const AssetsTabs = forwardRef(
           setIsLoading(false);
         }
       },
-      [activeFilter, currentPage, pageSize, searchValue]
+      [
+        activeFilter,
+        currentPage,
+        pageSize,
+        searchValue,
+        queryParam,
+        quickFilterQuery,
+      ]
     );
 
     const hideNotification = () => {
@@ -283,14 +298,6 @@ const AssetsTabs = forwardRef(
 
     const handleAssetButtonVisibleChange = (newVisible: boolean) =>
       setVisible(newVisible);
-
-    const handleActiveFilter = (key: SearchIndex) => {
-      if (activeFilter.includes(key)) {
-        setActiveFilter((prev) => prev.filter((item) => item !== key));
-      } else {
-        setActiveFilter((prev) => [...prev, key]);
-      }
-    };
 
     const fetchCurrentEntity = useCallback(async () => {
       let data;
@@ -339,20 +346,17 @@ const AssetsTabs = forwardRef(
       });
     }, [activeFilter, itemCount]);
 
-    const getAssetMenuCount = useCallback(
-      (key: EntityType) =>
-        ASSET_SUB_MENU_FILTER.find((item) => item.key === key)
-          ?.children.map((item) => itemCount[item.value] ?? 0)
-          ?.reduce((acc, cv) => acc + cv, 0),
-      [itemCount]
-    );
-
     const items: ItemType[] = [
       {
         label: (
           <ManageButtonItemLabel
             description={t('message.delete-asset-from-entity-type', {
-              entityType: t('label.glossary-term-lowercase'),
+              entityType:
+                type === AssetsOfEntity.GLOSSARY
+                  ? t('label.glossary-term-lowercase')
+                  : type === AssetsOfEntity.DOMAIN
+                  ? t('label.domain-lowercase')
+                  : t('label.data-product-lowercase'),
             })}
             icon={<DeleteIcon color={DE_ACTIVE_COLOR} width="18px" />}
             id="delete-button"
@@ -368,84 +372,10 @@ const AssetsTabs = forwardRef(
       },
     ];
 
-    const getOptions = useCallback(
-      (
-        option: {
-          label: string;
-          key: EntityType | SearchIndex;
-          value?: EntityType;
-        },
-        isChildren?: boolean
-      ) => {
-        const assetCount = isChildren
-          ? itemCount[option.value as EntityType]
-          : getAssetMenuCount(option.key as EntityType);
-
-        return {
-          label: isChildren ? (
-            <div className="w-full d-flex justify-between">
-              <div className="w-full d-flex items-center justify-between p-r-xss">
-                <span className="d-flex items-center">
-                  <span className="m-r-xs w-4 d-flex">
-                    {getEntityIcon(option.key)}
-                  </span>
-
-                  <Typography.Text
-                    className="asset-sub-menu-title text-color-inherit"
-                    ellipsis={{ tooltip: true }}>
-                    {option.label}
-                  </Typography.Text>
-                </span>
-
-                <span>
-                  {getCountBadge(assetCount, 'asset-badge-container')}
-                </span>
-              </div>
-              <Checkbox
-                checked={activeFilter.includes(option.key as SearchIndex)}
-                className="asset-sub-menu-checkbox"
-              />
-            </div>
-          ) : (
-            <div className="d-flex justify-between">
-              <span>{option.label}</span>
-              <span>{getCountBadge(assetCount, 'asset-badge-container')}</span>
-            </div>
-          ),
-          key: option.key,
-          value: option.key,
-        };
-      },
-      [
-        getEntityIcon,
-        handlePageChange,
-        handleActiveFilter,
-        setSelectedCard,
-        activeFilter,
-      ]
-    );
-
     const onExploreCardDelete = useCallback((source: SourceType) => {
       setAssetToDelete(source);
       setShowDeleteModal(true);
     }, []);
-
-    const filteredAssetMenus = useMemo(() => {
-      switch (type) {
-        case AssetsOfEntity.DOMAIN:
-          return ASSET_SUB_MENU_FILTER.filter(
-            (item) => item.key !== EntityType.DOMAIN
-          );
-
-        case AssetsOfEntity.GLOSSARY:
-          return ASSET_SUB_MENU_FILTER.filter(
-            (item) => item.key !== EntityType.GOVERN
-          );
-
-        default:
-          return ASSET_SUB_MENU_FILTER;
-      }
-    }, [type]);
 
     const handleCheckboxChange = (
       selected: boolean,
@@ -462,13 +392,6 @@ const AssetsTabs = forwardRef(
         return selectedItemMap;
       });
     };
-
-    const subMenuItems = useMemo(() => {
-      return filteredAssetMenus.map((option) => ({
-        ...getOptions(option),
-        children: option.children.map((item) => getOptions(item, true)),
-      }));
-    }, [filteredAssetMenus, getOptions]);
 
     const fetchCountsByEntity = async () => {
       try {
@@ -607,6 +530,53 @@ const AssetsTabs = forwardRef(
       return <div data-testid="manage-dropdown-list-container">{menus}</div>;
     }, []);
 
+    const handleQuickFiltersChange = (data: ExploreQuickFilterField[]) => {
+      const must: EsQuery[] = [];
+      data.forEach((filter) => {
+        if (!isEmpty(filter.value)) {
+          const should: EsQuery[] = [];
+          if (filter.value) {
+            filter.value.forEach((filterValue) => {
+              const term: Record<string, string> = {};
+              term[filter.key] = filterValue.key;
+              should.push({ term });
+            });
+          }
+
+          must.push({
+            bool: { should },
+          });
+        }
+      });
+
+      const quickFilterQuery = isEmpty(must)
+        ? undefined
+        : {
+            query: { bool: { must } },
+          };
+
+      setQuickFilterQuery(quickFilterQuery);
+    };
+
+    const handleQuickFiltersValueSelect = useCallback(
+      (field: ExploreQuickFilterField) => {
+        setSelectedQuickFilters((pre) => {
+          const data = pre.map((preField) => {
+            if (preField.key === field.key) {
+              return field;
+            } else {
+              return preField;
+            }
+          });
+
+          handleQuickFiltersChange(data);
+
+          return data;
+        });
+      },
+      [setSelectedQuickFilters]
+    );
+
     const assetListing = useMemo(
       () =>
         data.length ? (
@@ -715,49 +685,6 @@ const AssetsTabs = forwardRef(
               })}
             </Checkbox>
           )}
-
-          <Popover
-            align={{ targetOffset: [0, 10] }}
-            content={
-              <Menu
-                multiple
-                items={subMenuItems}
-                mode="inline"
-                openKeys={openKeys}
-                rootClassName="asset-multi-menu-selector"
-                selectedKeys={activeFilter}
-                style={{ width: 256, height: 340 }}
-                onClick={(value) => {
-                  handlePageChange(1);
-                  handleActiveFilter(value.key as SearchIndex);
-                  setSelectedCard(undefined);
-                }}
-                onOpenChange={onOpenChange}
-              />
-            }
-            getPopupContainer={(triggerNode: HTMLElement) =>
-              popupRef.current ?? triggerNode
-            }
-            key="asset-options-popover"
-            open={visible}
-            overlayClassName="ant-popover-asset"
-            placement="bottomRight"
-            showArrow={false}
-            trigger="click"
-            onOpenChange={handleAssetButtonVisibleChange}>
-            {Boolean(assetCount) && (
-              <Badge count={activeFilter.length}>
-                <Button
-                  ghost
-                  icon={<FilterOutlined />}
-                  ref={popupRef}
-                  style={{ background: 'white' }}
-                  type="primary">
-                  {t('label.filter-plural')}
-                </Button>
-              </Badge>
-            )}
-          </Popover>
         </div>
       );
     }, [
@@ -790,35 +717,23 @@ const AssetsTabs = forwardRef(
         }
 
         try {
-          let updatedEntity;
+          const entities = [...(assetsData?.values() ?? [])].map((item) => {
+            return getEntityReferenceFromEntity(
+              item,
+              (item as EntityDetailUnion).entityType
+            );
+          });
+
           switch (type) {
             case AssetsOfEntity.DATA_PRODUCT:
-              const updatedAssets = (
-                (activeEntity as DataProduct)?.assets ?? []
-              ).filter(
-                (asset) => !assetsData.some((item) => item.id === asset.id)
+              await removeAssetsFromDataProduct(
+                getEncodedFqn(activeEntity.fullyQualifiedName ?? ''),
+                entities
               );
-
-              updatedEntity = {
-                ...activeEntity,
-                assets: updatedAssets,
-              };
-              const jsonPatch = compare(activeEntity, updatedEntity);
-              const res = await patchDataProduct(
-                (activeEntity as DataProduct).id,
-                jsonPatch
-              );
-              setActiveEntity(res);
 
               break;
 
             case AssetsOfEntity.GLOSSARY:
-              const entities = [...(assetsData?.values() ?? [])].map((item) => {
-                return getEntityReferenceFromEntity(
-                  item,
-                  (item as EntityDetailUnion).entityType
-                );
-              });
               await removeAssetsFromGlossaryTerm(
                 activeEntity as GlossaryTerm,
                 entities
@@ -827,11 +742,10 @@ const AssetsTabs = forwardRef(
               break;
 
             case AssetsOfEntity.DOMAIN:
-              const selectedItemMap = new Map();
-              assetsData.forEach((item) => {
-                selectedItemMap.set(item.id, item);
-              });
-              await updateDomainAssets(undefined, type, selectedItemMap);
+              await removeAssetsFromDomain(
+                getEncodedFqn(activeEntity.fullyQualifiedName ?? ''),
+                entities
+              );
 
               break;
             default:
@@ -855,6 +769,23 @@ const AssetsTabs = forwardRef(
       },
       [type, activeEntity, entityFqn]
     );
+
+    const clearFilters = useCallback(() => {
+      setQuickFilterQuery(undefined);
+      setSelectedQuickFilters((pre) => {
+        const data = pre.map((preField) => {
+          return { ...preField, value: [] };
+        });
+
+        handleQuickFiltersChange(data);
+
+        return data;
+      });
+    }, [
+      setQuickFilterQuery,
+      handleQuickFiltersChange,
+      setSelectedQuickFilters,
+    ]);
 
     const openNotification = () => {
       notification.warning({
@@ -880,12 +811,12 @@ const AssetsTabs = forwardRef(
         index: isEmpty(activeFilter) ? [SearchIndex.ALL] : activeFilter,
         page: currentPage,
       });
-    }, [activeFilter, currentPage, pageSize, searchValue]);
+    }, [activeFilter, currentPage, pageSize, searchValue, quickFilterQuery]);
 
     useEffect(() => {
-      const dropdownItems = getAssetsPageQuickFilters();
+      const dropdownItems = getAssetsPageQuickFilters(type);
 
-      setSelectedQuickFilters(
+      setFilters(
         dropdownItems.map((item) => ({
           ...item,
           value: getSelectedValuesFromQuickFilter(
@@ -896,6 +827,32 @@ const AssetsTabs = forwardRef(
         }))
       );
     }, [type]);
+
+    useEffect(() => {
+      const updatedQuickFilters = filters
+        .filter((filter) => selectedFilter.includes(filter.key))
+        .map((selectedFilterItem) => {
+          const originalFilterItem = selectedQuickFilters?.find(
+            (filter) => filter.key === selectedFilterItem.key
+          );
+
+          return originalFilterItem || selectedFilterItem;
+        });
+
+      const newItems = updatedQuickFilters.filter(
+        (item) =>
+          !selectedQuickFilters.some(
+            (existingItem) => item.key === existingItem.key
+          )
+      );
+
+      if (newItems.length > 0) {
+        setSelectedQuickFilters((prevSelected) => [
+          ...prevSelected,
+          ...newItems,
+        ]);
+      }
+    }, [selectedFilter, selectedQuickFilters, filters]);
 
     useImperativeHandle(ref, () => ({
       refreshAssets() {
@@ -926,26 +883,44 @@ const AssetsTabs = forwardRef(
       <div
         className={classNames('assets-tab-container p-md')}
         data-testid="table-container">
-        <Row className="filters-row gap-2">
-          <Col span={24}>
-            <Searchbar
-              removeMargin
-              showClearSearch
-              placeholder={t('label.search-entity', {
-                entity: t('label.asset-plural'),
-              })}
-              searchValue={searchValue}
-              onSearch={setSearchValue}
-            />
+        <Row className="filters-row gap-2 p-l-lg">
+          <Col span={18}>
+            <div className="d-flex items-center gap-3">
+              <Dropdown overlay={filterMenu} trigger={['click']}>
+                <Button icon={<PlusOutlined />} size="small" type="primary" />
+              </Dropdown>
+              <div className="flex-1">
+                <Searchbar
+                  removeMargin
+                  showClearSearch
+                  placeholder={t('label.search-entity', {
+                    entity: t('label.asset-plural'),
+                  })}
+                  searchValue={searchValue}
+                  onSearch={setSearchValue}
+                />
+              </div>
+            </div>
           </Col>
-          <Col className="searched-data-container" span={24}>
-            <ExploreQuickFilters
-              aggregations={aggregations}
-              fields={selectedQuickFilters}
-              index={SearchIndex.ALL}
-              showDeleted={false}
-              onFieldValueSelect={noop}
-            />
+          <Col className="searched-data-container m-b-xs" span={24}>
+            <div className="d-flex justify-between">
+              <ExploreQuickFilters
+                aggregations={aggregations}
+                fields={selectedQuickFilters}
+                index={SearchIndex.ALL}
+                showDeleted={false}
+                onFieldValueSelect={handleQuickFiltersValueSelect}
+              />
+              {quickFilterQuery && (
+                <Typography.Text
+                  className="text-primary self-center cursor-pointer"
+                  onClick={clearFilters}>
+                  {t('label.clear-entity', {
+                    entity: '',
+                  })}
+                </Typography.Text>
+              )}
+            </div>
           </Col>
         </Row>
 

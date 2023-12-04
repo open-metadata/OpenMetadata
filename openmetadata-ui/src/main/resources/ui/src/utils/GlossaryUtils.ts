@@ -23,7 +23,10 @@ import { SearchIndex } from '../enums/search.enum';
 import { Glossary } from '../generated/entity/data/glossary';
 import { GlossaryTerm, Status } from '../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../generated/type/entityReference';
-import { SearchResponse } from '../interface/search.interface';
+import {
+  ElasticSearchQuery,
+  SearchResponse,
+} from '../interface/search.interface';
 import { ListGlossaryTermsParams } from '../rest/glossaryAPI';
 import { searchData } from '../rest/miscAPI';
 import { formatSearchGlossaryTermResponse } from './APIUtils';
@@ -189,23 +192,15 @@ export const getSearchedDataFromGlossaryTree = (
   }, [] as ModifiedGlossaryTerm[]);
 };
 
-export const getQueryFilterToExcludeTerm = (fqn: string) => ({
+export const getQueryFilterToExcludeTerm = (
+  fqn: string
+): ElasticSearchQuery => ({
   query: {
     bool: {
-      must: [
+      must_not: [
         {
-          bool: {
-            must: [
-              {
-                bool: {
-                  must_not: {
-                    term: {
-                      'tags.tagFQN': fqn,
-                    },
-                  },
-                },
-              },
-            ],
+          term: {
+            'tags.tagFQN': fqn,
           },
         },
       ],

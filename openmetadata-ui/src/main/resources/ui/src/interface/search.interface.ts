@@ -381,3 +381,21 @@ export type RawSuggestResponse<
     }>;
   };
 };
+
+export interface EsQuery {
+  term: Record<string, string>;
+}
+
+export interface ElasticSearchQuery {
+  query: {
+    bool: {
+      must?: Array<
+        EsQuery | { bool: { must?: EsQuery; must_not?: EsQuery[] } }
+      >;
+      must_not?: Array<
+        EsQuery | { bool: { must?: EsQuery; must_not?: EsQuery[] } }
+      >;
+      should?: EsQuery[];
+    };
+  };
+}
