@@ -72,7 +72,11 @@ const CustomMetricForm = ({
   }
 
   return (
-    <Form<CustomMetric> form={form} layout="vertical" onFinish={onFinish}>
+    <Form<CustomMetric>
+      data-testid="custom-metric-form"
+      form={form}
+      layout="vertical"
+      onFinish={onFinish}>
       <Form.Item
         label={t('label.name')}
         name="name"
@@ -110,6 +114,7 @@ const CustomMetricForm = ({
           },
         ]}>
         <Input
+          data-testid="custom-metric-name"
           disabled={isEditMode}
           placeholder={t('label.enter-entity', { entity: t('label.name') })}
         />
@@ -127,6 +132,7 @@ const CustomMetricForm = ({
             },
           ]}>
           <Select
+            data-testid="custom-metric-column"
             disabled={isEditMode}
             placeholder={t('label.please-select-entity', {
               entity: t('label.column'),
