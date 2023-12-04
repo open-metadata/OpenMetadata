@@ -403,16 +403,17 @@ class LookerSource(DashboardServiceSource):
                     project=model.project_name,
                 )
                 yield Either(right=explore_datamodel)
+                self.register_record_datamodel(datamodel_requst=explore_datamodel)
 
                 # build datamodel by our hand since ack_sink=False
-                self.context.dataModel = self._build_data_model(datamodel_name)
-                self._view_data_model = copy.deepcopy(self.context.dataModel)
+                self.context.dataModels = self._build_data_model(datamodel_name)
+                self._view_data_model = copy.deepcopy(self.context.dataModels)
 
                 # Maybe use the project_name as key too?
                 # Save the explores for when we create the lineage with the dashboards and views
                 self._explores_cache[
                     explore_datamodel.name.__root__
-                ] = self.context.dataModel  # This is the newly created explore
+                ] = self.context.dataModels  # This is the newly created explore
 
                 # We can get VIEWs from the JOINs to know the dependencies
                 # We will only try and fetch if we have the credentials
@@ -487,24 +488,23 @@ class LookerSource(DashboardServiceSource):
             view: Optional[LookMlView] = project_parser.find_view(view_name=view_name)
 
             if view:
-                yield Either(
-                    right=CreateDashboardDataModelRequest(
-                        name=build_datamodel_name(explore.model_name, view.name),
-                        displayName=view.name,
-                        description=view.description,
-                        service=self.context.dashboard_service,
-                        dataModelType=DataModelType.LookMlView.value,
-                        serviceType=DashboardServiceType.Looker.value,
-                        columns=get_columns_from_model(view),
-                        sql=project_parser.parsed_files.get(Includes(view.source_file)),
-                        # In Looker, you need to create Explores and Views within a Project
-                        project=explore.project_name,
-                    )
+                data_model_request = CreateDashboardDataModelRequest(
+                    name=build_datamodel_name(explore.model_name, view.name),
+                    displayName=view.name,
+                    description=view.description,
+                    service=self.context.dashboard_service,
+                    dataModelType=DataModelType.LookMlView.value,
+                    serviceType=DashboardServiceType.Looker.value,
+                    columns=get_columns_from_model(view),
+                    sql=project_parser.parsed_files.get(Includes(view.source_file)),
+                    # In Looker, you need to create Explores and Views within a Project
+                    project=explore.project_name,
                 )
+                yield Either(right=data_model_request)
                 self._view_data_model = self._build_data_model(
                     build_datamodel_name(explore.model_name, view.name)
                 )
-
+                self.register_record_datamodel(datamodel_requst=data_model_request)
                 yield from self.add_view_lineage(view, explore)
             else:
                 yield Either(
@@ -666,7 +666,7 @@ class LookerSource(DashboardServiceSource):
             service=self.context.dashboard_service,
         )
         yield Either(right=dashboard_request)
-        self.register_record(dashboard_request=dashboard_request)
+        self.register_record_dashboard(dashboard_request=dashboard_request)
 
     @staticmethod
     def _get_dashboard_project(dashboard_details: LookerDashboard) -> Optional[str]:

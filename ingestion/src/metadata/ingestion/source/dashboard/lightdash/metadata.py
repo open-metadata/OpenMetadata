@@ -119,7 +119,7 @@ class LightdashSource(DashboardServiceSource):
                 service=self.context.dashboard_service,
             )
             yield dashboard_request
-            self.register_record(dashboard_request=dashboard_request)
+            self.register_record_dashboard(dashboard_request=dashboard_request)
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning(

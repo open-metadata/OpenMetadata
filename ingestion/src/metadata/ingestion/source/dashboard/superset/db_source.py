@@ -109,7 +109,7 @@ class SupersetDBSource(SupersetSourceMixin):
             service=self.context.dashboard_service,
         )
         yield Either(right=dashboard_request)
-        self.register_record(dashboard_request=dashboard_request)
+        self.register_record_dashboard(dashboard_request=dashboard_request)
 
     def _get_datasource_fqn_for_lineage(
         self, chart_json: FetchChart, db_service_entity: DatabaseService
@@ -200,6 +200,8 @@ class SupersetDBSource(SupersetSourceMixin):
                         dataModelType=DataModelType.SupersetDataModel.value,
                     )
                     yield Either(right=data_model_request)
+                    self.register_record_datamodel(datamodel_requst=data_model_request)
+
                 except Exception as exc:
                     yield Either(
                         left=StackTraceError(

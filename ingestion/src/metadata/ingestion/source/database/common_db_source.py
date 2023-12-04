@@ -451,7 +451,7 @@ class CommonDbSourceService(
             yield Either(right=table_request)
 
             # Register the request that we'll handle during the deletion checks
-            self.register_record(table_request=table_request)
+            self.register_record_table_request(table_request=table_request)
 
             # Flag view as visited
             if table_type == TableType.View or view_definition:

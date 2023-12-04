@@ -161,7 +161,7 @@ class RedashSource(DashboardServiceSource):
                 ),
             )
             yield Either(right=dashboard_request)
-            self.register_record(dashboard_request=dashboard_request)
+            self.register_record_dashboard(dashboard_request=dashboard_request)
 
         except Exception as exc:
             yield Either(
