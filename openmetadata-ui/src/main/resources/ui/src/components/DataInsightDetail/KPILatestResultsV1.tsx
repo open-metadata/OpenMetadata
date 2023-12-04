@@ -37,7 +37,11 @@ const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
   }, [kpiLatestResultsRecord]);
 
   return (
-    <Space className="w-full p-t-lg p-r-xs" direction="vertical" size={48}>
+    <Space
+      className="w-full p-t-lg p-r-xs"
+      data-testid="kpi-latest-result-container"
+      direction="vertical"
+      size={48}>
       {latestResultsList.map((result, index) => {
         const name = result[0];
         const resultData = result[1];
@@ -65,7 +69,7 @@ const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
         const isTargetMet = targetResult.targetMet;
 
         return (
-          <Row key={name}>
+          <Row data-testid={name} key={name}>
             <Col className="d-flex items-center" span={24}>
               <div
                 className="kpi-days-section"
@@ -73,16 +77,20 @@ const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
                   color: KPI_WIDGET_GRAPH_COLORS[index],
                   backgroundColor: KPI_WIDGET_GRAPH_BG_COLORS[index],
                 }}>
-                {daysLeft <= 0 ? (
+                {isTargetMet ? (
                   <>
-                    <Typography.Text className="days-remaining">
+                    <Typography.Text
+                      className="days-remaining"
+                      data-testid="kpi-success">
                       <CheckCircleOutlined style={{ fontSize: '20px' }} />
                     </Typography.Text>
                   </>
                 ) : (
                   <>
-                    <Typography.Text className="days-remaining">
-                      {daysLeft}
+                    <Typography.Text
+                      className="days-remaining"
+                      data-testid="kpi-days-remaining">
+                      {daysLeft <= 0 ? 0 : daysLeft}
                     </Typography.Text>
                     <Typography.Text className="days-left">
                       {t('label.day-left', { day: 'days' })}
