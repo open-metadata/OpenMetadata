@@ -121,10 +121,12 @@ public class SearchRepository {
       throw new RuntimeException("Failed to load indexMapping.json");
     }
     try (InputStream in2 = getClass().getResourceAsStream("/elasticsearch/collate/indexMapping.json")) {
-      JsonObject jsonPayload = JsonUtils.readJson(new String(in2.readAllBytes())).asJsonObject();
-      entities = jsonPayload.keySet();
-      for (String s : entities) {
-        entityIndexMap.put(s, JsonUtils.readValue(jsonPayload.get(s).toString(), IndexMapping.class));
+      if (in2 != null) {
+        JsonObject jsonPayload = JsonUtils.readJson(new String(in2.readAllBytes())).asJsonObject();
+        entities = jsonPayload.keySet();
+        for (String s : entities) {
+          entityIndexMap.put(s, JsonUtils.readValue(jsonPayload.get(s).toString(), IndexMapping.class));
+        }
       }
     } catch (Exception e) {
       LOG.warn("Failed to load indexMapping.json");
