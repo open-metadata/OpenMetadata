@@ -72,7 +72,7 @@ import org.openmetadata.service.util.ResultList;
 public class DashboardServiceResource
     extends ServiceEntityResource<DashboardService, DashboardServiceRepository, DashboardConnection> {
   public static final String COLLECTION_PATH = "v1/services/dashboardServices";
-  static final String FIELDS = "owner,domain";
+  static final String FIELDS = "owner,domain,sourceHash";
 
   public DashboardServiceResource(Authorizer authorizer) {
     super(Entity.DASHBOARD_SERVICE, authorizer, ServiceType.DASHBOARD);
@@ -422,7 +422,8 @@ public class DashboardServiceResource
     return repository
         .copy(new DashboardService(), create, user)
         .withServiceType(create.getServiceType())
-        .withConnection(create.getConnection());
+        .withConnection(create.getConnection())
+        .withSourceHash(create.getSourceHash());
   }
 
   @Override

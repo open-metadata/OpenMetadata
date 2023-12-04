@@ -72,7 +72,7 @@ import org.openmetadata.service.util.ResultList;
 public class PipelineServiceResource
     extends ServiceEntityResource<PipelineService, PipelineServiceRepository, PipelineConnection> {
   public static final String COLLECTION_PATH = "v1/services/pipelineServices/";
-  static final String FIELDS = "pipelines,owner,domain";
+  static final String FIELDS = "pipelines,owner,domain,sourceHash";
 
   @Override
   public PipelineService addHref(UriInfo uriInfo, PipelineService service) {
@@ -438,7 +438,8 @@ public class PipelineServiceResource
     return repository
         .copy(new PipelineService(), create, user)
         .withServiceType(create.getServiceType())
-        .withConnection(create.getConnection());
+        .withConnection(create.getConnection())
+        .withSourceHash(create.getSourceHash());
   }
 
   @Override

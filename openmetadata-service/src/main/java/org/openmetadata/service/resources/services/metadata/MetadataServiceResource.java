@@ -78,7 +78,7 @@ public class MetadataServiceResource
     extends ServiceEntityResource<MetadataService, MetadataServiceRepository, MetadataConnection> {
   public static final String OPENMETADATA_SERVICE = "OpenMetadata";
   public static final String COLLECTION_PATH = "v1/services/metadataServices/";
-  public static final String FIELDS = "pipelines,owner,tags";
+  public static final String FIELDS = "pipelines,owner,tags,sourceHash";
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
@@ -463,7 +463,8 @@ public class MetadataServiceResource
     return repository
         .copy(new MetadataService(), create, user)
         .withServiceType(create.getServiceType())
-        .withConnection(create.getConnection());
+        .withConnection(create.getConnection())
+        .withSourceHash(create.getSourceHash());
   }
 
   @Override
