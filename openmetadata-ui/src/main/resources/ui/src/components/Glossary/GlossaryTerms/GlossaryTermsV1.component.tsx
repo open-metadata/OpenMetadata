@@ -35,6 +35,7 @@ import { searchData } from '../../../rest/miscAPI';
 import { getCountBadge, getFeedCounts } from '../../../utils/CommonUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import { getQueryFilterToExcludeTerm } from '../../../utils/GlossaryUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getGlossaryTermsVersionsPath } from '../../../utils/RouterUtils';
 import { escapeESReservedCharacters } from '../../../utils/StringsUtils';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
@@ -79,6 +80,8 @@ const GlossaryTermsV1 = ({
   const [assetModalVisible, setAssetModalVisible] = useState(false);
   const [feedCount, setFeedCount] = useState<number>(0);
   const [assetCount, setAssetCount] = useState<number>(0);
+
+  const { deleted } = useMemo(() => glossaryTerm, [glossaryTerm]);
 
   const assetPermissions = useMemo(() => {
     const glossaryTermStatus = glossaryTerm.status ?? Status.Approved;
@@ -138,7 +141,7 @@ const GlossaryTermsV1 = ({
           <GlossaryOverviewTab
             isGlossary={false}
             isVersionView={isVersionView}
-            permissions={permissions}
+            permissions={deleted ? DEFAULT_ENTITY_PERMISSION : permissions}
             selectedData={glossaryTerm}
             onThreadLinkSelect={onThreadLinkSelect}
             onUpdate={(data) => onTermUpdate(data as GlossaryTerm)}
@@ -191,6 +194,7 @@ const GlossaryTermsV1 = ({
                 <AssetsTabs
                   assetCount={assetCount}
                   entityFqn={glossaryTerm.fullyQualifiedName ?? ''}
+                  isEntityDeleted={deleted}
                   isSummaryPanelOpen={isSummaryPanelOpen}
                   permissions={assetPermissions}
                   ref={assetTabRef}
@@ -234,7 +238,8 @@ const GlossaryTermsV1 = ({
                   handleExtensionUpdate={onExtensionUpdate}
                   hasEditAccess={
                     !isVersionView &&
-                    (permissions.EditAll || permissions.EditCustomFields)
+                    (permissions.EditAll || permissions.EditCustomFields) &&
+                    !deleted
                   }
                   hasPermission={permissions.ViewAll}
                   isVersionView={isVersionView}
@@ -260,6 +265,7 @@ const GlossaryTermsV1 = ({
     onExtensionUpdate,
     showDeleted,
     onShowDeletedChange,
+    deleted,
   ]);
 
   const fetchGlossaryTermAssets = async () => {

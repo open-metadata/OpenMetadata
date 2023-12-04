@@ -613,10 +613,9 @@ const AssetsTabs = forwardRef(
           <div className="assets-data-container p-t-sm">
             {data.map(({ _source, _id = '' }) => (
               <ExploreSearchCard
-                showCheckboxes
                 showEntityIcon
                 actionPopoverContent={
-                  isRemovable && permissions.EditAll ? (
+                  isRemovable && permissions.EditAll && !isEntityDeleted ? (
                     <Dropdown
                       align={{ targetOffset: [-12, 0] }}
                       dropdownRender={renderDropdownContainer}
@@ -643,6 +642,7 @@ const AssetsTabs = forwardRef(
                 handleSummaryPanelDisplay={setSelectedCard}
                 id={_id}
                 key={'assets_' + _id}
+                showCheckboxes={!isEntityDeleted}
                 showTags={false}
                 source={_source}
                 onCheckboxChange={(selected) =>
@@ -680,6 +680,7 @@ const AssetsTabs = forwardRef(
         showPagination,
         handlePageSizeChange,
         handleCheckboxChange,
+        isEntityDeleted,
       ]
     );
 
@@ -705,60 +706,63 @@ const AssetsTabs = forwardRef(
 
     const assetsHeader = useMemo(() => {
       return (
-        <div className="w-full d-flex justify-between items-center p-l-sm">
-          {data.length > 0 && (
-            <Checkbox
-              className="assets-checkbox p-x-sm"
-              onChange={(e) => onSelectAll(e.target.checked)}>
-              {t('label.select-field', {
-                field: t('label.all'),
-              })}
-            </Checkbox>
-          )}
-
-          <Popover
-            align={{ targetOffset: [0, 10] }}
-            content={
-              <Menu
-                multiple
-                items={subMenuItems}
-                mode="inline"
-                openKeys={openKeys}
-                rootClassName="asset-multi-menu-selector"
-                selectedKeys={activeFilter}
-                style={{ width: 256, height: 340 }}
-                onClick={(value) => {
-                  handlePageChange(1);
-                  handleActiveFilter(value.key as SearchIndex);
-                  setSelectedCard(undefined);
-                }}
-                onOpenChange={onOpenChange}
-              />
-            }
-            getPopupContainer={(triggerNode: HTMLElement) =>
-              popupRef.current ?? triggerNode
-            }
-            key="asset-options-popover"
-            open={visible}
-            overlayClassName="ant-popover-asset"
-            placement="bottomRight"
-            showArrow={false}
-            trigger="click"
-            onOpenChange={handleAssetButtonVisibleChange}>
-            {Boolean(assetCount) && (
-              <Badge count={activeFilter.length}>
-                <Button
-                  ghost
-                  icon={<FilterOutlined />}
-                  ref={popupRef}
-                  style={{ background: 'white' }}
-                  type="primary">
-                  {t('label.filter-plural')}
-                </Button>
-              </Badge>
+        <Row align="middle" className="w-full p-l-sm" justify="space-between">
+          <Col>
+            {data.length > 0 && !isEntityDeleted && (
+              <Checkbox
+                className="assets-checkbox p-x-sm"
+                onChange={(e) => onSelectAll(e.target.checked)}>
+                {t('label.select-field', {
+                  field: t('label.all'),
+                })}
+              </Checkbox>
             )}
-          </Popover>
-        </div>
+          </Col>
+          <Col>
+            <Popover
+              align={{ targetOffset: [0, 10] }}
+              content={
+                <Menu
+                  multiple
+                  items={subMenuItems}
+                  mode="inline"
+                  openKeys={openKeys}
+                  rootClassName="asset-multi-menu-selector"
+                  selectedKeys={activeFilter}
+                  style={{ width: 256, height: 340 }}
+                  onClick={(value) => {
+                    handlePageChange(1);
+                    handleActiveFilter(value.key as SearchIndex);
+                    setSelectedCard(undefined);
+                  }}
+                  onOpenChange={onOpenChange}
+                />
+              }
+              getPopupContainer={(triggerNode: HTMLElement) =>
+                popupRef.current ?? triggerNode
+              }
+              key="asset-options-popover"
+              open={visible}
+              overlayClassName="ant-popover-asset"
+              placement="bottomRight"
+              showArrow={false}
+              trigger="click"
+              onOpenChange={handleAssetButtonVisibleChange}>
+              {Boolean(assetCount) && (
+                <Badge count={activeFilter.length}>
+                  <Button
+                    ghost
+                    icon={<FilterOutlined />}
+                    ref={popupRef}
+                    style={{ background: 'white' }}
+                    type="primary">
+                    {t('label.filter-plural')}
+                  </Button>
+                </Badge>
+              )}
+            </Popover>
+          </Col>
+        </Row>
       );
     }, [
       activeFilter,
@@ -772,6 +776,7 @@ const AssetsTabs = forwardRef(
       onOpenChange,
       handleAssetButtonVisibleChange,
       onSelectAll,
+      isEntityDeleted,
     ]);
 
     const layout = useMemo(() => {

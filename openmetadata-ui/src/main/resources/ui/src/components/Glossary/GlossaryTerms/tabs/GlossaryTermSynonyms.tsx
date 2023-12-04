@@ -35,7 +35,7 @@ import {
 } from '../../../../utils/EntityVersionUtils';
 
 interface GlossaryTermSynonymsProps {
-  isVersionView?: boolean;
+  isReadOnly?: boolean;
   permissions: OperationPermission;
   glossaryTerm: GlossaryTerm;
   onGlossaryTermUpdate: (glossaryTerm: GlossaryTerm) => void;
@@ -45,7 +45,7 @@ const GlossaryTermSynonyms = ({
   permissions,
   glossaryTerm,
   onGlossaryTermUpdate,
-  isVersionView,
+  isReadOnly,
 }: GlossaryTermSynonymsProps) => {
   const [isViewMode, setIsViewMode] = useState<boolean>(true);
   const [synonyms, setSynonyms] = useState<string[]>([]);
@@ -78,7 +78,7 @@ const GlossaryTermSynonyms = ({
   );
 
   const getSynonymsContainer = useCallback(() => {
-    if (!isVersionView) {
+    if (!isReadOnly) {
       return getSynonyms();
     }
     const changeDescription = glossaryTerm.changeDescription;
@@ -149,7 +149,7 @@ const GlossaryTermSynonyms = ({
         )}
       </div>
     );
-  }, [glossaryTerm, isVersionView, getSynonyms]);
+  }, [glossaryTerm, isReadOnly, getSynonyms]);
 
   const handleCancel = () => {
     setSynonyms(glossaryTerm.synonyms || []);

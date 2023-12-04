@@ -99,6 +99,8 @@ const GlossaryTermTab = ({
   const [isTableLoading, setIsTableLoading] = useState(false);
   const [isTableHovered, setIsTableHovered] = useState(false);
 
+  const { deleted } = useMemo(() => selectedData, [selectedData]);
+
   const glossaryTermStatus: Status | null = useMemo(() => {
     if (!isGlossary) {
       return (selectedData as GlossaryTerm).status ?? Status.Approved;
@@ -178,7 +180,7 @@ const GlossaryTermTab = ({
         onFilter: (value, record) => record.status === value,
       },
     ];
-    if (permissions.Create) {
+    if (permissions.Create && !deleted) {
       data.push({
         title: t('label.action-plural'),
         key: 'new-term',
@@ -229,7 +231,7 @@ const GlossaryTermTab = ({
     }
 
     return data;
-  }, [glossaryTerms, permissions]);
+  }, [glossaryTerms, permissions, deleted]);
 
   const handleAddGlossaryTermClick = () => {
     onAddGlossaryTerm(!isGlossary ? (selectedData as GlossaryTerm) : undefined);
@@ -388,7 +390,7 @@ const GlossaryTermTab = ({
               'drop-over-table': isTableHovered,
             })}
             columns={columns}
-            components={TABLE_CONSTANTS}
+            components={deleted ? undefined : TABLE_CONSTANTS} // To disable term drag and drop functionality
             dataSource={glossaryTerms}
             expandable={expandableConfig}
             loading={isTableLoading}
@@ -398,7 +400,7 @@ const GlossaryTermTab = ({
                   className="m-t-xlg"
                   doc={GLOSSARIES_DOCS}
                   heading={t('label.glossary-term')}
-                  permission={permissions.Create}
+                  permission={permissions.Create && !deleted}
                   type={
                     permissions.Create && glossaryTermStatus === Status.Approved
                       ? ERROR_PLACEHOLDER_TYPE.CREATE

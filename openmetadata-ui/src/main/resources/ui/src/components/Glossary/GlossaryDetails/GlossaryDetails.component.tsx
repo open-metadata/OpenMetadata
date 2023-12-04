@@ -60,6 +60,8 @@ const GlossaryDetails = ({
   const [isDescriptionEditable, setIsDescriptionEditable] =
     useState<boolean>(false);
 
+  const { deleted } = useMemo(() => glossary, [glossary]);
+
   const handleGlossaryUpdate = async (updatedGlossary: Glossary) => {
     await updateGlossary(updatedGlossary);
     getEntityFeedCount();
@@ -148,7 +150,7 @@ const GlossaryDetails = ({
               hasEditAccess={permissions.EditDescription || permissions.EditAll}
               isEdit={isDescriptionEditable}
               owner={glossary?.owner}
-              showActions={!glossary.deleted}
+              showActions={!deleted}
               onCancel={() => setIsDescriptionEditable(false)}
               onDescriptionEdit={() => setIsDescriptionEditable(true)}
               onDescriptionUpdate={onDescriptionUpdate}
@@ -191,6 +193,7 @@ const GlossaryDetails = ({
     isDescriptionEditable,
     showDeleted,
     onShowDeletedChange,
+    deleted,
   ]);
 
   const tabs = useMemo(() => {

@@ -133,6 +133,8 @@ const GlossaryHeader = ({
   >();
   const [isStyleEditing, setIsStyleEditing] = useState(false);
 
+  const { deleted } = useMemo(() => selectedData, [selectedData]);
+
   // To fetch the latest glossary data
   // necessary to handle back click functionality to work properly in version page
   const fetchCurrentGlossaryInfo = async () => {
@@ -286,7 +288,7 @@ const GlossaryHeader = ({
   }, [selectedData]);
 
   const manageButtonContent: ItemType[] = [
-    ...(selectedData.deleted
+    ...(deleted
       ? [
           {
             label: (
@@ -312,7 +314,7 @@ const GlossaryHeader = ({
           },
         ]
       : []),
-    ...(isGlossary && !selectedData.deleted
+    ...(isGlossary && !deleted
       ? ([
           {
             label: (
@@ -352,7 +354,7 @@ const GlossaryHeader = ({
           },
         ] as ItemType[])
       : []),
-    ...(editDisplayNamePermission && !selectedData.deleted
+    ...(editDisplayNamePermission && !deleted
       ? ([
           {
             label: (
@@ -376,7 +378,7 @@ const GlossaryHeader = ({
           },
         ] as ItemType[])
       : []),
-    ...(permissions?.EditAll && !isGlossary && !selectedData.deleted
+    ...(permissions?.EditAll && !isGlossary && !deleted
       ? ([
           {
             label: (
@@ -559,11 +561,12 @@ const GlossaryHeader = ({
         </Col>
         <Col flex="360px">
           <div className="d-flex gap-2 justify-end">
-            {createButtons}
+            {!deleted && createButtons}
 
             <ButtonGroup className="p-l-xs" size="small">
               {updateVote && (
                 <Voting
+                  disabled={deleted}
                   voteStatus={voteStatus}
                   votes={selectedData.votes}
                   onUpdateVote={handleUpdateVote}
@@ -622,7 +625,7 @@ const GlossaryHeader = ({
           isRecursiveDelete
           prepareType
           afterDeleteAction={afterDeleteAction}
-          allowSoftDelete={!selectedData.deleted}
+          allowSoftDelete={!deleted}
           deleteMessage={getEntityDeleteMessage(selectedData.name, '')}
           disabledOptionTypes={
             selectedData.provider === ProviderType.System

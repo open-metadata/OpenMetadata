@@ -335,7 +335,14 @@ const GlossaryV1 = ({
           : fetchGlossaryTermPermission();
       }
     }
-  }, [id, isGlossaryActive, isVersionsView, action, showDeleted]);
+  }, [
+    id,
+    isGlossaryActive,
+    isVersionsView,
+    action,
+    showDeleted,
+    selectedData?.deleted,
+  ]);
 
   return isImportAction ? (
     <ImportGlossary glossaryName={selectedData.fullyQualifiedName ?? ''} />

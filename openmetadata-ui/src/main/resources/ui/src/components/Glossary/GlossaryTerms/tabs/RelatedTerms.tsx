@@ -50,14 +50,14 @@ import { getEntityReferenceFromGlossary } from '../../../../utils/GlossaryUtils'
 import { getGlossaryPath } from '../../../../utils/RouterUtils';
 
 interface RelatedTermsProps {
-  isVersionView?: boolean;
+  isReadOnly?: boolean;
   permissions: OperationPermission;
   glossaryTerm: GlossaryTerm;
   onGlossaryTermUpdate: (data: GlossaryTerm) => Promise<void>;
 }
 
 const RelatedTerms = ({
-  isVersionView,
+  isReadOnly,
   glossaryTerm,
   permissions,
   onGlossaryTermUpdate,
@@ -237,7 +237,7 @@ const RelatedTerms = ({
 
   const relatedTermsContainer = useMemo(
     () =>
-      isVersionView ? (
+      isReadOnly ? (
         getVersionRelatedTerms()
       ) : (
         <div className="d-flex flex-wrap">
@@ -266,7 +266,7 @@ const RelatedTerms = ({
     [
       permissions,
       selectedOption,
-      isVersionView,
+      isReadOnly,
       getVersionRelatedTerms,
       getRelatedTermElement,
     ]

@@ -44,7 +44,7 @@ import { VersionStatus } from '../../../../utils/EntityVersionUtils.interface';
 import GlossaryTermReferencesModal from '../GlossaryTermReferencesModal.component';
 
 interface GlossaryTermReferencesProps {
-  isVersionView?: boolean;
+  isReadOnly?: boolean;
   glossaryTerm: GlossaryTerm;
   permissions: OperationPermission;
   onGlossaryTermUpdate: (glossaryTerm: GlossaryTerm) => void;
@@ -54,7 +54,7 @@ const GlossaryTermReferences = ({
   glossaryTerm,
   permissions,
   onGlossaryTermUpdate,
-  isVersionView,
+  isReadOnly,
 }: GlossaryTermReferencesProps) => {
   const [references, setReferences] = useState<TermReference[]>([]);
   const [isViewMode, setIsViewMode] = useState<boolean>(true);
@@ -214,30 +214,28 @@ const GlossaryTermReferences = ({
             )}
           </div>
         </Space>
-        <>
-          {isVersionView ? (
-            getVersionReferenceElements()
-          ) : (
-            <div className="d-flex flex-wrap">
-              {references.map((ref) => getReferenceElement(ref))}
-              {permissions.EditAll && references.length === 0 && (
-                <TagButton
-                  className="text-primary cursor-pointer"
-                  dataTestId="term-references-add-button"
-                  icon={<PlusIcon height={16} name="plus" width={16} />}
-                  label={t('label.add')}
-                  tooltip=""
-                  onClick={() => {
-                    setIsViewMode(false);
-                  }}
-                />
-              )}
-              {!permissions.EditAll && references.length === 0 && (
-                <div>{NO_DATA_PLACEHOLDER}</div>
-              )}
-            </div>
-          )}
-        </>
+        {isReadOnly ? (
+          getVersionReferenceElements()
+        ) : (
+          <div className="d-flex flex-wrap">
+            {references.map((ref) => getReferenceElement(ref))}
+            {permissions.EditAll && references.length === 0 && (
+              <TagButton
+                className="text-primary cursor-pointer"
+                dataTestId="term-references-add-button"
+                icon={<PlusIcon height={16} name="plus" width={16} />}
+                label={t('label.add')}
+                tooltip=""
+                onClick={() => {
+                  setIsViewMode(false);
+                }}
+              />
+            )}
+            {!permissions.EditAll && references.length === 0 && (
+              <div>{NO_DATA_PLACEHOLDER}</div>
+            )}
+          </div>
+        )}
       </div>
 
       <GlossaryTermReferencesModal

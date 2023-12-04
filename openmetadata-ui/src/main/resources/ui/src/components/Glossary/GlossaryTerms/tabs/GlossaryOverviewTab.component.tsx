@@ -52,6 +52,8 @@ const GlossaryOverviewTab = ({
   const [isDescriptionEditable, setIsDescriptionEditable] =
     useState<boolean>(false);
 
+  const { deleted } = useMemo(() => selectedData, [selectedData]);
+
   const onDescriptionUpdate = async (updatedHTML: string) => {
     if (selectedData.description !== updatedHTML) {
       const updatedTableDetails = {
@@ -119,7 +121,7 @@ const GlossaryOverviewTab = ({
               hasEditAccess={permissions.EditDescription || permissions.EditAll}
               isEdit={isDescriptionEditable}
               owner={selectedData?.owner}
-              showActions={!selectedData.deleted}
+              showActions={!deleted}
               onCancel={() => setIsDescriptionEditable(false)}
               onDescriptionEdit={() => setIsDescriptionEditable(true)}
               onDescriptionUpdate={onDescriptionUpdate}
@@ -133,7 +135,7 @@ const GlossaryOverviewTab = ({
                   <Col span={12}>
                     <GlossaryTermSynonyms
                       glossaryTerm={selectedData as GlossaryTerm}
-                      isVersionView={isVersionView}
+                      isReadOnly={isVersionView || deleted}
                       permissions={permissions}
                       onGlossaryTermUpdate={onUpdate}
                     />
@@ -141,7 +143,7 @@ const GlossaryOverviewTab = ({
                   <Col span={12}>
                     <RelatedTerms
                       glossaryTerm={selectedData as GlossaryTerm}
-                      isVersionView={isVersionView}
+                      isReadOnly={isVersionView || deleted}
                       permissions={permissions}
                       onGlossaryTermUpdate={onUpdate}
                     />
@@ -149,7 +151,7 @@ const GlossaryOverviewTab = ({
                   <Col span={12}>
                     <GlossaryTermReferences
                       glossaryTerm={selectedData as GlossaryTerm}
-                      isVersionView={isVersionView}
+                      isReadOnly={isVersionView || deleted}
                       permissions={permissions}
                       onGlossaryTermUpdate={onUpdate}
                     />
@@ -163,7 +165,7 @@ const GlossaryOverviewTab = ({
                     displayType={DisplayType.READ_MORE}
                     entityFqn={selectedData.fullyQualifiedName}
                     entityType={EntityType.GLOSSARY_TERM}
-                    permission={hasEditTagsPermissions}
+                    permission={hasEditTagsPermissions && !deleted}
                     selectedTags={tags ?? []}
                     tagType={TagSource.Classification}
                     onSelectionChange={handleTagsUpdate}

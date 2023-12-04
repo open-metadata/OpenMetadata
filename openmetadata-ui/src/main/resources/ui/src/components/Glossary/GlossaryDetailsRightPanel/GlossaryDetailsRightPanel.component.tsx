@@ -71,6 +71,8 @@ const GlossaryDetailsRightPanel = ({
     return permissions.EditAll || permissions.EditReviewers;
   }, [permissions]);
 
+  const { deleted } = useMemo(() => selectedData, [selectedData]);
+
   const noReviewersSelected =
     selectedData.reviewers && selectedData.reviewers.length === 0;
 
@@ -134,13 +136,13 @@ const GlossaryDetailsRightPanel = ({
           </>
         );
       }
-      if (!(permissions.EditOwner || permissions.EditAll)) {
+      if (!(permissions.EditOwner || permissions.EditAll) || deleted) {
         return <div>{NO_DATA_PLACEHOLDER}</div>;
       }
 
       return null;
     },
-    [permissions]
+    [permissions, deleted]
   );
 
   const getUserNames = useCallback(
@@ -214,7 +216,7 @@ const GlossaryDetailsRightPanel = ({
           entityType={
             isGlossary ? EntityType.GLOSSARY : EntityType.GLOSSARY_TERM
           }
-          hasPermission={permissions.EditAll}
+          hasPermission={permissions.EditAll && !deleted}
         />
       </Col>
       <Col data-testid="glossary-owner-name" span="24">
@@ -223,6 +225,7 @@ const GlossaryDetailsRightPanel = ({
             {t('label.owner')}
           </Typography.Text>
           {(permissions.EditOwner || permissions.EditAll) &&
+            !deleted &&
             selectedData.owner && (
               <UserTeamSelectableList
                 hasPermission={permissions.EditOwner || permissions.EditAll}
@@ -241,19 +244,21 @@ const GlossaryDetailsRightPanel = ({
         <Space className="m-r-xss" size={4}>
           {getUserNames(selectedData)}
         </Space>
-        {!selectedData.owner && (permissions.EditOwner || permissions.EditAll) && (
-          <UserTeamSelectableList
-            hasPermission={permissions.EditOwner || permissions.EditAll}
-            owner={selectedData.owner}
-            onUpdate={handleUpdatedOwner}>
-            <TagButton
-              className="text-primary cursor-pointer"
-              icon={<PlusIcon height={16} name="plus" width={16} />}
-              label={t('label.add')}
-              tooltip=""
-            />
-          </UserTeamSelectableList>
-        )}
+        {!selectedData.owner &&
+          (permissions.EditOwner || permissions.EditAll) &&
+          !deleted && (
+            <UserTeamSelectableList
+              hasPermission={permissions.EditOwner || permissions.EditAll}
+              owner={selectedData.owner}
+              onUpdate={handleUpdatedOwner}>
+              <TagButton
+                className="text-primary cursor-pointer"
+                icon={<PlusIcon height={16} name="plus" width={16} />}
+                label={t('label.add')}
+                tooltip=""
+              />
+            </UserTeamSelectableList>
+          )}
       </Col>
       <Col data-testid="glossary-reviewer" span="24">
         <div
@@ -269,7 +274,8 @@ const GlossaryDetailsRightPanel = ({
           </Typography.Text>
           {hasEditReviewerAccess &&
             selectedData.reviewers &&
-            selectedData.reviewers.length > 0 && (
+            selectedData.reviewers.length > 0 &&
+            !deleted && (
               <UserSelectableList
                 hasPermission={hasEditReviewerAccess}
                 popoverProps={{ placement: 'topLeft' }}
@@ -287,11 +293,11 @@ const GlossaryDetailsRightPanel = ({
         </div>
         <div>
           <GlossaryReviewers
-            editPermission={hasEditReviewerAccess}
+            editPermission={hasEditReviewerAccess && !deleted}
             glossaryData={selectedData}
             isVersionView={isVersionView}
           />
-          {hasEditReviewerAccess && noReviewersSelected && (
+          {hasEditReviewerAccess && noReviewersSelected && !deleted && (
             <UserSelectableList
               hasPermission={hasEditReviewerAccess}
               popoverProps={{ placement: 'topLeft' }}
@@ -314,7 +320,9 @@ const GlossaryDetailsRightPanel = ({
               displayType={DisplayType.READ_MORE}
               entityFqn={selectedData.fullyQualifiedName}
               entityType={EntityType.GLOSSARY}
-              permission={permissions.EditAll || permissions.EditTags}
+              permission={
+                (permissions.EditAll || permissions.EditTags) && !deleted
+              }
               selectedTags={tags ?? []}
               tagType={TagSource.Classification}
               onSelectionChange={handleTagsUpdate}
