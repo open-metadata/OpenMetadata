@@ -1,8 +1,9 @@
 source:
-  type: databricks
-  serviceName: local_databricks
+  type: unitycatalog
+  serviceName: local_unitycatalog
   serviceConnection:
     config:
+      type: UnityCatalog
       catalog: hive_metastore
       databaseSchema: default
       token: <databricks token>
@@ -10,6 +11,7 @@ source:
       connectionTimeout: 120
       connectionArguments:
         http_path: <http path of databricks cluster>
+
   sourceConfig:
     config:
       type: DatabaseMetadata
@@ -17,6 +19,7 @@ sink:
   type: metadata-rest
   config: {}
 workflowConfig:
+  loggerLevel: DEBUG
   openMetadataServerConfig:
     hostPort: http://localhost:8585/api
     authProvider: openmetadata

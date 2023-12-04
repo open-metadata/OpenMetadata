@@ -16,8 +16,8 @@ from typing import Iterable, Optional
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
-    DatabricksConnection,
+from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
+    UnityCatalogConnection,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -33,18 +33,18 @@ from metadata.ingestion.api.steps import InvalidSourceException, Source
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_test_connection_fn
-from metadata.ingestion.source.database.databricks.client import DatabricksClient
-from metadata.ingestion.source.database.databricks.connection import get_connection
-from metadata.ingestion.source.database.databricks.models import LineageTableStreams
+from metadata.ingestion.source.database.unitycatalog.client import UnityCatalogClient
+from metadata.ingestion.source.database.unitycatalog.connection import get_connection
+from metadata.ingestion.source.database.unitycatalog.models import LineageTableStreams
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
 
-class DatabricksUnityCatalogLineageSource(Source):
+class UnitycatalogLineageSource(Source):
     """
-    Databricks Lineage Unity Catalog Source
+    Lineage Unity Catalog Source
     """
 
     def __init__(
@@ -57,7 +57,7 @@ class DatabricksUnityCatalogLineageSource(Source):
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.__root__.config
         self.source_config = self.config.sourceConfig.config
-        self.client = DatabricksClient(self.service_connection)
+        self.client = UnityCatalogClient(self.service_connection)
         self.connection_obj = get_connection(self.service_connection)
         self.test_connection()
 
@@ -75,10 +75,10 @@ class DatabricksUnityCatalogLineageSource(Source):
     def create(cls, config_dict, metadata: OpenMetadata):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: DatabricksConnection = config.serviceConnection.__root__.config
-        if not isinstance(connection, DatabricksConnection):
+        connection: UnityCatalogConnection = config.serviceConnection.__root__.config
+        if not isinstance(connection, UnityCatalogConnection):
             raise InvalidSourceException(
-                f"Expected DatabricksConnection, but got {connection}"
+                f"Expected UnityCatalogConnection, but got {connection}"
             )
         return cls(config, metadata)
 
