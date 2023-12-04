@@ -463,7 +463,8 @@ export const AuthProvider = ({
     }
 
     requestInterceptor = axiosClient.interceptors.request.use(async function (
-      config
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      config: InternalAxiosRequestConfig<any>
     ) {
       const token: string = localState.getOidcToken() || '';
       if (token) {
@@ -472,7 +473,7 @@ export const AuthProvider = ({
         } else {
           config.headers = {
             Authorization: `Bearer ${token}`,
-          };
+          } as AxiosRequestHeaders;
         }
       }
 
