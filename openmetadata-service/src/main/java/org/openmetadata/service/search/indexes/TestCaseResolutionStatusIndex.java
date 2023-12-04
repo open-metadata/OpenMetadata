@@ -21,10 +21,10 @@ public class TestCaseResolutionStatusIndex implements SearchIndex {
 
   public static Map<String, Float> getFields() {
     Map<String, Float> fields = new HashMap<>();
-    fields.put("testCaseResolutionStatusType", 15.0f);
-    fields.put("testCaseReference.displayName", 1.0f);
-    fields.put("testCaseReference.name", 5.0f);
-    fields.put("testCaseReference.description", 1.0f);
+    fields.put("testCaseResolutionStatusType", 1.0f);
+    fields.put("testCaseReference.displayName", 15.0f);
+    fields.put("testCaseReference.name", 10.0f);
+    fields.put("testCaseReference.description", 5.0f);
     fields.put("testCaseReference.description.ngram", 1.0f);
     fields.put("testCaseResolutionStatusDetails.resolved.testCaseFailureComment", 10.0f);
     fields.put("testCaseResolutionStatusDetails.resolved.testCaseFailureComment.ngram", 1.0f);
