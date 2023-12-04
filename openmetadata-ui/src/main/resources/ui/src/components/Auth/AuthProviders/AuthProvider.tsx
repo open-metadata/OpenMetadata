@@ -16,7 +16,11 @@ import { Auth0Provider } from '@auth0/auth0-react';
 import { Configuration } from '@azure/msal-browser';
 import { MsalProvider } from '@azure/msal-react';
 import { LoginCallback } from '@okta/okta-react';
-import { AxiosError, AxiosRequestConfig } from 'axios';
+import {
+  AxiosError,
+  AxiosRequestHeaders,
+  InternalAxiosRequestConfig,
+} from 'axios';
 import { CookieStorage } from 'cookie-storage';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isNil, isNumber } from 'lodash';
@@ -411,7 +415,8 @@ export const AuthProvider = ({
     }
   };
 
-  const withDomainFilter = (config: AxiosRequestConfig) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const withDomainFilter = (config: InternalAxiosRequestConfig<any>) => {
     const activeDomain =
       localStorage.getItem(ACTIVE_DOMAIN_STORAGE_KEY) ?? DEFAULT_DOMAIN_VALUE;
     const isGetRequest = config.method === 'get';
