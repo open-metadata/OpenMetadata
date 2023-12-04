@@ -139,6 +139,12 @@
     "domain" : {
       "description": "Domain the MLModel service belongs to.",
       "$ref": "../../type/entityReference.json"
+    },
+    "sourceHash": {
+      "description": "Source hash of the entity",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
     }
   },
   "required": ["id", "name", "serviceType"],

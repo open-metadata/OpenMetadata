@@ -48,6 +48,12 @@
     "domain" : {
       "description": "Fully qualified name of the domain the Messaging Service belongs to.",
       "type": "string"
+    },
+    "sourceHash": {
+      "description": "Source hash of the entity",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
     }
   },
   "required": ["name", "serviceType"],

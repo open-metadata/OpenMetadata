@@ -122,6 +122,12 @@
       "description": "Life Cycle properties of the entity",
       "$ref": "../../type/lifeCycle.json"
     },
+    "sourceHash": {
+      "description": "Source hash of the entity",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
     "databaseSchemaProfilerConfig": {
       "type": "object",
       "javaType": "org.openmetadata.schema.type.DatabaseSchemaProfilerConfig",
