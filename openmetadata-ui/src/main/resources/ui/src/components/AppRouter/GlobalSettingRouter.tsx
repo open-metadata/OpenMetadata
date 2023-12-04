@@ -41,12 +41,6 @@ const ImportTeamsPage = withSuspenseFallback(
     () => import('../../pages/TeamsPage/ImportTeamsPage/ImportTeamsPage')
   )
 );
-const AddDataInsightReportAlert = withSuspenseFallback(
-  React.lazy(
-    () =>
-      import('../../pages/AddDataInsightReportAlert/AddDataInsightReportAlert')
-  )
-);
 
 const AlertDetailsPage = withSuspenseFallback(
   React.lazy(() => import('../../pages/AlertDetailsPage/AlertDetailsPage'))
