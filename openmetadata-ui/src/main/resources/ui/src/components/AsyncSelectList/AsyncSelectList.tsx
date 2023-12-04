@@ -43,6 +43,7 @@ const AsyncSelectList: FC<AsyncSelectListProps> = ({
   fetchOptions,
   debounceTimeout = 800,
   initialOptions,
+  filterOptions = [],
   className,
   ...props
 }) => {
@@ -54,13 +55,38 @@ const AsyncSelectList: FC<AsyncSelectListProps> = ({
   const [currentPage, setCurrentPage] = useState(1);
   const selectedTagsRef = useRef<SelectOption[]>(initialOptions ?? []);
 
+  const [optionFilteredCount, setOptionFilteredCount] = useState(0);
+
+  const getFilteredOptions = (data: SelectOption[]) => {
+    if (isEmpty(filterOptions)) {
+      return data;
+    }
+
+    let count = optionFilteredCount;
+
+    const filteredData = data.filter((item) => {
+      const isFiltered = filterOptions.includes(
+        item.data?.fullyQualifiedName ?? ''
+      );
+      if (isFiltered) {
+        count = optionFilteredCount + 1;
+      }
+
+      return !isFiltered;
+    });
+
+    setOptionFilteredCount(count);
+
+    return filteredData;
+  };
+
   const loadOptions = useCallback(
     async (value: string) => {
       setOptions([]);
       setIsLoading(true);
       try {
         const res = await fetchOptions(value, 1);
-        setOptions(res.data);
+        setOptions(getFilteredOptions(res.data));
         setPaging(res.paging);
         setSearchValue(value);
         setCurrentPage(1);
@@ -119,11 +145,12 @@ const AsyncSelectList: FC<AsyncSelectListProps> = ({
       currentTarget.scrollTop + currentTarget.offsetHeight ===
       currentTarget.scrollHeight
     ) {
-      if (options.length < paging.total) {
+      // optionFilteredCount added to equalize the options received from the server
+      if (options.length + optionFilteredCount < paging.total) {
         try {
           setHasContentLoading(true);
           const res = await fetchOptions(searchValue, currentPage + 1);
-          setOptions((prev) => [...prev, ...res.data]);
+          setOptions((prev) => [...prev, ...getFilteredOptions(res.data)]);
           setPaging(res.paging);
           setCurrentPage((prev) => prev + 1);
         } catch (error) {
@@ -236,7 +263,7 @@ const AsyncSelectList: FC<AsyncSelectListProps> = ({
       {...props}>
       {tagOptions.map(({ label, value, displayName, data }) => (
         <Select.Option
-          className={className}
+          className={`${className} w-full`}
           data={data}
           data-testid={`tag-${value}`}
           key={label}

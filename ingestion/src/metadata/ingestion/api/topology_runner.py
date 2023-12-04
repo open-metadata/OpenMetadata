@@ -14,12 +14,15 @@ generate the _run based on their topology.
 """
 import traceback
 from functools import singledispatchmethod
-from typing import Any, Generic, Iterable, List, TypeVar
+from typing import Any, Generic, Iterable, List, TypeVar, Union
 
 from pydantic import BaseModel
 
+from metadata.generated.schema.api.data.createStoredProcedure import (
+    CreateStoredProcedureRequest,
+)
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.classification.tag import Tag
+from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
 from metadata.ingestion.api.models import Either, Entity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.topology import (
@@ -177,15 +180,17 @@ class TopologyRunnerMixin(Generic[C]):
             *context_names, entity_request.name.__root__
         )
 
-    def update_context(self, stage: NodeStage, entity_name: str):
+    def update_context(
+        self, stage: NodeStage, context: Union[str, OMetaTagAndClassification]
+    ):
         """Append or update context"""
         # We'll store the entity_name in the topology context instead of the entity_fqn
         # and build the fqn on the fly wherever required.
-        # This is mainly because we need the entity_name in other places
+        # This is mainly because we need the context in other places
         if stage.context and not stage.cache_all:
-            self._replace_context(key=stage.context, value=entity_name)
+            self._replace_context(key=stage.context, value=context)
         if stage.context and stage.cache_all:
-            self._append_context(key=stage.context, value=entity_name)
+            self._append_context(key=stage.context, value=context)
 
     @singledispatchmethod
     def yield_and_update_context(
@@ -203,10 +208,20 @@ class TopologyRunnerMixin(Generic[C]):
         entity = None
         entity_name = model_str(right.name)
         entity_fqn = self.fqn_from_context(stage=stage, entity_request=right)
-        yield entity_request
+
+        # we get entity from OM if we do not want to overwrite existing data in OM
+        # This will be applicable for service entities since we do not want to overwrite the data
+        if not stage.overwrite and not self._is_force_overwrite_enabled():
+            entity = self.metadata.get_by_name(
+                entity=stage.type_,
+                fqn=entity_fqn,
+                fields=["*"],  # Get all the available data from the Entity
+            )
+        if entity is None:
+            yield entity_request
 
         # We have ack the sink waiting for a response, but got nothing back
-        if stage.must_return:
+        if stage.must_return and entity is None:
             # we'll only check the get by name for entities like database service
             # without which we cannot proceed ahead in the ingestion
             tries = 3
@@ -226,7 +241,7 @@ class TopologyRunnerMixin(Generic[C]):
                     "for the service connection."
                 )
 
-        self.update_context(stage=stage, entity_name=entity_name)
+        self.update_context(stage=stage, context=entity_name)
 
     @yield_and_update_context.register
     def _(
@@ -242,9 +257,7 @@ class TopologyRunnerMixin(Generic[C]):
         lineage has been properly drawn. We'll skip the process for now.
         """
         yield entity_request
-        self.update_context(
-            stage=stage, entity_name=right.edge.fromEntity.name.__root__
-        )
+        self.update_context(stage=stage, context=right.edge.fromEntity.name.__root__)
 
     @yield_and_update_context.register
     def _(
@@ -256,15 +269,30 @@ class TopologyRunnerMixin(Generic[C]):
         """Tag implementation for the context information"""
         yield entity_request
 
-        tag_fqn = fqn.build(
+        # We'll keep the tag fqn in the context and use if required
+        self.update_context(stage=stage, context=right)
+
+    @yield_and_update_context.register
+    def _(
+        self,
+        right: CreateStoredProcedureRequest,
+        stage: NodeStage,
+        entity_request: Either[C],
+    ) -> Iterable[Either[Entity]]:
+        """Tag implementation for the context information"""
+        yield entity_request
+
+        procedure_fqn = fqn.build(
             metadata=self.metadata,
-            entity_type=Tag,
-            classification_name=right.tag_request.classification.__root__,
-            tag_name=right.tag_request.name.__root__,
+            entity_type=StoredProcedure,
+            service_name=self.context.database_service,
+            database_name=self.context.database,
+            schema_name=self.context.database_schema,
+            procedure_name=right.name.__root__,
         )
 
         # We'll keep the tag fqn in the context and use if required
-        self.update_context(stage=stage, entity_name=tag_fqn)
+        self.update_context(stage=stage, context=procedure_fqn)
 
     def sink_request(
         self, stage: NodeStage, entity_request: Either[C]

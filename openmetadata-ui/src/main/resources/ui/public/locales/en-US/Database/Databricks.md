@@ -60,11 +60,6 @@ If your connection fails because your cluster has not had enough time to start, 
 $$
 
 $$section
-### Use Unity Catalog $(id="useUnityCatalog")
-Enable this flag to extract the metadata and lineage information using databricks unity catalog instead of using legacy hive metastore. When you enable this flag make sure you have enabled the unity catalog on your instance.
-$$
-
-$$section
 ### Connection Options $(id="connectionOptions")
 Additional connection options to build the URL that can be sent to service during the connection.
 $$

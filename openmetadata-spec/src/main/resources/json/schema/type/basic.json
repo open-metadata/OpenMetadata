@@ -148,6 +148,7 @@
       }
     },
     "status" : {
+      "javaType": "org.openmetadata.schema.type.ApiStatus",
       "description": "State of an action over API.",
       "type" : "string",
       "enum" : ["success", "failure", "aborted", "partialSuccess"]

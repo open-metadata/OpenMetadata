@@ -49,6 +49,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import org.openmetadata.schema.api.AddGlossaryToAssetsRequest;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.LoadGlossary;
@@ -60,6 +61,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -118,6 +120,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     for (LoadGlossary loadGlossary : loadGlossaries) {
       Glossary glossary =
           GlossaryResource.getGlossary(glossaryRepository, loadGlossary.getCreateGlossary(), ADMIN_USER_NAME);
+      glossary.setFullyQualifiedName(glossary.getName());
       glossaryRepository.initializeEntity(glossary);
 
       List<GlossaryTerm> termsToCreate = new ArrayList<>();
@@ -201,7 +204,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     EntityReference glossary = null;
     if (glossaryIdParam != null) {
       glossary = repository.getGlossary(glossaryIdParam);
-      fqn = glossary.getName();
+      fqn = glossary.getFullyQualifiedName();
     }
 
     // Filter by glossary parent term
@@ -415,6 +418,49 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     return repository.updateVote(securityContext.getUserPrincipal().getName(), id, request).toResponse();
   }
 
+  @PUT
+  @Path("/{id}/assets/add")
+  @Operation(
+      operationId = "bulkAddGlossaryTermToAssets",
+      summary = "Bulk Add Glossary Term to Assets",
+      description = "Bulk Add Glossary Term to Assets",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = BulkOperationResult.class))),
+        @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
+      })
+  public Response bulkAddGlossaryToAssets(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Valid AddGlossaryToAssetsRequest request) {
+    return Response.ok().entity(repository.bulkAddAndValidateGlossaryToAssets(id, request)).build();
+  }
+
+  @PUT
+  @Path("/{id}/assets/remove")
+  @Operation(
+      operationId = "bulkRemoveGlossaryTermFromAssets",
+      summary = "Bulk Remove Glossary Term from Assets",
+      description = "Bulk Remove Glossary Term from Assets",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
+      })
+  public Response bulkRemoveGlossaryFromAssets(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Valid AddGlossaryToAssetsRequest request) {
+    return Response.ok().entity(repository.bulkRemoveGlossaryToAssets(id, request)).build();
+  }
+
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -456,10 +502,14 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
+      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
       @Parameter(description = "Fully qualified name of the glossary term", schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+    return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
   }
 
   @PUT

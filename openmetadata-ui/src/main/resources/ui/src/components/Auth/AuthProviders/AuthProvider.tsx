@@ -68,6 +68,7 @@ import {
   setMsalInstance,
 } from '../../../utils/AuthProvider.util';
 import localState from '../../../utils/LocalStorageUtils';
+import { escapeESReservedCharacters } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import {
   fetchAllUsers,
@@ -434,7 +435,9 @@ export const AuthProvider = ({
         // Parse and update the query parameter
         const queryParams = Qs.parse(config.url.split('?')[1]);
         // adding quotes for exact matching
-        const domainStatement = `(domain.fullyQualifiedName:${activeDomain})`;
+        const domainStatement = `(domain.fullyQualifiedName:${escapeESReservedCharacters(
+          activeDomain
+        )})`;
         queryParams.q = queryParams.q ?? '';
         queryParams.q += isEmpty(queryParams.q)
           ? domainStatement

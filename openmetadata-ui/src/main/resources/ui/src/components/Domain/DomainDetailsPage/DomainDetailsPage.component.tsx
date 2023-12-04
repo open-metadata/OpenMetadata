@@ -81,6 +81,7 @@ import {
   getDomainPath,
   getDomainVersionsPath,
 } from '../../../utils/RouterUtils';
+import { escapeESReservedCharacters } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
@@ -238,7 +239,9 @@ const DomainDetailsPage = ({
           '',
           1,
           0,
-          `(domain.fullyQualifiedName:${domainFqn})`,
+          `(domain.fullyQualifiedName:${escapeESReservedCharacters(
+            domain.fullyQualifiedName
+          )})`,
           '',
           '',
           SearchIndex.DATA_PRODUCT
@@ -258,7 +261,9 @@ const DomainDetailsPage = ({
           '',
           1,
           0,
-          `(domain.fullyQualifiedName:${fqn})`,
+          `(domain.fullyQualifiedName:"${escapeESReservedCharacters(
+            domain.fullyQualifiedName
+          )}") AND !(entityType:"dataProduct")`,
           '',
           '',
           SearchIndex.ALL

@@ -33,6 +33,7 @@ import {
   DEFAULT_SERVICE,
   DELTALAKE,
   DOMO,
+  DORIS,
   DRUID,
   DYNAMODB,
   ELASTIC_SEARCH,
@@ -80,6 +81,7 @@ import {
   TABLEAU,
   TOPIC_DEFAULT,
   TRINO,
+  UNITYCATALOG,
   VERTICA,
 } from '../constants/Services.constant';
 import { StorageServiceType } from '../generated/entity/data/container';
@@ -198,8 +200,14 @@ class ServiceUtilClassBase {
       case DatabaseServiceType.Databricks:
         return DATABRICK;
 
+      case DatabaseServiceType.UnityCatalog:
+        return UNITYCATALOG;
+
       case DatabaseServiceType.Db2:
         return IBMDB2;
+
+      case DatabaseServiceType.Doris:
+        return DORIS;
 
       case DatabaseServiceType.Druid:
         return DRUID;

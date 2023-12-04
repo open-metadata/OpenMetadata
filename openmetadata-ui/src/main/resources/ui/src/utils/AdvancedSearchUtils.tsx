@@ -88,6 +88,11 @@ export const getDropDownItems = (index: string) => {
   }
 };
 
+export const getAssetsPageQuickFilters = () => {
+  // TODO: Add more quick filters
+  return [...COMMON_DROPDOWN_ITEMS];
+};
+
 export const getAdvancedField = (field: string) => {
   switch (field) {
     case 'columns.name':

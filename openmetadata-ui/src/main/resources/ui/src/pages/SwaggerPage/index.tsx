@@ -14,6 +14,7 @@
 import React from 'react';
 import {
   GRAPH_BACKGROUND_COLOR,
+  oidcTokenKey,
   PRIMERY_COLOR,
   TEXT_BODY_COLOR,
 } from '../../constants/constants';
@@ -21,6 +22,8 @@ import RapiDocReact from './RapiDocReact';
 import './swagger.less';
 
 const SwaggerPage = () => {
+  const idToken = localStorage.getItem(oidcTokenKey);
+
   return (
     <div
       className="container-fluid"
@@ -28,7 +31,9 @@ const SwaggerPage = () => {
       id="doc-container">
       <RapiDocReact
         allow-spec-file-download
-        persist-auth
+        api-key-location="header"
+        api-key-name="Authorization"
+        api-key-value={`Bearer ${idToken}`}
         font-size="large"
         nav-bg-color={GRAPH_BACKGROUND_COLOR}
         nav-item-spacing="compact"
