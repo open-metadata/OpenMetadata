@@ -77,7 +77,7 @@ public class TestCaseResolutionStatusResource
       summary = "List the test case failure statuses",
       description =
           "Get a list of all the test case failure statuses, optionally filtered by `startTs` and `endTs` of the status creation, "
-              + "status, assignee, reviewer, and test case id. "
+              + "status, assignee, and test case id. "
               + "Use cursor-based pagination to limit the number of "
               + "entries in the list using `limit` and `before` or `after` query params.",
       responses = {
@@ -126,9 +126,6 @@ public class TestCaseResolutionStatusResource
       @Parameter(description = "Filter test case statuses by assignee", schema = @Schema(type = "String"))
           @QueryParam("assignee")
           String assignee,
-      @Parameter(description = "Filter test case statuses by reviewer", schema = @Schema(type = "String"))
-          @QueryParam("reviewer")
-          String reviewer,
       @Parameter(description = "Test case fully qualified name", schema = @Schema(type = "String"))
           @QueryParam("testCaseFQN")
           String testCaseFQN) {
@@ -139,7 +136,6 @@ public class TestCaseResolutionStatusResource
     ListFilter filter = new ListFilter(null);
     filter.addQueryParam("testCaseResolutionStatusType", testCaseResolutionStatusType);
     filter.addQueryParam("assignee", assignee);
-    filter.addQueryParam("reviewer", reviewer);
     filter.addQueryParam("entityFQNHash", testCaseFQN);
 
     return repository.list(offset, startTs, endTs, limitParam, filter, latest);

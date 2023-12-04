@@ -62,18 +62,12 @@ public class ListFilter {
     condition = addCondition(condition, getEntityFQNHashCondition());
     condition = addCondition(condition, getTestCaseResolutionStatusType());
     condition = addCondition(condition, getAssignee());
-    condition = addCondition(condition, getReviewer());
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
 
   private String getAssignee() {
     String assignee = queryParams.get("assignee");
     return assignee == null ? "" : String.format("assignee = '%s'", assignee);
-  }
-
-  private String getReviewer() {
-    String reviewer = queryParams.get("reviewer");
-    return reviewer == null ? "" : String.format("reviewer = '%s'", reviewer);
   }
 
   private String getTestCaseResolutionStatusType() {

@@ -11,15 +11,6 @@ CREATE TABLE test_case_resolution_status_time_series (
           ELSE NULL
       END
   ) STORED NULL,
-  reviewer varchar(256) GENERATED ALWAYS AS (
-    CASE
-        WHEN json->'testCaseResolutionStatusDetails' IS NOT NULL AND
-             json->'testCaseResolutionStatusDetails'->'reviewer' IS NOT NULL AND
-             json->'testCaseResolutionStatusDetails'->'reviewer'->>'name' IS NOT NULL
-        THEN json->'testCaseResolutionStatusDetails'->'reviewer'->>'name'
-        ELSE NULL
-    END
-  ) STORED NULL,
   timestamp bigint GENERATED ALWAYS AS ((json ->> 'timestamp')::bigint) STORED NOT NULL,
   testCaseResolutionStatusType varchar(36) GENERATED ALWAYS AS (json ->> 'testCaseResolutionStatusType') STORED NOT NULL,
   jsonSchema varchar(256) NOT NULL,
