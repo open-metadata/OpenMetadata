@@ -116,7 +116,7 @@ const UserPage = () => {
           if (userData.id === currentUser?.id) {
             updateCurrentUser(response);
           }
-          setUserData(response);
+          setUserData((prev) => ({ ...prev, ...response }));
         } else {
           throw t('message.unexpected-error');
         }

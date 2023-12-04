@@ -468,6 +468,7 @@ export const TaskTab = ({
                     }}
                     onSave={() => assigneesForm.submit()}>
                     <Assignees
+                      disabled={Boolean(owner)}
                       options={options}
                       value={updatedAssignees}
                       onChange={(values) =>
@@ -490,7 +491,7 @@ export const TaskTab = ({
                   profileWidth="24"
                   showUserName={false}
                 />
-                {(isCreator || hasEditAccess) && !isTaskClosed ? (
+                {(isCreator || hasEditAccess) && !isTaskClosed && !owner ? (
                   <Button
                     className="flex-center p-0"
                     data-testid="edit-assignees"

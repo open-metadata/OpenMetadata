@@ -27,6 +27,7 @@ interface Props {
   value: Option[];
   onSearch: (value: string) => void;
   onChange: (values: Option[]) => void;
+  disabled?: boolean;
 }
 
 const Assignees: FC<Props> = ({
@@ -34,6 +35,7 @@ const Assignees: FC<Props> = ({
   onSearch,
   onChange,
   options,
+  disabled,
 }) => {
   const handleOnChange = (_values: Option[], newOptions: Option | Option[]) => {
     const newValues = (newOptions as Option[]).map((option) => ({
@@ -94,6 +96,7 @@ const Assignees: FC<Props> = ({
       className="ant-select-custom select-assignee"
       data-testid="select-assignee"
       defaultActiveFirstOption={false}
+      disabled={disabled}
       filterOption={false}
       mode="multiple"
       notFoundContent={null}
