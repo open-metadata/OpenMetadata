@@ -563,8 +563,7 @@ class SnowflakeSource(
         """Prepare the stored procedure payload"""
 
         try:
-            yield Either(
-                right=CreateStoredProcedureRequest(
+            stored_procedure_request = CreateStoredProcedureRequest(
                     name=EntityName(__root__=stored_procedure.name),
                     description=stored_procedure.comment,
                     storedProcedureCode=StoredProcedureCode(
@@ -589,7 +588,11 @@ class SnowflakeSource(
                         + f"{stored_procedure.signature if stored_procedure.signature else ''}"
                     ),
                 )
+            yield Either(
+                right=stored_procedure_request
             )
+            self.register_record_stored_proc_request(stored_procedure_request)
+            
         except Exception as exc:
             yield Either(
                 left=StackTraceError(

@@ -604,8 +604,7 @@ class BigquerySource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource)
         """Prepare the stored procedure payload"""
 
         try:
-            yield Either(
-                right=CreateStoredProcedureRequest(
+            stored_procedure_request = CreateStoredProcedureRequest(
                     name=EntityName(__root__=stored_procedure.name),
                     storedProcedureCode=StoredProcedureCode(
                         language=STORED_PROC_LANGUAGE_MAP.get(
@@ -629,7 +628,10 @@ class BigquerySource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource)
                         )
                     ),
                 )
+            yield Either(
+                right=stored_procedure_request
             )
+            self.register_record_stored_proc_request(stored_procedure_request)
         except Exception as exc:
             yield Either(
                 left=StackTraceError(

@@ -259,8 +259,7 @@ class RedshiftSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource)
         """Prepare the stored procedure payload"""
 
         try:
-            yield Either(
-                right=CreateStoredProcedureRequest(
+            stored_procedure_request = CreateStoredProcedureRequest(
                     name=EntityName(__root__=stored_procedure.name),
                     storedProcedureCode=StoredProcedureCode(
                         language=Language.SQL,
@@ -274,7 +273,12 @@ class RedshiftSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource)
                         schema_name=self.context.database_schema,
                     ),
                 )
+            yield Either(
+                right=stored_procedure_request
             )
+                
+            self.register_record_stored_proc_request(stored_procedure_request)
+            
         except Exception as exc:
             yield Either(
                 left=StackTraceError(
