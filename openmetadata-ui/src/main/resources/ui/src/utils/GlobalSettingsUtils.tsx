@@ -27,7 +27,6 @@ import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
 import { ReactComponent as BellIcon } from '../assets/svg/ic-alert-bell.svg';
 import { ReactComponent as CustomDashboardLogoIcon } from '../assets/svg/ic-custom-dashboard-logo.svg';
 import { ReactComponent as CustomLogoIcon } from '../assets/svg/ic-custom-logo.svg';
-import { ReactComponent as DataInsightReportIcon } from '../assets/svg/ic-data-insight-report.svg';
 import { ReactComponent as DatabaseIcon } from '../assets/svg/ic-database.svg';
 import { ReactComponent as PersonasIcon } from '../assets/svg/ic-personas.svg';
 import { ReactComponent as SchemaIcon } from '../assets/svg/ic-schema.svg';
