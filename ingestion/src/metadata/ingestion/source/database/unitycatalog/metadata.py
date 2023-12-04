@@ -38,8 +38,8 @@ from metadata.generated.schema.entity.data.table import (
     TableConstraint,
     TableType,
 )
-from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
-    DatabricksConnection,
+from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
+    UnityCatalogConnection,
 )
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
@@ -54,15 +54,15 @@ from metadata.ingestion.models.ometa_classification import OMetaTagAndClassifica
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
-from metadata.ingestion.source.database.databricks.connection import get_connection
-from metadata.ingestion.source.database.databricks.models import (
+from metadata.ingestion.source.database.multi_db_source import MultiDBSource
+from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
+from metadata.ingestion.source.database.unitycatalog.connection import get_connection
+from metadata.ingestion.source.database.unitycatalog.models import (
     ColumnJson,
     ElementType,
     ForeignConstrains,
     Type,
 )
-from metadata.ingestion.source.database.multi_db_source import MultiDBSource
-from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
 from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
 from metadata.utils.db_utils import get_view_lineage
@@ -85,7 +85,7 @@ def from_dict(cls, dct: Dict[str, Any]) -> "TableConstraintList":
 TableConstraintList.from_dict = from_dict
 
 
-class DatabricksUnityCatalogSource(DatabaseServiceSource, MultiDBSource):
+class UnitycatalogSource(DatabaseServiceSource, MultiDBSource):
     """
     Implements the necessary methods to extract
     Database metadata from Databricks Source using
@@ -100,7 +100,7 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource, MultiDBSource):
         )
         self.context.table_views = []
         self.metadata = metadata
-        self.service_connection: DatabricksConnection = (
+        self.service_connection: UnityCatalogConnection = (
             self.config.serviceConnection.__root__.config
         )
         self.client = get_connection(self.service_connection)
@@ -118,10 +118,10 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource, MultiDBSource):
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: DatabricksConnection = config.serviceConnection.__root__.config
-        if not isinstance(connection, DatabricksConnection):
+        connection: UnityCatalogConnection = config.serviceConnection.__root__.config
+        if not isinstance(connection, UnityCatalogConnection):
             raise InvalidSourceException(
-                f"Expected DatabricksConnection, but got {connection}"
+                f"Expected UnityCatalogConnection, but got {connection}"
             )
         return cls(config, metadata)
 
@@ -233,7 +233,7 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource, MultiDBSource):
             )
         )
 
-    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
+    def get_tables_name_and_type(self) -> Iterable[Tuple[str, str]]:
         """
         Handle table and views.
 

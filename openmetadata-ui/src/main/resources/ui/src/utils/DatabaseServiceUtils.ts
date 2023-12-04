@@ -47,6 +47,7 @@ import singleStoreConnection from '../jsons/connectionSchemas/connections/databa
 import snowflakeConnection from '../jsons/connectionSchemas/connections/database/snowflakeConnection.json';
 import sqliteConnection from '../jsons/connectionSchemas/connections/database/sqliteConnection.json';
 import trinoConnection from '../jsons/connectionSchemas/connections/database/trinoConnection.json';
+import unityCatalogConnection from '../jsons/connectionSchemas/connections/database/unityCatalogConnection.json';
 import verticaConnection from '../jsons/connectionSchemas/connections/database/verticaConnection.json';
 
 export const getDatabaseConfig = (type: DatabaseServiceType) => {
@@ -221,6 +222,11 @@ export const getDatabaseConfig = (type: DatabaseServiceType) => {
     }
     case DatabaseServiceType.Greenplum: {
       schema = greenplumConnection;
+
+      break;
+    }
+    case DatabaseServiceType.UnityCatalog: {
+      schema = unityCatalogConnection;
 
       break;
     }

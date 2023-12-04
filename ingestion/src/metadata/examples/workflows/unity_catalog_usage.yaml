@@ -1,8 +1,9 @@
 source:
-  type: databricks
-  serviceName: local_databricks
+  type: unitycatalog-usage
+  serviceName: local_unitycatalog
   serviceConnection:
     config:
+      type: UnityCatalog
       catalog: hive_metastore
       databaseSchema: default
       token: <databricks token>
@@ -12,11 +13,21 @@ source:
         http_path: <http path of databricks cluster>
   sourceConfig:
     config:
-      type: DatabaseMetadata
-sink:
-  type: metadata-rest
+      type: DatabaseUsage
+      queryLogDuration: 10
+processor:
+  type: query-parser
   config: {}
+stage:
+  type: table-usage
+  config:
+    filename: /tmp/databricks_usage
+bulkSink:
+  type: metadata-usage
+  config:
+    filename: /tmp/databricks_usage
 workflowConfig:
+  loggerLevel: DEBUG
   openMetadataServerConfig:
     hostPort: http://localhost:8585/api
     authProvider: openmetadata
