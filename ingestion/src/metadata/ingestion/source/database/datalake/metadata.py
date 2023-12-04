@@ -363,7 +363,7 @@ class DatalakeSource(DatabaseServiceSource):
                     fileFormat=table_extension.value if table_extension else None,
                 )
                 yield Either(right=table_request)
-                self.register_record_table_request(table_request=table_request)
+                self.register_record(table_request=table_request)
         except Exception as exc:
             yield Either(
                 left=StackTraceError(

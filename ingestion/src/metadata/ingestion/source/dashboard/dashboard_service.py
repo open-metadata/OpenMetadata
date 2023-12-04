@@ -408,9 +408,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
             logger.debug(traceback.format_exc())
             logger.warning(f"Error processing owner for {dashboard_details}: {exc}")
 
-    def register_record_dashboard(
-        self, dashboard_request: CreateDashboardRequest
-    ) -> None:
+    def register_record(self, dashboard_request: CreateDashboardRequest) -> None:
         """
         Mark the dashboard record as scanned and update the dashboard_source_state
         """

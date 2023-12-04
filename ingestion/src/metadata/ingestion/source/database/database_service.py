@@ -388,7 +388,7 @@ class DatabaseServiceSource(
         )
         return self.get_tag_by_fqn(entity_fqn=col_fqn)
 
-    def register_record_table_request(self, table_request: CreateTableRequest) -> None:
+    def register_record(self, table_request: CreateTableRequest) -> None:
         """
         Mark the table record as scanned and update the database_source_state
         """
