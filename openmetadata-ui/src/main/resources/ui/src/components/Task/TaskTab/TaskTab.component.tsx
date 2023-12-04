@@ -449,7 +449,7 @@ export const TaskTab = ({
   }, [initialAssignees]);
 
   return (
-    <Row className="p-y-sm p-x-md" gutter={[0, 24]}>
+    <Row className="p-y-sm p-x-md" data-testid="task-tab" gutter={[0, 24]}>
       <Col className="d-flex items-center" span={24}>
         <Icon
           className="m-r-xs"

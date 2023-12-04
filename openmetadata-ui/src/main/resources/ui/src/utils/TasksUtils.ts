@@ -664,5 +664,9 @@ export const getEntityTableName = (
       return name;
   }
 
+  if (isUndefined(entityReference)) {
+    return name;
+  }
+
   return getEntityName(entityReference);
 };
