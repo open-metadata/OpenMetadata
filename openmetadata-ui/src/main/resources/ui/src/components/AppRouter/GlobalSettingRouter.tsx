@@ -361,25 +361,6 @@ const GlobalSettingRouter = () => {
           GlobalSettingOptions.ACTIVITY_FEED
         )}
       />
-      <AdminProtectedRoute
-        exact
-        component={AddDataInsightReportAlert}
-        hasPermission={false}
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.NOTIFICATIONS,
-          GlobalSettingOptions.ADD_DATA_INSIGHT_REPORT_ALERT
-        )}
-      />
-      <AdminProtectedRoute
-        exact
-        component={AddDataInsightReportAlert}
-        hasPermission={false}
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.NOTIFICATIONS,
-          GlobalSettingOptions.EDIT_DATA_INSIGHT_REPORT_ALERT,
-          true
-        )}
-      />
 
       <AdminProtectedRoute
         exact

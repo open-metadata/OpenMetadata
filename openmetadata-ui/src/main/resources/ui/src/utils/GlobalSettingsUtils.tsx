@@ -241,12 +241,6 @@ export const getGlobalSettingsMenuWithPermission = (
           key: 'notifications.alerts',
           icon: <BellIcon className="side-panel-icons" />,
         },
-        {
-          label: i18next.t('label.data-insight-report'),
-          isProtected: Boolean(isAdminUser),
-          key: 'notifications.dataInsightReport',
-          icon: <DataInsightReportIcon className="side-panel-icons" />,
-        },
       ],
     },
     {
