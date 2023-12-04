@@ -20,10 +20,8 @@ import AsyncSelectList from '../../../components/AsyncSelectList/AsyncSelectList
 import { SelectOption } from '../../../components/AsyncSelectList/AsyncSelectList.interface';
 import { TagSource } from '../../../generated/entity/data/container';
 import { TagLabel } from '../../../generated/type/tagLabel';
-import {
-  fetchGlossaryList,
-  fetchTagsElasticSearch,
-} from '../../../utils/TagsUtils';
+import tagClassBase from '../../../utils/TagClassBase';
+import { fetchGlossaryList } from '../../../utils/TagsUtils';
 
 export interface TagSuggestionProps {
   placeholder?: string;
@@ -83,7 +81,7 @@ const TagSuggestion: React.FC<TagSuggestionProps> = ({
 
   return (
     <AsyncSelectList
-      fetchOptions={isGlossaryType ? fetchGlossaryList : fetchTagsElasticSearch}
+      fetchOptions={isGlossaryType ? fetchGlossaryList : tagClassBase.getTags}
       initialOptions={initialOptions}
       mode="multiple"
       placeholder={

@@ -30,7 +30,6 @@ export type TagsContainerV2Props = {
   children?: ReactElement;
   displayType?: DisplayType;
   layoutType?: LayoutType;
-  filterClassifications?: string[];
   onSelectionChange?: (selectedTags: EntityTags[]) => Promise<void>;
   onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void;
 };

@@ -818,5 +818,3 @@ export const ICON_DIMENSION = {
 export const COMMON_ICON_STYLES: CSSProperties = {
   verticalAlign: 'middle',
 };
-
-export const KNOWLEDGE_CENTER_CLASSIFICATION = 'KnowledgeCenter';

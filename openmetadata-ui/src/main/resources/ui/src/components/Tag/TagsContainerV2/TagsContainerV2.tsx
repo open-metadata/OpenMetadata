@@ -22,19 +22,13 @@ import { ReactComponent as IconComments } from '../../../assets/svg/comment.svg'
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconRequest } from '../../../assets/svg/request-icon.svg';
 import { TableTagsProps } from '../../../components/TableTags/TableTags.interface';
-import {
-  DE_ACTIVE_COLOR,
-  KNOWLEDGE_CENTER_CLASSIFICATION,
-} from '../../../constants/constants';
+import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { TAG_CONSTANT, TAG_START_WITH } from '../../../constants/Tag.constants';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
-import {
-  fetchGlossaryList,
-  fetchTagsElasticSearch,
-  getTagPlaceholder,
-} from '../../../utils/TagsUtils';
+import tagClassBase from '../../../utils/TagClassBase';
+import { fetchGlossaryList, getTagPlaceholder } from '../../../utils/TagsUtils';
 import {
   getRequestTagsPath,
   getUpdateTagsPath,
@@ -62,7 +56,6 @@ const TagsContainerV2 = ({
   onSelectionChange,
   onThreadLinkSelect,
   children,
-  filterClassifications = [KNOWLEDGE_CENTER_CLASSIFICATION],
 }: TagsContainerV2Props) => {
   const history = useHistory();
   const [form] = Form.useForm();
@@ -95,12 +88,12 @@ const TagsContainerV2 = ({
   const fetchAPI = useCallback(
     (searchValue: string, page: number) => {
       if (tagType === TagSource.Classification) {
-        return fetchTagsElasticSearch(searchValue, page, filterClassifications);
+        return tagClassBase.getTags(searchValue, page);
       } else {
         return fetchGlossaryList(searchValue, page);
       }
     },
-    [tagType, filterClassifications]
+    [tagType]
   );
 
   const showNoDataPlaceholder = useMemo(
