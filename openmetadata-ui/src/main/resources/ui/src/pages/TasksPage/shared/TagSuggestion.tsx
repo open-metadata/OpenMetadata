@@ -18,6 +18,7 @@ import { EntityTags } from 'Models';
 import React, { useMemo } from 'react';
 import AsyncSelectList from '../../../components/AsyncSelectList/AsyncSelectList';
 import { SelectOption } from '../../../components/AsyncSelectList/AsyncSelectList.interface';
+import { KNOWLEDGE_CENTER_CLASSIFICATION } from '../../../constants/constants';
 import { TagSource } from '../../../generated/entity/data/container';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import {
@@ -30,6 +31,7 @@ export interface TagSuggestionProps {
   tagType?: TagSource;
   value?: TagLabel[];
   initialOptions?: SelectOption[];
+  filterClassifications?: string[];
   onChange?: (newTags: TagLabel[]) => void;
 }
 
@@ -39,6 +41,7 @@ const TagSuggestion: React.FC<TagSuggestionProps> = ({
   placeholder,
   initialOptions,
   tagType = TagSource.Classification,
+  filterClassifications = [KNOWLEDGE_CENTER_CLASSIFICATION],
 }) => {
   const isGlossaryType = useMemo(
     () => tagType === TagSource.Glossary,
@@ -81,9 +84,17 @@ const TagSuggestion: React.FC<TagSuggestionProps> = ({
     }
   };
 
+  const handleFetchOptions = async (search: string, page: number) => {
+    if (isGlossaryType) {
+      return fetchGlossaryList(search, page);
+    }
+
+    return fetchTagsElasticSearch(search, page, filterClassifications);
+  };
+
   return (
     <AsyncSelectList
-      fetchOptions={isGlossaryType ? fetchGlossaryList : fetchTagsElasticSearch}
+      fetchOptions={handleFetchOptions}
       initialOptions={initialOptions}
       mode="multiple"
       placeholder={
