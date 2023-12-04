@@ -51,6 +51,7 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.UnhandledServerException;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.models.IndexMapping;
@@ -258,6 +259,13 @@ public class SearchRepository {
                 entityId, entityType, ie.getMessage(), ie.getCause(), ExceptionUtils.getStackTrace(ie)));
       }
     }
+  }
+
+  public void updateEntity(EntityReference entityReference) {
+    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityReference.getType());
+    EntityInterface entity = entityRepository.get(null, entityReference.getId(), entityRepository.getFields("*"));
+    // Update Entity
+    updateEntity(entity);
   }
 
   public void propagateInheritedFieldsToChildren(

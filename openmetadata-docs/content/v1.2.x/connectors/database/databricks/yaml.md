@@ -115,12 +115,6 @@ This is a sample config for Databricks:
 
 {% /codeInfo %}
 
-{% codeInfo srNumber=35 %}
-
-**useUnityCatalog**: Enable this flag to extract the metadata and lineage information using databricks unity catalog instead of using legacy hive metastore. When you enable this flag make sure you have enabled the unity catalog on your instance.
-
-{% /codeInfo %}
-
 
 {% partial file="/v1.2/connectors/yaml/database/source-config-def.md" /%}
 
@@ -173,9 +167,6 @@ source:
 ```
 ```yaml {% srNumber=6 %}
       connectionTimeout: 120
-```
-```yaml {% srNumber=35 %}
-      useUnityCatalog: true
 ```
 ```yaml {% srNumber=7 %}
       # connectionOptions:

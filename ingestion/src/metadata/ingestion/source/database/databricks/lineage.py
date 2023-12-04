@@ -11,38 +11,41 @@
 """
 Databricks lineage module
 """
-from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
-    DatabricksConnection,
+import traceback
+from datetime import datetime
+from typing import Iterator
+
+from metadata.generated.schema.type.tableQuery import TableQuery
+from metadata.ingestion.source.database.databricks.query_parser import (
+    DatabricksQueryParserSource,
 )
-from metadata.generated.schema.metadataIngestion.workflow import (
-    Source as WorkflowSource,
-)
-from metadata.ingestion.api.steps import InvalidSourceException
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.databricks.legacy.lineage import (
-    DatabricksLineageLegacySource,
-)
-from metadata.ingestion.source.database.databricks.unity_catalog.lineage import (
-    DatabricksUnityCatalogLineageSource,
-)
+from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
 
-class DatabricksLineageSource:
+class DatabricksLineageSource(DatabricksQueryParserSource, LineageSource):
     """
-    Databricks Lineage Source
+    Databricks Lineage Legacy Source
     """
 
-    @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: DatabricksConnection = config.serviceConnection.__root__.config
-        if not isinstance(connection, DatabricksConnection):
-            raise InvalidSourceException(
-                f"Expected DatabricksConnection, but got {connection}"
-            )
-        if not connection.useUnityCatalog:
-            return DatabricksLineageLegacySource(config, metadata)
-        return DatabricksUnityCatalogLineageSource(config, metadata)
+    def yield_table_query(self) -> Iterator[TableQuery]:
+        data = self.client.list_query_history(
+            start_date=self.start,
+            end_date=self.end,
+        )
+        for row in data:
+            try:
+                if self.client.is_query_valid(row):
+                    yield TableQuery(
+                        query=row.get("query_text"),
+                        userName=row.get("user_name"),
+                        startTime=row.get("query_start_time_ms"),
+                        endTime=row.get("execution_end_time_ms"),
+                        analysisDate=datetime.now(),
+                        serviceName=self.config.serviceName,
+                    )
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Error processing query_dict {row}: {exc}")

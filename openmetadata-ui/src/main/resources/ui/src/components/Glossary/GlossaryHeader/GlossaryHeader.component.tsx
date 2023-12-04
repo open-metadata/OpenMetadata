@@ -429,6 +429,7 @@ const GlossaryHeader = ({
           {glossaryTermStatus && glossaryTermStatus === Status.Approved && (
             <Dropdown
               className="m-l-xs"
+              data-testid="glossary-term-add-button-menu"
               menu={{
                 items: addButtonContent,
               }}
