@@ -34,14 +34,24 @@ const TABLE_CUSTOM_METRIC = {
   name: `tableCustomMetric-${uuid()}`,
   expression: `SELECT * FROM ${DATABASE_SERVICE.entity.name}`,
 };
+const COLUMN_CUSTOM_METRIC = {
+  name: `tableCustomMetric-${uuid()}`,
+  column: DATABASE_SERVICE.entity.columns[0].name,
+  expression: `SELECT * FROM ${DATABASE_SERVICE.entity.name}`,
+};
 
-const validateForm = () => {
+const validateForm = (isColumnMetric = false) => {
   // error messages
   cy.get('#name_help').scrollIntoView().should('contain', 'Name is required');
 
   cy.get('#expression_help')
     .scrollIntoView()
     .should('contain', 'SQL Query is required');
+  if (isColumnMetric) {
+    cy.get('#columnName_help')
+      .scrollIntoView()
+      .should('contain', 'Column is required');
+  }
 
   // max length validation
   cy.get('#name').scrollIntoView().type(INVALID_NAMES.MAX_LENGTH);
@@ -54,6 +64,171 @@ const validateForm = () => {
     .type(INVALID_NAMES.WITH_SPECIAL_CHARS);
   cy.get('#name_help').should('contain', NAME_VALIDATION_ERROR);
   cy.get('#name').clear();
+};
+
+const createCustomMetric = ({
+  term,
+  serviceName,
+  entity,
+  isColumnMetric = false,
+  metric,
+}) => {
+  interceptURL('PUT', '/api/v1/tables/*/customMetric', 'createCustomMetric');
+  interceptURL(
+    'GET',
+    '/api/v1/tables/name/*?fields=customMetrics,columns&include=all',
+    'getCustomMetric'
+  );
+  visitEntityDetailsPage({
+    term,
+    serviceName,
+    entity,
+  });
+  // Click on create custom metric button
+  cy.get('[data-testid="profiler"]').click();
+  verifyResponseStatusCode('@getCustomMetric', 200);
+  if (isColumnMetric) {
+    cy.get('[data-testid="profiler-tab-left-panel"]')
+      .contains('Column Profile')
+      .click();
+  }
+  cy.get('[data-testid="profiler-add-table-test-btn"]').click();
+  cy.get('[data-testid="metric"]').click();
+
+  // validate redirection and cancel button
+  cy.get('[data-testid="heading"]').should('be.visible');
+  cy.get(
+    `[data-testid=${
+      isColumnMetric
+        ? 'profiler-tab-container'
+        : 'table-profiler-chart-container'
+    }]`
+  ).should('be.visible');
+  cy.get('[data-testid="cancel-button"]').click();
+  verifyResponseStatusCode('@getCustomMetric', 200);
+  cy.url().should('include', 'profiler');
+  cy.get('[data-testid="heading"]')
+    .invoke('text')
+    .should('equal', isColumnMetric ? 'Column Profile' : 'Table Profile');
+
+  // Click on create custom metric button
+  cy.get('[data-testid="profiler-add-table-test-btn"]').click();
+  cy.get('[data-testid="metric"]').click();
+  cy.get('[data-testid="submit-button"]').click();
+
+  validateForm(isColumnMetric);
+
+  // fill form and submit
+  cy.get('#name').type(metric.name);
+  if (isColumnMetric) {
+    cy.get('#columnName').click();
+    cy.get(`[title="${metric.column}"]`).click();
+  }
+  cy.get('.CodeMirror-scroll').click().type(metric.expression);
+  cy.get('[data-testid="submit-button"]').click();
+  verifyResponseStatusCode('@createCustomMetric', 200);
+  toastNotification(`${metric.name} created successfully.`);
+  verifyResponseStatusCode('@getCustomMetric', 200);
+
+  // verify the created custom metric
+  cy.url().should('include', 'profiler');
+  cy.get('[data-testid="heading"]')
+    .invoke('text')
+    .should('equal', isColumnMetric ? 'Column Profile' : 'Table Profile');
+  cy.get(`[data-testid="${metric.name}-custom-metrics"]`)
+    .scrollIntoView()
+    .should('be.visible');
+};
+
+const editCustomMetric = ({
+  term,
+  serviceName,
+  entity,
+  isColumnMetric = false,
+  metric,
+}) => {
+  interceptURL(
+    'GET',
+    '/api/v1/tables/name/*?fields=customMetrics,columns&include=all',
+    'getCustomMetric'
+  );
+  interceptURL('PUT', '/api/v1/tables/*/customMetric', 'editCustomMetric');
+  visitEntityDetailsPage({
+    term,
+    serviceName,
+    entity,
+  });
+  cy.get('[data-testid="profiler"]').click();
+  verifyResponseStatusCode('@getCustomMetric', 200);
+  if (isColumnMetric) {
+    cy.get('[data-testid="profiler-tab-left-panel"]')
+      .contains('Column Profile')
+      .click();
+    cy.get('[data-row-key="user_id"]').contains(metric.column).click();
+  }
+  cy.get(`[data-testid="${metric.name}-custom-metrics"]`)
+    .scrollIntoView()
+    .should('be.visible');
+  cy.get(`[data-testid="${metric.name}-custom-metrics-menu"]`).click();
+  cy.get(`[data-menu-id*="edit"]`).click();
+
+  // validate cancel button
+  cy.get('.ant-modal-content').should('be.visible');
+  cy.get('.ant-modal-footer').contains('Cancel').click();
+  cy.get('.ant-modal-content').should('not.exist');
+
+  // edit expression and submit
+  cy.get(`[data-testid="${metric.name}-custom-metrics-menu"]`).click();
+  cy.get(`[data-menu-id*="edit"]`).click();
+  cy.get('.CodeMirror-scroll').click().type('updated');
+  cy.get('.ant-modal-footer').contains('Save').click();
+  cy.wait('@editCustomMetric').then(({ request }) => {
+    expect(request.body.expression).to.have.string('updated');
+  });
+  toastNotification(`${metric.name} updated successfully.`);
+};
+const deleteCustomMetric = ({
+  term,
+  serviceName,
+  entity,
+  metric,
+  isColumnMetric = false,
+}) => {
+  interceptURL(
+    'GET',
+    '/api/v1/tables/name/*?fields=customMetrics,columns&include=all',
+    'getCustomMetric'
+  );
+  interceptURL(
+    'DELETE',
+    isColumnMetric
+      ? `/api/v1/tables/*/customMetric/${metric.column}/${metric.name}`
+      : `/api/v1/tables/*/customMetric/${metric.name}`,
+    'deleteCustomMetric'
+  );
+  visitEntityDetailsPage({
+    term,
+    serviceName,
+    entity,
+  });
+  cy.get('[data-testid="profiler"]').click();
+  verifyResponseStatusCode('@getCustomMetric', 200);
+  if (isColumnMetric) {
+    cy.get('[data-testid="profiler-tab-left-panel"]')
+      .contains('Column Profile')
+      .click();
+    cy.get('[data-row-key="user_id"]').contains(metric.column).click();
+  }
+  cy.get(`[data-testid="${metric.name}-custom-metrics"]`)
+    .scrollIntoView()
+    .should('be.visible');
+  cy.get(`[data-testid="${metric.name}-custom-metrics-menu"]`).click();
+  cy.get(`[data-menu-id*="delete"]`).click();
+  cy.get('.ant-modal-header').should('contain', `Delete ${metric.name}`);
+  cy.get('[data-testid="confirmation-text-input"]').type('DELETE');
+  cy.get('[data-testid="confirm-button"]').click();
+  verifyResponseStatusCode('@deleteCustomMetric', 200);
+  toastNotification(`${metric.name} deleted successfully!`);
 };
 
 describe('Custom Metric', () => {
@@ -88,55 +263,59 @@ describe('Custom Metric', () => {
   });
 
   it('Create table custom metric', () => {
-    interceptURL('PUT', '/api/v1/tables/*/customMetric', 'createCustomMetric');
-    interceptURL(
-      'GET',
-      '/api/v1/tables/name/*?fields=customMetrics,columns&include=all',
-      'getCustomMetric'
-    );
-    visitEntityDetailsPage({
+    createCustomMetric({
       term: DATABASE_SERVICE.entity.name,
       serviceName: DATABASE_SERVICE.service.name,
       entity: DATA_ASSETS.tables,
+      metric: TABLE_CUSTOM_METRIC,
     });
-    // Click on create custom metric button
-    cy.get('[data-testid="profiler"]').click();
-    cy.get('[data-testid="profiler-add-table-test-btn"]').click();
-    cy.get('[data-testid="metric"]').click();
+  });
 
-    // validate redirection and cancel button
-    cy.get('[data-testid="heading"]').should('be.visible');
-    cy.get('[data-testid="table-profiler-chart-container"]').should(
-      'be.visible'
-    );
-    cy.get('[data-testid="cancel-button"]').click();
-    cy.url().should('include', 'profiler');
-    cy.get('[data-testid="heading"]')
-      .invoke('text')
-      .should('equal', 'Table Profile');
+  it("Edit table custom metric's expression", () => {
+    editCustomMetric({
+      term: DATABASE_SERVICE.entity.name,
+      serviceName: DATABASE_SERVICE.service.name,
+      entity: DATA_ASSETS.tables,
+      metric: TABLE_CUSTOM_METRIC,
+    });
+  });
 
-    // Click on create custom metric button
-    cy.get('[data-testid="profiler-add-table-test-btn"]').click();
-    cy.get('[data-testid="metric"]').click();
-    cy.get('[data-testid="submit-button"]').click();
+  it('Delete table custom metric', () => {
+    deleteCustomMetric({
+      term: DATABASE_SERVICE.entity.name,
+      serviceName: DATABASE_SERVICE.service.name,
+      entity: DATA_ASSETS.tables,
+      metric: TABLE_CUSTOM_METRIC,
+    });
+  });
 
-    validateForm();
+  it('Create column custom metric', () => {
+    createCustomMetric({
+      term: DATABASE_SERVICE.entity.name,
+      serviceName: DATABASE_SERVICE.service.name,
+      entity: DATA_ASSETS.tables,
+      metric: COLUMN_CUSTOM_METRIC,
+      isColumnMetric: true,
+    });
+  });
 
-    // fill form and submit
-    cy.get('#name').type(TABLE_CUSTOM_METRIC.name);
-    cy.get('.CodeMirror-scroll').click().type(TABLE_CUSTOM_METRIC.expression);
-    cy.get('[data-testid="submit-button"]').click();
-    verifyResponseStatusCode('@createCustomMetric', 200);
-    toastNotification(`${TABLE_CUSTOM_METRIC.name} created successfully.`);
-    verifyResponseStatusCode('@getCustomMetric', 200);
+  it("Edit column custom metric's expression", () => {
+    editCustomMetric({
+      term: DATABASE_SERVICE.entity.name,
+      serviceName: DATABASE_SERVICE.service.name,
+      entity: DATA_ASSETS.tables,
+      metric: COLUMN_CUSTOM_METRIC,
+      isColumnMetric: true,
+    });
+  });
 
-    // verify the created custom metric
-    cy.url().should('include', 'profiler');
-    cy.get('[data-testid="heading"]')
-      .invoke('text')
-      .should('equal', 'Table Profile');
-    cy.get(`[data-testid="${TABLE_CUSTOM_METRIC.name}-custom-metrics"]`)
-      .scrollIntoView()
-      .should('be.visible');
+  it('Delete column custom metric', () => {
+    deleteCustomMetric({
+      term: DATABASE_SERVICE.entity.name,
+      serviceName: DATABASE_SERVICE.service.name,
+      entity: DATA_ASSETS.tables,
+      metric: COLUMN_CUSTOM_METRIC,
+      isColumnMetric: true,
+    });
   });
 });

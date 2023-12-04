@@ -30,13 +30,13 @@ import {
 import { ColumnProfile } from '../../../generated/entity/data/container';
 import { Table } from '../../../generated/entity/data/table';
 import { getColumnProfilerList } from '../../../rest/tableAPI';
-import { customFormatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
 import {
   calculateCustomMetrics,
   getColumnCustomMetric,
 } from '../../../utils/TableProfilerUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { customFormatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import CustomMetricGraphs from '../CustomMetricGraphs/CustomMetricGraphs.component';
 import { useTableProfiler } from '../TableProfilerProvider';
 
