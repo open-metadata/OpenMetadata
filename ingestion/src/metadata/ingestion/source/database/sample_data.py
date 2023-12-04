@@ -101,7 +101,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.tests.assigned import Assigned
 from metadata.generated.schema.tests.basic import TestCaseResult, TestResultValue
-from metadata.generated.schema.tests.inReview import InReview
 from metadata.generated.schema.tests.resolved import Resolved, TestCaseFailureReasonType
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.tests.testSuite import TestSuite
