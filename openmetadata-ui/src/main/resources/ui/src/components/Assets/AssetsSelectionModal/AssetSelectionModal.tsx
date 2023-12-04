@@ -46,7 +46,7 @@ import {
   getSelectedValuesFromQuickFilter,
 } from '../../../utils/Explore.utils';
 import { getCombinedQueryFilterObject } from '../../../utils/ExplorePage/ExplorePageUtils';
-import { getDecodedFqn, getEncodedFqn } from '../../../utils/StringsUtils';
+import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import AssetFilters from '../../AssetFilters/AssetFilters.component';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -134,7 +134,7 @@ export const AssetSelectionModal = ({
       );
       setActiveEntity(data);
     } else if (type === AssetsOfEntity.GLOSSARY) {
-      const data = await getGlossaryTermByFQN(getDecodedFqn(entityFqn), 'tags');
+      const data = await getGlossaryTermByFQN(entityFqn, 'tags');
       setActiveEntity(data);
     }
   }, [type, entityFqn]);

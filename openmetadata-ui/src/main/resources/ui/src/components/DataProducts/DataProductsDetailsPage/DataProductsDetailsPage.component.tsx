@@ -78,7 +78,10 @@ import {
   getDataProductVersionsPath,
   getDomainPath,
 } from '../../../utils/RouterUtils';
-import { escapeESReservedCharacters } from '../../../utils/StringsUtils';
+import {
+  escapeESReservedCharacters,
+  getEncodedFqn,
+} from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
@@ -211,7 +214,7 @@ const DataProductsDetailsPage = ({
           1,
           0,
           `(dataProducts.fullyQualifiedName:"${escapeESReservedCharacters(
-            dataProduct.fullyQualifiedName
+            getEncodedFqn(dataProduct.fullyQualifiedName ?? '')
           )}")`,
           '',
           '',

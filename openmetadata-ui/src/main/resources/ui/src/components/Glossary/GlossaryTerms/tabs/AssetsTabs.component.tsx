@@ -78,7 +78,6 @@ import {
   getGlossaryTermByFQN,
   removeAssetsFromGlossaryTerm,
 } from '../../../../rest/glossaryAPI';
-import { searchData } from '../../../../rest/miscAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { getAssetsPageQuickFilters } from '../../../../utils/AdvancedSearchUtils';
 import { getCountBadge, Transi18next } from '../../../../utils/CommonUtils';
@@ -90,7 +89,6 @@ import {
   getAggregations,
   getSelectedValuesFromQuickFilter,
 } from '../../../../utils/Explore.utils';
-import { getEntityTypeFromSearchIndex } from '../../../../utils/SearchUtils';
 import {
   escapeESReservedCharacters,
   getDecodedFqn,
@@ -205,12 +203,12 @@ const AssetsTabs = forwardRef(
       switch (type) {
         case AssetsOfEntity.DOMAIN:
           return `(domain.fullyQualifiedName:"${escapeESReservedCharacters(
-            entityFqn
+            getEncodedFqn(entityFqn ?? '')
           )}") AND !(entityType:"dataProduct")`;
 
         case AssetsOfEntity.DATA_PRODUCT:
           return `(dataProducts.fullyQualifiedName:"${escapeESReservedCharacters(
-            entityFqn
+            getEncodedFqn(entityFqn ?? '')
           )}")`;
 
         case AssetsOfEntity.TEAM:
@@ -223,7 +221,9 @@ const AssetsTabs = forwardRef(
           return queryFilter ?? '';
 
         default:
-          return `(tags.tagFQN:"${escapeESReservedCharacters(entityFqn)}")`;
+          return `(tags.tagFQN:"${escapeESReservedCharacters(
+            getEncodedFqn(entityFqn ?? '')
+          )}")`;
       }
     }, [type, fqn, entityFqn]);
 
@@ -241,7 +241,7 @@ const AssetsTabs = forwardRef(
             pageNumber: page,
             pageSize: pageSize,
             searchIndex: index,
-            query: searchValue,
+            query: `*${searchValue}*`,
             filters: queryParam,
             queryFilter: quickFilterQuery,
           });
@@ -262,7 +262,6 @@ const AssetsTabs = forwardRef(
           handlePagingChange({ total: res.hits.total.value ?? 0 });
           setData(hits);
           setAggregations(getAggregations(res?.aggregations));
-
           hits[0] && setSelectedCard(hits[0]._source as SourceType);
         } catch (_) {
           // Nothing here
@@ -395,26 +394,23 @@ const AssetsTabs = forwardRef(
     const fetchCountsByEntity = async () => {
       try {
         setIsCountLoading(true);
-        const res = await searchData(
-          '',
-          0,
-          0,
-          queryParam,
-          '',
-          '',
-          SearchIndex.ALL
-        );
 
-        const buckets = res.data.aggregations[`sterms#index_count`].buckets;
+        const res = await searchQuery({
+          query: `*${searchValue}*`,
+          pageNumber: 0,
+          pageSize: 0,
+          queryFilter: quickFilterQuery,
+          searchIndex: SearchIndex.ALL,
+          filters: queryParam,
+        });
+
+        const buckets = res.aggregations[`index_count`].buckets;
         const counts: Record<string, number> = {};
         buckets.forEach((item) => {
           if (item) {
-            counts[
-              getEntityTypeFromSearchIndex(item?.key) ?? EntityType.TABLE
-            ] = item.doc_count;
+            counts[item.key ?? ''] = item.doc_count;
           }
         });
-
         setItemCount(counts as Record<EntityType, number>);
       } catch (err) {
         showErrorToast(err as AxiosError);
@@ -582,7 +578,6 @@ const AssetsTabs = forwardRef(
           <div className="assets-data-container p-t-sm">
             {data.map(({ _source, _id = '' }) => (
               <ExploreSearchCard
-                showCheckboxes
                 showEntityIcon
                 actionPopoverContent={
                   isRemovable && permissions.EditAll ? (
@@ -612,6 +607,7 @@ const AssetsTabs = forwardRef(
                 handleSummaryPanelDisplay={setSelectedCard}
                 id={_id}
                 key={'assets_' + _id}
+                showCheckboxes={Boolean(activeEntity)}
                 showTags={false}
                 source={_source}
                 onCheckboxChange={(selected) =>
@@ -638,6 +634,7 @@ const AssetsTabs = forwardRef(
       [
         type,
         data,
+        activeEntity,
         permissions,
         paging,
         currentPage,
@@ -675,7 +672,7 @@ const AssetsTabs = forwardRef(
     const assetsHeader = useMemo(() => {
       return (
         <div className="w-full d-flex justify-between items-center p-l-sm">
-          {data.length > 0 && (
+          {activeEntity && data.length > 0 && (
             <Checkbox
               className="assets-checkbox p-x-sm"
               onChange={(e) => onSelectAll(e.target.checked)}>
@@ -688,6 +685,7 @@ const AssetsTabs = forwardRef(
       );
     }, [
       activeFilter,
+      activeEntity,
       isLoading,
       data,
       openKeys,

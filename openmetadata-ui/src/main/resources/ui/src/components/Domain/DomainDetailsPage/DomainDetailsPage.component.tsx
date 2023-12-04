@@ -81,7 +81,10 @@ import {
   getDomainPath,
   getDomainVersionsPath,
 } from '../../../utils/RouterUtils';
-import { escapeESReservedCharacters } from '../../../utils/StringsUtils';
+import {
+  escapeESReservedCharacters,
+  getEncodedFqn,
+} from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
@@ -240,7 +243,7 @@ const DomainDetailsPage = ({
           1,
           0,
           `(domain.fullyQualifiedName:${escapeESReservedCharacters(
-            domain.fullyQualifiedName
+            getEncodedFqn(domain.fullyQualifiedName ?? '')
           )})`,
           '',
           '',
@@ -262,7 +265,7 @@ const DomainDetailsPage = ({
           1,
           0,
           `(domain.fullyQualifiedName:"${escapeESReservedCharacters(
-            domain.fullyQualifiedName
+            getEncodedFqn(domain.fullyQualifiedName ?? '')
           )}") AND !(entityType:"dataProduct")`,
           '',
           '',

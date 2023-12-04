@@ -26,7 +26,7 @@ import {
   DASHBOARD_DATA_MODEL_TYPE,
   DASHBOARD_DROPDOWN_ITEMS,
   DATA_PRODUCT_DROPDOWN_ITEMS,
-  DOMAIN_DROPDOWN_ITEMS,
+  DOMAIN_DATAPRODUCT_DROPDOWN_ITEMS,
   GLOSSARY_DROPDOWN_ITEMS,
   PIPELINE_DROPDOWN_ITEMS,
   SEARCH_INDEX_DROPDOWN_ITEMS,
@@ -93,10 +93,8 @@ export const getDropDownItems = (index: string) => {
 export const getAssetsPageQuickFilters = (type: AssetsOfEntity) => {
   switch (type) {
     case AssetsOfEntity.DOMAIN:
-      return [...DOMAIN_DROPDOWN_ITEMS];
-
     case AssetsOfEntity.DATA_PRODUCT:
-      return [...DATA_PRODUCT_DROPDOWN_ITEMS];
+      return [...DOMAIN_DATAPRODUCT_DROPDOWN_ITEMS];
 
     case AssetsOfEntity.GLOSSARY:
     default:

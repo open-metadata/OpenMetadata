@@ -31,7 +31,6 @@ import {
 } from '../../../generated/entity/data/glossaryTerm';
 import { ChangeDescription } from '../../../generated/entity/type';
 import { MOCK_GLOSSARY_NO_PERMISSIONS } from '../../../mocks/Glossary.mock';
-import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { searchData } from '../../../rest/miscAPI';
 import { getCountBadge, getFeedCounts } from '../../../utils/CommonUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
@@ -340,11 +339,9 @@ const GlossaryTermsV1 = ({
         <AssetSelectionModal
           entityFqn={glossaryTerm.fullyQualifiedName}
           open={assetModalVisible}
-          queryFilter={
-            getQueryFilterToExcludeTerm(
-              glossaryTerm.fullyQualifiedName
-            ) as QueryFilterInterface
-          }
+          queryFilter={getQueryFilterToExcludeTerm(
+            glossaryTerm.fullyQualifiedName
+          )}
           type={AssetsOfEntity.GLOSSARY}
           onCancel={() => setAssetModelVisible(false)}
           onSave={handleAssetSave}

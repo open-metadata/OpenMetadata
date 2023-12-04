@@ -171,7 +171,7 @@ export const DATA_PRODUCT_DROPDOWN_ITEMS = [
   },
 ];
 
-export const DOMAIN_DROPDOWN_ITEMS = [
+export const DOMAIN_DATAPRODUCT_DROPDOWN_ITEMS = [
   {
     label: t('label.owner'),
     key: 'owner.displayName.keyword',
