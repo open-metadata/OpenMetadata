@@ -1,7 +1,7 @@
 -- Data quality failure status extension time series
 CREATE TABLE test_case_resolution_status_time_series (
   id varchar(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
-  sequenceId varchar(36) GENERATED ALWAYS AS (json ->> 'sequenceId') STORED NOT NULL,
+  stateId varchar(36) GENERATED ALWAYS AS (json ->> 'stateId') STORED NOT NULL,
   assignee varchar(256) GENERATED ALWAYS AS (
       CASE
           WHEN json->'testCaseResolutionStatusDetails' IS NOT NULL AND

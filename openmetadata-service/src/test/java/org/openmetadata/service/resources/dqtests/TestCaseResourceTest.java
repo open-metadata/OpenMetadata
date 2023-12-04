@@ -1052,22 +1052,22 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertEquals(10, testCaseFailureStatusResultList.getData().size());
 
     // check we have only 2 distinct sequence IDs
-    List<UUID> sequenceIds =
-        testCaseFailureStatusResultList.getData().stream().map(TestCaseResolutionStatus::getSequenceId).toList();
-    Set<UUID> sequenceIdSet = new HashSet<>(sequenceIds);
-    assertEquals(2, sequenceIdSet.size());
+    List<UUID> stateIds =
+        testCaseFailureStatusResultList.getData().stream().map(TestCaseResolutionStatus::getStateId).toList();
+    Set<UUID> stateIdSet = new HashSet<>(stateIds);
+    assertEquals(2, stateIdSet.size());
 
     TestCaseResolutionStatus testCaseResolutionStatus = testCaseFailureStatusResultList.getData().get(0);
-    UUID sequenceId = sequenceIds.get(0);
+    UUID stateId = stateIds.get(0);
 
     // Get the test case failure statuses by ID
     TestCaseResolutionStatus storedTestCaseResolution = getTestCaseFailureStatusById(testCaseResolutionStatus.getId());
     assertEquals(storedTestCaseResolution.getId(), testCaseResolutionStatus.getId());
 
     // Get the test case failure statuses by sequence ID
-    ResultList<TestCaseResolutionStatus> storedTestCaseResolutions = getTestCaseFailureStatusBySequenceId(sequenceId);
+    ResultList<TestCaseResolutionStatus> storedTestCaseResolutions = getTestCaseFailureStatusByStateId(stateId);
     assertEquals(storedTestCaseResolutions.getData().size(), 5);
-    assertEquals(sequenceId, storedTestCaseResolutions.getData().get(0).getSequenceId());
+    assertEquals(stateId, storedTestCaseResolutions.getData().get(0).getStateId());
 
     // Get the test case resolution statuses by status type
     storedTestCaseResolutions =
@@ -1479,9 +1479,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     return TestUtils.get(target, TestCaseResolutionStatus.class, ADMIN_AUTH_HEADERS);
   }
 
-  private ResultList<TestCaseResolutionStatus> getTestCaseFailureStatusBySequenceId(UUID id)
-      throws HttpResponseException {
-    String pathUrl = "/testCaseResolutionStatus/sequenceId/" + id;
+  private ResultList<TestCaseResolutionStatus> getTestCaseFailureStatusByStateId(UUID id) throws HttpResponseException {
+    String pathUrl = "/testCaseResolutionStatus/stateId/" + id;
     WebTarget target = getCollection().path(pathUrl);
     return TestUtils.get(
         target, TestCaseResolutionStatusResource.TestCaseResolutionStatusResultList.class, ADMIN_AUTH_HEADERS);

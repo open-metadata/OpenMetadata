@@ -28,10 +28,10 @@ public class TestCaseResolutionStatusRepository extends EntityTimeSeriesReposito
         Entity.TEST_CASE_RESOLUTION_STATUS);
   }
 
-  public ResultList<TestCaseResolutionStatus> listTestCaseResolutionStatusesForStateId(UUID sequenceId) {
+  public ResultList<TestCaseResolutionStatus> listTestCaseResolutionStatusesForStateId(UUID stateId) {
     List<String> jsons =
         ((CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO) timeSeriesDao)
-            .listTestCaseResolutionStatusesForStateId(sequenceId.toString());
+            .listTestCaseResolutionStatusesForStateId(stateId.toString());
     List<TestCaseResolutionStatus> testCaseResolutionStatuses =
         JsonUtils.readObjects(jsons, TestCaseResolutionStatus.class);
 

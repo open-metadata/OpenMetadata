@@ -231,9 +231,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   private TestCaseResolutionStatus setTestCaseResolutionStatus(TestCase testCase, String updatedBy) {
     String json =
-        daoCollection
-            .testCaseResolutionStatusTimeSeriesDao()
-            .getLatestRecord(testCase.getFullyQualifiedName());
+        daoCollection.testCaseResolutionStatusTimeSeriesDao().getLatestRecord(testCase.getFullyQualifiedName());
 
     TestCaseResolutionStatus storedTestCaseResolutionStatus =
         json != null ? JsonUtils.readValue(json, TestCaseResolutionStatus.class) : null;
@@ -247,7 +245,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
     // if the test case resolution is null or resolved then we'll create a new one
     return new TestCaseResolutionStatus()
-        .withSequenceId(UUID.randomUUID())
+        .withStateId(UUID.randomUUID())
         .withTimestamp(System.currentTimeMillis())
         .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New)
         .withUpdatedBy(getEntityReferenceByName(Entity.USER, updatedBy, Include.ALL))

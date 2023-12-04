@@ -39,7 +39,7 @@
       "description": "Unique identifier of this failure instance",
       "$ref": "../type/basic.json#/definitions/uuid"
     },
-    "sequenceId": {
+    "stateId": {
       "description": "Sequence ID for a failure status. Statuses belonging to the same sequence will have the same ID. Unique across a failure cycle, i.e. new -> ack -> ... -> resolved.",
       "$ref": "../type/basic.json#/definitions/uuid"
     },

@@ -56,7 +56,7 @@
           }
         }
       },
-      "sequenceId": {
+      "stateId": {
         "type": "keyword",
         "fields": {
           "keyword": {

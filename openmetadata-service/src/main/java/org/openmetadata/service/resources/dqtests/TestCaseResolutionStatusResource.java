@@ -142,9 +142,9 @@ public class TestCaseResolutionStatusResource
   }
 
   @GET
-  @Path("/sequenceId/{sequenceId}")
+  @Path("/stateId/{stateId}")
   @Operation(
-      operationId = "getTestCaseResolutionStatusesForASequenceId",
+      operationId = "getTestCaseResolutionStatusesForAStateId",
       summary = "Get test case failure statuses for a sequence id",
       description = "Get a test case failure statuses for a sequence id",
       responses = {
@@ -156,15 +156,14 @@ public class TestCaseResolutionStatusResource
                     mediaType = "application/json",
                     schema = @Schema(implementation = TestCaseResolutionStatus.class)))
       })
-  public ResultList<TestCaseResolutionStatus> listForSequenceId(
+  public ResultList<TestCaseResolutionStatus> listForStateId(
       @Context SecurityContext securityContext,
-      @Parameter(description = "Sequence ID", schema = @Schema(type = "UUID")) @PathParam("sequenceId")
-          UUID sequenceId) {
+      @Parameter(description = "Sequence ID", schema = @Schema(type = "UUID")) @PathParam("stateId") UUID stateId) {
     OperationContext operationContext = new OperationContext(Entity.TEST_CASE, MetadataOperation.VIEW_ALL);
     ResourceContextInterface resourceContext = ReportDataContext.builder().build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
-    return repository.listTestCaseResolutionStatusesForStateId(sequenceId);
+    return repository.listTestCaseResolutionStatusesForStateId(stateId);
   }
 
   @GET
@@ -216,15 +215,13 @@ public class TestCaseResolutionStatusResource
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
     TestCase testCaseEntity =
-        Entity.getEntityByName(Entity.TEST_CASE, createTestCaseResolutionStatus.getTestCaseReference(), null, Include.ALL);
+        Entity.getEntityByName(
+            Entity.TEST_CASE, createTestCaseResolutionStatus.getTestCaseReference(), null, Include.ALL);
     TestCaseResolutionStatus testCaseResolutionStatus =
         getTestCaseResolutionStatus(
             testCaseEntity, createTestCaseResolutionStatus, securityContext.getUserPrincipal().getName());
 
-    return create(
-        testCaseResolutionStatus,
-        null,
-        testCaseEntity.getFullyQualifiedName());
+    return create(testCaseResolutionStatus, null, testCaseEntity.getFullyQualifiedName());
   }
 
   @PATCH
@@ -258,25 +255,23 @@ public class TestCaseResolutionStatusResource
   }
 
   private TestCaseResolutionStatus getTestCaseResolutionStatus(
-      TestCase testCaseEntity, CreateTestCaseResolutionStatus createTestCaseResolutionStatus, String user) {
-    User userEntity = Entity.getEntityByName(Entity.USER, user, null, Include.ALL);
-    TestCaseResolutionStatus latestTestCaseFailure =
-        repository.getLatestRecord(
-            testCaseEntity.getFullyQualifiedName());
-    UUID sequenceId;
+      TestCase testCaseEntity, CreateTestCaseResolutionStatus createTestCaseResolutionStatus, String userName) {
+    User userEntity = Entity.getEntityByName(Entity.USER, userName, null, Include.ALL);
+    TestCaseResolutionStatus latestTestCaseFailure = repository.getLatestRecord(testCaseEntity.getFullyQualifiedName());
+    UUID stateId;
 
     if ((latestTestCaseFailure != null)
         && (latestTestCaseFailure.getTestCaseResolutionStatusType() != TestCaseResolutionStatusTypes.Resolved)) {
       // if the latest status is not resolved then use the same sequence id
-      sequenceId = latestTestCaseFailure.getSequenceId();
+      stateId = latestTestCaseFailure.getStateId();
     } else {
       // if the latest status is resolved then create a new sequence id
       // effectively creating a new test case failure status sequence
-      sequenceId = UUID.randomUUID();
+      stateId = UUID.randomUUID();
     }
 
     return new TestCaseResolutionStatus()
-        .withSequenceId(sequenceId)
+        .withStateId(stateId)
         .withTimestamp(System.currentTimeMillis())
         .withTestCaseResolutionStatusType(createTestCaseResolutionStatus.getTestCaseResolutionStatusType())
         .withTestCaseResolutionStatusDetails(createTestCaseResolutionStatus.getTestCaseResolutionStatusDetails())
