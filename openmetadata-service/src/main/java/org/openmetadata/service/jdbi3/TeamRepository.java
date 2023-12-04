@@ -48,6 +48,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -63,6 +64,8 @@ import org.openmetadata.schema.entity.teams.TeamHierarchy;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.api.BulkAssets;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvErrorType;
 import org.openmetadata.schema.type.csv.CsvHeader;
@@ -135,6 +138,30 @@ public class TeamRepository extends EntityRepository<Team> {
     validateUsers(team.getUsers());
     validateRoles(team.getDefaultRoles());
     validatePolicies(team.getPolicies());
+  }
+
+  public BulkOperationResult bulkAddAssets(String domainName, BulkAssets request) {
+    Team team = getByName(null, domainName, getFields("id"));
+
+    for (EntityReference asset : request.getAssets()) {
+      if (!Objects.equals(asset.getType(), Entity.USER)) {
+        throw new IllegalArgumentException("Only users can be added to a Team");
+      }
+    }
+
+    return bulkAssetsOperation(team.getId(), TEAM, Relationship.HAS, request, true);
+  }
+
+  public BulkOperationResult bulkRemoveAssets(String domainName, BulkAssets request) {
+    Team team = getByName(null, domainName, getFields("id"));
+
+    for (EntityReference asset : request.getAssets()) {
+      if (!Objects.equals(asset.getType(), Entity.USER)) {
+        throw new IllegalArgumentException("Only users can be added to a Team");
+      }
+    }
+
+    return bulkAssetsOperation(team.getId(), TEAM, Relationship.HAS, request, false);
   }
 
   @Override
