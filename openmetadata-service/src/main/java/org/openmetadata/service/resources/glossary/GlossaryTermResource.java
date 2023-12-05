@@ -458,8 +458,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Valid AddGlossaryToAssetsRequest request)
-      throws IOException {
+      @Valid AddGlossaryToAssetsRequest request) {
     return Response.ok().entity(repository.validateGlossaryTagsAddition(id, request)).build();
   }
 

@@ -36,8 +36,8 @@ import static org.openmetadata.service.util.EntityUtil.termReferenceMatch;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
-import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -75,7 +75,7 @@ import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.schema.type.api.BulkOperationResult;
-import org.openmetadata.schema.type.api.FailureRequest;
+import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
@@ -93,6 +93,8 @@ import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
+  private static final String ES_MISSING_DATA =
+      "Entity Details is unavailable in Elastic Search. Please reindex to get more Information.";
   private static final String UPDATE_FIELDS = "references,relatedTerms,synonyms";
   private static final String PATCH_FIELDS = "references,relatedTerms,synonyms";
 
@@ -227,12 +229,14 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     checkMutuallyExclusive(request.getGlossaryTags());
 
     BulkOperationResult result = new BulkOperationResult().withDryRun(dryRun);
-    List<FailureRequest> failures = new ArrayList<>();
-    List<EntityReference> success = new ArrayList<>();
+    List<BulkResponse> failures = new ArrayList<>();
+    List<BulkResponse> success = new ArrayList<>();
 
     if (dryRun && (CommonUtil.nullOrEmpty(request.getGlossaryTags()) || CommonUtil.nullOrEmpty(request.getAssets()))) {
       // Nothing to Validate
-      return result.withStatus(ApiStatus.SUCCESS).withSuccessRequest("Nothing to Validate.");
+      return result
+          .withStatus(ApiStatus.SUCCESS)
+          .withSuccessRequest(List.of(new BulkResponse().withMessage("Nothing to Validate.")));
     }
 
     // Validation for entityReferences
@@ -260,10 +264,10 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
             allAssetTags,
             request.getGlossaryTags(),
             false);
-        success.add(ref);
+        success.add(new BulkResponse().withRequest(ref));
         result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
       } catch (Exception ex) {
-        failures.add(new FailureRequest().withRequest(ref).withError(ex.getMessage()));
+        failures.add(new BulkResponse().withRequest(ref).withMessage(ex.getMessage()));
         result.withFailedRequest(failures);
         result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
       }
@@ -304,10 +308,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     return result;
   }
 
-  public BulkOperationResult validateGlossaryTagsAddition(UUID glossaryTermId, AddGlossaryToAssetsRequest request)
-      throws IOException {
-    boolean dryRun = true;
-
+  public BulkOperationResult validateGlossaryTagsAddition(UUID glossaryTermId, AddGlossaryToAssetsRequest request) {
     GlossaryTerm term = this.get(null, glossaryTermId, getFields("id,tags"));
 
     List<TagLabel> glossaryTagsToValidate = request.getGlossaryTags();
@@ -316,12 +317,14 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     checkMutuallyExclusive(request.getGlossaryTags());
 
     BulkOperationResult result = new BulkOperationResult().withDryRun(true);
-    List<FailureRequest> failures = new ArrayList<>();
-    List<EntityReference> success = new ArrayList<>();
+    List<BulkResponse> failures = new ArrayList<>();
+    List<BulkResponse> success = new ArrayList<>();
 
-    if (dryRun && (CommonUtil.nullOrEmpty(glossaryTagsToValidate))) {
+    if (CommonUtil.nullOrEmpty(glossaryTagsToValidate)) {
       // Nothing to Validate
-      return result.withStatus(ApiStatus.SUCCESS).withSuccessRequest("Nothing to Validate.");
+      return result
+          .withStatus(ApiStatus.SUCCESS)
+          .withSuccessRequest(List.of(new BulkResponse().withMessage("Nothing to Validate.")));
     }
 
     Set<String> targetFQNHashesFromDb =
@@ -342,16 +345,22 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         checkMutuallyExclusiveForParentAndSubField(
             term.getFullyQualifiedName(), fqnHash, allAssetTags, glossaryTagsToValidate, true);
         if (refDetails != null) {
-          success.add(refDetails);
+          success.add(new BulkResponse().withRequest(refDetails));
         } else {
-          success.add(new EntityReference().withFullyQualifiedName(fqnHash).withType("unknown"));
+          success.add(
+              new BulkResponse()
+                  .withRequest(new EntityReference().withFullyQualifiedName(fqnHash).withType("unknown"))
+                  .withMessage(ES_MISSING_DATA));
         }
         result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
       } catch (IllegalArgumentException ex) {
         if (refDetails != null) {
-          failures.add(new FailureRequest().withRequest(refDetails).withError(ex.getMessage()));
+          failures.add(new BulkResponse().withRequest(refDetails).withMessage(ex.getMessage()));
         } else {
-          success.add(new EntityReference().withFullyQualifiedName(fqnHash).withType("unknown"));
+          failures.add(
+              new BulkResponse()
+                  .withRequest(new EntityReference().withFullyQualifiedName(fqnHash).withType("unknown"))
+                  .withMessage(String.format("%s %s", ex.getMessage(), ES_MISSING_DATA)));
         }
         result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
       }
@@ -372,45 +381,50 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     return result;
   }
 
-  private Map<String, EntityReference> getGlossaryUsageFromES(String glossaryFqn, int size) throws IOException {
-    String key = "_source";
-    SearchRequest searchRequest =
-        new SearchRequest.ElasticSearchRequestBuilder(
-                String.format("** AND (tags.tagFQN:\"%s\")", glossaryFqn), size, "all")
-            .from(0)
-            .fetchSource(true)
-            .trackTotalHits(false)
-            .sortFieldParam("_score")
-            .deleted(false)
-            .sortOrder("desc")
-            .includeSourceFields(new ArrayList<>())
-            .build();
-    Response response = searchRepository.search(searchRequest);
-    String json = (String) response.getEntity();
-    Set<EntityReference> fqns = new TreeSet<>(compareEntityReferenceById);
-    for (Iterator<JsonNode> it = ((ArrayNode) JsonUtils.extractValue(json, "hits", "hits")).elements();
-        it.hasNext(); ) {
-      JsonNode jsonNode = it.next();
-      String id = JsonUtils.extractValue(jsonNode, key, "id");
-      String fqn = JsonUtils.extractValue(jsonNode, key, "fullyQualifiedName");
-      String type = JsonUtils.extractValue(jsonNode, key, "entityType");
-      if (!CommonUtil.nullOrEmpty(fqn) && !CommonUtil.nullOrEmpty(type)) {
-        fqns.add(new EntityReference().withId(UUID.fromString(id)).withFullyQualifiedName(fqn).withType(type));
+  private Map<String, EntityReference> getGlossaryUsageFromES(String glossaryFqn, int size) {
+    try {
+      String key = "_source";
+      SearchRequest searchRequest =
+          new SearchRequest.ElasticSearchRequestBuilder(
+                  String.format("** AND (tags.tagFQN:\"%s\")", glossaryFqn), size, "all")
+              .from(0)
+              .fetchSource(true)
+              .trackTotalHits(false)
+              .sortFieldParam("_score")
+              .deleted(false)
+              .sortOrder("desc")
+              .includeSourceFields(new ArrayList<>())
+              .build();
+      Response response = searchRepository.search(searchRequest);
+      String json = (String) response.getEntity();
+      Set<EntityReference> fqns = new TreeSet<>(compareEntityReferenceById);
+      for (Iterator<JsonNode> it = ((ArrayNode) JsonUtils.extractValue(json, "hits", "hits")).elements();
+          it.hasNext(); ) {
+        JsonNode jsonNode = it.next();
+        String id = JsonUtils.extractValue(jsonNode, key, "id");
+        String fqn = JsonUtils.extractValue(jsonNode, key, "fullyQualifiedName");
+        String type = JsonUtils.extractValue(jsonNode, key, "entityType");
+        if (!CommonUtil.nullOrEmpty(fqn) && !CommonUtil.nullOrEmpty(type)) {
+          fqns.add(new EntityReference().withId(UUID.fromString(id)).withFullyQualifiedName(fqn).withType(type));
+        }
       }
-    }
 
-    return fqns.stream()
-        .collect(
-            Collectors.toMap(
-                entityReference -> FullyQualifiedName.buildHash(entityReference.getFullyQualifiedName()),
-                entityReference -> entityReference));
+      return fqns.stream()
+          .collect(
+              Collectors.toMap(
+                  entityReference -> FullyQualifiedName.buildHash(entityReference.getFullyQualifiedName()),
+                  entityReference -> entityReference));
+    } catch (Exception ex) {
+      LOG.error("Error while getting glossary usage from ES for validation", ex);
+    }
+    return new HashMap<>();
   }
 
   public BulkOperationResult bulkRemoveGlossaryToAssets(UUID glossaryTermId, AddGlossaryToAssetsRequest request) {
     GlossaryTerm term = this.get(null, glossaryTermId, getFields("id,tags"));
 
     BulkOperationResult result = new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(false);
-    List<EntityReference> success = new ArrayList<>();
+    List<BulkResponse> success = new ArrayList<>();
 
     // Validation for entityReferences
     EntityUtil.populateEntityReferences(request.getAssets());
@@ -425,7 +439,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       daoCollection
           .tagUsageDAO()
           .deleteTagsByTagAndTargetEntity(term.getFullyQualifiedName(), asset.getFullyQualifiedName());
-      success.add(ref);
+      success.add(new BulkResponse().withRequest(ref));
       result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
 
       // Update ES
