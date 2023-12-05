@@ -21,6 +21,7 @@ import {
   CreateUser,
 } from '../generated/api/teams/createUser';
 import { JwtAuth } from '../generated/auth/jwtAuth';
+import { PersonalAccessToken } from '../generated/auth/personalAccessToken';
 import { Bot } from '../generated/entity/bot';
 import { Role } from '../generated/entity/teams/role';
 import { User } from '../generated/entity/teams/user';
@@ -229,6 +230,43 @@ export const createUserWithPut = async (userDetails: CreateUser) => {
   const response = await APIClient.put<CreateUser, AxiosResponse<User>>(
     `/users`,
     userDetails
+  );
+
+  return response.data;
+};
+
+export const getUserAccessToken = async () => {
+  const response = await APIClient.get<{
+    data: PersonalAccessToken[];
+  }>('/users/security/token');
+
+  return response.data.data;
+};
+
+export const createUserAccessTokenWithPut = async ({
+  JWTTokenExpiry,
+  tokenName,
+}: {
+  JWTTokenExpiry?: string;
+  tokenName?: string;
+}) => {
+  const response = await APIClient.put<
+    {
+      JWTTokenExpiry?: string;
+      tokenName?: string;
+    },
+    AxiosResponse<PersonalAccessToken[]>
+  >(`/users/security/token`, {
+    JWTTokenExpiry,
+    tokenName,
+  });
+
+  return response.data;
+};
+
+export const revokeAccessTokenWithPut = async (params: string) => {
+  const response = await APIClient.put<PersonalAccessToken>(
+    '/users/security/token/revoke?' + params
   );
 
   return response.data;

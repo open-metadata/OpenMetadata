@@ -13,23 +13,28 @@
 
 import { Button, Form, FormProps, Select, Space } from 'antd';
 import { isEmpty } from 'lodash';
-import React, { FC } from 'react';
+import React, { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  PersonalAccessToken,
+  TokenType,
+} from '../../generated/auth/personalAccessToken';
 import {
   AuthenticationMechanism,
   AuthType,
   JWTTokenExpiry,
 } from '../../generated/entity/teams/user';
-import { getJWTOption, getJWTTokenExpiryOptions } from '../../utils/BotsUtils';
+import { getJWTTokenExpiryOptions } from '../../utils/BotsUtils';
 import Loader from '../Loader/Loader';
 
 const { Option } = Select;
 
 interface Props {
   isUpdating: boolean;
-  authenticationMechanism: AuthenticationMechanism;
+  authenticationMechanism: AuthenticationMechanism | PersonalAccessToken;
   onSave: (updatedAuthMechanism: AuthenticationMechanism) => void;
-  onCancel: () => void;
+  onCancel?: () => void;
+  isBot: boolean;
 }
 
 const AuthMechanismForm: FC<Props> = ({
@@ -37,11 +42,9 @@ const AuthMechanismForm: FC<Props> = ({
   onSave,
   onCancel,
   authenticationMechanism,
+  isBot,
 }) => {
   const { t } = useTranslation();
-
-  const jwtOption = getJWTOption();
-
   const handleSave: FormProps['onFinish'] = (values) => {
     const updatedAuthMechanism: AuthenticationMechanism = {
       authType: values?.authType ?? AuthType.Jwt,
@@ -52,17 +55,41 @@ const AuthMechanismForm: FC<Props> = ({
 
     onSave(updatedAuthMechanism);
   };
+  const authOptions = useMemo(() => {
+    const botValue = {
+      label: 'OpenMetadata JWT',
+      value: 'JWT',
+    };
+    const accessTokenValue = {
+      label: 'Personal Access Token',
+      value: TokenType.PersonalAccessToken,
+    };
+
+    return isBot ? botValue : accessTokenValue;
+  }, [isBot]);
+  const initialValueBot = useMemo(() => {
+    const data = authenticationMechanism as AuthenticationMechanism;
+
+    return {
+      authType: data.authType ?? AuthType.Jwt,
+      tokenExpiry: data.config?.JWTTokenExpiry ?? JWTTokenExpiry.OneHour,
+    };
+  }, [authenticationMechanism]);
+
+  const initialValuePersonalAccess = useMemo(() => {
+    const data = authenticationMechanism as PersonalAccessToken;
+
+    return {
+      authType: data.tokenType ?? TokenType.PersonalAccessToken,
+      tokenExpiry: JWTTokenExpiry.OneHour,
+    };
+  }, [authenticationMechanism]);
 
   return (
     <>
       <Form
         id="update-auth-mechanism-form"
-        initialValues={{
-          authType: authenticationMechanism.authType ?? AuthType.Jwt,
-          tokenExpiry:
-            authenticationMechanism.config?.JWTTokenExpiry ??
-            JWTTokenExpiry.OneHour,
-        }}
+        initialValues={isBot ? initialValueBot : initialValuePersonalAccess}
         layout="vertical"
         onFinish={handleSave}>
         <Form.Item label={t('label.auth-mechanism')} name="authType">
@@ -73,7 +100,7 @@ const AuthMechanismForm: FC<Props> = ({
             placeholder={t('label.select-field', {
               field: t('label.auth-mechanism'),
             })}>
-            <Option key={jwtOption.value}>{jwtOption.label}</Option>
+            <Option key={authOptions.value}>{authOptions.label}</Option>
           </Select>
         </Form.Item>
 
@@ -89,9 +116,17 @@ const AuthMechanismForm: FC<Props> = ({
             className="w-full"
             data-testid="token-expiry"
             placeholder={t('message.select-token-expiration')}>
-            {getJWTTokenExpiryOptions().map((option) => (
-              <Option key={option.value}>{option.label}</Option>
-            ))}
+            {isBot
+              ? getJWTTokenExpiryOptions().map((option) => (
+                  <Option key={option.value}>{option.label}</Option>
+                ))
+              : getJWTTokenExpiryOptions()
+                  .filter((option) => option.value !== 'Unlimited')
+                  .map((filteredOption) => (
+                    <Option key={filteredOption.value}>
+                      {filteredOption.label}
+                    </Option>
+                  ))}
           </Select>
         </Form.Item>
 
@@ -106,7 +141,7 @@ const AuthMechanismForm: FC<Props> = ({
             form="update-auth-mechanism-form"
             htmlType="submit"
             type="primary">
-            {isUpdating ? <Loader size="small" /> : t('label.save')}
+            {isUpdating ? <Loader size="small" /> : t('label.generate')}
           </Button>
         </Space>
       </Form>

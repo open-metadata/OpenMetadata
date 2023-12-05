@@ -1030,3 +1030,13 @@ export const mockEntityData: {
   total: 6,
   currPage: 1,
 };
+export const mockAccessData = {
+  expiryDate: 1701714886101,
+  jwtToken:
+    // eslint-disable-next-line max-len
+    'eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJvcGVuLW1ldGFkYXRhLm9yZyIsInN1YiI6ImFkbWluIiwiZW1haWwiOiJhZG1pbkBvcGVubWV0YWRhdGEub3JnIiwiaXNCb3QiOmZhbHNlLCJ0b2tlblR5cGUiOiJQRVJTT05BTF9BQ0NFU1MiLCJpYXQiOjE3MDE3MTEyODYsImV4cCI6MTcwMTcxNDg4Nn0.YcA8yN6n35uwxC2bwakSN-h_uyXEtAM_Y7wbku4G4bqn0pQzbFCUxz_uZ2JGF4sQsbvi2JizhcBuu7t29d7ERT2R6kJ63TmAgxviz0e2MicVS0Fe2SW0sPLl4QnhRya2kuDYihp1xMdgAzF7csTyFS7E1tpBUJqoViVlRHUvpXCpeTn1kX023NxW2iBRt-2wGsYkRtbDrWjVsZRsIujL0Wo3pDP_JEgxBE6ffo2zzl2OfJAUh0h9AQqktkf7N5g4WkX_0mbqhX1xTdqtmuUcJaGwM1Ricz-lnNuQIzr6ABQwH8VvAOgmmL-pssoLdzelh19GZO0O0LY4ik2yFOionQ',
+  token: '494696cc-192f-403d-8c7b-56adf3a8d646',
+  tokenName: 'test',
+  tokenType: 'PERSONAL_ACCESS_TOKEN',
+  userId: '445291c8-19b0-4cd1-bb7d-91f4d62c1bae',
+};

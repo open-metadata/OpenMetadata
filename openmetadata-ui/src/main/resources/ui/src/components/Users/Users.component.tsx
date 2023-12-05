@@ -13,6 +13,7 @@
 
 import { Col, Collapse, Row, Space, Tabs, Typography } from 'antd';
 import Card from 'antd/lib/card/Card';
+import { AxiosError } from 'axios';
 import { isEmpty, noop } from 'lodash';
 import { observer } from 'mobx-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -25,11 +26,19 @@ import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
 import { getUserPath, ROUTES } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
+import { PersonalAccessToken } from '../../generated/auth/personalAccessToken';
 import { EntityReference } from '../../generated/entity/type';
 import { useAuth } from '../../hooks/authHooks';
 import { searchData } from '../../rest/miscAPI';
+import {
+  createUserAccessTokenWithPut,
+  getUserAccessToken,
+  revokeAccessTokenWithPut,
+} from '../../rest/userAPI';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
+import AccessTokenCard from '../AccessTokenCard/AccessTokenCard.component';
 import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
 import Chip from '../common/Chip/Chip.component';
 import DescriptionV1 from '../common/EntityDescription/DescriptionV1';
@@ -40,6 +49,7 @@ import {
   AssetNoDataPlaceholderProps,
   AssetsOfEntity,
 } from '../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
+import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
 import { PersonaSelectableList } from '../Persona/PersonaSelectableList/PersonaSelectableList.component';
 import { Props, UserPageTabs } from './Users.interface';
@@ -65,21 +75,37 @@ const Users = ({
 
   const [previewAsset, setPreviewAsset] =
     useState<EntityDetailsObjectInterface>();
-
+  const [authenticationMechanism, setAuthenticationMechanism] =
+    useState<PersonalAccessToken>();
   const [isDescriptionEdit, setIsDescriptionEdit] = useState(false);
-
+  const [isAuthMechanismEdit, setIsAuthMechanismEdit] =
+    useState<boolean>(false);
   const { t } = useTranslation();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [isUpdating, setIsUpdating] = useState<boolean>(false);
 
   const isLoggedInUser = useMemo(
     () => username === currentUser?.name,
     [username]
   );
 
+  const fetchAuthMechanismForUser = async () => {
+    try {
+      const response = await getUserAccessToken();
+      setAuthenticationMechanism(response[0]);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  useEffect(() => {
+    fetchAuthMechanismForUser();
+  }, []);
   const hasEditPermission = useMemo(
     () => isAdminUser || isLoggedInUser,
     [isAdminUser, isLoggedInUser]
   );
-
   const fetchAssetsCount = async (query: string) => {
     try {
       const res = await searchData('', 1, 0, query, '', '', SearchIndex.ALL);
@@ -142,7 +168,31 @@ const Users = ({
     ),
     [previewAsset, assetCount, handleAssetClick, setPreviewAsset]
   );
-
+  const handleAuthMechanismEdit = () => setIsAuthMechanismEdit(true);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleAuthMechanismUpdate = async (data: any) => {
+    setIsUpdating(true);
+    try {
+      const response = await createUserAccessTokenWithPut({
+        JWTTokenExpiry: data.config.JWTTokenExpiry,
+        tokenName: 'test',
+      });
+      if (response) {
+        setAuthenticationMechanism(response[0]);
+        fetchAuthMechanismForUser();
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsUpdating(false);
+      setIsAuthMechanismEdit(false);
+    }
+  };
+  const revokeTokenHandler = () => {
+    revokeAccessTokenWithPut('removeAll=true').catch((err: AxiosError) => {
+      showErrorToast(err);
+    });
+  };
   const tabs = useMemo(
     () => [
       {
@@ -203,8 +253,49 @@ const Users = ({
           },
         }),
       },
+      ...(isLoggedInUser
+        ? [
+            {
+              label: (
+                <TabsLabel
+                  id={UserPageTabs.ACCESS_TOKEN}
+                  isActive={activeTab === UserPageTabs.ACCESS_TOKEN}
+                  name={t('label.access-token')}
+                />
+              ),
+              key: UserPageTabs.ACCESS_TOKEN,
+              children: (
+                <>
+                  <Card className="p-sm" data-testid="center-panel">
+                    <AccessTokenCard
+                      hasPermission
+                      authenticationMechanism={authenticationMechanism}
+                      isAuthMechanismEdit={isAuthMechanismEdit}
+                      isBot={false}
+                      isUpdating={isUpdating}
+                      onCancel={() => setIsAuthMechanismEdit(false)}
+                      onEdit={handleAuthMechanismEdit}
+                      onSave={handleAuthMechanismUpdate}
+                      onTokenRevoke={() => setIsModalOpen(true)}
+                    />
+                  </Card>
+                </>
+              ),
+            },
+          ]
+        : []),
     ],
-    [activeTab, userData, username, setPreviewAsset, tabDataRender]
+    [
+      isUpdating,
+      activeTab,
+      userData,
+      username,
+      authenticationMechanism,
+      isAuthMechanismEdit,
+      setPreviewAsset,
+      tabDataRender,
+      isModalOpen,
+    ]
   );
 
   const handleDescriptionChange = useCallback(
@@ -350,6 +441,20 @@ const Users = ({
           data-testid="tabs"
           items={tabs}
           onChange={activeTabHandler}
+        />
+
+        <ConfirmationModal
+          bodyText={t('message.are-you-sure-to-revoke-access')}
+          cancelText={t('label.cancel')}
+          confirmText={t('label.confirm')}
+          header={t('message.are-you-sure')}
+          visible={isModalOpen}
+          onCancel={() => setIsModalOpen(false)}
+          onConfirm={() => {
+            revokeTokenHandler();
+            setIsModalOpen(false);
+            handleAuthMechanismEdit();
+          }}
         />
       </div>
     </PageLayoutV1>
