@@ -294,7 +294,9 @@ class TopologyRunnerMixin(Generic[C]):
             create_request=entity_request.right,
             exclude_fields=SOURCE_HASH_EXCLUDE_FIELDS,
         )
-        entity_request.right.sourceHash = create_entity_request_hash
+
+        if hasattr(entity_request.right, "sourceHash"):
+            entity_request.right.sourceHash = create_entity_request_hash
 
         skip_processing_entity = False
         if entity is None and stage.use_cache:
