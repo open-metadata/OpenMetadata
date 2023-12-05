@@ -26,26 +26,6 @@ const { Text } = Typography;
 
 export const mockEntityDataWithoutNesting: Column[] = [
   {
-    name: 'api_client_id',
-    dataType: DataType.Numeric,
-    dataTypeDisplay: 'numeric',
-    description:
-      'ID of the API client that called the Shopify API. For example, the ID for the online store is 580111.',
-    fullyQualifiedName:
-      'sample_data.ecommerce_db.shopify."dim.api/client".api_client_id',
-    tags: [
-      {
-        tagFQN: 'PersonalData.SpecialCategory',
-        description:
-          'GDPR special category data is personal information of data subjects that is especially sensitive.',
-        source: TagSource.Classification,
-        labelType: LabelType.Manual,
-        state: State.Confirmed,
-      },
-    ],
-    ordinalPosition: 1,
-  },
-  {
     name: 'title',
     dataType: DataType.Varchar,
     dataLength: 100,
@@ -56,6 +36,34 @@ export const mockEntityDataWithoutNesting: Column[] = [
       'sample_data.ecommerce_db.shopify."dim.api/client".title',
     tags: [],
     ordinalPosition: 2,
+  },
+  {
+    name: 'api_client_id',
+    dataType: DataType.Numeric,
+    dataTypeDisplay: 'numeric',
+    description:
+      'ID of the API client that called the Shopify API. For example, the ID for the online store is 580111.',
+    fullyQualifiedName:
+      'sample_data.ecommerce_db.shopify."dim.api/client".api_client_id',
+    tags: [
+      {
+        tagFQN: 'PersonalData.Category1',
+        description:
+          'GDPR special category data is personal information of data subjects that is especially sensitive.',
+        source: TagSource.Classification,
+        labelType: LabelType.Manual,
+        state: State.Confirmed,
+      },
+      {
+        tagFQN: 'PersonalData.SpecialCategory',
+        description:
+          'GDPR special category data is personal information of data subjects that is especially sensitive.',
+        source: TagSource.Classification,
+        labelType: LabelType.Manual,
+        state: State.Confirmed,
+      },
+    ],
+    ordinalPosition: 1,
   },
 ];
 
@@ -69,6 +77,14 @@ export const mockEntityDataWithoutNestingResponse = [
     tags: [
       {
         tagFQN: 'PersonalData.SpecialCategory',
+        description:
+          'GDPR special category data is personal information of data subjects that is especially sensitive.',
+        source: 'Classification',
+        labelType: 'Manual',
+        state: 'Confirmed',
+      },
+      {
+        tagFQN: 'PersonalData.Category1',
         description:
           'GDPR special category data is personal information of data subjects that is especially sensitive.',
         source: 'Classification',

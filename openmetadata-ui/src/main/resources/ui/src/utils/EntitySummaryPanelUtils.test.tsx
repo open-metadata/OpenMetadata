@@ -23,10 +23,12 @@ import {
 } from './mocks/EntitySummaryPanelUtils.mock';
 
 describe('EntitySummaryPanelUtils tests', () => {
-  it('getFormattedEntityData should return formatted data properly for table columns data without nesting', () => {
+  it('getFormattedEntityData should return formatted data properly for table columns data without nesting, and also sort the data based on given arr', () => {
     const resultFormattedData = getFormattedEntityData(
       SummaryEntityType.COLUMN,
-      mockEntityDataWithoutNesting
+      mockEntityDataWithoutNesting,
+      undefined,
+      ['PersonalData.SpecialCategory']
     );
 
     expect(resultFormattedData).toEqual(mockEntityDataWithoutNestingResponse);
