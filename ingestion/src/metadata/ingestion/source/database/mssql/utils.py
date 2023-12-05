@@ -343,9 +343,9 @@ def get_pk_constraint(
         )
         .order_by(tc.c.constraint_name, c.c.ordinal_position)
     )
-    c = connection.execution_options(future_result=True).execute(s)
+    cursor = connection.execution_options(future_result=True).execute(s)
     constraint_name = None
-    for row in c.mappings():
+    for row in cursor.mappings():
         if "PRIMARY" in row[tc.c.constraint_type.name]:
             pkeys.append(row["COLUMN_NAME"])
             if constraint_name is None:
