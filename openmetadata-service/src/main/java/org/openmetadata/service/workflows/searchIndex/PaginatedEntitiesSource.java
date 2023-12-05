@@ -27,7 +27,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.SourceException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.workflows.interfaces.Source;
@@ -76,16 +75,18 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
               null, Entity.getFields(entityType, fields), new ListFilter(Include.ALL), batchSize, cursor);
       if (!result.getErrors().isEmpty()) {
         lastFailedCursor = this.cursor;
-        String errMsg =
+        StringBuilder errMsg = new StringBuilder();
+        errMsg.append(
             String.format(
-                "[PaginatedEntitiesSource] Encountered Failures. %n Marked After Cursor : %s, %n Batch Stats :- %n Submitted : %s Success: %s Failed: %s, %n Errors : %s",
-                this.lastFailedCursor,
-                batchSize,
-                result.getData().size(),
-                result.getErrors().size(),
-                JsonUtils.pojoToJson(result.getErrors()));
-        LOG.error(errMsg);
-        throw new SourceException(errMsg);
+                "[PaginatedEntitiesSource] Encountered Failures. %n Marked After Cursor : %s, %n Batch Stats :- %n Submitted : %s Success: %s Failed: %s, %n Errors : %n",
+                this.lastFailedCursor, batchSize, result.getData().size(), result.getErrors().size()));
+        for (int i = 0; i < result.getErrors().size(); i++) {
+          errMsg.append(String.format("%s. EntityError :- %s", i, result.getErrors().get(i)));
+          errMsg.append("%n");
+        }
+        String error = errMsg.toString();
+        LOG.error(error);
+        throw new SourceException(error);
       }
 
       LOG.debug(
