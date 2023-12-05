@@ -6,6 +6,14 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.api.AddGlossaryToAssetsRequest",
   "properties": {
+    "operation": {
+      "description": "Operation to be performed",
+      "type": "string",
+      "enum": [
+        "AddAssets",
+        "AddGlossaryTags"
+      ]
+    },
     "dryRun": {
       "description": "If true, the request will be validated but no changes will be made",
       "type": "boolean",

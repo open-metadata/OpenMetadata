@@ -19,15 +19,16 @@
       "format" : "int64",
       "minimum": 1
     },
-    "failureRequest": {
+    "response": {
+      "javaType": "org.openmetadata.schema.type.api.BulkResponse",
       "description": "Request that can be processed successfully.",
       "type": "object",
       "properties": {
         "request": {
           "description": "Request that can be processed successfully."
         },
-        "error": {
-          "description": "Error that occurred while processing the request.",
+        "message": {
+          "description": "Message for the request.",
           "type": "string"
         }
       },
@@ -56,13 +57,18 @@
       "$ref": "#/definitions/rowCount"
     },
     "successRequest": {
-      "description": "Request that can be processed successfully."
+      "description": "Request that can be processed successfully.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/response"
+      },
+      "default": null
     },
     "failedRequest": {
       "description": "Failure Request that can be processed successfully.",
       "type": "array",
       "items": {
-        "$ref": "#/definitions/failureRequest"
+        "$ref": "#/definitions/response"
       },
       "default": null
     }

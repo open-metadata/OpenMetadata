@@ -480,6 +480,14 @@ public final class JsonUtils {
     }
   }
 
+  public static <T> T treeToValue(JsonNode jsonNode, Class<T> classType) {
+    try {
+      return OBJECT_MAPPER.treeToValue(jsonNode, classType);
+    } catch (JsonProcessingException e) {
+      throw new UnhandledServerException(FAILED_TO_PROCESS_JSON, e);
+    }
+  }
+
   /** Compared the canonicalized JSON representation of two object to check if they are equals or not */
   public static boolean areEquals(Object obj1, Object obj2) {
     try {
@@ -507,6 +515,50 @@ public final class JsonUtils {
     @Override
     public ObjectNode objectNode() {
       return new ObjectNode(this, new TreeMap<>());
+    }
+  }
+
+  public static <T> T extractValue(String jsonResponse, String... keys) {
+    JsonNode jsonNode = JsonUtils.readTree(jsonResponse);
+
+    // Traverse the JSON structure using keys
+    for (String key : keys) {
+      jsonNode = jsonNode.path(key);
+    }
+
+    // Extract the final value
+    return JsonUtils.treeToValue(jsonNode, (Class<T>) getValueClass(jsonNode));
+  }
+
+  public static <T> T extractValue(JsonNode jsonNode, String... keys) {
+    // Traverse the JSON structure using keys
+    for (String key : keys) {
+      jsonNode = jsonNode.path(key);
+    }
+
+    // Extract the final value
+    return JsonUtils.treeToValue(jsonNode, (Class<T>) getValueClass(jsonNode));
+  }
+
+  private static Class<?> getValueClass(JsonNode jsonNode) {
+    switch (jsonNode.getNodeType()) {
+      case ARRAY:
+        return JsonNode.class; // Adjust as needed for your use case
+      case BINARY:
+        return byte[].class;
+      case BOOLEAN:
+        return Boolean.class;
+      case NUMBER:
+        return Number.class;
+      case OBJECT:
+        return JsonNode.class;
+      case STRING:
+        return String.class;
+      case MISSING:
+      case NULL:
+      case POJO:
+      default:
+        return Object.class;
     }
   }
 }
