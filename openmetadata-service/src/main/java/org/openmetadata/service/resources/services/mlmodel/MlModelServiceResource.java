@@ -74,7 +74,7 @@ import org.openmetadata.service.util.ResultList;
 public class MlModelServiceResource
     extends ServiceEntityResource<MlModelService, MlModelServiceRepository, MlModelConnection> {
   public static final String COLLECTION_PATH = "v1/services/mlmodelServices/";
-  public static final String FIELDS = "pipelines,owner,tags,domain,sourceHash";
+  public static final String FIELDS = "pipelines,owner,tags,domain";
 
   @Override
   public MlModelService addHref(UriInfo uriInfo, MlModelService service) {
@@ -437,8 +437,7 @@ public class MlModelServiceResource
     return repository
         .copy(new MlModelService(), create, user)
         .withServiceType(create.getServiceType())
-        .withConnection(create.getConnection())
-        .withSourceHash(create.getSourceHash());
+        .withConnection(create.getConnection());
   }
 
   @Override

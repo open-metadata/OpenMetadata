@@ -63,7 +63,7 @@ import org.openmetadata.service.util.ResultList;
 public class StorageServiceResource
     extends ServiceEntityResource<StorageService, StorageServiceRepository, StorageConnection> {
   public static final String COLLECTION_PATH = "v1/services/storageServices/";
-  static final String FIELDS = "pipelines,owner,tags,domain,sourceHash";
+  static final String FIELDS = "pipelines,owner,tags,domain";
 
   @Override
   public StorageService addHref(UriInfo uriInfo, StorageService service) {
@@ -417,8 +417,7 @@ public class StorageServiceResource
     return repository
         .copy(new StorageService(), create, user)
         .withServiceType(create.getServiceType())
-        .withConnection(create.getConnection())
-        .withSourceHash(create.getSourceHash());
+        .withConnection(create.getConnection());
   }
 
   @Override

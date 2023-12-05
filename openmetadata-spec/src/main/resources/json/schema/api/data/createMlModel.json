@@ -99,7 +99,7 @@
       "description": "Source hash of the entity",
       "type": "string",
       "minLength": 1,
-      "maxLength": 64
+      "maxLength": 32
     }
   },
   "required": ["name", "algorithm", "service"],

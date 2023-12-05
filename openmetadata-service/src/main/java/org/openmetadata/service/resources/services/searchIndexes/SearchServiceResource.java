@@ -63,7 +63,7 @@ import org.openmetadata.service.util.ResultList;
 public class SearchServiceResource
     extends ServiceEntityResource<SearchService, SearchServiceRepository, SearchConnection> {
   public static final String COLLECTION_PATH = "v1/services/searchServices/";
-  static final String FIELDS = "pipelines,owner,tags,domain,sourceHash";
+  static final String FIELDS = "pipelines,owner,tags,domain";
 
   @Override
   public SearchService addHref(UriInfo uriInfo, SearchService service) {
@@ -412,8 +412,7 @@ public class SearchServiceResource
     return repository
         .copy(new SearchService(), create, user)
         .withServiceType(create.getServiceType())
-        .withConnection(create.getConnection())
-        .withSourceHash(create.getSourceHash());
+        .withConnection(create.getConnection());
   }
 
   @Override

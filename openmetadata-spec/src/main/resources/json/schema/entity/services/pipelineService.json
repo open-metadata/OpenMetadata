@@ -188,12 +188,6 @@
     "domain" : {
       "description": "Domain the Pipeline service belongs to.",
       "$ref": "../../type/entityReference.json"
-    },
-    "sourceHash": {
-      "description": "Source hash of the entity",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 64
     }
   },
   "required": [

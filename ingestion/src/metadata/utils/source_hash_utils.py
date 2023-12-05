@@ -31,4 +31,4 @@ def generate_source_hash(create_request: C, exclude_fields: Optional[Dict]) -> s
     create_request_json = create_request.json(exclude=exclude_fields)
 
     json_bytes = create_request_json.encode("utf-8")
-    return hashlib.sha256(json_bytes).hexdigest()
+    return hashlib.md5(json_bytes).hexdigest()

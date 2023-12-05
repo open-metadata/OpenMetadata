@@ -72,7 +72,7 @@ import org.openmetadata.service.util.ResultList;
 public class MessagingServiceResource
     extends ServiceEntityResource<MessagingService, MessagingServiceRepository, MessagingConnection> {
   public static final String COLLECTION_PATH = "v1/services/messagingServices/";
-  public static final String FIELDS = "owner,domain,sourceHash";
+  public static final String FIELDS = "owner,domain";
 
   public MessagingServiceResource(Authorizer authorizer) {
     super(Entity.MESSAGING_SERVICE, authorizer, ServiceType.MESSAGING);
@@ -421,8 +421,7 @@ public class MessagingServiceResource
     return repository
         .copy(new MessagingService(), create, user)
         .withConnection(create.getConnection())
-        .withServiceType(create.getServiceType())
-        .withSourceHash(create.getSourceHash());
+        .withServiceType(create.getServiceType());
   }
 
   @Override
