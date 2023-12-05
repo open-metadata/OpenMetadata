@@ -105,6 +105,7 @@ import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Column;
@@ -119,6 +120,8 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.schema.type.Votes;
+import org.openmetadata.schema.type.api.BulkAssets;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
@@ -1628,6 +1631,34 @@ public abstract class EntityRepository<T extends EntityInterface> {
         addRelationship(dataProduct.getId(), entity.getId(), Entity.DATA_PRODUCT, entityType, Relationship.HAS);
       }
     }
+  }
+
+  protected BulkOperationResult bulkAssetsOperation(
+      UUID entityId, String fromEntity, Relationship relationship, BulkAssets request, boolean isAdd) {
+    BulkOperationResult result = new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(false);
+    List<EntityReference> success = new ArrayList<>();
+    // Validate Assets
+    EntityUtil.populateEntityReferences(request.getAssets());
+
+    for (EntityReference ref : request.getAssets()) {
+      // Update Result Processed
+      result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
+
+      if (isAdd) {
+        addRelationship(entityId, ref.getId(), fromEntity, ref.getType(), relationship);
+      } else {
+        deleteRelationship(entityId, fromEntity, ref.getId(), ref.getType(), relationship);
+      }
+
+      success.add(ref);
+      result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
+
+      // Update ES
+      searchRepository.updateEntity(ref);
+    }
+
+    result.withSuccessRequest(success);
+    return result;
   }
 
   /** Remove owner relationship for a given entity */
