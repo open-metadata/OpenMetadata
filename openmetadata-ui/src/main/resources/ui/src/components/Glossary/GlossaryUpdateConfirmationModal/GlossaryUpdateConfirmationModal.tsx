@@ -10,31 +10,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/* eslint-disable i18next/no-literal-string */
 import Icon from '@ant-design/icons';
 import { Button, Modal, Space, Typography } from 'antd';
-import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as ExclamationIcon } from '../../../assets/svg/ic-exclamation-circle.svg';
 import { ClientErrors } from '../../../enums/axios.enum';
 import { EntityType } from '../../../enums/entity.enum';
-import { SearchIndex } from '../../../enums/search.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../../generated/entity/type';
 import { Status } from '../../../generated/type/bulkOperationResult';
 import {
-  addAssetsToGlossaryTerm,
   GlossaryTermFailure,
+  validateTagAddtionToGlossary,
 } from '../../../rest/glossaryAPI';
-import { searchData } from '../../../rest/miscAPI';
 import {
   getEntityLinkFromType,
   getEntityName,
 } from '../../../utils/EntityUtils';
-import { escapeESReservedCharacters } from '../../../utils/StringsUtils';
 import Table from '../../common/Table/Table';
 import { GlossaryUpdateConfirmationModalProps } from './GlossaryUpdateConfirmationModal.interface';
 
@@ -54,27 +49,9 @@ export const GlossaryUpdateConfirmationModal = ({
     setTagAdditionConfirmation(true);
     setValidating(true);
     try {
-      const { data } = await searchData(
-        '',
-        1,
-        1000,
-        `(tags.tagFQN:"${escapeESReservedCharacters(
-          glossaryTerm.fullyQualifiedName
-        )}")`,
-        '',
-        '',
-        SearchIndex.ALL
-      );
-
-      const assets = data.hits.hits.map(({ _source: { id, entityType } }) => ({
-        id,
-        type: entityType,
-      }));
-
       // dryRun validations so that we can list failures if any
-      const res = await addAssetsToGlossaryTerm(
+      const res = await validateTagAddtionToGlossary(
         { ...glossaryTerm, tags: updatedTags } as GlossaryTerm,
-        assets,
         true
       );
 
@@ -88,11 +65,39 @@ export const GlossaryUpdateConfirmationModal = ({
       }
     } catch (err) {
       // error
-      setTagError((err as AxiosError).response?.data);
+      setTagError(err.response?.data);
     } finally {
       setValidating(false);
     }
   };
+
+  const tagsColumn = useMemo(() => {
+    return [
+      {
+        title: t('label.asset-plural'),
+        dataIndex: 'request',
+        key: 'request',
+        render: (record: EntityReference) => (
+          <Link
+            target="_blank"
+            to={getEntityLinkFromType(
+              record.fullyQualifiedName ?? '',
+              record.type as EntityType
+            )}>
+            {record.fullyQualifiedName}
+          </Link>
+        ),
+      },
+      {
+        title: t('label.failure-reason'),
+        dataIndex: 'message',
+        key: 'message',
+        render: (error: string) => (
+          <Typography.Paragraph>{error}</Typography.Paragraph>
+        ),
+      },
+    ];
+  }, []);
 
   return (
     <Modal
@@ -105,64 +110,33 @@ export const GlossaryUpdateConfirmationModal = ({
           <div className="d-flex justify-between">
             <Typography.Text type="secondary">
               {failedStatus?.numberOfRowsFailed &&
-                `${failedStatus.numberOfRowsFailed} failed`}
+                `${failedStatus.numberOfRowsFailed} ${t('label.failed')}`}
             </Typography.Text>
-
-            <Space size={8}>
-              <Button onClick={onCancel}>{t('label.cancel')}</Button>
-              <Button
-                disabled={Boolean(failedStatus)}
-                loading={validating}
-                type="primary">
-                {t('label.ok')}
-              </Button>
-            </Space>
+            <Button onClick={onCancel}>{t('label.cancel')}</Button>
           </div>
         )
       }
-      title={tagAdditionConfirmation ? 'Following entities failed' : undefined}
+      title={
+        tagAdditionConfirmation
+          ? t('message.glossary-tag-update-modal-title')
+          : undefined
+      }
       width={tagAdditionConfirmation ? 750 : undefined}
       onCancel={onCancel}>
-      {tagAdditionConfirmation ? (
+      {tagAdditionConfirmation || validating ? (
         <div className="d-flex flex-column gap-2">
           {!isEmpty(failedStatus?.failedRequest) && !validating && (
             <>
               <Table
                 bordered
-                columns={[
-                  {
-                    title: t('label.asset-plural'),
-                    dataIndex: 'request',
-                    key: 'request',
-                    render: (record: EntityReference) => (
-                      <Link
-                        target="_blank"
-                        to={getEntityLinkFromType(
-                          record.fullyQualifiedName ?? '',
-                          record.type as EntityType
-                        )}>
-                        {getEntityName(record)}
-                      </Link>
-                    ),
-                  },
-                  {
-                    title: t('label.failure-reason'),
-                    dataIndex: 'error',
-                    key: 'error',
-                    render: (error: string) => (
-                      <Typography.Paragraph>{error}</Typography.Paragraph>
-                    ),
-                  },
-                ]}
+                columns={tagsColumn}
                 dataSource={failedStatus?.failedRequest}
                 loading={validating}
                 pagination={false}
                 rowKey={(record) => record.request.id}
               />
-
               <Typography.Text italic className="m-t-sm" type="secondary">
-                You can either remove this assets or remove conflicting tag from
-                the asset and try again adding tags!
+                {t('message.glossary-tag-assignement-help-message')}
               </Typography.Text>
             </>
           )}
@@ -171,29 +145,27 @@ export const GlossaryUpdateConfirmationModal = ({
           )}
         </div>
       ) : (
-        <div className="d-flex items-center flex-column gap-4">
+        <div className="d-flex items-center flex-column gap-2">
           <Icon
-            className="m-b-md"
+            className="m-b-lg"
             component={ExclamationIcon}
             style={{ fontSize: '60px' }}
           />
-
           <Typography.Title level={5}>
-            Would you like to proceed with adding a new tag?
+            {t('message.tag-update-confirmation')}
           </Typography.Title>
           <Typography.Text className="text-center">
-            This action will apply the tag to all Assets linked to the Glossary
-            Term{' '}
+            {t('message.glossary-tag-update-description')}{' '}
             <span className="font-medium">{getEntityName(glossaryTerm)}</span>
           </Typography.Text>
-          <div className="m-t-md">
+          <div className="m-t-lg">
             <Space size={8}>
-              <Button onClick={onCancel}>No, cancel</Button>
+              <Button onClick={onCancel}>{t('label.no-comma-cancel')}</Button>
               <Button
                 loading={validating}
                 type="primary"
                 onClick={handleUpdateConfirmation}>
-                Yes, confirm
+                {t('label.yes-comma-confirm')}
               </Button>
             </Space>
           </div>

@@ -262,6 +262,23 @@ export interface GlossaryTermFailure {
   failedRequest: Array<{ request: EntityReference; error: string }>;
 }
 
+export const validateTagAddtionToGlossary = async (
+  glossaryTerm: GlossaryTerm,
+  dryRun = false
+) => {
+  const data = {
+    dryRun: dryRun,
+    glossaryTags: glossaryTerm.tags ?? [],
+  };
+
+  const response = await APIClient.put<
+    AddGlossaryToAssetsRequest,
+    AxiosResponse<GlossaryTermFailure>
+  >(`/glossaryTerms/${glossaryTerm.id}/tags/validate`, data);
+
+  return response.data;
+};
+
 export const addAssetsToGlossaryTerm = async (
   glossaryTerm: GlossaryTerm,
   assets: EntityReference[],
@@ -275,7 +292,7 @@ export const addAssetsToGlossaryTerm = async (
 
   const response = await APIClient.put<
     AddGlossaryToAssetsRequest,
-    AxiosResponse<GlossaryTerm | GlossaryTermFailure>
+    AxiosResponse<GlossaryTerm>
   >(`/glossaryTerms/${glossaryTerm.id}/assets/add`, data);
 
   return response.data;
