@@ -24,6 +24,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../../generated/entity/type';
+import { Status } from '../../../generated/type/bulkOperationResult';
 import {
   addAssetsToGlossaryTerm,
   GlossaryTermFailure,
@@ -39,7 +40,7 @@ import { GlossaryUpdateConfirmationModalProps } from './GlossaryUpdateConfirmati
 
 export const GlossaryUpdateConfirmationModal = ({
   glossaryTerm,
-  afterUpdate,
+  onValidationSuccess,
   onCancel,
   updatedTags,
 }: GlossaryUpdateConfirmationModalProps) => {
@@ -70,13 +71,19 @@ export const GlossaryUpdateConfirmationModal = ({
         type: entityType,
       }));
 
+      // dryRun validations so that we can list failures if any
       const res = await addAssetsToGlossaryTerm(
         { ...glossaryTerm, tags: updatedTags } as GlossaryTerm,
         assets,
         true
       );
 
-      if ('dryRun' in res) {
+      if (
+        res.status &&
+        (res as GlossaryTermFailure).status === Status.Success
+      ) {
+        await onValidationSuccess();
+      } else {
         setFailedStatus(res as GlossaryTermFailure);
       }
     } catch (err) {
@@ -104,9 +111,9 @@ export const GlossaryUpdateConfirmationModal = ({
             <Space size={8}>
               <Button onClick={onCancel}>{t('label.cancel')}</Button>
               <Button
+                disabled={Boolean(failedStatus)}
                 loading={validating}
-                type="primary"
-                onClick={() => afterUpdate}>
+                type="primary">
                 {t('label.ok')}
               </Button>
             </Space>
@@ -117,45 +124,52 @@ export const GlossaryUpdateConfirmationModal = ({
       width={tagAdditionConfirmation ? 750 : undefined}
       onCancel={onCancel}>
       {tagAdditionConfirmation ? (
-        <>
+        <div className="d-flex flex-column gap-2">
           {!isEmpty(failedStatus?.failedRequest) && !validating && (
-            <Table
-              bordered
-              columns={[
-                {
-                  title: t('label.asset-plural'),
-                  dataIndex: 'request',
-                  key: 'request',
-                  render: (record: EntityReference) => (
-                    <Link
-                      target="_blank"
-                      to={getEntityLinkFromType(
-                        record.fullyQualifiedName ?? '',
-                        record.type as EntityType
-                      )}>
-                      {getEntityName(record)}
-                    </Link>
-                  ),
-                },
-                {
-                  title: t('label.failure-reason'),
-                  dataIndex: 'error',
-                  key: 'error',
-                  render: (error: string) => (
-                    <Typography.Paragraph>{error}</Typography.Paragraph>
-                  ),
-                },
-              ]}
-              dataSource={failedStatus?.failedRequest}
-              loading={validating}
-              pagination={false}
-              rowKey={(record) => record.request.id}
-            />
+            <>
+              <Table
+                bordered
+                columns={[
+                  {
+                    title: t('label.asset-plural'),
+                    dataIndex: 'request',
+                    key: 'request',
+                    render: (record: EntityReference) => (
+                      <Link
+                        target="_blank"
+                        to={getEntityLinkFromType(
+                          record.fullyQualifiedName ?? '',
+                          record.type as EntityType
+                        )}>
+                        {getEntityName(record)}
+                      </Link>
+                    ),
+                  },
+                  {
+                    title: t('label.failure-reason'),
+                    dataIndex: 'error',
+                    key: 'error',
+                    render: (error: string) => (
+                      <Typography.Paragraph>{error}</Typography.Paragraph>
+                    ),
+                  },
+                ]}
+                dataSource={failedStatus?.failedRequest}
+                loading={validating}
+                pagination={false}
+                rowKey={(record) => record.request.id}
+              />
+
+              <Typography.Text italic className="m-t-sm" type="secondary">
+                You can either remove this assets or remove conflicting tag from
+                the asset and try again adding tags!
+              </Typography.Text>
+            </>
           )}
           {tagError?.code === ClientErrors.BAD_REQUEST && (
             <Typography.Text type="danger">{tagError.message}</Typography.Text>
           )}
-        </>
+        </div>
       ) : (
         <div className="d-flex items-center flex-column gap-4">
           <Icon

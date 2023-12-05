@@ -15,7 +15,7 @@ import { TagLabel } from '../../../generated/entity/data/table';
 
 export interface GlossaryUpdateConfirmationModalProps {
   glossaryTerm: GlossaryTerm;
-  afterUpdate: (() => void) | (() => Promise<void>);
+  onValidationSuccess: (() => void) | (() => Promise<void>);
   onCancel: () => void;
   updatedTags: TagLabel[];
 }

@@ -98,6 +98,17 @@ const GlossaryOverviewTab = ({
     [isVersionView, selectedData]
   );
 
+  const handleGlossaryTagUpdateValidationConfirm = async () => {
+    if (selectedData) {
+      await onUpdate({
+        ...selectedData,
+        tags: tagsUpdatating,
+      });
+
+      setTagsUpdating(undefined);
+    }
+  };
+
   return (
     <Row className="glossary-overview-tab h-full" gutter={[32, 16]}>
       <Col
@@ -182,10 +193,10 @@ const GlossaryOverviewTab = ({
       </Col>
       {tagsUpdatating && (
         <GlossaryUpdateConfirmationModal
-          afterUpdate={() => onUpdate(selectedData)}
           glossaryTerm={selectedData as GlossaryTerm}
           updatedTags={tagsUpdatating}
           onCancel={() => setTagsUpdating(undefined)}
+          onValidationSuccess={handleGlossaryTagUpdateValidationConfirm}
         />
       )}
     </Row>

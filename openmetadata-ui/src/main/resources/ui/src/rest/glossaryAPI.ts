@@ -19,7 +19,8 @@ import { AddGlossaryToAssetsRequest } from '../generated/api/addGlossaryToAssets
 import { CreateGlossary } from '../generated/api/data/createGlossary';
 import { CreateGlossaryTerm } from '../generated/api/data/createGlossaryTerm';
 import { EntityReference, Glossary } from '../generated/entity/data/glossary';
-import { GlossaryTerm, Status } from '../generated/entity/data/glossaryTerm';
+import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
+import { Status } from '../generated/type/bulkOperationResult';
 import { CSVImportResult } from '../generated/type/csvImportResult';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { ListParams } from '../interface/API.interface';
