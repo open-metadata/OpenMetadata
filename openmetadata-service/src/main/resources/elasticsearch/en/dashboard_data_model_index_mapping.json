@@ -207,8 +207,7 @@
       "tier": {
         "properties": {
           "tagFQN": {
-            "type": "keyword",
-            "normalizer": "lowercase_normalizer"
+            "type": "keyword"
           },
           "labelType": {
             "type": "keyword"
