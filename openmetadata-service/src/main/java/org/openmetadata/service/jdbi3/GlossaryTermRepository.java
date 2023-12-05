@@ -26,6 +26,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.notRevi
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusiveForParentAndSubField;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.getUniqueTags;
+import static org.openmetadata.service.util.EntityUtil.compareEntityReferenceById;
 import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getId;
@@ -33,13 +34,22 @@ import static org.openmetadata.service.util.EntityUtil.stringMatch;
 import static org.openmetadata.service.util.EntityUtil.tagLabelMatch;
 import static org.openmetadata.service.util.EntityUtil.termReferenceMatch;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import javax.json.JsonPatch;
+import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -74,6 +84,7 @@ import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.feeds.FeedResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.glossary.GlossaryTermResource;
+import org.openmetadata.service.search.SearchRequest;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -291,6 +302,108 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
 
     return result;
+  }
+
+  public BulkOperationResult validateGlossaryTagsAddition(UUID glossaryTermId, AddGlossaryToAssetsRequest request)
+      throws IOException {
+    boolean dryRun = Boolean.TRUE.equals(request.getDryRun());
+
+    GlossaryTerm term = this.get(null, glossaryTermId, getFields("id,tags"));
+
+    List<TagLabel> glossaryTagsToValidate = request.getGlossaryTags();
+
+    // Check if the tags are mutually exclusive for the glossary
+    checkMutuallyExclusive(request.getGlossaryTags());
+
+    BulkOperationResult result = new BulkOperationResult().withDryRun(dryRun);
+    List<FailureRequest> failures = new ArrayList<>();
+    List<EntityReference> success = new ArrayList<>();
+
+    if (dryRun && (CommonUtil.nullOrEmpty(glossaryTagsToValidate))) {
+      // Nothing to Validate
+      return result.withStatus(ApiStatus.SUCCESS).withSuccessRequest("Nothing to Validate.");
+    }
+
+    Set<String> targetFQNHashesFromDb =
+        new HashSet<>(daoCollection.tagUsageDAO().getTargetFQNHashForTag(term.getFullyQualifiedName()));
+    Map<String, EntityReference> targetFQNFromES =
+        getGlossaryUsageFromES(term.getFullyQualifiedName(), targetFQNHashesFromDb.size());
+
+    for (String fqnHash : targetFQNHashesFromDb) {
+      // Update Result Processed
+      result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
+
+      Map<String, List<TagLabel>> allAssetTags = daoCollection.tagUsageDAO().getTagsByPrefix(fqnHash, "%", false);
+
+      EntityReference refDetails = targetFQNFromES.get(fqnHash);
+      
+      try {
+        // Assets FQN is not available / we can use fqnHash for now
+        checkMutuallyExclusiveForParentAndSubField(
+            term.getFullyQualifiedName(), fqnHash, allAssetTags, glossaryTagsToValidate, true);
+        if (refDetails != null) {
+          success.add(refDetails);
+        } else {
+          success.add(new EntityReference().withFullyQualifiedName(fqnHash).withType("unknown"));
+        }
+        result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
+      } catch (IllegalArgumentException ex) {
+        if (refDetails != null) {
+          failures.add(new FailureRequest().withRequest(refDetails).withError(ex.getMessage()));
+        } else {
+          success.add(new EntityReference().withFullyQualifiedName(fqnHash).withType("unknown"));
+        }
+        result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
+      }
+    }
+
+    // Add Failed And Suceess Request
+    result.withFailedRequest(failures).withSuccessRequest(success);
+
+    // Set Final Status
+    if (result.getNumberOfRowsPassed().equals(result.getNumberOfRowsProcessed())) {
+      result.withStatus(ApiStatus.SUCCESS);
+    } else if (result.getNumberOfRowsPassed() > 1) {
+      result.withStatus(ApiStatus.PARTIAL_SUCCESS);
+    } else {
+      result.withStatus(ApiStatus.FAILURE);
+    }
+
+    return result;
+  }
+
+  private Map<String, EntityReference> getGlossaryUsageFromES(String glossaryFqn, int size) throws IOException {
+    String key = "_source";
+    SearchRequest searchRequest =
+        new SearchRequest.ElasticSearchRequestBuilder(
+                String.format("** AND (tags.tagFQN:\"%s\")", glossaryFqn), size, "all")
+            .from(0)
+            .fetchSource(true)
+            .trackTotalHits(false)
+            .sortFieldParam("_score")
+            .deleted(false)
+            .sortOrder("desc")
+            .includeSourceFields(new ArrayList<>())
+            .build();
+    Response response = searchRepository.search(searchRequest);
+    String json = (String) response.getEntity();
+    Set<EntityReference> fqns = new TreeSet<>(compareEntityReferenceById);
+    for (Iterator<JsonNode> it = ((ArrayNode) JsonUtils.extractValue(json, "hits", "hits")).elements();
+        it.hasNext(); ) {
+      JsonNode jsonNode = it.next();
+      String id = JsonUtils.extractValue(jsonNode, key, "id");
+      String fqn = JsonUtils.extractValue(jsonNode, key, "fullyQualifiedName");
+      String type = JsonUtils.extractValue(jsonNode, key, "entityType");
+      if (!CommonUtil.nullOrEmpty(fqn) && !CommonUtil.nullOrEmpty(type)) {
+        fqns.add(new EntityReference().withId(UUID.fromString(id)).withFullyQualifiedName(fqn).withType(type));
+      }
+    }
+
+    return fqns.stream()
+        .collect(
+            Collectors.toMap(
+                entityReference -> FullyQualifiedName.buildHash(entityReference.getFullyQualifiedName()),
+                entityReference -> entityReference));
   }
 
   public BulkOperationResult bulkRemoveGlossaryToAssets(UUID glossaryTermId, AddGlossaryToAssetsRequest request) {
