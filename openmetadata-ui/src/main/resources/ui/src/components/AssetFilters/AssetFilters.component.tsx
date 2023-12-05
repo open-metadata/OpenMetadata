@@ -34,13 +34,11 @@ const AssetFilters = ({
   quickFilterQuery,
 }: AssetFiltersProps) => {
   const { t } = useTranslation();
-  const [filters, setFilters] = useState<ExploreQuickFilterField[]>(
-    [] as ExploreQuickFilterField[]
-  );
+  const [filters, setFilters] = useState<ExploreQuickFilterField[]>([]);
   const [selectedFilter, setSelectedFilter] = useState<string[]>([]);
   const [selectedQuickFilters, setSelectedQuickFilters] = useState<
     ExploreQuickFilterField[]
-  >([] as ExploreQuickFilterField[]);
+  >([]);
 
   const handleMenuClick = ({ key }: { key: string }) => {
     setSelectedFilter((prevSelected) => [...prevSelected, key]);
@@ -123,11 +121,7 @@ const AssetFilters = ({
       setFilters(
         dropdownItems.map((item) => ({
           ...item,
-          value: getSelectedValuesFromQuickFilter(
-            item,
-            dropdownItems,
-            undefined // pass in state variable
-          ),
+          value: getSelectedValuesFromQuickFilter(item, dropdownItems),
         }))
       );
     } else {

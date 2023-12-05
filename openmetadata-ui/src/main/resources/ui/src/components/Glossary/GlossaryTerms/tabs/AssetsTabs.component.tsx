@@ -179,10 +179,8 @@ const AssetsTabs = forwardRef(
     const [selectedFilter, setSelectedFilter] = useState<string[]>([]); // Contains menu selection
     const [selectedQuickFilters, setSelectedQuickFilters] = useState<
       ExploreQuickFilterField[]
-    >([] as ExploreQuickFilterField[]);
-    const [filters, setFilters] = useState<ExploreQuickFilterField[]>(
-      [] as ExploreQuickFilterField[]
-    );
+    >([]);
+    const [filters, setFilters] = useState<ExploreQuickFilterField[]>([]);
     const [searchValue, setSearchValue] = useState('');
 
     const handleMenuClick = ({ key }: { key: string }) => {
@@ -794,13 +792,19 @@ const AssetsTabs = forwardRef(
       notification.warning({
         key: 'asset-tab-notification-key',
         message: (
-          <div className="d-flex justify-between">
+          <div className="d-flex items-center justify-between">
             {selectedItems && selectedItems.size > 1 && (
-              <Typography.Text>
-                {selectedItems.size} {t('label.selected-lowercase')}
+              <Typography.Text className="text-white">
+                {selectedItems.size} {t('label.items-selected-lowercase')}
               </Typography.Text>
             )}
-            <Button onClick={deleteSelectedItems}>{t('label.delete')}</Button>
+            <Button
+              danger
+              data-testid="delete-all-button"
+              type="primary"
+              onClick={deleteSelectedItems}>
+              {t('label.delete')}
+            </Button>
           </div>
         ),
         placement: 'bottom',
