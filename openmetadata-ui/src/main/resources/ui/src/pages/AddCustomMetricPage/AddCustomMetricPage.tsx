@@ -190,7 +190,9 @@ const AddCustomMetricPage = () => {
     <ResizablePanels
       firstPanel={{
         children: (
-          <div className="max-width-md w-9/10 service-form-container">
+          <div
+            className="max-width-md w-9/10 service-form-container"
+            data-testid="add-custom-metric-page-container">
             <Row gutter={[16, 16]}>
               <Col span={24}>
                 <TitleBreadcrumb titleLinks={breadcrumb} />
