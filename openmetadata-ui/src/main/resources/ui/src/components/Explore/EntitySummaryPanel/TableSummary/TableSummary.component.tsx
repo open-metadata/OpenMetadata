@@ -60,6 +60,7 @@ function TableSummary({
   componentType = DRAWER_NAVIGATION_OPTIONS.explore,
   tags,
   isLoading,
+  sortSummaryListBasedOn,
 }: TableSummaryProps) {
   const { t } = useTranslation();
   const location = useLocation();
@@ -173,7 +174,8 @@ function TableSummary({
       getFormattedEntityData(
         SummaryEntityType.COLUMN,
         tableDetails.columns,
-        tableDetails.tableConstraints
+        tableDetails.tableConstraints,
+        sortSummaryListBasedOn
       ),
     [tableDetails]
   );

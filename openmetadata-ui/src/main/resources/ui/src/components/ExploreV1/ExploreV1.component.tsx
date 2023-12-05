@@ -38,6 +38,7 @@ import EntitySummaryPanel from '../../components/Explore/EntitySummaryPanel/Enti
 import ExploreQuickFilters from '../../components/Explore/ExploreQuickFilters';
 import SortingDropDown from '../../components/Explore/SortingDropDown';
 import { tabsInfo } from '../../constants/explore.constants';
+import { EntityFields } from '../../enums/AdvancedSearch.enum';
 import { ERROR_PLACEHOLDER_TYPE, SORT_ORDER } from '../../enums/common.enum';
 import {
   QueryFieldInterface,
@@ -342,6 +343,12 @@ const ExploreV1: React.FC<ExploreProps> = ({
                     <EntitySummaryPanel
                       entityDetails={{ details: entityDetails }}
                       handleClosePanel={handleClosePanel}
+                      sortSummaryListBasedOn={(
+                        selectedQuickFilters?.find(
+                          (filterOption) =>
+                            filterOption.key === EntityFields.TAG
+                        )?.value ?? []
+                      ).map((tagFQN) => tagFQN.key)}
                     />
                   )
                 }

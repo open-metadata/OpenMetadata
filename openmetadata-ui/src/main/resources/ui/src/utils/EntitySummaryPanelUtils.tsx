@@ -40,26 +40,51 @@ const getTitleName = (data: EntityNameProps) =>
 export const getFormattedEntityData = (
   entityType: SummaryEntityType,
   entityInfo?: Array<Column | Field | Chart | Task | MlFeature>,
-  tableConstraints?: TableConstraint[]
+  tableConstraints?: TableConstraint[],
+  sortSummaryListBasedOn?: string[]
 ): BasicEntityInfo[] => {
   if (isEmpty(entityInfo)) {
     return [];
   }
   switch (entityType) {
     case SummaryEntityType.COLUMN: {
-      return (entityInfo as Column[]).map((column) => ({
-        name: column.name,
-        title: <Text className="entity-title">{getTitleName(column)}</Text>,
-        type: column.dataType,
-        tags: column.tags,
-        description: column.description,
-        columnConstraint: column.constraint,
-        tableConstraints: tableConstraints,
-        children: getFormattedEntityData(
-          SummaryEntityType.COLUMN,
-          column.children
-        ),
-      }));
+      const { entityWithSortOption, entityWithoutSortOption } = (
+        entityInfo as Column[]
+      ).reduce(
+        (acc, column) => {
+          const columnData = {
+            name: column.name,
+            title: <Text className="entity-title">{getTitleName(column)}</Text>,
+            type: column.dataType,
+            tags: column.tags,
+            description: column.description,
+            columnConstraint: column.constraint,
+            tableConstraints: tableConstraints,
+            children: getFormattedEntityData(
+              SummaryEntityType.COLUMN,
+              column.children
+            ),
+          };
+
+          if (
+            column.tags?.find((tag) =>
+              sortSummaryListBasedOn?.includes(tag.tagFQN)
+            )
+          ) {
+            acc.entityWithSortOption.push(columnData);
+          } else {
+            acc.entityWithoutSortOption.push(columnData);
+          }
+
+          return acc;
+        },
+        {
+          entityWithSortOption: [] as BasicEntityInfo[],
+          entityWithoutSortOption: [] as BasicEntityInfo[],
+        }
+      );
+
+      return [...entityWithSortOption, ...entityWithoutSortOption];
     }
     case SummaryEntityType.FIELD: {
       return (entityInfo as SearchIndexField[]).map((field) => ({
