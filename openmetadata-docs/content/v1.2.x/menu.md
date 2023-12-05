@@ -706,10 +706,10 @@ site_menu:
     url: /how-to-guides/data-insights/kpi
   - category: How to Guides / Data Insights / Data Insights Report
     url: /how-to-guides/data-insights/report
-  - category: How to Guides / Data Insights / Configure the Data Insights Report
-    url: /how-to-guides/data-insights/email-report 
   - category: How to Guides / Data Insights / Cost Analysis
     url: /how-to-guides/data-insights/cost-analysis
+  - category: How to Guides / Data Insights / Configure the Data Insights Report
+    url: /how-to-guides/data-insights/email-report 
   - category: How to Guides / Data Insights / How to Transform the Data Culture of Your Company
     url: /how-to-guides/data-insights/data-culture
   - category: How to Guides / Data Governance
@@ -724,6 +724,10 @@ site_menu:
     url: /how-to-guides/data-governance/glossary/create-terms
   - category: How to Guides / Data Governance / Glossary / How to Bulk Import a Glossary
     url: /how-to-guides/data-governance/glossary/import
+  - category: How to Guides / Data Governance / Glossary / Glossary Approval Workflow
+    url: /how-to-guides/data-governance/glossary/approval  
+  - category: How to Guides / Data Governance / Glossary / Glossary Styling
+    url: /how-to-guides/data-governance/glossary/styling 
   - category: How to Guides / Data Governance / Glossary / How to Add Assets to Glossary Terms
     url: /how-to-guides/data-governance/glossary/assets
   - category: How to Guides / Data Governance / Glossary / Best Practices for Glossary
@@ -1758,6 +1762,58 @@ site_menu:
     url: /sdk/python/build-connector/sink
   - category: SDK / Python SDK / Build a Connector / Bulk Sink
     url: /sdk/python/build-connector/bulk-sink
+  - category: SDK / Python SDK / API Reference
+    url: /sdk/python/api-reference/
+  - category: SDK / Python SDK / API Reference / Auth Provider
+    url: /sdk/python/api-reference/auth-provider
+  - category: SDK / Python SDK / API Reference / Client Utils
+    url: /sdk/python/api-reference/client-utils
+  - category: SDK / Python SDK / API Reference / Client
+    url: /sdk/python/api-reference/client
+  - category: SDK / Python SDK / API Reference / Credentials
+    url: /sdk/python/api-reference/credentials
+  - category: SDK / Python SDK / API Reference / Dashboard Mixin
+    url: /sdk/python/api-reference/dashboard-mixin
+  - category: SDK / Python SDK / API Reference / Data Insight Mixin
+    url: /sdk/python/api-reference/data-insight-mixin
+  - category: SDK / Python SDK / API Reference / ES Mixin
+    url: /sdk/python/api-reference/es-mixin
+  - category: SDK / Python SDK / API Reference / Ingestion Pipeline Mixin
+    url: /sdk/python/api-reference/ingestion-pipeline-mixin
+  - category: SDK / Python SDK / API Reference / Lineage Mixin
+    url: /sdk/python/api-reference/lineage-mixin
+  - category: SDK / Python SDK / API Reference / ML Model Mixin
+    url: /sdk/python/api-reference/mlmodel-mixin
+  - category: SDK / Python SDK / API Reference / Models
+    url: /sdk/python/api-reference/models
+  - category: SDK / Python SDK / API Reference / Ometa API
+    url: /sdk/python/api-reference/ometa-api
+  - category: SDK / Python SDK / API Reference / Patch Mixin Utils
+    url: /sdk/python/api-reference/patch-mixin-utils
+  - category: SDK / Python SDK / API Reference / Provider Registry
+    url: /sdk/python/api-reference/provider-registry
+  - category: SDK / Python SDK / API Reference / Query Mixin
+    url: /sdk/python/api-reference/query-mixin
+  - category: SDK / Python SDK / API Reference / Routes
+    url: /sdk/python/api-reference/routes
+  - category: SDK / Python SDK / API Reference / Search Index Mixin
+    url: /sdk/python/api-reference/search-index-mixin
+  - category: SDK / Python SDK / API Reference / Server Mixin
+    url: /sdk/python/api-reference/server-mixin
+  - category: SDK / Python SDK / API Reference / Service Mixin
+    url: /sdk/python/api-reference/service-mixin
+  - category: SDK / Python SDK / API Reference / Table Mixin
+    url: /sdk/python/api-reference/table-mixin
+  - category: SDK / Python SDK / API Reference / Tests Mixin
+    url: /sdk/python/api-reference/tests-mixin
+  - category: SDK / Python SDK / API Reference / Topic Mixin
+    url: /sdk/python/api-reference/topic-mixin
+  - category: SDK / Python SDK / API Reference / User Mixin
+    url: /sdk/python/api-reference/user-mixin
+  - category: SDK / Python SDK / API Reference / Utils Mixin
+    url: /sdk/python/api-reference/utils
+  - category: SDK / Python SDK / API Reference / Version Mixin
+    url: /sdk/python/api-reference/version-mixin
   - category: SDK / Java SDK
     url: /sdk/java
 ---

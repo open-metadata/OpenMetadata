@@ -31,6 +31,7 @@ import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.indexes.AggregatedCostAnalysisReportDataIndex;
 import org.openmetadata.service.search.indexes.ChartIndex;
@@ -63,6 +64,7 @@ import org.openmetadata.service.search.indexes.TableIndex;
 import org.openmetadata.service.search.indexes.TagIndex;
 import org.openmetadata.service.search.indexes.TeamIndex;
 import org.openmetadata.service.search.indexes.TestCaseIndex;
+import org.openmetadata.service.search.indexes.TestCaseResolutionStatusIndex;
 import org.openmetadata.service.search.indexes.TestSuiteIndex;
 import org.openmetadata.service.search.indexes.TopicIndex;
 import org.openmetadata.service.search.indexes.UserIndex;
@@ -145,6 +147,8 @@ public class SearchIndexFactory {
         return new RawCostAnalysisReportDataIndex((ReportData) entity);
       case Entity.AGGREGATED_COST_ANALYSIS_REPORT_DATA:
         return new AggregatedCostAnalysisReportDataIndex((ReportData) entity);
+      case Entity.TEST_CASE_RESOLUTION_STATUS:
+        return new TestCaseResolutionStatusIndex((TestCaseResolutionStatus) entity);
       default:
         LOG.warn("Ignoring Entity Type {}", entityType);
     }

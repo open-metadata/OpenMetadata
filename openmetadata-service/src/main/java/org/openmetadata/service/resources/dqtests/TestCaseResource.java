@@ -389,8 +389,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().name(fqn).build();
     OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    PatchResponse<TestCaseResult> patchResponse =
-        repository.patchTestCaseResults(fqn, timestamp, securityContext.getUserPrincipal().getName(), patch);
+    PatchResponse<TestCaseResult> patchResponse = repository.patchTestCaseResults(fqn, timestamp, patch);
     return patchResponse.toResponse();
   }
 
