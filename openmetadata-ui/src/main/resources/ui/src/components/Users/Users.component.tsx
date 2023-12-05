@@ -214,13 +214,7 @@ const Users = ({
                 />
               ),
               key: UserPageTabs.ACCESS_TOKEN,
-              children: (
-                <>
-                  <Card className="p-sm" data-testid="center-panel">
-                    <AccessTokenCard isBot={false} />
-                  </Card>
-                </>
-              ),
+              children: <AccessTokenCard isBot={false} />,
             },
           ]
         : []),

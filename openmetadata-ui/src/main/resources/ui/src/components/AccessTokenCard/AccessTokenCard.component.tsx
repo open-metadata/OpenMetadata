@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { Card } from 'antd';
 import { AxiosError } from 'axios';
 import { t } from 'i18next';
 import React, { FC, useEffect, useState } from 'react';
@@ -76,7 +77,9 @@ const AccessTokenCard: FC<MockProps> = ({ isBot }) => {
   };
 
   return (
-    <>
+    <Card
+      className="p-md m-l-md m-r-lg w-auto m-t-md"
+      data-testid="center-panel">
       {authenticationMechanism ? (
         <>
           {isAuthMechanismEdit ? (
@@ -119,7 +122,7 @@ const AccessTokenCard: FC<MockProps> = ({ isBot }) => {
           handleAuthMechanismEdit();
         }}
       />
-    </>
+    </Card>
   );
 };
 
