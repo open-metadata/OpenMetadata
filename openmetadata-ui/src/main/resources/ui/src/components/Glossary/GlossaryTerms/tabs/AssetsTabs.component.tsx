@@ -18,7 +18,6 @@ import {
   Checkbox,
   Col,
   Dropdown,
-  Menu,
   MenuProps,
   notification,
   Row,
@@ -193,16 +192,13 @@ const AssetsTabs = forwardRef(
       setSelectedFilter((prevSelected) => [...prevSelected, key]);
     };
 
-    const filterMenu = useMemo(
-      () => (
-        <Menu selectedKeys={selectedFilter} onClick={handleMenuClick}>
-          {filters.map((filter) => (
-            <Menu.Item key={filter.key}>{filter.label}</Menu.Item>
-          ))}
-        </Menu>
-      ),
-      [selectedFilter, filters]
-    );
+    const filterMenu: ItemType[] = useMemo(() => {
+      return filters.map((filter) => ({
+        key: filter.key,
+        label: filter.label,
+        onClick: handleMenuClick,
+      }));
+    }, [filters]);
 
     const queryParam = useMemo(() => {
       const encodedFqn = getEncodedFqn(escapeESReservedCharacters(entityFqn));
@@ -890,7 +886,12 @@ const AssetsTabs = forwardRef(
           <Row className="filters-row gap-2 p-l-lg">
             <Col span={18}>
               <div className="d-flex items-center gap-3">
-                <Dropdown overlay={filterMenu} trigger={['click']}>
+                <Dropdown
+                  menu={{
+                    items: filterMenu,
+                    selectedKeys: selectedFilter,
+                  }}
+                  trigger={['click']}>
                   <Button icon={<PlusOutlined />} size="small" type="primary" />
                 </Dropdown>
                 <div className="flex-1">

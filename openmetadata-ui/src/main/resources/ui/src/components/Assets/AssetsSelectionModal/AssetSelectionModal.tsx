@@ -10,9 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Checkbox, List, Modal, Space, Typography } from 'antd';
+import { PlusOutlined } from '@ant-design/icons';
+import {
+  Button,
+  Checkbox,
+  Dropdown,
+  List,
+  Modal,
+  Space,
+  Typography,
+} from 'antd';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import { isEmpty } from 'lodash';
 import { EntityDetailUnion } from 'Models';
 import VirtualList from 'rc-virtual-list';
 import {
@@ -20,6 +31,7 @@ import {
   UIEventHandler,
   useCallback,
   useEffect,
+  useMemo,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -33,7 +45,11 @@ import {
   Status,
 } from '../../../generated/type/bulkOperationResult';
 import { Aggregations } from '../../../interface/search.interface';
-import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
+import {
+  QueryFieldInterface,
+  QueryFieldValueInterface,
+  QueryFilterInterface,
+} from '../../../pages/ExplorePage/ExplorePage.interface';
 import {
   addAssetsToDataProduct,
   getDataProductByName,
@@ -53,11 +69,11 @@ import {
 import { getCombinedQueryFilterObject } from '../../../utils/ExplorePage/ExplorePageUtils';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import AssetFilters from '../../AssetFilters/AssetFilters.component';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import TableDataCardV2 from '../../common/TableDataCardV2/TableDataCardV2';
 import { ExploreQuickFilterField } from '../../Explore/ExplorePage.interface';
+import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
 import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import Loader from '../../Loader/Loader';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
@@ -103,6 +119,20 @@ export const AssetSelectionModal = ({
         },
       })
     );
+  const [selectedFilter, setSelectedFilter] = useState<string[]>([]);
+  const [filters, setFilters] = useState<ExploreQuickFilterField[]>([]);
+
+  const handleMenuClick = ({ key }: { key: string }) => {
+    setSelectedFilter((prevSelected) => [...prevSelected, key]);
+  };
+
+  const filterMenu: ItemType[] = useMemo(() => {
+    return filters.map((filter) => ({
+      key: filter.key,
+      label: filter.label,
+      onClick: handleMenuClick,
+    }));
+  }, [filters]);
 
   const fetchEntities = useCallback(
     async ({
@@ -153,10 +183,14 @@ export const AssetSelectionModal = ({
   useEffect(() => {
     const dropdownItems = getAssetsPageQuickFilters(type);
 
-    setSelectedQuickFilters(
+    setFilters(
       dropdownItems.map((item) => ({
         ...item,
-        value: getSelectedValuesFromQuickFilter(item, dropdownItems),
+        value: getSelectedValuesFromQuickFilter(
+          item,
+          dropdownItems,
+          undefined // pass in state variable
+        ),
       }))
     );
   }, [type]);
@@ -283,6 +317,29 @@ export const AssetSelectionModal = ({
     mergeFilters();
   }, [quickFilterQuery, queryFilter]);
 
+  useEffect(() => {
+    const updatedQuickFilters = filters
+      .filter((filter) => selectedFilter.includes(filter.key))
+      .map((selectedFilterItem) => {
+        const originalFilterItem = selectedQuickFilters?.find(
+          (filter) => filter.key === selectedFilterItem.key
+        );
+
+        return originalFilterItem || selectedFilterItem;
+      });
+
+    const newItems = updatedQuickFilters.filter(
+      (item) =>
+        !selectedQuickFilters.some(
+          (existingItem) => item.key === existingItem.key
+        )
+    );
+
+    if (newItems.length > 0) {
+      setSelectedQuickFilters((prevSelected) => [...prevSelected, ...newItems]);
+    }
+  }, [selectedFilter, selectedQuickFilters, filters]);
+
   const onScroll: UIEventHandler<HTMLElement> = useCallback(
     (e) => {
       const scrollHeight =
@@ -353,6 +410,66 @@ export const AssetSelectionModal = ({
     [failedStatus]
   );
 
+  const handleQuickFiltersChange = (data: ExploreQuickFilterField[]) => {
+    const must: QueryFieldInterface[] = [];
+    data.forEach((filter) => {
+      if (!isEmpty(filter.value)) {
+        const should: QueryFieldValueInterface[] = [];
+        if (filter.value) {
+          filter.value.forEach((filterValue) => {
+            const term: Record<string, string> = {};
+            term[filter.key] = filterValue.key;
+            should.push({ term });
+          });
+        }
+
+        must.push({
+          bool: { should },
+        });
+      }
+    });
+
+    const quickFilterQuery = isEmpty(must)
+      ? undefined
+      : {
+          query: { bool: { must } },
+        };
+
+    setQuickFilterQuery(quickFilterQuery);
+  };
+
+  const handleQuickFiltersValueSelect = useCallback(
+    (field: ExploreQuickFilterField) => {
+      setSelectedQuickFilters((pre) => {
+        const data = pre.map((preField) => {
+          if (preField.key === field.key) {
+            return field;
+          } else {
+            return preField;
+          }
+        });
+
+        handleQuickFiltersChange(data);
+
+        return data;
+      });
+    },
+    [setSelectedQuickFilters]
+  );
+
+  const clearFilters = useCallback(() => {
+    setQuickFilterQuery(undefined);
+    setSelectedQuickFilters((pre) => {
+      const data = pre.map((preField) => {
+        return { ...preField, value: [] };
+      });
+
+      handleQuickFiltersChange(data);
+
+      return data;
+    });
+  }, [setQuickFilterQuery, handleQuickFiltersChange, setSelectedQuickFilters]);
+
   return (
     <Modal
       destroyOnClose
@@ -391,24 +508,47 @@ export const AssetSelectionModal = ({
       width={675}
       onCancel={onCancel}>
       <Space className="w-full h-full" direction="vertical" size={16}>
-        <Searchbar
-          removeMargin
-          showClearSearch
-          placeholder={t('label.search-entity', {
-            entity: t('label.asset-plural'),
-          })}
-          searchValue={search}
-          onSearch={setSearch}
-        />
+        <div className="d-flex items-center gap-3">
+          <Dropdown
+            menu={{
+              items: filterMenu,
+              selectedKeys: selectedFilter,
+            }}
+            trigger={['click']}>
+            <Button icon={<PlusOutlined />} size="small" type="primary" />
+          </Dropdown>
+          <div className="flex-1">
+            <Searchbar
+              removeMargin
+              showClearSearch
+              placeholder={t('label.search-entity', {
+                entity: t('label.asset-plural'),
+              })}
+              searchValue={search}
+              onSearch={setSearch}
+            />
+          </div>
+        </div>
 
         <div className="d-flex items-center">
-          <AssetFilters
-            aggregations={aggregations}
-            filterData={selectedQuickFilters}
-            quickFilterQuery={quickFilterQuery}
-            type={type}
-            onQuickFilterChange={(data) => setQuickFilterQuery(data)}
-          />
+          <div className="d-flex justify-between flex-1">
+            <ExploreQuickFilters
+              aggregations={aggregations}
+              fields={selectedQuickFilters}
+              index={SearchIndex.ALL}
+              showDeleted={false}
+              onFieldValueSelect={handleQuickFiltersValueSelect}
+            />
+            {quickFilterQuery && (
+              <Typography.Text
+                className="p-r-xss text-primary self-center cursor-pointer"
+                onClick={clearFilters}>
+                {t('label.clear-entity', {
+                  entity: '',
+                })}
+              </Typography.Text>
+            )}
+          </div>
         </div>
 
         {items.length > 0 && (
@@ -435,7 +575,8 @@ export const AssetSelectionModal = ({
                     <div
                       className={classNames({
                         'm-y-sm border-danger rounded-4': isError,
-                      })}>
+                      })}
+                      key={item.id}>
                       <TableDataCardV2
                         openEntityInNewPage
                         showCheckboxes
