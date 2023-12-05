@@ -12,6 +12,7 @@
  */
 import { Button, Checkbox, List, Modal, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { EntityDetailUnion } from 'Models';
 import VirtualList from 'rc-virtual-list';
 import {
@@ -27,6 +28,10 @@ import { SearchIndex } from '../../../enums/search.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../generated/entity/domains/domain';
+import {
+  BulkOperationResult,
+  Status,
+} from '../../../generated/type/bulkOperationResult';
 import { Aggregations } from '../../../interface/search.interface';
 import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 import {
@@ -72,6 +77,7 @@ export const AssetSelectionModal = ({
   const ES_UPDATE_DELAY = 500;
   const [search, setSearch] = useState('');
   const [items, setItems] = useState<SearchedDataProps['data']>([]);
+  const [failedStatus, setFailedStatus] = useState<BulkOperationResult>();
   const [selectedItems, setSelectedItems] =
     useState<Map<string, EntityDetailUnion>>();
   const [isLoading, setIsLoading] = useState(false);
@@ -215,20 +221,24 @@ export const AssetSelectionModal = ({
         return getEntityReferenceFromEntity(item, item.entityType);
       });
 
+      let res;
       switch (type) {
         case AssetsOfEntity.DATA_PRODUCT:
-          await addAssetsToDataProduct(
+          res = await addAssetsToDataProduct(
             getEncodedFqn(activeEntity.fullyQualifiedName ?? ''),
             entities
           );
 
           break;
         case AssetsOfEntity.GLOSSARY:
-          await addAssetsToGlossaryTerm(activeEntity as GlossaryTerm, entities);
+          res = await addAssetsToGlossaryTerm(
+            activeEntity as GlossaryTerm,
+            entities
+          );
 
           break;
         case AssetsOfEntity.DOMAIN:
-          await addAssetsToDomain(
+          res = await addAssetsToDomain(
             getEncodedFqn(activeEntity.fullyQualifiedName ?? ''),
             entities
           );
@@ -239,17 +249,21 @@ export const AssetSelectionModal = ({
           break;
       }
 
-      await new Promise((resolve) => {
-        setTimeout(() => {
-          resolve('');
-          onSave?.();
-        }, ES_UPDATE_DELAY);
-      });
+      if ((res as BulkOperationResult).status === Status.Success) {
+        await new Promise((resolve) => {
+          setTimeout(() => {
+            resolve('');
+            onSave?.();
+          }, ES_UPDATE_DELAY);
+        });
+        onCancel();
+      } else {
+        setFailedStatus(res as BulkOperationResult);
+      }
     } catch (err) {
       showErrorToast(err as AxiosError);
     } finally {
       setIsSaveLoading(false);
-      onCancel();
     }
   };
 
@@ -317,6 +331,27 @@ export const AssetSelectionModal = ({
       return selectedItemMap;
     });
   };
+
+  const getErrorStatusAndMessage = useCallback(
+    (id: string) => {
+      if (!failedStatus?.failedRequest) {
+        return {
+          isError: false,
+          errorMessage: null,
+        };
+      }
+
+      const matchingStatus = failedStatus.failedRequest.find(
+        (status) => status.request.id === id
+      );
+
+      return {
+        isError: !!matchingStatus,
+        errorMessage: matchingStatus ? matchingStatus.message : null,
+      };
+    },
+    [failedStatus]
+  );
 
   return (
     <Modal
@@ -391,20 +426,38 @@ export const AssetSelectionModal = ({
                 height={500}
                 itemKey="id"
                 onScroll={onScroll}>
-                {({ _source: item }) => (
-                  <TableDataCardV2
-                    openEntityInNewPage
-                    showCheckboxes
-                    checked={selectedItems?.has(item.id ?? '')}
-                    className="border-none asset-selection-model-card cursor-pointer"
-                    handleSummaryPanelDisplay={handleCardClick}
-                    id={`tabledatacard-${item.id}`}
-                    key={item.id}
-                    showBody={false}
-                    showName={false}
-                    source={{ ...item, tags: [] }}
-                  />
-                )}
+                {({ _source: item }) => {
+                  const { isError, errorMessage } = getErrorStatusAndMessage(
+                    item.id
+                  );
+
+                  return (
+                    <div
+                      className={classNames({
+                        'm-y-sm border-danger rounded-4': isError,
+                      })}>
+                      <TableDataCardV2
+                        openEntityInNewPage
+                        showCheckboxes
+                        checked={selectedItems?.has(item.id ?? '')}
+                        className="border-none asset-selection-model-card cursor-pointer"
+                        handleSummaryPanelDisplay={handleCardClick}
+                        id={`tabledatacard-${item.id}`}
+                        key={item.id}
+                        showBody={false}
+                        showName={false}
+                        source={{ ...item, tags: [] }}
+                      />
+                      {isError && (
+                        <div className="p-x-sm p-b-sm">
+                          <Typography.Text type="danger">
+                            {errorMessage}
+                          </Typography.Text>
+                        </div>
+                      )}
+                    </div>
+                  );
+                }}
               </VirtualList>
             </List>
           </div>
