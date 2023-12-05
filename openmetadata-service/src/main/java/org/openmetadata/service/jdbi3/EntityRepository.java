@@ -120,6 +120,7 @@ import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.schema.type.Votes;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
@@ -1615,7 +1616,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected BulkOperationResult bulkAssetsOperation(
       UUID entityId, String fromEntity, Relationship relationship, BulkAssets request, boolean isAdd) {
     BulkOperationResult result = new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(false);
-    List<EntityReference> success = new ArrayList<>();
+    List<BulkResponse> success = new ArrayList<>();
     // Validate Assets
     EntityUtil.populateEntityReferences(request.getAssets());
 
@@ -1629,7 +1630,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         deleteRelationship(entityId, fromEntity, ref.getId(), ref.getType(), relationship);
       }
 
-      success.add(ref);
+      success.add(new BulkResponse().withRequest(ref));
       result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
 
       // Update ES

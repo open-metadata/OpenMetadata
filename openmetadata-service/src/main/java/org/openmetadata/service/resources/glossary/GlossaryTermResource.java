@@ -443,6 +443,28 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   }
 
   @PUT
+  @Path("/{id}/tags/validate")
+  @Operation(
+      operationId = "validateGlossaryTermTagsAddition",
+      summary = "Validate Tags Addition to Glossary Term",
+      description = "Validate Tags Addition to Glossary Term",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = BulkOperationResult.class))),
+        @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
+      })
+  public Response validateGlossaryTermTagsAddition(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Valid AddGlossaryToAssetsRequest request) {
+    return Response.ok().entity(repository.validateGlossaryTagsAddition(id, request)).build();
+  }
+
+  @PUT
   @Path("/{id}/assets/remove")
   @Operation(
       operationId = "bulkRemoveGlossaryTermFromAssets",

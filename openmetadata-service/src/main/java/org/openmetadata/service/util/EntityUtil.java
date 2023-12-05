@@ -67,6 +67,8 @@ public final class EntityUtil {
   //
   public static final Comparator<EntityReference> compareEntityReference =
       Comparator.comparing(EntityReference::getName);
+  public static final Comparator<EntityReference> compareEntityReferenceById =
+      Comparator.comparing(EntityReference::getId).thenComparing(EntityReference::getType);
   public static final Comparator<EntityVersionPair> compareVersion =
       Comparator.comparing(EntityVersionPair::getVersion);
   public static final Comparator<TagLabel> compareTagLabel = Comparator.comparing(TagLabel::getTagFQN);
