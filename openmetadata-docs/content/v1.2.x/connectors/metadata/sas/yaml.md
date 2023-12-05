@@ -24,7 +24,7 @@ To deploy OpenMetadata, check the Deployment guides.
 
 ### Python Requirements
 
-To run the Atlas ingestion, you will need to install:
+To run the SAS ingestion, you will need to install:
 
 ```bash
 pip3 install "openmetadata-ingestion[sas]"

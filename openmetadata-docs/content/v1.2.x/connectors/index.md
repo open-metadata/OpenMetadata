@@ -103,6 +103,7 @@ the following docs to run the Ingestion Framework in any orchestrator externally
 
 - [Amundsen](/connectors/metadata/amundsen)
 - [Atlas](/connectors/metadata/atlas)
+- [SAS](/connectors/metadata/sas)
 
 ## Search Services
 

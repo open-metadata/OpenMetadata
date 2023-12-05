@@ -9,11 +9,6 @@ slug: /connectors/metadata/sas
 
 ## Requirements
 
-{% note %}
-Every table ingested will have a tag name `SASMetadata.sas_table`. You can find all tags under
-Governance > Classification.
-{% /note %}
-
 ## 1. SAS Metadata Ingestion
 
 Prepare the SAS Service and configure the Ingestion:
