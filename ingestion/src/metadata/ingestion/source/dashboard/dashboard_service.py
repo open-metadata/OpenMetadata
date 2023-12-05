@@ -46,11 +46,12 @@ from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.delete import delete_entity_from_source
-from metadata.ingestion.api.models import Either
+from metadata.ingestion.api.models import Either, Entity
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import C, TopologyRunnerMixin
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.models.patch_request import PatchRequest
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
@@ -69,6 +70,7 @@ LINEAGE_MAP = {
     Dashboard: "dashboard",
     Table: "table",
     DashboardDataModel: "dashboardDataModel",
+    Chart: "chart",
 }
 
 
@@ -99,6 +101,7 @@ class DashboardServiceTopology(ServiceTopology):
                 processor="yield_create_request_dashboard_service",
                 overwrite=False,
                 must_return=True,
+                cache_entities=True,
             ),
             NodeStage(
                 type_=OMetaTagAndClassification,
@@ -123,6 +126,7 @@ class DashboardServiceTopology(ServiceTopology):
                 processor="yield_bulk_datamodel",
                 consumer=["dashboard_service"],
                 nullable=True,
+                use_cache=True,
             )
         ],
     )
@@ -137,6 +141,7 @@ class DashboardServiceTopology(ServiceTopology):
                 nullable=True,
                 cache_all=True,
                 clear_cache=True,
+                use_cache=True,
             ),
             NodeStage(
                 type_=DashboardDataModel,
@@ -146,12 +151,14 @@ class DashboardServiceTopology(ServiceTopology):
                 nullable=True,
                 cache_all=True,
                 clear_cache=True,
+                use_cache=True,
             ),
             NodeStage(
                 type_=Dashboard,
                 context="dashboard",
                 processor="yield_dashboard",
                 consumer=["dashboard_service"],
+                use_cache=True,
             ),
             NodeStage(
                 type_=User,
@@ -523,7 +530,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     def prepare(self):
         """By default, nothing to prepare"""
 
-    def fqn_from_context(self, stage: NodeStage, entity_request: C) -> str:
+    def fqn_from_context(self, stage: NodeStage, entity_name: C) -> str:
         """
         We are overriding this method since CreateDashboardDataModelRequest needs to add an extra value to the context
         names.
@@ -538,11 +545,11 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
             for dependency in stage.consumer or []  # root nodes do not have consumers
         ]
 
-        if isinstance(entity_request, CreateDashboardDataModelRequest):
+        if isinstance(stage.type_, DashboardDataModel):
             context_names.append("model")
 
         return fqn._build(  # pylint: disable=protected-access
-            *context_names, entity_request.name.__root__
+            *context_names, entity_name
         )
 
     def check_database_schema_name(self, database_schema_name: str):
@@ -572,3 +579,44 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
             f"Projects are not supported for {self.service_connection.type.name}"
         )
         return None
+
+    def create_patch_request(
+        self, original_entity: Entity, create_request: C
+    ) -> PatchRequest:
+        """
+        Method to get the PatchRequest object
+        To be overridden by the process if any custom logic is to be applied
+        """
+        patch_request = PatchRequest(
+            original_entity=original_entity,
+            new_entity=original_entity.copy(update=create_request.__dict__),
+        )
+        if isinstance(original_entity, Dashboard):
+            # For patch the charts need to be entity ref instead of fqn
+            charts_entity_ref_list = []
+            for chart_fqn in create_request.charts or []:
+                chart_entity = self.metadata.get_by_name(entity=Chart, fqn=chart_fqn)
+                if chart_entity:
+                    charts_entity_ref_list.append(
+                        EntityReference(
+                            id=chart_entity.id.__root__,
+                            type=LINEAGE_MAP[type(chart_entity)],
+                        )
+                    )
+            patch_request.new_entity.charts = charts_entity_ref_list
+
+            # For patch the datamodels need to be entity ref instead of fqn
+            datamodel_entity_ref_list = []
+            for datamodel_fqn in create_request.dataModels or []:
+                datamodel_entity = self.metadata.get_by_name(
+                    entity=DashboardDataModel, fqn=datamodel_fqn
+                )
+                if datamodel_entity:
+                    datamodel_entity_ref_list.append(
+                        EntityReference(
+                            id=datamodel_entity.id.__root__,
+                            type=LINEAGE_MAP[type(datamodel_entity)],
+                        )
+                    )
+            patch_request.new_entity.dataModels = datamodel_entity_ref_list
+        return patch_request
