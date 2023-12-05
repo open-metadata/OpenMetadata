@@ -182,6 +182,12 @@ const AssetsTabs = forwardRef(
     >([]);
     const [filters, setFilters] = useState<ExploreQuickFilterField[]>([]);
     const [searchValue, setSearchValue] = useState('');
+    const entityTypeString =
+      type === AssetsOfEntity.GLOSSARY
+        ? t('label.glossary-term-lowercase')
+        : type === AssetsOfEntity.DOMAIN
+        ? t('label.domain-lowercase')
+        : t('label.data-product-lowercase');
 
     const handleMenuClick = ({ key }: { key: string }) => {
       setSelectedFilter((prevSelected) => [...prevSelected, key]);
@@ -256,7 +262,7 @@ const AssetsTabs = forwardRef(
           handlePagingChange({ total: res.hits.total.value ?? 0 });
           setData(hits);
           setAggregations(getAggregations(res?.aggregations));
-          hits[0] && setSelectedCard(hits[0]._source as SourceType);
+          hits[0] && setSelectedCard(hits[0]._source);
         } catch (_) {
           // Nothing here
         } finally {
@@ -343,12 +349,7 @@ const AssetsTabs = forwardRef(
         label: (
           <ManageButtonItemLabel
             description={t('message.delete-asset-from-entity-type', {
-              entityType:
-                type === AssetsOfEntity.GLOSSARY
-                  ? t('label.glossary-term-lowercase')
-                  : type === AssetsOfEntity.DOMAIN
-                  ? t('label.domain-lowercase')
-                  : t('label.data-product-lowercase'),
+              entityType: entityTypeString,
             })}
             icon={<DeleteIcon color={DE_ACTIVE_COLOR} width="18px" />}
             id="delete-button"
@@ -590,7 +591,7 @@ const AssetsTabs = forwardRef(
                       trigger={['click']}>
                       <Button
                         className={classNames('flex-center px-1.5')}
-                        data-testid="manage-button"
+                        data-testid={`manage-button-${_source.fullyQualifiedName}`}
                         title="Manage"
                         type="text">
                         <IconDropdown className="anticon self-center manage-dropdown-icon" />
