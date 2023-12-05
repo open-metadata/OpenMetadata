@@ -41,7 +41,7 @@ export const getFormattedEntityData = (
   entityType: SummaryEntityType,
   entityInfo?: Array<Column | Field | Chart | Task | MlFeature>,
   tableConstraints?: TableConstraint[],
-  sortSummaryListBasedOn?: string[]
+  sortSummaryListBasedOn: string[] = []
 ): BasicEntityInfo[] => {
   if (isEmpty(entityInfo)) {
     return [];
@@ -67,11 +67,11 @@ export const getFormattedEntityData = (
           };
 
           const isTagPresentInColumnData = column.tags?.find((tag) =>
-            sortSummaryListBasedOn?.includes(tag.tagFQN)
+            sortSummaryListBasedOn.includes(tag.tagFQN)
           );
 
           if (isTagPresentInColumnData) {
-            columnData.tags.sort((tag) => {
+            columnData.tags?.sort((tag) => {
               if (tag.tagFQN === sortSummaryListBasedOn[0]) {
                 return -1;
               } else {
