@@ -225,13 +225,13 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the App", schema = @Schema(type = "string")) @PathParam("name") String name,
-      @Parameter(description = "Limit records. (1 to 1000000, default = " + "10)")
+      @Parameter(description = "Limit records. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
           @Min(0)
           @Max(1000000)
           int limitParam,
-      @Parameter(description = "Offset records. (0 to 1000000, default = " + "0)")
+      @Parameter(description = "Offset records. (0 to 1000000, default = 0)")
           @DefaultValue("0")
           @QueryParam("offset")
           @Min(0)
@@ -501,11 +501,16 @@ public class AppResource extends EntityResource<App, AppRepository> {
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
-          JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
+          JsonPatch patch)
+      throws SchedulerException {
+    App app = repository.get(null, id, repository.getFields("bot,pipelines"));
+    AppScheduler.getInstance().deleteScheduledApplication(app);
+    Response response = patchInternal(uriInfo, securityContext, id, patch);
+    if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
+      ApplicationHandler.scheduleApplication((App) response.getEntity(), Entity.getCollectionDAO(), searchRepository);
+    }
+    return response;
   }
 
   @PUT
@@ -722,7 +727,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
   }
 
   private void decryptOrNullify(
-      SecurityContext securityContext, IngestionPipeline ingestionPipeline, String botname, boolean forceNotMask) {
+      SecurityContext securityContext, IngestionPipeline ingestionPipeline, String botName, boolean forceNotMask) {
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     try {
       authorizer.authorize(
@@ -734,7 +739,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
     }
     secretsManager.decryptIngestionPipeline(ingestionPipeline);
     OpenMetadataConnection openMetadataServerConnection =
-        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, botname).build();
+        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, botName).build();
     ingestionPipeline.setOpenMetadataServerConnection(
         secretsManager.encryptOpenMetadataConnection(openMetadataServerConnection, false));
     if (authorizer.shouldMaskPasswords(securityContext) && !forceNotMask) {
