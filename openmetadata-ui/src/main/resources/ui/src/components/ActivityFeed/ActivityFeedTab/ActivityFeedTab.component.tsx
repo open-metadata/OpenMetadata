@@ -68,6 +68,7 @@ export const ActivityFeedTab = ({
   owner,
   columns,
   entityType,
+  isForFeedTab = true,
   onUpdateEntityDetails,
 }: ActivityFeedTabProps) => {
   const history = useHistory();
@@ -379,10 +380,10 @@ export const ActivityFeedTab = ({
         )}
         <ActivityFeedListV1
           hidePopover
-          isForFeedTab
           activeFeedId={selectedThread?.id}
           emptyPlaceholderText={placeholderText}
           feedList={threads}
+          isForFeedTab={isForFeedTab}
           isLoading={false}
           showThread={false}
           tab={activeTab}
@@ -413,11 +414,11 @@ export const ActivityFeedTab = ({
                 />
               </div>
               <FeedPanelBodyV1
-                isForFeedTab
                 isOpenInDrawer
                 showThread
                 feed={selectedThread}
                 hidePopover={false}
+                isForFeedTab={isForFeedTab}
               />
               <ActivityFeedEditor className="m-md" onSave={onSave} />
             </div>
@@ -427,6 +428,7 @@ export const ActivityFeedTab = ({
                 <TaskTab
                   columns={columns}
                   entityType={EntityType.TABLE}
+                  isForFeedTab={isForFeedTab}
                   owner={owner}
                   taskThread={selectedThread}
                   onAfterClose={handleAfterTaskClose}
@@ -435,6 +437,7 @@ export const ActivityFeedTab = ({
               ) : (
                 <TaskTab
                   entityType={isUserEntity ? entityTypeTask : entityType}
+                  isForFeedTab={isForFeedTab}
                   owner={owner}
                   taskThread={selectedThread}
                   onAfterClose={handleAfterTaskClose}

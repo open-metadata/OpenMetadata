@@ -45,6 +45,7 @@ import {
   fetchEntityDetail,
   fetchOptions,
   getBreadCrumbList,
+  getTaskMessage,
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import Assignees from '../shared/Assignees';
@@ -70,11 +71,17 @@ const RequestTag = () => {
   const [assignees, setAssignees] = useState<Option[]>([]);
   const [suggestion] = useState<TagLabel[]>([]);
 
-  const getSanitizeValue = value?.replaceAll(/^"|"$/g, '') || '';
-
-  const message = `Request tags for ${getSanitizeValue || entityType} ${
-    field !== EntityField.COLUMNS ? getEntityName(entityData) : ''
-  }`;
+  const taskMessage = useMemo(
+    () =>
+      getTaskMessage({
+        value,
+        entityType,
+        entityData,
+        field,
+        startMessage: 'Request tags',
+      }),
+    [value, entityType, field, entityData]
+  );
 
   const decodedEntityFQN = useMemo(
     () => getDecodedFqn(entityFQN),
@@ -98,7 +105,7 @@ const RequestTag = () => {
   const onCreateTask: FormProps['onFinish'] = (value) => {
     const data: CreateThread = {
       from: currentUser?.name as string,
-      message: value.title || message,
+      message: value.title || taskMessage,
       about: getEntityFeedLink(entityType, decodedEntityFQN, getTaskAbout()),
       taskDetails: {
         assignees: assignees.map((assignee) => ({
@@ -149,7 +156,7 @@ const RequestTag = () => {
       setOptions((prev) => [...defaultAssignee, ...prev]);
     }
     form.setFieldsValue({
-      title: message.trimEnd(),
+      title: taskMessage.trimEnd(),
       assignees: defaultAssignee,
     });
   }, [entityData]);
