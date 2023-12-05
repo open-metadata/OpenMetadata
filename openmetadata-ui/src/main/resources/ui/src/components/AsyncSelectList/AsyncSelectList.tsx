@@ -23,6 +23,7 @@ import { AxiosError } from 'axios';
 import { debounce, isEmpty, isUndefined, pick } from 'lodash';
 import { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import React, { FC, useCallback, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import Loader from '../../components/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { TAG_START_WITH } from '../../constants/Tag.constants';
@@ -55,7 +56,7 @@ const AsyncSelectList: FC<AsyncSelectListProps> = ({
   const [paging, setPaging] = useState<Paging>({} as Paging);
   const [currentPage, setCurrentPage] = useState(1);
   const selectedTagsRef = useRef<SelectOption[]>(initialOptions ?? []);
-
+  const { t } = useTranslation();
   const [optionFilteredCount, setOptionFilteredCount] = useState(0);
 
   const getFilteredOptions = (data: SelectOption[]) => {
@@ -222,9 +223,7 @@ const AsyncSelectList: FC<AsyncSelectListProps> = ({
         tag={tag}
         tagProps={tagProps}
         tooltipOverride={
-          isDerived
-            ? 'This tag is automatically derived and can only be removed by deleting the related Glossary Term.'
-            : undefined
+          isDerived ? t('message.derived-tag-warning') : undefined
         }
       />
     );

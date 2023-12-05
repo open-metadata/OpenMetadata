@@ -1280,6 +1280,7 @@
     "delete-message-question-mark": "删除消息?",
     "delete-team-message": "任何在\"{{teamName}}\"下的团队也将被{{deleteType}}删除",
     "delete-webhook-permanently": "您要永久删除 Webhook {{webhookName}} 吗？此操作无法撤消",
+    "derived-tag-warning": "This tag is automatically derived and can only be removed by deleting the related Glossary Term.",
     "disable-app": "This will disable the {{app}} application.",
     "disable-classification-description": "禁用分类选项，您将无法查看到关联的标签",
     "disabled-classification-actions-message": "您无法在已禁用的分类上执行此操作",

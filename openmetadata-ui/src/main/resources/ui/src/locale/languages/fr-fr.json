@@ -1280,6 +1280,7 @@
     "delete-message-question-mark": "Supprimer le Message ?",
     "delete-team-message": "N'importe quelle équipe sous \"{{teamName}}\" sera {{deleteType}} supprimée aussi.",
     "delete-webhook-permanently": "Vous voulez supprimer le webhook {{webhookName}} de manière permanente ? Cette action ne peut pas être annulée.",
+    "derived-tag-warning": "This tag is automatically derived and can only be removed by deleting the related Glossary Term.",
     "disable-app": "This will disable the {{app}} application.",
     "disable-classification-description": "Option to disable classifications, You won't be able to see associated tags within the application",
     "disabled-classification-actions-message": "You cannot perform this action on disabled classifications.",

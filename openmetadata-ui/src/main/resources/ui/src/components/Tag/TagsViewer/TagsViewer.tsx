@@ -46,7 +46,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
           { 'diff-removed': tag?.removed }
         )}
         isVersionPage={tag?.added || tag?.removed}
-        key={tag.name}
+        key={tag.tagFQN}
         showOnlyName={tag.source === TagSource.Glossary}
         startWith={TAG_START_WITH.SOURCE_ICON}
         tag={tag}

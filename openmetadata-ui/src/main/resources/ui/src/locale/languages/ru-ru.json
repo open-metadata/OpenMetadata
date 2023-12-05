@@ -1280,6 +1280,7 @@
     "delete-message-question-mark": "Удалить сообщение?",
     "delete-team-message": "Все команды под \"{{teamName}}\" также будут {{deleteType}} удалены.",
     "delete-webhook-permanently": "Вы хотите навсегда удалить webhook {{webhookName}}? Это действие нельзя отменить.",
+    "derived-tag-warning": "This tag is automatically derived and can only be removed by deleting the related Glossary Term.",
     "disable-app": "This will disable the {{app}} application.",
     "disable-classification-description": "Отключив классификацию, вы не сможете выполнять поиск или назначать связанные теги любому объекту.",
     "disabled-classification-actions-message": "Вы не можете выполнить это действие с отключенными классификациями.",

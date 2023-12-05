@@ -20,7 +20,7 @@ import { CreateGlossary } from '../generated/api/data/createGlossary';
 import { CreateGlossaryTerm } from '../generated/api/data/createGlossaryTerm';
 import { EntityReference, Glossary } from '../generated/entity/data/glossary';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
-import { Status } from '../generated/type/bulkOperationResult';
+import { BulkOperationResult } from '../generated/type/bulkOperationResult';
 import { CSVImportResult } from '../generated/type/csvImportResult';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { ListParams } from '../interface/API.interface';
@@ -252,16 +252,6 @@ export const updateGlossaryTermVotes = async (
   return response.data;
 };
 
-export interface GlossaryTermFailure {
-  dryRun: boolean;
-  status: Status;
-  numberOfRowsProcessed: number;
-  numberOfRowsPassed: number;
-  numberOfRowsFailed: number;
-  successRequest: Array<EntityReference>;
-  failedRequest: Array<{ request: EntityReference; error: string }>;
-}
-
 export const validateTagAddtionToGlossary = async (
   glossaryTerm: GlossaryTerm,
   dryRun = false
@@ -273,7 +263,7 @@ export const validateTagAddtionToGlossary = async (
 
   const response = await APIClient.put<
     AddGlossaryToAssetsRequest,
-    AxiosResponse<GlossaryTermFailure>
+    AxiosResponse<BulkOperationResult>
   >(`/glossaryTerms/${glossaryTerm.id}/tags/validate`, data);
 
   return response.data;

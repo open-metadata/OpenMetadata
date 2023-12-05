@@ -1280,6 +1280,7 @@
     "delete-message-question-mark": "Nachricht löschen?",
     "delete-team-message": "Alle Teams unter \"{{teamName}}\" werden ebenfalls {{deleteType}} gelöscht.",
     "delete-webhook-permanently": "Möchten Sie den Webhook \"{{webhookName}}\" dauerhaft löschen? Diese Aktion kann nicht rückgängig gemacht werden.",
+    "derived-tag-warning": "This tag is automatically derived and can only be removed by deleting the related Glossary Term.",
     "disable-app": "This will disable the {{app}} application.",
     "disable-classification-description": "Durch Deaktivieren der Klassifizierung können Sie nicht mehr nach dieser suchen oder sie mit zugeordneten Tags einer Entität zuweisen.",
     "disabled-classification-actions-message": "Sie können diese Aktion auf deaktivierten Klassifikationen nicht ausführen.",

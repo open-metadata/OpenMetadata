@@ -21,11 +21,11 @@ import { ClientErrors } from '../../../enums/axios.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../../generated/entity/type';
-import { Status } from '../../../generated/type/bulkOperationResult';
 import {
-  GlossaryTermFailure,
-  validateTagAddtionToGlossary,
-} from '../../../rest/glossaryAPI';
+  BulkOperationResult,
+  Status,
+} from '../../../generated/type/bulkOperationResult';
+import { validateTagAddtionToGlossary } from '../../../rest/glossaryAPI';
 import {
   getEntityLinkFromType,
   getEntityName,
@@ -39,7 +39,7 @@ export const GlossaryUpdateConfirmationModal = ({
   onCancel,
   updatedTags,
 }: GlossaryUpdateConfirmationModalProps) => {
-  const [failedStatus, setFailedStatus] = useState<GlossaryTermFailure>();
+  const [failedStatus, setFailedStatus] = useState<BulkOperationResult>();
   const [tagError, setTagError] = useState<{ code: number; message: string }>();
   const [tagAdditionConfirmation, setTagAdditionConfirmation] = useState(false);
   const [validating, setValidating] = useState(false);
@@ -55,13 +55,10 @@ export const GlossaryUpdateConfirmationModal = ({
         true
       );
 
-      if (
-        res.status &&
-        (res as GlossaryTermFailure).status === Status.Success
-      ) {
+      if (res.status && res.status === Status.Success) {
         await onValidationSuccess();
       } else {
-        setFailedStatus(res as GlossaryTermFailure);
+        setFailedStatus(res);
       }
     } catch (err) {
       // error
