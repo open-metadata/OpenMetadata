@@ -200,7 +200,7 @@ export const emptyJsonTree: JsonTree = {
           type: 'rule',
           properties: {
             // owner is common field , so setting owner as default field here
-            field: 'owner.displayName',
+            field: 'owner.displayName.keyword',
             operator: null,
             value: [],
             valueSrc: ['value'],
@@ -260,7 +260,7 @@ const getCommonQueryBuilderFields = (
       defaultValue: true,
     },
 
-    'owner.displayName': {
+    'owner.displayName.keyword': {
       label: t('label.owner'),
       type: 'select',
       mainWidgetProps,
@@ -317,7 +317,7 @@ const getCommonQueryBuilderFields = (
  */
 const getServiceQueryBuilderFields = (index: SearchIndex) => {
   const serviceQueryBuilderFields: Fields = {
-    'service.name': {
+    'service.displayName.keyword': {
       label: t('label.service'),
       type: 'select',
       mainWidgetProps,
@@ -338,7 +338,7 @@ const getServiceQueryBuilderFields = (index: SearchIndex) => {
  * Fields specific to tables
  */
 const tableQueryBuilderFields: Fields = {
-  'database.name': {
+  'database.displayName.keyword': {
     label: t('label.database'),
     type: 'select',
     mainWidgetProps,
@@ -351,7 +351,7 @@ const tableQueryBuilderFields: Fields = {
     },
   },
 
-  'databaseSchema.name': {
+  'databaseSchema.displayName.keyword': {
     label: t('label.database-schema'),
     type: 'select',
     mainWidgetProps,
@@ -364,7 +364,7 @@ const tableQueryBuilderFields: Fields = {
     },
   },
 
-  'columns.name': {
+  'columns.name.keyword': {
     label: t('label.column'),
     type: 'select',
     mainWidgetProps,
