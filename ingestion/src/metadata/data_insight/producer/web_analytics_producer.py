@@ -65,6 +65,7 @@ class WebAnalyticsProducer(ProducerInterface):
                 after=after,
                 limit=limit,
                 fields=fields,
+                skip_on_failure=True,
             )  # type: ignore
             self._cache_events(after, events)
         return events

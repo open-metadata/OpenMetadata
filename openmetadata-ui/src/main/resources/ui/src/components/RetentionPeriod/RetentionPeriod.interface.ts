@@ -10,14 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-.data-insight-report-alert-form {
-  .ant-form-item {
-    margin-bottom: 16px;
-  }
 
-  .form-footer {
-    gap: 16px;
-    display: flex;
-    justify-content: end;
-  }
+export interface RetentionPeriodProps {
+  retentionPeriod?: string;
+  onUpdate: (retentionPeriod: string) => Promise<void>;
 }

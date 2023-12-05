@@ -86,65 +86,9 @@
             "$ref": "#/definitions/testResultValue"
           }
         },
-        "testCaseFailureStatus": {
-          "description": "Schema to capture test case result.",
-          "javaType": "org.openmetadata.schema.tests.type.TestCaseFailureStatus",
-          "type": "object",
-          "properties": 
-          {
-            "testCaseFailureStatusType": {
-              "description": "Status of Test Case Acknowledgement.",
-              "javaType": "org.openmetadata.schema.tests.type.TestCaseFailureStatusType",
-              "type": "string",
-              "enum": ["Ack", "New", "Resolved"],
-              "javaEnums": [
-                {
-                  "name": "Ack"
-                },
-                {
-                  "name": "New"
-                },
-                {
-                  "name": "Resolved"
-                }
-              ]
-            },
-            "testCaseFailureReason": {
-              "description": "Reason of Test Case resolution.",
-              "javaType": "org.openmetadata.schema.tests.type.TestCaseFailureReason",
-              "type": "string",
-              "enum": ["FalsePositive", "MissingData", "Duplicates", "OutOfBounds", "Other"],
-              "javaEnums": [
-                {
-                  "name": "FalsePositive"
-                },
-                {
-                  "name": "MissingData"
-                },
-                {
-                  "name": "Duplicates"
-                },
-                {
-                  "name": "OutOfBounds"
-                },
-                {
-                  "name": "Other"
-                }
-              ]
-            },
-            "testCaseFailureComment": {
-              "description": "Test case failure resolution comment.",
-              "type": "string"
-            },
-            "updatedBy": {
-              "description": "User who updated the test case failure status.",
-              "type": "string"
-            },
-            "updatedAt": {
-              "description": "Time when test case failure status was updated.",
-              "$ref": "../type/basic.json#/definitions/timestamp"
-            }
-          }
+        "testCaseResolutionStatusReference": {
+            "description": "Reference to the failure status object for the test case result.",
+            "$ref": "./testCaseResolutionStatus.json"
         }
       },
       "additionalProperties": false
