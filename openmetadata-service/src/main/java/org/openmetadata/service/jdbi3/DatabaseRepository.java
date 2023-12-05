@@ -87,6 +87,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   public void setFields(Database database, Fields fields) {
     database.setService(getContainer(database.getId()));
+    database.setSourceHash(fields.contains("sourceHash") ? database.getSourceHash() : null);
     database.setDatabaseSchemas(
         fields.contains("databaseSchemas") ? getSchemas(database) : database.getDatabaseSchemas());
     database.setDatabaseProfilerConfig(
