@@ -10,25 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
+import { TagLabel } from '../../../generated/entity/data/table';
 
-export interface QueryFieldValueInterface {
-  term: Record<string, string>;
-}
-
-export interface QueryFieldInterface {
-  bool: {
-    must?: Array<QueryFieldValueInterface>;
-    must_not?: Array<QueryFieldValueInterface>;
-    should?: Array<QueryFieldValueInterface>;
-  };
-}
-
-export interface QueryFilterInterface {
-  query: {
-    bool: {
-      must?: QueryFieldInterface[];
-      must_not?: QueryFieldInterface[];
-      should?: QueryFieldInterface[];
-    };
-  };
+export interface GlossaryUpdateConfirmationModalProps {
+  glossaryTerm: GlossaryTerm;
+  onValidationSuccess: (() => void) | (() => Promise<void>);
+  onCancel: () => void;
+  updatedTags: TagLabel[];
 }

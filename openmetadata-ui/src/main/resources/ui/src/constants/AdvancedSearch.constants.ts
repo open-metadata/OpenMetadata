@@ -171,6 +171,29 @@ export const DATA_PRODUCT_DROPDOWN_ITEMS = [
   },
 ];
 
+export const DOMAIN_DATAPRODUCT_DROPDOWN_ITEMS = [
+  {
+    label: t('label.owner'),
+    key: 'owner.displayName.keyword',
+  },
+  {
+    label: t('label.tag'),
+    key: 'tags.tagFQN',
+  },
+  {
+    label: t('label.tier'),
+    key: 'tier.tagFQN',
+  },
+  {
+    label: t('label.service'),
+    key: 'service.displayName.keyword',
+  },
+  {
+    label: t('label.service-type'),
+    key: 'serviceType',
+  },
+];
+
 export const ALL_DROPDOWN_ITEMS = [
   ...COMMON_DROPDOWN_ITEMS,
   ...TABLE_DROPDOWN_ITEMS,
