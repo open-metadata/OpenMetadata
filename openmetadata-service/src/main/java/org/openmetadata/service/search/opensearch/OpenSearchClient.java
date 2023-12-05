@@ -427,7 +427,7 @@ public class OpenSearchClient implements SearchClient {
             AggregationBuilders.terms(fieldName)
                 .field(fieldName)
                 .size(MAX_AGGREGATE_SIZE)
-                .includeExclude(new IncludeExclude(value, null))
+                .includeExclude(new IncludeExclude(value.toLowerCase(), null))
                 .order(BucketOrder.key(true)))
         .query(boolQueryBuilder)
         .size(0);
