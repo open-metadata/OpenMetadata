@@ -110,7 +110,13 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
 
     client: REST
 
-    def patch(self, entity: Type[T], source: T, destination: T) -> Optional[T]:
+    def patch(
+        self,
+        entity: Type[T],
+        source: T,
+        destination: T,
+        allowed_fields: Optional[Dict] = None,
+    ) -> Optional[T]:
         """
         Given an Entity type and Source entity and Destination entity,
         generate a JSON Patch and apply it.
@@ -131,11 +137,28 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
                 destination.changeDescription = None
 
             # Get the difference between source and destination
-            patch = jsonpatch.make_patch(
-                json.loads(source.json(exclude_unset=True, exclude_none=True)),
-                json.loads(destination.json(exclude_unset=True, exclude_none=True)),
-            )
-
+            if allowed_fields:
+                patch = jsonpatch.make_patch(
+                    json.loads(
+                        source.json(
+                            exclude_unset=True,
+                            exclude_none=True,
+                            include=allowed_fields,
+                        )
+                    ),
+                    json.loads(
+                        destination.json(
+                            exclude_unset=True,
+                            exclude_none=True,
+                            include=allowed_fields,
+                        )
+                    ),
+                )
+            else:
+                patch = jsonpatch.make_patch(
+                    json.loads(source.json(exclude_unset=True, exclude_none=True)),
+                    json.loads(destination.json(exclude_unset=True, exclude_none=True)),
+                )
             if not patch:
                 logger.debug(
                     "Nothing to update when running the patch. Are you passing `force=True`?"
