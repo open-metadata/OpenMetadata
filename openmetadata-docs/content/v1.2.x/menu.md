@@ -50,7 +50,7 @@ site_menu:
   - category: Deployment / Kubernetes Deployment / GKE
     url: /deployment/kubernetes/gke
   - category: Deployment / Kubernetes Deployment / On Premises
-    url: /deployment/kubernetes/onprem
+    url: /deployment/kubernetes/on-prem
   - category: Deployment / Kubernetes Deployment / Enable Security
     url: /deployment/kubernetes/security
   - category: Deployment / Kubernetes Deployment / Helm Values
