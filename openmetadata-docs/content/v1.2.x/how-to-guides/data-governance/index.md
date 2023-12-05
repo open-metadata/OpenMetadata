@@ -1,6 +1,6 @@
 ---
 title: Data Governance
-slug: /how-to-guides/openmetadata/data-governance
+slug: /how-to-guides/data-governance
 ---
 
 # Data Governance
