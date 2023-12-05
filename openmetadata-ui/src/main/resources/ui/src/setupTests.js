@@ -100,3 +100,7 @@ jest.mock('react-i18next', () => ({
     i18n: { language: 'en-US' },
   }),
 }));
+
+jest.mock('./utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));

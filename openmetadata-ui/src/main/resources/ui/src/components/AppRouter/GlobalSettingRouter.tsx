@@ -41,12 +41,6 @@ const ImportTeamsPage = withSuspenseFallback(
     () => import('../../pages/TeamsPage/ImportTeamsPage/ImportTeamsPage')
   )
 );
-const AddDataInsightReportAlert = withSuspenseFallback(
-  React.lazy(
-    () =>
-      import('../../pages/AddDataInsightReportAlert/AddDataInsightReportAlert')
-  )
-);
 
 const AlertDetailsPage = withSuspenseFallback(
   React.lazy(() => import('../../pages/AlertDetailsPage/AlertDetailsPage'))
@@ -359,25 +353,6 @@ const GlobalSettingRouter = () => {
         path={getSettingPath(
           GlobalSettingsMenuCategory.NOTIFICATIONS,
           GlobalSettingOptions.ACTIVITY_FEED
-        )}
-      />
-      <AdminProtectedRoute
-        exact
-        component={AddDataInsightReportAlert}
-        hasPermission={false}
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.NOTIFICATIONS,
-          GlobalSettingOptions.ADD_DATA_INSIGHT_REPORT_ALERT
-        )}
-      />
-      <AdminProtectedRoute
-        exact
-        component={AddDataInsightReportAlert}
-        hasPermission={false}
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.NOTIFICATIONS,
-          GlobalSettingOptions.EDIT_DATA_INSIGHT_REPORT_ALERT,
-          true
         )}
       />
 

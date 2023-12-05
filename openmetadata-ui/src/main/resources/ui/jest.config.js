@@ -58,6 +58,7 @@ module.exports = {
       '<rootDir>/src/test/unit/mocks/file.mock.js',
     '\\.json': '<rootDir>/src/test/unit/mocks/json.mock.js',
     '@github/g-emoji-element': '<rootDir>/src/test/unit/mocks/gemoji.mock.js',
+    axios: 'axios/dist/node/axios.cjs',
   },
 
   // TypeScript
