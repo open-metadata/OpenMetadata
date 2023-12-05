@@ -606,7 +606,7 @@ const AssetsTabs = forwardRef(
                 handleSummaryPanelDisplay={setSelectedCard}
                 id={_id}
                 key={'assets_' + _id}
-                showCheckboxes={Boolean(activeEntity)}
+                showCheckboxes={Boolean(activeEntity) && permissions.Create}
                 showTags={false}
                 source={_source}
                 onCheckboxChange={(selected) =>
@@ -671,7 +671,7 @@ const AssetsTabs = forwardRef(
     const assetsHeader = useMemo(() => {
       return (
         <div className="w-full d-flex justify-between items-center p-l-sm">
-          {activeEntity && data.length > 0 && (
+          {activeEntity && permissions.Create && data.length > 0 && (
             <Checkbox
               className="assets-checkbox p-x-sm"
               onChange={(e) => onSelectAll(e.target.checked)}>
