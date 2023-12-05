@@ -28,7 +28,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -219,7 +218,7 @@ public class SearchRepository {
         // Report data type is an entity itself where each report data type has its own index
         entityType = ((ReportData) entity).getReportDataType().toString();
       } else {
-        entityType = entity.getClass().getSimpleName().toLowerCase(Locale.ROOT);
+        entityType = entity.getEntityReference().getType();
       }
       String entityId = entity.getId().toString();
       try {

@@ -20,11 +20,7 @@ from unittest.mock import patch
 import pytest
 
 from metadata.data_quality.validations.validator import Validator
-from metadata.generated.schema.tests.basic import (
-    TestCaseFailureStatusType,
-    TestCaseResult,
-    TestCaseStatus,
-)
+from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.utils.importer import import_test_case_class
 
 EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
@@ -339,9 +335,3 @@ def test_suite_validation_database(
     if val_2:
         assert res.testResultValue[1].value == val_2
     assert res.testCaseStatus == status
-    if res.testCaseStatus == TestCaseStatus.Failed:
-        assert (
-            res.testCaseFailureStatus.testCaseFailureStatusType
-            == TestCaseFailureStatusType.New
-        )
-        assert res.testCaseFailureStatus.updatedAt is not None

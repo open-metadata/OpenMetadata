@@ -24,6 +24,7 @@ import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.service.exception.SourceException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.workflows.interfaces.Source;
@@ -43,7 +44,8 @@ public class PaginatedDataInsightSource implements Source<ResultList<ReportData>
     this.entityType = entityType;
     this.batchSize = batchSize;
     this.stats
-        .withTotalRecords(dao.reportDataTimeSeriesDao().listCount(entityType))
+        .withTotalRecords(
+            dao.reportDataTimeSeriesDao().listCount(new ListFilter(null).addQueryParam("entityFQNHash", entityType)))
         .withSuccessRecords(0)
         .withFailedRecords(0);
   }
@@ -107,7 +109,8 @@ public class PaginatedDataInsightSource implements Source<ResultList<ReportData>
   }
 
   public ResultList<ReportData> getReportDataPagination(String entityFQN, int limit, String after) {
-    int reportDataCount = dao.reportDataTimeSeriesDao().listCount(entityFQN);
+    int reportDataCount =
+        dao.reportDataTimeSeriesDao().listCount(new ListFilter(null).addQueryParam("entityFQNHash", entityFQN));
     List<CollectionDAO.ReportDataRow> reportDataList =
         dao.reportDataTimeSeriesDao()
             .getAfterExtension(entityFQN, limit + 1, after == null ? "0" : RestUtil.decodeCursor(after));

@@ -4,8 +4,8 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_DEFINITION;
 import static org.openmetadata.service.Entity.TEST_SUITE;
+import static org.openmetadata.service.Entity.getEntityReferenceByName;
 import static org.openmetadata.service.util.RestUtil.ENTITY_NO_CHANGE;
-import static org.openmetadata.service.util.RestUtil.ENTITY_UPDATED;
 import static org.openmetadata.service.util.RestUtil.LOGICAL_TEST_CASES_ADDED;
 
 import java.util.ArrayList;
@@ -14,7 +14,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
@@ -26,6 +25,8 @@ import org.openmetadata.schema.tests.TestCaseParameter;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
+import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -82,9 +83,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     test.withTestCaseResult(fields.contains(TEST_CASE_RESULT_FIELD) ? test.getTestCaseResult() : null);
   }
 
-  public RestUtil.PatchResponse<TestCaseResult> patchTestCaseResults(
-      String fqn, Long timestamp, String user, JsonPatch patch) {
-    String change = ENTITY_NO_CHANGE;
+  public RestUtil.PatchResponse<TestCaseResult> patchTestCaseResults(String fqn, Long timestamp, JsonPatch patch) {
     TestCaseResult original =
         JsonUtils.readValue(
             daoCollection
@@ -94,22 +93,13 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
     TestCaseResult updated = JsonUtils.applyPatch(original, patch, TestCaseResult.class);
 
-    if (!Objects.equals(original.getTestCaseFailureStatus(), updated.getTestCaseFailureStatus())) {
-      updated.getTestCaseFailureStatus().setUpdatedBy(user);
-      updated.getTestCaseFailureStatus().setUpdatedAt(System.currentTimeMillis());
-      daoCollection
-          .dataQualityDataTimeSeriesDao()
-          .update(fqn, TESTCASE_RESULT_EXTENSION, JsonUtils.pojoToJson(updated), timestamp);
-      change = ENTITY_UPDATED;
-    }
-
     // set the test case result state in the test case entity if the state has changed
     if (!Objects.equals(original, updated)) {
       TestCase testCase = findByName(fqn, Include.NON_DELETED);
       setTestCaseResult(testCase, updated, false);
     }
 
-    return new RestUtil.PatchResponse<>(Response.Status.OK, updated, change);
+    return new RestUtil.PatchResponse<>(Response.Status.OK, updated, ENTITY_NO_CHANGE);
   }
 
   @Override
@@ -157,7 +147,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         findFromRecords(test.getId(), entityType, Relationship.CONTAINS, TEST_SUITE);
     return records.stream()
         .map(testSuiteId -> Entity.<TestSuite>getEntity(TEST_SUITE, testSuiteId.getId(), "", Include.ALL, false))
-        .collect(Collectors.toList());
+        .toList();
   }
 
   private EntityReference getTestDefinition(TestCase test) {
@@ -210,10 +200,16 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         test.getTestDefinition().getId(), test.getId(), TEST_DEFINITION, TEST_CASE, Relationship.APPLIED_TO);
   }
 
-  public RestUtil.PutResponse<?> addTestCaseResult(
+  public RestUtil.PutResponse<TestCaseResult> addTestCaseResult(
       String updatedBy, UriInfo uriInfo, String fqn, TestCaseResult testCaseResult) {
     // Validate the request content
     TestCase testCase = findByName(fqn, Include.NON_DELETED);
+
+    // set the test case resolution status reference if test failed
+    testCaseResult.setTestCaseResolutionStatusReference(
+        testCaseResult.getTestCaseStatus() != TestCaseStatus.Failed
+            ? null
+            : setTestCaseResolutionStatus(testCase, updatedBy));
 
     daoCollection
         .dataQualityDataTimeSeriesDao()
@@ -233,7 +229,31 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
-  public RestUtil.PutResponse<?> deleteTestCaseResult(String updatedBy, String fqn, Long timestamp) {
+  private TestCaseResolutionStatus setTestCaseResolutionStatus(TestCase testCase, String updatedBy) {
+    String json =
+        daoCollection.testCaseResolutionStatusTimeSeriesDao().getLatestRecord(testCase.getFullyQualifiedName());
+
+    TestCaseResolutionStatus storedTestCaseResolutionStatus =
+        json != null ? JsonUtils.readValue(json, TestCaseResolutionStatus.class) : null;
+
+    if ((storedTestCaseResolutionStatus != null)
+        && (storedTestCaseResolutionStatus.getTestCaseResolutionStatusType()
+            != TestCaseResolutionStatusTypes.Resolved)) {
+      // if we already have a non resolve status then we'll simply return it
+      return storedTestCaseResolutionStatus;
+    }
+
+    // if the test case resolution is null or resolved then we'll create a new one
+    return new TestCaseResolutionStatus()
+        .withStateId(UUID.randomUUID())
+        .withTimestamp(System.currentTimeMillis())
+        .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New)
+        .withUpdatedBy(getEntityReferenceByName(Entity.USER, updatedBy, Include.ALL))
+        .withUpdatedAt(System.currentTimeMillis())
+        .withTestCaseReference(testCase.getEntityReference());
+  }
+
+  public RestUtil.PutResponse<TestCaseResult> deleteTestCaseResult(String updatedBy, String fqn, Long timestamp) {
     // Validate the request content
     TestCase testCase = findByName(fqn, Include.NON_DELETED);
     TestCaseResult storedTestCaseResult =

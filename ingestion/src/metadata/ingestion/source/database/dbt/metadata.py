@@ -12,7 +12,6 @@
 DBT source methods.
 """
 import traceback
-from datetime import datetime
 from typing import Iterable, List, Optional, Union
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -34,8 +33,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.tests.basic import (
-    TestCaseFailureStatus,
-    TestCaseFailureStatusType,
     TestCaseResult,
     TestCaseStatus,
     TestResultValue,
@@ -46,7 +43,7 @@ from metadata.generated.schema.tests.testDefinition import (
     TestDefinition,
     TestPlatform,
 )
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Timestamp
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
@@ -815,7 +812,6 @@ class DbtSource(DbtServiceSource):
                 )
             )
 
-    # pylint: disable=too-many-locals
     def add_dbt_test_result(self, dbt_test: dict):
         """
         After test cases has been processed, add the tests results info
@@ -830,7 +826,6 @@ class DbtSource(DbtServiceSource):
                 dbt_test_result = dbt_test.get(DbtCommonEnum.RESULTS.value)
                 test_case_status = TestCaseStatus.Aborted
                 test_result_value = 0
-                test_case_failure_status = TestCaseFailureStatus()  # type: ignore
                 if dbt_test_result.status.value in [
                     item.value for item in DbtTestSuccessEnum
                 ]:
@@ -841,17 +836,6 @@ class DbtSource(DbtServiceSource):
                 ]:
                     test_case_status = TestCaseStatus.Failed
                     test_result_value = 0
-                    test_case_failure_status = TestCaseFailureStatus(
-                        testCaseFailureStatusType=TestCaseFailureStatusType.New,
-                        testCaseFailureReason=None,
-                        testCaseFailureComment=None,
-                        updatedAt=Timestamp(
-                            __root__=convert_timestamp_to_milliseconds(
-                                datetime.utcnow().timestamp()
-                            )
-                        ),
-                        updatedBy=None,
-                    )
 
                 # Process the Test Timings
                 dbt_test_timings = dbt_test_result.timing
@@ -874,7 +858,6 @@ class DbtSource(DbtServiceSource):
                             value=str(test_result_value),
                         )
                     ],
-                    testCaseFailureStatus=test_case_failure_status,
                     sampleData=None,
                     result=None,
                 )
