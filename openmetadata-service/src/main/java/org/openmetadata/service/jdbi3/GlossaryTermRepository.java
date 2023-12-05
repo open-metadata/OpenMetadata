@@ -306,7 +306,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   public BulkOperationResult validateGlossaryTagsAddition(UUID glossaryTermId, AddGlossaryToAssetsRequest request)
       throws IOException {
-    boolean dryRun = Boolean.TRUE.equals(request.getDryRun());
+    boolean dryRun = true;
 
     GlossaryTerm term = this.get(null, glossaryTermId, getFields("id,tags"));
 
@@ -315,7 +315,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     // Check if the tags are mutually exclusive for the glossary
     checkMutuallyExclusive(request.getGlossaryTags());
 
-    BulkOperationResult result = new BulkOperationResult().withDryRun(dryRun);
+    BulkOperationResult result = new BulkOperationResult().withDryRun(true);
     List<FailureRequest> failures = new ArrayList<>();
     List<EntityReference> success = new ArrayList<>();
 
@@ -336,7 +336,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       Map<String, List<TagLabel>> allAssetTags = daoCollection.tagUsageDAO().getTagsByPrefix(fqnHash, "%", false);
 
       EntityReference refDetails = targetFQNFromES.get(fqnHash);
-      
+
       try {
         // Assets FQN is not available / we can use fqnHash for now
         checkMutuallyExclusiveForParentAndSubField(
