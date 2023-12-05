@@ -206,6 +206,7 @@ export const MOCK_TABLE = {
       aborted: 0,
     },
   },
+  retentionPeriod: 'P23DT23H',
   deleted: false,
 } as unknown as Table;
 

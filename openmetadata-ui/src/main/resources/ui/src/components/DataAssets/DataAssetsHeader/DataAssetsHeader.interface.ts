@@ -100,6 +100,7 @@ export type DataAssetsHeaderProps = {
   onDisplayNameUpdate: (data: EntityName) => Promise<void>;
   onProfilerSettingUpdate?: () => void;
   onUpdateVote?: (data: QueryVote, id: string) => Promise<void>;
+  onUpdateRetentionPeriod?: (value: string) => Promise<void>;
 } & (
   | DataAssetTable
   | DataAssetTopic

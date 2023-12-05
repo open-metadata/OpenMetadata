@@ -980,6 +980,7 @@ public class TableRepository extends EntityRepository<Table> {
       updateConstraints(origTable, updatedTable);
       updateColumns(COLUMN_FIELD, origTable.getColumns(), updated.getColumns(), EntityUtil.columnMatch);
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
+      recordChange("retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod());
     }
 
     private void updateConstraints(Table origTable, Table updatedTable) {

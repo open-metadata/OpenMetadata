@@ -804,6 +804,13 @@ export const VALIDATION_MESSAGES = {
       max: '${max}',
     }),
   },
+  number: {
+    range: i18n.t('message.entity-size-in-between', {
+      entity: '${label}',
+      min: '${min}',
+      max: '${max}',
+    }),
+  },
 };
 
 export const ERROR_MESSAGE = {

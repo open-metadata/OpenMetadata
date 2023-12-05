@@ -8,6 +8,7 @@
               "updatedBy": "anonymous",
               "href": "http://localhost:8585/api/v1/tables/3cda8ecb-f4c6-4ed4-8506-abe965b54b86",
               "tableType": "Regular",
+              "retentionPeriod": "10D",
               "columns": [
                   {
                       "name": "address_id",
