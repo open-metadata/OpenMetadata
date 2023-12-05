@@ -311,7 +311,9 @@ const ExplorePageV1: FunctionComponent = () => {
     setIsLoading(true);
     Promise.all([
       searchQuery({
-        query: escapeESReservedCharacters(searchQueryParam),
+        query: !isEmpty(searchQueryParam)
+          ? `*${escapeESReservedCharacters(searchQueryParam)}*`
+          : '',
         searchIndex,
         queryFilter: combinedQueryFilter,
         sortField: sortValue,
