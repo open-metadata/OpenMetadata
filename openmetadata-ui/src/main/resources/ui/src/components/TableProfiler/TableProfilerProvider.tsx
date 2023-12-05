@@ -194,7 +194,7 @@ export const TableProfilerProvider = ({
     try {
       const profiler = await getLatestTableProfileByFqn(decodedDatasetFQN);
       const customMetricResponse = await getTableDetailsByFQN(
-        decodedDatasetFQN,
+        datasetFQN,
         'customMetrics,columns'
       );
 
