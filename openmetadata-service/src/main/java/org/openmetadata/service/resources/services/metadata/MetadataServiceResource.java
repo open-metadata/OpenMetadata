@@ -311,14 +311,14 @@ public class MetadataServiceResource
                 @Content(mediaType = "application/json", schema = @Schema(implementation = MetadataService.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Metadata Service for instance {id} and version " + "{version} is not found")
+            description = "Metadata Service for instance {id} and version {version} is not found")
       })
   public MetadataService getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the metadata service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
-              description = "Metadata Service version number in the form `major`" + ".`minor`",
+              description = "Metadata Service version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
@@ -385,9 +385,7 @@ public class MetadataServiceResource
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
@@ -397,10 +395,10 @@ public class MetadataServiceResource
   @Operation(
       operationId = "deleteMetadataService",
       summary = "Delete a metadata service by Id",
-      description = "Delete a metadata services. If some service belong the service, it can't be " + "deleted.",
+      description = "Delete a metadata services. If some service belong the service, it can't be deleted.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "MetadataService service for instance {id} " + "is not found")
+        @ApiResponse(responseCode = "404", description = "MetadataService service for instance {id} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
@@ -423,13 +421,10 @@ public class MetadataServiceResource
   @Operation(
       operationId = "deleteMetadataServiceByName",
       summary = "Delete a metadata service by name",
-      description =
-          "Delete a metadata services by `name`. If some service belong the service, it can't be " + "deleted.",
+      description = "Delete a metadata services by `name`. If some service belong the service, it can't be deleted.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(
-            responseCode = "404",
-            description = "MetadataService service for instance {name} " + "is not found")
+        @ApiResponse(responseCode = "404", description = "MetadataService service for instance {name} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
@@ -438,9 +433,13 @@ public class MetadataServiceResource
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
+      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
       @Parameter(description = "Name of the metadata service", schema = @Schema(type = "string")) @PathParam("name")
           String name) {
-    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
+    return deleteByName(uriInfo, securityContext, name, recursive, hardDelete);
   }
 
   @PUT

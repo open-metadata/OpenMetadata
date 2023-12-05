@@ -38,6 +38,7 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
     SQLiteConnection,
     SQLiteScheme,
 )
+from metadata.profiler.api.models import ThreadPoolMetrics
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
@@ -162,15 +163,15 @@ class SQAInterfaceTestMultiThread(TestCase):
 
     def test_get_all_metrics(self):
         table_metrics = [
-            (
-                [
+            ThreadPoolMetrics(
+                metrics=[
                     metric
                     for metric in self.metrics
                     if (not metric.is_col_metric() and not metric.is_system_metrics())
                 ],
-                MetricTypes.Table,
-                None,
-                self.table,
+                metric_type=MetricTypes.Table,
+                column=None,
+                table=self.table,
             )
         ]
         column_metrics = []
@@ -178,36 +179,36 @@ class SQAInterfaceTestMultiThread(TestCase):
         window_metrics = []
         for col in inspect(User).c:
             column_metrics.append(
-                (
-                    [
+                ThreadPoolMetrics(
+                    metrics=[
                         metric
                         for metric in self.static_metrics
                         if metric.is_col_metric() and not metric.is_window_metric()
                     ],
-                    MetricTypes.Static,
-                    col,
-                    self.table,
+                    metric_type=MetricTypes.Static,
+                    column=col,
+                    table=self.table,
                 )
             )
             for query_metric in self.query_metrics:
                 query_metrics.append(
-                    (
-                        query_metric,
-                        MetricTypes.Query,
-                        col,
-                        self.table,
+                    ThreadPoolMetrics(
+                        metrics=query_metric,
+                        metric_type=MetricTypes.Query,
+                        column=col,
+                        table=self.table,
                     )
                 )
             window_metrics.append(
-                (
-                    [
+                ThreadPoolMetrics(
+                    metrics=[
                         metric
                         for metric in self.window_metrics
                         if metric.is_window_metric()
                     ],
-                    MetricTypes.Window,
-                    col,
-                    self.table,
+                    metric_type=MetricTypes.Window,
+                    column=col,
+                    table=self.table,
                 )
             )
 

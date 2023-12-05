@@ -80,7 +80,6 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.ResultList;
 import org.quartz.SchedulerException;
@@ -124,20 +123,15 @@ public class AppResource extends EntityResource<App, AppRepository> {
                   .getByName(
                       null, createApp.getName(), new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
 
-          String existingJson = repository.getDao().findJsonByFqn(createApp.getName(), ALL);
-
-          App app;
-
-          if (existingJson == null) {
+          App app = repository.findByNameOrNull(createApp.getName(), ALL);
+          if (app == null) {
             app = getApplication(definition, createApp, "admin").withFullyQualifiedName(createApp.getName());
             repository.initializeEntity(app);
-          } else {
-            app = JsonUtils.readValue(existingJson, App.class);
           }
 
           // Schedule
           if (app != null && app.getScheduleType().equals(ScheduleType.Scheduled)) {
-            ApplicationHandler.scheduleApplication(app, Entity.getCollectionDAO(), searchRepository);
+            ApplicationHandler.installApplication(app, Entity.getCollectionDAO(), searchRepository);
           }
 
         } catch (Exception ex) {
@@ -184,7 +178,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(description = "Limit the number of installed applications returned. (1 to 1000000, default = " + "10)")
+      @Parameter(description = "Limit the number of installed applications returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
           @Min(0)
@@ -225,13 +219,13 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the App", schema = @Schema(type = "string")) @PathParam("name") String name,
-      @Parameter(description = "Limit records. (1 to 1000000, default = " + "10)")
+      @Parameter(description = "Limit records. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
           @Min(0)
           @Max(1000000)
           int limitParam,
-      @Parameter(description = "Offset records. (0 to 1000000, default = " + "0)")
+      @Parameter(description = "Offset records. (0 to 1000000, default = 0)")
           @DefaultValue("0")
           @QueryParam("offset")
           @Min(0)
@@ -443,9 +437,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
             responseCode = "200",
             description = "App",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = App.class))),
-        @ApiResponse(
-            responseCode = "404",
-            description = "App for instance {id} and version {version} is " + "not found")
+        @ApiResponse(responseCode = "404", description = "App for instance {id} and version {version} is not found")
       })
   public App getVersion(
       @Context UriInfo uriInfo,
@@ -481,7 +473,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
     app.setOpenMetadataServerConnection(
         new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, app.getBot().getName()).build());
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
-      ApplicationHandler.scheduleApplication(app, Entity.getCollectionDAO(), searchRepository);
+      ApplicationHandler.installApplication(app, Entity.getCollectionDAO(), searchRepository);
       ApplicationHandler.configureApplication(app, Entity.getCollectionDAO(), searchRepository);
     }
     // We don't want to store this information
@@ -506,11 +498,16 @@ public class AppResource extends EntityResource<App, AppRepository> {
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
-          JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
+          JsonPatch patch)
+      throws SchedulerException {
+    App app = repository.get(null, id, repository.getFields("bot,pipelines"));
+    AppScheduler.getInstance().deleteScheduledApplication(app);
+    Response response = patchInternal(uriInfo, securityContext, id, patch);
+    if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
+      ApplicationHandler.installApplication((App) response.getEntity(), Entity.getCollectionDAO(), searchRepository);
+    }
+    return response;
   }
 
   @PUT
@@ -535,7 +532,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
     App app = getApplication(definition, create, securityContext.getUserPrincipal().getName());
     AppScheduler.getInstance().deleteScheduledApplication(app);
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
-      ApplicationHandler.scheduleApplication(app, Entity.getCollectionDAO(), searchRepository);
+      ApplicationHandler.installApplication(app, Entity.getCollectionDAO(), searchRepository);
     }
     return createOrUpdate(uriInfo, securityContext, app);
   }
@@ -607,7 +604,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
     if (response.getStatus() == Response.Status.OK.getStatusCode()) {
       App app = (App) response.getEntity();
       if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
-        ApplicationHandler.scheduleApplication(app, Entity.getCollectionDAO(), searchRepository);
+        ApplicationHandler.installApplication(app, Entity.getCollectionDAO(), searchRepository);
       }
     }
     return response;
@@ -632,7 +629,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Context SecurityContext securityContext) {
     App app = repository.getByName(uriInfo, name, new EntityUtil.Fields(repository.getAllowedFields()));
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
-      ApplicationHandler.scheduleApplication(app, repository.getDaoCollection(), searchRepository);
+      ApplicationHandler.installApplication(app, repository.getDaoCollection(), searchRepository);
       return Response.status(Response.Status.OK).entity("App is Scheduled.").build();
     }
     throw new IllegalArgumentException("App is not of schedule type Scheduled.");
@@ -731,7 +728,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
     EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNER));
     App app = repository.getByName(uriInfo, name, fields);
     if (app.getAppType().equals(AppType.Internal)) {
-      ApplicationHandler.scheduleApplication(app, Entity.getCollectionDAO(), searchRepository);
+      ApplicationHandler.installApplication(app, Entity.getCollectionDAO(), searchRepository);
       return Response.status(Response.Status.OK).entity("Application Deployed").build();
     } else {
       if (!app.getPipelines().isEmpty()) {
@@ -758,7 +755,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
   }
 
   private void decryptOrNullify(
-      SecurityContext securityContext, IngestionPipeline ingestionPipeline, String botname, boolean forceNotMask) {
+      SecurityContext securityContext, IngestionPipeline ingestionPipeline, String botName, boolean forceNotMask) {
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     try {
       authorizer.authorize(
@@ -770,7 +767,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
     }
     secretsManager.decryptIngestionPipeline(ingestionPipeline);
     OpenMetadataConnection openMetadataServerConnection =
-        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, botname).build();
+        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, botName).build();
     ingestionPipeline.setOpenMetadataServerConnection(
         secretsManager.encryptOpenMetadataConnection(openMetadataServerConnection, false));
     if (authorizer.shouldMaskPasswords(securityContext) && !forceNotMask) {
@@ -804,7 +801,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
             .withAppLogoUrl(marketPlaceDefinition.getAppLogoUrl())
             .withAppScreenshots(marketPlaceDefinition.getAppScreenshots())
             .withFeatures(marketPlaceDefinition.getFeatures())
-            .withSourcePythonClass(marketPlaceDefinition.getSourcePythonClass());
+            .withSourcePythonClass(marketPlaceDefinition.getSourcePythonClass())
+            .withAllowConfiguration(marketPlaceDefinition.getAllowConfiguration());
 
     // validate Bot if provided
     validateAndAddBot(app, createAppRequest.getBot());

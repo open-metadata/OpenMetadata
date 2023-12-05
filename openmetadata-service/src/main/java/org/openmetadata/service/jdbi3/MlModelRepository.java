@@ -17,6 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.DASHBOARD;
 import static org.openmetadata.service.Entity.MLMODEL;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.mlFeatureMatch;
 import static org.openmetadata.service.util.EntityUtil.mlHyperParameterMatch;
@@ -82,22 +83,22 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   @Override
-  public MlModel setFields(MlModel mlModel, Fields fields) {
+  public void setFields(MlModel mlModel, Fields fields) {
     mlModel.setService(getContainer(mlModel.getId()));
     mlModel.setDashboard(fields.contains("dashboard") ? getDashboard(mlModel) : mlModel.getDashboard());
+    mlModel.setSourceHash(fields.contains("sourceHash") ? mlModel.getSourceHash() : null);
     if (mlModel.getUsageSummary() == null) {
       mlModel.withUsageSummary(
           fields.contains("usageSummary")
               ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), mlModel.getId())
               : mlModel.getUsageSummary());
     }
-    return mlModel;
   }
 
   @Override
-  public MlModel clearFields(MlModel mlModel, Fields fields) {
+  public void clearFields(MlModel mlModel, Fields fields) {
     mlModel.setDashboard(fields.contains("dashboard") ? mlModel.getDashboard() : null);
-    return mlModel.withUsageSummary(fields.contains("usageSummary") ? mlModel.getUsageSummary() : null);
+    mlModel.withUsageSummary(fields.contains("usageSummary") ? mlModel.getUsageSummary() : null);
   }
 
   @Override
@@ -224,7 +225,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
   @Override
   public EntityInterface getParentEntity(MlModel entity, String fields) {
-    return Entity.getEntity(entity.getService(), fields, Include.NON_DELETED);
+    return Entity.getEntity(entity.getService(), fields, Include.ALL);
   }
 
   @Override

@@ -85,7 +85,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   public static final String COLLECTION_PATH = "v1/tables/";
   static final String FIELDS =
       "tableConstraints,tablePartition,usageSummary,owner,customMetrics,columns,"
-          + "tags,followers,joins,viewDefinition,dataModel,extension,testSuite,domain,dataProducts,lifeCycle";
+          + "tags,followers,joins,viewDefinition,dataModel,extension,testSuite,domain,dataProducts,lifeCycle,sourceHash";
 
   @Override
   public Table addHref(UriInfo uriInfo, Table table) {
@@ -176,7 +176,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @QueryParam("includeEmptyTestSuite")
           @DefaultValue("true")
           boolean includeEmptyTestSuite,
-      @Parameter(description = "Limit the number tables returned. (1 to 1000000, default = " + "10) ")
+      @Parameter(description = "Limit the number tables returned. (1 to 1000000, default = 10) ")
           @DefaultValue("10")
           @Min(0)
           @Max(1000000)
@@ -295,9 +295,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
             responseCode = "200",
             description = "table",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class))),
-        @ApiResponse(
-            responseCode = "404",
-            description = "Table for instance {id} and version {version} is " + "not found")
+        @ApiResponse(responseCode = "404", description = "Table for instance {id} and version {version} is not found")
       })
   public Table getVersion(
       @Context UriInfo uriInfo,
@@ -364,9 +362,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
@@ -413,8 +409,12 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
+      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
       @Parameter(description = "Name of the table", schema = @Schema(type = "string")) @PathParam("fqn") String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+    return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
   }
 
   @PUT
@@ -470,7 +470,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
             description = "Successfully updated the Table",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class))),
         @ApiResponse(responseCode = "404", description = "Table for instance {id} is not found"),
-        @ApiResponse(responseCode = "400", description = "Date range can only include past 30 days starting" + " today")
+        @ApiResponse(responseCode = "400", description = "Date range can only include past 30 days starting today")
       })
   public Table addJoins(
       @Context UriInfo uriInfo,
@@ -877,6 +877,30 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   }
 
   @DELETE
+  @Path("/{id}/customMetric/{customMetricName}")
+  @Operation(
+      operationId = "deleteCustomMetric",
+      summary = "Delete custom metric from a table",
+      description = "Delete a custom metric from a table.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
+      })
+  public Table deleteTableCustomMetric(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "column Test Type", schema = @Schema(type = "string")) @PathParam("customMetricName")
+          String customMetricName) {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_TESTS);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    Table table = repository.deleteCustomMetric(id, null, customMetricName);
+    return addHref(uriInfo, table);
+  }
+
+  @DELETE
   @Path("/{id}/customMetric/{columnName}/{customMetricName}")
   @Operation(
       operationId = "deleteCustomMetric",
@@ -888,7 +912,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
             description = "OK",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
       })
-  public Table deleteCustomMetric(
+  public Table deleteColumnCustomMetric(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
@@ -944,13 +968,13 @@ public class TableResource extends EntityResource<Table, TableRepository> {
                 .withTableConstraints(create.getTableConstraints())
                 .withTablePartition(create.getTablePartition())
                 .withTableType(create.getTableType())
-                .withTags(create.getTags())
                 .withFileFormat(create.getFileFormat())
                 .withViewDefinition(create.getViewDefinition())
                 .withTableProfilerConfig(create.getTableProfilerConfig())
                 .withDatabaseSchema(getEntityReference(Entity.DATABASE_SCHEMA, create.getDatabaseSchema())))
         .withDatabaseSchema(getEntityReference(Entity.DATABASE_SCHEMA, create.getDatabaseSchema()))
-        .withRetentionPeriod(create.getRetentionPeriod());
+        .withRetentionPeriod(create.getRetentionPeriod())
+        .withSourceHash(create.getSourceHash());
   }
 
   private CustomMetric getCustomMetric(SecurityContext securityContext, CreateCustomMetric create) {

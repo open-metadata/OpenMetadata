@@ -217,9 +217,9 @@ public class FeedRepository {
   }
 
   @Transaction
-  public Thread create(Thread thread, ChangeEvent event) {
+  public void create(Thread thread, ChangeEvent event) {
     ThreadContext threadContext = getThreadContext(thread, event);
-    return createThread(threadContext);
+    createThread(threadContext);
   }
 
   @Transaction
@@ -280,6 +280,7 @@ public class FeedRepository {
   private Thread createThread(ThreadContext threadContext) {
     Thread thread = threadContext.getThread();
     if (thread.getType() == ThreadType.Task) {
+      validateAssignee(thread);
       thread.getTask().withId(getNextTaskId());
     } else if (thread.getType() == ThreadType.Announcement) {
       // Validate start and end time for announcement
@@ -753,6 +754,30 @@ public class FeedRepository {
     if (!announcements.isEmpty()) {
       // There is already an announcement that overlaps the new one
       throw new IllegalArgumentException(ANNOUNCEMENT_OVERLAP);
+    }
+  }
+
+  private void validateAssignee(Thread thread) {
+    if (thread != null && ThreadType.Task.equals(thread.getType())) {
+      List<EntityReference> assignees = thread.getTask().getAssignees();
+
+      // Assignees can only be user or teams
+      assignees.forEach(
+          assignee -> {
+            if (!assignee.getType().equals(Entity.USER) && !assignee.getType().equals(Entity.TEAM)) {
+              throw new IllegalArgumentException("Assignees can only be user or teams");
+            }
+          });
+
+      for (EntityReference ref : assignees) {
+        EntityRepository<?> repository = Entity.getEntityRepository(ref.getType());
+        if (ref.getType().equals(USER)) {
+          User user = (User) repository.get(null, ref.getId(), repository.getFields("id"));
+          if (Boolean.TRUE.equals(user.getIsBot())) {
+            throw new IllegalArgumentException("Assignees can not be bot");
+          }
+        }
+      }
     }
   }
 

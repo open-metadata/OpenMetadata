@@ -76,7 +76,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "pipelines")
 public class PipelineResource extends EntityResource<Pipeline, PipelineRepository> {
   public static final String COLLECTION_PATH = "v1/pipelines/";
-  static final String FIELDS = "owner,tasks,pipelineStatus,followers,tags,extension,scheduleInterval,domain";
+  static final String FIELDS = "owner,tasks,pipelineStatus,followers,tags,extension,scheduleInterval,domain,sourceHash";
 
   @Override
   public Pipeline addHref(UriInfo uriInfo, Pipeline pipeline) {
@@ -131,7 +131,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
               schema = @Schema(type = "string", example = "airflow"))
           @QueryParam("service")
           String serviceParam,
-      @Parameter(description = "Limit the number pipelines returned. (1 to 1000000, " + "default = 10)")
+      @Parameter(description = "Limit the number pipelines returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @Min(0)
           @Max(1000000)
@@ -249,7 +249,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Pipeline.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Pipeline for instance {id} and version {version} is " + "not found")
+            description = "Pipeline for instance {id} and version {version} is not found")
       })
   public Pipeline getVersion(
       @Context UriInfo uriInfo,
@@ -298,9 +298,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
@@ -497,8 +495,12 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
+      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
       @Parameter(description = "Id of the pipeline", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
-    return delete(uriInfo, securityContext, id, false, hardDelete);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -518,10 +520,14 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
+      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
       @Parameter(description = "Fully qualified name of the pipeline", schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+    return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
   }
 
   @PUT
@@ -547,10 +553,10 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
         .withService(getEntityReference(Entity.PIPELINE_SERVICE, create.getService()))
         .withTasks(create.getTasks())
         .withSourceUrl(create.getSourceUrl())
-        .withTags(create.getTags())
         .withConcurrency(create.getConcurrency())
         .withStartDate(create.getStartDate())
         .withPipelineLocation(create.getPipelineLocation())
-        .withScheduleInterval(create.getScheduleInterval());
+        .withScheduleInterval(create.getScheduleInterval())
+        .withSourceHash(create.getSourceHash());
   }
 }

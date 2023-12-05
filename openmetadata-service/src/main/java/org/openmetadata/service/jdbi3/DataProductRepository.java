@@ -29,6 +29,8 @@ import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.api.BulkAssets;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.domains.DataProductResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -50,13 +52,13 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   }
 
   @Override
-  public DataProduct setFields(DataProduct entity, Fields fields) {
-    return entity.withAssets(fields.contains(FIELD_ASSETS) ? getAssets(entity) : null);
+  public void setFields(DataProduct entity, Fields fields) {
+    entity.withAssets(fields.contains(FIELD_ASSETS) ? getAssets(entity) : null);
   }
 
   @Override
-  public DataProduct clearFields(DataProduct entity, Fields fields) {
-    return entity.withAssets(fields.contains(FIELD_ASSETS) ? entity.getAssets() : null);
+  public void clearFields(DataProduct entity, Fields fields) {
+    entity.withAssets(fields.contains(FIELD_ASSETS) ? entity.getAssets() : null);
   }
 
   private List<EntityReference> getAssets(DataProduct entity) {
@@ -88,6 +90,16 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   @Override
   public EntityUpdater getUpdater(DataProduct original, DataProduct updated, Operation operation) {
     return new DataProductUpdater(original, updated, operation);
+  }
+
+  public BulkOperationResult bulkAddAssets(String domainName, BulkAssets request) {
+    DataProduct dataProduct = getByName(null, domainName, getFields("id"));
+    return bulkAssetsOperation(dataProduct.getId(), DATA_PRODUCT, Relationship.HAS, request, true);
+  }
+
+  public BulkOperationResult bulkRemoveAssets(String domainName, BulkAssets request) {
+    DataProduct dataProduct = getByName(null, domainName, getFields("id"));
+    return bulkAssetsOperation(dataProduct.getId(), DATA_PRODUCT, Relationship.HAS, request, false);
   }
 
   @Override

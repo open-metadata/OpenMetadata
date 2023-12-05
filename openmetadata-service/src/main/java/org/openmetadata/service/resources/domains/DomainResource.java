@@ -47,8 +47,11 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.api.BulkAssets;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DomainRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -198,9 +201,7 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
             responseCode = "200",
             description = "domain",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Domain.class))),
-        @ApiResponse(
-            responseCode = "404",
-            description = "Domain for instance {id} and version {version} is " + "not found")
+        @ApiResponse(responseCode = "404", description = "Domain for instance {id} and version {version} is not found")
       })
   public Domain getVersion(
       @Context UriInfo uriInfo,
@@ -250,6 +251,49 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
     return createOrUpdate(uriInfo, securityContext, domain);
   }
 
+  @PUT
+  @Path("/{name}/assets/add")
+  @Operation(
+      operationId = "bulkAddAssets",
+      summary = "Bulk Add Assets",
+      description = "Bulk Add Assets",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = BulkOperationResult.class))),
+        @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
+      })
+  public Response bulkAddAssets(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the domain", schema = @Schema(type = "string")) @PathParam("name") String name,
+      @Valid BulkAssets request) {
+    return Response.ok().entity(repository.bulkAddAssets(name, request)).build();
+  }
+
+  @PUT
+  @Path("/{name}/assets/remove")
+  @Operation(
+      operationId = "bulkRemoveAssets",
+      summary = "Bulk Remove Assets",
+      description = "Bulk Remove Assets",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
+      })
+  public Response bulkRemoveGlossaryFromAssets(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the domain", schema = @Schema(type = "string")) @PathParam("name") String name,
+      @Valid BulkAssets request) {
+    return Response.ok().entity(repository.bulkRemoveAssets(name, request)).build();
+  }
+
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -267,9 +311,7 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }

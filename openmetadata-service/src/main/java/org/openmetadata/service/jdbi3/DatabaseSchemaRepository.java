@@ -87,22 +87,23 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         : findTo(schema.getId(), Entity.DATABASE_SCHEMA, Relationship.CONTAINS, Entity.TABLE);
   }
 
-  public DatabaseSchema setFields(DatabaseSchema schema, Fields fields) {
+  public void setFields(DatabaseSchema schema, Fields fields) {
     setDefaultFields(schema);
+    schema.setSourceHash(fields.contains("sourceHash") ? schema.getSourceHash() : null);
     schema.setTables(fields.contains("tables") ? getTables(schema) : null);
     schema.setDatabaseSchemaProfilerConfig(
         fields.contains(DATABASE_SCHEMA_PROFILER_CONFIG)
             ? getDatabaseSchemaProfilerConfig(schema)
             : schema.getDatabaseSchemaProfilerConfig());
-    return schema.withUsageSummary(
+    schema.withUsageSummary(
         fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), schema.getId()) : null);
   }
 
-  public DatabaseSchema clearFields(DatabaseSchema schema, Fields fields) {
+  public void clearFields(DatabaseSchema schema, Fields fields) {
     schema.setTables(fields.contains("tables") ? schema.getTables() : null);
     schema.setDatabaseSchemaProfilerConfig(
         fields.contains(DATABASE_SCHEMA_PROFILER_CONFIG) ? schema.getDatabaseSchemaProfilerConfig() : null);
-    return schema.withUsageSummary(fields.contains("usageSummary") ? schema.getUsageSummary() : null);
+    schema.withUsageSummary(fields.contains("usageSummary") ? schema.getUsageSummary() : null);
   }
 
   private void setDefaultFields(DatabaseSchema schema) {
@@ -163,7 +164,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   public DatabaseSchema addDatabaseSchemaProfilerConfig(
       UUID databaseSchemaId, DatabaseSchemaProfilerConfig databaseSchemaProfilerConfig) {
     // Validate the request content
-    DatabaseSchema databaseSchema = dao.findEntityById(databaseSchemaId);
+    DatabaseSchema databaseSchema = find(databaseSchemaId, Include.NON_DELETED);
 
     if (databaseSchemaProfilerConfig.getProfileSampleType() != null
         && databaseSchemaProfilerConfig.getProfileSample() != null) {
@@ -193,7 +194,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
 
   public DatabaseSchema deleteDatabaseSchemaProfilerConfig(UUID databaseSchemaId) {
     // Validate the request content
-    DatabaseSchema database = dao.findEntityById(databaseSchemaId);
+    DatabaseSchema database = find(databaseSchemaId, Include.NON_DELETED);
     daoCollection.entityExtensionDAO().delete(databaseSchemaId, DATABASE_SCHEMA_PROFILER_CONFIG_EXTENSION);
     setFieldsInternal(database, Fields.EMPTY_FIELDS);
     return database;

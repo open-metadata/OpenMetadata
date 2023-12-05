@@ -84,6 +84,7 @@ services:
       AUTHORIZER_ENFORCE_PRINCIPAL_DOMAIN: ${AUTHORIZER_ENFORCE_PRINCIPAL_DOMAIN:-false}
       AUTHORIZER_ENABLE_SECURE_SOCKET: ${AUTHORIZER_ENABLE_SECURE_SOCKET:-false}
       AUTHENTICATION_PROVIDER: ${AUTHENTICATION_PROVIDER:-basic}
+      AUTHENTICATION_RESPONSE_TYPE: ${AUTHENTICATION_RESPONSE_TYPE:-id_token}
       CUSTOM_OIDC_AUTHENTICATION_PROVIDER_NAME: ${CUSTOM_OIDC_AUTHENTICATION_PROVIDER_NAME:-""}
       AUTHENTICATION_PUBLIC_KEYS: ${AUTHENTICATION_PUBLIC_KEYS:-[http://localhost:8585/api/v1/system/config/jwks]}
       AUTHENTICATION_AUTHORITY: ${AUTHENTICATION_AUTHORITY:-https://accounts.google.com}
@@ -231,6 +232,7 @@ services:
       AUTHORIZER_ENFORCE_PRINCIPAL_DOMAIN: ${AUTHORIZER_ENFORCE_PRINCIPAL_DOMAIN:-false}
       AUTHORIZER_ENABLE_SECURE_SOCKET: ${AUTHORIZER_ENABLE_SECURE_SOCKET:-false}
       AUTHENTICATION_PROVIDER: ${AUTHENTICATION_PROVIDER:-basic}
+      AUTHENTICATION_RESPONSE_TYPE: ${AUTHENTICATION_RESPONSE_TYPE:-id_token}
       CUSTOM_OIDC_AUTHENTICATION_PROVIDER_NAME: ${CUSTOM_OIDC_AUTHENTICATION_PROVIDER_NAME:-""}
       AUTHENTICATION_PUBLIC_KEYS: ${AUTHENTICATION_PUBLIC_KEYS:-[http://localhost:8585/api/v1/system/config/jwks]}
       AUTHENTICATION_AUTHORITY: ${AUTHENTICATION_AUTHORITY:-https://accounts.google.com}
@@ -356,6 +358,19 @@ services:
       DB_SCHEME: ${AIRFLOW_DB_SCHEME:-mysql+pymysql}
       DB_USER: ${AIRFLOW_DB_USER:-airflow_user}
       DB_PASSWORD: ${AIRFLOW_DB_PASSWORD:-airflow_pass}
+
+      # extra connection-string properties for the database
+      # EXAMPLE 
+      # require SSL (only for Postgres)
+      # properties: "?sslmode=require"
+      DB_PROPERTIES: ""
+      
+      # To test the lineage backend
+      # AIRFLOW__LINEAGE__BACKEND: airflow_provider_openmetadata.lineage.backend.OpenMetadataLineageBackend
+      # AIRFLOW__LINEAGE__AIRFLOW_SERVICE_NAME: local_airflow
+      # AIRFLOW__LINEAGE__OPENMETADATA_API_ENDPOINT: http://openmetadata-server:8585/api
+      # AIRFLOW__LINEAGE__JWT_TOKEN: ...
+
     entrypoint: /bin/bash
     command:
       - "/opt/airflow/ingestion_dependency.sh"

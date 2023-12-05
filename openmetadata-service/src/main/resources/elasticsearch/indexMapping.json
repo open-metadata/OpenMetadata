@@ -93,7 +93,7 @@
     "indexName": "data_product_search_index",
     "indexMappingFile": "/elasticsearch/%s/data_products_index_mapping.json",
     "alias": "dataProduct",
-    "parentAliases": ["domain"]
+    "parentAliases": ["domain","all"]
   },
   "domain": {
     "indexName": "domain_search_index",
@@ -208,5 +208,11 @@
     "indexMappingFile": "/elasticsearch/%s/mlmodel_service_index_mapping.json",
     "alias": "mlModelService",
     "parentAliases": ["all"]
+  },
+  "testCaseResolutionStatus": {
+    "indexName": "test_case_resolution_status_search_index",
+    "indexMappingFile": "/elasticsearch/%s/test_case_resolution_status_index_mapping.json",
+    "alias": "testCaseResolutionStatus",
+    "parentAliases": []
   }
 }

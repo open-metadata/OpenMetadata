@@ -66,6 +66,7 @@ export const DEPLOYED_PROGRESS_VAL = 100;
 export const DESCRIPTION_MAX_PREVIEW_CHARACTERS = 350;
 export const MAX_CHAR_LIMIT_ENTITY_SUMMARY = 130;
 export const SMALL_TABLE_LOADER_SIZE = 3;
+export const ONE_MINUTE_IN_MILLISECOND = 60000;
 export const LOCALSTORAGE_RECENTLY_VIEWED = `recentlyViewedData_${COOKIE_VERSION}`;
 export const LOCALSTORAGE_RECENTLY_SEARCHED = `recentlySearchedData_${COOKIE_VERSION}`;
 export const LOCALSTORAGE_USER_PROFILES = 'userProfiles';
@@ -135,6 +136,7 @@ export const globalSearchOptions = [
   { value: SearchIndex.GLOSSARY, label: t('label.glossary') },
   { value: SearchIndex.TAG, label: t('label.tag') },
   { value: SearchIndex.SEARCH_INDEX, label: t('label.search-index') },
+  { value: SearchIndex.DATA_PRODUCT, label: t('label.data-product') },
 ];
 
 export const DESCRIPTIONLENGTH = 100;
@@ -802,6 +804,13 @@ export const VALIDATION_MESSAGES = {
       max: '${max}',
     }),
   },
+  number: {
+    range: i18n.t('message.entity-size-in-between', {
+      entity: '${label}',
+      min: '${min}',
+      max: '${max}',
+    }),
+  },
 };
 
 export const ERROR_MESSAGE = {
@@ -816,5 +825,3 @@ export const ICON_DIMENSION = {
 export const COMMON_ICON_STYLES: CSSProperties = {
   verticalAlign: 'middle',
 };
-
-export const KNOWLEDGE_CENTER_CLASSIFICATION = 'KnowledgeCenter';

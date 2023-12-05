@@ -100,7 +100,7 @@ MOCK_PIPELINE_SERVICE = PipelineService(
 MOCK_PIPELINE = Pipeline(
     id="2aaa012e-099a-11ed-861d-0242ac120002",
     name="606358633757175",
-    fullyQualifiedName="databricks_pipeline_source.606358633757175",
+    fullyQualifiedName="databricks_pipeline_test.606358633757175",
     displayName="OpenMetadata Databricks Workflow",
     tasks=[
         Task(
@@ -181,7 +181,7 @@ EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
 
 EXPECTED_PIPELINE_STATUS = [
     OMetaPipelineStatus(
-        pipeline_fqn="databricks_pipeline_source.606358633757175",
+        pipeline_fqn="databricks_pipeline_test.606358633757175",
         pipeline_status=PipelineStatus(
             executionStatus=StatusType.Successful.value,
             taskStatus=[
@@ -197,7 +197,7 @@ EXPECTED_PIPELINE_STATUS = [
         ),
     ),
     OMetaPipelineStatus(
-        pipeline_fqn="databricks_pipeline_source.606358633757175",
+        pipeline_fqn="databricks_pipeline_test.606358633757175",
         pipeline_status=PipelineStatus(
             executionStatus=StatusType.Failed.value,
             taskStatus=[
@@ -236,8 +236,10 @@ class DatabricksPipelineTests(TestCase):
             mock_databricks_config["source"],
             config.workflowConfig.openMetadataServerConfig,
         )
-        self.databricks.context.__dict__["pipeline"] = MOCK_PIPELINE
-        self.databricks.context.__dict__["pipeline_service"] = MOCK_PIPELINE_SERVICE
+        self.databricks.context.__dict__["pipeline"] = MOCK_PIPELINE.name.__root__
+        self.databricks.context.__dict__[
+            "pipeline_service"
+        ] = MOCK_PIPELINE_SERVICE.name.__root__
         self.databricks.context.__dict__["job_id_list"] = [
             mock_history_data[0]["job_id"]
         ]

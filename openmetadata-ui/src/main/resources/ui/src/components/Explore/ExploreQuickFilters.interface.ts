@@ -20,7 +20,7 @@ export interface ExploreQuickFiltersProps {
   fields: Array<ExploreQuickFilterField>;
   aggregations?: Aggregations;
   onFieldValueSelect: (field: ExploreQuickFilterField) => void;
-  onAdvanceSearch: () => void;
+  onAdvanceSearch?: () => void;
   showDeleted?: boolean;
   onChangeShowDeleted?: (showDeleted: boolean) => void;
 }

@@ -311,7 +311,9 @@ const ExplorePageV1: FunctionComponent = () => {
     setIsLoading(true);
     Promise.all([
       searchQuery({
-        query: escapeESReservedCharacters(searchQueryParam),
+        query: !isEmpty(searchQueryParam)
+          ? `*${escapeESReservedCharacters(searchQueryParam)}*`
+          : '',
         searchIndex,
         queryFilter: combinedQueryFilter,
         sortField: sortValue,
@@ -326,7 +328,7 @@ const ExplorePageV1: FunctionComponent = () => {
           setUpdatedAggregations(res.aggregations);
         }),
       searchQuery({
-        query: escapeESReservedCharacters(searchQueryParam),
+        query: `*${escapeESReservedCharacters(searchQueryParam)}*`,
         pageNumber: 0,
         pageSize: 0,
         queryFilter: combinedQueryFilter,

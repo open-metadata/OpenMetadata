@@ -22,16 +22,13 @@ import DescriptionV1 from '../../components/common/EntityDescription/Description
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../../components/common/NextPrevious/NextPrevious.interface';
-import DataProductsContainer from '../../components/DataProductsContainer/DataProductsContainer.component';
+import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRightPanel';
 import Loader from '../../components/Loader/Loader';
 import { OperationPermission } from '../../components/PermissionProvider/PermissionProvider.interface';
-import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
-import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
 import { PAGE_SIZE } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { Paging } from '../../generated/type/paging';
-import { TagSource } from '../../generated/type/tagLabel';
 import { ServicesType } from '../../interface/service.interface';
 import { getServiceMainTabColumns } from '../../utils/ServiceMainTabContentUtils';
 import { getEntityTypeFromServiceCategory } from '../../utils/ServiceUtils';
@@ -218,38 +215,18 @@ function ServiceMainTabContent({
         className="entity-tag-right-panel-container"
         data-testid="entity-right-panel"
         flex="320px">
-        <Space className="w-full" direction="vertical" size="large">
-          {entityType !== EntityType.METADATA_SERVICE && (
-            <DataProductsContainer
-              activeDomain={(serviceDetails as DatabaseService)?.domain}
-              dataProducts={
-                (serviceDetails as DatabaseService)?.dataProducts ?? []
-              }
-              hasPermission={false}
-            />
-          )}
-
-          <TagsContainerV2
-            displayType={DisplayType.READ_MORE}
-            entityFqn={serviceFQN}
-            entityType={entityType}
-            permission={editTagsPermission}
-            selectedTags={tags}
-            showTaskHandler={false}
-            tagType={TagSource.Classification}
-            onSelectionChange={handleTagSelection}
-          />
-          <TagsContainerV2
-            displayType={DisplayType.READ_MORE}
-            entityFqn={serviceFQN}
-            entityType={entityType}
-            permission={editTagsPermission}
-            selectedTags={tags}
-            showTaskHandler={false}
-            tagType={TagSource.Glossary}
-            onSelectionChange={handleTagSelection}
-          />
-        </Space>
+        <EntityRightPanel
+          dataProducts={(serviceDetails as DatabaseService)?.dataProducts ?? []}
+          domain={(serviceDetails as DatabaseService)?.domain}
+          editTagPermission={editTagsPermission}
+          entityFQN={serviceFQN}
+          entityId={serviceDetails.id}
+          entityType={entityType}
+          selectedTags={tags}
+          showDataProductContainer={entityType !== EntityType.METADATA_SERVICE}
+          showTaskHandler={false}
+          onTagSelectionChange={handleTagSelection}
+        />
       </Col>
     </Row>
   );

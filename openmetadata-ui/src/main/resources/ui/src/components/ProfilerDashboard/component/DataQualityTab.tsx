@@ -35,13 +35,11 @@ import { usePermissionProvider } from '../../../components/PermissionProvider/Pe
 import { ResourceEntity } from '../../../components/PermissionProvider/PermissionProvider.interface';
 import { getTableTabPath } from '../../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
+import { EntityType } from '../../../enums/entity.enum';
 import { TestCaseStatus } from '../../../generated/configuration/testResultNotificationConfiguration';
 import { Operation } from '../../../generated/entity/policies/policy';
-import {
-  TestCase,
-  TestCaseFailureStatus,
-  TestCaseResult,
-} from '../../../generated/tests/testCase';
+import { TestCase, TestCaseResult } from '../../../generated/tests/testCase';
+import { TestCaseResolutionStatus } from '../../../generated/tests/testCaseResolutionStatus';
 import {
   patchTestCaseResult,
   removeTestCaseFromTestSuite,
@@ -119,12 +117,12 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     setSelectedTestCase(undefined);
   };
 
-  const handleStatusSubmit = async (data: TestCaseFailureStatus) => {
+  const handleStatusSubmit = async (data: TestCaseResolutionStatus) => {
     if (selectedTestCase?.data?.testCaseResult) {
       const timestamp = selectedTestCase.data?.testCaseResult.timestamp ?? 0;
       const updatedResult: TestCaseResult = {
         ...selectedTestCase.data?.testCaseResult,
-        testCaseFailureStatus: data,
+        testCaseResolutionStatusReference: data,
       };
       const testCaseFqn = selectedTestCase.data?.fullyQualifiedName ?? '';
       const patch = compare(
@@ -252,8 +250,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         key: 'resolution',
         width: 100,
         render: (value: TestCaseResult) => {
-          const label = value?.testCaseFailureStatus?.testCaseFailureStatusType;
-          const failureStatus = value?.testCaseFailureStatus;
+          const label =
+            value?.testCaseResolutionStatusReference
+              ?.testCaseResolutionStatusType;
+          const failureStatus = value?.testCaseResolutionStatusReference;
 
           return label ? (
             <Tooltip
@@ -430,7 +430,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         />
 
         <TestCaseStatusModal
-          data={selectedTestCase?.data?.testCaseResult?.testCaseFailureStatus}
+          data={
+            selectedTestCase?.data?.testCaseResult
+              ?.testCaseResolutionStatusReference
+          }
           open={selectedTestCase?.action === 'UPDATE_STATUS'}
           onCancel={handleCancel}
           onSubmit={handleStatusSubmit}
@@ -458,7 +461,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
             allowSoftDelete={false}
             entityId={selectedTestCase?.data?.id ?? ''}
             entityName={selectedTestCase?.data?.name ?? ''}
-            entityType="testCase"
+            entityType={EntityType.TEST_CASE}
             visible={selectedTestCase?.action === 'DELETE'}
             onCancel={handleCancel}
           />

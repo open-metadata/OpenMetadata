@@ -69,7 +69,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "datamodels")
 public class DashboardDataModelResource extends EntityResource<DashboardDataModel, DashboardDataModelRepository> {
   public static final String COLLECTION_PATH = "/v1/dashboard/datamodels";
-  protected static final String FIELDS = "owner,tags,followers,domain";
+  protected static final String FIELDS = "owner,tags,followers,domain,sourceHash";
 
   @Override
   public DashboardDataModel addHref(UriInfo uriInfo, DashboardDataModel dashboardDataModel) {
@@ -243,7 +243,7 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
                 @Content(mediaType = "application/json", schema = @Schema(implementation = DashboardDataModel.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "DataModel for instance {id} and version {version} is " + "not found")
+            description = "DataModel for instance {id} and version {version} is not found")
       })
   public DashboardDataModel getVersion(
       @Context UriInfo uriInfo,
@@ -295,9 +295,7 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
@@ -392,8 +390,12 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
+      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
       @Parameter(description = "Id of the data model", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
-    return delete(uriInfo, securityContext, id, false, hardDelete);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -413,10 +415,14 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
+      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
       @Parameter(description = "Fully qualified name of the data model", schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+    return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
   }
 
   @PUT
@@ -448,6 +454,6 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
         .withServiceType(create.getServiceType())
         .withColumns(create.getColumns())
         .withProject(create.getProject())
-        .withTags(create.getTags());
+        .withSourceHash(create.getSourceHash());
   }
 }

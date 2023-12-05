@@ -69,7 +69,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "databaseSchemas")
 public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, DatabaseSchemaRepository> {
   public static final String COLLECTION_PATH = "v1/databaseSchemas/";
-  static final String FIELDS = "owner,tables,usageSummary,tags,extension,domain";
+  static final String FIELDS = "owner,tables,usageSummary,tags,extension,domain,sourceHash";
 
   @Override
   public DatabaseSchema addHref(UriInfo uriInfo, DatabaseSchema schema) {
@@ -123,7 +123,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
               schema = @Schema(type = "string", example = "customerDatabase"))
           @QueryParam("database")
           String databaseParam,
-      @Parameter(description = "Limit the number schemas returned. (1 to 1000000, default" + " = 10)")
+      @Parameter(description = "Limit the number schemas returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
           @Min(0)
@@ -244,7 +244,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
                 @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseSchema.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Database schema for instance {id} and version {version} is " + "not found")
+            description = "Database schema for instance {id} and version {version} is not found")
       })
   public DatabaseSchema getVersion(
       @Context UriInfo uriInfo,
@@ -294,9 +294,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
@@ -381,9 +379,13 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
+      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
       @Parameter(description = "Name of the DBSchema", schema = @Schema(type = "string")) @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+    return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
   }
 
   @PUT
@@ -476,8 +478,8 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
     return repository
         .copy(new DatabaseSchema(), create, user)
         .withDatabase(getEntityReference(Entity.DATABASE, create.getDatabase()))
-        .withTags(create.getTags())
         .withSourceUrl(create.getSourceUrl())
-        .withRetentionPeriod(create.getRetentionPeriod());
+        .withRetentionPeriod(create.getRetentionPeriod())
+        .withSourceHash(create.getSourceHash());
   }
 }

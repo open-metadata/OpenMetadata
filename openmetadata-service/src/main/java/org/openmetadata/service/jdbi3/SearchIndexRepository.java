@@ -16,10 +16,13 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 import static org.openmetadata.service.util.EntityUtil.getSearchIndexField;
 
 import java.util.ArrayList;
@@ -80,11 +83,6 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
     SearchService searchService = Entity.getEntity(searchIndex.getService(), "", ALL);
     searchIndex.setService(searchService.getEntityReference());
     searchIndex.setServiceType(searchService.getServiceType());
-    // Validate field tags
-    if (searchIndex.getFields() != null) {
-      addDerivedFieldTags(searchIndex.getFields());
-      validateSchemaFieldTags(searchIndex.getFields());
-    }
   }
 
   @Override
@@ -116,18 +114,18 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
   }
 
   @Override
-  public SearchIndex setFields(SearchIndex searchIndex, Fields fields) {
+  public void setFields(SearchIndex searchIndex, Fields fields) {
     searchIndex.setService(getContainer(searchIndex.getId()));
     searchIndex.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(searchIndex) : null);
+    searchIndex.setSourceHash(fields.contains("sourceHash") ? searchIndex.getSourceHash() : null);
     if (searchIndex.getFields() != null) {
       getFieldTags(fields.contains(FIELD_TAGS), searchIndex.getFields());
     }
-    return searchIndex;
   }
 
   @Override
-  public SearchIndex clearFields(SearchIndex searchIndex, Fields fields) {
-    return searchIndex;
+  public void clearFields(SearchIndex searchIndex, Fields fields) {
+    /* Nothing to do */
   }
 
   @Override
@@ -145,8 +143,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
 
   public SearchIndex getSampleData(UUID searchIndexId, boolean authorizePII) {
     // Validate the request content
-    SearchIndex searchIndex = dao.findEntityById(searchIndexId);
-
+    SearchIndex searchIndex = find(searchIndexId, NON_DELETED);
     SearchIndexSampleData sampleData =
         JsonUtils.readValue(
             daoCollection.entityExtensionDAO().getExtension(searchIndex.getId(), "searchIndex.sampleData"),
@@ -193,19 +190,6 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
     }
   }
 
-  private void addDerivedFieldTags(List<SearchIndexField> fields) {
-    if (nullOrEmpty(fields)) {
-      return;
-    }
-
-    for (SearchIndexField field : fields) {
-      field.setTags(addDerivedTags(field.getTags()));
-      if (field.getChildren() != null) {
-        addDerivedFieldTags(field.getChildren());
-      }
-    }
-  }
-
   List<SearchIndexField> cloneWithoutTags(List<SearchIndexField> fields) {
     if (nullOrEmpty(fields)) {
       return fields;
@@ -227,9 +211,17 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
         .withChildren(children);
   }
 
+  @Override
+  public void validateTags(SearchIndex entity) {
+    super.validateTags(entity);
+    validateSchemaFieldTags(entity.getFields());
+  }
+
   private void validateSchemaFieldTags(List<SearchIndexField> fields) {
     // Add field level tags by adding tag to field relationship
-    for (SearchIndexField field : fields) {
+    for (SearchIndexField field : listOrEmpty(fields)) {
+      validateTags(field.getTags());
+      field.setTags(addDerivedTags(field.getTags()));
       checkMutuallyExclusive(field.getTags());
       if (field.getChildren() != null) {
         validateSchemaFieldTags(field.getChildren());
@@ -237,12 +229,12 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
     }
   }
 
-  private void applyTags(List<SearchIndexField> fields) {
+  private void applyFieldTags(List<SearchIndexField> fields) {
     // Add field level tags by adding tag to field relationship
     for (SearchIndexField field : fields) {
       applyTags(field.getTags(), field.getFullyQualifiedName());
       if (field.getChildren() != null) {
-        applyTags(field.getChildren());
+        applyFieldTags(field.getChildren());
       }
     }
   }
@@ -252,13 +244,13 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
     // Add table level tags by adding tag to table relationship
     super.applyTags(searchIndex);
     if (searchIndex.getFields() != null) {
-      applyTags(searchIndex.getFields());
+      applyFieldTags(searchIndex.getFields());
     }
   }
 
   @Override
   public EntityInterface getParentEntity(SearchIndex entity, String fields) {
-    return Entity.getEntity(entity.getService(), fields, Include.NON_DELETED);
+    return Entity.getEntity(entity.getService(), fields, Include.ALL);
   }
 
   @Override

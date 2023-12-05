@@ -59,7 +59,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "containers")
 public class ContainerResource extends EntityResource<Container, ContainerRepository> {
   public static final String COLLECTION_PATH = "v1/containers/";
-  static final String FIELDS = "parent,children,dataModel,owner,tags,followers,extension,domain";
+  static final String FIELDS = "parent,children,dataModel,owner,tags,followers,extension,domain,sourceHash";
 
   @Override
   public Container addHref(UriInfo uriInfo, Container container) {
@@ -120,7 +120,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
           @QueryParam("root")
           @DefaultValue("false")
           Boolean root,
-      @Parameter(description = "Limit the number containers returned. (1 to 1000000, " + "default = 10)")
+      @Parameter(description = "Limit the number containers returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @Min(0)
           @Max(1000000)
@@ -242,9 +242,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
@@ -344,7 +342,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Container.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Container for instance {id} and version {version} is " + "not found")
+            description = "Container for instance {id} and version {version} is not found")
       })
   public Container getVersion(
       @Context UriInfo uriInfo,
@@ -375,8 +373,12 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
+      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
       @Parameter(description = "Container Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
-    return delete(uriInfo, securityContext, id, false, hardDelete);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @PUT
@@ -450,6 +452,6 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
         .withSize(create.getSize())
         .withFileFormats(create.getFileFormats())
         .withSourceUrl(create.getSourceUrl())
-        .withTags(create.getTags());
+        .withSourceHash(create.getSourceHash());
   }
 }

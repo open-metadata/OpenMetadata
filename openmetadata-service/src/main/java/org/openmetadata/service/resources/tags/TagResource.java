@@ -107,7 +107,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
   private void migrateTags() {
     // Just want to run it when upgrading to version above 0.13.1 where tag relationship are not there , once we have
     // any entries we don't need to run it
-    if (!(repository.getDaoCollection().relationshipDAO().findIfAnyRelationExist(CLASSIFICATION, TAG) > 0)) {
+    if (repository.getDaoCollection().relationshipDAO().findIfAnyRelationExist(CLASSIFICATION, TAG) <= 0) {
       // We are missing relationship for classification -> tag, and also tag -> tag (parent relationship)
       // Find tag definitions and load classifications from the json file, if necessary
       ClassificationRepository classificationRepository =
@@ -227,7 +227,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
           @QueryParam("disabled")
           @DefaultValue("false")
           Boolean disabled,
-      @Parameter(description = "Limit the number tags returned. (1 to 1000000, " + "default = 10)")
+      @Parameter(description = "Limit the number tags returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @Min(0)
           @Max(1000000)
@@ -343,9 +343,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
             responseCode = "200",
             description = "tags",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Tag.class))),
-        @ApiResponse(
-            responseCode = "404",
-            description = "Tag for instance {id} and version {version} is " + "not found")
+        @ApiResponse(responseCode = "404", description = "Tag for instance {id} and version {version} is not found")
       })
   public Tag getVersion(
       @Context UriInfo uriInfo,
@@ -393,9 +391,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }

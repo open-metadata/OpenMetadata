@@ -144,7 +144,9 @@ class LookerUnitTest(TestCase):
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
 
-        self.looker.context.__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE
+        self.looker.context.__dict__[
+            "dashboard_service"
+        ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.__root__
 
     def test_create(self):
         """
@@ -278,7 +280,7 @@ class LookerUnitTest(TestCase):
                 description="description",
                 charts=[],
                 sourceUrl="https://my-looker.com/dashboards/1",
-                service=self.looker.context.dashboard_service.fullyQualifiedName.__root__,
+                service=self.looker.context.dashboard_service,
                 owner=None,
             )
 
@@ -373,7 +375,7 @@ class LookerUnitTest(TestCase):
             description="subtitle; Some body text; Some note",
             chartType=ChartType.Line,
             sourceUrl="https://my-looker.com/hello",
-            service=self.looker.context.dashboard_service.fullyQualifiedName.__root__,
+            service=self.looker.context.dashboard_service,
         )
 
         self.assertEqual(

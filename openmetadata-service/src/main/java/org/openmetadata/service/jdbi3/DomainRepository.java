@@ -24,6 +24,8 @@ import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.api.BulkAssets;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.domains.DomainResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -45,14 +47,13 @@ public class DomainRepository extends EntityRepository<Domain> {
   }
 
   @Override
-  public Domain setFields(Domain entity, Fields fields) {
-    return entity.withParent(getParent(entity));
+  public void setFields(Domain entity, Fields fields) {
+    entity.withParent(getParent(entity));
   }
 
   @Override
-  public Domain clearFields(Domain entity, Fields fields) {
+  public void clearFields(Domain entity, Fields fields) {
     entity.withParent(fields.contains("parent") ? entity.getParent() : null);
-    return entity;
   }
 
   @Override
@@ -88,6 +89,16 @@ public class DomainRepository extends EntityRepository<Domain> {
       inheritExperts(domain, fields, parent);
     }
     return domain;
+  }
+
+  public BulkOperationResult bulkAddAssets(String domainName, BulkAssets request) {
+    Domain domain = getByName(null, domainName, getFields("id"));
+    return bulkAssetsOperation(domain.getId(), DOMAIN, Relationship.HAS, request, true);
+  }
+
+  public BulkOperationResult bulkRemoveAssets(String domainName, BulkAssets request) {
+    Domain domain = getByName(null, domainName, getFields("id"));
+    return bulkAssetsOperation(domain.getId(), DOMAIN, Relationship.HAS, request, false);
   }
 
   @Override

@@ -32,6 +32,7 @@ This is the supported list of connectors for Database Services:
 - [SingleStore](/connectors/database/singlestore)
 - [Snowflake](/connectors/database/snowflake)
 - [Trino](/connectors/database/trino)
+- [Unity Catalog](/connectors/database/unity-catalog)
 - [Vertica](/connectors/database/vertica)
 
 If you have a request for a new connector, don't hesitate to reach out in [Slack](https://slack.open-metadata.org/) or

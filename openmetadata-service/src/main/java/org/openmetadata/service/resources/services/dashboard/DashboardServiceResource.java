@@ -266,14 +266,14 @@ public class DashboardServiceResource
                 @Content(mediaType = "application/json", schema = @Schema(implementation = DashboardService.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Dashboard service for instance {id} and version " + "{version} is not found")
+            description = "Dashboard service for instance {id} and version {version} is not found")
       })
   public DashboardService getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the dashboard service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
-              description = "dashboard service version number in the form `major`" + ".`minor`",
+              description = "dashboard service version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
@@ -340,9 +340,7 @@ public class DashboardServiceResource
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
@@ -353,10 +351,10 @@ public class DashboardServiceResource
       operationId = "deleteDashboardService",
       summary = "Delete a dashboard service by Id",
       description =
-          "Delete a Dashboard services. If dashboard (and charts) belong to the service, it can't be " + "deleted.",
+          "Delete a Dashboard services. If dashboard (and charts) belong to the service, it can't be deleted.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "DashboardService service for instance {id} " + "is not found")
+        @ApiResponse(responseCode = "404", description = "DashboardService service for instance {id} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
@@ -384,9 +382,7 @@ public class DashboardServiceResource
               + "deleted.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(
-            responseCode = "404",
-            description = "DashboardService service for instance {name} " + "is not found")
+        @ApiResponse(responseCode = "404", description = "DashboardService service for instance {name} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
@@ -395,9 +391,13 @@ public class DashboardServiceResource
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
+      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
       @Parameter(description = "Name of the dashboard service", schema = @Schema(type = "string")) @PathParam("name")
           String name) {
-    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
+    return deleteByName(uriInfo, securityContext, name, recursive, hardDelete);
   }
 
   @PUT

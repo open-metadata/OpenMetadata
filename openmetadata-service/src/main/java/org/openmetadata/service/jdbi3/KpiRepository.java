@@ -44,16 +44,16 @@ public class KpiRepository extends EntityRepository<Kpi> {
   }
 
   @Override
-  public Kpi setFields(Kpi kpi, EntityUtil.Fields fields) {
+  public void setFields(Kpi kpi, EntityUtil.Fields fields) {
     kpi.setDataInsightChart(fields.contains("dataInsightChart") ? getDataInsightChart(kpi) : kpi.getDataInsightChart());
-    return kpi.withKpiResult(
+    kpi.withKpiResult(
         fields.contains(KPI_RESULT_FIELD) ? getKpiResult(kpi.getFullyQualifiedName()) : kpi.getKpiResult());
   }
 
   @Override
-  public Kpi clearFields(Kpi kpi, EntityUtil.Fields fields) {
+  public void clearFields(Kpi kpi, EntityUtil.Fields fields) {
     kpi.setDataInsightChart(fields.contains("dataInsightChart") ? kpi.getDataInsightChart() : null);
-    return kpi.withKpiResult(fields.contains(KPI_RESULT_FIELD) ? kpi.getKpiResult() : null);
+    kpi.withKpiResult(fields.contains(KPI_RESULT_FIELD) ? kpi.getKpiResult() : null);
   }
 
   @Override
@@ -103,18 +103,17 @@ public class KpiRepository extends EntityRepository<Kpi> {
   @Transaction
   public RestUtil.PutResponse<?> addKpiResult(UriInfo uriInfo, String fqn, KpiResult kpiResult) {
     // Validate the request content
-    Kpi kpi = dao.findEntityByName(fqn);
+    Kpi kpi = findByName(fqn, Include.NON_DELETED);
     storeTimeSeries(kpi.getFullyQualifiedName(), KPI_RESULT_EXTENSION, "kpiResult", JsonUtils.pojoToJson(kpiResult));
     ChangeDescription change = addKpiResultChangeDescription(kpi.getVersion(), kpiResult);
     ChangeEvent changeEvent = getChangeEvent(withHref(uriInfo, kpi), change, entityType, kpi.getVersion());
-
     return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
   @Transaction
   public RestUtil.PutResponse<?> deleteKpiResult(String fqn, Long timestamp) {
     // Validate the request content
-    Kpi kpi = dao.findEntityByName(fqn);
+    Kpi kpi = findByName(fqn, Include.NON_DELETED);
     KpiResult storedKpiResult =
         JsonUtils.readValue(getExtensionAtTimestamp(fqn, KPI_RESULT_EXTENSION, timestamp), KpiResult.class);
     if (storedKpiResult != null) {

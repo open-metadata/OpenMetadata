@@ -67,6 +67,8 @@ public final class EntityUtil {
   //
   public static final Comparator<EntityReference> compareEntityReference =
       Comparator.comparing(EntityReference::getName);
+  public static final Comparator<EntityReference> compareEntityReferenceById =
+      Comparator.comparing(EntityReference::getId).thenComparing(EntityReference::getType);
   public static final Comparator<EntityVersionPair> compareVersion =
       Comparator.comparing(EntityVersionPair::getVersion);
   public static final Comparator<TagLabel> compareTagLabel = Comparator.comparing(TagLabel::getTagFQN);
@@ -391,8 +393,8 @@ public final class EntityUtil {
     return Math.round((version + 1.0) * 10.0) / 10.0;
   }
 
-  public static EntityReference copy(EntityReference from, EntityReference to) {
-    return to.withType(from.getType())
+  public static void copy(EntityReference from, EntityReference to) {
+    to.withType(from.getType())
         .withId(from.getId())
         .withName(from.getName())
         .withDisplayName(from.getDisplayName())

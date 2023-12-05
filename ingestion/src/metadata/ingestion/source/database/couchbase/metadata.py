@@ -74,7 +74,7 @@ class CouchbaseSource(CommonNoSQLSource):
         need to be overridden by sources
         """
         try:
-            database_name = self.context.database.name.__root__
+            database_name = self.context.database
             bucket = self.couchbase.bucket(database_name)
             collection_manager = bucket.collections()
             self.context.scope_dict = {
@@ -108,7 +108,7 @@ class CouchbaseSource(CommonNoSQLSource):
         need to be overridden by sources
         """
         try:
-            database_name = self.context.database.name.__root__
+            database_name = self.context.database
             query = COUCHBASE_SQL_STATEMENT.format(table_name=table_name)
             result = self.couchbase.query(query)
             for row in result.rows():

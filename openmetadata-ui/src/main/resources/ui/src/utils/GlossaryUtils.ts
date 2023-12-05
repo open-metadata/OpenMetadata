@@ -15,7 +15,10 @@ import { AxiosError } from 'axios';
 import { isUndefined, omit } from 'lodash';
 import { StatusType } from '../components/common/StatusBadge/StatusBadge.interface';
 import { ModifiedGlossaryTerm } from '../components/Glossary/GlossaryTermTab/GlossaryTermTab.interface';
-import { WILD_CARD_CHAR } from '../constants/char.constants';
+import {
+  FQN_SEPARATOR_CHAR,
+  WILD_CARD_CHAR,
+} from '../constants/char.constants';
 import { SearchIndex } from '../enums/search.enum';
 import { Glossary } from '../generated/entity/data/glossary';
 import { GlossaryTerm, Status } from '../generated/entity/data/glossaryTerm';
@@ -24,6 +27,8 @@ import { SearchResponse } from '../interface/search.interface';
 import { ListGlossaryTermsParams } from '../rest/glossaryAPI';
 import { searchData } from '../rest/miscAPI';
 import { formatSearchGlossaryTermResponse } from './APIUtils';
+import Fqn from './Fqn';
+import { getGlossaryPath } from './RouterUtils';
 
 export interface GlossaryTermTreeNode {
   children?: GlossaryTermTreeNode[];
@@ -190,14 +195,10 @@ export const getQueryFilterToExcludeTerm = (fqn: string) => ({
       must: [
         {
           bool: {
-            must: [
+            must_not: [
               {
-                bool: {
-                  must_not: {
-                    term: {
-                      'tags.tagFQN': fqn,
-                    },
-                  },
+                term: {
+                  'tags.tagFQN': fqn,
                 },
               },
             ],
@@ -234,3 +235,26 @@ export const StatusFilters = Object.values(Status)
     text: status,
     value: status,
   }));
+
+export const getGlossaryBreadcrumbs = (fqn: string) => {
+  const arr = Fqn.split(fqn);
+  const dataFQN: Array<string> = [];
+  const breadcrumbList = [
+    {
+      name: 'Glossaries',
+      url: getGlossaryPath(''),
+      activeTitle: false,
+    },
+    ...arr.map((d) => {
+      dataFQN.push(d);
+
+      return {
+        name: d,
+        url: getGlossaryPath(dataFQN.join(FQN_SEPARATOR_CHAR)),
+        activeTitle: false,
+      };
+    }),
+  ];
+
+  return breadcrumbList;
+};

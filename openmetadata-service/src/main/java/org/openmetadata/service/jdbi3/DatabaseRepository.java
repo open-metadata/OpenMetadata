@@ -85,8 +85,9 @@ public class DatabaseRepository extends EntityRepository<Database> {
     return Entity.getEntity(entity.getService(), fields, Include.ALL);
   }
 
-  public Database setFields(Database database, Fields fields) {
+  public void setFields(Database database, Fields fields) {
     database.setService(getContainer(database.getId()));
+    database.setSourceHash(fields.contains("sourceHash") ? database.getSourceHash() : null);
     database.setDatabaseSchemas(
         fields.contains("databaseSchemas") ? getSchemas(database) : database.getDatabaseSchemas());
     database.setDatabaseProfilerConfig(
@@ -99,14 +100,13 @@ public class DatabaseRepository extends EntityRepository<Database> {
               ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), database.getId())
               : null);
     }
-    return database;
   }
 
-  public Database clearFields(Database database, Fields fields) {
+  public void clearFields(Database database, Fields fields) {
     database.setDatabaseSchemas(fields.contains("databaseSchemas") ? database.getDatabaseSchemas() : null);
     database.setDatabaseProfilerConfig(
         fields.contains(DATABASE_PROFILER_CONFIG) ? database.getDatabaseProfilerConfig() : null);
-    return database.withUsageSummary(fields.contains("usageSummary") ? database.getUsageSummary() : null);
+    database.withUsageSummary(fields.contains("usageSummary") ? database.getUsageSummary() : null);
   }
 
   @Override
@@ -129,8 +129,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   public Database addDatabaseProfilerConfig(UUID databaseId, DatabaseProfilerConfig databaseProfilerConfig) {
     // Validate the request content
-    Database database = dao.findEntityById(databaseId);
-
+    Database database = find(databaseId, Include.NON_DELETED);
     if (databaseProfilerConfig.getProfileSampleType() != null && databaseProfilerConfig.getProfileSample() != null) {
       EntityUtil.validateProfileSample(
           databaseProfilerConfig.getProfileSampleType().toString(), databaseProfilerConfig.getProfileSample());
@@ -155,9 +154,9 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   public Database deleteDatabaseProfilerConfig(UUID databaseId) {
     // Validate the request content
-    Database database = dao.findEntityById(databaseId);
+    Database database = find(databaseId, Include.NON_DELETED);
     daoCollection.entityExtensionDAO().delete(databaseId, DATABASE_PROFILER_CONFIG_EXTENSION);
-    setFieldsInternal(database, Fields.EMPTY_FIELDS);
+    clearFieldsInternal(database, Fields.EMPTY_FIELDS);
     return database;
   }
 

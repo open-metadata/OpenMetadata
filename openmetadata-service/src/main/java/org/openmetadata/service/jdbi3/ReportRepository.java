@@ -29,7 +29,7 @@ public class ReportRepository extends EntityRepository<Report> {
   }
 
   @Override
-  public Report setFields(Report report, Fields fields) {
+  public void setFields(Report report, Fields fields) {
     report.setService(getService(report)); // service is a default field
     if (report.getUsageSummary() == null) {
       report.withUsageSummary(
@@ -37,12 +37,11 @@ public class ReportRepository extends EntityRepository<Report> {
               ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), report.getId())
               : report.getUsageSummary());
     }
-    return report;
   }
 
   @Override
-  public Report clearFields(Report report, Fields fields) {
-    return report.withUsageSummary(fields.contains("usageSummary") ? report.getUsageSummary() : null);
+  public void clearFields(Report report, Fields fields) {
+    report.withUsageSummary(fields.contains("usageSummary") ? report.getUsageSummary() : null);
   }
 
   @Override
@@ -62,7 +61,6 @@ public class ReportRepository extends EntityRepository<Report> {
   }
 
   private EntityReference getService(Report report) {
-    // TODO What are the report services?
     return null;
   }
 }

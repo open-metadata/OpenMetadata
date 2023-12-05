@@ -16,7 +16,6 @@ import {
   Radio,
   RadioChangeEvent,
   Row,
-  Space,
   Tag,
   Tooltip,
   Typography,
@@ -128,17 +127,17 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
 
   const renderSchemaName = useCallback(
     (_, record: Field) => (
-      <Space align="start" className="w-max-90 vertical-align-inherit" size={2}>
+      <div className="d-inline-flex w-max-90 vertical-align-inherit">
         <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
-          <Typography.Text className="break-word">
+          <span className="break-word">
             {isVersionView ? (
               <RichTextEditorPreviewer markdown={getEntityName(record)} />
             ) : (
               getEntityName(record)
             )}
-          </Typography.Text>
+          </span>
         </Tooltip>
-      </Space>
+      </div>
     ),
     [isVersionView]
   );
@@ -362,7 +361,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         <ModalWithMarkdownEditor
           header={`${t('label.edit-entity', {
             entity: t('label.schema-field'),
-          })}: "${editFieldDescription.name}"`}
+          })}: "${getEntityName(editFieldDescription)}"`}
           placeholder={t('label.enter-field-description', {
             field: t('label.schema-field'),
           })}

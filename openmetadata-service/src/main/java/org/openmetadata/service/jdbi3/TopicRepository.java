@@ -16,10 +16,13 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -45,6 +48,9 @@ import org.openmetadata.schema.type.topic.CleanupPolicy;
 import org.openmetadata.schema.type.topic.TopicSampleData;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.jdbi3.EntityRepository.DescriptionTaskWorkflow;
+import org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater;
+import org.openmetadata.service.jdbi3.EntityRepository.TagTaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
@@ -75,11 +81,6 @@ public class TopicRepository extends EntityRepository<Topic> {
     MessagingService messagingService = Entity.getEntity(topic.getService(), "", ALL);
     topic.setService(messagingService.getEntityReference());
     topic.setServiceType(messagingService.getServiceType());
-    // Validate field tags
-    if (topic.getMessageSchema() != null) {
-      addDerivedFieldTags(topic.getMessageSchema().getSchemaFields());
-      validateSchemaFieldTags(topic.getMessageSchema().getSchemaFields());
-    }
   }
 
   @Override
@@ -111,8 +112,9 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   @Override
-  public Topic setFields(Topic topic, Fields fields) {
+  public void setFields(Topic topic, Fields fields) {
     topic.setService(getContainer(topic.getId()));
+    topic.setSourceHash(fields.contains("sourceHash") ? topic.getSourceHash() : null);
     if (topic.getMessageSchema() != null) {
       populateEntityFieldTags(
           entityType,
@@ -120,12 +122,11 @@ public class TopicRepository extends EntityRepository<Topic> {
           topic.getFullyQualifiedName(),
           fields.contains(FIELD_TAGS));
     }
-    return topic;
   }
 
   @Override
-  public Topic clearFields(Topic topic, Fields fields) {
-    return topic;
+  public void clearFields(Topic topic, Fields fields) {
+    /* Nothing to do */
   }
 
   @Override
@@ -142,7 +143,7 @@ public class TopicRepository extends EntityRepository<Topic> {
 
   public Topic getSampleData(UUID topicId, boolean authorizePII) {
     // Validate the request content
-    Topic topic = dao.findEntityById(topicId);
+    Topic topic = find(topicId, NON_DELETED);
 
     TopicSampleData sampleData =
         JsonUtils.readValue(
@@ -183,19 +184,6 @@ public class TopicRepository extends EntityRepository<Topic> {
         });
   }
 
-  private void addDerivedFieldTags(List<Field> fields) {
-    if (nullOrEmpty(fields)) {
-      return;
-    }
-
-    for (Field field : fields) {
-      field.setTags(addDerivedTags(field.getTags()));
-      if (field.getChildren() != null) {
-        addDerivedFieldTags(field.getChildren());
-      }
-    }
-  }
-
   List<Field> cloneWithoutTags(List<Field> fields) {
     if (nullOrEmpty(fields)) {
       return fields;
@@ -220,6 +208,8 @@ public class TopicRepository extends EntityRepository<Topic> {
   private void validateSchemaFieldTags(List<Field> fields) {
     // Add field level tags by adding tag to field relationship
     for (Field field : fields) {
+      validateTags(field.getTags());
+      field.setTags(addDerivedTags(field.getTags()));
       checkMutuallyExclusive(field.getTags());
       if (field.getChildren() != null) {
         validateSchemaFieldTags(field.getChildren());
@@ -248,7 +238,15 @@ public class TopicRepository extends EntityRepository<Topic> {
 
   @Override
   public EntityInterface getParentEntity(Topic entity, String fields) {
-    return Entity.getEntity(entity.getService(), fields, Include.NON_DELETED);
+    return Entity.getEntity(entity.getService(), fields, Include.ALL);
+  }
+
+  @Override
+  public void validateTags(Topic entity) {
+    super.validateTags(entity);
+    if (entity.getMessageSchema() != null) {
+      validateSchemaFieldTags(entity.getMessageSchema().getSchemaFields());
+    }
   }
 
   @Override

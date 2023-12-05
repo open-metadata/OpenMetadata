@@ -41,7 +41,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "storedProcedures")
 public class StoredProcedureResource extends EntityResource<StoredProcedure, StoredProcedureRepository> {
   public static final String COLLECTION_PATH = "v1/storedProcedures/";
-  static final String FIELDS = "owner,tags,followers,extension,domain";
+  static final String FIELDS = "owner,tags,followers,extension,domain,sourceHash";
 
   @Override
   public StoredProcedure addHref(UriInfo uriInfo, StoredProcedure storedProcedure) {
@@ -88,7 +88,7 @@ public class StoredProcedureResource extends EntityResource<StoredProcedure, Sto
               schema = @Schema(type = "string", example = "customerDatabaseSchema"))
           @QueryParam("databaseSchema")
           String databaseSchemaParam,
-      @Parameter(description = "Limit the number schemas returned. (1 to 1000000, default" + " = 10)")
+      @Parameter(description = "Limit the number schemas returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
           @Min(0)
@@ -209,7 +209,7 @@ public class StoredProcedureResource extends EntityResource<StoredProcedure, Sto
                 @Content(mediaType = "application/json", schema = @Schema(implementation = StoredProcedure.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Stored Procedure for instance {id} and version {version} is " + "not found")
+            description = "Stored Procedure for instance {id} and version {version} is not found")
       })
   public StoredProcedure getVersion(
       @Context UriInfo uriInfo,
@@ -259,9 +259,7 @@ public class StoredProcedureResource extends EntityResource<StoredProcedure, Sto
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
@@ -391,9 +389,13 @@ public class StoredProcedureResource extends EntityResource<StoredProcedure, Sto
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
+      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
       @Parameter(description = "Name of the DBSchema", schema = @Schema(type = "string")) @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+    return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
   }
 
   @PUT
@@ -417,8 +419,8 @@ public class StoredProcedureResource extends EntityResource<StoredProcedure, Sto
     return repository
         .copy(new StoredProcedure(), create, user)
         .withDatabaseSchema(getEntityReference(Entity.DATABASE_SCHEMA, create.getDatabaseSchema()))
-        .withTags(create.getTags())
         .withStoredProcedureCode(create.getStoredProcedureCode())
-        .withSourceUrl(create.getSourceUrl());
+        .withSourceUrl(create.getSourceUrl())
+        .withSourceHash(create.getSourceHash());
   }
 }

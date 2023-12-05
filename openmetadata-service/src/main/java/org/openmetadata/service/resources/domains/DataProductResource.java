@@ -51,9 +51,12 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.entity.domains.DataProduct;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.api.BulkAssets;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DataProductRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -218,7 +221,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = DataProduct.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "DataProduct for instance {id} and version {version} is " + "not found")
+            description = "DataProduct for instance {id} and version {version} is not found")
       })
   public DataProduct getVersion(
       @Context UriInfo uriInfo,
@@ -255,7 +258,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
       operationId = "createOrUpdateDataProduct",
       summary = "Create or update a dataProduct",
       description =
-          "Create a dataProduct. if it does not exist. If a dataProduct already exists, update the " + "dataProduct.",
+          "Create a dataProduct. if it does not exist. If a dataProduct already exists, update the dataProduct.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -267,6 +270,51 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDataProduct create) {
     DataProduct dataProduct = getDataProduct(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, dataProduct);
+  }
+
+  @PUT
+  @Path("/{name}/assets/add")
+  @Operation(
+      operationId = "bulkAddAssets",
+      summary = "Bulk Add Assets",
+      description = "Bulk Add Assets",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = BulkOperationResult.class))),
+        @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
+      })
+  public Response bulkAddAssets(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the Data product", schema = @Schema(type = "string")) @PathParam("name")
+          String name,
+      @Valid BulkAssets request) {
+    return Response.ok().entity(repository.bulkAddAssets(name, request)).build();
+  }
+
+  @PUT
+  @Path("/{name}/assets/remove")
+  @Operation(
+      operationId = "bulkRemoveAssets",
+      summary = "Bulk Remove Assets",
+      description = "Bulk Remove Assets",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
+      })
+  public Response bulkRemoveGlossaryFromAssets(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the Data Product", schema = @Schema(type = "string")) @PathParam("name")
+          String name,
+      @Valid BulkAssets request) {
+    return Response.ok().entity(repository.bulkRemoveAssets(name, request)).build();
   }
 
   @PATCH
@@ -286,9 +334,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }

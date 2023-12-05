@@ -70,7 +70,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     this.userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     this.tokenRepository = Entity.getTokenRepository();
     this.ldapConfiguration = config.getAuthenticationConfiguration().getLdapConfiguration();
-    this.loginAttemptCache = new LoginAttemptCache(config);
+    this.loginAttemptCache = new LoginAttemptCache();
     this.loginConfiguration = SettingsCache.getSetting(SettingsType.LOGIN_CONFIGURATION, LoginConfiguration.class);
   }
 

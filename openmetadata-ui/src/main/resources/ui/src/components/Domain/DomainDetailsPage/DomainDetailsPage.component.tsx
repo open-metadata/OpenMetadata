@@ -81,6 +81,10 @@ import {
   getDomainPath,
   getDomainVersionsPath,
 } from '../../../utils/RouterUtils';
+import {
+  escapeESReservedCharacters,
+  getEncodedFqn,
+} from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
@@ -190,7 +194,7 @@ const DomainDetailsPage = ({
     async (formData: CreateDataProduct) => {
       const data = {
         ...formData,
-        domain: domain.name,
+        domain: domain.fullyQualifiedName,
       };
 
       try {
@@ -234,11 +238,14 @@ const DomainDetailsPage = ({
   const fetchDataProducts = async () => {
     if (!isVersionsView) {
       try {
+        const encodedFqn = getEncodedFqn(
+          escapeESReservedCharacters(domain.fullyQualifiedName)
+        );
         const res = await searchData(
           '',
           1,
           0,
-          `(domain.fullyQualifiedName:"${domainFqn}")`,
+          `(domain.fullyQualifiedName:"${encodedFqn}")`,
           '',
           '',
           SearchIndex.DATA_PRODUCT
@@ -254,11 +261,14 @@ const DomainDetailsPage = ({
   const fetchDomainAssets = async () => {
     if (fqn && !isVersionsView) {
       try {
+        const encodedFqn = getEncodedFqn(
+          escapeESReservedCharacters(domain.fullyQualifiedName)
+        );
         const res = await searchData(
           '',
           1,
           0,
-          `(domain.fullyQualifiedName:"${fqn}")`,
+          `(domain.fullyQualifiedName:"${encodedFqn}") AND !(entityType:"dataProduct")`,
           '',
           '',
           SearchIndex.ALL
@@ -300,12 +310,11 @@ const DomainDetailsPage = ({
   }, []);
 
   const onNameSave = (obj: { name: string; displayName: string }) => {
-    const { name, displayName } = obj;
+    const { displayName } = obj;
     let updatedDetails = cloneDeep(domain);
 
     updatedDetails = {
       ...domain,
-      name: name?.trim() || domain.name,
       displayName: displayName?.trim(),
     };
 
@@ -627,15 +636,17 @@ const DomainDetailsPage = ({
           }
         />
       )}
+      {assetModalVisible && (
+        <AssetSelectionModal
+          entityFqn={domainFqn}
+          open={assetModalVisible}
+          queryFilter={getQueryFilterToExcludeDomainTerms(domainFqn)}
+          type={AssetsOfEntity.DOMAIN}
+          onCancel={() => setAssetModelVisible(false)}
+          onSave={handleAssetSave}
+        />
+      )}
 
-      <AssetSelectionModal
-        entityFqn={domainFqn}
-        open={assetModalVisible}
-        queryFilter={getQueryFilterToExcludeDomainTerms(domainFqn)}
-        type={AssetsOfEntity.DOMAIN}
-        onCancel={() => setAssetModelVisible(false)}
-        onSave={handleAssetSave}
-      />
       {domain && (
         <DeleteWidgetModal
           afterDeleteAction={() => onDelete(domain.id)}
@@ -650,10 +661,9 @@ const DomainDetailsPage = ({
         />
       )}
       <EntityNameModal
-        allowRename
         entity={domain}
         title={t('label.edit-entity', {
-          entity: t('label.name'),
+          entity: t('label.display-name'),
         })}
         visible={isNameEditing}
         onCancel={() => setIsNameEditing(false)}

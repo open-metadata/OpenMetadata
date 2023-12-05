@@ -14,25 +14,27 @@
 /// <reference types="cypress" />
 
 import {
+  addOwner,
   interceptURL,
   toastNotification,
   verifyResponseStatusCode,
   visitEntityDetailsPage,
 } from '../../common/common';
-import { createEntityTable, hardDeleteService } from '../../common/entityUtils';
+import { createEntityTable, hardDeleteService } from '../../common/EntityUtils';
 import {
   createAndUpdateDescriptionTask,
+  createDescriptionTask,
   editAssignee,
   verifyTaskDetails,
 } from '../../common/TaskUtils';
-import { MYDATA_SUMMARY_OPTIONS } from '../../constants/constants';
-import { DATABASE_SERVICE } from '../../constants/entityConstant';
+import { DATA_ASSETS } from '../../constants/constants';
+import { DATABASE_SERVICE } from '../../constants/EntityConstant';
 import { SERVICE_CATEGORIES } from '../../constants/service.constants';
 
 const ENTITY_TABLE = {
-  term: DATABASE_SERVICE.tables.name,
-  displayName: DATABASE_SERVICE.tables.name,
-  entity: MYDATA_SUMMARY_OPTIONS.tables,
+  term: DATABASE_SERVICE.entity.name,
+  displayName: DATABASE_SERVICE.entity.name,
+  entity: DATA_ASSETS.tables,
   serviceName: DATABASE_SERVICE.service.name,
   schemaName: DATABASE_SERVICE.schema.name,
   entityType: 'Table',
@@ -47,7 +49,7 @@ describe('Task flow should work', () => {
       createEntityTable({
         token,
         ...DATABASE_SERVICE,
-        tables: [DATABASE_SERVICE.tables],
+        tables: [DATABASE_SERVICE.entity],
       });
     });
   });
@@ -191,6 +193,40 @@ describe('Task flow should work', () => {
         term: entity.displayName ?? entity.name,
         tagCount: entity.tags.length ?? 0,
       });
+    });
+  });
+
+  it('Asignee field should be disabled for owned entity tasks', () => {
+    interceptURL(
+      'GET',
+      `/api/v1/${ENTITY_TABLE.entity}/name/*`,
+      'getEntityDetails'
+    );
+
+    visitEntityDetailsPage({
+      term: ENTITY_TABLE.term,
+      serviceName: ENTITY_TABLE.serviceName,
+      entity: ENTITY_TABLE.entity,
+    });
+
+    addOwner('Adam Rodriguez', 'tables');
+
+    cy.get('[data-testid="request-description"]').click();
+
+    cy.wait('@getEntityDetails').then((res) => {
+      const entity = res.response.body;
+
+      // create description task and verify asignee field to have owner
+      // and should be disbaled
+
+      createDescriptionTask(
+        {
+          ...ENTITY_TABLE,
+          assignee: 'Adam Rodriguez',
+          term: entity.displayName ?? entity.name,
+        },
+        true
+      );
     });
   });
 });

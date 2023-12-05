@@ -63,6 +63,7 @@ import {
 import { Domain } from '../../../generated/entity/domains/domain';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { Style } from '../../../generated/type/tagLabel';
+import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { searchData } from '../../../rest/miscAPI';
 import { getEntityDeleteMessage } from '../../../utils/CommonUtils';
 import { getQueryFilterToIncludeDomain } from '../../../utils/DomainUtils';
@@ -77,6 +78,10 @@ import {
   getDataProductVersionsPath,
   getDomainPath,
 } from '../../../utils/RouterUtils';
+import {
+  escapeESReservedCharacters,
+  getEncodedFqn,
+} from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
@@ -202,13 +207,16 @@ const DataProductsDetailsPage = ({
   }, [permissions, isVersionsView]);
 
   const fetchDataProductAssets = async () => {
-    if (fqn) {
+    if (dataProduct) {
       try {
+        const encodedFqn = getEncodedFqn(
+          escapeESReservedCharacters(dataProduct.fullyQualifiedName)
+        );
         const res = await searchData(
           '',
           1,
           0,
-          `(dataProducts.fullyQualifiedName:"${fqn}")`,
+          `(dataProducts.fullyQualifiedName:"${encodedFqn}")`,
           '',
           '',
           SearchIndex.ALL
@@ -312,12 +320,11 @@ const DataProductsDetailsPage = ({
 
   const onNameSave = (obj: { name: string; displayName: string }) => {
     if (dataProduct) {
-      const { name, displayName } = obj;
+      const { displayName } = obj;
       let updatedDetails = cloneDeep(dataProduct);
 
       updatedDetails = {
         ...dataProduct,
-        name: name?.trim() || dataProduct.name,
         displayName: displayName?.trim(),
       };
 
@@ -548,10 +555,9 @@ const DataProductsDetailsPage = ({
       </Row>
 
       <EntityNameModal
-        allowRename
         entity={dataProduct}
         title={t('label.edit-entity', {
-          entity: t('label.name'),
+          entity: t('label.display-name'),
         })}
         visible={isNameEditing}
         onCancel={() => setIsNameEditing(false)}
@@ -567,20 +573,24 @@ const DataProductsDetailsPage = ({
         onConfirm={onDelete}
       />
 
-      <AssetSelectionModal
-        emptyPlaceHolderText={t('message.domain-does-not-have-assets', {
-          name: getEntityName(dataProduct.domain),
-        })}
-        entityFqn={dataProductFqn}
-        open={assetModalVisible}
-        queryFilter={getQueryFilterToIncludeDomain(
-          dataProduct.domain?.fullyQualifiedName ?? '',
-          dataProduct.fullyQualifiedName ?? ''
-        )}
-        type={AssetsOfEntity.DATA_PRODUCT}
-        onCancel={() => setAssetModelVisible(false)}
-        onSave={handleAssetSave}
-      />
+      {assetModalVisible && (
+        <AssetSelectionModal
+          emptyPlaceHolderText={t('message.domain-does-not-have-assets', {
+            name: getEntityName(dataProduct.domain),
+          })}
+          entityFqn={dataProductFqn}
+          open={assetModalVisible}
+          queryFilter={
+            getQueryFilterToIncludeDomain(
+              dataProduct.domain?.fullyQualifiedName ?? '',
+              dataProduct.fullyQualifiedName ?? ''
+            ) as QueryFilterInterface
+          }
+          type={AssetsOfEntity.DATA_PRODUCT}
+          onCancel={() => setAssetModelVisible(false)}
+          onSave={handleAssetSave}
+        />
+      )}
 
       <StyleModal
         open={isStyleEditing}

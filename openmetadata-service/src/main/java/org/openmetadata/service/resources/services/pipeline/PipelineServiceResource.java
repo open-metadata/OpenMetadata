@@ -120,7 +120,7 @@ public class PipelineServiceResource
       @Parameter(description = "Filter services by domain", schema = @Schema(type = "string", example = "Marketing"))
           @QueryParam("domain")
           String domain,
-      @Parameter(description = "Limit number services returned. (1 to 1000000, " + "default 10)")
+      @Parameter(description = "Limit number services returned. (1 to 1000000, default 10)")
           @DefaultValue("10")
           @Min(0)
           @Max(1000000)
@@ -282,14 +282,14 @@ public class PipelineServiceResource
                 @Content(mediaType = "application/json", schema = @Schema(implementation = PipelineService.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Pipeline service for instance {id} and version " + "{version} is not found")
+            description = "Pipeline service for instance {id} and version {version} is not found")
       })
   public PipelineService getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the pipeline service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
-              description = "pipeline service version number in the form `major`" + ".`minor`",
+              description = "pipeline service version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
@@ -356,9 +356,7 @@ public class PipelineServiceResource
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
@@ -368,11 +366,10 @@ public class PipelineServiceResource
   @Operation(
       operationId = "deletePipelineService",
       summary = "Delete a pipeline service by Id",
-      description =
-          "Delete a pipeline services. If pipelines (and tasks) belong to the service, it can't be " + "deleted.",
+      description = "Delete a pipeline services. If pipelines (and tasks) belong to the service, it can't be deleted.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "Pipeline service for instance {id} " + "is not found")
+        @ApiResponse(responseCode = "404", description = "Pipeline service for instance {id} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
@@ -400,11 +397,15 @@ public class PipelineServiceResource
               + "deleted.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "Pipeline service for instance {fqn} " + "is not found")
+        @ApiResponse(responseCode = "404", description = "Pipeline service for instance {fqn} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
       @Parameter(description = "Hard delete the entity. (Default = `false`)")
           @QueryParam("hardDelete")
           @DefaultValue("false")
@@ -412,7 +413,7 @@ public class PipelineServiceResource
       @Parameter(description = "Fully qualified name of the pipeline service", schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+    return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
   }
 
   @PUT

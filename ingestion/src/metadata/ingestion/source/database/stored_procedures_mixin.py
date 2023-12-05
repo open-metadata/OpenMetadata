@@ -153,11 +153,11 @@ class StoredProcedureMixin(ABC):
             for either_lineage in get_lineage_by_query(
                 self.metadata,
                 query=query_by_procedure.query_text,
-                service_name=self.context.database_service.name.__root__,
+                service_name=self.context.database_service,
                 database_name=query_by_procedure.query_database_name,
                 schema_name=query_by_procedure.query_schema_name,
                 dialect=ConnectionTypeDialectMapper.dialect_of(
-                    self.context.database_service.serviceType.value
+                    self.service_connection.type.value
                 ),
                 timeout_seconds=self.source_config.queryParsingTimeoutLimit,
                 lineage_source=LineageSource.QueryLineage,
@@ -190,7 +190,7 @@ class StoredProcedureMixin(ABC):
                     type="storedProcedure",
                 ),
                 processedLineage=bool(self.context.stored_procedure_query_lineage),
-                service=self.context.database_service.name.__root__,
+                service=self.context.database_service,
             )
         )
 
@@ -203,14 +203,18 @@ class StoredProcedureMixin(ABC):
             # First, get all the query history
             queries_dict = self.get_stored_procedure_queries_dict()
             # Then for each procedure, iterate over all its queries
-            for procedure in self.context.stored_procedures:
-                logger.debug(f"Processing Lineage for [{procedure.name}]")
-                for query_by_procedure in (
-                    queries_dict.get(procedure.name.__root__.lower()) or []
-                ):
-                    yield from self.yield_procedure_lineage(
-                        query_by_procedure=query_by_procedure, procedure=procedure
-                    )
-                    yield from self.yield_procedure_query(
-                        query_by_procedure=query_by_procedure, procedure=procedure
-                    )
+            for procedure_fqn in self.context.stored_procedures:
+                procedure = self.metadata.get_by_name(
+                    entity=StoredProcedure, fqn=procedure_fqn
+                )
+                if procedure:
+                    logger.debug(f"Processing Lineage for [{procedure.name}]")
+                    for query_by_procedure in (
+                        queries_dict.get(procedure.name.__root__.lower()) or []
+                    ):
+                        yield from self.yield_procedure_lineage(
+                            query_by_procedure=query_by_procedure, procedure=procedure
+                        )
+                        yield from self.yield_procedure_query(
+                            query_by_procedure=query_by_procedure, procedure=procedure
+                        )

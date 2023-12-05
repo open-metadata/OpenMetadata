@@ -16,8 +16,11 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.CONTAINER;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 import static org.openmetadata.service.util.EntityUtil.taskMatch;
 
 import java.util.ArrayList;
@@ -125,17 +128,18 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Override
-  public Pipeline setFields(Pipeline pipeline, Fields fields) {
+  public void setFields(Pipeline pipeline, Fields fields) {
     pipeline.setService(getContainer(pipeline.getId()));
+    pipeline.setSourceHash(fields.contains("sourceHash") ? pipeline.getSourceHash() : null);
     getTaskTags(fields.contains(FIELD_TAGS), pipeline.getTasks());
-    return pipeline.withPipelineStatus(
+    pipeline.withPipelineStatus(
         fields.contains("pipelineStatus") ? getPipelineStatus(pipeline) : pipeline.getPipelineStatus());
   }
 
   @Override
-  public Pipeline clearFields(Pipeline pipeline, Fields fields) {
+  public void clearFields(Pipeline pipeline, Fields fields) {
     pipeline.withTasks(fields.contains(TASKS_FIELD) ? pipeline.getTasks() : null);
-    return pipeline.withPipelineStatus(fields.contains("pipelineStatus") ? pipeline.getPipelineStatus() : null);
+    pipeline.withPipelineStatus(fields.contains("pipelineStatus") ? pipeline.getPipelineStatus() : null);
   }
 
   private PipelineStatus getPipelineStatus(Pipeline pipeline) {
@@ -178,7 +182,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   public Pipeline deletePipelineStatus(String fqn, Long timestamp) {
     // Validate the request content
-    Pipeline pipeline = dao.findEntityByName(fqn);
+    Pipeline pipeline = findByName(fqn, NON_DELETED);
     pipeline.setService(getContainer(pipeline.getId()));
     PipelineStatus storedPipelineStatus =
         JsonUtils.readValue(getExtensionAtTimestamp(fqn, PIPELINE_STATUS_EXTENSION, timestamp), PipelineStatus.class);
@@ -217,9 +221,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   @Override
   public void prepare(Pipeline pipeline, boolean update) {
     populateService(pipeline);
-    if (pipeline.getTasks() != null) {
-      pipeline.getTasks().forEach(task -> checkMutuallyExclusive(task.getTags()));
-    }
   }
 
   @Override
@@ -245,15 +246,25 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   public void applyTags(Pipeline pipeline) {
     // Add table level tags by adding tag to table relationship
     super.applyTags(pipeline);
-    applyTags(pipeline.getTasks());
+    applyTaskTags(pipeline.getTasks()); // TODO need cleanup
   }
 
   @Override
   public EntityInterface getParentEntity(Pipeline entity, String fields) {
-    return Entity.getEntity(entity.getService(), fields, Include.NON_DELETED);
+    return Entity.getEntity(entity.getService(), fields, Include.ALL);
   }
 
-  private void applyTags(List<Task> tasks) {
+  @Override
+  public void validateTags(Pipeline entity) {
+    super.validateTags(entity);
+    for (Task task : listOrEmpty(entity.getTasks())) {
+      validateTags(task.getTags());
+      task.setTags(addDerivedTags(task.getTags()));
+      checkMutuallyExclusive(task.getTags());
+    }
+  }
+
+  private void applyTaskTags(List<Task> tasks) {
     for (Task task : listOrEmpty(tasks)) {
       applyTags(task.getTags(), task.getFullyQualifiedName());
     }
@@ -374,7 +385,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         List<Task> added = new ArrayList<>();
         List<Task> deleted = new ArrayList<>();
         recordListChange(TASKS_FIELD, origTasks, updatedTasks, added, deleted, taskMatch);
-        applyTags(added);
+        applyTaskTags(added);
         deleted.forEach(d -> daoCollection.tagUsageDAO().deleteTagsByTarget(d.getFullyQualifiedName()));
       }
     }

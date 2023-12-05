@@ -215,9 +215,7 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
             responseCode = "200",
             description = "Persona",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Persona.class))),
-        @ApiResponse(
-            responseCode = "404",
-            description = "Persona for instance {id} and version {version} is " + "not found")
+        @ApiResponse(responseCode = "404", description = "Persona for instance {id} and version {version} is not found")
       })
   public Persona getVersion(
       @Context UriInfo uriInfo,
@@ -283,9 +281,7 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }

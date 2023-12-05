@@ -66,13 +66,13 @@ import org.openmetadata.service.util.ResultList;
 @Path("/v1/charts")
 @Tag(
     name = "Charts",
-    description = "A `Chart` are computed from data presents data visually and can be part of " + "`Dashboards`.")
+    description = "A `Chart` are computed from data presents data visually and can be part of `Dashboards`.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "charts")
 public class ChartResource extends EntityResource<Chart, ChartRepository> {
   public static final String COLLECTION_PATH = "v1/charts/";
-  static final String FIELDS = "owner,followers,tags,domain,dataProducts";
+  static final String FIELDS = "owner,followers,tags,domain,dataProducts,sourceHash";
 
   @Override
   public Chart addHref(UriInfo uriInfo, Chart chart) {
@@ -235,9 +235,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
             responseCode = "200",
             description = "chart",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Chart.class))),
-        @ApiResponse(
-            responseCode = "404",
-            description = "Chart for instance {id} and version {version} is " + "not found")
+        @ApiResponse(responseCode = "404", description = "Chart for instance {id} and version {version} is not found")
       })
   public Chart getVersion(
       @Context UriInfo uriInfo,
@@ -286,9 +284,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
               content =
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
-                      }))
+                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
@@ -431,6 +427,6 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
         .withService(EntityUtil.getEntityReference(Entity.DASHBOARD_SERVICE, create.getService()))
         .withChartType(create.getChartType())
         .withSourceUrl(create.getSourceUrl())
-        .withTags(create.getTags());
+        .withSourceHash(create.getSourceHash());
   }
 }

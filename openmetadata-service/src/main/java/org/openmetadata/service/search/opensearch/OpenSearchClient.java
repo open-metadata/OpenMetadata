@@ -59,10 +59,12 @@ import org.openmetadata.service.search.indexes.MlModelIndex;
 import org.openmetadata.service.search.indexes.PipelineIndex;
 import org.openmetadata.service.search.indexes.QueryIndex;
 import org.openmetadata.service.search.indexes.SearchEntityIndex;
+import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.indexes.StoredProcedureIndex;
 import org.openmetadata.service.search.indexes.TableIndex;
 import org.openmetadata.service.search.indexes.TagIndex;
 import org.openmetadata.service.search.indexes.TestCaseIndex;
+import org.openmetadata.service.search.indexes.TestCaseResolutionStatusIndex;
 import org.openmetadata.service.search.indexes.TopicIndex;
 import org.openmetadata.service.search.indexes.UserIndex;
 import org.openmetadata.service.search.models.IndexMapping;
@@ -184,7 +186,7 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
-  public boolean createIndex(IndexMapping indexMapping, String indexMappingContent) {
+  public void createIndex(IndexMapping indexMapping, String indexMappingContent) {
     if (Boolean.TRUE.equals(isClientAvailable)) {
       try {
         CreateIndexRequest request = new CreateIndexRequest(indexMapping.getIndexName());
@@ -195,13 +197,10 @@ public class OpenSearchClient implements SearchClient {
         createAliases(indexMapping);
       } catch (Exception e) {
         LOG.error("Failed to create Open Search indexes due to", e);
-        return false;
       }
-      return true;
     } else {
       LOG.error(
           "Failed to create Open Search index as client is not property configured, Please check your OpenMetadata configuration");
-      return false;
     }
   }
 
@@ -231,7 +230,7 @@ public class OpenSearchClient implements SearchClient {
       AcknowledgedResponse putMappingResponse = client.indices().putMapping(request, RequestOptions.DEFAULT);
       LOG.debug("{} Updated {}", indexMapping.getIndexMappingFile(), putMappingResponse.isAcknowledged());
     } catch (Exception e) {
-      LOG.error(String.format("Failed to Update Open Search index %s due to", indexMapping.getIndexName()), e);
+      LOG.warn(String.format("Failed to Update Open Search index %s", indexMapping.getIndexName()));
     }
   }
 
@@ -304,6 +303,10 @@ public class OpenSearchClient implements SearchClient {
       case "data_product_search_index":
         searchSourceBuilder = buildDataProductSearch(request.getQuery(), request.getFrom(), request.getSize());
         break;
+      case "test_case_resolution_status_search_index":
+        searchSourceBuilder =
+            buildTestCaseResolutionStatusSearch(request.getQuery(), request.getFrom(), request.getSize());
+        break;
       default:
         searchSourceBuilder = buildAggregateSearchBuilder(request.getQuery(), request.getFrom(), request.getSize());
         break;
@@ -336,7 +339,17 @@ public class OpenSearchClient implements SearchClient {
     }
 
     /* For backward-compatibility we continue supporting the deleted argument, this should be removed in future versions */
-    if (request.getIndex().equalsIgnoreCase("domain_search_index")
+    if (request.getIndex().equalsIgnoreCase("all")) {
+      BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
+      boolQueryBuilder.should(
+          QueryBuilders.boolQuery()
+              .must(searchSourceBuilder.query())
+              .must(QueryBuilders.existsQuery("deleted"))
+              .must(QueryBuilders.termQuery("deleted", request.deleted())));
+      boolQueryBuilder.should(
+          QueryBuilders.boolQuery().must(searchSourceBuilder.query()).mustNot(QueryBuilders.existsQuery("deleted")));
+      searchSourceBuilder.query(boolQueryBuilder);
+    } else if (request.getIndex().equalsIgnoreCase("domain_search_index")
         || request.getIndex().equalsIgnoreCase("data_product_search_index")
         || request.getIndex().equalsIgnoreCase("query_search_index")
         || request.getIndex().equalsIgnoreCase("raw_cost_analysis_report_data_index")
@@ -419,7 +432,7 @@ public class OpenSearchClient implements SearchClient {
             AggregationBuilders.terms(fieldName)
                 .field(fieldName)
                 .size(MAX_AGGREGATE_SIZE)
-                .includeExclude(new IncludeExclude(value, null))
+                .includeExclude(new IncludeExclude(value.toLowerCase(), null))
                 .order(BucketOrder.key(true)))
         .query(boolQueryBuilder)
         .size(0);
@@ -485,11 +498,8 @@ public class OpenSearchClient implements SearchClient {
   }
 
   private static SearchSourceBuilder buildPipelineSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query)
-            .fields(PipelineIndex.getFields())
-            .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO);
+    QueryStringQueryBuilder queryBuilder = buildSearchQueryBuilder(query, PipelineIndex.getFields());
+
     HighlightBuilder.Field highlightPipelineName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
     highlightPipelineName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
@@ -510,11 +520,8 @@ public class OpenSearchClient implements SearchClient {
   }
 
   private static SearchSourceBuilder buildMlModelSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query)
-            .fields(MlModelIndex.getFields())
-            .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO);
+    QueryStringQueryBuilder queryBuilder = buildSearchQueryBuilder(query, MlModelIndex.getFields());
+
     HighlightBuilder.Field highlightPipelineName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
     highlightPipelineName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
@@ -533,11 +540,8 @@ public class OpenSearchClient implements SearchClient {
   }
 
   private static SearchSourceBuilder buildTopicSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query)
-            .fields(TopicIndex.getFields())
-            .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO);
+    QueryStringQueryBuilder queryBuilder = buildSearchQueryBuilder(query, TopicIndex.getFields());
+
     HighlightBuilder.Field highlightTopicName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
     highlightTopicName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
@@ -555,11 +559,8 @@ public class OpenSearchClient implements SearchClient {
   }
 
   private static SearchSourceBuilder buildDashboardSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query)
-            .fields(DashboardIndex.getFields())
-            .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO);
+    QueryStringQueryBuilder queryBuilder = buildSearchQueryBuilder(query, DashboardIndex.getFields());
+
     HighlightBuilder.Field highlightDashboardName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
     highlightDashboardName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
@@ -639,11 +640,7 @@ public class OpenSearchClient implements SearchClient {
   }
 
   private static SearchSourceBuilder buildGlossaryTermSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query)
-            .fields(GlossaryTermIndex.getFields())
-            .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO);
+    QueryStringQueryBuilder queryBuilder = buildSearchQueryBuilder(query, GlossaryTermIndex.getFields());
 
     HighlightBuilder.Field highlightGlossaryName = new HighlightBuilder.Field(FIELD_NAME);
     highlightGlossaryName.highlighterType(UNIFIED);
@@ -668,11 +665,7 @@ public class OpenSearchClient implements SearchClient {
   }
 
   private static SearchSourceBuilder buildTagSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query)
-            .fields(TagIndex.getFields())
-            .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO);
+    QueryStringQueryBuilder queryBuilder = buildSearchQueryBuilder(query, TagIndex.getFields());
 
     HighlightBuilder.Field highlightTagName = new HighlightBuilder.Field(FIELD_NAME);
     highlightTagName.highlighterType(UNIFIED);
@@ -694,11 +687,8 @@ public class OpenSearchClient implements SearchClient {
   }
 
   private static SearchSourceBuilder buildContainerSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query)
-            .fields(ContainerIndex.getFields())
-            .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO);
+    QueryStringQueryBuilder queryBuilder = buildSearchQueryBuilder(query, ContainerIndex.getFields());
+
     HighlightBuilder.Field highlightContainerName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
     highlightContainerName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
@@ -726,11 +716,7 @@ public class OpenSearchClient implements SearchClient {
   }
 
   private static SearchSourceBuilder buildQuerySearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query)
-            .fields(QueryIndex.getFields())
-            .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO);
+    QueryStringQueryBuilder queryBuilder = buildSearchQueryBuilder(query, QueryIndex.getFields());
 
     HighlightBuilder.Field highlightGlossaryName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
     highlightGlossaryName.highlighterType(UNIFIED);
@@ -748,11 +734,7 @@ public class OpenSearchClient implements SearchClient {
   }
 
   private static SearchSourceBuilder buildTestCaseSearch(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query)
-            .fields(TestCaseIndex.getFields())
-            .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO);
+    QueryStringQueryBuilder queryBuilder = buildSearchQueryBuilder(query, TestCaseIndex.getFields());
 
     HighlightBuilder.Field highlightTestCaseDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightTestCaseDescription.highlighterType(UNIFIED);
@@ -775,11 +757,7 @@ public class OpenSearchClient implements SearchClient {
   }
 
   private static SearchSourceBuilder buildStoredProcedureSearch(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query)
-            .fields(StoredProcedureIndex.getFields())
-            .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO);
+    QueryStringQueryBuilder queryBuilder = buildSearchQueryBuilder(query, StoredProcedureIndex.getFields());
 
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
@@ -797,11 +775,7 @@ public class OpenSearchClient implements SearchClient {
   }
 
   private static SearchSourceBuilder buildDashboardDataModelsSearch(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query)
-            .fields(DashboardDataModelIndex.getFields())
-            .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO);
+    QueryStringQueryBuilder queryBuilder = buildSearchQueryBuilder(query, DashboardDataModelIndex.getFields());
 
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
@@ -830,11 +804,7 @@ public class OpenSearchClient implements SearchClient {
   }
 
   private static SearchSourceBuilder buildDomainsSearch(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query)
-            .fields(DomainIndex.getFields())
-            .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO);
+    QueryStringQueryBuilder queryBuilder = buildSearchQueryBuilder(query, DomainIndex.getFields());
 
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
@@ -851,11 +821,7 @@ public class OpenSearchClient implements SearchClient {
   }
 
   private static SearchSourceBuilder buildSearchEntitySearch(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query)
-            .fields(SearchEntityIndex.getFields())
-            .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO);
+    QueryStringQueryBuilder queryBuilder = buildSearchQueryBuilder(query, SearchEntityIndex.getFields());
 
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
@@ -877,8 +843,35 @@ public class OpenSearchClient implements SearchClient {
     return addAggregation(searchSourceBuilder);
   }
 
+  private static SearchSourceBuilder buildTestCaseResolutionStatusSearch(String query, int from, int size) {
+    QueryStringQueryBuilder queryBuilder = buildSearchQueryBuilder(query, TestCaseResolutionStatusIndex.getFields());
+
+    HighlightBuilder hb = new HighlightBuilder();
+    HighlightBuilder.Field highlightTestCaseDescription = new HighlightBuilder.Field("testCaseReference.description");
+    highlightTestCaseDescription.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightTestCaseName = new HighlightBuilder.Field("testCaseReference.name");
+    highlightTestCaseName.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightResolutionComment =
+        new HighlightBuilder.Field("testCaseResolutionStatusDetails.resolved.testCaseFailureComment");
+    highlightResolutionComment.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightResolutionType = new HighlightBuilder.Field("testCaseResolutionStatusType");
+    highlightResolutionType.highlighterType(UNIFIED);
+
+    hb.field(highlightTestCaseDescription);
+    hb.field(highlightTestCaseName);
+    hb.field(highlightResolutionComment);
+    hb.field(highlightResolutionType);
+
+    return searchBuilder(queryBuilder, hb, from, size);
+  }
+
+  private static QueryStringQueryBuilder buildSearchQueryBuilder(String query, Map<String, Float> fields) {
+    return QueryBuilders.queryStringQuery(query).fields(fields).defaultOperator(Operator.AND).fuzziness(Fuzziness.AUTO);
+  }
+
   private static SearchSourceBuilder buildAggregateSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder = QueryBuilders.queryStringQuery(query).lenient(true);
+    QueryStringQueryBuilder queryBuilder =
+        QueryBuilders.queryStringQuery(query).fields(SearchIndex.getDefaultFields()).lenient(true);
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, null, from, size);
     return addAggregation(searchSourceBuilder);
   }

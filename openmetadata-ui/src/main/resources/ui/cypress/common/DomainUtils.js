@@ -62,14 +62,16 @@ const checkDisplayName = (displayName) => {
     });
 };
 
-const checkName = (name) => {
-  cy.get('[data-testid="entity-header-name"]')
+const checkDataProductsCount = (dataProductsCount) => {
+  cy.get('[data-testid="data_products"] [data-testid="count"]')
     .scrollIntoView()
-    .should('exist')
-    .and('be.visible')
-    .within(() => {
-      cy.contains(name);
-    });
+    .should('have.text', dataProductsCount);
+};
+
+const checkAssetsCount = (assetsCount) => {
+  cy.get('[data-testid="assets"] [data-testid="count"]')
+    .scrollIntoView()
+    .should('have.text', assetsCount);
 };
 
 const updateOwner = (newOwner) => {
@@ -102,6 +104,13 @@ const goToAssetsTab = (domainObj) => {
   checkDisplayName(domainObj.name);
   cy.get('[data-testid="assets"]').should('be.visible').click();
   cy.get('.ant-tabs-tab-active').contains('Assets').should('be.visible');
+};
+
+const goToDataProductsTab = (domainObj) => {
+  cy.get('[data-testid="domain-left-panel"]').contains(domainObj.name).click();
+  checkDisplayName(domainObj.name);
+  cy.get('[data-testid="data_products"]').click();
+  cy.get('.ant-tabs-tab-active').contains('Data Products').should('be.visible');
 };
 
 export const updateAssets = (domainObj) => {
@@ -277,6 +286,8 @@ export const createDomain = (domainObj, validate) => {
 
     cy.url().should('include', '/domain/');
     checkDisplayName(domainObj.name);
+    checkAssetsCount(0);
+    checkDataProductsCount(0);
   });
 };
 
@@ -290,7 +301,7 @@ export const deleteDomain = (domainObj) => {
 
   cy.get('[data-testid="delete-modal"] .ant-modal-title').should(
     'contain',
-    `Delete ${domainObj.updatedName}`
+    `Delete ${domainObj.name}`
   );
 
   cy.get('[data-testid="confirmation-text-input"]').type(DELETE_TERM);
@@ -357,7 +368,7 @@ export const createDataProducts = (dataProduct, domainObj) => {
 
   cy.wait('@createDataProducts').then(({ request }) => {
     expect(request.body.name).equals(dataProduct.name);
-    expect(request.body.domain).equals(domainObj.name);
+    expect(request.body.domain).equals(domainObj.fullyQualifiedName);
     expect(request.body.description).equals(dataProduct.description);
     expect(request.body.experts).has.length(1);
   });
@@ -371,15 +382,139 @@ export const renameDomain = (domainObj) => {
   cy.get('[data-testid="manage-button"]').click();
   cy.get('[data-testid="rename-button-details-container"]').click();
 
-  cy.get('#name').should('not.be.disabled').clear();
+  cy.get('#name').should('be.disabled');
   cy.get('#displayName').should('not.be.disabled').clear();
 
-  cy.get('#name').type(domainObj.updatedName);
   cy.get('#displayName').type(domainObj.updatedDisplayName);
 
   cy.get('[data-testid="save-button"]').click();
   verifyResponseStatusCode('@patchName&DisplayName', 200);
 
-  checkName(domainObj.updatedName);
   checkDisplayName(domainObj.updatedDisplayName);
+};
+
+export const addAssetsToDomain = (domainObj) => {
+  goToAssetsTab(domainObj);
+  checkAssetsCount(0);
+  cy.contains('Adding a new Asset is easy, just give it a spin!').should(
+    'be.visible'
+  );
+
+  cy.get('[data-testid="domain-details-add-button"]').click();
+  cy.get('.ant-dropdown-menu .ant-dropdown-menu-title-content')
+    .contains('Assets')
+    .click();
+
+  cy.get('[data-testid="asset-selection-modal"] .ant-modal-title').should(
+    'contain',
+    'Add Assets'
+  );
+
+  domainObj.assets.forEach((asset) => {
+    interceptURL('GET', '/api/v1/search/query*', 'searchAssets');
+    cy.get('[data-testid="asset-selection-modal"] [data-testid="searchbar"]')
+      .click()
+      .clear()
+      .type(asset.name);
+
+    verifyResponseStatusCode('@searchAssets', 200);
+
+    cy.get(
+      `[data-testid="table-data-card_${asset.fullyQualifiedName}"] input[type="checkbox"]`
+    ).click();
+  });
+
+  cy.get('[data-testid="save-btn"]').click();
+
+  checkAssetsCount(domainObj.assets.length);
+};
+
+export const removeAssetsFromDomain = (domainObj) => {
+  goToAssetsTab(domainObj);
+  checkAssetsCount(domainObj.assets.length);
+
+  domainObj.assets.forEach((asset, index) => {
+    interceptURL('GET', '/api/v1/search/query*', 'searchAssets');
+
+    cy.get(`[data-testid="manage-button-${asset.fullyQualifiedName}"]`).click();
+    cy.get('[data-testid="delete-button"]').click();
+
+    cy.get("[data-testid='save-button']").click();
+
+    goToDataProductsTab(domainObj);
+
+    interceptURL('GET', '/api/v1/search/query*', 'assetTab');
+    // go assets tab
+    goToAssetsTab(domainObj);
+    verifyResponseStatusCode('@assetTab', 200);
+
+    checkAssetsCount(domainObj.assets.length - (index + 1));
+  });
+};
+
+export const addAssetsToDataProduct = (dataProductObj, domainObj) => {
+  interceptURL('GET', `/api/v1/search/query**`, 'getDataProductAssets');
+  interceptURL('GET', '/api/v1/dataProducts/**', 'getDataProductDetails');
+
+  goToDataProductsTab(domainObj);
+  cy.get(
+    `[data-testid="explore-card-${dataProductObj.name}"] [data-testid="entity-link"]`
+  ).click();
+  verifyResponseStatusCode('@getDataProductDetails', 200);
+
+  cy.get('[data-testid="assets"]').should('be.visible').click();
+  cy.get('.ant-tabs-tab-active').contains('Assets').should('be.visible');
+
+  verifyResponseStatusCode('@getDataProductAssets', 200);
+
+  cy.contains('Adding a new Asset is easy, just give it a spin!').should(
+    'be.visible'
+  );
+
+  cy.get('[data-testid="data-product-details-add-button"]').click();
+
+  cy.get('[data-testid="asset-selection-modal"] .ant-modal-title').should(
+    'contain',
+    'Add Assets'
+  );
+
+  dataProductObj.assets.forEach((asset) => {
+    interceptURL('GET', '/api/v1/search/query*', 'searchAssets');
+    cy.get('[data-testid="asset-selection-modal"] [data-testid="searchbar"]')
+      .click()
+      .clear()
+      .type(asset.name);
+
+    verifyResponseStatusCode('@searchAssets', 200);
+
+    cy.get(
+      `[data-testid="table-data-card_${asset.fullyQualifiedName}"] input[type="checkbox"]`
+    ).click();
+  });
+
+  cy.get('[data-testid="save-btn"]').click();
+
+  checkAssetsCount(dataProductObj.assets.length);
+};
+
+export const removeAssetsFromDataProduct = (dataProductObj, domainObj) => {
+  goToDataProductsTab(domainObj);
+  cy.get(
+    `[data-testid="explore-card-${dataProductObj.name}"] [data-testid="entity-link"]`
+  ).click();
+
+  cy.get('[data-testid="assets"]').should('be.visible').click();
+  cy.get('.ant-tabs-tab-active').contains('Assets').should('be.visible');
+
+  checkAssetsCount(dataProductObj.assets.length);
+
+  dataProductObj.assets.forEach((asset, index) => {
+    interceptURL('GET', '/api/v1/search/query*', 'searchAssets');
+    cy.get(`[data-testid="manage-button-${asset.fullyQualifiedName}"]`).click();
+    cy.get('[data-testid="delete-button"]').click();
+
+    cy.get("[data-testid='save-button']").click();
+
+    checkAssetsCount(domainObj.assets.length - (index + 1));
+  });
 };

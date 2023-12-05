@@ -28,11 +28,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.TreeMap;
+import java.util.SortedMap;
 import javax.json.JsonObject;
 import javax.ws.rs.core.Response;
 import lombok.Getter;
@@ -52,6 +51,7 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.UnhandledServerException;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.models.IndexMapping;
@@ -81,7 +81,6 @@ public class SearchRepository {
           AGGREGATED_COST_ANALYSIS_REPORT_DATA);
 
   public static final String ELASTIC_SEARCH_EXTENSION = "service.eventPublisher";
-  public static final String ELASTIC_SEARCH_ENTITY_FQN_STREAM = "eventPublisher:ElasticSearch:STREAM";
 
   public SearchRepository(ElasticSearchConfiguration config) {
     elasticSearchConfiguration = config;
@@ -122,20 +121,20 @@ public class SearchRepository {
   }
 
   public void createIndexes() {
-    for (String entityType : entityIndexMap.keySet()) {
-      createIndex(entityIndexMap.get(entityType));
+    for (IndexMapping indexMapping : entityIndexMap.values()) {
+      createIndex(indexMapping);
     }
   }
 
   public void updateIndexes() {
-    for (String entityType : entityIndexMap.keySet()) {
-      updateIndex(entityIndexMap.get(entityType));
+    for (IndexMapping indexMapping : entityIndexMap.values()) {
+      updateIndex(indexMapping);
     }
   }
 
   public void dropIndexes() {
-    for (String entityType : entityIndexMap.keySet()) {
-      deleteIndex(entityIndexMap.get(entityType));
+    for (IndexMapping indexMapping : entityIndexMap.values()) {
+      deleteIndex(indexMapping);
     }
   }
 
@@ -169,7 +168,7 @@ public class SearchRepository {
       }
       searchClient.createAliases(indexMapping);
     } catch (Exception e) {
-      LOG.error(String.format("Failed to Update Index for entity %s due to ", indexMapping.getIndexName()), e);
+      LOG.warn(String.format("Failed to Update Index for entity %s", indexMapping.getIndexName()));
     }
   }
 
@@ -219,7 +218,7 @@ public class SearchRepository {
         // Report data type is an entity itself where each report data type has its own index
         entityType = ((ReportData) entity).getReportDataType().toString();
       } else {
-        entityType = entity.getClass().getSimpleName().toLowerCase(Locale.ROOT);
+        entityType = entity.getEntityReference().getType();
       }
       String entityId = entity.getId().toString();
       try {
@@ -260,6 +259,13 @@ public class SearchRepository {
                 entityId, entityType, ie.getMessage(), ie.getCause(), ExceptionUtils.getStackTrace(ie)));
       }
     }
+  }
+
+  public void updateEntity(EntityReference entityReference) {
+    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityReference.getType());
+    EntityInterface entity = entityRepository.get(null, entityReference.getId(), entityRepository.getFields("*"));
+    // Update Entity
+    updateEntity(entity);
   }
 
   public void propagateInheritedFieldsToChildren(
@@ -521,7 +527,7 @@ public class SearchRepository {
     return searchClient.suggest(request);
   }
 
-  public TreeMap<Long, List<Object>> getSortedDate(
+  public SortedMap<Long, List<Object>> getSortedDate(
       String team,
       Long scheduleTime,
       Long currentTime,

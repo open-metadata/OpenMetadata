@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Skeleton, Space, Tabs, TabsProps } from 'antd';
+import { Col, Row, Skeleton, Tabs, TabsProps } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
@@ -38,7 +38,7 @@ import { CustomPropertyTable } from '../../components/common/CustomPropertyTable
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import DataProductsContainer from '../../components/DataProductsContainer/DataProductsContainer.component';
+import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRightPanel';
 import Loader from '../../components/Loader/Loader';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -50,8 +50,6 @@ import {
 import ProfilerSettings from '../../components/ProfilerSettings/ProfilerSettings';
 import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
 import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
-import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
-import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
 import {
   getDatabaseSchemaDetailsPath,
   getVersionPathWithTab,
@@ -65,7 +63,7 @@ import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { Table } from '../../generated/entity/data/table';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { Include } from '../../generated/type/include';
-import { TagLabel, TagSource } from '../../generated/type/tagLabel';
+import { TagLabel } from '../../generated/type/tagLabel';
 import StoredProcedureTab from '../../pages/StoredProcedure/StoredProcedureTab';
 import {
   getDatabaseSchemaDetailsByFQN,
@@ -136,7 +134,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     setCurrentTablesPage(INITIAL_PAGING_VALUE);
   };
 
-  const { version: currentVersion } = useMemo(
+  const { version: currentVersion, deleted } = useMemo(
     () => databaseSchema,
     [databaseSchema]
   );
@@ -206,7 +204,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       const response = await getDatabaseSchemaDetailsByFQN(
         databaseSchemaFQN,
         ['owner', 'usageSummary', 'tags', 'domain', 'votes'],
-        'include=all'
+        Include.All
       );
       const { description: schemaDescription = '' } = response;
       setDatabaseSchema(response);
@@ -405,26 +403,32 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     [getEntityFeedCount]
   );
 
-  const handleToggleDelete = () => {
+  const handleToggleDelete = (version?: number) => {
     setDatabaseSchema((prev) => {
       if (!prev) {
         return prev;
       }
 
-      return { ...prev, deleted: !prev?.deleted };
+      return {
+        ...prev,
+        deleted: !prev?.deleted,
+        ...(version ? { version } : {}),
+      };
     });
   };
 
   const handleRestoreDatabaseSchema = useCallback(async () => {
     try {
-      await restoreDatabaseSchema(databaseSchemaId);
+      const { version: newVersion } = await restoreDatabaseSchema(
+        databaseSchemaId
+      );
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.database-schema'),
         }),
         2000
       );
-      handleToggleDelete();
+      handleToggleDelete(newVersion);
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -458,8 +462,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   }, [currentVersion, databaseSchemaFQN]);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) =>
-      isSoftDelete ? handleToggleDelete() : history.push('/'),
+    (isSoftDelete?: boolean, version?: number) =>
+      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
     []
   );
 
@@ -501,7 +505,12 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     if (viewDatabaseSchemaPermission && databaseSchemaFQN) {
       getSchemaTables();
     }
-  }, [showDeletedTables, databaseSchemaFQN, viewDatabaseSchemaPermission]);
+  }, [
+    showDeletedTables,
+    databaseSchemaFQN,
+    viewDatabaseSchemaPermission,
+    deleted,
+  ]);
 
   // always Keep this useEffect at the end...
   useEffect(() => {
@@ -578,33 +587,17 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             className="entity-tag-right-panel-container"
             data-testid="entity-right-panel"
             flex="320px">
-            <Space className="w-full" direction="vertical" size="large">
-              <DataProductsContainer
-                activeDomain={databaseSchema?.domain}
-                dataProducts={databaseSchema?.dataProducts ?? []}
-                hasPermission={false}
-              />
-              <TagsContainerV2
-                displayType={DisplayType.READ_MORE}
-                entityFqn={decodedDatabaseSchemaFQN}
-                entityType={EntityType.DATABASE_SCHEMA}
-                permission={editTagsPermission}
-                selectedTags={tags}
-                tagType={TagSource.Classification}
-                onSelectionChange={handleTagSelection}
-                onThreadLinkSelect={onThreadLinkSelect}
-              />
-              <TagsContainerV2
-                displayType={DisplayType.READ_MORE}
-                entityFqn={decodedDatabaseSchemaFQN}
-                entityType={EntityType.DATABASE_SCHEMA}
-                permission={editTagsPermission}
-                selectedTags={tags}
-                tagType={TagSource.Glossary}
-                onSelectionChange={handleTagSelection}
-                onThreadLinkSelect={onThreadLinkSelect}
-              />
-            </Space>
+            <EntityRightPanel
+              dataProducts={databaseSchema?.dataProducts ?? []}
+              domain={databaseSchema?.domain}
+              editTagPermission={editTagsPermission}
+              entityFQN={decodedDatabaseSchemaFQN}
+              entityId={databaseSchema?.id ?? ''}
+              entityType={EntityType.DATABASE_SCHEMA}
+              selectedTags={tags}
+              onTagSelectionChange={handleTagSelection}
+              onThreadLinkSelect={onThreadLinkSelect}
+            />
           </Col>
         </Row>
       ),
@@ -669,7 +662,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       const response = await getDatabaseSchemaDetailsByFQN(
         databaseSchemaFQN,
         ['owner', 'usageSummary', 'tags', 'votes'],
-        'include=all'
+        Include.All
       );
       setDatabaseSchema(response);
     } catch (error) {

@@ -34,15 +34,20 @@ export const schemaTableColumns: ColumnsType<DatabaseSchema> = [
     title: t('label.schema-name'),
     dataIndex: 'name',
     key: 'name',
+    width: 250,
     render: (_, record: DatabaseSchema) => (
-      <Link
-        to={
-          record.fullyQualifiedName
-            ? getDatabaseSchemaDetailsPath(record.fullyQualifiedName)
-            : ''
-        }>
-        {getEntityName(record)}
-      </Link>
+      <div className="d-inline-flex w-max-90">
+        <Link
+          className="break-word"
+          data-testid="database-schema-name-link"
+          to={
+            record.fullyQualifiedName
+              ? getDatabaseSchemaDetailsPath(record.fullyQualifiedName)
+              : ''
+          }>
+          {getEntityName(record)}
+        </Link>
+      </div>
     ),
   },
   {

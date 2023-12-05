@@ -13,7 +13,7 @@ Databricks usage module
 """
 import traceback
 from datetime import datetime
-from typing import Iterable, Optional
+from typing import Iterable
 
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
 from metadata.ingestion.source.database.databricks.query_parser import (
@@ -30,7 +30,7 @@ class DatabricksUsageSource(DatabricksQueryParserSource, UsageSource):
     Databricks Usage Source
     """
 
-    def yield_table_queries(self) -> Optional[Iterable[TableQuery]]:
+    def yield_table_queries(self) -> Iterable[TableQuery]:
         """
         Method to yield TableQueries
         """
@@ -50,7 +50,7 @@ class DatabricksUsageSource(DatabricksQueryParserSource, UsageSource):
                             endTime=row.get("execution_end_time_ms"),
                             analysisDate=datetime.now(),
                             serviceName=self.config.serviceName,
-                            duration=row.get("duration") / 1000
+                            duration=row.get("duration")
                             if row.get("duration")
                             else None,
                         )

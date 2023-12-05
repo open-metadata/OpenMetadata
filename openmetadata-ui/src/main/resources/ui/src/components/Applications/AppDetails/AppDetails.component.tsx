@@ -51,11 +51,11 @@ import {
 import { ServiceCategory } from '../../../enums/service.enum';
 import {
   App,
-  AppType,
   ScheduleTimeline,
 } from '../../../generated/entity/applications/app';
 import { Include } from '../../../generated/type/include';
 import {
+  configureApp,
   deployApp,
   getApplicationByName,
   patchApplication,
@@ -77,6 +77,7 @@ import AppSchedule from '../AppSchedule/AppSchedule.component';
 import { ApplicationTabs } from '../MarketPlaceAppDetails/MarketPlaceAppDetails.interface';
 import './app-details.less';
 import { AppAction } from './AppDetails.interface';
+import applicationSchemaClassBase from './ApplicationSchemaClassBase';
 
 const AppDetails = () => {
   const { t } = useTranslation();
@@ -97,10 +98,10 @@ const AppDetails = () => {
         include: Include.All,
       });
       setAppData(data);
-      const schema = await import(
-        `../../../utils/ApplicationSchemas/${fqn}.json`
-      );
-      setJsonSchema(schema);
+
+      const schema = await applicationSchemaClassBase.importSchema(fqn);
+
+      setJsonSchema(schema.default);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -243,6 +244,8 @@ const AppDetails = () => {
 
       try {
         const response = await patchApplication(appData.id, jsonPatch);
+        // call configure endpoint also to update configuration
+        await configureApp(appData.fullyQualifiedName ?? '', updatedFormData);
         setAppData(response);
         showSuccessToast(
           t('message.entity-saved-successfully', {
@@ -310,9 +313,7 @@ const AppDetails = () => {
 
   const tabs = useMemo(() => {
     const tabConfiguration =
-      appData?.appConfiguration &&
-      appData.appType === AppType.Internal &&
-      jsonSchema
+      appData?.appConfiguration && appData.allowConfiguration && jsonSchema
         ? [
             {
               label: (

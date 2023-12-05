@@ -31,6 +31,7 @@ import { isEmpty, isEqual, isUndefined, noop } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link, useHistory } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/ic-close-task.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
@@ -58,17 +59,21 @@ import {
   TaskActionMode,
 } from '../../../pages/TasksPage/TasksPage.interface';
 import { updateTask, updateThread } from '../../../rest/feedsAPI';
+import { getNameFromFQN } from '../../../utils/CommonUtils';
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityFQN } from '../../../utils/FeedUtils';
+import { getEntityLink } from '../../../utils/TableUtils';
 import {
   fetchOptions,
+  getTaskDetailPath,
   isDescriptionTask,
   isTagsTask,
   TASK_ACTION_LIST,
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+import EntityPopOverCard from '../../common/PopOverCard/EntityPopOverCard';
 import './task-tab.less';
 import { TaskTabProps } from './TaskTab.interface';
 
@@ -76,8 +81,10 @@ export const TaskTab = ({
   taskThread,
   owner,
   entityType,
+  isForFeedTab,
   ...rest
 }: TaskTabProps) => {
+  const history = useHistory();
   const [assigneesForm] = useForm();
   const { currentUser } = useAuthContext();
   const updatedAssignees = Form.useWatch('assignees', assigneesForm);
@@ -142,14 +149,44 @@ export const TaskTab = ({
 
   const isTaskGlossaryApproval = taskDetails?.type === TaskType.RequestApproval;
 
+  const handleTaskLinkClick = () => {
+    history.push({
+      pathname: getTaskDetailPath(taskThread),
+    });
+  };
+
   const getTaskLinkElement = entityCheck && (
     <Typography.Text className="font-medium text-md" data-testid="task-title">
-      <span>{`#${taskDetails?.id} `}</span>
+      <Button
+        className="p-r-xss text-md font-medium"
+        type="link"
+        onClick={handleTaskLinkClick}>
+        {`#${taskDetails?.id} `}
+      </Button>
 
       <Typography.Text>{taskDetails?.type}</Typography.Text>
       <span className="m-x-xss">{t('label.for-lowercase')}</span>
 
-      {!isEmpty(taskField) ? <span>{taskField}</span> : null}
+      {!isForFeedTab && (
+        <>
+          <span className="p-r-xss">{entityType}</span>
+          <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
+            <Link
+              className="break-all p-r-xss"
+              data-testid="entitylink"
+              to={getEntityLink(entityType, entityFQN)}
+              onClick={(e) => e.stopPropagation()}>
+              <Typography.Text className="text-md font-medium text-color-inherit">
+                {' '}
+                {getNameFromFQN(entityFQN)}
+              </Typography.Text>
+            </Link>
+          </EntityPopOverCard>
+        </>
+      )}
+      {!isEmpty(taskField) ? (
+        <span className="break-all">{taskField}</span>
+      ) : null}
     </Typography.Text>
   );
 
@@ -342,6 +379,7 @@ export const TaskTab = ({
               </Button>
             ) : (
               <Dropdown.Button
+                data-testid="edit-accept-task-dropdown"
                 icon={<DownOutlined />}
                 menu={{
                   items: TASK_ACTION_LIST,
@@ -417,7 +455,7 @@ export const TaskTab = ({
   }, [initialAssignees]);
 
   return (
-    <Row className="p-y-sm p-x-md" gutter={[0, 24]}>
+    <Row className="p-y-sm p-x-md" data-testid="task-tab" gutter={[0, 24]}>
       <Col className="d-flex items-center" span={24}>
         <Icon
           className="m-r-xs"
@@ -467,6 +505,7 @@ export const TaskTab = ({
                     }}
                     onSave={() => assigneesForm.submit()}>
                     <Assignees
+                      disabled={Boolean(owner)}
                       options={options}
                       value={updatedAssignees}
                       onChange={(values) =>
@@ -489,7 +528,7 @@ export const TaskTab = ({
                   profileWidth="24"
                   showUserName={false}
                 />
-                {(isCreator || hasEditAccess) && !isTaskClosed ? (
+                {(isCreator || hasEditAccess) && !isTaskClosed && !owner ? (
                   <Button
                     className="flex-center p-0"
                     data-testid="edit-assignees"

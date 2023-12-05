@@ -57,15 +57,15 @@ public class ClassificationRepository extends EntityRepository<Classification> {
   }
 
   @Override
-  public Classification setFields(Classification classification, Fields fields) {
+  public void setFields(Classification classification, Fields fields) {
     classification.withTermCount(fields.contains("termCount") ? getTermCount(classification) : null);
-    return classification.withUsageCount(fields.contains("usageCount") ? getUsageCount(classification) : null);
+    classification.withUsageCount(fields.contains("usageCount") ? getUsageCount(classification) : null);
   }
 
   @Override
-  public Classification clearFields(Classification classification, Fields fields) {
+  public void clearFields(Classification classification, Fields fields) {
     classification.withTermCount(fields.contains("termCount") ? classification.getTermCount() : null);
-    return classification.withUsageCount(fields.contains("usageCount") ? classification.getUsageCount() : null);
+    classification.withUsageCount(fields.contains("usageCount") ? classification.getUsageCount() : null);
   }
 
   @Override
@@ -90,7 +90,9 @@ public class ClassificationRepository extends EntityRepository<Classification> {
   }
 
   private Integer getUsageCount(Classification classification) {
-    return daoCollection.tagUsageDAO().getTagCount(TagSource.CLASSIFICATION.ordinal(), classification.getName());
+    return daoCollection
+        .tagUsageDAO()
+        .getTagCount(TagSource.CLASSIFICATION.ordinal(), classification.getFullyQualifiedName());
   }
 
   public static class TagLabelMapper implements RowMapper<TagLabel> {

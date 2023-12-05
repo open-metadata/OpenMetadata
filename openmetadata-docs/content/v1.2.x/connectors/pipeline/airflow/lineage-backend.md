@@ -32,19 +32,10 @@ distribution:
 pip3 install "openmetadata-ingestion==x.y.z"
 ```
 
-Where `x.y.z` is the version of your OpenMetadata server, e.g., 0.13.0. It is important that server and client
-versions match.
+Where `x.y.z` is the version of your OpenMetadata server, e.g., 1.2.2. **It is important that server and client
+versions match**.
 
 ### Adding Lineage Config
-
-<Note>
-
-If using OpenMetadata version 0.13.0 or lower, the import for the lineage backend is
-`airflow_provider_openmetadata.lineage.openmetadata.OpenMetadataLineageBackend`.
-
-For 0.13.1 or higher, the import has been renamed to `airflow_provider_openmetadata.lineage.backend.OpenMetadataLineageBackend`.
-
-</Note>
 
 After the installation, we need to update the Airflow configuration. This can be done following this example on
 `airflow.cfg`:
@@ -81,9 +72,8 @@ max_status = 10
 ```
 
 - `only_keep_dag_lineage` will remove any table lineage not present in the inlets or outlets. This will ensure
-that any lineage in OpenMetadata comes from your code.
+that any lineage in OpenMetadata comes only from your code.
 - `max_status` controls the number of status to ingest in each run. By default, we'll pick the last 10.
-
 
 
 In the following sections, we'll show how to adapt our pipelines to help us build the lineage information.
@@ -139,13 +129,13 @@ and downstream for outlets) between the Pipeline and Table Entities.
 It is important to get the naming right, as we will fetch the Table Entity by its FQN. If no information is specified 
 in terms of lineage, we will just ingest the Pipeline Entity without adding further information.
 
-<Note>
+{% note %}
 
 While we are showing here how to parse the lineage using the Lineage Backend, the setup of `inlets` and `outlets`
 is supported as well through external metadata ingestion from Airflow, be it via the UI, CLI or directly running
 an extraction DAG from Airflow itself.
 
-</Note>
+{% /note %}
 
 ## Example
 
@@ -246,7 +236,7 @@ backend = airflow_provider_openmetadata.lineage.backend.OpenMetadataLineageBacke
 airflow_service_name = local_airflow
 openmetadata_api_endpoint = http://localhost:8585/api
 auth_provider_type = openmetadata
-jwt_token = eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg
+jwt_token = ...
 ```
 
 After running the DAG, you should be able to see the following information in the ingested Pipeline:

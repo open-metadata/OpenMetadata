@@ -94,25 +94,25 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   @Override
-  public Dashboard setFields(Dashboard dashboard, Fields fields) {
+  public void setFields(Dashboard dashboard, Fields fields) {
     dashboard.setService(getContainer(dashboard.getId()));
     dashboard.setCharts(fields.contains("charts") ? getRelatedEntities(dashboard, Entity.CHART) : null);
     dashboard.setDataModels(
         fields.contains("dataModels") ? getRelatedEntities(dashboard, Entity.DASHBOARD_DATA_MODEL) : null);
+    dashboard.setSourceHash(fields.contains("sourceHash") ? dashboard.getSourceHash() : null);
     if (dashboard.getUsageSummary() == null) {
       dashboard.withUsageSummary(
           fields.contains("usageSummary")
               ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), dashboard.getId())
               : null);
     }
-    return dashboard;
   }
 
   @Override
-  public Dashboard clearFields(Dashboard dashboard, Fields fields) {
+  public void clearFields(Dashboard dashboard, Fields fields) {
     dashboard.setCharts(fields.contains("charts") ? dashboard.getCharts() : null);
     dashboard.setDataModels(fields.contains("dataModels") ? dashboard.getDataModels() : null);
-    return dashboard.withUsageSummary(fields.contains("usageSummary") ? dashboard.getUsageSummary() : null);
+    dashboard.withUsageSummary(fields.contains("usageSummary") ? dashboard.getUsageSummary() : null);
   }
 
   @Override
@@ -182,7 +182,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
   @Override
   public EntityInterface getParentEntity(Dashboard entity, String fields) {
-    return Entity.getEntity(entity.getService(), fields, Include.NON_DELETED);
+    return Entity.getEntity(entity.getService(), fields, Include.ALL);
   }
 
   private List<EntityReference> getRelatedEntities(Dashboard dashboard, String entityType) {

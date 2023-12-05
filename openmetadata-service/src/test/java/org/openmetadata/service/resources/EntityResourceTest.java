@@ -150,6 +150,7 @@ import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.AccessDetails;
 import org.openmetadata.schema.type.AnnouncementDetails;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Column;
@@ -1094,6 +1095,48 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     request = createRequest(entity.getName(), "description", "displayName", null);
     updateEntity(request, OK, ADMIN_AUTH_HEADERS);
     checkOwnerOwns(USER1_REF, entity.getId(), true);
+  }
+
+  @Test
+  void test_entityWithInvalidTag(TestInfo test) throws HttpResponseException {
+    if (!supportsTags) {
+      return;
+    }
+    // Add an entity with invalid tag
+    TagLabel invalidTag = new TagLabel().withTagFQN("invalidTag");
+    CreateEntity create = createRequest(getEntityName(test));
+    create.setTags(listOf(invalidTag));
+
+    // Entity can't be created with PUT or POST
+    assertResponse(
+        () -> createEntity(create, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+
+    assertResponse(
+        () -> updateEntity(create, Status.CREATED, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+
+    // Create an entity and update it with PUT and PATCH with an invalid flag
+    create.setTags(null);
+    T entity = createEntity(create, ADMIN_AUTH_HEADERS);
+    String json = JsonUtils.pojoToJson(entity);
+
+    create.setTags(listOf(invalidTag));
+    assertResponse(
+        () -> updateEntity(create, Status.CREATED, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+
+    entity.setTags(listOf(invalidTag));
+    assertResponse(
+        () -> patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+
+    // No lingering relationships should cause error in listing the entity
+    listEntities(null, ADMIN_AUTH_HEADERS);
   }
 
   @Test
@@ -2070,8 +2113,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return deletedEntity;
   }
 
-  public final T deleteEntity(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
-    return deleteEntity(id, false, false, authHeaders);
+  public final void deleteEntity(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
+    deleteEntity(id, false, false, authHeaders);
   }
 
   public final T deleteEntity(UUID id, boolean recursive, boolean hardDelete, Map<String, String> authHeaders)
@@ -2185,14 +2228,13 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return updated;
   }
 
-  protected final T restoreAndCheckEntity(
+  protected final void restoreAndCheckEntity(
       T entity, Map<String, String> authHeaders, ChangeDescription changeDescription) throws IOException {
     T updated = restoreEntity(new RestoreEntity().withId(entity.getId()), Status.OK, authHeaders);
     validateLatestVersion(updated, MINOR_UPDATE, changeDescription, authHeaders);
     // GET the newly updated entity and validate
     T getEntity = getEntity(updated.getId(), authHeaders);
     validateChangeDescription(getEntity, MINOR_UPDATE, changeDescription);
-    return updated;
   }
 
   protected void validateEntityHistory(
@@ -2865,7 +2907,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     // Validate the imported result summary - it should include both created and updated records
     int totalRows = 1 + createRecords.size() + updateRecords.size();
-    assertSummary(dryRunResult, CsvImportResult.Status.SUCCESS, totalRows, totalRows, 0);
+    assertSummary(dryRunResult, ApiStatus.SUCCESS, totalRows, totalRows, 0);
     String expectedResultsCsv = EntityCsvTest.createCsvResult(csvHeaders, createRecords, updateRecords);
     assertEquals(expectedResultsCsv, dryRunResult.getImportResultsCsv());
 

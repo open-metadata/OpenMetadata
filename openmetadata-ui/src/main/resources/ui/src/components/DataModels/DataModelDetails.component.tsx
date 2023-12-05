@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Space, Tabs } from 'antd';
+import { Card, Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined, toString } from 'lodash';
 import { EntityTags } from 'Models';
@@ -28,15 +28,13 @@ import EntityLineageComponent from '../../components/Entity/EntityLineage/Entity
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
-import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
-import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
 import {
   getDataModelDetailsPath,
   getVersionPath,
 } from '../../constants/constants';
 import { CSMode } from '../../enums/codemirror.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
-import { TagLabel, TagSource } from '../../generated/type/tagLabel';
+import { TagLabel } from '../../generated/type/tagLabel';
 import { restoreDataModel } from '../../rest/dataModelsAPI';
 import { getFeedCounts } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
@@ -45,7 +43,7 @@ import { getDecodedFqn } from '../../utils/StringsUtils';
 import { getTagsWithoutTier } from '../../utils/TableUtils';
 import { createTagObject } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import DataProductsContainer from '../DataProductsContainer/DataProductsContainer.component';
+import EntityRightPanel from '../Entity/EntityRightPanel/EntityRightPanel';
 import SchemaEditor from '../SchemaEditor/SchemaEditor';
 import { SourceType } from '../SearchedData/SearchedData.interface';
 import { DataModelDetailsProps } from './DataModelDetails.interface';
@@ -155,14 +153,16 @@ const DataModelDetails = ({
 
   const handleRestoreDataModel = async () => {
     try {
-      await restoreDataModel(dataModelData.id ?? '');
+      const { version: newVersion } = await restoreDataModel(
+        dataModelData.id ?? ''
+      );
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.data-model'),
         }),
         2000
       );
-      handleToggleDelete();
+      handleToggleDelete(newVersion);
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -174,8 +174,8 @@ const DataModelDetails = ({
   };
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) =>
-      isSoftDelete ? handleToggleDelete() : history.push('/'),
+    (isSoftDelete?: boolean, version?: number) =>
+      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
     []
   );
 
@@ -232,33 +232,17 @@ const DataModelDetails = ({
           className="entity-tag-right-panel-container"
           data-testid="entity-right-panel"
           flex="320px">
-          <Space className="w-full" direction="vertical" size="large">
-            <DataProductsContainer
-              activeDomain={dataModelData?.domain}
-              dataProducts={dataModelData?.dataProducts ?? []}
-              hasPermission={false}
-            />
-            <TagsContainerV2
-              displayType={DisplayType.READ_MORE}
-              entityFqn={decodedDataModelFQN}
-              entityType={EntityType.DASHBOARD_DATA_MODEL}
-              permission={editTagsPermission}
-              selectedTags={tags}
-              tagType={TagSource.Classification}
-              onSelectionChange={handleTagSelection}
-              onThreadLinkSelect={onThreadLinkSelect}
-            />
-            <TagsContainerV2
-              displayType={DisplayType.READ_MORE}
-              entityFqn={decodedDataModelFQN}
-              entityType={EntityType.DASHBOARD_DATA_MODEL}
-              permission={editTagsPermission}
-              selectedTags={tags}
-              tagType={TagSource.Glossary}
-              onSelectionChange={handleTagSelection}
-              onThreadLinkSelect={onThreadLinkSelect}
-            />
-          </Space>
+          <EntityRightPanel
+            dataProducts={dataModelData?.dataProducts ?? []}
+            domain={dataModelData?.domain}
+            editTagPermission={editTagsPermission}
+            entityFQN={decodedDataModelFQN}
+            entityId={dataModelData.id}
+            entityType={EntityType.DASHBOARD_DATA_MODEL}
+            selectedTags={tags}
+            onTagSelectionChange={handleTagSelection}
+            onThreadLinkSelect={onThreadLinkSelect}
+          />
         </Col>
       </Row>
     );
@@ -377,6 +361,7 @@ const DataModelDetails = ({
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
+            isRecursiveDelete
             afterDeleteAction={afterDeleteAction}
             afterDomainUpdateAction={updateDataModelDetailsState}
             dataAsset={dataModelData}

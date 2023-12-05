@@ -76,16 +76,15 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   @Override
-  public IngestionPipeline setFields(IngestionPipeline ingestionPipeline, Fields fields) {
+  public void setFields(IngestionPipeline ingestionPipeline, Fields fields) {
     if (ingestionPipeline.getService() == null) {
       ingestionPipeline.withService(getContainer(ingestionPipeline.getId()));
     }
-    return ingestionPipeline;
   }
 
   @Override
-  public IngestionPipeline clearFields(IngestionPipeline ingestionPipeline, Fields fields) {
-    return ingestionPipeline;
+  public void clearFields(IngestionPipeline ingestionPipeline, Fields fields) {
+    /* Nothing to do */
   }
 
   @Override
@@ -97,8 +96,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   @Transaction
   public IngestionPipeline deletePipelineStatus(UUID ingestionPipelineId) {
     // Validate the request content
-    IngestionPipeline ingestionPipeline = dao.findEntityById(ingestionPipelineId);
-
+    IngestionPipeline ingestionPipeline = find(ingestionPipelineId, Include.NON_DELETED);
     daoCollection
         .entityExtensionTimeSeriesDao()
         .delete(ingestionPipeline.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION);
@@ -180,7 +178,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   public RestUtil.PutResponse<?> addPipelineStatus(UriInfo uriInfo, String fqn, PipelineStatus pipelineStatus) {
     // Validate the request content
-    IngestionPipeline ingestionPipeline = dao.findEntityByName(fqn);
+    IngestionPipeline ingestionPipeline = findByName(fqn, Include.NON_DELETED);
     PipelineStatus storedPipelineStatus =
         JsonUtils.readValue(
             daoCollection
@@ -218,7 +216,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   public ResultList<PipelineStatus> listPipelineStatus(String ingestionPipelineFQN, Long startTs, Long endTs) {
-    IngestionPipeline ingestionPipeline = dao.findEntityByName(ingestionPipelineFQN);
+    IngestionPipeline ingestionPipeline = findByName(ingestionPipelineFQN, Include.NON_DELETED);
     List<PipelineStatus> pipelineStatusList =
         JsonUtils.readObjects(
             getResultsFromAndToTimestamps(
@@ -237,7 +235,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   public PipelineStatus getPipelineStatus(String ingestionPipelineFQN, UUID pipelineStatusRunId) {
-    IngestionPipeline ingestionPipeline = dao.findEntityByName(ingestionPipelineFQN);
+    IngestionPipeline ingestionPipeline = findByName(ingestionPipelineFQN, Include.NON_DELETED);
     return JsonUtils.readValue(
         daoCollection
             .entityExtensionTimeSeriesDao()
