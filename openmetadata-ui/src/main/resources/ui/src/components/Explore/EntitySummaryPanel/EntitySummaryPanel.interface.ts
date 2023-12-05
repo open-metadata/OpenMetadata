@@ -16,5 +16,5 @@ import { EntityDetailsObjectInterface } from '../ExplorePage.interface';
 export interface EntitySummaryPanelProps {
   entityDetails: EntityDetailsObjectInterface;
   handleClosePanel: () => void;
-  sortSummaryListBasedOn?: string[];
+  sortSummaryListBasedOnTags?: string[];
 }

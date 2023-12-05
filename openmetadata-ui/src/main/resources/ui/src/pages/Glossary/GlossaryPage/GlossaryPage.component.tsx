@@ -347,9 +347,7 @@ const GlossaryPage = () => {
           <EntitySummaryPanel
             entityDetails={previewAsset}
             handleClosePanel={() => setPreviewAsset(undefined)}
-            sortSummaryListBasedOn={[
-              history.location.pathname.split('/glossary/')[1]?.split('/')[0],
-            ]}
+            sortSummaryListBasedOnTags={[glossaryFqn]}
           />
         )
       }

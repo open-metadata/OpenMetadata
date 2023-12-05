@@ -23,7 +23,7 @@ export interface TableSummaryProps {
   componentType?: DRAWER_NAVIGATION_OPTIONS;
   tags?: TagLabel[];
   isLoading?: boolean;
-  sortSummaryListBasedOn?: string[];
+  sortSummaryListBasedOnTags?: string[];
 }
 
 export interface BasicTableInfo {

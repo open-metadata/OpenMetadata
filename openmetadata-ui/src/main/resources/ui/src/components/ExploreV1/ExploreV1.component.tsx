@@ -343,7 +343,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                     <EntitySummaryPanel
                       entityDetails={{ details: entityDetails }}
                       handleClosePanel={handleClosePanel}
-                      sortSummaryListBasedOn={(
+                      sortSummaryListBasedOnTags={(
                         selectedQuickFilters?.find(
                           (filterOption) =>
                             filterOption.key === EntityFields.TAG

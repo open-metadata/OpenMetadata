@@ -72,7 +72,7 @@ import TopicSummary from './TopicSummary/TopicSummary.component';
 
 export default function EntitySummaryPanel({
   entityDetails,
-  sortSummaryListBasedOn,
+  sortSummaryListBasedOnTags,
 }: EntitySummaryPanelProps) {
   const { tab } = useParams<{ tab: string }>();
   const { getEntityPermission } = usePermissionProvider();
@@ -131,7 +131,7 @@ export default function EntitySummaryPanel({
         return (
           <TableSummary
             entityDetails={entity as Table}
-            sortSummaryListBasedOn={sortSummaryListBasedOn}
+            sortSummaryListBasedOnTags={sortSummaryListBasedOnTags}
           />
         );
 
