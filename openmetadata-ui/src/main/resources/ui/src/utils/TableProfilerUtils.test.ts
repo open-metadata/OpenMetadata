@@ -16,6 +16,12 @@ import {
   getColumnCustomMetric,
 } from './TableProfilerUtils';
 
+jest.mock('./date-time/DateTimeUtils', () => {
+  return {
+    customFormatDateTime: jest.fn().mockReturnValue('Dec 05, 11:54'),
+  };
+});
+
 describe('TableProfilerUtils', () => {
   it('calculateCustomMetrics should return correct data', () => {
     const profiler = [
