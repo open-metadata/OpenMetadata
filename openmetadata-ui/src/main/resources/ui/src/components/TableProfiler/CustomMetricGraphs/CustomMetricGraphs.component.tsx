@@ -35,8 +35,8 @@ import {
   YAxis,
 } from 'recharts';
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
-import { TOTAL_ENTITY_CHART_COLOR } from '../../../constants/DataInsight.constants';
 import { GRAPH_BACKGROUND_COLOR } from '../../../constants/constants';
+import { TOTAL_ENTITY_CHART_COLOR } from '../../../constants/DataInsight.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { CustomMetric } from '../../../generated/entity/data/table';
 import {
@@ -46,16 +46,16 @@ import {
 import { axisTickFormatter, tooltipFormatter } from '../../../utils/ChartUtils';
 import { getRandomHexColor } from '../../../utils/DataInsightUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import CustomMetricForm from '../../CustomMetricForm/CustomMetricForm.component';
-import ProfilerLatestValue from '../../ProfilerDashboard/component/ProfilerLatestValue';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import CustomMetricForm from '../../CustomMetricForm/CustomMetricForm.component';
+import ProfilerLatestValue from '../../ProfilerDashboard/component/ProfilerLatestValue';
 import { useTableProfiler } from '../TableProfilerProvider';
+import './custom-metric-graphs.style.less';
 import {
   CustomMetricGraphsProps,
   MenuOptions,
 } from './CustomMetricGraphs.interface';
-import './custom-metric-graphs.style.less';
 
 const CustomMetricGraphs = ({
   customMetricsGraphData,
@@ -168,7 +168,7 @@ const CustomMetricGraphs = ({
   };
 
   return (
-    <Row gutter={[16, 16]}>
+    <Row data-testid="custom-metric-graph-container" gutter={[16, 16]}>
       {toPairs(customMetricsGraphData).map(([key, metric], i) => {
         const color = TOTAL_ENTITY_CHART_COLOR[i] ?? getRandomHexColor();
 
@@ -228,7 +228,7 @@ const CustomMetricGraphs = ({
                     <ResponsiveContainer
                       className="custom-legend"
                       debounce={200}
-                      id={`${key}_graph`}
+                      id={`${key}-graph`}
                       minHeight={300}>
                       <LineChart
                         className="w-full"

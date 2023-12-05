@@ -23,9 +23,10 @@ const NoProfilerBanner = () => {
       className="border d-flex items-center border-warning rounded-4 p-xs"
       data-testid="no-profiler-placeholder">
       <NoDataIcon />
-      <p className="m-l-xs">
+      <p className="m-l-xs" data-testid="error-msg">
         {t('message.no-profiler-message')}
         <Link
+          data-testid="documentation-link"
           target="_blank"
           to={{
             pathname:
