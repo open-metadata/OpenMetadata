@@ -1,7 +1,7 @@
 import requests
 
-from metadata.generated.schema.entity.services.connections.metadata.sasCatalogConnection import (
-    SASCatalogConnection,
+from metadata.generated.schema.entity.services.connections.metadata.sasConnection import (
+    SASConnection,
 )
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
 from metadata.utils.logger import ingestion_logger
@@ -9,12 +9,12 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-class SASCatalogClient:
+class SASClient:
     """
-    Client to interact with SAS Catalog
+    Client to interact with SAS Information Catalog
     """
 
-    def __init__(self, config: SASCatalogConnection):
+    def __init__(self, config: SASConnection):
         self.config = config
         self.auth_token = get_token(
             config.serverHost, config.username, config.password.get_secret_value()
@@ -121,7 +121,7 @@ class SASCatalogClient:
         return response
 
     def get_rows_cols(self, endpoint):
-        # Retrieve resouceId attribute of table instance
+        # Retrieve resourceId attribute of table instance
         data_table = self.client.get(endpoint)
         if "error" in data_table.keys():
             raise APIError(data_table["error"])

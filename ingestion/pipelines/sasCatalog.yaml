@@ -1,0 +1,23 @@
+source:
+  type: sas
+  serviceName: plover
+  serviceConnection:
+    config:
+      type: SAS
+      serverHost: https://daily.plover-m1.unx.sas.com
+      username: etladm
+      password: Datamt123
+  sourceConfig:
+    config:
+      type: DatabaseMetadata
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  loggerLevel: DEBUG
+  openMetadataServerConfig:
+    hostPort:  'http://localhost:8585/api'
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJvcGVuLW1ldGFkYXRhLm9yZyIsInN1YiI6ImluZ2VzdGlvbi1ib3QiLCJlbWFpbCI6ImluZ2VzdGlvbi1ib3RAb3Blbm1ldGFkYXRhLm9yZyIsImlzQm90Ijp0cnVlLCJ0b2tlblR5cGUiOiJCT1QiLCJpYXQiOjE3MDE3NDEwMjEsImV4cCI6bnVsbH0.DRLTV41TyF_BteIqILoOHx9Ay_6oJBQ6inG8rnzf743T5WkTXbSvmdu9zaORK9qtWqDOjia8W9WAQpV0eF7xfPNS3eWwLztbs4dmcTVzfpqLonq3g_GvuCt2iw9Onc8zKEu_DuTm0nhCgSa3KrgROmagkdZhf5w_IeDAGPBwBrTfER17kjL4IHUwrQrl6MmNGD-BPGiNKrE9DL8l4GzMqLpi-QcX_YFvljkFataj2SRkc7I73Qdmg5GLsXY6BNZquvs313S_M0bCZDCHwp1werB3MO7ZAUhGiWkntAgrHfFOapyxl16CzL7-dvO84FSjdNyUin5vjYQk5IQ1FPDIlg"
+

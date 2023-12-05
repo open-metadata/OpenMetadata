@@ -2,28 +2,26 @@ from typing import Iterable
 
 from metadata.generated.schema.entity.services.connections.database.customDatabaseConnection import (
     CustomDatabaseConnection,
-    CustomDatabaseType,
 )
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.sasCatalogConnection import (
-    SASCatalogConnection,
+from metadata.generated.schema.entity.services.connections.metadata.sasConnection import (
+    SASConnection,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.source import InvalidSourceException, Source
+from metadata.ingestion.api.steps import InvalidSourceException, Source
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
-from metadata.ingestion.source.metadata.sascatalog.client import SASCatalogClient
+from metadata.ingestion.source.connections import get_connection
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
 
-class SASCatalogDB(Source):
+class SASDB(Source):
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__()
         self.config = config
@@ -31,7 +29,7 @@ class SASCatalogDB(Source):
         self.metadata = OpenMetadata(metadata_config)
         self.service_connection = self.config.serviceConnection.__root__.config
 
-        self.sas_connection = SASCatalogConnection(
+        self.sas_connection = SASConnection(
             username=self.service_connection.connectionOptions.__root__.get("username"),
             password=self.service_connection.connectionOptions.__root__.get("password"),
             serverHost=self.service_connection.connectionOptions.__root__.get(
@@ -39,7 +37,7 @@ class SASCatalogDB(Source):
             ),
         )
 
-        self.sas_catalog_client = get_connection(self.sas_connection)
+        self.sas_client = get_connection(self.sas_connection)
         logger.info("initing...")
         # self.test_connection()
 
@@ -64,7 +62,7 @@ class SASCatalogDB(Source):
     def test_connection(self) -> None:
         test_connection_fn = get_connection(self.service_connection)
         test_connection_fn(
-            self.metadata, self.sas_catalog_client, self.service_connection
+            self.metadata, self.sas_client, self.service_connection
         )
 
     def close(self):

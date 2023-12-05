@@ -40,8 +40,8 @@ from metadata.generated.schema.entity.services.connections.database.customDataba
     CustomDatabaseConnection,
     CustomDatabaseType,
 )
-from metadata.generated.schema.entity.services.connections.metadata.sasCatalogConnection import (
-    SASCatalogConnection,
+from metadata.generated.schema.entity.services.connections.metadata.sasConnection import (
+    SASConnection,
 )
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardConnection,
@@ -62,8 +62,8 @@ from metadata.ingestion.api.steps import InvalidSourceException, Source
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
-from metadata.ingestion.source.metadata.sascatalog.client import SASCatalogClient
-from metadata.ingestion.source.metadata.sascatalog.extension_attr import (
+from metadata.ingestion.source.metadata.sas.client import SASClient
+from metadata.ingestion.source.metadata.sas.extension_attr import (
     TABLE_CUSTOM_ATTR,
 )
 from metadata.utils import fqn
@@ -73,9 +73,9 @@ from typing import Iterable, List
 logger = ingestion_logger()
 
 
-class SascatalogSource(Source):
+class SasSource(Source):
     config: WorkflowSource
-    sasCatalog_client: SASCatalogClient
+    sas_client: SASClient
 
     def __init__(
             self,
@@ -87,8 +87,8 @@ class SascatalogSource(Source):
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.__root__.config
 
-        self.sasCatalog_client = get_connection(self.service_connection)
-        self.connection_obj = self.sasCatalog_client
+        self.sas_client = get_connection(self.service_connection)
+        self.connection_obj = self.sas_client
         self.test_connection()
 
         self.db_service_name = None
@@ -106,10 +106,10 @@ class SascatalogSource(Source):
     def create(cls, config_dict, metadata: OpenMetadata):
         logger.info(f"running create {config_dict}")
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: SASCatalogConnection = config.serviceConnection.__root__.config
-        if not isinstance(connection, SASCatalogConnection):
+        connection: SASConnection = config.serviceConnection.__root__.config
+        if not isinstance(connection, SASConnection):
             raise InvalidSourceException(
-                f"Expected SASCatalogConnection, but got {connection}"
+                f"Expected SASConnection, but got {connection}"
             )
         return cls(config, metadata)
 
@@ -118,11 +118,11 @@ class SascatalogSource(Source):
 
     def _iter(self) -> Iterable[Either[Entity]]:
         self.table_fqns = []
-        table_entities = self.sasCatalog_client.list_instances()
+        table_entities = self.sas_client.list_instances()
         for table in table_entities:
             yield from self.create_table_entity(table)
         # '''
-        report_entities = self.sasCatalog_client.list_reports()
+        report_entities = self.sas_client.list_reports()
         yield from self.create_dashboard_service("SAS_reports")
         for report in report_entities:
             self.table_fqns = []
@@ -130,10 +130,10 @@ class SascatalogSource(Source):
 
             # There isn't a schema for creating report entities, maybe this will work instead
             report_id = report["id"]
-            report_instance = self.sasCatalog_client.get_instance(report_id)
+            report_instance = self.sas_client.get_instance(report_id)
             report_resource = report_instance["resourceId"]
-            report_resource_id = self.sasCatalog_client.get_resource(report_resource[1:])["id"]
-            report_charts = self.sasCatalog_client.get_visual_elements(report_resource_id)
+            report_resource_id = self.sas_client.get_resource(report_resource[1:])["id"]
+            report_charts = self.sas_client.get_visual_elements(report_resource_id)
             supported_chart_types = ["Graph", "Text", "Table"]
             filtered_charts = list(
                 filter(
@@ -166,7 +166,7 @@ class SascatalogSource(Source):
                     source_name = table["attributes"]["sourceName"]
                     param = f"filter=eq(name, '{source_name}')"
                     get_instances_with_param = (
-                        self.sasCatalog_client.get_instances_with_param(param)
+                        self.sas_client.get_instances_with_param(param)
                     )
                     if get_instances_with_param:
                         source_table = get_instances_with_param[0]
@@ -181,11 +181,11 @@ class SascatalogSource(Source):
 
             yield from self.create_report_entity(report)
 
-        data_plan_entities = self.sasCatalog_client.list_data_plans()
+        data_plan_entities = self.sas_client.list_data_plans()
         yield from self.create_dashboard_service("SAS_dataPlans")
         for data_plan in data_plan_entities:
             self.table_fqns = []
-            data_plan_instance = self.sasCatalog_client.get_instance(data_plan["id"])
+            data_plan_instance = self.sas_client.get_instance(data_plan["id"])
             input_asset_definition = "6179884b-91ec-4236-ad6b-52c7f454f217"
             output_asset_definition = "e1349270-fdbb-4231-9841-79917a307471"
             input_asset_ids = []
@@ -208,7 +208,7 @@ class SascatalogSource(Source):
                     source_name = input_asset["attributes"]["sourceName"]
                     param = f"filter=eq(name, '{source_name}')"
                     get_instances_with_param = (
-                        self.sasCatalog_client.get_instances_with_param(param)
+                        self.sas_client.get_instances_with_param(param)
                     )
                     if get_instances_with_param:
                         source_table = get_instances_with_param[0]
@@ -243,7 +243,7 @@ class SascatalogSource(Source):
             connection=DatabaseConnection(
                 config=CustomDatabaseConnection(
                     type=CustomDatabaseType.CustomDatabase,
-                    sourcePythonClass="metadata.ingestion.source.database.customdatabase.metadata.SASCatalogDB",
+                    sourcePythonClass="metadata.ingestion.source.database.customdatabase.metadata.SASDB",
                 )
             ),
         )
@@ -259,7 +259,7 @@ class SascatalogSource(Source):
         # Then the db service name will be the provider id
         data_store_endpoint = db["resourceId"][1:]
         logger.info(f"{data_store_endpoint}")
-        data_store_resource = self.sasCatalog_client.get_data_source(
+        data_store_resource = self.sas_client.get_data_source(
             data_store_endpoint
         )
         db_service = self.create_database_service(data_store_resource["providerId"])
@@ -270,7 +270,7 @@ class SascatalogSource(Source):
                 data_store_parent_endpoint = link["uri"][1:]
                 break
 
-        data_store_parent = self.sasCatalog_client.get_data_source(
+        data_store_parent = self.sas_client.get_data_source(
             data_store_parent_endpoint
         )
         self.db_name = data_store_parent["id"]
@@ -289,7 +289,7 @@ class SascatalogSource(Source):
             if link["rel"] == "parent":
                 data_store_parent_endpoint = link["uri"][1:]
                 break
-        data_store_parent = self.sasCatalog_client.get_data_source(
+        data_store_parent = self.sas_client.get_data_source(
             data_store_parent_endpoint
         )
         self.db_name = data_store_parent["id"]
@@ -302,11 +302,11 @@ class SascatalogSource(Source):
         return database_entity
 
     def create_database_schema(self, table):
-        table_detail = self.sasCatalog_client.get_instance(table["id"])
+        table_detail = self.sas_client.get_instance(table["id"])
 
         try:
             table_resource_endpoint = table_detail["resourceId"][1:]
-            table_resource = self.sasCatalog_client.get_resource(
+            table_resource = self.sas_client.get_resource(
                 table_resource_endpoint
             )
             data_store_endpoint = ""
@@ -314,7 +314,7 @@ class SascatalogSource(Source):
                 if link["rel"] == "dataSource":
                     data_store_endpoint = link["uri"][1:]
                     break
-            data_store = self.sasCatalog_client.get_data_source(data_store_endpoint)
+            data_store = self.sas_client.get_data_source(data_store_endpoint)
             database = self.create_database(data_store)
             self.db_schema_name = data_store["name"]
             db_schema = CreateDatabaseSchemaRequest(
@@ -323,7 +323,7 @@ class SascatalogSource(Source):
             db_schema_entity = self.metadata.create_or_update(db_schema)
             return db_schema_entity
         except HTTPError as httperror:
-            # We find the "database" entity in catalog
+            # We find the "database" entity in Information Catalog
             # We first see if the table is a member of the library through the relationships attribute
             # Or we could use views to query the dataStores
             data_store_data_sets = "4b114f6e-1c2a-4060-9184-6809a612f27b"
@@ -339,7 +339,7 @@ class SascatalogSource(Source):
                 logger.error("Data store id should not be none")
                 return None
 
-            data_store = self.sasCatalog_client.get_instance(data_store_id)
+            data_store = self.sas_client.get_instance(data_store_id)
             database = self.create_database_alt(data_store)
             self.db_schema_name = data_store["name"]
             db_schema = CreateDatabaseSchemaRequest(
@@ -357,8 +357,8 @@ class SascatalogSource(Source):
             if link["rel"] == "load":
                 load_endpoint = link["uri"][1:]
         if load_endpoint:
-            self.sasCatalog_client.load_table(load_endpoint)
-        columns_resource = self.sasCatalog_client.get_resource(columns_endpoint)
+            self.sas_client.load_table(load_endpoint)
+        columns_resource = self.sas_client.get_resource(columns_endpoint)
         columns = []
         for item in columns_resource["items"]:
             datatype = item["type"]
@@ -383,14 +383,14 @@ class SascatalogSource(Source):
         table_extension = table["attributes"]
 
         try:
-            table_resource_id = self.sasCatalog_client.get_instance(table_id)["resourceId"][1:]
+            table_resource_id = self.sas_client.get_instance(table_id)["resourceId"][1:]
             table_description = None
             views_query = {
                 "query": "match (t:dataSet)-[r:dataSetDataFields]->(c:dataField) return t,r,c",
                 "parameters": {"t": {"id": f"{table_id}"}},
             }
             views_data = json.dumps(views_query)
-            views = self.sasCatalog_client.get_views(views_data)
+            views = self.sas_client.get_views(views_data)
             # views_obj = json.loads(views)
             entities = views["entities"]
             # For now many dataField attributes will be cut since currently there is no functionality for adding custom
@@ -522,7 +522,7 @@ class SascatalogSource(Source):
                 # Create columns alternatively
                 table_description = "Table has not been analyzed. Head over to SAS Information Catalog to analyze the table"
                 try:
-                    table_resource = self.sasCatalog_client.get_resource(table_resource_id)
+                    table_resource = self.sas_client.get_resource(table_resource_id)
                     columns = self.create_columns_alt(table_resource)
                 except HTTPError as httperror:
                     table_description = (
@@ -588,7 +588,7 @@ class SascatalogSource(Source):
                 )
                 print(resp.text)
             """
-            rows, cols, row_count = self.sasCatalog_client.get_rows_cols(table_resource_id)
+            rows, cols, row_count = self.sas_client.get_rows_cols(table_resource_id)
             table_data = {"columns": cols, "rows": rows}
             self.metadata.client.put(
                 path=f"{self.metadata.get_suffix(Table)}/{table_entity.id.__root__}/sampleData",
@@ -649,7 +649,7 @@ class SascatalogSource(Source):
         yield self.create_lineage_request("table", "table", from_entity, to_entity)
 
     def create_sample_data(self, table_id):
-        rows_source, col_names = self.sasCatalog_client.get_rows_cols(table_id)
+        rows_source, col_names = self.sas_client.get_rows_cols(table_id)
         rows = list(map(lambda x: x["cells"], rows_source))
         return TableData(columns=col_names, rows=rows)
 
@@ -663,7 +663,7 @@ class SascatalogSource(Source):
                 connection=DashboardConnection(
                     config=CustomDashboardConnection(
                         type=CustomDashboardType.CustomDashboard,
-                        sourcePythonClass="metadata.ingestion.source.database.customdatabase.metadata.SASCatalogDB",
+                        sourcePythonClass="metadata.ingestion.source.database.customdatabase.metadata.SASDB",
                     )
                 ),
             )
@@ -723,18 +723,18 @@ class SascatalogSource(Source):
             )
 
     def get_report_tables(self, report_id):
-        report_tables = self.sasCatalog_client.get_report_relationship(report_id)
+        report_tables = self.sas_client.get_report_relationship(report_id)
         table_instances = []
         self.report_description = []
         for table in report_tables:
             table_uri = table["relatedResourceUri"][1:]
             try:
-                table_resource = self.sasCatalog_client.get_resource(table_uri)
+                table_resource = self.sas_client.get_resource(table_uri)
                 table_name = table_resource["name"]
                 table_data_resource = table_resource["tableReference"]["tableUri"]
                 param = f"filter=eq(resourceId,'{table_data_resource}')"
                 if "state" in table_resource and table_resource["state"] == "unloaded":
-                    self.sasCatalog_client.load_table(table_uri + "/state?value=loaded")
+                    self.sas_client.load_table(table_uri + "/state?value=loaded")
 
             except HTTPError as e:
                 self.report_description.append(str(e))
@@ -742,7 +742,7 @@ class SascatalogSource(Source):
                 table_name = table_uri[name_index + 1 :]
                 param = f"filter=eq(name, '{table_name}')"
 
-            get_instances_with_param = self.sasCatalog_client.get_instances_with_param(
+            get_instances_with_param = self.sas_client.get_instances_with_param(
                 param
             )
             if get_instances_with_param:
@@ -766,11 +766,11 @@ class SascatalogSource(Source):
     def create_report_entity(self, report):
         report_id = report["id"]
         try:
-            report_instance = self.sasCatalog_client.get_instance(report_id)
+            report_instance = self.sas_client.get_instance(report_id)
             logger.info(f"{self.config.type}")
             logger.info(f"{self.service_connection}")
             report_resource = report["resourceId"]
-            report_url = self.sasCatalog_client.get_report_link("report", report_resource)
+            report_url = self.sas_client.get_report_link("report", report_resource)
             report_request = CreateDashboardRequest(
                 name=report_id,
                 displayName=report_instance["name"],
@@ -813,7 +813,7 @@ class SascatalogSource(Source):
     def create_in_out_tables(self, table_ids):
         table_entities = []
         for id in table_ids:
-            asset = self.sasCatalog_client.get_instance(id)
+            asset = self.sas_client.get_instance(id)
             table_entities.append(asset)
         return table_entities
 
@@ -823,8 +823,8 @@ class SascatalogSource(Source):
         data_plan_resource = data_plan["resourceId"]
 
         try:
-            data_plan_instance = self.sasCatalog_client.get_instance(data_plan_id)
-            data_plan_url = self.sasCatalog_client.get_report_link(
+            data_plan_instance = self.sas_client.get_instance(data_plan_id)
+            data_plan_url = self.sas_client.get_report_link(
                 "dataPlan", data_plan_resource
             )
             data_plan_request = CreateDashboardRequest(

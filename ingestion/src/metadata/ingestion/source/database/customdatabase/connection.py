@@ -6,26 +6,26 @@ from metadata.generated.schema.entity.automations.workflow import (
 from metadata.generated.schema.entity.services.connections.database.customDatabaseConnection import (
     CustomDatabaseConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.sasCatalogConnection import (
-    SASCatalogConnection,
+from metadata.generated.schema.entity.services.connections.metadata.sasConnection import (
+    SASConnection,
 )
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.metadata.sascatalog.client import SASCatalogClient
+from metadata.ingestion.source.metadata.sas.client import SASClient
 
 
-def get_connection(connection: CustomDatabaseConnection) -> SASCatalogClient:
-    sas_connection = SASCatalogConnection(
+def get_connection(connection: CustomDatabaseConnection) -> SASClient:
+    sas_connection = SASConnection(
         username=connection.connectionOptions.__root__.get("username"),
         password=connection.connectionOptions.__root__.get("password"),
         serverHost=connection.connectionOptions.__root__.get("serverHost"),
     )
-    return SASCatalogClient(sas_connection)
+    return SASClient(sas_connection)
 
 
 def test_connection(
     metadata: OpenMetadata,
-    client: SASCatalogClient,
+    client: SASClient,
     service_connection: CustomDatabaseConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
 ) -> None:
