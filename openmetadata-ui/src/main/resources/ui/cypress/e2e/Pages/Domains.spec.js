@@ -27,7 +27,7 @@ import {
   updateDomainDetails,
   verifyDomain,
 } from '../../common/DomainUtils';
-import { DOMAIN_1, DOMAIN_2 } from '../../constants/constants';
+import { DOMAIN_1, DOMAIN_2, DOMAIN_3 } from '../../constants/constants';
 
 describe('Domain page should work properly', () => {
   beforeEach(() => {
@@ -52,6 +52,11 @@ describe('Domain page should work properly', () => {
     addAssetsToDomain(DOMAIN_2);
   });
 
+  it('Add assets to domain having space using asset selection modal should work properly', () => {
+    createDomain(DOMAIN_3, false);
+    addAssetsToDomain(DOMAIN_3);
+  });
+
   it('Create new data product should work properly', () => {
     DOMAIN_1.dataProducts.forEach((dataProduct) => {
       createDataProducts(dataProduct, DOMAIN_1);
@@ -70,6 +75,17 @@ describe('Domain page should work properly', () => {
     });
 
     addAssetsToDataProduct(DOMAIN_2.dataProducts[0], DOMAIN_2);
+  });
+
+  it('Add data product assets using asset selection modal with separate domain and dp having space', () => {
+    DOMAIN_3.dataProducts.forEach((dp) => {
+      createDataProducts(dp, DOMAIN_3);
+      cy.get('[data-testid="app-bar-item-domain"]')
+        .should('be.visible')
+        .click({ force: true });
+    });
+
+    addAssetsToDataProduct(DOMAIN_3.dataProducts[0], DOMAIN_3);
   });
 
   it('Remove data product assets using asset selection modal should work properly', () => {
@@ -97,7 +113,7 @@ describe('Domain page should work properly', () => {
   });
 
   it('Delete domain flow should work properly', () => {
-    [DOMAIN_1, DOMAIN_2].forEach((domain) => {
+    [DOMAIN_1, DOMAIN_2, DOMAIN_3].forEach((domain) => {
       deleteDomain(domain);
     });
   });
