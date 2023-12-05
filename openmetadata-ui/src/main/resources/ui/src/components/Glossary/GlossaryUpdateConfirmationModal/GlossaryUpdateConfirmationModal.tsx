@@ -132,7 +132,10 @@ export const GlossaryUpdateConfirmationModal = ({
                 columns={tagsColumn}
                 dataSource={failedStatus?.failedRequest}
                 loading={validating}
-                pagination={false}
+                pagination={{
+                  pageSize: 5,
+                  showSizeChanger: true,
+                }}
                 rowKey={(record) => record.request.id}
               />
               <Typography.Text italic className="m-t-sm" type="secondary">
