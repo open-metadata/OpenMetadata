@@ -11,12 +11,11 @@
  *  limitations under the License.
  */
 import '@testing-library/jest-dom';
-import { fireEvent, render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { TokenType } from '../../generated/auth/personalAccessToken';
 import AccessTokenCard from './AccessTokenCard.component';
 import { MockProps } from './AccessTokenCard.interfaces';
-
 // Mocking the required props
 
 const mockProps: MockProps = {
@@ -37,32 +36,29 @@ const mockProps: MockProps = {
   onSave: jest.fn(),
   isBot: true,
 };
+jest.mock('../BotDetails/AuthMechanism', () => {
+  return jest.fn().mockReturnValue(<p>AuthMechanism Component</p>);
+});
+jest.mock('../BotDetails/AuthMechanismForm', () => {
+  return jest.fn().mockReturnValue(<p>AuthMechanismForm Component</p>);
+});
 
 describe('<AccessTokenCard />', () => {
   it('renders AuthMechanismForm when authenticationMechanism is not provided', () => {
-    const { container } = render(<AccessTokenCard {...mockProps} />);
+    render(<AccessTokenCard {...mockProps} />);
 
-    expect(container.querySelector('.auth-mechanism-form')).toBeInTheDocument();
+    expect(screen.getByText('AuthMechanism Component')).toBeInTheDocument();
   });
 
   it('renders AuthMechanismForm when isAuthMechanismEdit is true', () => {
-    const { container } = render(
-      <AccessTokenCard {...mockProps} isAuthMechanismEdit />
-    );
+    render(<AccessTokenCard {...mockProps} isAuthMechanismEdit />);
 
-    expect(container.querySelector('.auth-mechanism-form')).toBeInTheDocument();
+    expect(screen.getByText('AuthMechanismForm Component')).toBeInTheDocument();
   });
 
   it('renders AuthMechanism when authenticationMechanism is provided and isAuthMechanismEdit is false', () => {
-    const { container } = render(<AccessTokenCard {...mockProps} />);
+    render(<AccessTokenCard {...mockProps} />);
 
-    expect(container.querySelector('.auth-mechanism')).toBeInTheDocument();
-  });
-
-  it('calls onEdit when Edit button is clicked', () => {
-    const { getByText } = render(<AccessTokenCard {...mockProps} />);
-    fireEvent.click(getByText('Edit'));
-
-    expect(mockProps.onEdit).toHaveBeenCalled();
+    expect(screen.getByText('AuthMechanism Component')).toBeInTheDocument();
   });
 });

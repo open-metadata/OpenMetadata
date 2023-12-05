@@ -22,6 +22,5 @@ export type MockProps = {
   onTokenRevoke: () => void;
   onCancel: () => void;
   onSave: (updatedAuthMechanism: AuthenticationMechanism) => void;
-
   isBot: boolean;
 };
