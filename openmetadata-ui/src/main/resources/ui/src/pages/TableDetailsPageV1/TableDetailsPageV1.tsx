@@ -362,6 +362,20 @@ const TableDetailsPageV1 = () => {
     [owner, tableDetails]
   );
 
+  const handleUpdateRetentionPeriod = useCallback(
+    async (newRetentionPeriod: Table['retentionPeriod']) => {
+      if (!tableDetails) {
+        return;
+      }
+      const updatedTableDetails = {
+        ...tableDetails,
+        retentionPeriod: newRetentionPeriod,
+      };
+      await onTableUpdate(updatedTableDetails, 'retentionPeriod');
+    },
+    [tableDetails]
+  );
+
   const onDescriptionUpdate = async (updatedHTML: string) => {
     if (!tableDetails) {
       return;
@@ -947,6 +961,7 @@ const TableDetailsPageV1 = () => {
             onOwnerUpdate={handleUpdateOwner}
             onRestoreDataAsset={handleRestoreTable}
             onTierUpdate={onTierUpdate}
+            onUpdateRetentionPeriod={handleUpdateRetentionPeriod}
             onUpdateVote={updateVote}
             onVersionClick={versionHandler}
           />

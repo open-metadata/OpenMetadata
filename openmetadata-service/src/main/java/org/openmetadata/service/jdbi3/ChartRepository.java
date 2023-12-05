@@ -65,6 +65,7 @@ public class ChartRepository extends EntityRepository<Chart> {
   @Override
   public void setFields(Chart chart, Fields fields) {
     chart.withService(getContainer(chart.getId()));
+    chart.setSourceHash(fields.contains("sourceHash") ? chart.getSourceHash() : null);
   }
 
   @Override
