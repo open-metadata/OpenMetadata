@@ -16,10 +16,12 @@ from typing import Any, Iterable, List, Optional
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as LineageDashboard,
 )
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.connections.dashboard.metabaseConnection import (
     MetabaseConnection,
 )
@@ -274,8 +276,18 @@ class MetabaseSource(DashboardServiceSource):
             return
 
         database_name = database.details.db if database and database.details else None
+        
+        db_service = self.metadata.get_by_name(
+            DatabaseService, db_service_name
+        )
 
-        lineage_parser = LineageParser(query)
+        lineage_parser = LineageParser(
+            query,
+            ConnectionTypeDialectMapper.dialect_of(
+                db_service.connection.config.type.value
+            )
+        )
+
         for table in lineage_parser.source_tables:
             database_schema_name, table = fqn.split(str(table))[-2:]
             database_schema_name = self.check_database_schema_name(database_schema_name)
