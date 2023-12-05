@@ -414,6 +414,7 @@
     "extend-open-meta-data": "Extend OpenMetadata",
     "failed": "Échec",
     "failure-context": "Contexte de l'Échec",
+    "failure-reason": "Failure Reason",
     "favicon-url": "Favicon URL",
     "feature": "Fonctionnalité",
     "feature-lowercase": "fonctionnalité",

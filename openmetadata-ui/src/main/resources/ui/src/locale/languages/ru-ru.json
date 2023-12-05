@@ -414,6 +414,7 @@
     "extend-open-meta-data": "Extend OpenMetadata",
     "failed": "Неуспешно",
     "failure-context": "Контекст отказа",
+    "failure-reason": "Failure Reason",
     "favicon-url": "Favicon URL",
     "feature": "Свойство",
     "feature-lowercase": "свойство",
