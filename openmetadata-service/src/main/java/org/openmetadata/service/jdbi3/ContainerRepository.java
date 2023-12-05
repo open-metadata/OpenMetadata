@@ -53,6 +53,7 @@ public class ContainerRepository extends EntityRepository<Container> {
   public void setFields(Container container, EntityUtil.Fields fields) {
     setDefaultFields(container);
     container.setParent(fields.contains(FIELD_PARENT) ? getParent(container) : container.getParent());
+    container.setSourceHash(fields.contains("sourceHash") ? container.getSourceHash() : null);
     if (container.getDataModel() != null) {
       populateDataModelColumnTags(
           fields.contains(FIELD_TAGS), container.getFullyQualifiedName(), container.getDataModel().getColumns());

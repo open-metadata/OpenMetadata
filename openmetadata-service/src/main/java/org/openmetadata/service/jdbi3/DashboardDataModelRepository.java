@@ -157,6 +157,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
         dashboardDataModel.getColumns(),
         dashboardDataModel.getFullyQualifiedName(),
         fields.contains(FIELD_TAGS));
+    dashboardDataModel.setSourceHash(fields.contains("sourceHash") ? dashboardDataModel.getSourceHash() : null);
     if (dashboardDataModel.getService() == null) {
       dashboardDataModel.withService(getContainer(dashboardDataModel.getId()));
     }

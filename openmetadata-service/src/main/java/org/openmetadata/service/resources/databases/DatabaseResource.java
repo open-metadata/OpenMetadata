@@ -74,7 +74,8 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "databases")
 public class DatabaseResource extends EntityResource<Database, DatabaseRepository> {
   public static final String COLLECTION_PATH = "v1/databases/";
-  static final String FIELDS = "owner,databaseSchemas,usageSummary,location,tags,extension,domain";
+  static final String FIELDS =
+      "owner,databaseSchemas,usageSummary,location,tags,extension,domain,sourceHash,sourceHash";
 
   @Override
   public Database addHref(UriInfo uriInfo, Database db) {
@@ -478,6 +479,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
         .copy(new Database(), create, user)
         .withService(getEntityReference(Entity.DATABASE_SERVICE, create.getService()))
         .withSourceUrl(create.getSourceUrl())
-        .withRetentionPeriod(create.getRetentionPeriod());
+        .withRetentionPeriod(create.getRetentionPeriod())
+        .withSourceHash(create.getSourceHash());
   }
 }

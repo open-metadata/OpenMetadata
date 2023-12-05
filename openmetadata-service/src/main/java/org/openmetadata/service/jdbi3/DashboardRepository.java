@@ -99,6 +99,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     dashboard.setCharts(fields.contains("charts") ? getRelatedEntities(dashboard, Entity.CHART) : null);
     dashboard.setDataModels(
         fields.contains("dataModels") ? getRelatedEntities(dashboard, Entity.DASHBOARD_DATA_MODEL) : null);
+    dashboard.setSourceHash(fields.contains("sourceHash") ? dashboard.getSourceHash() : null);
     if (dashboard.getUsageSummary() == null) {
       dashboard.withUsageSummary(
           fields.contains("usageSummary")

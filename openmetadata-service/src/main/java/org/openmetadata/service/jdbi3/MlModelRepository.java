@@ -86,6 +86,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   public void setFields(MlModel mlModel, Fields fields) {
     mlModel.setService(getContainer(mlModel.getId()));
     mlModel.setDashboard(fields.contains("dashboard") ? getDashboard(mlModel) : mlModel.getDashboard());
+    mlModel.setSourceHash(fields.contains("sourceHash") ? mlModel.getSourceHash() : null);
     if (mlModel.getUsageSummary() == null) {
       mlModel.withUsageSummary(
           fields.contains("usageSummary")

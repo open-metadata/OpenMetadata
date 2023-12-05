@@ -59,7 +59,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "containers")
 public class ContainerResource extends EntityResource<Container, ContainerRepository> {
   public static final String COLLECTION_PATH = "v1/containers/";
-  static final String FIELDS = "parent,children,dataModel,owner,tags,followers,extension,domain";
+  static final String FIELDS = "parent,children,dataModel,owner,tags,followers,extension,domain,sourceHash";
 
   @Override
   public Container addHref(UriInfo uriInfo, Container container) {
@@ -451,6 +451,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
         .withNumberOfObjects(create.getNumberOfObjects())
         .withSize(create.getSize())
         .withFileFormats(create.getFileFormats())
-        .withSourceUrl(create.getSourceUrl());
+        .withSourceUrl(create.getSourceUrl())
+        .withSourceHash(create.getSourceHash());
   }
 }

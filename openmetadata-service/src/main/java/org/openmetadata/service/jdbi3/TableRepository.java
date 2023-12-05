@@ -135,6 +135,7 @@ public class TableRepository extends EntityRepository<Table> {
           entityType, table.getColumns(), table.getFullyQualifiedName(), fields.contains(FIELD_TAGS));
     }
     table.setJoins(fields.contains("joins") ? getJoins(table) : table.getJoins());
+    table.setSourceHash(fields.contains("sourceHash") ? table.getSourceHash() : null);
     table.setTableProfilerConfig(
         fields.contains(TABLE_PROFILER_CONFIG) ? getTableProfilerConfig(table) : table.getTableProfilerConfig());
     table.setTestSuite(fields.contains("testSuite") ? getTestSuite(table) : table.getTestSuite());

@@ -66,6 +66,7 @@ class PipelineServiceTopology(ServiceTopology):
                 processor="yield_create_request_pipeline_service",
                 overwrite=False,
                 must_return=True,
+                cache_entities=True,
             ),
         ],
         children=["pipeline"],
@@ -85,6 +86,7 @@ class PipelineServiceTopology(ServiceTopology):
                 context="pipeline",
                 processor="yield_pipeline",
                 consumer=["pipeline_service"],
+                use_cache=True,
             ),
             NodeStage(
                 type_=OMetaPipelineStatus,

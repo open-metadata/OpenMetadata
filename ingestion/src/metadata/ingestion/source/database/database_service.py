@@ -99,6 +99,7 @@ class DatabaseServiceTopology(ServiceTopology):
                 processor="yield_create_request_database_service",
                 overwrite=False,
                 must_return=True,
+                cache_entities=True,
             ),
         ],
         children=["database"],
@@ -115,6 +116,8 @@ class DatabaseServiceTopology(ServiceTopology):
                 context="database",
                 processor="yield_database",
                 consumer=["database_service"],
+                cache_entities=True,
+                use_cache=True,
             )
         ],
         children=["databaseSchema"],
@@ -134,6 +137,8 @@ class DatabaseServiceTopology(ServiceTopology):
                 context="database_schema",
                 processor="yield_database_schema",
                 consumer=["database_service", "database"],
+                cache_entities=True,
+                use_cache=True,
             ),
         ],
         children=["table", "stored_procedure"],
@@ -154,6 +159,7 @@ class DatabaseServiceTopology(ServiceTopology):
                 context="table",
                 processor="yield_table",
                 consumer=["database_service", "database", "database_schema"],
+                use_cache=True,
             ),
             NodeStage(
                 type_=OMetaLifeCycleData,
@@ -171,6 +177,7 @@ class DatabaseServiceTopology(ServiceTopology):
                 processor="yield_stored_procedure",
                 consumer=["database_service", "database", "database_schema"],
                 cache_all=True,
+                use_cache=True,
             ),
         ],
     )
@@ -443,6 +450,17 @@ class DatabaseServiceSource(
                     mark_deleted_entity=self.source_config.markDeletedTables,
                     params={"database": schema_fqn},
                 )
+
+    def get_all_entities(self):
+        """
+        Get all the tables and cache them
+        """
+        all_table_entities = self.metadata.list_all_entities(
+            entity=Table,
+            params={"database": self.context.database_service},
+            fields=["*"],
+        )
+        self.context.table_entities = list(all_table_entities)
 
     def yield_life_cycle_data(self, _) -> Iterable[Either[OMetaLifeCycleData]]:
         """

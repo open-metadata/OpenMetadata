@@ -45,6 +45,12 @@ class NodeStage(BaseModel, Generic[T]):
     consumer: Optional[
         List[str]
     ] = None  # keys in the source context to fetch state from the parent's context
+    cache_entities: bool = (
+        False  # Cache all the entities which have use_cache set as True
+    )
+    use_cache: bool = (
+        False  # enable this to get the entity from cached state in the context
+    )
 
 
 class TopologyNode(BaseModel):
