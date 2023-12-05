@@ -1,9 +1,9 @@
 source:
-  type: SASCatalog
+  type: SAS
   serviceName: plover
   serviceConnection:
     config:
-      type: SASCatalog
+      type: SAS
       hostPort: https://daily.plover-m1.unx.sas.com
       username: username
       password: password

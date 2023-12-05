@@ -1,6 +1,6 @@
 {
-  "name": "SASCatalog",
-  "displayName": "SAS Catalog Test Connection",
+  "name": "SAS",
+  "displayName": "SAS Test Connection",
   "description": "This Test Connection validates the access against the server and basic metadata extraction of tables.",
   "steps": [
     {

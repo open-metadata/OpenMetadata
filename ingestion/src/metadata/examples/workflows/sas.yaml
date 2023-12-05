@@ -1,9 +1,9 @@
 source:
-  type: sascatalog
-  serviceName: local_sascatalog
+  type: sas
+  serviceName: local_sas
   serviceConnection:
     config:
-      type: SASCatalog
+      type: SAS
       username: username
       password: password
       serverHost: serverHost
