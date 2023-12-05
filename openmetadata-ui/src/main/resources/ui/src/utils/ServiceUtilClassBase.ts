@@ -73,6 +73,7 @@ import {
   SAGEMAKER,
   SALESFORCE,
   SAP_HANA,
+  SAS,
   SCIKIT,
   SINGLESTORE,
   SNOWFLAKE,
@@ -332,6 +333,9 @@ class ServiceUtilClassBase {
 
       case MetadataServiceType.Atlas:
         return ATLAS;
+
+      case MetadataServiceType.SAS:
+        return SAS;
 
       case MetadataServiceType.OpenMetadata:
         return LOGO;
