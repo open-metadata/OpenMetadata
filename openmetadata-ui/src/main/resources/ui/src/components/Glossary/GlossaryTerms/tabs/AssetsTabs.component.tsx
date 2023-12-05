@@ -199,16 +199,13 @@ const AssetsTabs = forwardRef(
     );
 
     const queryParam = useMemo(() => {
+      const encodedFqn = getEncodedFqn(escapeESReservedCharacters(entityFqn));
       switch (type) {
         case AssetsOfEntity.DOMAIN:
-          return `(domain.fullyQualifiedName:"${escapeESReservedCharacters(
-            getEncodedFqn(entityFqn ?? '')
-          )}") AND !(entityType:"dataProduct")`;
+          return `(domain.fullyQualifiedName:"${encodedFqn}") AND !(entityType:"dataProduct")`;
 
         case AssetsOfEntity.DATA_PRODUCT:
-          return `(dataProducts.fullyQualifiedName:"${escapeESReservedCharacters(
-            getEncodedFqn(entityFqn ?? '')
-          )}")`;
+          return `(dataProducts.fullyQualifiedName:"${encodedFqn}")`;
 
         case AssetsOfEntity.TEAM:
           return `(owner.fullyQualifiedName:"${escapeESReservedCharacters(
@@ -220,9 +217,7 @@ const AssetsTabs = forwardRef(
           return queryFilter ?? '';
 
         default:
-          return `(tags.tagFQN:"${escapeESReservedCharacters(
-            getEncodedFqn(entityFqn ?? '')
-          )}")`;
+          return `(tags.tagFQN:"${encodedFqn}")`;
       }
     }, [type, fqn, entityFqn]);
 

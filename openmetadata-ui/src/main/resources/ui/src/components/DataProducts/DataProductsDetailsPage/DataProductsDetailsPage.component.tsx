@@ -209,13 +209,14 @@ const DataProductsDetailsPage = ({
   const fetchDataProductAssets = async () => {
     if (dataProduct) {
       try {
+        const encodedFqn = getEncodedFqn(
+          escapeESReservedCharacters(dataProduct.fullyQualifiedName)
+        );
         const res = await searchData(
           '',
           1,
           0,
-          `(dataProducts.fullyQualifiedName:"${escapeESReservedCharacters(
-            getEncodedFqn(dataProduct.fullyQualifiedName ?? '')
-          )}")`,
+          `(dataProducts.fullyQualifiedName:"${encodedFqn}")`,
           '',
           '',
           SearchIndex.ALL

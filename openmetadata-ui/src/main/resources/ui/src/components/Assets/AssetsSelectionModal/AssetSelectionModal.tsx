@@ -90,7 +90,13 @@ export const AssetSelectionModal = ({
   const [quickFilterQuery, setQuickFilterQuery] =
     useState<QueryFilterInterface>();
   const [updatedQueryFilter, setUpdatedQueryFilter] =
-    useState<QueryFilterInterface>();
+    useState<QueryFilterInterface>(
+      getCombinedQueryFilterObject(queryFilter as QueryFilterInterface, {
+        query: {
+          bool: {},
+        },
+      })
+    );
 
   const fetchEntities = useCallback(
     async ({

@@ -33,7 +33,6 @@ import {
   getDiffByFieldName,
   getDiffValue,
 } from './EntityVersionUtils';
-import { getEncodedFqn } from './StringsUtils';
 
 export const getOwner = (
   hasPermission: boolean,
@@ -165,7 +164,7 @@ export const getQueryFilterToExcludeDomainTerms = (
             must_not: [
               {
                 term: {
-                  'domain.fullyQualifiedName': getEncodedFqn(fqn),
+                  'domain.fullyQualifiedName': fqn,
                 },
               },
             ],
