@@ -91,7 +91,7 @@ const CustomMetricGraphs = ({
         disabled: !deletePermission,
       },
     ],
-    []
+    [editPermission, deletePermission]
   );
 
   const handleModalCancel = () => {

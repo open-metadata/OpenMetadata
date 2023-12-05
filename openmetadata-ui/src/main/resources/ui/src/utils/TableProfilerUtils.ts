@@ -106,6 +106,7 @@ export const calculateSystemMetrics = (
   };
 };
 
+// organize custom metrics data based on timestamp
 export const calculateCustomMetrics = (
   profiler: TableProfile[],
   customMetrics: CustomMetric[]
