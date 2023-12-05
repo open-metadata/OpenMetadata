@@ -12,7 +12,7 @@
 MSSQL SQLAlchemy Helper Methods
 """
 
-from sqlalchemy import Column, Integer, MetaData, String, Table, alias, sql
+from sqlalchemy import Column, Integer, MetaData, String, Table, alias, sql, text
 from sqlalchemy import types as sqltypes
 from sqlalchemy import util
 from sqlalchemy.dialects.mssql import information_schema as ischema
@@ -25,7 +25,9 @@ from sqlalchemy.dialects.mssql.base import (
     MSString,
     MSText,
     MSVarBinary,
-    _db_plus_owner,
+    _owner_plus_db,
+    _switch_db,
+    update_wrapper,
 )
 from sqlalchemy.engine import reflection
 from sqlalchemy.sql import func
@@ -34,6 +36,7 @@ from sqlalchemy.util import compat
 
 from metadata.ingestion.source.database.mssql.queries import (
     MSSQL_ALL_VIEW_DEFINITIONS,
+    MSSQL_GET_FOREIGN_KEY,
     MSSQL_GET_TABLE_COMMENTS,
 )
 from metadata.utils.logger import ingestion_logger
@@ -59,8 +62,39 @@ def get_table_comment(
     )
 
 
+def db_plus_owner_listing(fn):
+    def wrap(dialect, connection, schema=None, **kw):
+        schema = f"[{schema}]" if schema and "." in schema else schema
+        dbname, owner = _owner_plus_db(dialect, schema)
+        return _switch_db(
+            dbname, connection, fn, dialect, connection, dbname, owner, schema, **kw
+        )
+
+    return update_wrapper(wrap, fn)
+
+
+def db_plus_owner(fn):
+    def wrap(dialect, connection, tablename, schema=None, **kw):
+        schema = f"[{schema}]" if schema and "." in schema else schema
+        dbname, owner = _owner_plus_db(dialect, schema)
+        return _switch_db(
+            dbname,
+            connection,
+            fn,
+            dialect,
+            connection,
+            tablename,
+            dbname,
+            owner,
+            schema,
+            **kw,
+        )
+
+    return update_wrapper(wrap, fn)
+
+
 @reflection.cache
-@_db_plus_owner
+@db_plus_owner
 def get_columns(
     self, connection, tablename, dbname, owner, schema, **kw
 ):  # pylint: disable=unused-argument, too-many-locals, disable=too-many-branches, too-many-statements
@@ -271,7 +305,7 @@ def get_columns(
 
 
 @reflection.cache
-@_db_plus_owner
+@db_plus_owner
 def get_view_definition(
     self, connection, viewname, dbname, owner, schema, **kw
 ):  # pylint: disable=unused-argument
@@ -282,3 +316,168 @@ def get_view_definition(
         schema=owner,
         query=MSSQL_ALL_VIEW_DEFINITIONS,
     )
+
+
+@reflection.cache
+@db_plus_owner
+def get_pk_constraint(
+    self, connection, tablename, dbname, owner=None, schema=None, **kw
+):  # pylint: disable=unused-argument
+    """
+    This function overrides to get pk constraint
+    """
+    pkeys = []
+    tc = ischema.constraints
+    c = ischema.key_constraints.alias("C")
+
+    # Primary key constraints
+    s = (
+        sql.select(c.c.column_name, tc.c.constraint_type, c.c.constraint_name)
+        .where(
+            sql.and_(
+                tc.c.constraint_name == c.c.constraint_name,
+                tc.c.table_schema == c.c.table_schema,
+                c.c.table_name == tablename,
+                c.c.table_schema == owner,
+            ),
+        )
+        .order_by(tc.c.constraint_name, c.c.ordinal_position)
+    )
+    c = connection.execution_options(future_result=True).execute(s)
+    constraint_name = None
+    for row in c.mappings():
+        if "PRIMARY" in row[tc.c.constraint_type.name]:
+            pkeys.append(row["COLUMN_NAME"])
+            if constraint_name is None:
+                constraint_name = row[c.c.constraint_name.name]
+    return {"constrained_columns": pkeys, "name": constraint_name}
+
+
+@reflection.cache
+def get_unique_constraints(self, connection, table_name, schema=None, **kw):
+    raise NotImplementedError()
+
+
+@reflection.cache
+@db_plus_owner
+def get_foreign_keys(
+    self, connection, tablename, dbname, owner=None, schema=None, **kw
+):  # pylint: disable=unused-argument, too-many-locals
+    """
+    This function overrides to get foreign key constraint
+    """
+    s = (
+        text(MSSQL_GET_FOREIGN_KEY)
+        .bindparams(
+            sql.bindparam("tablename", tablename, ischema.CoerceUnicode()),
+            sql.bindparam("owner", owner, ischema.CoerceUnicode()),
+        )
+        .columns(
+            constraint_schema=sqltypes.Unicode(),
+            constraint_name=sqltypes.Unicode(),
+            table_schema=sqltypes.Unicode(),
+            table_name=sqltypes.Unicode(),
+            constrained_column=sqltypes.Unicode(),
+            referred_table_schema=sqltypes.Unicode(),
+            referred_table_name=sqltypes.Unicode(),
+            referred_column=sqltypes.Unicode(),
+        )
+    )
+
+    # group rows by constraint ID, to handle multi-column FKs
+    fkeys = []
+
+    def fkey_rec():
+        return {
+            "name": None,
+            "constrained_columns": [],
+            "referred_schema": None,
+            "referred_table": None,
+            "referred_columns": [],
+            "options": {},
+        }
+
+    fkeys = util.defaultdict(fkey_rec)
+
+    for r in connection.execute(s).fetchall():
+        (
+            _,  # constraint schema
+            rfknm,
+            _,  # ordinal position
+            scol,
+            rschema,
+            rtbl,
+            rcol,
+            # TODO: we support match=<keyword> for foreign keys so
+            # we can support this also, PG has match=FULL for example
+            # but this seems to not be a valid value for SQL Server
+            _,  # match rule
+            fkuprule,
+            fkdelrule,
+        ) = r
+
+        rec = fkeys[rfknm]
+        rec["name"] = rfknm
+
+        if fkuprule != "NO ACTION":
+            rec["options"]["onupdate"] = fkuprule
+
+        if fkdelrule != "NO ACTION":
+            rec["options"]["ondelete"] = fkdelrule
+
+        if not rec["referred_table"]:
+            rec["referred_table"] = rtbl
+            if schema is not None or owner != rschema:
+                if dbname:
+                    rschema = dbname + "." + rschema
+                rec["referred_schema"] = rschema
+
+        local_cols, remote_cols = (
+            rec["constrained_columns"],
+            rec["referred_columns"],
+        )
+
+        local_cols.append(scol)
+        remote_cols.append(rcol)
+
+    return list(fkeys.values())
+
+
+@reflection.cache
+@db_plus_owner_listing
+def get_table_names(
+    self, connection, dbname, owner, schema, **kw
+):  # pylint: disable=unused-argument
+    tables = ischema.tables
+    s = (
+        sql.select(tables.c.table_name)
+        .where(
+            sql.and_(
+                tables.c.table_schema == owner,
+                tables.c.table_type == "BASE TABLE",
+            )
+        )
+        .order_by(tables.c.table_name)
+    )
+    table_names = [r[0] for r in connection.execute(s)]
+    return table_names
+
+
+@reflection.cache
+@db_plus_owner_listing
+def get_view_names(
+    self, connection, dbname, owner, schema, **kw
+):  # pylint: disable=unused-argument
+    tables = ischema.tables
+    s = (
+        sql.select(tables.c.table_name)
+        .where(
+            sql.and_(
+                tables.c.table_schema == owner,
+                tables.c.table_type == "VIEW",
+            )
+        )
+        .order_by(tables.c.table_name)
+    )
+    view_names = [r[0] for r in connection.execute(s)]
+    return view_names
