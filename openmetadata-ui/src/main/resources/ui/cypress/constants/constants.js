@@ -613,3 +613,51 @@ export const DOMAIN_2 = {
     },
   ],
 };
+
+export const DOMAIN_3 = {
+  name: 'Cypress Space',
+  updatedName: 'Cypress Space',
+  updatedDisplayName: 'Cypress Space',
+  fullyQualifiedName: 'Cypress Space',
+  description: 'This is the Cypress for testing domain with space creation',
+  experts: 'Alex Pollard',
+  owner: 'Alex Pollard',
+  domainType: 'Source-aligned',
+  dataProducts: [
+    {
+      name: 'Cypress%PercentDP',
+      description:
+        'This is the data product description for Cypress DataProduct Assets',
+      experts: 'Aaron Johnson',
+      owner: 'Aaron Johnson',
+      assets: [
+        {
+          name: 'forecast_sales_performance',
+          fullyQualifiedName: 'sample_superset.forecast_sales_performance',
+        },
+        {
+          name: 'eta_predictions',
+          fullyQualifiedName: 'mlflow_svc.eta_predictions',
+        },
+        {
+          name: 'operations_view',
+          fullyQualifiedName: 'sample_looker.model.operations_view',
+        },
+      ],
+    },
+  ],
+  assets: [
+    {
+      name: 'forecast_sales_performance',
+      fullyQualifiedName: 'sample_superset.forecast_sales_performance',
+    },
+    {
+      name: 'eta_predictions',
+      fullyQualifiedName: 'mlflow_svc.eta_predictions',
+    },
+    {
+      name: 'operations_view',
+      fullyQualifiedName: 'sample_looker.model.operations_view',
+    },
+  ],
+};
