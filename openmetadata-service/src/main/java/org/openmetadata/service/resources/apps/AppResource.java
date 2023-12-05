@@ -499,8 +499,15 @@ public class AppResource extends EntityResource<App, AppRepository> {
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
                       examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
-          JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+          JsonPatch patch)
+      throws SchedulerException {
+    App app = repository.get(null, id, repository.getFields("bot,pipelines"));
+    AppScheduler.getInstance().deleteScheduledApplication(app);
+    Response response = patchInternal(uriInfo, securityContext, id, patch);
+    if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
+      ApplicationHandler.installApplication((App) response.getEntity(), Entity.getCollectionDAO(), searchRepository);
+    }
+    return response;
   }
 
   @PUT
