@@ -417,7 +417,6 @@ class DatabaseServiceSource(
             database_name=self.context.database,
             schema_name=self.context.database_schema,
             procedure_name=stored_proc_request.name.__root__,
-            skip_es_search=True,
         )
 
         self.stored_procedure_source_state.add(table_fqn)

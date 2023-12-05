@@ -564,35 +564,31 @@ class SnowflakeSource(
 
         try:
             stored_procedure_request = CreateStoredProcedureRequest(
-                    name=EntityName(__root__=stored_procedure.name),
-                    description=stored_procedure.comment,
-                    storedProcedureCode=StoredProcedureCode(
-                        language=STORED_PROC_LANGUAGE_MAP.get(
-                            stored_procedure.language
-                        ),
-                        code=stored_procedure.definition,
-                    ),
-                    databaseSchema=fqn.build(
-                        metadata=self.metadata,
-                        entity_type=DatabaseSchema,
-                        service_name=self.context.database_service,
+                name=EntityName(__root__=stored_procedure.name),
+                description=stored_procedure.comment,
+                storedProcedureCode=StoredProcedureCode(
+                    language=STORED_PROC_LANGUAGE_MAP.get(stored_procedure.language),
+                    code=stored_procedure.definition,
+                ),
+                databaseSchema=fqn.build(
+                    metadata=self.metadata,
+                    entity_type=DatabaseSchema,
+                    service_name=self.context.database_service,
+                    database_name=self.context.database,
+                    schema_name=self.context.database_schema,
+                ),
+                sourceUrl=SourceUrl(
+                    __root__=self._get_source_url_root(
                         database_name=self.context.database,
                         schema_name=self.context.database_schema,
-                    ),
-                    sourceUrl=SourceUrl(
-                        __root__=self._get_source_url_root(
-                            database_name=self.context.database,
-                            schema_name=self.context.database_schema,
-                        )
-                        + f"/procedure/{stored_procedure.name}"
-                        + f"{stored_procedure.signature if stored_procedure.signature else ''}"
-                    ),
-                )
-            yield Either(
-                right=stored_procedure_request
+                    )
+                    + f"/procedure/{stored_procedure.name}"
+                    + f"{stored_procedure.signature if stored_procedure.signature else ''}"
+                ),
             )
+            yield Either(right=stored_procedure_request)
             self.register_record_stored_proc_request(stored_procedure_request)
-            
+
         except Exception as exc:
             yield Either(
                 left=StackTraceError(
