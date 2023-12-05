@@ -86,12 +86,17 @@ export const AssetSelectionModal = ({
   const [aggregations, setAggregations] = useState<Aggregations>();
   const [selectedQuickFilters, setSelectedQuickFilters] = useState<
     ExploreQuickFilterField[]
-  >([] as ExploreQuickFilterField[]);
-  const [quickFilterQuery, setQuickFilterQuery] = useState<
-    QueryFilterInterface | undefined
-  >();
-  const [updatedQueryFilter, setUpdatedQueryFilter] =
+  >([]);
+  const [quickFilterQuery, setQuickFilterQuery] =
     useState<QueryFilterInterface>();
+  const [updatedQueryFilter, setUpdatedQueryFilter] =
+    useState<QueryFilterInterface>(
+      getCombinedQueryFilterObject(queryFilter as QueryFilterInterface, {
+        query: {
+          bool: {},
+        },
+      })
+    );
 
   const fetchEntities = useCallback(
     async ({
@@ -145,11 +150,7 @@ export const AssetSelectionModal = ({
     setSelectedQuickFilters(
       dropdownItems.map((item) => ({
         ...item,
-        value: getSelectedValuesFromQuickFilter(
-          item,
-          dropdownItems,
-          undefined // pass in state variable
-        ),
+        value: getSelectedValuesFromQuickFilter(item, dropdownItems),
       }))
     );
   }, [type]);

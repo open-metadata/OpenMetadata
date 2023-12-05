@@ -19,7 +19,7 @@ export interface AssetFiltersProps {
   filterData?: ExploreQuickFilterField[];
   defaultFilter?: string[];
   aggregations?: Aggregations;
-  onQuickFilterChange?: (query: QueryFilterInterface | undefined) => void;
+  onQuickFilterChange?: (query?: QueryFilterInterface) => void;
   type: AssetsOfEntity;
   quickFilterQuery?: QueryFilterInterface;
 }

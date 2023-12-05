@@ -29,7 +29,11 @@ import { SearchIndex } from '../../../../enums/search.enum';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import { searchData } from '../../../../rest/miscAPI';
 import { formatDataProductResponse } from '../../../../utils/APIUtils';
-import { escapeESReservedCharacters } from '../../../../utils/StringsUtils';
+import {
+  escapeESReservedCharacters,
+  getDecodedFqn,
+  getEncodedFqn,
+} from '../../../../utils/StringsUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import EntitySummaryPanel from '../../../Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import ExploreSearchCard from '../../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
@@ -55,13 +59,15 @@ const DataProductsTab = forwardRef(
     const fetchDataProducts = async () => {
       try {
         setLoading(true);
+        const decodedFqn = getDecodedFqn(domainFqn);
+        const encodedFqn = getEncodedFqn(
+          escapeESReservedCharacters(decodedFqn)
+        );
         const res = await searchData(
           '',
           1,
           PAGE_SIZE_LARGE,
-          `(domain.fullyQualifiedName:"${escapeESReservedCharacters(
-            domainFqn
-          )}")`,
+          `(domain.fullyQualifiedName:"${encodedFqn}")`,
           '',
           '',
           SearchIndex.DATA_PRODUCT

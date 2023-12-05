@@ -179,10 +179,8 @@ const AssetsTabs = forwardRef(
     const [selectedFilter, setSelectedFilter] = useState<string[]>([]); // Contains menu selection
     const [selectedQuickFilters, setSelectedQuickFilters] = useState<
       ExploreQuickFilterField[]
-    >([] as ExploreQuickFilterField[]);
-    const [filters, setFilters] = useState<ExploreQuickFilterField[]>(
-      [] as ExploreQuickFilterField[]
-    );
+    >([]);
+    const [filters, setFilters] = useState<ExploreQuickFilterField[]>([]);
     const [searchValue, setSearchValue] = useState('');
 
     const handleMenuClick = ({ key }: { key: string }) => {
@@ -201,16 +199,13 @@ const AssetsTabs = forwardRef(
     );
 
     const queryParam = useMemo(() => {
+      const encodedFqn = getEncodedFqn(escapeESReservedCharacters(entityFqn));
       switch (type) {
         case AssetsOfEntity.DOMAIN:
-          return `(domain.fullyQualifiedName:"${escapeESReservedCharacters(
-            getEncodedFqn(entityFqn ?? '')
-          )}") AND !(entityType:"dataProduct")`;
+          return `(domain.fullyQualifiedName:"${encodedFqn}") AND !(entityType:"dataProduct")`;
 
         case AssetsOfEntity.DATA_PRODUCT:
-          return `(dataProducts.fullyQualifiedName:"${escapeESReservedCharacters(
-            getEncodedFqn(entityFqn ?? '')
-          )}")`;
+          return `(dataProducts.fullyQualifiedName:"${encodedFqn}")`;
 
         case AssetsOfEntity.TEAM:
           return `(owner.fullyQualifiedName:"${escapeESReservedCharacters(
@@ -222,9 +217,7 @@ const AssetsTabs = forwardRef(
           return queryFilter ?? '';
 
         default:
-          return `(tags.tagFQN:"${escapeESReservedCharacters(
-            getEncodedFqn(entityFqn ?? '')
-          )}")`;
+          return `(tags.tagFQN:"${encodedFqn}")`;
       }
     }, [type, fqn, entityFqn]);
 
@@ -613,7 +606,7 @@ const AssetsTabs = forwardRef(
                 handleSummaryPanelDisplay={setSelectedCard}
                 id={_id}
                 key={'assets_' + _id}
-                showCheckboxes={Boolean(activeEntity)}
+                showCheckboxes={Boolean(activeEntity) && permissions.Create}
                 showTags={false}
                 source={_source}
                 onCheckboxChange={(selected) =>
@@ -678,7 +671,7 @@ const AssetsTabs = forwardRef(
     const assetsHeader = useMemo(() => {
       return (
         <div className="w-full d-flex justify-between items-center p-l-sm">
-          {activeEntity && data.length > 0 && (
+          {activeEntity && permissions.Create && data.length > 0 && (
             <Checkbox
               className="assets-checkbox p-x-sm"
               onChange={(e) => onSelectAll(e.target.checked)}>
@@ -794,13 +787,19 @@ const AssetsTabs = forwardRef(
       notification.warning({
         key: 'asset-tab-notification-key',
         message: (
-          <div className="d-flex justify-between">
+          <div className="d-flex items-center justify-between">
             {selectedItems && selectedItems.size > 1 && (
-              <Typography.Text>
-                {selectedItems.size} {t('label.selected-lowercase')}
+              <Typography.Text className="text-white">
+                {selectedItems.size} {t('label.items-selected-lowercase')}
               </Typography.Text>
             )}
-            <Button onClick={deleteSelectedItems}>{t('label.delete')}</Button>
+            <Button
+              danger
+              data-testid="delete-all-button"
+              type="primary"
+              onClick={deleteSelectedItems}>
+              {t('label.delete')}
+            </Button>
           </div>
         ),
         placement: 'bottom',

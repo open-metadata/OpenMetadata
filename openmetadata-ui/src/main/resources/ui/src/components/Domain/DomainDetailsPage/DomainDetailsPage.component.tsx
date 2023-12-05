@@ -238,13 +238,14 @@ const DomainDetailsPage = ({
   const fetchDataProducts = async () => {
     if (!isVersionsView) {
       try {
+        const encodedFqn = getEncodedFqn(
+          escapeESReservedCharacters(domain.fullyQualifiedName)
+        );
         const res = await searchData(
           '',
           1,
           0,
-          `(domain.fullyQualifiedName:${escapeESReservedCharacters(
-            getEncodedFqn(domain.fullyQualifiedName ?? '')
-          )})`,
+          `(domain.fullyQualifiedName:"${encodedFqn}")`,
           '',
           '',
           SearchIndex.DATA_PRODUCT
@@ -260,13 +261,14 @@ const DomainDetailsPage = ({
   const fetchDomainAssets = async () => {
     if (fqn && !isVersionsView) {
       try {
+        const encodedFqn = getEncodedFqn(
+          escapeESReservedCharacters(domain.fullyQualifiedName)
+        );
         const res = await searchData(
           '',
           1,
           0,
-          `(domain.fullyQualifiedName:"${escapeESReservedCharacters(
-            getEncodedFqn(domain.fullyQualifiedName ?? '')
-          )}") AND !(entityType:"dataProduct")`,
+          `(domain.fullyQualifiedName:"${encodedFqn}") AND !(entityType:"dataProduct")`,
           '',
           '',
           SearchIndex.ALL
