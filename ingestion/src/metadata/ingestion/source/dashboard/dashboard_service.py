@@ -376,7 +376,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 entity_type=DashboardDataModel,
                 entity_source_state=self.datamodel_source_state,
                 mark_deleted_entity=self.source_config.markDeletedDataModels,
-                params={"service": self.context.dataModels},
+                params={"service": self.context.dashboard_service},
             )
 
     def process_owner(self, dashboard_details):

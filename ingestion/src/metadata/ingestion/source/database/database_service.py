@@ -471,13 +471,18 @@ class DatabaseServiceSource(
                 f"Mark Deleted Stored Procedures Processing database [{self.context.database}]"
             )
 
-            yield from delete_entity_from_source(
-                metadata=self.metadata,
-                entity_type=StoredProcedure,
-                entity_source_state=self.stored_procedure_source_state,
-                mark_deleted_entity=self.source_config.markDeletedStoredProcedures,
-                params={"databaseSchema": self.context.stored_procedures},
+            schema_fqn_list = self._get_filtered_schema_names(
+                return_fqn=True, add_to_status=False
             )
+
+            for schema_fqn in schema_fqn_list:
+                yield from delete_entity_from_source(
+                    metadata=self.metadata,
+                    entity_type=StoredProcedure,
+                    entity_source_state=self.stored_procedure_source_state,
+                    mark_deleted_entity=self.source_config.markDeletedStoredProcedures,
+                    params={"databaseSchema": schema_fqn},
+                )
 
     def yield_life_cycle_data(self, _) -> Iterable[Either[OMetaLifeCycleData]]:
         """
