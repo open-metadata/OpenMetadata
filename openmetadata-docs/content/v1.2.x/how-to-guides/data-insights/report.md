@@ -215,8 +215,8 @@ caption="Frequently Used Assets"
 
 {%inlineCallout
   color="violet-70"
-  bold="Configure the Data Insights Report"
+  bold="Cost Analysis"
   icon="MdArrowForward"
-  href="/how-to-guides/data-insights/email-report"%}
-  Email the data insights report to Admins and Teams at the desired frequency.
+  href="/how-to-guides/data-insights/cost-analysis"%}
+  Get valuable insights with the cost analysis reports.
 {%/inlineCallout%}

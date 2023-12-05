@@ -64,6 +64,20 @@ You can create, delete, modify, and update using APIs. Refer to the **[Glossary 
  {%/inlineCallout%}
  {%inlineCallout
   color="violet-70"
+  bold="Glossary Approval Workflow"
+  icon="MdPushPin"
+  href="/how-to-guides/data-governance/glossary/approval"%}
+  Set up a review and approval process for glossary terms.
+ {%/inlineCallout%}
+  {%inlineCallout
+  color="violet-70"
+  bold="Glossary Styling"
+  icon="MdPushPin"
+  href="/how-to-guides/data-governance/glossary/styling"%}
+  Stylize your glossary terms with color-coding and icons.
+ {%/inlineCallout%}
+ {%inlineCallout
+  color="violet-70"
   bold="Add Assets to Glossary Terms"
   icon="MdPushPin"
   href="/how-to-guides/data-governance/glossary/assets"%}

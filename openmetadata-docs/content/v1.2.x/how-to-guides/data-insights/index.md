@@ -48,6 +48,13 @@ Watch a demo of Data Insights in OpenMetadata
  {%/inlineCallout%}
  {%inlineCallout
   color="violet-70"
+  bold="Cost Analysis"
+  icon="MdInsights"
+  href="/how-to-guides/data-insights/cost-analysis"%}
+  Get valuable insights with the cost analysis reports.
+ {%/inlineCallout%}
+ {%inlineCallout
+  color="violet-70"
   bold="Configure the Data Insights Report"
   icon="MdInsights"
   href="/how-to-guides/data-insights/email-report"%}
