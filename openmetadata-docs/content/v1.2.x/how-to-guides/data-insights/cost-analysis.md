@@ -94,3 +94,10 @@ The table showcases frequently accessed data assets, detailing their names, last
     caption="Frequently Used Assets"
  /%}
 
+{%inlineCallout
+  color="violet-70"
+  bold="Configure the Data Insights Report"
+  icon="MdArrowForward"
+  href="/how-to-guides/data-insights/email-report"%}
+  Email the data insights report to Admins and Teams at the desired frequency.
+{%/inlineCallout%}

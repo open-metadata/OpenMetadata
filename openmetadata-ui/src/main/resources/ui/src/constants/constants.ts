@@ -804,6 +804,13 @@ export const VALIDATION_MESSAGES = {
       max: '${max}',
     }),
   },
+  number: {
+    range: i18n.t('message.entity-size-in-between', {
+      entity: '${label}',
+      min: '${min}',
+      max: '${max}',
+    }),
+  },
 };
 
 export const ERROR_MESSAGE = {
@@ -818,5 +825,3 @@ export const ICON_DIMENSION = {
 export const COMMON_ICON_STYLES: CSSProperties = {
   verticalAlign: 'middle',
 };
-
-export const KNOWLEDGE_CENTER_CLASSIFICATION = 'KnowledgeCenter';
