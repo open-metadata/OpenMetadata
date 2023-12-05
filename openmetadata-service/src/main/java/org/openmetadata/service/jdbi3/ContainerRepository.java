@@ -287,6 +287,7 @@ public class ContainerRepository extends EntityRepository<Container> {
           false);
       recordChange("size", original.getSize(), updated.getSize(), false, EntityUtil.objectMatch, false);
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
+      recordChange("retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod());
     }
 
     private void updateDataModel(Container original, Container updated) {

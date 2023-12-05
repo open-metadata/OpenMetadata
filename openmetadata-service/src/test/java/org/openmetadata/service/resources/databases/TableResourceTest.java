@@ -1552,6 +1552,13 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     fieldDeleted(change, "tableType", TableType.External);
     fieldDeleted(change, "tableConstraints", tableConstraints1);
+    table = patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // add retention period
+    originalJson = JsonUtils.pojoToJson(table);
+    table.withRetentionPeriod("10D");
+    change = getChangeDescription(table.getVersion());
+    fieldAdded(change, "retentionPeriod", "10D");
     patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
