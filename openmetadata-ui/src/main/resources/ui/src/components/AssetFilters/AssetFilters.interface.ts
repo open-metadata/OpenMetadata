@@ -10,25 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Aggregations } from '../../interface/search.interface';
+import { QueryFilterInterface } from '../../pages/ExplorePage/ExplorePage.interface';
+import { ExploreQuickFilterField } from '../Explore/ExplorePage.interface';
+import { AssetsOfEntity } from '../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 
-export interface QueryFieldValueInterface {
-  term: Record<string, string>;
-}
-
-export interface QueryFieldInterface {
-  bool: {
-    must?: Array<QueryFieldValueInterface>;
-    must_not?: Array<QueryFieldValueInterface>;
-    should?: Array<QueryFieldValueInterface>;
-  };
-}
-
-export interface QueryFilterInterface {
-  query: {
-    bool: {
-      must?: QueryFieldInterface[];
-      must_not?: QueryFieldInterface[];
-      should?: QueryFieldInterface[];
-    };
-  };
+export interface AssetFiltersProps {
+  filterData?: ExploreQuickFilterField[];
+  defaultFilter?: string[];
+  aggregations?: Aggregations;
+  onQuickFilterChange?: (query?: QueryFilterInterface) => void;
+  type: AssetsOfEntity;
+  quickFilterQuery?: QueryFilterInterface;
 }

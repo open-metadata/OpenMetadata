@@ -31,14 +31,10 @@ describe('Glossary Utils', () => {
           must: [
             {
               bool: {
-                must: [
+                must_not: [
                   {
-                    bool: {
-                      must_not: {
-                        term: {
-                          'tags.tagFQN': fqn,
-                        },
-                      },
+                    term: {
+                      'tags.tagFQN': fqn,
                     },
                   },
                 ],

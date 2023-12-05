@@ -436,14 +436,8 @@ export const removeAssetsFromDomain = (domainObj) => {
   domainObj.assets.forEach((asset, index) => {
     interceptURL('GET', '/api/v1/search/query*', 'searchAssets');
 
-    cy.get(
-      `[data-testid="table-data-card_${asset.fullyQualifiedName}"]`
-    ).within(() => {
-      cy.get('.explore-card-actions').invoke('show');
-      cy.get('.explore-card-actions').within(() => {
-        cy.get('[data-testid="delete-tag"]').click();
-      });
-    });
+    cy.get(`[data-testid="manage-button-${asset.fullyQualifiedName}"]`).click();
+    cy.get('[data-testid="delete-button"]').click();
 
     cy.get("[data-testid='save-button']").click();
 
@@ -460,9 +454,13 @@ export const removeAssetsFromDomain = (domainObj) => {
 
 export const addAssetsToDataProduct = (dataProductObj, domainObj) => {
   interceptURL('GET', `/api/v1/search/query**`, 'getDataProductAssets');
+  interceptURL('GET', '/api/v1/dataProducts/**', 'getDataProductDetails');
 
   goToDataProductsTab(domainObj);
-  cy.get(`[data-testid="explore-card-${dataProductObj.name}"]`).click();
+  cy.get(
+    `[data-testid="explore-card-${dataProductObj.name}"] [data-testid="entity-link"]`
+  ).click();
+  verifyResponseStatusCode('@getDataProductDetails', 200);
 
   cy.get('[data-testid="assets"]').should('be.visible').click();
   cy.get('.ant-tabs-tab-active').contains('Assets').should('be.visible');
@@ -501,7 +499,9 @@ export const addAssetsToDataProduct = (dataProductObj, domainObj) => {
 
 export const removeAssetsFromDataProduct = (dataProductObj, domainObj) => {
   goToDataProductsTab(domainObj);
-  cy.get(`[data-testid="explore-card-${dataProductObj.name}"]`).click();
+  cy.get(
+    `[data-testid="explore-card-${dataProductObj.name}"] [data-testid="entity-link"]`
+  ).click();
 
   cy.get('[data-testid="assets"]').should('be.visible').click();
   cy.get('.ant-tabs-tab-active').contains('Assets').should('be.visible');
@@ -510,15 +510,8 @@ export const removeAssetsFromDataProduct = (dataProductObj, domainObj) => {
 
   dataProductObj.assets.forEach((asset, index) => {
     interceptURL('GET', '/api/v1/search/query*', 'searchAssets');
-
-    cy.get(
-      `[data-testid="table-data-card_${asset.fullyQualifiedName}"]`
-    ).within(() => {
-      cy.get('.explore-card-actions').invoke('show');
-      cy.get('.explore-card-actions').within(() => {
-        cy.get('[data-testid="delete-tag"]').click();
-      });
-    });
+    cy.get(`[data-testid="manage-button-${asset.fullyQualifiedName}"]`).click();
+    cy.get('[data-testid="delete-button"]').click();
 
     cy.get("[data-testid='save-button']").click();
 

@@ -22,4 +22,6 @@ export type TagsV1Props = {
   className?: string;
   isVersionPage?: boolean;
   tagProps?: TagProps;
+  disabled?: boolean;
+  tooltipOverride?: string;
 };

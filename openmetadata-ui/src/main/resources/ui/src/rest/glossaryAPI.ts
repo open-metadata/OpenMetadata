@@ -20,6 +20,7 @@ import { CreateGlossary } from '../generated/api/data/createGlossary';
 import { CreateGlossaryTerm } from '../generated/api/data/createGlossaryTerm';
 import { EntityReference, Glossary } from '../generated/entity/data/glossary';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
+import { BulkOperationResult } from '../generated/type/bulkOperationResult';
 import { CSVImportResult } from '../generated/type/csvImportResult';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { ListParams } from '../interface/API.interface';
@@ -251,13 +252,31 @@ export const updateGlossaryTermVotes = async (
   return response.data;
 };
 
+export const validateTagAddtionToGlossary = async (
+  glossaryTerm: GlossaryTerm,
+  dryRun = false
+) => {
+  const data = {
+    dryRun: dryRun,
+    glossaryTags: glossaryTerm.tags ?? [],
+  };
+
+  const response = await APIClient.put<
+    AddGlossaryToAssetsRequest,
+    AxiosResponse<BulkOperationResult>
+  >(`/glossaryTerms/${glossaryTerm.id}/tags/validate`, data);
+
+  return response.data;
+};
+
 export const addAssetsToGlossaryTerm = async (
   glossaryTerm: GlossaryTerm,
-  assets: EntityReference[]
+  assets: EntityReference[],
+  dryRun = false
 ) => {
   const data = {
     assets: assets,
-    dryRun: false,
+    dryRun: dryRun,
     glossaryTags: glossaryTerm.tags ?? [],
   };
 

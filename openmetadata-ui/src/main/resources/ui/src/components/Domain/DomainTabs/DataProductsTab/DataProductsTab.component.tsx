@@ -32,6 +32,7 @@ import { formatDataProductResponse } from '../../../../utils/APIUtils';
 import {
   escapeESReservedCharacters,
   getDecodedFqn,
+  getEncodedFqn,
 } from '../../../../utils/StringsUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import EntitySummaryPanel from '../../../Explore/EntitySummaryPanel/EntitySummaryPanel.component';
@@ -58,13 +59,15 @@ const DataProductsTab = forwardRef(
     const fetchDataProducts = async () => {
       try {
         setLoading(true);
+        const decodedFqn = getDecodedFqn(domainFqn);
+        const encodedFqn = getEncodedFqn(
+          escapeESReservedCharacters(decodedFqn)
+        );
         const res = await searchData(
           '',
           1,
           PAGE_SIZE_LARGE,
-          `(domain.fullyQualifiedName:"${escapeESReservedCharacters(
-            getDecodedFqn(domainFqn)
-          )}")`,
+          `(domain.fullyQualifiedName:"${encodedFqn}")`,
           '',
           '',
           SearchIndex.DATA_PRODUCT
