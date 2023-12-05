@@ -41,7 +41,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "storedProcedures")
 public class StoredProcedureResource extends EntityResource<StoredProcedure, StoredProcedureRepository> {
   public static final String COLLECTION_PATH = "v1/storedProcedures/";
-  static final String FIELDS = "owner,tags,followers,extension,domain";
+  static final String FIELDS = "owner,tags,followers,extension,domain,sourceHash";
 
   @Override
   public StoredProcedure addHref(UriInfo uriInfo, StoredProcedure storedProcedure) {
@@ -420,6 +420,7 @@ public class StoredProcedureResource extends EntityResource<StoredProcedure, Sto
         .copy(new StoredProcedure(), create, user)
         .withDatabaseSchema(getEntityReference(Entity.DATABASE_SCHEMA, create.getDatabaseSchema()))
         .withStoredProcedureCode(create.getStoredProcedureCode())
-        .withSourceUrl(create.getSourceUrl());
+        .withSourceUrl(create.getSourceUrl())
+        .withSourceHash(create.getSourceHash());
   }
 }

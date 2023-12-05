@@ -114,6 +114,7 @@ public class TopicRepository extends EntityRepository<Topic> {
   @Override
   public void setFields(Topic topic, Fields fields) {
     topic.setService(getContainer(topic.getId()));
+    topic.setSourceHash(fields.contains("sourceHash") ? topic.getSourceHash() : null);
     if (topic.getMessageSchema() != null) {
       populateEntityFieldTags(
           entityType,
