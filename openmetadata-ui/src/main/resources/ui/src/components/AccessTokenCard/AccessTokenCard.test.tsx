@@ -10,55 +10,44 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import '@testing-library/jest-dom';
-import { render, screen } from '@testing-library/react';
+import '@testing-library/jest-dom/extend-expect';
+import { render } from '@testing-library/react';
 import React from 'react';
-import { TokenType } from '../../generated/auth/personalAccessToken';
+import { getUserAccessToken } from '../../rest/userAPI';
 import AccessTokenCard from './AccessTokenCard.component';
-import { MockProps } from './AccessTokenCard.interfaces';
-// Mocking the required props
 
-const mockProps: MockProps = {
-  authenticationMechanism: {
-    expiryDate: 1234567890,
-    jwtToken: 'mockJwtToken',
-    token: 'mockToken',
-    tokenName: 'mockTokenName',
-    tokenType: TokenType.PersonalAccessToken,
-    userId: 'mockUserId',
-  },
-  isUpdating: false,
-  isAuthMechanismEdit: false,
-  hasPermission: true,
-  onEdit: jest.fn(),
-  onTokenRevoke: jest.fn(),
-  onCancel: jest.fn(),
-  onSave: jest.fn(),
-  isBot: true,
-};
-jest.mock('../BotDetails/AuthMechanism', () => {
-  return jest.fn().mockReturnValue(<p>AuthMechanism Component</p>);
-});
-jest.mock('../BotDetails/AuthMechanismForm', () => {
-  return jest.fn().mockReturnValue(<p>AuthMechanismForm Component</p>);
-});
+describe('AccessTokenCard Component', () => {
+  // Mock data for authentication mechanism
 
-describe('<AccessTokenCard />', () => {
-  it('renders AuthMechanismForm when authenticationMechanism is not provided', () => {
-    render(<AccessTokenCard {...mockProps} />);
-
-    expect(screen.getByText('AuthMechanism Component')).toBeInTheDocument();
+  beforeEach(() => {
+    jest.clearAllMocks();
   });
 
-  it('renders AuthMechanismForm when isAuthMechanismEdit is true', () => {
-    render(<AccessTokenCard {...mockProps} isAuthMechanismEdit />);
+  jest.mock('axios');
 
-    expect(screen.getByText('AuthMechanismForm Component')).toBeInTheDocument();
+  jest.mock('../../rest/userAPI', () => ({
+    createUserAccessTokenWithPut: jest.fn().mockImplementation(() =>
+      Promise.resolve({
+        JWTTokenExpiry: 'tesst',
+        tokenName: 'test',
+      })
+    ),
+  }));
+  jest.mock('../../rest/userAPI', () => ({
+    getUserAccessToken: jest.fn().mockImplementation(() => Promise.resolve({})),
+  }));
+
+  it('renders initial state with AuthMechanismForm', async () => {
+    const { getByText } = render(<AccessTokenCard isBot={false} />);
+
+    expect(getByText('label.auth-mechanism')).toBeInTheDocument();
   });
 
-  it('renders AuthMechanism when authenticationMechanism is provided and isAuthMechanismEdit is false', () => {
-    render(<AccessTokenCard {...mockProps} />);
+  it('edits authentication mechanism', async () => {
+    const { getByText } = render(<AccessTokenCard isBot={false} />);
 
-    expect(screen.getByText('AuthMechanism Component')).toBeInTheDocument();
+    expect(getUserAccessToken).toHaveBeenCalled();
+
+    expect(getByText('Personal Access Token')).toBeInTheDocument();
   });
 });

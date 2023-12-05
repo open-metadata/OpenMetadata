@@ -11,23 +11,70 @@
  *  limitations under the License.
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { FC } from 'react';
+import { AxiosError } from 'axios';
+import { t } from 'i18next';
+import React, { FC, useEffect, useState } from 'react';
+import { PersonalAccessToken } from '../../generated/auth/personalAccessToken';
 import { AuthenticationMechanism } from '../../generated/entity/teams/user';
+import {
+  createUserAccessTokenWithPut,
+  getUserAccessToken,
+  revokeAccessTokenWithPut,
+} from '../../rest/userAPI';
+import { showErrorToast } from '../../utils/ToastUtils';
 import AuthMechanism from '../BotDetails/AuthMechanism';
 import AuthMechanismForm from '../BotDetails/AuthMechanismForm';
+import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import { MockProps } from './AccessTokenCard.interfaces';
 
-const AccessTokenCard: FC<MockProps> = ({
-  authenticationMechanism,
-  isUpdating,
-  isAuthMechanismEdit,
-  hasPermission,
-  onEdit,
-  onTokenRevoke,
-  onCancel,
-  onSave,
-  isBot,
-}) => {
+const AccessTokenCard: FC<MockProps> = ({ isBot }) => {
+  const [isAuthMechanismEdit, setIsAuthMechanismEdit] =
+    useState<boolean>(false);
+  const [isUpdating, setIsUpdating] = useState<boolean>(false);
+  const [authenticationMechanism, setAuthenticationMechanism] =
+    useState<PersonalAccessToken>();
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const handleAuthMechanismEdit = () => setIsAuthMechanismEdit(true);
+
+  const fetchAuthMechanismForUser = async () => {
+    try {
+      const response = await getUserAccessToken();
+      setAuthenticationMechanism(response[0]);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+  const handleAuthMechanismUpdate = async (data: any) => {
+    setIsUpdating(true);
+    try {
+      const response = await createUserAccessTokenWithPut({
+        JWTTokenExpiry: data.config.JWTTokenExpiry,
+        tokenName: 'test',
+      });
+      if (response) {
+        setAuthenticationMechanism(response[0]);
+        fetchAuthMechanismForUser();
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsUpdating(false);
+      setIsAuthMechanismEdit(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAuthMechanismForUser();
+  }, [isModalOpen]);
+
+  const revokeTokenHandler = () => {
+    revokeAccessTokenWithPut('removeAll=true')
+      .then(() => setIsModalOpen(false))
+      .catch((err: AxiosError) => {
+        showErrorToast(err);
+      });
+  };
+
   return (
     <>
       {authenticationMechanism ? (
@@ -37,16 +84,16 @@ const AccessTokenCard: FC<MockProps> = ({
               authenticationMechanism={authenticationMechanism}
               isBot={isBot}
               isUpdating={isUpdating}
-              onCancel={onCancel}
-              onSave={onSave}
+              onCancel={() => setIsAuthMechanismEdit(false)}
+              onSave={handleAuthMechanismUpdate}
             />
           ) : (
             <AuthMechanism
+              hasPermission
               authenticationMechanism={authenticationMechanism}
-              hasPermission={hasPermission}
               isBot={isBot}
-              onEdit={onEdit}
-              onTokenRevoke={onTokenRevoke}
+              onEdit={handleAuthMechanismEdit}
+              onTokenRevoke={() => setIsModalOpen(true)}
             />
           )}
         </>
@@ -55,10 +102,23 @@ const AccessTokenCard: FC<MockProps> = ({
           authenticationMechanism={{} as AuthenticationMechanism}
           isBot={isBot}
           isUpdating={isUpdating}
-          onCancel={onCancel}
-          onSave={onSave}
+          onCancel={() => setIsAuthMechanismEdit(false)}
+          onSave={handleAuthMechanismUpdate}
         />
       )}
+      <ConfirmationModal
+        bodyText={t('message.are-you-sure-to-revoke-access')}
+        cancelText={t('label.cancel')}
+        confirmText={t('label.confirm')}
+        header={t('message.are-you-sure')}
+        visible={isModalOpen}
+        onCancel={() => setIsModalOpen(false)}
+        onConfirm={() => {
+          revokeTokenHandler();
+          setIsModalOpen(false);
+          handleAuthMechanismEdit();
+        }}
+      />
     </>
   );
 };

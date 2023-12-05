@@ -49,7 +49,6 @@ import {
   AssetNoDataPlaceholderProps,
   AssetsOfEntity,
 } from '../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
-import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
 import { PersonaSelectableList } from '../Persona/PersonaSelectableList/PersonaSelectableList.component';
 import { Props, UserPageTabs } from './Users.interface';
@@ -267,17 +266,7 @@ const Users = ({
               children: (
                 <>
                   <Card className="p-sm" data-testid="center-panel">
-                    <AccessTokenCard
-                      hasPermission
-                      authenticationMechanism={authenticationMechanism}
-                      isAuthMechanismEdit={isAuthMechanismEdit}
-                      isBot={false}
-                      isUpdating={isUpdating}
-                      onCancel={() => setIsAuthMechanismEdit(false)}
-                      onEdit={handleAuthMechanismEdit}
-                      onSave={handleAuthMechanismUpdate}
-                      onTokenRevoke={() => setIsModalOpen(true)}
-                    />
+                    <AccessTokenCard isBot={false} />
                   </Card>
                 </>
               ),
@@ -441,20 +430,6 @@ const Users = ({
           data-testid="tabs"
           items={tabs}
           onChange={activeTabHandler}
-        />
-
-        <ConfirmationModal
-          bodyText={t('message.are-you-sure-to-revoke-access')}
-          cancelText={t('label.cancel')}
-          confirmText={t('label.confirm')}
-          header={t('message.are-you-sure')}
-          visible={isModalOpen}
-          onCancel={() => setIsModalOpen(false)}
-          onConfirm={() => {
-            revokeTokenHandler();
-            setIsModalOpen(false);
-            handleAuthMechanismEdit();
-          }}
         />
       </div>
     </PageLayoutV1>

@@ -10,17 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PersonalAccessToken } from '../../generated/auth/personalAccessToken';
-import { AuthenticationMechanism } from '../../generated/entity/teams/user';
 
 export type MockProps = {
-  authenticationMechanism?: PersonalAccessToken;
-  isUpdating: boolean;
-  isAuthMechanismEdit: boolean;
-  hasPermission: boolean;
-  onEdit: () => void;
-  onTokenRevoke: () => void;
-  onCancel: () => void;
-  onSave: (updatedAuthMechanism: AuthenticationMechanism) => void;
   isBot: boolean;
 };
