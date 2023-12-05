@@ -99,9 +99,9 @@ const AppDetails = () => {
       });
       setAppData(data);
 
-      const schema = await applicationSchemaClassBase.schema(fqn);
+      const schema = await applicationSchemaClassBase.importSchema(fqn);
 
-      setJsonSchema(schema);
+      setJsonSchema(schema.default);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {

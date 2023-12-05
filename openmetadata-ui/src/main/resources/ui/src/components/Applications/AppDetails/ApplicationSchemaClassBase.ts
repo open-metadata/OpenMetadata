@@ -12,7 +12,7 @@
  */
 
 class ApplicationSchemaClassBase {
-  public schema(fqn: string) {
+  public importSchema(fqn: string) {
     return import(`../../../utils/ApplicationSchemas/${fqn}.json`);
   }
 }
