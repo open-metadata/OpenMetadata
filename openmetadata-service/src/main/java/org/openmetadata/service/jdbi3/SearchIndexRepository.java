@@ -122,6 +122,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
   public SearchIndex setFields(SearchIndex searchIndex, Fields fields) {
     searchIndex.setService(getContainer(searchIndex.getId()));
     searchIndex.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(searchIndex) : null);
+    searchIndex.setSourceHash(fields.contains("sourceHash") ? searchIndex.getSourceHash() : null);
     if (searchIndex.getFields() != null) {
       getFieldTags(fields.contains(FIELD_TAGS), searchIndex.getFields());
     }

@@ -69,7 +69,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "datamodels")
 public class DashboardDataModelResource extends EntityResource<DashboardDataModel, DashboardDataModelRepository> {
   public static final String COLLECTION_PATH = "/v1/dashboard/datamodels";
-  protected static final String FIELDS = "owner,tags,followers,domain";
+  protected static final String FIELDS = "owner,tags,followers,domain,sourceHash";
 
   @Override
   public DashboardDataModel addHref(UriInfo uriInfo, DashboardDataModel dashboardDataModel) {
@@ -456,6 +456,7 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
         .withServiceType(create.getServiceType())
         .withColumns(create.getColumns())
         .withProject(create.getProject())
-        .withTags(create.getTags());
+        .withTags(create.getTags())
+        .withSourceHash(create.getSourceHash());
   }
 }

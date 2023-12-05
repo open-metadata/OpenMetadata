@@ -128,6 +128,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   @Override
   public Pipeline setFields(Pipeline pipeline, Fields fields) {
     pipeline.setService(getContainer(pipeline.getId()));
+    pipeline.setSourceHash(fields.contains("sourceHash") ? pipeline.getSourceHash() : null);
     getTaskTags(fields.contains(FIELD_TAGS), pipeline.getTasks());
     return pipeline.withPipelineStatus(
         fields.contains("pipelineStatus") ? getPipelineStatus(pipeline) : pipeline.getPipelineStatus());

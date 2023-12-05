@@ -79,6 +79,7 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
   @Override
   public StoredProcedure setFields(StoredProcedure storedProcedure, EntityUtil.Fields fields) {
     setDefaultFields(storedProcedure);
+    storedProcedure.setSourceHash(fields.contains("sourceHash") ? storedProcedure.getSourceHash() : null);
     storedProcedure.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(storedProcedure) : null);
     return storedProcedure;
   }

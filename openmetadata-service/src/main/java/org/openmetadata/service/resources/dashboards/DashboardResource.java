@@ -74,7 +74,7 @@ import org.openmetadata.service.util.ResultList;
 public class DashboardResource extends EntityResource<Dashboard, DashboardRepository> {
   public static final String COLLECTION_PATH = "v1/dashboards/";
   protected static final String FIELDS =
-      "owner,charts,followers,tags,usageSummary,extension,dataModels,domain,dataProducts";
+      "owner,charts,followers,tags,usageSummary,extension,dataModels,domain,dataProducts,sourceHash";
 
   @Override
   public Dashboard addHref(UriInfo uriInfo, Dashboard dashboard) {
@@ -449,6 +449,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
         .withSourceUrl(create.getSourceUrl())
         .withDashboardType(create.getDashboardType())
         .withProject(create.getProject())
-        .withTags(create.getTags());
+        .withTags(create.getTags())
+        .withSourceHash(create.getSourceHash());
   }
 }

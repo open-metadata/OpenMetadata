@@ -72,7 +72,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "charts")
 public class ChartResource extends EntityResource<Chart, ChartRepository> {
   public static final String COLLECTION_PATH = "v1/charts/";
-  static final String FIELDS = "owner,followers,tags,domain,dataProducts";
+  static final String FIELDS = "owner,followers,tags,domain,dataProducts,sourceHash";
 
   @Override
   public Chart addHref(UriInfo uriInfo, Chart chart) {
@@ -431,6 +431,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
         .withService(EntityUtil.getEntityReference(Entity.DASHBOARD_SERVICE, create.getService()))
         .withChartType(create.getChartType())
         .withSourceUrl(create.getSourceUrl())
-        .withTags(create.getTags());
+        .withTags(create.getTags())
+        .withSourceHash(create.getSourceHash());
   }
 }

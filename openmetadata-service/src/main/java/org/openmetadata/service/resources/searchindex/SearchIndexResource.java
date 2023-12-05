@@ -74,7 +74,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "searchIndexes")
 public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndexRepository> {
   public static final String COLLECTION_PATH = "v1/searchIndexes/";
-  static final String FIELDS = "owner,followers,tags,extension,domain,dataProducts";
+  static final String FIELDS = "owner,followers,tags,extension,domain,dataProducts,sourceHash";
 
   @Override
   public SearchIndex addHref(UriInfo uriInfo, SearchIndex searchIndex) {
@@ -503,6 +503,7 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
         .withService(getEntityReference(Entity.SEARCH_SERVICE, create.getService()))
         .withFields(create.getFields())
         .withSearchIndexSettings(create.getSearchIndexSettings())
-        .withTags(create.getTags());
+        .withTags(create.getTags())
+        .withSourceHash(create.getSourceHash());
   }
 }
