@@ -66,11 +66,18 @@ export const getFormattedEntityData = (
             ),
           };
 
-          if (
-            column.tags?.find((tag) =>
-              sortSummaryListBasedOn?.includes(tag.tagFQN)
-            )
-          ) {
+          const isTagPresentInColumnData = column.tags?.find((tag) =>
+            sortSummaryListBasedOn?.includes(tag.tagFQN)
+          );
+
+          if (isTagPresentInColumnData) {
+            columnData.tags.sort((tag) => {
+              if (tag.tagFQN === sortSummaryListBasedOn[0]) {
+                return -1;
+              } else {
+                return 1;
+              }
+            });
             acc.entityWithSortOption.push(columnData);
           } else {
             acc.entityWithoutSortOption.push(columnData);
