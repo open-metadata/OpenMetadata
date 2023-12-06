@@ -918,8 +918,7 @@ public class ElasticSearchClient implements SearchClient {
             AggregationBuilders.terms("service.displayName.keyword")
                 .field("service.displayName.keyword")
                 .size(MAX_AGGREGATE_SIZE))
-        .aggregation(
-            AggregationBuilders.terms("entityType.keyword").field("entityType.keyword").size(MAX_AGGREGATE_SIZE))
+        .aggregation(AggregationBuilders.terms("entityType").field("entityType").size(MAX_AGGREGATE_SIZE))
         .aggregation(AggregationBuilders.terms("tier.tagFQN").field("tier.tagFQN").size(MAX_AGGREGATE_SIZE))
         .aggregation(
             AggregationBuilders.terms(OWNER_DISPLAY_NAME_KEYWORD)
