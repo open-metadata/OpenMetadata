@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { Card } from 'antd';
 import { AxiosError } from 'axios';
 import { t } from 'i18next';
@@ -19,6 +19,7 @@ import {
   PersonalAccessToken,
   TokenType,
 } from '../../generated/auth/personalAccessToken';
+import { AuthenticationMechanism } from '../../generated/entity/teams/user';
 import {
   getUserAccessToken,
   revokeAccessToken,
@@ -51,22 +52,24 @@ const AccessTokenCard: FC<MockProps> = ({ isBot }: MockProps) => {
       showErrorToast(error as AxiosError);
     }
   };
-  const handleAuthMechanismUpdate = async (data: any) => {
-    setIsUpdating(true);
-    try {
-      const response = await updateUserAccessToken({
-        JWTTokenExpiry: data.config.JWTTokenExpiry,
-        tokenName: 'test',
-      });
-      if (response) {
-        setAuthenticationMechanism(response[0]);
-        fetchAuthMechanismForUser();
+  const handleAuthMechanismUpdate = async (data: AuthenticationMechanism) => {
+    if (data.config) {
+      setIsUpdating(true);
+      try {
+        const response = await updateUserAccessToken({
+          JWTTokenExpiry: data.config.JWTTokenExpiry,
+          tokenName: 'test',
+        });
+        if (response) {
+          setAuthenticationMechanism(response[0]);
+          fetchAuthMechanismForUser();
+        }
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsUpdating(false);
+        setIsAuthMechanismEdit(false);
       }
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsUpdating(false);
-      setIsAuthMechanismEdit(false);
     }
   };
 
