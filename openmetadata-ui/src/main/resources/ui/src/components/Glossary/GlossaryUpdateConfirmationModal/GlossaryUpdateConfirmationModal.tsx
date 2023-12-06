@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Button, Modal, Progress, Space, Typography } from 'antd';
+import { Alert, Button, Modal, Progress, Space, Typography } from 'antd';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -183,15 +183,15 @@ export const GlossaryUpdateConfirmationModal = ({
                     }}
                     rowKey={(record) => record.request?.id}
                   />
-                  <Typography.Text italic className="m-t-sm" type="secondary">
-                    {t('message.glossary-tag-assignement-help-message')}
-                  </Typography.Text>
+                  <Alert
+                    className="m-t-sm"
+                    message={t('message.glossary-tag-assignement-help-message')}
+                    type="warning"
+                  />
                 </>
               )}
               {tagError?.code === ClientErrors.BAD_REQUEST && (
-                <Typography.Text type="danger">
-                  {tagError.message}
-                </Typography.Text>
+                <Alert message={tagError.message} type="warning" />
               )}
             </div>
           ),
