@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PlusOutlined } from '@ant-design/icons';
+import { ExclamationCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import {
   Alert,
   Button,
@@ -36,7 +36,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
+import { ERROR_COLOR, PAGE_SIZE_MEDIUM } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
@@ -555,16 +555,28 @@ export const AssetSelectionModal = ({
           </div>
         )}
 
-        {failedStatus?.failedRequest &&
-          failedStatus.failedRequest.length > 0 && (
-            <Alert
-              closable
-              showIcon
-              className="w-full"
-              description={t('message.validation-error-assets')}
-              type="error"
-            />
-          )}
+        {failedStatus?.failedRequest && failedStatus.failedRequest.length > 0 && (
+          <Alert
+            closable
+            className="w-full"
+            description={
+              <Typography.Text className="text-grey-muted">
+                {t('message.validation-error-assets')}
+              </Typography.Text>
+            }
+            message={
+              <div className="d-flex items-center gap-3">
+                <ExclamationCircleOutlined
+                  style={{ color: ERROR_COLOR, fontSize: '24px' }}
+                />
+                <Typography.Text className="font-semibold text-sm">
+                  {t('label.validation-error-plural')}
+                </Typography.Text>
+              </div>
+            }
+            type="error"
+          />
+        )}
 
         {items.length > 0 && (
           <div className="border p-xs">
@@ -605,8 +617,11 @@ export const AssetSelectionModal = ({
                         source={{ ...item, tags: [] }}
                       />
                       {isError && (
-                        <div className="p-x-sm p-b-sm">
-                          <Typography.Text type="danger">
+                        <div className="d-flex gap-3 p-x-sm p-b-sm">
+                          <ExclamationCircleOutlined
+                            style={{ color: ERROR_COLOR, fontSize: '24px' }}
+                          />
+                          <Typography.Text className="break-all">
                             {errorMessage}
                           </Typography.Text>
                         </div>
