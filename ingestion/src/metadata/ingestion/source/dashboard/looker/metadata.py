@@ -403,6 +403,7 @@ class LookerSource(DashboardServiceSource):
                     project=model.project_name,
                 )
                 yield Either(right=explore_datamodel)
+                self.register_record_datamodel(datamodel_requst=explore_datamodel)
 
                 # build datamodel by our hand since ack_sink=False
                 self.context.dataModel = self._build_data_model(datamodel_name)
@@ -487,24 +488,23 @@ class LookerSource(DashboardServiceSource):
             view: Optional[LookMlView] = project_parser.find_view(view_name=view_name)
 
             if view:
-                yield Either(
-                    right=CreateDashboardDataModelRequest(
-                        name=build_datamodel_name(explore.model_name, view.name),
-                        displayName=view.name,
-                        description=view.description,
-                        service=self.context.dashboard_service,
-                        dataModelType=DataModelType.LookMlView.value,
-                        serviceType=DashboardServiceType.Looker.value,
-                        columns=get_columns_from_model(view),
-                        sql=project_parser.parsed_files.get(Includes(view.source_file)),
-                        # In Looker, you need to create Explores and Views within a Project
-                        project=explore.project_name,
-                    )
+                data_model_request = CreateDashboardDataModelRequest(
+                    name=build_datamodel_name(explore.model_name, view.name),
+                    displayName=view.name,
+                    description=view.description,
+                    service=self.context.dashboard_service,
+                    dataModelType=DataModelType.LookMlView.value,
+                    serviceType=DashboardServiceType.Looker.value,
+                    columns=get_columns_from_model(view),
+                    sql=project_parser.parsed_files.get(Includes(view.source_file)),
+                    # In Looker, you need to create Explores and Views within a Project
+                    project=explore.project_name,
                 )
+                yield Either(right=data_model_request)
                 self._view_data_model = self._build_data_model(
                     build_datamodel_name(explore.model_name, view.name)
                 )
-
+                self.register_record_datamodel(datamodel_requst=data_model_request)
                 yield from self.add_view_lineage(view, explore)
             else:
                 yield Either(
