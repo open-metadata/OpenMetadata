@@ -148,7 +148,6 @@ const UserPage = () => {
       }}
       updateUserDetails={updateUserDetails}
       userData={userData}
-      username={username}
     />
   );
 };
