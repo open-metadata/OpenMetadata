@@ -421,6 +421,7 @@ const AssetsTabs = forwardRef(
 
       return () => {
         onAssetClick?.(undefined);
+        hideNotification();
       };
     }, []);
 
