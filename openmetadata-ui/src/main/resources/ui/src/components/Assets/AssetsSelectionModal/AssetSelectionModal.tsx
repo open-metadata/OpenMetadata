@@ -15,6 +15,7 @@ import {
   Alert,
   Button,
   Checkbox,
+  Divider,
   Dropdown,
   List,
   Modal,
@@ -617,14 +618,19 @@ export const AssetSelectionModal = ({
                         source={{ ...item, tags: [] }}
                       />
                       {isError && (
-                        <div className="d-flex gap-3 p-x-sm p-b-sm">
-                          <ExclamationCircleOutlined
-                            style={{ color: ERROR_COLOR, fontSize: '24px' }}
-                          />
-                          <Typography.Text className="break-all">
-                            {errorMessage}
-                          </Typography.Text>
-                        </div>
+                        <>
+                          <div className="p-x-sm">
+                            <Divider className="m-t-0 m-y-sm " />
+                          </div>
+                          <div className="d-flex gap-3 p-x-sm p-b-sm">
+                            <ExclamationCircleOutlined
+                              style={{ color: ERROR_COLOR, fontSize: '24px' }}
+                            />
+                            <Typography.Text className="break-all">
+                              {errorMessage}
+                            </Typography.Text>
+                          </div>
+                        </>
                       )}
                     </div>
                   );
