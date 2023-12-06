@@ -23,6 +23,7 @@ import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.Entity.getEntity;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
 import static org.openmetadata.service.util.LambdaExceptionUtil.ignoringComparator;
 import static org.openmetadata.service.util.LambdaExceptionUtil.rethrowFunction;
 
