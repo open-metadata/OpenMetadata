@@ -379,13 +379,13 @@ describe(`Database version page should work properly`, () => {
     );
     interceptURL(
       'GET',
-      `/api/v1/databases/${databaseId}/versions/0.3`,
+      `/api/v1/databases/${databaseId}/versions/0.8`,
       'getSelectedVersionDetails'
     );
 
     cy.get('[data-testid="version-button"]').as('versionButton');
 
-    cy.get('@versionButton').contains('0.3').click();
+    cy.get('@versionButton').contains('0.8').click();
 
     verifyResponseStatusCode(`@getDatabaseDetails`, 200);
     verifyResponseStatusCode('@getVersionsList', 200);
@@ -413,7 +413,7 @@ describe(`Database version page should work properly`, () => {
 
     toastNotification(`Database restored successfully`);
 
-    cy.get('@versionButton').should('contain', '0.4');
+    cy.get('@versionButton').should('contain', '0.9');
   });
 
   it(`Cleanup for Database version page tests`, () => {
