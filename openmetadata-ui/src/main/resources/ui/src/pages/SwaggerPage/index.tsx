@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
+import React from 'react';
 import {
   GRAPH_BACKGROUND_COLOR,
   oidcTokenKey,
   PRIMERY_COLOR,
   TEXT_BODY_COLOR,
-} from 'constants/constants';
-import React from 'react';
+} from '../../constants/constants';
 import RapiDocReact from './RapiDocReact';
 import './swagger.less';
 
