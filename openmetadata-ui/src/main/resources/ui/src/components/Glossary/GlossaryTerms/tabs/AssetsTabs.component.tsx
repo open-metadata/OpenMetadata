@@ -933,7 +933,7 @@ const AssetsTabs = forwardRef(
           onConfirm={() => onAssetRemove(assetToDelete ? [assetToDelete] : [])}
         />
 
-        {selectedItems.size > 0 && (
+        {selectedItems.size > 1 && (
           <Affix
             className={classNames('asset-tab-delete-notification', {
               visible: selectedItems.size > 1,
