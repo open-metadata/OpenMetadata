@@ -403,6 +403,7 @@ public class TopicRepository extends EntityRepository<Topic> {
       recordChange("topicConfig", original.getTopicConfig(), updated.getTopicConfig());
       updateCleanupPolicies(original, updated);
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
+      recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
     }
 
     private void updateCleanupPolicies(Topic original, Topic updated) {
