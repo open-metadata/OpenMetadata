@@ -103,7 +103,6 @@ import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
 import { ExploreQuickFilterField } from '../../../Explore/ExplorePage.interface';
 import ExploreQuickFilters from '../../../Explore/ExploreQuickFilters';
 import ExploreSearchCard from '../../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
-import CloseIcon from '../../../Modals/CloseIcon.component';
 import ConfirmationModal from '../../../Modals/ConfirmationModal/ConfirmationModal';
 import {
   SearchedDataProps,
@@ -943,12 +942,9 @@ const AssetsTabs = forwardRef(
               document.getElementById('asset-tab') || document.body
             }>
             <div className="d-flex items-center justify-between">
-              <div className="d-flex items-center gap-4">
-                <CloseIcon handleCancel={hideNotification} strokeColor="#fff" />
-                <Typography.Text className="text-white m-l-md">
-                  {selectedItems.size} {t('label.items-selected-lowercase')}
-                </Typography.Text>
-              </div>
+              <Typography.Text className="text-white">
+                {selectedItems.size} {t('label.items-selected-lowercase')}
+              </Typography.Text>
               <Button
                 danger
                 data-testid="delete-all-button"
