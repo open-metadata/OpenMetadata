@@ -27,7 +27,6 @@ class PatchRequest(BaseModel):
 
 ALLOWED_COLUMN_FIELDS = {
     "name": True,
-    "displayName": True,
     "dataType": True,
     "arrayDataType": True,
     "dataLength": True,
