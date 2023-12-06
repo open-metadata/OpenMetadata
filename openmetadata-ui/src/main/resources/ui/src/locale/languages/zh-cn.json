@@ -1506,6 +1506,7 @@
     "path-of-the-dbt-files-stored": "存储 dbt 文件的文件夹路径",
     "permanently-delete-metadata": "永久删除此{{entityName}}将永久从 OpenMetadata 中删除其元数据",
     "permanently-delete-metadata-and-dependents": "永久删除此{{entityName}}将永久从 OpenMetadata 中删除其元数据以及{{dependents}}的元数据",
+    "personal-access-token": "Personal Access Token",
     "pipeline-description-message": "工作流的描述信息",
     "pipeline-scheduler-message": "元数据提取编排器无回复，请联系系统管理员",
     "pipeline-trigger-failed-message": "触发工作流失败！",

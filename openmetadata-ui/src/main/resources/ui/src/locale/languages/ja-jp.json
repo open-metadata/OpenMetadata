@@ -1506,6 +1506,7 @@
     "path-of-the-dbt-files-stored": "Path of the folder where the dbt files are stored",
     "permanently-delete-metadata": "Permanently deleting this {{entityName}} will remove its metadata from OpenMetadata permanently.",
     "permanently-delete-metadata-and-dependents": "Permanently deleting this {{entityName}} will remove its metadata, as well as the metadata of {{dependents}} from OpenMetadata permanently.",
+    "personal-access-token": "Personal Access Token",
     "pipeline-description-message": "パイプラインの説明",
     "pipeline-scheduler-message": "The Ingestion Scheduler is unable to respond. Please reach out to Collate support. Thank you.",
     "pipeline-trigger-failed-message": "Failed to trigger the pipeline!",

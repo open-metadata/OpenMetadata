@@ -1506,6 +1506,7 @@
     "path-of-the-dbt-files-stored": "Caminho da pasta onde os arquivos dbt são armazenados",
     "permanently-delete-metadata": "Excluir permanentemente este(a) {{entityName}} removerá seus metadados do OpenMetadata permanentemente.",
     "permanently-delete-metadata-and-dependents": "Excluir permanentemente este(a) {{entityName}} removerá seus metadados, bem como os metadados de {{dependents}} do OpenMetadata permanentemente.",
+    "personal-access-token": "Personal Access Token",
     "pipeline-description-message": "Descrição do pipeline.",
     "pipeline-scheduler-message": "O Agendador de Ingestão não está respondendo. Entre em contato com o suporte da Collate. Obrigado.",
     "pipeline-trigger-failed-message": "Falha ao acionar o pipeline!",

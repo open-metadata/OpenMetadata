@@ -1506,6 +1506,7 @@
     "path-of-the-dbt-files-stored": "Pfad zum Ordner, in dem die dbt-Dateien gespeichert sind",
     "permanently-delete-metadata": "Das dauerhafte Löschen dieses {{entityName}} entfernt seine Metadaten dauerhaft aus OpenMetadata.",
     "permanently-delete-metadata-and-dependents": "Das dauerhafte Löschen dieses {{entityName}} entfernt seine Metadaten sowie die Metadaten von {{dependents}} dauerhaft aus OpenMetadata.",
+    "personal-access-token": "Personal Access Token",
     "pipeline-description-message": "Beschreibung der Pipeline.",
     "pipeline-scheduler-message": "Der Ingestion Scheduler kann nicht antworten. Bitte wende dich an den Collate-Support. Vielen Dank.",
     "pipeline-trigger-failed-message": "Auslösen der Pipeline fehlgeschlagen!",

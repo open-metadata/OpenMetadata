@@ -1506,6 +1506,7 @@
     "path-of-the-dbt-files-stored": "Путь к папке, в которой хранятся файлы dbt",
     "permanently-delete-metadata": "При окончательном удалении этого объекта {{entityName}} его метаданные будут навсегда удалены из OpenMetadata.",
     "permanently-delete-metadata-and-dependents": "Безвозвратное удаление этого {{entityName}} удалит его метаданные, а также метаданные {{dependers}} из OpenMetadata навсегда.",
+    "personal-access-token": "Personal Access Token",
     "pipeline-description-message": "Описание пайплайна.",
     "pipeline-scheduler-message": "Планировщик загрузки не может ответить. Обратитесь в службу поддержки. Спасибо.",
     "pipeline-trigger-failed-message": "Не удалось запустить пайплайн!",

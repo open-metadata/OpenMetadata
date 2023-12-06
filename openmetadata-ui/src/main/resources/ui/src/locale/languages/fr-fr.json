@@ -1506,6 +1506,7 @@
     "path-of-the-dbt-files-stored": "Chemin du dossier où sont situés les fichiers dbt.",
     "permanently-delete-metadata": "La suppression permanente de cette {{entityName}} supprimera ses métadonnées de façon permanente d'OpenMetadata.",
     "permanently-delete-metadata-and-dependents": "La suppression permanente de cette {{entityName}} supprimera ses métadonnées ainsi que les métadonnées de {{dependents}} de façon permanente d'OpenMetadata.",
+    "personal-access-token": "Personal Access Token",
     "pipeline-description-message": "Description du pipeline.",
     "pipeline-scheduler-message": "Le planificateur d'ingestion ne peut pas répondre. Veuillez contacter le support Collate. Merci.",
     "pipeline-trigger-failed-message": "Échec de la déclenchement du pipeline !",
