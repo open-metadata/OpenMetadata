@@ -104,7 +104,7 @@ const TagsContainerV2 = ({
   const handleSave = async (data: DefaultOptionType | DefaultOptionType[]) => {
     const updatedTags = (data as DefaultOptionType[]).map((tag) => {
       let tagData: EntityTags = {
-        tagFQN: tag.value,
+        tagFQN: typeof tag === 'string' ? tag : tag.value,
         source: tagType,
       };
 

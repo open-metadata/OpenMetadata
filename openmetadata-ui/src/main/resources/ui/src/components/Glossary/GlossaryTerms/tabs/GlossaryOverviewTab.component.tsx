@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Col, Row, Space } from 'antd';
+import { isEqual } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { EntityField } from '../../../../constants/Feeds.constants';
 import { EntityType } from '../../../../enums/entity.enum';
@@ -83,10 +84,6 @@ const GlossaryOverviewTab = ({
     }
   }, [selectedData, isVersionView]);
 
-  const handleTagsUpdate = async (updatedTags: TagLabel[]) => {
-    setTagsUpdating(updatedTags);
-  };
-
   const tags = useMemo(
     () =>
       isVersionView
@@ -98,14 +95,23 @@ const GlossaryOverviewTab = ({
     [isVersionView, selectedData]
   );
 
+  const handleTagsUpdate = async (updatedTags: TagLabel[]) => {
+    const prevTags = tags?.map((t) => t.tagFQN);
+    const newTags = updatedTags.map((t) => t.tagFQN);
+
+    if (isEqual(prevTags, newTags)) {
+      return;
+    }
+
+    setTagsUpdating(updatedTags);
+  };
+
   const handleGlossaryTagUpdateValidationConfirm = async () => {
     if (selectedData) {
       await onUpdate({
         ...selectedData,
         tags: tagsUpdatating,
       });
-
-      setTagsUpdating(undefined);
     }
   };
 
