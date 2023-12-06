@@ -14,4 +14,5 @@
 export interface CloseIconInterface {
   handleCancel?: () => void;
   dataTestId?: string;
+  strokeColor?: string;
 }

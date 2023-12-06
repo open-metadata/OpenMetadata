@@ -14,6 +14,7 @@
 
 import { PlusOutlined } from '@ant-design/icons';
 import {
+  Affix,
   Button,
   Checkbox,
   Col,
@@ -102,6 +103,7 @@ import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
 import { ExploreQuickFilterField } from '../../../Explore/ExplorePage.interface';
 import ExploreQuickFilters from '../../../Explore/ExploreQuickFilters';
 import ExploreSearchCard from '../../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
+import CloseIcon from '../../../Modals/CloseIcon.component';
 import ConfirmationModal from '../../../Modals/ConfirmationModal/ConfirmationModal';
 import {
   SearchedDataProps,
@@ -135,6 +137,7 @@ const AssetsTabs = forwardRef(
     const [itemCount, setItemCount] = useState<Record<EntityType, number>>(
       {} as Record<EntityType, number>
     );
+    const [assetRemoving, setAssetRemoving] = useState(false);
 
     const [activeFilter, _] = useState<SearchIndex[]>([]);
     const { fqn } = useParams<{ fqn: string }>();
@@ -172,8 +175,9 @@ const AssetsTabs = forwardRef(
       Domain | DataProduct | GlossaryTerm
     >();
 
-    const [selectedItems, setSelectedItems] =
-      useState<Map<string, EntityDetailUnion>>();
+    const [selectedItems, setSelectedItems] = useState<
+      Map<string, EntityDetailUnion>
+    >(new Map());
     const [aggregations, setAggregations] = useState<Aggregations>();
     const [selectedFilter, setSelectedFilter] = useState<string[]>([]); // Contains menu selection
     const [selectedQuickFilters, setSelectedQuickFilters] = useState<
@@ -429,15 +433,6 @@ const AssetsTabs = forwardRef(
         fetchCurrentEntity();
       }
     }, [entityFqn]);
-
-    useEffect(() => {
-      if (selectedItems) {
-        hideNotification();
-        if (selectedItems.size > 1) {
-          openNotification();
-        }
-      }
-    }, [selectedItems]);
 
     const assetErrorPlaceHolder = useMemo(() => {
       if (!isEmpty(activeFilter)) {
@@ -709,6 +704,8 @@ const AssetsTabs = forwardRef(
           return;
         }
 
+        setAssetRemoving(true);
+
         try {
           const entities = [...(assetsData?.values() ?? [])].map((item) => {
             return getEntityReferenceFromEntity(
@@ -756,6 +753,7 @@ const AssetsTabs = forwardRef(
         } finally {
           setShowDeleteModal(false);
           onRemoveAsset?.();
+          setAssetRemoving(false);
           hideNotification();
           setSelectedItems(new Map()); // Reset selected items
         }
@@ -779,31 +777,6 @@ const AssetsTabs = forwardRef(
       handleQuickFiltersChange,
       setSelectedQuickFilters,
     ]);
-
-    const openNotification = () => {
-      notification.warning({
-        key: 'asset-tab-notification-key',
-        message: (
-          <div className="d-flex items-center justify-between">
-            {selectedItems && selectedItems.size > 1 && (
-              <Typography.Text className="text-white">
-                {selectedItems.size} {t('label.items-selected-lowercase')}
-              </Typography.Text>
-            )}
-            <Button
-              danger
-              data-testid="delete-all-button"
-              type="primary"
-              onClick={deleteSelectedItems}>
-              {t('label.delete')}
-            </Button>
-          </div>
-        ),
-        placement: 'bottom',
-        className: 'asset-tab-delete-notification',
-        duration: 0,
-      });
-    };
 
     useEffect(() => {
       fetchAssets({
@@ -881,7 +854,8 @@ const AssetsTabs = forwardRef(
     return (
       <div
         className={classNames('assets-tab-container p-md')}
-        data-testid="table-container">
+        data-testid="table-container"
+        id="asset-tab">
         {assetCount > 0 && (
           <Row className="filters-row gap-2 p-l-lg">
             <Col span={18}>
@@ -957,6 +931,34 @@ const AssetsTabs = forwardRef(
           onCancel={() => setShowDeleteModal(false)}
           onConfirm={() => onAssetRemove(assetToDelete ? [assetToDelete] : [])}
         />
+
+        {data.length > 0 && (
+          <Affix
+            className={classNames('asset-tab-delete-notification', {
+              visible: selectedItems.size > 1,
+            })}
+            offsetBottom={20}
+            target={() =>
+              document.getElementById('asset-tab') || document.body
+            }>
+            <div className="d-flex items-center justify-between">
+              <div className="d-flex items-center gap-4">
+                <CloseIcon handleCancel={hideNotification} strokeColor="#fff" />
+                <Typography.Text className="text-white m-l-md">
+                  {selectedItems.size} {t('label.items-selected-lowercase')}
+                </Typography.Text>
+              </div>
+              <Button
+                danger
+                data-testid="delete-all-button"
+                loading={assetRemoving}
+                type="primary"
+                onClick={deleteSelectedItems}>
+                {t('label.delete')}
+              </Button>
+            </div>
+          </Affix>
+        )}
       </div>
     );
   }
