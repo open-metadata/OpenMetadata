@@ -19,3 +19,11 @@ export interface GlossaryUpdateConfirmationModalProps {
   onCancel: () => void;
   updatedTags: TagLabel[];
 }
+
+export enum UpdateState {
+  INITIAL,
+  VALIDATING,
+  FAILED,
+  UPDATATING,
+  SUCESS,
+}

@@ -27,7 +27,6 @@ class PatchRequest(BaseModel):
 
 ALLOWED_COLUMN_FIELDS = {
     "name": True,
-    "displayName": True,
     "dataType": True,
     "arrayDataType": True,
     "dataLength": True,
@@ -71,7 +70,6 @@ ALLOWED_COMMON_PATCH_FIELDS = {
     "location": True,
     "viewDefinition": True,
     "sampleData": True,
-    "retentionPeriod": True,
     "fileFormat": True,
     # Stored Procedure Fields
     "storedProcedureCode": True,

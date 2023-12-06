@@ -51,6 +51,7 @@ from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.models.table_metadata import ColumnDescription
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.database_service import DataModelLink
@@ -418,7 +419,9 @@ class DbtSource(DbtServiceSource):
                         Union[Table, List[Table]]
                     ] = get_entity_from_es_result(
                         entity_list=self.metadata.es_search_from_fqn(
-                            entity_type=Table, fqn_search_string=table_fqn
+                            entity_type=Table,
+                            fqn_search_string=table_fqn,
+                            fields="sourceHash",
                         ),
                         fetch_multiple_entities=False,
                     )
@@ -706,22 +709,28 @@ class DbtSource(DbtServiceSource):
                     )
 
                 # Patch column descriptions from DBT
+                column_descriptions = []
                 for column in data_model.columns:
                     if column.description:
-                        self.metadata.patch_column_description(
-                            table=table_entity,
-                            column_fqn=fqn.build(
-                                self.metadata,
-                                entity_type=Column,
-                                service_name=service_name,
-                                database_name=database_name,
-                                schema_name=schema_name,
-                                table_name=table_name,
-                                column_name=column.name.__root__,
-                            ),
-                            description=column.description.__root__,
-                            force=force_override,
+                        column_descriptions.append(
+                            ColumnDescription(
+                                column_fqn=fqn.build(
+                                    self.metadata,
+                                    entity_type=Column,
+                                    service_name=service_name,
+                                    database_name=database_name,
+                                    schema_name=schema_name,
+                                    table_name=table_name,
+                                    column_name=column.name.__root__,
+                                ),
+                                description=column.description,
+                            )
                         )
+                self.metadata.patch_column_descriptions(
+                    table=table_entity,
+                    column_descriptions=column_descriptions,
+                    force=force_override,
+                )
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
                 logger.warning(
