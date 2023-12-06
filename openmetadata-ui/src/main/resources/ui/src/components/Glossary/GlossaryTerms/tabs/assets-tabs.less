@@ -83,6 +83,7 @@
 .asset-tab-delete-notification {
   background-color: @text-color !important;
   box-shadow: none !important;
+  border-radius: 6px !important;
   .ant-notification-notice-icon {
     display: none;
   }
@@ -91,10 +92,17 @@
     left: 24px;
     top: 22px;
     width: 20px;
+    svg {
+      width: 16px;
+      height: 16px;
+    }
+    :hover {
+      background-color: @grey-4 !important;
+    }
   }
   .ant-notification-notice-message {
     padding-right: 0 !important;
-    margin-left: 20px !important;
+    margin-left: 26px !important;
     font-size: 14px !important;
   }
 }
