@@ -396,6 +396,7 @@
     "entity-service": "Servicio de {{entity}}",
     "entity-type-plural": "{{entity}} Type",
     "entity-version-detail-plural": "{{entity}} Version Details",
+    "error": "Error",
     "event-publisher-plural": "Publicadores de eventos",
     "event-type": "Tipo de evento",
     "every": "Cada",

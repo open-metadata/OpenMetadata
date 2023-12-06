@@ -396,6 +396,7 @@
     "entity-service": "{{entity}}服务",
     "entity-type-plural": "{{entity}}类型",
     "entity-version-detail-plural": "{{entity}}版本详情",
+    "error": "Error",
     "event-publisher-plural": "事件发布者",
     "event-type": "事件类型",
     "every": "每个",

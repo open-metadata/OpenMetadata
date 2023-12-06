@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ExclamationCircleOutlined, PlusOutlined } from '@ant-design/icons';
+import {
+  CheckOutlined,
+  CloseOutlined,
+  ExclamationCircleOutlined,
+  PlusOutlined,
+} from '@ant-design/icons';
 import {
   Alert,
   Button,
@@ -482,12 +487,23 @@ export const AssetSelectionModal = ({
       data-testid="asset-selection-modal"
       footer={
         <div className="d-flex justify-between">
-          <div>
+          <div className="d-flex items-center gap-2">
             {selectedItems && selectedItems.size >= 1 && (
-              <Typography.Text>
+              <Typography.Text className="gap-2">
+                <CheckOutlined className="text-success m-r-xs" />
                 {selectedItems.size} {t('label.selected-lowercase')}
               </Typography.Text>
             )}
+            {failedStatus?.failedRequest &&
+              failedStatus.failedRequest.length > 0 && (
+                <>
+                  <Divider className="m-x-xss" type="vertical" />
+                  <Typography.Text type="danger">
+                    <CloseOutlined className="m-r-xs" />
+                    {failedStatus.failedRequest.length} {t('label.error')}
+                  </Typography.Text>
+                </>
+              )}
           </div>
 
           <div>

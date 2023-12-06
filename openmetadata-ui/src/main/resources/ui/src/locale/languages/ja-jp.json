@@ -396,6 +396,7 @@
     "entity-service": "{{entity}}サービス",
     "entity-type-plural": "{{entity}} Type",
     "entity-version-detail-plural": "{{entity}} Version Details",
+    "error": "Error",
     "event-publisher-plural": "イベントの作成者",
     "event-type": "イベントの種類",
     "every": "Every",
