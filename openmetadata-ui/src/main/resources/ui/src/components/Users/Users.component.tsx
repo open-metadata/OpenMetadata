@@ -30,6 +30,7 @@ import { useAuth } from '../../hooks/authHooks';
 import { searchData } from '../../rest/miscAPI';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getDecodedFqn } from '../../utils/StringsUtils';
 import AccessTokenCard from '../AccessTokenCard/AccessTokenCard.component';
 import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
 import Chip from '../common/Chip/Chip.component';
@@ -50,19 +51,16 @@ import UserProfileInheritedRoles from './UsersProfile/UserProfileInheritedRoles/
 import UserProfileRoles from './UsersProfile/UserProfileRoles/UserProfileRoles.component';
 import UserProfileTeams from './UsersProfile/UserProfileTeams/UserProfileTeams.component';
 
-const Users = ({
-  userData,
-  username,
-  queryFilters,
-  updateUserDetails,
-}: Props) => {
-  const { tab: activeTab = UserPageTabs.ACTIVITY } =
-    useParams<{ tab: UserPageTabs }>();
+const Users = ({ userData, queryFilters, updateUserDetails }: Props) => {
+  const { fqn: username, tab: activeTab = UserPageTabs.ACTIVITY } =
+    useParams<{ fqn: string; tab: UserPageTabs }>();
   const [assetCount, setAssetCount] = useState<number>(0);
   const { isAdminUser } = useAuth();
   const history = useHistory();
   const location = useLocation();
   const { currentUser } = useAuthContext();
+
+  const decodedUsername = useMemo(() => getDecodedFqn(username), [username]);
 
   const [previewAsset, setPreviewAsset] =
     useState<EntityDetailsObjectInterface>();
@@ -158,7 +156,7 @@ const Users = ({
           <ActivityFeedProvider user={userData.id}>
             <ActivityFeedTab
               entityType={EntityType.USER}
-              fqn={username}
+              fqn={decodedUsername}
               isForFeedTab={false}
               onFeedUpdate={noop}
             />
@@ -219,7 +217,7 @@ const Users = ({
           ]
         : []),
     ],
-    [activeTab, userData, username, setPreviewAsset, tabDataRender]
+    [activeTab, userData, decodedUsername, setPreviewAsset, tabDataRender]
   );
 
   const handleDescriptionChange = useCallback(

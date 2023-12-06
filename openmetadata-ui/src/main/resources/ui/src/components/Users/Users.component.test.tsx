@@ -34,6 +34,7 @@ import Users from './Users.component';
 import { UserPageTabs } from './Users.interface';
 
 const mockParams = {
+  fqn: 'test',
   tab: UserPageTabs.ACTIVITY,
 };
 
@@ -158,7 +159,6 @@ jest.mock('../common/EntityDescription/Description', () => {
 const updateUserDetails = jest.fn();
 
 const mockProp = {
-  username: 'test',
   queryFilters: {
     myData: 'my-data',
     following: 'following',
