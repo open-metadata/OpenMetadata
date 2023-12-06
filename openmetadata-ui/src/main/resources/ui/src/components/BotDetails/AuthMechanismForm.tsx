@@ -73,7 +73,7 @@ const AuthMechanismForm: FC<Props> = ({
 
       return {
         authType: botData?.authType,
-        tokenExpiry: botData?.config?.JWTTokenExpiry,
+        tokenExpiry: JWTTokenExpiry.OneHour,
       };
     }
 

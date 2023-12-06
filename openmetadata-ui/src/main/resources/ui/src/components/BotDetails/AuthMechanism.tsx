@@ -37,30 +37,20 @@ const AuthMechanism: FC<Props> = ({
   isBot,
 }: Props) => {
   const { JWTToken, JWTTokenExpiresAt } = useMemo(() => {
-    let data: {
-      JWTToken?: string;
-      JWTTokenExpiresAt: number;
-    } = {
-      JWTToken: '',
-      JWTTokenExpiresAt: 0,
-    };
     if (isBot) {
       const botData = authenticationMechanism as AuthenticationMechanism;
 
-      data = {
+      return {
         JWTToken: botData?.config?.JWTToken,
         JWTTokenExpiresAt: botData?.config?.JWTTokenExpiresAt ?? 0,
       };
-    } else {
-      const personalAccessData = authenticationMechanism as PersonalAccessToken;
-
-      data = {
-        JWTToken: personalAccessData?.jwtToken,
-        JWTTokenExpiresAt: personalAccessData?.expiryDate ?? 0,
-      };
     }
+    const personalAccessData = authenticationMechanism as PersonalAccessToken;
 
-    return data;
+    return {
+      JWTToken: personalAccessData?.jwtToken,
+      JWTTokenExpiresAt: personalAccessData?.expiryDate ?? 0,
+    };
   }, [isBot, authenticationMechanism]);
 
   const { tokenExpiryDate, isTokenExpired } = getTokenExpiry(JWTTokenExpiresAt);
