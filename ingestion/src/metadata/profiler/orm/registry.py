@@ -56,6 +56,7 @@ class Dialects(Enum):
     ClickHouse = "clickhouse"
     Databricks = "databricks"
     Db2 = "db2"
+    Doris = "pydoris"
     Druid = "druid"
     DynamoDB = "dynamoDB"
     Glue = "glue"
