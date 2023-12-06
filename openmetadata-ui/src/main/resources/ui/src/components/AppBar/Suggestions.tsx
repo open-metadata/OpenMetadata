@@ -149,7 +149,7 @@ const Suggestions = ({
 
   const getEntitiesSuggestions = () => {
     return (
-      <div role="none">
+      <div data-testid="global-search-suggestion-box" role="none">
         {[
           { suggestions: tableSuggestions, searchIndex: SearchIndex.TABLE },
           { suggestions: topicSuggestions, searchIndex: SearchIndex.TOPIC },
