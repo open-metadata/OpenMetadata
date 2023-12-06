@@ -80,21 +80,6 @@ def update_column_tags(
             update_column_tags(col.children, column_tag, operation)
 
 
-def _fetch_column(
-    column: Column, column_descriptions: List[ColumnDescription]
-) -> Optional[ColumnDescription]:
-    """
-    Method to search the column in the ColumnDescription dict
-    """
-    for column_description in column_descriptions:
-        if (
-            str(column.fullyQualifiedName.__root__).lower()
-            == column_description.column_fqn.lower()
-        ):
-            return column_description
-    return None
-
-
 def update_column_description(
     columns: List[Column],
     column_descriptions: List[ColumnDescription],
@@ -103,18 +88,18 @@ def update_column_description(
     """
     Inplace update for the incoming column list
     """
-
+    col_dict = {col.column_fqn: col.description for col in column_descriptions}
     for col in columns:
-        desc_column = _fetch_column(col, column_descriptions)
+        desc_column = col_dict.get(col.fullyQualifiedName.__root__)
         if desc_column:
             if col.description and not force:
                 logger.warning(
-                    f"The entity with id [{model_str(desc_column.column_fqn)}] already has a description."
+                    f"The entity with id [{model_str(col.fullyQualifiedName)}] already has a description."
                     " To overwrite it, set `force` to True."
                 )
                 continue
 
-            col.description = desc_column.description
+            col.description = desc_column.__root__
 
         if col.children:
             update_column_description(col.children, column_descriptions, force)
@@ -436,6 +421,23 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             )
 
         return patched_entity
+
+    @deprecated(message="Use metadata.patch_column_tags instead", release="1.3.1")
+    def patch_column_tag(
+        self,
+        table: Table,
+        column_fqn: str,
+        tag_label: TagLabel,
+        operation: Union[
+            PatchOperation.ADD, PatchOperation.REMOVE
+        ] = PatchOperation.ADD,
+    ) -> Optional[T]:
+        """Will be deprecated in 1.3"""
+        return self.patch_column_tags(
+            table=table,
+            column_tags=[ColumnTag(column_fqn=column_fqn, tag_label=tag_label)],
+            operation=operation,
+        )
 
     @deprecated(
         message="Use metadata.patch_column_descriptions instead", release="1.3.1"

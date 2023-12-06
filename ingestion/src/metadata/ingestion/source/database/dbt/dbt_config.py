@@ -222,11 +222,14 @@ def get_blobs_grouped_by_dir(blobs: List[str]) -> Dict[str, List[str]]:
     for blob in blobs:
         subdirectory = blob.rsplit("/", 1)[0] if "/" in blob else ""
         blob_file_name = blob.rsplit("/", 1)[1] if "/" in blob else blob
-        if [
-            file_name
-            for file_name in DBT_FILE_NAMES_LIST
-            if file_name.lower() == blob_file_name.lower()
-        ]:
+        if next(
+            (
+                file_name
+                for file_name in DBT_FILE_NAMES_LIST
+                if file_name.lower() == blob_file_name.lower()
+            ),
+            None,
+        ):
             blob_grouped_by_directory[subdirectory].append(blob)
     return blob_grouped_by_directory
 
