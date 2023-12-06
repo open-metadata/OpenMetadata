@@ -624,7 +624,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         } catch (Exception e) {
           parsedEntity = clearFieldsInternal(parsedEntity, fields);
           String errorEntity = JsonUtils.pojoToJson(parsedEntity);
-          LOG.error("Failed in Set Fields for Entity with Json : {}", JsonUtils.pojoToJson(errorEntity));
+          LOG.error("Failed in Set Fields for Entity with Json : {}", errorEntity);
           errors.add(String.format("Error Message : %s , %n Entity Json : %s", e.getMessage(), errorEntity));
         }
       }
