@@ -19,7 +19,6 @@ export interface Props {
     myData: string;
     following: string;
   };
-  username: string;
   handlePaginate: (page: string | number) => void;
   updateUserDetails: (data: Partial<User>) => Promise<void>;
 }

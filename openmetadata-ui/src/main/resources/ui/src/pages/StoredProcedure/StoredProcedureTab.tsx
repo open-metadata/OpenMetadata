@@ -73,7 +73,7 @@ const StoredProcedureTab = () => {
         setIsLoading(false);
       }
     },
-    [decodedDatabaseSchemaFQN, pageSize]
+    [decodedDatabaseSchemaFQN, pageSize, showDeleted, handlePagingChange]
   );
 
   const storedProcedurePagingHandler = useCallback(
@@ -87,7 +87,7 @@ const StoredProcedureTab = () => {
       }
       handlePageChange(currentPage);
     },
-    [paging, handlePageChange]
+    [paging, handlePageChange, fetchStoreProcedureDetails]
   );
 
   const tableColumn: ColumnsType<ServicePageData> = useMemo(
