@@ -18,7 +18,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class StoredProcedureRepository extends EntityRepository<StoredProcedure> {
-  static final String PATCH_FIELDS = "storedProcedureCode,sourceUrl";
+  static final String PATCH_FIELDS = "storedProcedureCode,sourceUrl,sourceHash";
   static final String UPDATE_FIELDS = "storedProcedureCode,sourceUrl";
 
   public StoredProcedureRepository() {
@@ -126,6 +126,7 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
         recordChange("storedProcedureCode", original.getStoredProcedureCode(), updated.getStoredProcedureCode());
       }
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
+      recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
     }
   }
 }

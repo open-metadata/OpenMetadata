@@ -42,7 +42,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 public class DashboardRepository extends EntityRepository<Dashboard> {
   private static final String DASHBOARD_UPDATE_FIELDS = "charts,dataModels";
-  private static final String DASHBOARD_PATCH_FIELDS = "charts,dataModels";
+  private static final String DASHBOARD_PATCH_FIELDS = "charts,dataModels,sourceHash";
   private static final String DASHBOARD_URL = "sourceUrl";
 
   public DashboardRepository() {
@@ -217,6 +217,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
           listOrEmpty(updated.getDataModels()),
           listOrEmpty(original.getDataModels()));
       updateDashboardUrl(original, updated);
+      recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
     }
 
     private void update(

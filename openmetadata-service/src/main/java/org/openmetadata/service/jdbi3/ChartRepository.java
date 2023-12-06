@@ -111,6 +111,7 @@ public class ChartRepository extends EntityRepository<Chart> {
     public void entitySpecificUpdate() {
       recordChange("chartType", original.getChartType(), updated.getChartType());
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
+      recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
     }
   }
 }

@@ -54,7 +54,7 @@ import org.openmetadata.service.util.ResultList;
 public class PipelineRepository extends EntityRepository<Pipeline> {
   private static final String TASKS_FIELD = "tasks";
   private static final String PIPELINE_UPDATE_FIELDS = "tasks";
-  private static final String PIPELINE_PATCH_FIELDS = "tasks";
+  private static final String PIPELINE_PATCH_FIELDS = "tasks,sourceHash";
   public static final String PIPELINE_STATUS_EXTENSION = "pipeline.pipelineStatus";
 
   public PipelineRepository() {
@@ -357,6 +357,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
       recordChange("concurrency", original.getConcurrency(), updated.getConcurrency());
       recordChange("pipelineLocation", original.getPipelineLocation(), updated.getPipelineLocation());
+      recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
     }
 
     private void updateTasks(Pipeline original, Pipeline updated) {

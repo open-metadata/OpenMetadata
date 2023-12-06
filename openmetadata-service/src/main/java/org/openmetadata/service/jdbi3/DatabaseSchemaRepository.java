@@ -161,6 +161,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     public void entitySpecificUpdate() {
       recordChange("retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod());
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
+      recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
     }
   }
 

@@ -401,6 +401,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
             EntityUtil.searchIndexFieldMatch);
       }
       recordChange("searchIndexSettings", original.getSearchIndexSettings(), updated.getSearchIndexSettings());
+      recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
     }
 
     private void updateSearchIndexFields(
