@@ -313,6 +313,7 @@ export const NEW_GLOSSARY_1 = {
   description: 'This is the Product glossary with percentage',
   reviewer: 'Brandy Miller',
   addReviewer: false,
+  isMutually: true,
 };
 export const CYPRESS_ASSETS_GLOSSARY = {
   name: 'Cypress Assets Glossary',
