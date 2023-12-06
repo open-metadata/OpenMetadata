@@ -1628,6 +1628,7 @@
     "user-mentioned-in-comment": "{{user}} mencionou você em um comentário.",
     "user-verified-successfully": "Usuário verificado com sucesso",
     "valid-url-endpoint": "Os endpoints devem ser URLs válidas",
+    "validation-error-assets": "Validation Errors, Please examine all your assets that are being added",
     "version-released-try-now": "{{version}} Lançada <0>Veja o que há de novo!</0>",
     "view-deleted-entity": "Visualize todos os {{entity}} excluídos, que fazem parte deste {{parent}}.",
     "view-sample-data-entity": "Para visualizar os Dados de Amostra, execute o {{entity}}. Consulte este documento para agendar o <0>{{entity}}</0>",

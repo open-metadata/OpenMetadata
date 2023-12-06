@@ -1628,6 +1628,7 @@
     "user-mentioned-in-comment": "{{user}} mentioned you in a comment.",
     "user-verified-successfully": "User Verified Successfully",
     "valid-url-endpoint": "Endpoints should be valid URL",
+    "validation-error-assets": "Validation Errors, Please examine all your assets that are being added",
     "version-released-try-now": "{{version}} Released <0>See What's New!</0>",
     "view-deleted-entity": "View All the Deleted {{entity}}, which come under this {{parent}}.",
     "view-sample-data-entity": "To view Sample Data, run the {{entity}}. Please refer to this doc to schedule the <0>{{entity}}</0>",

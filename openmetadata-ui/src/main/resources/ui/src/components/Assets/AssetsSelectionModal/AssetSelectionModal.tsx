@@ -12,6 +12,7 @@
  */
 import { PlusOutlined } from '@ant-design/icons';
 import {
+  Alert,
   Button,
   Checkbox,
   Dropdown,
@@ -247,6 +248,7 @@ export const AssetSelectionModal = ({
   const handleSave = async () => {
     try {
       setIsSaveLoading(true);
+      setFailedStatus(undefined);
       if (!activeEntity) {
         return;
       }
@@ -530,26 +532,39 @@ export const AssetSelectionModal = ({
           </div>
         </div>
 
-        <div className="d-flex items-center">
-          <div className="d-flex justify-between flex-1">
-            <ExploreQuickFilters
-              aggregations={aggregations}
-              fields={selectedQuickFilters}
-              index={SearchIndex.ALL}
-              showDeleted={false}
-              onFieldValueSelect={handleQuickFiltersValueSelect}
-            />
-            {quickFilterQuery && (
-              <Typography.Text
-                className="p-r-xss text-primary self-center cursor-pointer"
-                onClick={clearFilters}>
-                {t('label.clear-entity', {
-                  entity: '',
-                })}
-              </Typography.Text>
-            )}
+        {selectedQuickFilters && selectedQuickFilters.length > 0 && (
+          <div className="d-flex items-center">
+            <div className="d-flex justify-between flex-1">
+              <ExploreQuickFilters
+                aggregations={aggregations}
+                fields={selectedQuickFilters}
+                index={SearchIndex.ALL}
+                showDeleted={false}
+                onFieldValueSelect={handleQuickFiltersValueSelect}
+              />
+              {quickFilterQuery && (
+                <Typography.Text
+                  className="p-r-xss text-primary self-center cursor-pointer"
+                  onClick={clearFilters}>
+                  {t('label.clear-entity', {
+                    entity: '',
+                  })}
+                </Typography.Text>
+              )}
+            </div>
           </div>
-        </div>
+        )}
+
+        {failedStatus?.failedRequest &&
+          failedStatus.failedRequest.length > 0 && (
+            <Alert
+              closable
+              showIcon
+              className="w-full"
+              description={t('message.validation-error-assets')}
+              type="error"
+            />
+          )}
 
         {items.length > 0 && (
           <div className="border p-xs">

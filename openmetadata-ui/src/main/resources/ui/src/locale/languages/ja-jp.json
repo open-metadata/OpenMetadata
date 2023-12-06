@@ -1628,6 +1628,7 @@
     "user-mentioned-in-comment": "{{user}}がコメントであなたにメンションしました。",
     "user-verified-successfully": "ユーザ認証に成功しました",
     "valid-url-endpoint": "エンドポイントは有効なURLでなければなりません",
+    "validation-error-assets": "Validation Errors, Please examine all your assets that are being added",
     "version-released-try-now": "{{version}} Released <0>See What's New!</0>",
     "view-deleted-entity": "View All the Deleted {{entity}}, which come under this {{parent}}.",
     "view-sample-data-entity": "To view Sample Data, run the {{entity}}. Please refer to this doc to schedule the <0>{{entity}}</0>",
