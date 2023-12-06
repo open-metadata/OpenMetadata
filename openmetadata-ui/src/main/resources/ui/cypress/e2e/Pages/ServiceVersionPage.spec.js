@@ -208,7 +208,7 @@ describe('Common prerequisite for service version test', () => {
             serviceCategory,
             serviceName,
             serviceId,
-            '0.2'
+            '0.3'
           );
 
           cy.get('[data-testid="owner-link"] > [data-testid="diff-added"]')
@@ -221,7 +221,7 @@ describe('Common prerequisite for service version test', () => {
 
           cy.get('[data-testid="version-button"]').as('versionButton');
 
-          cy.get('@versionButton').contains('0.2');
+          cy.get('@versionButton').contains('0.3');
 
           addTier(TIER, `services/${serviceCategory}`);
 
@@ -229,7 +229,7 @@ describe('Common prerequisite for service version test', () => {
             serviceCategory,
             serviceName,
             serviceId,
-            '0.2'
+            '0.4'
           );
 
           cy.get('[data-testid="Tier"] > [data-testid="diff-added"]')
@@ -285,7 +285,7 @@ describe('Common prerequisite for service version test', () => {
             serviceCategory,
             serviceName,
             serviceId,
-            '0.3'
+            '0.5'
           );
 
           // Deleted badge should be visible

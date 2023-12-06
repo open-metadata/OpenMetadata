@@ -289,13 +289,13 @@ describe('Data model version page should work properly', () => {
     );
     interceptURL(
       'GET',
-      `/api/v1/dashboard/datamodels/${dataModelId}/versions/0.3`,
+      `/api/v1/dashboard/datamodels/${dataModelId}/versions/0.8`,
       'getSelectedVersionDetails'
     );
 
     cy.get('[data-testid="version-button"]').as('versionButton');
 
-    cy.get('@versionButton').contains('0.3').click();
+    cy.get('@versionButton').contains('0.8').click();
 
     verifyResponseStatusCode(`@getDataModelDetails`, 200);
     verifyResponseStatusCode('@getVersionsList', 200);
@@ -327,7 +327,7 @@ describe('Data model version page should work properly', () => {
 
     toastNotification(`Data Model restored successfully`);
 
-    cy.get('@versionButton').should('contain', '0.4');
+    cy.get('@versionButton').should('contain', '0.9');
   });
 
   it(`Cleanup for data model version page test`, () => {

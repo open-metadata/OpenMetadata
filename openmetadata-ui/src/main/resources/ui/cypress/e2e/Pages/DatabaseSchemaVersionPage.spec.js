@@ -409,13 +409,13 @@ describe(`Database schema version page should work properly`, () => {
     );
     interceptURL(
       'GET',
-      `/api/v1/databaseSchemas/${databaseSchemaId}/versions/0.3`,
+      `/api/v1/databaseSchemas/${databaseSchemaId}/versions/0.8`,
       'getSelectedVersionDetails'
     );
 
     cy.get('[data-testid="version-button"]').as('versionButton');
 
-    cy.get('@versionButton').contains('0.3').click();
+    cy.get('@versionButton').contains('0.8').click();
 
     verifyResponseStatusCode(`@getDatabaseSchemaDetails`, 200);
     verifyResponseStatusCode('@getVersionsList', 200);
@@ -443,7 +443,7 @@ describe(`Database schema version page should work properly`, () => {
 
     toastNotification(`Database Schema restored successfully`);
 
-    cy.get('@versionButton').should('contain', '0.4');
+    cy.get('@versionButton').should('contain', '0.9');
   });
 
   it(`Cleanup for Database  Schema version page tests`, () => {
