@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { BASE_WAIT_TIME, RETRY_TIMES } from './common';
+import { RETRY_TIMES } from './common';
+
+const BASE_WAIT_TIME = 4000;
 
 export const checkDataInsightSuccessStatus = (
   count = 1,
@@ -27,7 +29,7 @@ export const checkDataInsightSuccessStatus = (
       $ingestionStatus.text() !== 'Failed' &&
       count <= RETRY_TIMES
     ) {
-      // retry after waiting with log1 method [20s,40s,80s,160s,320s]
+      // retry after waiting with log1 method [4s,8s,16s,32s,64s]
       cy.wait(timer);
       timer *= 2;
       cy.reload();
