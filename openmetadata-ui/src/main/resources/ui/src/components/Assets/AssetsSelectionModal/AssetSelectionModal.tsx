@@ -480,7 +480,7 @@ export const AssetSelectionModal = ({
       footer={
         <div className="d-flex justify-between">
           <div>
-            {selectedItems && selectedItems.size > 1 && (
+            {selectedItems && selectedItems.size >= 1 && (
               <Typography.Text>
                 {selectedItems.size} {t('label.selected-lowercase')}
               </Typography.Text>
@@ -493,7 +493,7 @@ export const AssetSelectionModal = ({
             </Button>
             <Button
               data-testid="save-btn"
-              disabled={isLoading}
+              disabled={!selectedItems?.size || isLoading}
               loading={isSaveLoading}
               type="primary"
               onClick={onSaveAction}>
