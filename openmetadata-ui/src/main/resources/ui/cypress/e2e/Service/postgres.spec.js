@@ -131,7 +131,7 @@ describe('Postgres Ingestion', () => {
 
     cy.get('#root\\/filterCondition')
       .scrollIntoView()
-      .type(`s.query like '%${tableName}%'`);
+      .type(`s.query like '%%${tableName}%%'`);
     cy.get('[data-testid="submit-btn"]')
       .scrollIntoView()
       .should('be.visible')

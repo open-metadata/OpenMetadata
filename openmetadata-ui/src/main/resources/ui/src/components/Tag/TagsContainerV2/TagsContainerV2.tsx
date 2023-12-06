@@ -13,7 +13,7 @@
 
 import { Col, Form, Row, Space, Tooltip, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
-import { isEmpty } from 'lodash';
+import { isEmpty, isEqual } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -104,7 +104,7 @@ const TagsContainerV2 = ({
   const handleSave = async (data: DefaultOptionType | DefaultOptionType[]) => {
     const updatedTags = (data as DefaultOptionType[]).map((tag) => {
       let tagData: EntityTags = {
-        tagFQN: tag.value,
+        tagFQN: typeof tag === 'string' ? tag : tag.value,
         source: tagType,
       };
 
@@ -115,13 +115,16 @@ const TagsContainerV2 = ({
           displayName: tag.data?.displayName,
           description: tag.data?.description,
           style: tag.data?.style,
+          labelType: tag.data?.labelType,
         };
       }
 
       return tagData;
     });
 
-    if (onSelectionChange) {
+    const newTags = updatedTags.map((t) => t.tagFQN);
+
+    if (onSelectionChange && !isEqual(selectedTagsInternal, newTags)) {
       await onSelectionChange([
         ...updatedTags,
         ...((isGlossaryType
