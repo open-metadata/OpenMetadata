@@ -1628,6 +1628,7 @@
     "user-mentioned-in-comment": "{{user}} te mencionó en un comentario.",
     "user-verified-successfully": "Usuario verificado con éxito",
     "valid-url-endpoint": "Los terminales deben ser URL válidas",
+    "validation-error-assets": "Validation Errors, Please examine all your assets that are being added",
     "version-released-try-now": "{{version}} Released <0>See What's New!</0>",
     "view-deleted-entity": "Ver todas las {{entity}} eliminadas que se encuentran bajo este {{parent}}.",
     "view-sample-data-entity": "To view Sample Data, run the {{entity}}. Please refer to this doc to schedule the <0>{{entity}}</0>",

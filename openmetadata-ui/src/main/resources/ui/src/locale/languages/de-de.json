@@ -1628,6 +1628,7 @@
     "user-mentioned-in-comment": "{{user}} hat Sie in einem Kommentar erwähnt.",
     "user-verified-successfully": "Benutzer erfolgreich verifiziert",
     "valid-url-endpoint": "Endpunkte sollten gültige URLs sein",
+    "validation-error-assets": "Validation Errors, Please examine all your assets that are being added",
     "version-released-try-now": "{{version}} Veröffentlicht <0>Sehen Sie, was es Neues gibt!</0>",
     "view-deleted-entity": "Alle gelöschten {{entity}}, die zu diesem {{parent}} gehören, anzeigen.",
     "view-sample-data-entity": "Um Musterdaten anzuzeigen, führen Sie {{entity}} aus. Bitte beachten Sie dieses Dokument, um die <0>{{entity}}</0> zu planen.",

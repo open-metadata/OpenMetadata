@@ -1628,6 +1628,7 @@
     "user-mentioned-in-comment": "{{user}} упомянул вас в комментарии.",
     "user-verified-successfully": "Пользователь успешно проверен",
     "valid-url-endpoint": "Конечные точки должны быть действительным URL",
+    "validation-error-assets": "Validation Errors, Please examine all your assets that are being added",
     "version-released-try-now": "Выпущена {{версия}} <0>Посмотрите, что нового!</0>",
     "view-deleted-entity": "Просмотреть все удаленные {{entity}}, относящиеся к этому {{parent}}.",
     "view-sample-data-entity": "Чтобы просмотреть образцы данных, запустите {{entity}}. Пожалуйста, обратитесь к этому документу, чтобы запланировать <0>{{entity}}</0>",
