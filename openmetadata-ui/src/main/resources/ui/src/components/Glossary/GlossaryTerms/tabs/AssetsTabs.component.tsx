@@ -830,7 +830,7 @@ const AssetsTabs = forwardRef(
       refreshAssets() {
         fetchAssets({
           index: isEmpty(activeFilter) ? [SearchIndex.ALL] : activeFilter,
-          page: currentPage,
+          page: 1,
         });
         fetchCountsByEntity();
       },
@@ -932,7 +932,7 @@ const AssetsTabs = forwardRef(
           onConfirm={() => onAssetRemove(assetToDelete ? [assetToDelete] : [])}
         />
 
-        {data.length > 0 && (
+        {selectedItems.size > 0 && (
           <Affix
             className={classNames('asset-tab-delete-notification', {
               visible: selectedItems.size > 1,
