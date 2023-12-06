@@ -11,24 +11,13 @@
  *  limitations under the License.
  */
 
-export interface QueryFieldValueInterface {
-  term: Record<string, string>;
+class ApplicationSchemaClassBase {
+  public importSchema(fqn: string) {
+    return import(`../../../utils/ApplicationSchemas/${fqn}.json`);
+  }
 }
 
-export interface QueryFieldInterface {
-  bool: {
-    must?: Array<QueryFieldValueInterface>;
-    must_not?: Array<QueryFieldValueInterface>;
-    should?: Array<QueryFieldValueInterface>;
-  };
-}
+const applicationSchemaClassBase = new ApplicationSchemaClassBase();
 
-export interface QueryFilterInterface {
-  query: {
-    bool: {
-      must?: QueryFieldInterface[];
-      must_not?: QueryFieldInterface[];
-      should?: QueryFieldInterface[];
-    };
-  };
-}
+export default applicationSchemaClassBase;
+export { ApplicationSchemaClassBase };

@@ -110,7 +110,7 @@ class DashboardServiceTopology(ServiceTopology):
             ),
         ],
         children=["bulk_data_model", "dashboard"],
-        post_process=["mark_dashboards_as_deleted"],
+        post_process=["mark_dashboards_as_deleted", "mark_datamodels_as_deleted"],
     )
     # Dashboard Services have very different approaches when
     # when dealing with data models. Tableau has the models
@@ -198,6 +198,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     topology = DashboardServiceTopology()
     context = create_source_context(topology)
     dashboard_source_state: Set = set()
+    datamodel_source_state: Set = set()
 
     def __init__(
         self,
@@ -371,6 +372,20 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 params={"service": self.context.dashboard_service},
             )
 
+    def mark_datamodels_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
+        """
+        Method to mark the datamodels as deleted
+        """
+        if self.source_config.markDeletedDataModels:
+            logger.info("Mark Deleted Datamodels set to True")
+            yield from delete_entity_from_source(
+                metadata=self.metadata,
+                entity_type=DashboardDataModel,
+                entity_source_state=self.datamodel_source_state,
+                mark_deleted_entity=self.source_config.markDeletedDataModels,
+                params={"service": self.context.dashboard_service},
+            )
+
     def process_owner(self, dashboard_details):
         """
         Method to process the dashboard onwers
@@ -412,6 +427,21 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         )
 
         self.dashboard_source_state.add(dashboard_fqn)
+
+    def register_record_datamodel(
+        self, datamodel_requst: CreateDashboardDataModelRequest
+    ) -> None:
+        """
+        Mark the datamodel record as scanned and update the datamodel_source_state
+        """
+        datamodel_fqn = fqn.build(
+            self.metadata,
+            entity_type=DashboardDataModel,
+            service_name=datamodel_requst.service.__root__,
+            data_model_name=datamodel_requst.name.__root__,
+        )
+
+        self.datamodel_source_state.add(datamodel_fqn)
 
     def get_owner_details(  # pylint: disable=useless-return
         self, dashboard_details  # pylint: disable=unused-argument
