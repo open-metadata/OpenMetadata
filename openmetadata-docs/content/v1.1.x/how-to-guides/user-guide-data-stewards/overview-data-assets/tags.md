@@ -34,9 +34,9 @@ caption="Discover the Tagged Data Assets"
 
 You can view all the tags in the right panel.
 
-Data assets can also be classified using Tiers. Learn more about [Tiers](/how-to-guides/openmetadata/data-governance/glossary-classification/tiers).
+Data assets can also be classified using Tiers. Learn more about [Tiers](/how-to-guides/data-governance/glossary-classification/tiers).
 
-Among the Classification Tags, OpenMetadata has some System Classification. Learn more about the [System Tags](/how-to-guides/openmetadata/data-governance/glossary-classification/classification).
+Among the Classification Tags, OpenMetadata has some System Classification. Learn more about the [System Tags](/how-to-guides/data-governance/glossary-classification/classification).
 
 ## Auto-Classification in OpenMetadata
 
