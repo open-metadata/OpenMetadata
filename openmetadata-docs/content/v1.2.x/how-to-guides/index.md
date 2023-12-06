@@ -89,7 +89,7 @@ OpenMetadata is a complete package for data teams to break down team silos, shar
 
 - Track your data evolution with end-to-end **[Data Lineage](/how-to-guides/data-lineage)**.
 
-- Secure access to sensitive data by defining **[Roles and Policies](/how-to-guides/admin-guide-roles-policies)**.
+- Secure access to sensitive data by defining **[Roles and Policies](/how-to-guides/admin-guide/roles-policies)**.
 
 - Enhance organizational **[Data Culture](/how-to-guides/data-insights)** to gain crucial insights to drive innovation.
 
