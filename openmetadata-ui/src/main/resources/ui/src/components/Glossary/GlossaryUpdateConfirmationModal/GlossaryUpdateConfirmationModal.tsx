@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Button, Modal, Space, Typography } from 'antd';
-import { isEmpty } from 'lodash';
+import { Alert, Button, Modal, Progress, Space, Typography } from 'antd';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -31,7 +30,10 @@ import {
   getEntityName,
 } from '../../../utils/EntityUtils';
 import Table from '../../common/Table/Table';
-import { GlossaryUpdateConfirmationModalProps } from './GlossaryUpdateConfirmationModal.interface';
+import {
+  GlossaryUpdateConfirmationModalProps,
+  UpdateState,
+} from './GlossaryUpdateConfirmationModal.interface';
 
 export const GlossaryUpdateConfirmationModal = ({
   glossaryTerm,
@@ -41,13 +43,12 @@ export const GlossaryUpdateConfirmationModal = ({
 }: GlossaryUpdateConfirmationModalProps) => {
   const [failedStatus, setFailedStatus] = useState<BulkOperationResult>();
   const [tagError, setTagError] = useState<{ code: number; message: string }>();
-  const [tagAdditionConfirmation, setTagAdditionConfirmation] = useState(false);
-  const [validating, setValidating] = useState(false);
+  const [updateState, setUpdateState] = useState(UpdateState.INITIAL);
   const { t } = useTranslation();
 
   const handleUpdateConfirmation = async () => {
-    setTagAdditionConfirmation(true);
-    setValidating(true);
+    setUpdateState(UpdateState.VALIDATING);
+
     try {
       // dryRun validations so that we can list failures if any
       const res = await validateTagAddtionToGlossary(
@@ -55,16 +56,24 @@ export const GlossaryUpdateConfirmationModal = ({
         true
       );
 
-      if (res.status && res.status === Status.Success) {
-        await onValidationSuccess();
+      if (res.status === Status.Success) {
+        setUpdateState(UpdateState.UPDATATING);
+        try {
+          await onValidationSuccess();
+          setUpdateState(UpdateState.SUCESS);
+        } catch (err) {
+          // Error
+        } finally {
+          setTimeout(onCancel, 500);
+        }
       } else {
+        setUpdateState(UpdateState.FAILED);
         setFailedStatus(res);
       }
     } catch (err) {
       // error
       setTagError(err.response?.data);
-    } finally {
-      setValidating(false);
+      setUpdateState(UpdateState.FAILED);
     }
   };
 
@@ -96,81 +105,139 @@ export const GlossaryUpdateConfirmationModal = ({
     ];
   }, []);
 
+  const progress =
+    updateState === UpdateState.VALIDATING
+      ? 10
+      : updateState === UpdateState.UPDATATING
+      ? 60
+      : 100;
+
+  const data = useMemo(() => {
+    const footer = (
+      <div className="d-flex justify-between">
+        <Typography.Text type="secondary">
+          {failedStatus?.numberOfRowsFailed &&
+            `${failedStatus.numberOfRowsFailed} ${t('label.failed')}`}
+        </Typography.Text>
+        <Button onClick={onCancel}>{t('label.cancel')}</Button>
+      </div>
+    );
+
+    const progressBar = (
+      <div className="text-center">
+        <Progress percent={progress} status="normal" type="circle" />
+      </div>
+    );
+
+    switch (updateState) {
+      case UpdateState.INITIAL:
+        return {
+          footer: null,
+          content: (
+            <div className="d-flex items-center flex-column gap-2">
+              <Icon
+                className="m-b-lg"
+                component={ExclamationIcon}
+                style={{ fontSize: '60px' }}
+              />
+              <Typography.Title level={5}>
+                {t('message.tag-update-confirmation')}
+              </Typography.Title>
+              <Typography.Text className="text-center">
+                {t('message.glossary-tag-update-description')}{' '}
+                <span className="font-medium">
+                  {getEntityName(glossaryTerm)}
+                </span>
+              </Typography.Text>
+              <div className="m-t-lg">
+                <Space size={8}>
+                  <Button onClick={onCancel}>
+                    {t('label.no-comma-cancel')}
+                  </Button>
+                  <Button type="primary" onClick={handleUpdateConfirmation}>
+                    {t('label.yes-comma-confirm')}
+                  </Button>
+                </Space>
+              </div>
+            </div>
+          ),
+        };
+      case UpdateState.VALIDATING:
+        return {
+          content: progressBar,
+          footer: footer,
+        };
+      case UpdateState.FAILED:
+        return {
+          content: (
+            <div className="d-flex flex-column gap-2">
+              {failedStatus && (
+                <>
+                  <Table
+                    bordered
+                    columns={tagsColumn}
+                    dataSource={failedStatus?.failedRequest ?? []}
+                    pagination={{
+                      pageSize: 5,
+                      showSizeChanger: true,
+                    }}
+                    rowKey={(record) => record.request?.id}
+                  />
+                  <Alert
+                    className="m-t-sm"
+                    message={t('message.glossary-tag-assignement-help-message')}
+                    type="warning"
+                  />
+                </>
+              )}
+              {tagError?.code === ClientErrors.BAD_REQUEST && (
+                <Alert message={tagError.message} type="warning" />
+              )}
+            </div>
+          ),
+          footer: (
+            <div className="d-flex justify-between">
+              <Typography.Text type="secondary">
+                {failedStatus?.numberOfRowsFailed &&
+                  `${failedStatus.numberOfRowsFailed} ${t('label.failed')}`}
+              </Typography.Text>
+              <Button onClick={onCancel}>{t('label.cancel')}</Button>
+            </div>
+          ),
+        };
+      case UpdateState.UPDATATING:
+        return {
+          content: progressBar,
+          footer: <Button onClick={onCancel}>{t('label.cancel')}</Button>,
+        };
+      case UpdateState.SUCESS:
+        return {
+          content: progressBar,
+          footer: <Button onClick={onCancel}>{t('label.cancel')}</Button>,
+        };
+    }
+  }, [updateState, failedStatus]);
+
   return (
     <Modal
       centered
       open
       closable={false}
       closeIcon={null}
-      footer={
-        tagAdditionConfirmation && (
-          <div className="d-flex justify-between">
-            <Typography.Text type="secondary">
-              {failedStatus?.numberOfRowsFailed &&
-                `${failedStatus.numberOfRowsFailed} ${t('label.failed')}`}
-            </Typography.Text>
-            <Button onClick={onCancel}>{t('label.cancel')}</Button>
-          </div>
-        )
-      }
+      footer={data.footer}
       title={
-        tagAdditionConfirmation
+        [
+          UpdateState.VALIDATING,
+          UpdateState.FAILED,
+          UpdateState.UPDATATING,
+          UpdateState.SUCESS,
+        ].includes(updateState)
           ? t('message.glossary-tag-update-modal-title')
           : undefined
       }
-      width={tagAdditionConfirmation ? 750 : undefined}
+      width={updateState === UpdateState.FAILED ? 750 : undefined}
       onCancel={onCancel}>
-      {tagAdditionConfirmation || validating ? (
-        <div className="d-flex flex-column gap-2">
-          {!isEmpty(failedStatus?.failedRequest) && !validating && (
-            <>
-              <Table
-                bordered
-                columns={tagsColumn}
-                dataSource={failedStatus?.failedRequest}
-                loading={validating}
-                pagination={{
-                  pageSize: 5,
-                  showSizeChanger: true,
-                }}
-                rowKey={(record) => record.request.id}
-              />
-              <Typography.Text italic className="m-t-sm" type="secondary">
-                {t('message.glossary-tag-assignement-help-message')}
-              </Typography.Text>
-            </>
-          )}
-          {tagError?.code === ClientErrors.BAD_REQUEST && (
-            <Typography.Text type="danger">{tagError.message}</Typography.Text>
-          )}
-        </div>
-      ) : (
-        <div className="d-flex items-center flex-column gap-2">
-          <Icon
-            className="m-b-lg"
-            component={ExclamationIcon}
-            style={{ fontSize: '60px' }}
-          />
-          <Typography.Title level={5}>
-            {t('message.tag-update-confirmation')}
-          </Typography.Title>
-          <Typography.Text className="text-center">
-            {t('message.glossary-tag-update-description')}{' '}
-            <span className="font-medium">{getEntityName(glossaryTerm)}</span>
-          </Typography.Text>
-          <div className="m-t-lg">
-            <Space size={8}>
-              <Button onClick={onCancel}>{t('label.no-comma-cancel')}</Button>
-              <Button
-                loading={validating}
-                type="primary"
-                onClick={handleUpdateConfirmation}>
-                {t('label.yes-comma-confirm')}
-              </Button>
-            </Space>
-          </div>
-        </div>
-      )}
+      {data.content}
     </Modal>
   );
 };

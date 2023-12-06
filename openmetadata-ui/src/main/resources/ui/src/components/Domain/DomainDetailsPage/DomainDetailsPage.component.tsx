@@ -83,6 +83,7 @@ import {
 } from '../../../utils/RouterUtils';
 import {
   escapeESReservedCharacters,
+  getDecodedFqn,
   getEncodedFqn,
 } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -111,7 +112,7 @@ const DomainDetailsPage = ({
     tab: activeTab,
     version,
   } = useParams<{ fqn: string; tab: string; version: string }>();
-  const domainFqn = fqn ? decodeURIComponent(fqn) : '';
+  const domainFqn = fqn ? getDecodedFqn(fqn) : '';
   const assetTabRef = useRef<AssetsTabRef>(null);
   const dataProductsTabRef = useRef<DataProductsTabRef>(null);
   const [domainPermission, setDomainPermission] = useState<OperationPermission>(
@@ -512,7 +513,7 @@ const DomainDetailsPage = ({
     fetchDomainPermission();
     fetchDomainAssets();
     fetchDataProducts();
-  }, [fqn]);
+  }, [domain.fullyQualifiedName]);
 
   return (
     <>

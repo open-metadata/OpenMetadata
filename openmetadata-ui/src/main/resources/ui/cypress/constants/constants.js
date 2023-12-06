@@ -307,6 +307,7 @@ export const NEW_GLOSSARY = {
   reviewer: 'Aaron Johnson',
   addReviewer: true,
   tag: 'PersonalData.Personal',
+  isMutually: true,
 };
 export const NEW_GLOSSARY_1 = {
   name: 'Cypress Product%Glossary',

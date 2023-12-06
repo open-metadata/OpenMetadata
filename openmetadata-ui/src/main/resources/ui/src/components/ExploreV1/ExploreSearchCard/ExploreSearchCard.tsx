@@ -173,11 +173,15 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         <Row gutter={[8, 8]}>
           {showCheckboxes && (
             <Col flex="25px">
-              <Checkbox
-                checked={checked}
-                className="assets-checkbox"
-                onChange={(e) => onCheckboxChange?.(e.target.checked)}
-              />
+              <div onClick={(e) => e.stopPropagation()}>
+                <Checkbox
+                  checked={checked}
+                  className="assets-checkbox"
+                  onChange={(e) => {
+                    onCheckboxChange?.(e.target.checked);
+                  }}
+                />
+              </div>
             </Col>
           )}
           {!hideBreadcrumbs && (

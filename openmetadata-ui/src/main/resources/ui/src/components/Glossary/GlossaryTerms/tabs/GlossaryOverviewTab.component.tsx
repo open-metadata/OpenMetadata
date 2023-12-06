@@ -83,10 +83,6 @@ const GlossaryOverviewTab = ({
     }
   }, [selectedData, isVersionView]);
 
-  const handleTagsUpdate = async (updatedTags: TagLabel[]) => {
-    setTagsUpdating(updatedTags);
-  };
-
   const tags = useMemo(
     () =>
       isVersionView
@@ -98,14 +94,16 @@ const GlossaryOverviewTab = ({
     [isVersionView, selectedData]
   );
 
+  const handleTagsUpdate = async (updatedTags: TagLabel[]) => {
+    setTagsUpdating(updatedTags);
+  };
+
   const handleGlossaryTagUpdateValidationConfirm = async () => {
     if (selectedData) {
       await onUpdate({
         ...selectedData,
         tags: tagsUpdatating,
       });
-
-      setTagsUpdating(undefined);
     }
   };
 
