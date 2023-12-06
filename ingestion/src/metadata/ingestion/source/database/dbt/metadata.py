@@ -419,7 +419,9 @@ class DbtSource(DbtServiceSource):
                         Union[Table, List[Table]]
                     ] = get_entity_from_es_result(
                         entity_list=self.metadata.es_search_from_fqn(
-                            entity_type=Table, fqn_search_string=table_fqn
+                            entity_type=Table,
+                            fqn_search_string=table_fqn,
+                            fields="sourceHash",
                         ),
                         fetch_multiple_entities=False,
                     )
