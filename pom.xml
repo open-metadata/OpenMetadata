@@ -193,6 +193,14 @@
         <version>${dropwizard.version}</version>
         <exclusions>
           <exclusion>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-core</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+          </exclusion>
+          <exclusion>
             <groupId>org.slf4j</groupId>
             <artifactId>log4j-over-slf4j</artifactId>
           </exclusion>
