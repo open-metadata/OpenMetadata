@@ -927,6 +927,7 @@ const AssetsTabs = forwardRef(
           header={t('label.remove-entity', {
             entity: getEntityName(assetToDelete) + '?',
           })}
+          isLoading={assetRemoving}
           visible={showDeleteModal}
           onCancel={() => setShowDeleteModal(false)}
           onConfirm={() => onAssetRemove(assetToDelete ? [assetToDelete] : [])}
