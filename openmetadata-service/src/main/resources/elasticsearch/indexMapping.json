@@ -207,7 +207,7 @@
     "indexName": "mlmodel_service_search_index",
     "indexMappingFile": "/elasticsearch/%s/mlmodel_service_index_mapping.json",
     "alias": "mlModelService",
-    "parentAliases": ["all"]
+    "parentAliases": ["all","mlModelService"]
   },
   "testCaseResolutionStatus": {
     "indexName": "test_case_resolution_status_search_index",
