@@ -363,7 +363,7 @@ services:
       # EXAMPLE 
       # require SSL (only for Postgres)
       # properties: "?sslmode=require"
-      DB_PROPERTIES: ""
+      DB_PROPERTIES: ${AIRFLOW_DB_PROPERTIES:-""}
       
       # To test the lineage backend
       # AIRFLOW__LINEAGE__BACKEND: airflow_provider_openmetadata.lineage.backend.OpenMetadataLineageBackend
