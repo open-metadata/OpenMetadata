@@ -40,6 +40,7 @@ import {
   ThreadTaskStatus,
   ThreadType,
 } from '../../../generated/entity/feed/thread';
+import { useAuth } from '../../../hooks/authHooks';
 import { useElementInView } from '../../../hooks/useElementInView';
 import { getAllFeeds, getFeedCount } from '../../../rest/feedsAPI';
 import { getCountBadge, getEntityDetailLink } from '../../../utils/CommonUtils';
@@ -81,6 +82,7 @@ export const ActivityFeedTab = ({
   });
   const { subTab: activeTab = ActivityFeedTabs.ALL } =
     useParams<{ subTab: ActivityFeedTabs }>();
+  const { isAdminUser } = useAuth();
   const [taskFilter, setTaskFilter] = useState<TaskFilter>('open');
   const [allCount, setAllCount] = useState(0);
   const [tasksCount, setTasksCount] = useState(0);
@@ -162,7 +164,7 @@ export const ActivityFeedTab = ({
         undefined,
         undefined,
         ThreadType.Task,
-        FeedFilter.OWNER,
+        isAdminUser ? undefined : FeedFilter.OWNER,
         undefined,
         userId
       ).then((res) => {
@@ -178,7 +180,7 @@ export const ActivityFeedTab = ({
         undefined,
         undefined,
         ThreadType.Conversation,
-        FeedFilter.OWNER,
+        isAdminUser ? undefined : FeedFilter.OWNER,
         undefined,
         userId
       ).then((res) => {

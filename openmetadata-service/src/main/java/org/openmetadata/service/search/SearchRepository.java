@@ -275,7 +275,8 @@ public class SearchRepository {
     if (changeDescription != null) {
       Pair<String, Map<String, Object>> updates = getInheritedFieldChanges(changeDescription);
       Pair<String, String> parentMatch;
-      if (updates.getValue().get("type").toString().equalsIgnoreCase("domain")
+      if (!updates.getValue().isEmpty()
+          && updates.getValue().get("type").toString().equalsIgnoreCase("domain")
           && (entityType.equalsIgnoreCase(Entity.DATABASE_SERVICE)
               || entityType.equalsIgnoreCase(Entity.DASHBOARD_SERVICE)
               || entityType.equalsIgnoreCase(Entity.MESSAGING_SERVICE)
