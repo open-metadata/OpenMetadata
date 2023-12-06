@@ -52,7 +52,6 @@ const AuthMechanismForm: FC<Props> = ({
         JWTTokenExpiry: values.tokenExpiry as JWTTokenExpiry,
       },
     };
-
     onSave(updatedAuthMechanism);
   };
   const authOptions = useMemo(() => {
@@ -67,29 +66,30 @@ const AuthMechanismForm: FC<Props> = ({
 
     return isBot ? botValue : accessTokenValue;
   }, [isBot]);
-  const initialValueBot = useMemo(() => {
-    const data = authenticationMechanism as AuthenticationMechanism;
+
+  const { authType, tokenExpiry } = useMemo(() => {
+    if (isBot) {
+      const botData = authenticationMechanism as AuthenticationMechanism;
+
+      return {
+        authType: botData?.authType,
+        tokenExpiry: botData?.config?.JWTTokenExpiry,
+      };
+    }
+
+    const personalAccessData = authenticationMechanism as PersonalAccessToken;
 
     return {
-      authType: data.authType ?? AuthType.Jwt,
-      tokenExpiry: data.config?.JWTTokenExpiry ?? JWTTokenExpiry.OneHour,
-    };
-  }, [authenticationMechanism]);
-
-  const initialValuePersonalAccess = useMemo(() => {
-    const data = authenticationMechanism as PersonalAccessToken;
-
-    return {
-      authType: data.tokenType ?? TokenType.PersonalAccessToken,
+      authType: personalAccessData?.tokenType ?? TokenType.PersonalAccessToken,
       tokenExpiry: JWTTokenExpiry.OneHour,
     };
-  }, [authenticationMechanism]);
+  }, [isBot, authenticationMechanism]);
 
   return (
     <>
       <Form
         id="update-auth-mechanism-form"
-        initialValues={isBot ? initialValueBot : initialValuePersonalAccess}
+        initialValues={{ authType, tokenExpiry }}
         layout="vertical"
         onFinish={handleSave}>
         <Form.Item label={t('label.auth-mechanism')} name="authType">

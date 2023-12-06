@@ -11,43 +11,106 @@
  *  limitations under the License.
  */
 import '@testing-library/jest-dom/extend-expect';
-import { render } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
-import { getUserAccessToken } from '../../rest/userAPI';
+import { revokeAccessToken } from '../../rest/userAPI';
+import { mockAccessData } from '../Users/mocks/User.mocks';
 import AccessTokenCard from './AccessTokenCard.component';
 
-describe('AccessTokenCard Component', () => {
-  // Mock data for authentication mechanism
+jest.mock('../BotDetails/AuthMechanism', () => {
+  return jest.fn().mockImplementation(({ onTokenRevoke }) => (
+    <p>
+      AuthMechanism{' '}
+      <button data-testid="open-modal-button" onClick={onTokenRevoke}>
+        open
+      </button>
+    </p>
+  ));
+});
 
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
+jest.mock('../BotDetails/AuthMechanismForm', () => {
+  return jest.fn().mockReturnValue(<p>AuthMechanismForm</p>);
+});
 
-  jest.mock('axios');
+jest.mock('../Modals/ConfirmationModal/ConfirmationModal', () => {
+  return jest.fn().mockImplementation(({ onConfirm, onCancel, visible }) =>
+    visible ? (
+      <div data-testid="confirmation-modal">
+        <button data-testid="cancel-button" onClick={onCancel}>
+          Cancel
+        </button>
+        <button data-testid="confirm-button" onClick={onConfirm}>
+          Confirm
+        </button>
+      </div>
+    ) : (
+      <div data-testid="closed-confirmation-modal" />
+    )
+  );
+});
 
-  jest.mock('../../rest/userAPI', () => ({
-    createUserAccessTokenWithPut: jest.fn().mockImplementation(() =>
+jest.mock('../../rest/userAPI', () => {
+  return {
+    getUserAccessToken: jest
+      .fn()
+      .mockImplementation(() => Promise.resolve([mockAccessData])),
+    updateUserAccessToken: jest.fn().mockImplementation(() =>
       Promise.resolve({
         JWTTokenExpiry: 'tesst',
         tokenName: 'test',
       })
     ),
-  }));
-  jest.mock('../../rest/userAPI', () => ({
-    getUserAccessToken: jest.fn().mockImplementation(() => Promise.resolve({})),
-  }));
+    revokeAccessToken: jest.fn().mockImplementation(() => Promise.resolve()),
+  };
+});
 
-  it('renders initial state with AuthMechanismForm', async () => {
-    const { getByText } = render(<AccessTokenCard isBot={false} />);
+describe('AccessTokenCard Component', () => {
+  it('should render initial state with AuthMechanism', async () => {
+    render(<AccessTokenCard isBot={false} />);
 
-    expect(getByText('label.auth-mechanism')).toBeInTheDocument();
+    expect(screen.getByText('AuthMechanism')).toBeInTheDocument();
   });
 
-  it('edits authentication mechanism', async () => {
-    const { getByText } = render(<AccessTokenCard isBot={false} />);
+  it('should render AuthMechanism when isAuthMechanismEdit is false', async () => {
+    await act(async () => {
+      render(<AccessTokenCard isBot={false} />);
+    });
 
-    expect(getUserAccessToken).toHaveBeenCalled();
+    expect(await screen.findByText('AuthMechanism')).toBeInTheDocument();
+  });
 
-    expect(getByText('Personal Access Token')).toBeInTheDocument();
+  it('should call onConfirm when Confirm button is clicked', async () => {
+    const mockRevokeAccessToken = revokeAccessToken as jest.Mock;
+    render(<AccessTokenCard isBot={false} />);
+    const isModalClose = await screen.findByTestId('closed-confirmation-modal');
+
+    expect(isModalClose).toBeInTheDocument();
+
+    const openModalButton = await screen.findByTestId('open-modal-button');
+    await act(async () => {
+      fireEvent.click(openModalButton);
+    });
+
+    const confirmButton = await screen.findByTestId('confirm-button');
+    fireEvent.click(confirmButton);
+
+    expect(mockRevokeAccessToken).toHaveBeenCalled();
+  });
+
+  it('should call onCancel when Cancel button is clicked', async () => {
+    await render(<AccessTokenCard isBot={false} />);
+    const isModalClose = await screen.getByTestId('closed-confirmation-modal');
+
+    expect(isModalClose).toBeInTheDocument();
+
+    const openModalButton = await screen.getByTestId('open-modal-button');
+    await act(async () => {
+      fireEvent.click(openModalButton);
+    });
+    const cancelButton = await screen.getByTestId('cancel-button');
+    fireEvent.click(cancelButton);
+    const closedModal = await screen.getByTestId('closed-confirmation-modal');
+
+    expect(closedModal).toBeInTheDocument();
   });
 });

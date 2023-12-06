@@ -243,7 +243,7 @@ export const getUserAccessToken = async () => {
   return response.data.data;
 };
 
-export const createUserAccessTokenWithPut = async ({
+export const updateUserAccessToken = async ({
   JWTTokenExpiry,
   tokenName,
 }: {
@@ -264,7 +264,7 @@ export const createUserAccessTokenWithPut = async ({
   return response.data;
 };
 
-export const revokeAccessTokenWithPut = async (params: string) => {
+export const revokeAccessToken = async (params: string) => {
   const response = await APIClient.put<PersonalAccessToken>(
     '/users/security/token/revoke?' + params
   );

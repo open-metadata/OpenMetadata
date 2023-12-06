@@ -69,7 +69,7 @@ const AuthMechanism: FC<Props> = ({
     <>
       <Space className="w-full justify-between">
         <Typography.Text className="text-base">
-          {t('label.om-jwt-token')}
+          {isBot ? t('label.om-jwt-token') : t('message.personal-access-token')}
         </Typography.Text>
         <Space>
           {JWTToken ? (
