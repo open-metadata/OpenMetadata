@@ -78,7 +78,7 @@ alt="Column Profile of a Table"
 caption="Column Profile of a Table"
 /%}
 
-Check for more detailed information on the [Profiler and Data Quality Tab](/how-to-guides/openmetadata/data-quality-profiler/tab).
+Check for more detailed information on the [Profiler and Data Quality Tab](/how-to-guides/data-quality-profiler/tab).
 
 ## Lineage Tab
 
