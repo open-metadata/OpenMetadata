@@ -1,0 +1,31 @@
+# Query: /how-to-guides/openmetadata
+# ContextLines: 1
+
+6 results - 4 files
+
+openmetadata-docs/content/v1.1.x/how-to-guides/user-guide-data-stewards/overview-data-assets/tabs.md:
+  79  
+  80  
+  81: Check for more detailed information on the [Profiler and Data Quality Tab](/how-to-guides/data-quality-profiler/tab).
+  81  
+  82  
+openmetadata-docs/content/v1.1.x/how-to-guides/user-guide-data-stewards/overview-data-assets/tags.md:
+  36  
+  37: Data assets can also be classified using Tiers. Learn more about [Tiers](/how-to-guides/data-governance/glossary-classification/tiers).
+  38  
+  39: Among the Classification Tags, OpenMetadata has some System Classification. Learn more about the [System Tags](/how-to-guides/data-governance/glossary-classification/classification).
+  40  
+
+openmetadata-docs/content/v1.2.x/how-to-guides/data-governance/index.md:
+  16    icon="MdMenuBook"
+  17:   href="/how-to-guides/data-governance/glossary"%}
+  18    Set up business glossaries in OpenMetadata.
+
+  23    icon="MdDiscount"
+  24:   href="/how-to-guides/data-governance/classification"%}
+  25    Learn about the classification tags.
+
+openmetadata-docs/content/v1.2.x/how-to-guides/user-guide-data-users/data-asset-tabs.md:
+  90  
+  91: Check for more detailed information on the [Profiler and Data Quality Tab](/how-to-guides/data-quality-profiler/tab).
+  92  
