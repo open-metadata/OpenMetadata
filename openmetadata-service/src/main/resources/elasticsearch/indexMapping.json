@@ -75,7 +75,7 @@
     "indexName": "mlmodel_search_index",
     "indexMappingFile": "/elasticsearch/%s/mlmodel_index_mapping.json",
     "alias": "mlmodel",
-    "parentAliases": ["all", "dataAsset"]
+    "parentAliases": ["all", "dataAsset", "mlModelService"]
   },
   "testCase": {
     "indexName": "test_case_search_index",
@@ -207,6 +207,6 @@
     "indexName": "mlmodel_service_search_index",
     "indexMappingFile": "/elasticsearch/%s/mlmodel_service_index_mapping.json",
     "alias": "mlModelService",
-    "parentAliases": ["all","mlModelService"]
+    "parentAliases": ["all"]
   }
 }
