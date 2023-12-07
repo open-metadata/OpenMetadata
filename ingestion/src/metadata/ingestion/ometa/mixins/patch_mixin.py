@@ -120,6 +120,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         source: T,
         destination: T,
         allowed_fields: Optional[Dict] = None,
+        restrict_update_fields: Optional[List] = None,
     ) -> Optional[T]:
         """
         Given an Entity type and Source entity and Destination entity,
@@ -129,6 +130,8 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             entity (T): Entity Type
             source: Source payload which is current state of the source in OpenMetadata
             destination: payload with changes applied to the source.
+            allowed_fields: List of field names to filter from source and destination models
+            restrict_update_fields: List of field names which will only support add operation
 
         Returns
             Updated Entity
@@ -169,6 +172,18 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
                 )
                 return None
 
+            # for a user editable fields like descriptions, tags we only want to support "add" operation in patch
+            # we will remove the other operations for replace, remove from here
+            if restrict_update_fields:
+                patch.patch = [
+                    patch_ops
+                    for patch_ops in patch.patch
+                    if self._determine_restricted_operation(
+                        patch_ops=patch_ops,
+                        restrict_update_fields=restrict_update_fields,
+                    )
+                ]
+
             res = self.client.patch(
                 path=f"{self.get_suffix(entity)}/{model_str(source.id)}",
                 data=str(patch),
@@ -182,6 +197,19 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             )
 
         return None
+
+    def _determine_restricted_operation(
+        self, patch_ops: Dict, restrict_update_fields: Optional[List] = None
+    ) -> bool:
+        """
+        Only retain add operation for restrict_update_fields fields
+        """
+        path = patch_ops.get("path")
+        op = patch_ops.get("op")
+        for field in restrict_update_fields or []:
+            if field in path and op != PatchOperation.ADD.value:
+                return False
+        return True
 
     def patch_description(
         self,
