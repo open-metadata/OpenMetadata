@@ -37,7 +37,10 @@ import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import { getQueryFilterToExcludeTerm } from '../../../utils/GlossaryUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getGlossaryTermsVersionsPath } from '../../../utils/RouterUtils';
-import { escapeESReservedCharacters } from '../../../utils/StringsUtils';
+import {
+  escapeESReservedCharacters,
+  getEncodedFqn,
+} from '../../../utils/StringsUtils';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { AssetSelectionModal } from '../../Assets/AssetsSelectionModal/AssetSelectionModal';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
@@ -271,13 +274,14 @@ const GlossaryTermsV1 = ({
   const fetchGlossaryTermAssets = async () => {
     if (glossaryTerm) {
       try {
+        const encodedFqn = getEncodedFqn(
+          escapeESReservedCharacters(glossaryTerm.fullyQualifiedName)
+        );
         const res = await searchData(
           '',
           1,
           0,
-          `(tags.tagFQN:"${escapeESReservedCharacters(
-            glossaryTerm.fullyQualifiedName
-          )}")`,
+          `(tags.tagFQN:"${encodedFqn}")`,
           '',
           '',
           SearchIndex.ALL

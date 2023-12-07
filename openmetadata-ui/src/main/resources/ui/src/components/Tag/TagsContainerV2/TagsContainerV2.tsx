@@ -13,7 +13,7 @@
 
 import { Col, Form, Row, Space, Tooltip, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
-import { isEmpty } from 'lodash';
+import { isEmpty, isEqual } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -24,6 +24,7 @@ import { ReactComponent as IconRequest } from '../../../assets/svg/request-icon.
 import { TableTagsProps } from '../../../components/TableTags/TableTags.interface';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { TAG_CONSTANT, TAG_START_WITH } from '../../../constants/Tag.constants';
+import { LabelType } from '../../../generated/entity/data/table';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
@@ -104,8 +105,9 @@ const TagsContainerV2 = ({
   const handleSave = async (data: DefaultOptionType | DefaultOptionType[]) => {
     const updatedTags = (data as DefaultOptionType[]).map((tag) => {
       let tagData: EntityTags = {
-        tagFQN: tag.value,
+        tagFQN: typeof tag === 'string' ? tag : tag.value,
         source: tagType,
+        labelType: LabelType.Manual,
       };
 
       if (tag.data) {
@@ -114,14 +116,17 @@ const TagsContainerV2 = ({
           name: tag.data?.name,
           displayName: tag.data?.displayName,
           description: tag.data?.description,
-          style: tag.data?.style,
+          style: tag.data?.style ?? {},
+          labelType: tag.data?.labelType ?? LabelType.Manual,
         };
       }
 
       return tagData;
     });
 
-    if (onSelectionChange) {
+    const newTags = updatedTags.map((t) => t.tagFQN);
+
+    if (onSelectionChange && !isEqual(selectedTagsInternal, newTags)) {
       await onSelectionChange([
         ...updatedTags,
         ...((isGlossaryType

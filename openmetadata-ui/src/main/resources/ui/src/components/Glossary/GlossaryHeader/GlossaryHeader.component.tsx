@@ -464,13 +464,14 @@ const GlossaryHeader = ({
           {glossaryTermStatus && glossaryTermStatus === Status.Approved && (
             <Dropdown
               className="m-l-xs"
-              data-testid="glossary-term-add-button-menu"
               menu={{
                 items: addButtonContent,
               }}
               placement="bottomRight"
               trigger={['click']}>
-              <Button type="primary">
+              <Button
+                data-testid="glossary-term-add-button-menu"
+                type="primary">
                 <Space>
                   {t('label.add')}
                   <DownOutlined />

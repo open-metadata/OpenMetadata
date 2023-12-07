@@ -106,8 +106,8 @@ Both importing and exporting the Glossary from OpenMetadata is quick and easy!
 
 {%inlineCallout
   color="violet-70"
-  bold="How to Add Assets to Glossary Terms"
+  bold="Glossary Approval Workflow"
   icon="MdArrowForward"
-  href="/how-to-guides/data-governance/glossary/assets"%}
-  Associate glossary terms to data assets making it easier for data discovery
+  href="/how-to-guides/data-governance/glossary/approval"%}
+  Set up a review and approval process for glossary terms
 {%/inlineCallout%}

@@ -28,6 +28,7 @@ import { OperationPermission } from '../../../PermissionProvider/PermissionProvi
 import TagsContainerV2 from '../../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../../Tag/TagsViewer/TagsViewer.interface';
 import GlossaryDetailsRightPanel from '../../GlossaryDetailsRightPanel/GlossaryDetailsRightPanel.component';
+import { GlossaryUpdateConfirmationModal } from '../../GlossaryUpdateConfirmationModal/GlossaryUpdateConfirmationModal';
 import GlossaryTermReferences from './GlossaryTermReferences';
 import GlossaryTermSynonyms from './GlossaryTermSynonyms';
 import RelatedTerms from './RelatedTerms';
@@ -51,6 +52,7 @@ const GlossaryOverviewTab = ({
 }: Props) => {
   const [isDescriptionEditable, setIsDescriptionEditable] =
     useState<boolean>(false);
+  const [tagsUpdatating, setTagsUpdating] = useState<TagLabel[]>();
 
   const { deleted } = useMemo(() => selectedData, [selectedData]);
 
@@ -83,17 +85,6 @@ const GlossaryOverviewTab = ({
     }
   }, [selectedData, isVersionView]);
 
-  const handleTagsUpdate = async (updatedTags: TagLabel[]) => {
-    if (updatedTags) {
-      const updatedData = {
-        ...selectedData,
-        tags: updatedTags,
-      };
-
-      onUpdate(updatedData);
-    }
-  };
-
   const tags = useMemo(
     () =>
       isVersionView
@@ -104,6 +95,19 @@ const GlossaryOverviewTab = ({
         : selectedData.tags,
     [isVersionView, selectedData]
   );
+
+  const handleTagsUpdate = async (updatedTags: TagLabel[]) => {
+    setTagsUpdating(updatedTags);
+  };
+
+  const handleGlossaryTagUpdateValidationConfirm = async () => {
+    if (selectedData) {
+      await onUpdate({
+        ...selectedData,
+        tags: tagsUpdatating,
+      });
+    }
+  };
 
   return (
     <Row className="glossary-overview-tab h-full" gutter={[32, 16]}>
@@ -187,6 +191,14 @@ const GlossaryOverviewTab = ({
           onUpdate={onUpdate}
         />
       </Col>
+      {tagsUpdatating && (
+        <GlossaryUpdateConfirmationModal
+          glossaryTerm={selectedData as GlossaryTerm}
+          updatedTags={tagsUpdatating}
+          onCancel={() => setTagsUpdating(undefined)}
+          onValidationSuccess={handleGlossaryTagUpdateValidationConfirm}
+        />
+      )}
     </Row>
   );
 };

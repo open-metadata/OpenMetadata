@@ -28,7 +28,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -219,7 +218,7 @@ public class SearchRepository {
         // Report data type is an entity itself where each report data type has its own index
         entityType = ((ReportData) entity).getReportDataType().toString();
       } else {
-        entityType = entity.getClass().getSimpleName().toLowerCase(Locale.ROOT);
+        entityType = entity.getEntityReference().getType();
       }
       String entityId = entity.getId().toString();
       try {
@@ -273,7 +272,20 @@ public class SearchRepository {
       String entityType, String entityId, ChangeDescription changeDescription, IndexMapping indexMapping) {
     if (changeDescription != null) {
       Pair<String, Map<String, Object>> updates = getInheritedFieldChanges(changeDescription);
-      Pair<String, String> parentMatch = new ImmutablePair<>(entityType + ".id", entityId);
+      Pair<String, String> parentMatch;
+      if (!updates.getValue().isEmpty()
+          && updates.getValue().get("type").toString().equalsIgnoreCase("domain")
+          && (entityType.equalsIgnoreCase(Entity.DATABASE_SERVICE)
+              || entityType.equalsIgnoreCase(Entity.DASHBOARD_SERVICE)
+              || entityType.equalsIgnoreCase(Entity.MESSAGING_SERVICE)
+              || entityType.equalsIgnoreCase(Entity.PIPELINE_SERVICE)
+              || entityType.equalsIgnoreCase(Entity.MLMODEL_SERVICE)
+              || entityType.equalsIgnoreCase(Entity.STORAGE_SERVICE)
+              || entityType.equalsIgnoreCase(Entity.SEARCH_SERVICE))) {
+        parentMatch = new ImmutablePair<>("service.id", entityId);
+      } else {
+        parentMatch = new ImmutablePair<>(entityType + ".id", entityId);
+      }
       if (updates.getKey() != null && !updates.getKey().isEmpty()) {
         searchClient.updateChildren(indexMapping.getAlias(), parentMatch, updates);
       }

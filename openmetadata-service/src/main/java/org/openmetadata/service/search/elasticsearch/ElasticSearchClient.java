@@ -149,6 +149,7 @@ import org.openmetadata.service.search.indexes.StoredProcedureIndex;
 import org.openmetadata.service.search.indexes.TableIndex;
 import org.openmetadata.service.search.indexes.TagIndex;
 import org.openmetadata.service.search.indexes.TestCaseIndex;
+import org.openmetadata.service.search.indexes.TestCaseResolutionStatusIndex;
 import org.openmetadata.service.search.indexes.TopicIndex;
 import org.openmetadata.service.search.indexes.UserIndex;
 import org.openmetadata.service.search.models.IndexMapping;
@@ -310,6 +311,10 @@ public class ElasticSearchClient implements SearchClient {
       case "data_product_search_index":
         searchSourceBuilder = buildDataProductSearch(request.getQuery(), request.getFrom(), request.getSize());
         break;
+      case "test_case_resolution_status_search_index":
+        searchSourceBuilder =
+            buildTestCaseResolutionStatusSearch(request.getQuery(), request.getFrom(), request.getSize());
+        break;
       default:
         searchSourceBuilder = buildAggregateSearchBuilder(request.getQuery(), request.getFrom(), request.getSize());
         break;
@@ -436,7 +441,7 @@ public class ElasticSearchClient implements SearchClient {
             AggregationBuilders.terms(fieldName)
                 .field(fieldName)
                 .size(MAX_AGGREGATE_SIZE)
-                .includeExclude(new IncludeExclude(value, null))
+                .includeExclude(new IncludeExclude(value.toLowerCase(), null))
                 .order(BucketOrder.key(true)))
         .query(boolQueryBuilder)
         .size(0);
@@ -482,11 +487,8 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   private static SearchSourceBuilder buildPipelineSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query)
-            .fields(PipelineIndex.getFields())
-            .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO);
+    QueryStringQueryBuilder queryBuilder = buildSearchQueryBuilder(query, PipelineIndex.getFields());
+
     HighlightBuilder.Field highlightPipelineName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
     highlightPipelineName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
@@ -507,11 +509,8 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   private static SearchSourceBuilder buildMlModelSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query)
-            .fields(MlModelIndex.getFields())
-            .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO);
+    QueryStringQueryBuilder queryBuilder = buildSearchQueryBuilder(query, MlModelIndex.getFields());
+
     HighlightBuilder.Field highlightPipelineName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
     highlightPipelineName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
@@ -552,11 +551,8 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   private static SearchSourceBuilder buildDashboardSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query)
-            .fields(DashboardIndex.getFields())
-            .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO);
+    QueryStringQueryBuilder queryBuilder = buildSearchQueryBuilder(query, DashboardIndex.getFields());
+
     HighlightBuilder.Field highlightDashboardName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
     highlightDashboardName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
@@ -627,20 +623,13 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   private static SearchSourceBuilder buildUserOrTeamSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query)
-            .fields(UserIndex.getFields())
-            .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO);
+    QueryStringQueryBuilder queryBuilder = buildSearchQueryBuilder(query, UserIndex.getFields());
+
     return searchBuilder(queryBuilder, null, from, size);
   }
 
   private static SearchSourceBuilder buildGlossaryTermSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query)
-            .fields(GlossaryTermIndex.getFields())
-            .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO);
+    QueryStringQueryBuilder queryBuilder = buildSearchQueryBuilder(query, GlossaryTermIndex.getFields());
 
     HighlightBuilder.Field highlightGlossaryName = new HighlightBuilder.Field(FIELD_NAME);
     highlightGlossaryName.highlighterType(UNIFIED);
@@ -665,11 +654,7 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   private static SearchSourceBuilder buildTagSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query)
-            .fields(TagIndex.getFields())
-            .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO);
+    QueryStringQueryBuilder queryBuilder = buildSearchQueryBuilder(query, TagIndex.getFields());
 
     HighlightBuilder.Field highlightTagName = new HighlightBuilder.Field(FIELD_NAME);
     highlightTagName.highlighterType(UNIFIED);
@@ -691,11 +676,8 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   private static SearchSourceBuilder buildContainerSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query)
-            .fields(ContainerIndex.getFields())
-            .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO);
+    QueryStringQueryBuilder queryBuilder = buildSearchQueryBuilder(query, ContainerIndex.getFields());
+
     HighlightBuilder.Field highlightContainerName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
     highlightContainerName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
@@ -723,11 +705,7 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   private static SearchSourceBuilder buildQuerySearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query)
-            .fields(QueryIndex.getFields())
-            .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO);
+    QueryStringQueryBuilder queryBuilder = buildSearchQueryBuilder(query, QueryIndex.getFields());
 
     HighlightBuilder.Field highlightGlossaryName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
     highlightGlossaryName.highlighterType(UNIFIED);
@@ -745,11 +723,7 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   private static SearchSourceBuilder buildTestCaseSearch(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query)
-            .fields(TestCaseIndex.getFields())
-            .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO);
+    QueryStringQueryBuilder queryBuilder = buildSearchQueryBuilder(query, TestCaseIndex.getFields());
 
     HighlightBuilder.Field highlightTestCaseDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightTestCaseDescription.highlighterType(UNIFIED);
@@ -772,11 +746,7 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   private static SearchSourceBuilder buildStoredProcedureSearch(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query)
-            .fields(StoredProcedureIndex.getFields())
-            .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO);
+    QueryStringQueryBuilder queryBuilder = buildSearchQueryBuilder(query, StoredProcedureIndex.getFields());
 
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
@@ -794,11 +764,7 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   private static SearchSourceBuilder buildDashboardDataModelsSearch(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query)
-            .fields(DashboardDataModelIndex.getFields())
-            .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO);
+    QueryStringQueryBuilder queryBuilder = buildSearchQueryBuilder(query, DashboardDataModelIndex.getFields());
 
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
@@ -822,11 +788,7 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   private static SearchSourceBuilder buildDomainsSearch(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query)
-            .fields(DomainIndex.getFields())
-            .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO);
+    QueryStringQueryBuilder queryBuilder = buildSearchQueryBuilder(query, DomainIndex.getFields());
 
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
@@ -848,11 +810,7 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   private static SearchSourceBuilder buildSearchEntitySearch(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query)
-            .fields(SearchEntityIndex.getFields())
-            .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO);
+    QueryStringQueryBuilder queryBuilder = buildSearchQueryBuilder(query, SearchEntityIndex.getFields());
 
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
@@ -874,12 +832,30 @@ public class ElasticSearchClient implements SearchClient {
     return addAggregation(searchSourceBuilder);
   }
 
+  private static SearchSourceBuilder buildTestCaseResolutionStatusSearch(String query, int from, int size) {
+    QueryStringQueryBuilder queryBuilder = buildSearchQueryBuilder(query, TestCaseResolutionStatusIndex.getFields());
+
+    HighlightBuilder hb = new HighlightBuilder();
+    HighlightBuilder.Field highlightTestCaseDescription = new HighlightBuilder.Field("testCaseReference.description");
+    highlightTestCaseDescription.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightTestCaseName = new HighlightBuilder.Field("testCaseReference.name");
+    highlightTestCaseName.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightResolutionComment =
+        new HighlightBuilder.Field("testCaseResolutionStatusDetails.resolved.testCaseFailureComment");
+    highlightResolutionComment.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightResolutionType = new HighlightBuilder.Field("testCaseResolutionStatusType");
+    highlightResolutionType.highlighterType(UNIFIED);
+
+    hb.field(highlightTestCaseDescription);
+    hb.field(highlightTestCaseName);
+    hb.field(highlightResolutionComment);
+    hb.field(highlightResolutionType);
+
+    return searchBuilder(queryBuilder, hb, from, size);
+  }
+
   private static SearchSourceBuilder buildDataProductSearch(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query)
-            .fields(DataProductIndex.getFields())
-            .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO);
+    QueryStringQueryBuilder queryBuilder = buildSearchQueryBuilder(query, DataProductIndex.getFields());
 
     HighlightBuilder hb = new HighlightBuilder();
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
@@ -899,6 +875,10 @@ public class ElasticSearchClient implements SearchClient {
     SearchSourceBuilder searchSourceBuilder =
         new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
     return addAggregation(searchSourceBuilder);
+  }
+
+  private static QueryStringQueryBuilder buildSearchQueryBuilder(String query, Map<String, Float> fields) {
+    return QueryBuilders.queryStringQuery(query).fields(fields).defaultOperator(Operator.AND).fuzziness(Fuzziness.AUTO);
   }
 
   private static SearchSourceBuilder buildAggregateSearchBuilder(String query, int from, int size) {

@@ -35,47 +35,7 @@
             }
           },
           "lifeCycle": {
-            "properties": {
-              "created": {
-                "properties": {
-                  "timestamp": {
-                    "type": "date"
-                  },
-                  "accessedBy": {
-                    "type": "keyword"
-                  },
-                  "accessedByAProcess": {
-                    "type": "keyword"
-                  }
-                }
-              },
-              "updated": {
-                "properties": {
-                  "timestamp": {
-                    "type": "date"
-                  },
-                  "accessedBy": {
-                    "type": "keyword"
-                  },
-                  "accessedByAProcess": {
-                    "type": "keyword"
-                  }
-                }
-              },
-              "accessed": {
-                "properties": {
-                  "timestamp": {
-                    "type": "date"
-                  },
-                  "accessedBy": {
-                    "type": "keyword"
-                  },
-                  "accessedByAProcess": {
-                    "type": "keyword"
-                  }
-                }
-              }
-            }
+            "type": "object"
           },
           "sizeInByte": {
             "type": "double"
