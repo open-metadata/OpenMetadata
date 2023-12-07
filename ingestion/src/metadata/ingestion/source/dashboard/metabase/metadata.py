@@ -281,9 +281,7 @@ class MetabaseSource(DashboardServiceSource):
 
         lineage_parser = LineageParser(
             query,
-            ConnectionTypeDialectMapper.dialect_of(
-                db_service.serviceType.value
-            ),
+            ConnectionTypeDialectMapper.dialect_of(db_service.serviceType.value),
         )
 
         for table in lineage_parser.source_tables:
