@@ -1,7 +1,5 @@
 package org.openmetadata.service.search.indexes;
 
-import static org.openmetadata.service.search.EntityBuilderConstant.FULLY_QUALIFIED_NAME;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -42,8 +40,6 @@ public class GlossaryTermIndex implements SearchIndex {
 
   public static Map<String, Float> getFields() {
     Map<String, Float> fields = SearchIndex.getDefaultFields();
-    fields.put(FULLY_QUALIFIED_NAME + ".keyword", 3.0f);
-    fields.put(FULLY_QUALIFIED_NAME + ".ngram", 1.0f);
     fields.put("synonyms", 5.0f);
     fields.put("synonyms.ngram", 1.0f);
     fields.put("glossary.name", 5.0f);
