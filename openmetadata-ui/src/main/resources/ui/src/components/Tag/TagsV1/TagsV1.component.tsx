@@ -14,19 +14,18 @@ import { Tag, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import React, { useCallback, useMemo } from 'react';
 import { useHistory } from 'react-router-dom';
-import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import { ROUTES } from '../../../constants/constants';
-import { TagSource } from '../../../generated/type/tagLabel';
-import { getTagDisplay, getTagTooltip } from '../../../utils/TagsUtils';
-
 import { ReactComponent as IconTerm } from '../../../assets/svg/book.svg';
 import { ReactComponent as IconTag } from '../../../assets/svg/classification.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
+import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
+import { ROUTES } from '../../../constants/constants';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
+import { TagSource } from '../../../generated/type/tagLabel';
 import { reduceColorOpacity } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
+import { getTagDisplay, getTagTooltip } from '../../../utils/TagsUtils';
 import { TagsV1Props } from './TagsV1.interface';
 import './tagsV1.less';
 
@@ -37,6 +36,7 @@ const TagsV1 = ({
   showOnlyName = false,
   isVersionPage = false,
   tagProps,
+  tooltipOverride,
 }: TagsV1Props) => {
   const history = useHistory();
   const color = useMemo(
@@ -153,7 +153,7 @@ const TagsV1 = ({
   const addTagChip = useMemo(
     () => (
       <Tag
-        className="tag-chip tag-chip-add-button"
+        className={classNames('tag-chip tag-chip-add-button')}
         icon={<PlusIcon height={16} name="plus" width={16} />}>
         <Typography.Paragraph
           className="m-0 text-xs font-medium text-primary"
@@ -174,7 +174,7 @@ const TagsV1 = ({
       className="cursor-pointer"
       mouseEnterDelay={1.5}
       placement="bottomLeft"
-      title={getTagTooltip(tag.tagFQN, tag.description)}
+      title={tooltipOverride ?? getTagTooltip(tag.tagFQN, tag.description)}
       trigger="hover">
       {tagChip}
     </Tooltip>

@@ -117,6 +117,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
   public void setFields(SearchIndex searchIndex, Fields fields) {
     searchIndex.setService(getContainer(searchIndex.getId()));
     searchIndex.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(searchIndex) : null);
+    searchIndex.setSourceHash(fields.contains("sourceHash") ? searchIndex.getSourceHash() : null);
     if (searchIndex.getFields() != null) {
       getFieldTags(fields.contains(FIELD_TAGS), searchIndex.getFields());
     }
@@ -378,6 +379,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
             EntityUtil.searchIndexFieldMatch);
       }
       recordChange("searchIndexSettings", original.getSearchIndexSettings(), updated.getSearchIndexSettings());
+      recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
     }
 
     private void updateSearchIndexFields(

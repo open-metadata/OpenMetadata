@@ -23,7 +23,7 @@ import { ReactComponent as DeleteIcon } from '../assets/svg/ic-delete.svg';
 import RichTextEditorPreviewer from '../components/common/RichTextEditor/RichTextEditorPreviewer';
 import Loader from '../components/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
-import { getExplorePath, PAGE_SIZE } from '../constants/constants';
+import { getExplorePath } from '../constants/constants';
 import { SettledStatus } from '../enums/axios.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import { SearchIndex } from '../enums/search.enum';
@@ -296,48 +296,10 @@ export const tagRender = (customTagProps: CustomTagProps) => {
   );
 };
 
-type ResultType = {
+export type ResultType = {
   label: string;
   value: string;
   data: Tag;
-};
-
-export const fetchTagsElasticSearch = async (
-  searchText: string,
-  page: number,
-  filterClassifications?: string[]
-): Promise<{
-  data: ResultType[];
-  paging: Paging;
-}> => {
-  const res = await searchQuery({
-    query: `*${searchText}*`,
-    filters: 'disabled:false',
-    pageNumber: page,
-    pageSize: PAGE_SIZE,
-    queryFilter: {},
-    searchIndex: SearchIndex.TAG,
-  });
-
-  return {
-    data: res.hits.hits.reduce((result: ResultType[], { _source }) => {
-      const classificationName =
-        _source.classification?.fullyQualifiedName ?? '';
-
-      if (!filterClassifications?.includes(classificationName)) {
-        result.push({
-          label: _source.fullyQualifiedName ?? '',
-          value: _source.fullyQualifiedName ?? '',
-          data: _source,
-        });
-      }
-
-      return result;
-    }, []),
-    paging: {
-      total: res.hits.total.value,
-    },
-  };
 };
 
 export const fetchGlossaryList = async (
@@ -391,11 +353,13 @@ export const updateTierTag = (oldTags: Tag[] | TagLabel[], newTier?: Tag) => {
 };
 
 export const createTagObject = (tags: EntityTags[]) => {
-  return tags.map((tag) => ({
-    ...omit(tag, 'isRemovable'),
-    labelType: LabelType.Manual,
-    state: State.Confirmed,
-    source: tag.source,
-    tagFQN: tag.tagFQN,
-  }));
+  return tags.map(
+    (tag) =>
+      ({
+        ...omit(tag, 'isRemovable'),
+        state: State.Confirmed,
+        source: tag.source,
+        tagFQN: tag.tagFQN,
+      } as TagLabel)
+  );
 };

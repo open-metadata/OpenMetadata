@@ -22,10 +22,6 @@ from metadata.generated.schema.entity.services.connections.database.databricksCo
     DatabricksConnection,
 )
 from metadata.ingestion.ometa.client import APIError
-from metadata.ingestion.source.database.databricks.models import (
-    LineageColumnStreams,
-    LineageTableStreams,
-)
 from metadata.utils.constants import QUERY_WITH_DBT, QUERY_WITH_OM_VERSION
 from metadata.utils.helpers import datetime_to_ts
 from metadata.utils.logger import ingestion_logger
@@ -33,8 +29,6 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 API_TIMEOUT = 10
 QUERIES_PATH = "/sql/history/queries"
-TABLE_LINEAGE_PATH = "/lineage-tracking/table-lineage/get"
-COLUMN_LINEAGE_PATH = "/lineage-tracking/column-lineage/get"
 
 
 class DatabricksClient:
@@ -216,55 +210,3 @@ class DatabricksClient:
             logger.error(exc)
 
         return job_runs
-
-    def get_table_lineage(self, table_name: str) -> LineageTableStreams:
-        """
-        Method returns table lineage details
-        """
-        try:
-            data = {
-                "table_name": table_name,
-            }
-
-            response = self.client.get(
-                f"{self.base_url}{TABLE_LINEAGE_PATH}",
-                headers=self.headers,
-                data=json.dumps(data),
-                timeout=API_TIMEOUT,
-            ).json()
-            if response:
-                return LineageTableStreams(**response)
-
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.error(exc)
-
-        return LineageTableStreams()
-
-    def get_column_lineage(
-        self, table_name: str, column_name: str
-    ) -> LineageColumnStreams:
-        """
-        Method returns table lineage details
-        """
-        try:
-            data = {
-                "table_name": table_name,
-                "column_name": column_name,
-            }
-
-            response = self.client.get(
-                f"{self.base_url}{COLUMN_LINEAGE_PATH}",
-                headers=self.headers,
-                data=json.dumps(data),
-                timeout=API_TIMEOUT,
-            ).json()
-
-            if response:
-                return LineageColumnStreams(**response)
-
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.error(exc)
-
-        return LineageColumnStreams()
