@@ -194,15 +194,15 @@ const UserProfileDetails = ({
           showSuccessToast(
             t('server.update-entity-success', { entity: t('label.password') })
           );
+          setIsChangePassword(false);
         })
         .catch((error) => {
           showErrorToast(error.response.data.message);
         });
-      setIsChangePassword(false);
     } catch (err) {
       showErrorToast(err as AxiosError);
     } finally {
-      setIsLoading(true);
+      setIsLoading(false);
     }
   };
 
