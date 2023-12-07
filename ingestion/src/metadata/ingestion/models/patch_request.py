@@ -29,6 +29,8 @@ ALLOWED_COLUMN_FIELDS = {
     "name": True,
     "dataType": True,
     "arrayDataType": True,
+    "description": True,
+    "tags": True,
     "dataLength": True,
     "constraint": True,
     "children": True,
@@ -62,6 +64,8 @@ ALLOWED_COMMON_PATCH_FIELDS = {
     "name": True,
     "displayName": True,
     "sourceUrl": True,
+    "description": True,
+    "tags": True,
     # Table Entity Fields
     "tableType": True,
     "columns": {"__all__": ALLOWED_COLUMN_FIELDS},
@@ -116,3 +120,5 @@ ALLOWED_COMMON_PATCH_FIELDS = {
     "size": True,
     "fileFormats": True,
 }
+
+RESTRICT_UPDATE_LIST = ["description", "tags"]
