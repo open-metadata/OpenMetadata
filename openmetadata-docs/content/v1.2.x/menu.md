@@ -508,6 +508,10 @@ site_menu:
     url: /connectors/metadata/atlas
   - category: Connectors / Metadata / Atlas / Run Externally
     url: /connectors/metadata/atlas/yaml
+  - category: Connectors / Metadata / SAS
+    url: /connectors/metadata/sas
+  - category: Connectors / Metadata / SAS / Run Externally
+    url: /connectors/metadata/sas/yaml    
 
   - category: Connectors / Custom Connectors
     url: /connectors/custom-connectors

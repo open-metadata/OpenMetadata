@@ -39,7 +39,7 @@ Refer to the Docs to ingest metadata from multiple sources - Databases, Dashboar
 
 - **Storage Service:** [Amazon S3](/connectors/storage/s3)
 
-- **Metadata Services:** [Amundsen](/connectors/metadata/amundsen), and [Atlas](/connectors/metadata/atlas)
+- **Metadata Services:** [Amundsen](/connectors/metadata/amundsen), [Atlas](/connectors/metadata/atlas), and [SAS](/connectors/metadata/sas)
 
 {%/note%}
 
