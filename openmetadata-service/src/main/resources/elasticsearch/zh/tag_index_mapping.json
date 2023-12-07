@@ -143,6 +143,9 @@
             "path": "deleted"
           }
         ]
+      },
+      "entityType": {
+        "type": "keyword"
       }
     }
   }

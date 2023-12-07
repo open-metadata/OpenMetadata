@@ -173,6 +173,45 @@ export const DATA_PRODUCT_DROPDOWN_ITEMS = [
 
 export const DOMAIN_DATAPRODUCT_DROPDOWN_ITEMS = [
   {
+    label: t('label.entity-type-plural', {
+      entity: t('label.entity'),
+    }) as string,
+    key: 'entityType',
+  },
+  {
+    label: t('label.owner'),
+    key: 'owner.displayName.keyword',
+  },
+  {
+    label: t('label.tag'),
+    key: 'tags.tagFQN',
+  },
+  {
+    label: t('label.tier'),
+    key: 'tier.tagFQN',
+  },
+  {
+    label: t('label.service'),
+    key: 'service.displayName.keyword',
+  },
+  {
+    label: t('label.service-type'),
+    key: 'serviceType',
+  },
+];
+
+export const GLOSSARY_ASSETS_DROPDOWN_ITEMS = [
+  {
+    label: t('label.entity-type-plural', {
+      entity: t('label.entity'),
+    }) as string,
+    key: 'entityType',
+  },
+  {
+    label: t('label.domain'),
+    key: 'domain.displayName.keyword',
+  },
+  {
     label: t('label.owner'),
     key: 'owner.displayName.keyword',
   },

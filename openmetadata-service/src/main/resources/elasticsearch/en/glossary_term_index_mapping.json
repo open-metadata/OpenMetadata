@@ -417,6 +417,9 @@
       "status": {
         "type": "text"
       },
+      "entityType": {
+        "type": "keyword"
+      },
       "suggest": {
         "type": "completion",
         "contexts": [

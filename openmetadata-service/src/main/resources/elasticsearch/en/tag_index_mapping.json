@@ -100,6 +100,9 @@
       "disabled": {
         "type": "text"
       },
+      "entityType": {
+        "type": "keyword"
+      },
       "classification": {
         "properties": {
           "id": {
