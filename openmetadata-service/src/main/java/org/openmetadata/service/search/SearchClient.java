@@ -36,12 +36,17 @@ public interface SearchClient {
 
   String REMOVE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT =
       "if((ctx._source.%s != null) && (ctx._source.%s.id == '%s')){ ctx._source.remove('%s')}";
+
   String REMOVE_PROPAGATED_FIELD_SCRIPT = "ctx._source.remove('%s')";
   String UPDATE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT =
       "if((ctx._source.%s == null) || (ctx._source.%s.id == '%s')) { ctx._source.put('%s', params)}";
   String SOFT_DELETE_RESTORE_SCRIPT = "ctx._source.put('deleted', '%s')";
   String REMOVE_TAGS_CHILDREN_SCRIPT =
       "for (int i = 0; i < ctx._source.tags.length; i++) { if (ctx._source.tags[i].tagFQN == '%s') { ctx._source.tags.remove(i) }}";
+  String ADD_GLOSSARY_TAGS =
+      "for (int i = 0; i < ctx._source.tags.length; i++) { if (ctx._source.tags[i].tagFQN == '%s') { ctx._source.tags.addAll(params.tags) }}";
+  String REMOVE_GLOSSARY_TAGS =
+      "for (int i = 0; i < ctx._source.tags.length; i++) { if (ctx._source.tags[i].tagFQN == '%s') { ctx._source.tags.removeAll(params.tags) }}";
   String REMOVE_TEST_SUITE_CHILDREN_SCRIPT =
       "for (int i = 0; i < ctx._source.testSuites.length; i++) { if (ctx._source.testSuites[i].id == '%s') { ctx._source.testSuites.remove(i) }}";
 
