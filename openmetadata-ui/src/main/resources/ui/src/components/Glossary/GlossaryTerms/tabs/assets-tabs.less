@@ -89,24 +89,22 @@
 }
 
 .asset-tab-delete-notification {
+  position: absolute;
   &.visible {
-    .ant-affix {
-      bottom: 10px !important;
-    }
+    bottom: 64px;
   }
 
-  .ant-affix {
-    border-radius: 10px;
-    background: #292929;
-    height: 64px !important;
-    width: 350px !important;
-    bottom: -64px !important;
-    left: 40%;
-    transform: translateX(-60%);
-    transition: bottom ease-in 0.5s;
+  border-radius: 10px;
+  background: #292929;
+  height: 64px;
+  width: 350px;
+  bottom: -300px;
+  margin: 0 auto;
+  left: 50%;
+  transform: translateX(-50%);
+  transition: bottom ease-in 0.5s;
 
-    & > div {
-      padding: 15px 20px;
-    }
+  & > div {
+    padding: 15px 20px;
   }
 }
