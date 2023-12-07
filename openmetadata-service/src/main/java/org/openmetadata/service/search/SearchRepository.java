@@ -18,6 +18,7 @@ import static org.openmetadata.service.search.SearchClient.REMOVE_PROPAGATED_FIE
 import static org.openmetadata.service.search.SearchClient.REMOVE_TAGS_CHILDREN_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_TEST_SUITE_CHILDREN_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.SOFT_DELETE_RESTORE_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.UPDATE_ADDED_DELETE_GLOSSARY_TAGS;
 import static org.openmetadata.service.search.SearchClient.UPDATE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -39,6 +40,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.analytics.ReportData;
@@ -48,6 +50,7 @@ import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.UnhandledServerException;
@@ -252,6 +255,7 @@ public class SearchRepository {
         }
         searchClient.updateEntity(indexMapping.getIndexName(), entityId, doc, scriptTxt);
         propagateInheritedFieldsToChildren(entityType, entityId, entity.getChangeDescription(), indexMapping);
+        propagateGlossaryTags(entityType, entity.getFullyQualifiedName(), entity.getChangeDescription());
       } catch (Exception ie) {
         LOG.error(
             String.format(
@@ -289,6 +293,29 @@ public class SearchRepository {
       if (updates.getKey() != null && !updates.getKey().isEmpty()) {
         searchClient.updateChildren(indexMapping.getAlias(), parentMatch, updates);
       }
+    }
+  }
+
+  public void propagateGlossaryTags(String entityType, String glossaryFQN, ChangeDescription changeDescription) {
+    Map<String, Object> fieldData = new HashMap<>();
+    if (changeDescription != null && entityType.equalsIgnoreCase(Entity.GLOSSARY_TERM)) {
+
+      if (!CommonUtil.nullOrEmpty(changeDescription.getFieldsAdded())) {
+        List<TagLabel> tagLabels =
+            JsonUtils.readObjects((String) changeDescription.getFieldsAdded().get(0).getNewValue(), TagLabel.class);
+        tagLabels.forEach(tagLabel -> tagLabel.setLabelType(TagLabel.LabelType.DERIVED));
+        fieldData.put("tagAdded", tagLabels);
+      }
+      if (!CommonUtil.nullOrEmpty(changeDescription.getFieldsDeleted())) {
+        List<TagLabel> tagLabels =
+            JsonUtils.readObjects((String) changeDescription.getFieldsDeleted().get(0).getOldValue(), TagLabel.class);
+        tagLabels.forEach(tagLabel -> tagLabel.setLabelType(TagLabel.LabelType.DERIVED));
+        fieldData.put("tagDeleted", tagLabels);
+      }
+      searchClient.updateChildren(
+          GLOBAL_SEARCH_ALIAS,
+          new ImmutablePair<>("tags.tagFQN", glossaryFQN),
+          new ImmutablePair<>(UPDATE_ADDED_DELETE_GLOSSARY_TAGS, fieldData));
     }
   }
 
