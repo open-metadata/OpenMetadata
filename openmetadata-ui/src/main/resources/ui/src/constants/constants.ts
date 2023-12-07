@@ -30,6 +30,7 @@ import {
 export const PRIMERY_COLOR = '#0968da';
 export const SECONDARY_COLOR = '#B02AAC';
 export const INFO_COLOR = '#2196f3';
+export const ERROR_COLOR = '#ff4c3b';
 export const LITE_GRAY_COLOR = '#DBE0EB';
 export const TEXT_BODY_COLOR = '#37352F';
 export const TEXT_GREY_MUTED = '#757575';

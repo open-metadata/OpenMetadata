@@ -14,14 +14,14 @@ Apart from well-defined access control roles and policies, a common vocabulary w
   color="violet-70"
   bold="Glossary"
   icon="MdMenuBook"
-  href="/how-to-guides/openmetadata/data-governance/glossary"%}
+  href="/how-to-guides/data-governance/glossary"%}
   Set up business glossaries in OpenMetadata.
  {%/inlineCallout%}
  {%inlineCallout
   color="violet-70"
   bold="Classification"
   icon="MdDiscount"
-  href="/how-to-guides/openmetadata/data-governance/classification"%}
+  href="/how-to-guides/data-governance/classification"%}
   Learn about the classification tags.
  {%/inlineCallout%}
 {%/inlineCalloutContainer%}

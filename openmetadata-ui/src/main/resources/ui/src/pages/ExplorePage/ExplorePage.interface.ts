@@ -18,6 +18,7 @@ export interface QueryFieldValueInterface {
 export interface QueryFieldInterface {
   bool: {
     must?: Array<QueryFieldValueInterface>;
+    must_not?: Array<QueryFieldValueInterface>;
     should?: Array<QueryFieldValueInterface>;
   };
 }
@@ -26,6 +27,7 @@ export interface QueryFilterInterface {
   query: {
     bool: {
       must?: QueryFieldInterface[];
+      must_not?: QueryFieldInterface[];
       should?: QueryFieldInterface[];
     };
   };
