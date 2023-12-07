@@ -353,11 +353,13 @@ export const updateTierTag = (oldTags: Tag[] | TagLabel[], newTier?: Tag) => {
 };
 
 export const createTagObject = (tags: EntityTags[]) => {
-  return tags.map((tag) => ({
-    ...omit(tag, 'isRemovable'),
-    labelType: LabelType.Manual,
-    state: State.Confirmed,
-    source: tag.source,
-    tagFQN: tag.tagFQN,
-  }));
+  return tags.map(
+    (tag) =>
+      ({
+        ...omit(tag, 'isRemovable'),
+        state: State.Confirmed,
+        source: tag.source,
+        tagFQN: tag.tagFQN,
+      } as TagLabel)
+  );
 };

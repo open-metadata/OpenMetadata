@@ -163,7 +163,10 @@ class TopologyRunnerMixin(Generic[C]):
         """
         params = {}
         if parent_type in (Database, DatabaseSchema):
-            params = {"database": entity_fqn}
+            if child_type == StoredProcedure:
+                params = {"databaseSchema": entity_fqn}
+            else:
+                params = {"database": entity_fqn}
         else:
             params = {"service": entity_fqn}
         entities_list = self.metadata.list_all_entities(

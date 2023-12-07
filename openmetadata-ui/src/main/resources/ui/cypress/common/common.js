@@ -573,21 +573,41 @@ export const visitEntityDetailsPage = ({
           .first()
           .click();
       } else {
-        // if term is not available in search suggestion,
-        // hitting enter to search box so it will redirect to explore page
-        cy.get('body').click(1, 1);
-        cy.get('[data-testid="searchBox"]').type('{enter}');
-        verifyResponseStatusCode('@explorePageSearch', 200);
+        cy.get(`[data-testid="global-search-suggestion-box"]`)
+          .contains(term)
+          .then(($body) => {
+            if ($body.length) {
+              cy.get(`[data-testid="global-search-suggestion-box"]`)
+                .contains(term)
+                .click();
+            } else {
+              // if term is not available in search suggestion,
+              // hitting enter to search box so it will redirect to explore page
+              cy.get('body').click(1, 1);
+              cy.get('[data-testid="searchBox"]').type('{enter}');
+              verifyResponseStatusCode('@explorePageSearch', 200);
 
-        const tabName = EXPLORE_PAGE_TABS?.[entity] ?? entity;
+              const tabName = EXPLORE_PAGE_TABS?.[entity] ?? entity;
 
-        cy.get(`[data-testid="${tabName}-tab"]`).click();
+              cy.get(`[data-testid="${tabName}-tab"]`).click();
 
-        verifyResponseStatusCode('@explorePageTabSearch', 200);
+              verifyResponseStatusCode('@explorePageTabSearch', 200);
 
-        cy.get(`[data-testid="${id}"] [data-testid="entity-link"]`)
-          .scrollIntoView()
-          .click();
+              if (
+                $body.find(`[data-testid="${id}"] [data-testid="entity-link"]`)
+                  .length
+              ) {
+                cy.get(`[data-testid="${id}"] [data-testid="entity-link"]`)
+                  .scrollIntoView()
+                  .click();
+              } else {
+                cy.get(`[data-testid="entity-link"]`)
+                  .contains(term)
+                  .eq(0)
+                  .click();
+              }
+            }
+          });
       }
     });
 
