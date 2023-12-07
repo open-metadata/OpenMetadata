@@ -35,6 +35,17 @@
     height: 0;
     pointer-events: none;
   }
+  .tiptap.ProseMirror-focused .om-table-header,
+  .tiptap.ProseMirror-focused .om-table-row,
+  .tiptap.ProseMirror-focused div[data-type='callout'] {
+    .is-node-empty.has-focus::before {
+      color: inherit;
+      content: none;
+      float: inherit;
+      height: 0;
+      pointer-events: inherit;
+    }
+  }
   .tiptap.ProseMirror {
     font-size: 14px;
     h1,
@@ -88,7 +99,11 @@
 
     table {
       border-collapse: collapse;
-      margin-left: 35px;
+      width: 100%;
+      table-layout: auto;
+      text-align: left;
+      margin-top: 2em;
+      margin-bottom: 2em;
     }
 
     th,
@@ -96,6 +111,8 @@
       border: 1px solid @border-color;
       margin: 0;
       padding: 8px 16px;
+      min-width: 200px;
+      padding: 0.5rem;
     }
 
     th {
@@ -214,8 +231,8 @@
       object-fit: cover;
       border-radius: 4px;
       background: white;
-      width: 46px;
-      height: 46px;
+      width: 32px;
+      height: 32px;
       box-shadow: rgba(15, 15, 15, 0.1) 0px 0px 0px 1px;
     }
   }
@@ -423,4 +440,14 @@
 
 .om-callout-node-content {
   align-self: center;
+}
+
+.table-menu {
+  padding: 4px 8px;
+  background-color: @white;
+  border: @global-border;
+  border-radius: @border-radius-base;
+  button {
+    padding: 0px;
+  }
 }
