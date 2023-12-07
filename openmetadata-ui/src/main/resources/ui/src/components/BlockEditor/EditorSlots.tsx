@@ -19,6 +19,7 @@ import BlockMenu from './BlockMenu/BlockMenu';
 import BubbleMenu from './BubbleMenu/BubbleMenu';
 import LinkModal, { LinkData } from './LinkModal/LinkModal';
 import LinkPopup from './LinkPopup/LinkPopup';
+import TableMenu from './TableMenu/TableMenu';
 
 interface EditorSlotsProps {
   editor: Editor | null;
@@ -165,7 +166,12 @@ const EditorSlots = forwardRef<EditorSlotsRef, EditorSlotsProps>(
           />
         )}
         {menus}
-        {!isNil(editor) && <BlockMenu editor={editor} />}
+        {!isNil(editor) && (
+          <>
+            <BlockMenu editor={editor} />
+            <TableMenu editor={editor} />
+          </>
+        )}
       </>
     );
   }

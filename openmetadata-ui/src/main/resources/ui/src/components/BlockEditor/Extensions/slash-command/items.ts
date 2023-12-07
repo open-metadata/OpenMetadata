@@ -24,6 +24,7 @@ import TaskListIcon from '../../../../assets/img/ic-task-list.png';
 import IconFormatCallout from '../../../../assets/svg/ic-format-callout.svg';
 import CodeBlockImage from '../../../../assets/svg/ic-format-code-block.svg';
 import IconFormatImage from '../../../../assets/svg/ic-format-image.svg';
+import IconTable from '../../../../assets/svg/ic-format-table.svg';
 import MentionImage from '../../../../assets/svg/ic-mentions.svg';
 
 export enum SuggestionItemType {
@@ -215,6 +216,21 @@ export const getSuggestionItems = (props: {
       },
       type: SuggestionItemType.ADVANCED_BLOCKS,
       imgSrc: IconFormatCallout,
+    },
+    {
+      title: 'Table',
+      description: 'Add tabular content',
+      searchTerms: ['table', 'row', 'column', 'tabular'],
+      command: ({ editor, range }) => {
+        editor
+          .chain()
+          .focus()
+          .deleteRange(range)
+          .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
+          .run();
+      },
+      type: SuggestionItemType.ADVANCED_BLOCKS,
+      imgSrc: IconTable,
     },
   ];
 
