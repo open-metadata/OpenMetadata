@@ -105,7 +105,7 @@ const TagsV1 = ({
 
   const tagContent = useMemo(
     () => (
-      <div className="d-flex w-full">
+      <div className="d-flex w-full h-full">
         {tagColorBar}
         <div className="d-flex items-center p-x-xs w-full">
           {tag.style?.iconURL ? (
@@ -135,7 +135,13 @@ const TagsV1 = ({
   const tagChip = useMemo(
     () => (
       <Tag
-        className={classNames(className, 'tag-chip tag-chip-content')}
+        className={classNames(
+          className,
+          {
+            'tag-highlight': Boolean(tag.isHighlighted),
+          },
+          'tag-chip tag-chip-content'
+        )}
         data-testid="tags"
         style={
           color

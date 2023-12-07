@@ -20,6 +20,7 @@ import { BasicEntityInfo } from '../components/Explore/EntitySummaryPanel/Summar
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { SummaryEntityType } from '../enums/EntitySummary.enum';
 import { Chart } from '../generated/entity/data/chart';
+import { TagLabel } from '../generated/entity/data/container';
 import { MlFeature } from '../generated/entity/data/mlmodel';
 import { Task } from '../generated/entity/data/pipeline';
 import { SearchIndexField } from '../generated/entity/data/searchIndex';
@@ -71,13 +72,25 @@ export const getFormattedEntityData = (
           );
 
           if (isTagPresentInColumnData) {
-            columnData.tags?.sort((tag) => {
-              if (tag.tagFQN === sortSummaryListBasedOnTags[0]) {
-                return -1;
-              } else {
-                return 1;
-              }
-            });
+            const ColumnDataTags: {
+              tagForSort: TagLabel[];
+              remainingTags: TagLabel[];
+            } = { tagForSort: [], remainingTags: [] };
+
+            const { tagForSort, remainingTags } = columnData.tags?.reduce(
+              (acc, tag) => {
+                if (sortSummaryListBasedOnTags.includes(tag.tagFQN)) {
+                  acc.tagForSort.push({ ...tag, isHighlighted: true });
+                } else {
+                  acc.remainingTags.push(tag);
+                }
+
+                return acc;
+              },
+              ColumnDataTags
+            );
+
+            columnData.tags = [...tagForSort, ...remainingTags];
             acc.entityWithSortOption.push(columnData);
           } else {
             acc.entityWithoutSortOption.push(columnData);
