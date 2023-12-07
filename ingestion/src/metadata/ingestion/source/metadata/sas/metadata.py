@@ -227,6 +227,53 @@ class SasSource(Source):
                 yield from self.create_table_entity(output_asset)
             output_fqns = self.table_fqns
             yield from self.create_data_plan_entity(data_plan, input_fqns, output_fqns)
+
+        data_flow_entities = self.sas_client.list_data_flows()
+        yield from self.create_dashboard_service("SAS_dataFlows")
+        for data_flow in data_flow_entities:
+            self.table_fqns = []
+            data_flow_instance = self.sas_client.get_instance(data_flow["id"])
+            input_asset_definition = "6179884b-91ec-4236-ad6b-52c7f454f217"
+            output_asset_definition = "e1349270-fdbb-4231-9841-79917a307471"
+            input_asset_ids = []
+            output_asset_ids = []
+            for rel in data_flow_instance["relationships"]:
+                if rel["definitionId"] == input_asset_definition:
+                    input_asset_ids.append(rel["endpointId"])
+                elif rel["definitionId"] == output_asset_definition:
+                    output_asset_ids.append(rel["endpointId"])
+            input_assets = self.create_in_out_tables(input_asset_ids)
+            output_assets = self.create_in_out_tables(output_asset_ids)
+            input_table_fqns = []
+            for input_asset in input_assets:
+                yield from self.create_table_entity(input_asset)
+                target_table_entity = self.metadata.get_by_name(
+                    entity=Table, fqn=self.table_fqns[-1]
+                )
+                input_table_fqns.append(self.table_fqns[-1])
+                if "sourceName" in input_asset["attributes"]:
+                    source_name = input_asset["attributes"]["sourceName"]
+                    param = f"filter=eq(name, '{source_name}')"
+                    get_instances_with_param = (
+                        self.sas_client.get_instances_with_param(param)
+                    )
+                    if get_instances_with_param:
+                        source_table = get_instances_with_param[0]
+                        yield from self.create_table_entity(source_table)
+                        source_table_entity = self.metadata.get_by_name(
+                            entity=Table, fqn=self.table_fqns[-1]
+                        )
+                        self.table_fqns = self.table_fqns[:-1]
+                        yield from self.create_table_lineage(
+                            source_table_entity, target_table_entity
+                        )
+
+            input_fqns = input_table_fqns
+            self.table_fqns = []
+            for output_asset in output_assets:
+                yield from self.create_table_entity(output_asset)
+            output_fqns = self.table_fqns
+            yield from self.create_data_flow_entity(data_flow, input_fqns, output_fqns)
         # '''
 
     def create_database_service(self, service_name):
@@ -816,6 +863,61 @@ class SasSource(Source):
             asset = self.sas_client.get_instance(id)
             table_entities.append(asset)
         return table_entities
+
+    def create_data_flow_entity(self, data_flow, input_fqns, output_fqns):
+        print(input_fqns, output_fqns)
+        data_flow_id = data_flow["id"]
+        data_flow_resource = data_flow["resourceId"]
+
+        try:
+            data_flow_instance = self.sas_client.get_instance(data_flow_id)
+            data_flow_url = self.sas_client.get_report_link(
+                "dataFlow", data_flow_resource
+            )
+            data_flow_request = CreateDashboardRequest(
+                name=data_flow_id,
+                displayName=data_flow["name"],
+                service=self.dashboard_service_name,
+                sourceUrl=data_flow_url,
+            )
+            yield Either(right=data_flow_request)
+
+            dashboard_fqn = fqn.build(
+                self.metadata,
+                entity_type=Dashboard,
+                service_name=self.dashboard_service_name,
+                dashboard_name=data_flow_id,
+            )
+
+            dashboard_entity = self.metadata.get_by_name(
+                entity=Dashboard, fqn=dashboard_fqn
+            )
+
+            input_entities = []
+            output_entities = []
+            for input in input_fqns:
+                input_entity = self.metadata.get_by_name(entity=Table, fqn=input)
+                input_entities.append(input_entity)
+            for output in output_fqns:
+                output_entity = self.metadata.get_by_name(entity=Table, fqn=output)
+                output_entities.append(output_entity)
+
+            for entity in input_entities:
+                yield self.create_lineage_request(
+                    "table", "dashboard", entity, dashboard_entity
+                )
+            for entity in output_entities:
+                yield self.create_lineage_request(
+                    "dashboard", "table", dashboard_entity, entity
+                )
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name=data_flow_id,
+                    error=f"Unexpected exception to create data flow [{data_flow_id}]: {exc}",
+                    stack_trace=traceback.format_exc(),
+                )
+            )
 
     def create_data_plan_entity(self, data_plan, input_fqns, output_fqns):
         print(input_fqns, output_fqns)
