@@ -305,9 +305,12 @@ const GlossaryPage = () => {
       .finally(() => setDeleteStatus(LOADING_STATE.INITIAL));
   };
 
-  const handleAssetClick = (asset?: EntityDetailsObjectInterface) => {
-    setPreviewAsset(asset);
-  };
+  const handleAssetClick = useCallback(
+    (asset?: EntityDetailsObjectInterface) => {
+      setPreviewAsset(asset);
+    },
+    []
+  );
 
   if (isLoading) {
     return <Loader />;

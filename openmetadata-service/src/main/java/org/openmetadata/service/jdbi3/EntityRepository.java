@@ -615,14 +615,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
       List<String> jsons = dao.listAfterWithOffset(limitParam, currentOffset);
 
       for (String json : jsons) {
+        T parsedEntity = JsonUtils.readValue(json, entityClass);
         try {
-          T entity = setFieldsInternal(JsonUtils.readValue(json, entityClass), fields);
+          T entity = setFieldsInternal(parsedEntity, fields);
           entity = setInheritedFields(entity, fields);
           entity = clearFieldsInternal(entity, fields);
           entities.add(withHref(uriInfo, entity));
         } catch (Exception e) {
-          LOG.error("Failed in Set Fields for Entity with Json : {}", json);
-          errors.add(String.format("Error Message : %s , %n Entity Json : %s", e.getMessage(), json));
+          parsedEntity = clearFieldsInternal(parsedEntity, fields);
+          String errorEntity = JsonUtils.pojoToJson(parsedEntity);
+          LOG.error("Failed in Set Fields for Entity with Json : {}", errorEntity);
+          errors.add(String.format("Error Message : %s , %n Entity Json : %s", e.getMessage(), errorEntity));
         }
       }
       currentOffset = currentOffset + limitParam;

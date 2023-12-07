@@ -140,6 +140,7 @@
                   }
                 },
                 "testCaseFailureComment": {
+                  "type": "text",
                   "analyzer": "om_analyzer_jp",
                   "fields": {
                     "keyword": {
@@ -203,7 +204,9 @@
             }
           }
       },
-      "updatedBy": {},
+      "updatedBy": {
+        "type": "text"
+      },
       "updatedAt": {
         "type": "date"
       },

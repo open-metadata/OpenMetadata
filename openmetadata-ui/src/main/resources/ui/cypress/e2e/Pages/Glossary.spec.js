@@ -116,7 +116,11 @@ const createGlossary = (glossaryData) => {
     .should('be.visible')
     .type(glossaryData.description);
 
-  cy.get('[data-testid="mutually-exclusive-button"]').scrollIntoView().click();
+  if (glossaryData.isMutually) {
+    cy.get('[data-testid="mutually-exclusive-button"]')
+      .scrollIntoView()
+      .click();
+  }
 
   if (glossaryData.tag) {
     // Add tag
@@ -311,10 +315,12 @@ const removeAssetsFromGlossaryTerm = (glossaryTerm, glossary) => {
     cy.get('[data-testid="delete-button"]').click();
     cy.get("[data-testid='save-button']").click();
 
-    interceptURL('GET', '/api/v1/search/query*', 'assetTab');
+    cy.get('[data-testid="overview"]').click();
+    cy.get('[data-testid="assets"]').click();
+
     // go assets tab
-    goToAssetsTab(glossaryTerm.name, glossaryTerm.fullyQualifiedName, true);
-    verifyResponseStatusCode('@assetTab', 200);
+    verifyResponseStatusCode('@searchAssets', 200);
+
     checkAssetsCount(glossaryTerm.assets.length - (index + 1));
   });
 };
@@ -719,7 +725,7 @@ describe('Glossary page should work properly', () => {
 
     const ProductTerms = Object.values(NEW_GLOSSARY_1_TERMS);
     ProductTerms.forEach((term) =>
-      createGlossaryTerm(term, NEW_GLOSSARY_1, 'Approved')
+      createGlossaryTerm(term, NEW_GLOSSARY_1, 'Approved', false)
     );
   });
 
