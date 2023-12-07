@@ -156,6 +156,7 @@ export const AssetSelectionModal = ({
           searchIndex: index,
           query: searchText,
           queryFilter: updatedQueryFilter,
+          includeDeleted: false,
         });
         const hits = res.hits.hits as SearchedDataProps['data'];
         setTotalCount(res.hits.total.value ?? 0);
@@ -363,11 +364,13 @@ export const AssetSelectionModal = ({
             searchText: search,
             page: pageNumber + 1,
             index: activeFilter,
+            updatedQueryFilter,
           });
       }
     },
     [
       pageNumber,
+      updatedQueryFilter,
       activeFilter,
       search,
       totalCount,
