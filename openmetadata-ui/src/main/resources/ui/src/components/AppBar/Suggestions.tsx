@@ -13,6 +13,7 @@
 
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
+import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Loader from '../../components/Loader/Loader';
@@ -148,7 +149,7 @@ const Suggestions = ({
 
   const getEntitiesSuggestions = () => {
     return (
-      <div role="none">
+      <div data-testid="global-search-suggestion-box" role="none">
         {[
           { suggestions: tableSuggestions, searchIndex: SearchIndex.TABLE },
           { suggestions: topicSuggestions, searchIndex: SearchIndex.TOPIC },
@@ -239,7 +240,7 @@ const Suggestions = ({
     return <Loader />;
   }
 
-  if (options.length === 0 && !isTourOpen) {
+  if (options.length === 0 && !isTourOpen && !isEmpty(searchText)) {
     return (
       <Typography.Text>
         <Transi18next

@@ -76,6 +76,7 @@ class MessagingServiceTopology(ServiceTopology):
                 processor="yield_create_request_messaging_service",
                 overwrite=False,
                 must_return=True,
+                cache_entities=True,
             )
         ],
         children=["topic"],
@@ -89,6 +90,7 @@ class MessagingServiceTopology(ServiceTopology):
                 context="topic",
                 processor="yield_topic",
                 consumer=["messaging_service"],
+                use_cache=True,
             ),
             NodeStage(
                 type_=TopicSampleData,

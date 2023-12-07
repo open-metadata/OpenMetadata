@@ -14,6 +14,7 @@ import { Col, Row, Space, Tag, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useHistory } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as DataProductIcon } from '../../assets/svg/ic-data-product.svg';
 import DataProductSelectForm from '../../components/DataProductSelectForm/DataProductsSelectForm';
@@ -27,6 +28,8 @@ import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../generated/entity/type';
 import { fetchDataProductsElasticSearch } from '../../rest/dataProductAPI';
 import { getEntityName } from '../../utils/EntityUtils';
+import { getDataProductsDetailsPath } from '../../utils/RouterUtils';
+import { getEncodedFqn } from '../../utils/StringsUtils';
 
 interface DataProductsContainerProps {
   showHeader?: boolean;
@@ -44,6 +47,7 @@ const DataProductsContainer = ({
   onSave,
 }: DataProductsContainerProps) => {
   const { t } = useTranslation();
+  const history = useHistory();
   const [isEditMode, setIsEditMode] = useState(false);
 
   const handleAddClick = () => {
@@ -69,6 +73,10 @@ const DataProductsContainer = ({
     },
     [activeDomain]
   );
+
+  const redirectLink = useCallback((fqn) => {
+    history.push(getDataProductsDetailsPath(getEncodedFqn(fqn)));
+  }, []);
 
   const handleSave = async (dataProducts: DataProduct[]) => {
     await onSave?.(dataProducts);
@@ -107,7 +115,8 @@ const DataProductsContainer = ({
       return (
         <Tag
           className="tag-chip tag-chip-content"
-          key={`dp-tags-${product.fullyQualifiedName}`}>
+          key={`dp-tags-${product.fullyQualifiedName}`}
+          onClick={() => redirectLink(product.fullyQualifiedName)}>
           <div className="d-flex w-full">
             <div className="d-flex items-center p-x-xs w-full gap-1">
               <DataProductIcon

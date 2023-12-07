@@ -14,7 +14,7 @@
 @import url('../../../styles/variables.less');
 
 .asset-selection-model-card.table-data-card-container {
-  box-shadow: none;
+  box-shadow: none !important;
 }
 .asset-selection-model-card.table-data-card-container:hover {
   box-shadow: 2px 3px 5px rgba(0, 0, 0, 0.13);
@@ -49,5 +49,19 @@
 .asset-selection-modal {
   .rc-virtual-list-holder {
     overflow-x: hidden;
+  }
+  .assets-checkbox {
+    .ant-checkbox-inner {
+      border-width: 2px;
+      height: 20px;
+      width: 20px;
+      border-color: @primary-color;
+    }
+    .ant-checkbox-inner::after {
+      top: 44%;
+      left: 18.5%;
+      width: 6.5px;
+      height: 11px;
+    }
   }
 }

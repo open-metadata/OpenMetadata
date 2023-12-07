@@ -65,6 +65,7 @@ public class ChartRepository extends EntityRepository<Chart> {
   @Override
   public void setFields(Chart chart, Fields fields) {
     chart.withService(getContainer(chart.getId()));
+    chart.setSourceHash(fields.contains("sourceHash") ? chart.getSourceHash() : null);
   }
 
   @Override
@@ -99,6 +100,7 @@ public class ChartRepository extends EntityRepository<Chart> {
     public void entitySpecificUpdate() {
       recordChange("chartType", original.getChartType(), updated.getChartType());
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
+      recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
     }
   }
 }

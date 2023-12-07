@@ -89,7 +89,7 @@ import org.openmetadata.service.util.ResultList;
 public class TableRepository extends EntityRepository<Table> {
 
   // Table fields that can be patched in a PATCH request
-  static final String PATCH_FIELDS = "tableConstraints,tablePartition,columns";
+  static final String PATCH_FIELDS = "tableConstraints,tablePartition,columns,sourceHash";
   // Table fields that can be updated in a PUT request
   static final String UPDATE_FIELDS = "tableConstraints,tablePartition,dataModel,sourceUrl,columns";
 
@@ -135,6 +135,7 @@ public class TableRepository extends EntityRepository<Table> {
           entityType, table.getColumns(), table.getFullyQualifiedName(), fields.contains(FIELD_TAGS));
     }
     table.setJoins(fields.contains("joins") ? getJoins(table) : table.getJoins());
+    table.setSourceHash(fields.contains("sourceHash") ? table.getSourceHash() : null);
     table.setTableProfilerConfig(
         fields.contains(TABLE_PROFILER_CONFIG) ? getTableProfilerConfig(table) : table.getTableProfilerConfig());
     table.setTestSuite(fields.contains("testSuite") ? getTestSuite(table) : table.getTestSuite());
@@ -981,6 +982,7 @@ public class TableRepository extends EntityRepository<Table> {
       updateColumns(COLUMN_FIELD, origTable.getColumns(), updated.getColumns(), EntityUtil.columnMatch);
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
       recordChange("retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod());
+      recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
     }
 
     private void updateConstraints(Table origTable, Table updatedTable) {
