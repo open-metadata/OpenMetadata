@@ -26,7 +26,7 @@ public class EntityBuilderConstant {
   public static final String QUERY = "query";
   public static final String QUERY_NGRAM = "query.ngram";
 
-  public static final String FULLY_QUALIFIED_NAME_PARTS = "fqnParts.keyword";
+  public static final String FULLY_QUALIFIED_NAME_PARTS = "fqnParts";
 
   public static final String FULLY_QUALIFIED_NAME = "fullyQualifiedName";
 
