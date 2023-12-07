@@ -363,11 +363,13 @@ export const AssetSelectionModal = ({
             searchText: search,
             page: pageNumber + 1,
             index: activeFilter,
+            updatedQueryFilter,
           });
       }
     },
     [
       pageNumber,
+      updatedQueryFilter,
       activeFilter,
       search,
       totalCount,
