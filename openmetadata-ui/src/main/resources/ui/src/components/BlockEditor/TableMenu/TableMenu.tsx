@@ -28,18 +28,18 @@ const TableMenu = (props: TableMenuProps) => {
   const { editor } = props;
   const { view } = editor;
   const menuRef = useRef<HTMLDivElement>(null);
-  const popup = useRef<Instance | null>(null);
+  const tableMenuPopup = useRef<Instance | null>(null);
 
   const handleMouseDown = useCallback((event: MouseEvent) => {
     const target = event.target as HTMLElement;
     const table = target.closest('[data-om-table]');
 
-    if (table && table.contains(target)) {
-      popup.current?.setProps({
+    if (table?.contains(target)) {
+      tableMenuPopup.current?.setProps({
         getReferenceClientRect: () => table.getBoundingClientRect(),
       });
 
-      popup.current?.show();
+      tableMenuPopup.current?.show();
     }
   }, []);
 
@@ -48,7 +48,7 @@ const TableMenu = (props: TableMenuProps) => {
       menuRef.current.remove();
       menuRef.current.style.visibility = 'visible';
 
-      popup.current = tippy(view.dom, {
+      tableMenuPopup.current = tippy(view.dom, {
         getReferenceClientRect: null,
         content: menuRef.current,
         appendTo: 'parent',
@@ -64,8 +64,8 @@ const TableMenu = (props: TableMenuProps) => {
     }
 
     return () => {
-      popup.current?.destroy();
-      popup.current = null;
+      tableMenuPopup.current?.destroy();
+      tableMenuPopup.current = null;
     };
   }, []);
 
@@ -122,7 +122,7 @@ const TableMenu = (props: TableMenuProps) => {
             type="text"
             onClick={() => {
               editor.chain().focus().deleteTable().run();
-              popup.current?.hide();
+              tableMenuPopup.current?.hide();
             }}>
             <IconDeleteTable style={{ verticalAlign: 'middle' }} width={14} />
           </Button>
