@@ -14,7 +14,6 @@
 
 import { PlusOutlined } from '@ant-design/icons';
 import {
-  Affix,
   Button,
   Checkbox,
   Col,
@@ -828,10 +827,15 @@ const AssetsTabs = forwardRef(
 
     useImperativeHandle(ref, () => ({
       refreshAssets() {
-        fetchAssets({
-          index: isEmpty(activeFilter) ? [SearchIndex.ALL] : activeFilter,
-          page: 1,
-        });
+        // Reset page to one and trigger fetchAssets
+        handlePageChange(1);
+        // If current page is already 1 it won't trigger fetchAset from useEffect
+        // Hence need to manually trigger it for this case
+        currentPage === 1 &&
+          fetchAssets({
+            index: isEmpty(activeFilter) ? [SearchIndex.ALL] : activeFilter,
+            page: 1,
+          });
         fetchCountsByEntity();
       },
       closeSummaryPanel() {
@@ -852,96 +856,99 @@ const AssetsTabs = forwardRef(
     }, [isSummaryPanelOpen]);
 
     return (
-      <div
-        className={classNames('assets-tab-container p-md')}
-        data-testid="table-container"
-        id="asset-tab">
-        {assetCount > 0 && (
-          <Row className="filters-row gap-2 p-l-lg">
-            <Col span={18}>
-              <div className="d-flex items-center gap-3">
-                <Dropdown
-                  menu={{
-                    items: filterMenu,
-                    selectedKeys: selectedFilter,
-                  }}
-                  trigger={['click']}>
-                  <Button icon={<PlusOutlined />} size="small" type="primary" />
-                </Dropdown>
-                <div className="flex-1">
-                  <Searchbar
-                    removeMargin
-                    showClearSearch
-                    placeholder={t('label.search-entity', {
-                      entity: t('label.asset-plural'),
-                    })}
-                    searchValue={searchValue}
-                    onSearch={setSearchValue}
-                  />
+      <>
+        <div
+          className={classNames('assets-tab-container p-md relative')}
+          data-testid="table-container"
+          id="asset-tab">
+          {assetCount > 0 && (
+            <Row className="filters-row gap-2 p-l-lg">
+              <Col span={18}>
+                <div className="d-flex items-center gap-3">
+                  <Dropdown
+                    menu={{
+                      items: filterMenu,
+                      selectedKeys: selectedFilter,
+                    }}
+                    trigger={['click']}>
+                    <Button
+                      icon={<PlusOutlined />}
+                      size="small"
+                      type="primary"
+                    />
+                  </Dropdown>
+                  <div className="flex-1">
+                    <Searchbar
+                      removeMargin
+                      showClearSearch
+                      placeholder={t('label.search-entity', {
+                        entity: t('label.asset-plural'),
+                      })}
+                      searchValue={searchValue}
+                      onSearch={setSearchValue}
+                    />
+                  </div>
                 </div>
-              </div>
-            </Col>
-            <Col className="searched-data-container m-b-xs" span={24}>
-              <div className="d-flex justify-between">
-                <ExploreQuickFilters
-                  aggregations={aggregations}
-                  fields={selectedQuickFilters}
-                  index={SearchIndex.ALL}
-                  showDeleted={false}
-                  onFieldValueSelect={handleQuickFiltersValueSelect}
-                />
-                {quickFilterQuery && (
-                  <Typography.Text
-                    className="text-primary self-center cursor-pointer"
-                    onClick={clearFilters}>
-                    {t('label.clear-entity', {
-                      entity: '',
-                    })}
-                  </Typography.Text>
-                )}
-              </div>
-            </Col>
-          </Row>
-        )}
+              </Col>
+              <Col className="searched-data-container m-b-xs" span={24}>
+                <div className="d-flex justify-between">
+                  <ExploreQuickFilters
+                    aggregations={aggregations}
+                    fields={selectedQuickFilters}
+                    index={SearchIndex.ALL}
+                    showDeleted={false}
+                    onFieldValueSelect={handleQuickFiltersValueSelect}
+                  />
+                  {quickFilterQuery && (
+                    <Typography.Text
+                      className="text-primary self-center cursor-pointer"
+                      onClick={clearFilters}>
+                      {t('label.clear-entity', {
+                        entity: '',
+                      })}
+                    </Typography.Text>
+                  )}
+                </div>
+              </Col>
+            </Row>
+          )}
 
-        {isLoading || isCountLoading ? (
-          <Row className="p-lg" gutter={[0, 16]}>
-            <Col span={24}>
-              <Skeleton />
-            </Col>
-            <Col span={24}>
-              <Skeleton />
-            </Col>
-          </Row>
-        ) : (
-          layout
-        )}
+          {isLoading || isCountLoading ? (
+            <Row className="p-lg" gutter={[0, 16]}>
+              <Col span={24}>
+                <Skeleton />
+              </Col>
+              <Col span={24}>
+                <Skeleton />
+              </Col>
+            </Row>
+          ) : (
+            layout
+          )}
 
-        <ConfirmationModal
-          bodyText={t('message.are-you-sure-action-property', {
-            propertyName: getEntityName(assetToDelete),
-            action: t('label.remove-lowercase'),
-          })}
-          cancelText={t('label.cancel')}
-          confirmText={t('label.delete')}
-          header={t('label.remove-entity', {
-            entity: getEntityName(assetToDelete) + '?',
-          })}
-          isLoading={assetRemoving}
-          visible={showDeleteModal}
-          onCancel={() => setShowDeleteModal(false)}
-          onConfirm={() => onAssetRemove(assetToDelete ? [assetToDelete] : [])}
-        />
-
-        {selectedItems.size > 1 && (
-          <Affix
+          <ConfirmationModal
+            bodyText={t('message.are-you-sure-action-property', {
+              propertyName: getEntityName(assetToDelete),
+              action: t('label.remove-lowercase'),
+            })}
+            cancelText={t('label.cancel')}
+            confirmText={t('label.delete')}
+            header={t('label.remove-entity', {
+              entity: getEntityName(assetToDelete) + '?',
+            })}
+            isLoading={assetRemoving}
+            visible={showDeleteModal}
+            onCancel={() => setShowDeleteModal(false)}
+            onConfirm={() =>
+              onAssetRemove(assetToDelete ? [assetToDelete] : [])
+            }
+          />
+        </div>
+        {!(isLoading || isCountLoading) && (
+          <div
             className={classNames('asset-tab-delete-notification', {
               visible: selectedItems.size > 1,
-            })}
-            offsetBottom={20}
-            target={() =>
-              document.getElementById('asset-tab') || document.body
-            }>
+            })}>
             <div className="d-flex items-center justify-between">
               <Typography.Text className="text-white">
                 {selectedItems.size} {t('label.items-selected-lowercase')}
@@ -955,9 +962,9 @@ const AssetsTabs = forwardRef(
                 {t('label.delete')}
               </Button>
             </div>
-          </Affix>
+          </div>
         )}
-      </div>
+      </>
     );
   }
 );

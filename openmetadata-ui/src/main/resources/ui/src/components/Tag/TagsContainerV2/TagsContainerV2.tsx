@@ -24,6 +24,7 @@ import { ReactComponent as IconRequest } from '../../../assets/svg/request-icon.
 import { TableTagsProps } from '../../../components/TableTags/TableTags.interface';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { TAG_CONSTANT, TAG_START_WITH } from '../../../constants/Tag.constants';
+import { LabelType } from '../../../generated/entity/data/table';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
@@ -106,6 +107,7 @@ const TagsContainerV2 = ({
       let tagData: EntityTags = {
         tagFQN: typeof tag === 'string' ? tag : tag.value,
         source: tagType,
+        labelType: LabelType.Manual,
       };
 
       if (tag.data) {
@@ -114,8 +116,8 @@ const TagsContainerV2 = ({
           name: tag.data?.name,
           displayName: tag.data?.displayName,
           description: tag.data?.description,
-          style: tag.data?.style,
-          labelType: tag.data?.labelType,
+          style: tag.data?.style ?? {},
+          labelType: tag.data?.labelType ?? LabelType.Manual,
         };
       }
 
