@@ -32,7 +32,7 @@ const TableMenu = (props: TableMenuProps) => {
 
   const handleMouseDown = useCallback((event: MouseEvent) => {
     const target = event.target as HTMLElement;
-    const table = target.closest('[data-om-table]');
+    const table = target?.closest('[data-om-table]');
 
     if (table?.contains(target)) {
       tableMenuPopup.current?.setProps({
