@@ -828,10 +828,15 @@ const AssetsTabs = forwardRef(
 
     useImperativeHandle(ref, () => ({
       refreshAssets() {
-        fetchAssets({
-          index: isEmpty(activeFilter) ? [SearchIndex.ALL] : activeFilter,
-          page: 1,
-        });
+        // Reset page to one and trigger fetchAssets
+        handlePageChange(1);
+        // If current page is already 1 it won't trigger fetchAset from useEffect
+        // Hence need to manually trigger it for this case
+        currentPage === 1 &&
+          fetchAssets({
+            index: isEmpty(activeFilter) ? [SearchIndex.ALL] : activeFilter,
+            page: 1,
+          });
         fetchCountsByEntity();
       },
       closeSummaryPanel() {
