@@ -246,7 +246,8 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
             )
 
     def get_table_owner(self, table_name, schema=None):
-
+        if self.all_table_owners.get((table_name, schema)):
+            return self.all_table_owners.get((table_name, schema))
         result = self.connection.execute(POSTGRES_TABLE_OWNERS)
         for table in result:
             self.all_table_owners[(table[1], table[0])] = table[2]
@@ -261,6 +262,8 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
         """
         owner = None
         owner_name = self.get_table_owner(table_name, schema_name)
+        if not owner_name:
+            return owner_name
         user_owner_fqn = fqn.build(
             self.metadata, entity_type=User, user_name=owner_name
         )
