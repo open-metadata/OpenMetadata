@@ -17,6 +17,7 @@ import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerResponseContext;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.type.AuditLog;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -45,7 +46,17 @@ public class AuditEventHandler implements EventHandler {
         username = requestContext.getSecurityContext().getUserPrincipal().getName();
       }
       try {
-        EntityReference entityReference = ((EntityInterface) responseContext.getEntity()).getEntityReference();
+        EntityReference entityReference;
+        // TODO: EntityInterface and EntityTimeSeriesInterface share some common implementation and diverge
+        // at the edge (e.g. EntityTimeSeriesInterface does not expect owners, etc.). We should implement
+        // a parent class that captures the common fields and then have EntityInterface and EntityTimeSeriesInterface
+        // extend it.
+        if (responseContext.getEntity() instanceof EntityTimeSeriesInterface) {
+          EntityTimeSeriesInterface entityTimeSeriesInterface = (EntityTimeSeriesInterface) responseContext.getEntity();
+          entityReference = entityTimeSeriesInterface.getEntityReference();
+        } else {
+          entityReference = ((EntityInterface) responseContext.getEntity()).getEntityReference();
+        }
         AuditLog auditLog =
             new AuditLog()
                 .withPath(path)

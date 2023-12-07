@@ -51,13 +51,17 @@ public class OpenMetadata {
   }
 
   public void initClient(OpenMetadataConnection config) {
-    apiClient = new ApiClient();
     Feign.Builder builder =
         Feign.builder()
             .encoder(new FormEncoder(new JacksonEncoder(apiClient.getObjectMapper())))
             .decoder(new JacksonDecoder(apiClient.getObjectMapper()))
             .logger(new Slf4jLogger())
             .client(new OkHttpClient());
+    initClient(config, builder);
+  }
+
+  public void initClient(OpenMetadataConnection config, Feign.Builder builder) {
+    apiClient = new ApiClient();
     apiClient.setFeignBuilder(builder);
     AuthenticationProviderFactory factory = new AuthenticationProviderFactory();
     apiClient.addAuthorization("oauth", factory.getAuthProvider(config));

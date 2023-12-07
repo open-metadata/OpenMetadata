@@ -168,6 +168,9 @@ public interface CollectionDAO {
   DataQualityDataTimeSeriesDAO dataQualityDataTimeSeriesDao();
 
   @CreateSqlObject
+  TestCaseResolutionStatusTimeSeriesDAO testCaseResolutionStatusTimeSeriesDao();
+
+  @CreateSqlObject
   RoleDAO roleDAO();
 
   @CreateSqlObject
@@ -3456,6 +3459,19 @@ public interface CollectionDAO {
     default String getTimeSeriesTableName() {
       return "data_quality_data_time_series";
     }
+  }
+
+  interface TestCaseResolutionStatusTimeSeriesDAO extends EntityTimeSeriesDAO {
+    @Override
+    default String getTimeSeriesTableName() {
+      return "test_case_resolution_status_time_series";
+    }
+
+    @SqlQuery(
+        value =
+            "SELECT json FROM test_case_resolution_status_time_series "
+                + "WHERE stateId = :stateId ORDER BY timestamp DESC")
+    List<String> listTestCaseResolutionStatusesForStateId(@Bind("stateId") String stateId);
   }
 
   class EntitiesCountRowMapper implements RowMapper<EntitiesCount> {

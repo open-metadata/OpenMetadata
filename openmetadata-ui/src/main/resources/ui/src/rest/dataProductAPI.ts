@@ -17,7 +17,10 @@ import { PagingResponse } from 'Models';
 import { PAGE_SIZE } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
 import { CreateDataProduct } from '../generated/api/domains/createDataProduct';
-import { DataProduct } from '../generated/entity/domains/dataProduct';
+import {
+  DataProduct,
+  EntityReference,
+} from '../generated/entity/domains/dataProduct';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
@@ -135,4 +138,36 @@ export const fetchDataProductsElasticSearch = async (
       total: res.hits.total.value,
     },
   };
+};
+
+export const addAssetsToDataProduct = async (
+  dataProductFqn: string,
+  assets: EntityReference[]
+) => {
+  const data: { assets: EntityReference[] } = {
+    assets: assets,
+  };
+
+  const response = await APIClient.put<
+    { assets: EntityReference[] },
+    AxiosResponse<DataProduct>
+  >(`/dataProducts/${dataProductFqn}/assets/add`, data);
+
+  return response.data;
+};
+
+export const removeAssetsFromDataProduct = async (
+  dataProductFqn: string,
+  assets: EntityReference[]
+) => {
+  const data = {
+    assets: assets,
+  };
+
+  const response = await APIClient.put<
+    { assets: EntityReference[] },
+    AxiosResponse<DataProduct>
+  >(`/dataProducts/${dataProductFqn}/assets/remove`, data);
+
+  return response.data;
 };

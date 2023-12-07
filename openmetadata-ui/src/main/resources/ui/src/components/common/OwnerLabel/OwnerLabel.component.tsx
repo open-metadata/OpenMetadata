@@ -63,12 +63,15 @@ export const OwnerLabel = ({
         style={{ fontSize: '18px' }}
       />
     ) : (
-      <ProfilePicture
-        displayName={displayName}
-        key="profile-picture"
-        name={owner.name ?? ''}
-        width="18"
-      />
+      <div style={{ flexBasis: '18px' }}>
+        <ProfilePicture
+          displayName={displayName}
+          key="profile-picture"
+          name={owner.name ?? ''}
+          type="circle"
+          width="18"
+        />
+      </div>
     );
   }, [owner, displayName]);
 

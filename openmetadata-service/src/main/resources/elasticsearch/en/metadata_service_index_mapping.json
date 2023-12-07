@@ -201,6 +201,9 @@
       },
       "provider" : {
         "type": "text"
+      },
+      "entityType": {
+        "type": "keyword"
       }
     }
   }
