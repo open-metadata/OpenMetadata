@@ -254,4 +254,72 @@ describe('Custom Properties should work properly', () => {
       });
     });
   });
+
+  describe('Create custom properties for glossary', () => {
+    const glossaryTerm = {
+      name: 'glossaryTerm',
+      description: 'This is Glossary Term custom property',
+      integerValue: '45',
+      stringValue: 'This is string propery',
+      markdownValue: 'This is markdown value',
+      entityApiType: 'glossaryTerm',
+    };
+    const propertyName = `addcyentity${glossaryTerm.name}test${uuid()}`;
+
+    it('test custom properties in advanced search modal', () => {
+      cy.get(`[data-menu-id*="customAttributes.${glossaryTerm.name}"]`)
+        .scrollIntoView()
+        .should('be.visible')
+        .click();
+
+      addCustomPropertiesForEntity(
+        propertyName,
+        glossaryTerm,
+        'Integer',
+        '45',
+        null
+      );
+
+      // Navigating to explore page
+      cy.get('[data-testid="app-bar-item-explore"]').click();
+      interceptURL(
+        'GET',
+        `/api/v1/metadata/types/name/glossaryTerm*`,
+        'getEntity'
+      );
+      cy.get('[data-testid="glossaries-tab"]').click();
+
+      cy.get('[data-testid="advance-search-button"]').click();
+      verifyResponseStatusCode('@getEntity', 200);
+
+      // Click on field dropdown
+      cy.get('.rule--field > .ant-select > .ant-select-selector').eq(0).click();
+
+      // Select custom property fields
+      cy.get(`[title="Custom Properties"]`).eq(0).click();
+
+      // Click on field dropdown
+      cy.get('.rule--field > .ant-select > .ant-select-selector').eq(0).click();
+
+      // Verify field exists
+      cy.get(`[title="${propertyName}"]`).should('be.visible');
+    });
+
+    it(`Delete created property for glossary term entity`, () => {
+      interceptURL(
+        'GET',
+        `/api/v1/metadata/types/name/${glossaryTerm.name}*`,
+        'getEntity'
+      );
+
+      // Selecting the entity
+      cy.get(`[data-menu-id*="customAttributes.${glossaryTerm.name}"]`)
+        .scrollIntoView()
+        .should('be.visible')
+        .click();
+
+      verifyResponseStatusCode('@getEntity', 200);
+      deleteCreatedProperty(propertyName);
+    });
+  });
 });
