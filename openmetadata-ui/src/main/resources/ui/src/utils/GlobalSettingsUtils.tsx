@@ -282,7 +282,7 @@ export const getGlobalSettingsMenuWithPermission = (
       ],
     },
     {
-      category: i18next.t('label.custom-attribute-plural'),
+      category: i18next.t('label.custom-property-plural'),
       key: 'customAttributes',
       items: [
         {
