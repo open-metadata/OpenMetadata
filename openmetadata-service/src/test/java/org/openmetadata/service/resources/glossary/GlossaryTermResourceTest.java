@@ -48,9 +48,11 @@ import java.net.URI;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import javax.ws.rs.core.Response;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.MethodOrderer;
@@ -445,6 +447,17 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   }
 
   @Test
+  void createGlossaryTerm_LanguageTest(TestInfo test) throws IOException {
+    // Create glossary term1 in glossary g1
+    for (String name : getAllHelloWorldTranslations()) {
+      CreateGlossaryTerm create = createRequest(name);
+      GlossaryTerm createdEntity = createEntity(create, ADMIN_AUTH_HEADERS);
+      GlossaryTerm glossaryGet = getEntityByName(createdEntity.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+      assertEquals(name, glossaryGet.getName());
+    }
+  }
+
+  @Test
   void patch_addDeleteStyle(TestInfo test) throws IOException {
     // Create glossary term1 in glossary g1
     CreateGlossaryTerm create =
@@ -830,5 +843,269 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
   public Glossary getGlossary(String name) throws IOException {
     return glossaryTest.getEntityByName(name, glossaryTest.getAllowedFields(), ADMIN_AUTH_HEADERS);
+  }
+
+  public static Set<String> getAllHelloWorldTranslations() {
+    Set<String> translations = new HashSet<>();
+
+    // Contains letters, numbers, and no special characters.
+    translations.add("HelloWorld123");
+    // Contains letters, an underscore, and no special characters.
+    translations.add("BC_Test");
+    // Contains letters and a hyphen.
+    translations.add("OM-Test");
+    // Contains letters, a period, and an uppercase letter.
+    translations.add("OMData.Test");
+    // Contains letters, a space, and an apostrophe.
+    translations.add("John's Cafe");
+    // Contains letters, a space, an ampersand, and a period.
+    translations.add("ACME & Co.");
+    // Contains letters, spaces, opening and closing parentheses.
+    translations.add("This (is) a test");
+    // Contains Spanish characters
+    translations.add("Buenos días");
+    translations.add("Cómo estás");
+    translations.add("Háblame en español");
+    translations.add("Gracias");
+    translations.add("Hola mundo");
+    translations.add("áéíóú ÁÉÍÓÚ");
+    // Contains Russian characters
+    translations.add("Привет мир");
+    // Contains Greek characters
+    translations.add("Γειά σου κόσμε");
+    // Contains Arabic characters
+    translations.add("مرحبا العالم");
+
+    // Contains Hebrew characters
+    translations.add("שלום עולם");
+
+    // Contains Chinese characters
+    translations.add("你好世界");
+
+    // Contains Korean characters
+    translations.add("안녕하세요 세상");
+
+    // Contains Japanese characters
+    translations.add("こんにちは世界");
+
+    // Contains Thai characters
+    translations.add("สวัสดีชาวโลก");
+    translations.add("สวัสดี");
+    translations.add("ที่อยู่");
+    translations.add("พยัญชนะ");
+    translations.add("ลูกค้า");
+
+    // Contains Vietnamese characters
+    translations.add("Xin chào thế giới");
+    translations.add("Xin chào");
+
+    // Contains Hindi characters
+    translations.add("नमस्ते दुनिया");
+    translations.add("नमस्ते");
+
+    // Contains Tamil characters
+    translations.add("வணக்கம் உலகம்");
+    translations.add("வணக்கம்");
+
+    // Contains Marathi characters
+    translations.add("नमस्कार जग");
+    translations.add("नमस्कार");
+
+    // Contains Bengali characters
+    translations.add("ওহে বিশ্ব");
+    translations.add("ওহে");
+
+    // Contains Gujarati characters
+    translations.add("નમસ્તે વિશ્વ");
+    translations.add("નમસ્તે");
+
+    // Contains Kannada characters
+    translations.add("ಹಲೋ ವಿಶ್ವ");
+    translations.add("ಹಲೋ");
+
+    // Contains Malayalam characters
+    translations.add("ഹലോ ലോകം");
+    translations.add("ഹലോ");
+
+    // Contains Punjabi characters
+    translations.add("ਹੈਲੋ ਵਰਲਡ");
+    translations.add("ਹੈਲੋ");
+
+    // Contains Telugu characters
+    translations.add("హలో ప్రపంచం");
+    translations.add("హలో");
+
+    // Contains Nepali characters
+    translations.add("नमस्कार संसार");
+    translations.add("नमस्कार");
+
+    // Contains Urdu characters
+    translations.add("ہیلو دنیا");
+    translations.add("ہیلو");
+
+    // Contains Filipino characters
+    translations.add("Kamusta mundo");
+    translations.add("Kamusta");
+
+    // Contains Indonesian characters
+    translations.add("Halo dunia");
+    translations.add("Halo");
+
+    // Contains Malay characters
+    translations.add("Helo dunia");
+    translations.add("Helo");
+
+    // Contains Turkish characters
+    translations.add("Merhaba dünya");
+    translations.add("Merhaba");
+
+    // Contains Italian characters
+    translations.add("Ciao mondo");
+    translations.add("Ciao");
+    translations.add("àèéìíîòóùú");
+
+    // Contains French characters
+    translations.add("Bonjour le monde");
+    translations.add("Bonjour");
+    translations.add("àâäéèêëîïôöùûüÿçœæ");
+
+    // Contains German characters
+    translations.add("Hallo Welt");
+    translations.add("Hallo");
+    translations.add("äöüÄÖÜß");
+
+    // Contains Portuguese characters
+    translations.add("Olá mundo");
+    translations.add("Olá");
+    //    // Contains letters, numbers, and no special characters.
+    //    translations.add("HelloWorld123");
+    //    // Contains letters, an underscore, and no special characters.
+    //    translations.add("BC_Test");
+    //    // Contains letters and a hyphen.
+    //    translations.add("OM-Test");
+    //    // Contains letters, a period, and an uppercase letter.
+    //    translations.add("OMData.Test");
+    //    // Contains letters, a space, and an apostrophe.
+    //    translations.add("John's Cafe");
+    //    // Contains letters, a space, an ampersand, and a period.
+    //    translations.add("ACME & Co.");
+    //    // Contains letters, spaces, opening and closing parentheses.
+    //    translations.add("This (is) a test");
+    //    // Contains Spanish characters
+    //    translations.add("Buenos días");
+    //    translations.add("Cómo estás");
+    //    translations.add("Háblame en español");
+    //    translations.add("Gracias");
+    //    translations.add("Hola mundo");
+    //    translations.add("áéíóú ÁÉÍÓÚ");
+    //    // Contains Russian characters
+    //    translations.add("Привет мир");
+    //    // Contains Greek characters
+    //    translations.add("Γειά σου κόσμε");
+    //    // Contains Arabic characters
+    //    translations.add("مرحبا العالم");
+    //
+    //    // Contains Hebrew characters
+    //    translations.add("שלום עולם");
+    //
+    //    // Contains Chinese characters
+    //    translations.add("你好世界");
+    //
+    //    // Contains Korean characters
+    //    translations.add("안녕하세요 세상");
+    //
+    //    // Contains Japanese characters
+    //    translations.add("こんにちは世界");
+    //
+    //    // Contains Thai characters
+    //    translations.add("สวัสดีชาวโลก");
+    //    translations.add("สวัสดี");
+    //    translations.add("ที่อยู่");
+    //    translations.add("พยัญชนะ");
+    //    translations.add("ลูกค้า");
+    //
+    //    // Contains Vietnamese characters
+    //    translations.add("Xin chào thế giới");
+    //    translations.add("Xin chào");
+    //
+    //    // Contains Hindi characters
+    //    translations.add("नमस्ते दुनिया");
+    //    translations.add("नमस्ते");
+    //
+    //    // Contains Tamil characters
+    //    translations.add("வணக்கம் உலகம்");
+    //    translations.add("வணக்கம்");
+    //
+    //    // Contains Marathi characters
+    //    translations.add("नमस्कार जग");
+    //    translations.add("नमस्कार");
+    //
+    //    // Contains Bengali characters
+    //    translations.add("ওহে বিশ্ব");
+    //    translations.add("ওহে");
+    //
+    //    // Contains Gujarati characters
+    //    translations.add("નમસ્તે વિશ્વ");
+    //    translations.add("નમસ્તે");
+    //
+    //    // Contains Kannada characters
+    //    translations.add("ಹಲೋ ವಿಶ್ವ");
+    //    translations.add("ಹಲೋ");
+    //
+    //    // Contains Malayalam characters
+    //    translations.add("ഹലോ ലോകം");
+    //    translations.add("ഹലോ");
+    //
+    //    // Contains Punjabi characters
+    //    translations.add("ਹੈਲੋ ਵਰਲਡ");
+    //    translations.add("ਹੈਲੋ");
+    //
+    //    // Contains Telugu characters
+    //    translations.add("హలో ప్రపంచం");
+    //    translations.add("హలో");
+    //
+    //    // Contains Nepali characters
+    //    translations.add("नमस्कार संसार");
+    //    translations.add("नमस्कार");
+    //
+    //    // Contains Urdu characters
+    //    translations.add("ہیلو دنیا");
+    //    translations.add("ہیلو");
+    //
+    //    // Contains Filipino characters
+    //    translations.add("Kamusta mundo");
+    //    translations.add("Kamusta");
+    //
+    //    // Contains Indonesian characters
+    //    translations.add("Halo dunia");
+    //    translations.add("Halo");
+    //
+    //    // Contains Malay characters
+    //    translations.add("Helo dunia");
+    //    translations.add("Helo");
+    //
+    //    // Contains Turkish characters
+    //    translations.add("Merhaba dünya");
+    //    translations.add("Merhaba");
+    //
+    //    // Contains Italian characters
+    //    translations.add("Ciao mondo");
+    //    translations.add("Ciao");
+    //    translations.add("àèéìíîòóùú");
+    //
+    //    // Contains French characters
+    //    translations.add("Bonjour le monde");
+    //    translations.add("Bonjour");
+    //    translations.add("àâäéèêëîïôöùûüÿçœæ");
+    //
+    //    // Contains German characters
+    //    translations.add("Hallo Welt");
+    //    translations.add("Hallo");
+    //    translations.add("äöüÄÖÜß");
+    //
+    //    // Contains Portuguese characters
+    //    translations.add("Olá mundo");
+    //    translations.add("Olá");
+    return translations;
   }
 }
