@@ -30,6 +30,11 @@ from metadata.generated.schema.entity.services.dashboardService import (
     DashboardService,
     DashboardServiceType,
 )
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseConnection,
+    DatabaseService,
+    DatabaseServiceType,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
@@ -57,6 +62,14 @@ MOCK_DASHBOARD_SERVICE = DashboardService(
     name="mock_metabase",
     connection=DashboardConnection(),
     serviceType=DashboardServiceType.Metabase,
+)
+
+MOCK_DATABASE_SERVICE = DatabaseService(
+    id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
+    fullyQualifiedName=FullyQualifiedEntityName(__root__="mock_mysql"),
+    name="mock_mysql",
+    connection=DatabaseConnection(),
+    serviceType=DatabaseServiceType.Mysql,
 )
 
 Mock_DATABASE_SCHEMA = "my_schema"
@@ -133,7 +146,7 @@ MOCK_CHARTS = [
             name="chart2",
             id="2",
             dataset_query=DatasetQuery(
-                type="native", native=Native(query="select * from table")
+                type="native", native=Native(query="select * from test_table")
             ),
             display="chart2",
         )
@@ -269,6 +282,9 @@ class MetabaseUnitTest(TestCase):
     @patch.object(fqn, "build", return_value=None)
     @patch.object(OpenMetadata, "get_by_name", return_value=EXAMPLE_DASHBOARD)
     @patch.object(MetabaseMetadata, "search_table_entities", return_value=EXAMPLE_TABLE)
+    @patch.object(
+        MetabaseSource, "_get_database_service", return_value=MOCK_DATABASE_SERVICE
+    )
     def test_yield_lineage(self, *_):
         """
         Function to test out lineage
