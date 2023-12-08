@@ -46,6 +46,7 @@ public class SearchEntityIndex implements SearchIndex {
   public static Map<String, Float> getFields() {
     Map<String, Float> fields = SearchIndex.getDefaultFields();
     fields.put("fields.name", 2.0f);
+    fields.put("fields.name.keyword", 2.0f);
     fields.put("fields.children.description", 1.0f);
     fields.put("fields.children.name", 2.0f);
     return fields;

@@ -43,7 +43,6 @@ import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import Loader from '../../../components/Loader/Loader';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import TabsLabel from '../../../components/TabsLabel/TabsLabel.component';
-import { APPLICATION_UI_SCHEMA } from '../../../constants/Applications.constant';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import {
   GlobalSettingOptions,
@@ -78,6 +77,7 @@ import AppSchedule from '../AppSchedule/AppSchedule.component';
 import { ApplicationTabs } from '../MarketPlaceAppDetails/MarketPlaceAppDetails.interface';
 import './app-details.less';
 import { AppAction } from './AppDetails.interface';
+import applicationSchemaClassBase from './ApplicationSchemaClassBase';
 
 const AppDetails = () => {
   const { t } = useTranslation();
@@ -98,10 +98,10 @@ const AppDetails = () => {
         include: Include.All,
       });
       setAppData(data);
-      const schema = await import(
-        `../../../utils/ApplicationSchemas/${fqn}.json`
-      );
-      setJsonSchema(schema);
+
+      const schema = await applicationSchemaClassBase.importSchema(fqn);
+
+      setJsonSchema(schema.default);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -335,7 +335,6 @@ const AppDetails = () => {
                     serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
                     serviceType=""
                     showTestConnection={false}
-                    uiSchema={APPLICATION_UI_SCHEMA}
                     validator={validator}
                     onCancel={noop}
                     onSubmit={onConfigSave}

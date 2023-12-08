@@ -573,21 +573,41 @@ export const visitEntityDetailsPage = ({
           .first()
           .click();
       } else {
-        // if term is not available in search suggestion,
-        // hitting enter to search box so it will redirect to explore page
-        cy.get('body').click(1, 1);
-        cy.get('[data-testid="searchBox"]').type('{enter}');
-        verifyResponseStatusCode('@explorePageSearch', 200);
+        cy.get(`[data-testid="global-search-suggestion-box"]`)
+          .contains(term)
+          .then(($body) => {
+            if ($body.length) {
+              cy.get(`[data-testid="global-search-suggestion-box"]`)
+                .contains(term)
+                .click();
+            } else {
+              // if term is not available in search suggestion,
+              // hitting enter to search box so it will redirect to explore page
+              cy.get('body').click(1, 1);
+              cy.get('[data-testid="searchBox"]').type('{enter}');
+              verifyResponseStatusCode('@explorePageSearch', 200);
 
-        const tabName = EXPLORE_PAGE_TABS?.[entity] ?? entity;
+              const tabName = EXPLORE_PAGE_TABS?.[entity] ?? entity;
 
-        cy.get(`[data-testid="${tabName}-tab"]`).click();
+              cy.get(`[data-testid="${tabName}-tab"]`).click();
 
-        verifyResponseStatusCode('@explorePageTabSearch', 200);
+              verifyResponseStatusCode('@explorePageTabSearch', 200);
 
-        cy.get(`[data-testid="${id}"] [data-testid="entity-link"]`)
-          .scrollIntoView()
-          .click();
+              if (
+                $body.find(`[data-testid="${id}"] [data-testid="entity-link"]`)
+                  .length
+              ) {
+                cy.get(`[data-testid="${id}"] [data-testid="entity-link"]`)
+                  .scrollIntoView()
+                  .click();
+              } else {
+                cy.get(`[data-testid="entity-link"]`)
+                  .contains(term)
+                  .eq(0)
+                  .click();
+              }
+            }
+          });
       }
     });
 
@@ -1191,6 +1211,7 @@ export const addOwner = (
     cy.get('[data-testid="edit-owner"]').click();
   }
 
+  cy.log('/api/v1/users?limit=*&isBot=false*');
   cy.get('.ant-tabs [id*=tab-users]').click();
   verifyResponseStatusCode('@getUsers', 200);
 
@@ -1286,7 +1307,7 @@ export const deleteEntity = (
 
   interceptURL(
     'DELETE',
-    `api/v1/${entity}/*?hardDelete=${deletionType === 'hard'}&recursive=false`,
+    `api/v1/${entity}/*?hardDelete=${deletionType === 'hard'}&recursive=true`,
     `${deletionType}DeleteTable`
   );
   cy.get('[data-testid="confirm-button"]').should('not.be.disabled');
@@ -1299,11 +1320,12 @@ export const deleteEntity = (
 export const visitServiceDetailsPage = (
   settingsMenuId,
   serviceCategory,
-  serviceName
+  serviceName,
+  isServiceDeleted = false
 ) => {
   interceptURL(
     'GET',
-    'api/v1/search/query?q=*&from=0&size=15&index=*',
+    `/api/v1/search/query?q=*${isServiceDeleted ? 'deleted=true' : ''}`,
     'searchService'
   );
   interceptURL('GET', '/api/v1/teams/name/*', 'getOrganization');
@@ -1318,9 +1340,13 @@ export const visitServiceDetailsPage = (
 
   verifyResponseStatusCode('@getServices', 200);
 
+  if (isServiceDeleted) {
+    cy.get('[data-testid="show-deleted-switch"]').click();
+  }
+
   interceptURL(
     'GET',
-    `api/v1/services/${serviceCategory}/name/${serviceName}?fields=*`,
+    `api/v1/services/${serviceCategory}/name/${serviceName}*`,
     'getServiceDetails'
   );
 
@@ -1703,8 +1729,20 @@ export const visitDatabaseDetailsPage = ({
   serviceName,
   databaseRowKey,
   databaseName,
+  isDeleted = false,
 }) => {
-  visitServiceDetailsPage(settingsMenuId, serviceCategory, serviceName);
+  visitServiceDetailsPage(
+    settingsMenuId,
+    serviceCategory,
+    serviceName,
+    isDeleted
+  );
+
+  if (isDeleted) {
+    interceptURL('GET', `/api/v1/databases*include=deleted*`, 'getDatabases');
+    cy.get('[data-testid="show-deleted"]').click();
+    verifyResponseStatusCode('@getDatabases', 200);
+  }
 
   cy.get(`[data-row-key="${databaseRowKey}"]`).contains(databaseName).click();
 };
@@ -1717,6 +1755,7 @@ export const visitDatabaseSchemaDetailsPage = ({
   databaseName,
   databaseSchemaRowKey,
   databaseSchemaName,
+  isDeleted = false,
 }) => {
   visitDatabaseDetailsPage({
     settingsMenuId,
@@ -1724,7 +1763,18 @@ export const visitDatabaseSchemaDetailsPage = ({
     serviceName,
     databaseRowKey,
     databaseName,
+    isDeleted,
   });
+
+  if (isDeleted) {
+    interceptURL(
+      'GET',
+      `/api/v1/databaseSchemas*include=deleted*`,
+      'getDatabaseSchemas'
+    );
+    cy.get('[data-testid="show-deleted"]').click();
+    verifyResponseStatusCode('@getDatabaseSchemas', 200);
+  }
 
   cy.get(`[data-row-key="${databaseSchemaRowKey}"]`)
     .contains(databaseSchemaName)

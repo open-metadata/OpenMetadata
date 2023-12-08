@@ -15,6 +15,7 @@ package org.openmetadata.service;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
 import static org.openmetadata.service.util.EntityUtil.getFlattenedEntityField;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
@@ -193,6 +194,7 @@ public final class Entity {
   //
   // Time series entities
   public static final String ENTITY_REPORT_DATA = "entityReportData";
+  public static final String TEST_CASE_RESOLUTION_STATUS = "testCaseResolutionStatus";
   public static final String WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA = "webAnalyticEntityViewReportData";
   public static final String WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA = "webAnalyticUserActivityReportData";
   public static final String RAW_COST_ANALYSIS_REPORT_DATA = "rawCostAnalysisReportData";
@@ -539,11 +541,15 @@ public final class Entity {
     List<T> flattenedFields = getFlattenedEntityField(fields);
 
     // Fetch All tags belonging to Prefix
-    Map<String, List<TagLabel>> allTags = repository.getTagsByPrefix(fqnPrefix);
+    Map<String, List<TagLabel>> allTags = repository.getTagsByPrefix(fqnPrefix, ".%");
     for (T c : listOrEmpty(flattenedFields)) {
       if (setTags) {
         List<TagLabel> columnTag = allTags.get(FullyQualifiedName.buildHash(c.getFullyQualifiedName()));
-        c.setTags(columnTag == null ? new ArrayList<>() : columnTag);
+        if (columnTag == null) {
+          c.setTags(new ArrayList<>());
+        } else {
+          c.setTags(addDerivedTags(columnTag));
+        }
       } else {
         c.setTags(c.getTags());
       }

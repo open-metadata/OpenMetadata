@@ -41,7 +41,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "storedProcedures")
 public class StoredProcedureResource extends EntityResource<StoredProcedure, StoredProcedureRepository> {
   public static final String COLLECTION_PATH = "v1/storedProcedures/";
-  static final String FIELDS = "owner,tags,followers,extension,domain";
+  static final String FIELDS = "owner,tags,followers,extension,domain,sourceHash";
 
   @Override
   public StoredProcedure addHref(UriInfo uriInfo, StoredProcedure storedProcedure) {
@@ -389,9 +389,13 @@ public class StoredProcedureResource extends EntityResource<StoredProcedure, Sto
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
+      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
       @Parameter(description = "Name of the DBSchema", schema = @Schema(type = "string")) @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+    return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
   }
 
   @PUT
@@ -416,6 +420,7 @@ public class StoredProcedureResource extends EntityResource<StoredProcedure, Sto
         .copy(new StoredProcedure(), create, user)
         .withDatabaseSchema(getEntityReference(Entity.DATABASE_SCHEMA, create.getDatabaseSchema()))
         .withStoredProcedureCode(create.getStoredProcedureCode())
-        .withSourceUrl(create.getSourceUrl());
+        .withSourceUrl(create.getSourceUrl())
+        .withSourceHash(create.getSourceHash());
   }
 }

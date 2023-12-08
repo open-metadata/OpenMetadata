@@ -25,6 +25,7 @@ import { EntityField } from '../constants/Feeds.constants';
 import { DataProduct } from '../generated/entity/domains/dataProduct';
 import { Domain } from '../generated/entity/domains/domain';
 import { ChangeDescription, EntityReference } from '../generated/entity/type';
+import { QueryFilterInterface } from '../pages/ExplorePage/ExplorePage.interface';
 import { getEntityName } from './EntityUtils';
 import {
   getChangedEntityNewValue,
@@ -136,25 +137,34 @@ export const getQueryFilterToIncludeDomain = (
             ],
           },
         },
+        {
+          bool: {
+            must_not: [
+              {
+                term: {
+                  entityType: 'dataProduct',
+                },
+              },
+            ],
+          },
+        },
       ],
     },
   },
 });
 
-export const getQueryFilterToExcludeDomainTerms = (fqn: string) => ({
+export const getQueryFilterToExcludeDomainTerms = (
+  fqn: string
+): QueryFilterInterface => ({
   query: {
     bool: {
       must: [
         {
           bool: {
-            must: [
+            must_not: [
               {
-                bool: {
-                  must_not: {
-                    term: {
-                      'domain.fullyQualifiedName': fqn,
-                    },
-                  },
+                term: {
+                  'domain.fullyQualifiedName': fqn,
                 },
               },
             ],

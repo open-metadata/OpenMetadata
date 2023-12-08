@@ -15,6 +15,7 @@ import { EntityTags } from 'Models';
 import React from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
+import entityRightPanelClassBase from '../../../utils/EntityRightPanelClassBase';
 import EntityRightPanel from './EntityRightPanel';
 
 jest.mock('../../DataProductsContainer/DataProductsContainer.component', () => {
@@ -24,6 +25,8 @@ jest.mock('../../DataProductsContainer/DataProductsContainer.component', () => {
 jest.mock('../../Tag/TagsContainerV2/TagsContainerV2', () => {
   return jest.fn().mockImplementation(() => <div>TagsContainerV2</div>);
 });
+
+jest.mock('../../../utils/EntityRightPanelClassBase');
 
 describe('EntityRightPanel component test', () => {
   const mockDataProducts: EntityReference[] = [];
@@ -37,6 +40,7 @@ describe('EntityRightPanel component test', () => {
         editTagPermission
         dataProducts={mockDataProducts}
         entityFQN="testEntityFQN"
+        entityId="testEntityId"
         entityType={EntityType.TABLE}
         selectedTags={mockSelectedTags}
         onTagSelectionChange={mockOnTagSelectionChange}
@@ -54,6 +58,7 @@ describe('EntityRightPanel component test', () => {
         editTagPermission
         dataProducts={mockDataProducts}
         entityFQN="testEntityFQN"
+        entityId="testEntityId"
         entityType={EntityType.TABLE}
         selectedTags={mockSelectedTags}
         showDataProductContainer={false}
@@ -73,6 +78,7 @@ describe('EntityRightPanel component test', () => {
         beforeSlot={<div>beforeSlot</div>}
         dataProducts={mockDataProducts}
         entityFQN="testEntityFQN"
+        entityId="testEntityId"
         entityType={EntityType.TABLE}
         selectedTags={mockSelectedTags}
         showDataProductContainer={false}
@@ -91,6 +97,7 @@ describe('EntityRightPanel component test', () => {
         editTagPermission
         dataProducts={mockDataProducts}
         entityFQN="testEntityFQN"
+        entityId="testEntityId"
         entityType={EntityType.TABLE}
         selectedTags={mockSelectedTags}
         showDataProductContainer={false}
@@ -101,5 +108,54 @@ describe('EntityRightPanel component test', () => {
 
     expect(screen.queryByText('beforeSlot')).not.toBeInTheDocument();
     expect(screen.queryByText('afterSlot')).not.toBeInTheDocument();
+  });
+
+  it('Component should render KnowledgeArticles when getKnowLedgeArticlesWidget is not null', () => {
+    const KnowledgeArticles = () => (
+      <div data-testid="KnowledgeArticles">KnowledgeArticles</div>
+    );
+    const spy = jest
+      .spyOn(entityRightPanelClassBase, 'getKnowLedgeArticlesWidget')
+      .mockImplementation(() => KnowledgeArticles);
+    render(
+      <EntityRightPanel
+        editTagPermission
+        dataProducts={mockDataProducts}
+        entityFQN="testEntityFQN"
+        entityId="testEntityId"
+        entityType={EntityType.TABLE}
+        selectedTags={mockSelectedTags}
+        showDataProductContainer={false}
+        onTagSelectionChange={mockOnTagSelectionChange}
+        onThreadLinkSelect={mockOnThreadLinkSelect}
+      />
+    );
+
+    expect(spy).toHaveBeenCalled();
+
+    expect(screen.getByText('KnowledgeArticles')).toBeInTheDocument();
+  });
+
+  it('Component should not render KnowledgeArticles when getKnowLedgeArticlesWidget is null', () => {
+    const spy = jest
+      .spyOn(entityRightPanelClassBase, 'getKnowLedgeArticlesWidget')
+      .mockImplementation(() => null);
+    render(
+      <EntityRightPanel
+        editTagPermission
+        dataProducts={mockDataProducts}
+        entityFQN="testEntityFQN"
+        entityId="testEntityId"
+        entityType={EntityType.TABLE}
+        selectedTags={mockSelectedTags}
+        showDataProductContainer={false}
+        onTagSelectionChange={mockOnTagSelectionChange}
+        onThreadLinkSelect={mockOnThreadLinkSelect}
+      />
+    );
+
+    expect(spy).toHaveBeenCalled();
+
+    expect(screen.queryByText('KnowledgeArticles')).not.toBeInTheDocument();
   });
 });

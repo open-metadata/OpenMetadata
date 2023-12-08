@@ -91,7 +91,7 @@ export type DataAssetsHeaderProps = {
   showDomain?: boolean;
   isRecursiveDelete?: boolean;
   afterDomainUpdateAction?: (asset: DataAssetWithDomains) => void;
-  afterDeleteAction?: (isSoftDelete?: boolean) => void;
+  afterDeleteAction?: (isSoftDelete?: boolean, version?: number) => void;
   onTierUpdate: (tier?: Tag) => Promise<void>;
   onOwnerUpdate: (owner?: EntityReference) => Promise<void>;
   onVersionClick?: () => void;
@@ -100,6 +100,7 @@ export type DataAssetsHeaderProps = {
   onDisplayNameUpdate: (data: EntityName) => Promise<void>;
   onProfilerSettingUpdate?: () => void;
   onUpdateVote?: (data: QueryVote, id: string) => Promise<void>;
+  onUpdateRetentionPeriod?: (value: string) => Promise<void>;
 } & (
   | DataAssetTable
   | DataAssetTopic

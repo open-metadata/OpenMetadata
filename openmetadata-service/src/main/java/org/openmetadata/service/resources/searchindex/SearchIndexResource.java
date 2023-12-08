@@ -74,7 +74,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "searchIndexes")
 public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndexRepository> {
   public static final String COLLECTION_PATH = "v1/searchIndexes/";
-  static final String FIELDS = "owner,followers,tags,extension,domain,dataProducts";
+  static final String FIELDS = "owner,followers,tags,extension,domain,dataProducts,sourceHash";
 
   @Override
   public SearchIndex addHref(UriInfo uriInfo, SearchIndex searchIndex) {
@@ -443,8 +443,12 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
+      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
       @Parameter(description = "Id of the SearchIndex", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
-    return delete(uriInfo, securityContext, id, false, hardDelete);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -464,10 +468,14 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
+      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
       @Parameter(description = "Fully qualified name of the SearchIndex", schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+    return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
   }
 
   @PUT
@@ -492,6 +500,7 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
         .copy(new SearchIndex(), create, user)
         .withService(getEntityReference(Entity.SEARCH_SERVICE, create.getService()))
         .withFields(create.getFields())
-        .withSearchIndexSettings(create.getSearchIndexSettings());
+        .withSearchIndexSettings(create.getSearchIndexSettings())
+        .withSourceHash(create.getSourceHash());
   }
 }
