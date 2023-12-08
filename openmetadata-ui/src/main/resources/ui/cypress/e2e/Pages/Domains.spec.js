@@ -13,6 +13,7 @@
 // eslint-disable-next-line spaced-comment
 /// <reference types="Cypress" />
 
+import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import {
   addAssetsToDataProduct,
   addAssetsToDomain,
@@ -86,6 +87,26 @@ describe('Domain page should work properly', () => {
     });
 
     addAssetsToDataProduct(DOMAIN_3.dataProducts[0], DOMAIN_3);
+  });
+
+  it('Switch domain from navbar and check domain query call warp in quotes', () => {
+    cy.get('[data-testid="domain-dropdown"]').should('be.visible').click();
+
+    cy.get(
+      `[data-menu-id*="${DOMAIN_3.name}"] > .ant-dropdown-menu-title-content`
+    )
+      .should('be.visible')
+      .click();
+
+    interceptURL(
+      'GET',
+      '/api/v1/search/query?q=%28domain.fullyQualifiedName%3A%22Cypress%20Space%22%29*',
+      'tableSearchQuery'
+    );
+
+    cy.get('[data-testid="app-bar-item-explore"]').click();
+
+    verifyResponseStatusCode('@tableSearchQuery', 200);
   });
 
   it('Remove data product assets using asset selection modal should work properly', () => {
