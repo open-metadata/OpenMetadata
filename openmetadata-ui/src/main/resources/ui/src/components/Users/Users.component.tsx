@@ -14,7 +14,6 @@
 import { Col, Collapse, Row, Space, Tabs, Typography } from 'antd';
 import Card from 'antd/lib/card/Card';
 import { isEmpty, noop } from 'lodash';
-import { observer } from 'mobx-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
@@ -354,4 +353,4 @@ const Users = ({ userData, queryFilters, updateUserDetails }: Props) => {
   );
 };
 
-export default observer(Users);
+export default Users;
