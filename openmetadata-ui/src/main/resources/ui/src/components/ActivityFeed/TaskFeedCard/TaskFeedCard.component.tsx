@@ -23,7 +23,6 @@ import { ReactComponent as ThreadIcon } from '../../../assets/svg/thread.svg';
 import AssigneeList from '../../../components/common/AssigneeList/AssigneeList';
 import EntityPopOverCard from '../../../components/common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
-import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import {
   Post,
   Thread,
@@ -38,6 +37,7 @@ import EntityLink from '../../../utils/EntityLink';
 import { getEntityFQN, getEntityType } from '../../../utils/FeedUtils';
 import { getEntityLink } from '../../../utils/TableUtils';
 import { getTaskDetailPath } from '../../../utils/TasksUtils';
+import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import ActivityFeedActions from '../Shared/ActivityFeedActions';
 import './task-feed-card.less';
@@ -193,7 +193,6 @@ const TaskFeedCard = ({
                           className="profile-image-span cursor-pointer"
                           data-testid="authorAvatar">
                           <ProfilePicture
-                            id=""
                             name={user}
                             type="circle"
                             width="24"
@@ -222,8 +221,6 @@ const TaskFeedCard = ({
               <AssigneeList
                 assignees={feed?.task?.assignees || []}
                 className="d-flex gap-1"
-                profilePicType="circle"
-                profileWidth="24"
                 showUserName={false}
               />
             </div>

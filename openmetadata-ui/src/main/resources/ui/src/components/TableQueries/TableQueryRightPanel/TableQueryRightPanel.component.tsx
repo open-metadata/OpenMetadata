@@ -107,7 +107,6 @@ const TableQueryRightPanel = ({
                   <Space className="m-r-xss" size={4}>
                     <ProfilePicture
                       displayName={getEntityName(query.owner)}
-                      id={query.owner?.id || ''}
                       name={query.owner?.name || ''}
                       width="20"
                     />
@@ -176,7 +175,6 @@ const TableQueryRightPanel = ({
                     <Space className="m-r-xss" key={user.id} size={4}>
                       <ProfilePicture
                         displayName={getEntityName(user)}
-                        id={user.id || ''}
                         name={user.name || ''}
                         textClass="text-xs"
                         width="20"
