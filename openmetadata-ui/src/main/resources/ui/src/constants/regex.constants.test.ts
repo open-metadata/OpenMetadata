@@ -134,6 +134,25 @@ describe('Test Regex', () => {
     // Contains Turkish characters
     expect(ENTITY_NAME_REGEX.test('Merhaba dünya')).toEqual(true);
     expect(ENTITY_NAME_REGEX.test('Merhaba')).toEqual(true);
+
+    // Contains Italian characters
+    expect(ENTITY_NAME_REGEX.test('Ciao mondo')).toEqual(true);
+    expect(ENTITY_NAME_REGEX.test('Ciao')).toEqual(true);
+    expect(ENTITY_NAME_REGEX.test('àèéìíîòóùú')).toEqual(true);
+
+    // Contains French characters
+    expect(ENTITY_NAME_REGEX.test('Bonjour le monde')).toEqual(true);
+    expect(ENTITY_NAME_REGEX.test('Bonjour')).toEqual(true);
+    expect(ENTITY_NAME_REGEX.test('àâäéèêëîïôöùûüÿçœæ')).toEqual(true);
+
+    // Contains German characters
+    expect(ENTITY_NAME_REGEX.test('Hallo Welt')).toEqual(true);
+    expect(ENTITY_NAME_REGEX.test('Hallo')).toEqual(true);
+    expect(ENTITY_NAME_REGEX.test('äöüÄÖÜß')).toEqual(true);
+
+    // Contains Portuguese characters
+    expect(ENTITY_NAME_REGEX.test('Olá mundo')).toEqual(true);
+    expect(ENTITY_NAME_REGEX.test('Olá')).toEqual(true);
   });
 
   it('EntityName regex should fail for the invalid entity name', () => {
