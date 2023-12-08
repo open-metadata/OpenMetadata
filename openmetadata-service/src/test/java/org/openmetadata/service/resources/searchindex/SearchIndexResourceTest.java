@@ -125,7 +125,7 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
                 new SearchIndexField().withName("name").withDataType(SearchIndexDataType.TEXT),
                 new SearchIndexField().withName("displayName").withDataType(SearchIndexDataType.KEYWORD)));
     List<SearchIndexField> searchIndexFields =
-        Arrays.asList(
+        List.of(
             new SearchIndexField()
                 .withName("tableSearchIndex")
                 .withDataType(SearchIndexDataType.NESTED)
