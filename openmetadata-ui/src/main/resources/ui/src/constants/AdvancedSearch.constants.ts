@@ -364,7 +364,7 @@ const getCommonQueryBuilderFields = (
       },
     },
     extension: {
-      label: t('label.custom-attribute-plural'),
+      label: t('label.custom-property-plural'),
       type: '!group',
       mainWidgetProps,
       subfields: {},
