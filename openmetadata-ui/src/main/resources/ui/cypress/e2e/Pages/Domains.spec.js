@@ -98,8 +98,7 @@ describe('Domain page should work properly', () => {
 
     interceptURL(
       'GET',
-      // eslint-disable-next-line max-len
-      '/api/v1/search/query?q=%28domain.fullyQualifiedName%3A%22Cypress%20Space%22%29&index=table_search_index&from=0&size=10&deleted=false&query_filter=%7B%22query%22%3A%7B%22bool%22%3A%7B%7D%7D%7D&sort_field=updatedAt&sort_order=desc',
+      '/api/v1/search/query?q=%28domain.fullyQualifiedName%3A%22Cypress%20Space%22%29*',
       'tableSearchQuery'
     );
 
