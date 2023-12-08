@@ -15,13 +15,13 @@
     "indexName": "database_schema_search_index",
     "indexMappingFile": "/elasticsearch/%s/database_schema_index_mapping.json",
     "alias": "databaseSchema",
-    "parentAliases": ["database", "databaseService", "all"]
+    "parentAliases": ["database", "databaseService", "all", "dataAsset"]
   },
   "database": {
     "indexName": "database_search_index",
     "alias": "database",
     "indexMappingFile": "/elasticsearch/%s/database_index_mapping.json",
-    "parentAliases": ["databaseService", "all"]
+    "parentAliases": ["databaseService", "all", "dataAsset"]
   },
   "chart": {
     "indexName": "chart_search_index",
@@ -93,7 +93,7 @@
     "indexName": "data_product_search_index",
     "indexMappingFile": "/elasticsearch/%s/data_products_index_mapping.json",
     "alias": "dataProduct",
-    "parentAliases": ["domain","all"]
+    "parentAliases": ["domain","all", "dataAsset"]
   },
   "domain": {
     "indexName": "domain_search_index",
