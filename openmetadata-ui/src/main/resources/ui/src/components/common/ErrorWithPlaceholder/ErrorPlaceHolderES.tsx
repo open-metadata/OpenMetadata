@@ -12,7 +12,6 @@
  */
 
 import { Col, Row, Space, Typography } from 'antd';
-import { observer } from 'mobx-react';
 import Qs from 'qs';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -194,4 +193,4 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query }: Props) => {
   );
 };
 
-export default observer(ErrorPlaceHolderES);
+export default ErrorPlaceHolderES;

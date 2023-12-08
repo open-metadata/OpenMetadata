@@ -15,7 +15,6 @@ import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
-import { observer } from 'mobx-react';
 import Qs from 'qs';
 import {
   default as React,
@@ -148,9 +147,8 @@ const UserPage = () => {
       }}
       updateUserDetails={updateUserDetails}
       userData={userData}
-      username={username}
     />
   );
 };
 
-export default observer(UserPage);
+export default UserPage;

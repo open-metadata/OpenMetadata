@@ -106,6 +106,27 @@ In such cases you may delete the table/schema manually from UI.
 $$
 
 $$section
+### Mark Deleted Stored Procedures $(id="markDeletedStoredProcedures")
+This is an optional configuration for enabling **soft deletion** of stored procedures during the ingestion. When this option is enabled, only stored procedures that have been deleted from the source will be soft deleted, and this will apply ONLY to the schema that is currently being ingested via the pipeline. 
+
+Any related entities such as test suites or lineage information that were associated with those stored procedures will also be deleted.
+
+Here are some examples of scenarios in which stored procedures will get soft deleted if this flag is enabled.
+
+- If no filters were applied, but a stored procedure was deleted from the data source, then the same stored procedure will be soft deleted from OpenMetadata as well.
+- If you have applied a `Schema Filter Pattern` to include `SchemaA` then any stored procedure deleted from `SchemaA` will also be soft deleted from Openmetadata.
+- If `StoredProcedureA` was already ingested in OpenMetadata, then later you apply a `StoredProcedure Filter Pattern` to exclude `StoredProcedureA` then `StoredProcedureA` will get soft deleted from OpenMetadata.
+
+Here are some examples of scenarios where stored procedures will **NOT** get soft deleted if this flag is enabled.
+
+- If you already have `SchemaA` & `SchemaB` ingested in OpenMetadata, then later you apply a `Schema Filter Pattern` to exclude `SchemaB`, then no stored procedure from `SchemaB` will be deleted.
+- If you already have `SchemaA` & `SchemaB` ingested in OpenMetadata and for this ingestion pipeline you have applied a `Schema Filter Pattern` to include only `SchemaA`, then any stored procedure deleted from `SchemaB` will not be deleted (since it is ignored in the ingestion).
+
+In such cases you may delete the stored procedure/schema manually from UI.
+
+$$
+
+$$section
 ### View Definition Parsing Timeout Limit $(id="viewParsingTimeoutLimit")
 
 Specify the timeout limit for parsing the view definition sql queries to perform the lineage analysis.

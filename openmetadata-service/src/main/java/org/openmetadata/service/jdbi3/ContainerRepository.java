@@ -36,7 +36,7 @@ import org.openmetadata.service.util.JsonUtils;
 
 public class ContainerRepository extends EntityRepository<Container> {
   private static final String CONTAINER_UPDATE_FIELDS = "dataModel";
-  private static final String CONTAINER_PATCH_FIELDS = "dataModel";
+  private static final String CONTAINER_PATCH_FIELDS = "dataModel,sourceHash";
 
   public ContainerRepository() {
     super(
@@ -53,6 +53,7 @@ public class ContainerRepository extends EntityRepository<Container> {
   public void setFields(Container container, EntityUtil.Fields fields) {
     setDefaultFields(container);
     container.setParent(fields.contains(FIELD_PARENT) ? getParent(container) : container.getParent());
+    container.setSourceHash(fields.contains("sourceHash") ? container.getSourceHash() : null);
     if (container.getDataModel() != null) {
       populateDataModelColumnTags(
           fields.contains(FIELD_TAGS), container.getFullyQualifiedName(), container.getDataModel().getColumns());
@@ -281,6 +282,8 @@ public class ContainerRepository extends EntityRepository<Container> {
           false);
       recordChange("size", original.getSize(), updated.getSize(), false, EntityUtil.objectMatch, false);
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
+      recordChange("retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod());
+      recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
     }
 
     private void updateDataModel(Container original, Container updated) {

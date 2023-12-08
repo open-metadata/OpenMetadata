@@ -63,6 +63,7 @@ import {
 import { Domain } from '../../../generated/entity/domains/domain';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { Style } from '../../../generated/type/tagLabel';
+import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { searchData } from '../../../rest/miscAPI';
 import { getEntityDeleteMessage } from '../../../utils/CommonUtils';
 import { getQueryFilterToIncludeDomain } from '../../../utils/DomainUtils';
@@ -77,7 +78,10 @@ import {
   getDataProductVersionsPath,
   getDomainPath,
 } from '../../../utils/RouterUtils';
-import { escapeESReservedCharacters } from '../../../utils/StringsUtils';
+import {
+  escapeESReservedCharacters,
+  getEncodedFqn,
+} from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
@@ -205,13 +209,14 @@ const DataProductsDetailsPage = ({
   const fetchDataProductAssets = async () => {
     if (dataProduct) {
       try {
+        const encodedFqn = getEncodedFqn(
+          escapeESReservedCharacters(dataProduct.fullyQualifiedName)
+        );
         const res = await searchData(
           '',
           1,
           0,
-          `(dataProducts.fullyQualifiedName:"${escapeESReservedCharacters(
-            dataProduct.fullyQualifiedName
-          )}")`,
+          `(dataProducts.fullyQualifiedName:"${encodedFqn}")`,
           '',
           '',
           SearchIndex.ALL
@@ -568,20 +573,24 @@ const DataProductsDetailsPage = ({
         onConfirm={onDelete}
       />
 
-      <AssetSelectionModal
-        emptyPlaceHolderText={t('message.domain-does-not-have-assets', {
-          name: getEntityName(dataProduct.domain),
-        })}
-        entityFqn={dataProductFqn}
-        open={assetModalVisible}
-        queryFilter={getQueryFilterToIncludeDomain(
-          dataProduct.domain?.fullyQualifiedName ?? '',
-          dataProduct.fullyQualifiedName ?? ''
-        )}
-        type={AssetsOfEntity.DATA_PRODUCT}
-        onCancel={() => setAssetModelVisible(false)}
-        onSave={handleAssetSave}
-      />
+      {assetModalVisible && (
+        <AssetSelectionModal
+          emptyPlaceHolderText={t('message.domain-does-not-have-assets', {
+            name: getEntityName(dataProduct.domain),
+          })}
+          entityFqn={dataProductFqn}
+          open={assetModalVisible}
+          queryFilter={
+            getQueryFilterToIncludeDomain(
+              dataProduct.domain?.fullyQualifiedName ?? '',
+              dataProduct.fullyQualifiedName ?? ''
+            ) as QueryFilterInterface
+          }
+          type={AssetsOfEntity.DATA_PRODUCT}
+          onCancel={() => setAssetModelVisible(false)}
+          onSave={handleAssetSave}
+        />
+      )}
 
       <StyleModal
         open={isStyleEditing}

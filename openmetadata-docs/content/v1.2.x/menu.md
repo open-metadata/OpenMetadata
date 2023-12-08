@@ -50,7 +50,7 @@ site_menu:
   - category: Deployment / Kubernetes Deployment / GKE
     url: /deployment/kubernetes/gke
   - category: Deployment / Kubernetes Deployment / On Premises
-    url: /deployment/kubernetes/onprem
+    url: /deployment/kubernetes/on-prem
   - category: Deployment / Kubernetes Deployment / Enable Security
     url: /deployment/kubernetes/security
   - category: Deployment / Kubernetes Deployment / Helm Values
@@ -706,10 +706,10 @@ site_menu:
     url: /how-to-guides/data-insights/kpi
   - category: How to Guides / Data Insights / Data Insights Report
     url: /how-to-guides/data-insights/report
-  - category: How to Guides / Data Insights / Configure the Data Insights Report
-    url: /how-to-guides/data-insights/email-report 
   - category: How to Guides / Data Insights / Cost Analysis
     url: /how-to-guides/data-insights/cost-analysis
+  - category: How to Guides / Data Insights / Configure the Data Insights Report
+    url: /how-to-guides/data-insights/email-report 
   - category: How to Guides / Data Insights / How to Transform the Data Culture of Your Company
     url: /how-to-guides/data-insights/data-culture
   - category: How to Guides / Data Governance
@@ -724,6 +724,10 @@ site_menu:
     url: /how-to-guides/data-governance/glossary/create-terms
   - category: How to Guides / Data Governance / Glossary / How to Bulk Import a Glossary
     url: /how-to-guides/data-governance/glossary/import
+  - category: How to Guides / Data Governance / Glossary / Glossary Approval Workflow
+    url: /how-to-guides/data-governance/glossary/approval  
+  - category: How to Guides / Data Governance / Glossary / Glossary Styling
+    url: /how-to-guides/data-governance/glossary/styling 
   - category: How to Guides / Data Governance / Glossary / How to Add Assets to Glossary Terms
     url: /how-to-guides/data-governance/glossary/assets
   - category: How to Guides / Data Governance / Glossary / Best Practices for Glossary
