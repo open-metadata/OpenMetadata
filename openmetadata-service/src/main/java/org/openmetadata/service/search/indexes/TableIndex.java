@@ -109,6 +109,7 @@ public class TableIndex implements ColumnIndex {
     fields.put("columns.name", 2.0f);
     fields.put("columns.name.ngram", 1.0f);
     fields.put("columns.displayName", 1.0f);
+    fields.put("columns.description", 1.0f);
     fields.put("columns.children.name", 2.0f);
     return fields;
   }
