@@ -27,6 +27,7 @@ import {
   DASHBOARD_DROPDOWN_ITEMS,
   DATA_PRODUCT_DROPDOWN_ITEMS,
   DOMAIN_DATAPRODUCT_DROPDOWN_ITEMS,
+  GLOSSARY_ASSETS_DROPDOWN_ITEMS,
   GLOSSARY_DROPDOWN_ITEMS,
   PIPELINE_DROPDOWN_ITEMS,
   SEARCH_INDEX_DROPDOWN_ITEMS,
@@ -97,6 +98,7 @@ export const getAssetsPageQuickFilters = (type: AssetsOfEntity) => {
       return [...DOMAIN_DATAPRODUCT_DROPDOWN_ITEMS];
 
     case AssetsOfEntity.GLOSSARY:
+      return [...GLOSSARY_ASSETS_DROPDOWN_ITEMS];
     default:
       return [...COMMON_DROPDOWN_ITEMS];
   }
@@ -218,7 +220,6 @@ export const generateSearchDropdownLabel = (
         {showProfilePicture && (
           <ProfilePicture
             displayName={option.label}
-            id={option.key || ''}
             name={option.label || ''}
             textClass="text-xs"
             width="18"
