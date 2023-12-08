@@ -326,7 +326,7 @@ export const CYPRESS_ASSETS_GLOSSARY = {
 const COMMON_ASSETS = [
   {
     name: 'dim_customer',
-    fullyQualifiedName: 'sample_data.ecommerce_db.shopify.dim_address',
+    fullyQualifiedName: 'sample_data.ecommerce_db.shopify.dim_customer',
   },
   {
     name: 'raw_order',
