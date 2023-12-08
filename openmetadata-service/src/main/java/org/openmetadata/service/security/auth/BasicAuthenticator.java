@@ -34,6 +34,8 @@ import static org.openmetadata.service.util.EmailUtil.getSmtpSettings;
 import at.favre.lib.crypto.bcrypt.BCrypt;
 import freemarker.template.TemplateException;
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -188,7 +190,9 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     String passwordResetLink =
         String.format(
             "%s/users/password/reset?user=%s&token=%s",
-            getSmtpSettings().getOpenMetadataUrl(), user.getFullyQualifiedName(), mailVerificationToken);
+            getSmtpSettings().getOpenMetadataUrl(),
+            URLEncoder.encode(user.getName(), StandardCharsets.UTF_8),
+            mailVerificationToken);
     try {
       EmailUtil.sendPasswordResetLink(passwordResetLink, user, subject, templateFilePath);
     } catch (TemplateException e) {

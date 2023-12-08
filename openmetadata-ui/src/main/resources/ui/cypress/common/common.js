@@ -876,50 +876,52 @@ export const addCustomPropertiesForEntity = (
   // Navigating to home page
   cy.clickOnLogo();
 
-  // Checking the added property in Entity
+  if (entityObj) {
+    // Checking the added property in Entity
 
-  visitEntityDetailsPage({
-    term: entityObj.term,
-    serviceName: entityObj.serviceName,
-    entity: entityObj.entity,
-  });
+    visitEntityDetailsPage({
+      term: entityObj.term,
+      serviceName: entityObj.serviceName,
+      entity: entityObj.entity,
+    });
 
-  cy.get('[data-testid="custom_properties"]').click();
-  cy.get('tbody').should('contain', propertyName);
+    cy.get('[data-testid="custom_properties"]').click();
+    cy.get('tbody').should('contain', propertyName);
 
-  // Adding value for the custom property
+    // Adding value for the custom property
 
-  // Navigating through the created custom property for adding value
-  cy.get(`[data-row-key="${propertyName}"]`)
-    .find('[data-testid="edit-icon"]')
-    .as('editbutton');
-  cy.wait(1000);
+    // Navigating through the created custom property for adding value
+    cy.get(`[data-row-key="${propertyName}"]`)
+      .find('[data-testid="edit-icon"]')
+      .as('editbutton');
+    cy.wait(1000);
 
-  cy.get('@editbutton').click();
+    cy.get('@editbutton').click();
 
-  interceptURL(
-    'PATCH',
-    `/api/v1/${customPropertyData.entityApiType}/*`,
-    'patchEntity'
-  );
-  // Checking for value text box or markdown box
-  cy.get('body').then(($body) => {
-    if ($body.find('[data-testid="value-input"]').length > 0) {
-      cy.get('[data-testid="value-input"]').type(value);
-      cy.get('[data-testid="inline-save-btn"]').click();
-    } else if (
-      $body.find(
-        '.toastui-editor-md-container > .toastui-editor > .ProseMirror'
-      )
-    ) {
-      cy.get(
-        '.toastui-editor-md-container > .toastui-editor > .ProseMirror'
-      ).type(value);
-      cy.get('[data-testid="save"]').click();
-    }
-  });
-  verifyResponseStatusCode('@patchEntity', 200);
-  cy.get(`[data-row-key="${propertyName}"]`).should('contain', value);
+    interceptURL(
+      'PATCH',
+      `/api/v1/${customPropertyData.entityApiType}/*`,
+      'patchEntity'
+    );
+    // Checking for value text box or markdown box
+    cy.get('body').then(($body) => {
+      if ($body.find('[data-testid="value-input"]').length > 0) {
+        cy.get('[data-testid="value-input"]').type(value);
+        cy.get('[data-testid="inline-save-btn"]').click();
+      } else if (
+        $body.find(
+          '.toastui-editor-md-container > .toastui-editor > .ProseMirror'
+        )
+      ) {
+        cy.get(
+          '.toastui-editor-md-container > .toastui-editor > .ProseMirror'
+        ).type(value);
+        cy.get('[data-testid="save"]').click();
+      }
+    });
+    verifyResponseStatusCode('@patchEntity', 200);
+    cy.get(`[data-row-key="${propertyName}"]`).should('contain', value);
+  }
 };
 
 export const editCreatedProperty = (propertyName) => {
