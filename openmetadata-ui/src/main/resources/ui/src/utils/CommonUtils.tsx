@@ -71,7 +71,7 @@ import { PipelineType } from '../generated/entity/services/ingestionPipelines/in
 import { EntityReference } from '../generated/entity/teams/user';
 import { TagLabel } from '../generated/type/tagLabel';
 import { getFeedCount } from '../rest/feedsAPI';
-import { getEntityFeedLink, getTitleCase } from './EntityUtils';
+import { getEntityFeedLink } from './EntityUtils';
 import Fqn from './Fqn';
 import { history } from './HistoryUtils';
 import { getSearchIndexTabPath } from './SearchIndexUtils';
@@ -498,12 +498,12 @@ export const getEntityPlaceHolder = (value: string, isDeleted?: boolean) => {
 export const getEntityDeleteMessage = (entity: string, dependents: string) => {
   if (dependents) {
     return t('message.permanently-delete-metadata-and-dependents', {
-      entityName: getTitleCase(entity),
+      entityName: entity,
       dependents,
     });
   } else {
     return t('message.permanently-delete-metadata', {
-      entityName: getTitleCase(entity),
+      entityName: entity,
     });
   }
 };

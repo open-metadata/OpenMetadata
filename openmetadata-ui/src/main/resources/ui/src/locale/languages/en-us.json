@@ -1514,7 +1514,7 @@
     "password-error-message": "Password must be a minimum of 8 and a maximum of 16 characters long and contain at least one uppercase character (A-Z), one lowercase character (a-z), one number, and one special character (such as !, %, @, or #)",
     "password-pattern-error": "Password must be of minimum 8 and maximum 16 characters, with one special , one upper, one lower case character",
     "path-of-the-dbt-files-stored": "Path of the folder where the dbt files are stored",
-    "permanently-delete-metadata": "Permanently deleting this {{entityName}} will remove its metadata from OpenMetadata permanently.",
+    "permanently-delete-metadata": "Permanently deleting this <0>{{entityName}}</0> will remove its metadata from OpenMetadata permanently.",
     "permanently-delete-metadata-and-dependents": "Permanently deleting this {{entityName}} will remove its metadata, as well as the metadata of {{dependents}} from OpenMetadata permanently.",
     "pipeline-description-message": "Description of the pipeline.",
     "pipeline-scheduler-message": "The Ingestion Scheduler is unable to respond. Please reach out to Collate support. Thank you.",

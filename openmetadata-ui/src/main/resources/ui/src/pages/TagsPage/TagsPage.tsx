@@ -693,7 +693,6 @@ const TagsPage = () => {
   if (isLoading) {
     return <Loader />;
   }
-
   if (error) {
     return (
       <ErrorPlaceHolder>
