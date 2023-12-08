@@ -14,16 +14,18 @@
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Space } from 'antd';
 import classNames from 'classnames';
-import { capitalize } from 'lodash';
+import { toLower } from 'lodash';
 import React, { useCallback, useState } from 'react';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import {
+  DE_ACTIVE_COLOR,
+  NO_DATA_PLACEHOLDER,
+} from '../../../constants/constants';
 import AppBadge from '../../common/Badge/Badge.component';
 import { SeverityProps } from './Severity.interface';
 import SeverityModal from './SeverityModal.component';
 
 const Severity = ({ severity, onSubmit }: SeverityProps) => {
-  const label = severity || 'severity_3';
   const [isEditSeverity, setIsEditSeverity] = useState<boolean>(false);
 
   const onEditSeverity = useCallback(() => setIsEditSeverity(true), []);
@@ -40,21 +42,27 @@ const Severity = ({ severity, onSubmit }: SeverityProps) => {
   return (
     <>
       <Space align="center">
-        <AppBadge
-          className={classNames('severity', label)}
-          label={capitalize(label)}
-        />
-        <Icon
-          component={EditIcon}
-          data-testid="edit-description-icon"
-          style={{ color: DE_ACTIVE_COLOR }}
-          onClick={onEditSeverity}
-        />
+        {severity ? (
+          <>
+            <AppBadge
+              className={classNames('severity', toLower(severity))}
+              label={severity}
+            />
+            <Icon
+              component={EditIcon}
+              data-testid="edit-description-icon"
+              style={{ color: DE_ACTIVE_COLOR }}
+              onClick={onEditSeverity}
+            />
+          </>
+        ) : (
+          NO_DATA_PLACEHOLDER
+        )}
       </Space>
 
       {isEditSeverity && (
         <SeverityModal
-          initialSeverity={label}
+          initialSeverity={severity}
           onCancel={onCancel}
           onSubmit={handleSubmit}
         />

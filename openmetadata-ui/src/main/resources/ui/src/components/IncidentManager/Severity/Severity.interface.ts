@@ -11,15 +11,17 @@
  *  limitations under the License.
  */
 
+import { Severities } from '../../../generated/tests/testCaseResolutionStatus';
+
 export interface SeverityFormProps {
-  onSubmit: (data: { severity: string }) => Promise<void>;
+  onSubmit: (severity: Severities) => Promise<void>;
 }
 
 export interface SeverityProps extends SeverityFormProps {
-  severity: string;
+  severity?: Severities;
 }
 
 export interface SeverityModalProps extends SeverityFormProps {
-  initialSeverity: string;
+  initialSeverity?: Severities;
   onCancel: () => void;
 }

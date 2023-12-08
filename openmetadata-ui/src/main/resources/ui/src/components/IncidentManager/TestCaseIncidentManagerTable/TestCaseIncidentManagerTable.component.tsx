@@ -26,6 +26,7 @@ import {
 import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/entity/type';
 import {
+  Severities,
   TestCase,
   TestCaseResolutionStatus,
   TestCaseResult,
@@ -88,36 +89,19 @@ const TestCaseIncidentManagerTable = ({
     [testCaseListData.data]
   );
 
-  const handleSeveritySubmit = async (
-    updatedSeverity: { severity: string },
-    record: TestCase
-  ) => {
-    try {
-      // onSave(values.severity);
-      //   handleTestCaseUpdate({
-      //     ...record,
-      //     testCaseResult: updatedResult,
-      //   });
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
-  const handleStatusSubmit = async (
-    updatedData: TestCaseResolutionStatus,
-    record: TestCase
-  ) => {
+  const handlePatchTestCaseResult = async (
+    record: TestCase,
+    updatedResult: TestCaseResult
+  ): Promise<void> => {
     if (record.testCaseResult) {
       const timestamp = record.testCaseResult?.timestamp ?? 0;
-      const updatedResult: TestCaseResult = {
-        ...record.testCaseResult,
-        testCaseResolutionStatusReference: updatedData,
-      };
-
-      const testCaseFqn = record.fullyQualifiedName ?? '';
       const patch = compare(record.testCaseResult, updatedResult);
       try {
-        await patchTestCaseResult({ testCaseFqn, patch, timestamp });
+        await patchTestCaseResult({
+          testCaseFqn: record.fullyQualifiedName ?? '',
+          patch,
+          timestamp,
+        });
 
         handleTestCaseUpdate({
           ...record,
@@ -130,6 +114,36 @@ const TestCaseIncidentManagerTable = ({
 
     return;
   };
+
+  const handleSeveritySubmit = async (
+    severity: Severities,
+    record: TestCase
+  ) => {
+    if (
+      record.testCaseResult &&
+      record.testCaseResult.testCaseResolutionStatusReference
+        ?.testCaseResolutionStatusType
+    ) {
+      handlePatchTestCaseResult(record, {
+        ...record.testCaseResult,
+        testCaseResolutionStatusReference: {
+          ...record.testCaseResult?.testCaseResolutionStatusReference,
+          severity,
+        },
+      });
+    }
+
+    return;
+  };
+
+  const handleStatusSubmit = async (
+    updatedData: TestCaseResolutionStatus,
+    record: TestCase
+  ) =>
+    handlePatchTestCaseResult(record, {
+      ...record.testCaseResult,
+      testCaseResolutionStatusReference: updatedData,
+    });
 
   const columns: ColumnsType<TestCase> = useMemo(
     () => [
@@ -193,7 +207,7 @@ const TestCaseIncidentManagerTable = ({
         key: 'testSuite',
         width: 300,
         render: (testSuite: EntityReference) =>
-          getEntityName(testSuite) || NO_DATA_PLACEHOLDER,
+          getEntityName(testSuite) ?? NO_DATA_PLACEHOLDER,
       },
       {
         title: t('label.column'),
@@ -210,7 +224,7 @@ const TestCaseIncidentManagerTable = ({
             return name;
           }
 
-          return '--';
+          return NO_DATA_PLACEHOLDER;
         },
       },
       {
@@ -235,15 +249,19 @@ const TestCaseIncidentManagerTable = ({
       },
       {
         title: t('label.severity'),
-        dataIndex: 'severity',
-        key: 'severity',
+        dataIndex: 'testCaseResult',
+        key: 'testCaseResult',
         width: 150,
-        render: (severity: string, record) => (
-          <Severity
-            severity={severity}
-            onSubmit={(severity) => handleSeveritySubmit(severity, record)}
-          />
-        ),
+        render: (value: TestCaseResult, record) => {
+          const { testCaseResolutionStatusReference } = value;
+
+          return (
+            <Severity
+              severity={testCaseResolutionStatusReference?.severity}
+              onSubmit={(severity) => handleSeveritySubmit(severity, record)}
+            />
+          );
+        },
       },
       {
         title: t('label.assignee'),

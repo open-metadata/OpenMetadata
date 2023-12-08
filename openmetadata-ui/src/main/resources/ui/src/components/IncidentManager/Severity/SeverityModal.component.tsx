@@ -29,7 +29,7 @@ const SeverityModal = ({
 
   const handleFormSubmit: FormProps['onFinish'] = (data) => {
     setIsLoading(true);
-    onSubmit(data).finally(() => {
+    onSubmit(data.severity).finally(() => {
       setIsLoading(false);
     });
   };

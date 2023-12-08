@@ -511,7 +511,7 @@
     "in-open-metadata": "In OpenMetadata",
     "in-review": "In Review",
     "inactive-announcement-plural": "お知らせを非表示にする",
-    "incident-manage": "Incident Manager",
+    "incident-manager": "Incident Manager",
     "include": "Include",
     "include-entity": "{{entity}}を含める",
     "include-owner": "所有者を含める",

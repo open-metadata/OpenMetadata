@@ -21,7 +21,7 @@ export const severityOptions = () => {
     const count = i + 1;
     options.push({
       label: `Severity ${count}`,
-      value: `severity_${count}`,
+      value: `Severity${count}`,
     });
   }
 
