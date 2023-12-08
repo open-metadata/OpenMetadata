@@ -21,6 +21,8 @@ import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 import static org.openmetadata.service.util.EntityUtil.getSearchIndexField;
 
 import java.util.ArrayList;
@@ -115,6 +117,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
   public void setFields(SearchIndex searchIndex, Fields fields) {
     searchIndex.setService(getContainer(searchIndex.getId()));
     searchIndex.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(searchIndex) : null);
+    searchIndex.setSourceHash(fields.contains("sourceHash") ? searchIndex.getSourceHash() : null);
     if (searchIndex.getFields() != null) {
       getFieldTags(fields.contains(FIELD_TAGS), searchIndex.getFields());
     }
@@ -247,7 +250,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
 
   @Override
   public EntityInterface getParentEntity(SearchIndex entity, String fields) {
-    return Entity.getEntity(entity.getService(), fields, Include.NON_DELETED);
+    return Entity.getEntity(entity.getService(), fields, Include.ALL);
   }
 
   @Override
@@ -376,6 +379,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
             EntityUtil.searchIndexFieldMatch);
       }
       recordChange("searchIndexSettings", original.getSearchIndexSettings(), updated.getSearchIndexSettings());
+      recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
     }
 
     private void updateSearchIndexFields(

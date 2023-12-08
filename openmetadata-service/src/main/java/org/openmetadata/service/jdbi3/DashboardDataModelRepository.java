@@ -157,6 +157,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
         dashboardDataModel.getColumns(),
         dashboardDataModel.getFullyQualifiedName(),
         fields.contains(FIELD_TAGS));
+    dashboardDataModel.setSourceHash(fields.contains("sourceHash") ? dashboardDataModel.getSourceHash() : null);
     if (dashboardDataModel.getService() == null) {
       dashboardDataModel.withService(getContainer(dashboardDataModel.getId()));
     }
@@ -208,6 +209,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     public void entitySpecificUpdate() {
       DatabaseUtil.validateColumns(original.getColumns());
       updateColumns("columns", original.getColumns(), updated.getColumns(), EntityUtil.columnMatch);
+      recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
     }
   }
 }

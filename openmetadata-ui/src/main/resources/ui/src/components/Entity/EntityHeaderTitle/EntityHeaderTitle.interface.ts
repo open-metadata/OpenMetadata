@@ -22,4 +22,5 @@ export interface EntityHeaderTitleProps {
   serviceName: string;
   badge?: React.ReactNode;
   isDisabled?: boolean;
+  showName?: boolean;
 }

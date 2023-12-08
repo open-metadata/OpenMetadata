@@ -21,6 +21,8 @@ import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -112,6 +114,7 @@ public class TopicRepository extends EntityRepository<Topic> {
   @Override
   public void setFields(Topic topic, Fields fields) {
     topic.setService(getContainer(topic.getId()));
+    topic.setSourceHash(fields.contains("sourceHash") ? topic.getSourceHash() : null);
     if (topic.getMessageSchema() != null) {
       populateEntityFieldTags(
           entityType,
@@ -235,7 +238,7 @@ public class TopicRepository extends EntityRepository<Topic> {
 
   @Override
   public EntityInterface getParentEntity(Topic entity, String fields) {
-    return Entity.getEntity(entity.getService(), fields, Include.NON_DELETED);
+    return Entity.getEntity(entity.getService(), fields, Include.ALL);
   }
 
   @Override
@@ -400,6 +403,7 @@ public class TopicRepository extends EntityRepository<Topic> {
       recordChange("topicConfig", original.getTopicConfig(), updated.getTopicConfig());
       updateCleanupPolicies(original, updated);
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
+      recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
     }
 
     private void updateCleanupPolicies(Topic original, Topic updated) {
