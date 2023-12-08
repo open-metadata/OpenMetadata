@@ -412,9 +412,15 @@ public class ElasticSearchClient implements SearchClient {
     Map<String, Object> responseMap = new HashMap<>();
     List<Map<String, Object>> edges = new ArrayList<>();
     List<Map<String, Object>> nodes = new ArrayList<>();
+    es.org.elasticsearch.action.search.SearchRequest searchRequest =
+        new es.org.elasticsearch.action.search.SearchRequest(GLOBAL_SEARCH_ALIAS);
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     searchSourceBuilder.query(QueryBuilders.boolQuery().must(QueryBuilders.termQuery("fullyQualifiedName", fqn)));
-    responseMap.put("entity",Response.status(OK).entity(client.search(new es.org.elasticsearch.action.search.SearchRequest(GLOBAL_SEARCH_ALIAS).source(searchSourceBuilder), RequestOptions.DEFAULT).toString()).build());
+    searchRequest.source(searchSourceBuilder);
+    SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+    for (var hit : searchResponse.getHits().getHits()) {
+      responseMap.put("entity", hit.getSourceAsMap());
+    }
     getLineage(fqn, depth, edges, nodes, queryFilter, "lineage.fromEntity.fqn");
     getLineage(fqn, depth, edges, nodes, queryFilter, "lineage.toEntity.fqn");
     responseMap.put("edges", edges);
