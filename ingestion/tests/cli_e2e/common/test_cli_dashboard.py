@@ -79,7 +79,7 @@ class CliCommonDashboard:
             self.assertTrue(len(source_status.filtered) == 0)
             self.assertEqual(
                 len(source_status.records),
-                self.expected_dashboards_and_charts()
+                self.expected_dashboards_and_charts_after_patch()
                 + self.expected_tags()
                 + self.expected_lineage()
                 + self.expected_datamodels()
@@ -89,7 +89,7 @@ class CliCommonDashboard:
             self.assertTrue(len(sink_status.warnings) == 0)
             self.assertEqual(
                 len(sink_status.records),
-                self.expected_dashboards_and_charts()
+                self.expected_dashboards_and_charts_after_patch()
                 + self.expected_tags()
                 + self.expected_lineage()
                 + self.expected_datamodels()
@@ -139,4 +139,11 @@ class CliCommonDashboard:
         @staticmethod
         @abstractmethod
         def expected_filtered_sink_mix() -> int:
+            raise NotImplementedError()
+
+        # We need to update the counts in the subsequent run of ingestion for same service
+        # Since we only patch the entities if we find any change at the source
+        @staticmethod
+        @abstractmethod
+        def expected_dashboards_and_charts_after_patch() -> int:
             raise NotImplementedError()
