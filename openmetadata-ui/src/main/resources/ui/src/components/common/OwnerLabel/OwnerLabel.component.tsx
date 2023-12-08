@@ -66,7 +66,6 @@ export const OwnerLabel = ({
       <div style={{ flexBasis: '18px' }}>
         <ProfilePicture
           displayName={displayName}
-          id={owner.id}
           key="profile-picture"
           name={owner.name ?? ''}
           type="circle"
@@ -74,7 +73,7 @@ export const OwnerLabel = ({
         />
       </div>
     );
-  }, [owner]);
+  }, [owner, displayName]);
 
   return (
     <div className="d-flex gap-2 items-center" data-testid="owner-label">
