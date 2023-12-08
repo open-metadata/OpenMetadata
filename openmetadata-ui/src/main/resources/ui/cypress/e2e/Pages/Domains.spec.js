@@ -92,7 +92,9 @@ describe('Domain page should work properly', () => {
   it('Switch domain from navbar and check domain query call warp in quotes', () => {
     cy.get('[data-testid="domain-dropdown"]').should('be.visible').click();
 
-    cy.get('[data-menu-id*="Cypress Space"] > .ant-dropdown-menu-title-content')
+    cy.get(
+      `[data-menu-id*="${DOMAIN_3.name}"] > .ant-dropdown-menu-title-content`
+    )
       .should('be.visible')
       .click();
 
