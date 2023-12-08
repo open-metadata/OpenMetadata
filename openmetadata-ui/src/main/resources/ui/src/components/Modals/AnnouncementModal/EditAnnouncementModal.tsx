@@ -12,7 +12,6 @@
  */
 
 import { DatePicker, Form, Input, Modal, Space } from 'antd';
-import { observer } from 'mobx-react';
 import moment from 'moment';
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -148,4 +147,4 @@ const EditAnnouncementModal: FC<Props> = ({
   );
 };
 
-export default observer(EditAnnouncementModal);
+export default EditAnnouncementModal;

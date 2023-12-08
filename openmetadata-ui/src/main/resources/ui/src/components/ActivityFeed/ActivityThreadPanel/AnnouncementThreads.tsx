@@ -88,8 +88,6 @@ const AnnouncementThreads: FC<ActivityThreadListProp> = ({
       );
       const lastPost = thread?.posts?.[postLength - 1];
 
-      //   ashish
-
       return (
         <Fragment key={index}>
           <Card

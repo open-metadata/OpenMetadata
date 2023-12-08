@@ -75,7 +75,7 @@ const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
         key: 'userName',
         render: (userName: string) => (
           <Space>
-            <ProfilePicture id="" name={userName} type="circle" width="24" />
+            <ProfilePicture name={userName} width="24" />
             <Link to={getUserPath(userName)}>{userName}</Link>
           </Space>
         ),

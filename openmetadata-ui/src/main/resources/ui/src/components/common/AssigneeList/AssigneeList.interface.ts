@@ -11,23 +11,14 @@
  *  limitations under the License.
  */
 import { HTMLAttributes } from 'react';
+import { EntityReference } from '../../../generated/entity/type';
 
-export interface MentionSuggestionsItem {
-  id: string | undefined;
-  value: string;
-  link: string;
-  name: string;
-  type?: string;
-  avatarEle?: HTMLDivElement;
-  breadcrumbs: Array<{ name: string }>;
+export interface AssigneeListProps extends HTMLAttributes<HTMLDivElement> {
+  assignees: EntityReference[];
+  showUserName?: boolean;
 }
 
-export interface FeedEditorProp extends HTMLAttributes<HTMLDivElement> {
-  defaultValue?: string;
-  editorClass?: string;
-  className?: string;
-  placeHolder?: string;
-  onChangeHandler?: (value: string) => void;
-  onSave?: () => void;
-  focused?: boolean;
+export enum UserTeam {
+  User = 'user',
+  Team = 'team',
 }

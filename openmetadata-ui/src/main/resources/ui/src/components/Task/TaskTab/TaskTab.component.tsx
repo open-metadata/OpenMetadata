@@ -110,6 +110,7 @@ export const TaskTab = ({
         label: getEntityName(assignee),
         value: assignee.id || '',
         type: assignee.type,
+        name: assignee.name,
       })) ?? [],
     [taskDetails]
   );
@@ -523,9 +524,6 @@ export const TaskTab = ({
                 </Typography.Text>
                 <AssigneeList
                   assignees={taskDetails?.assignees ?? []}
-                  className="d-flex gap-1"
-                  profilePicType="circle"
-                  profileWidth="24"
                   showUserName={false}
                 />
                 {(isCreator || hasEditAccess) && !isTaskClosed && !owner ? (

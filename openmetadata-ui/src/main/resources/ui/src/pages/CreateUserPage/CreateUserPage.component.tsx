@@ -13,7 +13,6 @@
 
 import { AxiosError } from 'axios';
 import _ from 'lodash';
-import { observer } from 'mobx-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -208,4 +207,4 @@ const CreateUserPage = () => {
   );
 };
 
-export default observer(CreateUserPage);
+export default CreateUserPage;

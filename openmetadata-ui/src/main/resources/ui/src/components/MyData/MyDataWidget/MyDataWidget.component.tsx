@@ -13,7 +13,6 @@
 import { CloseOutlined, DragOutlined } from '@ant-design/icons';
 import { Button, Card, Col, Row, Space, Typography } from 'antd';
 import { isEmpty, isUndefined } from 'lodash';
-import { observer } from 'mobx-react';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -186,4 +185,4 @@ const MyDataWidgetInternal = ({
   );
 };
 
-export const MyDataWidget = observer(MyDataWidgetInternal);
+export const MyDataWidget = MyDataWidgetInternal;

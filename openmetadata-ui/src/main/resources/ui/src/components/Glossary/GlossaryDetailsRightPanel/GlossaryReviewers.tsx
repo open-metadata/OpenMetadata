@@ -70,10 +70,8 @@ function GlossaryReviewers({
         <Space className="m-r-xss" key={reviewer.id} size={4}>
           <ProfilePicture
             displayName={getEntityName(reviewer)}
-            id={reviewer.id}
             name={reviewer.name ?? ''}
             textClass="text-xs"
-            type="circle"
             width="20"
           />
           <Link to={getUserPath(reviewer.name ?? '')}>

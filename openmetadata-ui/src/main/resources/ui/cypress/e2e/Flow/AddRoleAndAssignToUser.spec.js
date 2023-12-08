@@ -100,7 +100,7 @@ describe('Test Add role and assign it to the user', () => {
       '/api/v1/search/query?q=**&from=0&size=*&index=*',
       'searchUser'
     );
-    interceptURL('GET', '/api/v1/users/*', 'userDetailsPage');
+    interceptURL('GET', '/api/v1/users/name/*', 'userDetailsPage');
     cy.get('[data-testid="searchbar"]').type(userName);
     verifyResponseStatusCode('@searchUser', 200);
 
@@ -109,7 +109,7 @@ describe('Test Add role and assign it to the user', () => {
 
     // click the collapse button to open the other details
     cy.get(
-      '[data-testid="user-profile"] .ant-collapse-expand-icon > .anticon > svg'
+      '[data-testid="user-profile"] .ant-collapse-expand-icon > .anticon'
     ).click();
 
     cy.get(

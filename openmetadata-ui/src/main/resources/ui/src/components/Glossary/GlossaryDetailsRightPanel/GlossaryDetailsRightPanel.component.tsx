@@ -117,10 +117,8 @@ const GlossaryDetailsRightPanel = ({
           <>
             <ProfilePicture
               displayName={getEntityName(owner)}
-              id={owner?.id || ''}
               name={owner?.name ?? ''}
               textClass="text-xs"
-              type="circle"
               width="20"
             />
             <Link

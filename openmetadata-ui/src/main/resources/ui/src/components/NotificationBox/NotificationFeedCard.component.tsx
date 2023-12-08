@@ -45,7 +45,7 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
           : getTaskDetailPath(task)
       }>
       <List.Item.Meta
-        avatar={<ProfilePicture id="" name={createdBy} width="32" />}
+        avatar={<ProfilePicture name={createdBy} width="32" />}
         className="m-0"
         description={
           <Space direction="vertical" size={0}>

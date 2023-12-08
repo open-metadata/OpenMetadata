@@ -45,7 +45,6 @@ const FeedCardFooter: FC<FeedFooterProp> = ({
             <ProfilePicture
               className="m-r-xss"
               data-testid="replied-user"
-              id=""
               key={i}
               name={u}
               width="18"

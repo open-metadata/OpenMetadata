@@ -87,6 +87,10 @@ const MOCK_DATA_PRODUCT: DataProduct = {
   },
 };
 
+jest.mock('../../../components/common/ProfilePicture/ProfilePicture', () => {
+  return jest.fn().mockImplementation(() => <>testProfilePicture</>);
+});
+
 describe('DomainExperts', () => {
   it('renders experts in normal view', async () => {
     const entity = MOCK_DATA_PRODUCT;

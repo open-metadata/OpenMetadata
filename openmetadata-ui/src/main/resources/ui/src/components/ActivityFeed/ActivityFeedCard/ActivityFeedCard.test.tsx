@@ -46,6 +46,10 @@ jest.mock('./FeedCardHeader/FeedCardHeader', () => {
   return jest.fn().mockReturnValue(<p>FeedCardHeader</p>);
 });
 
+jest.mock('../../common/PopOverCard/UserPopOverCard', () => {
+  return jest.fn().mockImplementation(() => <>testUserPopOverCard</>);
+});
+
 const mockFeedCardProps = {
   feed: {} as Post,
   replies: 0,

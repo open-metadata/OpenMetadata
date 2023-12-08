@@ -15,7 +15,7 @@ import { Button, Col, Modal, Row, Space, Switch, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
@@ -96,6 +96,7 @@ const UserListPageV1 = () => {
       const { data, paging: userPaging } = await getUsers({
         isBot: false,
         fields: 'profile,teams,roles',
+        limit: pageSize,
         ...params,
       });
 
@@ -116,7 +117,6 @@ const UserListPageV1 = () => {
     fetchUsersList({
       isAdmin: isAdminPage,
       include: showDeletedUser ? Include.Deleted : Include.NonDeleted,
-      limit: pageSize,
     });
   };
 
@@ -172,23 +172,30 @@ const UserListPageV1 = () => {
     );
   };
 
-  const handleUserPageChange = ({
-    cursorType,
-    currentPage,
-  }: PagingHandlerParams) => {
-    if (searchValue) {
-      handlePageChange(currentPage);
-      getSearchedUsers(searchValue, currentPage);
-    } else if (cursorType && paging[cursorType]) {
-      handlePageChange(currentPage);
-      fetchUsersList({
-        isAdmin: isAdminPage,
-        [cursorType]: paging[cursorType],
-        include: showDeletedUser ? Include.Deleted : Include.NonDeleted,
-        limit: pageSize,
-      });
-    }
-  };
+  const handleUserPageChange = useCallback(
+    ({ cursorType, currentPage }: PagingHandlerParams) => {
+      if (searchValue) {
+        handlePageChange(currentPage);
+        getSearchedUsers(searchValue, currentPage);
+      } else if (cursorType && paging[cursorType]) {
+        handlePageChange(currentPage);
+        fetchUsersList({
+          isAdmin: isAdminPage,
+          [cursorType]: paging[cursorType],
+          include: showDeletedUser ? Include.Deleted : Include.NonDeleted,
+        });
+      }
+    },
+    [
+      isAdminPage,
+      paging,
+      pageSize,
+      showDeletedUser,
+      handlePageChange,
+      fetchUsersList,
+      getSearchedUsers,
+    ]
+  );
 
   const handleShowDeletedUserChange = (value: boolean) => {
     handlePageChange(INITIAL_PAGING_VALUE);
@@ -220,6 +227,9 @@ const UserListPageV1 = () => {
 
   useEffect(() => {
     initialSetup();
+  }, [tab]);
+
+  useEffect(() => {
     if (teamsAndUsers.includes(tab)) {
       // Checking if the path has search query present in it
       // if present fetch userlist with the query
@@ -234,14 +244,13 @@ const UserListPageV1 = () => {
         setIsDataLoading(false);
       } else {
         fetchUsersList({
-          isAdmin: tab === GlobalSettingOptions.ADMINS,
-          limit: pageSize,
+          isAdmin: isAdminPage,
         });
       }
     } else {
       setIsDataLoading(false);
     }
-  }, [tab, pageSize]);
+  }, [pageSize, isAdminPage]);
 
   const handleAddNewUser = () => {
     history.push(ROUTES.CREATE_USER);

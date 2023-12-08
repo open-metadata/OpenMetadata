@@ -65,6 +65,10 @@ jest.mock(
   })
 );
 
+jest.mock('../../../../utils/Users.util', () => ({
+  commonUserDetailColumns: jest.fn().mockImplementation(() => []),
+}));
+
 jest.mock('../../../../rest/userAPI', () => ({
   getUsers: jest.fn().mockResolvedValue({
     data: [{ id: 'test', name: 'testing' }],

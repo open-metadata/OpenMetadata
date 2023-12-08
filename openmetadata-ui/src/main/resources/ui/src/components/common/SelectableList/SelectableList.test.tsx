@@ -23,6 +23,10 @@ const mockCustomTagRenderer = jest
   .fn()
   .mockImplementation(() => <p>CustomRenderer</p>);
 
+jest.mock('../UserTag/UserTag.component', () => ({
+  UserTag: jest.fn().mockImplementation(({ name }) => <>{name}</>),
+}));
+
 describe('SelectableList Component Test', () => {
   it('should call fetchOptions on render', () => {
     render(
@@ -186,11 +190,13 @@ describe('SelectableList Component Test', () => {
           displayName: 'test',
           id: '1',
           fullyQualifiedName: 'test',
+          name: 'test',
         },
         {
           displayName: 'test2',
           id: '2',
           fullyQualifiedName: 'test2',
+          name: 'test2',
         },
       ],
       paging: { total: 5 },

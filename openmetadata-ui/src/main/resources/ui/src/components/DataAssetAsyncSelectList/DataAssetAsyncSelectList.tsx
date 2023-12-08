@@ -122,7 +122,6 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
           <Space>
             <ProfilePicture
               className="d-flex"
-              id=""
               name={option.name ?? ''}
               type="circle"
               width="24"

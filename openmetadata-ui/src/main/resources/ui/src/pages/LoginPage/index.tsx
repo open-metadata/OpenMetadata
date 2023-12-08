@@ -14,7 +14,6 @@
 import { Button, Col, Divider, Form, Input, Row, Typography } from 'antd';
 import classNames from 'classnames';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
-import { observer } from 'mobx-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -326,4 +325,4 @@ const SigninPage = () => {
   );
 };
 
-export default observer(SigninPage);
+export default SigninPage;

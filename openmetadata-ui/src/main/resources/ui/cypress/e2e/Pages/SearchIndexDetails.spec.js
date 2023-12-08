@@ -249,7 +249,7 @@ describe('Prerequisite for data steward role tests', () => {
 
     verifyResponseStatusCode('@getUserDetails', 200);
 
-    cy.get('[role="tablist"] .ant-collapse-arrow').click();
+    cy.get('[data-testid="user-profile"] .ant-collapse-arrow').click();
 
     cy.get('[data-testid="edit-roles-button"]').click();
 
