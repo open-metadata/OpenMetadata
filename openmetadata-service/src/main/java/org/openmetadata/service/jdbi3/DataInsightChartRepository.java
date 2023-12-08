@@ -1,5 +1,6 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.service.Entity.DATA_INSIGHT_CHART;
 
 import java.util.Arrays;
@@ -62,7 +63,7 @@ public class DataInsightChartRepository extends EntityRepository<DataInsightChar
           "MostViewedEntities");
 
   public static final List<String> SUPPORTS_NULL_DATE_RANGE =
-      Arrays.asList(DataInsightChartResult.DataInsightChartType.UNUSED_ASSETS.toString());
+      listOf(DataInsightChartResult.DataInsightChartType.UNUSED_ASSETS.toString());
 
   public DataInsightChartRepository() {
     super(
