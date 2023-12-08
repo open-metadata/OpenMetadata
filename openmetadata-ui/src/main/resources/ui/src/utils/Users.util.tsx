@@ -17,11 +17,24 @@ import { t } from 'i18next';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { getUserPath } from '../constants/constants';
-import { User } from '../generated/entity/teams/user';
+import UserPopOverCard from '../components/common/PopOverCard/UserPopOverCard';
+import { EntityReference, User } from '../generated/entity/teams/user';
 import { getEntityName } from './EntityUtils';
 import { LIST_CAP } from './PermissionsUtils';
 import { getRoleWithFqnPath, getTeamsWithFqnPath } from './RouterUtils';
+
+export const userCellRenderer = (user: EntityReference | User) => {
+  return user.name ? (
+    <UserPopOverCard
+      showUserName
+      data-testid={user.name}
+      profileWidth={16}
+      userName={user.name}
+    />
+  ) : (
+    getEntityName(user)
+  );
+};
 
 export const commonUserDetailColumns = (
   isLoading?: boolean
@@ -30,14 +43,7 @@ export const commonUserDetailColumns = (
     title: t('label.username'),
     dataIndex: 'username',
     key: 'username',
-    render: (_, record) => (
-      <Link
-        className="cursor-pointer"
-        data-testid={record.name}
-        to={getUserPath(record.fullyQualifiedName || record.name)}>
-        {getEntityName(record)}
-      </Link>
-    ),
+    render: (_, record) => userCellRenderer(record),
   },
   {
     title: t('label.team-plural'),
