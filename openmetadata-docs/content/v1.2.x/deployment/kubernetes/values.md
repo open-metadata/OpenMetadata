@@ -13,6 +13,7 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 
 | Key | Type | Default | Environment Variable from openmetadata.yaml | 
 |-----|------|---------| ---------------------- |
+| openmetadata.config.authentication.enabled | bool | `true` | |
 | openmetadata.config.authentication.provider | string | `basic` | AUTHENTICATION_PROVIDER |
 | openmetadata.config.authentication.publicKeys | list | `[http://openmetadata:8585/api/v1/system/config/jwks]` | AUTHENTICATION_PUBLIC_KEYS |
 | openmetadata.config.authentication.authority | string | `https://accounts.google.com` | AUTHENTICATION_AUTHORITY |
@@ -66,6 +67,7 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | openmetadata.config.authentication.saml.security.keyStoreAlias.secretKey | string  | `Empty` | SAML_KEYSTORE_ALIAS |
 | openmetadata.config.authentication.saml.security.keyStorePassword.secretRef | string  | `Empty` | SAML_KEYSTORE_PASSWORD |
 | openmetadata.config.authentication.saml.security.keyStorePassword.secretKey | string  | `Empty` | SAML_KEYSTORE_PASSWORD |
+| openmetadata.config.authorizer.enabled | bool | `true` | |
 | openmetadata.config.authorizer.allowedEmailRegistrationDomains | list | `[all]` | AUTHORIZER_ALLOWED_REGISTRATION_DOMAIN |
 | openmetadata.config.authorizer.className | string | `org.openmetadata.service.security.DefaultAuthorizer` | AUTHORIZER_CLASS_NAME |
 | openmetadata.config.authorizer.containerRequestFilter | string | `org.openmetadata.service.security.JwtFilter` | AUTHORIZER_REQUEST_FILTER |
@@ -82,6 +84,7 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | openmetadata.config.airflow.sslCertificatePath | string | `/no/path` | PIPELINE_SERVICE_CLIENT_SSL_CERT_PATH |
 | openmetadata.config.airflow.verifySsl | string | `no-ssl` | PIPELINE_SERVICE_CLIENT_VERIFY_SSL |
 | openmetadata.config.clusterName | string | `openmetadata` | OPENMETADATA_CLUSTER_NAME |
+| openmetadata.config.database.enabled | bool | `true` | |
 | openmetadata.config.database.auth.password.secretRef | string | `mysql-secrets` | DB_USER_PASSWORD |
 | openmetadata.config.database.auth.password.secretKey | string | `openmetadata-mysql-password` | DB_USER_PASSWORD |
 | openmetadata.config.database.auth.username | string | `openmetadata_user` | DB_USER|
@@ -91,6 +94,7 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | openmetadata.config.database.driverClass| string | `com.mysql.cj.jdbc.Driver` | DB_DRIVER_CLASS |
 | openmetadata.config.database.host | string | `mysql` | DB_HOST |
 | openmetadata.config.database.port | int | 3306 | DB_PORT |
+| openmetadata.config.elasticsearch.enabled | bool | `true` | |
 | openmetadata.config.elasticsearch.auth.enabled | bool | `false` | |
 | openmetadata.config.elasticsearch.auth.username | string | `elasticsearch` | ELASTICSEARCH_USER |
 | openmetadata.config.elasticsearch.auth.password.secretRef | string | `elasticsearch-secrets` | ELASTICSEARCH_PASSWORD |
@@ -105,6 +109,7 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | openmetadata.config.elasticsearch.trustStore.path | string | `Empty String` | ELASTICSEARCH_TRUST_STORE_PATH |
 | openmetadata.config.elasticsearch.trustStore.password.secretRef | string | `elasticsearch-truststore-secrets` | ELASTICSEARCH_TRUST_STORE_PASSWORD |
 | openmetadata.config.elasticsearch.trustStore.password.secretKey | string | `openmetadata-elasticsearch-truststore-password` | ELASTICSEARCH_TRUST_STORE_PASSWORD |
+| openmetadata.config.eventMonitor.enabled | bool | `true` | |
 | openmetadata.config.eventMonitor.type | string | `prometheus` | EVENT_MONITOR |
 | openmetadata.config.eventMonitor.batchSize | int | `10` | EVENT_MONITOR_BATCH_SIZE |
 | openmetadata.config.eventMonitor.pathPattern | list | `[/api/v1/tables/*,/api/v1/health-check]` | EVENT_MONITOR_PATH_PATTERN |
@@ -118,7 +123,6 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | openmetadata.config.jwtTokenConfiguration.jwtissuer | string | `open-metadata.org` | JWT_ISSUER |
 | openmetadata.config.jwtTokenConfiguration.keyId | string | `Gb389a-9f76-gdjs-a92j-0242bk94356` | JWT_KEY_ID |
 | openmetadata.config.logLevel | string | `INFO` | LOG_LEVEL |
-| openmetadata.config.maskPasswordsApi | bool | `false` | MASK_PASSWORDS_API |
 | openmetadata.config.openmetadata.adminPort | int | 8586 | SERVER_ADMIN_PORT |
 | openmetadata.config.openmetadata.host | string | `openmetadata` | OPENMETADATA_SERVER_URL |
 | openmetadata.config.openmetadata.port | int | 8585 | SERVER_PORT |
@@ -134,6 +138,7 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | openmetadata.config.pipelineServiceClientConfig.sslCertificatePath | string | `/no/path` | PIPELINE_SERVICE_CLIENT_SSL_CERT_PATH |
 | openmetadata.config.pipelineServiceClientConfig.verifySsl | string | `no-ssl` | PIPELINE_SERVICE_CLIENT_VERIFY_SSL | 
 | openmetadata.config.pipelineServiceClientConfig.hostIp | string | `Empty` | PIPELINE_SERVICE_CLIENT_HOST_IP |
+| openmetadata.config.secretsManager.enabled | bool | `true` | |
 | openmetadata.config.secretsManager.provider | string | `noop` | SECRET_MANAGER |
 | openmetadata.config.secretsManager.additionalParameters.enabled | bool | `false` | |
 | openmetadata.config.secretsManager.additionalParameters.accessKeyId.secretRef | string | `aws-access-key-secret` | OM_SM_ACCESS_KEY_ID |
@@ -153,6 +158,7 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | openmetadata.config.smtpConfig.username | string | `Empty String` | SMTP_SERVER_USERNAME |
 | openmetadata.config.upgradeMigrationConfigs.force | bool | `false` |  |
 | openmetadata.config.upgradeMigrationConfigs.migrationLimitParam | int | `1200` | MIGRATION_LIMIT_PARAM |
+| openmetadata.config.web.enabled | bool | `true` | |
 | openmetadata.config.web.contentTypeOptions.enabled | bool | `false` | WEB_CONF_CONTENT_TYPE_OPTIONS_ENABLED |
 | openmetadata.config.web.csp.enabled | bool | `false` | WEB_CONF_XSS_CSP_ENABLED |
 | openmetadata.config.web.csp.policy | string | `default-src 'self` | WEB_CONF_XSS_CSP_POLICY |
@@ -234,5 +240,8 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | startupProbe.successThreshold | int | `1` |
 | tolerations | list | `[]` |
 | networkPolicy.enabled | bool |`false` |
+| podDisruptionBudget.enabled | bool | `false` |
+| podDisruptionBudget.config.maxUnavailable | String | `1` |
+| podDisruptionBudget.config.minAvailable | String | `1` |
 
 {%/table%}
