@@ -18,6 +18,7 @@ from unittest.mock import patch
 
 from sqlalchemy.types import INTEGER, VARCHAR
 
+import metadata.ingestion.source.database.mssql.utils as mssql_dialet
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
@@ -39,7 +40,6 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
-import metadata.ingestion.source.database.mssql.utils as mssql_dialet
 from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.database.mssql.metadata import MssqlSource
@@ -329,14 +329,20 @@ class MssqlUnitTest(TestCase):
         self.mssql.context.__dict__["database"] = MOCK_DATABASE.name.__root__
 
     @mssql_dialet.db_plus_owner
-    def mock_function(self, connection, tablename, dbname, owner, schema, **kw):
+    def mock_function(
+        self, connection, tablename, dbname, owner, schema, **kw
+    ):  # pylint: disable=unused-argument
         # Mock function for testing
         return schema
 
     def test_schema_with_dot(self):
         # Test when the schema contains a dot
-        result = self.mock_function("mock_dialect", "mock_connection", "your.schema")
-        self.assertEqual(result, '[your.schema]')
+        result = self.mock_function(  # pylint: disable=no-value-for-parameter
+            "mock_dialect",
+            "mock_connection",
+            "your.schema",
+        )
+        self.assertEqual(result, "[your.schema]")
 
     def test_yield_schema(self):
         assert EXPECTED_DATABASE_SCHEMA == [
