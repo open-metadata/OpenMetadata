@@ -41,7 +41,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.analytics.ReportData;
@@ -73,6 +72,7 @@ public class SearchRepository {
 
   private final List<String> inheritableFields =
       List.of(Entity.FIELD_OWNER, Entity.FIELD_DOMAIN, Entity.FIELD_DISABLED);
+  private final List<String> propagateFields = List.of(Entity.FIELD_TAGS);
 
   @Getter private final ElasticSearchConfiguration elasticSearchConfiguration;
 
@@ -301,18 +301,21 @@ public class SearchRepository {
   public void propagateGlossaryTags(String entityType, String glossaryFQN, ChangeDescription changeDescription) {
     Map<String, Object> fieldData = new HashMap<>();
     if (changeDescription != null && entityType.equalsIgnoreCase(Entity.GLOSSARY_TERM)) {
-
-      if (!CommonUtil.nullOrEmpty(changeDescription.getFieldsAdded())) {
-        List<TagLabel> tagLabels =
-            JsonUtils.readObjects((String) changeDescription.getFieldsAdded().get(0).getNewValue(), TagLabel.class);
-        tagLabels.forEach(tagLabel -> tagLabel.setLabelType(TagLabel.LabelType.DERIVED));
-        fieldData.put("tagAdded", tagLabels);
+      for (FieldChange field : changeDescription.getFieldsAdded()) {
+        if (propagateFields.contains(field.getName())) {
+          List<TagLabel> tagLabels =
+              JsonUtils.readObjects((String) changeDescription.getFieldsAdded().get(0).getNewValue(), TagLabel.class);
+          tagLabels.forEach(tagLabel -> tagLabel.setLabelType(TagLabel.LabelType.DERIVED));
+          fieldData.put("tagAdded", tagLabels);
+        }
       }
-      if (!CommonUtil.nullOrEmpty(changeDescription.getFieldsDeleted())) {
-        List<TagLabel> tagLabels =
-            JsonUtils.readObjects((String) changeDescription.getFieldsDeleted().get(0).getOldValue(), TagLabel.class);
-        tagLabels.forEach(tagLabel -> tagLabel.setLabelType(TagLabel.LabelType.DERIVED));
-        fieldData.put("tagDeleted", tagLabels);
+      for (FieldChange field : changeDescription.getFieldsDeleted()) {
+        if (propagateFields.contains(field.getName())) {
+          List<TagLabel> tagLabels =
+              JsonUtils.readObjects((String) changeDescription.getFieldsDeleted().get(0).getOldValue(), TagLabel.class);
+          tagLabels.forEach(tagLabel -> tagLabel.setLabelType(TagLabel.LabelType.DERIVED));
+          fieldData.put("tagDeleted", tagLabels);
+        }
       }
       searchClient.updateChildren(
           GLOBAL_SEARCH_ALIAS,
