@@ -10,13 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { TestCase } from '../../../generated/tests/testCase';
+import { TestCaseListData } from '../../../pages/IncidentManager/IncidentManager.interface';
+import { NextPreviousProps } from '../../common/NextPrevious/NextPrevious.interface';
 
-import {
-  TestCaseFailureStatus,
-  TestCaseResult,
-} from '../../../generated/tests/testCase';
-
-export interface TestCaseStatusResolutionCenterProps {
-  testCaseResult: TestCaseResult;
-  onSubmit: (data: TestCaseFailureStatus) => Promise<void>;
+export interface TestCaseIncidentManagerTableProps {
+  testCaseListData: TestCaseListData;
+  pagingData?: NextPreviousProps;
+  showPagination?: boolean;
+  handleTestCaseUpdate: (data: TestCase) => void;
 }

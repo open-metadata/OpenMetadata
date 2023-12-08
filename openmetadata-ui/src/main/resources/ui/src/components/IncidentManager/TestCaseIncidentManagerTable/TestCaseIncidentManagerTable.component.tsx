@@ -27,7 +27,7 @@ import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/entity/type';
 import {
   TestCase,
-  TestCaseFailureStatus,
+  TestCaseResolutionStatus,
   TestCaseResult,
   TestCaseStatus,
 } from '../../../generated/tests/testCase';
@@ -36,7 +36,7 @@ import { getNameFromFQN } from '../../../utils/CommonUtils';
 import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
-import { getResolutionCenterDetailPagePath } from '../../../utils/RouterUtils';
+import { getIncidentManagerDetailPagePath } from '../../../utils/RouterUtils';
 import { getEncodedFqn, replacePlus } from '../../../utils/StringsUtils';
 import { getEntityFqnFromEntityLink } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -48,17 +48,17 @@ import Table from '../../common/Table/Table';
 import { usePermissionProvider } from '../../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../PermissionProvider/PermissionProvider.interface';
 import { TableProfilerTab } from '../../ProfilerDashboard/profilerDashboard.interface';
-import '../resolution-center.style.less';
+import '../incident-manager.style.less';
 import Severity from '../Severity/Severity.component';
-import TestCaseResolutionCenterStatus from '../TestCaseStatus/TestCaseResolutionCenterStatus.component';
-import { TestCaseResolutionCenterTableProps } from './TestCaseResolutionCenterTable.interface';
+import TestCaseIncidentManagerStatus from '../TestCaseStatus/TestCaseIncidentManagerStatus.component';
+import { TestCaseIncidentManagerTableProps } from './TestCaseIncidentManagerTable.interface';
 
-const TestCaseResolutionCenterTable = ({
+const TestCaseIncidentManagerTable = ({
   testCaseListData,
   pagingData,
   showPagination,
   handleTestCaseUpdate,
-}: TestCaseResolutionCenterTableProps) => {
+}: TestCaseIncidentManagerTableProps) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
 
@@ -104,15 +104,16 @@ const TestCaseResolutionCenterTable = ({
   };
 
   const handleStatusSubmit = async (
-    updatedData: TestCaseFailureStatus,
+    updatedData: TestCaseResolutionStatus,
     record: TestCase
   ) => {
     if (record.testCaseResult) {
       const timestamp = record.testCaseResult?.timestamp ?? 0;
       const updatedResult: TestCaseResult = {
         ...record.testCaseResult,
-        testCaseFailureStatus: updatedData,
+        testCaseResolutionStatusReference: updatedData,
       };
+
       const testCaseFqn = record.fullyQualifiedName ?? '';
       const patch = compare(record.testCaseResult, updatedResult);
       try {
@@ -153,7 +154,7 @@ const TestCaseResolutionCenterTable = ({
                 className="m-0 break-all text-primary"
                 data-testid={`test-case-${record.name}`}
                 style={{ maxWidth: 280 }}
-                to={getResolutionCenterDetailPagePath(
+                to={getIncidentManagerDetailPagePath(
                   record.fullyQualifiedName ?? ''
                 )}>
                 {getEntityName(record)}
@@ -226,7 +227,7 @@ const TestCaseResolutionCenterTable = ({
         key: 'testCaseResult',
         width: 100,
         render: (value: TestCaseResult, record: TestCase) => (
-          <TestCaseResolutionCenterStatus
+          <TestCaseIncidentManagerStatus
             testCaseResult={value}
             onSubmit={(status) => handleStatusSubmit(status, record)}
           />
@@ -268,7 +269,7 @@ const TestCaseResolutionCenterTable = ({
           bordered
           className="test-case-table-container"
           columns={columns}
-          data-testid="test-case-resolution-table"
+          data-testid="test-case-incident-manager-table"
           dataSource={sortedData}
           loading={testCaseListData.isLoading}
           locale={{
@@ -288,4 +289,4 @@ const TestCaseResolutionCenterTable = ({
   );
 };
 
-export default TestCaseResolutionCenterTable;
+export default TestCaseIncidentManagerTable;

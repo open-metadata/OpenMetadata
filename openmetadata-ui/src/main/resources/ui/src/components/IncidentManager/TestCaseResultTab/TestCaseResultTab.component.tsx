@@ -26,7 +26,7 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import EditTestCaseModal from '../../AddDataQualityTest/EditTestCaseModal';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import TestSummary from '../../ProfilerDashboard/component/TestSummary';
-import '../resolution-center.style.less';
+import '../incident-manager.style.less';
 import { TestCaseResultTabProps } from './TestCaseResultTab.interface';
 
 const TestCaseResultTab = ({

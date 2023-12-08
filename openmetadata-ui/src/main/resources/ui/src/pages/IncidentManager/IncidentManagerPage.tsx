@@ -17,17 +17,17 @@ import { useTranslation } from 'react-i18next';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import { SummaryCard } from '../../components/common/SummaryCard/SummaryCard.component';
+import TestCaseIncidentManagerTable from '../../components/IncidentManager/TestCaseIncidentManagerTable/TestCaseIncidentManagerTable.component';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import TestCaseResolutionCenterTable from '../../components/ResolutionCenter/TestCaseResolutionCenterTable/TestCaseResolutionCenterTable.component';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { TestCase } from '../../generated/tests/testCase';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getListTestCase, ListTestCaseParams } from '../../rest/testAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { TestCaseListData } from './ResolutionCenter.interface';
+import { TestCaseListData } from './IncidentManager.interface';
 
 const summary = {
   total: 100,
@@ -40,7 +40,7 @@ const summary = {
 
 const isLoading = false;
 
-const ResolutionCenterPage = () => {
+const IncidentManagerPage = () => {
   const { t } = useTranslation();
 
   const [testCaseListData, setTestCaseListData] = useState<TestCaseListData>({
@@ -132,10 +132,10 @@ const ResolutionCenterPage = () => {
   }
 
   return (
-    <PageLayoutV1 pageTitle="Resolution Center">
+    <PageLayoutV1 pageTitle="Incident Manager">
       <Row className="p-x-lg" gutter={[0, 16]}>
         <Col span={24}>
-          <PageHeader data={PAGE_HEADERS.RESOLUTION_CENTER} />
+          <PageHeader data={PAGE_HEADERS.INCIDENT_MANAGER} />
         </Col>
 
         <Col span={24}>
@@ -190,7 +190,7 @@ const ResolutionCenterPage = () => {
         </Col>
 
         <Col span={24}>
-          <TestCaseResolutionCenterTable
+          <TestCaseIncidentManagerTable
             handleTestCaseUpdate={handelTestCaseUpdate}
             pagingData={pagingData}
             showPagination={showPagination}
@@ -202,4 +202,4 @@ const ResolutionCenterPage = () => {
   );
 };
 
-export default ResolutionCenterPage;
+export default IncidentManagerPage;

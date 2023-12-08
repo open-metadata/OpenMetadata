@@ -23,21 +23,23 @@ import {
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
 import AppBadge from '../../common/Badge/Badge.component';
 import { TestCaseStatusModal } from '../../DataQuality/TestCaseStatusModal/TestCaseStatusModal.component';
-import { TestCaseStatusResolutionCenterProps } from './TestCaseResolutionCenterStatus.interface';
+import { TestCaseStatusIncidentManagerProps } from './TestCaseIncidentManagerStatus.interface';
 
-const TestCaseResolutionCenterStatus = ({
+const TestCaseIncidentManagerStatus = ({
   testCaseResult,
   onSubmit,
-}: TestCaseStatusResolutionCenterProps) => {
+}: TestCaseStatusIncidentManagerProps) => {
   const [isEditStatus, setIsEditStatus] = useState<boolean>(false);
 
   const label = useMemo(
-    () => testCaseResult?.testCaseFailureStatus?.testCaseFailureStatusType,
+    () =>
+      testCaseResult.testCaseResolutionStatusReference
+        ?.testCaseResolutionStatusType,
     [testCaseResult]
   );
 
   const failureStatus = useMemo(
-    () => testCaseResult?.testCaseFailureStatus,
+    () => testCaseResult?.testCaseResolutionStatusReference,
     [testCaseResult]
   );
 
@@ -82,7 +84,7 @@ const TestCaseResolutionCenterStatus = ({
       </Space>
 
       <TestCaseStatusModal
-        data={testCaseResult.testCaseFailureStatus}
+        data={testCaseResult.testCaseResolutionStatusReference}
         open={isEditStatus}
         onCancel={onCancel}
         onSubmit={handleSubmit}
@@ -91,4 +93,4 @@ const TestCaseResolutionCenterStatus = ({
   );
 };
 
-export default TestCaseResolutionCenterStatus;
+export default TestCaseIncidentManagerStatus;

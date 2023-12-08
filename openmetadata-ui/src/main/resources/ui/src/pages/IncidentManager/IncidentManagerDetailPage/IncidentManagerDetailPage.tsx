@@ -19,27 +19,27 @@ import { useHistory, useParams } from 'react-router-dom';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import TestCaseIssueTab from '../../../components/IncidentManager/TestCaseIssuesTab/TestCaseIssueTab.component';
+import TestCaseResultTab from '../../../components/IncidentManager/TestCaseResultTab/TestCaseResultTab.component';
 import Loader from '../../../components/Loader/Loader';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
-import TestCaseIssueTab from '../../../components/ResolutionCenter/TestCaseIssuesTab/TestCaseIssueTab.component';
-import TestCaseResultTab from '../../../components/ResolutionCenter/TestCaseResultTab/TestCaseResultTab.component';
 import TabsLabel from '../../../components/TabsLabel/TabsLabel.component';
 import { ROUTES } from '../../../constants/constants';
 import { EntityTabs } from '../../../enums/entity.enum';
 import { TestCase } from '../../../generated/tests/testCase';
 import { getTestCaseByFqn } from '../../../rest/testAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { getResolutionCenterDetailPagePath } from '../../../utils/RouterUtils';
+import { getIncidentManagerDetailPagePath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { ResolutionCenterTabs } from '../ResolutionCenter.interface';
-import { TestCaseData } from './ResolutionCenterDetailPage.interface';
+import { IncidentManagerTabs } from '../IncidentManager.interface';
+import { TestCaseData } from './IncidentManagerDetailPage.interface';
 
-const ResolutionCenterDetailPage = () => {
+const IncidentManagerDetailPage = () => {
   const { t } = useTranslation();
   const history = useHistory();
   const {
     fqn: testCaseFQN,
-    tab: activeTab = ResolutionCenterTabs.TEST_CASE_RESULTS,
+    tab: activeTab = IncidentManagerTabs.TEST_CASE_RESULTS,
   } = useParams<{ fqn: string; tab: EntityTabs }>();
 
   const [testCaseData, setTestCaseData] = useState<TestCaseData>({
@@ -62,11 +62,11 @@ const ResolutionCenterDetailPage = () => {
             onTestCaseUpdate={onTestCaseUpdate}
           />
         ),
-        key: ResolutionCenterTabs.TEST_CASE_RESULTS,
+        key: IncidentManagerTabs.TEST_CASE_RESULTS,
       },
       {
         label: <TabsLabel id="by-test-cases" name={t('label.issue-plural')} />,
-        key: ResolutionCenterTabs.ISSUES,
+        key: IncidentManagerTabs.ISSUES,
         children: <TestCaseIssueTab />,
       },
     ],
@@ -93,8 +93,8 @@ const ResolutionCenterDetailPage = () => {
   const breadcrumb = useMemo(() => {
     return [
       {
-        name: t('label.resolution-center'),
-        url: ROUTES.RESOLUTION_CENTER,
+        name: t('label.incident-manager'),
+        url: ROUTES.INCIDENT_MANAGER,
       },
       {
         name: testCaseData?.data?.name ?? '',
@@ -107,9 +107,9 @@ const ResolutionCenterDetailPage = () => {
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
       history.push(
-        getResolutionCenterDetailPagePath(
+        getIncidentManagerDetailPagePath(
           testCaseFQN,
-          activeKey as ResolutionCenterTabs
+          activeKey as IncidentManagerTabs
         )
       );
     }
@@ -128,7 +128,7 @@ const ResolutionCenterDetailPage = () => {
   }
 
   return (
-    <PageLayoutV1 pageTitle="Resolution Center Detail Page">
+    <PageLayoutV1 pageTitle="Incident Manager Detail Page">
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <TitleBreadcrumb className="m-b-sm" titleLinks={breadcrumb} />
@@ -158,4 +158,4 @@ const ResolutionCenterDetailPage = () => {
   );
 };
 
-export default ResolutionCenterDetailPage;
+export default IncidentManagerDetailPage;

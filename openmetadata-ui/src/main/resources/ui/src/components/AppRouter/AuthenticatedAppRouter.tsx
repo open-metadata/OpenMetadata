@@ -345,15 +345,15 @@ const EditLoginConfiguration = withSuspenseFallback(
   )
 );
 
-const ResolutionCenterPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/ResolutionCenter/ResolutionCenterPage'))
+const IncidentManagerPage = withSuspenseFallback(
+  React.lazy(() => import('../../pages/IncidentManager/IncidentManagerPage'))
 );
 
-const ResolutionCenterDetailPage = withSuspenseFallback(
+const IncidentManagerDetailPage = withSuspenseFallback(
   React.lazy(
     () =>
       import(
-        '../../pages/ResolutionCenter/ResolutionCenterDetailPage/ResolutionCenterDetailPage'
+        '../../pages/IncidentManager/IncidentManagerDetailPage/IncidentManagerDetailPage'
       )
   )
 );
@@ -889,32 +889,32 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
 
       <AdminProtectedRoute
         exact
-        component={ResolutionCenterPage}
+        component={IncidentManagerPage}
         hasPermission={userPermissions.hasViewPermissions(
           ResourceEntity.TEST_SUITE,
           permissions
         )}
-        path={ROUTES.RESOLUTION_CENTER}
+        path={ROUTES.INCIDENT_MANAGER}
       />
 
       <AdminProtectedRoute
         exact
-        component={ResolutionCenterDetailPage}
+        component={IncidentManagerDetailPage}
         hasPermission={userPermissions.hasViewPermissions(
           ResourceEntity.TEST_SUITE,
           permissions
         )}
-        path={ROUTES.RESOLUTION_CENTER_DETAILS}
+        path={ROUTES.INCIDENT_MANAGER_DETAILS}
       />
 
       <AdminProtectedRoute
         exact
-        component={ResolutionCenterDetailPage}
+        component={IncidentManagerDetailPage}
         hasPermission={userPermissions.hasViewPermissions(
           ResourceEntity.TEST_SUITE,
           permissions
         )}
-        path={ROUTES.RESOLUTION_CENTER_DETAILS_WITH_TAB}
+        path={ROUTES.INCIDENT_MANAGER_DETAILS_WITH_TAB}
       />
 
       <AdminProtectedRoute
