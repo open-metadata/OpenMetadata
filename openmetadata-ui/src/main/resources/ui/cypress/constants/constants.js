@@ -19,7 +19,7 @@ export const BASE_URL = location.origin;
 export const LOGIN_ERROR_MESSAGE =
   'You have entered an invalid username or password.';
 
-export const MYDATA_SUMMARY_OPTIONS = {
+export const DATA_ASSETS = {
   tables: 'tables',
   topics: 'topics',
   dashboards: 'dashboards',
@@ -55,7 +55,7 @@ export const SEARCH_INDEX = {
 
 export const DATA_QUALITY_SAMPLE_DATA_TABLE = {
   term: 'dim_address',
-  entity: MYDATA_SUMMARY_OPTIONS.tables,
+  entity: DATA_ASSETS.tables,
   serviceName: 'sample_data',
   testCaseName: 'column_value_max_to_be_between',
   sqlTestCaseName: 'my_sql_test_case_cypress',
@@ -67,14 +67,14 @@ export const SEARCH_ENTITY_TABLE = {
   table_1: {
     term: 'raw_customer',
     displayName: 'raw_customer',
-    entity: MYDATA_SUMMARY_OPTIONS.tables,
+    entity: DATA_ASSETS.tables,
     serviceName: 'sample_data',
     entityType: 'Table',
   },
   table_2: {
     term: 'fact_session',
     displayName: 'fact_session',
-    entity: MYDATA_SUMMARY_OPTIONS.tables,
+    entity: DATA_ASSETS.tables,
     serviceName: 'sample_data',
     schemaName: 'shopify',
     entityType: 'Table',
@@ -82,7 +82,7 @@ export const SEARCH_ENTITY_TABLE = {
   table_3: {
     term: 'raw_product_catalog',
     displayName: 'raw_product_catalog',
-    entity: MYDATA_SUMMARY_OPTIONS.tables,
+    entity: DATA_ASSETS.tables,
     serviceName: 'sample_data',
     schemaName: 'shopify',
     entityType: 'Table',
@@ -90,14 +90,14 @@ export const SEARCH_ENTITY_TABLE = {
   table_4: {
     term: 'dim_address',
     displayName: 'dim_address',
-    entity: MYDATA_SUMMARY_OPTIONS.tables,
+    entity: DATA_ASSETS.tables,
     serviceName: 'sample_data',
     entityType: 'Table',
   },
   table_5: {
     term: 'dim.api/client',
     displayName: 'dim.api/client',
-    entity: MYDATA_SUMMARY_OPTIONS.tables,
+    entity: DATA_ASSETS.tables,
     serviceName: 'sample_data',
     entityType: 'Table',
   },
@@ -107,13 +107,13 @@ export const SEARCH_ENTITY_TOPIC = {
   topic_1: {
     term: 'shop_products',
     displayName: 'shop_products',
-    entity: MYDATA_SUMMARY_OPTIONS.topics,
+    entity: DATA_ASSETS.topics,
     serviceName: 'sample_kafka',
     entityType: 'Topic',
   },
   topic_2: {
     term: 'orders',
-    entity: MYDATA_SUMMARY_OPTIONS.topics,
+    entity: DATA_ASSETS.topics,
     serviceName: 'sample_kafka',
     entityType: 'Topic',
   },
@@ -123,13 +123,13 @@ export const SEARCH_ENTITY_DASHBOARD = {
   dashboard_1: {
     term: 'Slack Dashboard',
     displayName: 'Slack Dashboard',
-    entity: MYDATA_SUMMARY_OPTIONS.dashboards,
+    entity: DATA_ASSETS.dashboards,
     serviceName: 'sample_superset',
     entityType: 'Dashboard',
   },
   dashboard_2: {
     term: 'Unicode Test',
-    entity: MYDATA_SUMMARY_OPTIONS.dashboards,
+    entity: DATA_ASSETS.dashboards,
     serviceName: 'sample_superset',
     entityType: 'Dashboard',
   },
@@ -139,14 +139,14 @@ export const SEARCH_ENTITY_PIPELINE = {
   pipeline_1: {
     term: 'dim_product_etl',
     displayName: 'dim_product etl',
-    entity: MYDATA_SUMMARY_OPTIONS.pipelines,
+    entity: DATA_ASSETS.pipelines,
     serviceName: 'sample_airflow',
     entityType: 'Pipeline',
   },
   pipeline_2: {
     term: 'dim_user_etl',
     displayName: 'dim_user etl',
-    entity: MYDATA_SUMMARY_OPTIONS.pipelines,
+    entity: DATA_ASSETS.pipelines,
     serviceName: 'sample_airflow',
     entityType: 'Pipeline',
   },
@@ -154,13 +154,13 @@ export const SEARCH_ENTITY_PIPELINE = {
 export const SEARCH_ENTITY_MLMODEL = {
   mlmodel_1: {
     term: 'forecast_sales',
-    entity: MYDATA_SUMMARY_OPTIONS.mlmodels,
+    entity: DATA_ASSETS.mlmodels,
     serviceName: 'mlflow_svc',
     entityType: 'ML Model',
   },
   mlmodel_2: {
     term: 'eta_predictions',
-    entity: MYDATA_SUMMARY_OPTIONS.mlmodels,
+    entity: DATA_ASSETS.mlmodels,
     serviceName: 'mlflow_svc',
     displayName: 'ETA Predictions',
     entityType: 'ML Model',
@@ -170,13 +170,13 @@ export const SEARCH_ENTITY_MLMODEL = {
 export const SEARCH_ENTITY_STORED_PROCEDURE = {
   stored_procedure_1: {
     term: 'update_dim_address_table',
-    entity: MYDATA_SUMMARY_OPTIONS.storedProcedures,
+    entity: DATA_ASSETS.storedProcedures,
     serviceName: 'sample_data',
     entityType: 'Stored Procedure',
   },
   stored_procedure_2: {
     term: 'update_dim_address_table',
-    entity: MYDATA_SUMMARY_OPTIONS.storedProcedures,
+    entity: DATA_ASSETS.storedProcedures,
     serviceName: 'sample_data',
     displayName: 'update_dim_address_table',
     entityType: 'Stored Procedure',
@@ -186,13 +186,13 @@ export const SEARCH_ENTITY_STORED_PROCEDURE = {
 export const SEARCH_ENTITY_DATA_MODEL = {
   data_model_1: {
     term: 'operations_view',
-    entity: MYDATA_SUMMARY_OPTIONS.dataModel,
+    entity: DATA_ASSETS.dataModel,
     serviceName: 'sample_looker',
     entityType: 'Data Model',
   },
   data_model_2: {
     term: 'orders_view',
-    entity: MYDATA_SUMMARY_OPTIONS.dataModel,
+    entity: DATA_ASSETS.dataModel,
     serviceName: 'sample_looker',
     displayName: 'Orders View',
     entityType: 'Data Model',
@@ -202,13 +202,13 @@ export const SEARCH_ENTITY_DATA_MODEL = {
 export const DELETE_ENTITY = {
   table: {
     term: 'dim.shop',
-    entity: MYDATA_SUMMARY_OPTIONS.tables,
+    entity: DATA_ASSETS.tables,
     serviceName: 'sample_data',
     entityType: 'Table',
   },
   topic: {
     term: 'shop_updates',
-    entity: MYDATA_SUMMARY_OPTIONS.topics,
+    entity: DATA_ASSETS.topics,
     serviceName: 'sample_kafka',
     entityType: 'Table',
   },
@@ -305,13 +305,62 @@ export const NEW_GLOSSARY = {
   name: 'Cypress Glossary',
   description: 'This is the Cypress Glossary',
   reviewer: 'Aaron Johnson',
-  tag: 'PII.None',
+  addReviewer: true,
+  tag: 'PersonalData.Personal',
+  isMutually: true,
 };
 export const NEW_GLOSSARY_1 = {
   name: 'Cypress Product%Glossary',
   description: 'This is the Product glossary with percentage',
   reviewer: 'Brandy Miller',
+  addReviewer: false,
+};
+export const CYPRESS_ASSETS_GLOSSARY = {
+  name: 'Cypress Assets Glossary',
+  description: 'This is the Assets Cypress Glossary',
+  reviewer: '',
+  addReviewer: false,
   tag: 'PII.None',
+};
+
+const COMMON_ASSETS = [
+  {
+    name: 'dim_customer',
+    fullyQualifiedName: 'sample_data.ecommerce_db.shopify.dim_address',
+  },
+  {
+    name: 'raw_order',
+    fullyQualifiedName: 'sample_data.ecommerce_db.shopify.raw_order',
+  },
+  {
+    name: 'presto_etl',
+    fullyQualifiedName: 'sample_airflow.presto_etl',
+  },
+];
+
+export const CYPRESS_ASSETS_GLOSSARY_TERMS = {
+  term_1: {
+    name: 'Cypress%PercentTerm',
+    description: 'This is the Cypress PercentTerm',
+    synonyms: 'buy,collect,acquire',
+    fullyQualifiedName: 'Cypress Assets Glossary.Cypress%PercentTerm',
+    assets: COMMON_ASSETS,
+  },
+  term_2: {
+    name: 'Cypress Space GTerm',
+    description: 'This is the Cypress Sales',
+    synonyms: 'give,disposal,deal',
+    fullyQualifiedName: 'Cypress Assets Glossary.Cypress Space GTerm',
+    assets: COMMON_ASSETS,
+  },
+  term_3: {
+    name: 'Cypress.Dot.GTerm',
+    description: 'This is the Cypress with space',
+    synonyms: 'tea,coffee,water',
+    fullyQualifiedName: 'Cypress Assets Glossary."Cypress.Dot.GTerm"',
+    displayFqn: 'Cypress Assets Glossary.&quot;Cypress.Dot.GTerm&quot;',
+    assets: COMMON_ASSETS,
+  },
 };
 
 export const NEW_GLOSSARY_TERMS = {
@@ -326,6 +375,13 @@ export const NEW_GLOSSARY_TERMS = {
     description: 'This is the Cypress Sales',
     synonyms: 'give,disposal,deal',
     fullyQualifiedName: 'Cypress Glossary.CypressSales',
+  },
+  term_3: {
+    name: 'Cypress Space',
+    description: 'This is the Cypress with space',
+    synonyms: 'tea,coffee,water',
+    fullyQualifiedName: 'Cypress Glossary.Cypress Space',
+    assets: COMMON_ASSETS,
   },
 };
 export const GLOSSARY_TERM_WITH_DETAILS = {
@@ -518,6 +574,7 @@ export const NAME_MAX_LENGTH_VALIDATION_ERROR =
 export const DOMAIN_1 = {
   name: 'Cypress%Domain',
   updatedName: 'Cypress_Domain_Name',
+  fullyQualifiedName: 'Cypress%Domain',
   updatedDisplayName: 'Cypress_Domain_Display_Name',
   description:
     'This is the Cypress for testing domain creation with percent and dot',
@@ -549,8 +606,94 @@ export const DOMAIN_2 = {
   name: 'Cypress.Domain.New',
   updatedName: 'Cypress.Domain.New',
   updatedDisplayName: 'Cypress.Domain.New',
+  fullyQualifiedName: '"Cypress.Domain.New"',
   description: 'This is the Cypress for testing domain creation',
   experts: 'Alex Pollard',
   owner: 'Alex Pollard',
   domainType: 'Source-aligned',
+  dataProducts: [
+    {
+      name: 'Cypress DataProduct Assets',
+      description:
+        'This is the data product description for Cypress DataProduct Assets',
+      experts: 'Aaron Johnson',
+      owner: 'Aaron Johnson',
+      assets: [
+        {
+          name: 'dim_customer',
+          fullyQualifiedName: 'sample_data.ecommerce_db.shopify.dim_address',
+        },
+        {
+          name: 'raw_order',
+          fullyQualifiedName: 'sample_data.ecommerce_db.shopify.raw_order',
+        },
+        {
+          name: 'presto_etl',
+          fullyQualifiedName: 'sample_airflow.presto_etl',
+        },
+      ],
+    },
+  ],
+  assets: [
+    {
+      name: 'dim_customer',
+      fullyQualifiedName: 'sample_data.ecommerce_db.shopify.dim_address',
+    },
+    {
+      name: 'raw_order',
+      fullyQualifiedName: 'sample_data.ecommerce_db.shopify.raw_order',
+    },
+    {
+      name: 'presto_etl',
+      fullyQualifiedName: 'sample_airflow.presto_etl',
+    },
+  ],
+};
+
+export const DOMAIN_3 = {
+  name: 'Cypress Space',
+  updatedName: 'Cypress Space',
+  updatedDisplayName: 'Cypress Space',
+  fullyQualifiedName: 'Cypress Space',
+  description: 'This is the Cypress for testing domain with space creation',
+  experts: 'Alex Pollard',
+  owner: 'Alex Pollard',
+  domainType: 'Source-aligned',
+  dataProducts: [
+    {
+      name: 'Cypress%PercentDP',
+      description:
+        'This is the data product description for Cypress DataProduct Assets',
+      experts: 'Aaron Johnson',
+      owner: 'Aaron Johnson',
+      assets: [
+        {
+          name: 'forecast_sales_performance',
+          fullyQualifiedName: 'sample_superset.forecast_sales_performance',
+        },
+        {
+          name: 'eta_predictions',
+          fullyQualifiedName: 'mlflow_svc.eta_predictions',
+        },
+        {
+          name: 'operations_view',
+          fullyQualifiedName: 'sample_looker.model.operations_view',
+        },
+      ],
+    },
+  ],
+  assets: [
+    {
+      name: 'forecast_sales_performance',
+      fullyQualifiedName: 'sample_superset.forecast_sales_performance',
+    },
+    {
+      name: 'eta_predictions',
+      fullyQualifiedName: 'mlflow_svc.eta_predictions',
+    },
+    {
+      name: 'operations_view',
+      fullyQualifiedName: 'sample_looker.model.operations_view',
+    },
+  ],
 };

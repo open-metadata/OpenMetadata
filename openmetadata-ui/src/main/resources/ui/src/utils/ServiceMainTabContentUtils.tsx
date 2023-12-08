@@ -43,6 +43,7 @@ export const getServiceMainTabColumns = (
         <Link
           to={getLinkForFqn(serviceCategory, record.fullyQualifiedName ?? '')}>
           <Typography.Paragraph
+            data-testid="child-asset-name-link"
             ellipsis={{
               rows: 2,
               tooltip: true,

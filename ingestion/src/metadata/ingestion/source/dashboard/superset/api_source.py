@@ -91,12 +91,12 @@ class SupersetAPISource(SupersetSourceMixin):
                     fqn.build(
                         self.metadata,
                         entity_type=Chart,
-                        service_name=self.context.dashboard_service.fullyQualifiedName.__root__,
-                        chart_name=chart.name.__root__,
+                        service_name=self.context.dashboard_service,
+                        chart_name=chart,
                     )
                     for chart in self.context.charts
                 ],
-                service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                service=self.context.dashboard_service,
             )
             yield Either(right=dashboard_request)
             self.register_record(dashboard_request=dashboard_request)
@@ -133,7 +133,7 @@ class SupersetAPISource(SupersetSourceMixin):
                 description=chart_json.description,
                 chartType=get_standard_chart_type(chart_json.viz_type),
                 sourceUrl=f"{clean_uri(self.service_connection.hostPort)}{chart_json.url}",
-                service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                service=self.context.dashboard_service,
             )
             yield Either(right=chart)
 
@@ -201,11 +201,12 @@ class SupersetAPISource(SupersetSourceMixin):
                     data_model_request = CreateDashboardDataModelRequest(
                         name=datasource_json.id,
                         displayName=datasource_json.result.table_name,
-                        service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                        service=self.context.dashboard_service,
                         columns=self.get_column_info(datasource_json.result.columns),
                         dataModelType=DataModelType.SupersetDataModel.value,
                     )
                     yield Either(right=data_model_request)
+                    self.register_record_datamodel(datamodel_requst=data_model_request)
                 except Exception as exc:
                     yield Either(
                         left=StackTraceError(

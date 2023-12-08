@@ -254,7 +254,7 @@ class DatabricksUnitTest(TestCase):
         "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
     )
     @patch(
-        "metadata.ingestion.source.database.databricks.legacy.metadata.DatabricksLegacySource._init_version"
+        "metadata.ingestion.source.database.databricks.metadata.DatabricksSource._init_version"
     )
     def __init__(self, methodName, test_connection, db_init_version) -> None:
         super().__init__(methodName)
@@ -266,14 +266,16 @@ class DatabricksUnitTest(TestCase):
             mock_databricks_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
-        self.databricks_source.context.__dict__["database"] = MOCK_DATABASE
+        self.databricks_source.context.__dict__[
+            "database"
+        ] = MOCK_DATABASE.name.__root__
         self.databricks_source.context.__dict__[
             "database_service"
-        ] = MOCK_DATABASE_SERVICE
+        ] = MOCK_DATABASE_SERVICE.name.__root__
 
         self.databricks_source.context.__dict__[
             "database_schema"
-        ] = MOCK_DATABASE_SCHEMA
+        ] = MOCK_DATABASE_SCHEMA.name.__root__
 
     def test_database_schema_names(self):
         assert EXPECTED_DATABASE_SCHEMA_NAMES == list(

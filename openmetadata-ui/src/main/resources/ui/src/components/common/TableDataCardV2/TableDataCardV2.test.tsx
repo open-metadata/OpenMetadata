@@ -53,11 +53,12 @@ describe('Test TableDataCard Component', () => {
         source={{
           id: '1',
           name: 'Name1',
+          fullyQualifiedName: 'test',
         }}
       />,
       { wrapper: MemoryRouter }
     );
-    const tableDataCard = getByTestId('table-data-card');
+    const tableDataCard = getByTestId('table-data-card_test');
     const entityHeader = getByText('EntityHeader');
 
     expect(tableDataCard).toBeInTheDocument();

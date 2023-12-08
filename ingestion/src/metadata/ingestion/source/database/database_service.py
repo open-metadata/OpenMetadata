@@ -99,6 +99,7 @@ class DatabaseServiceTopology(ServiceTopology):
                 processor="yield_create_request_database_service",
                 overwrite=False,
                 must_return=True,
+                cache_entities=True,
             ),
         ],
         children=["database"],
@@ -115,6 +116,8 @@ class DatabaseServiceTopology(ServiceTopology):
                 context="database",
                 processor="yield_database",
                 consumer=["database_service"],
+                cache_entities=True,
+                use_cache=True,
             )
         ],
         children=["databaseSchema"],
@@ -134,10 +137,12 @@ class DatabaseServiceTopology(ServiceTopology):
                 context="database_schema",
                 processor="yield_database_schema",
                 consumer=["database_service", "database"],
+                cache_entities=True,
+                use_cache=True,
             ),
         ],
         children=["table", "stored_procedure"],
-        post_process=["mark_tables_as_deleted"],
+        post_process=["mark_tables_as_deleted", "mark_stored_procedures_as_deleted"],
     )
     table = TopologyNode(
         producer="get_tables_name_and_type",
@@ -154,6 +159,7 @@ class DatabaseServiceTopology(ServiceTopology):
                 context="table",
                 processor="yield_table",
                 consumer=["database_service", "database", "database_schema"],
+                use_cache=True,
             ),
             NodeStage(
                 type_=OMetaLifeCycleData,
@@ -171,6 +177,7 @@ class DatabaseServiceTopology(ServiceTopology):
                 processor="yield_stored_procedure",
                 consumer=["database_service", "database", "database_schema"],
                 cache_all=True,
+                use_cache=True,
             ),
         ],
     )
@@ -187,6 +194,7 @@ class DatabaseServiceSource(
     source_config: DatabaseServiceMetadataPipeline
     config: WorkflowSource
     database_source_state: Set = set()
+    stored_procedure_source_state: Set = set()
     # Big union of types we want to fetch dynamically
     service_connection: DatabaseConnection.__fields__["config"].type_
 
@@ -361,9 +369,9 @@ class DatabaseServiceSource(
         table_fqn = fqn.build(
             self.metadata,
             entity_type=Table,
-            service_name=self.context.database_service.name.__root__,
-            database_name=self.context.database.name.__root__,
-            schema_name=self.context.database_schema.name.__root__,
+            service_name=self.context.database_service,
+            database_name=self.context.database,
+            schema_name=self.context.database_schema,
             table_name=table_name,
             skip_es_search=True,
         )
@@ -379,9 +387,9 @@ class DatabaseServiceSource(
         col_fqn = fqn.build(
             self.metadata,
             entity_type=Column,
-            service_name=self.context.database_service.name.__root__,
-            database_name=self.context.database.name.__root__,
-            schema_name=self.context.database_schema.name.__root__,
+            service_name=self.context.database_service,
+            database_name=self.context.database,
+            schema_name=self.context.database_schema,
             table_name=table_name,
             column_name=column["name"],
         )
@@ -394,14 +402,31 @@ class DatabaseServiceSource(
         table_fqn = fqn.build(
             self.metadata,
             entity_type=Table,
-            service_name=self.context.database_service.name.__root__,
-            database_name=self.context.database.name.__root__,
-            schema_name=self.context.database_schema.name.__root__,
+            service_name=self.context.database_service,
+            database_name=self.context.database,
+            schema_name=self.context.database_schema,
             table_name=table_request.name.__root__,
             skip_es_search=True,
         )
 
         self.database_source_state.add(table_fqn)
+
+    def register_record_stored_proc_request(
+        self, stored_proc_request: CreateStoredProcedureRequest
+    ) -> None:
+        """
+        Mark the table record as scanned and update the database_source_state
+        """
+        table_fqn = fqn.build(
+            self.metadata,
+            entity_type=StoredProcedure,
+            service_name=self.context.database_service,
+            database_name=self.context.database,
+            schema_name=self.context.database_schema,
+            procedure_name=stored_proc_request.name.__root__,
+        )
+
+        self.stored_procedure_source_state.add(table_fqn)
 
     def _get_filtered_schema_names(
         self, return_fqn: bool = False, add_to_status: bool = True
@@ -410,8 +435,8 @@ class DatabaseServiceSource(
             schema_fqn = fqn.build(
                 self.metadata,
                 entity_type=DatabaseSchema,
-                service_name=self.context.database_service.name.__root__,
-                database_name=self.context.database.name.__root__,
+                service_name=self.context.database_service,
+                database_name=self.context.database,
                 schema_name=schema_name,
             )
             if filter_by_schema(
@@ -429,7 +454,7 @@ class DatabaseServiceSource(
         """
         if self.source_config.markDeletedTables:
             logger.info(
-                f"Mark Deleted Tables set to True. Processing database [{self.context.database.name.__root__}]"
+                f"Mark Deleted Tables set to True. Processing database [{self.context.database}]"
             )
             schema_fqn_list = self._get_filtered_schema_names(
                 return_fqn=True, add_to_status=False
@@ -442,6 +467,28 @@ class DatabaseServiceSource(
                     entity_source_state=self.database_source_state,
                     mark_deleted_entity=self.source_config.markDeletedTables,
                     params={"database": schema_fqn},
+                )
+
+    def mark_stored_procedures_as_deleted(self):
+        """
+        Use the current inspector to mark Stored Procedures as deleted
+        """
+        if self.source_config.markDeletedStoredProcedures:
+            logger.info(
+                f"Mark Deleted Stored Procedures Processing database [{self.context.database}]"
+            )
+
+            schema_fqn_list = self._get_filtered_schema_names(
+                return_fqn=True, add_to_status=False
+            )
+
+            for schema_fqn in schema_fqn_list:
+                yield from delete_entity_from_source(
+                    metadata=self.metadata,
+                    entity_type=StoredProcedure,
+                    entity_source_state=self.stored_procedure_source_state,
+                    mark_deleted_entity=self.source_config.markDeletedStoredProcedures,
+                    params={"databaseSchema": schema_fqn},
                 )
 
     def yield_life_cycle_data(self, _) -> Iterable[Either[OMetaLifeCycleData]]:

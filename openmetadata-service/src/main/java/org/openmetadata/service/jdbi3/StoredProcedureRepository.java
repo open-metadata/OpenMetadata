@@ -18,7 +18,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class StoredProcedureRepository extends EntityRepository<StoredProcedure> {
-  static final String PATCH_FIELDS = "storedProcedureCode,sourceUrl";
+  static final String PATCH_FIELDS = "storedProcedureCode,sourceUrl,sourceHash";
   static final String UPDATE_FIELDS = "storedProcedureCode,sourceUrl";
 
   public StoredProcedureRepository() {
@@ -79,6 +79,7 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
   @Override
   public void setFields(StoredProcedure storedProcedure, EntityUtil.Fields fields) {
     setDefaultFields(storedProcedure);
+    storedProcedure.setSourceHash(fields.contains("sourceHash") ? storedProcedure.getSourceHash() : null);
     storedProcedure.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(storedProcedure) : null);
   }
 
@@ -100,7 +101,7 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
 
   @Override
   public EntityInterface getParentEntity(StoredProcedure entity, String fields) {
-    return Entity.getEntity(entity.getDatabaseSchema(), fields, Include.NON_DELETED);
+    return Entity.getEntity(entity.getDatabaseSchema(), fields, Include.ALL);
   }
 
   public void setService(StoredProcedure storedProcedure, EntityReference service) {
@@ -124,6 +125,7 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
         recordChange("storedProcedureCode", original.getStoredProcedureCode(), updated.getStoredProcedureCode());
       }
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
+      recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
     }
   }
 }

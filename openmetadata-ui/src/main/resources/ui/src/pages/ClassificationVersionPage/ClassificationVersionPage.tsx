@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { AxiosError } from 'axios';
 import { isEmpty, toString } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -25,7 +26,6 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../components/PermissionProvider/PermissionProvider.interface';
-import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { Classification } from '../../generated/entity/classification/classification';
 import { EntityHistory } from '../../generated/type/entityHistory';
@@ -39,11 +39,12 @@ import {
   getClassificationDetailsPath,
   getClassificationVersionsPath,
 } from '../../utils/RouterUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 function ClassificationVersionPage() {
   const { t } = useTranslation();
   const history = useHistory();
-  const { fqn: tagCategoryName, version } =
+  const { fqn: classificationName, version } =
     useParams<{ fqn: string; version: string }>();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const [currentVersionData, setCurrentVersionData] = useState<Classification>(
@@ -58,11 +59,6 @@ function ClassificationVersionPage() {
     useState<boolean>(true);
   const [versionList, setVersionList] = useState<EntityHistory>(
     {} as EntityHistory
-  );
-
-  const classificationName = useMemo(
-    () => tagCategoryName.split(FQN_SEPARATOR_CHAR)[0],
-    [tagCategoryName]
   );
 
   const viewVersionPermission = useMemo(
@@ -106,9 +102,10 @@ function ClassificationVersionPage() {
         setIsVersionDataLoading(true);
         if (viewVersionPermission) {
           const response = await getClassificationVersionData(id, version);
-
           setCurrentVersionData(response);
         }
+      } catch (error) {
+        showErrorToast(error as AxiosError);
       } finally {
         setIsVersionDataLoading(false);
       }
@@ -158,7 +155,7 @@ function ClassificationVersionPage() {
 
     return (
       <>
-        <div className="version-data">
+        <div className="version-data" data-testid="version-data">
           {isVersionDataLoading ? (
             <Loader />
           ) : (

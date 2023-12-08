@@ -19,7 +19,7 @@ import {
   interceptURL,
   toastNotification,
   verifyResponseStatusCode,
-  visitServiceDetailsPage,
+  visitDatabaseSchemaDetailsPage,
 } from '../../common/common';
 import { DELETE_TERM } from '../../constants/constants';
 import {
@@ -124,19 +124,15 @@ describe(`Database schema version page should work properly`, () => {
   });
 
   it(`Database Schema version page should show edited tags and description changes properly`, () => {
-    visitServiceDetailsPage(
-      serviceDetails.settingsMenuId,
-      serviceDetails.serviceCategory,
-      serviceDetails.serviceName
-    );
-
-    cy.get(`[data-row-key="${databaseId}"]`)
-      .contains(DATABASE_DETAILS_FOR_VERSION_TEST.name)
-      .click();
-
-    cy.get(`[data-row-key="${databaseSchemaId}"]`)
-      .contains(DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST.name)
-      .click();
+    visitDatabaseSchemaDetailsPage({
+      settingsMenuId: serviceDetails.settingsMenuId,
+      serviceCategory: serviceDetails.serviceCategory,
+      serviceName: serviceDetails.serviceName,
+      databaseRowKey: databaseId,
+      databaseName: DATABASE_DETAILS_FOR_VERSION_TEST.name,
+      databaseSchemaRowKey: databaseSchemaId,
+      databaseSchemaName: DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST.name,
+    });
 
     interceptURL(
       'GET',
@@ -184,19 +180,15 @@ describe(`Database schema version page should work properly`, () => {
   });
 
   it(`Database Schema version page should show owner changes properly`, () => {
-    visitServiceDetailsPage(
-      serviceDetails.settingsMenuId,
-      serviceDetails.serviceCategory,
-      serviceDetails.serviceName
-    );
-
-    cy.get(`[data-row-key="${databaseId}"]`)
-      .contains(DATABASE_DETAILS_FOR_VERSION_TEST.name)
-      .click();
-
-    cy.get(`[data-row-key="${databaseSchemaId}"]`)
-      .contains(DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST.name)
-      .click();
+    visitDatabaseSchemaDetailsPage({
+      settingsMenuId: serviceDetails.settingsMenuId,
+      serviceCategory: serviceDetails.serviceCategory,
+      serviceName: serviceDetails.serviceName,
+      databaseRowKey: databaseId,
+      databaseName: DATABASE_DETAILS_FOR_VERSION_TEST.name,
+      databaseSchemaRowKey: databaseSchemaId,
+      databaseSchemaName: DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST.name,
+    });
 
     cy.get('[data-testid="version-button"]').as('versionButton');
 
@@ -232,19 +224,15 @@ describe(`Database schema version page should work properly`, () => {
   });
 
   it(`Database Schema version page should show tier changes properly`, () => {
-    visitServiceDetailsPage(
-      serviceDetails.settingsMenuId,
-      serviceDetails.serviceCategory,
-      serviceDetails.serviceName
-    );
-
-    cy.get(`[data-row-key="${databaseId}"]`)
-      .contains(DATABASE_DETAILS_FOR_VERSION_TEST.name)
-      .click();
-
-    cy.get(`[data-row-key="${databaseSchemaId}"]`)
-      .contains(DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST.name)
-      .click();
+    visitDatabaseSchemaDetailsPage({
+      settingsMenuId: serviceDetails.settingsMenuId,
+      serviceCategory: serviceDetails.serviceCategory,
+      serviceName: serviceDetails.serviceName,
+      databaseRowKey: databaseId,
+      databaseName: DATABASE_DETAILS_FOR_VERSION_TEST.name,
+      databaseSchemaRowKey: databaseSchemaId,
+      databaseSchemaName: DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST.name,
+    });
 
     cy.get('[data-testid="version-button"]').as('versionButton');
 
@@ -279,20 +267,108 @@ describe(`Database schema version page should work properly`, () => {
       .should('be.visible');
   });
 
-  it(`Cleanup for Database  Schema version page tests`, () => {
-    visitServiceDetailsPage(
-      serviceDetails.settingsMenuId,
-      serviceDetails.serviceCategory,
-      serviceDetails.serviceName
+  it(`Database  Schema version page should show version details after soft deleted`, () => {
+    visitDatabaseSchemaDetailsPage({
+      settingsMenuId: serviceDetails.settingsMenuId,
+      serviceCategory: serviceDetails.serviceCategory,
+      serviceName: serviceDetails.serviceName,
+      databaseRowKey: databaseId,
+      databaseName: DATABASE_DETAILS_FOR_VERSION_TEST.name,
+      databaseSchemaRowKey: databaseSchemaId,
+      databaseSchemaName: DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST.name,
+    });
+
+    // Clicking on permanent delete radio button and checking the service name
+    cy.get('[data-testid="manage-button"]')
+      .should('exist')
+      .should('be.visible')
+      .click();
+
+    cy.get('[data-menu-id*="delete-button"]')
+      .should('exist')
+      .should('be.visible');
+    cy.get('[data-testid="delete-button-title"]')
+      .should('be.visible')
+      .click()
+      .as('deleteBtn');
+
+    // Clicking on permanent delete radio button and checking the service name
+    cy.get('[data-testid="soft-delete-option"]')
+      .contains(DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST.name)
+      .should('be.visible')
+      .click();
+
+    cy.get('[data-testid="confirmation-text-input"]')
+      .should('be.visible')
+      .type(DELETE_TERM);
+    interceptURL('DELETE', `/api/v1/databaseSchemas/*`, 'deleteSchema');
+
+    cy.get('[data-testid="confirm-button"]').should('be.visible').click();
+
+    verifyResponseStatusCode('@deleteSchema', 200);
+
+    // Closing the toast notification
+    toastNotification(`Database Schema deleted successfully!`);
+
+    interceptURL(
+      'GET',
+      `/api/v1/databaseSchemas/name/${databaseSchemaFQN}*`,
+      `getDatabaseSchemaDetails`
+    );
+    interceptURL(
+      'GET',
+      `/api/v1/databaseSchemas/${databaseSchemaId}/versions`,
+      'getVersionsList'
+    );
+    interceptURL(
+      'GET',
+      `/api/v1/databaseSchemas/${databaseSchemaId}/versions/0.3`,
+      'getSelectedVersionDetails'
     );
 
-    cy.get(`[data-row-key="${databaseId}"]`)
-      .contains(DATABASE_DETAILS_FOR_VERSION_TEST.name)
+    cy.get('[data-testid="version-button"]').as('versionButton');
+
+    cy.get('@versionButton').contains('0.3').click();
+
+    verifyResponseStatusCode(`@getDatabaseSchemaDetails`, 200);
+    verifyResponseStatusCode('@getVersionsList', 200);
+    verifyResponseStatusCode('@getSelectedVersionDetails', 200);
+
+    // Deleted badge should be visible
+    cy.get('[data-testid="deleted-badge"]')
+      .scrollIntoView()
+      .should('be.visible');
+
+    cy.get('@versionButton').click();
+
+    cy.get('[data-testid="manage-button"]')
+      .should('exist')
+      .should('be.visible')
       .click();
 
-    cy.get(`[data-row-key="${databaseSchemaId}"]`)
-      .contains(DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST.name)
-      .click();
+    cy.get('[data-testid="restore-button-title"]').click();
+
+    interceptURL('PUT', `/api/v1/databaseSchemas/restore`, 'restoreSchema');
+
+    cy.get('.ant-modal-footer .ant-btn-primary').contains('Restore').click();
+
+    verifyResponseStatusCode('@restoreSchema', 200);
+
+    toastNotification(`Database Schema restored successfully`);
+
+    cy.get('@versionButton').should('contain', '0.4');
+  });
+
+  it(`Cleanup for Database  Schema version page tests`, () => {
+    visitDatabaseSchemaDetailsPage({
+      settingsMenuId: serviceDetails.settingsMenuId,
+      serviceCategory: serviceDetails.serviceCategory,
+      serviceName: serviceDetails.serviceName,
+      databaseRowKey: databaseId,
+      databaseName: DATABASE_DETAILS_FOR_VERSION_TEST.name,
+      databaseSchemaRowKey: databaseSchemaId,
+      databaseSchemaName: DATABASE_SCHEMA_DETAILS_FOR_VERSION_TEST.name,
+    });
 
     // Clicking on permanent delete radio button and checking the service name
     cy.get('[data-testid="manage-button"]')

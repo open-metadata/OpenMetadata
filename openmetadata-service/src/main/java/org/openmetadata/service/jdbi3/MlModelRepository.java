@@ -17,6 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.DASHBOARD;
 import static org.openmetadata.service.Entity.MLMODEL;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.mlFeatureMatch;
 import static org.openmetadata.service.util.EntityUtil.mlHyperParameterMatch;
@@ -51,7 +52,7 @@ import org.openmetadata.service.util.JsonUtils;
 @Slf4j
 public class MlModelRepository extends EntityRepository<MlModel> {
   private static final String MODEL_UPDATE_FIELDS = "dashboard";
-  private static final String MODEL_PATCH_FIELDS = "dashboard";
+  private static final String MODEL_PATCH_FIELDS = "dashboard,sourceHash";
 
   public MlModelRepository() {
     super(
@@ -85,6 +86,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   public void setFields(MlModel mlModel, Fields fields) {
     mlModel.setService(getContainer(mlModel.getId()));
     mlModel.setDashboard(fields.contains("dashboard") ? getDashboard(mlModel) : mlModel.getDashboard());
+    mlModel.setSourceHash(fields.contains("sourceHash") ? mlModel.getSourceHash() : null);
     if (mlModel.getUsageSummary() == null) {
       mlModel.withUsageSummary(
           fields.contains("usageSummary")
@@ -223,7 +225,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
   @Override
   public EntityInterface getParentEntity(MlModel entity, String fields) {
-    return Entity.getEntity(entity.getService(), fields, Include.NON_DELETED);
+    return Entity.getEntity(entity.getService(), fields, Include.ALL);
   }
 
   @Override
@@ -324,6 +326,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
       updateServer(original, updated);
       updateTarget(original, updated);
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
+      recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
     }
 
     private void updateAlgorithm(MlModel origModel, MlModel updatedModel) {

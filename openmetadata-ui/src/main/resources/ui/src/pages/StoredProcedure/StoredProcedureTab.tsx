@@ -29,6 +29,7 @@ import { usePaging } from '../../hooks/paging/usePaging';
 import { ServicePageData } from '../../pages/ServiceDetailsPage/ServiceDetailsPage';
 import { getStoredProceduresList } from '../../rest/storedProceduresAPI';
 import { getEntityName } from '../../utils/EntityUtils';
+import { getDecodedFqn } from '../../utils/StringsUtils';
 import { getEntityLink } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -46,15 +47,20 @@ const StoredProcedureTab = () => {
 
   const [storedProcedure, setStoredProcedure] = useState<ServicePageData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const { fqn } = useParams<{ fqn: string }>();
+  const { fqn: databaseSchemaFQN } = useParams<{ fqn: string }>();
   const [showDeleted, setShowDeleted] = useState(false);
+
+  const decodedDatabaseSchemaFQN = useMemo(
+    () => getDecodedFqn(databaseSchemaFQN),
+    [databaseSchemaFQN]
+  );
 
   const fetchStoreProcedureDetails = useCallback(
     async (params?: Partial<Paging>) => {
       try {
         setIsLoading(true);
         const { data, paging } = await getStoredProceduresList({
-          databaseSchema: fqn,
+          databaseSchema: decodedDatabaseSchemaFQN,
           include: showDeleted ? Include.Deleted : Include.NonDeleted,
           ...params,
           limit: pageSize,
@@ -67,7 +73,7 @@ const StoredProcedureTab = () => {
         setIsLoading(false);
       }
     },
-    [fqn, pageSize]
+    [decodedDatabaseSchemaFQN, pageSize, showDeleted, handlePagingChange]
   );
 
   const storedProcedurePagingHandler = useCallback(
@@ -81,7 +87,7 @@ const StoredProcedureTab = () => {
       }
       handlePageChange(currentPage);
     },
-    [paging, handlePageChange]
+    [paging, handlePageChange, fetchStoreProcedureDetails]
   );
 
   const tableColumn: ColumnsType<ServicePageData> = useMemo(
@@ -92,13 +98,16 @@ const StoredProcedureTab = () => {
         key: 'name',
         width: 350,
         render: (_, record) => (
-          <Link
-            to={getEntityLink(
-              EntityType.STORED_PROCEDURE,
-              record.fullyQualifiedName ?? ''
-            )}>
-            {getEntityName(record)}
-          </Link>
+          <div className="d-inline-flex w-max-90">
+            <Link
+              className="break-word"
+              to={getEntityLink(
+                EntityType.STORED_PROCEDURE,
+                record.fullyQualifiedName ?? ''
+              )}>
+              {getEntityName(record)}
+            </Link>
+          </div>
         ),
       },
       {

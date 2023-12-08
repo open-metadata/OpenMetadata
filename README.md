@@ -71,7 +71,7 @@ Take a look and play with sample data at [http://sandbox.open-metadata.org](http
 
 
 ## Install and Run OpenMetadata
-Get up and running in a few minutes. See the OpenMetadata documentation for [installation instructions](https://docs.open-metadata.org/deploy/local-deployment).
+Get up and running in a few minutes. See the OpenMetadata documentation for [installation instructions](https://docs.open-metadata.org/quick-start/local-docker-deployment).
 
 ## Documentation and Support
 

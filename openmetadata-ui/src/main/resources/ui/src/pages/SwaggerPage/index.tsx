@@ -11,22 +11,41 @@
  *  limitations under the License.
  */
 
-import { RedocStandalone } from '@deuex-solutions/redoc';
 import React from 'react';
+import {
+  GRAPH_BACKGROUND_COLOR,
+  oidcTokenKey,
+  PRIMERY_COLOR,
+  TEXT_BODY_COLOR,
+} from '../../constants/constants';
+import RapiDocReact from './RapiDocReact';
 import './swagger.less';
 
 const SwaggerPage = () => {
-  // return (<RedocStandalone
-  //   specUrl="https://raw.githubusercontent.com/deuex-solutions/redoc/master/demo/petstore.json"
-  // />);
+  const idToken = localStorage.getItem(oidcTokenKey);
+
   return (
     <div
       className="container-fluid"
       data-testid="fluid-container"
       id="doc-container">
-      <RedocStandalone
-        options={{ enableConsole: true }}
-        specUrl="./swagger.json"
+      <RapiDocReact
+        allow-spec-file-download
+        api-key-location="header"
+        api-key-name="Authorization"
+        api-key-value={`Bearer ${idToken}`}
+        font-size="large"
+        nav-bg-color={GRAPH_BACKGROUND_COLOR}
+        nav-item-spacing="compact"
+        nav-text-color={TEXT_BODY_COLOR}
+        primary-color={PRIMERY_COLOR}
+        regular-font="Open Sans"
+        render-style="focused"
+        show-header={false}
+        show-method-in-nav-bar="as-colored-block"
+        spec-url="./swagger.json"
+        text-color={TEXT_BODY_COLOR}
+        theme="light"
       />
     </div>
   );

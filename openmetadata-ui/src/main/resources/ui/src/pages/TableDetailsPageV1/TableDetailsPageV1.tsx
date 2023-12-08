@@ -29,8 +29,8 @@ import DescriptionV1 from '../../components/common/EntityDescription/Description
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import QueryViewer from '../../components/common/QueryViewer/QueryViewer.component';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import DataProductsContainer from '../../components/DataProductsContainer/DataProductsContainer.component';
 import EntityLineageComponent from '../../components/Entity/EntityLineage/EntityLineage.component';
+import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRightPanel';
 import Loader from '../../components/Loader/Loader';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -46,8 +46,6 @@ import TableProfilerV1 from '../../components/TableProfiler/TableProfilerV1';
 import TableQueries from '../../components/TableQueries/TableQueries';
 import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
 import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
-import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
-import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
 import { useTourProvider } from '../../components/TourProvider/TourProvider';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTableTabPath, getVersionPath } from '../../constants/constants';
@@ -63,7 +61,7 @@ import { CreateThread } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
 import { JoinedWith, Table } from '../../generated/entity/data/table';
 import { ThreadType } from '../../generated/entity/feed/thread';
-import { TagLabel, TagSource } from '../../generated/type/tagLabel';
+import { TagLabel } from '../../generated/type/tagLabel';
 import { postThread } from '../../rest/feedsAPI';
 import { getQueriesList } from '../../rest/queryAPI';
 import {
@@ -277,7 +275,7 @@ const TableDetailsPageV1 = () => {
         setLoading(false);
       }
     },
-    [getEntityPermissionByFqn, setTablePermissions]
+    [tableFqn, getEntityPermissionByFqn, setTablePermissions]
   );
 
   useEffect(() => {
@@ -362,6 +360,20 @@ const TableDetailsPageV1 = () => {
       await onTableUpdate(updatedTableDetails, 'owner');
     },
     [owner, tableDetails]
+  );
+
+  const handleUpdateRetentionPeriod = useCallback(
+    async (newRetentionPeriod: Table['retentionPeriod']) => {
+      if (!tableDetails) {
+        return;
+      }
+      const updatedTableDetails = {
+        ...tableDetails,
+        retentionPeriod: newRetentionPeriod,
+      };
+      await onTableUpdate(updatedTableDetails, 'retentionPeriod');
+    },
+    [tableDetails]
   );
 
   const onDescriptionUpdate = async (updatedHTML: string) => {
@@ -517,49 +529,44 @@ const TableDetailsPageV1 = () => {
           className="entity-tag-right-panel-container"
           data-testid="entity-right-panel"
           flex="320px">
-          {!isEmpty(joinedTables) ? (
-            <FrequentlyJoinedTables joinedTables={joinedTables} />
-          ) : null}
-
-          <Space className="w-full" direction="vertical" size="large">
-            <DataProductsContainer
-              activeDomain={tableDetails?.domain}
-              dataProducts={tableDetails?.dataProducts ?? []}
-              hasPermission={false}
-            />
-
-            <TagsContainerV2
-              displayType={DisplayType.READ_MORE}
-              entityFqn={decodedTableFQN}
-              entityType={EntityType.TABLE}
-              permission={editTagsPermission}
-              selectedTags={tableTags}
-              tagType={TagSource.Classification}
-              onSelectionChange={handleTagSelection}
-              onThreadLinkSelect={onThreadLinkSelect}
-            />
-
-            <TagsContainerV2
-              displayType={DisplayType.READ_MORE}
-              entityFqn={decodedTableFQN}
-              entityType={EntityType.TABLE}
-              permission={editTagsPermission}
-              selectedTags={tableTags}
-              tagType={TagSource.Glossary}
-              onSelectionChange={handleTagSelection}
-              onThreadLinkSelect={onThreadLinkSelect}
-            />
-            <TableConstraints constraints={tableDetails?.tableConstraints} />
-            {tableDetails?.tablePartition ? (
-              <PartitionedKeys tablePartition={tableDetails.tablePartition} />
-            ) : null}
-          </Space>
+          <EntityRightPanel
+            afterSlot={
+              <Space
+                className="w-full m-t-lg"
+                direction="vertical"
+                size="large">
+                <TableConstraints
+                  constraints={tableDetails?.tableConstraints}
+                />
+                {tableDetails?.tablePartition ? (
+                  <PartitionedKeys
+                    tablePartition={tableDetails.tablePartition}
+                  />
+                ) : null}
+              </Space>
+            }
+            beforeSlot={
+              !isEmpty(joinedTables) ? (
+                <FrequentlyJoinedTables joinedTables={joinedTables} />
+              ) : null
+            }
+            dataProducts={tableDetails?.dataProducts ?? []}
+            domain={tableDetails?.domain}
+            editTagPermission={editTagsPermission}
+            entityFQN={decodedTableFQN}
+            entityId={tableDetails?.id ?? ''}
+            entityType={EntityType.TABLE}
+            selectedTags={tableTags}
+            onTagSelectionChange={handleTagSelection}
+            onThreadLinkSelect={onThreadLinkSelect}
+          />
         </Col>
       </Row>
     ),
     [
       isEdit,
       tableDetails,
+      entityName,
       onDescriptionEdit,
       onDescriptionUpdate,
       editTagsPermission,
@@ -761,26 +768,32 @@ const TableDetailsPageV1 = () => {
     [tableDetails, onTableUpdate, tableTags]
   );
 
-  const handleToggleDelete = () => {
+  const handleToggleDelete = (version?: number) => {
     setTableDetails((prev) => {
       if (!prev) {
         return prev;
       }
 
-      return { ...prev, deleted: !prev?.deleted };
+      return {
+        ...prev,
+        deleted: !prev?.deleted,
+        ...(version ? { version } : {}),
+      };
     });
   };
 
   const handleRestoreTable = async () => {
     try {
-      await restoreTable(tableDetails?.id ?? '');
+      const { version: newVersion } = await restoreTable(
+        tableDetails?.id ?? ''
+      );
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.table'),
         }),
         2000
       );
-      handleToggleDelete();
+      handleToggleDelete(newVersion);
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -808,11 +821,11 @@ const TableDetailsPageV1 = () => {
       showErrorToast(
         error as AxiosError,
         t('server.entity-follow-error', {
-          entity: getEntityName(tableDetails),
+          entity: entityName,
         })
       );
     }
-  }, [USERId, tableId, setTableDetails, getEntityFeedCount]);
+  }, [USERId, tableId, entityName, setTableDetails, getEntityFeedCount]);
 
   const unFollowTable = useCallback(async () => {
     try {
@@ -835,11 +848,11 @@ const TableDetailsPageV1 = () => {
       showErrorToast(
         error as AxiosError,
         t('server.entity-unfollow-error', {
-          entity: getEntityName(tableDetails),
+          entity: entityName,
         })
       );
     }
-  }, [USERId, tableId, getEntityFeedCount, setTableDetails]);
+  }, [USERId, tableId, entityName, getEntityFeedCount, setTableDetails]);
 
   const { isFollowing } = useMemo(() => {
     return {
@@ -854,11 +867,11 @@ const TableDetailsPageV1 = () => {
   const versionHandler = useCallback(() => {
     version &&
       history.push(getVersionPath(EntityType.TABLE, tableFqn, version + ''));
-  }, [version]);
+  }, [version, tableFqn]);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) =>
-      isSoftDelete ? handleToggleDelete() : history.push('/'),
+    (isSoftDelete?: boolean, version?: number) =>
+      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
     []
   );
 
@@ -937,6 +950,7 @@ const TableDetailsPageV1 = () => {
         {/* Entity Heading */}
         <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
           <DataAssetsHeader
+            isRecursiveDelete
             afterDeleteAction={afterDeleteAction}
             afterDomainUpdateAction={updateTableDetailsState}
             dataAsset={tableDetails}
@@ -947,6 +961,7 @@ const TableDetailsPageV1 = () => {
             onOwnerUpdate={handleUpdateOwner}
             onRestoreDataAsset={handleRestoreTable}
             onTierUpdate={onTierUpdate}
+            onUpdateRetentionPeriod={handleUpdateRetentionPeriod}
             onUpdateVote={updateVote}
             onVersionClick={versionHandler}
           />

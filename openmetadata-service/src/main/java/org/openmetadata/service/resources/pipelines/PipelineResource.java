@@ -76,7 +76,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "pipelines")
 public class PipelineResource extends EntityResource<Pipeline, PipelineRepository> {
   public static final String COLLECTION_PATH = "v1/pipelines/";
-  static final String FIELDS = "owner,tasks,pipelineStatus,followers,tags,extension,scheduleInterval,domain";
+  static final String FIELDS = "owner,tasks,pipelineStatus,followers,tags,extension,scheduleInterval,domain,sourceHash";
 
   @Override
   public Pipeline addHref(UriInfo uriInfo, Pipeline pipeline) {
@@ -495,8 +495,12 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
+      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
       @Parameter(description = "Id of the pipeline", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
-    return delete(uriInfo, securityContext, id, false, hardDelete);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -516,10 +520,14 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
+      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
       @Parameter(description = "Fully qualified name of the pipeline", schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+    return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
   }
 
   @PUT
@@ -548,6 +556,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
         .withConcurrency(create.getConcurrency())
         .withStartDate(create.getStartDate())
         .withPipelineLocation(create.getPipelineLocation())
-        .withScheduleInterval(create.getScheduleInterval());
+        .withScheduleInterval(create.getScheduleInterval())
+        .withSourceHash(create.getSourceHash());
   }
 }

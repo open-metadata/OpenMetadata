@@ -71,7 +71,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "mlmodels")
 public class MlModelResource extends EntityResource<MlModel, MlModelRepository> {
   public static final String COLLECTION_PATH = "v1/mlmodels/";
-  static final String FIELDS = "owner,dashboard,followers,tags,usageSummary,extension,domain";
+  static final String FIELDS = "owner,dashboard,followers,tags,usageSummary,extension,domain,sourceHash";
 
   @Override
   public MlModel addHref(UriInfo uriInfo, MlModel mlmodel) {
@@ -415,6 +415,10 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
+      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
       @Parameter(description = "Name of the ML Model", schema = @Schema(type = "string")) @PathParam("fqn")
           String fqn) {
     return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
@@ -448,6 +452,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
         .withMlStore(create.getMlStore())
         .withServer(create.getServer())
         .withTarget(create.getTarget())
-        .withSourceUrl(create.getSourceUrl());
+        .withSourceUrl(create.getSourceUrl())
+        .withSourceHash(create.getSourceHash());
   }
 }

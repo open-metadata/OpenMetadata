@@ -59,7 +59,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "containers")
 public class ContainerResource extends EntityResource<Container, ContainerRepository> {
   public static final String COLLECTION_PATH = "v1/containers/";
-  static final String FIELDS = "parent,children,dataModel,owner,tags,followers,extension,domain";
+  static final String FIELDS = "parent,children,dataModel,owner,tags,followers,extension,domain,sourceHash";
 
   @Override
   public Container addHref(UriInfo uriInfo, Container container) {
@@ -373,8 +373,12 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
+      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
       @Parameter(description = "Container Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
-    return delete(uriInfo, securityContext, id, false, hardDelete);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @PUT
@@ -447,6 +451,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
         .withNumberOfObjects(create.getNumberOfObjects())
         .withSize(create.getSize())
         .withFileFormats(create.getFileFormats())
-        .withSourceUrl(create.getSourceUrl());
+        .withSourceUrl(create.getSourceUrl())
+        .withSourceHash(create.getSourceHash());
   }
 }

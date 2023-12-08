@@ -23,9 +23,11 @@ import { AxiosError } from 'axios';
 import { debounce, isEmpty, isUndefined, pick } from 'lodash';
 import { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import React, { FC, useCallback, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import Loader from '../../components/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { TAG_START_WITH } from '../../constants/Tag.constants';
+import { LabelType } from '../../generated/entity/data/table';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
 import Fqn from '../../utils/Fqn';
@@ -42,7 +44,8 @@ const AsyncSelectList: FC<AsyncSelectListProps> = ({
   onChange,
   fetchOptions,
   debounceTimeout = 800,
-  initialData,
+  initialOptions,
+  filterOptions = [],
   className,
   ...props
 }) => {
@@ -52,7 +55,32 @@ const AsyncSelectList: FC<AsyncSelectListProps> = ({
   const [searchValue, setSearchValue] = useState<string>('');
   const [paging, setPaging] = useState<Paging>({} as Paging);
   const [currentPage, setCurrentPage] = useState(1);
-  const selectedTagsRef = useRef<SelectOption[]>(initialData ?? []);
+  const selectedTagsRef = useRef<SelectOption[]>(initialOptions ?? []);
+  const { t } = useTranslation();
+  const [optionFilteredCount, setOptionFilteredCount] = useState(0);
+
+  const getFilteredOptions = (data: SelectOption[]) => {
+    if (isEmpty(filterOptions)) {
+      return data;
+    }
+
+    let count = optionFilteredCount;
+
+    const filteredData = data.filter((item) => {
+      const isFiltered = filterOptions.includes(
+        item.data?.fullyQualifiedName ?? ''
+      );
+      if (isFiltered) {
+        count = optionFilteredCount + 1;
+      }
+
+      return !isFiltered;
+    });
+
+    setOptionFilteredCount(count);
+
+    return filteredData;
+  };
 
   const loadOptions = useCallback(
     async (value: string) => {
@@ -60,7 +88,7 @@ const AsyncSelectList: FC<AsyncSelectListProps> = ({
       setIsLoading(true);
       try {
         const res = await fetchOptions(value, 1);
-        setOptions(res.data);
+        setOptions(getFilteredOptions(res.data));
         setPaging(res.paging);
         setSearchValue(value);
         setCurrentPage(1);
@@ -119,11 +147,12 @@ const AsyncSelectList: FC<AsyncSelectListProps> = ({
       currentTarget.scrollTop + currentTarget.offsetHeight ===
       currentTarget.scrollHeight
     ) {
-      if (options.length < paging.total) {
+      // optionFilteredCount added to equalize the options received from the server
+      if (options.length + optionFilteredCount < paging.total) {
         try {
           setHasContentLoading(true);
           const res = await fetchOptions(searchValue, currentPage + 1);
-          setOptions((prev) => [...prev, ...res.data]);
+          setOptions((prev) => [...prev, ...getFilteredOptions(res.data)]);
           setPaging(res.paging);
           setCurrentPage((prev) => prev + 1);
         } catch (error) {
@@ -170,9 +199,12 @@ const AsyncSelectList: FC<AsyncSelectListProps> = ({
       event.stopPropagation();
     };
 
+    const isDerived =
+      (selectedTag?.data as TagLabel).labelType === LabelType.Derived;
+
     const tagProps = {
-      closable: true,
-      closeIcon: (
+      closable: !isDerived,
+      closeIcon: !isDerived && (
         <CloseOutlined
           className="p-r-xs"
           data-testid="remove-tags"
@@ -181,7 +213,7 @@ const AsyncSelectList: FC<AsyncSelectListProps> = ({
         />
       ),
       'data-testid': `selected-tag-${tagLabel}`,
-      onClose,
+      onClose: !isDerived ? onClose : null,
       onMouseDown: onPreventMouseDown,
     } as TagProps;
 
@@ -190,21 +222,32 @@ const AsyncSelectList: FC<AsyncSelectListProps> = ({
         startWith={TAG_START_WITH.SOURCE_ICON}
         tag={tag}
         tagProps={tagProps}
+        tooltipOverride={
+          isDerived ? t('message.derived-tag-warning') : undefined
+        }
       />
     );
   };
 
   const handleChange: SelectProps['onChange'] = (values: string[], options) => {
     const selectedValues = values.map((value) => {
+      const initialData = initialOptions?.find(
+        (item) => item.value === value
+      )?.data;
       const data = (options as SelectOption[]).find(
         (option) => option.value === value
       );
 
       return (
-        data ?? {
+        (initialData
+          ? {
+              value,
+              label: value,
+              data: initialData,
+            }
+          : data) ?? {
           value,
           label: value,
-          data: initialData?.find((item) => item.value === value)?.data,
         }
       );
     });
@@ -231,12 +274,17 @@ const AsyncSelectList: FC<AsyncSelectListProps> = ({
       }}
       onChange={handleChange}
       onFocus={() => loadOptions('')}
+      onInputKeyDown={(event) => {
+        if (event.key === 'Backspace') {
+          return event.stopPropagation();
+        }
+      }}
       onPopupScroll={onScroll}
       onSearch={debounceFetcher}
       {...props}>
       {tagOptions.map(({ label, value, displayName, data }) => (
         <Select.Option
-          className={className}
+          className={`${className} w-full`}
           data={data}
           data-testid={`tag-${value}`}
           key={label}

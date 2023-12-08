@@ -69,11 +69,10 @@ const AppInstall = () => {
 
   const stepperList = useMemo(
     () =>
-      isExternalApp
+      !appData?.allowConfiguration
         ? STEPS_FOR_APP_INSTALL.filter((item) => item.step !== 2)
         : STEPS_FOR_APP_INSTALL,
-
-    [isExternalApp]
+    [appData]
   );
 
   const fetchAppDetails = useCallback(async () => {
@@ -143,10 +142,14 @@ const AppInstall = () => {
           <AppInstallVerifyCard
             appData={appData}
             nextButtonLabel={
-              isExternalApp ? t('label.schedule') : t('label.configure')
+              appData?.allowConfiguration
+                ? t('label.configure')
+                : t('label.schedule')
             }
             onCancel={onCancel}
-            onSave={() => setActiveServiceStep(isExternalApp ? 3 : 2)}
+            onSave={() =>
+              setActiveServiceStep(appData?.allowConfiguration ? 2 : 3)
+            }
           />
         );
 
@@ -177,7 +180,9 @@ const AppInstall = () => {
               isQuartzCron
               includePeriodOptions={isExternalApp ? ['Day'] : undefined}
               initialData={getIngestionFrequency(PipelineType.Application)}
-              onCancel={() => setActiveServiceStep(isExternalApp ? 1 : 2)}
+              onCancel={() =>
+                setActiveServiceStep(appData.allowConfiguration ? 2 : 1)
+              }
               onSubmit={onSubmit}
             />
           </div>

@@ -198,7 +198,7 @@ describe('Tags page should work', () => {
     interceptURL('PUT', '/api/v1/feed/tasks/*/resolve', 'taskResolve');
     interceptURL(
       'GET',
-      '/api/v1/databaseSchemas/name/*?fields=owner,usageSummary,tags*',
+      '/api/v1/databaseSchemas/name/*',
       'databaseSchemasPage'
     );
     interceptURL('PATCH', '/api/v1/databaseSchemas/*', 'addTags');
@@ -267,7 +267,7 @@ describe('Tags page should work', () => {
     interceptURL('PUT', '/api/v1/feed/tasks/*/resolve', 'taskResolve');
     interceptURL(
       'GET',
-      '/api/v1/databaseSchemas/name/*?fields=*',
+      '/api/v1/databaseSchemas/name/*',
       'databaseSchemasPage'
     );
 

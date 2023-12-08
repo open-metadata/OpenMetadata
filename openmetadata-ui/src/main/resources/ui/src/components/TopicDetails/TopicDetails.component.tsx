@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Tabs } from 'antd';
+import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -24,14 +24,11 @@ import DescriptionV1 from '../../components/common/EntityDescription/Description
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import QueryViewer from '../../components/common/QueryViewer/QueryViewer.component';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import DataProductsContainer from '../../components/DataProductsContainer/DataProductsContainer.component';
 import EntityLineageComponent from '../../components/Entity/EntityLineage/EntityLineage.component';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import SampleDataWithMessages from '../../components/SampleDataWithMessages/SampleDataWithMessages';
 import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
-import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
-import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
 import { getTopicDetailsPath } from '../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
@@ -40,7 +37,6 @@ import { Topic } from '../../generated/entity/data/topic';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { TagLabel } from '../../generated/type/schema';
-import { TagSource } from '../../generated/type/tagLabel';
 import { restoreTopic } from '../../rest/topicsAPI';
 import { getFeedCounts } from '../../utils/CommonUtils';
 import {
@@ -54,6 +50,7 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
+import EntityRightPanel from '../Entity/EntityRightPanel/EntityRightPanel';
 import { TopicDetailsProps } from './TopicDetails.interface';
 import TopicSchemaFields from './TopicSchema/TopicSchema';
 
@@ -155,14 +152,14 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
 
   const handleRestoreTopic = async () => {
     try {
-      await restoreTopic(topicDetails.id);
+      const { version: newVersion } = await restoreTopic(topicDetails.id);
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.topic'),
         }),
         2000
       );
-      handleToggleDelete();
+      handleToggleDelete(newVersion);
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -253,8 +250,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     getFeedCounts(EntityType.TOPIC, decodedTopicFQN, setFeedCount);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) =>
-      isSoftDelete ? handleToggleDelete() : history.push('/'),
+    (isSoftDelete?: boolean, version?: number) =>
+      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
     []
   );
 
@@ -328,35 +325,17 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
               className="entity-tag-right-panel-container"
               data-testid="entity-right-panel"
               flex="320px">
-              <Space className="w-full" direction="vertical" size="large">
-                <DataProductsContainer
-                  activeDomain={topicDetails?.domain}
-                  dataProducts={topicDetails?.dataProducts ?? []}
-                  hasPermission={false}
-                />
-
-                <TagsContainerV2
-                  displayType={DisplayType.READ_MORE}
-                  entityFqn={decodedTopicFQN}
-                  entityType={EntityType.TOPIC}
-                  permission={editTagsPermission}
-                  selectedTags={topicTags}
-                  tagType={TagSource.Classification}
-                  onSelectionChange={handleTagSelection}
-                  onThreadLinkSelect={onThreadLinkSelect}
-                />
-
-                <TagsContainerV2
-                  displayType={DisplayType.READ_MORE}
-                  entityFqn={decodedTopicFQN}
-                  entityType={EntityType.TOPIC}
-                  permission={editTagsPermission}
-                  selectedTags={topicTags}
-                  tagType={TagSource.Glossary}
-                  onSelectionChange={handleTagSelection}
-                  onThreadLinkSelect={onThreadLinkSelect}
-                />
-              </Space>
+              <EntityRightPanel
+                dataProducts={topicDetails?.dataProducts ?? []}
+                domain={topicDetails?.domain}
+                editTagPermission={editTagsPermission}
+                entityFQN={decodedTopicFQN}
+                entityId={topicDetails.id}
+                entityType={EntityType.TOPIC}
+                selectedTags={topicTags}
+                onTagSelectionChange={handleTagSelection}
+                onThreadLinkSelect={onThreadLinkSelect}
+              />
             </Col>
           </Row>
         ),
@@ -478,6 +457,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
+            isRecursiveDelete
             afterDeleteAction={afterDeleteAction}
             afterDomainUpdateAction={updateTopicDetailsState}
             dataAsset={topicDetails}

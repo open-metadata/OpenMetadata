@@ -123,12 +123,12 @@ class QliksenseSource(DashboardServiceSource):
                     fqn.build(
                         self.metadata,
                         entity_type=Chart,
-                        service_name=self.context.dashboard_service.fullyQualifiedName.__root__,
-                        chart_name=chart.name.__root__,
+                        service_name=self.context.dashboard_service,
+                        chart_name=chart,
                     )
                     for chart in self.context.charts
                 ],
-                service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                service=self.context.dashboard_service,
             )
             yield Either(right=dashboard_request)
             self.register_record(dashboard_request=dashboard_request)
@@ -169,7 +169,7 @@ class QliksenseSource(DashboardServiceSource):
                         description=chart.qMeta.description,
                         chartType=ChartType.Other,
                         sourceUrl=chart_url,
-                        service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                        service=self.context.dashboard_service,
                     )
                 )
             except Exception as exc:  # pylint: disable=broad-except
@@ -215,12 +215,13 @@ class QliksenseSource(DashboardServiceSource):
                     data_model_request = CreateDashboardDataModelRequest(
                         name=data_model.id,
                         displayName=data_model_name,
-                        service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                        service=self.context.dashboard_service,
                         dataModelType=DataModelType.QlikSenseDataModel.value,
                         serviceType=DashboardServiceType.QlikSense.value,
                         columns=self.get_column_info(data_model),
                     )
                     yield Either(right=data_model_request)
+                    self.register_record_datamodel(datamodel_requst=data_model_request)
                 except Exception as exc:
                     name = (
                         data_model.tableName if data_model.tableName else data_model.id
@@ -237,7 +238,7 @@ class QliksenseSource(DashboardServiceSource):
         datamodel_fqn = fqn.build(
             self.metadata,
             entity_type=DashboardDataModel,
-            service_name=self.context.dashboard_service.fullyQualifiedName.__root__,
+            service_name=self.context.dashboard_service,
             data_model_name=datamodel.id,
         )
         if datamodel_fqn:

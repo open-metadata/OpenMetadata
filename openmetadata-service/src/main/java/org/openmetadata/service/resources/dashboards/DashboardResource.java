@@ -74,7 +74,7 @@ import org.openmetadata.service.util.ResultList;
 public class DashboardResource extends EntityResource<Dashboard, DashboardRepository> {
   public static final String COLLECTION_PATH = "v1/dashboards/";
   protected static final String FIELDS =
-      "owner,charts,followers,tags,usageSummary,extension,dataModels,domain,dataProducts";
+      "owner,charts,followers,tags,usageSummary,extension,dataModels,domain,dataProducts,sourceHash";
 
   @Override
   public Dashboard addHref(UriInfo uriInfo, Dashboard dashboard) {
@@ -411,10 +411,14 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
+      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
       @Parameter(description = "Fully qualified name of the dashboard", schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+    return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
   }
 
   @PUT
@@ -442,6 +446,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
         .withDataModels(getEntityReferences(Entity.DASHBOARD_DATA_MODEL, create.getDataModels()))
         .withSourceUrl(create.getSourceUrl())
         .withDashboardType(create.getDashboardType())
-        .withProject(create.getProject());
+        .withProject(create.getProject())
+        .withSourceHash(create.getSourceHash());
   }
 }

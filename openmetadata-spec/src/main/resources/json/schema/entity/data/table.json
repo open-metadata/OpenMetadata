@@ -151,7 +151,12 @@
         "IMAGE",
         "IPV4",
         "IPV6",
-        "DATETIMERANGE"
+        "DATETIMERANGE",
+        "HLL",
+        "LARGEINT",
+        "QUANTILE_STATE",
+        "AGG_STATE",
+        "BITMAP"
       ]
     },
     "constraint": {
@@ -1066,6 +1071,12 @@
     "lifeCycle": {
       "description": "Life Cycle of the entity",
       "$ref": "../../type/lifeCycle.json"
+    },
+    "sourceHash": {
+      "description": "Source hash of the entity",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 32
     }
   },
   "required": [

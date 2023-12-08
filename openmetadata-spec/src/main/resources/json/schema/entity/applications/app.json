@@ -190,8 +190,14 @@
       "description": "Execution Configuration.",
       "$ref": "#/definitions/executionContext"
     },
+    "allowConfiguration": {
+      "description": "Allow users to configure the app from the UI. If `false`, the `configure` step will be hidden.",
+      "type": "boolean",
+      "default": true
+    },
     "appConfiguration": {
-      "description": "Application Configuration object."
+      "description": "Application Configuration object.",
+      "$ref": "./configuration/applicationConfig.json#/definitions/appConfig"
     },
     "pipelines": {
       "description": "References to pipelines deployed for this database service to extract metadata, usage, lineage etc..",

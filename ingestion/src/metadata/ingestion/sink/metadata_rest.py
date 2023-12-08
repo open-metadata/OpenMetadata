@@ -56,6 +56,11 @@ from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.ometa_topic_data import OMetaTopicSampleData
+from metadata.ingestion.models.patch_request import (
+    ALLOWED_COMMON_PATCH_FIELDS,
+    RESTRICT_UPDATE_LIST,
+    PatchRequest,
+)
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.profile_data import OMetaTableProfileSampleData
 from metadata.ingestion.models.search_index_data import OMetaIndexSampleData
@@ -84,7 +89,7 @@ class MetadataRestSinkConfig(ConfigModel):
     api_endpoint: Optional[str] = None
 
 
-class MetadataRestSink(Sink):
+class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
     """
     Sink implementation that sends OM Entities
     to the OM server API
@@ -152,6 +157,20 @@ class MetadataRestSink(Sink):
                 name=type(entity_request).__name__, error=error, stack_trace=None
             )
         )
+
+    @_run_dispatch.register
+    def patch_entity(self, record: PatchRequest) -> Either[Entity]:
+        """
+        Patch the records
+        """
+        entity = self.metadata.patch(
+            entity=type(record.original_entity),
+            source=record.original_entity,
+            destination=record.new_entity,
+            allowed_fields=ALLOWED_COMMON_PATCH_FIELDS,
+            restrict_update_fields=RESTRICT_UPDATE_LIST,
+        )
+        return Either(right=entity)
 
     @_run_dispatch.register
     def write_datamodel(self, datamodel_link: DataModelLink) -> Either[DataModel]:

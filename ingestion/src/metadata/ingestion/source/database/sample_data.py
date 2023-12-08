@@ -51,7 +51,13 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
+from metadata.generated.schema.api.tests.createCustomMetric import (
+    CreateCustomMetricRequest,
+)
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
+from metadata.generated.schema.api.tests.createTestCaseResolutionStatus import (
+    CreateTestCaseResolutionStatus,
+)
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.dashboard import Dashboard
@@ -93,7 +99,9 @@ from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.tests.assigned import Assigned
 from metadata.generated.schema.tests.basic import TestCaseResult, TestResultValue
+from metadata.generated.schema.tests.resolved import Resolved, TestCaseFailureReasonType
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.basic import Timestamp
@@ -120,7 +128,7 @@ from metadata.parsers.schema_parsers import (
     InvalidSchemaTypeException,
     schema_parser_config_registry,
 )
-from metadata.utils import fqn
+from metadata.utils import entity_link, fqn
 from metadata.utils.constants import UTF_8
 from metadata.utils.fqn import FQN_SEPARATOR
 from metadata.utils.helpers import get_standard_chart_type
@@ -717,6 +725,21 @@ class SampleDataSource(
                     ),
                 )
 
+            if table.get("customMetrics"):
+                for custom_metric in table["customMetrics"]:
+                    self.metadata.create_or_update_custom_metric(
+                        CreateCustomMetricRequest(**custom_metric),
+                        table_entity.id.__root__,
+                    )
+
+            for column in table.get("columns"):
+                if column.get("customMetrics"):
+                    for custom_metric in column["customMetrics"]:
+                        self.metadata.create_or_update_custom_metric(
+                            CreateCustomMetricRequest(**custom_metric),
+                            table_entity.id.__root__,
+                        )
+
     def ingest_stored_procedures(self) -> Iterable[Either[Entity]]:
         """Ingest Sample Stored Procedures"""
 
@@ -791,22 +814,13 @@ class SampleDataSource(
                         fromEntity=EntityReference(
                             id=from_table.id.__root__, type="table"
                         ),
-                        toEntity=EntityReference(
-                            id=stored_procedure_entity.id.__root__,
-                            type="storedProcedure",
-                        ),
-                    )
-                )
-            )
-
-            yield Either(
-                right=AddLineageRequest(
-                    edge=EntitiesEdge(
-                        fromEntity=EntityReference(
-                            id=stored_procedure_entity.id.__root__,
-                            type="storedProcedure",
-                        ),
                         toEntity=EntityReference(id=to_table.id.__root__, type="table"),
+                        lineageDetails=LineageDetails(
+                            pipeline=EntityReference(
+                                id=stored_procedure_entity.id.__root__,
+                                type="storedProcedure",
+                            )
+                        ),
                     )
                 )
             )
@@ -1373,6 +1387,7 @@ class SampleDataSource(
             )
 
     def ingest_test_case(self) -> Iterable[Either[OMetaTestCaseSample]]:
+        """Ingest test cases"""
         for test_suite in self.tests_suites["tests"]:
             suite = self.metadata.get_by_name(
                 fqn=test_suite["testSuiteName"], entity=TestSuite
@@ -1389,9 +1404,48 @@ class SampleDataSource(
                             TestCaseParameterValue(**param_values)
                             for param_values in test_case["parameterValues"]
                         ],
-                    )
+                    )  # type: ignore
                 )
                 yield Either(right=test_case_req)
+
+                test_case_fqn = f"{entity_link.get_table_or_column_fqn(test_case['entityLink'])}.{test_case['name']}"
+
+                for _, resolutions in test_case["resolutions"].items():
+                    for resolution in resolutions:
+                        create_test_case_resolution = CreateTestCaseResolutionStatus(
+                            testCaseResolutionStatusType=resolution[
+                                "testCaseResolutionStatusType"
+                            ],
+                            testCaseReference=test_case_fqn,
+                            severity=resolution["severity"],
+                        )
+
+                        if resolution["testCaseResolutionStatusType"] == "Assigned":
+                            user: User = self.metadata.get_by_name(
+                                User, fqn=resolution["assignee"]
+                            )
+                            create_test_case_resolution.testCaseResolutionStatusDetails = Assigned(
+                                assignee=EntityReference(
+                                    id=user.id.__root__, type="user"
+                                )
+                            )
+                        if resolution["testCaseResolutionStatusType"] == "Resolved":
+                            user: User = self.metadata.get_by_name(
+                                User, fqn=resolution["resolver"]
+                            )
+                            create_test_case_resolution.testCaseResolutionStatusDetails = Resolved(
+                                resolvedBy=EntityReference(
+                                    id=user.id.__root__, type="user"
+                                ),
+                                testCaseFailureReason=random.choice(
+                                    list(TestCaseFailureReasonType)
+                                ),
+                                testCaseFailureComment="Resolution comment",
+                            )
+
+                        self.metadata.create_test_case_resolution(
+                            create_test_case_resolution
+                        )
 
     def ingest_test_case_results(self) -> Iterable[Either[OMetaTestCaseResultsSample]]:
         """Iterate over all the testSuite and testCase and ingest them"""

@@ -25,6 +25,7 @@ from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
 )
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.storedProcedure import (
     Language,
     StoredProcedureCode,
@@ -172,7 +173,7 @@ class RedshiftSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource)
                 database_fqn = fqn.build(
                     self.metadata,
                     entity_type=Database,
-                    service_name=self.context.database_service.name.__root__,
+                    service_name=self.context.database_service,
                     database_name=new_database,
                 )
 
@@ -245,7 +246,7 @@ class RedshiftSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource)
         if self.source_config.includeStoredProcedures:
             results = self.engine.execute(
                 REDSHIFT_GET_STORED_PROCEDURES.format(
-                    schema_name=self.context.database_schema.name.__root__,
+                    schema_name=self.context.database_schema,
                 )
             ).all()
             for row in results:
@@ -258,16 +259,24 @@ class RedshiftSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource)
         """Prepare the stored procedure payload"""
 
         try:
-            yield Either(
-                right=CreateStoredProcedureRequest(
-                    name=EntityName(__root__=stored_procedure.name),
-                    storedProcedureCode=StoredProcedureCode(
-                        language=Language.SQL,
-                        code=stored_procedure.definition,
-                    ),
-                    databaseSchema=self.context.database_schema.fullyQualifiedName,
-                )
+            stored_procedure_request = CreateStoredProcedureRequest(
+                name=EntityName(__root__=stored_procedure.name),
+                storedProcedureCode=StoredProcedureCode(
+                    language=Language.SQL,
+                    code=stored_procedure.definition,
+                ),
+                databaseSchema=fqn.build(
+                    metadata=self.metadata,
+                    entity_type=DatabaseSchema,
+                    service_name=self.context.database_service,
+                    database_name=self.context.database,
+                    schema_name=self.context.database_schema,
+                ),
             )
+            yield Either(right=stored_procedure_request)
+
+            self.register_record_stored_proc_request(stored_procedure_request)
+
         except Exception as exc:
             yield Either(
                 left=StackTraceError(
@@ -285,7 +294,7 @@ class RedshiftSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource)
         start, _ = get_start_and_end(self.source_config.queryLogDuration)
         query = REDSHIFT_GET_STORED_PROCEDURE_QUERIES.format(
             start_date=start,
-            database_name=self.context.database.name.__root__,
+            database_name=self.context.database,
         )
 
         queries_dict = self.procedure_queries_dict(

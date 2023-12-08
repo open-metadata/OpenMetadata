@@ -76,8 +76,9 @@ public final class UserUtil {
         if (authProvider.equals(AuthProvider.BASIC)) {
           if (originalUser.getAuthenticationMechanism() == null
               || originalUser.getAuthenticationMechanism().equals(new AuthenticationMechanism())) {
-            updateUserWithHashedPwd(updatedUser, getPassword());
-            EmailUtil.sendInviteMailToAdmin(updatedUser, ADMIN_USER_NAME);
+            String randomPwd = getPassword();
+            updateUserWithHashedPwd(updatedUser, randomPwd);
+            EmailUtil.sendInviteMailToAdmin(updatedUser, randomPwd);
           }
         } else {
           updatedUser.setAuthenticationMechanism(new AuthenticationMechanism());
@@ -100,8 +101,9 @@ public final class UserUtil {
       updatedUser = user(username, domain, username).withIsAdmin(isAdmin).withIsEmailVerified(true);
       // Update Auth Mechanism if not present, and send mail to the user
       if (authProvider.equals(AuthProvider.BASIC)) {
-        updateUserWithHashedPwd(updatedUser, getPassword());
-        EmailUtil.sendInviteMailToAdmin(updatedUser, ADMIN_USER_NAME);
+        String randomPwd = getPassword();
+        updateUserWithHashedPwd(updatedUser, randomPwd);
+        EmailUtil.sendInviteMailToAdmin(updatedUser, randomPwd);
       }
     }
 

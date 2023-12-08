@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Space, Tabs } from 'antd';
+import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, omitBy, toString } from 'lodash';
@@ -29,8 +29,8 @@ import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/Error
 import ContainerChildren from '../../components/ContainerDetail/ContainerChildren/ContainerChildren';
 import ContainerDataModel from '../../components/ContainerDetail/ContainerDataModel/ContainerDataModel';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import DataProductsContainer from '../../components/DataProductsContainer/DataProductsContainer.component';
 import EntityLineageComponent from '../../components/Entity/EntityLineage/EntityLineage.component';
+import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRightPanel';
 import Loader from '../../components/Loader/Loader';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -41,8 +41,6 @@ import {
 } from '../../components/PermissionProvider/PermissionProvider.interface';
 import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
 import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
-import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
-import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
 import {
   getContainerDetailPath,
   getVersionPath,
@@ -54,7 +52,7 @@ import { Tag } from '../../generated/entity/classification/tag';
 import { Container } from '../../generated/entity/data/container';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { Include } from '../../generated/type/include';
-import { TagLabel, TagSource } from '../../generated/type/tagLabel';
+import { TagLabel } from '../../generated/type/tagLabel';
 import { postThread } from '../../rest/feedsAPI';
 import {
   addContainerFollower,
@@ -369,19 +367,23 @@ const ContainerPage = () => {
     }
   };
 
-  const handleToggleDelete = () => {
+  const handleToggleDelete = (version?: number) => {
     setContainerData((prev) => {
       if (!prev) {
         return prev;
       }
 
-      return { ...prev, deleted: !prev?.deleted };
+      return {
+        ...prev,
+        deleted: !prev?.deleted,
+        ...(version ? { version } : {}),
+      };
     });
   };
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) =>
-      isSoftDelete ? handleToggleDelete() : history.push('/'),
+    (isSoftDelete?: boolean, version?: number) =>
+      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
     []
   );
 
@@ -396,14 +398,16 @@ const ContainerPage = () => {
 
   const handleRestoreContainer = async () => {
     try {
-      await restoreContainer(containerData?.id ?? '');
+      const { version: newVersion } = await restoreContainer(
+        containerData?.id ?? ''
+      );
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.container'),
         }),
         2000
       );
-      handleToggleDelete();
+      handleToggleDelete(newVersion);
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -540,37 +544,19 @@ const ContainerPage = () => {
               className="entity-tag-right-panel-container"
               data-testid="entity-right-panel"
               flex="320px">
-              <Space className="w-full" direction="vertical" size="large">
-                <DataProductsContainer
-                  activeDomain={containerData?.domain}
-                  dataProducts={containerData?.dataProducts ?? []}
-                  hasPermission={false}
-                />
-                <TagsContainerV2
-                  displayType={DisplayType.READ_MORE}
-                  entityFqn={decodedContainerName}
-                  entityType={EntityType.CONTAINER}
-                  permission={
-                    editDescriptionPermission && !containerData?.deleted
-                  }
-                  selectedTags={tags}
-                  tagType={TagSource.Classification}
-                  onSelectionChange={handleTagSelection}
-                  onThreadLinkSelect={onThreadLinkSelect}
-                />
-                <TagsContainerV2
-                  displayType={DisplayType.READ_MORE}
-                  entityFqn={decodedContainerName}
-                  entityType={EntityType.CONTAINER}
-                  permission={
-                    editDescriptionPermission && !containerData?.deleted
-                  }
-                  selectedTags={tags}
-                  tagType={TagSource.Glossary}
-                  onSelectionChange={handleTagSelection}
-                  onThreadLinkSelect={onThreadLinkSelect}
-                />
-              </Space>
+              <EntityRightPanel
+                dataProducts={containerData?.dataProducts ?? []}
+                domain={containerData?.domain}
+                editTagPermission={
+                  editTagsPermission && !containerData?.deleted
+                }
+                entityFQN={decodedContainerName}
+                entityId={containerData?.id ?? ''}
+                entityType={EntityType.CONTAINER}
+                selectedTags={tags}
+                onTagSelectionChange={handleTagSelection}
+                onThreadLinkSelect={onThreadLinkSelect}
+              />
             </Col>
           </Row>
         ),
@@ -737,6 +723,7 @@ const ContainerPage = () => {
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
+            isRecursiveDelete
             afterDeleteAction={afterDeleteAction}
             afterDomainUpdateAction={afterDomainUpdateAction}
             dataAsset={containerData}

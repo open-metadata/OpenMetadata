@@ -24,7 +24,7 @@ VERSIONS = {
     "boto3": "boto3>=1.20,<2.0",  # No need to add botocore separately. It's a dep from boto3
     "geoalchemy2": "GeoAlchemy2~=0.12",
     "google-cloud-storage": "google-cloud-storage==1.43.0",
-    "great-expectations": "great-expectations~=0.17.0",
+    "great-expectations": "great-expectations~=0.18.0",
     "grpc-tools": "grpcio-tools>=1.47.2",
     "msal": "msal~=1.2",
     "neo4j": "neo4j~=5.3.0",
@@ -114,14 +114,17 @@ base_requirements = {
     "sqlalchemy>=1.4.0,<2",
     "collate-sqllineage>=1.0.4",
     "tabulate==0.9.0",
-    "typing_extensions<=4.5.0",  # We need to have this fixed due to a yanked release 4.6.0
+    "typing_extensions>=4.8.0",
     "typing-inspect",
     "wheel~=0.38.4",
 }
 
 
 plugins: Dict[str, Set[str]] = {
-    "airflow": {VERSIONS["airflow"]},  # Same as ingestion container. For development.
+    "airflow": {
+        VERSIONS["airflow"],
+        "attrs",
+    },  # Same as ingestion container. For development.
     "amundsen": {VERSIONS["neo4j"]},
     "athena": {"pyathena==3.0.8"},
     "atlas": {},
@@ -174,6 +177,7 @@ plugins: Dict[str, Set[str]] = {
     "deltalake": {"delta-spark<=2.3.0"},
     "docker": {"python_on_whales==0.55.0"},
     "domo": {VERSIONS["pydomo"]},
+    "doris": {"pydoris==1.0.2"},
     "druid": {"pydruid>=0.6.5"},
     "dynamodb": {VERSIONS["boto3"]},
     "elasticsearch": {

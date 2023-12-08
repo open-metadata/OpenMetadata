@@ -40,6 +40,7 @@ import {
   ThreadTaskStatus,
   ThreadType,
 } from '../../../generated/entity/feed/thread';
+import { useAuth } from '../../../hooks/authHooks';
 import { useElementInView } from '../../../hooks/useElementInView';
 import { getAllFeeds, getFeedCount } from '../../../rest/feedsAPI';
 import { getCountBadge, getEntityDetailLink } from '../../../utils/CommonUtils';
@@ -68,6 +69,7 @@ export const ActivityFeedTab = ({
   owner,
   columns,
   entityType,
+  isForFeedTab = true,
   onUpdateEntityDetails,
 }: ActivityFeedTabProps) => {
   const history = useHistory();
@@ -80,6 +82,7 @@ export const ActivityFeedTab = ({
   });
   const { subTab: activeTab = ActivityFeedTabs.ALL } =
     useParams<{ subTab: ActivityFeedTabs }>();
+  const { isAdminUser } = useAuth();
   const [taskFilter, setTaskFilter] = useState<TaskFilter>('open');
   const [allCount, setAllCount] = useState(0);
   const [tasksCount, setTasksCount] = useState(0);
@@ -161,7 +164,7 @@ export const ActivityFeedTab = ({
         undefined,
         undefined,
         ThreadType.Task,
-        FeedFilter.OWNER,
+        isAdminUser ? undefined : FeedFilter.OWNER,
         undefined,
         userId
       ).then((res) => {
@@ -177,7 +180,7 @@ export const ActivityFeedTab = ({
         undefined,
         undefined,
         ThreadType.Conversation,
-        FeedFilter.OWNER,
+        isAdminUser ? undefined : FeedFilter.OWNER,
         undefined,
         userId
       ).then((res) => {
@@ -379,10 +382,10 @@ export const ActivityFeedTab = ({
         )}
         <ActivityFeedListV1
           hidePopover
-          isForFeedTab
           activeFeedId={selectedThread?.id}
           emptyPlaceholderText={placeholderText}
           feedList={threads}
+          isForFeedTab={isForFeedTab}
           isLoading={false}
           showThread={false}
           tab={activeTab}
@@ -413,11 +416,11 @@ export const ActivityFeedTab = ({
                 />
               </div>
               <FeedPanelBodyV1
-                isForFeedTab
                 isOpenInDrawer
                 showThread
                 feed={selectedThread}
                 hidePopover={false}
+                isForFeedTab={isForFeedTab}
               />
               <ActivityFeedEditor className="m-md" onSave={onSave} />
             </div>
@@ -427,6 +430,7 @@ export const ActivityFeedTab = ({
                 <TaskTab
                   columns={columns}
                   entityType={EntityType.TABLE}
+                  isForFeedTab={isForFeedTab}
                   owner={owner}
                   taskThread={selectedThread}
                   onAfterClose={handleAfterTaskClose}
@@ -435,6 +439,7 @@ export const ActivityFeedTab = ({
               ) : (
                 <TaskTab
                   entityType={isUserEntity ? entityTypeTask : entityType}
+                  isForFeedTab={isForFeedTab}
                   owner={owner}
                   taskThread={selectedThread}
                   onAfterClose={handleAfterTaskClose}

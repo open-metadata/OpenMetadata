@@ -6,7 +6,7 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.app.external.AutoTaggerAppConfig",
   "definitions": {
-    "autoTaggerApp": {
+    "autoTaggerAppType": {
       "description": "Application type.",
       "type": "string",
       "enum": ["AutoTagger"],
@@ -17,7 +17,7 @@
     "type": {
       "title": "Service Type",
       "description": "Service Type",
-      "$ref": "#/definitions/autoTaggerApp",
+      "$ref": "#/definitions/autoTaggerAppType",
       "default": "AutoTagger"
     },
     "confidenceLevel": {
