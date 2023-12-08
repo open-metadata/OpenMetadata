@@ -259,6 +259,9 @@ class MetabaseSource(DashboardServiceSource):
                     )
                 )
 
+    def _get_database_service(self, db_service_name: str):
+        return self.metadata.get_by_name(DatabaseService, db_service_name)
+
     def _yield_lineage_from_query(
         self, chart_details: MetabaseChart, db_service_name: str, dashboard_name: str
     ) -> Iterable[Either[AddLineageRequest]]:
@@ -277,11 +280,13 @@ class MetabaseSource(DashboardServiceSource):
 
         database_name = database.details.db if database and database.details else None
 
-        db_service = self.metadata.get_by_name(DatabaseService, db_service_name)
+        db_service = self._get_database_service(db_service_name)
 
         lineage_parser = LineageParser(
             query,
-            ConnectionTypeDialectMapper.dialect_of(db_service.serviceType.value),
+            ConnectionTypeDialectMapper.dialect_of(db_service.serviceType.value)
+            if db_service
+            else None,
         )
 
         for table in lineage_parser.source_tables:
