@@ -33,6 +33,8 @@ import static org.openmetadata.service.resources.teams.UserResource.USER_PROTECT
 import at.favre.lib.crypto.bcrypt.BCrypt;
 import freemarker.template.TemplateException;
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -187,7 +189,9 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     String passwordResetLink =
         String.format(
             "%s/users/password/reset?user=%s&token=%s",
-            EmailUtil.buildBaseUrl(uriInfo.getRequestUri()), user.getFullyQualifiedName(), mailVerificationToken);
+            EmailUtil.buildBaseUrl(uriInfo.getRequestUri()),
+            URLEncoder.encode(user.getName(), StandardCharsets.UTF_8),
+            mailVerificationToken);
     try {
       EmailUtil.sendPasswordResetLink(passwordResetLink, user, subject, templateFilePath);
     } catch (TemplateException e) {
