@@ -11,6 +11,12 @@
  *  limitations under the License.
  */
 
+import { Bot } from '../../generated/entity/bot';
+import { User } from '../../generated/entity/teams/user';
+
 export type MockProps = {
   isBot: boolean;
+  botData?: Bot;
+  botUserData?: User;
+  revokeTokenHandlerBot?: () => void;
 };

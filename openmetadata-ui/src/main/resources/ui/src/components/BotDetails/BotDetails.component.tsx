@@ -25,16 +25,7 @@ import {
   GlobalSettingsMenuCategory,
 } from '../../constants/GlobalSettings.constants';
 import { Role } from '../../generated/entity/teams/role';
-import {
-  AuthenticationMechanism,
-  AuthType,
-} from '../../generated/entity/teams/user';
-import { createBotWithPut } from '../../rest/botsAPI';
-import {
-  createUserWithPut,
-  getAuthMechanismForBotUser,
-  getRoles,
-} from '../../rest/userAPI';
+import { getRoles } from '../../rest/userAPI';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -42,13 +33,11 @@ import Description from '../common/EntityDescription/Description';
 import InheritedRolesCard from '../common/InheritedRolesCard/InheritedRolesCard.component';
 import RolesCard from '../common/RolesCard/RolesCard.component';
 import TitleBreadcrumb from '../common/TitleBreadcrumb/TitleBreadcrumb.component';
-import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
-import AuthMechanism from './AuthMechanism';
-import AuthMechanismForm from './AuthMechanismForm';
 import './bot-details.less';
 import { BotsDetailProps } from './BotDetails.interfaces';
 
 import { ReactComponent as IconBotProfile } from '../../assets/svg/bot-profile.svg';
+import AccessTokenCard from '../AccessTokenCard/AccessTokenCard.component';
 
 const BotDetails: FC<BotsDetailProps> = ({
   botData,
@@ -61,18 +50,10 @@ const BotDetails: FC<BotsDetailProps> = ({
   const [displayName, setDisplayName] = useState(botData.displayName);
   const [isDisplayNameEdit, setIsDisplayNameEdit] = useState(false);
   const [isDescriptionEdit, setIsDescriptionEdit] = useState(false);
-  const [isRevokingToken, setIsRevokingToken] = useState<boolean>(false);
   const [selectedRoles, setSelectedRoles] = useState<Array<string>>([]);
   const [roles, setRoles] = useState<Array<Role>>([]);
 
-  const [isUpdating, setIsUpdating] = useState<boolean>(false);
-
   const { t } = useTranslation();
-  const [authenticationMechanism, setAuthenticationMechanism] =
-    useState<AuthenticationMechanism>();
-
-  const [isAuthMechanismEdit, setIsAuthMechanismEdit] =
-    useState<boolean>(false);
 
   const editAllPermission = useMemo(
     () => botPermission.EditAll,
@@ -88,15 +69,6 @@ const BotDetails: FC<BotsDetailProps> = ({
     [botPermission]
   );
 
-  const fetchAuthMechanismForBot = async () => {
-    try {
-      const response = await getAuthMechanismForBotUser(botUserData.id);
-      setAuthenticationMechanism(response);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
   const fetchRoles = async () => {
     try {
       const { data } = await getRoles();
@@ -106,64 +78,6 @@ const BotDetails: FC<BotsDetailProps> = ({
       showErrorToast(err as AxiosError);
     }
   };
-
-  const handleAuthMechanismUpdate = async (
-    updatedAuthMechanism: AuthenticationMechanism
-  ) => {
-    setIsUpdating(true);
-    try {
-      const {
-        isAdmin,
-        timezone,
-        name,
-        description,
-        displayName,
-        profile,
-        email,
-        isBot,
-      } = botUserData;
-      const response = await createUserWithPut({
-        isAdmin,
-        timezone,
-        name,
-        description,
-        displayName,
-        profile,
-        email,
-        isBot,
-        authenticationMechanism: {
-          ...botUserData.authenticationMechanism,
-          authType: updatedAuthMechanism.authType,
-          config:
-            updatedAuthMechanism.authType === AuthType.Jwt
-              ? {
-                  JWTTokenExpiry: updatedAuthMechanism.config?.JWTTokenExpiry,
-                }
-              : {
-                  ssoServiceType: updatedAuthMechanism.config?.ssoServiceType,
-                  authConfig: updatedAuthMechanism.config?.authConfig,
-                },
-        },
-        botName: botData.name,
-      });
-      if (response) {
-        await createBotWithPut({
-          name: botData.name,
-          description: botData.description,
-          displayName: botData.displayName,
-          botUser: response.name,
-        });
-        fetchAuthMechanismForBot();
-      }
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsUpdating(false);
-      setIsAuthMechanismEdit(false);
-    }
-  };
-
-  const handleAuthMechanismEdit = () => setIsAuthMechanismEdit(true);
 
   const onDisplayNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setDisplayName(e.target.value);
@@ -295,9 +209,6 @@ const BotDetails: FC<BotsDetailProps> = ({
 
   useEffect(() => {
     prepareSelectedRoles();
-    if (botUserData.id) {
-      fetchAuthMechanismForBot();
-    }
   }, [botUserData]);
 
   return (
@@ -331,53 +242,13 @@ const BotDetails: FC<BotsDetailProps> = ({
             { name: botData.name || '', url: '', activeTitle: true },
           ]}
         />
-        <Card
-          className="page-layout-v1-left-panel mt-2 m-t-md"
-          data-testid="center-panel">
-          {authenticationMechanism ? (
-            <>
-              {isAuthMechanismEdit ? (
-                <AuthMechanismForm
-                  isBot
-                  authenticationMechanism={authenticationMechanism}
-                  isUpdating={isUpdating}
-                  onCancel={() => setIsAuthMechanismEdit(false)}
-                  onSave={handleAuthMechanismUpdate}
-                />
-              ) : (
-                <AuthMechanism
-                  isBot
-                  authenticationMechanism={authenticationMechanism}
-                  hasPermission={editAllPermission}
-                  onEdit={handleAuthMechanismEdit}
-                  onTokenRevoke={() => setIsRevokingToken(true)}
-                />
-              )}
-            </>
-          ) : (
-            <AuthMechanismForm
-              isBot
-              authenticationMechanism={{} as AuthenticationMechanism}
-              isUpdating={isUpdating}
-              onCancel={() => setIsAuthMechanismEdit(false)}
-              onSave={handleAuthMechanismUpdate}
-            />
-          )}
-        </Card>
+        <AccessTokenCard
+          isBot
+          botData={botData}
+          botUserData={botUserData}
+          revokeTokenHandlerBot={revokeTokenHandler}
+        />
       </div>
-      <ConfirmationModal
-        bodyText={t('message.are-you-sure-to-revoke-access')}
-        cancelText={t('label.cancel')}
-        confirmText={t('label.confirm')}
-        header={t('message.are-you-sure')}
-        visible={isRevokingToken}
-        onCancel={() => setIsRevokingToken(false)}
-        onConfirm={() => {
-          revokeTokenHandler();
-          setIsRevokingToken(false);
-          handleAuthMechanismEdit();
-        }}
-      />
     </PageLayoutV1>
   );
 };

@@ -13,14 +13,21 @@
 
 import { Card } from 'antd';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { t } from 'i18next';
-import React, { FC, useEffect, useState } from 'react';
+import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   PersonalAccessToken,
   TokenType,
 } from '../../generated/auth/personalAccessToken';
-import { AuthenticationMechanism } from '../../generated/entity/teams/user';
 import {
+  AuthenticationMechanism,
+  AuthType,
+} from '../../generated/entity/teams/user';
+import { createBotWithPut } from '../../rest/botsAPI';
+import {
+  createUserWithPut,
+  getAuthMechanismForBotUser,
   getUserAccessToken,
   revokeAccessToken,
   updateUserAccessToken,
@@ -28,18 +35,30 @@ import {
 import { showErrorToast } from '../../utils/ToastUtils';
 import AuthMechanism from '../BotDetails/AuthMechanism';
 import AuthMechanismForm from '../BotDetails/AuthMechanismForm';
+import Loader from '../Loader/Loader';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import { MockProps } from './AccessTokenCard.interfaces';
 
-const AccessTokenCard: FC<MockProps> = ({ isBot }: MockProps) => {
+const AccessTokenCard: FC<MockProps> = ({
+  isBot,
+  botData,
+  botUserData,
+  revokeTokenHandlerBot,
+}: MockProps) => {
+  const [isUpdating, setIsUpdating] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isAuthMechanismEdit, setIsAuthMechanismEdit] =
     useState<boolean>(false);
-  const [isUpdating, setIsUpdating] = useState<boolean>(false);
   const [authenticationMechanism, setAuthenticationMechanism] =
     useState<PersonalAccessToken>({
       tokenType: TokenType.PersonalAccessToken,
     } as PersonalAccessToken);
-  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [authenticationMechanismBot, setAuthenticationMechanismBot] =
+    useState<AuthenticationMechanism>({
+      authType: AuthType.Jwt,
+    } as AuthenticationMechanism);
+
   const handleAuthMechanismEdit = () => setIsAuthMechanismEdit(true);
 
   const fetchAuthMechanismForUser = async () => {
@@ -52,6 +71,84 @@ const AccessTokenCard: FC<MockProps> = ({ isBot }: MockProps) => {
       showErrorToast(error as AxiosError);
     }
   };
+
+  const fetchAuthMechanismForBot = async () => {
+    try {
+      setIsLoading(true);
+      if (botUserData) {
+        const response = await getAuthMechanismForBotUser(botUserData.id);
+        setAuthenticationMechanismBot(response);
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+      setIsLoading(false);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleAuthMechanismUpdateForBot = async (
+    updatedAuthMechanism: AuthenticationMechanism
+  ) => {
+    setIsUpdating(true);
+    if (botUserData && botData) {
+      try {
+        const {
+          isAdmin,
+          timezone,
+          name,
+          description,
+          displayName,
+          profile,
+          email,
+          isBot,
+        } = botUserData;
+
+        const response = await createUserWithPut({
+          isAdmin,
+          timezone,
+          name,
+          description,
+          displayName,
+          profile,
+          email,
+          isBot,
+          authenticationMechanism: {
+            ...botUserData.authenticationMechanism,
+            authType: updatedAuthMechanism.authType,
+            config:
+              updatedAuthMechanism.authType === AuthType.Jwt
+                ? {
+                    JWTTokenExpiry: updatedAuthMechanism.config?.JWTTokenExpiry,
+                  }
+                : {
+                    ssoServiceType: updatedAuthMechanism.config?.ssoServiceType,
+                    authConfig: updatedAuthMechanism.config?.authConfig,
+                  },
+          },
+          botName: botData.name,
+        });
+
+        if (response) {
+          if (botData) {
+            await createBotWithPut({
+              name: botData.name,
+              description: botData.description,
+              displayName: botData.displayName,
+              botUser: response.name,
+            });
+            fetchAuthMechanismForBot();
+          }
+        }
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsUpdating(false);
+        setIsAuthMechanismEdit(false);
+      }
+    }
+  };
+
   const handleAuthMechanismUpdate = async (data: AuthenticationMechanism) => {
     if (data.config) {
       setIsUpdating(true);
@@ -73,10 +170,6 @@ const AccessTokenCard: FC<MockProps> = ({ isBot }: MockProps) => {
     }
   };
 
-  useEffect(() => {
-    fetchAuthMechanismForUser();
-  }, [isModalOpen]);
-
   const revokeTokenHandler = () => {
     revokeAccessToken('removeAll=true')
       .then(() => setIsModalOpen(false))
@@ -85,23 +178,50 @@ const AccessTokenCard: FC<MockProps> = ({ isBot }: MockProps) => {
       });
   };
 
-  return (
+  useEffect(() => {
+    fetchAuthMechanismForUser();
+  }, [isModalOpen]);
+
+  useEffect(() => {
+    if (botUserData && botUserData.id) {
+      fetchAuthMechanismForBot();
+    }
+  }, [botUserData]);
+
+  const authenticationMechanismData = useMemo(() => {
+    return isBot ? authenticationMechanismBot : authenticationMechanism;
+  }, [isBot, authenticationMechanismBot, authenticationMechanism]);
+
+  const onSave = useMemo(() => {
+    return isBot ? handleAuthMechanismUpdateForBot : handleAuthMechanismUpdate;
+  }, [isBot, handleAuthMechanismUpdateForBot, handleAuthMechanismUpdateForBot]);
+
+  const tokenRevoke = useCallback(() => {
+    return isBot ? revokeTokenHandlerBot?.() : revokeTokenHandler();
+  }, [isBot, revokeTokenHandlerBot, revokeTokenHandler]);
+
+  return isLoading ? (
+    <Loader />
+  ) : (
     <Card
-      className="p-md m-l-md m-r-lg w-auto m-t-md"
+      className={classNames(
+        'm-t-md',
+        isBot ? 'page-layout-v1-left-panel mt-2 ' : 'p-md m-l-md m-r-lg w-auto'
+      )}
       data-testid="center-panel">
       <>
         {isAuthMechanismEdit ? (
           <AuthMechanismForm
-            authenticationMechanism={authenticationMechanism}
+            authenticationMechanism={authenticationMechanismData}
             isBot={isBot}
             isUpdating={isUpdating}
             onCancel={() => setIsAuthMechanismEdit(false)}
-            onSave={handleAuthMechanismUpdate}
+            onSave={onSave}
           />
         ) : (
           <AuthMechanism
             hasPermission
-            authenticationMechanism={authenticationMechanism}
+            authenticationMechanism={authenticationMechanismData}
             isBot={isBot}
             onEdit={handleAuthMechanismEdit}
             onTokenRevoke={() => setIsModalOpen(true)}
@@ -116,9 +236,9 @@ const AccessTokenCard: FC<MockProps> = ({ isBot }: MockProps) => {
         visible={isModalOpen}
         onCancel={() => setIsModalOpen(false)}
         onConfirm={() => {
-          revokeTokenHandler();
-          setIsModalOpen(false);
+          tokenRevoke();
           handleAuthMechanismEdit();
+          setIsModalOpen(false);
         }}
       />
     </Card>
