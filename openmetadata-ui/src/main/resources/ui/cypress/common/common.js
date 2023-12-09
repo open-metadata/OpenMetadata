@@ -586,19 +586,19 @@ export const visitEntityDetailsPage = ({
 
         verifyResponseStatusCode('@explorePageTabSearch', 200);
 
-        cy.get('[data-testid="search-dropdown-Service"]').click();
-        cy.get(
-          '[data-testid="drop-down-menu"] [data-testid="search-input"]'
-        ).type(serviceName);
-        verifyResponseStatusCode('@explorePageSearch', 200);
-        cy.get(
-          `[data-testid="drop-down-menu"] [data-testid="${serviceName}"]`
-        ).click();
-        cy.get(
-          `[data-testid="drop-down-menu"] [data-testid="update-btn"]`
-        ).click();
         verifyResponseStatusCode('@explorePageSearch', 200);
         if ([DATA_ASSETS.dashboards, DATA_ASSETS.dataModel].includes(entity)) {
+          cy.get('[data-testid="search-dropdown-Service"]').click();
+          cy.get(
+            '[data-testid="drop-down-menu"] [data-testid="search-input"]'
+          ).type(serviceName);
+          verifyResponseStatusCode('@explorePageSearch', 200);
+          cy.get(
+            `[data-testid="drop-down-menu"] [data-testid="${serviceName}"]`
+          ).click();
+          cy.get(
+            `[data-testid="drop-down-menu"] [data-testid="update-btn"]`
+          ).click();
           cy.get('[data-testid="entity-link"]').contains(term).eq(0).click();
         } else {
           cy.get(`[data-testid="${id}"] [data-testid="entity-link"]`)
@@ -1239,8 +1239,8 @@ export const removeOwner = (entity, isGlossaryPage) => {
   interceptURL('PATCH', `/api/v1/${entity}/*`, 'patchOwner');
 
   cy.get('[data-testid="edit-owner"]').click();
-  cy.get("[data-testid='select-owner-tabs']").should('be.visible');
   verifyResponseStatusCode('@getUsers', 200);
+  cy.get("[data-testid='select-owner-tabs']").should('be.visible');
   cy.get('[data-testid="remove-owner"]').click();
   verifyResponseStatusCode('@patchOwner', 200);
   if (isGlossaryPage) {
