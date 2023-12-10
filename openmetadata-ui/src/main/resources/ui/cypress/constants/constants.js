@@ -363,6 +363,37 @@ export const CYPRESS_ASSETS_GLOSSARY_TERMS = {
   },
 };
 
+export const CYPRESS_ASSETS_GLOSSARY_TERMS_1 = {
+  term_1: {
+    name: 'Term1',
+    description: 'term1 desc',
+    fullyQualifiedName: 'Cypress Assets Glossary.Term1',
+    synonyms: 'buy,collect,acquire',
+    assets: COMMON_ASSETS,
+  },
+  term_2: {
+    name: 'Term2',
+    description: 'term2 desc',
+    synonyms: 'give,disposal,deal',
+    fullyQualifiedName: 'Cypress Assets Glossary.Term2',
+    assets: COMMON_ASSETS,
+  },
+  term_3: {
+    name: 'Term3',
+    synonyms: 'tea,coffee,water',
+    description: 'term3 desc',
+    fullyQualifiedName: 'Cypress Assets Glossary.Term3',
+    assets: COMMON_ASSETS,
+  },
+  term_4: {
+    name: 'Term4',
+    description: 'term4 desc',
+    synonyms: 'milk,biscuit,water',
+    fullyQualifiedName: 'Cypress Assets Glossary.Term4',
+    assets: COMMON_ASSETS,
+  },
+};
+
 export const NEW_GLOSSARY_TERMS = {
   term_1: {
     name: 'CypressPurchase',

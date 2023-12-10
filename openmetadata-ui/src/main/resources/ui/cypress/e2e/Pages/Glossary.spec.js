@@ -30,6 +30,7 @@ import { deleteGlossary } from '../../common/GlossaryUtils';
 import {
   CYPRESS_ASSETS_GLOSSARY,
   CYPRESS_ASSETS_GLOSSARY_TERMS,
+  CYPRESS_ASSETS_GLOSSARY_TERMS_1,
   DELETE_TERM,
   INVALID_NAMES,
   NAME_MAX_LENGTH_VALIDATION_ERROR,
@@ -628,6 +629,50 @@ const approveGlossaryTermWorkflow = ({ glossary, glossaryTerm }) => {
     .contains('Approved');
 };
 
+const addGlossaryTermsInEntityField = ({
+  entityTerm,
+  entityField,
+  glossaryTerms,
+}) => {
+  const glossaryContainer = `[data-row-key$="${entityTerm}.${entityField}"] [data-testid="glossary-container"]`;
+
+  cy.get(`${glossaryContainer} [data-testid="entity-tags"] .ant-tag`)
+    .scrollIntoView()
+    .click();
+
+  const tagSelector = `${glossaryContainer} [data-testid="tag-selector"]`;
+  cy.get(tagSelector).click();
+
+  glossaryTerms.forEach((term) => {
+    cy.get(`${tagSelector} .ant-select-selection-search input`).type(term.name);
+
+    cy.get(
+      `.ant-select-dropdown [data-testid='tag-${term.fullyQualifiedName}']`
+    ).click();
+    cy.get(`[data-testid="selected-tag-${term.fullyQualifiedName}"]`).should(
+      'exist'
+    );
+  });
+
+  cy.get('[data-testid="saveAssociatedTag"]').click();
+};
+
+const checkSummaryListItemSorting = (termName) => {
+  cy.get('#right-panelV1 [data-testid="summary-list"]')
+    .as('summaryList')
+    .scrollIntoView();
+
+  cy.get('@summaryList')
+    .get('[data-testid="summary-list-item"]')
+    .first()
+    .as('firstSummaryListItem');
+
+  cy.get('@firstSummaryListItem')
+    .get('[data-testid="entity-title"]')
+    .first()
+    .should('have.text', termName);
+};
+
 describe('Prerequisites', () => {
   it('Create a user with data consumer role', () => {
     signupAndLogin(
@@ -1083,6 +1128,37 @@ describe('Glossary page should work properly', () => {
     cy.contains('Adding a new Asset is easy, just give it a spin!').should(
       'be.visible'
     );
+  });
+
+  it('Tags and entity columns should be sorted based on current Term Page', () => {
+    createGlossary(CYPRESS_ASSETS_GLOSSARY);
+    selectActiveGlossary(CYPRESS_ASSETS_GLOSSARY.name);
+
+    const terms = Object.values(CYPRESS_ASSETS_GLOSSARY_TERMS_1);
+    terms.forEach((term) =>
+      createGlossaryTerm(term, CYPRESS_ASSETS_GLOSSARY, 'Approved', true)
+    );
+
+    const entityTable = SEARCH_ENTITY_TABLE.table_1;
+    const entityFieldForApplyGlossaryTerm = 'customer';
+
+    visitEntityDetailsPage({
+      term: entityTable.term,
+      serviceName: entityTable.serviceName,
+      entity: entityTable.entity,
+    });
+
+    addGlossaryTermsInEntityField({
+      entityTerm: entityTable.term,
+      entityField: entityFieldForApplyGlossaryTerm,
+      glossaryTerms: terms,
+    });
+
+    goToGlossaryPage();
+    selectActiveGlossary(CYPRESS_ASSETS_GLOSSARY.name);
+    goToAssetsTab(terms[0].name, terms[0].fullyQualifiedName, true);
+
+    checkSummaryListItemSorting(entityFieldForApplyGlossaryTerm);
   });
 });
 

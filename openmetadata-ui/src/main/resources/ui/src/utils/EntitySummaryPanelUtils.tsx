@@ -55,7 +55,11 @@ export const getFormattedEntityData = (
         (acc, column) => {
           const columnData = {
             name: column.name,
-            title: <Text className="entity-title">{getTitleName(column)}</Text>,
+            title: (
+              <Text className="entity-title" data-testid="entity-title">
+                {getTitleName(column)}
+              </Text>
+            ),
             type: column.dataType,
             tags: column.tags,
             description: column.description,

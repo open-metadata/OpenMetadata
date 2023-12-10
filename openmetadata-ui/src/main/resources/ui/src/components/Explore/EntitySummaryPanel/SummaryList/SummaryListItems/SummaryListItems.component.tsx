@@ -30,7 +30,7 @@ function SummaryListItem({
   const { t } = useTranslation();
 
   return (
-    <Col key={entityDetails.name} span={24}>
+    <Col data-testid="summary-list-item" key={entityDetails.name} span={24}>
       <div className="summary-list-item-container">
         <Row gutter={[0, 8]}>
           <Col
