@@ -400,7 +400,7 @@ const TagsPage = () => {
           return data;
         });
       });
-      classificationDetailsRef.current?.getTags();
+      classificationDetailsRef.current?.refreshClassificationTags();
     } catch (error) {
       if (
         (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT

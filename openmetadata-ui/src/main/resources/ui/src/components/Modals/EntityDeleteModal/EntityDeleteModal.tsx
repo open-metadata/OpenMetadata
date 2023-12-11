@@ -93,7 +93,9 @@ const EntityDeleteModal = ({
         <div className="mb-2">
           <Transi18next
             i18nKey="message.permanently-delete-metadata"
-            renderElement={<strong data-testid="username" />}
+            renderElement={
+              <strong data-testid="enitityName" style={{ fontWeight: 500 }} />
+            }
             values={{
               entityName: entityName,
             }}

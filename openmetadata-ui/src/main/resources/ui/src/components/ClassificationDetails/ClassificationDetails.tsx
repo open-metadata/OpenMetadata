@@ -94,7 +94,7 @@ export interface ClassificationDetailsProps {
   ) => Promise<void>;
 }
 export interface ClassificationDetailsRef {
-  getTags: () => void;
+  refreshClassificationTags: () => void;
 }
 
 const ClassificationDetails = forwardRef(
@@ -440,7 +440,7 @@ const ClassificationDetails = forwardRef(
     ]);
 
     useImperativeHandle(ref, () => ({
-      getTags() {
+      refreshClassificationTags() {
         if (currentClassification?.fullyQualifiedName) {
           fetchClassificationChildren(currentClassification.fullyQualifiedName);
         }
