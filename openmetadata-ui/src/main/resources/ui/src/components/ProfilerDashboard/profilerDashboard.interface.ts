@@ -45,7 +45,7 @@ export type MetricChartType = {
     color: string;
     latestValue?: string | number;
   }[];
-  data: Record<string, string | number>[];
+  data: Record<string, string | number | undefined>[];
 };
 
 export interface ProfilerDetailsCardProps {
@@ -55,6 +55,7 @@ export interface ProfilerDetailsCardProps {
   title?: string;
   tickFormatter?: string;
   curveType?: CurveType;
+  isLoading?: boolean;
 }
 
 export enum ProfilerDashboardTab {
