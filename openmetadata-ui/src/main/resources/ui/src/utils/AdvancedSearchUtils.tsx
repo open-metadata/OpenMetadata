@@ -220,7 +220,6 @@ export const generateSearchDropdownLabel = (
         {showProfilePicture && (
           <ProfilePicture
             displayName={option.label}
-            id={option.key || ''}
             name={option.label || ''}
             textClass="text-xs"
             width="18"

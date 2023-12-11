@@ -27,7 +27,6 @@ import {
 } from '../../../utils/FeedUtils';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
-import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import EditAnnouncementModal from '../../Modals/AnnouncementModal/EditAnnouncementModal';
 import { ActivityFeedCardProp } from './ActivityFeedCard.interface';
 import FeedCardBody from './FeedCardBody/FeedCardBody';
@@ -196,15 +195,8 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
           placement="topRight"
           trigger="hover"
           onOpenChange={handleVisibleChange}>
-          <Space align="start" className="w-full" size={16}>
-            {showUserAvatar && (
-              <UserPopOverCard userName={feedDetail.from}>
-                <span className="cursor-pointer" data-testid="authorAvatar">
-                  <ProfilePicture id="" name={feedDetail.from} width="32" />
-                </span>
-              </UserPopOverCard>
-            )}
-
+          <Space align="start" className="w-full" size={0}>
+            {showUserAvatar && <UserPopOverCard userName={feedDetail.from} />}
             <div>
               <FeedCardHeader
                 createdBy={feedDetail.from}
