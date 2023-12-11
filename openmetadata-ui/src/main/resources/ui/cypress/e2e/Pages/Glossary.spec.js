@@ -659,7 +659,16 @@ const addGlossaryTermsInEntityField = ({
   cy.get('[data-testid="saveAssociatedTag"]').click();
 };
 
-const checkSummaryListItemSorting = (termName) => {
+const checkTagsSortingAndHighlighting = ({ termFQN }) => {
+  cy.get('[data-testid="tags-viewer"] [data-testid="tags"]')
+    .first()
+    .as('firstTag');
+
+  cy.get('@firstTag').get(`[data-testid="tag-${termFQN}"]`).should('exist');
+  cy.get('@firstTag').should('have.class', 'tag-highlight');
+};
+
+const checkSummaryListItemSorting = ({ termFQN, columnName }) => {
   cy.get('#right-panelV1 [data-testid="summary-list"]')
     .as('summaryList')
     .scrollIntoView();
@@ -672,7 +681,9 @@ const checkSummaryListItemSorting = (termName) => {
   cy.get('@firstSummaryListItem')
     .get('[data-testid="entity-title"]')
     .first()
-    .should('have.text', termName);
+    .should('have.text', columnName);
+
+  checkTagsSortingAndHighlighting({ termFQN });
 };
 
 describe('Prerequisites', () => {
@@ -1159,7 +1170,10 @@ describe('Glossary page should work properly', () => {
     selectActiveGlossary(CYPRESS_ASSETS_GLOSSARY_1.name);
     goToAssetsTab(terms[0].name, terms[0].fullyQualifiedName, true);
 
-    checkSummaryListItemSorting(COLUMN_NAME_FOR_APPLY_GLOSSARY_TERM);
+    checkSummaryListItemSorting({
+      columnName: COLUMN_NAME_FOR_APPLY_GLOSSARY_TERM,
+      termFQN: terms[0].fullyQualifiedName,
+    });
   });
 });
 

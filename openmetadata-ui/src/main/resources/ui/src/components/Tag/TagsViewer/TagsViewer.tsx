@@ -136,7 +136,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
   }
 
   return (
-    <>
+    <div data-testid="tags-viewer">
       <div className="d-flex flex-wrap">
         {sortedTagsBySource.slice(0, sizeCap).map(getTagsElement)}
       </div>
@@ -144,7 +144,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
         ? popoverRenderElement
         : readMoreRenderElement}
       {}
-    </>
+    </div>
   );
 };
 
