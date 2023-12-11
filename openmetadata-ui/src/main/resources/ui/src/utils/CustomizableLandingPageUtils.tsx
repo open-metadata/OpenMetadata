@@ -190,7 +190,7 @@ export const getWidgetFromKey = ({
   handleOpenAddWidgetModal?: () => void;
   handlePlaceholderWidgetKey?: (key: string) => void;
   handleRemoveWidget?: (key: string) => void;
-  announcements: Thread[];
+  announcements?: Thread[];
   followedData?: EntityReference[];
   followedDataCount: number;
   isLoadingOwnedData: boolean;

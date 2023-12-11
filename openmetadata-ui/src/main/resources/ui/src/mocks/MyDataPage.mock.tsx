@@ -26,9 +26,15 @@ export const mockUserData: User = {
   email: 'testUser1@email.com',
   id: '123',
   isAdmin: true,
+  follows: [
+    {
+      id: '12',
+      type: 'table',
+    },
+  ],
 };
 
-const mockDefaultLayout: Array<WidgetConfig> = [
+export const mockDefaultLayout: Array<WidgetConfig> = [
   {
     h: 6,
     i: LandingPageWidgetKeys.ACTIVITY_FEED,
@@ -116,7 +122,9 @@ export const mockCustomizePageClassBase = {
     y: 0,
     static: true,
   } as WidgetConfig,
+  landingPageMaxGridSize: 4,
   landingPageWidgetMargin: 16,
+  landingPageRowHeight: 200,
   getWidgetsFromKey: (i: string) => () => <div>{i}</div>,
 };
 

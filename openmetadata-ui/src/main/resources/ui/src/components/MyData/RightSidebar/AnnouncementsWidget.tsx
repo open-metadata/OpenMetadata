@@ -27,11 +27,11 @@ import './announcements-widget.less';
 
 export interface AnnouncementsWidgetProps extends WidgetCommonProps {
   isAnnouncementLoading?: boolean;
-  announcements: Thread[];
+  announcements?: Thread[];
 }
 
 function AnnouncementsWidget({
-  announcements,
+  announcements = [],
   isAnnouncementLoading = false,
 }: Readonly<AnnouncementsWidgetProps>) {
   const { t } = useTranslation();

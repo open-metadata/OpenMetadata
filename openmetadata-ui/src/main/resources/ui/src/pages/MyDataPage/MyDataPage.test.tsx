@@ -61,52 +61,6 @@ jest.mock('../../components/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader</div>);
 });
 
-jest.mock('../../components/Widgets/FeedsWidget/FeedsWidget.component', () => {
-  return jest
-    .fn()
-    .mockImplementation(() => <div>KnowledgePanel.ActivityFeed</div>);
-});
-
-jest.mock('../../components/Widgets/RecentlyViewed/RecentlyViewed', () => {
-  return jest
-    .fn()
-    .mockImplementation(() => <div>KnowledgePanel.RecentlyViewed</div>);
-});
-
-jest.mock('../../components/KPIWidget/KPIWidget.component', () => {
-  return jest.fn().mockImplementation(() => <div>KnowledgePanel.KPI</div>);
-});
-
-jest.mock(
-  '../../components/TotalDataAssetsWidget/TotalDataAssetsWidget.component',
-  () => {
-    return jest
-      .fn()
-      .mockImplementation(() => <div>KnowledgePanel.TotalAssets</div>);
-  }
-);
-
-jest.mock('../../components/MyData/RightSidebar/AnnouncementsWidget', () => {
-  return jest
-    .fn()
-    .mockImplementation(() => <div>KnowledgePanel.Announcements</div>);
-});
-
-jest.mock('../../components/MyData/RightSidebar/FollowingWidget', () => {
-  return jest
-    .fn()
-    .mockImplementation(() => <div>KnowledgePanel.Following</div>);
-});
-
-jest.mock(
-  '../../components/MyData/MyDataWidget/MyDataWidget.component',
-  () => ({
-    MyDataWidget: jest
-      .fn()
-      .mockImplementation(() => <div>KnowledgePanel.MyData</div>),
-  })
-);
-
 jest.mock('../../utils/CustomizePageClassBase', () => {
   return mockCustomizePageClassBase;
 });
