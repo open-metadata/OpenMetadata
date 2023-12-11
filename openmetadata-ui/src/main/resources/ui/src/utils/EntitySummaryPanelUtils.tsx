@@ -38,6 +38,28 @@ export interface EntityNameProps {
 const getTitleName = (data: EntityNameProps) =>
   getEntityName(data) || NO_DATA_PLACEHOLDER;
 
+export const getSortedTags = ({
+  sortTagsBasedOnGivenArr,
+  tags,
+}): TagLabel[] => {
+  const ColumnDataTags: {
+    tagForSort: TagLabel[];
+    remainingTags: TagLabel[];
+  } = { tagForSort: [], remainingTags: [] };
+
+  const { tagForSort, remainingTags } = tags?.reduce((acc, tag) => {
+    if (sortTagsBasedOnGivenArr.includes(tag.tagFQN)) {
+      acc.tagForSort.push({ ...tag, isHighlighted: true });
+    } else {
+      acc.remainingTags.push(tag);
+    }
+
+    return acc;
+  }, ColumnDataTags);
+
+  return [...tagForSort, ...remainingTags];
+};
+
 export const getFormattedEntityData = (
   entityType: SummaryEntityType,
   entityInfo?: Array<Column | Field | Chart | Task | MlFeature>,
@@ -76,25 +98,11 @@ export const getFormattedEntityData = (
           );
 
           if (isTagPresentInColumnData) {
-            const ColumnDataTags: {
-              tagForSort: TagLabel[];
-              remainingTags: TagLabel[];
-            } = { tagForSort: [], remainingTags: [] };
+            columnData.tags = getSortedTags({
+              sortTagsBasedOnGivenArr: sortSummaryListBasedOnTags,
+              tags: columnData.tags,
+            });
 
-            const { tagForSort, remainingTags } = columnData.tags?.reduce(
-              (acc, tag) => {
-                if (sortSummaryListBasedOnTags.includes(tag.tagFQN)) {
-                  acc.tagForSort.push({ ...tag, isHighlighted: true });
-                } else {
-                  acc.remainingTags.push(tag);
-                }
-
-                return acc;
-              },
-              ColumnDataTags
-            );
-
-            columnData.tags = [...tagForSort, ...remainingTags];
             acc.entityWithSortOption.push(columnData);
           } else {
             acc.entityWithoutSortOption.push(columnData);

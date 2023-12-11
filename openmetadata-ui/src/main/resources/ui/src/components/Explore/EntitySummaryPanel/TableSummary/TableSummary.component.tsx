@@ -32,7 +32,10 @@ import {
   getTableDetailsByFQN,
 } from '../../../../rest/tableAPI';
 import { formTwoDigitNmber as formTwoDigitNumber } from '../../../../utils/CommonUtils';
-import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
+import {
+  getFormattedEntityData,
+  getSortedTags,
+} from '../../../../utils/EntitySummaryPanelUtils';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
@@ -242,7 +245,14 @@ function TableSummary({
 
         <SummaryTagsDescription
           entityDetail={tableDetails}
-          tags={tags ?? tableDetails.tags ?? []}
+          tags={
+            tags ??
+            getSortedTags({
+              tags: tableDetails.tags,
+              sortTagsBasedOnGivenArr: sortSummaryListBasedOnTags,
+            }) ??
+            []
+          }
         />
         <Divider className="m-y-xs" />
 
