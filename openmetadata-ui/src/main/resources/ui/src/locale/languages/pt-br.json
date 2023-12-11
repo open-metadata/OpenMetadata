@@ -1514,7 +1514,7 @@
     "password-error-message": "A senha deve ter no mínimo 8 e no máximo 16 caracteres e conter pelo menos uma letra maiúscula (A-Z), uma letra minúscula (a-z), um número e um caractere especial (como !, %, @ ou #)",
     "password-pattern-error": "A senha deve ter no mínimo 8 e no máximo 16 caracteres, com pelo menos um caractere especial, uma letra maiúscula e uma letra minúscula",
     "path-of-the-dbt-files-stored": "Caminho da pasta onde os arquivos dbt são armazenados",
-    "permanently-delete-metadata": "Excluir permanentemente este(a) {{entityName}} removerá seus metadados do OpenMetadata permanentemente.",
+    "permanently-delete-metadata": "Excluir permanentemente este(a) <0>{{entityName}}</0> removerá seus metadados do OpenMetadata permanentemente.",
     "permanently-delete-metadata-and-dependents": "Excluir permanentemente este(a) {{entityName}} removerá seus metadados, bem como os metadados de {{dependents}} do OpenMetadata permanentemente.",
     "pipeline-description-message": "Descrição do pipeline.",
     "pipeline-scheduler-message": "O Agendador de Ingestão não está respondendo. Entre em contato com o suporte da Collate. Obrigado.",
