@@ -302,7 +302,8 @@ export const TaskTab = ({
   };
 
   const approvalWorkflowActions = useMemo(() => {
-    const hasApprovalAccess = isAssignee || Boolean(isPartOfAssigneeTeam);
+    const hasApprovalAccess =
+      isAssignee || (Boolean(isPartOfAssigneeTeam) && !isAssignee);
 
     return (
       <Space
