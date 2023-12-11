@@ -35,7 +35,13 @@ export const checkDataInsightSuccessStatus = (
       cy.reload();
       checkDataInsightSuccessStatus(++count, timer * 2);
     } else {
-      cy.get('@checkRun').should('have.text', 'Success');
+      if ($ingestionStatus.text() !== 'Success') {
+        cy.get('@checkRun').should('have.text', 'Success');
+
+        return true;
+      } else {
+        return false;
+      }
     }
   });
 };

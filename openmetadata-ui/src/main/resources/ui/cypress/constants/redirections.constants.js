@@ -159,10 +159,6 @@ export const SETTINGS_LEFT_PANEL = {
     testid: '[data-menu-id*="notifications.alerts"]',
     url: `${BASE_URL}/settings/notifications/alerts`,
   },
-  dataInsightReport: {
-    testid: '[data-menu-id*="notifications.dataInsightReport"]',
-    url: `${BASE_URL}/settings/notifications/dataInsightReport`,
-  },
   customAttributesTable: {
     testid: '[data-menu-id*="tables"]',
     url: `${BASE_URL}/settings/customAttributes/tables`,

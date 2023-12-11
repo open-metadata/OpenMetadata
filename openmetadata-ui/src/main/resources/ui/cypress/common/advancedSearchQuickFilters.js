@@ -21,21 +21,17 @@ export const searchAndClickOnOption = (asset, filter, checkedAfterClick) => {
     'aggregateAPI'
   );
 
-  cy.get('[data-testid="search-input"]')
-    .should('exist')
-    .and('be.visible')
-    .clear()
-    .type(filter.selectOption1);
+  cy.get('[data-testid="search-input"]').clear().type(filter.selectOption1);
 
   verifyResponseStatusCode('@aggregateAPI', 200);
 
-  cy.get(`[data-testid="${filter.selectOptionTestId1}"]`)
+  cy.get(`[data-testid="${Cypress._.toLower(filter.selectOptionTestId1)}"]`)
     .should('exist')
     .and('be.visible')
     .click();
 
   checkCheckboxStatus(
-    `${filter.selectOptionTestId1}-checkbox`,
+    `${Cypress._.toLower(filter.selectOptionTestId1)}-checkbox`,
     checkedAfterClick
   );
 };

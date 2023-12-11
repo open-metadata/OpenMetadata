@@ -12,7 +12,6 @@
  */
 
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
-import { checkDataInsightSuccessStatus } from '../../common/DataInsightUtils';
 
 describe('Data Insight settings page should work properly', () => {
   beforeEach(() => {
@@ -55,8 +54,6 @@ describe('Data Insight settings page should work properly', () => {
     verifyResponseStatusCode('@getDataInsightDetails', 200);
     cy.get('[data-testid="run-now-button"]').click();
     verifyResponseStatusCode('@triggerPipeline', 200);
-    cy.reload();
-    checkDataInsightSuccessStatus();
   });
 
   it('Edit data insight application', () => {

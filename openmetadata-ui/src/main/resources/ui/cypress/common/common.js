@@ -23,6 +23,7 @@ import {
   BASE_URL,
   CUSTOM_PROPERTY_INVALID_NAMES,
   CUSTOM_PROPERTY_NAME_VALIDATION_ERROR,
+  DATA_ASSETS,
   DELETE_TERM,
   EXPLORE_PAGE_TABS,
   NAME_VALIDATION_ERROR,
@@ -573,41 +574,37 @@ export const visitEntityDetailsPage = ({
           .first()
           .click();
       } else {
-        cy.get(`[data-testid="global-search-suggestion-box"]`)
-          .contains(term)
-          .then(($body) => {
-            if ($body.length) {
-              cy.get(`[data-testid="global-search-suggestion-box"]`)
-                .contains(term)
-                .click();
-            } else {
-              // if term is not available in search suggestion,
-              // hitting enter to search box so it will redirect to explore page
-              cy.get('body').click(1, 1);
-              cy.get('[data-testid="searchBox"]').type('{enter}');
-              verifyResponseStatusCode('@explorePageSearch', 200);
+        // if term is not available in search suggestion,
+        // hitting enter to search box so it will redirect to explore page
+        cy.get('body').click(1, 1);
+        cy.get('[data-testid="searchBox"]').type('{enter}');
+        verifyResponseStatusCode('@explorePageSearch', 200);
 
-              const tabName = EXPLORE_PAGE_TABS?.[entity] ?? entity;
+        const tabName = EXPLORE_PAGE_TABS?.[entity] ?? entity;
 
-              cy.get(`[data-testid="${tabName}-tab"]`).click();
+        cy.get(`[data-testid="${tabName}-tab"]`).click();
 
-              verifyResponseStatusCode('@explorePageTabSearch', 200);
+        verifyResponseStatusCode('@explorePageTabSearch', 200);
 
-              if (
-                $body.find(`[data-testid="${id}"] [data-testid="entity-link"]`)
-                  .length
-              ) {
-                cy.get(`[data-testid="${id}"] [data-testid="entity-link"]`)
-                  .scrollIntoView()
-                  .click();
-              } else {
-                cy.get(`[data-testid="entity-link"]`)
-                  .contains(term)
-                  .eq(0)
-                  .click();
-              }
-            }
-          });
+        verifyResponseStatusCode('@explorePageSearch', 200);
+        if ([DATA_ASSETS.dashboards, DATA_ASSETS.dataModel].includes(entity)) {
+          cy.get('[data-testid="search-dropdown-Service"]').click();
+          cy.get(
+            '[data-testid="drop-down-menu"] [data-testid="search-input"]'
+          ).type(serviceName);
+          verifyResponseStatusCode('@explorePageSearch', 200);
+          cy.get(
+            `[data-testid="drop-down-menu"] [data-testid="${serviceName}"]`
+          ).click();
+          cy.get(
+            `[data-testid="drop-down-menu"] [data-testid="update-btn"]`
+          ).click();
+          cy.get('[data-testid="entity-link"]').contains(term).eq(0).click();
+        } else {
+          cy.get(`[data-testid="${id}"] [data-testid="entity-link"]`)
+            .scrollIntoView()
+            .click();
+        }
       }
     });
 
@@ -1211,7 +1208,7 @@ export const addOwner = (
   } else {
     cy.get('[data-testid="edit-owner"]').click();
   }
-
+  cy.get("[data-testid='select-owner-tabs']").should('be.visible');
   cy.log('/api/v1/users?limit=*&isBot=false*');
   cy.get('.ant-tabs [id*=tab-users]').click();
   verifyResponseStatusCode('@getUsers', 200);
@@ -1243,6 +1240,7 @@ export const removeOwner = (entity, isGlossaryPage) => {
 
   cy.get('[data-testid="edit-owner"]').click();
   verifyResponseStatusCode('@getUsers', 200);
+  cy.get("[data-testid='select-owner-tabs']").should('be.visible');
   cy.get('[data-testid="remove-owner"]').click();
   verifyResponseStatusCode('@patchOwner', 200);
   if (isGlossaryPage) {

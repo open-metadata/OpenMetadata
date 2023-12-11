@@ -35,8 +35,8 @@ import {
 } from '../../../utils/EntityUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { SelectableList } from '../SelectableList/SelectableList.component';
-import './user-team-selectable-list.less';
 import { UserSelectDropdownProps } from './UserTeamSelectableList.interface';
+import './user-team-selectable-list.less';
 
 export const TeamListItemRenderer = (props: EntityReference) => {
   return (
@@ -238,6 +238,7 @@ export const UserTeamSelectableList = ({
           centered
           activeKey={activeTab}
           className="select-owner-tabs"
+          data-testid="select-owner-tabs"
           destroyInactiveTabPane={false}
           items={[
             {
