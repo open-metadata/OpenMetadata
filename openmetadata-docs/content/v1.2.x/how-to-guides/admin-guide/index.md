@@ -37,6 +37,6 @@ Refer to the advanced guide for Roles and Policies once you are ready to start w
   color="violet-70"
   bold="Admin Guide for Roles and Policies"
   icon="MdAdminPanelSettings"
-  href="/how-to-guides/admin-guide-roles-policies"%}
+  href="/how-to-guides/admin-guide/roles-policies"%}
   Know it all about Roles and Policies to get started.
 {%/inlineCallout%}
