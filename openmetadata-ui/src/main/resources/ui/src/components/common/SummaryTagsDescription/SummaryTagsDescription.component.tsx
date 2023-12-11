@@ -39,11 +39,7 @@ const SummaryTagsDescription = ({
         </Col>
         <Col span={24}>
           {tags.length > 0 ? (
-            <Row>
-              <Col className="d-flex flex-wrap" span={23}>
-                <TagsViewer sizeCap={-1} tags={tags} />
-              </Col>
-            </Row>
+            <TagsViewer sizeCap={-1} tags={tags} />
           ) : (
             <Typography.Text className="text-grey-body">
               {t('label.no-tags-added')}
