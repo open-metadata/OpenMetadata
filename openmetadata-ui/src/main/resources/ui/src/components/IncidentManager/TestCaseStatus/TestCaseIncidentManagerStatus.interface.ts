@@ -11,12 +11,9 @@
  *  limitations under the License.
  */
 
-import {
-  TestCaseResolutionStatus,
-  TestCaseResult,
-} from '../../../generated/tests/testCase';
+import { TestCaseResolutionStatus } from '../../../generated/tests/testCase';
 
 export interface TestCaseStatusIncidentManagerProps {
-  testCaseResult: TestCaseResult;
+  data: TestCaseResolutionStatus;
   onSubmit: (data: TestCaseResolutionStatus) => Promise<void>;
 }

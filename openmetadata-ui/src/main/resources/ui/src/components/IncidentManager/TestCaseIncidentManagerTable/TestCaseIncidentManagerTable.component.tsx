@@ -10,19 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Space, Tooltip } from 'antd';
+import { Col, Row, Space, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { sortBy } from 'lodash';
-import QueryString from 'qs';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import {
-  getTableTabPath,
-  NO_DATA_PLACEHOLDER,
-} from '../../../constants/constants';
+import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/entity/type';
 import {
@@ -30,16 +25,13 @@ import {
   TestCase,
   TestCaseResolutionStatus,
   TestCaseResult,
-  TestCaseStatus,
 } from '../../../generated/tests/testCase';
-import { patchTestCaseResult } from '../../../rest/testAPI';
-import { getNameFromFQN } from '../../../utils/CommonUtils';
+import { Assigned } from '../../../generated/tests/testCaseResolutionStatus';
+import { updateTestCaseIncidentById } from '../../../rest/incidentManagerAPI';
 import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getIncidentManagerDetailPagePath } from '../../../utils/RouterUtils';
-import { getEncodedFqn, replacePlus } from '../../../utils/StringsUtils';
-import { getEntityFqnFromEntityLink } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { StatusBox } from '../../common/LastRunGraph/LastRunGraph.component';
@@ -48,7 +40,6 @@ import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import Table from '../../common/Table/Table';
 import { usePermissionProvider } from '../../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../PermissionProvider/PermissionProvider.interface';
-import { TableProfilerTab } from '../../ProfilerDashboard/profilerDashboard.interface';
 import '../incident-manager.style.less';
 import Severity from '../Severity/Severity.component';
 import TestCaseIncidentManagerStatus from '../TestCaseStatus/TestCaseIncidentManagerStatus.component';
@@ -71,81 +62,58 @@ const TestCaseIncidentManagerTable = ({
     );
   }, [permissions]);
 
-  const sortedData = useMemo(
-    () =>
-      sortBy(testCaseListData.data, (test) => {
-        switch (test.testCaseResult?.testCaseStatus) {
-          case TestCaseStatus.Failed:
-            return 0;
-          case TestCaseStatus.Aborted:
-            return 1;
-          case TestCaseStatus.Success:
-            return 2;
-
-          default:
-            return 3;
-        }
-      }),
-    [testCaseListData.data]
-  );
-
   const handlePatchTestCaseResult = async (
     record: TestCase,
     updatedResult: TestCaseResult
   ): Promise<void> => {
-    if (record.testCaseResult) {
-      const timestamp = record.testCaseResult?.timestamp ?? 0;
-      const patch = compare(record.testCaseResult, updatedResult);
-      try {
-        await patchTestCaseResult({
-          testCaseFqn: record.fullyQualifiedName ?? '',
-          patch,
-          timestamp,
-        });
+    // if (record.testCaseResult) {
+    //   const timestamp = record.testCaseResult?.timestamp ?? 0;
+    //   const patch = compare(record.testCaseResult, updatedResult);
+    //   try {
+    //     await patchTestCaseResult({
+    //       testCaseFqn: record.fullyQualifiedName ?? '',
+    //       patch,
+    //       timestamp,
+    //     });
 
-        handleTestCaseUpdate({
-          ...record,
-          testCaseResult: updatedResult,
-        });
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      }
-    }
+    //     handleTestCaseUpdate({
+    //       ...record,
+    //       testCaseResult: updatedResult,
+    //     });
+    //   } catch (error) {
+    //     showErrorToast(error as AxiosError);
+    //   }
+    // }
 
     return;
   };
 
   const handleSeveritySubmit = async (
     severity: Severities,
-    record: TestCase
+    record: TestCaseResolutionStatus
   ) => {
-    if (
-      record.testCaseResult &&
-      record.testCaseResult.testCaseResolutionStatusReference
-        ?.testCaseResolutionStatusType
-    ) {
-      handlePatchTestCaseResult(record, {
-        ...record.testCaseResult,
-        testCaseResolutionStatusReference: {
-          ...record.testCaseResult?.testCaseResolutionStatusReference,
-          severity,
-        },
-      });
-    }
+    const updatedData = { ...record, severity };
+    const patch = compare(record, updatedData);
+    try {
+      await updateTestCaseIncidentById(record.id ?? '', patch);
 
-    return;
+      handleTestCaseUpdate(updatedData);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   };
 
   const handleStatusSubmit = async (
     updatedData: TestCaseResolutionStatus,
-    record: TestCase
-  ) =>
-    handlePatchTestCaseResult(record, {
-      ...record.testCaseResult,
-      testCaseResolutionStatusReference: updatedData,
-    });
+    record: TestCaseResolutionStatus
+  ) => {
+    // handlePatchTestCaseResult(record, {
+    //     ...record.testCaseResult,
+    //     testCaseResolutionStatusReference: updatedData,
+    //   });
+  };
 
-  const columns: ColumnsType<TestCase> = useMemo(
+  const columns: ColumnsType<TestCaseResolutionStatus> = useMemo(
     () => [
       {
         title: t('label.name'),
@@ -154,10 +122,10 @@ const TestCaseIncidentManagerTable = ({
         width: 300,
         fixed: 'left',
         render: (_, record) => {
-          const status = record.testCaseResult?.testCaseStatus;
+          const status = record.testCaseResolutionStatusType;
 
           return (
-            <Space data-testid={record.name}>
+            <Space data-testid={record.testCaseReference?.name}>
               <Tooltip title={status}>
                 <div>
                   <StatusBox status={status?.toLocaleLowerCase()} />
@@ -166,12 +134,12 @@ const TestCaseIncidentManagerTable = ({
 
               <Link
                 className="m-0 break-all text-primary"
-                data-testid={`test-case-${record.name}`}
+                data-testid={`test-case-${record.testCaseReference?.name}`}
                 style={{ maxWidth: 280 }}
                 to={getIncidentManagerDetailPagePath(
-                  record.fullyQualifiedName ?? ''
+                  record.testCaseReference?.fullyQualifiedName ?? ''
                 )}>
-                {getEntityName(record)}
+                {getEntityName(record.testCaseReference)}
               </Link>
             </Space>
           );
@@ -179,26 +147,29 @@ const TestCaseIncidentManagerTable = ({
       },
       {
         title: t('label.table'),
-        dataIndex: 'entityLink',
-        key: 'table',
+        dataIndex: 'testCaseReference',
+        key: 'testCaseReference',
         width: 150,
-        render: (entityLink: string) => {
-          const tableFqn = getEntityFqnFromEntityLink(entityLink);
-          const name = getNameFromFQN(tableFqn);
+        render: (value: EntityReference) => {
+          //   const tableFqn = getEntityFqnFromEntityLink(value);
+          //   const name = getNameFromFQN(tableFqn);
 
-          return (
-            <Link
-              data-testid="table-link"
-              to={{
-                pathname: getTableTabPath(getEncodedFqn(tableFqn), 'profiler'),
-                search: QueryString.stringify({
-                  activeTab: TableProfilerTab.DATA_QUALITY,
-                }),
-              }}
-              onClick={(e) => e.stopPropagation()}>
-              {name}
-            </Link>
-          );
+          //   return (
+          //     <Link
+          //       data-testid="table-link"
+          //       to={{
+          //         pathname: getTableTabPath(getEncodedFqn(tableFqn), 'profiler'),
+          //         search: QueryString.stringify({
+          //           activeTab: TableProfilerTab.DATA_QUALITY,
+          //         }),
+          //       }}
+          //       onClick={(e) => e.stopPropagation()}>
+          //       {name}
+          //     </Link>
+
+          //          );
+
+          return <Typography.Text>{value.fullyQualifiedName}</Typography.Text>;
         },
       },
       {
@@ -210,54 +181,33 @@ const TestCaseIncidentManagerTable = ({
           getEntityName(testSuite) ?? NO_DATA_PLACEHOLDER,
       },
       {
-        title: t('label.column'),
-        dataIndex: 'entityLink',
-        key: 'column',
-        width: 150,
-        render: (entityLink: string) => {
-          const isColumn = entityLink.includes('::columns::');
-          if (isColumn) {
-            const name = getNameFromFQN(
-              replacePlus(getEntityFqnFromEntityLink(entityLink, isColumn))
-            );
-
-            return name;
-          }
-
-          return NO_DATA_PLACEHOLDER;
-        },
-      },
-      {
         title: t('label.execution-time'),
-        dataIndex: 'executionTime',
-        key: 'executionTime',
+        dataIndex: 'timestamp',
+        key: 'timestamp',
         width: 150,
-        render: (result: TestCaseResult) =>
-          result?.timestamp ? formatDateTime(result.timestamp) : '--',
+        render: (value: number) => (value ? formatDateTime(value) : '--'),
       },
       {
         title: t('label.status'),
-        dataIndex: 'testCaseResult',
-        key: 'testCaseResult',
+        dataIndex: 'testCaseResolutionStatusType',
+        key: 'testCaseResolutionStatusType',
         width: 100,
-        render: (value: TestCaseResult, record: TestCase) => (
+        render: (_, record: TestCaseResolutionStatus) => (
           <TestCaseIncidentManagerStatus
-            testCaseResult={value}
+            data={record}
             onSubmit={(status) => handleStatusSubmit(status, record)}
           />
         ),
       },
       {
         title: t('label.severity'),
-        dataIndex: 'testCaseResult',
-        key: 'testCaseResult',
+        dataIndex: 'severity',
+        key: 'severity',
         width: 150,
-        render: (value: TestCaseResult, record) => {
-          const { testCaseResolutionStatusReference } = value;
-
+        render: (value: Severities, record: TestCaseResolutionStatus) => {
           return (
             <Severity
-              severity={testCaseResolutionStatusReference?.severity}
+              severity={value}
               onSubmit={(severity) => handleSeveritySubmit(severity, record)}
             />
           );
@@ -265,19 +215,19 @@ const TestCaseIncidentManagerTable = ({
       },
       {
         title: t('label.assignee'),
-        dataIndex: 'assignee',
-        key: 'assignee',
+        dataIndex: 'testCaseResolutionStatusDetails',
+        key: 'testCaseResolutionStatusDetails',
         width: 150,
-        render: (assignee: EntityReference) => <OwnerLabel owner={assignee} />,
+        render: (value?: Assigned) => <OwnerLabel owner={value?.assignee} />,
       },
       {
         title: t('label.reviewer'),
-        dataIndex: 'reviewer',
-        key: 'reviewer',
-        render: (owner: EntityReference) => <OwnerLabel owner={owner} />,
+        dataIndex: 'testCaseResolutionStatusDetails',
+        key: 'testCaseResolutionStatusDetails',
+        render: (value?: Assigned) => <OwnerLabel owner={value?.reviewer} />,
       },
     ],
-    [testCaseEditPermission, testCaseListData.data]
+    [testCaseEditPermission]
   );
 
   return (
@@ -288,7 +238,7 @@ const TestCaseIncidentManagerTable = ({
           className="test-case-table-container"
           columns={columns}
           data-testid="test-case-incident-manager-table"
-          dataSource={sortedData}
+          dataSource={testCaseListData.data}
           loading={testCaseListData.isLoading}
           locale={{
             emptyText: <FilterTablePlaceHolder />,

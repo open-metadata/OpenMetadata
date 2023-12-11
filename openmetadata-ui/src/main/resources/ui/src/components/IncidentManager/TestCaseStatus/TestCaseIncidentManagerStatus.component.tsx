@@ -26,22 +26,12 @@ import { TestCaseStatusModal } from '../../DataQuality/TestCaseStatusModal/TestC
 import { TestCaseStatusIncidentManagerProps } from './TestCaseIncidentManagerStatus.interface';
 
 const TestCaseIncidentManagerStatus = ({
-  testCaseResult,
+  data,
   onSubmit,
 }: TestCaseStatusIncidentManagerProps) => {
   const [isEditStatus, setIsEditStatus] = useState<boolean>(false);
 
-  const label = useMemo(
-    () =>
-      testCaseResult.testCaseResolutionStatusReference
-        ?.testCaseResolutionStatusType,
-    [testCaseResult]
-  );
-
-  const failureStatus = useMemo(
-    () => testCaseResult?.testCaseResolutionStatusReference,
-    [testCaseResult]
-  );
+  const statusType = useMemo(() => data.testCaseResolutionStatusType, [data]);
 
   const onEditSeverity = useCallback(() => setIsEditStatus(true), []);
   const onCancel = useCallback(() => setIsEditStatus(false), []);
@@ -54,7 +44,7 @@ const TestCaseIncidentManagerStatus = ({
     [onCancel, onSubmit]
   );
 
-  if (!label) {
+  if (!statusType) {
     return <Typography.Text>{NO_DATA_PLACEHOLDER}</Typography.Text>;
   }
 
@@ -64,15 +54,13 @@ const TestCaseIncidentManagerStatus = ({
         <Tooltip
           placement="bottom"
           title={
-            failureStatus?.updatedAt &&
-            `${formatDate(failureStatus.updatedAt)}
-                ${
-                  failureStatus.updatedBy ? 'by ' + failureStatus.updatedBy : ''
-                }`
+            data?.updatedAt &&
+            `${formatDate(data.updatedAt)}
+                ${data.updatedBy ? 'by ' + data.updatedBy : ''}`
           }>
           <AppBadge
-            className={classNames('resolution', label.toLocaleLowerCase())}
-            label={label}
+            className={classNames('resolution', statusType.toLocaleLowerCase())}
+            label={statusType}
           />
         </Tooltip>
         <Icon
@@ -84,7 +72,7 @@ const TestCaseIncidentManagerStatus = ({
       </Space>
 
       <TestCaseStatusModal
-        data={testCaseResult.testCaseResolutionStatusReference}
+        data={data}
         open={isEditStatus}
         onCancel={onCancel}
         onSubmit={handleSubmit}

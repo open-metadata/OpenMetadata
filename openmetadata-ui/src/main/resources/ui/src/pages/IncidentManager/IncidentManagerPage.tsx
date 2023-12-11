@@ -12,22 +12,27 @@
  */
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
-import React, { useEffect, useMemo, useState } from 'react';
+import { isEqual } from 'lodash';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import { SummaryCard } from '../../components/common/SummaryCard/SummaryCard.component';
+import DatePickerMenu from '../../components/DatePickerMenu/DatePickerMenu.component';
 import TestCaseIncidentManagerTable from '../../components/IncidentManager/TestCaseIncidentManagerTable/TestCaseIncidentManagerTable.component';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { DateRangeObject } from '../../components/ProfilerDashboard/component/TestSummary';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
+import { DEFAULT_RANGE_DATA } from '../../constants/profiler.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { TestCase } from '../../generated/tests/testCase';
+import { TestCaseResolutionStatus } from '../../generated/tests/testCase';
 import { usePaging } from '../../hooks/paging/usePaging';
-import { getListTestCase, ListTestCaseParams } from '../../rest/testAPI';
+import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
+import { ListTestCaseParams } from '../../rest/testAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { TestCaseListData } from './IncidentManager.interface';
+import { TestCaseIncidentStatusData } from './IncidentManager.interface';
 
 const summary = {
   total: 100,
@@ -43,10 +48,14 @@ const isLoading = false;
 const IncidentManagerPage = () => {
   const { t } = useTranslation();
 
-  const [testCaseListData, setTestCaseListData] = useState<TestCaseListData>({
-    data: [],
-    isLoading: true,
-  });
+  const [testCaseListData, setTestCaseListData] =
+    useState<TestCaseIncidentStatusData>({
+      data: [],
+      isLoading: true,
+    });
+
+  const [dateRangeObject, setDateRangeObject] =
+    useState<DateRangeObject>(DEFAULT_RANGE_DATA);
 
   const { permissions } = usePermissionProvider();
   const { testCase: testCasePermission } = permissions;
@@ -61,29 +70,34 @@ const IncidentManagerPage = () => {
     handlePageSizeChange,
   } = usePaging();
 
-  const fetchTestCases = async (params?: ListTestCaseParams) => {
-    setTestCaseListData((prev) => ({ ...prev, isLoading: true }));
-    try {
-      const { data, paging } = await getListTestCase({
-        ...params,
-        limit: pageSize,
-        fields: 'testDefinition,testCaseResult,testSuite',
-        orderByLastExecutionDate: true,
-      });
-      setTestCaseListData((prev) => ({ ...prev, data: data }));
-      handlePagingChange(paging);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setTestCaseListData((prev) => ({ ...prev, isLoading: false }));
-    }
-  };
+  const fetchTestCases = useCallback(
+    async (dateRangeObject: DateRangeObject, params?: ListTestCaseParams) => {
+      setTestCaseListData((prev) => ({ ...prev, isLoading: true }));
+      try {
+        const { data, paging } = await getListTestCaseIncidentStatus({
+          ...params,
+          limit: pageSize,
+          startTs: dateRangeObject.startTs,
+          endTs: dateRangeObject.endTs,
+        });
+        setTestCaseListData((prev) => ({ ...prev, data: data }));
+        handlePagingChange(paging);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setTestCaseListData((prev) => ({ ...prev, isLoading: false }));
+      }
+    },
+    [pageSize, setTestCaseListData]
+  );
 
-  const handelTestCaseUpdate = (testCase: TestCase) => {
+  const handelTestCaseUpdate = (
+    testCaseIncidentStatus: TestCaseResolutionStatus
+  ) => {
     setTestCaseListData((prev) => {
       const testCaseList = prev.data.map((item) => {
-        if (item.fullyQualifiedName === testCase.fullyQualifiedName) {
-          return testCase;
+        if (item.id === testCaseIncidentStatus.id) {
+          return testCaseIncidentStatus;
         }
 
         return item;
@@ -101,7 +115,7 @@ const IncidentManagerPage = () => {
     currentPage,
   }: PagingHandlerParams) => {
     if (cursorType) {
-      fetchTestCases({
+      fetchTestCases(dateRangeObject, {
         [cursorType]: paging?.[cursorType],
       });
     }
@@ -119,13 +133,19 @@ const IncidentManagerPage = () => {
     [paging, currentPage, handlePagingClick, pageSize, handlePageSizeChange]
   );
 
+  const handleDateRangeChange = (value: DateRangeObject) => {
+    if (!isEqual(value, dateRangeObject)) {
+      setDateRangeObject(value);
+    }
+  };
+
   useEffect(() => {
     if (testCasePermission?.ViewAll || testCasePermission?.ViewBasic) {
-      fetchTestCases();
-    } else {
-      //   setIsLoading(false);
+      if (dateRangeObject) {
+        fetchTestCases(dateRangeObject);
+      }
     }
-  }, [testCasePermission, pageSize]);
+  }, [testCasePermission, pageSize, dateRangeObject]);
 
   if (!testCasePermission?.ViewAll && !testCasePermission?.ViewBasic) {
     return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
@@ -187,6 +207,13 @@ const IncidentManagerPage = () => {
               />
             </Col>
           </Row>
+        </Col>
+
+        <Col className="d-flex justify-end" span={24}>
+          <DatePickerMenu
+            showSelectedCustomRange
+            handleDateRangeChange={handleDateRangeChange}
+          />
         </Col>
 
         <Col span={24}>

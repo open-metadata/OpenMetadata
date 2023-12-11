@@ -39,7 +39,7 @@ export const TestCaseStatusModal = ({
   const markdownRef = useRef<EditorContentRef>();
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const statusType = Form.useWatch('testCaseFailureStatusType', form);
+  const statusType = Form.useWatch('testCaseResolutionStatusType', form);
 
   const handleFormSubmit = (data: TestCaseResolutionStatus) => {
     setIsLoading(true);
@@ -79,7 +79,7 @@ export const TestCaseStatusModal = ({
         onFinish={handleFormSubmit}>
         <Form.Item
           label={t('label.status')}
-          name="testCaseFailureStatusType"
+          name="testCaseResolutionStatusType"
           rules={[
             {
               required: true,

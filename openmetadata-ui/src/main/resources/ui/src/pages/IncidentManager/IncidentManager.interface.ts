@@ -10,13 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { TestCase } from '../../generated/tests/testCase';
+import { TestCaseResolutionStatus } from '../../generated/tests/testCase';
 
 export enum IncidentManagerTabs {
   TEST_CASE_RESULTS = 'test-case-results',
   ISSUES = 'issues',
 }
-export interface TestCaseListData {
-  data: TestCase[];
+export interface TestCaseIncidentStatusData {
+  data: TestCaseResolutionStatus[];
   isLoading: boolean;
 }

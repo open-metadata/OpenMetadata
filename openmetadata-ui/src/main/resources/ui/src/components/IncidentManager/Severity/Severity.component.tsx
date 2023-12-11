@@ -43,21 +43,19 @@ const Severity = ({ severity, onSubmit }: SeverityProps) => {
     <>
       <Space align="center">
         {severity ? (
-          <>
-            <AppBadge
-              className={classNames('severity', toLower(severity))}
-              label={severity}
-            />
-            <Icon
-              component={EditIcon}
-              data-testid="edit-description-icon"
-              style={{ color: DE_ACTIVE_COLOR }}
-              onClick={onEditSeverity}
-            />
-          </>
+          <AppBadge
+            className={classNames('severity', toLower(severity))}
+            label={severity}
+          />
         ) : (
           NO_DATA_PLACEHOLDER
         )}
+        <Icon
+          component={EditIcon}
+          data-testid="edit-description-icon"
+          style={{ color: DE_ACTIVE_COLOR }}
+          onClick={onEditSeverity}
+        />
       </Space>
 
       {isEditSeverity && (

@@ -10,13 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { TestCase } from '../../../generated/tests/testCase';
-import { TestCaseListData } from '../../../pages/IncidentManager/IncidentManager.interface';
+import { TestCaseResolutionStatus } from '../../../generated/tests/testCase';
+import { TestCaseIncidentStatusData } from '../../../pages/IncidentManager/IncidentManager.interface';
 import { NextPreviousProps } from '../../common/NextPrevious/NextPrevious.interface';
 
 export interface TestCaseIncidentManagerTableProps {
-  testCaseListData: TestCaseListData;
+  testCaseListData: TestCaseIncidentStatusData;
   pagingData?: NextPreviousProps;
   showPagination?: boolean;
-  handleTestCaseUpdate: (data: TestCase) => void;
+  handleTestCaseUpdate: (data: TestCaseResolutionStatus) => void;
 }
