@@ -53,7 +53,7 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
-@Path("/v1/dataQuality/testCases/testCaseResolutionStatus")
+@Path("/v1/dataQuality/testCases/testCaseIncidentStatus")
 @Tag(name = "Test Case Failure Status", description = "APIs to test case failure status from resolution center.")
 @Hidden
 @Produces(MediaType.APPLICATION_JSON)
@@ -61,7 +61,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "TestCases")
 public class TestCaseResolutionStatusResource
     extends EntityTimeSeriesResource<TestCaseResolutionStatus, TestCaseResolutionStatusRepository> {
-  public static final String COLLECTION_PATH = "/v1/dataQuality/testCases/testCaseResolutionStatus";
+  public static final String COLLECTION_PATH = "/v1/dataQuality/testCases/testCaseIncidentStatus";
 
   public TestCaseResolutionStatusResource(Authorizer authorizer) {
     super(Entity.TEST_CASE_RESOLUTION_STATUS, authorizer);

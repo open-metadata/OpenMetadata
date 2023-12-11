@@ -320,7 +320,7 @@ class OMetaTestsMixin:
         Returns:
             TestCaseResolutionStatus
         """
-        path = self.get_suffix(TestCase) + "/testCaseResolutionStatus"
+        path = self.get_suffix(TestCase) + "/testCaseIncidentStatus"
         response = self.client.post(path, data=data.json(encoder=show_secrets_encoder))
 
         return TestCaseResolutionStatus(**response)
