@@ -495,19 +495,6 @@ export const getEntityPlaceHolder = (value: string, isDeleted?: boolean) => {
   }
 };
 
-export const getEntityDeleteMessage = (entity: string, dependents: string) => {
-  if (dependents) {
-    return t('message.permanently-delete-metadata-and-dependents', {
-      entityName: entity,
-      dependents,
-    });
-  } else {
-    return t('message.permanently-delete-metadata', {
-      entityName: entity,
-    });
-  }
-};
-
 export const replaceSpaceWith_ = (text: string) => {
   return text.replace(/\s/g, '_');
 };
@@ -727,6 +714,26 @@ export const Transi18next = ({
   </Trans>
 );
 
+export const getEntityDeleteMessage = (entity: string, dependents: string) => {
+  if (dependents) {
+    return t('message.permanently-delete-metadata-and-dependents', {
+      entityName: entity,
+      dependents,
+    });
+  } else {
+    return (
+      <Transi18next
+        i18nKey="message.permanently-delete-metadata"
+        renderElement={
+          <span data-testid="entityName" style={{ fontWeight: 500 }} />
+        }
+        values={{
+          entityName: entity,
+        }}
+      />
+    );
+  }
+};
 /**
  * It takes a state and an action, and returns a new state with the action merged into it
  * @param {S} state - S - The current state of the reducer.

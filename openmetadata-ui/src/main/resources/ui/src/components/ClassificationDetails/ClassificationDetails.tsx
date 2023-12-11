@@ -426,18 +426,10 @@ const ClassificationDetails = forwardRef(
     }, [currentClassification, changeDescription]);
 
     useEffect(() => {
-      if (
-        currentClassification?.fullyQualifiedName &&
-        !deleteTags?.state &&
-        !isAddingTag
-      ) {
+      if (currentClassification?.fullyQualifiedName && !isAddingTag) {
         fetchClassificationChildren(currentClassification.fullyQualifiedName);
       }
-    }, [
-      currentClassification?.fullyQualifiedName,
-      pageSize,
-      deleteTags?.state,
-    ]);
+    }, [currentClassification?.fullyQualifiedName, pageSize]);
 
     useImperativeHandle(ref, () => ({
       refreshClassificationTags() {

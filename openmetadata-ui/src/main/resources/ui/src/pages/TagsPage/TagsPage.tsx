@@ -287,6 +287,7 @@ const TagsPage = () => {
               })
             );
           }
+          classificationDetailsRef.current?.refreshClassificationTags();
         } else {
           showErrorToast(
             t('server.delete-entity-error', {
