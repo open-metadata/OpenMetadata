@@ -76,7 +76,6 @@ function AnnouncementsWidget({
                         about={item.about}
                         className="d-inline"
                         createdBy={item.createdBy}
-                        showUserAvatar={false}
                         timeStamp={item.threadTs}
                       />
                       <FeedCardBodyV1
