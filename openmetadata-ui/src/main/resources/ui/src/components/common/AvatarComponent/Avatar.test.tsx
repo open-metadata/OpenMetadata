@@ -33,13 +33,7 @@ describe('Test for Avatar component', () => {
 
   it('Component should render avatar properly for type circle', () => {
     const { getByTestId } = render(
-      <Avatar
-        className=""
-        name="Avatar1"
-        textClass=""
-        type="circle"
-        width="36"
-      />
+      <Avatar className="" name="Avatar1" textClass="" width="36" />
     );
 
     const avatar = getByTestId('avatar');

@@ -42,11 +42,16 @@
       },
       "name": {
         "type": "text",
+        "analyzer": "om_analyzer",
         "fields": {
           "keyword": {
             "type": "keyword",
             "ignore_above": 256,
             "normalizer": "lowercase_normalizer"
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
           }
         }
       },
@@ -134,13 +139,17 @@
           "columns": {
             "properties": {
               "name": {
-                "type": "keyword",
-                "normalizer": "lowercase_normalizer",
+                "type": "text",
+                "analyzer": "om_analyzer",
                 "fields": {
                   "keyword": {
                     "type": "keyword",
-                    "normalizer": "lowercase_normalizer",
-                    "ignore_above": 256
+                    "ignore_above": 256,
+                    "normalizer": "lowercase_normalizer"
+                  },
+                  "ngram": {
+                    "type": "text",
+                    "analyzer": "om_ngram"
                   }
                 }
               },
