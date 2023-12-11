@@ -41,6 +41,7 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
   name,
   curveType,
   title,
+  isLoading,
 }: ProfilerDetailsCardProps) => {
   const { data, information } = chartCollection;
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
@@ -54,7 +55,8 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
   return (
     <Card
       className="shadow-none global-border-radius"
-      data-testid="profiler-details-card-container">
+      data-testid="profiler-details-card-container"
+      loading={isLoading}>
       <Row gutter={[16, 16]}>
         {title && (
           <Col span={24}>
