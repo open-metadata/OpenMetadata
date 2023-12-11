@@ -33,6 +33,13 @@ jest.mock('../../../common/EntityDescription/DescriptionV1', () => {
   return jest.fn().mockReturnValue(<p>Description</p>);
 });
 
+jest.mock(
+  '../../GlossaryDetailsRightPanel/GlossaryDetailsRightPanel.component',
+  () => {
+    return jest.fn().mockImplementation(() => <>testGlossaryRightPanel</>);
+  }
+);
+
 describe('GlossaryOverviewTab', () => {
   const onUpdate = jest.fn();
   const selectedData = MOCKED_GLOSSARY_TERMS[0];

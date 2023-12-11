@@ -13,7 +13,6 @@
 
 import ReactTutorial, { TourSteps } from '@deuex-solutions/react-tour';
 import { Button } from 'antd';
-import { observer } from 'mobx-react';
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { PRIMERY_COLOR } from '../../constants/constants';
@@ -78,4 +77,4 @@ const Tour = ({ steps }: { steps: TourSteps[] }) => {
   );
 };
 
-export default observer(Tour);
+export default Tour;

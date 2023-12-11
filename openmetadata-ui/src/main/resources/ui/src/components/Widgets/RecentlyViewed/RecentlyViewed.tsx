@@ -52,6 +52,7 @@ const RecentlyViewed = ({
             name: item.displayName || prepareLabel(item.entityType, item.fqn),
             fullyQualifiedName: item.fqn,
             type: item.entityType,
+            id: item.id,
           };
         })
         .filter((item) => item.name);
