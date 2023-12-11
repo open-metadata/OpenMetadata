@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import React from 'react';
 import { LandingPageWidgetKeys } from '../enums/CustomizablePage.enum';
 import { Document } from '../generated/entity/docStore/document';
 import { Thread, ThreadType } from '../generated/entity/feed/thread';
@@ -116,6 +117,7 @@ export const mockCustomizePageClassBase = {
     static: true,
   } as WidgetConfig,
   landingPageWidgetMargin: 16,
+  getWidgetsFromKey: (i: string) => () => <div>{i}</div>,
 };
 
 export const mockDocumentData: Document = {

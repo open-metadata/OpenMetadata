@@ -14,8 +14,10 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
+import { useApplicationConfigContext } from '../../components/ApplicationConfigProvider/ApplicationConfigProvider';
 import {
   mockActiveAnnouncementData,
+  mockCustomizePageClassBase,
   mockDocumentData,
   mockPersonaName,
   mockUserData,
@@ -60,38 +62,54 @@ jest.mock('../../components/Loader/Loader', () => {
 });
 
 jest.mock('../../components/Widgets/FeedsWidget/FeedsWidget.component', () => {
-  return jest.fn().mockImplementation(() => <div>FeedsWidget</div>);
+  return jest
+    .fn()
+    .mockImplementation(() => <div>KnowledgePanel.ActivityFeed</div>);
 });
 
 jest.mock('../../components/Widgets/RecentlyViewed/RecentlyViewed', () => {
-  return jest.fn().mockImplementation(() => <div>RecentlyViewed</div>);
+  return jest
+    .fn()
+    .mockImplementation(() => <div>KnowledgePanel.RecentlyViewed</div>);
 });
 
 jest.mock('../../components/KPIWidget/KPIWidget.component', () => {
-  return jest.fn().mockImplementation(() => <div>KPIWidget</div>);
+  return jest.fn().mockImplementation(() => <div>KnowledgePanel.KPI</div>);
 });
 
 jest.mock(
   '../../components/TotalDataAssetsWidget/TotalDataAssetsWidget.component',
   () => {
-    return jest.fn().mockImplementation(() => <div>TotalDataAssetsWidget</div>);
+    return jest
+      .fn()
+      .mockImplementation(() => <div>KnowledgePanel.TotalAssets</div>);
   }
 );
 
 jest.mock('../../components/MyData/RightSidebar/AnnouncementsWidget', () => {
-  return jest.fn().mockImplementation(() => <div>AnnouncementsWidget</div>);
+  return jest
+    .fn()
+    .mockImplementation(() => <div>KnowledgePanel.Announcements</div>);
 });
 
 jest.mock('../../components/MyData/RightSidebar/FollowingWidget', () => {
-  return jest.fn().mockImplementation(() => <div>FollowingWidget</div>);
+  return jest
+    .fn()
+    .mockImplementation(() => <div>KnowledgePanel.Following</div>);
 });
 
 jest.mock(
   '../../components/MyData/MyDataWidget/MyDataWidget.component',
   () => ({
-    MyDataWidget: jest.fn().mockImplementation(() => <div>MyDataWidget</div>),
+    MyDataWidget: jest
+      .fn()
+      .mockImplementation(() => <div>KnowledgePanel.MyData</div>),
   })
 );
+
+jest.mock('../../utils/CustomizePageClassBase', () => {
+  return mockCustomizePageClassBase;
+});
 
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest
@@ -219,13 +237,17 @@ describe('MyDataPage component', () => {
       render(<MyDataPage />);
     });
 
-    expect(screen.getByText('FeedsWidget')).toBeInTheDocument();
-    expect(screen.getByText('FollowingWidget')).toBeInTheDocument();
-    expect(screen.getByText('RecentlyViewed')).toBeInTheDocument();
-    expect(screen.getByText('AnnouncementsWidget')).toBeInTheDocument();
-    expect(screen.queryByText('KPIWidget')).toBeNull();
-    expect(screen.queryByText('TotalDataAssetsWidget')).toBeNull();
-    expect(screen.queryByText('MyDataWidget')).toBeNull();
+    expect(screen.getByText('KnowledgePanel.ActivityFeed')).toBeInTheDocument();
+    expect(screen.getByText('KnowledgePanel.Following')).toBeInTheDocument();
+    expect(
+      screen.getByText('KnowledgePanel.RecentlyViewed')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('KnowledgePanel.Announcements')
+    ).toBeInTheDocument();
+    expect(screen.queryByText('KnowledgePanel.KPI')).toBeNull();
+    expect(screen.queryByText('KnowledgePanel.TotalAssets')).toBeNull();
+    expect(screen.queryByText('KnowledgePanel.MyData')).toBeNull();
   });
 
   it('MyDataPage should not render announcement widget if there are no announcements', async () => {
@@ -239,32 +261,66 @@ describe('MyDataPage component', () => {
       render(<MyDataPage />);
     });
 
-    expect(screen.getByText('FeedsWidget')).toBeInTheDocument();
-    expect(screen.getByText('FollowingWidget')).toBeInTheDocument();
-    expect(screen.getByText('RecentlyViewed')).toBeInTheDocument();
-    expect(screen.queryByText('AnnouncementsWidget')).toBeNull();
-    expect(screen.queryByText('KPIWidget')).toBeNull();
-    expect(screen.queryByText('TotalDataAssetsWidget')).toBeNull();
-    expect(screen.queryByText('MyDataWidget')).toBeNull();
+    expect(screen.getByText('KnowledgePanel.ActivityFeed')).toBeInTheDocument();
+    expect(screen.getByText('KnowledgePanel.Following')).toBeInTheDocument();
+    expect(
+      screen.getByText('KnowledgePanel.RecentlyViewed')
+    ).toBeInTheDocument();
+    expect(screen.queryByText('KnowledgePanel.Announcements')).toBeNull();
+    expect(screen.queryByText('KnowledgePanel.KPI')).toBeNull();
+    expect(screen.queryByText('KnowledgePanel.TotalAssets')).toBeNull();
+    expect(screen.queryByText('KnowledgePanel.MyData')).toBeNull();
   });
 
   it('MyDataPage should render default widgets when getDocumentByFQN API fails', async () => {
     (getDocumentByFQN as jest.Mock).mockImplementationOnce(() =>
-      Promise.reject({
-        error: 'API failure',
-      })
+      Promise.reject(new Error('API failure'))
     );
 
     await act(async () => {
       render(<MyDataPage />);
     });
 
-    expect(screen.getByText('FeedsWidget')).toBeInTheDocument();
-    expect(screen.getByText('RecentlyViewed')).toBeInTheDocument();
-    expect(screen.getByText('FollowingWidget')).toBeInTheDocument();
-    expect(screen.getByText('AnnouncementsWidget')).toBeInTheDocument();
-    expect(screen.getByText('KPIWidget')).toBeInTheDocument();
-    expect(screen.getByText('TotalDataAssetsWidget')).toBeInTheDocument();
-    expect(screen.getByText('MyDataWidget')).toBeInTheDocument();
+    expect(screen.getByText('KnowledgePanel.ActivityFeed')).toBeInTheDocument();
+    expect(
+      screen.getByText('KnowledgePanel.RecentlyViewed')
+    ).toBeInTheDocument();
+    expect(screen.getByText('KnowledgePanel.Following')).toBeInTheDocument();
+    expect(
+      screen.getByText('KnowledgePanel.Announcements')
+    ).toBeInTheDocument();
+    expect(screen.getByText('KnowledgePanel.KPI')).toBeInTheDocument();
+    expect(screen.getByText('KnowledgePanel.TotalAssets')).toBeInTheDocument();
+    expect(screen.getByText('KnowledgePanel.MyData')).toBeInTheDocument();
+  });
+
+  it('MyDataPage should render default widgets when there is no selected persona', async () => {
+    (useApplicationConfigContext as jest.Mock).mockImplementation(() => ({
+      selectedPersona: {},
+    }));
+
+    await act(async () => {
+      render(<MyDataPage />);
+    });
+
+    expect(
+      await screen.findByText('KnowledgePanel.ActivityFeed')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText('KnowledgePanel.RecentlyViewed')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText('KnowledgePanel.Following')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText('KnowledgePanel.Announcements')
+    ).toBeInTheDocument();
+    expect(await screen.findByText('KnowledgePanel.KPI')).toBeInTheDocument();
+    expect(
+      await screen.findByText('KnowledgePanel.TotalAssets')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText('KnowledgePanel.MyData')
+    ).toBeInTheDocument();
   });
 });

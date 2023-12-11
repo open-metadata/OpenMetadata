@@ -17,7 +17,7 @@ import { SearchedUsersAndTeams } from 'Models';
 import AppState from '../AppState';
 import { OidcUser } from '../components/Auth/AuthProviders/AuthProvider.interface';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
-import { SettledStatus } from '../enums/axios.enum';
+import { SettledStatus } from '../enums/Axios.enum';
 import { SearchIndex } from '../enums/search.enum';
 import {
   RawSuggestResponse,
