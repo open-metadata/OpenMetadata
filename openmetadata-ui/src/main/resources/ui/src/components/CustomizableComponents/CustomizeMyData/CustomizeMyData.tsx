@@ -27,13 +27,11 @@ import {
 import { LandingPageWidgetKeys } from '../../../enums/CustomizablePage.enum';
 import { AssetsType } from '../../../enums/entity.enum';
 import { Document } from '../../../generated/entity/docStore/document';
-import { Thread } from '../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../generated/entity/type';
 import { PageType } from '../../../generated/system/ui/page';
 import { useAuth } from '../../../hooks/authHooks';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import '../../../pages/MyDataPage/my-data.less';
-import { getActiveAnnouncement } from '../../../rest/feedsAPI';
 import { getUserById } from '../../../rest/userAPI';
 import { Transi18next } from '../../../utils/CommonUtils';
 import {
@@ -90,9 +88,6 @@ function CustomizeMyData({
   const [followedData, setFollowedData] = useState<Array<EntityReference>>();
   const [followedDataCount, setFollowedDataCount] = useState(0);
   const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(false);
-  const [isAnnouncementLoading, setIsAnnouncementLoading] =
-    useState<boolean>(true);
-  const [announcements, setAnnouncements] = useState<Thread[]>([]);
 
   const decodedPersonaFQN = useMemo(
     () => getDecodedFqn(personaFQN),
@@ -189,7 +184,6 @@ function CustomizeMyData({
       layout.map((widget) => (
         <div data-grid={widget} id={widget.i} key={widget.i}>
           {getWidgetFromKey({
-            announcements: announcements,
             followedData: followedData ?? [],
             followedDataCount: followedDataCount,
             isLoadingOwnedData: isLoadingOwnedData,
@@ -198,39 +192,19 @@ function CustomizeMyData({
             handlePlaceholderWidgetKey: handlePlaceholderWidgetKey,
             handleRemoveWidget: handleRemoveWidget,
             isEditView: true,
-            isAnnouncementLoading: isAnnouncementLoading,
           })}
         </div>
       )),
     [
       layout,
-      announcements,
       followedData,
       followedDataCount,
       isLoadingOwnedData,
       handleOpenAddWidgetModal,
       handlePlaceholderWidgetKey,
       handleRemoveWidget,
-      isAnnouncementLoading,
     ]
   );
-
-  const fetchAnnouncements = useCallback(async () => {
-    try {
-      setIsAnnouncementLoading(true);
-      const response = await getActiveAnnouncement();
-
-      setAnnouncements(response.data);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsAnnouncementLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchAnnouncements();
-  }, []);
 
   useEffect(() => {
     handlePageDataChange({
@@ -292,7 +266,10 @@ function CustomizeMyData({
             className="bg-white d-flex justify-between border-bottom p-sm"
             span={24}>
             <div className="d-flex gap-2 items-center">
-              <Typography.Title className="m-0" level={5}>
+              <Typography.Title
+                className="m-0"
+                data-testid="customize-page-title"
+                level={5}>
                 <Transi18next
                   i18nKey="message.customize-landing-page-header"
                   renderElement={
@@ -310,13 +287,23 @@ function CustomizeMyData({
               </Typography.Title>
             </div>
             <Space>
-              <Button size="small" onClick={handleCancel}>
+              <Button
+                data-testid="cancel-button"
+                size="small"
+                onClick={handleCancel}>
                 {t('label.cancel')}
               </Button>
-              <Button size="small" onClick={handleOpenResetModal}>
+              <Button
+                data-testid="reset-button"
+                size="small"
+                onClick={handleOpenResetModal}>
                 {t('label.reset')}
               </Button>
-              <Button size="small" type="primary" onClick={onSaveLayout}>
+              <Button
+                data-testid="save-button"
+                size="small"
+                type="primary"
+                onClick={onSaveLayout}>
                 {t('label.save')}
               </Button>
             </Space>
@@ -358,6 +345,7 @@ function CustomizeMyData({
         <Modal
           centered
           cancelText={t('label.no')}
+          data-testid="reset-layout-modal"
           okText={t('label.yes')}
           open={isResetModalOpen}
           title={t('label.reset-default-layout')}
