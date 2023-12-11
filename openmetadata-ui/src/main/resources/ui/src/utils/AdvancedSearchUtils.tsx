@@ -18,6 +18,7 @@ import { isArray, isEmpty } from 'lodash';
 import React from 'react';
 import { RenderSettings } from 'react-awesome-query-builder';
 import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
+import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
 import {
   COMMON_DROPDOWN_ITEMS,
@@ -25,6 +26,8 @@ import {
   DASHBOARD_DATA_MODEL_TYPE,
   DASHBOARD_DROPDOWN_ITEMS,
   DATA_PRODUCT_DROPDOWN_ITEMS,
+  DOMAIN_DATAPRODUCT_DROPDOWN_ITEMS,
+  GLOSSARY_ASSETS_DROPDOWN_ITEMS,
   GLOSSARY_DROPDOWN_ITEMS,
   PIPELINE_DROPDOWN_ITEMS,
   SEARCH_INDEX_DROPDOWN_ITEMS,
@@ -86,6 +89,20 @@ export const getDropDownItems = (index: string) => {
     default:
       return [];
   }
+};
+
+export const getAssetsPageQuickFilters = (type: AssetsOfEntity) => {
+  switch (type) {
+    case AssetsOfEntity.DOMAIN:
+    case AssetsOfEntity.DATA_PRODUCT:
+      return [...DOMAIN_DATAPRODUCT_DROPDOWN_ITEMS];
+
+    case AssetsOfEntity.GLOSSARY:
+      return [...GLOSSARY_ASSETS_DROPDOWN_ITEMS];
+    default:
+      return [...COMMON_DROPDOWN_ITEMS];
+  }
+  // TODO: Add more quick filters
 };
 
 export const getAdvancedField = (field: string) => {
@@ -203,7 +220,6 @@ export const generateSearchDropdownLabel = (
         {showProfilePicture && (
           <ProfilePicture
             displayName={option.label}
-            id={option.key || ''}
             name={option.label || ''}
             textClass="text-xs"
             width="18"

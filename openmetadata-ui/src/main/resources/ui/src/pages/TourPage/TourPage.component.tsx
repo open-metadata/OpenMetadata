@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { observer } from 'mobx-react';
 import React, { useEffect, useMemo } from 'react';
 import Tour from '../../components/AppTour/Tour';
 import { useTourProvider } from '../../components/TourProvider/TourProvider';
@@ -70,4 +69,4 @@ const TourPage = () => {
   );
 };
 
-export default observer(TourPage);
+export default TourPage;

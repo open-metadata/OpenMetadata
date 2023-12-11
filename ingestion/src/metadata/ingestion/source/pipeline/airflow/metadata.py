@@ -75,7 +75,7 @@ class OMTaskInstance(BaseModel):
     """
 
     task_id: str
-    state: str
+    state: Optional[str]
     start_date: Optional[datetime]
     end_date: Optional[datetime]
 

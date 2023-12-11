@@ -25,6 +25,7 @@ import {
 import { Bucket, EntityDetailUnion } from 'Models';
 import React, { Fragment } from 'react';
 import { Link } from 'react-router-dom';
+import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
 import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
 import QueryCount from '../components/common/QueryCount/QueryCount.component';
 import { DataAssetsWithoutServiceField } from '../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
@@ -182,7 +183,6 @@ export const getOwnerNameWithProfilePic = (
       {' '}
       <ProfilePicture
         displayName={owner.displayName}
-        id={owner.id}
         name={owner.name ?? ''}
         width="20"
       />
@@ -244,11 +244,7 @@ const getTableOverview = (tableDetails: Table) => {
   const overview = [
     {
       name: i18next.t('label.owner'),
-      value:
-        getOwnerNameWithProfilePic(owner) ??
-        i18next.t('label.no-entity', {
-          entity: i18next.t('label.owner'),
-        }),
+      value: <OwnerLabel hasPermission={false} owner={owner} />,
       url: getOwnerValue(owner as EntityReference),
       isLink: !isEmpty(owner?.name),
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
@@ -1171,7 +1167,10 @@ export const getFrequentlyJoinedWithColumns = (
   joins: Array<ColumnJoins>
 ): Array<JoinedWith> => {
   return (
-    joins?.find((join) => join.columnName === columnName)?.joinedWith || []
+    (joins &&
+      Boolean(joins.length) &&
+      joins?.find((join) => join.columnName === columnName)?.joinedWith) ||
+    []
   );
 };
 

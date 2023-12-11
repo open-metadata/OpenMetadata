@@ -43,6 +43,7 @@ export const getServiceMainTabColumns = (
         <Link
           to={getLinkForFqn(serviceCategory, record.fullyQualifiedName ?? '')}>
           <Typography.Paragraph
+            data-testid="child-asset-name-link"
             ellipsis={{
               rows: 2,
               tooltip: true,
@@ -91,12 +92,7 @@ export const getServiceMainTabColumns = (
     render: (owner: ServicePageData['owner']) =>
       !isUndefined(owner) ? (
         <Space data-testid="owner-data">
-          <ProfilePicture
-            id=""
-            name={owner.name ?? ''}
-            type="circle"
-            width="24"
-          />
+          <ProfilePicture name={owner.name ?? ''} width="24" />
           <Typography.Text data-testid={`${owner.name}-owner-name`}>
             {getEntityName(owner)}
           </Typography.Text>

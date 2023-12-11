@@ -1589,6 +1589,13 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     change = getChangeDescription(table, REVERT);
     table.withTableType(null).withTableConstraints(null);
     patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, REVERT, null);
+
+    // add retention period
+    originalJson = JsonUtils.pojoToJson(table);
+    table.withRetentionPeriod("10D");
+    change = getChangeDescription(table, CHANGE_CONSOLIDATED);
+    fieldAdded(change, "retentionPeriod", "10D");
+    patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
   }
 
   @Test

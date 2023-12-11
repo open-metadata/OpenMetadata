@@ -42,6 +42,8 @@ import static org.openmetadata.service.Entity.getEntityByName;
 import static org.openmetadata.service.Entity.getEntityFields;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.csvNotSupported;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
@@ -69,7 +71,6 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -104,6 +105,7 @@ import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Column;
@@ -118,6 +120,9 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.schema.type.Votes;
+import org.openmetadata.schema.type.api.BulkAssets;
+import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
@@ -610,14 +615,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
       List<String> jsons = dao.listAfterWithOffset(limitParam, currentOffset);
 
       for (String json : jsons) {
+        T parsedEntity = JsonUtils.readValue(json, entityClass);
         try {
-          T entity = setFieldsInternal(JsonUtils.readValue(json, entityClass), fields);
+          T entity = setFieldsInternal(parsedEntity, fields);
           entity = setInheritedFields(entity, fields);
           entity = clearFieldsInternal(entity, fields);
           entities.add(withHref(uriInfo, entity));
         } catch (Exception e) {
-          LOG.error("Failed in Set Fields for Entity with Json : {}", json);
-          errors.add(String.format("Error Message : %s , %n Entity Json : %s", e.getMessage(), json));
+          parsedEntity = clearFieldsInternal(parsedEntity, fields);
+          String errorEntity = JsonUtils.pojoToJson(parsedEntity);
+          LOG.error("Failed in Set Fields for Entity with Json : {}", errorEntity);
+          errors.add(String.format("Error Message : %s , %n Entity Json : %s", e.getMessage(), errorEntity));
         }
       }
       currentOffset = currentOffset + limitParam;
@@ -1227,31 +1235,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return objectNode;
   }
 
-  /** Validate given list of tags and add derived tags to it */
-  public final List<TagLabel> addDerivedTags(List<TagLabel> tagLabels) {
-    if (nullOrEmpty(tagLabels)) {
-      return tagLabels;
-    }
-
-    List<TagLabel> updatedTagLabels = new ArrayList<>();
-    EntityUtil.mergeTags(updatedTagLabels, tagLabels);
-    for (TagLabel tagLabel : tagLabels) {
-      EntityUtil.mergeTags(updatedTagLabels, getDerivedTags(tagLabel));
-    }
-    updatedTagLabels.sort(compareTagLabel);
-    return updatedTagLabels;
-  }
-
-  /** Get tags associated with a given set of tags */
-  private List<TagLabel> getDerivedTags(TagLabel tagLabel) {
-    if (tagLabel.getSource() == TagLabel.TagSource.GLOSSARY) { // Related tags are only supported for Glossary
-      List<TagLabel> derivedTags = daoCollection.tagUsageDAO().getTags(tagLabel.getTagFQN());
-      derivedTags.forEach(tag -> tag.setLabelType(TagLabel.LabelType.DERIVED));
-      return derivedTags;
-    }
-    return Collections.emptyList();
-  }
-
   protected void applyColumnTags(List<Column> columns) {
     // Add column level tags by adding tag to column relationship
     for (Column column : columns) {
@@ -1274,26 +1257,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public void applyTags(List<TagLabel> tagLabels, String targetFQN) {
     for (TagLabel tagLabel : listOrEmpty(tagLabels)) {
       // Apply tagLabel to targetFQN that identifies an entity or field
-      daoCollection
-          .tagUsageDAO()
-          .applyTag(
-              tagLabel.getSource().ordinal(),
-              tagLabel.getTagFQN(),
-              tagLabel.getTagFQN(),
-              targetFQN,
-              tagLabel.getLabelType().ordinal(),
-              tagLabel.getState().ordinal());
-    }
-  }
-
-  void checkMutuallyExclusive(List<TagLabel> tagLabels) {
-    Map<String, TagLabel> map = new HashMap<>();
-    for (TagLabel tagLabel : listOrEmpty(tagLabels)) {
-      // When two tags have the same parent that is mutuallyExclusive, then throw an error
-      String parentFqn = FullyQualifiedName.getParentFQN(tagLabel.getTagFQN());
-      TagLabel stored = map.put(parentFqn, tagLabel);
-      if (stored != null && TagLabelUtil.mutuallyExclusive(tagLabel)) {
-        throw new IllegalArgumentException(CatalogExceptionMessage.mutuallyExclusiveLabels(tagLabel, stored));
+      boolean isTagDerived = tagLabel.getLabelType().equals(TagLabel.LabelType.DERIVED);
+      // Derived Tags should not create Relationships, and needs to be built on the during Read
+      if (!isTagDerived) {
+        daoCollection
+            .tagUsageDAO()
+            .applyTag(
+                tagLabel.getSource().ordinal(),
+                tagLabel.getTagFQN(),
+                tagLabel.getTagFQN(),
+                targetFQN,
+                tagLabel.getLabelType().ordinal(),
+                tagLabel.getState().ordinal());
       }
     }
   }
@@ -1303,11 +1278,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected List<TagLabel> getTags(String fqn) {
-    return !supportsTags ? null : daoCollection.tagUsageDAO().getTags(fqn);
+    if (!supportsTags) {
+      return null;
+    }
+
+    // Populate Glossary Tags on Read
+    return addDerivedTags(daoCollection.tagUsageDAO().getTags(fqn));
   }
 
-  public Map<String, List<TagLabel>> getTagsByPrefix(String prefix) {
-    return !supportsTags ? null : daoCollection.tagUsageDAO().getTagsByPrefix(prefix);
+  public Map<String, List<TagLabel>> getTagsByPrefix(String prefix, String postfix) {
+    return !supportsTags ? null : daoCollection.tagUsageDAO().getTagsByPrefix(prefix, postfix, true);
   }
 
   protected List<EntityReference> getFollowers(T entity) {
@@ -1655,6 +1635,34 @@ public abstract class EntityRepository<T extends EntityInterface> {
         addRelationship(dataProduct.getId(), entity.getId(), Entity.DATA_PRODUCT, entityType, Relationship.HAS);
       }
     }
+  }
+
+  protected BulkOperationResult bulkAssetsOperation(
+      UUID entityId, String fromEntity, Relationship relationship, BulkAssets request, boolean isAdd) {
+    BulkOperationResult result = new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(false);
+    List<BulkResponse> success = new ArrayList<>();
+    // Validate Assets
+    EntityUtil.populateEntityReferences(request.getAssets());
+
+    for (EntityReference ref : request.getAssets()) {
+      // Update Result Processed
+      result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
+
+      if (isAdd) {
+        addRelationship(entityId, ref.getId(), fromEntity, ref.getType(), relationship);
+      } else {
+        deleteRelationship(entityId, fromEntity, ref.getId(), ref.getType(), relationship);
+      }
+
+      success.add(new BulkResponse().withRequest(ref));
+      result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
+
+      // Update ES
+      searchRepository.updateEntity(ref);
+    }
+
+    result.withSuccessRequest(success);
+    return result;
   }
 
   /** Remove owner relationship for a given entity */

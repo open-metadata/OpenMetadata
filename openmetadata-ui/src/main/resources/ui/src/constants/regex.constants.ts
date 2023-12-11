@@ -24,7 +24,7 @@ export const FQN_REGEX = new RegExp(
  * strings that contain a combination of letters, alphanumeric characters, hyphens,
  * spaces, periods, single quotes, ampersands, and parentheses, with support for Unicode characters.
  */
-export const ENTITY_NAME_REGEX = /^[\p{L}\w\- .'&()%]+$/u;
+export const ENTITY_NAME_REGEX = /^[\p{L}\p{M}\w\- .'&()%]+$/u;
 
 export const delimiterRegex = /[\\[\]\\()\\;\\,\\|\\{}\\``\\/\\<>\\^]/g;
 export const nameWithSpace = /\s/g;
@@ -46,3 +46,5 @@ export const ENDS_WITH_NUMBER_REGEX = /\d+$/;
 
 export const VALID_OBJECT_KEY_REGEX = /^[_$a-zA-Z][_$a-zA-Z0-9]*$/;
 export const HEX_COLOR_CODE_REGEX = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
+
+export const TASK_SANITIZE_VALUE_REGEX = /^"|"$/g;

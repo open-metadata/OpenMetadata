@@ -42,7 +42,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 public class DashboardRepository extends EntityRepository<Dashboard> {
   private static final String DASHBOARD_UPDATE_FIELDS = "charts,dataModels";
-  private static final String DASHBOARD_PATCH_FIELDS = "charts,dataModels";
+  private static final String DASHBOARD_PATCH_FIELDS = "charts,dataModels,sourceHash";
   private static final String DASHBOARD_URL = "sourceUrl";
 
   public DashboardRepository() {
@@ -99,6 +99,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     dashboard.setCharts(fields.contains("charts") ? getRelatedEntities(dashboard, Entity.CHART) : null);
     dashboard.setDataModels(
         fields.contains("dataModels") ? getRelatedEntities(dashboard, Entity.DASHBOARD_DATA_MODEL) : null);
+    dashboard.setSourceHash(fields.contains("sourceHash") ? dashboard.getSourceHash() : null);
     if (dashboard.getUsageSummary() == null) {
       dashboard.withUsageSummary(
           fields.contains("usageSummary")
@@ -181,7 +182,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
   @Override
   public EntityInterface getParentEntity(Dashboard entity, String fields) {
-    return Entity.getEntity(entity.getService(), fields, Include.NON_DELETED);
+    return Entity.getEntity(entity.getService(), fields, Include.ALL);
   }
 
   private List<EntityReference> getRelatedEntities(Dashboard dashboard, String entityType) {
@@ -206,6 +207,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
           listOrEmpty(updated.getDataModels()),
           listOrEmpty(original.getDataModels()));
       updateDashboardUrl(original, updated);
+      recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
     }
 
     private void update(
