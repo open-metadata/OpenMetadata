@@ -28,7 +28,9 @@ import {
 } from '../../common/common';
 import { deleteGlossary } from '../../common/GlossaryUtils';
 import {
+  COLUMN_NAME_FOR_APPLY_GLOSSARY_TERM,
   CYPRESS_ASSETS_GLOSSARY,
+  CYPRESS_ASSETS_GLOSSARY_1,
   CYPRESS_ASSETS_GLOSSARY_TERMS,
   CYPRESS_ASSETS_GLOSSARY_TERMS_1,
   DELETE_TERM,
@@ -1130,17 +1132,16 @@ describe('Glossary page should work properly', () => {
     );
   });
 
-  it('Tags and entity columns should be sorted based on current Term Page', () => {
-    createGlossary(CYPRESS_ASSETS_GLOSSARY);
-    selectActiveGlossary(CYPRESS_ASSETS_GLOSSARY.name);
+  it('Tags and entity summary columns should be sorted based on current Term Page', () => {
+    createGlossary(CYPRESS_ASSETS_GLOSSARY_1);
+    selectActiveGlossary(CYPRESS_ASSETS_GLOSSARY_1.name);
 
     const terms = Object.values(CYPRESS_ASSETS_GLOSSARY_TERMS_1);
     terms.forEach((term) =>
-      createGlossaryTerm(term, CYPRESS_ASSETS_GLOSSARY, 'Approved', true)
+      createGlossaryTerm(term, CYPRESS_ASSETS_GLOSSARY_1, 'Approved', true)
     );
 
     const entityTable = SEARCH_ENTITY_TABLE.table_1;
-    const entityFieldForApplyGlossaryTerm = 'customer';
 
     visitEntityDetailsPage({
       term: entityTable.term,
@@ -1150,15 +1151,15 @@ describe('Glossary page should work properly', () => {
 
     addGlossaryTermsInEntityField({
       entityTerm: entityTable.term,
-      entityField: entityFieldForApplyGlossaryTerm,
+      entityField: COLUMN_NAME_FOR_APPLY_GLOSSARY_TERM,
       glossaryTerms: terms,
     });
 
     goToGlossaryPage();
-    selectActiveGlossary(CYPRESS_ASSETS_GLOSSARY.name);
+    selectActiveGlossary(CYPRESS_ASSETS_GLOSSARY_1.name);
     goToAssetsTab(terms[0].name, terms[0].fullyQualifiedName, true);
 
-    checkSummaryListItemSorting(entityFieldForApplyGlossaryTerm);
+    checkSummaryListItemSorting(COLUMN_NAME_FOR_APPLY_GLOSSARY_TERM);
   });
 });
 
@@ -1190,6 +1191,7 @@ describe('Cleanup', () => {
       NEW_GLOSSARY.name,
       NEW_GLOSSARY_1.name,
       CYPRESS_ASSETS_GLOSSARY.name,
+      CYPRESS_ASSETS_GLOSSARY_1.name,
     ].forEach((glossary) => {
       deleteGlossary(glossary);
     });
