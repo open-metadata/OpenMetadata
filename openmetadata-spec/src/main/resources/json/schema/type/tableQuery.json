@@ -52,7 +52,7 @@
           "type": "string"
         },
         "duration": {
-          "description": "How long did the query took to run in seconds.",
+          "description": "How long did the query took to run in milliseconds.",
           "type": "number"
         }
       },
