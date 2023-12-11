@@ -70,7 +70,7 @@ public class SearchRepository {
 
   private final String language;
 
-  @Getter @Setter private SearchIndexFactory searchIndexFactory;
+  @Getter @Setter public SearchIndexFactory searchIndexFactory;
 
   private final List<String> inheritableFields =
       List.of(Entity.FIELD_OWNER, Entity.FIELD_DOMAIN, Entity.FIELD_DISABLED);
