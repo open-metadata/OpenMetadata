@@ -23,7 +23,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 import { API_RES_MAX_SIZE } from '../../constants/constants';
 import { mockDatasetData } from '../../constants/mockTourData.constants';
 import { Table } from '../../generated/entity/data/table';
@@ -43,13 +43,14 @@ import ProfilerSettingsModal from './Component/ProfilerSettingsModal';
 import {
   OverallTableSummaryType,
   SplitTestCasesType,
-  TableProfilerContextType,
+  TableProfilerContextInterface,
   TableProfilerProviderProps,
 } from './TableProfiler.interface';
 
-export const TableProfilerContext = createContext<TableProfilerContextType>(
-  {} as TableProfilerContextType
-);
+export const TableProfilerContext =
+  createContext<TableProfilerContextInterface>(
+    {} as TableProfilerContextInterface
+  );
 
 export const TableProfilerProvider = ({
   children,
@@ -59,6 +60,7 @@ export const TableProfilerProvider = ({
   const { t } = useTranslation();
   const { fqn: datasetFQN } = useParams<{ fqn: string }>();
   const { isTourOpen } = useTourProvider();
+  const location = useLocation();
   // profiler has its own api but sent's the data in Table type
   const [tableProfiler, setTableProfiler] = useState<Table>();
   // customMetric is fetch from table api and has response type of Table
@@ -82,12 +84,11 @@ export const TableProfilerProvider = ({
       param.startsWith('?') ? param.substring(1) : param
     );
 
-    return searchData as { activeTab: string; activeColumnFqn: string };
+    return searchData as {
+      activeTab: TableProfilerTab;
+      activeColumnFqn: string;
+    };
   }, [location.search, isTourOpen]);
-
-  const isColumnProfile = activeTab === TableProfilerTab.COLUMN_PROFILE;
-  const isDataQuality = activeTab === TableProfilerTab.DATA_QUALITY;
-  const isTableProfile = activeTab === TableProfilerTab.TABLE_PROFILE;
 
   const viewTest = useMemo(() => {
     return (
@@ -189,7 +190,7 @@ export const TableProfilerProvider = ({
     // As we are encoding the fqn in API function to apply all over the application
     // and the datasetFQN comes form url parameter which is already encoded,
     // we are decoding FQN below to avoid double encoding in the API function
-    const decodedDatasetFQN = decodeURIComponent(datasetFQN);
+    const decodedDatasetFQN = getDecodedFqn(datasetFQN);
     setIsProfilerDataLoading(true);
     try {
       const profiler = await getLatestTableProfileByFqn(decodedDatasetFQN);
@@ -231,7 +232,10 @@ export const TableProfilerProvider = ({
       !isTableDeleted &&
       datasetFQN &&
       !isTourOpen &&
-      (isTableProfile || isColumnProfile) &&
+      [
+        TableProfilerTab.TABLE_PROFILE,
+        TableProfilerTab.COLUMN_PROFILE,
+      ].includes(activeTab) &&
       isUndefined(tableProfiler);
 
     if (fetchProfiler) {
@@ -242,13 +246,15 @@ export const TableProfilerProvider = ({
     if (isTourOpen) {
       setTableProfiler(mockDatasetData.tableDetails as unknown as Table);
     }
-  }, [datasetFQN, isTourOpen, isTableProfile, isColumnProfile]);
+  }, [datasetFQN, isTourOpen, activeTab]);
 
   useEffect(() => {
     const fetchTest =
       viewTest &&
       !isTourOpen &&
-      (isDataQuality || isColumnProfile) &&
+      [TableProfilerTab.DATA_QUALITY, TableProfilerTab.COLUMN_PROFILE].includes(
+        activeTab
+      ) &&
       isEmpty(allTestCases);
 
     if (fetchTest) {
@@ -256,9 +262,9 @@ export const TableProfilerProvider = ({
     } else {
       setIsTestsLoading(false);
     }
-  }, [viewTest, isTourOpen, isDataQuality, isColumnProfile]);
+  }, [viewTest, isTourOpen, activeTab]);
 
-  const tableProfilerPropsData: TableProfilerContextType = useMemo(() => {
+  const tableProfilerPropsData: TableProfilerContextInterface = useMemo(() => {
     return {
       isTestsLoading,
       isProfilerDataLoading,

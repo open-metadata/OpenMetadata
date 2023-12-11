@@ -64,7 +64,7 @@ const DeleteWidgetModal = ({
   successMessage,
   deleteOptions,
   onDelete,
-  loading = false,
+  isDeleting = false,
 }: DeleteWidgetModalProps) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
@@ -245,8 +245,8 @@ const DeleteWidgetModal = ({
   }, [visible]);
 
   useEffect(() => {
-    setIsLoading(loading);
-  }, [loading]);
+    setIsLoading(isDeleting);
+  }, [isDeleting]);
 
   return (
     <Modal

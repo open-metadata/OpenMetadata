@@ -12,9 +12,8 @@
  */
 import { DownOutlined } from '@ant-design/icons';
 import { Button, Col, Dropdown, Form, Row, Select, Space, Tabs } from 'antd';
-import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
-import { isUndefined, map } from 'lodash';
+import { isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -22,11 +21,15 @@ import { SummaryPanel } from '../../../components/DataQuality/SummaryPannel/Summ
 import DataQualityTab from '../../../components/ProfilerDashboard/component/DataQualityTab';
 import TestSuitePipelineTab from '../../../components/TestSuite/TestSuitePipelineTab/TestSuitePipelineTab.component';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
+import {
+  TEST_CASE_STATUS_OPTION,
+  TEST_CASE_TYPE_OPTION,
+} from '../../../constants/profiler.constant';
 import { INITIAL_TEST_SUMMARY } from '../../../constants/TestSuite.constant';
 import { EntityTabs, TabSpecificField } from '../../../enums/entity.enum';
 import { ProfilerDashboardType } from '../../../enums/table.enum';
 import { Table } from '../../../generated/entity/data/table';
-import { TestCase, TestCaseStatus } from '../../../generated/tests/testCase';
+import { TestCase } from '../../../generated/tests/testCase';
 import { EntityType as TestType } from '../../../generated/tests/testDefinition';
 import { getTableDetailsByFQN } from '../../../rest/tableAPI';
 import { getAddDataQualityTableTestPath } from '../../../utils/RouterUtils';
@@ -99,34 +102,6 @@ export const QualityTab = () => {
     [isTestsLoading, filteredTestCase, onTestCaseUpdate]
   );
 
-  const testCaseTypeOption = useMemo(() => {
-    const testCaseStatus: DefaultOptionType[] = map(TestType, (value, key) => ({
-      label: key,
-      value: value,
-    }));
-    testCaseStatus.unshift({
-      label: t('label.all'),
-      value: '',
-    });
-
-    return testCaseStatus;
-  }, []);
-
-  const testCaseStatusOption = useMemo(() => {
-    const testCaseStatus: DefaultOptionType[] = Object.values(
-      TestCaseStatus
-    ).map((value) => ({
-      label: value,
-      value: value,
-    }));
-    testCaseStatus.unshift({
-      label: t('label.all'),
-      value: '',
-    });
-
-    return testCaseStatus;
-  }, []);
-
   const handleTestCaseStatusChange = (value: string) => {
     if (value !== selectedTestCaseStatus) {
       setSelectedTestCaseStatus(value);
@@ -196,14 +171,14 @@ export const QualityTab = () => {
               <Space align="center" className="w-full justify-end">
                 <Form.Item className="m-0 w-40" label={t('label.type')}>
                   <Select
-                    options={testCaseTypeOption}
+                    options={TEST_CASE_TYPE_OPTION}
                     value={selectedTestType}
                     onChange={handleTestCaseTypeChange}
                   />
                 </Form.Item>
                 <Form.Item className="m-0 w-40" label={t('label.status')}>
                   <Select
-                    options={testCaseStatusOption}
+                    options={TEST_CASE_STATUS_OPTION}
                     value={selectedTestCaseStatus}
                     onChange={handleTestCaseStatusChange}
                   />

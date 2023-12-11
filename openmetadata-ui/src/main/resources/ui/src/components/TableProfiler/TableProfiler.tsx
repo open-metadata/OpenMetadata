@@ -14,7 +14,7 @@ import { Col, Menu, MenuProps, Row, Space } from 'antd';
 import Qs from 'qs';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useHistory, useLocation } from 'react-router-dom';
 import { ReactComponent as ColumnProfileIcon } from '../../assets/svg/column-profile.svg';
 import { ReactComponent as DataQualityIcon } from '../../assets/svg/data-quality.svg';
 import { ReactComponent as TableProfileIcon } from '../../assets/svg/table-profile.svg';
@@ -29,6 +29,7 @@ import { TableProfilerProvider } from './TableProfilerProvider';
 const TableProfiler = (props: TableProfilerProps) => {
   const { isTourOpen } = useTourProvider();
   const history = useHistory();
+  const location = useLocation();
   const { t } = useTranslation();
   const {
     activeTab = isTourOpen
@@ -42,10 +43,6 @@ const TableProfiler = (props: TableProfilerProps) => {
 
     return searchData as { activeTab: string; activeColumnFqn: string };
   }, [location.search, isTourOpen]);
-
-  const isColumnProfile = activeTab === TableProfilerTab.COLUMN_PROFILE;
-  const isDataQuality = activeTab === TableProfilerTab.DATA_QUALITY;
-  const isTableProfile = activeTab === TableProfilerTab.TABLE_PROFILE;
 
   const { viewTest, viewProfiler } = useMemo(() => {
     const { permissions } = props;
@@ -87,6 +84,18 @@ const TableProfiler = (props: TableProfilerProps) => {
     [viewTest, viewProfiler]
   );
 
+  const activeTabComponent = useMemo(() => {
+    switch (activeTab) {
+      case TableProfilerTab.DATA_QUALITY:
+        return <QualityTab />;
+      case TableProfilerTab.COLUMN_PROFILE:
+        return <ColumnProfileTable />;
+      case TableProfilerTab.TABLE_PROFILE:
+      default:
+        return <TableProfilerChart />;
+    }
+  }, [activeTab]);
+
   const handleTabChange: MenuProps['onClick'] = (value) => {
     history.push({ search: Qs.stringify({ activeTab: value.key }) });
   };
@@ -113,9 +122,7 @@ const TableProfiler = (props: TableProfilerProps) => {
             className="w-full h-min-full p-sm"
             direction="vertical"
             size={16}>
-            {isTableProfile && <TableProfilerChart />}
-            {isColumnProfile && <ColumnProfileTable />}
-            {isDataQuality && <QualityTab />}
+            {activeTabComponent}
           </Space>
         </Col>
       </Row>

@@ -35,7 +35,7 @@ export interface TableProfilerProviderProps extends TableProfilerProps {
   children: ReactNode;
 }
 
-export type TableProfilerContextType = {
+export interface TableProfilerContextInterface {
   isTableDeleted?: boolean;
   permissions: OperationPermission;
   isTestsLoading: boolean;
@@ -50,7 +50,7 @@ export type TableProfilerContextType = {
   onCustomMetricUpdate: (table: Table) => void;
   isProfilingEnabled: boolean;
   splitTestCases: SplitTestCasesType;
-};
+}
 
 export type SplitTestCasesType = {
   column: TestCase[];
