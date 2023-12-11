@@ -72,6 +72,7 @@ import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.search.SearchIndexFactory;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
@@ -107,7 +108,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
 
     // Create an On Demand DAO
     CollectionDAO dao = Entity.getCollectionDAO();
-    searchRepository = new SearchRepository(config.getElasticSearchConfiguration());
+    searchRepository = new SearchRepository(config.getElasticSearchConfiguration(), new SearchIndexFactory());
 
     try {
       AppScheduler.initialize(dao, searchRepository);

@@ -73,9 +73,8 @@ import org.openmetadata.service.search.indexes.WebAnalyticUserActivityReportData
 
 @Slf4j
 public class SearchIndexFactory {
-  private SearchIndexFactory() {}
 
-  public static SearchIndex buildIndex(String entityType, Object entity) {
+  public SearchIndex buildIndex(String entityType, Object entity) {
     switch (entityType) {
       case Entity.TABLE:
         return new TableIndex((Table) entity);
@@ -150,8 +149,11 @@ public class SearchIndexFactory {
       case Entity.TEST_CASE_RESOLUTION_STATUS:
         return new TestCaseResolutionStatusIndex((TestCaseResolutionStatus) entity);
       default:
-        LOG.warn("Ignoring Entity Type {}", entityType);
+        return buildExternalIndexes(entityType, entity);
     }
+  }
+
+  protected SearchIndex buildExternalIndexes(String entityType, Object entity) {
     throw new IllegalArgumentException(String.format("Entity Type [%s] is not valid for Index Factory", entityType));
   }
 }

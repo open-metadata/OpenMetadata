@@ -905,6 +905,7 @@ public class ElasticSearchClient implements SearchClient {
             AggregationBuilders.terms(OWNER_DISPLAY_NAME_KEYWORD)
                 .field(OWNER_DISPLAY_NAME_KEYWORD)
                 .size(MAX_AGGREGATE_SIZE))
+        .aggregation(AggregationBuilders.terms("owner.displayName").field("owner.displayName").size(MAX_AGGREGATE_SIZE))
         .aggregation(
             AggregationBuilders.terms(DOMAIN_DISPLAY_NAME_KEYWORD)
                 .field(DOMAIN_DISPLAY_NAME_KEYWORD)

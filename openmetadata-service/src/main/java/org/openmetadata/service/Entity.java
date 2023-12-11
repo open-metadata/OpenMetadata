@@ -35,6 +35,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import javax.ws.rs.BadRequestException;
 import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import lombok.NonNull;
@@ -63,6 +64,7 @@ import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UsageRepository;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -554,5 +556,12 @@ public final class Entity {
         c.setTags(c.getTags());
       }
     }
+  }
+
+  public static SearchIndex buildSearchIndex(String entityType, Object entity) {
+    if (searchRepository != null) {
+      return searchRepository.getSearchIndexFactory().buildIndex(entityType, entity);
+    }
+    throw new BadRequestException("searchrepository not initialized");
   }
 }
