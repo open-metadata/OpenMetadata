@@ -258,7 +258,10 @@ export const TaskTab = ({
    * @returns True if has access otherwise false
    */
   const hasEditAccess =
-    isAdminUser || isAssignee || isOwner || Boolean(isPartOfAssigneeTeam);
+    isAdminUser ||
+    isAssignee ||
+    isOwner ||
+    (Boolean(isPartOfAssigneeTeam) && !isCreator);
 
   const onSave = (message: string) => {
     postFeed(message, taskThread?.id ?? '').catch(() => {
