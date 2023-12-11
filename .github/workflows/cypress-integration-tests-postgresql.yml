@@ -16,11 +16,6 @@ name: PostgreSQL Cypress Integration Tests
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths-ignore:
-      - 'openmetadata-docs/**'
   schedule:
     - cron: '30 0 * * *'
   pull_request:
@@ -30,6 +25,8 @@ on:
       - synchronize
       - reopened
       - ready_for_review
+    paths-ignore:
+      - 'openmetadata-docs/**'
 
 permissions:
   contents: read
@@ -41,12 +38,15 @@ concurrency:
 jobs:
   cypress-ci-postgresql:
     if: |
-        github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+        github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
             || ( github.event_name == 'pull_request'
                  && contains(github.event.pull_request.labels.*.name, 'e2e')
                  && github.event.pull_request.draft == false
                )
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        parallel-machine: [1, 2, 3, 4]
     environment: test
     steps:
       - name: Free Disk Space (Ubuntu)
@@ -130,7 +130,7 @@ jobs:
         with:
           install-command: yarn --frozen-lockfile --silent --ignore-scripts
           record: true
-          parallel: false
+          parallel: true
           working-directory: openmetadata-ui/src/main/resources/ui/
           wait-on: 'http://localhost:8585'
           group:  cypress-ci-psql-oss-${{ github.run_id }}-${{github.run_attempt}}
