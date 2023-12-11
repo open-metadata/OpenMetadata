@@ -74,6 +74,7 @@ const AuthMechanism: FC<Props> = ({
             </Button>
           ) : (
             <Button
+              data-testid="auth-mechanism"
               disabled={!hasPermission}
               size="small"
               type="primary"

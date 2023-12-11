@@ -68,9 +68,8 @@ const revokeToken = () => {
   cy.get('[data-testid="auth-mechanism"]')
     .should('be.visible')
     .invoke('text')
-    .should('eq', 'OpenMetadata JWT');
-  cy.get('[data-testid="token-expiry"]').should('exist').should('be.visible');
-  cy.get('[data-testid="save-edit"]').should('exist').should('be.visible');
+    .should('eq', 'Generate New Token');
+  cy.get('[data-testid="no-token"]').should('exist').should('be.visible');
 };
 
 describe('Bots Page should work properly', () => {
@@ -145,6 +144,8 @@ describe('Bots Page should work properly', () => {
       getCreatedBot();
 
       revokeToken();
+      // Click on generate button
+      cy.get('[data-testid="auth-mechanism"]').should('be.visible').click();
       // Click on token expiry dropdown
       cy.get('[data-testid="token-expiry"]').should('be.visible').click();
       // Select the expiration period
@@ -172,6 +173,8 @@ describe('Bots Page should work properly', () => {
   it('Update token expiration for unlimited days', () => {
     getCreatedBot();
     revokeToken();
+    // Click on generate button
+    cy.get('[data-testid="auth-mechanism"]').should('be.visible').click();
     // Click on expiry token dropdown
     cy.get('[data-testid="token-expiry"]')
       .should('exist')

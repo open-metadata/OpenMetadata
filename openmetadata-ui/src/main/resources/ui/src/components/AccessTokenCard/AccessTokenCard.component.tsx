@@ -186,7 +186,7 @@ const AccessTokenCard: FC<MockProps> = ({
     if (botUserData && botUserData.id) {
       fetchAuthMechanismForBot();
     }
-  }, [botUserData]);
+  }, [botUserData, isAuthMechanismEdit]);
 
   const authenticationMechanismData = useMemo(() => {
     return isBot ? authenticationMechanismBot : authenticationMechanism;
@@ -237,7 +237,6 @@ const AccessTokenCard: FC<MockProps> = ({
         onCancel={() => setIsModalOpen(false)}
         onConfirm={() => {
           tokenRevoke();
-          handleAuthMechanismEdit();
           setIsModalOpen(false);
         }}
       />
