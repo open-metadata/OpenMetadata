@@ -19,7 +19,7 @@ OpenMetadata’s versatile hierarchical team structure helps align with your org
   color="violet-70"
   bold="Admin Guide for Roles and Policies"
   icon="add_moderator"
-  href="/how-to-guides/admin-guide-roles-policies"%}
+  href="/how-to-guides/admin-guide/roles-policies"%}
   Advanced guide to know it all about roles and policies.
  {%/inlineCallout%}
 {%/inlineCalloutContainer%}
