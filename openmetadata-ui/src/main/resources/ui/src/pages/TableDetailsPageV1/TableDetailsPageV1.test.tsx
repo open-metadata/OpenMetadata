@@ -113,8 +113,8 @@ jest.mock('../../components/SchemaTab/SchemaTab.component', () => {
   return jest.fn().mockImplementation(() => <p>testSchemaTab</p>);
 });
 
-jest.mock('../../components/TableProfiler/TableProfilerV1', () => {
-  return jest.fn().mockImplementation(() => <p>testTableProfilerV1</p>);
+jest.mock('../../components/TableProfiler/TableProfiler', () => {
+  return jest.fn().mockImplementation(() => <p>testTableProfiler</p>);
 });
 
 jest.mock('../../components/TableQueries/TableQueries', () => {

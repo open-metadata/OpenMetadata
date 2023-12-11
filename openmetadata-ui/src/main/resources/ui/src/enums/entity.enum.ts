@@ -60,6 +60,7 @@ export enum EntityType {
   knowledgePanels = 'KnowLedgePanels',
   GOVERN = 'govern',
   ALL = 'all',
+  CUSTOM_METRIC = 'customMetric',
 }
 
 export enum AssetsType {

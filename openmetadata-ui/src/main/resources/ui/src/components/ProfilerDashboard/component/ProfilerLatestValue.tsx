@@ -30,7 +30,9 @@ const ProfilerLatestValue = ({
           className="profiler-latest-value"
           key={info.title}
           title={
-            <Typography.Text className="text-grey-body" data-testid="title">
+            <Typography.Text
+              className="text-grey-body break-all"
+              data-testid="title">
               {info.title}
             </Typography.Text>
           }

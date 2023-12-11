@@ -255,6 +255,11 @@ describe('Data Quality and Profiler should work properly', () => {
     );
     verifyResponseStatusCode('@systemProfile', 200);
     verifyResponseStatusCode('@tableProfile', 200);
+    interceptURL('GET', '/api/v1/dataQuality/testCases?fields=*', 'testCase');
+    cy.get('[data-testid="profiler-tab-left-panel"]')
+      .contains('Data Quality')
+      .click();
+    verifyResponseStatusCode('@testCase', 200);
     cy.get('[data-testid="profiler-add-table-test-btn"]').click();
     cy.get('[data-testid="table"]').click();
 
@@ -281,7 +286,6 @@ describe('Data Quality and Profiler should work properly', () => {
       .scrollIntoView()
       .should('be.visible');
 
-    interceptURL('GET', '/api/v1/dataQuality/testCases?fields=*', 'testCase');
     cy.get('[data-testid="view-service-button"]')
       .should('be.visible')
       .click({ force: true });
@@ -361,6 +365,11 @@ describe('Data Quality and Profiler should work properly', () => {
     );
     verifyResponseStatusCode('@systemProfile', 200);
     verifyResponseStatusCode('@tableProfile', 200);
+    interceptURL('GET', '/api/v1/dataQuality/testCases?fields=*', 'testCase');
+    cy.get('[data-testid="profiler-tab-left-panel"]')
+      .contains('Data Quality')
+      .click();
+    verifyResponseStatusCode('@testCase', 200);
     cy.get('[data-testid="profiler-add-table-test-btn"]').click();
     cy.get('[data-testid="column"]').click();
 
@@ -406,6 +415,11 @@ describe('Data Quality and Profiler should work properly', () => {
     );
     verifyResponseStatusCode('@systemProfile', 200);
     verifyResponseStatusCode('@tableProfile', 200);
+    interceptURL('GET', '/api/v1/dataQuality/testCases?fields=*', 'testCase');
+    cy.get('[data-testid="profiler-tab-left-panel"]')
+      .contains('Data Quality')
+      .click();
+    verifyResponseStatusCode('@testCase', 200);
     cy.get('[data-testid="profiler-add-table-test-btn"]').click();
     cy.get('[data-testid="column"]').click();
 
@@ -715,13 +729,18 @@ describe('Data Quality and Profiler should work properly', () => {
     );
     visitEntityDetailsPage({ term, serviceName, entity });
     verifyResponseStatusCode('@waitForPageLoad', 200);
-    cy.get('[data-testid="entity-header-display-name"]')
-      .should('be.visible')
-      .contains(term);
-    cy.get('[data-testid="profiler"]').should('be.visible').click();
-    cy.get('[data-testid="profiler-add-table-test-btn"]')
-      .should('be.visible')
+    cy.get('[data-testid="entity-header-display-name"]').should(
+      'contain',
+      term
+    );
+
+    cy.get('[data-testid="profiler"]').click();
+    interceptURL('GET', '/api/v1/dataQuality/testCases?fields=*', 'testCase');
+    cy.get('[data-testid="profiler-tab-left-panel"]')
+      .contains('Data Quality')
       .click();
+    verifyResponseStatusCode('@testCase', 200);
+    cy.get('[data-testid="profiler-add-table-test-btn"]').click();
     cy.get('[data-testid="table"]').click();
 
     // creating new test case

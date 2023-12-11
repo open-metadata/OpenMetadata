@@ -13,6 +13,7 @@
 
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
+import { DEFAULT_RANGE_DATA } from '../../../constants/profiler.constant';
 import {
   getSystemProfileList,
   getTableProfilesList,
@@ -20,16 +21,10 @@ import {
 import TableProfilerChart from './TableProfilerChart';
 
 const mockFQN = 'testFQN';
-const mockTimeValue = {
-  endSec: 1670667984,
-  startSec: 1670408784,
-  endMilli: 1670667984000,
-  startMilli: 1670408784000,
-};
-const mockDateRangeObject = { startTs: 1670408784000, endTs: 1670667984000 };
 
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => ({ fqn: mockFQN })),
+  useHistory: jest.fn(),
 }));
 jest.mock('../../../rest/tableAPI');
 jest.mock('../../ProfilerDashboard/component/ProfilerLatestValue', () => {
@@ -44,13 +39,27 @@ jest.mock('../../Chart/CustomBarChart', () => {
 jest.mock('../../Chart/OperationDateBarChart', () => {
   return jest.fn().mockImplementation(() => <div>OperationDateBarChart</div>);
 });
+jest.mock('../../PageHeader/PageHeader.component', () => {
+  return jest.fn().mockImplementation(() => <div>PageHeader</div>);
+});
+jest.mock('../../DatePickerMenu/DatePickerMenu.component', () => {
+  return jest.fn().mockImplementation(() => <div>DatePickerMenu</div>);
+});
+jest.mock('./NoProfilerBanner.component', () => {
+  return jest.fn().mockImplementation(() => <div>NoProfilerBanner</div>);
+});
+jest.mock('../../common/SummaryCard/SummaryCard.component', () => {
+  return {
+    SummaryCard: jest.fn().mockImplementation(() => <div>SummaryCard</div>),
+  };
+});
 
 describe('TableProfilerChart component test', () => {
   it('Component should render', async () => {
     const mockGetSystemProfileList = getSystemProfileList as jest.Mock;
     const mockGetTableProfilesList = getTableProfilesList as jest.Mock;
     act(() => {
-      render(<TableProfilerChart dateRangeObject={mockDateRangeObject} />);
+      render(<TableProfilerChart />);
     });
 
     expect(
@@ -75,7 +84,7 @@ describe('TableProfilerChart component test', () => {
     const mockGetSystemProfileList = getSystemProfileList as jest.Mock;
     const mockGetTableProfilesList = getTableProfilesList as jest.Mock;
     await act(async () => {
-      render(<TableProfilerChart dateRangeObject={mockDateRangeObject} />);
+      render(<TableProfilerChart />);
     });
 
     // API should be call once
@@ -85,36 +94,28 @@ describe('TableProfilerChart component test', () => {
     expect(mockGetSystemProfileList.mock.calls[0][0]).toEqual(mockFQN);
     expect(mockGetTableProfilesList.mock.calls[0][0]).toEqual(mockFQN);
     // API should be call with proper Param value
-    expect(mockGetSystemProfileList.mock.calls[0][1]).toEqual({
-      startTs: mockTimeValue.startMilli,
-      endTs: mockTimeValue.endMilli,
-    });
-    expect(mockGetTableProfilesList.mock.calls[0][1]).toEqual({
-      startTs: mockTimeValue.startMilli,
-      endTs: mockTimeValue.endMilli,
-    });
+    expect(mockGetSystemProfileList.mock.calls[0][1]).toEqual(
+      DEFAULT_RANGE_DATA
+    );
+    expect(mockGetTableProfilesList.mock.calls[0][1]).toEqual(
+      DEFAULT_RANGE_DATA
+    );
   });
 
   it('If TimeRange change API should be call accordingly', async () => {
-    const startTime = {
-      inMilli: 1670408784000,
-      inSec: 1670408784,
-    };
     const mockGetSystemProfileList = getSystemProfileList as jest.Mock;
     const mockGetTableProfilesList = getTableProfilesList as jest.Mock;
 
     await act(async () => {
-      render(<TableProfilerChart dateRangeObject={mockDateRangeObject} />);
+      render(<TableProfilerChart />);
     });
 
     // API should be call with proper Param value
-    expect(mockGetSystemProfileList.mock.calls[0][1]).toEqual({
-      startTs: startTime.inMilli,
-      endTs: mockTimeValue.endMilli,
-    });
-    expect(mockGetTableProfilesList.mock.calls[0][1]).toEqual({
-      startTs: startTime.inMilli,
-      endTs: mockTimeValue.endMilli,
-    });
+    expect(mockGetSystemProfileList.mock.calls[0][1]).toEqual(
+      DEFAULT_RANGE_DATA
+    );
+    expect(mockGetTableProfilesList.mock.calls[0][1]).toEqual(
+      DEFAULT_RANGE_DATA
+    );
   });
 });

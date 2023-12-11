@@ -12,6 +12,7 @@
  */
 
 import { t } from 'i18next';
+import { map, values } from 'lodash';
 import { DateFilterType, StepperStepType } from 'Models';
 import { CSMode } from '../enums/codemirror.enum';
 import { DMLOperationType } from '../generated/api/data/createTableProfile';
@@ -23,6 +24,7 @@ import {
   ProfileSampleType,
 } from '../generated/entity/data/table';
 import { TestCaseStatus } from '../generated/tests/testCase';
+import { EntityType } from '../generated/tests/testDefinition';
 import {
   getCurrentMillis,
   getEpochMillisForPastDays,
@@ -392,4 +394,26 @@ export const PROFILER_MODAL_LABEL_STYLE = {
 export const TIME_BASED_PARTITION = [
   PartitionIntervalType.IngestionTime,
   PartitionIntervalType.TimeUnit,
+];
+
+export const TEST_CASE_TYPE_OPTION = [
+  {
+    label: t('label.all'),
+    value: '',
+  },
+  ...map(EntityType, (value, key) => ({
+    label: key,
+    value: value,
+  })),
+];
+
+export const TEST_CASE_STATUS_OPTION = [
+  {
+    label: t('label.all'),
+    value: '',
+  },
+  ...values(TestCaseStatus).map((value) => ({
+    label: value,
+    value: value,
+  })),
 ];

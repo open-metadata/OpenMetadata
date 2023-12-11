@@ -16,7 +16,6 @@ import { first, isString, last, sortBy } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import DataDistributionHistogram from '../../../components/Chart/DataDistributionHistogram.component';
-import Loader from '../../../components/Loader/Loader';
 import ProfilerDetailsCard from '../../../components/ProfilerDashboard/component/ProfilerDetailsCard';
 import { DateRangeObject } from '../../../components/ProfilerDashboard/component/TestSummary';
 import { MetricChartType } from '../../../components/ProfilerDashboard/profilerDashboard.interface';
@@ -29,26 +28,45 @@ import {
   INITIAL_SUM_METRIC_VALUE,
 } from '../../../constants/profiler.constant';
 import { ColumnProfile } from '../../../generated/entity/data/container';
+import { Table } from '../../../generated/entity/data/table';
 import { getColumnProfilerList } from '../../../rest/tableAPI';
-import { customFormatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
+import {
+  calculateCustomMetrics,
+  getColumnCustomMetric,
+} from '../../../utils/TableProfilerUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { customFormatDateTime } from '../../../utils/date-time/DateTimeUtils';
+import CustomMetricGraphs from '../CustomMetricGraphs/CustomMetricGraphs.component';
+import { useTableProfiler } from '../TableProfilerProvider';
 
 interface SingleColumnProfileProps {
   activeColumnFqn: string;
   dateRangeObject: DateRangeObject;
+  tableDetails?: Table;
 }
 
 const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
   activeColumnFqn,
   dateRangeObject,
+  tableDetails,
 }) => {
+  const { isProfilerDataLoading, customMetric: tableCustomMetric } =
+    useTableProfiler();
   const { t } = useTranslation();
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [columnProfilerData, setColumnProfilerData] = useState<ColumnProfile[]>(
     []
   );
 
+  const customMetrics = useMemo(
+    () =>
+      getColumnCustomMetric(
+        tableDetails ?? tableCustomMetric,
+        activeColumnFqn
+      ) ?? [],
+    [tableCustomMetric, activeColumnFqn, tableDetails]
+  );
   const [countMetrics, setCountMetrics] = useState<MetricChartType>(
     INITIAL_COUNT_METRIC_VALUE
   );
@@ -64,6 +82,11 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
   const [isMinMaxStringData, setIsMinMaxStringData] = useState(false);
   const [quartileMetrics, setQuartileMetrics] = useState<MetricChartType>(
     INITIAL_QUARTILE_METRIC_VALUE
+  );
+
+  const columnCustomMetrics = useMemo(
+    () => calculateCustomMetrics(columnProfilerData, customMetrics),
+    [columnProfilerData, customMetrics]
   );
 
   const fetchColumnProfilerData = async (
@@ -99,10 +122,10 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
     const sumMetricData: MetricChartType['data'] = [];
     const quartileMetricData: MetricChartType['data'] = [];
     updateProfilerData.forEach((col) => {
-      const x = customFormatDateTime(col.timestamp, 'MMM dd, hh:mm');
+      const timestamp = customFormatDateTime(col.timestamp, 'MMM dd, hh:mm');
 
       countMetricData.push({
-        name: x,
+        name: timestamp,
         timestamp: col.timestamp,
         distinctCount: col.distinctCount || 0,
         nullCount: col.nullCount || 0,
@@ -111,13 +134,13 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
       });
 
       sumMetricData.push({
-        name: x,
+        name: timestamp,
         timestamp: col.timestamp || 0,
         sum: col.sum || 0,
       });
 
       mathMetricData.push({
-        name: x,
+        name: timestamp,
         timestamp: col.timestamp || 0,
         max: col.max || 0,
         min: col.min || 0,
@@ -125,7 +148,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
       });
 
       proportionMetricData.push({
-        name: x,
+        name: timestamp,
         timestamp: col.timestamp || 0,
         distinctProportion: Math.round((col.distinctProportion || 0) * 100),
         nullProportion: Math.round((col.nullProportion || 0) * 100),
@@ -133,7 +156,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
       });
 
       quartileMetricData.push({
-        name: x,
+        name: timestamp,
         timestamp: col.timestamp || 0,
         firstQuartile: col.firstQuartile || 0,
         thirdQuartile: col.thirdQuartile || 0,
@@ -213,10 +236,6 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
     fetchColumnProfilerData(activeColumnFqn, dateRangeObject);
   }, [activeColumnFqn, dateRangeObject]);
 
-  if (isLoading) {
-    return <Loader />;
-  }
-
   return (
     <Row
       className="m-b-lg"
@@ -225,6 +244,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
       <Col span={24}>
         <ProfilerDetailsCard
           chartCollection={countMetrics}
+          isLoading={isLoading}
           name="count"
           title={t('label.data-count-plural')}
         />
@@ -232,6 +252,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
       <Col span={24}>
         <ProfilerDetailsCard
           chartCollection={proportionMetrics}
+          isLoading={isLoading}
           name="proportion"
           tickFormatter="%"
           title={t('label.data-proportion-plural')}
@@ -240,6 +261,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
       <Col span={24}>
         <ProfilerDetailsCard
           chartCollection={mathMetrics}
+          isLoading={isLoading}
           name="math"
           showYAxisCategory={isMinMaxStringData}
           // only min/max category can be string
@@ -249,6 +271,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
       <Col span={24}>
         <ProfilerDetailsCard
           chartCollection={sumMetrics}
+          isLoading={isLoading}
           name="sum"
           title={t('label.data-aggregate')}
         />
@@ -256,6 +279,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
       <Col span={24}>
         <ProfilerDetailsCard
           chartCollection={quartileMetrics}
+          isLoading={isLoading}
           name="quartile"
           title={t('label.data-quartile-plural')}
         />
@@ -263,7 +287,8 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
       <Col span={24}>
         <Card
           className="shadow-none global-border-radius"
-          data-testid="histogram-metrics">
+          data-testid="histogram-metrics"
+          loading={isLoading}>
           <Row gutter={[16, 16]}>
             <Col span={24}>
               <Typography.Title data-testid="data-distribution-title" level={5}>
@@ -277,6 +302,13 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
             </Col>
           </Row>
         </Card>
+      </Col>
+      <Col span={24}>
+        <CustomMetricGraphs
+          customMetrics={customMetrics}
+          customMetricsGraphData={columnCustomMetrics}
+          isLoading={isLoading || isProfilerDataLoading}
+        />
       </Col>
     </Row>
   );

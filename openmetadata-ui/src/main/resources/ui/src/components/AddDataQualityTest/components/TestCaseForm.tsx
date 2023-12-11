@@ -17,7 +17,13 @@ import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { t } from 'i18next';
 import { isEmpty, snakeCase } from 'lodash';
 import Qs from 'qs';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { PAGE_SIZE_LARGE } from '../../../constants/constants';
 import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
@@ -34,7 +40,10 @@ import {
   TestPlatform,
 } from '../../../generated/tests/testDefinition';
 import { getListTestCase, getListTestDefinitions } from '../../../rest/testAPI';
-import { replaceAllSpacialCharWith_ } from '../../../utils/CommonUtils';
+import {
+  getNameFromFQN,
+  replaceAllSpacialCharWith_,
+} from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getDecodedFqn } from '../../../utils/StringsUtils';
 import { generateEntityLink } from '../../../utils/TableUtils';
@@ -53,6 +62,14 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   const history = useHistory();
   const { entityTypeFQN, dashboardType } =
     useParams<{ entityTypeFQN: string; dashboardType: string }>();
+  const { activeColumnFqn } = useMemo(() => {
+    const param = location.search;
+    const searchData = Qs.parse(
+      param.startsWith('?') ? param.substring(1) : param
+    );
+
+    return searchData as { activeColumnFqn: string };
+  }, [location.search]);
   const decodedEntityFQN = getDecodedFqn(entityTypeFQN);
   const isColumnFqn = dashboardType === ProfilerDashboardType.COLUMN;
   const [form] = Form.useForm();
@@ -217,8 +234,15 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       params: initialValue?.parameterValues?.length
         ? getParamsValue()
         : undefined,
+      columnName: activeColumnFqn ? getNameFromFQN(activeColumnFqn) : undefined,
     });
   }, []);
+
+  useEffect(() => {
+    form.setFieldsValue({
+      column: activeColumnFqn ? getNameFromFQN(activeColumnFqn) : undefined,
+    });
+  }, [activeColumnFqn]);
 
   return (
     <Form

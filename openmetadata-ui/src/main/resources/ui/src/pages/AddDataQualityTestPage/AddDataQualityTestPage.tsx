@@ -28,7 +28,10 @@ const AddDataQualityTestPage = () => {
   const fetchTableData = async () => {
     setIsLoading(true);
     try {
-      const table = await getTableDetailsByFQN(entityTypeFQN, 'testSuite');
+      const table = await getTableDetailsByFQN(
+        entityTypeFQN,
+        'testSuite,customMetrics,columns'
+      );
       setTable(table);
     } catch (error) {
       showErrorToast(error as AxiosError);
