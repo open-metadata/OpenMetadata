@@ -72,22 +72,22 @@ export const getFormattedEntityData = (
     return [];
   }
 
-  const columnHighlights = [
-    ...get(highlights, 'columns.name', []),
-    ...get(highlights, 'columns.childrens.name', []),
-  ];
-
-  const columnHighlightsMap =
-    columnHighlights?.reduce((acc, colHighlight, index) => {
-      acc[colHighlight.replace(/<\/?span(.*?)>/g, '')] = index;
-
-      return acc;
-    }, {}) ?? {};
-
   const tagHighlights = get(highlights, 'tag.name');
 
   switch (entityType) {
     case SummaryEntityType.COLUMN: {
+      const columnHighlights = [
+        ...get(highlights, 'columns.name', []),
+        ...get(highlights, 'columns.childrens.name', []),
+      ];
+
+      const columnHighlightsMap =
+        columnHighlights?.reduce((acc, colHighlight, index) => {
+          acc[colHighlight.replace(/<\/?span(.*?)>/g, '')] = index;
+
+          return acc;
+        }, {}) ?? {};
+
       const { entityWithSortOption, entityWithoutSortOption } = (
         entityInfo as Column[]
       ).reduce(
