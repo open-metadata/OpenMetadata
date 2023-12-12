@@ -174,33 +174,30 @@ const UserProfileDetails = ({
   const handleChangePassword = async (data: ChangePasswordRequest) => {
     try {
       setIsLoading(true);
+
       const newData = {
-        username: '',
-        requestType: RequestType.User,
+        username: userData.name,
+        requestType: isLoggedInUser ? RequestType.Self : RequestType.User,
       };
 
-      if (isLoggedInUser) {
-        newData.username = userData.name;
-        newData.requestType = RequestType.Self;
-      } else {
-        newData.username = userData.name;
-      }
       const sendData = {
         ...data,
         ...newData,
       };
-      await changePassword(sendData)
-        .then(() => {
-          showSuccessToast(
-            t('server.update-entity-success', { entity: t('label.password') })
-          );
-          setIsChangePassword(false);
-        })
-        .catch((error) => {
-          showErrorToast(error.response.data.message);
-        });
-    } catch (err) {
-      showErrorToast(err as AxiosError);
+
+      await changePassword(sendData);
+
+      showSuccessToast(
+        t('server.update-entity-success', { entity: t('label.password') })
+      );
+
+      setIsChangePassword(false);
+    } catch (error) {
+      if (error instanceof AxiosError) {
+        showErrorToast(error.response?.data?.message || 'An error occurred');
+      } else {
+        showErrorToast('An error occurred');
+      }
     } finally {
       setIsLoading(false);
     }
