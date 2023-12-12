@@ -225,7 +225,7 @@ export const TaskTab = ({
    * @returns True if has access otherwise false
    */
   const hasEditAccess =
-    isAdminUser || isAssignee || isOwner || Boolean(isPartOfAssigneeTeam);
+    isAdminUser || isAssignee || isOwner || (Boolean(isPartOfAssigneeTeam) && !isCreator);
 
   const onSave = (message: string) => {
     postFeed(message, taskThread?.id ?? '').catch(() => {
@@ -269,7 +269,7 @@ export const TaskTab = ({
   };
 
   const approvalWorkflowActions = useMemo(() => {
-    const hasApprovalAccess = isAssignee || Boolean(isPartOfAssigneeTeam);
+    const hasApprovalAccess = isAssignee || (Boolean(isPartOfAssigneeTeam) && !isCreator);
 
     return (
       <Space
