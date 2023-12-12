@@ -426,7 +426,7 @@ class TopologyRunnerMixin(Generic[C]):
         # Either use the received request or the acknowledged Entity
         entity = entity_request.right if entity_request else None
 
-        if not stage.nullable and entity is None:
+        if not stage.nullable and entity is None and entity_request.left is None:
             raise ValueError("Value unexpectedly None")
 
         if entity_request is not None:
