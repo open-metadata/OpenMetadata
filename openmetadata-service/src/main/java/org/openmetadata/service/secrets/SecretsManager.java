@@ -292,8 +292,10 @@ public abstract class SecretsManager {
   protected String buildSecretId(boolean addClusterPrefix, String... secretIdValues) {
     StringBuilder format = new StringBuilder();
     if (addClusterPrefix) {
-      format.append("/");
-      format.append(secretsConfig.prefix);
+      if (secretsConfig.prefix != null && !secretsConfig.prefix.isEmpty()) {
+        format.append("/");
+        format.append(secretsConfig.prefix);
+      }
       format.append("/");
       format.append(secretsConfig.clusterName);
     } else {
