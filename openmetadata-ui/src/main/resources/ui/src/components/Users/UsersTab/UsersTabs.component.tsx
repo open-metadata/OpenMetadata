@@ -68,6 +68,7 @@ export const UsersTab = ({ users, onRemoveUser }: UsersTabProps) => {
           onRemoveUser && (
             <Icon
               component={CloseIcon}
+              data-testid="remove-user-button"
               title={t('label.remove')}
               onClick={() => onRemoveUser(id)}
             />

@@ -133,7 +133,7 @@ export const CustomPageSettings = () => {
   return (
     <Row
       className="customize-landing-page user-listing p-b-md"
-      data-testid="user-list-v1-component"
+      data-testid="custom-page-setting-component"
       gutter={[16, 16]}>
       <Col span={18}>
         <PageHeader data={PAGE_HEADERS.CUSTOM_PAGE} />
@@ -152,9 +152,11 @@ export const CustomPageSettings = () => {
               <Card
                 bodyStyle={{ height: '100%' }}
                 className="h-full"
+                data-testid="persona-details-card"
                 extra={
                   <Button
                     className="text-link-color"
+                    data-testid="customize-page-button"
                     size="small"
                     type="text"
                     onClick={() => handleCustomisePersona(persona)}>

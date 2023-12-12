@@ -264,6 +264,7 @@ function CustomizeMyData({
         header={
           <Col
             className="bg-white d-flex justify-between border-bottom p-sm"
+            data-testid="customize-landing-page-header"
             span={24}>
             <div className="d-flex gap-2 items-center">
               <Typography.Title
