@@ -27,7 +27,7 @@ import {
 } from 'antd';
 import { Content } from 'antd/lib/layout/layout';
 import Sider from 'antd/lib/layout/Sider';
-import { isEmpty, isString, isUndefined, noop } from 'lodash';
+import { isEmpty, isString, isUndefined, noop, omit } from 'lodash';
 import Qs from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -343,12 +343,18 @@ const ExploreV1: React.FC<ExploreProps> = ({
                     <EntitySummaryPanel
                       entityDetails={{ details: entityDetails }}
                       handleClosePanel={handleClosePanel}
-                      sortSummaryListBasedOnTags={(
-                        selectedQuickFilters?.find(
-                          (filterOption) =>
-                            filterOption.key === EntityFields.TAG
-                        )?.value ?? []
-                      ).map((tagFQN) => tagFQN.key)}
+                      highlights={omit(
+                        {
+                          ...searchResults?.hits?.hits[0]?.highlight,
+                          'tag.name': (
+                            selectedQuickFilters?.find(
+                              (filterOption) =>
+                                filterOption.key === EntityFields.TAG
+                            )?.value ?? []
+                          ).map((tagFQN) => tagFQN.key),
+                        },
+                        ['description', 'displayName']
+                      )}
                     />
                   )
                 }

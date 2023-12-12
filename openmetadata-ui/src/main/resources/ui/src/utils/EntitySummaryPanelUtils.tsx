@@ -12,9 +12,10 @@
  */
 
 import { Typography } from 'antd';
-import { isEmpty } from 'lodash';
+import { get, isEmpty, isUndefined } from 'lodash';
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { SearchedDataProps } from '../../src/components/SearchedData/SearchedData.interface';
 import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
 import { BasicEntityInfo } from '../components/Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
@@ -27,6 +28,7 @@ import { SearchIndexField } from '../generated/entity/data/searchIndex';
 import { Column, TableConstraint } from '../generated/entity/data/table';
 import { Field } from '../generated/entity/data/topic';
 import { getEntityName } from './EntityUtils';
+import { stringToHTML } from './StringsUtils';
 
 const { Text } = Typography;
 
@@ -48,7 +50,7 @@ export const getSortedTags = ({
   } = { tagForSort: [], remainingTags: [] };
 
   const { tagForSort, remainingTags } = tags?.reduce((acc, tag) => {
-    if (sortTagsBasedOnGivenArr.includes(tag.tagFQN)) {
+    if (sortTagsBasedOnGivenArr?.includes(tag.tagFQN)) {
       acc.tagForSort.push({ ...tag, isHighlighted: true });
     } else {
       acc.remainingTags.push(tag);
@@ -64,11 +66,26 @@ export const getFormattedEntityData = (
   entityType: SummaryEntityType,
   entityInfo?: Array<Column | Field | Chart | Task | MlFeature>,
   tableConstraints?: TableConstraint[],
-  sortSummaryListBasedOnTags: string[] = []
+  highlights?: SearchedDataProps['data'][number]['highlights']
 ): BasicEntityInfo[] => {
   if (isEmpty(entityInfo)) {
     return [];
   }
+
+  const columnHighlights = [
+    ...get(highlights, 'columns.name', []),
+    ...get(highlights, 'columns.childrens.name', []),
+  ];
+
+  const columnHighlightsMap =
+    columnHighlights?.reduce((acc, colHighlight, index) => {
+      acc[colHighlight.replace(/<\/?span(.*?)>/g, '')] = index;
+
+      return acc;
+    }, {}) ?? {};
+
+  const tagHighlights = get(highlights, 'tag.name');
+
   switch (entityType) {
     case SummaryEntityType.COLUMN: {
       const { entityWithSortOption, entityWithoutSortOption } = (
@@ -94,14 +111,27 @@ export const getFormattedEntityData = (
           };
 
           const isTagPresentInColumnData = column.tags?.find((tag) =>
-            sortSummaryListBasedOnTags.includes(tag.tagFQN)
+            tagHighlights?.includes(tag.tagFQN)
           );
 
-          if (isTagPresentInColumnData) {
+          if (
+            isTagPresentInColumnData ||
+            !isUndefined(columnHighlightsMap[column.name])
+          ) {
             columnData.tags = getSortedTags({
-              sortTagsBasedOnGivenArr: sortSummaryListBasedOnTags,
+              sortTagsBasedOnGivenArr: tagHighlights,
               tags: columnData.tags,
             });
+
+            if (!isUndefined(columnHighlightsMap[column.name])) {
+              columnData.title = (
+                <Text className="entity-title" data-testid="entity-title">
+                  {stringToHTML(
+                    columnHighlights[columnHighlightsMap[column.name]]
+                  )}
+                </Text>
+              );
+            }
 
             acc.entityWithSortOption.push(columnData);
           } else {

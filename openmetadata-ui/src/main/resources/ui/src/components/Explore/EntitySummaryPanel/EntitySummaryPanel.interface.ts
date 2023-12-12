@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
+import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 import { EntityDetailsObjectInterface } from '../ExplorePage.interface';
 
 export interface EntitySummaryPanelProps {
   entityDetails: EntityDetailsObjectInterface;
   handleClosePanel: () => void;
-  sortSummaryListBasedOnTags?: string[];
+  highlights?: SearchedDataProps['data'][number]['highlights'];
 }

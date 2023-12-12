@@ -350,7 +350,7 @@ const GlossaryPage = () => {
           <EntitySummaryPanel
             entityDetails={previewAsset}
             handleClosePanel={() => setPreviewAsset(undefined)}
-            sortSummaryListBasedOnTags={[glossaryFqn]}
+            highlights={{ 'tag.name': [glossaryFqn] }}
           />
         )
       }
