@@ -18,14 +18,9 @@ import { useTranslation } from 'react-i18next';
 import DataDistributionHistogram from '../../../components/Chart/DataDistributionHistogram.component';
 import ProfilerDetailsCard from '../../../components/ProfilerDashboard/component/ProfilerDetailsCard';
 import { DateRangeObject } from '../../../components/ProfilerDashboard/component/TestSummary';
-import { MetricChartType } from '../../../components/ProfilerDashboard/profilerDashboard.interface';
 import {
   DEFAULT_RANGE_DATA,
-  INITIAL_COUNT_METRIC_VALUE,
-  INITIAL_MATH_METRIC_VALUE,
-  INITIAL_PROPORTION_METRIC_VALUE,
-  INITIAL_QUARTILE_METRIC_VALUE,
-  INITIAL_SUM_METRIC_VALUE,
+  INITIAL_COLUMN_METRICS_VALUE,
 } from '../../../constants/profiler.constant';
 import { ColumnProfile } from '../../../generated/entity/data/container';
 import { Table } from '../../../generated/entity/data/table';
@@ -36,6 +31,7 @@ import {
   calculateCustomMetrics,
   getColumnCustomMetric,
 } from '../../../utils/TableProfilerUtils';
+import { ColumnMetricsInterface } from '../../../utils/TableProfilerUtils.interface';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import CustomMetricGraphs from '../CustomMetricGraphs/CustomMetricGraphs.component';
 import { useTableProfiler } from '../TableProfilerProvider';
@@ -67,22 +63,10 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
       ) ?? [],
     [tableCustomMetric, activeColumnFqn, tableDetails]
   );
-  const [countMetrics, setCountMetrics] = useState<MetricChartType>(
-    INITIAL_COUNT_METRIC_VALUE
-  );
-  const [proportionMetrics, setProportionMetrics] = useState<MetricChartType>(
-    INITIAL_PROPORTION_METRIC_VALUE
-  );
-  const [mathMetrics, setMathMetrics] = useState<MetricChartType>(
-    INITIAL_MATH_METRIC_VALUE
-  );
-  const [sumMetrics, setSumMetrics] = useState<MetricChartType>(
-    INITIAL_SUM_METRIC_VALUE
+  const [columnMetric, setColumnMetric] = useState<ColumnMetricsInterface>(
+    INITIAL_COLUMN_METRICS_VALUE
   );
   const [isMinMaxStringData, setIsMinMaxStringData] = useState(false);
-  const [quartileMetrics, setQuartileMetrics] = useState<MetricChartType>(
-    INITIAL_QUARTILE_METRIC_VALUE
-  );
 
   const columnCustomMetrics = useMemo(
     () => calculateCustomMetrics(columnProfilerData, customMetrics),
@@ -117,18 +101,10 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
   const createMetricsChartData = () => {
     const profileMetric = calculateColumnProfilerMetrics({
       columnProfilerData,
-      countMetrics,
-      proportionMetrics,
-      mathMetrics,
-      sumMetrics,
-      quartileMetrics,
+      ...columnMetric,
     });
 
-    setCountMetrics(profileMetric.countMetrics);
-    setProportionMetrics(profileMetric.proportionMetrics);
-    setMathMetrics(profileMetric.mathMetrics);
-    setSumMetrics(profileMetric.sumMetrics);
-    setQuartileMetrics(profileMetric.quartileMetrics);
+    setColumnMetric(profileMetric);
 
     // only min/max category can be string
     const isMinMaxString =
@@ -152,7 +128,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
       gutter={[16, 16]}>
       <Col span={24}>
         <ProfilerDetailsCard
-          chartCollection={countMetrics}
+          chartCollection={columnMetric.countMetrics}
           isLoading={isLoading}
           name="count"
           title={t('label.data-count-plural')}
@@ -160,7 +136,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
       </Col>
       <Col span={24}>
         <ProfilerDetailsCard
-          chartCollection={proportionMetrics}
+          chartCollection={columnMetric.proportionMetrics}
           isLoading={isLoading}
           name="proportion"
           tickFormatter="%"
@@ -169,7 +145,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
       </Col>
       <Col span={24}>
         <ProfilerDetailsCard
-          chartCollection={mathMetrics}
+          chartCollection={columnMetric.mathMetrics}
           isLoading={isLoading}
           name="math"
           showYAxisCategory={isMinMaxStringData}
@@ -179,7 +155,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
       </Col>
       <Col span={24}>
         <ProfilerDetailsCard
-          chartCollection={sumMetrics}
+          chartCollection={columnMetric.sumMetrics}
           isLoading={isLoading}
           name="sum"
           title={t('label.data-aggregate')}
@@ -187,7 +163,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
       </Col>
       <Col span={24}>
         <ProfilerDetailsCard
-          chartCollection={quartileMetrics}
+          chartCollection={columnMetric.quartileMetrics}
           isLoading={isLoading}
           name="quartile"
           title={t('label.data-quartile-plural')}
