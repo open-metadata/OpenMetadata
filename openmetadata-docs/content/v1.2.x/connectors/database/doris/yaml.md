@@ -39,7 +39,7 @@ Configure and schedule Doris metadata and profiler workflows from the OpenMetada
 
 ## Requirements
 
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
+{%inlineCallout icon="description" bold="OpenMetadata 1.2.x or later" href="/deployment"%}
 To deploy OpenMetadata, check the Deployment guides.
 {%/inlineCallout%}
 
