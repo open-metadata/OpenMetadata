@@ -186,7 +186,7 @@ const AccessTokenCard: FC<MockProps> = ({
     if (botUserData && botUserData.id) {
       fetchAuthMechanismForBot();
     }
-  }, [botUserData, isAuthMechanismEdit]);
+  }, [botUserData]);
 
   const authenticationMechanismData = useMemo(() => {
     return isBot ? authenticationMechanismBot : authenticationMechanism;
@@ -199,6 +199,12 @@ const AccessTokenCard: FC<MockProps> = ({
   const tokenRevoke = useCallback(() => {
     return isBot ? revokeTokenHandlerBot?.() : revokeTokenHandler();
   }, [isBot, revokeTokenHandlerBot, revokeTokenHandler]);
+
+  const confirmMessage = useMemo(() => {
+    return isBot
+      ? t('message.are-you-sure-to-revoke-access')
+      : t('message.are-you-sure-to-revoke-access-personal-access');
+  }, [isBot]);
 
   return isLoading ? (
     <Loader />
@@ -229,7 +235,7 @@ const AccessTokenCard: FC<MockProps> = ({
         )}
       </>
       <ConfirmationModal
-        bodyText={t('message.are-you-sure-to-revoke-access')}
+        bodyText={confirmMessage}
         cancelText={t('label.cancel')}
         confirmText={t('label.confirm')}
         header={t('message.are-you-sure')}
@@ -237,6 +243,7 @@ const AccessTokenCard: FC<MockProps> = ({
         onCancel={() => setIsModalOpen(false)}
         onConfirm={() => {
           tokenRevoke();
+          handleAuthMechanismEdit();
           setIsModalOpen(false);
         }}
       />
