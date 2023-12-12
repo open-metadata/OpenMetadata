@@ -50,8 +50,8 @@ To enable JWT token generation. Please add the following to the OpenMetadata ser
 
 ```yaml
 jwtTokenConfiguration:
-  rsapublicKeyFilePath: ${RSA_PUBLIC_KEY_FILE_PATH:-"/openmetadata/conf/public_key.der"}
-  rsaprivateKeyFilePath: ${RSA_PRIVATE_KEY_FILE_PATH:-"/openmetadata/conf/private_key.der"}
+  rsapublicKeyFilePath: ${RSA_PUBLIC_KEY_FILE_PATH:-"/opt/openmetadata/conf/public_key.der"}
+  rsaprivateKeyFilePath: ${RSA_PRIVATE_KEY_FILE_PATH:-"/opt/openmetadata/conf/private_key.der"}
   jwtissuer: ${JWT_ISSUER:-"open-metadata.org"}
   keyId: ${JWT_KEY_ID:-"Gb389a-9f76-gdjs-a92j-0242bk94356"}
 ```
