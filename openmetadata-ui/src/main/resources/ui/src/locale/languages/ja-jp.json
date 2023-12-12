@@ -1214,6 +1214,7 @@
     "are-you-sure-delete-property": "本当にプロパティ {{propertyName}} を削除してよろしいですか?",
     "are-you-sure-delete-tag": "本当に {{type}} \"{{tagName}}\"を削除してよろしいですか?",
     "are-you-sure-to-revoke-access": "Are you sure you want to revoke access for JWT token?",
+    "are-you-sure-to-revoke-access-personal-access": "Are you sure you want to revoke access for Personal Access Token?",
     "are-you-sure-want-to-enable": "Are you sure you want to enable {{entity}}?",
     "are-you-sure-want-to-text": "本当に{{text}}してよろしいですか?",
     "are-you-sure-you-want-to-remove-child-from-parent": "本当に{{parent}}から{{child}}を削除しますか?",

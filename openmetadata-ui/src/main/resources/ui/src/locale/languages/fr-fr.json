@@ -1214,6 +1214,7 @@
     "are-you-sure-delete-property": "Êtes-vous sûr de vouloir supprimer la propriété {{propertyName}}",
     "are-you-sure-delete-tag": "Êtes-vous sûr de vouloir supprimer le tag {{isCategory}} \"{{tagName}}\"?",
     "are-you-sure-to-revoke-access": "Êtes-vous sûr de vouloir supprimer l'accès au Jeton JWT ?",
+    "are-you-sure-to-revoke-access-personal-access": "Are you sure you want to revoke access for Personal Access Token?",
     "are-you-sure-want-to-enable": "Are you sure you want to enable {{entity}}?",
     "are-you-sure-want-to-text": "Êtes-vous sûr de vouloir {{text}}",
     "are-you-sure-you-want-to-remove-child-from-parent": "Êtes-vous sûr de vouloir supprimer le {{child}} de {{parent}} ?",

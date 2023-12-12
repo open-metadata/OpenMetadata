@@ -1214,6 +1214,7 @@
     "are-you-sure-delete-property": "您确定要删除属性{{propertyName}}吗？",
     "are-you-sure-delete-tag": "您确定要删除{{type}}\"{{tagName}}\"吗？",
     "are-you-sure-to-revoke-access": "您确定要吊销 JWT 令牌的访问权限吗？",
+    "are-you-sure-to-revoke-access-personal-access": "Are you sure you want to revoke access for Personal Access Token?",
     "are-you-sure-want-to-enable": "Are you sure you want to enable {{entity}}?",
     "are-you-sure-want-to-text": "您确定要{{text}}吗？",
     "are-you-sure-you-want-to-remove-child-from-parent": "您确定要将{{child}}从{{parent}}中删除吗？",

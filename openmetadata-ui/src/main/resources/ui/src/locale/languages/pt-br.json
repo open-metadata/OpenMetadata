@@ -1214,6 +1214,7 @@
     "are-you-sure-delete-property": "Você tem certeza que deseja deletar a propriedade {{propertyName}}?",
     "are-you-sure-delete-tag": "Você tem certeza que deseja deletar a {{type}} \"{{tagName}}\"?",
     "are-you-sure-to-revoke-access": "Você tem certeza que deseja revogar o acesso para o token JWT?",
+    "are-you-sure-to-revoke-access-personal-access": "Are you sure you want to revoke access for Personal Access Token?",
     "are-you-sure-want-to-enable": "Você tem certeza que deseja habilitar {{entity}}?",
     "are-you-sure-want-to-text": "Você tem certeza que deseja {{text}}?",
     "are-you-sure-you-want-to-remove-child-from-parent": "Você tem certeza que deseja remover o {{child}} de {{parent}}?",
