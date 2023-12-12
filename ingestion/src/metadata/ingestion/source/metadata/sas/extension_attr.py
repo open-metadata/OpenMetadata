@@ -49,6 +49,14 @@ TABLE_CUSTOM_ATTR = [
         "description": "The date on which the object was most recently modified.",
         "propertyType": {"id": "9fc463a5-84bc-49c8-84f2-acfdcd3dc705", "type": "type"},
     },
+    {
+        "name": "source",
+        "description": "The context from which the referenced resource was obtained.",
+        "propertyType": {
+            "id": "9fc463a5-84bc-49c8-84f2-acfdcd3dc705",  # String type
+            "type": "type",
+        },
+    },
     # SAS Table attributes
     {
         "name": "CASLIB",

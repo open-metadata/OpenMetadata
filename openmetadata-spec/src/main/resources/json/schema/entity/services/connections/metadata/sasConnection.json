@@ -32,6 +32,48 @@
       "description": "Hostname of SAS Viya deployment.",
       "type": "string",
       "format": "uri"
+    },
+    "datatables": {
+      "description": "Enable datatables for ingestion",
+      "type": "boolean",
+      "default": true
+    },
+    "dataTablesCustomFilter": {
+      "title": "Custom Filter for datatables",
+      "description": "Custom filter for datatables",
+      "oneOf": [
+        {
+          "title": "No Custom Filter",
+          "description": "Don't include custom filter when ingesting metadata for datatables",
+          "type": "object"
+        },
+        {
+          "title": "Custom Filter",
+          "description": "Include custom filter when ingesting metadata for datatables",
+          "type": "string"
+        }
+      ]
+    },
+    "reports": {
+      "description": "Enable report for ingestion",
+      "type": "boolean",
+      "default": false
+    },
+    "reportsCustomFilter": {
+      "title": "Custom Filter for reports",
+      "description": "Custom filter for reports",
+      "oneOf": [
+        {
+          "title": "No Custom Filter",
+          "description": "Don't include custom filter when ingesting metadata for reports",
+          "type": "object"
+        },
+        {
+          "title": "Custom Filter",
+          "description": "Include custom filter when ingesting metadata for reports",
+          "type": "string"
+        }
+      ]
     }
   },
   "required": ["username", "password", "serverHost"],
