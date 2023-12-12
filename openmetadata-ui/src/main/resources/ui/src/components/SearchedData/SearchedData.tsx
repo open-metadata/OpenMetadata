@@ -92,6 +92,10 @@ const SearchedData: React.FC<SearchedDataProps> = ({
 
       const source = { ...table, description: tDesc, displayName };
 
+      if (index === 0) {
+        handleSummaryPanelDisplay(source);
+      }
+
       return (
         <div className="m-b-md" key={`tabledatacard${index}`}>
           <ExploreSearchCard
