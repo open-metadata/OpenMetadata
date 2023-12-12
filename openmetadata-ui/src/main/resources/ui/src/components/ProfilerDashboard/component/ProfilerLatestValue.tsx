@@ -16,6 +16,7 @@ import React from 'react';
 import { getStatisticsDisplayValue } from '../../../utils/CommonUtils';
 import { ProfilerLatestValueProps } from '../profilerDashboard.interface';
 
+import { isUndefined } from 'lodash';
 import '../profiler-dashboard.less';
 
 const ProfilerLatestValue = ({
@@ -37,7 +38,9 @@ const ProfilerLatestValue = ({
             </Typography.Text>
           }
           value={
-            tickFormatter || stringValue
+            isUndefined(info.latestValue)
+              ? '--'
+              : tickFormatter || stringValue
               ? `${info.latestValue}${tickFormatter ?? ''}`
               : getStatisticsDisplayValue(info.latestValue)
           }
