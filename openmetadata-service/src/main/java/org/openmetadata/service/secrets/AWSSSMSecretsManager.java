@@ -63,7 +63,7 @@ public class AWSSSMSecretsManager extends AWSBasedSecretsManager {
             .overwrite(overwrite)
             .type(ParameterType.SECURE_STRING)
             .tags(
-                this.getSecretsConfig().getTags().entrySet().stream()
+                SecretsManager.getTags(getSecretsConfig()).entrySet().stream()
                     .map(entry -> Tag.builder().key(entry.getKey()).value(entry.getValue()).build())
                     .toList())
             .build();

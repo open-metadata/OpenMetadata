@@ -20,6 +20,7 @@ import static org.openmetadata.schema.api.services.CreateDatabaseService.Databas
 import static org.openmetadata.schema.api.services.CreateMlModelService.MlModelServiceType.Sklearn;
 import static org.openmetadata.schema.entity.services.ServiceType.ML_MODEL;
 
+import java.util.List;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -34,8 +35,6 @@ import org.openmetadata.schema.services.connections.mlmodel.SklearnConnection;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.util.JsonUtils;
 
-import java.util.List;
-
 @ExtendWith(MockitoExtension.class)
 public class NoopSecretsManagerTest {
 
@@ -45,7 +44,10 @@ public class NoopSecretsManagerTest {
 
   @BeforeAll
   static void setUp() {
-    secretsManager = NoopSecretsManager.getInstance(SecretsManagerProvider.NOOP, new SecretsManager.SecretsConfig("openmetadata", "prefix", List.of("key:value", "key2:value2")));
+    secretsManager =
+        NoopSecretsManager.getInstance(
+            SecretsManagerProvider.NOOP,
+            new SecretsManager.SecretsConfig("openmetadata", "prefix", List.of("key:value", "key2:value2")));
     Fernet fernet = Mockito.mock(Fernet.class);
     lenient().when(fernet.decrypt(anyString())).thenReturn(DECRYPTED_VALUE);
     lenient().when(fernet.decryptIfApplies(anyString())).thenReturn(DECRYPTED_VALUE);

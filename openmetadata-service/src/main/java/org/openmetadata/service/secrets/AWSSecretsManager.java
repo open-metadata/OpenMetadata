@@ -56,7 +56,7 @@ public class AWSSecretsManager extends AWSBasedSecretsManager {
             .description("This secret was created by OpenMetadata")
             .secretString(Objects.isNull(secretValue) ? NULL_SECRET_STRING : secretValue)
             .tags(
-                this.getSecretsConfig().getTags().entrySet().stream()
+                SecretsManager.getTags(getSecretsConfig()).entrySet().stream()
                     .map(entry -> Tag.builder().key(entry.getKey()).value(entry.getValue()).build())
                     .toList())
             .build();

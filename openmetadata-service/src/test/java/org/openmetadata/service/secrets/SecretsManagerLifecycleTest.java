@@ -146,11 +146,11 @@ public class SecretsManagerLifecycleTest {
 
   @Test
   void test_getTags() {
-    assertEquals(Map.of("key1", "value1", "key2", "value2"), secretsManager.getSecretsConfig().getTags());
+    assertEquals(Map.of("key1", "value1", "key2", "value2"), SecretsManager.getTags(secretsManager.getSecretsConfig()));
 
     // if the tags are not well formatted, we don't return anything
     SecretsManager.SecretsConfig secretsConfig =
         new SecretsManager.SecretsConfig(null, null, List.of("key:value", "random"));
-    assertEquals(Map.of(), secretsConfig.getTags());
+    assertEquals(Map.of(), SecretsManager.getTags(secretsConfig));
   }
 }

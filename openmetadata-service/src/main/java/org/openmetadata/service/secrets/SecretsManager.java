@@ -47,16 +47,7 @@ import org.openmetadata.service.util.ReflectionUtil;
 
 @Slf4j
 public abstract class SecretsManager {
-  public record SecretsConfig(String clusterName, String prefix, List<String> tags) {
-    public Map<String, String> getTags() {
-      try {
-        return tags.stream().collect(Collectors.toMap(s -> s.split(":")[0], s -> s.split(":")[1]));
-      } catch (Exception e) {
-        LOG.error(String.format("The SecretsConfig could not extract tags from [%s]", tags));
-        return Map.of();
-      }
-    }
-  }
+  public record SecretsConfig(String clusterName, String prefix, List<String> tags) {}
 
   @Getter private final SecretsConfig secretsConfig;
   @Getter private final SecretsManagerProvider secretsManagerProvider;
@@ -381,6 +372,15 @@ public abstract class SecretsManager {
                   deleteSecretInternal(buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT)));
                 }
               });
+    }
+  }
+
+  public static Map<String, String> getTags(SecretsConfig secretsConfig) {
+    try {
+      return secretsConfig.tags.stream().collect(Collectors.toMap(s -> s.split(":")[0], s -> s.split(":")[1]));
+    } catch (Exception e) {
+      LOG.error(String.format("The SecretsConfig could not extract tags from [%s]", secretsConfig.tags));
+      return Map.of();
     }
   }
 }
