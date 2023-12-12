@@ -5,7 +5,6 @@ import time
 import traceback
 from metadata.utils.logger import ingestion_logger
 from requests.exceptions import HTTPError
-from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -22,14 +21,11 @@ from metadata.generated.schema.api.services.createDashboardService import (
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
-from metadata.generated.schema.entity.data.chart import Chart, ChartType
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.table import (
     Column,
     ColumnProfile,
-    CustomMetricProfile,
     Table,
-    TableData,
     TableProfile,
 )
 from metadata.generated.schema.entity.services.connections.dashboard.customDashboardConnection import (
@@ -54,7 +50,6 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.basic import EntityExtension
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
@@ -118,57 +113,26 @@ class SasSource(Source):
 
     def _iter(self) -> Iterable[Either[Entity]]:
         self.table_fqns = []
-        table_entities = self.sas_client.list_instances()
-        for table in table_entities:
-            yield from self.create_table_entity(table)
-        # '''
-        report_entities = self.sas_client.list_reports()
-        yield from self.create_dashboard_service("SAS_reports")
-        for report in report_entities:
-            self.table_fqns = []
-            self.chart_names = []
-
-            # There isn't a schema for creating report entities, maybe this will work instead
-            report_id = report["id"]
-            report_instance = self.sas_client.get_instance(report_id)
-            report_resource = report_instance["resourceId"]
-            report_resource_id = self.sas_client.get_resource(report_resource[1:])["id"]
-            report_charts = self.sas_client.get_visual_elements(report_resource_id)
-            supported_chart_types = ["Graph", "Text", "Table"]
-            filtered_charts = list(
-                filter(
-                    lambda x: x["@element"] in supported_chart_types
-                              and "labelAttribute" in x,
-                    report_charts,
-                )
-            )
-            chart_list = []
-            for chart in filtered_charts:
-                chart_regexp = "([(][0-9][)])"
-                modified_chart = re.sub(chart_regexp, "", chart["labelAttribute"])
-                new_chart_name = modified_chart.strip()
-                if new_chart_name in chart_list:
-                    continue
-                chart_list.append(new_chart_name)
-                yield from self.create_chart_entity(chart)
-            self.report_description = None
-            report_tables = self.get_report_tables(report_resource_id)
-            if not self.report_description:
-                self.report_description = None
-            else:
-                self.report_description = str(self.report_description)
-            for table in report_tables:
+        # create tables from sas dataTables
+        table_entities = self.sas_client.list_datatables()
+        # list_of_names = []
+        if self.sas_client.enable_datatables:
+            for table in table_entities:
+                # populate the table entity
                 yield from self.create_table_entity(table)
+
+                # also create lineage between the table and its source
                 if "sourceName" in table["attributes"]:
                     target_table_entity = self.metadata.get_by_name(
                         entity=Table, fqn=self.table_fqns[-1]
                     )
                     source_name = table["attributes"]["sourceName"]
-                    param = f"filter=eq(name, '{source_name}')"
+                    sanitized_source_name = re.sub("[@!#$%^&*]", "", source_name)
+                    param = f"filter=contains(name, '{sanitized_source_name}')"
                     get_instances_with_param = (
                         self.sas_client.get_instances_with_param(param)
                     )
-                    if get_instances_with_param:
+                    if get_instances_with_param and len(get_instances_with_param) == 1:
                         source_table = get_instances_with_param[0]
                         yield from self.create_table_entity(source_table)
                         source_name = self.table_fqns.pop()
@@ -178,110 +142,52 @@ class SasSource(Source):
                         yield from self.create_table_lineage(
                             source_table_entity, target_table_entity
                         )
+        if self.sas_client.enable_reports:
+            report_entities = self.sas_client.list_reports()
+            yield from self.create_dashboard_service("SAS_reports")
+            for report in report_entities:
+                self.table_fqns = []
+                self.chart_names = []
 
-            yield from self.create_report_entity(report)
+                # There isn't a schema for creating report entities, maybe this will work instead
+                logger.info(f"Ingesting report: {report}")
+                report_id = report["id"]
+                report_instance = self.sas_client.get_instance(report_id)  # get detailed report entity
+                report_resource = report_instance["resourceId"]  # get report entity instance
+                report_resource_id = report_resource[report_resource.rindex("/") + 1:]  # get report id
 
-        data_plan_entities = self.sas_client.list_data_plans()
-        yield from self.create_dashboard_service("SAS_dataPlans")
-        for data_plan in data_plan_entities:
-            self.table_fqns = []
-            data_plan_instance = self.sas_client.get_instance(data_plan["id"])
-            input_asset_definition = "6179884b-91ec-4236-ad6b-52c7f454f217"
-            output_asset_definition = "e1349270-fdbb-4231-9841-79917a307471"
-            input_asset_ids = []
-            output_asset_ids = []
-            for rel in data_plan_instance["relationships"]:
-                if rel["definitionId"] == input_asset_definition:
-                    input_asset_ids.append(rel["endpointId"])
-                elif rel["definitionId"] == output_asset_definition:
-                    output_asset_ids.append(rel["endpointId"])
-            input_assets = self.create_in_out_tables(input_asset_ids)
-            output_assets = self.create_in_out_tables(output_asset_ids)
-            input_table_fqns = []
-            for input_asset in input_assets:
-                yield from self.create_table_entity(input_asset)
-                target_table_entity = self.metadata.get_by_name(
-                    entity=Table, fqn=self.table_fqns[-1]
-                )
-                input_table_fqns.append(self.table_fqns[-1])
-                if "sourceName" in input_asset["attributes"]:
-                    source_name = input_asset["attributes"]["sourceName"]
-                    param = f"filter=eq(name, '{source_name}')"
-                    get_instances_with_param = (
-                        self.sas_client.get_instances_with_param(param)
-                    )
-                    if get_instances_with_param:
-                        source_table = get_instances_with_param[0]
-                        yield from self.create_table_entity(source_table)
-                        source_table_entity = self.metadata.get_by_name(
+                # get the tables that are related to the reports
+                report_tables = self.get_report_tables(report_resource_id)
+                if not self.report_description:
+                    self.report_description = None
+                else:
+                    self.report_description = str(self.report_description)
+                for table in report_tables:
+                    yield from self.create_table_entity(table)
+                    if "sourceName" in table["attributes"] and table["attributes"]["sourceName"] != "":
+                        target_table_entity = self.metadata.get_by_name(
                             entity=Table, fqn=self.table_fqns[-1]
                         )
-                        self.table_fqns = self.table_fqns[:-1]
-                        yield from self.create_table_lineage(
-                            source_table_entity, target_table_entity
+                        source_name = table["attributes"]["sourceName"]
+                        param = f"filter=eq(name, '{source_name}')"
+                        get_instances_with_param = (
+                            self.sas_client.get_instances_with_param(param)
                         )
 
-            input_fqns = input_table_fqns
-            self.table_fqns = []
-            for output_asset in output_assets:
-                yield from self.create_table_entity(output_asset)
-            output_fqns = self.table_fqns
-            yield from self.create_data_plan_entity(data_plan, input_fqns, output_fqns)
-
-        data_flow_entities = self.sas_client.list_data_flows()
-        yield from self.create_dashboard_service("SAS_dataFlows")
-        for data_flow in data_flow_entities:
-            self.table_fqns = []
-            data_flow_instance = self.sas_client.get_instance(data_flow["id"])
-            input_asset_definition = "6179884b-91ec-4236-ad6b-52c7f454f217"
-            output_asset_definition = "e1349270-fdbb-4231-9841-79917a307471"
-            input_asset_ids = []
-            output_asset_ids = []
-            for rel in data_flow_instance["relationships"]:
-                if rel["definitionId"] == input_asset_definition:
-                    input_asset_ids.append(rel["endpointId"])
-                elif rel["definitionId"] == output_asset_definition:
-                    output_asset_ids.append(rel["endpointId"])
-            input_assets = self.create_in_out_tables(input_asset_ids)
-            output_assets = self.create_in_out_tables(output_asset_ids)
-            input_table_fqns = []
-            for input_asset in input_assets:
-                yield from self.create_table_entity(input_asset)
-                target_table_entity = self.metadata.get_by_name(
-                    entity=Table, fqn=self.table_fqns[-1]
-                )
-                input_table_fqns.append(self.table_fqns[-1])
-                if "sourceName" in input_asset["attributes"]:
-                    source_name = input_asset["attributes"]["sourceName"]
-                    param = f"filter=eq(name, '{source_name}')"
-                    get_instances_with_param = (
-                        self.sas_client.get_instances_with_param(param)
-                    )
-                    if get_instances_with_param:
-                        source_table = get_instances_with_param[0]
-                        yield from self.create_table_entity(source_table)
-                        source_table_entity = self.metadata.get_by_name(
-                            entity=Table, fqn=self.table_fqns[-1]
-                        )
-                        self.table_fqns = self.table_fqns[:-1]
-                        yield from self.create_table_lineage(
-                            source_table_entity, target_table_entity
-                        )
-
-            input_fqns = input_table_fqns
-            self.table_fqns = []
-            for output_asset in output_assets:
-                yield from self.create_table_entity(output_asset)
-            output_fqns = self.table_fqns
-            yield from self.create_data_flow_entity(data_flow, input_fqns, output_fqns)
-        # '''
+                        if get_instances_with_param:
+                            source_table = get_instances_with_param[0]
+                            yield from self.create_table_entity(source_table)
+                            source_name = self.table_fqns.pop()
+                            source_table_entity = self.metadata.get_by_name(
+                                entity=Table, fqn=source_name
+                            )
+                            yield from self.create_table_lineage(
+                                source_table_entity, target_table_entity
+                            )
+                yield from self.create_report_entity(report)
 
     def create_database_service(self, service_name):
-        # I should also probably add some functionality to check if a db_service, db, db_schema already exist
-        # on Open Metadata's end
-
         # Create a custom database connection config
-        # I wonder what will happen if you use this source class as the source python class
         # For custom database connections - we will provide client credentials via the connection options
         self.db_service_name = service_name
         db_service = CreateDatabaseServiceRequest(
@@ -382,7 +288,7 @@ class SasSource(Source):
                 break
 
             if data_store_id is None:
-                # For now we'll print error since we are exclusively working with tables in dataTables
+                # log error since we are exclusively working with tables in dataTables
                 logger.error("Data store id should not be none")
                 return None
 
@@ -424,35 +330,58 @@ class SasSource(Source):
     def create_table_entity(self, table) -> Iterable[Either[CreateTableRequest]]:
         # Create database + db service
         # Create database schema
-        database_schema = self.create_database_schema(table)
+        logger.info(f"Ingesting table: {table}")
         table_id = table["id"]
-        table_name = table["name"]
-        table_extension = table["attributes"]
+        table_url = self.sas_client.get_information_catalog_link(table_id)
+        table_name = table_id
 
         try:
-            table_resource_id = self.sas_client.get_instance(table_id)["resourceId"][1:]
-            table_description = None
+            # get all the entities related to table id using views
             views_query = {
                 "query": "match (t:dataSet)-[r:dataSetDataFields]->(c:dataField) return t,r,c",
                 "parameters": {"t": {"id": f"{table_id}"}},
             }
             views_data = json.dumps(views_query)
             views = self.sas_client.get_views(views_data)
-            # views_obj = json.loads(views)
-            entities = views["entities"]
+            entities = views['entities']
+
+            # find casTable in entities
+            table_entity_instance = list(filter(lambda x: "Table" in x["type"], entities))[0]
+            logger.info(f"table entity: {table_entity_instance}")
+
+            creation_timestamp = table_entity_instance["creationTimeStamp"]
+            table_name = table_entity_instance["name"]
+            table_extension = table_entity_instance["attributes"]
+
+            # find the table entity to see if it already exists
+            table_fqn = fqn.build(
+                self.metadata,
+                entity_type=Table,
+                service_name=self.db_service_name,
+                database_name=self.db_name,
+                schema_name=self.db_schema_name,
+                table_name=table_name,
+            )
+            logger.debug(f"table_fqn is {table_fqn}")
+            table_entity = self.metadata.get_by_name(entity=Table, fqn=table_fqn, fields=["extension"])
+            logger.debug(table_entity)
+
+            # if the table entity already exists, we don't need to create it again
+            # only update it when either the sourceUrl or analysisTimeStamp changed
+            if table_entity and table_entity.extension:
+                self.table_fqns.append(table_fqn)
+
+                last_analyzed_timestamp = table_entity.extension.__root__.get("analysisTimeStamp")
+                if (table_url == table_entity.sourceUrl.__root__ and
+                        last_analyzed_timestamp == table_extension.get("analysisTimeStamp")):
+                    return
+
+            # create tables in database
+            database_schema = self.create_database_schema(table_entity_instance)
+
             # For now many dataField attributes will be cut since currently there is no functionality for adding custom
             # attributes to columns - luckily this functionality exists for tables so dataSet fields will be included
             columns: List[Column] = []
-            col_count = (
-                0
-                if "columnCount" not in table_extension
-                else table_extension["columnCount"]
-            )
-            row_count = (
-                0 if "rowCount" not in table_extension else table_extension["rowCount"]
-            )
-            counter = 0
-
             col_profile_list = []
             # Creating the columns of the table
             for entity in entities:
@@ -460,7 +389,6 @@ class SasSource(Source):
                     continue
                 if "Column" not in entity["type"]:
                     continue
-                counter += 1
                 col_attributes = entity["attributes"]
                 if "casDataType" in col_attributes:
                     datatype = col_attributes["casDataType"]
@@ -490,23 +418,7 @@ class SasSource(Source):
                     "mismatchedCount": "missingCount",
                     "charsMinCount": "minLength",
                     "charsMaxCount": "maxLength",
-                    # "rawLength": "valuesCount",
                 }
-                extra_metrics = [
-                    "nOutliers",
-                    "mode",
-                    "semanticTypeScore",
-                    "mostCommonValue",
-                    "leastCommonValue",
-                    "mismatchedCount",
-                    "nRowsPositiveSentiment",
-                    "nRowsNegativeSentiment",
-                    "nRowsNeutralSentiment",
-                    "pctRowsPositiveSentiment",
-                    "pctRowsNegativeSentiment",
-                    "pctRowsNeutralSentiment",
-                    "sentimentIDScore",
-                ]
                 col_profile_dict = dict()
                 for attr in attr_map:
                     if attr in col_attributes:
@@ -537,18 +449,6 @@ class SasSource(Source):
                                 col_profile_dict["valuesCount"]
                                 - col_profile_dict["missingCount"]
                         )
-
-                custom_metrics_list: List[CustomMetricProfile] = []
-                for metric in extra_metrics:
-                    if metric in col_attributes:
-                        if (datatype != "numeric") ^ (
-                                metric in ["mode", "mostCommonValue", "leastCommonValue"]
-                        ):
-                            custom_metrics = CustomMetricProfile(
-                                name=metric, value=col_attributes[metric]
-                            )
-                            custom_metrics_list.append(custom_metrics)
-                col_profile_dict["customMetricsProfile"] = custom_metrics_list
                 timestamp = time.time() - 100000
                 col_profile_dict["timestamp"] = timestamp
                 col_profile_dict["name"] = parsed_string["name"]
@@ -567,86 +467,88 @@ class SasSource(Source):
 
             if len(columns) == 0:
                 # Create columns alternatively
-                table_description = "Table has not been analyzed. Head over to SAS Information Catalog to analyze the table"
+                table_description = ("Table has not been analyzed. "
+                                     f"Head over to <a target=\"_blank\" href=\"{table_url}\">SAS Information Catalog"
+                                     f"</a> to analyze the table.")
                 try:
+                    table_resource_id = self.sas_client.get_instance(table_id)["resourceId"][1:]
                     table_resource = self.sas_client.get_resource(table_resource_id)
                     columns = self.create_columns_alt(table_resource)
                 except HTTPError as httperror:
                     table_description = (
                             str(httperror) + " This table does not exist in the file path"
                     )
+            else:
+                table_description = (f"Last analyzed: <b>{table_extension.get('analysisTimeStamp')}</b>. "
+                                     f"Visit <a target=\"_blank\" href=\"{table_url}\">SAS Information Catalog</a>"
+                                     f" for more information.")
 
-            # assert counter == col_count
-            logger.info(f"{table_extension}")
             # Building table extension attr
-            table_ext_attr = EntityExtension(__root__=table_extension)
-
             for attr in table_extension:
                 if type(table_extension[attr]) == bool:
                     table_extension[attr] = str(table_extension[attr])
 
+            custom_attributes = [custom_attribute["name"] for custom_attribute in TABLE_CUSTOM_ATTR]
+            extension_attributes = {attr: value for attr, value in table_extension.items() if attr in custom_attributes}
+
             table_request = CreateTableRequest(
-                name=table_id,
-                displayName=table_name,
+                name=table_name,
+                sourceUrl=table_url,
                 description=table_description,
                 columns=columns,
                 databaseSchema=database_schema.fullyQualifiedName,
-                # extension=table_extension
-                # extension=...,  # To be added
+                extension=extension_attributes
             )
 
             yield Either(right=table_request)
 
-            print(self.db_schema_name, self.db_name, self.db_service_name)
+            logger.info(f"schema: {table_id}, {self.db_service_name}, {self.db_name}, {self.db_schema_name}")
 
-            table_fqn = fqn.build(
-                self.metadata,
-                entity_type=Table,
-                service_name=self.db_service_name,
-                database_name=self.db_name,
-                schema_name=self.db_schema_name,
-                table_name=table_id,
-            )
+            if not table_entity:
+                # find the table entity to see if it already exists
+                table_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Table,
+                    service_name=self.db_service_name,
+                    database_name=self.db_name,
+                    schema_name=self.db_schema_name,
+                    table_name=table_name,
+                )
+                table_entity = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
+                self.table_fqns.append(table_fqn)
 
-            self.table_fqns.append(table_fqn)
-
-            table_entity = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
-            patches = []
-            for attr in table_extension:
-                patch = {
-                    "op": "add",
-                    "path": "/extension",
-                    "value": {f"{attr}": f"{table_extension[attr]}"},
-                }
-                patches.append(patch)
-            patch = [{"op": "add", "path": "/extension", "value": table_extension}]
+            # update the description
+            logger.debug(f"Updating description for {table_entity.id.__root__} with {table_description}")
+            patch = [{"op": "add", "path": "/description", "value": table_description}]
             self.metadata.client.patch(
                 path=f"/tables/{table_entity.id.__root__}", data=json.dumps(patch)
             )
-            if (
-                    table_description
-                    and "This table does not exist in the file path" in table_description
-            ):
-                return
-            """
-            for column in table_entity.columns:
-                resp = self.metadata.client.get(
-                    path=f"/tables/{table_fqn}.{column.name.__root__}/tableProfile"
-                )
-                print(resp.text)
-            """
-            rows, cols, row_count = self.sas_client.get_rows_cols(table_resource_id)
-            table_data = {"columns": cols, "rows": rows}
-            self.metadata.client.put(
-                path=f"{self.metadata.get_suffix(Table)}/{table_entity.id.__root__}/sampleData",
-                data=json.dumps(table_data),
+
+            # update the custom properties
+            logger.debug(f"Updating custom properties for {table_entity.id.__root__} with {extension_attributes}")
+            patch = [{"op": "add", "path": "/extension", "value": extension_attributes}]
+            self.metadata.client.patch(
+                path=f"/tables/{table_entity.id.__root__}", data=json.dumps(patch)
             )
-            table_profile_dict = dict()
+
+            # quit updating table profile if table doesn't exist
+            if table_description and "This table does not exist in the file path" in table_description:
+                return
+
+            # update table profile
+            table_profile_dict = {}
             timestamp = time.time() - 100000
             table_profile_dict["timestamp"] = timestamp
-            table_profile_dict["rowCount"] = len(rows)
-            table_profile_dict["columnCount"] = len(cols)
+            table_profile_dict["createDateTime"] = creation_timestamp
+            table_profile_dict["rowCount"] = 0 if "rowCount" not in table_extension \
+                else table_extension["rowCount"]
+            table_profile_dict["columnCount"] = 0 if "columnCount" not in table_extension \
+                else table_extension["columnCount"]
+            table_profile_dict["sizeInByte"] = 0 if "dataSize" not in extension_attributes \
+                else table_extension["dataSize"]
             table_profile = TableProfile(**table_profile_dict)
+
+            # create Profiles & Data Quality Column
             table_profile_request = CreateTableProfileRequest(
                 tableProfile=table_profile, columnProfile=col_profile_list
             )
@@ -654,7 +556,9 @@ class SasSource(Source):
                 path=f"{self.metadata.get_suffix(Table)}/{table_entity.id.__root__}/tableProfile",
                 data=table_profile_request.json(),
             )
+
         except Exception as exc:
+            logger.error(f"table failed to creat: {table}")
             yield Either(
                 left=StackTraceError(
                     name=table_name,
@@ -662,17 +566,6 @@ class SasSource(Source):
                     stack_trace=traceback.format_exc(),
                 )
             )
-
-        """
-        # Building Profiler Response
-        table_sample_data = TableData(columns=cols, rows=rows)
-        table_profile = ProfilerResponse(
-            table=table_entity,
-            profile=table_profile_request,
-            sample_data=table_sample_data,
-        )
-        sink = MetadataRestSink(MetadataRestSinkConfig(), self.metadata_config)
-        sink.write_record(table_profile) """
 
     def add_table_custom_attributes(self):
         string_type = self.metadata.client.get(path="/metadata/types/name/string")["id"]
@@ -689,16 +582,8 @@ class SasSource(Source):
                 path=f"/metadata/types/{table_id}", data=json.dumps(attr)
             )
 
-    def update_table_custom_attributes(self):
-        pass
-
     def create_table_lineage(self, from_entity, to_entity):
         yield self.create_lineage_request("table", "table", from_entity, to_entity)
-
-    def create_sample_data(self, table_id):
-        rows_source, col_names = self.sas_client.get_rows_cols(table_id)
-        rows = list(map(lambda x: x["cells"], rows_source))
-        return TableData(columns=col_names, rows=rows)
 
     def create_dashboard_service(self, dashboard_service_name):
         self.dashboard_service_name = dashboard_service_name
@@ -724,83 +609,34 @@ class SasSource(Source):
                 )
             )
 
-    def create_chart_entity(self, chart):
-        chart_type_map = {
-            "Text": ChartType.Text,
-            "Table": ChartType.Table,
-            "Graph": {
-                "bar": ChartType.Bar,
-                "keyValue": ChartType.Table,
-                "pie": ChartType.Pie,
-                "timeSeries": ChartType.Line,
-                "wordCloud": ChartType.Text,
-                "dualAxisBarLine": ChartType.Line,
-                "geo": ChartType.Other,
-                "correlation": ChartType.Other,
-                "line": ChartType.Line,
-            },
-        }
-        if chart["@element"] == "Graph":
-            chart_type = chart_type_map["Graph"][chart["graphType"]]
-        else:
-            chart_type = chart_type_map[chart["@element"]]
-
-        try:
-            chart_request = CreateChartRequest(
-                name=chart["name"],
-                displayName=chart["labelAttribute"],
-                chartType=chart_type,
-                service=self.dashboard_service_name,
-            )
-            chart_fqn = fqn.build(
-                self.metadata,
-                entity_type=Chart,
-                chart_name=chart["name"],
-                service_name=self.dashboard_service_name,
-            )
-            self.chart_names.append(chart_fqn)
-            yield Either(right=chart_request)
-        except Exception as exc:
-            yield Either(
-                left=StackTraceError(
-                    name=chart["name"],
-                    error=f"Unexpected exception to create chart entity [{chart['name']}]: {exc}",
-                    stack_trace=traceback.format_exc(),
-                )
-            )
-
     def get_report_tables(self, report_id):
         report_tables = self.sas_client.get_report_relationship(report_id)
         table_instances = []
         self.report_description = []
+        # loop through each relatedResourceUri from relationships
         for table in report_tables:
             table_uri = table["relatedResourceUri"][1:]
             try:
+                # load the table if it can be found
                 table_resource = self.sas_client.get_resource(table_uri)
-                table_name = table_resource["name"]
                 table_data_resource = table_resource["tableReference"]["tableUri"]
                 param = f"filter=eq(resourceId,'{table_data_resource}')"
                 if "state" in table_resource and table_resource["state"] == "unloaded":
                     self.sas_client.load_table(table_uri + "/state?value=loaded")
 
             except HTTPError as e:
+                # append http error to table description if can't be found
+                logger.error(f"table_uri: {table_uri}")
                 self.report_description.append(str(e))
                 name_index = table_uri.rindex("/")
-                table_name = table_uri[name_index + 1 :]
-                param = f"filter=eq(name, '{table_name}')"
+                table_name = table_uri[name_index + 1:]
+                param = f"filter=eq(name,'{table_name}')"
 
-            get_instances_with_param = self.sas_client.get_instances_with_param(
-                param
-            )
-            if get_instances_with_param:
+            get_instances_with_param = self.sas_client.get_instances_with_param(param)
+            if get_instances_with_param and len(get_instances_with_param) == 1:
                 table_instance = get_instances_with_param[0]
                 table_instances.append(table_instance)
         return table_instances
-
-        #     yield from self.create_table_entity(table_instance)
-        #     table_entity = self.metadata.get_by_name(entity=Table, fqn=self.table_fqn)
-        #     table_entities.append(table_entity)
-        # return table_entities
 
     def create_lineage_request(self, from_type, in_type, from_entity, to_entity):
         return Either(right=AddLineageRequest(
@@ -812,11 +648,12 @@ class SasSource(Source):
 
     def create_report_entity(self, report):
         report_id = report["id"]
+        report_name = report["name"]
         try:
             report_instance = self.sas_client.get_instance(report_id)
             logger.info(f"{self.config.type}")
             logger.info(f"{self.service_connection}")
-            report_resource = report["resourceId"]
+            report_resource = report_instance["resourceId"]
             report_url = self.sas_client.get_report_link("report", report_resource)
             report_request = CreateDashboardRequest(
                 name=report_id,
@@ -839,7 +676,6 @@ class SasSource(Source):
                 entity=Dashboard, fqn=dashboard_fqn
             )
             table_entities = []
-            print(self.table_fqns)
             for table in self.table_fqns:
                 table_entity = self.metadata.get_by_name(entity=Table, fqn=table)
                 table_entities.append(table_entity)
@@ -848,10 +684,10 @@ class SasSource(Source):
                     "table", "dashboard", entity, dashboard_entity
                 )
         except Exception as exc:
-            logger.error(f"report is {report}")
+            logger.error(f"report failed to creat: {report}")
             yield Either(
                 left=StackTraceError(
-                    name=report["id"],
+                    name=report_name,
                     error=f"Unexpected exception to create report [{report['id']}]: {exc}",
                     stack_trace=traceback.format_exc(),
                 )
@@ -863,116 +699,6 @@ class SasSource(Source):
             asset = self.sas_client.get_instance(id)
             table_entities.append(asset)
         return table_entities
-
-    def create_data_flow_entity(self, data_flow, input_fqns, output_fqns):
-        print(input_fqns, output_fqns)
-        data_flow_id = data_flow["id"]
-        data_flow_resource = data_flow["resourceId"]
-
-        try:
-            data_flow_instance = self.sas_client.get_instance(data_flow_id)
-            data_flow_url = self.sas_client.get_report_link(
-                "dataFlow", data_flow_resource
-            )
-            data_flow_request = CreateDashboardRequest(
-                name=data_flow_id,
-                displayName=data_flow["name"],
-                service=self.dashboard_service_name,
-                sourceUrl=data_flow_url,
-            )
-            yield Either(right=data_flow_request)
-
-            dashboard_fqn = fqn.build(
-                self.metadata,
-                entity_type=Dashboard,
-                service_name=self.dashboard_service_name,
-                dashboard_name=data_flow_id,
-            )
-
-            dashboard_entity = self.metadata.get_by_name(
-                entity=Dashboard, fqn=dashboard_fqn
-            )
-
-            input_entities = []
-            output_entities = []
-            for input in input_fqns:
-                input_entity = self.metadata.get_by_name(entity=Table, fqn=input)
-                input_entities.append(input_entity)
-            for output in output_fqns:
-                output_entity = self.metadata.get_by_name(entity=Table, fqn=output)
-                output_entities.append(output_entity)
-
-            for entity in input_entities:
-                yield self.create_lineage_request(
-                    "table", "dashboard", entity, dashboard_entity
-                )
-            for entity in output_entities:
-                yield self.create_lineage_request(
-                    "dashboard", "table", dashboard_entity, entity
-                )
-        except Exception as exc:
-            yield Either(
-                left=StackTraceError(
-                    name=data_flow_id,
-                    error=f"Unexpected exception to create data flow [{data_flow_id}]: {exc}",
-                    stack_trace=traceback.format_exc(),
-                )
-            )
-
-    def create_data_plan_entity(self, data_plan, input_fqns, output_fqns):
-        print(input_fqns, output_fqns)
-        data_plan_id = data_plan["id"]
-        data_plan_resource = data_plan["resourceId"]
-
-        try:
-            data_plan_instance = self.sas_client.get_instance(data_plan_id)
-            data_plan_url = self.sas_client.get_report_link(
-                "dataPlan", data_plan_resource
-            )
-            data_plan_request = CreateDashboardRequest(
-                name=data_plan_id,
-                displayName=data_plan["name"],
-                service=self.dashboard_service_name,
-                sourceUrl=data_plan_url,
-            )
-            yield Either(right=data_plan_request)
-
-            dashboard_fqn = fqn.build(
-                self.metadata,
-                entity_type=Dashboard,
-                service_name=self.dashboard_service_name,
-                dashboard_name=data_plan_id,
-            )
-
-            dashboard_entity = self.metadata.get_by_name(
-                entity=Dashboard, fqn=dashboard_fqn
-            )
-
-            input_entities = []
-            output_entities = []
-            for input in input_fqns:
-                input_entity = self.metadata.get_by_name(entity=Table, fqn=input)
-                input_entities.append(input_entity)
-            for output in output_fqns:
-                output_entity = self.metadata.get_by_name(entity=Table, fqn=output)
-                output_entities.append(output_entity)
-
-            for entity in input_entities:
-                yield self.create_lineage_request(
-                    "table", "dashboard", entity, dashboard_entity
-                )
-            for entity in output_entities:
-                yield self.create_lineage_request(
-                    "dashboard", "table", dashboard_entity, entity
-                )
-        except Exception as exc:
-            yield Either(
-                left=StackTraceError(
-                    name=data_plan_id,
-                    error=f"Unexpected exception to create data plan [{data_plan_id}]: {exc}",
-                    stack_trace=traceback.format_exc(),
-                )
-            )
 
     def close(self):
         pass

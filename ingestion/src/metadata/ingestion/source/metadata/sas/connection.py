@@ -24,13 +24,10 @@ def test_connection(
     service_connection: SASConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
 ) -> None:
-    logger.info("before")
-    test_fn = {"CheckAccess": client.list_instances}
-    logger.info("after")
+    test_fn = {"CheckAccess": client.list_datatables}
     test_connection_steps(
         metadata=metadata,
         test_fn=test_fn,
         service_type=service_connection.type.value,
         automation_workflow=automation_workflow,
     )
-    logger.info("afterafter")
