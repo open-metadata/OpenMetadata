@@ -11,11 +11,11 @@
       "description": "Test case resolution status type.",
       "javaType": "org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes",
       "type": "string",
-      "enum": ["Ack", "Assigned", "New", "Resolved"],
+      "enum": ["New","Ack", "Assigned", "Resolved"],
       "javaEnums": [
+        {"name": "New"},
         {"name": "Ack"},
         {"name":  "Assigned"},
-        {"name": "New"},
         {"name": "Resolved"}
       ]
     },
@@ -54,7 +54,6 @@
       "description": "Details of the test case failure status.",
       "oneOf": [
         {"$ref": "./assigned.json"},
-        {"$ref": "./inReview.json"},
         {"$ref": "./resolved.json"}
       ],
       "default": null

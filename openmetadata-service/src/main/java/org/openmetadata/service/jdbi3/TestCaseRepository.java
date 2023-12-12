@@ -4,6 +4,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_DEFINITION;
 import static org.openmetadata.service.Entity.TEST_SUITE;
+import static org.openmetadata.service.Entity.getEntityByName;
 import static org.openmetadata.service.Entity.getEntityReferenceByName;
 import static org.openmetadata.service.util.RestUtil.ENTITY_NO_CHANGE;
 import static org.openmetadata.service.util.RestUtil.LOGICAL_TEST_CASES_ADDED;
@@ -19,12 +20,17 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.feed.CloseTask;
+import org.openmetadata.schema.api.feed.ResolveTask;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameter;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.tests.type.Assigned;
+import org.openmetadata.schema.tests.type.Resolved;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.tests.type.TestCaseResult;
@@ -36,6 +42,7 @@ import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -586,6 +593,103 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     }
     afterCursor = testCaseRecords.get(testCases.size() - 1).getRank().toString();
     return getResultList(testCases, beforeCursor, afterCursor, total);
+  }
+
+  @Override
+  public FeedRepository.TaskWorkflow getTaskWorkflow(FeedRepository.ThreadContext threadContext) {
+    validateTaskThread(threadContext);
+    TaskType taskType = threadContext.getThread().getTask().getType();
+    if (EntityUtil.isTestCaseFailureResolutionTask(taskType)) {
+      return new TestCaseRepository.TestCaseFailureResolutionTaskWorkflow(threadContext);
+    }
+    return super.getTaskWorkflow(threadContext);
+  }
+
+  public static class TestCaseFailureResolutionTaskWorkflow extends FeedRepository.TaskWorkflow {
+    TestCaseResolutionStatusRepository testCaseResolutionStatusRepository;
+
+    TestCaseFailureResolutionTaskWorkflow(FeedRepository.ThreadContext threadContext) {
+      super(threadContext);
+      this.testCaseResolutionStatusRepository =
+          (TestCaseResolutionStatusRepository) Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
+    }
+
+    @Override
+    @Transaction
+    public TestCase performTask(String userName, ResolveTask resolveTask) {
+
+      // We need to get the latest test case resolution status to get the state id
+      TestCaseResolutionStatus latestTestCaseResolutionStatus =
+          testCaseResolutionStatusRepository.getLatestRecord(resolveTask.getTestCaseFQN());
+
+      if (latestTestCaseResolutionStatus == null) {
+        throw new EntityNotFoundException(
+            String.format("Failed to find test case resolution status for %s", resolveTask.getTestCaseFQN()));
+      }
+      User user = getEntityByName(Entity.USER, userName, "", Include.ALL);
+      TestCaseResolutionStatus testCaseResolutionStatus =
+          new TestCaseResolutionStatus()
+              .withId(UUID.randomUUID())
+              .withStateId(latestTestCaseResolutionStatus.getStateId())
+              .withTimestamp(System.currentTimeMillis())
+              .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Resolved)
+              .withTestCaseResolutionStatusDetails(
+                  new Resolved()
+                      .withTestCaseFailureComment(resolveTask.getNewValue())
+                      .withTestCaseFailureReason(resolveTask.getTestCaseFailureReason())
+                      .withResolvedBy(user.getEntityReference()))
+              .withUpdatedAt(System.currentTimeMillis())
+              .withTestCaseReference(latestTestCaseResolutionStatus.getTestCaseReference())
+              .withUpdatedBy(user.getEntityReference());
+
+      Entity.getCollectionDAO()
+          .testCaseResolutionStatusTimeSeriesDao()
+          .insert(
+              testCaseResolutionStatus.getTestCaseReference().getFullyQualifiedName(),
+              Entity.TEST_CASE_RESOLUTION_STATUS,
+              JsonUtils.pojoToJson(testCaseResolutionStatus));
+      testCaseResolutionStatusRepository.postCreate(testCaseResolutionStatus);
+      return Entity.getEntity(testCaseResolutionStatus.getTestCaseReference(), "", Include.ALL);
+    }
+
+    @Override
+    @Transaction
+    public void closeTask(String userName, CloseTask closeTask) {
+      // closing task in the context of test case resolution status means that the resolution task has been reassigned
+      // to someone else
+      TestCaseResolutionStatus latestTestCaseResolutionStatus =
+          testCaseResolutionStatusRepository.getLatestRecord(closeTask.getTestCaseFQN());
+      if (latestTestCaseResolutionStatus == null) {
+        return;
+      }
+
+      if (latestTestCaseResolutionStatus
+          .getTestCaseResolutionStatusType()
+          .equals(TestCaseResolutionStatusTypes.Resolved)) {
+        // if the test case is already resolved then we'll return. We don't need to update the state
+        return;
+      }
+
+      User user = Entity.getEntityByName(Entity.USER, userName, "", Include.ALL);
+      User assignee = Entity.getEntityByName(Entity.USER, closeTask.getComment(), "", Include.ALL);
+      TestCaseResolutionStatus testCaseResolutionStatus =
+          new TestCaseResolutionStatus()
+              .withId(UUID.randomUUID())
+              .withStateId(latestTestCaseResolutionStatus.getStateId())
+              .withTimestamp(System.currentTimeMillis())
+              .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Assigned)
+              .withTestCaseResolutionStatusDetails(new Assigned().withAssignee(assignee.getEntityReference()))
+              .withUpdatedAt(System.currentTimeMillis())
+              .withTestCaseReference(latestTestCaseResolutionStatus.getTestCaseReference())
+              .withUpdatedBy(user.getEntityReference());
+      Entity.getCollectionDAO()
+          .testCaseResolutionStatusTimeSeriesDao()
+          .insert(
+              testCaseResolutionStatus.getTestCaseReference().getFullyQualifiedName(),
+              Entity.TEST_CASE_RESOLUTION_STATUS,
+              JsonUtils.pojoToJson(testCaseResolutionStatus));
+      testCaseResolutionStatusRepository.postCreate(testCaseResolutionStatus);
+    }
   }
 
   public class TestUpdater extends EntityUpdater {

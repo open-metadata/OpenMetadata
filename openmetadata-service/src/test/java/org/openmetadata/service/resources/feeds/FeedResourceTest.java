@@ -1337,6 +1337,11 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     TestUtils.put(target, new CloseTask().withComment(comment), Status.OK, authHeaders);
   }
 
+  public void closeTask(int id, CloseTask closeTask, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = getResource("feed/tasks/" + id + "/close");
+    TestUtils.put(target, closeTask, Status.OK, authHeaders);
+  }
+
   public ThreadList listTasks(
       String entityLink,
       String userId,
