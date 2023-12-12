@@ -86,7 +86,7 @@ This is a sample config for Doris:
 
 {% codeInfo srNumber=2 %}
 
-**password**: Password to connect to Druid.
+**password**: Password to connect to Doris.
 
 {% /codeInfo %}
 
