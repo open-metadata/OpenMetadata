@@ -171,6 +171,9 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
         profileSampleType ?? ProfileSampleType.Percentage,
       sampleDataCount,
     });
+    form.setFieldsValue({
+      sampleDataCount: sampleDataCount ?? initialState.sampleDataCount,
+    });
 
     const profileSampleTypeCheck =
       profileSampleType === ProfileSampleType.Percentage;
@@ -575,7 +578,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                             name={[name, 'columnName']}>
                             <Select
                               className="w-full"
-                              data-testid="exclude-column-select"
+                              data-testid="include-column-select"
                               options={selectOptions}
                               placeholder={t(
                                 'label.select-column-plural-to-include'
