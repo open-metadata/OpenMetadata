@@ -1101,17 +1101,6 @@ public class ElasticSearchClient implements SearchClient {
       UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexName);
       updateByQueryRequest.setQuery(
           new MatchQueryBuilder(fieldAndValue.getKey(), fieldAndValue.getValue()).operator(Operator.AND));
-      es.org.elasticsearch.action.search.SearchRequest searchRequest =
-          new es.org.elasticsearch.action.search.SearchRequest(GLOBAL_SEARCH_ALIAS);
-      SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-      searchSourceBuilder.query(
-          new MatchQueryBuilder(fieldAndValue.getKey(), fieldAndValue.getValue()).operator(Operator.AND));
-      searchRequest.source(searchSourceBuilder);
-      try {
-        String response = client.search(searchRequest, RequestOptions.DEFAULT).toString();
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
       Script script =
           new Script(
               ScriptType.INLINE,
