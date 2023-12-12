@@ -139,7 +139,12 @@ export default function EntitySummaryPanel({
         return <TopicSummary entityDetails={entity as Topic} />;
 
       case EntityType.DASHBOARD:
-        return <DashboardSummary entityDetails={entity as Dashboard} />;
+        return (
+          <DashboardSummary
+            entityDetails={entity as Dashboard}
+            highlights={highlights}
+          />
+        );
 
       case EntityType.PIPELINE:
         return <PipelineSummary entityDetails={entity as Pipeline} />;

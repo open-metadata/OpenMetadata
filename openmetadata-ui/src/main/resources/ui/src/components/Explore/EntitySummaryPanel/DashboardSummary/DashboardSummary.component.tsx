@@ -12,6 +12,7 @@
  */
 
 import { Col, Divider, Row, Typography } from 'antd';
+import { get } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
@@ -21,13 +22,17 @@ import {
   TagLabel,
 } from '../../../../generated/entity/data/dashboard';
 import { fetchCharts } from '../../../../utils/DashboardDetailsUtils';
-import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
+import {
+  getFormattedEntityData,
+  getSortedTagsWithHighlight,
+} from '../../../../utils/EntitySummaryPanelUtils';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
 } from '../../../../utils/EntityUtils';
 import SummaryTagsDescription from '../../../common/SummaryTagsDescription/SummaryTagsDescription.component';
 import { ChartType } from '../../../DashboardDetails/DashboardDetails.interface';
+import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
 import SummaryPanelSkeleton from '../../../Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import CommonEntitySummaryInfo from '../CommonEntitySummaryInfo/CommonEntitySummaryInfo';
 import SummaryList from '../SummaryList/SummaryList.component';
@@ -38,6 +43,7 @@ interface DashboardSummaryProps {
   componentType?: DRAWER_NAVIGATION_OPTIONS;
   tags?: TagLabel[];
   isLoading?: boolean;
+  highlights?: SearchedDataProps['data'][number]['highlights'];
 }
 
 function DashboardSummary({
@@ -45,6 +51,7 @@ function DashboardSummary({
   componentType = DRAWER_NAVIGATION_OPTIONS.explore,
   tags,
   isLoading,
+  highlights,
 }: DashboardSummaryProps) {
   const { t } = useTranslation();
   const [charts, setCharts] = useState<ChartType[]>();
@@ -82,7 +89,9 @@ function DashboardSummary({
     () =>
       getFormattedEntityData(
         SummaryEntityType.COLUMN,
-        entityDetails.dataModels
+        entityDetails.dataModels,
+        undefined,
+        highlights
       ),
     [charts]
   );
@@ -102,7 +111,14 @@ function DashboardSummary({
 
         <SummaryTagsDescription
           entityDetail={entityDetails}
-          tags={tags ?? entityDetails.tags ?? []}
+          tags={
+            tags ??
+            getSortedTagsWithHighlight({
+              tags: entityDetails.tags,
+              sortTagsBasedOnGivenArr: get(highlights, 'tag.name'),
+            }) ??
+            []
+          }
         />
         <Divider className="m-y-xs" />
 
