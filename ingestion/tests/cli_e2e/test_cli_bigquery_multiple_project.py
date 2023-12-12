@@ -17,6 +17,7 @@ from typing import List
 from .base.e2e_types import E2EType
 from .common.test_cli_db import CliCommonDB
 from .common_e2e_sqa_mixins import SQACommonMethods
+from metadata.ingestion.api.status import Status
 
 
 class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
@@ -102,15 +103,15 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     @staticmethod
     def expected_filtered_table_includes() -> int:
-        return 9
-
-    @staticmethod
-    def expected_filtered_table_excludes() -> int:
         return 10
 
     @staticmethod
+    def expected_filtered_table_excludes() -> int:
+        return 11
+
+    @staticmethod
     def expected_filtered_mix() -> int:
-        return 9
+        return 10
 
     @staticmethod
     def delete_queries() -> List[str]:
@@ -127,6 +128,17 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             UPDATE `modified-leaf-330420.do_not_touch`.orders SET order_name = 'NINTENDO' WHERE id = 2
             """,
         ]
+    
+    def assert_for_vanilla_ingestion(
+        self, source_status: Status, sink_status: Status
+    ) -> None:
+        self.assertTrue(len(source_status.failures) == 0)
+        self.assertTrue(len(source_status.warnings) == 0)
+        self.assertTrue(len(source_status.filtered) >= 9) # filtered schema
+        self.assertTrue(len(source_status.records) >= self.expected_tables())
+        self.assertTrue(len(sink_status.failures) == 0)
+        self.assertTrue(len(sink_status.warnings) == 0)
+        self.assertTrue(len(sink_status.records) > self.expected_tables())
 
     def test_create_table_with_profiler(self) -> None:
         # delete table in case it exists

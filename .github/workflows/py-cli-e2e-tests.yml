@@ -190,17 +190,17 @@ jobs:
         docker compose down --remove-orphans
         sudo rm -rf ${PWD}/docker-volume
 
-    - name: Slack on Failure
-      if: steps.e2e-test.outcome != 'success' && steps.python-e2e-test.outcome != 'success'
-      uses: slackapi/slack-github-action@v1.23.0
-      with:
-        payload: |
-          {
-            "text": "🔥 Failed E2E Test for: ${{ matrix.e2e-test }} 🔥"
-          }
-      env:
-        SLACK_WEBHOOK_URL: ${{ secrets.E2E_SLACK_WEBHOOK }}
-        SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+    # - name: Slack on Failure
+    #   if: steps.e2e-test.outcome != 'success' && steps.python-e2e-test.outcome != 'success'
+    #   uses: slackapi/slack-github-action@v1.23.0
+    #   with:
+    #     payload: |
+    #       {
+    #         "text": "🔥 Failed E2E Test for: ${{ matrix.e2e-test }} 🔥"
+    #       }
+    #   env:
+    #     SLACK_WEBHOOK_URL: ${{ secrets.E2E_SLACK_WEBHOOK }}
+    #     SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
 
     - name: Force failure
       if: steps.e2e-test.outcome != 'success' && steps.python-e2e-test.outcome != 'success'
