@@ -9,7 +9,10 @@ import org.openmetadata.service.migration.api.MigrationProcess;
 
 @Slf4j
 public class MigrationWorkflowContext {
-  @Getter private final HashMap<String, MigrationContext> migrationContext;
+
+  @Getter
+  private final HashMap<String, MigrationContext> migrationContext;
+
   private final MigrationContext initialContext;
   private final Handle handle;
 

@@ -15,11 +15,12 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 
 @Slf4j
 public class ActivityFeedAlertCache {
-  protected static final LoadingCache<String, EventSubscription> EVENT_SUB_CACHE =
-      CacheBuilder.newBuilder()
-          .maximumSize(1000)
-          .expireAfterWrite(3, TimeUnit.MINUTES)
-          .build(new ActivityFeedAlertLoader());
+
+  protected static final LoadingCache<String, EventSubscription> EVENT_SUB_CACHE = CacheBuilder
+    .newBuilder()
+    .maximumSize(1000)
+    .expireAfterWrite(3, TimeUnit.MINUTES)
+    .build(new ActivityFeedAlertLoader());
   private static final String ACTIVITY_FEED_ALERT = "ActivityFeedAlert";
 
   private ActivityFeedAlertCache() {
@@ -35,6 +36,7 @@ public class ActivityFeedAlertCache {
   }
 
   static class ActivityFeedAlertLoader extends CacheLoader<String, EventSubscription> {
+
     @Override
     public EventSubscription load(@CheckForNull String alertName) {
       EventSubscription alert = Entity.getEntityByName(Entity.EVENT_SUBSCRIPTION, alertName, "*", Include.NON_DELETED);

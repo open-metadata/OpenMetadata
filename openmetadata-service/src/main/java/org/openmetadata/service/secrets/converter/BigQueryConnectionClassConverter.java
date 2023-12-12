@@ -30,7 +30,7 @@ public class BigQueryConnectionClassConverter extends ClassConverter {
     BigQueryConnection bigQueryConnection = (BigQueryConnection) JsonUtils.convertValue(object, this.clazz);
 
     tryToConvertOrFail(bigQueryConnection.getCredentials(), List.of(GCPCredentials.class))
-        .ifPresent(obj -> bigQueryConnection.setCredentials((GCPCredentials) obj));
+      .ifPresent(obj -> bigQueryConnection.setCredentials((GCPCredentials) obj));
 
     return bigQueryConnection;
   }

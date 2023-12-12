@@ -30,7 +30,7 @@ public class GcpConnectionClassConverter extends ClassConverter {
     GcsConnection gcsConnection = (GcsConnection) JsonUtils.convertValue(object, this.clazz);
 
     tryToConvertOrFail(gcsConnection.getCredentials(), List.of(GCPCredentials.class))
-        .ifPresent(obj -> gcsConnection.setCredentials((GCPCredentials) obj));
+      .ifPresent(obj -> gcsConnection.setCredentials((GCPCredentials) obj));
 
     return gcsConnection;
   }

@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.Map;
 
 public class PermissionPolicyHeaderFactory extends HeaderFactory {
+
   public static final String PERMISSION_POLICY_HEADER = "Permissions-Policy";
 
   @JsonProperty("option")

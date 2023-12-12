@@ -33,23 +33,35 @@ import org.openmetadata.service.workflows.interfaces.Source;
 
 @Slf4j
 public class PaginatedEntitiesSource implements Source<ResultList<? extends EntityInterface>> {
-  @Getter private final int batchSize;
-  @Getter private final String entityType;
-  @Getter private final List<String> fields;
-  @Getter private final List<String> readerErrors = new ArrayList<>();
-  @Getter private final StepStats stats = new StepStats();
+
+  @Getter
+  private final int batchSize;
+
+  @Getter
+  private final String entityType;
+
+  @Getter
+  private final List<String> fields;
+
+  @Getter
+  private final List<String> readerErrors = new ArrayList<>();
+
+  @Getter
+  private final StepStats stats = new StepStats();
+
   private String lastFailedCursor = null;
   private String cursor = RestUtil.encodeCursor("0");
-  @Getter private boolean isDone = false;
+
+  @Getter
+  private boolean isDone = false;
 
   public PaginatedEntitiesSource(String entityType, int batchSize, List<String> fields) {
     this.entityType = entityType;
     this.batchSize = batchSize;
     this.fields = fields;
-    this.stats
-        .withTotalRecords(Entity.getEntityRepository(entityType).getDao().listTotalCount())
-        .withSuccessRecords(0)
-        .withFailedRecords(0);
+    this.stats.withTotalRecords(Entity.getEntityRepository(entityType).getDao().listTotalCount())
+      .withSuccessRecords(0)
+      .withFailedRecords(0);
   }
 
   @Override
@@ -71,15 +83,25 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
     ResultList<? extends EntityInterface> result = null;
     try {
       result =
-          entityRepository.listAfterWithSkipFailure(
-              null, Entity.getFields(entityType, fields), new ListFilter(Include.ALL), batchSize, cursor);
+        entityRepository.listAfterWithSkipFailure(
+          null,
+          Entity.getFields(entityType, fields),
+          new ListFilter(Include.ALL),
+          batchSize,
+          cursor
+        );
       if (!result.getErrors().isEmpty()) {
         lastFailedCursor = this.cursor;
         StringBuilder errMsg = new StringBuilder();
         errMsg.append(
-            String.format(
-                "[PaginatedEntitiesSource] Encountered Failures. %n Marked After Cursor : %s, %n Batch Stats :- %n Submitted : %s Success: %s Failed: %s, %n Errors : %n",
-                this.lastFailedCursor, batchSize, result.getData().size(), result.getErrors().size()));
+          String.format(
+            "[PaginatedEntitiesSource] Encountered Failures. %n Marked After Cursor : %s, %n Batch Stats :- %n Submitted : %s Success: %s Failed: %s, %n Errors : %n",
+            this.lastFailedCursor,
+            batchSize,
+            result.getData().size(),
+            result.getErrors().size()
+          )
+        );
         for (int i = 0; i < result.getErrors().size(); i++) {
           errMsg.append(String.format("%s. EntityError :- %s", i, result.getErrors().get(i)));
           errMsg.append("%n");
@@ -90,8 +112,11 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
       }
 
       LOG.debug(
-          "[PaginatedEntitiesSource] Batch Stats :- %n Submitted : {} Success: {} Failed: {}",
-          batchSize, result.getData().size(), result.getErrors().size());
+        "[PaginatedEntitiesSource] Batch Stats :- %n Submitted : {} Success: {} Failed: {}",
+        batchSize,
+        result.getData().size(),
+        result.getErrors().size()
+      );
       updateStats(result.getData().size(), result.getErrors().size());
     } catch (Exception e) {
       lastFailedCursor = this.cursor;
@@ -103,10 +128,14 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
         }
         updateStats(result.getData().size(), result.getErrors().size());
       } else {
-        String errMsg =
-            String.format(
-                "[PaginatedEntitiesSource] Encountered Failures. %n Marked After Cursor : %s, %n Batch Stats :- Submitted : %s Success: %s Failed: %s, %n Errors : %s",
-                this.lastFailedCursor, batchSize, 0, batchSize, "No Relationship Issue , Json Processing or DB issue.");
+        String errMsg = String.format(
+          "[PaginatedEntitiesSource] Encountered Failures. %n Marked After Cursor : %s, %n Batch Stats :- Submitted : %s Success: %s Failed: %s, %n Errors : %s",
+          this.lastFailedCursor,
+          batchSize,
+          0,
+          batchSize,
+          "No Relationship Issue , Json Processing or DB issue."
+        );
         LOG.debug(errMsg);
         updateStats(0, batchSize);
       }

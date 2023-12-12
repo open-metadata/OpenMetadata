@@ -30,16 +30,17 @@ public final class IngestionPipelineBuilder {
   public static void addDefinedConfig(IngestionPipeline ingestionPipeline) {
     if (DBT.equals(ingestionPipeline.getPipelineType()) && ingestionPipeline.getSourceConfig() != null) {
       ingestionPipeline
-          .getSourceConfig()
-          .setConfig(
-              ClassConverterFactory.getConverter(DbtPipeline.class)
-                  .convert(ingestionPipeline.getSourceConfig().getConfig()));
+        .getSourceConfig()
+        .setConfig(
+          ClassConverterFactory.getConverter(DbtPipeline.class).convert(ingestionPipeline.getSourceConfig().getConfig())
+        );
     }
     if (ingestionPipeline.getOpenMetadataServerConnection() != null) {
       ingestionPipeline.setOpenMetadataServerConnection(
-          (OpenMetadataConnection)
-              ClassConverterFactory.getConverter(OpenMetadataConnection.class)
-                  .convert(ingestionPipeline.getOpenMetadataServerConnection()));
+        (OpenMetadataConnection) ClassConverterFactory
+          .getConverter(OpenMetadataConnection.class)
+          .convert(ingestionPipeline.getOpenMetadataServerConnection())
+      );
     }
   }
 }

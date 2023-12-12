@@ -17,7 +17,9 @@ import java.security.Principal;
 import lombok.Getter;
 
 public class CatalogPrincipal implements Principal {
-  @Getter private final String name;
+
+  @Getter
+  private final String name;
 
   public CatalogPrincipal(String name) {
     this.name = name;

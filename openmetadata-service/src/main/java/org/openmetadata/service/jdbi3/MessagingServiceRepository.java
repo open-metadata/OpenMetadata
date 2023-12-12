@@ -22,16 +22,18 @@ import org.openmetadata.service.resources.services.messaging.MessagingServiceRes
 
 @Slf4j
 public class MessagingServiceRepository extends ServiceEntityRepository<MessagingService, MessagingConnection> {
+
   private static final String UPDATE_FIELDS = "owner, connection";
 
   public MessagingServiceRepository() {
     super(
-        MessagingServiceResource.COLLECTION_PATH,
-        Entity.MESSAGING_SERVICE,
-        Entity.getCollectionDAO().messagingServiceDAO(),
-        MessagingConnection.class,
-        UPDATE_FIELDS,
-        ServiceType.MESSAGING);
+      MessagingServiceResource.COLLECTION_PATH,
+      Entity.MESSAGING_SERVICE,
+      Entity.getCollectionDAO().messagingServiceDAO(),
+      MessagingConnection.class,
+      UPDATE_FIELDS,
+      ServiceType.MESSAGING
+    );
     supportsSearch = true;
   }
 }

@@ -27,9 +27,16 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class MetricsRepository extends EntityRepository<Metrics> {
+
   public MetricsRepository() {
     super(
-        MetricsResource.COLLECTION_PATH, Entity.METRICS, Metrics.class, Entity.getCollectionDAO().metricsDAO(), "", "");
+      MetricsResource.COLLECTION_PATH,
+      Entity.METRICS,
+      Metrics.class,
+      Entity.getCollectionDAO().metricsDAO(),
+      "",
+      ""
+    );
   }
 
   @Override
@@ -42,9 +49,10 @@ public class MetricsRepository extends EntityRepository<Metrics> {
     metrics.setService(getContainer(metrics.getId())); // service is a default field
     if (metrics.getUsageSummary() == null) {
       metrics.withUsageSummary(
-          fields.contains("usageSummary")
-              ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), metrics.getId())
-              : metrics.getUsageSummary());
+        fields.contains("usageSummary")
+          ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), metrics.getId())
+          : metrics.getUsageSummary()
+      );
     }
   }
 
@@ -78,6 +86,7 @@ public class MetricsRepository extends EntityRepository<Metrics> {
       return Entity.getEntityReferenceById(Entity.DATABASE_SERVICE, service.getId(), NON_DELETED);
     }
     throw new IllegalArgumentException(
-        CatalogExceptionMessage.invalidServiceEntity(service.getType(), Entity.METRICS, DASHBOARD_SERVICE));
+      CatalogExceptionMessage.invalidServiceEntity(service.getType(), Entity.METRICS, DASHBOARD_SERVICE)
+    );
   }
 }

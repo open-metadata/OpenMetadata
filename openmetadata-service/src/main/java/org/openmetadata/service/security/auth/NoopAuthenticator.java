@@ -10,6 +10,7 @@ import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 
 public class NoopAuthenticator implements AuthenticatorHandler {
+
   @Override
   public void init(OpenMetadataApplicationConfig config) {
     /* deprecated unused */

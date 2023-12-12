@@ -5,7 +5,8 @@ import os.org.opensearch.search.aggregations.Aggregations;
 import os.org.opensearch.search.aggregations.bucket.histogram.Histogram;
 
 public class OpenSearchDailyActiveUsersAggregator
-    extends org.openmetadata.service.dataInsight.DailyActiveUsersAggregator<Aggregations, Histogram, Histogram.Bucket> {
+  extends org.openmetadata.service.dataInsight.DailyActiveUsersAggregator<Aggregations, Histogram, Histogram.Bucket> {
+
   public OpenSearchDailyActiveUsersAggregator(Aggregations aggregations) {
     super(aggregations);
   }

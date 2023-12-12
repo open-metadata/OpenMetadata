@@ -62,6 +62,7 @@ import org.openmetadata.service.util.ValidatorUtil;
  */
 @Slf4j
 public abstract class EntityCsv<T extends EntityInterface> {
+
   public static final String FIELD_ERROR_MSG = "#%s: Field %d error - %s";
   public static final String IMPORT_STATUS_HEADER = "status";
   public static final String IMPORT_STATUS_DETAILS = "details";
@@ -186,7 +187,12 @@ public abstract class EntityCsv<T extends EntityInterface> {
   }
 
   protected final EntityReference getEntityReference(
-      CSVPrinter printer, CSVRecord csvRecord, int fieldNumber, String entityType) throws IOException {
+    CSVPrinter printer,
+    CSVRecord csvRecord,
+    int fieldNumber,
+    String entityType
+  )
+    throws IOException {
     String fqn = csvRecord.get(fieldNumber);
     return getEntityReference(printer, csvRecord, fieldNumber, entityType, fqn);
   }
@@ -201,7 +207,13 @@ public abstract class EntityCsv<T extends EntityInterface> {
   }
 
   protected final EntityReference getEntityReference(
-      CSVPrinter printer, CSVRecord csvRecord, int fieldNumber, String entityType, String fqn) throws IOException {
+    CSVPrinter printer,
+    CSVRecord csvRecord,
+    int fieldNumber,
+    String entityType,
+    String fqn
+  )
+    throws IOException {
     if (nullOrEmpty(fqn)) {
       return null;
     }
@@ -215,7 +227,12 @@ public abstract class EntityCsv<T extends EntityInterface> {
   }
 
   protected final List<EntityReference> getEntityReferences(
-      CSVPrinter printer, CSVRecord csvRecord, int fieldNumber, String entityType) throws IOException {
+    CSVPrinter printer,
+    CSVRecord csvRecord,
+    int fieldNumber,
+    String entityType
+  )
+    throws IOException {
     String fqns = csvRecord.get(fieldNumber);
     if (nullOrEmpty(fqns)) {
       return null;
@@ -235,7 +252,12 @@ public abstract class EntityCsv<T extends EntityInterface> {
   }
 
   protected final List<EntityReference> getUserOrTeamEntityReferences(
-      CSVPrinter printer, CSVRecord csvRecord, int fieldNumber, String entityType) throws IOException {
+    CSVPrinter printer,
+    CSVRecord csvRecord,
+    int fieldNumber,
+    String entityType
+  )
+    throws IOException {
     String fqns = csvRecord.get(fieldNumber);
     if (nullOrEmpty(fqns)) {
       return null;
@@ -255,7 +277,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
   }
 
   protected final List<TagLabel> getTagLabels(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber)
-      throws IOException {
+    throws IOException {
     List<EntityReference> refs = getEntityReferences(printer, csvRecord, fieldNumber, Entity.TAG);
     if (!processRecord || nullOrEmpty(refs)) {
       return null;
@@ -305,7 +327,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
   }
 
   private void processRecord(CSVPrinter resultsPrinter, List<String> expectedHeader, CSVRecord csvRecord)
-      throws IOException {
+    throws IOException {
     processRecord = true;
     // Every row must have total fields corresponding to the number of headers
     if (csvHeaders.size() != csvRecord.size()) {
@@ -361,9 +383,9 @@ public abstract class EntityCsv<T extends EntityInterface> {
     } else { // Dry run don't create the entity
       repository.setFullyQualifiedName(entity);
       responseStatus =
-          repository.findByNameOrNull(entity.getFullyQualifiedName(), Include.NON_DELETED) == null
-              ? Response.Status.CREATED
-              : Response.Status.OK;
+        repository.findByNameOrNull(entity.getFullyQualifiedName(), Include.NON_DELETED) == null
+          ? Response.Status.CREATED
+          : Response.Status.OK;
       // Track the dryRun created entities, as they may be referred by other entities being created during import
       dryRunCreatedEntities.put(entity.getFullyQualifiedName(), entity);
     }
@@ -385,8 +407,11 @@ public abstract class EntityCsv<T extends EntityInterface> {
 
   public static String invalidFieldCount(int expectedFieldCount, int actualFieldCount) {
     return String.format(
-        "#%s: Field count %d does not match the expected field count of %d",
-        CsvErrorType.INVALID_FIELD_COUNT, actualFieldCount, expectedFieldCount);
+      "#%s: Field count %d does not match the expected field count of %d",
+      CsvErrorType.INVALID_FIELD_COUNT,
+      actualFieldCount,
+      expectedFieldCount
+    );
   }
 
   public static String fieldRequired(int field) {

@@ -31,6 +31,7 @@ import org.springframework.expression.EvaluationContext;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 
 class AlertsRuleEvaluatorResourceTest extends OpenMetadataApplicationTest {
+
   private static TableResourceTest tableResourceTest;
 
   @BeforeAll
@@ -54,8 +55,10 @@ class AlertsRuleEvaluatorResourceTest extends OpenMetadataApplicationTest {
   void test_matchAnyOwnerName(TestInfo test) throws IOException {
     // Create Table Entity
     List<Column> columns = List.of(TableResourceTest.getColumn(C1, ColumnDataType.INT, null));
-    CreateTable create =
-        tableResourceTest.createRequest(test).withColumns(columns).withOwner(EntityResourceTest.USER1_REF);
+    CreateTable create = tableResourceTest
+      .createRequest(test)
+      .withColumns(columns)
+      .withOwner(EntityResourceTest.USER1_REF);
     Table createdTable = tableResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
     // Create a change Event with the Entity Table
@@ -67,7 +70,8 @@ class AlertsRuleEvaluatorResourceTest extends OpenMetadataApplicationTest {
     AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
     EvaluationContext evaluationContext = new StandardEvaluationContext(alertsRuleEvaluator);
     assertTrue(
-        evaluateExpression("matchAnyOwnerName('" + EntityResourceTest.USER1.getName() + "')", evaluationContext));
+      evaluateExpression("matchAnyOwnerName('" + EntityResourceTest.USER1.getName() + "')", evaluationContext)
+    );
     assertFalse(evaluateExpression("matchAnyOwnerName('tempName')", evaluationContext));
   }
 
@@ -129,11 +133,13 @@ class AlertsRuleEvaluatorResourceTest extends OpenMetadataApplicationTest {
     // Create a change Description with Test Result Field
     ChangeDescription changeDescription = new ChangeDescription();
     changeDescription.setFieldsUpdated(
-        List.of(
-            new FieldChange()
-                .withName("testCaseResult")
-                .withOldValue("test1")
-                .withNewValue(new TestCaseResult().withTestCaseStatus(TestCaseStatus.Success))));
+      List.of(
+        new FieldChange()
+          .withName("testCaseResult")
+          .withOldValue("test1")
+          .withNewValue(new TestCaseResult().withTestCaseStatus(TestCaseStatus.Success))
+      )
+    );
 
     // Create a change event with Test Case and Test Result Change Description
     ChangeEvent changeEvent = new ChangeEvent();
@@ -165,7 +171,8 @@ class AlertsRuleEvaluatorResourceTest extends OpenMetadataApplicationTest {
     // Create a change Event with some Change Description and Field Change
     ChangeDescription changeDescription = new ChangeDescription();
     changeDescription.setFieldsUpdated(
-        List.of(new FieldChange().withName("test").withOldValue("test1").withNewValue("test2")));
+      List.of(new FieldChange().withName("test").withOldValue("test1").withNewValue("test2"))
+    );
 
     ChangeEvent changeEvent = new ChangeEvent();
     changeEvent.setChangeDescription(changeDescription);

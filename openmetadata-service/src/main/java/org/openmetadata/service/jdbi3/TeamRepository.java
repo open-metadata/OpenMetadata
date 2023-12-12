@@ -81,6 +81,7 @@ import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 public class TeamRepository extends EntityRepository<Team> {
+
   static final String PARENTS_FIELD = "parents";
   static final String TEAM_UPDATE_FIELDS = "profile,users,defaultRoles,parents,children,policies,teamType,email";
   static final String TEAM_PATCH_FIELDS = "profile,users,defaultRoles,parents,children,policies,teamType,email";
@@ -89,12 +90,13 @@ public class TeamRepository extends EntityRepository<Team> {
 
   public TeamRepository() {
     super(
-        TeamResource.COLLECTION_PATH,
-        TEAM,
-        Team.class,
-        Entity.getCollectionDAO().teamDAO(),
-        TEAM_PATCH_FIELDS,
-        TEAM_UPDATE_FIELDS);
+      TeamResource.COLLECTION_PATH,
+      TEAM,
+      Team.class,
+      Entity.getCollectionDAO().teamDAO(),
+      TEAM_PATCH_FIELDS,
+      TEAM_UPDATE_FIELDS
+    );
     this.quoteFqn = true;
     supportsSearch = true;
   }
@@ -270,27 +272,26 @@ public class TeamRepository extends EntityRepository<Team> {
 
   private TeamHierarchy getTeamHierarchy(Team team) {
     return new TeamHierarchy()
-        .withId(team.getId())
-        .withTeamType(team.getTeamType())
-        .withName(team.getName())
-        .withDisplayName(team.getDisplayName())
-        .withHref(team.getHref())
-        .withFullyQualifiedName(team.getFullyQualifiedName())
-        .withIsJoinable(team.getIsJoinable())
-        .withChildren(null)
-        .withDescription(team.getDescription());
+      .withId(team.getId())
+      .withTeamType(team.getTeamType())
+      .withName(team.getName())
+      .withDisplayName(team.getDisplayName())
+      .withHref(team.getHref())
+      .withFullyQualifiedName(team.getFullyQualifiedName())
+      .withIsJoinable(team.getIsJoinable())
+      .withChildren(null)
+      .withDescription(team.getDescription());
   }
 
   private TeamHierarchy deepCopy(TeamHierarchy team) {
-    TeamHierarchy newTeam =
-        new TeamHierarchy()
-            .withId(team.getId())
-            .withTeamType(team.getTeamType())
-            .withName(team.getName())
-            .withDisplayName(team.getDisplayName())
-            .withHref(team.getHref())
-            .withFullyQualifiedName(team.getFullyQualifiedName())
-            .withIsJoinable(team.getIsJoinable());
+    TeamHierarchy newTeam = new TeamHierarchy()
+      .withId(team.getId())
+      .withTeamType(team.getTeamType())
+      .withName(team.getName())
+      .withDisplayName(team.getDisplayName())
+      .withHref(team.getHref())
+      .withFullyQualifiedName(team.getFullyQualifiedName())
+      .withIsJoinable(team.getIsJoinable());
     if (team.getChildren() != null) {
       List<TeamHierarchy> children = new ArrayList<>();
       for (TeamHierarchy n : team.getChildren()) {
@@ -328,45 +329,49 @@ public class TeamRepository extends EntityRepository<Team> {
     Map<UUID, TeamHierarchy> map = new HashMap<>();
     ResultList<Team> resultList = listAfter(null, fields, filter, limit, null);
     List<Team> allTeams = resultList.getData();
-    List<Team> joinableTeams =
-        allTeams.stream()
-            .filter(Boolean.TRUE.equals(isJoinable) ? Team::getIsJoinable : t -> true)
-            .filter(t -> !t.getName().equals(ORGANIZATION_NAME))
-            .toList();
+    List<Team> joinableTeams = allTeams
+      .stream()
+      .filter(Boolean.TRUE.equals(isJoinable) ? Team::getIsJoinable : t -> true)
+      .filter(t -> !t.getName().equals(ORGANIZATION_NAME))
+      .toList();
     // build hierarchy of joinable teams
     joinableTeams.forEach(
-        team -> {
-          Team currentTeam = team;
-          TeamHierarchy currentHierarchy = getTeamHierarchy(team);
-          while (currentTeam != null
-              && !currentTeam.getParents().isEmpty()
-              && !currentTeam.getParents().get(0).getName().equals(ORGANIZATION_NAME)) {
-            EntityReference parentRef = currentTeam.getParents().get(0);
-            Team parent =
-                allTeams.stream()
-                    .filter(t -> t.getId().equals(parentRef.getId()))
-                    .findFirst()
-                    .orElseThrow(() -> new IllegalArgumentException(TEAM_HIERARCHY));
-            currentHierarchy = getTeamHierarchy(parent).withChildren(new ArrayList<>(List.of(currentHierarchy)));
-            if (map.containsKey(parent.getId())) {
-              TeamHierarchy parentTeam = map.get(parent.getId());
-              currentHierarchy = mergeTrees(parentTeam, currentHierarchy);
-              currentTeam =
-                  allTeams.stream()
-                      .filter(t -> t.getId().equals(parent.getId()))
-                      .findFirst()
-                      .orElseThrow(() -> new IllegalArgumentException(TEAM_HIERARCHY));
-            } else {
-              currentTeam = parent;
-            }
-          }
-          UUID currentId = currentHierarchy.getId();
-          if (!map.containsKey(currentId)) {
-            map.put(currentId, currentHierarchy);
+      team -> {
+        Team currentTeam = team;
+        TeamHierarchy currentHierarchy = getTeamHierarchy(team);
+        while (
+          currentTeam != null &&
+          !currentTeam.getParents().isEmpty() &&
+          !currentTeam.getParents().get(0).getName().equals(ORGANIZATION_NAME)
+        ) {
+          EntityReference parentRef = currentTeam.getParents().get(0);
+          Team parent = allTeams
+            .stream()
+            .filter(t -> t.getId().equals(parentRef.getId()))
+            .findFirst()
+            .orElseThrow(() -> new IllegalArgumentException(TEAM_HIERARCHY));
+          currentHierarchy = getTeamHierarchy(parent).withChildren(new ArrayList<>(List.of(currentHierarchy)));
+          if (map.containsKey(parent.getId())) {
+            TeamHierarchy parentTeam = map.get(parent.getId());
+            currentHierarchy = mergeTrees(parentTeam, currentHierarchy);
+            currentTeam =
+              allTeams
+                .stream()
+                .filter(t -> t.getId().equals(parent.getId()))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException(TEAM_HIERARCHY));
           } else {
-            map.put(currentId, mergeTrees(map.get(currentId), currentHierarchy));
+            currentTeam = parent;
           }
-        });
+        }
+        UUID currentId = currentHierarchy.getId();
+        if (!map.containsKey(currentId)) {
+          map.put(currentId, currentHierarchy);
+        } else {
+          map.put(currentId, mergeTrees(map.get(currentId), currentHierarchy));
+        }
+      }
+    );
     return new ArrayList<>(map.values());
   }
 
@@ -414,10 +419,10 @@ public class TeamRepository extends EntityRepository<Team> {
 
   private List<EntityReference> getParentsForInheritedRoles(Team team) {
     // filter out any deleted teams
-    List<EntityReference> parents =
-        findFrom(team.getId(), TEAM, Relationship.PARENT_OF, TEAM).stream()
-            .filter(e -> !e.getDeleted())
-            .collect(Collectors.toList());
+    List<EntityReference> parents = findFrom(team.getId(), TEAM, Relationship.PARENT_OF, TEAM)
+      .stream()
+      .filter(e -> !e.getDeleted())
+      .collect(Collectors.toList());
     if (organization != null && listOrEmpty(parents).isEmpty() && !team.getId().equals(organization.getId())) {
       return new ArrayList<>(List.of(organization.getEntityReference()));
     }
@@ -560,17 +565,16 @@ public class TeamRepository extends EntityRepository<Team> {
       try {
         EntityReference organizationPolicy = Entity.getEntityReferenceByName(POLICY, "OrganizationPolicy", Include.ALL);
         EntityReference dataConsumerRole = Entity.getEntityReferenceByName(ROLE, "DataConsumer", Include.ALL);
-        Team team =
-            new Team()
-                .withId(UUID.randomUUID())
-                .withName(ORGANIZATION_NAME)
-                .withDisplayName(ORGANIZATION_NAME)
-                .withDescription("Organization under which all the other team hierarchy is created")
-                .withTeamType(ORGANIZATION)
-                .withUpdatedBy(ADMIN_USER_NAME)
-                .withUpdatedAt(System.currentTimeMillis())
-                .withPolicies(new ArrayList<>(List.of(organizationPolicy)))
-                .withDefaultRoles(new ArrayList<>(List.of(dataConsumerRole)));
+        Team team = new Team()
+          .withId(UUID.randomUUID())
+          .withName(ORGANIZATION_NAME)
+          .withDisplayName(ORGANIZATION_NAME)
+          .withDescription("Organization under which all the other team hierarchy is created")
+          .withTeamType(ORGANIZATION)
+          .withUpdatedBy(ADMIN_USER_NAME)
+          .withUpdatedAt(System.currentTimeMillis())
+          .withPolicies(new ArrayList<>(List.of(organizationPolicy)))
+          .withDefaultRoles(new ArrayList<>(List.of(dataConsumerRole)));
         organization = create(null, team);
         LOG.info("Organization {}:{} is successfully initialized", ORGANIZATION_NAME, organization.getId());
       } catch (Exception e) {
@@ -583,6 +587,7 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   public static class TeamCsv extends EntityCsv<Team> {
+
     public static final CsvDocumentation DOCUMENTATION = getCsvDocumentation(TEAM);
     public static final List<CsvHeader> HEADERS = DOCUMENTATION.getHeaders();
     private final Team team;
@@ -595,13 +600,12 @@ public class TeamRepository extends EntityRepository<Team> {
     @Override
     protected Team toEntity(CSVPrinter printer, CSVRecord csvRecord) throws IOException {
       // Field 1, 2, 3, 4, 7 - name, displayName, description, teamType, isJoinable
-      Team importedTeam =
-          new Team()
-              .withName(csvRecord.get(0))
-              .withDisplayName(csvRecord.get(1))
-              .withDescription(csvRecord.get(2))
-              .withTeamType(TeamType.fromValue(csvRecord.get(3)))
-              .withIsJoinable(getBoolean(printer, csvRecord, 6));
+      Team importedTeam = new Team()
+        .withName(csvRecord.get(0))
+        .withDisplayName(csvRecord.get(1))
+        .withDescription(csvRecord.get(2))
+        .withTeamType(TeamType.fromValue(csvRecord.get(3)))
+        .withIsJoinable(getBoolean(printer, csvRecord, 6));
 
       // Field 5 - parent teams
       getParents(printer, csvRecord, importedTeam);
@@ -658,7 +662,10 @@ public class TeamRepository extends EntityRepository<Team> {
         // Else the parent should already exist
         if (!SubjectContext.isInTeam(team.getName(), parentRef)) {
           importFailure(
-              printer, invalidTeam(4, team.getName(), importedTeam.getName(), parentRef.getName()), csvRecord);
+            printer,
+            invalidTeam(4, team.getName(), importedTeam.getName(), parentRef.getName()),
+            csvRecord
+          );
           processRecord = false;
         }
       }
@@ -666,8 +673,12 @@ public class TeamRepository extends EntityRepository<Team> {
     }
 
     public static String invalidTeam(int field, String team, String importedTeam, String parentName) {
-      String error =
-          String.format("Parent %s of imported team %s is not under %s team hierarchy", parentName, importedTeam, team);
+      String error = String.format(
+        "Parent %s of imported team %s is not under %s team hierarchy",
+        parentName,
+        importedTeam,
+        team
+      );
       return String.format("#%s: Field %d error - %s", CsvErrorType.INVALID_FIELD, field + 1, error);
     }
 
@@ -694,6 +705,7 @@ public class TeamRepository extends EntityRepository<Team> {
 
   /** Handles entity updated from PUT and POST operation. */
   public class TeamUpdater extends EntityUpdater {
+
     public TeamUpdater(Team original, Team updated, Operation operation) {
       super(original, updated, operation);
     }
@@ -730,42 +742,74 @@ public class TeamRepository extends EntityRepository<Team> {
       List<EntityReference> origUsers = listOrEmpty(origTeam.getUsers());
       List<EntityReference> updatedUsers = listOrEmpty(updatedTeam.getUsers());
       updateToRelationships(
-          "users", TEAM, origTeam.getId(), Relationship.HAS, Entity.USER, origUsers, updatedUsers, false);
+        "users",
+        TEAM,
+        origTeam.getId(),
+        Relationship.HAS,
+        Entity.USER,
+        origUsers,
+        updatedUsers,
+        false
+      );
     }
 
     private void updateDefaultRoles(Team origTeam, Team updatedTeam) {
       List<EntityReference> origDefaultRoles = listOrEmpty(origTeam.getDefaultRoles());
       List<EntityReference> updatedDefaultRoles = listOrEmpty(updatedTeam.getDefaultRoles());
       updateToRelationships(
-          DEFAULT_ROLES,
-          TEAM,
-          origTeam.getId(),
-          Relationship.HAS,
-          Entity.ROLE,
-          origDefaultRoles,
-          updatedDefaultRoles,
-          false);
+        DEFAULT_ROLES,
+        TEAM,
+        origTeam.getId(),
+        Relationship.HAS,
+        Entity.ROLE,
+        origDefaultRoles,
+        updatedDefaultRoles,
+        false
+      );
     }
 
     private void updateParents(Team original, Team updated) {
       List<EntityReference> origParents = listOrEmpty(original.getParents());
       List<EntityReference> updatedParents = listOrEmpty(updated.getParents());
       updateFromRelationships(
-          PARENTS_FIELD, TEAM, origParents, updatedParents, Relationship.PARENT_OF, TEAM, original.getId());
+        PARENTS_FIELD,
+        TEAM,
+        origParents,
+        updatedParents,
+        Relationship.PARENT_OF,
+        TEAM,
+        original.getId()
+      );
     }
 
     private void updateChildren(Team original, Team updated) {
       List<EntityReference> origParents = listOrEmpty(original.getChildren());
       List<EntityReference> updatedParents = listOrEmpty(updated.getChildren());
       updateToRelationships(
-          "children", TEAM, original.getId(), Relationship.PARENT_OF, TEAM, origParents, updatedParents, false);
+        "children",
+        TEAM,
+        original.getId(),
+        Relationship.PARENT_OF,
+        TEAM,
+        origParents,
+        updatedParents,
+        false
+      );
     }
 
     private void updatePolicies(Team original, Team updated) {
       List<EntityReference> origPolicies = listOrEmpty(original.getPolicies());
       List<EntityReference> updatedPolicies = listOrEmpty(updated.getPolicies());
       updateToRelationships(
-          "policies", TEAM, original.getId(), Relationship.HAS, POLICY, origPolicies, updatedPolicies, false);
+        "policies",
+        TEAM,
+        original.getId(),
+        Relationship.HAS,
+        POLICY,
+        origPolicies,
+        updatedPolicies,
+        false
+      );
     }
   }
 }

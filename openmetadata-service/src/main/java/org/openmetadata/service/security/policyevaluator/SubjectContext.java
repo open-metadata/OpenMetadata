@@ -38,9 +38,12 @@ import org.openmetadata.service.Entity;
 /** Subject context used for Access Control Policies */
 @Slf4j
 public class SubjectContext {
+
   private static final String USER_FIELDS = "roles,teams,isAdmin,profile";
   public static final String TEAM_FIELDS = "defaultRoles, policies, parents, profile";
-  @Getter protected final User user;
+
+  @Getter
+  protected final User user;
 
   protected SubjectContext(User user) {
     this.user = user;
@@ -176,6 +179,7 @@ public class SubjectContext {
 
   @Getter
   static class PolicyContext {
+
     private final String entityType;
     private final String entityName;
     private final String roleName;
@@ -223,7 +227,11 @@ public class SubjectContext {
     public boolean hasNext() {
       if (policyIndex >= policies.size()) {
         LOG.debug(
-            "iteration over policy attached to entity {}:{} role {} is completed", entityType, entityName, roleName);
+          "iteration over policy attached to entity {}:{} role {} is completed",
+          entityType,
+          entityName,
+          roleName
+        );
       }
       return policyIndex < policies.size();
     }
@@ -249,6 +257,7 @@ public class SubjectContext {
 
   /** RolePolicyIterator goes over policies in a set of roles one by one. */
   static class RolePolicyIterator implements Iterator<PolicyContext> {
+
     // Either User or Team to which the policies from a Role are attached to
     private final String entityType;
     // Either User or Team name to which the policies from a Role are attached to
@@ -293,6 +302,7 @@ public class SubjectContext {
    * roles are visited one by one, followed by policies in the teams that a user belongs to.
    */
   static class UserPolicyIterator implements Iterator<PolicyContext> {
+
     private final User user;
     private int iteratorIndex = 0;
     private final List<Iterator<PolicyContext>> iterators = new ArrayList<>();
@@ -351,6 +361,7 @@ public class SubjectContext {
    * roles are visited one by one, followed by the policies in the parent teams.
    */
   static class TeamPolicyIterator implements Iterator<PolicyContext> {
+
     private int iteratorIndex = 0;
     private final List<Iterator<PolicyContext>> iterators = new ArrayList<>();
 

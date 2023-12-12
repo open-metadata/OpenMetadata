@@ -9,6 +9,7 @@ import org.openmetadata.service.Entity;
 
 @Builder
 public class ReportDataContext implements ResourceContextInterface {
+
   @Override
   public String getResource() {
     return Entity.DATA_INSIGHT_CHART;

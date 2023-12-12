@@ -41,18 +41,20 @@ import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/events")
 @Tag(
-    name = "Events",
-    description =
-        "The `Events` are changes to metadata and are sent when entities are created, modified, or updated. External systems can subscribe to events using event subscription API over Webhooks, Slack, or Microsoft Teams.")
+  name = "Events",
+  description = "The `Events` are changes to metadata and are sent when entities are created, modified, or updated. External systems can subscribe to events using event subscription API over Webhooks, Slack, or Microsoft Teams."
+)
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "events")
 public class EventResource {
-  @Getter private final ChangeEventRepository repository;
+
+  @Getter
+  private final ChangeEventRepository repository;
 
   public static class EventList extends ResultList<ChangeEvent> {
 
-    @SuppressWarnings("unused") /* Required for tests */
+    @SuppressWarnings("unused")/* Required for tests */
     public EventList() {}
 
     public EventList(List<ChangeEvent> data, String beforeCursor, String afterCursor, int total) {
@@ -67,62 +69,61 @@ public class EventResource {
   @GET
   @Valid
   @Operation(
-      operationId = "listChangeEvents",
-      summary = "Get change events",
-      description = "Get a list of change events matching event types, entity type, from a given date",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Entity events",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EventList.class))),
-        @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
-      })
+    operationId = "listChangeEvents",
+    summary = "Get change events",
+    description = "Get a list of change events matching event types, entity type, from a given date",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "Entity events",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = EventList.class))
+      ),
+      @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
+    }
+  )
   public ResultList<ChangeEvent> get(
-      @Context UriInfo uriInfo,
-      @Parameter(
-              description =
-                  "List of comma separated entities requested for "
-                      + "`entityCreated` event. When set to `*` all entities will be "
-                      + "returned",
-              schema = @Schema(type = "string", example = "table,dashboard,..."))
-          @QueryParam("entityCreated")
-          String entityCreated,
-      @Parameter(
-              description =
-                  "List of comma separated entities requested for "
-                      + "`entityUpdated` event. When set to `*` all entities will be "
-                      + "returned",
-              schema = @Schema(type = "string", example = "table,dashboard,..."))
-          @QueryParam("entityUpdated")
-          String entityUpdated,
-      @Parameter(
-              description =
-                  "List of comma separated entities requested for "
-                      + "`entityRestored` event. When set to `*` all entities will be "
-                      + "returned",
-              schema = @Schema(type = "string", example = "table,dashboard,..."))
-          @QueryParam("entityRestored")
-          String entityRestored,
-      @Parameter(
-              description =
-                  "List of comma separated entities requested for "
-                      + "`entityCreated` event. When set to `*` all entities will be "
-                      + "returned",
-              schema = @Schema(type = "string", example = "table,dashboard,..."))
-          @QueryParam("entityDeleted")
-          String entityDeleted,
-      @Parameter(
-              description = "Events starting from this unix timestamp in milliseconds",
-              required = true,
-              schema = @Schema(type = "long", example = "1426349294842"))
-          @QueryParam("timestamp")
-          long timestamp) {
+    @Context UriInfo uriInfo,
+    @Parameter(
+      description = "List of comma separated entities requested for " +
+      "`entityCreated` event. When set to `*` all entities will be " +
+      "returned",
+      schema = @Schema(type = "string", example = "table,dashboard,...")
+    ) @QueryParam("entityCreated") String entityCreated,
+    @Parameter(
+      description = "List of comma separated entities requested for " +
+      "`entityUpdated` event. When set to `*` all entities will be " +
+      "returned",
+      schema = @Schema(type = "string", example = "table,dashboard,...")
+    ) @QueryParam("entityUpdated") String entityUpdated,
+    @Parameter(
+      description = "List of comma separated entities requested for " +
+      "`entityRestored` event. When set to `*` all entities will be " +
+      "returned",
+      schema = @Schema(type = "string", example = "table,dashboard,...")
+    ) @QueryParam("entityRestored") String entityRestored,
+    @Parameter(
+      description = "List of comma separated entities requested for " +
+      "`entityCreated` event. When set to `*` all entities will be " +
+      "returned",
+      schema = @Schema(type = "string", example = "table,dashboard,...")
+    ) @QueryParam("entityDeleted") String entityDeleted,
+    @Parameter(
+      description = "Events starting from this unix timestamp in milliseconds",
+      required = true,
+      schema = @Schema(type = "long", example = "1426349294842")
+    ) @QueryParam("timestamp") long timestamp
+  ) {
     List<String> entityCreatedList = EntityList.getEntityList("entityCreated", entityCreated);
     List<String> entityUpdatedList = EntityList.getEntityList("entityUpdated", entityUpdated);
     List<String> entityRestoredList = EntityList.getEntityList("entityRestored", entityRestored);
     List<String> entityDeletedList = EntityList.getEntityList("entityDeleted", entityDeleted);
-    List<ChangeEvent> events =
-        repository.list(timestamp, entityCreatedList, entityUpdatedList, entityRestoredList, entityDeletedList);
+    List<ChangeEvent> events = repository.list(
+      timestamp,
+      entityCreatedList,
+      entityUpdatedList,
+      entityRestoredList,
+      entityDeletedList
+    );
     events.sort(EntityUtil.compareChangeEvent); // Sort change events based on time
     return new EventList(events, null, null, events.size());
   }

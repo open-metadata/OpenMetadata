@@ -23,5 +23,6 @@ import java.lang.annotation.Target;
  * annotated with
  */
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.FIELD, ElementType.METHOD, ElementType.ANNOTATION_TYPE})
-public @interface PasswordField {}
+@Target({ ElementType.FIELD, ElementType.METHOD, ElementType.ANNOTATION_TYPE })
+public @interface PasswordField {
+}

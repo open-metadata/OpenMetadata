@@ -21,7 +21,10 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class CustomRequestInterceptor<K> implements RequestInterceptor {
-  @Getter private final Class<K> type;
+
+  @Getter
+  private final Class<K> type;
+
   final ObjectMapper mapper;
 
   public CustomRequestInterceptor(ObjectMapper mapper, Class<K> type) {

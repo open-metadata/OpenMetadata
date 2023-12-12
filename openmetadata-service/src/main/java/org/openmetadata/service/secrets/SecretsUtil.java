@@ -24,7 +24,11 @@ public final class SecretsUtil {
 
   /** Returns an error message when it is related to an Unrecognized field */
   public static String buildExceptionMessageUnrecognizedField(
-      String message, String defaultMessage, String exceptionMessage, String type) {
+    String message,
+    String defaultMessage,
+    String exceptionMessage,
+    String type
+  ) {
     if (exceptionMessage != null && exceptionMessage.contains("Unrecognized field")) {
       Pattern pattern = Pattern.compile("Unrecognized field \"(.*?)\"");
       Matcher matcher = pattern.matcher(exceptionMessage);
@@ -38,16 +42,22 @@ public final class SecretsUtil {
   }
 
   public static String buildExceptionMessageConnection(
-      String exceptionMessage, String type, String firstAction, String secondAction, boolean isFirstAction) {
+    String exceptionMessage,
+    String type,
+    String firstAction,
+    String secondAction,
+    boolean isFirstAction
+  ) {
     return buildExceptionMessageUnrecognizedField(
-        "Failed to "
-            + (isFirstAction ? firstAction : secondAction)
-            + " '%s' connection stored in DB due to an unrecognized field: '%s'",
-        "Failed to "
-            + (isFirstAction ? firstAction : secondAction)
-            + " '%s' connection stored in DB due to malformed connection object.",
-        exceptionMessage,
-        type);
+      "Failed to " +
+      (isFirstAction ? firstAction : secondAction) +
+      " '%s' connection stored in DB due to an unrecognized field: '%s'",
+      "Failed to " +
+      (isFirstAction ? firstAction : secondAction) +
+      " '%s' connection stored in DB due to malformed connection object.",
+      exceptionMessage,
+      type
+    );
   }
 
   public static String buildExceptionMessageConnection(String exceptionMessage, String type, boolean encrypt) {

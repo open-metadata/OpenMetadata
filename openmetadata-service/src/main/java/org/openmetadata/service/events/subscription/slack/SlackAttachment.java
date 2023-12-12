@@ -8,9 +8,18 @@ import lombok.Setter;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class SlackAttachment {
-  @Getter @Setter private String fallback;
-  @Getter @Setter private String color;
-  @Getter @Setter private String pretext;
+
+  @Getter
+  @Setter
+  private String fallback;
+
+  @Getter
+  @Setter
+  private String color;
+
+  @Getter
+  @Setter
+  private String pretext;
 
   @JsonProperty("author_name")
   @Getter
@@ -27,15 +36,22 @@ public class SlackAttachment {
   @Setter
   private String authorIcon;
 
-  @Getter @Setter private String title;
+  @Getter
+  @Setter
+  private String title;
 
   @JsonProperty("title_link")
   @Getter
   @Setter
   private String titleLink;
 
-  @Getter @Setter private String text;
-  @Getter @Setter private Field[] fields;
+  @Getter
+  @Setter
+  private String text;
+
+  @Getter
+  @Setter
+  private Field[] fields;
 
   @JsonProperty("image_url")
   @Getter
@@ -47,14 +63,18 @@ public class SlackAttachment {
   @Setter
   private String thumbUrl;
 
-  @Getter @Setter private String footer;
+  @Getter
+  @Setter
+  private String footer;
 
   @JsonProperty("footer_icon")
   @Getter
   @Setter
   private String footerIcon;
 
-  @Getter @Setter private String ts;
+  @Getter
+  @Setter
+  private String ts;
 
   @JsonProperty("mrkdwn_in")
   @Getter

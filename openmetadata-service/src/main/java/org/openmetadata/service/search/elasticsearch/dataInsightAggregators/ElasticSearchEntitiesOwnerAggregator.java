@@ -7,7 +7,7 @@ import java.util.List;
 import org.openmetadata.service.dataInsight.EntitiesOwnerAggregator;
 
 public class ElasticSearchEntitiesOwnerAggregator
-    extends EntitiesOwnerAggregator<Aggregations, MultiBucketsAggregation.Bucket, MultiBucketsAggregation, Sum> {
+  extends EntitiesOwnerAggregator<Aggregations, MultiBucketsAggregation.Bucket, MultiBucketsAggregation, Sum> {
 
   public ElasticSearchEntitiesOwnerAggregator(Aggregations aggregations) {
     super(aggregations);

@@ -20,6 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 /** Holds authenticated principal and security context which is passed to the JAX-RS request methods */
 @Slf4j
 public class CatalogSecurityContext implements SecurityContext {
+
   private final Principal principal;
   private final String scheme;
   private final String authenticationScheme;
@@ -55,17 +56,19 @@ public class CatalogSecurityContext implements SecurityContext {
 
   @Override
   public String toString() {
-    return "catalogSecurityContext{"
-        + "principal="
-        + principal
-        + ", scheme='"
-        + scheme
-        + '\''
-        + ", authenticationScheme='"
-        + authenticationScheme
-        + '\''
-        + ", isSecure="
-        + isSecure()
-        + '}';
+    return (
+      "catalogSecurityContext{" +
+      "principal=" +
+      principal +
+      ", scheme='" +
+      scheme +
+      '\'' +
+      ", authenticationScheme='" +
+      authenticationScheme +
+      '\'' +
+      ", isSecure=" +
+      isSecure() +
+      '}'
+    );
   }
 }

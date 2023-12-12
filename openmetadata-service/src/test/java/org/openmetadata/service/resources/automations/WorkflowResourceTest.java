@@ -29,20 +29,23 @@ public class WorkflowResourceTest extends EntityResourceTest<Workflow, CreateWor
   @Override
   public CreateWorkflow createRequest(String name) {
     return new CreateWorkflow()
-        .withName(name)
-        .withDescription(name)
-        .withWorkflowType(WorkflowType.TEST_CONNECTION)
-        .withRequest(
-            new TestServiceConnectionRequest()
-                .withServiceType(ServiceType.DATABASE)
-                .withConnectionType("Mysql")
-                .withConnection(
-                    new DatabaseConnection()
-                        .withConfig(
-                            new MysqlConnection()
-                                .withHostPort("mysql:3306")
-                                .withUsername("openmetadata_user")
-                                .withAuthType(new basicAuth().withPassword("openmetadata_password")))));
+      .withName(name)
+      .withDescription(name)
+      .withWorkflowType(WorkflowType.TEST_CONNECTION)
+      .withRequest(
+        new TestServiceConnectionRequest()
+          .withServiceType(ServiceType.DATABASE)
+          .withConnectionType("Mysql")
+          .withConnection(
+            new DatabaseConnection()
+            .withConfig(
+                new MysqlConnection()
+                  .withHostPort("mysql:3306")
+                  .withUsername("openmetadata_user")
+                  .withAuthType(new basicAuth().withPassword("openmetadata_password"))
+              )
+          )
+      );
   }
 
   @Override
@@ -64,15 +67,15 @@ public class WorkflowResourceTest extends EntityResourceTest<Workflow, CreateWor
   public Workflow validateGetWithDifferentFields(Workflow entity, boolean byName) throws HttpResponseException {
     String fields = "";
     entity =
-        byName
-            ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getEntity(entity.getId(), null, ADMIN_AUTH_HEADERS);
+      byName
+        ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+        : getEntity(entity.getId(), null, ADMIN_AUTH_HEADERS);
     assertListNull(entity.getOwner());
     fields = "owner";
     entity =
-        byName
-            ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
+      byName
+        ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+        : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(entity.getOwner());
     return entity;
   }

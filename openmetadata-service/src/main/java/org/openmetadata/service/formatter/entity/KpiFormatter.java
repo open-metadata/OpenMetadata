@@ -23,14 +23,16 @@ import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 
 public class KpiFormatter implements EntityFormatter {
+
   private static final String KPI_RESULT_FIELD = "kpiResult";
 
   @Override
   public String format(
-      MessageDecorator<?> messageFormatter,
-      FieldChange fieldChange,
-      EntityInterface entity,
-      FormatterUtil.CHANGE_TYPE changeType) {
+    MessageDecorator<?> messageFormatter,
+    FieldChange fieldChange,
+    EntityInterface entity,
+    FormatterUtil.CHANGE_TYPE changeType
+  ) {
     if (KPI_RESULT_FIELD.equals(fieldChange.getName())) {
       return transformKpiResult(messageFormatter, fieldChange, entity);
     }
@@ -38,17 +40,20 @@ public class KpiFormatter implements EntityFormatter {
   }
 
   private String transformKpiResult(
-      MessageDecorator<?> messageFormatter, FieldChange fieldChange, EntityInterface entity) {
+    MessageDecorator<?> messageFormatter,
+    FieldChange fieldChange,
+    EntityInterface entity
+  ) {
     String kpiName = entity.getName();
     KpiResult result = (KpiResult) fieldChange.getNewValue();
     if (result != null) {
-      String format =
-          String.format(
-              "Added Results for %s. Target Name : %s , Current Value: %s, Target Met: %s",
-              messageFormatter.getBold(),
-              messageFormatter.getBold(),
-              messageFormatter.getBold(),
-              messageFormatter.getBold());
+      String format = String.format(
+        "Added Results for %s. Target Name : %s , Current Value: %s, Target Met: %s",
+        messageFormatter.getBold(),
+        messageFormatter.getBold(),
+        messageFormatter.getBold(),
+        messageFormatter.getBold()
+      );
       KpiTarget target = result.getTargetResult().get(0);
       return String.format(format, kpiName, target.getName(), target.getValue(), target.getTargetMet());
     }

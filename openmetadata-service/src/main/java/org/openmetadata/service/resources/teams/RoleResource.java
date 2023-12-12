@@ -68,15 +68,16 @@ import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/roles")
 @Tag(
-    name = "Roles",
-    description =
-        "A `Role` is a collection of `Policies` that provides access control. A user or a "
-            + "team can be assigned one or multiple roles that provide privileges to a user and members of a team to perform the job function.")
+  name = "Roles",
+  description = "A `Role` is a collection of `Policies` that provides access control. A user or a " +
+  "team can be assigned one or multiple roles that provide privileges to a user and members of a team to perform the job function."
+)
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "roles", order = 1) // Load roles after PolicyResource are loaded at Order 0
 @Slf4j
 public class RoleResource extends EntityResource<Role, RoleRepository> {
+
   public static final String COLLECTION_PATH = "/v1/roles/";
   public static final String FIELDS = "policies,teams,users";
 
@@ -120,46 +121,44 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   @GET
   @Valid
   @Operation(
-      operationId = "listRoles",
-      summary = "List roles",
-      description =
-          "Get a list of roles. Use cursor-based pagination to limit the number of entries in the list using `limit`"
-              + " and `before` or `after` query params.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "List of roles",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = RoleList.class)))
-      })
+    operationId = "listRoles",
+    summary = "List roles",
+    description = "Get a list of roles. Use cursor-based pagination to limit the number of entries in the list using `limit`" +
+    " and `before` or `after` query params.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "List of roles",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = RoleList.class))
+      )
+    }
+  )
   public ResultList<Role> list(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "List only default role(s)", schema = @Schema(type = "boolean", example = "true"))
-          @QueryParam("default")
-          boolean defaultParam,
-      @Parameter(
-              description = "Fields requested in the returned resource",
-              schema = @Schema(type = "string", example = FIELDS))
-          @QueryParam("fields")
-          String fieldsParam,
-      @Parameter(description = "Limit the number tables returned. (1 to 1000000, default = 10)")
-          @DefaultValue("10")
-          @Min(0)
-          @Max(1000000)
-          @QueryParam("limit")
-          int limitParam,
-      @Parameter(description = "Returns list of tables before this cursor", schema = @Schema(type = "string"))
-          @QueryParam("before")
-          String before,
-      @Parameter(description = "Returns list of tables after this cursor", schema = @Schema(type = "string"))
-          @QueryParam("after")
-          String after,
-      @Parameter(
-              description = "Include all, deleted, or non-deleted entities.",
-              schema = @Schema(implementation = Include.class))
-          @QueryParam("include")
-          @DefaultValue("non-deleted")
-          Include include) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(
+      description = "List only default role(s)",
+      schema = @Schema(type = "boolean", example = "true")
+    ) @QueryParam("default") boolean defaultParam,
+    @Parameter(
+      description = "Fields requested in the returned resource",
+      schema = @Schema(type = "string", example = FIELDS)
+    ) @QueryParam("fields") String fieldsParam,
+    @Parameter(description = "Limit the number tables returned. (1 to 1000000, default = 10)") @DefaultValue("10") @Min(
+      0
+    ) @Max(1000000) @QueryParam("limit") int limitParam,
+    @Parameter(
+      description = "Returns list of tables before this cursor",
+      schema = @Schema(type = "string")
+    ) @QueryParam("before") String before,
+    @Parameter(description = "Returns list of tables after this cursor", schema = @Schema(type = "string")) @QueryParam(
+      "after"
+    ) String after,
+    @Parameter(
+      description = "Include all, deleted, or non-deleted entities.",
+      schema = @Schema(implementation = Include.class)
+    ) @QueryParam("include") @DefaultValue("non-deleted") Include include
+  ) {
     RestUtil.validateCursors(before, after);
     Fields fields = getFields(fieldsParam);
     ListFilter filter = new ListFilter(include);
@@ -176,19 +175,22 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   @GET
   @Path("/{id}/versions")
   @Operation(
-      operationId = "listAllRoleVersion",
-      summary = "List role versions",
-      description = "Get a list of all the versions of a role identified by `id`",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "List of role versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
-      })
+    operationId = "listAllRoleVersion",
+    summary = "List role versions",
+    description = "Get a list of all the versions of a role identified by `id`",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "List of role versions",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class))
+      )
+    }
+  )
   public EntityHistory listVersions(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the role", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Id of the role", schema = @Schema(type = "UUID")) @PathParam("id") UUID id
+  ) {
     return super.listVersionsInternal(securityContext, id);
   }
 
@@ -196,31 +198,31 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   @Valid
   @Path("/{id}")
   @Operation(
-      operationId = "getRoleByID",
-      summary = "Get a role by id",
-      description = "Get a role by `id`.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The role",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Role.class))),
-        @ApiResponse(responseCode = "404", description = "Role for instance {id} is not found")
-      })
+    operationId = "getRoleByID",
+    summary = "Get a role by id",
+    description = "Get a role by `id`.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "The role",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = Role.class))
+      ),
+      @ApiResponse(responseCode = "404", description = "Role for instance {id} is not found")
+    }
+  )
   public Role get(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the role", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Parameter(
-              description = "Fields requested in the returned resource",
-              schema = @Schema(type = "string", example = FIELDS))
-          @QueryParam("fields")
-          String fieldsParam,
-      @Parameter(
-              description = "Include all, deleted, or non-deleted entities.",
-              schema = @Schema(implementation = Include.class))
-          @QueryParam("include")
-          @DefaultValue("non-deleted")
-          Include include) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Id of the role", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+    @Parameter(
+      description = "Fields requested in the returned resource",
+      schema = @Schema(type = "string", example = FIELDS)
+    ) @QueryParam("fields") String fieldsParam,
+    @Parameter(
+      description = "Include all, deleted, or non-deleted entities.",
+      schema = @Schema(implementation = Include.class)
+    ) @QueryParam("include") @DefaultValue("non-deleted") Include include
+  ) {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
@@ -228,91 +230,103 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   @Valid
   @Path("/name/{name}")
   @Operation(
-      operationId = "getRoleByFQN",
-      summary = "Get a role by name",
-      description = "Get a role by `name`.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The role",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Role.class))),
-        @ApiResponse(responseCode = "404", description = "Role for instance {name} is not found")
-      })
+    operationId = "getRoleByFQN",
+    summary = "Get a role by name",
+    description = "Get a role by `name`.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "The role",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = Role.class))
+      ),
+      @ApiResponse(responseCode = "404", description = "Role for instance {name} is not found")
+    }
+  )
   public Role getByName(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the role", schema = @Schema(type = "string")) @PathParam("name") String name,
-      @Parameter(
-              description = "Fields requested in the returned resource",
-              schema = @Schema(type = "string", example = FIELDS))
-          @QueryParam("fields")
-          String fieldsParam,
-      @Parameter(
-              description = "Include all, deleted, or non-deleted entities.",
-              schema = @Schema(implementation = Include.class))
-          @QueryParam("include")
-          @DefaultValue("non-deleted")
-          Include include) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Name of the role", schema = @Schema(type = "string")) @PathParam("name") String name,
+    @Parameter(
+      description = "Fields requested in the returned resource",
+      schema = @Schema(type = "string", example = FIELDS)
+    ) @QueryParam("fields") String fieldsParam,
+    @Parameter(
+      description = "Include all, deleted, or non-deleted entities.",
+      schema = @Schema(implementation = Include.class)
+    ) @QueryParam("include") @DefaultValue("non-deleted") Include include
+  ) {
     return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
   }
 
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
-      operationId = "getSpecificRoleVersion",
-      summary = "Get a version of the role",
-      description = "Get a version of the role by given `id`",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "role",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Role.class))),
-        @ApiResponse(responseCode = "404", description = "Role for instance {id} and version {version} is not found")
-      })
+    operationId = "getSpecificRoleVersion",
+    summary = "Get a version of the role",
+    description = "Get a version of the role by given `id`",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "role",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = Role.class))
+      ),
+      @ApiResponse(responseCode = "404", description = "Role for instance {id} and version {version} is not found")
+    }
+  )
   public Role getVersion(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the role", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Parameter(
-              description = "Role version number in the form `major`.`minor`",
-              schema = @Schema(type = "string", example = "0.1 or 1.1"))
-          @PathParam("version")
-          String version) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Id of the role", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+    @Parameter(
+      description = "Role version number in the form `major`.`minor`",
+      schema = @Schema(type = "string", example = "0.1 or 1.1")
+    ) @PathParam("version") String version
+  ) {
     return super.getVersionInternal(securityContext, id, version);
   }
 
   @POST
   @Operation(
-      operationId = "createRole",
-      summary = "Create a role",
-      description = "Create a new role.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The role",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Role.class))),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
+    operationId = "createRole",
+    summary = "Create a role",
+    description = "Create a new role.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "The role",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = Role.class))
+      ),
+      @ApiResponse(responseCode = "400", description = "Bad request")
+    }
+  )
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateRole createRole) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Valid CreateRole createRole
+  ) {
     Role role = getRole(createRole, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, role);
   }
 
   @PUT
   @Operation(
-      operationId = "createOrUpdateRole",
-      summary = "Update role",
-      description = "Create or Update a role.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The role ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Role.class))),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
+    operationId = "createOrUpdateRole",
+    summary = "Update role",
+    description = "Create or Update a role.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "The role ",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = Role.class))
+      ),
+      @ApiResponse(responseCode = "400", description = "Bad request")
+    }
+  )
   public Response createOrUpdateRole(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateRole createRole) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Valid CreateRole createRole
+  ) {
     Role role = getRole(createRole, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, role);
   }
@@ -321,42 +335,45 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   @Path("/{id}")
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   @Operation(
-      operationId = "patchRole",
-      summary = "Update a role",
-      description = "Update an existing role with JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+    operationId = "patchRole",
+    summary = "Update a role",
+    description = "Update an existing role with JsonPatch.",
+    externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902")
+  )
   public Response patch(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the role", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @RequestBody(
-              description = "JsonPatch with array of operations",
-              content =
-                  @Content(
-                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
-          JsonPatch patch) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Id of the role", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+    @RequestBody(
+      description = "JsonPatch with array of operations",
+      content = @Content(
+        mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+        examples = { @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]") }
+      )
+    ) JsonPatch patch
+  ) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @DELETE
   @Path("/{id}")
   @Operation(
-      operationId = "deleteRole",
-      summary = "Delete a role",
-      description = "Delete a role by given `id`.",
-      responses = {
-        @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "Role for instance {id} is not found")
-      })
+    operationId = "deleteRole",
+    summary = "Delete a role",
+    description = "Delete a role by given `id`.",
+    responses = {
+      @ApiResponse(responseCode = "200", description = "OK"),
+      @ApiResponse(responseCode = "404", description = "Role for instance {id} is not found")
+    }
+  )
   public Response delete(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Hard delete the entity. (Default = `false`)")
-          @QueryParam("hardDelete")
-          @DefaultValue("false")
-          boolean hardDelete,
-      @Parameter(description = "Id of the role", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Hard delete the entity. (Default = `false`)") @QueryParam("hardDelete") @DefaultValue(
+      "false"
+    ) boolean hardDelete,
+    @Parameter(description = "Id of the role", schema = @Schema(type = "UUID")) @PathParam("id") UUID id
+  ) {
     // A role has a strong relationship with a policy. Recursively delete the policy that the role contains, to avoid
     // leaving a dangling policy without a role.
     return delete(uriInfo, securityContext, id, true, hardDelete);
@@ -365,38 +382,44 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   @DELETE
   @Path("/name/{name}")
   @Operation(
-      operationId = "deleteRoleByName",
-      summary = "Delete a role",
-      description = "Delete a role by given `name`.",
-      responses = {
-        @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "Role for instance {name} is not found")
-      })
+    operationId = "deleteRoleByName",
+    summary = "Delete a role",
+    description = "Delete a role by given `name`.",
+    responses = {
+      @ApiResponse(responseCode = "200", description = "OK"),
+      @ApiResponse(responseCode = "404", description = "Role for instance {name} is not found")
+    }
+  )
   public Response delete(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Hard delete the entity. (Default = `false`)")
-          @QueryParam("hardDelete")
-          @DefaultValue("false")
-          boolean hardDelete,
-      @Parameter(description = "Name of the role", schema = @Schema(type = "string")) @PathParam("name") String name) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Hard delete the entity. (Default = `false`)") @QueryParam("hardDelete") @DefaultValue(
+      "false"
+    ) boolean hardDelete,
+    @Parameter(description = "Name of the role", schema = @Schema(type = "string")) @PathParam("name") String name
+  ) {
     return deleteByName(uriInfo, securityContext, name, false, hardDelete);
   }
 
   @PUT
   @Path("/restore")
   @Operation(
-      operationId = "restore",
-      summary = "Restore a soft deleted role",
-      description = "Restore a soft deleted role.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Successfully restored the Role. ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Role.class)))
-      })
+    operationId = "restore",
+    summary = "Restore a soft deleted role",
+    description = "Restore a soft deleted role.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "Successfully restored the Role. ",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = Role.class))
+      )
+    }
+  )
   public Response restoreRole(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Valid RestoreEntity restore
+  ) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
@@ -405,8 +428,8 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
       throw new IllegalArgumentException("At least one policy is required to create a role");
     }
     return repository
-        .copy(new Role(), create, user)
-        .withPolicies(getEntityReferences(Entity.POLICY, create.getPolicies()));
+      .copy(new Role(), create, user)
+      .withPolicies(getEntityReferences(Entity.POLICY, create.getPolicies()));
   }
 
   public static EntityReference getRole(String roleName) {

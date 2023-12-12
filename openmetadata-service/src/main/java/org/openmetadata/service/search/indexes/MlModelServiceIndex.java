@@ -27,10 +27,12 @@ public class MlModelServiceIndex implements SearchIndex {
     suggest.add(SearchSuggest.builder().input(mlModelService.getName()).weight(5).build());
     suggest.add(SearchSuggest.builder().input(mlModelService.getFullyQualifiedName()).weight(5).build());
     doc.put(
-        "fqnParts",
-        getFQNParts(
-            mlModelService.getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+      "fqnParts",
+      getFQNParts(
+        mlModelService.getFullyQualifiedName(),
+        suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())
+      )
+    );
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.MLMODEL_SERVICE);
     doc.put("owner", getEntityWithDisplayName(mlModelService.getOwner()));

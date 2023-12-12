@@ -1,6 +1,7 @@
 package org.openmetadata.service.events.errors;
 
 public class EventPublisherException extends RuntimeException {
+
   private static final long serialVersionUID = 1L;
 
   public EventPublisherException(String message, Throwable cause) {

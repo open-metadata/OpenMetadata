@@ -16,6 +16,7 @@ package org.openmetadata.service.events.scheduled.template;
 import java.util.Map;
 
 public class DataInsightDescriptionAndOwnerTemplate {
+
   public enum MetricType {
     DESCRIPTION,
     OWNER,
@@ -38,15 +39,16 @@ public class DataInsightDescriptionAndOwnerTemplate {
   private Map<String, Double> tierMap;
 
   public DataInsightDescriptionAndOwnerTemplate(
-      MetricType metricType,
-      KpiCriteria criteria,
-      Double percentCompleted,
-      String targetKpi,
-      Double percentChange,
-      boolean isKpiAvailable,
-      String numberOfDaysLeft,
-      int numberOfDaysChange,
-      Map<String, Double> tierMap) {
+    MetricType metricType,
+    KpiCriteria criteria,
+    Double percentCompleted,
+    String targetKpi,
+    Double percentChange,
+    boolean isKpiAvailable,
+    String numberOfDaysLeft,
+    int numberOfDaysChange,
+    Map<String, Double> tierMap
+  ) {
     this.percentCompleted = percentCompleted;
     this.targetKpi = targetKpi;
     this.percentChange = percentChange;
@@ -59,9 +61,13 @@ public class DataInsightDescriptionAndOwnerTemplate {
       color = "#008510";
     }
     this.completeMessage =
-        String.format(
-            "The %s changed by <strong style=\"color: %s;\">%.2f%%</strong> per cent in the last week. %s",
-            getMetricTypeMessage(metricType), color, percentChange, getKpiCriteriaMessage(metricType, criteria));
+      String.format(
+        "The %s changed by <strong style=\"color: %s;\">%.2f%%</strong> per cent in the last week. %s",
+        getMetricTypeMessage(metricType),
+        color,
+        percentChange,
+        getKpiCriteriaMessage(metricType, criteria)
+      );
   }
 
   private String getMetricTypeMessage(MetricType metricType) {
@@ -84,8 +90,10 @@ public class DataInsightDescriptionAndOwnerTemplate {
             return "Great the Target Set for KPIs has been achieved. It's time to restructure your goals, set new KPIs and progress faster.";
           case IN_PROGRESS:
             return String.format(
-                "To meet the KPIs you will need a minimum of %s per cent completed description in the next %s days.",
-                targetKpi, numberOfDaysLeft);
+              "To meet the KPIs you will need a minimum of %s per cent completed description in the next %s days.",
+              targetKpi,
+              numberOfDaysLeft
+            );
           case NOT_MET:
             return "The Target set for KPIs was not met it’s time to restructure your goals and progress faster.";
         }

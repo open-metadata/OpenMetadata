@@ -17,6 +17,7 @@ import javax.ws.rs.core.Response;
 import org.openmetadata.sdk.exception.WebServiceException;
 
 public class UnhandledServerException extends WebServiceException {
+
   private static final String MESSAGE = "An exception with message [%s] was thrown while processing request.";
 
   public UnhandledServerException(String exceptionMessage) {

@@ -70,21 +70,27 @@ public class SearchRepository {
 
   private final String language;
 
-  @Getter @Setter public SearchIndexFactory searchIndexFactory;
+  @Getter
+  @Setter
+  public SearchIndexFactory searchIndexFactory;
 
-  private final List<String> inheritableFields =
-      List.of(Entity.FIELD_OWNER, Entity.FIELD_DOMAIN, Entity.FIELD_DISABLED);
+  private final List<String> inheritableFields = List.of(
+    Entity.FIELD_OWNER,
+    Entity.FIELD_DOMAIN,
+    Entity.FIELD_DISABLED
+  );
   private final List<String> propagateFields = List.of(Entity.FIELD_TAGS);
 
-  @Getter private final ElasticSearchConfiguration elasticSearchConfiguration;
+  @Getter
+  private final ElasticSearchConfiguration elasticSearchConfiguration;
 
-  public final List<String> dataInsightReports =
-      List.of(
-          ENTITY_REPORT_DATA,
-          WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA,
-          WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA,
-          RAW_COST_ANALYSIS_REPORT_DATA,
-          AGGREGATED_COST_ANALYSIS_REPORT_DATA);
+  public final List<String> dataInsightReports = List.of(
+    ENTITY_REPORT_DATA,
+    WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA,
+    WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA,
+    RAW_COST_ANALYSIS_REPORT_DATA,
+    AGGREGATED_COST_ANALYSIS_REPORT_DATA
+  );
 
   public static final String ELASTIC_SEARCH_EXTENSION = "service.eventPublisher";
 
@@ -202,8 +208,10 @@ public class SearchRepository {
   }
 
   private String getIndexMapping(IndexMapping indexMapping) {
-    try (InputStream in =
-        getClass().getResourceAsStream(String.format(indexMapping.getIndexMappingFile(), language.toLowerCase()))) {
+    try (
+      InputStream in = getClass()
+        .getResourceAsStream(String.format(indexMapping.getIndexMappingFile(), language.toLowerCase()))
+    ) {
       assert in != null;
       return new String(in.readAllBytes());
     } catch (Exception e) {
@@ -223,9 +231,15 @@ public class SearchRepository {
         searchClient.createEntity(indexMapping.getIndexName(), entityId, doc);
       } catch (Exception ie) {
         LOG.error(
-            String.format(
-                "Issue in Creating new search document for entity [%s] and entityType [%s]. Reason[%s], Cause[%s], Stack [%s]",
-                entityId, entityType, ie.getMessage(), ie.getCause(), ExceptionUtils.getStackTrace(ie)));
+          String.format(
+            "Issue in Creating new search document for entity [%s] and entityType [%s]. Reason[%s], Cause[%s], Stack [%s]",
+            entityId,
+            entityType,
+            ie.getMessage(),
+            ie.getCause(),
+            ExceptionUtils.getStackTrace(ie)
+          )
+        );
       }
     }
   }
@@ -247,9 +261,15 @@ public class SearchRepository {
         searchClient.createTimeSeriesEntity(indexMapping.getIndexName(), entityId, doc);
       } catch (Exception ie) {
         LOG.error(
-            String.format(
-                "Issue in Creating new search document for entity [%s] and entityType [%s]. Reason[%s], Cause[%s], Stack [%s]",
-                entityId, entityType, ie.getMessage(), ie.getCause(), ExceptionUtils.getStackTrace(ie)));
+          String.format(
+            "Issue in Creating new search document for entity [%s] and entityType [%s]. Reason[%s], Cause[%s], Stack [%s]",
+            entityId,
+            entityType,
+            ie.getMessage(),
+            ie.getCause(),
+            ExceptionUtils.getStackTrace(ie)
+          )
+        );
       }
     }
   }
@@ -262,8 +282,10 @@ public class SearchRepository {
         IndexMapping indexMapping = entityIndexMap.get(entityType);
         String scriptTxt = DEFAULT_UPDATE_SCRIPT;
         Map<String, Object> doc = new HashMap<>();
-        if (entity.getChangeDescription() != null
-            && Objects.equals(entity.getVersion(), entity.getChangeDescription().getPreviousVersion())) {
+        if (
+          entity.getChangeDescription() != null &&
+          Objects.equals(entity.getVersion(), entity.getChangeDescription().getPreviousVersion())
+        ) {
           scriptTxt = getScriptWithParams(entity, doc);
         } else {
           SearchIndex elasticSearchIndex = searchIndexFactory.buildIndex(entityType, entity);
@@ -274,9 +296,15 @@ public class SearchRepository {
         propagateGlossaryTags(entityType, entity.getFullyQualifiedName(), entity.getChangeDescription());
       } catch (Exception ie) {
         LOG.error(
-            String.format(
-                "Issue in Updatind the search document for entity [%s] and entityType [%s]. Reason[%s], Cause[%s], Stack [%s]",
-                entityId, entityType, ie.getMessage(), ie.getCause(), ExceptionUtils.getStackTrace(ie)));
+          String.format(
+            "Issue in Updatind the search document for entity [%s] and entityType [%s]. Reason[%s], Cause[%s], Stack [%s]",
+            entityId,
+            entityType,
+            ie.getMessage(),
+            ie.getCause(),
+            ExceptionUtils.getStackTrace(ie)
+          )
+        );
       }
     }
   }
@@ -289,19 +317,27 @@ public class SearchRepository {
   }
 
   public void propagateInheritedFieldsToChildren(
-      String entityType, String entityId, ChangeDescription changeDescription, IndexMapping indexMapping) {
+    String entityType,
+    String entityId,
+    ChangeDescription changeDescription,
+    IndexMapping indexMapping
+  ) {
     if (changeDescription != null) {
       Pair<String, Map<String, Object>> updates = getInheritedFieldChanges(changeDescription);
       Pair<String, String> parentMatch;
-      if (!updates.getValue().isEmpty()
-          && updates.getValue().get("type").toString().equalsIgnoreCase("domain")
-          && (entityType.equalsIgnoreCase(Entity.DATABASE_SERVICE)
-              || entityType.equalsIgnoreCase(Entity.DASHBOARD_SERVICE)
-              || entityType.equalsIgnoreCase(Entity.MESSAGING_SERVICE)
-              || entityType.equalsIgnoreCase(Entity.PIPELINE_SERVICE)
-              || entityType.equalsIgnoreCase(Entity.MLMODEL_SERVICE)
-              || entityType.equalsIgnoreCase(Entity.STORAGE_SERVICE)
-              || entityType.equalsIgnoreCase(Entity.SEARCH_SERVICE))) {
+      if (
+        !updates.getValue().isEmpty() &&
+        updates.getValue().get("type").toString().equalsIgnoreCase("domain") &&
+        (
+          entityType.equalsIgnoreCase(Entity.DATABASE_SERVICE) ||
+          entityType.equalsIgnoreCase(Entity.DASHBOARD_SERVICE) ||
+          entityType.equalsIgnoreCase(Entity.MESSAGING_SERVICE) ||
+          entityType.equalsIgnoreCase(Entity.PIPELINE_SERVICE) ||
+          entityType.equalsIgnoreCase(Entity.MLMODEL_SERVICE) ||
+          entityType.equalsIgnoreCase(Entity.STORAGE_SERVICE) ||
+          entityType.equalsIgnoreCase(Entity.SEARCH_SERVICE)
+        )
+      ) {
         parentMatch = new ImmutablePair<>("service.id", entityId);
       } else {
         parentMatch = new ImmutablePair<>(entityType + ".id", entityId);
@@ -317,24 +353,29 @@ public class SearchRepository {
     if (changeDescription != null && entityType.equalsIgnoreCase(Entity.GLOSSARY_TERM)) {
       for (FieldChange field : changeDescription.getFieldsAdded()) {
         if (propagateFields.contains(field.getName())) {
-          List<TagLabel> tagLabels =
-              JsonUtils.readObjects((String) changeDescription.getFieldsAdded().get(0).getNewValue(), TagLabel.class);
+          List<TagLabel> tagLabels = JsonUtils.readObjects(
+            (String) changeDescription.getFieldsAdded().get(0).getNewValue(),
+            TagLabel.class
+          );
           tagLabels.forEach(tagLabel -> tagLabel.setLabelType(TagLabel.LabelType.DERIVED));
           fieldData.put("tagAdded", tagLabels);
         }
       }
       for (FieldChange field : changeDescription.getFieldsDeleted()) {
         if (propagateFields.contains(field.getName())) {
-          List<TagLabel> tagLabels =
-              JsonUtils.readObjects((String) changeDescription.getFieldsDeleted().get(0).getOldValue(), TagLabel.class);
+          List<TagLabel> tagLabels = JsonUtils.readObjects(
+            (String) changeDescription.getFieldsDeleted().get(0).getOldValue(),
+            TagLabel.class
+          );
           tagLabels.forEach(tagLabel -> tagLabel.setLabelType(TagLabel.LabelType.DERIVED));
           fieldData.put("tagDeleted", tagLabels);
         }
       }
       searchClient.updateChildren(
-          GLOBAL_SEARCH_ALIAS,
-          new ImmutablePair<>("tags.tagFQN", glossaryFQN),
-          new ImmutablePair<>(UPDATE_ADDED_DELETE_GLOSSARY_TAGS, fieldData));
+        GLOBAL_SEARCH_ALIAS,
+        new ImmutablePair<>("tags.tagFQN", glossaryFQN),
+        new ImmutablePair<>(UPDATE_ADDED_DELETE_GLOSSARY_TAGS, fieldData)
+      );
     }
   }
 
@@ -345,8 +386,10 @@ public class SearchRepository {
       for (FieldChange field : changeDescription.getFieldsAdded()) {
         if (inheritableFields.contains(field.getName())) {
           try {
-            EntityReference entityReference =
-                JsonUtils.readValue(field.getNewValue().toString(), EntityReference.class);
+            EntityReference entityReference = JsonUtils.readValue(
+              field.getNewValue().toString(),
+              EntityReference.class
+            );
             scriptTxt.append(String.format(PROPAGATE_ENTITY_REFERENCE_FIELD_SCRIPT, field.getName(), field.getName()));
             fieldData = JsonUtils.getMap(entityReference);
           } catch (UnhandledServerException e) {
@@ -357,17 +400,23 @@ public class SearchRepository {
       for (FieldChange field : changeDescription.getFieldsUpdated()) {
         if (inheritableFields.contains(field.getName())) {
           try {
-            EntityReference oldEntityReference =
-                JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
-            EntityReference newEntityReference =
-                JsonUtils.readValue(field.getNewValue().toString(), EntityReference.class);
+            EntityReference oldEntityReference = JsonUtils.readValue(
+              field.getOldValue().toString(),
+              EntityReference.class
+            );
+            EntityReference newEntityReference = JsonUtils.readValue(
+              field.getNewValue().toString(),
+              EntityReference.class
+            );
             scriptTxt.append(
-                String.format(
-                    UPDATE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT,
-                    field.getName(),
-                    field.getName(),
-                    oldEntityReference.getId().toString(),
-                    field.getName()));
+              String.format(
+                UPDATE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT,
+                field.getName(),
+                field.getName(),
+                oldEntityReference.getId().toString(),
+                field.getName()
+              )
+            );
             fieldData = JsonUtils.getMap(newEntityReference);
           } catch (UnhandledServerException e) {
             scriptTxt.append(String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getNewValue()));
@@ -377,15 +426,19 @@ public class SearchRepository {
       for (FieldChange field : changeDescription.getFieldsDeleted()) {
         if (inheritableFields.contains(field.getName())) {
           try {
-            EntityReference entityReference =
-                JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
+            EntityReference entityReference = JsonUtils.readValue(
+              field.getOldValue().toString(),
+              EntityReference.class
+            );
             scriptTxt.append(
-                String.format(
-                    REMOVE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT,
-                    field.getName(),
-                    field.getName(),
-                    entityReference.getId().toString(),
-                    field.getName()));
+              String.format(
+                REMOVE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT,
+                field.getName(),
+                field.getName(),
+                entityReference.getId().toString(),
+                field.getName()
+              )
+            );
             fieldData = JsonUtils.getMap(entityReference);
           } catch (UnhandledServerException e) {
             scriptTxt.append(String.format(REMOVE_PROPAGATED_FIELD_SCRIPT, field.getName()));
@@ -402,9 +455,14 @@ public class SearchRepository {
       searchClient.deleteByScript(indexMapping.getIndexName(), scriptTxt, params);
     } catch (Exception ie) {
       LOG.error(
-          String.format(
-              "Issue in Creating new search document for entityType [%s]. Reason[%s], Cause[%s], Stack [%s]",
-              entityType, ie.getMessage(), ie.getCause(), ExceptionUtils.getStackTrace(ie)));
+        String.format(
+          "Issue in Creating new search document for entityType [%s]. Reason[%s], Cause[%s], Stack [%s]",
+          entityType,
+          ie.getMessage(),
+          ie.getCause(),
+          ExceptionUtils.getStackTrace(ie)
+        )
+      );
     }
   }
 
@@ -418,9 +476,15 @@ public class SearchRepository {
         deleteOrUpdateChildren(entity, indexMapping);
       } catch (Exception ie) {
         LOG.error(
-            String.format(
-                "Issue in Deleting the search document for entityID [%s] and entityType [%s]. Reason[%s], Cause[%s], Stack [%s]",
-                entityId, entityType, ie.getMessage(), ie.getCause(), ExceptionUtils.getStackTrace(ie)));
+          String.format(
+            "Issue in Deleting the search document for entityID [%s] and entityType [%s]. Reason[%s], Cause[%s], Stack [%s]",
+            entityId,
+            entityType,
+            ie.getMessage(),
+            ie.getCause(),
+            ExceptionUtils.getStackTrace(ie)
+          )
+        );
       }
     }
   }
@@ -436,9 +500,15 @@ public class SearchRepository {
         softDeleteOrRestoredChildren(entity, indexMapping, delete);
       } catch (Exception ie) {
         LOG.error(
-            String.format(
-                "Issue in Soft Deleting the search document for entityID [%s] and entityType [%s]. Reason[%s], Cause[%s], Stack [%s]",
-                entityId, entityType, ie.getMessage(), ie.getCause(), ExceptionUtils.getStackTrace(ie)));
+          String.format(
+            "Issue in Soft Deleting the search document for entityID [%s] and entityType [%s]. Reason[%s], Cause[%s], Stack [%s]",
+            entityId,
+            entityType,
+            ie.getMessage(),
+            ie.getCause(),
+            ExceptionUtils.getStackTrace(ie)
+          )
+        );
       }
     }
   }
@@ -449,30 +519,37 @@ public class SearchRepository {
     switch (entityType) {
       case Entity.DOMAIN:
         searchClient.updateChildren(
-            GLOBAL_SEARCH_ALIAS,
-            new ImmutablePair<>(entityType + ".id", docId),
-            new ImmutablePair<>(REMOVE_DOMAINS_CHILDREN_SCRIPT, null));
+          GLOBAL_SEARCH_ALIAS,
+          new ImmutablePair<>(entityType + ".id", docId),
+          new ImmutablePair<>(REMOVE_DOMAINS_CHILDREN_SCRIPT, null)
+        );
         // we are doing below because we want to delete the data products with domain when domain is deleted
         searchClient.deleteEntityByFields(
-            indexMapping.getAlias(), List.of(new ImmutablePair<>(entityType + ".id", docId)));
+          indexMapping.getAlias(),
+          List.of(new ImmutablePair<>(entityType + ".id", docId))
+        );
         break;
       case Entity.TAG:
       case Entity.GLOSSARY_TERM:
         searchClient.updateChildren(
-            GLOBAL_SEARCH_ALIAS,
-            new ImmutablePair<>("tags.tagFQN", entity.getFullyQualifiedName()),
-            new ImmutablePair<>(REMOVE_TAGS_CHILDREN_SCRIPT, null));
+          GLOBAL_SEARCH_ALIAS,
+          new ImmutablePair<>("tags.tagFQN", entity.getFullyQualifiedName()),
+          new ImmutablePair<>(REMOVE_TAGS_CHILDREN_SCRIPT, null)
+        );
         break;
       case Entity.TEST_SUITE:
         TestSuite testSuite = (TestSuite) entity;
         if (Boolean.TRUE.equals(testSuite.getExecutable())) {
           searchClient.deleteEntityByFields(
-              indexMapping.getAlias(), List.of(new ImmutablePair<>("testSuites.id", docId)));
+            indexMapping.getAlias(),
+            List.of(new ImmutablePair<>("testSuites.id", docId))
+          );
         } else {
           searchClient.updateChildren(
-              indexMapping.getAlias(),
-              new ImmutablePair<>("testSuites.id", testSuite.getId().toString()),
-              new ImmutablePair<>(REMOVE_TEST_SUITE_CHILDREN_SCRIPT, null));
+            indexMapping.getAlias(),
+            new ImmutablePair<>("testSuites.id", testSuite.getId().toString()),
+            new ImmutablePair<>(REMOVE_TEST_SUITE_CHILDREN_SCRIPT, null)
+          );
         }
         break;
       case Entity.DASHBOARD_SERVICE:
@@ -486,7 +563,9 @@ public class SearchRepository {
         break;
       default:
         searchClient.deleteEntityByFields(
-            indexMapping.getAlias(), List.of(new ImmutablePair<>(entityType + ".id", docId)));
+          indexMapping.getAlias(),
+          List.of(new ImmutablePair<>(entityType + ".id", docId))
+        );
     }
   }
 
@@ -503,11 +582,17 @@ public class SearchRepository {
       case Entity.STORAGE_SERVICE:
       case Entity.SEARCH_SERVICE:
         searchClient.softDeleteOrRestoreChildren(
-            indexMapping.getAlias(), scriptTxt, List.of(new ImmutablePair<>("service.id", docId)));
+          indexMapping.getAlias(),
+          scriptTxt,
+          List.of(new ImmutablePair<>("service.id", docId))
+        );
         break;
       default:
         searchClient.softDeleteOrRestoreChildren(
-            indexMapping.getAlias(), scriptTxt, List.of(new ImmutablePair<>(entityType + ".id", docId)));
+          indexMapping.getAlias(),
+          scriptTxt,
+          List.of(new ImmutablePair<>(entityType + ".id", docId))
+        );
         break;
     }
   }
@@ -549,12 +634,13 @@ public class SearchRepository {
         fieldAddParams.put(fieldChange.getName(), JsonUtils.getMap(usageSummary));
         scriptTxt.append("ctx._source.usageSummary = params.usageSummary;");
       }
-      if (entity.getEntityReference().getType().equals(QUERY)
-          && fieldChange.getName().equalsIgnoreCase("queryUsedIn")) {
+      if (
+        entity.getEntityReference().getType().equals(QUERY) && fieldChange.getName().equalsIgnoreCase("queryUsedIn")
+      ) {
         fieldAddParams.put(
-            fieldChange.getName(),
-            JsonUtils.convertValue(
-                fieldChange.getNewValue(), new TypeReference<List<LinkedHashMap<String, String>>>() {}));
+          fieldChange.getName(),
+          JsonUtils.convertValue(fieldChange.getNewValue(), new TypeReference<List<LinkedHashMap<String, String>>>() {})
+        );
         scriptTxt.append("ctx._source.queryUsedIn = params.queryUsedIn;");
       }
       if (fieldChange.getName().equalsIgnoreCase("votes")) {
@@ -587,27 +673,38 @@ public class SearchRepository {
   }
 
   public SortedMap<Long, List<Object>> getSortedDate(
-      String team,
-      Long scheduleTime,
-      Long currentTime,
-      DataInsightChartResult.DataInsightChartType chartType,
-      String indexName)
-      throws IOException, ParseException {
+    String team,
+    Long scheduleTime,
+    Long currentTime,
+    DataInsightChartResult.DataInsightChartType chartType,
+    String indexName
+  )
+    throws IOException, ParseException {
     return searchClient.getSortedDate(team, scheduleTime, currentTime, chartType, indexName);
   }
 
   public Response listDataInsightChartResult(
-      Long startTs,
-      Long endTs,
-      String tier,
-      String team,
-      DataInsightChartResult.DataInsightChartType dataInsightChartName,
-      Integer size,
-      Integer from,
-      String queryFilter,
-      String dataReportIndex)
-      throws IOException, ParseException {
+    Long startTs,
+    Long endTs,
+    String tier,
+    String team,
+    DataInsightChartResult.DataInsightChartType dataInsightChartName,
+    Integer size,
+    Integer from,
+    String queryFilter,
+    String dataReportIndex
+  )
+    throws IOException, ParseException {
     return searchClient.listDataInsightChartResult(
-        startTs, endTs, tier, team, dataInsightChartName, size, from, queryFilter, dataReportIndex);
+      startTs,
+      endTs,
+      tier,
+      team,
+      dataInsightChartName,
+      size,
+      from,
+      queryFilter,
+      dataReportIndex
+    );
   }
 }

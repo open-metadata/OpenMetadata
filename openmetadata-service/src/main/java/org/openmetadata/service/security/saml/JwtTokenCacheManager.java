@@ -23,9 +23,13 @@ import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
 @Slf4j
 public class JwtTokenCacheManager {
+
   private static final JwtTokenCacheManager INSTANCE = new JwtTokenCacheManager();
-  private static final ExpiringMap<String, LogoutRequest> tokenEventMap =
-      ExpiringMap.builder().variableExpiration().maxSize(1000).build();
+  private static final ExpiringMap<String, LogoutRequest> tokenEventMap = ExpiringMap
+    .builder()
+    .variableExpiration()
+    .maxSize(1000)
+    .build();
 
   private JwtTokenCacheManager() {
     /* Private constructor for singleton */
@@ -39,15 +43,19 @@ public class JwtTokenCacheManager {
     String token = logoutRequest.getToken();
     if (tokenEventMap.containsKey(token)) {
       LOG.info(
-          String.format("Log out token for user [%s] is already present in the cache", logoutRequest.getUsername()));
-
+        String.format("Log out token for user [%s] is already present in the cache", logoutRequest.getUsername())
+      );
     } else {
       Date tokenExpiryDate = JWTTokenGenerator.getInstance().getTokenExpiryFromJWT(token);
       long ttlForToken = getTTLForToken(tokenExpiryDate);
       LOG.info(
-          String.format(
-              "Logout token cache set for [%s] with a TTL of [%s] seconds. Token is due expiry at [%s]",
-              logoutRequest.getUsername(), ttlForToken, tokenExpiryDate));
+        String.format(
+          "Logout token cache set for [%s] with a TTL of [%s] seconds. Token is due expiry at [%s]",
+          logoutRequest.getUsername(),
+          ttlForToken,
+          tokenExpiryDate
+        )
+      );
       tokenEventMap.put(token, logoutRequest, ttlForToken, TimeUnit.SECONDS);
     }
   }

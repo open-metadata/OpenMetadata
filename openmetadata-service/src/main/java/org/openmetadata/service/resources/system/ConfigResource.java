@@ -43,6 +43,7 @@ import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 @Produces(MediaType.APPLICATION_JSON)
 @Collection(name = "config")
 public class ConfigResource {
+
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
   private final JWTTokenGenerator jwtTokenGenerator;
 
@@ -57,17 +58,19 @@ public class ConfigResource {
   @GET
   @Path(("/auth"))
   @Operation(
-      operationId = "getAuthConfiguration",
-      summary = "Get auth configuration",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Auth configuration",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = AuthenticationConfiguration.class)))
-      })
+    operationId = "getAuthConfiguration",
+    summary = "Get auth configuration",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "Auth configuration",
+        content = @Content(
+          mediaType = "application/json",
+          schema = @Schema(implementation = AuthenticationConfiguration.class)
+        )
+      )
+    }
+  )
   public AuthenticationConfiguration getAuthConfig() {
     AuthenticationConfiguration authenticationConfiguration = new AuthenticationConfiguration();
     if (openMetadataApplicationConfig.getAuthenticationConfiguration() != null) {
@@ -79,8 +82,9 @@ public class ConfigResource {
         // Remove Saml Fields
         SamlSSOClientConfig ssoClientConfig = new SamlSSOClientConfig();
         ssoClientConfig.setIdp(
-            new IdentityProviderConfig()
-                .withAuthorityUrl(authenticationConfiguration.getSamlConfiguration().getIdp().getAuthorityUrl()));
+          new IdentityProviderConfig()
+          .withAuthorityUrl(authenticationConfiguration.getSamlConfiguration().getIdp().getAuthorityUrl())
+        );
         authenticationConfiguration.setSamlConfiguration(ssoClientConfig);
       }
     }
@@ -90,17 +94,19 @@ public class ConfigResource {
   @GET
   @Path(("/customLogoConfiguration"))
   @Operation(
-      operationId = "getCustomLogoConfiguration",
-      summary = "Get Custom Logo configuration",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Logo Configuration",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = AuthenticationConfiguration.class)))
-      })
+    operationId = "getCustomLogoConfiguration",
+    summary = "Get Custom Logo configuration",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "Logo Configuration",
+        content = @Content(
+          mediaType = "application/json",
+          schema = @Schema(implementation = AuthenticationConfiguration.class)
+        )
+      )
+    }
+  )
   public LogoConfiguration getCustomLogoConfig() {
     return SettingsCache.getSetting(SettingsType.CUSTOM_LOGO_CONFIGURATION, LogoConfiguration.class);
   }
@@ -108,17 +114,19 @@ public class ConfigResource {
   @GET
   @Path(("/authorizer"))
   @Operation(
-      operationId = "getAuthorizerConfig",
-      summary = "Get authorizer configuration",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Authorizer configuration",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = AuthorizerConfiguration.class)))
-      })
+    operationId = "getAuthorizerConfig",
+    summary = "Get authorizer configuration",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "Authorizer configuration",
+        content = @Content(
+          mediaType = "application/json",
+          schema = @Schema(implementation = AuthorizerConfiguration.class)
+        )
+      )
+    }
+  )
   public AuthorizerConfiguration getAuthorizerConfig() {
     AuthorizerConfiguration authorizerConfiguration = new AuthorizerConfiguration();
     if (openMetadataApplicationConfig.getAuthorizerConfiguration() != null) {
@@ -130,15 +138,16 @@ public class ConfigResource {
   @GET
   @Path(("/loginConfig"))
   @Operation(
-      operationId = "getLoginConfiguration",
-      summary = "Get Login configuration",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Get Login configuration",
-            content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = LoginConfiguration.class)))
-      })
+    operationId = "getLoginConfiguration",
+    summary = "Get Login configuration",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "Get Login configuration",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = LoginConfiguration.class))
+      )
+    }
+  )
   public LoginConfiguration getLoginConfiguration() {
     return SettingsCache.getSetting(SettingsType.LOGIN_CONFIGURATION, LoginConfiguration.class);
   }
@@ -146,22 +155,25 @@ public class ConfigResource {
   @GET
   @Path(("/pipeline-service-client"))
   @Operation(
-      operationId = "getAirflowConfiguration",
-      summary = "Get airflow configuration",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Airflow configuration",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = PipelineServiceAPIClientConfig.class)))
-      })
+    operationId = "getAirflowConfiguration",
+    summary = "Get airflow configuration",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "Airflow configuration",
+        content = @Content(
+          mediaType = "application/json",
+          schema = @Schema(implementation = PipelineServiceAPIClientConfig.class)
+        )
+      )
+    }
+  )
   public PipelineServiceAPIClientConfig getPipelineServiceConfig() {
     PipelineServiceAPIClientConfig pipelineServiceClientConfigForAPI = new PipelineServiceAPIClientConfig();
     if (openMetadataApplicationConfig.getPipelineServiceClientConfiguration() != null) {
       pipelineServiceClientConfigForAPI.setApiEndpoint(
-          openMetadataApplicationConfig.getPipelineServiceClientConfiguration().getApiEndpoint());
+        openMetadataApplicationConfig.getPipelineServiceClientConfiguration().getApiEndpoint()
+      );
     }
     return pipelineServiceClientConfigForAPI;
   }
@@ -169,14 +181,16 @@ public class ConfigResource {
   @GET
   @Path(("/jwks"))
   @Operation(
-      operationId = "getJWKSResponse",
-      summary = "Get JWKS public key",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "JWKS public key",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = JWKSResponse.class)))
-      })
+    operationId = "getJWKSResponse",
+    summary = "Get JWKS public key",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "JWKS public key",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = JWKSResponse.class))
+      )
+    }
+  )
   public JWKSResponse getJWKSResponse() {
     return jwtTokenGenerator.getJWKSResponse();
   }

@@ -8,5 +8,6 @@ import java.lang.annotation.Target;
 
 @Inherited
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.TYPE, ElementType.CONSTRUCTOR})
-public @interface Repository {}
+@Target({ ElementType.TYPE, ElementType.CONSTRUCTOR })
+public @interface Repository {
+}

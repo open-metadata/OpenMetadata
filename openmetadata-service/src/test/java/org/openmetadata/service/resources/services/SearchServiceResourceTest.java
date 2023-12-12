@@ -35,37 +35,38 @@ import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 public class SearchServiceResourceTest extends ServiceResourceTest<SearchService, CreateSearchService> {
+
   public SearchServiceResourceTest() {
     super(
-        Entity.SEARCH_SERVICE,
-        SearchService.class,
-        SearchServiceResource.SearchServiceList.class,
-        "services/searchServices",
-        "owner");
+      Entity.SEARCH_SERVICE,
+      SearchService.class,
+      SearchServiceResource.SearchServiceList.class,
+      "services/searchServices",
+      "owner"
+    );
     this.supportsPatch = false;
   }
 
   public void setupSearchService(TestInfo test) throws HttpResponseException {
     SearchServiceResourceTest esSearchServiceResourceTest = new SearchServiceResourceTest();
-    CreateSearchService createSearchService =
-        esSearchServiceResourceTest
-            .createRequest(test, 1)
-            .withName("elasticSearch")
-            .withServiceType(CreateSearchService.SearchServiceType.ElasticSearch)
-            .withConnection(TestUtils.ELASTIC_SEARCH_CONNECTION);
+    CreateSearchService createSearchService = esSearchServiceResourceTest
+      .createRequest(test, 1)
+      .withName("elasticSearch")
+      .withServiceType(CreateSearchService.SearchServiceType.ElasticSearch)
+      .withConnection(TestUtils.ELASTIC_SEARCH_CONNECTION);
 
-    SearchService esSearchService =
-        new SearchServiceResourceTest().createEntity(createSearchService, ADMIN_AUTH_HEADERS);
+    SearchService esSearchService = new SearchServiceResourceTest()
+    .createEntity(createSearchService, ADMIN_AUTH_HEADERS);
     ELASTICSEARCH_SEARCH_SERVICE_REFERENCE = esSearchService.getEntityReference();
     SearchServiceResourceTest osSearchServiceResourceTest = new SearchServiceResourceTest();
     createSearchService =
-        osSearchServiceResourceTest
-            .createRequest(test, 1)
-            .withName("opensearch")
-            .withServiceType(CreateSearchService.SearchServiceType.OpenSearch)
-            .withConnection(TestUtils.OPEN_SEARCH_CONNECTION);
-    SearchService osSearchService =
-        new SearchServiceResourceTest().createEntity(createSearchService, ADMIN_AUTH_HEADERS);
+      osSearchServiceResourceTest
+        .createRequest(test, 1)
+        .withName("opensearch")
+        .withServiceType(CreateSearchService.SearchServiceType.OpenSearch)
+        .withConnection(TestUtils.OPEN_SEARCH_CONNECTION);
+    SearchService osSearchService = new SearchServiceResourceTest()
+    .createEntity(createSearchService, ADMIN_AUTH_HEADERS);
     OPENSEARCH_SEARCH_SERVICE_REFERENCE = osSearchService.getEntityReference();
   }
 
@@ -73,9 +74,10 @@ public class SearchServiceResourceTest extends ServiceResourceTest<SearchService
   void post_withoutRequiredFields_400_badRequest(TestInfo test) {
     // Create StorageService with mandatory serviceType field empty
     assertResponse(
-        () -> createEntity(createRequest(test).withServiceType(null), ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "[serviceType must not be null]");
+      () -> createEntity(createRequest(test).withServiceType(null), ADMIN_AUTH_HEADERS),
+      BAD_REQUEST,
+      "[serviceType must not be null]"
+    );
   }
 
   @Test
@@ -92,13 +94,15 @@ public class SearchServiceResourceTest extends ServiceResourceTest<SearchService
 
   @Test
   void put_updateService_as_admin_2xx(TestInfo test) throws IOException, URISyntaxException {
-    SearchConnection connection1 =
-        new SearchConnection().withConfig(new ElasticSearchConnection().withHostPort(new URI("http://localhost:9300")));
-    SearchService service =
-        createAndCheckEntity(createRequest(test).withDescription(null).withConnection(connection1), ADMIN_AUTH_HEADERS);
+    SearchConnection connection1 = new SearchConnection()
+    .withConfig(new ElasticSearchConnection().withHostPort(new URI("http://localhost:9300")));
+    SearchService service = createAndCheckEntity(
+      createRequest(test).withDescription(null).withConnection(connection1),
+      ADMIN_AUTH_HEADERS
+    );
 
-    ElasticSearchConnection credentials2 =
-        new ElasticSearchConnection().withHostPort(new URI("https://localhost:9400"));
+    ElasticSearchConnection credentials2 = new ElasticSearchConnection()
+    .withHostPort(new URI("https://localhost:9400"));
     SearchConnection connection2 = new SearchConnection().withConfig(credentials2);
 
     // Update SearchService description and connection
@@ -129,8 +133,11 @@ public class SearchServiceResourceTest extends ServiceResourceTest<SearchService
   }
 
   public SearchService putTestConnectionResult(
-      UUID serviceId, TestConnectionResult testConnectionResult, Map<String, String> authHeaders)
-      throws HttpResponseException {
+    UUID serviceId,
+    TestConnectionResult testConnectionResult,
+    Map<String, String> authHeaders
+  )
+    throws HttpResponseException {
     WebTarget target = getResource(serviceId).path("/testConnectionResult");
     return TestUtils.put(target, testConnectionResult, SearchService.class, OK, authHeaders);
   }
@@ -138,16 +145,20 @@ public class SearchServiceResourceTest extends ServiceResourceTest<SearchService
   @Override
   public CreateSearchService createRequest(String name) {
     return new CreateSearchService()
-        .withName(name)
-        .withServiceType(CreateSearchService.SearchServiceType.ElasticSearch)
-        .withConnection(
-            new SearchConnection()
-                .withConfig(new ElasticSearchConnection().withHostPort(CommonUtil.getUri("http://localhost:9200"))));
+      .withName(name)
+      .withServiceType(CreateSearchService.SearchServiceType.ElasticSearch)
+      .withConnection(
+        new SearchConnection()
+        .withConfig(new ElasticSearchConnection().withHostPort(CommonUtil.getUri("http://localhost:9200")))
+      );
   }
 
   @Override
   public void validateCreatedEntity(
-      SearchService service, CreateSearchService createRequest, Map<String, String> authHeaders) {
+    SearchService service,
+    CreateSearchService createRequest,
+    Map<String, String> authHeaders
+  ) {
     assertEquals(createRequest.getName(), service.getName());
     SearchConnection expectedConnection = createRequest.getConnection();
     SearchConnection actualConnection = service.getConnection();
@@ -161,19 +172,19 @@ public class SearchServiceResourceTest extends ServiceResourceTest<SearchService
 
   @Override
   public SearchService validateGetWithDifferentFields(SearchService service, boolean byName)
-      throws HttpResponseException {
+    throws HttpResponseException {
     String fields = "";
     service =
-        byName
-            ? getEntityByName(service.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
+      byName
+        ? getEntityByName(service.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+        : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
     TestUtils.assertListNull(service.getOwner());
 
     fields = "owner,tags";
     service =
-        byName
-            ? getEntityByName(service.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
+      byName
+        ? getEntityByName(service.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+        : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
     // Checks for other owner, tags, and followers is done in the base class
     return service;
   }
@@ -191,9 +202,10 @@ public class SearchServiceResourceTest extends ServiceResourceTest<SearchService
   }
 
   private void validateConnection(
-      SearchConnection expectedConnection,
-      SearchConnection actualConnection,
-      CreateSearchService.SearchServiceType serviceType) {
+    SearchConnection expectedConnection,
+    SearchConnection actualConnection,
+    CreateSearchService.SearchServiceType serviceType
+  ) {
     if (expectedConnection != null && actualConnection != null) {
       if (serviceType == CreateSearchService.SearchServiceType.ElasticSearch) {
         ElasticSearchConnection expectedESConnection = (ElasticSearchConnection) expectedConnection.getConfig();

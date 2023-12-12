@@ -16,12 +16,15 @@ import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class MigrationUtil {
+
   private MigrationUtil() {}
 
   public static void fixExecutableTestSuiteFQN(CollectionDAO collectionDAO) {
     TestSuiteRepository testSuiteRepository = (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
-    List<TestSuite> testSuites =
-        testSuiteRepository.listAll(new EntityUtil.Fields(Set.of("id")), new ListFilter(Include.ALL));
+    List<TestSuite> testSuites = testSuiteRepository.listAll(
+      new EntityUtil.Fields(Set.of("id")),
+      new ListFilter(Include.ALL)
+    );
     for (TestSuite suite : testSuites) {
       if (Boolean.TRUE.equals(suite.getExecutable()) && suite.getExecutableEntityReference() != null) {
         String tableFQN = suite.getExecutableEntityReference().getFullyQualifiedName();
@@ -43,7 +46,8 @@ public class MigrationUtil {
       for (String json : userEntities) {
         User userEntity = JsonUtils.readValue(json, User.class);
         userEntity.setFullyQualifiedName(
-            EntityInterfaceUtil.quoteName(userEntity.getFullyQualifiedName().toLowerCase()));
+          EntityInterfaceUtil.quoteName(userEntity.getFullyQualifiedName().toLowerCase())
+        );
         daoCollection.userDAO().update(userEntity);
       }
       offset = offset + limit;

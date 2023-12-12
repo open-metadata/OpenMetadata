@@ -71,13 +71,15 @@ import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
+
   private static final String SCHEMA_TEXT =
-      "{\"namespace\":\"org.open-metadata.kafka\",\"name\":\"Customer\",\"type\":\"record\","
-          + "\"fields\":[{\"name\":\"id\",\"type\":\"string\"},{\"name\":\"first_name\",\"type\":\"string\"},{\"name\":\"last_name\",\"type\":\"string\"},"
-          + "{\"name\":\"email\",\"type\":\"string\"},{\"name\":\"address_line_1\",\"type\":\"string\"},{\"name\":\"address_line_2\",\"type\":\"string\"},"
-          + "{\"name\":\"post_code\",\"type\":\"string\"},{\"name\":\"country\",\"type\":\"string\"}]}";
-  private static final MessageSchema schema =
-      new MessageSchema().withSchemaText(SCHEMA_TEXT).withSchemaType(SchemaType.Avro);
+    "{\"namespace\":\"org.open-metadata.kafka\",\"name\":\"Customer\",\"type\":\"record\"," +
+    "\"fields\":[{\"name\":\"id\",\"type\":\"string\"},{\"name\":\"first_name\",\"type\":\"string\"},{\"name\":\"last_name\",\"type\":\"string\"}," +
+    "{\"name\":\"email\",\"type\":\"string\"},{\"name\":\"address_line_1\",\"type\":\"string\"},{\"name\":\"address_line_2\",\"type\":\"string\"}," +
+    "{\"name\":\"post_code\",\"type\":\"string\"},{\"name\":\"country\",\"type\":\"string\"}]}";
+  private static final MessageSchema schema = new MessageSchema()
+    .withSchemaText(SCHEMA_TEXT)
+    .withSchemaType(SchemaType.Avro);
 
   public TopicResourceTest() {
     super(Entity.TOPIC, Topic.class, TopicList.class, "topics", TopicResource.FIELDS);
@@ -88,26 +90,29 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
   void post_topicWithoutRequiredFields_4xx(TestInfo test) {
     // Service is required field
     assertResponse(
-        () -> createEntity(createRequest(test).withService(null), ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "[service must not be null]");
+      () -> createEntity(createRequest(test).withService(null), ADMIN_AUTH_HEADERS),
+      BAD_REQUEST,
+      "[service must not be null]"
+    );
 
     // Partitions is required field
     assertResponse(
-        () -> createEntity(createRequest(test).withPartitions(null), ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "[partitions must not be null]");
+      () -> createEntity(createRequest(test).withPartitions(null), ADMIN_AUTH_HEADERS),
+      BAD_REQUEST,
+      "[partitions must not be null]"
+    );
 
     // Partitions must be >= 1
     assertResponse(
-        () -> createEntity(createRequest(test).withPartitions(0), ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "[partitions must be greater than or equal to 1]");
+      () -> createEntity(createRequest(test).withPartitions(0), ADMIN_AUTH_HEADERS),
+      BAD_REQUEST,
+      "[partitions must be greater than or equal to 1]"
+    );
   }
 
   @Test
   void post_topicWithDifferentService_200_ok(TestInfo test) throws IOException {
-    String[] differentServices = {REDPANDA_REFERENCE.getName(), KAFKA_REFERENCE.getName()};
+    String[] differentServices = { REDPANDA_REFERENCE.getName(), KAFKA_REFERENCE.getName() };
 
     // Create topic for each service and test APIs
     for (String service : differentServices) {
@@ -127,30 +132,29 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
   @Test
   void put_topicAttributes_200_ok(TestInfo test) throws IOException {
     MessageSchema schema = new MessageSchema().withSchemaText("abc").withSchemaType(SchemaType.Avro);
-    CreateTopic createTopic =
-        createRequest(test)
-            .withOwner(USER1_REF)
-            .withMaximumMessageSize(1)
-            .withMinimumInSyncReplicas(1)
-            .withPartitions(1)
-            .withReplicationFactor(1)
-            .withRetentionTime(1.0)
-            .withRetentionSize(1.0)
-            .withMessageSchema(schema)
-            .withCleanupPolicies(List.of(CleanupPolicy.COMPACT));
+    CreateTopic createTopic = createRequest(test)
+      .withOwner(USER1_REF)
+      .withMaximumMessageSize(1)
+      .withMinimumInSyncReplicas(1)
+      .withPartitions(1)
+      .withReplicationFactor(1)
+      .withRetentionTime(1.0)
+      .withRetentionSize(1.0)
+      .withMessageSchema(schema)
+      .withCleanupPolicies(List.of(CleanupPolicy.COMPACT));
 
     // Patch and update the topic
     Topic topic = createEntity(createTopic, ADMIN_AUTH_HEADERS);
     createTopic
-        .withOwner(TEAM11_REF)
-        .withMinimumInSyncReplicas(2)
-        .withMaximumMessageSize(2)
-        .withPartitions(2)
-        .withReplicationFactor(2)
-        .withRetentionTime(2.0)
-        .withRetentionSize(2.0)
-        .withMessageSchema(new MessageSchema().withSchemaText("bcd").withSchemaType(SchemaType.Avro))
-        .withCleanupPolicies(List.of(CleanupPolicy.DELETE));
+      .withOwner(TEAM11_REF)
+      .withMinimumInSyncReplicas(2)
+      .withMaximumMessageSize(2)
+      .withPartitions(2)
+      .withReplicationFactor(2)
+      .withRetentionTime(2.0)
+      .withRetentionSize(2.0)
+      .withMessageSchema(new MessageSchema().withSchemaText("bcd").withSchemaType(SchemaType.Avro))
+      .withCleanupPolicies(List.of(CleanupPolicy.DELETE));
 
     ChangeDescription change = getChangeDescription(topic, MINOR_UPDATE);
     fieldUpdated(change, FIELD_OWNER, USER1_REF, TEAM11_REF);
@@ -169,28 +173,27 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
 
   @Test
   void put_topicSchemaFields_200_ok(TestInfo test) throws IOException {
-    List<Field> fields =
-        Arrays.asList(
-            getField("id", FieldDataType.STRING, null),
-            getField("first_name", FieldDataType.STRING, null),
-            getField("last_name", FieldDataType.STRING, null),
-            getField("email", FieldDataType.STRING, null),
-            getField("address_line_1", FieldDataType.STRING, null),
-            getField("address_line_2", FieldDataType.STRING, null),
-            getField("post_code", FieldDataType.STRING, null),
-            getField("county", FieldDataType.STRING, PERSONAL_DATA_TAG_LABEL));
+    List<Field> fields = Arrays.asList(
+      getField("id", FieldDataType.STRING, null),
+      getField("first_name", FieldDataType.STRING, null),
+      getField("last_name", FieldDataType.STRING, null),
+      getField("email", FieldDataType.STRING, null),
+      getField("address_line_1", FieldDataType.STRING, null),
+      getField("address_line_2", FieldDataType.STRING, null),
+      getField("post_code", FieldDataType.STRING, null),
+      getField("county", FieldDataType.STRING, PERSONAL_DATA_TAG_LABEL)
+    );
 
-    CreateTopic createTopic =
-        createRequest(test)
-            .withOwner(USER1_REF)
-            .withMaximumMessageSize(1)
-            .withMinimumInSyncReplicas(1)
-            .withPartitions(1)
-            .withReplicationFactor(1)
-            .withRetentionTime(1.0)
-            .withRetentionSize(1.0)
-            .withMessageSchema(schema.withSchemaFields(fields))
-            .withCleanupPolicies(List.of(CleanupPolicy.COMPACT));
+    CreateTopic createTopic = createRequest(test)
+      .withOwner(USER1_REF)
+      .withMaximumMessageSize(1)
+      .withMinimumInSyncReplicas(1)
+      .withPartitions(1)
+      .withReplicationFactor(1)
+      .withRetentionTime(1.0)
+      .withRetentionSize(1.0)
+      .withMessageSchema(schema.withSchemaFields(fields))
+      .withCleanupPolicies(List.of(CleanupPolicy.COMPACT));
 
     // Patch and update the topic
     Topic topic = createEntity(createTopic, ADMIN_AUTH_HEADERS);
@@ -200,42 +203,41 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
 
   @Test
   void patch_topicAttributes_200_ok(TestInfo test) throws IOException {
-    List<Field> fields =
-        Arrays.asList(
-            getField("id", FieldDataType.STRING, null),
-            getField("first_name", FieldDataType.STRING, null),
-            getField("last_name", FieldDataType.STRING, null),
-            getField("email", FieldDataType.STRING, null),
-            getField("address_line_1", FieldDataType.STRING, null),
-            getField("address_line_2", FieldDataType.STRING, null),
-            getField("post_code", FieldDataType.STRING, null),
-            getField("county", FieldDataType.STRING, PERSONAL_DATA_TAG_LABEL));
-    CreateTopic createTopic =
-        createRequest(test)
-            .withOwner(USER1_REF)
-            .withMaximumMessageSize(1)
-            .withMinimumInSyncReplicas(1)
-            .withPartitions(1)
-            .withReplicationFactor(1)
-            .withRetentionTime(1.0)
-            .withRetentionSize(1.0)
-            .withMessageSchema(schema.withSchemaFields(fields))
-            .withCleanupPolicies(List.of(CleanupPolicy.COMPACT));
+    List<Field> fields = Arrays.asList(
+      getField("id", FieldDataType.STRING, null),
+      getField("first_name", FieldDataType.STRING, null),
+      getField("last_name", FieldDataType.STRING, null),
+      getField("email", FieldDataType.STRING, null),
+      getField("address_line_1", FieldDataType.STRING, null),
+      getField("address_line_2", FieldDataType.STRING, null),
+      getField("post_code", FieldDataType.STRING, null),
+      getField("county", FieldDataType.STRING, PERSONAL_DATA_TAG_LABEL)
+    );
+    CreateTopic createTopic = createRequest(test)
+      .withOwner(USER1_REF)
+      .withMaximumMessageSize(1)
+      .withMinimumInSyncReplicas(1)
+      .withPartitions(1)
+      .withReplicationFactor(1)
+      .withRetentionTime(1.0)
+      .withRetentionSize(1.0)
+      .withMessageSchema(schema.withSchemaFields(fields))
+      .withCleanupPolicies(List.of(CleanupPolicy.COMPACT));
 
     // Patch and update the topic
     Topic topic = createEntity(createTopic, ADMIN_AUTH_HEADERS);
     String origJson = JsonUtils.pojoToJson(topic);
 
     topic
-        .withOwner(TEAM11_REF)
-        .withMinimumInSyncReplicas(2)
-        .withMaximumMessageSize(2)
-        .withPartitions(2)
-        .withReplicationFactor(2)
-        .withRetentionTime(2.0)
-        .withRetentionSize(2.0)
-        .withMessageSchema(schema.withSchemaFields(fields))
-        .withCleanupPolicies(List.of(CleanupPolicy.DELETE));
+      .withOwner(TEAM11_REF)
+      .withMinimumInSyncReplicas(2)
+      .withMaximumMessageSize(2)
+      .withPartitions(2)
+      .withReplicationFactor(2)
+      .withRetentionTime(2.0)
+      .withRetentionSize(2.0)
+      .withMessageSchema(schema.withSchemaFields(fields))
+      .withCleanupPolicies(List.of(CleanupPolicy.DELETE));
 
     ChangeDescription change = getChangeDescription(topic, MINOR_UPDATE);
     fieldUpdated(change, FIELD_OWNER, USER1_REF, TEAM11_REF);
@@ -253,67 +255,67 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
   @Test
   void test_mutuallyExclusiveTags(TestInfo testInfo) {
     // Apply mutually exclusive tags to a table
-    CreateTopic create =
-        createRequest(testInfo)
-            .withTags(List.of(TIER1_TAG_LABEL, TIER2_TAG_LABEL))
-            .withOwner(USER1_REF)
-            .withMaximumMessageSize(1)
-            .withMinimumInSyncReplicas(1)
-            .withPartitions(1)
-            .withReplicationFactor(1)
-            .withRetentionTime(1.0)
-            .withRetentionSize(1.0);
+    CreateTopic create = createRequest(testInfo)
+      .withTags(List.of(TIER1_TAG_LABEL, TIER2_TAG_LABEL))
+      .withOwner(USER1_REF)
+      .withMaximumMessageSize(1)
+      .withMinimumInSyncReplicas(1)
+      .withPartitions(1)
+      .withReplicationFactor(1)
+      .withRetentionTime(1.0)
+      .withRetentionSize(1.0);
     // Apply mutually exclusive tags to a table
     assertResponse(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        CatalogExceptionMessage.mutuallyExclusiveLabels(TIER2_TAG_LABEL, TIER1_TAG_LABEL));
+      () -> createEntity(create, ADMIN_AUTH_HEADERS),
+      BAD_REQUEST,
+      CatalogExceptionMessage.mutuallyExclusiveLabels(TIER2_TAG_LABEL, TIER1_TAG_LABEL)
+    );
 
     // Apply mutually exclusive tags to a topic field
-    CreateTopic create1 =
-        createRequest(testInfo, 1)
-            .withOwner(USER1_REF)
-            .withMaximumMessageSize(1)
-            .withMinimumInSyncReplicas(1)
-            .withPartitions(1)
-            .withReplicationFactor(1)
-            .withRetentionTime(1.0)
-            .withRetentionSize(1.0);
+    CreateTopic create1 = createRequest(testInfo, 1)
+      .withOwner(USER1_REF)
+      .withMaximumMessageSize(1)
+      .withMinimumInSyncReplicas(1)
+      .withPartitions(1)
+      .withReplicationFactor(1)
+      .withRetentionTime(1.0)
+      .withRetentionSize(1.0);
     Field field = getField("first_name", FieldDataType.STRING, null).withTags(listOf(TIER1_TAG_LABEL, TIER2_TAG_LABEL));
     create1.withMessageSchema(schema.withSchemaFields(List.of(field)));
     assertResponse(
-        () -> createEntity(create1, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        CatalogExceptionMessage.mutuallyExclusiveLabels(TIER2_TAG_LABEL, TIER1_TAG_LABEL));
+      () -> createEntity(create1, ADMIN_AUTH_HEADERS),
+      BAD_REQUEST,
+      CatalogExceptionMessage.mutuallyExclusiveLabels(TIER2_TAG_LABEL, TIER1_TAG_LABEL)
+    );
 
     // Apply mutually exclusive tags to a topic's nested field
-    CreateTopic create2 =
-        createRequest(testInfo, 1)
-            .withOwner(USER1_REF)
-            .withMaximumMessageSize(1)
-            .withMinimumInSyncReplicas(1)
-            .withPartitions(1)
-            .withReplicationFactor(1)
-            .withRetentionTime(1.0)
-            .withRetentionSize(1.0);
-    Field nestedField =
-        getField("testNested", FieldDataType.STRING, null).withTags(listOf(TIER1_TAG_LABEL, TIER2_TAG_LABEL));
+    CreateTopic create2 = createRequest(testInfo, 1)
+      .withOwner(USER1_REF)
+      .withMaximumMessageSize(1)
+      .withMinimumInSyncReplicas(1)
+      .withPartitions(1)
+      .withReplicationFactor(1)
+      .withRetentionTime(1.0)
+      .withRetentionSize(1.0);
+    Field nestedField = getField("testNested", FieldDataType.STRING, null)
+      .withTags(listOf(TIER1_TAG_LABEL, TIER2_TAG_LABEL));
     Field field1 = getField("test", FieldDataType.RECORD, null).withChildren(List.of(nestedField));
     create2.setMessageSchema(schema.withSchemaFields(List.of(field1)));
     assertResponse(
-        () -> createEntity(create2, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        CatalogExceptionMessage.mutuallyExclusiveLabels(TIER2_TAG_LABEL, TIER1_TAG_LABEL));
+      () -> createEntity(create2, ADMIN_AUTH_HEADERS),
+      BAD_REQUEST,
+      CatalogExceptionMessage.mutuallyExclusiveLabels(TIER2_TAG_LABEL, TIER1_TAG_LABEL)
+    );
   }
 
   @Test
   void put_topicSampleData_200(TestInfo test) throws IOException {
     Topic topic = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
-    List<String> messages =
-        Arrays.asList(
-            "{\"email\": \"email1@email.com\", \"firstName\": \"Bob\", \"lastName\": \"Jones\"}",
-            "{\"email\": \"email2@email.com\", \"firstName\": \"Test\", \"lastName\": \"Jones\"}",
-            "{\"email\": \"email3@email.com\", \"firstName\": \"Bob\", \"lastName\": \"Jones\"}");
+    List<String> messages = Arrays.asList(
+      "{\"email\": \"email1@email.com\", \"firstName\": \"Bob\", \"lastName\": \"Jones\"}",
+      "{\"email\": \"email2@email.com\", \"firstName\": \"Test\", \"lastName\": \"Jones\"}",
+      "{\"email\": \"email3@email.com\", \"firstName\": \"Bob\", \"lastName\": \"Jones\"}"
+    );
     TopicSampleData topicSampleData = new TopicSampleData().withMessages(messages);
     Topic putResponse = putSampleData(topic.getId(), topicSampleData, ADMIN_AUTH_HEADERS);
     assertEquals(topicSampleData, putResponse.getSampleData());
@@ -321,9 +323,10 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     topic = getSampleData(topic.getId(), ADMIN_AUTH_HEADERS);
     assertEquals(topicSampleData, topic.getSampleData());
     messages =
-        Arrays.asList(
-            "{\"email\": \"email1@email.com\", \"firstName\": \"Bob\", \"lastName\": \"Jones\"}",
-            "{\"email\": \"email2@email.com\", \"firstName\": \"Test\", \"lastName\": \"Jones\"}");
+      Arrays.asList(
+        "{\"email\": \"email1@email.com\", \"firstName\": \"Bob\", \"lastName\": \"Jones\"}",
+        "{\"email\": \"email2@email.com\", \"firstName\": \"Test\", \"lastName\": \"Jones\"}"
+      );
     topicSampleData.withMessages(messages);
     putResponse = putSampleData(topic.getId(), topicSampleData, ADMIN_AUTH_HEADERS);
     assertEquals(topicSampleData, putResponse.getSampleData());
@@ -347,13 +350,16 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
   void testInheritedPermissionFromParent(TestInfo test) throws IOException {
     // Create a messaging service with owner data consumer
     MessagingServiceResourceTest serviceTest = new MessagingServiceResourceTest();
-    CreateMessagingService createMessagingService =
-        serviceTest.createRequest(getEntityName(test)).withOwner(DATA_CONSUMER.getEntityReference());
+    CreateMessagingService createMessagingService = serviceTest
+      .createRequest(getEntityName(test))
+      .withOwner(DATA_CONSUMER.getEntityReference());
     MessagingService service = serviceTest.createEntity(createMessagingService, ADMIN_AUTH_HEADERS);
 
     // Data consumer as an owner of the service can create topic under it
     createEntity(
-        createRequest("topic").withService(service.getFullyQualifiedName()), authHeaders(DATA_CONSUMER.getName()));
+      createRequest("topic").withService(service.getFullyQualifiedName()),
+      authHeaders(DATA_CONSUMER.getName())
+    );
   }
 
   @Test
@@ -361,46 +367,48 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     // Add an entity with invalid tag
     TagLabel invalidTag = new TagLabel().withTagFQN("invalidTag");
     Field invalidField = getField("field", FieldDataType.STRING, null).withTags(listOf(invalidTag));
-    MessageSchema invalidSchema =
-        new MessageSchema()
-            .withSchemaText(SCHEMA_TEXT)
-            .withSchemaType(SchemaType.Avro)
-            .withSchemaFields(listOf(invalidField));
+    MessageSchema invalidSchema = new MessageSchema()
+      .withSchemaText(SCHEMA_TEXT)
+      .withSchemaType(SchemaType.Avro)
+      .withSchemaFields(listOf(invalidField));
     CreateTopic create = createRequest(getEntityName(test)).withMessageSchema(invalidSchema);
 
     // Entity can't be created with PUT or POST
     assertResponse(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS),
-        NOT_FOUND,
-        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+      () -> createEntity(create, ADMIN_AUTH_HEADERS),
+      NOT_FOUND,
+      CatalogExceptionMessage.entityNotFound(TAG, "invalidTag")
+    );
 
     assertResponse(
-        () -> updateEntity(create, Status.CREATED, ADMIN_AUTH_HEADERS),
-        NOT_FOUND,
-        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+      () -> updateEntity(create, Status.CREATED, ADMIN_AUTH_HEADERS),
+      NOT_FOUND,
+      CatalogExceptionMessage.entityNotFound(TAG, "invalidTag")
+    );
 
     // Create an entity and update the columns with PUT and PATCH with an invalid tag
     Field validField = getField("field", FieldDataType.STRING, null);
-    MessageSchema validSchema =
-        new MessageSchema()
-            .withSchemaText(SCHEMA_TEXT)
-            .withSchemaType(SchemaType.Avro)
-            .withSchemaFields(listOf(validField));
+    MessageSchema validSchema = new MessageSchema()
+      .withSchemaText(SCHEMA_TEXT)
+      .withSchemaType(SchemaType.Avro)
+      .withSchemaFields(listOf(validField));
     create.setMessageSchema(validSchema);
     Topic entity = createEntity(create, ADMIN_AUTH_HEADERS);
     String json = JsonUtils.pojoToJson(entity);
 
     create.setMessageSchema(invalidSchema);
     assertResponse(
-        () -> updateEntity(create, Status.CREATED, ADMIN_AUTH_HEADERS),
-        NOT_FOUND,
-        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+      () -> updateEntity(create, Status.CREATED, ADMIN_AUTH_HEADERS),
+      NOT_FOUND,
+      CatalogExceptionMessage.entityNotFound(TAG, "invalidTag")
+    );
 
     entity.setTags(listOf(invalidTag));
     assertResponse(
-        () -> patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS),
-        NOT_FOUND,
-        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+      () -> patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS),
+      NOT_FOUND,
+      CatalogExceptionMessage.entityNotFound(TAG, "invalidTag")
+    );
 
     // No lingering relationships should cause error in listing the entity
     listEntities(null, ADMIN_AUTH_HEADERS);
@@ -411,16 +419,16 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     // .../topics?fields=owner
     String fields = "";
     topic =
-        byName
-            ? getTopicByName(topic.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getTopic(topic.getId(), fields, ADMIN_AUTH_HEADERS);
+      byName
+        ? getTopicByName(topic.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+        : getTopic(topic.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNull(topic.getOwner(), topic.getFollowers(), topic.getFollowers());
 
     fields = "owner, followers, tags";
     topic =
-        byName
-            ? getTopicByName(topic.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getTopic(topic.getId(), fields, ADMIN_AUTH_HEADERS);
+      byName
+        ? getTopicByName(topic.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+        : getTopic(topic.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(topic.getService(), topic.getServiceType());
     // Checks for other owner, tags, and followers is done in the base class
     return topic;
@@ -455,7 +463,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
 
   @Override
   public void validateCreatedEntity(Topic topic, CreateTopic createRequest, Map<String, String> authHeaders)
-      throws HttpResponseException {
+    throws HttpResponseException {
     assertReference(createRequest.getService(), topic.getService());
     // TODO add other fields
     TestUtils.validateTags(createRequest.getTags(), topic.getTags());
@@ -463,7 +471,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
 
   @Override
   public void compareEntities(Topic expected, Topic updated, Map<String, String> authHeaders)
-      throws HttpResponseException {
+    throws HttpResponseException {
     assertReference(expected.getService(), expected.getService());
     // TODO add other fields
     TestUtils.validateTags(expected.getTags(), updated.getTags());
@@ -489,7 +497,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
   }
 
   public Topic putSampleData(UUID topicId, TopicSampleData data, Map<String, String> authHeaders)
-      throws HttpResponseException {
+    throws HttpResponseException {
     WebTarget target = getResource(topicId).path("/sampleData");
     return TestUtils.put(target, data, Topic.class, OK, authHeaders);
   }
@@ -524,8 +532,9 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
   private static void assertField(Field expectedField, Field actualField) throws HttpResponseException {
     assertNotNull(actualField.getFullyQualifiedName());
     assertTrue(
-        expectedField.getName().equals(actualField.getName())
-            || expectedField.getName().equals(actualField.getDisplayName()));
+      expectedField.getName().equals(actualField.getName()) ||
+      expectedField.getName().equals(actualField.getDisplayName())
+    );
     assertEquals(expectedField.getDescription(), actualField.getDescription());
     assertEquals(expectedField.getDataType(), actualField.getDataType());
     TestUtils.validateTags(expectedField.getTags(), actualField.getTags());

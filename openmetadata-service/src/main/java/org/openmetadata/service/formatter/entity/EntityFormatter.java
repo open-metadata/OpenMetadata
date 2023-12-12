@@ -20,8 +20,9 @@ import org.openmetadata.service.formatter.util.FormatterUtil;
 
 public interface EntityFormatter {
   String format(
-      MessageDecorator<?> messageDecorator,
-      FieldChange fieldChange,
-      EntityInterface entity,
-      FormatterUtil.CHANGE_TYPE changeType);
+    MessageDecorator<?> messageDecorator,
+    FieldChange fieldChange,
+    EntityInterface entity,
+    FormatterUtil.CHANGE_TYPE changeType
+  );
 }

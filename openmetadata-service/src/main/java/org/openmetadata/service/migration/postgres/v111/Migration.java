@@ -12,6 +12,7 @@ import org.openmetadata.service.migration.utils.MigrationFile;
 
 @Slf4j
 public class Migration extends MigrationProcessImpl {
+
   private CollectionDAO collectionDAO;
   private Handle handle;
 
@@ -30,7 +31,7 @@ public class Migration extends MigrationProcessImpl {
   @SneakyThrows
   public void runDataMigration() {
     String getSql =
-        "SELECT t1.id AS id1, t2.id AS id2 FROM test_suite t1 JOIN test_suite t2 ON t1.json -> 'executableEntityReference' -> 'fullyQualifiedName' = t2.json -> 'executableEntityReference' -> 'fullyQualifiedName' AND t1.id != t2.id;";
+      "SELECT t1.id AS id1, t2.id AS id2 FROM test_suite t1 JOIN test_suite t2 ON t1.json -> 'executableEntityReference' -> 'fullyQualifiedName' = t2.json -> 'executableEntityReference' -> 'fullyQualifiedName' AND t1.id != t2.id;";
     removeDuplicateTestCases(collectionDAO, handle, getSql);
 
     String updateSql = "UPDATE test_suite SET json = :json::jsonb, fqnHash = :fqnHash WHERE id = :id;";

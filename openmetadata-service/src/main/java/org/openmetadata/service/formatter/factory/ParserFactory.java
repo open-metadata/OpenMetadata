@@ -28,6 +28,7 @@ import org.openmetadata.service.formatter.field.TagFormatter;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
 public final class ParserFactory {
+
   private ParserFactory() {}
 
   public static EntityFormatter getEntityParser(String entityType) {
@@ -46,11 +47,12 @@ public final class ParserFactory {
   }
 
   public static DefaultFieldFormatter getFieldParserObject(
-      MessageDecorator<?> decorator,
-      String fieldOldValue,
-      String fieldNewValue,
-      String fieldChangeName,
-      MessageParser.EntityLink entityLink) {
+    MessageDecorator<?> decorator,
+    String fieldOldValue,
+    String fieldNewValue,
+    String fieldChangeName,
+    MessageParser.EntityLink entityLink
+  ) {
     switch (fieldChangeName) {
       case Entity.FIELD_TAGS:
         return new TagFormatter(decorator, fieldOldValue, fieldNewValue, fieldChangeName, entityLink);

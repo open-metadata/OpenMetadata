@@ -27,6 +27,7 @@ import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnect
 
 @Slf4j
 public class GoogleAuthenticationProvider implements AuthenticationProvider {
+
   private final GoogleSSOClientConfig securityConfig;
   private String generatedAuthToken;
   private Long expirationTimeMillis;
@@ -63,9 +64,12 @@ public class GoogleAuthenticationProvider implements AuthenticationProvider {
         ServiceAccountCredentials saCreds = ServiceAccountCredentials.fromStream(new FileInputStream(credPath));
 
         saCreds =
-            (ServiceAccountCredentials) saCreds.createScoped(Arrays.asList(OPENID_SCOPE, PROFILE_SCOPE, EMAIL_SCOPE));
-        IdTokenCredentials tokenCredential =
-            IdTokenCredentials.newBuilder().setIdTokenProvider(saCreds).setTargetAudience(targetAudience).build();
+          (ServiceAccountCredentials) saCreds.createScoped(Arrays.asList(OPENID_SCOPE, PROFILE_SCOPE, EMAIL_SCOPE));
+        IdTokenCredentials tokenCredential = IdTokenCredentials
+          .newBuilder()
+          .setIdTokenProvider(saCreds)
+          .setTargetAudience(targetAudience)
+          .build();
         AccessToken token = tokenCredential.refreshAccessToken();
         this.expirationTimeMillis = token.getExpirationTime().getTime();
         this.generatedAuthToken = token.getTokenValue();

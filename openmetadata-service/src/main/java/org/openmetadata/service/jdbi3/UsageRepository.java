@@ -51,6 +51,7 @@ import org.openmetadata.service.util.RestUtil;
 @Slf4j
 @Repository
 public class UsageRepository {
+
   private static final String PUT = "createOrUpdate";
   private static final String POST = "createNew";
   private final CollectionDAO dao;
@@ -123,58 +124,95 @@ public class UsageRepository {
   }
 
   private RestUtil.PutResponse<?> tableEntityUsage(
-      String method, String fields, UUID entityId, String entityType, DailyCount usage) {
+    String method,
+    String fields,
+    UUID entityId,
+    String entityType,
+    DailyCount usage
+  ) {
     // we accept usage for deleted entities
     Table table = Entity.getEntity(Entity.TABLE, entityId, fields, Include.ALL);
     // Insert usage record
     insertToUsageRepository(method, entityId, entityType, usage);
     Table updated = Entity.getEntity(Entity.TABLE, entityId, fields, Include.ALL);
-    dao.usageDAO()
-        .insertOrUpdateCount(
-            usage.getDate(), table.getDatabaseSchema().getId(), Entity.DATABASE_SCHEMA, usage.getCount());
+    dao
+      .usageDAO()
+      .insertOrUpdateCount(
+        usage.getDate(),
+        table.getDatabaseSchema().getId(),
+        Entity.DATABASE_SCHEMA,
+        usage.getCount()
+      );
     dao.usageDAO().insertOrUpdateCount(usage.getDate(), table.getDatabase().getId(), Entity.DATABASE, usage.getCount());
 
-    ChangeDescription change =
-        getChangeDescription(table.getVersion(), updated.getUsageSummary(), table.getUsageSummary());
+    ChangeDescription change = getChangeDescription(
+      table.getVersion(),
+      updated.getUsageSummary(),
+      table.getUsageSummary()
+    );
     ChangeEvent changeEvent = getChangeEvent(updated, change, entityType, table.getVersion());
 
     return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
   private RestUtil.PutResponse<?> dashboardEntityUsage(
-      String method, String fields, UUID entityId, String entityType, DailyCount usage) {
+    String method,
+    String fields,
+    UUID entityId,
+    String entityType,
+    DailyCount usage
+  ) {
     Dashboard dashboard = Entity.getEntity(Entity.DASHBOARD, entityId, fields, Include.ALL);
     insertToUsageRepository(method, entityId, entityType, usage);
     Dashboard updated = Entity.getEntity(Entity.DASHBOARD, entityId, fields, Include.ALL);
 
-    ChangeDescription change =
-        getChangeDescription(dashboard.getVersion(), updated.getUsageSummary(), dashboard.getUsageSummary());
+    ChangeDescription change = getChangeDescription(
+      dashboard.getVersion(),
+      updated.getUsageSummary(),
+      dashboard.getUsageSummary()
+    );
     ChangeEvent changeEvent = getChangeEvent(updated, change, entityType, dashboard.getVersion());
 
     return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
   private RestUtil.PutResponse<?> chartEntityUsage(
-      String method, String fields, UUID entityId, String entityType, DailyCount usage) {
+    String method,
+    String fields,
+    UUID entityId,
+    String entityType,
+    DailyCount usage
+  ) {
     Chart chart = Entity.getEntity(Entity.CHART, entityId, fields, Include.ALL);
     insertToUsageRepository(method, entityId, entityType, usage);
     Chart updated = Entity.getEntity(Entity.CHART, entityId, fields, Include.ALL);
 
-    ChangeDescription change =
-        getChangeDescription(chart.getVersion(), updated.getUsageSummary(), chart.getUsageSummary());
+    ChangeDescription change = getChangeDescription(
+      chart.getVersion(),
+      updated.getUsageSummary(),
+      chart.getUsageSummary()
+    );
     ChangeEvent changeEvent = getChangeEvent(updated, change, entityType, chart.getVersion());
 
     return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
   private RestUtil.PutResponse<?> mlModelEntityUsage(
-      String method, String fields, UUID entityId, String entityType, DailyCount usage) {
+    String method,
+    String fields,
+    UUID entityId,
+    String entityType,
+    DailyCount usage
+  ) {
     MlModel mlModel = Entity.getEntity(Entity.MLMODEL, entityId, fields, Include.ALL);
     insertToUsageRepository(method, entityId, entityType, usage);
     MlModel updated = Entity.getEntity(Entity.CHART, entityId, fields, Include.ALL);
 
-    ChangeDescription change =
-        getChangeDescription(mlModel.getVersion(), updated.getUsageSummary(), mlModel.getUsageSummary());
+    ChangeDescription change = getChangeDescription(
+      mlModel.getVersion(),
+      updated.getUsageSummary(),
+      mlModel.getUsageSummary()
+    );
     ChangeEvent changeEvent = getChangeEvent(updated, change, entityType, mlModel.getVersion());
 
     return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
@@ -189,18 +227,22 @@ public class UsageRepository {
   }
 
   private ChangeEvent getChangeEvent(
-      EntityInterface updated, ChangeDescription change, String entityType, Double prevVersion) {
+    EntityInterface updated,
+    ChangeDescription change,
+    String entityType,
+    Double prevVersion
+  ) {
     return new ChangeEvent()
-        .withEntity(updated)
-        .withChangeDescription(change)
-        .withEventType(EventType.ENTITY_UPDATED)
-        .withEntityType(entityType)
-        .withEntityId(updated.getId())
-        .withEntityFullyQualifiedName(updated.getFullyQualifiedName())
-        .withUserName(updated.getUpdatedBy())
-        .withTimestamp(System.currentTimeMillis())
-        .withCurrentVersion(updated.getVersion())
-        .withPreviousVersion(prevVersion);
+      .withEntity(updated)
+      .withChangeDescription(change)
+      .withEventType(EventType.ENTITY_UPDATED)
+      .withEntityType(entityType)
+      .withEntityId(updated.getId())
+      .withEntityFullyQualifiedName(updated.getFullyQualifiedName())
+      .withUserName(updated.getUpdatedBy())
+      .withTimestamp(System.currentTimeMillis())
+      .withCurrentVersion(updated.getVersion())
+      .withPreviousVersion(prevVersion);
   }
 
   private ChangeDescription getChangeDescription(Double version, Object newValue, Object oldValue) {
@@ -210,19 +252,23 @@ public class UsageRepository {
   }
 
   public static class UsageDetailsMapper implements RowMapper<UsageDetails> {
+
     @Override
     public UsageDetails map(ResultSet r, StatementContext ctx) throws SQLException {
-      UsageStats dailyStats =
-          new UsageStats().withCount(r.getInt("count1")).withPercentileRank(r.getDouble("percentile1"));
-      UsageStats weeklyStats =
-          new UsageStats().withCount(r.getInt("count7")).withPercentileRank(r.getDouble("percentile7"));
-      UsageStats monthlyStats =
-          new UsageStats().withCount(r.getInt("count30")).withPercentileRank(r.getDouble("percentile30"));
+      UsageStats dailyStats = new UsageStats()
+        .withCount(r.getInt("count1"))
+        .withPercentileRank(r.getDouble("percentile1"));
+      UsageStats weeklyStats = new UsageStats()
+        .withCount(r.getInt("count7"))
+        .withPercentileRank(r.getDouble("percentile7"));
+      UsageStats monthlyStats = new UsageStats()
+        .withCount(r.getInt("count30"))
+        .withPercentileRank(r.getDouble("percentile30"));
       return new UsageDetails()
-          .withDate(r.getString("usageDate"))
-          .withDailyStats(dailyStats)
-          .withWeeklyStats(weeklyStats)
-          .withMonthlyStats(monthlyStats);
+        .withDate(r.getString("usageDate"))
+        .withDailyStats(dailyStats)
+        .withWeeklyStats(weeklyStats)
+        .withMonthlyStats(monthlyStats);
     }
   }
 }

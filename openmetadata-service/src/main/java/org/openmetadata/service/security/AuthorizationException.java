@@ -18,24 +18,28 @@ import javax.ws.rs.core.Response;
 import lombok.Getter;
 
 public class AuthorizationException extends RuntimeException {
-  @Getter private final transient Response response;
+
+  @Getter
+  private final transient Response response;
 
   public AuthorizationException(String msg) {
     super(msg);
     response =
-        Response.status(Response.Status.FORBIDDEN)
-            .entity(convertToErrorResponseMessage(msg))
-            .type(MediaType.APPLICATION_JSON_TYPE)
-            .build();
+      Response
+        .status(Response.Status.FORBIDDEN)
+        .entity(convertToErrorResponseMessage(msg))
+        .type(MediaType.APPLICATION_JSON_TYPE)
+        .build();
   }
 
   public AuthorizationException(String msg, Throwable cause) {
     super(msg, cause);
     response =
-        Response.status(Response.Status.FORBIDDEN)
-            .entity(convertToErrorResponseMessage(msg))
-            .type(MediaType.APPLICATION_JSON_TYPE)
-            .build();
+      Response
+        .status(Response.Status.FORBIDDEN)
+        .entity(convertToErrorResponseMessage(msg))
+        .type(MediaType.APPLICATION_JSON_TYPE)
+        .build();
   }
 
   private static ErrorResponse convertToErrorResponseMessage(String msg) {
@@ -43,8 +47,10 @@ public class AuthorizationException extends RuntimeException {
   }
 
   private static class ErrorResponse {
+
     /** Response message. */
-    @Getter private final String responseMessage;
+    @Getter
+    private final String responseMessage;
 
     ErrorResponse(String responseMessage) {
       this.responseMessage = responseMessage;

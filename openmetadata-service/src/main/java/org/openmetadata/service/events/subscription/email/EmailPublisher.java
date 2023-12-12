@@ -36,6 +36,7 @@ import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class EmailPublisher extends SubscriptionPublisher {
+
   private final MessageDecorator<EmailMessage> emailDecorator = new EmailMessageDecorator();
   private final EmailAlertConfig emailAlertConfig;
   private final CollectionDAO daoCollection;
@@ -80,12 +81,19 @@ public class EmailPublisher extends SubscriptionPublisher {
   }
 
   private Set<String> buildReceiversList(ChangeEvent changeEvent) {
-    Set<String> receiverList =
-        emailAlertConfig.getReceivers() == null ? new HashSet<>() : emailAlertConfig.getReceivers();
+    Set<String> receiverList = emailAlertConfig.getReceivers() == null
+      ? new HashSet<>()
+      : emailAlertConfig.getReceivers();
     EntityInterface entityInterface = getEntity(changeEvent);
     receiverList.addAll(
-        buildReceiversListFromActions(
-            emailAlertConfig, EMAIL, daoCollection, entityInterface.getId(), changeEvent.getEntityType()));
+      buildReceiversListFromActions(
+        emailAlertConfig,
+        EMAIL,
+        daoCollection,
+        entityInterface.getId(),
+        changeEvent.getEntityType()
+      )
+    );
     return receiverList;
   }
 }

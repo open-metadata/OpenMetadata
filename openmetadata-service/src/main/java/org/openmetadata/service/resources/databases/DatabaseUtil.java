@@ -26,6 +26,7 @@ import org.openmetadata.schema.type.TablePartition;
 import org.openmetadata.schema.type.TableType;
 
 public final class DatabaseUtil {
+
   private DatabaseUtil() {}
 
   public static boolean validateSinglePrimaryColumn(List<Column> columns) {
@@ -54,7 +55,8 @@ public final class DatabaseUtil {
     for (TableConstraint t : tableConstraints) {
       if (t.getConstraintType() == TableConstraint.ConstraintType.PRIMARY_KEY && primaryColumnExists) {
         throw new IllegalArgumentException(
-            "A column already tagged as a primary key and table constraint also includes primary key");
+          "A column already tagged as a primary key and table constraint also includes primary key"
+        );
       }
       for (String columnName : t.getColumns()) {
         if (!columnNames.contains(columnName)) {
@@ -79,11 +81,14 @@ public final class DatabaseUtil {
   }
 
   public static void validateViewDefinition(TableType tableType, String viewDefinition) {
-    if ((tableType == null || tableType.equals(TableType.Regular) || tableType.equals(TableType.External))
-        && viewDefinition != null
-        && !viewDefinition.isEmpty()) {
+    if (
+      (tableType == null || tableType.equals(TableType.Regular) || tableType.equals(TableType.External)) &&
+      viewDefinition != null &&
+      !viewDefinition.isEmpty()
+    ) {
       throw new IllegalArgumentException(
-          "ViewDefinition can only be set on TableType View, SecureView or MaterializedView");
+        "ViewDefinition can only be set on TableType View, SecureView or MaterializedView"
+      );
     }
   }
 
@@ -123,13 +128,18 @@ public final class DatabaseUtil {
   public static void validateColumnDataLength(Column column) {
     // Types char, varchar, binary, varbinary must have dataLength
     ColumnDataType dataType = column.getDataType();
-    if ((dataType == ColumnDataType.CHAR
-            || dataType == ColumnDataType.VARCHAR
-            || dataType == ColumnDataType.BINARY
-            || dataType == ColumnDataType.VARBINARY)
-        && column.getDataLength() == null) {
+    if (
+      (
+        dataType == ColumnDataType.CHAR ||
+        dataType == ColumnDataType.VARCHAR ||
+        dataType == ColumnDataType.BINARY ||
+        dataType == ColumnDataType.VARBINARY
+      ) &&
+      column.getDataLength() == null
+    ) {
       throw new IllegalArgumentException(
-          "For column data types char, varchar, binary, varbinary dataLength must not be null");
+        "For column data types char, varchar, binary, varbinary dataLength must not be null"
+      );
     }
   }
 
@@ -166,7 +176,8 @@ public final class DatabaseUtil {
       }
       if (column.getScale() > column.getPrecision()) {
         throw new IllegalArgumentException(
-            "Scale can't be greater than the precision for the column " + column.getName());
+          "Scale can't be greater than the precision for the column " + column.getName()
+        );
       }
     }
   }

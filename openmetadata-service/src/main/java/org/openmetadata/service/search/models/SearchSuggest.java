@@ -10,6 +10,7 @@ import lombok.extern.jackson.Jacksonized;
 @Getter
 @Builder
 public class SearchSuggest {
+
   String input;
   Integer weight;
 }

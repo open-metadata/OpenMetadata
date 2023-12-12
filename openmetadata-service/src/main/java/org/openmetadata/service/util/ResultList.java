@@ -25,7 +25,7 @@ import org.openmetadata.schema.type.Paging;
  * json for object 1}, {json for object 2}, ... ] }
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonPropertyOrder({"data"})
+@JsonPropertyOrder({ "data" })
 public class ResultList<T> {
 
   @JsonProperty("data")
@@ -83,10 +83,10 @@ public class ResultList<T> {
   public ResultList(List<T> data, String beforeCursor, String afterCursor, int total) {
     this.data = data;
     paging =
-        new Paging()
-            .withBefore(RestUtil.encodeCursor(beforeCursor))
-            .withAfter(RestUtil.encodeCursor(afterCursor))
-            .withTotal(total);
+      new Paging()
+        .withBefore(RestUtil.encodeCursor(beforeCursor))
+        .withAfter(RestUtil.encodeCursor(afterCursor))
+        .withTotal(total);
   }
 
   public ResultList(List<T> data, Integer offset, int total) {
@@ -98,10 +98,10 @@ public class ResultList<T> {
     this.data = data;
     this.errors = errors;
     paging =
-        new Paging()
-            .withBefore(RestUtil.encodeCursor(beforeCursor))
-            .withAfter(RestUtil.encodeCursor(afterCursor))
-            .withTotal(total);
+      new Paging()
+        .withBefore(RestUtil.encodeCursor(beforeCursor))
+        .withAfter(RestUtil.encodeCursor(afterCursor))
+        .withTotal(total);
   }
 
   @JsonProperty("data")

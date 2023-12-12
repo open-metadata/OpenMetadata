@@ -12,16 +12,18 @@ import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.EntityUtil;
 
 public class WorkflowRepository extends EntityRepository<Workflow> {
+
   private static final String PATCH_FIELDS = "status,response";
 
   public WorkflowRepository() {
     super(
-        WorkflowResource.COLLECTION_PATH,
-        WORKFLOW,
-        Workflow.class,
-        Entity.getCollectionDAO().workflowDAO(),
-        PATCH_FIELDS,
-        "");
+      WorkflowResource.COLLECTION_PATH,
+      WORKFLOW,
+      Workflow.class,
+      Entity.getCollectionDAO().workflowDAO(),
+      PATCH_FIELDS,
+      ""
+    );
     quoteFqn = true;
   }
 
@@ -77,6 +79,7 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
   }
 
   public class WorkflowUpdater extends EntityUpdater {
+
     public WorkflowUpdater(Workflow original, Workflow updated, Operation operation) {
       super(original, updated, operation);
     }

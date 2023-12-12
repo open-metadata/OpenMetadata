@@ -42,6 +42,7 @@ import org.quartz.impl.StdSchedulerFactory;
 
 @Slf4j
 public class ReportsHandler {
+
   public static final String DATA_INSIGHT_EMAIL_JOB = "dataInsightEmailJob";
   public static final String EMAIL_REPORT = "emailReport";
   public static final String CRON_TRIGGER = "dataInsightEmailTrigger";
@@ -113,20 +114,21 @@ public class ReportsHandler {
       dataMap.put(JOB_CONTEXT_CHART_REPO, this.chartRepository);
       dataMap.put(SEARCH_CLIENT, searchRepository);
       dataMap.put(EVENT_SUBSCRIPTION, subscription);
-      JobBuilder jobBuilder =
-          JobBuilder.newJob(SearchIndexApp.class)
-              .withIdentity(DATA_INSIGHT_EMAIL_JOB, EMAIL_REPORT)
-              .usingJobData(dataMap);
+      JobBuilder jobBuilder = JobBuilder
+        .newJob(SearchIndexApp.class)
+        .withIdentity(DATA_INSIGHT_EMAIL_JOB, EMAIL_REPORT)
+        .usingJobData(dataMap);
       return jobBuilder.build();
     }
     throw new IOException("Invalid Report Type");
   }
 
   private Trigger trigger(TriggerConfig trigger) {
-    return TriggerBuilder.newTrigger()
-        .withIdentity(CRON_TRIGGER, EMAIL_REPORT)
-        .withSchedule(getCronSchedule(trigger))
-        .build();
+    return TriggerBuilder
+      .newTrigger()
+      .withIdentity(CRON_TRIGGER, EMAIL_REPORT)
+      .withSchedule(getCronSchedule(trigger))
+      .build();
   }
 
   private JobDetail getJobKey(UUID id) {

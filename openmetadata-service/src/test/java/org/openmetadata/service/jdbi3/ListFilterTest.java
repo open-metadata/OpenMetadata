@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.Test;
 
 class ListFilterTest {
+
   @Test
   void test_escapeApostrophe() {
     assertEquals("abcd", ListFilter.escape("abcd"));

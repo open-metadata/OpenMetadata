@@ -7,8 +7,14 @@ import lombok.Setter;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Field {
-  @Getter @Setter private String title;
-  @Getter @Setter private String value;
+
+  @Getter
+  @Setter
+  private String title;
+
+  @Getter
+  @Setter
+  private String value;
 
   @JsonProperty("short_enough")
   @Getter

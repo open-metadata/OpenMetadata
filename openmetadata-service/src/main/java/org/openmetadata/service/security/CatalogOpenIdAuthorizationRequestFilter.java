@@ -28,6 +28,7 @@ import org.openmetadata.service.security.auth.CatalogSecurityContext;
 @Slf4j
 @Priority(100)
 public class CatalogOpenIdAuthorizationRequestFilter implements ContainerRequestFilter {
+
   public static final String X_AUTH_PARAMS_EMAIL_HEADER = "X-Auth-Params-Email";
   private static final String HEALTH_END_POINT = "health";
 
@@ -48,8 +49,11 @@ public class CatalogOpenIdAuthorizationRequestFilter implements ContainerRequest
     LOG.debug("AuthorizedUserName:{}", principal);
     CatalogPrincipal catalogPrincipal = new CatalogPrincipal(principal);
     String scheme = containerRequestContext.getUriInfo().getRequestUri().getScheme();
-    CatalogSecurityContext catalogSecurityContext =
-        new CatalogSecurityContext(catalogPrincipal, scheme, CatalogSecurityContext.OPENID_AUTH);
+    CatalogSecurityContext catalogSecurityContext = new CatalogSecurityContext(
+      catalogPrincipal,
+      scheme,
+      CatalogSecurityContext.OPENID_AUTH
+    );
     LOG.debug("SecurityContext {}", catalogSecurityContext);
     containerRequestContext.setSecurityContext(catalogSecurityContext);
   }

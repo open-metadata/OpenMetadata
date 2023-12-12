@@ -44,6 +44,7 @@ import org.openmetadata.service.util.ResultList;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "analytics")
 public class ReportDataResource extends EntityTimeSeriesResource<ReportData, ReportDataRepository> {
+
   public static final String COLLECTION_PATH = "v1/analytics/dataInsights/data";
 
   public ReportDataResource(Authorizer authorizer) {
@@ -56,37 +57,37 @@ public class ReportDataResource extends EntityTimeSeriesResource<ReportData, Rep
 
   @GET
   @Operation(
-      operationId = "getReportData",
-      summary = "List the report data",
-      description =
-          "Get a list of all the report data for a given data insight report type , optionally filtered by  `startTs` and `endTs` of the result. "
-              + "Use cursor-based pagination to limit the number of "
-              + "entries in the list using `limit` and `before` or `after` query params.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "List of report data",
-            content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = ReportDataResultList.class)))
-      })
+    operationId = "getReportData",
+    summary = "List the report data",
+    description = "Get a list of all the report data for a given data insight report type , optionally filtered by  `startTs` and `endTs` of the result. " +
+    "Use cursor-based pagination to limit the number of " +
+    "entries in the list using `limit` and `before` or `after` query params.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "List of report data",
+        content = @Content(
+          mediaType = "application/json",
+          schema = @Schema(implementation = ReportDataResultList.class)
+        )
+      )
+    }
+  )
   public ResultList<ReportData> list(
-      @Context SecurityContext securityContext,
-      @Parameter(description = "report data type", schema = @Schema(implementation = ReportDataType.class))
-          @NonNull
-          @QueryParam("reportDataType")
-          ReportDataType reportDataType,
-      @Parameter(
-              description = "Filter report data results after the given start timestamp",
-              schema = @Schema(type = "number"))
-          @NonNull
-          @QueryParam("startTs")
-          Long startTs,
-      @Parameter(
-              description = "Filter report data results before the given end timestamp",
-              schema = @Schema(type = "number"))
-          @NonNull
-          @QueryParam("endTs")
-          Long endTs) {
+    @Context SecurityContext securityContext,
+    @Parameter(
+      description = "report data type",
+      schema = @Schema(implementation = ReportDataType.class)
+    ) @NonNull @QueryParam("reportDataType") ReportDataType reportDataType,
+    @Parameter(
+      description = "Filter report data results after the given start timestamp",
+      schema = @Schema(type = "number")
+    ) @NonNull @QueryParam("startTs") Long startTs,
+    @Parameter(
+      description = "Filter report data results before the given end timestamp",
+      schema = @Schema(type = "number")
+    ) @NonNull @QueryParam("endTs") Long endTs
+  ) {
     OperationContext operationContext = new OperationContext(Entity.DATA_INSIGHT_CHART, MetadataOperation.VIEW_ALL);
     ResourceContextInterface resourceContext = ReportDataContext.builder().build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
@@ -95,17 +96,22 @@ public class ReportDataResource extends EntityTimeSeriesResource<ReportData, Rep
 
   @POST
   @Operation(
-      operationId = "addReportData",
-      summary = "Add data to a data insight report",
-      description = "Add data to a data insight report type",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Successfully added reportData.",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ReportData.class)))
-      })
+    operationId = "addReportData",
+    summary = "Add data to a data insight report",
+    description = "Add data to a data insight report type",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "Successfully added reportData.",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = ReportData.class))
+      )
+    }
+  )
   public Response addReportData(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid ReportData reportData) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Valid ReportData reportData
+  ) {
     OperationContext operationContext = new OperationContext(Entity.DATA_INSIGHT_CHART, MetadataOperation.CREATE);
     ResourceContextInterface resourceContext = ReportDataContext.builder().build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
@@ -115,26 +121,28 @@ public class ReportDataResource extends EntityTimeSeriesResource<ReportData, Rep
   @DELETE
   @Path("/{reportDataType}/{date}")
   @Operation(
-      operationId = "deleteReportData",
-      summary = "Delete report data for a given report data type ando date",
-      description = "Delete report data for a given report data type and date.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Successfully deleted report data.",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ReportData.class)))
-      })
+    operationId = "deleteReportData",
+    summary = "Delete report data for a given report data type ando date",
+    description = "Delete report data for a given report data type and date.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "Successfully deleted report data.",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = ReportData.class))
+      )
+    }
+  )
   public Response deleteReportData(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "report data type", schema = @Schema(implementation = ReportDataType.class))
-          @NonNull
-          @PathParam("reportDataType")
-          ReportDataType reportDataType,
-      @Parameter(description = "date in format YYYY-MM-DD", schema = @Schema(type = "String"))
-          @NonNull
-          @PathParam("date")
-          String date) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(
+      description = "report data type",
+      schema = @Schema(implementation = ReportDataType.class)
+    ) @NonNull @PathParam("reportDataType") ReportDataType reportDataType,
+    @Parameter(description = "date in format YYYY-MM-DD", schema = @Schema(type = "String")) @NonNull @PathParam(
+      "date"
+    ) String date
+  ) {
     OperationContext operationContext = new OperationContext(Entity.DATA_INSIGHT_CHART, MetadataOperation.DELETE);
     ResourceContextInterface resourceContext = ReportDataContext.builder().build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
@@ -145,22 +153,25 @@ public class ReportDataResource extends EntityTimeSeriesResource<ReportData, Rep
   @DELETE
   @Path("/{reportDataType}")
   @Operation(
-      operationId = "deletePreviousReportData",
-      summary = "Delete all the previous report data for a given report data type",
-      description = "Delete all the previous report data for a given report data type.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Successfully deleted previous report data.",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ReportData.class)))
-      })
+    operationId = "deletePreviousReportData",
+    summary = "Delete all the previous report data for a given report data type",
+    description = "Delete all the previous report data for a given report data type.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "Successfully deleted previous report data.",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = ReportData.class))
+      )
+    }
+  )
   public Response deletePreviousReportData(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "report data type", schema = @Schema(implementation = ReportDataType.class))
-          @NonNull
-          @PathParam("reportDataType")
-          ReportDataType reportDataType) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(
+      description = "report data type",
+      schema = @Schema(implementation = ReportDataType.class)
+    ) @NonNull @PathParam("reportDataType") ReportDataType reportDataType
+  ) {
     OperationContext operationContext = new OperationContext(Entity.DATA_INSIGHT_CHART, MetadataOperation.DELETE);
     ResourceContextInterface resourceContext = ReportDataContext.builder().build();
     authorizer.authorize(securityContext, operationContext, resourceContext);

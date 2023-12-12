@@ -30,6 +30,7 @@ import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnect
 
 @Slf4j
 public class AzureAuthenticationProvider implements AuthenticationProvider {
+
   private final AzureSSOClientConfig securityConfig;
   private String generatedAuthToken;
   private Long expirationTimeMillis;
@@ -56,10 +57,10 @@ public class AzureAuthenticationProvider implements AuthenticationProvider {
   @Override
   public String authToken() throws IOException {
     IClientCredential credential = ClientCredentialFactory.createFromSecret(securityConfig.getClientSecret());
-    ConfidentialClientApplication cca =
-        ConfidentialClientApplication.builder(securityConfig.getClientId(), credential)
-            .authority(securityConfig.getAuthority())
-            .build();
+    ConfidentialClientApplication cca = ConfidentialClientApplication
+      .builder(securityConfig.getClientId(), credential)
+      .authority(securityConfig.getAuthority())
+      .build();
     Set<String> scope = ImmutableSet.of("api://" + securityConfig.getClientId() + "/.default");
 
     ClientCredentialParameters parameters = ClientCredentialParameters.builder(scope).build();

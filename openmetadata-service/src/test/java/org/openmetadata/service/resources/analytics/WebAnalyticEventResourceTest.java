@@ -34,13 +34,15 @@ import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
 public class WebAnalyticEventResourceTest extends EntityResourceTest<WebAnalyticEvent, CreateWebAnalyticEvent> {
+
   public WebAnalyticEventResourceTest() {
     super(
-        Entity.WEB_ANALYTIC_EVENT,
-        WebAnalyticEvent.class,
-        WebAnalyticEventResource.WebAnalyticEventList.class,
-        "analytics/web/events",
-        WebAnalyticEventResource.FIELDS);
+      Entity.WEB_ANALYTIC_EVENT,
+      WebAnalyticEvent.class,
+      WebAnalyticEventResource.WebAnalyticEventList.class,
+      "analytics/web/events",
+      WebAnalyticEventResource.FIELDS
+    );
     supportsSearchIndex = true;
   }
 
@@ -56,93 +58,99 @@ public class WebAnalyticEventResourceTest extends EntityResourceTest<WebAnalytic
   @Test
   void post_web_analytic_event_4x(TestInfo test) {
     assertResponseContains(
-        () -> createEntity(createRequest(test).withEventType(null), ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "eventType must not be null");
+      () -> createEntity(createRequest(test).withEventType(null), ADMIN_AUTH_HEADERS),
+      BAD_REQUEST,
+      "eventType must not be null"
+    );
 
     assertResponseContains(
-        () -> createEntity(createRequest(test).withName(null), ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "name must not be null");
+      () -> createEntity(createRequest(test).withName(null), ADMIN_AUTH_HEADERS),
+      BAD_REQUEST,
+      "name must not be null"
+    );
   }
 
   @Test
   void put_and_delete_web_analytic_event_data_200() throws IOException, ParseException {
-    String[] dates = {"2022-10-11", "2022-10-10", "2022-10-09", "2022-10-08"};
+    String[] dates = { "2022-10-11", "2022-10-10", "2022-10-09", "2022-10-08" };
 
     for (String date : dates) {
-      WebAnalyticEventData webAnalyticEventData =
-          new WebAnalyticEventData()
-              .withTimestamp(TestUtils.dateToTimestamp(date))
-              .withEventType(WebAnalyticEventType.PAGE_VIEW)
-              .withEventData(
-                  new PageViewData()
-                      .withHostname("http://localhost")
-                      .withUserId(UUID.randomUUID())
-                      .withSessionId(UUID.randomUUID()));
+      WebAnalyticEventData webAnalyticEventData = new WebAnalyticEventData()
+        .withTimestamp(TestUtils.dateToTimestamp(date))
+        .withEventType(WebAnalyticEventType.PAGE_VIEW)
+        .withEventData(
+          new PageViewData()
+            .withHostname("http://localhost")
+            .withUserId(UUID.randomUUID())
+            .withSessionId(UUID.randomUUID())
+        );
       putWebAnalyticEventData(webAnalyticEventData, ADMIN_AUTH_HEADERS);
 
-      ResultList<WebAnalyticEventData> webAnalyticEventDataResultList =
-          getWebAnalyticEventData(
-              WebAnalyticEventType.PAGE_VIEW.value(),
-              TestUtils.dateToTimestamp(date),
-              TestUtils.dateToTimestamp(date),
-              ADMIN_AUTH_HEADERS);
+      ResultList<WebAnalyticEventData> webAnalyticEventDataResultList = getWebAnalyticEventData(
+        WebAnalyticEventType.PAGE_VIEW.value(),
+        TestUtils.dateToTimestamp(date),
+        TestUtils.dateToTimestamp(date),
+        ADMIN_AUTH_HEADERS
+      );
 
       verifyWebAnalyticEventData(webAnalyticEventDataResultList, List.of(webAnalyticEventData), 1);
     }
 
     deleteWebAnalyticEventData(TestUtils.dateToTimestamp("2022-10-11"), authHeaders(BOT_USER.getName()));
 
-    ResultList<WebAnalyticEventData> webAnalyticEventDataResultList =
-        getWebAnalyticEventData(
-            WebAnalyticEventType.PAGE_VIEW.value(),
-            TestUtils.dateToTimestamp("2022-10-11"),
-            TestUtils.dateToTimestamp("2022-10-11"),
-            ADMIN_AUTH_HEADERS);
+    ResultList<WebAnalyticEventData> webAnalyticEventDataResultList = getWebAnalyticEventData(
+      WebAnalyticEventType.PAGE_VIEW.value(),
+      TestUtils.dateToTimestamp("2022-10-11"),
+      TestUtils.dateToTimestamp("2022-10-11"),
+      ADMIN_AUTH_HEADERS
+    );
 
     assertEquals(1, webAnalyticEventDataResultList.getData().size());
 
-    ResultList<WebAnalyticEventData> emptyWebAnalyticEventDataResultList =
-        getWebAnalyticEventData(
-            WebAnalyticEventType.PAGE_VIEW.value(),
-            TestUtils.dateToTimestamp("2022-10-08"),
-            TestUtils.dateToTimestamp("2022-10-10"),
-            ADMIN_AUTH_HEADERS);
+    ResultList<WebAnalyticEventData> emptyWebAnalyticEventDataResultList = getWebAnalyticEventData(
+      WebAnalyticEventType.PAGE_VIEW.value(),
+      TestUtils.dateToTimestamp("2022-10-08"),
+      TestUtils.dateToTimestamp("2022-10-10"),
+      ADMIN_AUTH_HEADERS
+    );
 
     assertEquals(0, emptyWebAnalyticEventDataResultList.getData().size());
   }
 
   @Test
   void put_and_delete_web_analytic_event_data_403() throws IOException, ParseException {
-    WebAnalyticEventData webAnalyticEventData =
-        new WebAnalyticEventData()
-            .withTimestamp(TestUtils.dateToTimestamp("2022-10-08"))
-            .withEventType(WebAnalyticEventType.PAGE_VIEW)
-            .withEventData(
-                new PageViewData()
-                    .withHostname("http://localhost")
-                    .withUserId(UUID.randomUUID())
-                    .withSessionId(UUID.randomUUID()));
+    WebAnalyticEventData webAnalyticEventData = new WebAnalyticEventData()
+      .withTimestamp(TestUtils.dateToTimestamp("2022-10-08"))
+      .withEventType(WebAnalyticEventType.PAGE_VIEW)
+      .withEventData(
+        new PageViewData()
+          .withHostname("http://localhost")
+          .withUserId(UUID.randomUUID())
+          .withSessionId(UUID.randomUUID())
+      );
     putWebAnalyticEventData(webAnalyticEventData, ADMIN_AUTH_HEADERS);
 
     assertResponse(
-        () -> deleteWebAnalyticEventData(TestUtils.dateToTimestamp("2022-10-11"), authHeaders(DATA_CONSUMER.getName())),
-        FORBIDDEN,
-        permissionNotAllowed(DATA_CONSUMER.getName(), List.of(MetadataOperation.DELETE)));
+      () -> deleteWebAnalyticEventData(TestUtils.dateToTimestamp("2022-10-11"), authHeaders(DATA_CONSUMER.getName())),
+      FORBIDDEN,
+      permissionNotAllowed(DATA_CONSUMER.getName(), List.of(MetadataOperation.DELETE))
+    );
   }
 
   @Override
   public CreateWebAnalyticEvent createRequest(String name) {
     return new CreateWebAnalyticEvent()
-        .withName(name)
-        .withDescription(name)
-        .withEventType(WebAnalyticEventType.PAGE_VIEW);
+      .withName(name)
+      .withDescription(name)
+      .withEventType(WebAnalyticEventType.PAGE_VIEW);
   }
 
   @Override
   public void validateCreatedEntity(
-      WebAnalyticEvent createdEntity, CreateWebAnalyticEvent request, Map<String, String> authHeaders) {
+    WebAnalyticEvent createdEntity,
+    CreateWebAnalyticEvent request,
+    Map<String, String> authHeaders
+  ) {
     assertEquals(request.getName(), createdEntity.getName());
     assertEquals(request.getDescription(), createdEntity.getDescription());
   }
@@ -156,18 +164,18 @@ public class WebAnalyticEventResourceTest extends EntityResourceTest<WebAnalytic
 
   @Override
   public WebAnalyticEvent validateGetWithDifferentFields(WebAnalyticEvent entity, boolean byName)
-      throws HttpResponseException {
+    throws HttpResponseException {
     String fields = "";
     entity =
-        byName
-            ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getEntity(entity.getId(), null, ADMIN_AUTH_HEADERS);
+      byName
+        ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+        : getEntity(entity.getId(), null, ADMIN_AUTH_HEADERS);
     assertListNull(entity.getOwner());
     fields = "owner";
     entity =
-        byName
-            ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
+      byName
+        ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+        : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(entity.getOwner());
     return entity;
   }
@@ -176,7 +184,7 @@ public class WebAnalyticEventResourceTest extends EntityResourceTest<WebAnalytic
   public void assertFieldChange(String fieldName, Object expected, Object actual) {}
 
   public void putWebAnalyticEventData(WebAnalyticEventData data, Map<String, String> authHeaders)
-      throws HttpResponseException {
+    throws HttpResponseException {
     WebTarget target = getCollection().path("/collect");
     TestUtils.put(target, data, OK, authHeaders);
   }
@@ -188,7 +196,12 @@ public class WebAnalyticEventResourceTest extends EntityResourceTest<WebAnalytic
   }
 
   public ResultList<WebAnalyticEventData> getWebAnalyticEventData(
-      String eventType, Long start, Long end, Map<String, String> authHeaders) throws HttpResponseException {
+    String eventType,
+    Long start,
+    Long end,
+    Map<String, String> authHeaders
+  )
+    throws HttpResponseException {
     WebTarget target = getCollection().path("/collect");
     target = target.queryParam("startTs", start);
     target = target.queryParam("endTs", end);
@@ -197,9 +210,10 @@ public class WebAnalyticEventResourceTest extends EntityResourceTest<WebAnalytic
   }
 
   private void verifyWebAnalyticEventData(
-      ResultList<WebAnalyticEventData> actualWebAnalyticEventData,
-      List<WebAnalyticEventData> expectedWebAnalyticEventData,
-      int expectedCount) {
+    ResultList<WebAnalyticEventData> actualWebAnalyticEventData,
+    List<WebAnalyticEventData> expectedWebAnalyticEventData,
+    int expectedCount
+  ) {
     assertEquals(expectedCount, actualWebAnalyticEventData.getPaging().getTotal());
     assertEquals(expectedWebAnalyticEventData.size(), actualWebAnalyticEventData.getData().size());
   }

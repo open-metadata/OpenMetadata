@@ -24,6 +24,7 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 
 public final class SecurityUtil {
+
   public static final String DEFAULT_PRINCIPAL_DOMAIN = "openmetadata.org";
 
   private SecurityUtil() {}
@@ -58,10 +59,11 @@ public final class SecurityUtil {
   public static Invocation.Builder addHeaders(WebTarget target, Map<String, String> headers) {
     if (headers != null) {
       return target
-          .request()
-          .header(
-              CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER,
-              headers.get(CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER));
+        .request()
+        .header(
+          CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER,
+          headers.get(CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER)
+        );
     }
     return target.request();
   }

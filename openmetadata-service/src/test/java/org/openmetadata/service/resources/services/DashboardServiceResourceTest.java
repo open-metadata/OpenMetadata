@@ -59,13 +59,15 @@ import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 public class DashboardServiceResourceTest extends ServiceResourceTest<DashboardService, CreateDashboardService> {
+
   public DashboardServiceResourceTest() {
     super(
-        Entity.DASHBOARD_SERVICE,
-        DashboardService.class,
-        DashboardServiceList.class,
-        "services/dashboardServices",
-        "owner");
+      Entity.DASHBOARD_SERVICE,
+      DashboardService.class,
+      DashboardServiceList.class,
+      "services/dashboardServices",
+      "owner"
+    );
     this.supportsPatch = false;
   }
 
@@ -73,24 +75,26 @@ public class DashboardServiceResourceTest extends ServiceResourceTest<DashboardS
   void post_withoutRequiredFields_400_badRequest(TestInfo test) {
     // Create dashboard with mandatory serviceType field empty
     assertResponse(
-        () -> createEntity(createRequest(test).withServiceType(null), ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "[serviceType must not be null]");
+      () -> createEntity(createRequest(test).withServiceType(null), ADMIN_AUTH_HEADERS),
+      BAD_REQUEST,
+      "[serviceType must not be null]"
+    );
   }
 
   @Test
   void post_validService_as_admin_200_ok(TestInfo test) throws IOException, URISyntaxException {
     // Create dashboard service with different optional fields
     Map<String, String> authHeaders = ADMIN_AUTH_HEADERS;
-    MetabaseConnection metabaseConnection =
-        new MetabaseConnection()
-            .withHostPort(new URI("http://localhost:8080"))
-            .withUsername("user")
-            .withPassword("password");
+    MetabaseConnection metabaseConnection = new MetabaseConnection()
+      .withHostPort(new URI("http://localhost:8080"))
+      .withUsername("user")
+      .withPassword("password");
     createAndCheckEntity(createRequest(test, 1).withDescription(null), authHeaders);
     createAndCheckEntity(createRequest(test, 2).withDescription("description"), authHeaders);
     createAndCheckEntity(
-        createRequest(test, 3).withConnection(new DashboardConnection().withConfig(metabaseConnection)), authHeaders);
+      createRequest(test, 3).withConnection(new DashboardConnection().withConfig(metabaseConnection)),
+      authHeaders
+    );
 
     // We can create the service without connection
     createAndCheckEntity(createRequest(test).withConnection(null), ADMIN_AUTH_HEADERS);
@@ -99,49 +103,58 @@ public class DashboardServiceResourceTest extends ServiceResourceTest<DashboardS
   @Test
   void put_updateService_as_admin_2xx(TestInfo test) throws IOException, URISyntaxException {
     String password = "test12";
-    DashboardConnection dashboardConnection =
-        new DashboardConnection()
-            .withConfig(
-                new MetabaseConnection()
-                    .withHostPort(new URI("http://localhost:8080"))
-                    .withUsername("user")
-                    .withPassword(password));
-    DashboardService service =
-        createAndCheckEntity(
-            createRequest(test).withDescription(null).withConnection(dashboardConnection), ADMIN_AUTH_HEADERS);
+    DashboardConnection dashboardConnection = new DashboardConnection()
+    .withConfig(
+        new MetabaseConnection()
+          .withHostPort(new URI("http://localhost:8080"))
+          .withUsername("user")
+          .withPassword(password)
+      );
+    DashboardService service = createAndCheckEntity(
+      createRequest(test).withDescription(null).withConnection(dashboardConnection),
+      ADMIN_AUTH_HEADERS
+    );
 
     // Update dashboard description and ingestion service that are null
-    DashboardConnection dashboardConnection1 =
-        new DashboardConnection()
-            .withConfig(
-                new MetabaseConnection()
-                    .withHostPort(new URI("http://localhost:9000"))
-                    .withUsername("user1")
-                    .withPassword(password));
+    DashboardConnection dashboardConnection1 = new DashboardConnection()
+    .withConfig(
+        new MetabaseConnection()
+          .withHostPort(new URI("http://localhost:9000"))
+          .withUsername("user1")
+          .withPassword(password)
+      );
 
-    CreateDashboardService update =
-        createRequest(test).withDescription("description1").withConnection(dashboardConnection1);
+    CreateDashboardService update = createRequest(test)
+      .withDescription("description1")
+      .withConnection(dashboardConnection1);
 
     ChangeDescription change = getChangeDescription(service, MINOR_UPDATE);
     fieldAdded(change, "description", "description1");
     fieldUpdated(change, "connection", dashboardConnection, dashboardConnection1);
     DashboardService updatedService = updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     validateConnection(
-        update.getConnection(), updatedService.getConnection(), updatedService.getServiceType(), ADMIN_AUTH_HEADERS);
+      update.getConnection(),
+      updatedService.getConnection(),
+      updatedService.getServiceType(),
+      ADMIN_AUTH_HEADERS
+    );
     change = getChangeDescription(updatedService, MINOR_UPDATE);
     updatedService = getEntity(service.getId(), TEST_AUTH_HEADERS);
     assertNotNull(updatedService.getConnection());
     assertNotNull(
-        JsonUtils.readValue(JsonUtils.pojoToJson(updatedService.getConnection().getConfig()), MetabaseConnection.class)
-            .getHostPort());
+      JsonUtils
+        .readValue(JsonUtils.pojoToJson(updatedService.getConnection().getConfig()), MetabaseConnection.class)
+        .getHostPort()
+    );
     assertNotNull(
-        JsonUtils.readValue(JsonUtils.pojoToJson(updatedService.getConnection().getConfig()), MetabaseConnection.class)
-            .getUsername());
-    MetabaseConnection metabaseConnection =
-        new MetabaseConnection()
-            .withHostPort(new URI("http://localhost:8080"))
-            .withUsername("user")
-            .withPassword(password);
+      JsonUtils
+        .readValue(JsonUtils.pojoToJson(updatedService.getConnection().getConfig()), MetabaseConnection.class)
+        .getUsername()
+    );
+    MetabaseConnection metabaseConnection = new MetabaseConnection()
+      .withHostPort(new URI("http://localhost:8080"))
+      .withUsername("user")
+      .withPassword(password);
     DashboardConnection dashboardConnection2 = new DashboardConnection().withConfig(metabaseConnection);
     update = createRequest(test).withDescription("description1").withConnection(dashboardConnection2);
 
@@ -149,7 +162,11 @@ public class DashboardServiceResourceTest extends ServiceResourceTest<DashboardS
     updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     updatedService = getEntity(service.getId(), ADMIN_AUTH_HEADERS);
     validateConnection(
-        dashboardConnection2, updatedService.getConnection(), updatedService.getServiceType(), ADMIN_AUTH_HEADERS);
+      dashboardConnection2,
+      updatedService.getConnection(),
+      updatedService.getServiceType(),
+      ADMIN_AUTH_HEADERS
+    );
   }
 
   @Test
@@ -157,8 +174,11 @@ public class DashboardServiceResourceTest extends ServiceResourceTest<DashboardS
     DashboardService service = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     // By default, we have no result logged in
     assertNull(service.getTestConnectionResult());
-    DashboardService updatedService =
-        putTestConnectionResult(service.getId(), TEST_CONNECTION_RESULT, ADMIN_AUTH_HEADERS);
+    DashboardService updatedService = putTestConnectionResult(
+      service.getId(),
+      TEST_CONNECTION_RESULT,
+      ADMIN_AUTH_HEADERS
+    );
     // Validate that the data got properly stored
     assertNotNull(updatedService.getTestConnectionResult());
     assertEquals(TestConnectionResultStatus.SUCCESSFUL, updatedService.getTestConnectionResult().getStatus());
@@ -171,8 +191,11 @@ public class DashboardServiceResourceTest extends ServiceResourceTest<DashboardS
   }
 
   public DashboardService putTestConnectionResult(
-      UUID serviceId, TestConnectionResult testConnectionResult, Map<String, String> authHeaders)
-      throws HttpResponseException {
+    UUID serviceId,
+    TestConnectionResult testConnectionResult,
+    Map<String, String> authHeaders
+  )
+    throws HttpResponseException {
     WebTarget target = getResource(serviceId).path("/testConnectionResult");
     return TestUtils.put(target, testConnectionResult, DashboardService.class, OK, authHeaders);
   }
@@ -180,20 +203,25 @@ public class DashboardServiceResourceTest extends ServiceResourceTest<DashboardS
   @Override
   public CreateDashboardService createRequest(String name) {
     return new CreateDashboardService()
-        .withName(name)
-        .withServiceType(DashboardServiceType.Metabase)
-        .withConnection(
-            new DashboardConnection()
-                .withConfig(
-                    new MetabaseConnection()
-                        .withHostPort(CommonUtil.getUri("http://localhost:8080"))
-                        .withUsername("admin")
-                        .withPassword("admin")));
+      .withName(name)
+      .withServiceType(DashboardServiceType.Metabase)
+      .withConnection(
+        new DashboardConnection()
+        .withConfig(
+            new MetabaseConnection()
+              .withHostPort(CommonUtil.getUri("http://localhost:8080"))
+              .withUsername("admin")
+              .withPassword("admin")
+          )
+      );
   }
 
   @Override
   public void validateCreatedEntity(
-      DashboardService service, CreateDashboardService createRequest, Map<String, String> authHeaders) {
+    DashboardService service,
+    CreateDashboardService createRequest,
+    Map<String, String> authHeaders
+  ) {
     assertEquals(createRequest.getName(), service.getName());
     DashboardConnection expectedConnection = createRequest.getConnection();
     DashboardConnection actualConnection = service.getConnection();
@@ -207,19 +235,19 @@ public class DashboardServiceResourceTest extends ServiceResourceTest<DashboardS
 
   @Override
   public DashboardService validateGetWithDifferentFields(DashboardService service, boolean byName)
-      throws HttpResponseException {
+    throws HttpResponseException {
     String fields = "";
     service =
-        byName
-            ? getEntityByName(service.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
+      byName
+        ? getEntityByName(service.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+        : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
     TestUtils.assertListNull(service.getOwner());
 
     fields = "owner,tags";
     service =
-        byName
-            ? getEntityByName(service.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
+      byName
+        ? getEntityByName(service.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+        : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
     // Checks for other owner, tags, and followers is done in the base class
     return service;
   }
@@ -237,10 +265,11 @@ public class DashboardServiceResourceTest extends ServiceResourceTest<DashboardS
   }
 
   private void validateConnection(
-      DashboardConnection expectedDashboardConnection,
-      DashboardConnection actualDashboardConnection,
-      DashboardServiceType dashboardServiceType,
-      Map<String, String> authHeaders) {
+    DashboardConnection expectedDashboardConnection,
+    DashboardConnection actualDashboardConnection,
+    DashboardServiceType dashboardServiceType,
+    Map<String, String> authHeaders
+  ) {
     if (expectedDashboardConnection != null && actualDashboardConnection != null) {
       if (dashboardServiceType == DashboardServiceType.Metabase) {
         MetabaseConnection expectedmetabaseConnection = (MetabaseConnection) expectedDashboardConnection.getConfig();
@@ -249,7 +278,7 @@ public class DashboardServiceResourceTest extends ServiceResourceTest<DashboardS
           actualMetabaseConnection = (MetabaseConnection) actualDashboardConnection.getConfig();
         } else {
           actualMetabaseConnection =
-              JsonUtils.convertValue(actualDashboardConnection.getConfig(), MetabaseConnection.class);
+            JsonUtils.convertValue(actualDashboardConnection.getConfig(), MetabaseConnection.class);
         }
         assertEquals(expectedmetabaseConnection.getHostPort(), actualMetabaseConnection.getHostPort());
         assertEquals(expectedmetabaseConnection.getUsername(), actualMetabaseConnection.getUsername());
@@ -264,29 +293,31 @@ public class DashboardServiceResourceTest extends ServiceResourceTest<DashboardS
 
   public void setupDashboardServices(TestInfo test) throws HttpResponseException, URISyntaxException {
     DashboardServiceResourceTest dashboardResourceTest = new DashboardServiceResourceTest();
-    CreateDashboardService createDashboardService =
-        dashboardResourceTest.createRequest("superset", "", "", null).withServiceType(DashboardServiceType.Metabase);
-    DashboardConnection dashboardConnection =
-        new DashboardConnection()
-            .withConfig(
-                new MetabaseConnection()
-                    .withHostPort(new URI("http://localhost:8080"))
-                    .withPassword("test")
-                    .withUsername("admin"));
+    CreateDashboardService createDashboardService = dashboardResourceTest
+      .createRequest("superset", "", "", null)
+      .withServiceType(DashboardServiceType.Metabase);
+    DashboardConnection dashboardConnection = new DashboardConnection()
+    .withConfig(
+        new MetabaseConnection()
+          .withHostPort(new URI("http://localhost:8080"))
+          .withPassword("test")
+          .withUsername("admin")
+      );
     createDashboardService.withConnection(dashboardConnection).withDomain(DOMAIN.getFullyQualifiedName());
-    DashboardService dashboardService =
-        new DashboardServiceResourceTest().createEntity(createDashboardService, ADMIN_AUTH_HEADERS);
+    DashboardService dashboardService = new DashboardServiceResourceTest()
+    .createEntity(createDashboardService, ADMIN_AUTH_HEADERS);
     METABASE_REFERENCE = dashboardService.getEntityReference();
 
-    CreateDashboardService lookerDashboardService =
-        dashboardResourceTest.createRequest("looker", "", "", null).withServiceType(DashboardServiceType.Looker);
-    DashboardConnection lookerConnection =
-        new DashboardConnection()
-            .withConfig(
-                new LookerConnection()
-                    .withHostPort(new URI("http://localhost:8080"))
-                    .withClientId("test")
-                    .withClientSecret("test"));
+    CreateDashboardService lookerDashboardService = dashboardResourceTest
+      .createRequest("looker", "", "", null)
+      .withServiceType(DashboardServiceType.Looker);
+    DashboardConnection lookerConnection = new DashboardConnection()
+    .withConfig(
+        new LookerConnection()
+          .withHostPort(new URI("http://localhost:8080"))
+          .withClientId("test")
+          .withClientSecret("test")
+      );
     lookerDashboardService.withConnection(lookerConnection);
     dashboardService = new DashboardServiceResourceTest().createEntity(lookerDashboardService, ADMIN_AUTH_HEADERS);
     LOOKER_REFERENCE = dashboardService.getEntityReference();

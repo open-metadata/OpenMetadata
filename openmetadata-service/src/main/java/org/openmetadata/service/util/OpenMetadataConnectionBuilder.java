@@ -65,8 +65,7 @@ public class OpenMetadataConnectionBuilder {
     botRepository = (BotRepository) Entity.getEntityRepository(Entity.BOT);
     userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
 
-    PipelineServiceClientConfiguration pipelineServiceClientConfiguration =
-        openMetadataApplicationConfig.getPipelineServiceClientConfiguration();
+    PipelineServiceClientConfiguration pipelineServiceClientConfiguration = openMetadataApplicationConfig.getPipelineServiceClientConfiguration();
     openMetadataURL = pipelineServiceClientConfiguration.getMetadataApiEndpoint();
     verifySSL = pipelineServiceClientConfiguration.getVerifySSL();
 
@@ -83,8 +82,10 @@ public class OpenMetadataConnectionBuilder {
      that the SSL configs we add here are to go from pipelineServiceClient -> OpenMetadata Server.
     */
     openMetadataSSLConfig =
-        getOMSSLConfigFromPipelineServiceClient(
-            pipelineServiceClientConfiguration.getVerifySSL(), pipelineServiceClientConfiguration.getSslConfig());
+      getOMSSLConfigFromPipelineServiceClient(
+        pipelineServiceClientConfiguration.getVerifySSL(),
+        pipelineServiceClientConfiguration.getSslConfig()
+      );
 
     clusterName = openMetadataApplicationConfig.getClusterName();
     secretsManagerLoader = pipelineServiceClientConfiguration.getSecretsManagerLoader();
@@ -102,14 +103,17 @@ public class OpenMetadataConnectionBuilder {
     switch (authType) {
       case SSO:
         return AuthProvider.fromValue(
-            JsonUtils.convertValue(botUser.getAuthenticationMechanism().getConfig(), SSOAuthMechanism.class)
-                .getSsoServiceType()
-                .value());
+          JsonUtils
+            .convertValue(botUser.getAuthenticationMechanism().getConfig(), SSOAuthMechanism.class)
+            .getSsoServiceType()
+            .value()
+        );
       case JWT:
         return AuthProvider.OPENMETADATA;
       default:
         throw new IllegalArgumentException(
-            String.format("Not supported authentication mechanism type: [%s]", authType.value()));
+          String.format("Not supported authentication mechanism type: [%s]", authType.value())
+        );
     }
   }
 
@@ -123,26 +127,27 @@ public class OpenMetadataConnectionBuilder {
         return new OpenMetadataJWTClientConfig().withJwtToken(jwtAuthMechanism.getJWTToken());
       default:
         throw new IllegalArgumentException(
-            String.format("Not supported authentication mechanism type: [%s]", authMechanism.getAuthType().value()));
+          String.format("Not supported authentication mechanism type: [%s]", authMechanism.getAuthType().value())
+        );
     }
   }
 
   public OpenMetadataConnection build() {
     return new OpenMetadataConnection()
-        .withAuthProvider(authProvider)
-        .withHostPort(openMetadataURL)
-        .withSecurityConfig(securityConfig)
-        .withVerifySSL(verifySSL)
-        .withClusterName(clusterName)
-        // What is the SM configuration, i.e., tool used to manage secrets: AWS SM, Parameter Store,...
-        .withSecretsManagerProvider(secretsManagerProvider)
-        // How the Ingestion Framework will know how to load the SM creds in the client side, e.g., airflow.cfg
-        .withSecretsManagerLoader(secretsManagerLoader)
-        /*
+      .withAuthProvider(authProvider)
+      .withHostPort(openMetadataURL)
+      .withSecurityConfig(securityConfig)
+      .withVerifySSL(verifySSL)
+      .withClusterName(clusterName)
+      // What is the SM configuration, i.e., tool used to manage secrets: AWS SM, Parameter Store,...
+      .withSecretsManagerProvider(secretsManagerProvider)
+      // How the Ingestion Framework will know how to load the SM creds in the client side, e.g., airflow.cfg
+      .withSecretsManagerLoader(secretsManagerLoader)
+      /*
         This is not about the pipeline service client SSL, but the OM server SSL.
         The Ingestion Framework will use this value to load the certificates when connecting to the server.
         */
-        .withSslConfig(openMetadataSSLConfig);
+      .withSslConfig(openMetadataSSLConfig);
   }
 
   private User retrieveBotUser(String botName) {
@@ -159,11 +164,11 @@ public class OpenMetadataConnectionBuilder {
       if (bot1.getBotUser() == null) {
         return null;
       }
-      User user =
-          userRepository.getByName(
-              null,
-              bot1.getBotUser().getFullyQualifiedName(),
-              new EntityUtil.Fields(Set.of("authenticationMechanism")));
+      User user = userRepository.getByName(
+        null,
+        bot1.getBotUser().getFullyQualifiedName(),
+        new EntityUtil.Fields(Set.of("authenticationMechanism"))
+      );
       if (user.getAuthenticationMechanism() != null) {
         user.getAuthenticationMechanism().setConfig(user.getAuthenticationMechanism().getConfig());
       }

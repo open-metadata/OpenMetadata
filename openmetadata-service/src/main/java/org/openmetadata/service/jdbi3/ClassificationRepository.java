@@ -38,14 +38,16 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
 public class ClassificationRepository extends EntityRepository<Classification> {
+
   public ClassificationRepository() {
     super(
-        ClassificationResource.TAG_COLLECTION_PATH,
-        Entity.CLASSIFICATION,
-        Classification.class,
-        Entity.getCollectionDAO().classificationDAO(),
-        "",
-        "");
+      ClassificationResource.TAG_COLLECTION_PATH,
+      Entity.CLASSIFICATION,
+      Classification.class,
+      Entity.getCollectionDAO().classificationDAO(),
+      "",
+      ""
+    );
     quoteFqn = true;
     supportsSearch = true;
     renameAllowed = true;
@@ -84,28 +86,30 @@ public class ClassificationRepository extends EntityRepository<Classification> {
   }
 
   private int getTermCount(Classification classification) {
-    ListFilter filter =
-        new ListFilter(Include.NON_DELETED).addQueryParam("parent", classification.getFullyQualifiedName());
+    ListFilter filter = new ListFilter(Include.NON_DELETED)
+    .addQueryParam("parent", classification.getFullyQualifiedName());
     return daoCollection.tagDAO().listCount(filter);
   }
 
   private Integer getUsageCount(Classification classification) {
     return daoCollection
-        .tagUsageDAO()
-        .getTagCount(TagSource.CLASSIFICATION.ordinal(), classification.getFullyQualifiedName());
+      .tagUsageDAO()
+      .getTagCount(TagSource.CLASSIFICATION.ordinal(), classification.getFullyQualifiedName());
   }
 
   public static class TagLabelMapper implements RowMapper<TagLabel> {
+
     @Override
     public TagLabel map(ResultSet r, org.jdbi.v3.core.statement.StatementContext ctx) throws SQLException {
       return new TagLabel()
-          .withLabelType(TagLabel.LabelType.values()[r.getInt("labelType")])
-          .withState(TagLabel.State.values()[r.getInt("state")])
-          .withTagFQN(r.getString("tagFQN"));
+        .withLabelType(TagLabel.LabelType.values()[r.getInt("labelType")])
+        .withState(TagLabel.State.values()[r.getInt("state")])
+        .withTagFQN(r.getString("tagFQN"));
     }
   }
 
   public class ClassificationUpdater extends EntityUpdater {
+
     public ClassificationUpdater(Classification original, Classification updated, Operation operation) {
       super(original, updated, operation);
     }
@@ -123,15 +127,16 @@ public class ClassificationRepository extends EntityRepository<Classification> {
       if (!original.getName().equals(updated.getName())) {
         if (ProviderType.SYSTEM.equals(original.getProvider())) {
           throw new IllegalArgumentException(
-              CatalogExceptionMessage.systemEntityRenameNotAllowed(original.getName(), entityType));
+            CatalogExceptionMessage.systemEntityRenameNotAllowed(original.getName(), entityType)
+          );
         }
         // Classification name changed - update tag names starting from classification and all the children tags
         LOG.info("Classification name changed from {} to {}", original.getName(), updated.getName());
         setFullyQualifiedName(updated);
         daoCollection.tagDAO().updateFqn(original.getName(), updated.getName());
         daoCollection
-            .tagUsageDAO()
-            .updateTagPrefix(TagSource.CLASSIFICATION.ordinal(), original.getName(), updated.getName());
+          .tagUsageDAO()
+          .updateTagPrefix(TagSource.CLASSIFICATION.ordinal(), original.getName(), updated.getName());
         recordChange("name", original.getName(), updated.getName());
         invalidateClassification(original.getId());
       }
@@ -140,8 +145,12 @@ public class ClassificationRepository extends EntityRepository<Classification> {
     private void invalidateClassification(UUID classificationId) {
       // Name of the classification changed. Invalidate the classification and all the children tags
       CACHE_WITH_ID.invalidate(new ImmutablePair<>(CLASSIFICATION, classificationId));
-      List<EntityRelationshipRecord> tagRecords =
-          findToRecords(classificationId, CLASSIFICATION, Relationship.CONTAINS, TAG);
+      List<EntityRelationshipRecord> tagRecords = findToRecords(
+        classificationId,
+        CLASSIFICATION,
+        Relationship.CONTAINS,
+        TAG
+      );
       for (EntityRelationshipRecord tagRecord : tagRecords) {
         invalidateTags(tagRecord.getId());
       }

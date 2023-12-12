@@ -68,6 +68,7 @@ import org.openmetadata.service.util.TestUtils;
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class UsageResourceTest extends OpenMetadataApplicationTest {
+
   private static final String PUT = "PUT";
   private static final String POST = "POST";
   public static final List<Table> TABLES = new ArrayList<>();
@@ -88,71 +89,79 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
   @Test
   void post_usageWithNonExistentEntityId_4xx() {
     assertResponse(
-        () -> reportUsage(TABLE, NON_EXISTENT_ENTITY, usageReport(), ADMIN_AUTH_HEADERS),
-        NOT_FOUND,
-        entityNotFound(TABLE, NON_EXISTENT_ENTITY));
+      () -> reportUsage(TABLE, NON_EXISTENT_ENTITY, usageReport(), ADMIN_AUTH_HEADERS),
+      NOT_FOUND,
+      entityNotFound(TABLE, NON_EXISTENT_ENTITY)
+    );
   }
 
   @Test
   void put_usageWithNonExistentEntityId_4xx() {
     assertResponse(
-        () -> reportUsagePut(TABLE, NON_EXISTENT_ENTITY, usageReport(), ADMIN_AUTH_HEADERS),
-        NOT_FOUND,
-        entityNotFound(TABLE, NON_EXISTENT_ENTITY));
+      () -> reportUsagePut(TABLE, NON_EXISTENT_ENTITY, usageReport(), ADMIN_AUTH_HEADERS),
+      NOT_FOUND,
+      entityNotFound(TABLE, NON_EXISTENT_ENTITY)
+    );
   }
 
   @Test
   void post_usageInvalidEntityName_4xx() {
     String invalidEntityType = "invalid";
     assertResponse(
-        () -> reportUsage(invalidEntityType, UUID.randomUUID(), usageReport(), ADMIN_AUTH_HEADERS),
-        NOT_FOUND,
-        entityRepositoryNotFound(invalidEntityType));
+      () -> reportUsage(invalidEntityType, UUID.randomUUID(), usageReport(), ADMIN_AUTH_HEADERS),
+      NOT_FOUND,
+      entityRepositoryNotFound(invalidEntityType)
+    );
   }
 
   @Test
   void put_usageInvalidEntityName_4xx() {
     String invalidEntityType = "invalid";
     assertResponse(
-        () -> reportUsagePut(invalidEntityType, UUID.randomUUID(), usageReport(), ADMIN_AUTH_HEADERS),
-        NOT_FOUND,
-        entityRepositoryNotFound(invalidEntityType));
+      () -> reportUsagePut(invalidEntityType, UUID.randomUUID(), usageReport(), ADMIN_AUTH_HEADERS),
+      NOT_FOUND,
+      entityRepositoryNotFound(invalidEntityType)
+    );
   }
 
   @Test
   void post_usageWithNegativeCountName_4xx() {
     DailyCount dailyCount = usageReport().withCount(-1); // Negative usage count
     assertResponse(
-        () -> reportUsage(TABLE, UUID.randomUUID(), dailyCount, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "[count must be greater than or equal to 0]");
+      () -> reportUsage(TABLE, UUID.randomUUID(), dailyCount, ADMIN_AUTH_HEADERS),
+      BAD_REQUEST,
+      "[count must be greater than or equal to 0]"
+    );
   }
 
   @Test
   void put_usageWithNegativeCountName_4xx() {
     DailyCount dailyCount = usageReport().withCount(-1); // Negative usage count
     assertResponse(
-        () -> reportUsagePut(TABLE, UUID.randomUUID(), dailyCount, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "[count must be greater than or equal to 0]");
+      () -> reportUsagePut(TABLE, UUID.randomUUID(), dailyCount, ADMIN_AUTH_HEADERS),
+      BAD_REQUEST,
+      "[count must be greater than or equal to 0]"
+    );
   }
 
   @Test
   void post_usageWithoutDate_4xx() {
     DailyCount usageReport = usageReport().withDate(null); // Negative usage count
     assertResponse(
-        () -> reportUsage(TABLE, UUID.randomUUID(), usageReport, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "[date must not be null]");
+      () -> reportUsage(TABLE, UUID.randomUUID(), usageReport, ADMIN_AUTH_HEADERS),
+      BAD_REQUEST,
+      "[date must not be null]"
+    );
   }
 
   @Test
   void put_usageWithoutDate_4xx() {
     DailyCount usageReport = usageReport().withDate(null); // Negative usage count
     assertResponse(
-        () -> reportUsagePut(TABLE, UUID.randomUUID(), usageReport, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "[date must not be null]");
+      () -> reportUsagePut(TABLE, UUID.randomUUID(), usageReport, ADMIN_AUTH_HEADERS),
+      BAD_REQUEST,
+      "[date must not be null]"
+    );
   }
 
   @Test
@@ -168,9 +177,10 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
   @Test
   void post_validUsageByNameAsNonPrivilegedUser_401(TestInfo test) {
     assertResponse(
-        () -> testValidUsageByName(test, POST, TEST_AUTH_HEADERS),
-        Status.FORBIDDEN,
-        CatalogExceptionMessage.permissionNotAllowed(TEST_USER_NAME, listOf(MetadataOperation.EDIT_USAGE)));
+      () -> testValidUsageByName(test, POST, TEST_AUTH_HEADERS),
+      Status.FORBIDDEN,
+      CatalogExceptionMessage.permissionNotAllowed(TEST_USER_NAME, listOf(MetadataOperation.EDIT_USAGE))
+    );
   }
 
   @Test
@@ -186,9 +196,10 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
   @Test
   void put_validUsageByNameAsNonPrivilegedUser_401(TestInfo test) {
     assertResponse(
-        () -> testValidUsageByName(test, PUT, TEST_AUTH_HEADERS),
-        Status.FORBIDDEN,
-        CatalogExceptionMessage.permissionNotAllowed(TEST_USER_NAME, listOf(MetadataOperation.EDIT_USAGE)));
+      () -> testValidUsageByName(test, PUT, TEST_AUTH_HEADERS),
+      Status.FORBIDDEN,
+      CatalogExceptionMessage.permissionNotAllowed(TEST_USER_NAME, listOf(MetadataOperation.EDIT_USAGE))
+    );
   }
 
   @SneakyThrows
@@ -247,29 +258,32 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
         // Cumulative monthly count for database
         databaseMonthlyCount = Math.min(day, 29) * dailyDatabaseUsageCount + databaseDailyCount;
         LOG.info(
-            "dailyDatabaseUsageCount {}, databaseDailyCount {} weekly {} monthly {}",
-            dailyDatabaseUsageCount,
-            databaseDailyCount,
-            databaseWeeklyCount,
-            databaseMonthlyCount);
+          "dailyDatabaseUsageCount {}, databaseDailyCount {} weekly {} monthly {}",
+          dailyDatabaseUsageCount,
+          databaseDailyCount,
+          databaseWeeklyCount,
+          databaseMonthlyCount
+        );
         checkUsage(
-            date,
-            Entity.DATABASE,
-            databaseId,
-            databaseDailyCount,
-            databaseWeeklyCount,
-            databaseMonthlyCount,
-            ADMIN_AUTH_HEADERS);
+          date,
+          Entity.DATABASE,
+          databaseId,
+          databaseDailyCount,
+          databaseWeeklyCount,
+          databaseMonthlyCount,
+          ADMIN_AUTH_HEADERS
+        );
 
         // Schema also has cumulative count
         checkUsage(
-            date,
-            Entity.DATABASE_SCHEMA,
-            schemaId,
-            databaseDailyCount,
-            databaseWeeklyCount,
-            databaseMonthlyCount,
-            ADMIN_AUTH_HEADERS);
+          date,
+          Entity.DATABASE_SCHEMA,
+          schemaId,
+          databaseDailyCount,
+          databaseWeeklyCount,
+          databaseMonthlyCount,
+          ADMIN_AUTH_HEADERS
+        );
       }
 
       // Compute daily percentiles now that all table usage have been published for a given date
@@ -291,7 +305,7 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
     String date = getDateStringByOffset(RestUtil.DATE_FORMAT, today, DAYS_OF_USAGE - 1);
     // Number of days defaults to 1 when unspecified
     UUID tableId = TABLES.get(0).getId();
-    getAndCheckUsage(TABLE, tableId, date, null /*, days unspecified */, 1, ADMIN_AUTH_HEADERS);
+    getAndCheckUsage(TABLE, tableId, date, null/*, days unspecified */, 1, ADMIN_AUTH_HEADERS);
 
     // Usage for specified number of days is returned
     getAndCheckUsage(TABLE, tableId, date, 1, 1, ADMIN_AUTH_HEADERS);
@@ -316,12 +330,12 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
 
     // Ensure GET .../tables/{id}?fields=usageSummary returns the latest usage
     date = getDateStringByOffset(RestUtil.DATE_FORMAT, today, DAYS_OF_USAGE - 1); // Latest usage report date
-    EntityUsage usage = getUsage(TABLE, tableId, date, null /* days not specified */, ADMIN_AUTH_HEADERS);
+    EntityUsage usage = getUsage(TABLE, tableId, date, null/* days not specified */, ADMIN_AUTH_HEADERS);
     Table table = new TableResourceTest().getEntity(TABLES.get(0).getId(), "usageSummary", ADMIN_AUTH_HEADERS);
     Assertions.assertEquals(usage.getUsage().get(0), table.getUsageSummary());
 
     // Ensure GET .../databases/{id}?fields=usageSummary returns the latest usage
-    usage = getUsage(Entity.DATABASE, databaseId, date, null /* days not specified */, ADMIN_AUTH_HEADERS);
+    usage = getUsage(Entity.DATABASE, databaseId, date, null/* days not specified */, ADMIN_AUTH_HEADERS);
     Database database = new DatabaseResourceTest().getEntity(databaseId, "usageSummary", ADMIN_AUTH_HEADERS);
     Assertions.assertEquals(usage.getUsage().get(0), database.getUsageSummary());
   }
@@ -333,97 +347,128 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
   }
 
   public void reportUsageByNameAndCheckPut(
-      String entity, String fqn, DailyCount usage, int weeklyCount, int monthlyCount, Map<String, String> authHeaders)
-      throws HttpResponseException {
+    String entity,
+    String fqn,
+    DailyCount usage,
+    int weeklyCount,
+    int monthlyCount,
+    Map<String, String> authHeaders
+  )
+    throws HttpResponseException {
     reportUsageByNamePut(entity, fqn, usage, authHeaders);
     checkUsageByName(usage.getDate(), entity, fqn, usage.getCount(), weeklyCount, monthlyCount, authHeaders);
   }
 
   public void reportUsageAndCheckPut(
-      String entity, UUID id, DailyCount usage, int weeklyCount, int monthlyCount, Map<String, String> authHeaders)
-      throws HttpResponseException {
+    String entity,
+    UUID id,
+    DailyCount usage,
+    int weeklyCount,
+    int monthlyCount,
+    Map<String, String> authHeaders
+  )
+    throws HttpResponseException {
     reportUsagePut(entity, id, usage, authHeaders);
     checkUsage(usage.getDate(), entity, id, usage.getCount(), weeklyCount, monthlyCount, authHeaders);
   }
 
   public void reportUsageByNamePut(String entity, String name, DailyCount usage, Map<String, String> authHeaders)
-      throws HttpResponseException {
+    throws HttpResponseException {
     WebTarget target = getResource("usage/").path(entity).path("/name/").path(name);
     TestUtils.put(target, usage, Response.Status.CREATED, authHeaders);
   }
 
   public void reportUsage(String entity, UUID id, DailyCount usage, Map<String, String> authHeaders)
-      throws HttpResponseException {
+    throws HttpResponseException {
     WebTarget target = getResource("usage/").path(entity).path("/").path(id.toString());
     TestUtils.post(target, usage, authHeaders);
   }
 
   public void reportUsagePut(String entity, UUID id, DailyCount usage, Map<String, String> authHeaders)
-      throws HttpResponseException {
+    throws HttpResponseException {
     WebTarget target = getResource("usage/").path(entity).path("/").path(id.toString());
     TestUtils.put(target, usage, Response.Status.CREATED, authHeaders);
   }
 
   public void computePercentile(String entity, String date, Map<String, String> authHeaders)
-      throws HttpResponseException {
+    throws HttpResponseException {
     WebTarget target = getResource("usage/compute.percentile/" + entity + "/" + date);
     TestUtils.post(target, authHeaders);
   }
 
   public void getAndCheckUsage(
-      String entity, UUID id, String date, Integer days, int expectedRecords, Map<String, String> authHeaders)
-      throws HttpResponseException {
+    String entity,
+    UUID id,
+    String date,
+    Integer days,
+    int expectedRecords,
+    Map<String, String> authHeaders
+  )
+    throws HttpResponseException {
     EntityUsage usage = getUsage(entity, id, date, days, authHeaders);
     assertEquals(expectedRecords, usage.getUsage().size());
   }
 
   public EntityUsage getUsageByName(
-      String entity, String fqn, String date, Integer days, Map<String, String> authHeaders)
-      throws HttpResponseException {
+    String entity,
+    String fqn,
+    String date,
+    Integer days,
+    Map<String, String> authHeaders
+  )
+    throws HttpResponseException {
     return getUsage(getResource("usage/" + entity + "/name/").path(fqn), date, days, authHeaders);
   }
 
   public EntityUsage getUsage(String entity, UUID id, String date, Integer days, Map<String, String> authHeaders)
-      throws HttpResponseException {
+    throws HttpResponseException {
     return getUsage(getResource("usage/" + entity + "/" + id), date, days, authHeaders);
   }
 
   public EntityUsage getUsage(WebTarget target, String date, Integer days, Map<String, String> authHeaders)
-      throws HttpResponseException {
+    throws HttpResponseException {
     target = date != null ? target.queryParam("date", date) : target;
     target = days != null ? target.queryParam("days", days) : target;
     return TestUtils.get(target, EntityUsage.class, authHeaders);
   }
 
   public void checkUsage(
-      String date,
-      String entity,
-      UUID id,
-      int dailyCount,
-      int weeklyCount,
-      int monthlyCount,
-      Map<String, String> authHeaders)
-      throws HttpResponseException {
+    String date,
+    String entity,
+    UUID id,
+    int dailyCount,
+    int weeklyCount,
+    int monthlyCount,
+    Map<String, String> authHeaders
+  )
+    throws HttpResponseException {
     EntityUsage usage = getUsage(entity, id, date, 1, authHeaders);
     assertEquals(id, usage.getEntity().getId());
     checkUsage(usage, date, entity, dailyCount, weeklyCount, monthlyCount);
   }
 
   public void checkUsageByName(
-      String date,
-      String entity,
-      String name,
-      int dailyCount,
-      int weeklyCount,
-      int monthlyCount,
-      Map<String, String> authHeaders)
-      throws HttpResponseException {
+    String date,
+    String entity,
+    String name,
+    int dailyCount,
+    int weeklyCount,
+    int monthlyCount,
+    Map<String, String> authHeaders
+  )
+    throws HttpResponseException {
     EntityUsage usage = getUsageByName(entity, name, date, 1, authHeaders);
     checkUsage(usage, date, entity, dailyCount, weeklyCount, monthlyCount);
   }
 
   public static void checkUsage(
-      EntityUsage usage, String date, String entity, int dailyCount, int weeklyCount, int monthlyCount) {
+    EntityUsage usage,
+    String date,
+    String entity,
+    int dailyCount,
+    int weeklyCount,
+    int monthlyCount
+  ) {
     assertEquals(entity, usage.getEntity().getType());
     UsageDetails usageDetails = usage.getUsage().get(0);
     assertEquals(date, usageDetails.getDate());

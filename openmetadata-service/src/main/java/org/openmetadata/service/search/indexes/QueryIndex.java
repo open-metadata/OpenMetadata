@@ -15,6 +15,7 @@ import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
 public class QueryIndex implements SearchIndex {
+
   final List<String> excludeTopicFields = List.of("changeDescription");
   final Query query;
 
@@ -38,9 +39,12 @@ public class QueryIndex implements SearchIndex {
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.QUERY);
     doc.put(
-        "fqnParts",
-        getFQNParts(
-            query.getFullyQualifiedName(), suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+      "fqnParts",
+      getFQNParts(
+        query.getFullyQualifiedName(),
+        suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())
+      )
+    );
     return doc;
   }
 

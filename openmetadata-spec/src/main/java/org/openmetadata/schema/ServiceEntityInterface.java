@@ -19,7 +19,6 @@ import org.openmetadata.schema.type.EntityReference;
 
 /** Interface to be implemented by all services entities to provide a way to access all the common fields. */
 public interface ServiceEntityInterface extends EntityInterface {
-
   ServiceConnectionEntityInterface getConnection();
 
   ServiceEntityInterface withOwner(EntityReference owner);

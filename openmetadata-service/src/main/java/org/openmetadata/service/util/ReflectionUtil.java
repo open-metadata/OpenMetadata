@@ -22,13 +22,13 @@ import org.openmetadata.service.exception.ReflectionException;
 public class ReflectionUtil {
 
   public static Class<?> createConnectionConfigClass(String connectionType, ServiceType serviceType)
-      throws ClassNotFoundException {
+    throws ClassNotFoundException {
     String clazzName =
-        "org.openmetadata.schema.services.connections."
-            + serviceType.value().toLowerCase(Locale.ROOT)
-            + "."
-            + connectionType
-            + "Connection";
+      "org.openmetadata.schema.services.connections." +
+      serviceType.value().toLowerCase(Locale.ROOT) +
+      "." +
+      connectionType +
+      "Connection";
     return Class.forName(clazzName);
   }
 
@@ -59,8 +59,10 @@ public class ReflectionUtil {
   }
 
   public static boolean isGetMethodOfObject(Method method) {
-    return method.getName().startsWith("get")
-        && !method.getReturnType().equals(Void.TYPE)
-        && !method.getReturnType().isPrimitive();
+    return (
+      method.getName().startsWith("get") &&
+      !method.getReturnType().equals(Void.TYPE) &&
+      !method.getReturnType().isPrimitive()
+    );
   }
 }

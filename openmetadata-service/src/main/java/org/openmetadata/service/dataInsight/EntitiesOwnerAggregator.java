@@ -6,6 +6,7 @@ import java.util.List;
 import org.openmetadata.schema.dataInsight.type.PercentageOfEntitiesWithOwnerByType;
 
 public abstract class EntitiesOwnerAggregator<A, B, M, S> implements DataInsightAggregatorInterface {
+
   private final A aggregations;
 
   protected EntitiesOwnerAggregator(A aggregations) {
@@ -26,12 +27,13 @@ public abstract class EntitiesOwnerAggregator<A, B, M, S> implements DataInsight
         S sumEntityCount = getAggregations(entityTypeBucket, ENTITY_COUNT);
 
         data.add(
-            new PercentageOfEntitiesWithOwnerByType()
-                .withTimestamp(timestamp)
-                .withEntityType(entityType)
-                .withEntityCount(getValue(sumEntityCount))
-                .withHasOwner(getValue(sumHasOwner))
-                .withHasOwnerFraction(getValue(sumHasOwner) / getValue(sumEntityCount)));
+          new PercentageOfEntitiesWithOwnerByType()
+            .withTimestamp(timestamp)
+            .withEntityType(entityType)
+            .withEntityCount(getValue(sumEntityCount))
+            .withHasOwner(getValue(sumHasOwner))
+            .withHasOwnerFraction(getValue(sumHasOwner) / getValue(sumEntityCount))
+        );
       }
     }
     return data;

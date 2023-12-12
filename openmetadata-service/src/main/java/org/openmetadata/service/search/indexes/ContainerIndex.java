@@ -18,6 +18,7 @@ import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
 public class ContainerIndex implements ColumnIndex {
+
   private static final List<String> excludeFields = List.of("changeDescription");
 
   final Container container;
@@ -52,8 +53,10 @@ public class ContainerIndex implements ColumnIndex {
     serviceSuggest.add(SearchSuggest.builder().input(container.getService().getName()).weight(5).build());
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.CONTAINER, container));
     tagsWithChildren.add(parseTags.getTags());
-    List<TagLabel> flattenedTagList =
-        tagsWithChildren.stream().flatMap(List::stream).collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
+    List<TagLabel> flattenedTagList = tagsWithChildren
+      .stream()
+      .flatMap(List::stream)
+      .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
 
     doc.put("displayName", container.getDisplayName() != null ? container.getDisplayName() : container.getName());
     doc.put("tags", flattenedTagList);
@@ -65,10 +68,12 @@ public class ContainerIndex implements ColumnIndex {
     doc.put("entityType", Entity.CONTAINER);
     doc.put("serviceType", container.getServiceType());
     doc.put(
-        "fqnParts",
-        getFQNParts(
-            container.getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+      "fqnParts",
+      getFQNParts(
+        container.getFullyQualifiedName(),
+        suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())
+      )
+    );
     doc.put("owner", getEntityWithDisplayName(container.getOwner()));
     doc.put("service", getEntityWithDisplayName(container.getService()));
     doc.put("domain", getEntityWithDisplayName(container.getDomain()));

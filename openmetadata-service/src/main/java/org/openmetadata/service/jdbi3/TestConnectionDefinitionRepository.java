@@ -21,12 +21,13 @@ public class TestConnectionDefinitionRepository extends EntityRepository<TestCon
 
   public TestConnectionDefinitionRepository() {
     super(
-        TestConnectionDefinitionResource.COLLECTION_PATH,
-        TEST_CONNECTION_DEFINITION,
-        TestConnectionDefinition.class,
-        Entity.getCollectionDAO().testConnectionDefinitionDAO(),
-        PATCH_FIELDS,
-        UPDATE_FIELDS);
+      TestConnectionDefinitionResource.COLLECTION_PATH,
+      TEST_CONNECTION_DEFINITION,
+      TestConnectionDefinition.class,
+      Entity.getCollectionDAO().testConnectionDefinitionDAO(),
+      PATCH_FIELDS,
+      UPDATE_FIELDS
+    );
   }
 
   /**
@@ -68,13 +69,20 @@ public class TestConnectionDefinitionRepository extends EntityRepository<TestCon
 
   @Override
   public EntityUpdater getUpdater(
-      TestConnectionDefinition original, TestConnectionDefinition updated, Operation operation) {
+    TestConnectionDefinition original,
+    TestConnectionDefinition updated,
+    Operation operation
+  ) {
     return new TestConnectionDefinitionUpdater(original, updated, operation);
   }
 
   public class TestConnectionDefinitionUpdater extends EntityUpdater {
+
     public TestConnectionDefinitionUpdater(
-        TestConnectionDefinition original, TestConnectionDefinition updated, Operation operation) {
+      TestConnectionDefinition original,
+      TestConnectionDefinition updated,
+      Operation operation
+    ) {
       super(original, updated, operation);
     }
 

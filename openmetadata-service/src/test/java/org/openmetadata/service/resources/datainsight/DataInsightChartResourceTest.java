@@ -40,13 +40,15 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.TestUtils;
 
 public class DataInsightChartResourceTest extends EntityResourceTest<DataInsightChart, CreateDataInsightChart> {
+
   public DataInsightChartResourceTest() {
     super(
-        DATA_INSIGHT_CHART,
-        DataInsightChart.class,
-        DataInsightChartResource.DataInsightChartList.class,
-        "analytics/dataInsights/charts",
-        DataInsightChartResource.FIELDS);
+      DATA_INSIGHT_CHART,
+      DataInsightChart.class,
+      DataInsightChartResource.DataInsightChartList.class,
+      "analytics/dataInsights/charts",
+      DataInsightChartResource.FIELDS
+    );
   }
 
   @Test
@@ -61,9 +63,10 @@ public class DataInsightChartResourceTest extends EntityResourceTest<DataInsight
   @Test
   void post_data_insight_4x(TestInfo test) {
     assertResponseContains(
-        () -> createEntity(createRequest(test).withName(null), ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "name must not be null");
+      () -> createEntity(createRequest(test).withName(null), ADMIN_AUTH_HEADERS),
+      BAD_REQUEST,
+      "name must not be null"
+    );
   }
 
   @Test
@@ -75,52 +78,64 @@ public class DataInsightChartResourceTest extends EntityResourceTest<DataInsight
     RoleResourceTest roleResourceTest = new RoleResourceTest();
     PolicyResourceTest policyResourceTest = new PolicyResourceTest();
 
-    Role dataStewardRole =
-        roleResourceTest.getEntityByName(DATA_STEWARD_ROLE_NAME, null, RoleResource.FIELDS, ADMIN_AUTH_HEADERS);
+    Role dataStewardRole = roleResourceTest.getEntityByName(
+      DATA_STEWARD_ROLE_NAME,
+      null,
+      RoleResource.FIELDS,
+      ADMIN_AUTH_HEADERS
+    );
 
     rules.add(
-        new Rule()
-            .withName("denyDataInsightViewRule")
-            .withResources(List.of(DATA_INSIGHT_CHART))
-            .withOperations(List.of(MetadataOperation.VIEW_ALL))
-            .withEffect(Rule.Effect.DENY));
+      new Rule()
+        .withName("denyDataInsightViewRule")
+        .withResources(List.of(DATA_INSIGHT_CHART))
+        .withOperations(List.of(MetadataOperation.VIEW_ALL))
+        .withEffect(Rule.Effect.DENY)
+    );
     createPolicy =
-        new CreatePolicy()
-            .withName("denyDataInsightViewPolicy")
-            .withDescription("denyDataInsightViewPolicy")
-            .withRules(rules)
-            .withOwner(USER1_REF);
+      new CreatePolicy()
+        .withName("denyDataInsightViewPolicy")
+        .withDescription("denyDataInsightViewPolicy")
+        .withRules(rules)
+        .withOwner(USER1_REF);
     Policy policy = policyResourceTest.createEntity(createPolicy, ADMIN_AUTH_HEADERS);
-    CreateRole createRole =
-        roleResourceTest.createRequest("denyDataInsightViewRole").withPolicies(EntityUtil.toFQNs(List.of(policy)));
+    CreateRole createRole = roleResourceTest
+      .createRequest("denyDataInsightViewRole")
+      .withPolicies(EntityUtil.toFQNs(List.of(policy)));
     Role denyDataInsightViewRole = roleResourceTest.createEntity(createRole, ADMIN_AUTH_HEADERS);
 
-    User userForDataInsight =
-        userResourceTest.createEntity(
-            userResourceTest
-                .createRequest("di_user_w_deny", "", "", null)
-                .withRoles(List.of(dataStewardRole.getId(), denyDataInsightViewRole.getId())),
-            ADMIN_AUTH_HEADERS);
+    User userForDataInsight = userResourceTest.createEntity(
+      userResourceTest
+        .createRequest("di_user_w_deny", "", "", null)
+        .withRoles(List.of(dataStewardRole.getId(), denyDataInsightViewRole.getId())),
+      ADMIN_AUTH_HEADERS
+    );
 
     getDataInsightData(
-        userForDataInsight.getName(),
-        denyDataInsightViewRole.getName(),
-        policy.getName(),
-        rules.get(0).getName(),
-        true);
+      userForDataInsight.getName(),
+      denyDataInsightViewRole.getName(),
+      policy.getName(),
+      rules.get(0).getName(),
+      true
+    );
   }
 
   /* We need elasticsearch to fetch data, so we'll only test permission are
    * handled correctly in the request for a restricted user.
    *  */
   public void getDataInsightData(
-      String username, String roleName, String policyName, String ruleName, boolean shouldThrowException)
-      throws ParseException {
+    String username,
+    String roleName,
+    String policyName,
+    String ruleName,
+    boolean shouldThrowException
+  )
+    throws ParseException {
     Map<String, String> authHeaders = authHeaders(username + "@open-metadata.org");
     WebTarget target = getCollection().path("/aggregate");
 
     target =
-        target.queryParam("dataInsightChartName", DataInsightChartResult.DataInsightChartType.MOST_VIEWED_ENTITIES);
+      target.queryParam("dataInsightChartName", DataInsightChartResult.DataInsightChartType.MOST_VIEWED_ENTITIES);
     target = target.queryParam("dataReportIndex", "web_analytic_entity_view_report_data_index");
     target = target.queryParam("startTs", TestUtils.dateToTimestamp("2023-03-21"));
     target = target.queryParam("endTs", TestUtils.dateToTimestamp("2023-03-22"));
@@ -128,23 +143,27 @@ public class DataInsightChartResourceTest extends EntityResourceTest<DataInsight
     if (shouldThrowException) {
       WebTarget finalTarget = target;
       assertResponse(
-          () -> TestUtils.get(finalTarget, authHeaders),
-          FORBIDDEN,
-          permissionDenied(username, MetadataOperation.VIEW_ALL, roleName, policyName, ruleName));
+        () -> TestUtils.get(finalTarget, authHeaders),
+        FORBIDDEN,
+        permissionDenied(username, MetadataOperation.VIEW_ALL, roleName, policyName, ruleName)
+      );
     }
   }
 
   @Override
   public CreateDataInsightChart createRequest(String name) {
     return new CreateDataInsightChart()
-        .withName(name)
-        .withDescription(name)
-        .withDataIndexType(DataReportIndex.ENTITY_REPORT_DATA_INDEX);
+      .withName(name)
+      .withDescription(name)
+      .withDataIndexType(DataReportIndex.ENTITY_REPORT_DATA_INDEX);
   }
 
   @Override
   public void validateCreatedEntity(
-      DataInsightChart createdEntity, CreateDataInsightChart request, Map<String, String> authHeaders) {
+    DataInsightChart createdEntity,
+    CreateDataInsightChart request,
+    Map<String, String> authHeaders
+  ) {
     assertEquals(request.getName(), createdEntity.getName());
     assertEquals(request.getDescription(), createdEntity.getDescription());
   }
@@ -158,18 +177,18 @@ public class DataInsightChartResourceTest extends EntityResourceTest<DataInsight
 
   @Override
   public DataInsightChart validateGetWithDifferentFields(DataInsightChart entity, boolean byName)
-      throws HttpResponseException {
+    throws HttpResponseException {
     String fields = "";
     entity =
-        byName
-            ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getEntity(entity.getId(), null, ADMIN_AUTH_HEADERS);
+      byName
+        ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+        : getEntity(entity.getId(), null, ADMIN_AUTH_HEADERS);
     assertListNull(entity.getOwner());
     fields = "owner";
     entity =
-        byName
-            ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
+      byName
+        ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+        : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(entity.getOwner());
     return entity;
   }

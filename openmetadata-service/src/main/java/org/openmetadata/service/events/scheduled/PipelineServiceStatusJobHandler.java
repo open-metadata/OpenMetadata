@@ -36,7 +36,7 @@ public class PipelineServiceStatusJobHandler {
   private static PipelineServiceStatusJobHandler instance;
 
   private PipelineServiceStatusJobHandler(PipelineServiceClientConfiguration config, String clusterName)
-      throws SchedulerException {
+    throws SchedulerException {
     this.config = config;
     this.pipelineServiceClient = PipelineServiceClientFactory.createPipelineServiceClient(config);
     this.meterRegistry = MicrometerBundleSingleton.prometheusMeterRegistry;
@@ -62,19 +62,20 @@ public class PipelineServiceStatusJobHandler {
     dataMap.put(JOB_CONTEXT_METER_REGISTRY, meterRegistry);
     dataMap.put(JOB_CONTEXT_CLUSTER_NAME, clusterName);
 
-    JobBuilder jobBuilder =
-        JobBuilder.newJob(PipelineServiceStatusJob.class)
-            .withIdentity(PIPELINE_SERVICE_STATUS_JOB, STATUS_GROUP)
-            .usingJobData(dataMap);
+    JobBuilder jobBuilder = JobBuilder
+      .newJob(PipelineServiceStatusJob.class)
+      .withIdentity(PIPELINE_SERVICE_STATUS_JOB, STATUS_GROUP)
+      .usingJobData(dataMap);
 
     return jobBuilder.build();
   }
 
   private Trigger getTrigger() {
-    return TriggerBuilder.newTrigger()
-        .withIdentity(STATUS_CRON_TRIGGER, STATUS_GROUP)
-        .withSchedule(SimpleScheduleBuilder.simpleSchedule().withIntervalInSeconds(healthCheckInterval).repeatForever())
-        .build();
+    return TriggerBuilder
+      .newTrigger()
+      .withIdentity(STATUS_CRON_TRIGGER, STATUS_GROUP)
+      .withSchedule(SimpleScheduleBuilder.simpleSchedule().withIntervalInSeconds(healthCheckInterval).repeatForever())
+      .build();
   }
 
   public void addPipelineServiceStatusJob() {

@@ -29,10 +29,12 @@ public class SearchServiceIndex implements SearchIndex {
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.SEARCH_SERVICE);
     doc.put(
-        "fqnParts",
-        getFQNParts(
-            searchService.getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+      "fqnParts",
+      getFQNParts(
+        searchService.getFullyQualifiedName(),
+        suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())
+      )
+    );
     doc.put("owner", getEntityWithDisplayName(searchService.getOwner()));
     return doc;
   }

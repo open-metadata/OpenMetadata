@@ -22,11 +22,13 @@ import org.openmetadata.sdk.exception.PipelineServiceClientException;
 
 @Slf4j
 public final class PipelineServiceClientFactory {
+
   private PipelineServiceClientFactory() {
     // Final class
   }
 
-  @Getter private static PipelineServiceClient pipelineServiceClient;
+  @Getter
+  private static PipelineServiceClient pipelineServiceClient;
 
   public static PipelineServiceClient createPipelineServiceClient(PipelineServiceClientConfiguration config) {
     if (pipelineServiceClient != null) {
@@ -38,19 +40,22 @@ public final class PipelineServiceClientFactory {
 
     try {
       pipelineServiceClient =
-          Class.forName(pipelineServiceClientClass)
-              .asSubclass(PipelineServiceClient.class)
-              .getConstructor(PipelineServiceClientConfiguration.class)
-              .newInstance(config);
+        Class
+          .forName(pipelineServiceClientClass)
+          .asSubclass(PipelineServiceClient.class)
+          .getConstructor(PipelineServiceClientConfiguration.class)
+          .newInstance(config);
       return pipelineServiceClient;
-    } catch (ClassNotFoundException
-        | NoSuchMethodException
-        | InvocationTargetException
-        | InstantiationException
-        | IllegalAccessException e) {
+    } catch (
+      ClassNotFoundException
+      | NoSuchMethodException
+      | InvocationTargetException
+      | InstantiationException
+      | IllegalAccessException e
+    ) {
       throw new PipelineServiceClientException(
-          String.format(
-              "Error trying to load PipelineServiceClient %s: %s", pipelineServiceClientClass, e.getMessage()));
+        String.format("Error trying to load PipelineServiceClient %s: %s", pipelineServiceClientClass, e.getMessage())
+      );
     }
   }
 }

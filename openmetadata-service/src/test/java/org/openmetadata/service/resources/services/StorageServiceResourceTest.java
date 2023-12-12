@@ -33,27 +33,28 @@ import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 public class StorageServiceResourceTest extends ServiceResourceTest<StorageService, CreateStorageService> {
+
   public StorageServiceResourceTest() {
     super(
-        Entity.STORAGE_SERVICE,
-        StorageService.class,
-        StorageServiceResource.StorageServiceList.class,
-        "services/storageServices",
-        "owner");
+      Entity.STORAGE_SERVICE,
+      StorageService.class,
+      StorageServiceResource.StorageServiceList.class,
+      "services/storageServices",
+      "owner"
+    );
     this.supportsPatch = false;
   }
 
   public void setupStorageService(TestInfo test) throws HttpResponseException {
     StorageServiceResourceTest storageServiceResourceTest = new StorageServiceResourceTest();
-    CreateStorageService createStorageService =
-        storageServiceResourceTest
-            .createRequest(test, 1)
-            .withName("s3")
-            .withServiceType(CreateStorageService.StorageServiceType.S3)
-            .withConnection(TestUtils.S3_STORAGE_CONNECTION);
+    CreateStorageService createStorageService = storageServiceResourceTest
+      .createRequest(test, 1)
+      .withName("s3")
+      .withServiceType(CreateStorageService.StorageServiceType.S3)
+      .withConnection(TestUtils.S3_STORAGE_CONNECTION);
 
-    StorageService storageService =
-        new StorageServiceResourceTest().createEntity(createStorageService, ADMIN_AUTH_HEADERS);
+    StorageService storageService = new StorageServiceResourceTest()
+    .createEntity(createStorageService, ADMIN_AUTH_HEADERS);
     S3_OBJECT_STORE_SERVICE_REFERENCE = storageService.getEntityReference();
   }
 
@@ -61,9 +62,10 @@ public class StorageServiceResourceTest extends ServiceResourceTest<StorageServi
   void post_withoutRequiredFields_400_badRequest(TestInfo test) {
     // Create StorageService with mandatory serviceType field empty
     assertResponse(
-        () -> createEntity(createRequest(test).withServiceType(null), ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "[serviceType must not be null]");
+      () -> createEntity(createRequest(test).withServiceType(null), ADMIN_AUTH_HEADERS),
+      BAD_REQUEST,
+      "[serviceType must not be null]"
+    );
   }
 
   @Test
@@ -81,14 +83,20 @@ public class StorageServiceResourceTest extends ServiceResourceTest<StorageServi
 
   @Test
   void put_updateService_as_admin_2xx(TestInfo test) throws IOException {
-    AWSCredentials credentials1 =
-        new AWSCredentials().withAwsAccessKeyId("ABCD").withAwsSecretAccessKey("1234").withAwsRegion("eu-west-2");
+    AWSCredentials credentials1 = new AWSCredentials()
+      .withAwsAccessKeyId("ABCD")
+      .withAwsSecretAccessKey("1234")
+      .withAwsRegion("eu-west-2");
     StorageConnection connection1 = new StorageConnection().withConfig(new S3Connection().withAwsConfig(credentials1));
-    StorageService service =
-        createAndCheckEntity(createRequest(test).withDescription(null).withConnection(connection1), ADMIN_AUTH_HEADERS);
+    StorageService service = createAndCheckEntity(
+      createRequest(test).withDescription(null).withConnection(connection1),
+      ADMIN_AUTH_HEADERS
+    );
 
-    AWSCredentials credentials2 =
-        new AWSCredentials().withAwsAccessKeyId("DEFG").withAwsSecretAccessKey("5678").withAwsRegion("us-east-1");
+    AWSCredentials credentials2 = new AWSCredentials()
+      .withAwsAccessKeyId("DEFG")
+      .withAwsSecretAccessKey("5678")
+      .withAwsRegion("us-east-1");
     StorageConnection connection2 = new StorageConnection().withConfig(new S3Connection().withAwsConfig(credentials2));
 
     // Update StorageService description and connection
@@ -106,8 +114,11 @@ public class StorageServiceResourceTest extends ServiceResourceTest<StorageServi
     StorageService service = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     // By default, we have no result logged in
     assertNull(service.getTestConnectionResult());
-    StorageService updatedService =
-        putTestConnectionResult(service.getId(), TEST_CONNECTION_RESULT, ADMIN_AUTH_HEADERS);
+    StorageService updatedService = putTestConnectionResult(
+      service.getId(),
+      TEST_CONNECTION_RESULT,
+      ADMIN_AUTH_HEADERS
+    );
     // Validate that the data got properly stored
     assertNotNull(updatedService.getTestConnectionResult());
     assertEquals(TestConnectionResultStatus.SUCCESSFUL, updatedService.getTestConnectionResult().getStatus());
@@ -120,8 +131,11 @@ public class StorageServiceResourceTest extends ServiceResourceTest<StorageServi
   }
 
   public StorageService putTestConnectionResult(
-      UUID serviceId, TestConnectionResult testConnectionResult, Map<String, String> authHeaders)
-      throws HttpResponseException {
+    UUID serviceId,
+    TestConnectionResult testConnectionResult,
+    Map<String, String> authHeaders
+  )
+    throws HttpResponseException {
     WebTarget target = getResource(serviceId).path("/testConnectionResult");
     return TestUtils.put(target, testConnectionResult, StorageService.class, OK, authHeaders);
   }
@@ -129,22 +143,28 @@ public class StorageServiceResourceTest extends ServiceResourceTest<StorageServi
   @Override
   public CreateStorageService createRequest(String name) {
     return new CreateStorageService()
-        .withName(name)
-        .withServiceType(CreateStorageService.StorageServiceType.S3)
-        .withConnection(
-            new StorageConnection()
-                .withConfig(
-                    new S3Connection()
-                        .withAwsConfig(
-                            new AWSCredentials()
-                                .withAwsAccessKeyId("ABCD")
-                                .withAwsSecretAccessKey("1234")
-                                .withAwsRegion("eu-west-2"))));
+      .withName(name)
+      .withServiceType(CreateStorageService.StorageServiceType.S3)
+      .withConnection(
+        new StorageConnection()
+        .withConfig(
+            new S3Connection()
+            .withAwsConfig(
+                new AWSCredentials()
+                  .withAwsAccessKeyId("ABCD")
+                  .withAwsSecretAccessKey("1234")
+                  .withAwsRegion("eu-west-2")
+              )
+          )
+      );
   }
 
   @Override
   public void validateCreatedEntity(
-      StorageService service, CreateStorageService createRequest, Map<String, String> authHeaders) {
+    StorageService service,
+    CreateStorageService createRequest,
+    Map<String, String> authHeaders
+  ) {
     assertEquals(createRequest.getName(), service.getName());
     StorageConnection expectedConnection = createRequest.getConnection();
     StorageConnection actualConnection = service.getConnection();
@@ -158,19 +178,19 @@ public class StorageServiceResourceTest extends ServiceResourceTest<StorageServi
 
   @Override
   public StorageService validateGetWithDifferentFields(StorageService service, boolean byName)
-      throws HttpResponseException {
+    throws HttpResponseException {
     String fields = "";
     service =
-        byName
-            ? getEntityByName(service.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
+      byName
+        ? getEntityByName(service.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+        : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
     TestUtils.assertListNull(service.getOwner());
 
     fields = "owner,tags";
     service =
-        byName
-            ? getEntityByName(service.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
+      byName
+        ? getEntityByName(service.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+        : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
     // Checks for other owner, tags, and followers is done in the base class
     return service;
   }
@@ -185,9 +205,10 @@ public class StorageServiceResourceTest extends ServiceResourceTest<StorageServi
   }
 
   private void validateConnection(
-      StorageConnection expectedConnection,
-      StorageConnection actualConnection,
-      CreateStorageService.StorageServiceType serviceType) {
+    StorageConnection expectedConnection,
+    StorageConnection actualConnection,
+    CreateStorageService.StorageServiceType serviceType
+  ) {
     if (expectedConnection != null && actualConnection != null) {
       if (serviceType == CreateStorageService.StorageServiceType.S3) {
         S3Connection expectedS3Connection = (S3Connection) expectedConnection.getConfig();
@@ -198,10 +219,13 @@ public class StorageServiceResourceTest extends ServiceResourceTest<StorageServi
           actualS3Connection = JsonUtils.convertValue(actualConnection.getConfig(), S3Connection.class);
         }
         assertEquals(
-            expectedS3Connection.getAwsConfig().getAwsAccessKeyId(),
-            actualS3Connection.getAwsConfig().getAwsAccessKeyId());
+          expectedS3Connection.getAwsConfig().getAwsAccessKeyId(),
+          actualS3Connection.getAwsConfig().getAwsAccessKeyId()
+        );
         assertEquals(
-            expectedS3Connection.getAwsConfig().getAwsRegion(), actualS3Connection.getAwsConfig().getAwsRegion());
+          expectedS3Connection.getAwsConfig().getAwsRegion(),
+          actualS3Connection.getAwsConfig().getAwsRegion()
+        );
       }
     }
   }

@@ -41,25 +41,28 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class DashboardRepository extends EntityRepository<Dashboard> {
+
   private static final String DASHBOARD_UPDATE_FIELDS = "charts,dataModels";
   private static final String DASHBOARD_PATCH_FIELDS = "charts,dataModels,sourceHash";
   private static final String DASHBOARD_URL = "sourceUrl";
 
   public DashboardRepository() {
     super(
-        DashboardResource.COLLECTION_PATH,
-        Entity.DASHBOARD,
-        Dashboard.class,
-        Entity.getCollectionDAO().dashboardDAO(),
-        DASHBOARD_PATCH_FIELDS,
-        DASHBOARD_UPDATE_FIELDS);
+      DashboardResource.COLLECTION_PATH,
+      Entity.DASHBOARD,
+      Dashboard.class,
+      Entity.getCollectionDAO().dashboardDAO(),
+      DASHBOARD_PATCH_FIELDS,
+      DASHBOARD_UPDATE_FIELDS
+    );
     supportsSearch = true;
   }
 
   @Override
   public void setFullyQualifiedName(Dashboard dashboard) {
     dashboard.setFullyQualifiedName(
-        FullyQualifiedName.add(dashboard.getService().getFullyQualifiedName(), dashboard.getName()));
+      FullyQualifiedName.add(dashboard.getService().getFullyQualifiedName(), dashboard.getName())
+    );
   }
 
   @Override
@@ -70,7 +73,8 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
       if (!entityLink.getFieldName().equals(FIELD_DESCRIPTION)) {
         // Only description field can be updated
         throw new IllegalArgumentException(
-            CatalogExceptionMessage.invalidFieldForTask(entityLink.getFieldName(), taskType));
+          CatalogExceptionMessage.invalidFieldForTask(entityLink.getFieldName(), taskType)
+        );
       }
       return new ChartDescriptionTaskWorkflow(threadContext);
     }
@@ -78,16 +82,17 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   static class ChartDescriptionTaskWorkflow extends DescriptionTaskWorkflow {
+
     ChartDescriptionTaskWorkflow(ThreadContext threadContext) {
       super(threadContext);
       Dashboard dashboard = Entity.getEntity(DASHBOARD, threadContext.getAboutEntity().getId(), "charts", ALL);
       String chartName = threadContext.getAbout().getArrayFieldName();
-      EntityReference chartReference =
-          dashboard.getCharts().stream()
-              .filter(c -> c.getName().equals(chartName))
-              .findFirst()
-              .orElseThrow(
-                  () -> new IllegalArgumentException(CatalogExceptionMessage.invalidFieldName("chart", chartName)));
+      EntityReference chartReference = dashboard
+        .getCharts()
+        .stream()
+        .filter(c -> c.getName().equals(chartName))
+        .findFirst()
+        .orElseThrow(() -> new IllegalArgumentException(CatalogExceptionMessage.invalidFieldName("chart", chartName)));
       Chart chart = Entity.getEntity(chartReference, "", ALL);
       threadContext.setAboutEntity(chart);
     }
@@ -98,13 +103,13 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     dashboard.setService(getContainer(dashboard.getId()));
     dashboard.setCharts(fields.contains("charts") ? getRelatedEntities(dashboard, Entity.CHART) : null);
     dashboard.setDataModels(
-        fields.contains("dataModels") ? getRelatedEntities(dashboard, Entity.DASHBOARD_DATA_MODEL) : null);
+      fields.contains("dataModels") ? getRelatedEntities(dashboard, Entity.DASHBOARD_DATA_MODEL) : null
+    );
     dashboard.setSourceHash(fields.contains("sourceHash") ? dashboard.getSourceHash() : null);
     if (dashboard.getUsageSummary() == null) {
       dashboard.withUsageSummary(
-          fields.contains("usageSummary")
-              ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), dashboard.getId())
-              : null);
+        fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), dashboard.getId()) : null
+      );
     }
   }
 
@@ -170,7 +175,12 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     if (dashboard.getDataModels() != null) {
       for (EntityReference dataModel : dashboard.getDataModels()) {
         addRelationship(
-            dashboard.getId(), dataModel.getId(), Entity.DASHBOARD, Entity.DASHBOARD_DATA_MODEL, Relationship.HAS);
+          dashboard.getId(),
+          dataModel.getId(),
+          Entity.DASHBOARD,
+          Entity.DASHBOARD_DATA_MODEL,
+          Relationship.HAS
+        );
       }
     }
   }
@@ -187,12 +197,13 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
   private List<EntityReference> getRelatedEntities(Dashboard dashboard, String entityType) {
     return dashboard == null
-        ? Collections.emptyList()
-        : findTo(dashboard.getId(), Entity.DASHBOARD, Relationship.HAS, entityType);
+      ? Collections.emptyList()
+      : findTo(dashboard.getId(), Entity.DASHBOARD, Relationship.HAS, entityType);
   }
 
   /** Handles entity updated from PUT and POST operation. */
   public class DashboardUpdater extends EntityUpdater {
+
     public DashboardUpdater(Dashboard original, Dashboard updated, Operation operation) {
       super(original, updated, operation);
     }
@@ -202,16 +213,21 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     public void entitySpecificUpdate() {
       update(Entity.CHART, "charts", listOrEmpty(updated.getCharts()), listOrEmpty(original.getCharts()));
       update(
-          Entity.DASHBOARD_DATA_MODEL,
-          "dataModels",
-          listOrEmpty(updated.getDataModels()),
-          listOrEmpty(original.getDataModels()));
+        Entity.DASHBOARD_DATA_MODEL,
+        "dataModels",
+        listOrEmpty(updated.getDataModels()),
+        listOrEmpty(original.getDataModels())
+      );
       updateDashboardUrl(original, updated);
       recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
     }
 
     private void update(
-        String entityType, String field, List<EntityReference> updEntities, List<EntityReference> oriEntities) {
+      String entityType,
+      String field,
+      List<EntityReference> updEntities,
+      List<EntityReference> oriEntities
+    ) {
       // Remove all entity type associated with this dashboard
       deleteFrom(updated.getId(), Entity.DASHBOARD, Relationship.HAS, entityType);
 

@@ -24,6 +24,7 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
 public class ReportRepository extends EntityRepository<Report> {
+
   public ReportRepository() {
     super(ReportResource.COLLECTION_PATH, Entity.REPORT, Report.class, Entity.getCollectionDAO().reportDAO(), "", "");
   }
@@ -33,9 +34,10 @@ public class ReportRepository extends EntityRepository<Report> {
     report.setService(getService(report)); // service is a default field
     if (report.getUsageSummary() == null) {
       report.withUsageSummary(
-          fields.contains("usageSummary")
-              ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), report.getId())
-              : report.getUsageSummary());
+        fields.contains("usageSummary")
+          ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), report.getId())
+          : report.getUsageSummary()
+      );
     }
   }
 

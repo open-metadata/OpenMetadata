@@ -47,8 +47,11 @@ import org.openmetadata.service.resources.events.EventResource;
  */
 @Slf4j
 public class SubscriptionPublisher extends AbstractAlertPublisher {
+
   private final CountDownLatch shutdownLatch = new CountDownLatch(1);
-  @Getter private BatchEventProcessor<EventPubSub.ChangeEventHolder> processor;
+
+  @Getter
+  private BatchEventProcessor<EventPubSub.ChangeEventHolder> processor;
 
   public SubscriptionPublisher(EventSubscription eventSub) {
     super(eventSub);
@@ -83,15 +86,34 @@ public class SubscriptionPublisher extends AbstractAlertPublisher {
   }
 
   public synchronized void setSuccessStatus(Long updateTime) {
-    SubscriptionStatus subStatus =
-        AlertUtil.buildSubscriptionStatus(ACTIVE, updateTime, null, null, null, updateTime, updateTime);
+    SubscriptionStatus subStatus = AlertUtil.buildSubscriptionStatus(
+      ACTIVE,
+      updateTime,
+      null,
+      null,
+      null,
+      updateTime,
+      updateTime
+    );
     eventSubscription.setStatusDetails(subStatus);
   }
 
   protected synchronized void setStatus(
-      SubscriptionStatus.Status status, Long attemptTime, Integer statusCode, String reason, Long timestamp) {
-    SubscriptionStatus subStatus =
-        AlertUtil.buildSubscriptionStatus(status, null, attemptTime, statusCode, reason, timestamp, attemptTime);
+    SubscriptionStatus.Status status,
+    Long attemptTime,
+    Integer statusCode,
+    String reason,
+    Long timestamp
+  ) {
+    SubscriptionStatus subStatus = AlertUtil.buildSubscriptionStatus(
+      status,
+      null,
+      attemptTime,
+      statusCode,
+      reason,
+      timestamp,
+      attemptTime
+    );
     eventSubscription.setStatusDetails(subStatus);
   }
 
@@ -125,10 +147,11 @@ public class SubscriptionPublisher extends AbstractAlertPublisher {
     // Publish to the given Alert Actions
     try {
       LOG.info(
-          "Sending Alert {}:{}:{}",
-          eventSubscription.getName(),
-          eventSubscription.getStatusDetails().getStatus(),
-          batch.size());
+        "Sending Alert {}:{}:{}",
+        eventSubscription.getName(),
+        eventSubscription.getStatusDetails().getStatus(),
+        batch.size()
+      );
       sendAlert(list);
     } catch (Exception ex) {
       LOG.warn("Invalid Exception in Alert {}", eventSubscription.getName());

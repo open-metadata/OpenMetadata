@@ -48,6 +48,7 @@ import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 public class MlModelServiceResourceTest extends ServiceResourceTest<MlModelService, CreateMlModelService> {
+
   public MlModelServiceResourceTest() {
     super(Entity.MLMODEL_SERVICE, MlModelService.class, MlModelServiceList.class, "services/mlmodelServices", "owner");
     this.supportsPatch = false;
@@ -56,15 +57,14 @@ public class MlModelServiceResourceTest extends ServiceResourceTest<MlModelServi
 
   public void setupMlModelServices(TestInfo test) throws HttpResponseException {
     MlModelServiceResourceTest mlModelResourceTest = new MlModelServiceResourceTest();
-    CreateMlModelService createMlModelService =
-        mlModelResourceTest
-            .createRequest(test, 1)
-            .withName("mlflow")
-            .withServiceType(MlModelServiceType.Mlflow)
-            .withConnection(TestUtils.MLFLOW_CONNECTION);
+    CreateMlModelService createMlModelService = mlModelResourceTest
+      .createRequest(test, 1)
+      .withName("mlflow")
+      .withServiceType(MlModelServiceType.Mlflow)
+      .withConnection(TestUtils.MLFLOW_CONNECTION);
 
-    MlModelService MlModelService =
-        new MlModelServiceResourceTest().createEntity(createMlModelService, ADMIN_AUTH_HEADERS);
+    MlModelService MlModelService = new MlModelServiceResourceTest()
+    .createEntity(createMlModelService, ADMIN_AUTH_HEADERS);
     MLFLOW_REFERENCE = MlModelService.getEntityReference();
   }
 
@@ -72,9 +72,10 @@ public class MlModelServiceResourceTest extends ServiceResourceTest<MlModelServi
   void post_withoutRequiredFields_400_badRequest(TestInfo test) {
     // Create MlModel with mandatory serviceType field empty
     assertResponse(
-        () -> createEntity(createRequest(test).withServiceType(null), ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "[serviceType must not be null]");
+      () -> createEntity(createRequest(test).withServiceType(null), ADMIN_AUTH_HEADERS),
+      BAD_REQUEST,
+      "[serviceType must not be null]"
+    );
   }
 
   @Test
@@ -83,10 +84,13 @@ public class MlModelServiceResourceTest extends ServiceResourceTest<MlModelServi
     Map<String, String> authHeaders = ADMIN_AUTH_HEADERS;
     createAndCheckEntity(createRequest(test, 1).withDescription(null), authHeaders);
     createAndCheckEntity(createRequest(test, 2).withDescription("description"), authHeaders);
-    MlflowConnection mlflowConnection =
-        new MlflowConnection().withRegistryUri("http://localhost:8080").withTrackingUri("http://localhost:5000");
+    MlflowConnection mlflowConnection = new MlflowConnection()
+      .withRegistryUri("http://localhost:8080")
+      .withTrackingUri("http://localhost:5000");
     createAndCheckEntity(
-        createRequest(test, 3).withConnection(new MlModelConnection().withConfig(mlflowConnection)), authHeaders);
+      createRequest(test, 3).withConnection(new MlModelConnection().withConfig(mlflowConnection)),
+      authHeaders
+    );
 
     // We can create the service without connection
     createAndCheckEntity(createRequest(test).withConnection(null), ADMIN_AUTH_HEADERS);
@@ -94,26 +98,24 @@ public class MlModelServiceResourceTest extends ServiceResourceTest<MlModelServi
 
   @Test
   void put_updateService_as_admin_2xx(TestInfo test) throws IOException {
-    MlModelConnection MlModelConnection =
-        new MlModelConnection()
-            .withConfig(
-                new MlflowConnection()
-                    .withRegistryUri("http://localhost:8080")
-                    .withTrackingUri("http://localhost:5000"));
-    MlModelService service =
-        createAndCheckEntity(
-            createRequest(test).withDescription(null).withConnection(MlModelConnection), ADMIN_AUTH_HEADERS);
+    MlModelConnection MlModelConnection = new MlModelConnection()
+    .withConfig(
+        new MlflowConnection().withRegistryUri("http://localhost:8080").withTrackingUri("http://localhost:5000")
+      );
+    MlModelService service = createAndCheckEntity(
+      createRequest(test).withDescription(null).withConnection(MlModelConnection),
+      ADMIN_AUTH_HEADERS
+    );
 
     // Update MlModel description and ingestion service that are null
-    MlModelConnection MlModelConnection1 =
-        new MlModelConnection()
-            .withConfig(
-                new MlflowConnection()
-                    .withRegistryUri("http://localhost:8081")
-                    .withTrackingUri("http://localhost:5001"));
+    MlModelConnection MlModelConnection1 = new MlModelConnection()
+    .withConfig(
+        new MlflowConnection().withRegistryUri("http://localhost:8081").withTrackingUri("http://localhost:5001")
+      );
 
-    CreateMlModelService update =
-        createRequest(test).withDescription("description1").withConnection(MlModelConnection1);
+    CreateMlModelService update = createRequest(test)
+      .withDescription("description1")
+      .withConnection(MlModelConnection1);
 
     ChangeDescription change = getChangeDescription(service, MINOR_UPDATE);
     fieldAdded(change, "description", "description1");
@@ -126,8 +128,11 @@ public class MlModelServiceResourceTest extends ServiceResourceTest<MlModelServi
     MlModelService service = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     // By default, we have no result logged in
     assertNull(service.getTestConnectionResult());
-    MlModelService updatedService =
-        putTestConnectionResult(service.getId(), TEST_CONNECTION_RESULT, ADMIN_AUTH_HEADERS);
+    MlModelService updatedService = putTestConnectionResult(
+      service.getId(),
+      TEST_CONNECTION_RESULT,
+      ADMIN_AUTH_HEADERS
+    );
     // Validate that the data got properly stored
     assertNotNull(updatedService.getTestConnectionResult());
     assertEquals(TestConnectionResultStatus.SUCCESSFUL, updatedService.getTestConnectionResult().getStatus());
@@ -140,8 +145,11 @@ public class MlModelServiceResourceTest extends ServiceResourceTest<MlModelServi
   }
 
   public MlModelService putTestConnectionResult(
-      UUID serviceId, TestConnectionResult testConnectionResult, Map<String, String> authHeaders)
-      throws HttpResponseException {
+    UUID serviceId,
+    TestConnectionResult testConnectionResult,
+    Map<String, String> authHeaders
+  )
+    throws HttpResponseException {
     WebTarget target = getResource(serviceId).path("/testConnectionResult");
     return TestUtils.put(target, testConnectionResult, MlModelService.class, OK, authHeaders);
   }
@@ -149,19 +157,22 @@ public class MlModelServiceResourceTest extends ServiceResourceTest<MlModelServi
   @Override
   public CreateMlModelService createRequest(String name) {
     return new CreateMlModelService()
-        .withName(name)
-        .withServiceType(MlModelServiceType.Mlflow)
-        .withConnection(
-            new MlModelConnection()
-                .withConfig(
-                    new MlflowConnection()
-                        .withRegistryUri("http://localhost:8080")
-                        .withTrackingUri("http://localhost:5000")));
+      .withName(name)
+      .withServiceType(MlModelServiceType.Mlflow)
+      .withConnection(
+        new MlModelConnection()
+        .withConfig(
+            new MlflowConnection().withRegistryUri("http://localhost:8080").withTrackingUri("http://localhost:5000")
+          )
+      );
   }
 
   @Override
   public void validateCreatedEntity(
-      MlModelService service, CreateMlModelService createRequest, Map<String, String> authHeaders) {
+    MlModelService service,
+    CreateMlModelService createRequest,
+    Map<String, String> authHeaders
+  ) {
     assertEquals(createRequest.getName(), service.getName());
     MlModelConnection expectedConnection = createRequest.getConnection();
     MlModelConnection actualConnection = service.getConnection();
@@ -175,19 +186,19 @@ public class MlModelServiceResourceTest extends ServiceResourceTest<MlModelServi
 
   @Override
   public MlModelService validateGetWithDifferentFields(MlModelService service, boolean byName)
-      throws HttpResponseException {
+    throws HttpResponseException {
     String fields = "";
     service =
-        byName
-            ? getEntityByName(service.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
+      byName
+        ? getEntityByName(service.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+        : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
     TestUtils.assertListNull(service.getOwner());
 
     fields = "owner,tags";
     service =
-        byName
-            ? getEntityByName(service.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
+      byName
+        ? getEntityByName(service.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+        : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
     // Checks for other owner, tags, and followers is done in the base class
     return service;
   }
@@ -205,9 +216,10 @@ public class MlModelServiceResourceTest extends ServiceResourceTest<MlModelServi
   }
 
   private void validateConnection(
-      MlModelConnection expectedMlModelConnection,
-      MlModelConnection actualMlModelConnection,
-      MlModelServiceType MlModelServiceType) {
+    MlModelConnection expectedMlModelConnection,
+    MlModelConnection actualMlModelConnection,
+    MlModelServiceType MlModelServiceType
+  ) {
     if (expectedMlModelConnection != null && actualMlModelConnection != null) {
       if (MlModelServiceType == CreateMlModelService.MlModelServiceType.Mlflow) {
         MlflowConnection expectedMlflowConnection = (MlflowConnection) expectedMlModelConnection.getConfig();

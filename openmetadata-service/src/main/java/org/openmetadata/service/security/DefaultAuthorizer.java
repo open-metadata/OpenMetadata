@@ -41,8 +41,8 @@ public class DefaultAuthorizer implements Authorizer {
     SubjectContext subjectContext = getSubjectContext(securityContext);
     subjectContext = changeSubjectContext(user, subjectContext);
     return subjectContext.isAdmin()
-        ? PolicyEvaluator.getResourcePermissions(ALLOW) // Admin has permissions to do all operations.
-        : PolicyEvaluator.listPermission(subjectContext);
+      ? PolicyEvaluator.getResourcePermissions(ALLOW) // Admin has permissions to do all operations.
+      : PolicyEvaluator.listPermission(subjectContext);
   }
 
   @Override
@@ -50,23 +50,29 @@ public class DefaultAuthorizer implements Authorizer {
     SubjectContext subjectContext = getSubjectContext(securityContext);
     subjectContext = changeSubjectContext(user, subjectContext);
     return subjectContext.isAdmin()
-        ? PolicyEvaluator.getResourcePermission(resourceType, ALLOW) // Admin has permissions to do all operations.
-        : PolicyEvaluator.getPermission(subjectContext, resourceType);
+      ? PolicyEvaluator.getResourcePermission(resourceType, ALLOW) // Admin has permissions to do all operations.
+      : PolicyEvaluator.getPermission(subjectContext, resourceType);
   }
 
   @Override
   public ResourcePermission getPermission(
-      SecurityContext securityContext, String user, ResourceContextInterface resourceContext) {
+    SecurityContext securityContext,
+    String user,
+    ResourceContextInterface resourceContext
+  ) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
     subjectContext = changeSubjectContext(user, subjectContext);
     return subjectContext.isAdmin()
-        ? PolicyEvaluator.getResourcePermission(resourceContext.getResource(), ALLOW) // Admin all permissions
-        : PolicyEvaluator.getPermission(subjectContext, resourceContext);
+      ? PolicyEvaluator.getResourcePermission(resourceContext.getResource(), ALLOW) // Admin all permissions
+      : PolicyEvaluator.getPermission(subjectContext, resourceContext);
   }
 
   @Override
   public void authorize(
-      SecurityContext securityContext, OperationContext operationContext, ResourceContextInterface resourceContext) {
+    SecurityContext securityContext,
+    OperationContext operationContext,
+    ResourceContextInterface resourceContext
+  ) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
     if (subjectContext.isAdmin()) {
       return;
@@ -133,8 +139,9 @@ public class DefaultAuthorizer implements Authorizer {
     }
     String updatedBy = subjectContext.getUser().getName();
     List<EntityReference> reviewers = resourceContext.getEntity().getReviewers();
-    return !nullOrEmpty(reviewers)
-        && reviewers.stream()
-            .anyMatch(e -> updatedBy.equals(e.getName()) || updatedBy.equals(e.getFullyQualifiedName()));
+    return (
+      !nullOrEmpty(reviewers) &&
+      reviewers.stream().anyMatch(e -> updatedBy.equals(e.getName()) || updatedBy.equals(e.getFullyQualifiedName()))
+    );
   }
 }

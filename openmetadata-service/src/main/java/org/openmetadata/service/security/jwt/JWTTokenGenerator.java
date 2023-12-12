@@ -41,13 +41,17 @@ import org.openmetadata.service.security.AuthenticationException;
 
 @Slf4j
 public class JWTTokenGenerator {
+
   private static final String SUBJECT_CLAIM = "sub";
   private static final String EMAIL_CLAIM = "email";
   private static final String IS_BOT_CLAIM = "isBot";
   public static final String TOKEN_TYPE = "tokenType";
   private static final JWTTokenGenerator INSTANCE = new JWTTokenGenerator();
   private RSAPrivateKey privateKey;
-  @Getter private RSAPublicKey publicKey;
+
+  @Getter
+  private RSAPublicKey publicKey;
+
   private String issuer;
   private String kid;
 
@@ -62,10 +66,12 @@ public class JWTTokenGenerator {
   /** Expected to be initialized only once during application start */
   public void init(JWTTokenConfiguration jwtTokenConfiguration) {
     try {
-      if (jwtTokenConfiguration.getRsaprivateKeyFilePath() != null
-          && !jwtTokenConfiguration.getRsaprivateKeyFilePath().isEmpty()
-          && jwtTokenConfiguration.getRsapublicKeyFilePath() != null
-          && !jwtTokenConfiguration.getRsapublicKeyFilePath().isEmpty()) {
+      if (
+        jwtTokenConfiguration.getRsaprivateKeyFilePath() != null &&
+        !jwtTokenConfiguration.getRsaprivateKeyFilePath().isEmpty() &&
+        jwtTokenConfiguration.getRsapublicKeyFilePath() != null &&
+        !jwtTokenConfiguration.getRsapublicKeyFilePath().isEmpty()
+      ) {
         byte[] privateKeyBytes = Files.readAllBytes(Paths.get(jwtTokenConfiguration.getRsaprivateKeyFilePath()));
         PKCS8EncodedKeySpec privateSpec = new PKCS8EncodedKeySpec(privateKeyBytes);
         KeyFactory privateKF = KeyFactory.getInstance("RSA");
@@ -84,30 +90,47 @@ public class JWTTokenGenerator {
 
   public JWTAuthMechanism generateJWTToken(User user, JWTTokenExpiry expiry) {
     return getJwtAuthMechanism(
-        user.getName(), user.getEmail(), true, ServiceTokenType.BOT, getExpiryDate(expiry), expiry);
+      user.getName(),
+      user.getEmail(),
+      true,
+      ServiceTokenType.BOT,
+      getExpiryDate(expiry),
+      expiry
+    );
   }
 
   public JWTAuthMechanism generateJWTToken(
-      String userName, String email, long expiryInSeconds, boolean isBot, ServiceTokenType tokenType) {
+    String userName,
+    String email,
+    long expiryInSeconds,
+    boolean isBot,
+    ServiceTokenType tokenType
+  ) {
     return getJwtAuthMechanism(userName, email, isBot, tokenType, getCustomExpiryDate(expiryInSeconds), null);
   }
 
   public JWTAuthMechanism getJwtAuthMechanism(
-      String userName, String email, boolean isBot, ServiceTokenType tokenType, Date expires, JWTTokenExpiry expiry) {
+    String userName,
+    String email,
+    boolean isBot,
+    ServiceTokenType tokenType,
+    Date expires,
+    JWTTokenExpiry expiry
+  ) {
     try {
       JWTAuthMechanism jwtAuthMechanism = new JWTAuthMechanism().withJWTTokenExpiry(expiry);
       Algorithm algorithm = Algorithm.RSA256(null, privateKey);
-      String token =
-          JWT.create()
-              .withIssuer(issuer)
-              .withKeyId(kid)
-              .withClaim(SUBJECT_CLAIM, userName)
-              .withClaim(EMAIL_CLAIM, email)
-              .withClaim(IS_BOT_CLAIM, isBot)
-              .withClaim(TOKEN_TYPE, tokenType.value())
-              .withIssuedAt(new Date(System.currentTimeMillis()))
-              .withExpiresAt(expires)
-              .sign(algorithm);
+      String token = JWT
+        .create()
+        .withIssuer(issuer)
+        .withKeyId(kid)
+        .withClaim(SUBJECT_CLAIM, userName)
+        .withClaim(EMAIL_CLAIM, email)
+        .withClaim(IS_BOT_CLAIM, isBot)
+        .withClaim(TOKEN_TYPE, tokenType.value())
+        .withIssuedAt(new Date(System.currentTimeMillis()))
+        .withExpiresAt(expires)
+        .sign(algorithm);
       jwtAuthMechanism.setJWTToken(token);
       jwtAuthMechanism.setJWTTokenExpiresAt(expires != null ? expires.getTime() : null);
       return jwtAuthMechanism;

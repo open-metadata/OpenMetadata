@@ -39,16 +39,22 @@ import org.slf4j.LoggerFactory;
 
 @Slf4j
 public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable> {
+
   @Override
   public Response toResponse(Throwable ex) {
     LOG.debug(ex.getMessage());
-    if (ex instanceof ProcessingException
-        || ex instanceof IllegalArgumentException
-        || ex instanceof javax.ws.rs.BadRequestException) {
+    if (
+      ex instanceof ProcessingException ||
+      ex instanceof IllegalArgumentException ||
+      ex instanceof javax.ws.rs.BadRequestException
+    ) {
       return getResponse(BadRequestException.of().getResponse(), ex);
     } else if (ex instanceof UnableToExecuteStatementException) {
-      if (ex.getCause() instanceof SQLIntegrityConstraintViolationException
-          || ex.getCause() instanceof PSQLException && ex.getCause().getMessage().contains("duplicate")) {
+      if (
+        ex.getCause() instanceof SQLIntegrityConstraintViolationException ||
+        ex.getCause() instanceof PSQLException &&
+        ex.getCause().getMessage().contains("duplicate")
+      ) {
         return getResponse(CONFLICT, CatalogExceptionMessage.ENTITY_ALREADY_EXISTS);
       }
     } else if (ex instanceof EntityNotFoundException) {
@@ -78,30 +84,39 @@ public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable>
   }
 
   public Response getResponse(Response response, Throwable ex) {
-    return Response.fromResponse(response)
-        .type(APPLICATION_JSON_TYPE)
-        .entity(new ErrorMessage(response.getStatus(), ex.getLocalizedMessage()))
-        .build();
+    return Response
+      .fromResponse(response)
+      .type(APPLICATION_JSON_TYPE)
+      .entity(new ErrorMessage(response.getStatus(), ex.getLocalizedMessage()))
+      .build();
   }
 
   public Response getResponse(Response.Status status, String message) {
-    return Response.status(status)
-        .type(APPLICATION_JSON_TYPE)
-        .entity(new ErrorMessage(status.getStatusCode(), message))
-        .header("WWW-Authenticate", "om-auth")
-        .build();
+    return Response
+      .status(status)
+      .type(APPLICATION_JSON_TYPE)
+      .entity(new ErrorMessage(status.getStatusCode(), message))
+      .header("WWW-Authenticate", "om-auth")
+      .build();
   }
 
   private void logUnhandledException(Throwable ex) {
-    String errMessage =
-        String.format("Got exception: [%s] / message [%s]", ex.getClass().getSimpleName(), ex.getMessage());
+    String errMessage = String.format(
+      "Got exception: [%s] / message [%s]",
+      ex.getClass().getSimpleName(),
+      ex.getMessage()
+    );
     StackTraceElement elem = findFirstResourceCallFromCallStack(ex.getStackTrace());
     String resourceClassName = null;
     if (elem != null) {
       errMessage +=
-          String.format(
-              " / related resource location: [%s.%s](%s:%d)",
-              elem.getClassName(), elem.getMethodName(), elem.getFileName(), elem.getLineNumber());
+        String.format(
+          " / related resource location: [%s.%s](%s:%d)",
+          elem.getClassName(),
+          elem.getMethodName(),
+          elem.getFileName(),
+          elem.getLineNumber()
+        );
       resourceClassName = elem.getClassName();
     }
 

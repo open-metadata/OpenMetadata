@@ -33,6 +33,7 @@ import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 public class DataProductResourceTest extends EntityResourceTest<DataProduct, CreateDataProduct> {
+
   public DataProductResourceTest() {
     super(Entity.DATA_PRODUCT, DataProduct.class, DataProductList.class, "dataProducts", DataProductResource.FIELDS);
   }
@@ -40,8 +41,10 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
   public void setupDataProducts(TestInfo test) throws HttpResponseException {
     DOMAIN_DATA_PRODUCT = createEntity(createRequest(getEntityName(test)), ADMIN_AUTH_HEADERS);
     SUB_DOMAIN_DATA_PRODUCT =
-        createEntity(
-            createRequest(getEntityName(test, 1)).withDomain(SUB_DOMAIN.getFullyQualifiedName()), ADMIN_AUTH_HEADERS);
+      createEntity(
+        createRequest(getEntityName(test, 1)).withDomain(SUB_DOMAIN.getFullyQualifiedName()),
+        ADMIN_AUTH_HEADERS
+      );
   }
 
   @Test
@@ -121,10 +124,12 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
   @Test
   void test_listWithDomainFilter(TestInfo test) throws HttpResponseException {
     DomainResourceTest domainTest = new DomainResourceTest();
-    String domain1 =
-        domainTest.createEntity(domainTest.createRequest(test, 1), ADMIN_AUTH_HEADERS).getFullyQualifiedName();
-    String domain2 =
-        domainTest.createEntity(domainTest.createRequest(test, 2), ADMIN_AUTH_HEADERS).getFullyQualifiedName();
+    String domain1 = domainTest
+      .createEntity(domainTest.createRequest(test, 1), ADMIN_AUTH_HEADERS)
+      .getFullyQualifiedName();
+    String domain2 = domainTest
+      .createEntity(domainTest.createRequest(test, 2), ADMIN_AUTH_HEADERS)
+      .getFullyQualifiedName();
     DataProduct p1 = createEntity(createRequest(test, 1).withDomain(domain1), ADMIN_AUTH_HEADERS);
     DataProduct p2 = createEntity(createRequest(test, 2).withDomain(domain1), ADMIN_AUTH_HEADERS);
     DataProduct p3 = createEntity(createRequest(test, 3).withDomain(domain2), ADMIN_AUTH_HEADERS);
@@ -145,10 +150,11 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
   }
 
   private void entityInDataProduct(EntityInterface entity, EntityInterface product, boolean inDataProduct)
-      throws HttpResponseException {
+    throws HttpResponseException {
     // Only table or topic is expected to assets currently in the tests
-    EntityResourceTest test =
-        entity.getEntityReference().getType().equals(Entity.TABLE) ? new TableResourceTest() : new TopicResourceTest();
+    EntityResourceTest test = entity.getEntityReference().getType().equals(Entity.TABLE)
+      ? new TableResourceTest()
+      : new TopicResourceTest();
     entity = test.getEntity(entity.getId(), "dataProducts", ADMIN_AUTH_HEADERS);
     TestUtils.existsInEntityReferenceList(entity.getDataProducts(), product.getId(), inDataProduct);
   }
@@ -156,17 +162,20 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
   @Override
   public CreateDataProduct createRequest(String name) {
     return new CreateDataProduct()
-        .withName(name)
-        .withDescription(name)
-        .withDomain(DOMAIN.getFullyQualifiedName())
-        .withStyle(new Style().withColor("#40E0D0").withIconURL("https://dataProductIcon"))
-        .withExperts(listOf(USER1.getFullyQualifiedName()))
-        .withAssets(TEST_TABLE1 != null ? listOf(TEST_TABLE1.getEntityReference()) : null);
+      .withName(name)
+      .withDescription(name)
+      .withDomain(DOMAIN.getFullyQualifiedName())
+      .withStyle(new Style().withColor("#40E0D0").withIconURL("https://dataProductIcon"))
+      .withExperts(listOf(USER1.getFullyQualifiedName()))
+      .withAssets(TEST_TABLE1 != null ? listOf(TEST_TABLE1.getEntityReference()) : null);
   }
 
   @Override
   public void validateCreatedEntity(
-      DataProduct createdEntity, CreateDataProduct request, Map<String, String> authHeaders) {
+    DataProduct createdEntity,
+    CreateDataProduct request,
+    Map<String, String> authHeaders
+  ) {
     // Entity specific validation
     assertEquals(request.getDomain(), createdEntity.getDomain().getFullyQualifiedName());
     assertEntityReferenceNames(request.getExperts(), createdEntity.getExperts());
@@ -184,17 +193,16 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
 
   @Override
   public DataProduct validateGetWithDifferentFields(DataProduct dataProduct, boolean byName)
-      throws HttpResponseException {
-    DataProduct getDataProduct =
-        byName
-            ? getEntityByName(dataProduct.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS)
-            : getEntity(dataProduct.getId(), null, ADMIN_AUTH_HEADERS);
+    throws HttpResponseException {
+    DataProduct getDataProduct = byName
+      ? getEntityByName(dataProduct.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS)
+      : getEntity(dataProduct.getId(), null, ADMIN_AUTH_HEADERS);
     assertListNull(getDataProduct.getOwner(), getDataProduct.getExperts());
     String fields = "owner,domain,experts,assets";
     getDataProduct =
-        byName
-            ? getEntityByName(getDataProduct.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getEntity(getDataProduct.getId(), fields, ADMIN_AUTH_HEADERS);
+      byName
+        ? getEntityByName(getDataProduct.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+        : getEntity(getDataProduct.getId(), fields, ADMIN_AUTH_HEADERS);
     // Fields requested are received
     assertReference(dataProduct.getDomain(), getDataProduct.getDomain());
     assertEntityReferences(dataProduct.getExperts(), getDataProduct.getExperts());

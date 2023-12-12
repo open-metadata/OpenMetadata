@@ -45,23 +45,26 @@ import org.openmetadata.service.util.RestUtil.PutResponse;
 
 @Slf4j
 public class TypeRepository extends EntityRepository<Type> {
+
   private static final String UPDATE_FIELDS = "customProperties";
   private static final String PATCH_FIELDS = "customProperties";
 
   public TypeRepository() {
     super(
-        TypeResource.COLLECTION_PATH,
-        Entity.TYPE,
-        Type.class,
-        Entity.getCollectionDAO().typeEntityDAO(),
-        PATCH_FIELDS,
-        UPDATE_FIELDS);
+      TypeResource.COLLECTION_PATH,
+      Entity.TYPE,
+      Type.class,
+      Entity.getCollectionDAO().typeEntityDAO(),
+      PATCH_FIELDS,
+      UPDATE_FIELDS
+    );
   }
 
   @Override
   public void setFields(Type type, Fields fields) {
     type.withCustomProperties(
-        fields.contains("customProperties") ? getCustomProperties(type) : type.getCustomProperties());
+      fields.contains("customProperties") ? getCustomProperties(type) : type.getCustomProperties()
+    );
   }
 
   @Override
@@ -110,7 +113,8 @@ public class TypeRepository extends EntityRepository<Type> {
   public PutResponse<Type> addCustomProperty(UriInfo uriInfo, String updatedBy, UUID id, CustomProperty property) {
     Type type = find(id, Include.NON_DELETED);
     property.setPropertyType(
-        Entity.getEntityReferenceById(Entity.TYPE, property.getPropertyType().getId(), NON_DELETED));
+      Entity.getEntityReferenceById(Entity.TYPE, property.getPropertyType().getId(), NON_DELETED)
+    );
     if (type.getCategory().equals(Category.Field)) {
       throw new IllegalArgumentException("Only entity types can be extended and field types can't be extended");
     }
@@ -137,11 +141,9 @@ public class TypeRepository extends EntityRepository<Type> {
       return null; // Property type fields don't support custom properties
     }
     List<CustomProperty> customProperties = new ArrayList<>();
-    List<Triple<String, String, String>> results =
-        daoCollection
-            .fieldRelationshipDAO()
-            .listToByPrefix(
-                getCustomPropertyFQNPrefix(type.getName()), Entity.TYPE, Entity.TYPE, Relationship.HAS.ordinal());
+    List<Triple<String, String, String>> results = daoCollection
+      .fieldRelationshipDAO()
+      .listToByPrefix(getCustomPropertyFQNPrefix(type.getName()), Entity.TYPE, Entity.TYPE, Relationship.HAS.ordinal());
     for (Triple<String, String, String> result : results) {
       CustomProperty property = JsonUtils.readValue(result.getRight(), CustomProperty.class);
       property.setPropertyType(this.getReferenceByName(result.getMiddle(), NON_DELETED));
@@ -153,6 +155,7 @@ public class TypeRepository extends EntityRepository<Type> {
 
   /** Handles entity updated from PUT and POST operation. */
   public class TypeUpdater extends EntityUpdater {
+
     public TypeUpdater(Type original, Type updated, Operation operation) {
       super(original, updated, operation);
     }
@@ -179,8 +182,11 @@ public class TypeRepository extends EntityRepository<Type> {
       // Record changes to updated custom properties (only description can be updated)
       for (CustomProperty updateProperty : updatedProperties) {
         // Find property that matches name and type
-        CustomProperty storedProperty =
-            origProperties.stream().filter(c -> customFieldMatch.test(c, updateProperty)).findAny().orElse(null);
+        CustomProperty storedProperty = origProperties
+          .stream()
+          .filter(c -> customFieldMatch.test(c, updateProperty))
+          .findAny()
+          .orElse(null);
         if (storedProperty == null) { // New property added, which is already handled
           continue;
         }
@@ -194,44 +200,51 @@ public class TypeRepository extends EntityRepository<Type> {
       String customPropertyJson = JsonUtils.pojoToJson(property.withPropertyType(null)); // Don't store entity reference
       property.withPropertyType(propertyType); // Restore entity reference
       LOG.info(
-          "Adding customProperty {} with type {} to the entity {}",
+        "Adding customProperty {} with type {} to the entity {}",
+        customPropertyFQN,
+        property.getPropertyType().getName(),
+        updated.getName()
+      );
+      daoCollection
+        .fieldRelationshipDAO()
+        .insert(
           customPropertyFQN,
           property.getPropertyType().getName(),
-          updated.getName());
-      daoCollection
-          .fieldRelationshipDAO()
-          .insert(
-              customPropertyFQN,
-              property.getPropertyType().getName(),
-              customPropertyFQN,
-              property.getPropertyType().getName(),
-              Entity.TYPE,
-              Entity.TYPE,
-              Relationship.HAS.ordinal(),
-              customPropertyJson);
+          customPropertyFQN,
+          property.getPropertyType().getName(),
+          Entity.TYPE,
+          Entity.TYPE,
+          Relationship.HAS.ordinal(),
+          customPropertyJson
+        );
     }
 
     private void deleteCustomProperty(CustomProperty property) {
       String customPropertyFQN = getCustomPropertyFQN(updated.getName(), property.getName());
       LOG.info(
-          "Deleting customProperty {} with type {} from the entity {}",
-          property.getName(),
-          property.getPropertyType().getName(),
-          updated.getName());
+        "Deleting customProperty {} with type {} from the entity {}",
+        property.getName(),
+        property.getPropertyType().getName(),
+        updated.getName()
+      );
       daoCollection
-          .fieldRelationshipDAO()
-          .delete(
-              customPropertyFQN,
-              property.getPropertyType().getName(),
-              Entity.TYPE,
-              Entity.TYPE,
-              Relationship.HAS.ordinal());
+        .fieldRelationshipDAO()
+        .delete(
+          customPropertyFQN,
+          property.getPropertyType().getName(),
+          Entity.TYPE,
+          Entity.TYPE,
+          Relationship.HAS.ordinal()
+        );
       // Delete all the data stored in the entity extension for the custom property
       daoCollection.entityExtensionDAO().deleteExtension(customPropertyFQN);
     }
 
     private void updateCustomPropertyDescription(
-        Type entity, CustomProperty origProperty, CustomProperty updatedProperty) {
+      Type entity,
+      CustomProperty origProperty,
+      CustomProperty updatedProperty
+    ) {
       String fieldName = getCustomField(origProperty, FIELD_DESCRIPTION);
       if (recordChange(fieldName, origProperty.getDescription(), updatedProperty.getDescription())) {
         String customPropertyFQN = getCustomPropertyFQN(entity.getName(), updatedProperty.getName());
@@ -239,17 +252,18 @@ public class TypeRepository extends EntityRepository<Type> {
         String customPropertyJson = JsonUtils.pojoToJson(updatedProperty.withPropertyType(null));
         updatedProperty.withPropertyType(propertyType); // Restore entity reference
         daoCollection
-            .fieldRelationshipDAO()
-            .upsert(
-                customPropertyFQN,
-                updatedProperty.getPropertyType().getName(),
-                customPropertyFQN,
-                updatedProperty.getPropertyType().getName(),
-                Entity.TYPE,
-                Entity.TYPE,
-                Relationship.HAS.ordinal(),
-                "customProperty",
-                customPropertyJson);
+          .fieldRelationshipDAO()
+          .upsert(
+            customPropertyFQN,
+            updatedProperty.getPropertyType().getName(),
+            customPropertyFQN,
+            updatedProperty.getPropertyType().getName(),
+            Entity.TYPE,
+            Entity.TYPE,
+            Relationship.HAS.ordinal(),
+            "customProperty",
+            customPropertyJson
+          );
       }
     }
   }

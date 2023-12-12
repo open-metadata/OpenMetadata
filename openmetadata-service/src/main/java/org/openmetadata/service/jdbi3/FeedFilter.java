@@ -11,14 +11,30 @@ import org.openmetadata.service.jdbi3.FeedRepository.PaginationType;
 
 @Builder
 public class FeedFilter {
-  @Getter private ThreadType threadType;
-  @Getter private Boolean activeAnnouncement;
-  @Getter private TaskStatus taskStatus;
-  @Getter private Boolean resolved;
-  @Getter private FilterType filterType;
-  @Getter private PaginationType paginationType;
-  @Getter private String before;
-  @Getter private String after;
+
+  @Getter
+  private ThreadType threadType;
+
+  @Getter
+  private Boolean activeAnnouncement;
+
+  @Getter
+  private TaskStatus taskStatus;
+
+  @Getter
+  private Boolean resolved;
+
+  @Getter
+  private FilterType filterType;
+
+  @Getter
+  private PaginationType paginationType;
+
+  @Getter
+  private String before;
+
+  @Getter
+  private String after;
 
   public String getCondition() {
     return getCondition(true);
@@ -32,10 +48,9 @@ public class FeedFilter {
       if (ThreadType.Announcement.equals(threadType) && activeAnnouncement != null) {
         // Add activeAnnouncement filter
         long now = System.currentTimeMillis() / 1000; // epoch time in seconds
-        String condition2 =
-            activeAnnouncement
-                ? String.format("%s BETWEEN announcementStart AND announcementEnd", now)
-                : String.format("%s NOT BETWEEN announcementStart AND announcementEnd", now);
+        String condition2 = activeAnnouncement
+          ? String.format("%s BETWEEN announcementStart AND announcementEnd", now)
+          : String.format("%s NOT BETWEEN announcementStart AND announcementEnd", now);
         condition1 = addCondition(condition1, condition2);
       } else if (ThreadType.Task.equals(threadType) && taskStatus != null) {
         String condition2 = String.format("taskStatus = '%s'", taskStatus);
@@ -44,10 +59,9 @@ public class FeedFilter {
     }
     condition1 = addCondition(condition1, resolved == null ? "" : String.format("resolved = %s", resolved));
     if (paginationType != null && includePagination) {
-      String paginationCondition =
-          paginationType == PaginationType.BEFORE
-              ? String.format("updatedAt > %s", Long.parseLong(decodeCursor(before)))
-              : String.format("updatedAt < %s", after != null ? Long.parseLong(decodeCursor(after)) : Long.MAX_VALUE);
+      String paginationCondition = paginationType == PaginationType.BEFORE
+        ? String.format("updatedAt > %s", Long.parseLong(decodeCursor(before)))
+        : String.format("updatedAt < %s", after != null ? Long.parseLong(decodeCursor(after)) : Long.MAX_VALUE);
       condition1 = addCondition(condition1, paginationCondition);
     }
     return condition1.isEmpty() ? "WHERE TRUE" : "WHERE " + condition1;

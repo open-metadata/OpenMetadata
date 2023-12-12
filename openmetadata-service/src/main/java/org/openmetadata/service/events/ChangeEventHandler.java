@@ -41,6 +41,7 @@ import org.openmetadata.service.util.NotificationHandler;
 
 @Slf4j
 public class ChangeEventHandler implements EventHandler {
+
   private ObjectMapper mapper;
   private NotificationHandler notificationHandler;
 
@@ -67,11 +68,12 @@ public class ChangeEventHandler implements EventHandler {
           // Always set the Change Event Username as context Principal, the one creating the CE
           changeEvent.setUserName(loggedInUserName);
           LOG.info(
-              "Recording change event {}:{}:{}:{}",
-              changeEvent.getTimestamp(),
-              changeEvent.getEntityId(),
-              changeEvent.getEventType(),
-              changeEvent.getEntityType());
+            "Recording change event {}:{}:{}:{}",
+            changeEvent.getTimestamp(),
+            changeEvent.getEntityId(),
+            changeEvent.getEventType(),
+            changeEvent.getEntityType()
+          );
           EventPubSub.publish(changeEvent);
           if (changeEvent.getEntity() != null) {
             Object entity = changeEvent.getEntity();
@@ -83,15 +85,18 @@ public class ChangeEventHandler implements EventHandler {
 
           // Add a new thread to the entity for every change event
           // for the event to appear in activity feeds
-          if (Entity.shouldDisplayEntityChangeOnFeed(changeEvent.getEntityType())
-              && (AlertUtil.shouldProcessActivityFeedRequest(changeEvent))) {
+          if (
+            Entity.shouldDisplayEntityChangeOnFeed(changeEvent.getEntityType()) &&
+            (AlertUtil.shouldProcessActivityFeedRequest(changeEvent))
+          ) {
             for (Thread thread : listOrEmpty(FeedUtils.getThreads(changeEvent, loggedInUserName))) {
               // Don't create a thread if there is no message
               if (thread.getMessage() != null && !thread.getMessage().isEmpty()) {
                 feedRepository.create(thread, changeEvent);
                 String jsonThread = mapper.writeValueAsString(thread);
-                WebSocketManager.getInstance()
-                    .broadCastMessageToAll(WebSocketManager.FEED_BROADCAST_CHANNEL, jsonThread);
+                WebSocketManager
+                  .getInstance()
+                  .broadCastMessageToAll(WebSocketManager.FEED_BROADCAST_CHANNEL, jsonThread);
                 if (changeEvent.getEventType().equals(EventType.ENTITY_DELETED)) {
                   deleteAllConversationsRelatedToEntity(getEntity(changeEvent), collectionDAO);
                 }
@@ -108,13 +113,13 @@ public class ChangeEventHandler implements EventHandler {
 
   private static ChangeEvent copyChangeEvent(ChangeEvent changeEvent) {
     return new ChangeEvent()
-        .withEventType(changeEvent.getEventType())
-        .withEntityId(changeEvent.getEntityId())
-        .withEntityType(changeEvent.getEntityType())
-        .withUserName(changeEvent.getUserName())
-        .withTimestamp(changeEvent.getTimestamp())
-        .withChangeDescription(changeEvent.getChangeDescription())
-        .withCurrentVersion(changeEvent.getCurrentVersion());
+      .withEventType(changeEvent.getEventType())
+      .withEntityId(changeEvent.getEntityId())
+      .withEntityType(changeEvent.getEntityType())
+      .withUserName(changeEvent.getUserName())
+      .withTimestamp(changeEvent.getTimestamp())
+      .withChangeDescription(changeEvent.getChangeDescription())
+      .withCurrentVersion(changeEvent.getCurrentVersion());
   }
 
   private void deleteAllConversationsRelatedToEntity(EntityInterface entityInterface, CollectionDAO collectionDAO) {

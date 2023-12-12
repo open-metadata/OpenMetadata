@@ -35,17 +35,19 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 
 public class ContainerRepository extends EntityRepository<Container> {
+
   private static final String CONTAINER_UPDATE_FIELDS = "dataModel";
   private static final String CONTAINER_PATCH_FIELDS = "dataModel,sourceHash";
 
   public ContainerRepository() {
     super(
-        ContainerResource.COLLECTION_PATH,
-        Entity.CONTAINER,
-        Container.class,
-        Entity.getCollectionDAO().containerDAO(),
-        CONTAINER_PATCH_FIELDS,
-        CONTAINER_UPDATE_FIELDS);
+      ContainerResource.COLLECTION_PATH,
+      Entity.CONTAINER,
+      Container.class,
+      Entity.getCollectionDAO().containerDAO(),
+      CONTAINER_PATCH_FIELDS,
+      CONTAINER_UPDATE_FIELDS
+    );
     supportsSearch = true;
   }
 
@@ -56,7 +58,10 @@ public class ContainerRepository extends EntityRepository<Container> {
     container.setSourceHash(fields.contains("sourceHash") ? container.getSourceHash() : null);
     if (container.getDataModel() != null) {
       populateDataModelColumnTags(
-          fields.contains(FIELD_TAGS), container.getFullyQualifiedName(), container.getDataModel().getColumns());
+        fields.contains(FIELD_TAGS),
+        container.getFullyQualifiedName(),
+        container.getDataModel().getColumns()
+      );
     }
   }
 
@@ -71,8 +76,12 @@ public class ContainerRepository extends EntityRepository<Container> {
   }
 
   private void setDefaultFields(Container container) {
-    EntityReference parentServiceRef =
-        getFromEntityRef(container.getId(), Relationship.CONTAINS, STORAGE_SERVICE, true);
+    EntityReference parentServiceRef = getFromEntityRef(
+      container.getId(),
+      Relationship.CONTAINS,
+      STORAGE_SERVICE,
+      true
+    );
     container.withService(parentServiceRef);
   }
 
@@ -80,10 +89,12 @@ public class ContainerRepository extends EntityRepository<Container> {
   public void setFullyQualifiedName(Container container) {
     if (container.getParent() != null) {
       container.setFullyQualifiedName(
-          FullyQualifiedName.add(container.getParent().getFullyQualifiedName(), container.getName()));
+        FullyQualifiedName.add(container.getParent().getFullyQualifiedName(), container.getName())
+      );
     } else {
       container.setFullyQualifiedName(
-          FullyQualifiedName.add(container.getService().getFullyQualifiedName(), container.getName()));
+        FullyQualifiedName.add(container.getService().getFullyQualifiedName(), container.getName())
+      );
     }
     if (container.getDataModel() != null) {
       setColumnFQN(container.getFullyQualifiedName(), container.getDataModel().getColumns());
@@ -92,13 +103,14 @@ public class ContainerRepository extends EntityRepository<Container> {
 
   private void setColumnFQN(String parentFQN, List<Column> columns) {
     columns.forEach(
-        c -> {
-          String columnFqn = FullyQualifiedName.add(parentFQN, c.getName());
-          c.setFullyQualifiedName(columnFqn);
-          if (c.getChildren() != null) {
-            setColumnFQN(columnFqn, c.getChildren());
-          }
-        });
+      c -> {
+        String columnFqn = FullyQualifiedName.add(parentFQN, c.getName());
+        c.setFullyQualifiedName(columnFqn);
+        if (c.getChildren() != null) {
+          setColumnFQN(columnFqn, c.getChildren());
+        }
+      }
+    );
   }
 
   @Override
@@ -215,12 +227,17 @@ public class ContainerRepository extends EntityRepository<Container> {
   }
 
   static class DataModelDescriptionTaskWorkflow extends DescriptionTaskWorkflow {
+
     private final Column column;
 
     DataModelDescriptionTaskWorkflow(ThreadContext threadContext) {
       super(threadContext);
-      DashboardDataModel dataModel =
-          Entity.getEntity(DASHBOARD_DATA_MODEL, threadContext.getAboutEntity().getId(), "dataModel", ALL);
+      DashboardDataModel dataModel = Entity.getEntity(
+        DASHBOARD_DATA_MODEL,
+        threadContext.getAboutEntity().getId(),
+        "dataModel",
+        ALL
+      );
       threadContext.setAboutEntity(dataModel);
       column = EntityUtil.findColumn(dataModel.getColumns(), getAbout().getArrayFieldName());
     }
@@ -233,12 +250,17 @@ public class ContainerRepository extends EntityRepository<Container> {
   }
 
   static class DataModelTagTaskWorkflow extends TagTaskWorkflow {
+
     private final Column column;
 
     DataModelTagTaskWorkflow(ThreadContext threadContext) {
       super(threadContext);
-      DashboardDataModel dataModel =
-          Entity.getEntity(DASHBOARD_DATA_MODEL, threadContext.getAboutEntity().getId(), "dataModel,tags", ALL);
+      DashboardDataModel dataModel = Entity.getEntity(
+        DASHBOARD_DATA_MODEL,
+        threadContext.getAboutEntity().getId(),
+        "dataModel,tags",
+        ALL
+      );
       threadContext.setAboutEntity(dataModel);
       column = EntityUtil.findColumn(dataModel.getColumns(), getAbout().getArrayFieldName());
     }
@@ -253,6 +275,7 @@ public class ContainerRepository extends EntityRepository<Container> {
 
   /** Handles entity updated from PUT and POST operations */
   public class ContainerUpdater extends ColumnEntityUpdater {
+
     public ContainerUpdater(Container original, Container updated, Operation operation) {
       super(original, updated, operation);
     }
@@ -265,21 +288,23 @@ public class ContainerRepository extends EntityRepository<Container> {
       List<ContainerFileFormat> addedItems = new ArrayList<>();
       List<ContainerFileFormat> deletedItems = new ArrayList<>();
       recordListChange(
-          "fileFormats",
-          original.getFileFormats(),
-          updated.getFileFormats(),
-          addedItems,
-          deletedItems,
-          EntityUtil.containerFileFormatMatch);
+        "fileFormats",
+        original.getFileFormats(),
+        updated.getFileFormats(),
+        addedItems,
+        deletedItems,
+        EntityUtil.containerFileFormatMatch
+      );
 
       // record the changes for size and numOfObjects change without version update.
       recordChange(
-          "numberOfObjects",
-          original.getNumberOfObjects(),
-          updated.getNumberOfObjects(),
-          false,
-          EntityUtil.objectMatch,
-          false);
+        "numberOfObjects",
+        original.getNumberOfObjects(),
+        updated.getNumberOfObjects(),
+        false,
+        EntityUtil.objectMatch,
+        false
+      );
       recordChange("size", original.getSize(), updated.getSize(), false, EntityUtil.objectMatch, false);
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
       recordChange("retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod());
@@ -293,14 +318,16 @@ public class ContainerRepository extends EntityRepository<Container> {
 
       if (original.getDataModel() != null && updated.getDataModel() != null) {
         updateColumns(
-            "dataModel.columns",
-            original.getDataModel().getColumns(),
-            updated.getDataModel().getColumns(),
-            EntityUtil.columnMatch);
+          "dataModel.columns",
+          original.getDataModel().getColumns(),
+          updated.getDataModel().getColumns(),
+          EntityUtil.columnMatch
+        );
         recordChange(
-            "dataModel.partition",
-            original.getDataModel().getIsPartitioned(),
-            updated.getDataModel().getIsPartitioned());
+          "dataModel.partition",
+          original.getDataModel().getIsPartitioned(),
+          updated.getDataModel().getIsPartitioned()
+        );
       }
     }
   }

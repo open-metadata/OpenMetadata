@@ -6,7 +6,8 @@ import java.util.List;
 import org.openmetadata.service.dataInsight.DailyActiveUsersAggregator;
 
 public class ElasticSearchDailyActiveUsersAggregator
-    extends DailyActiveUsersAggregator<Aggregations, Histogram, Histogram.Bucket> {
+  extends DailyActiveUsersAggregator<Aggregations, Histogram, Histogram.Bucket> {
+
   public ElasticSearchDailyActiveUsersAggregator(Aggregations aggregations) {
     super(aggregations);
   }

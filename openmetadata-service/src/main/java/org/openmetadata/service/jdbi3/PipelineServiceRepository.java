@@ -25,12 +25,13 @@ public class PipelineServiceRepository extends ServiceEntityRepository<PipelineS
 
   public PipelineServiceRepository() {
     super(
-        PipelineServiceResource.COLLECTION_PATH,
-        Entity.PIPELINE_SERVICE,
-        Entity.getCollectionDAO().pipelineServiceDAO(),
-        PipelineConnection.class,
-        "",
-        ServiceType.PIPELINE);
+      PipelineServiceResource.COLLECTION_PATH,
+      Entity.PIPELINE_SERVICE,
+      Entity.getCollectionDAO().pipelineServiceDAO(),
+      PipelineConnection.class,
+      "",
+      ServiceType.PIPELINE
+    );
     supportsSearch = true;
   }
 }

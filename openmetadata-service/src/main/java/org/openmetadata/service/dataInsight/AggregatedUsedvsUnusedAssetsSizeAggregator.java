@@ -7,6 +7,7 @@ import java.util.Objects;
 import org.openmetadata.schema.dataInsight.type.AggregatedUsedVsUnusedAssetsSize;
 
 public abstract class AggregatedUsedvsUnusedAssetsSizeAggregator<A, H, B, S> implements DataInsightAggregatorInterface {
+
   private final A aggregations;
 
   protected AggregatedUsedvsUnusedAssetsSizeAggregator(A aggregations) {
@@ -32,12 +33,13 @@ public abstract class AggregatedUsedvsUnusedAssetsSizeAggregator<A, H, B, S> imp
         unusedPercentage = unused / total;
       }
       data.add(
-          new AggregatedUsedVsUnusedAssetsSize()
-              .withTimestamp(timestamp)
-              .withUnused(unused)
-              .withUnusedPercentage(unusedPercentage)
-              .withUsed(used)
-              .withUsedPercentage(usedPercentage));
+        new AggregatedUsedVsUnusedAssetsSize()
+          .withTimestamp(timestamp)
+          .withUnused(unused)
+          .withUnusedPercentage(unusedPercentage)
+          .withUsed(used)
+          .withUsedPercentage(usedPercentage)
+      );
     }
     return data;
   }

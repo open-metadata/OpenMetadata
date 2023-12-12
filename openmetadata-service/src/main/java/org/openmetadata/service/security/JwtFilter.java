@@ -55,6 +55,7 @@ import org.openmetadata.service.security.saml.JwtTokenCacheManager;
 @Slf4j
 @Provider
 public class JwtFilter implements ContainerRequestFilter {
+
   public static final String AUTHORIZATION_HEADER = "Authorization";
   public static final String TOKEN_PREFIX = "Bearer";
   public static final String BOT_CLAIM = "isBot";
@@ -63,25 +64,27 @@ public class JwtFilter implements ContainerRequestFilter {
   private String principalDomain;
   private boolean enforcePrincipalDomain;
   private AuthProvider providerType;
-  public static final List<String> EXCLUDED_ENDPOINTS =
-      List.of(
-          "v1/system/config",
-          "v1/users/signup",
-          "v1/system/version",
-          "v1/users/registrationConfirmation",
-          "v1/users/resendRegistrationToken",
-          "v1/users/generatePasswordResetLink",
-          "v1/users/password/reset",
-          "v1/users/checkEmailInUse",
-          "v1/users/login",
-          "v1/users/refresh");
+  public static final List<String> EXCLUDED_ENDPOINTS = List.of(
+    "v1/system/config",
+    "v1/users/signup",
+    "v1/system/version",
+    "v1/users/registrationConfirmation",
+    "v1/users/resendRegistrationToken",
+    "v1/users/generatePasswordResetLink",
+    "v1/users/password/reset",
+    "v1/users/checkEmailInUse",
+    "v1/users/login",
+    "v1/users/refresh"
+  );
 
   @SuppressWarnings("unused")
   private JwtFilter() {}
 
   @SneakyThrows
   public JwtFilter(
-      AuthenticationConfiguration authenticationConfiguration, AuthorizerConfiguration authorizerConfiguration) {
+    AuthenticationConfiguration authenticationConfiguration,
+    AuthorizerConfiguration authorizerConfiguration
+  ) {
     this.providerType = authenticationConfiguration.getProvider();
     this.jwtPrincipalClaims = authenticationConfiguration.getJwtPrincipalClaims();
 
@@ -96,10 +99,11 @@ public class JwtFilter implements ContainerRequestFilter {
 
   @VisibleForTesting
   JwtFilter(
-      JwkProvider jwkProvider,
-      List<String> jwtPrincipalClaims,
-      String principalDomain,
-      boolean enforcePrincipalDomain) {
+    JwkProvider jwkProvider,
+    List<String> jwtPrincipalClaims,
+    String principalDomain,
+    boolean enforcePrincipalDomain
+  ) {
     this.jwkProvider = jwkProvider;
     this.jwtPrincipalClaims = jwtPrincipalClaims;
     this.principalDomain = principalDomain;
@@ -137,16 +141,21 @@ public class JwtFilter implements ContainerRequestFilter {
     }
 
     // validate access token
-    if (claims.containsKey(TOKEN_TYPE)
-        && ServiceTokenType.PERSONAL_ACCESS.equals(ServiceTokenType.fromValue(claims.get(TOKEN_TYPE).asString()))) {
+    if (
+      claims.containsKey(TOKEN_TYPE) &&
+      ServiceTokenType.PERSONAL_ACCESS.equals(ServiceTokenType.fromValue(claims.get(TOKEN_TYPE).asString()))
+    ) {
       validatePersonalAccessToken(tokenFromHeader, userName);
     }
 
     // Setting Security Context
     CatalogPrincipal catalogPrincipal = new CatalogPrincipal(userName);
     String scheme = requestContext.getUriInfo().getRequestUri().getScheme();
-    CatalogSecurityContext catalogSecurityContext =
-        new CatalogSecurityContext(catalogPrincipal, scheme, SecurityContext.DIGEST_AUTH);
+    CatalogSecurityContext catalogSecurityContext = new CatalogSecurityContext(
+      catalogPrincipal,
+      scheme,
+      SecurityContext.DIGEST_AUTH
+    );
     LOG.debug("SecurityContext {}", catalogSecurityContext);
     requestContext.setSecurityContext(catalogSecurityContext);
   }
@@ -163,8 +172,10 @@ public class JwtFilter implements ContainerRequestFilter {
 
     // Check if expired
     // If expiresAt is set to null, treat it as never expiring token
-    if (jwt.getExpiresAt() != null
-        && jwt.getExpiresAt().before(Calendar.getInstance(TimeZone.getTimeZone("UTC")).getTime())) {
+    if (
+      jwt.getExpiresAt() != null &&
+      jwt.getExpiresAt().before(Calendar.getInstance(TimeZone.getTimeZone("UTC")).getTime())
+    ) {
       throw new AuthenticationException("Expired token!");
     }
 
@@ -182,16 +193,18 @@ public class JwtFilter implements ContainerRequestFilter {
   @SneakyThrows
   public String validateAndReturnUsername(Map<String, Claim> claims) {
     // Get username from JWT token
-    String jwtClaim =
-        jwtPrincipalClaims.stream()
-            .filter(claims::containsKey)
-            .findFirst()
-            .map(claims::get)
-            .map(claim -> claim.as(TextNode.class).asText())
-            .orElseThrow(
-                () ->
-                    new AuthenticationException(
-                        "Invalid JWT token, none of the following claims are present " + jwtPrincipalClaims));
+    String jwtClaim = jwtPrincipalClaims
+      .stream()
+      .filter(claims::containsKey)
+      .findFirst()
+      .map(claims::get)
+      .map(claim -> claim.as(TextNode.class).asText())
+      .orElseThrow(
+        () ->
+          new AuthenticationException(
+            "Invalid JWT token, none of the following claims are present " + jwtPrincipalClaims
+          )
+      );
 
     String userName;
     String domain;
@@ -206,7 +219,8 @@ public class JwtFilter implements ContainerRequestFilter {
     // validate principal domain
     if (enforcePrincipalDomain && !domain.equals(principalDomain)) {
       throw new AuthenticationException(
-          String.format("Not Authorized! Email does not match the principal domain %s", principalDomain));
+        String.format("Not Authorized! Email does not match the principal domain %s", principalDomain)
+      );
     }
     return userName;
   }

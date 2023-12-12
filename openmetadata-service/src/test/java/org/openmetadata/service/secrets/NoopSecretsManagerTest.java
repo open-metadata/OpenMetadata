@@ -88,21 +88,30 @@ public class NoopSecretsManagerTest {
 
   private void testEncryptServiceConnection() {
     MysqlConnection connection = new MysqlConnection().withAuthType(new basicAuth().withPassword(ENCRYPTED_VALUE));
-    Object actualConfig =
-        secretsManager.encryptServiceConnectionConfig(connection, Mysql.value(), "test", ServiceType.DATABASE);
+    Object actualConfig = secretsManager.encryptServiceConnectionConfig(
+      connection,
+      Mysql.value(),
+      "test",
+      ServiceType.DATABASE
+    );
     assertEquals(
-        ENCRYPTED_VALUE,
-        JsonUtils.convertValue(((MysqlConnection) actualConfig).getAuthType(), basicAuth.class).getPassword());
+      ENCRYPTED_VALUE,
+      JsonUtils.convertValue(((MysqlConnection) actualConfig).getAuthType(), basicAuth.class).getPassword()
+    );
     assertNotSame(connection, actualConfig);
   }
 
   private void testDecryptServiceConnection() {
     MysqlConnection mysqlConnection = new MysqlConnection().withAuthType(new basicAuth().withPassword(DECRYPTED_VALUE));
-    Object actualConfig =
-        secretsManager.decryptServiceConnectionConfig(mysqlConnection, Mysql.value(), ServiceType.DATABASE);
+    Object actualConfig = secretsManager.decryptServiceConnectionConfig(
+      mysqlConnection,
+      Mysql.value(),
+      ServiceType.DATABASE
+    );
     assertEquals(
-        DECRYPTED_VALUE,
-        JsonUtils.convertValue(((MysqlConnection) actualConfig).getAuthType(), basicAuth.class).getPassword());
+      DECRYPTED_VALUE,
+      JsonUtils.convertValue(((MysqlConnection) actualConfig).getAuthType(), basicAuth.class).getPassword()
+    );
     assertNotSame(mysqlConnection, actualConfig);
   }
 }

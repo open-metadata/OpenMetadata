@@ -29,13 +29,18 @@ public class IngestionPipelineDeploymentException extends WebServiceException {
   }
 
   public static IngestionPipelineDeploymentException byMessage(
-      String name, String errorMessage, Response.Status status) {
+    String name,
+    String errorMessage,
+    Response.Status status
+  ) {
     return new IngestionPipelineDeploymentException(status, buildMessageByName(name, errorMessage));
   }
 
   public static IngestionPipelineDeploymentException byMessage(String name, String errorMessage) {
     return new IngestionPipelineDeploymentException(
-        Response.Status.BAD_REQUEST, buildMessageByName(name, errorMessage));
+      Response.Status.BAD_REQUEST,
+      buildMessageByName(name, errorMessage)
+    );
   }
 
   public static String buildMessageByName(String name, String errorMessage) {

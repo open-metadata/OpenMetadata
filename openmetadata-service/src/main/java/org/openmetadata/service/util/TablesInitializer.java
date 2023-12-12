@@ -56,6 +56,7 @@ import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.jdbi.DatabaseAuthenticationProviderFactory;
 
 public final class TablesInitializer {
+
   private static final String DEBUG_MODE_ENABLED = "debug_mode";
   private static final String OPTION_CONFIG_FILE_PATH = "config";
   private static final String OPTION_FORCE_MIGRATIONS = "force";
@@ -69,41 +70,62 @@ public final class TablesInitializer {
     OPTIONS.addOption("debug", DEBUG_MODE_ENABLED, false, "Enable Debug Mode");
     OPTIONS.addOption("c", OPTION_CONFIG_FILE_PATH, true, "Config file path");
     OPTIONS.addOption(
-        OPTION_FORCE_MIGRATIONS,
-        OPTION_FORCE_MIGRATIONS,
-        true,
-        "Ignore the server checksum and force migrations to be run again");
+      OPTION_FORCE_MIGRATIONS,
+      OPTION_FORCE_MIGRATIONS,
+      true,
+      "Ignore the server checksum and force migrations to be run again"
+    );
     OPTIONS.addOption(null, SchemaMigrationOption.CREATE.toString(), false, "Run sql migrations from scratch");
     OPTIONS.addOption(null, SchemaMigrationOption.DROP.toString(), false, "Drop all the tables in the target database");
     OPTIONS.addOption(
-        null,
-        SchemaMigrationOption.CHECK_CONNECTION.toString(),
-        false,
-        "Check the connection for configured data source");
+      null,
+      SchemaMigrationOption.CHECK_CONNECTION.toString(),
+      false,
+      "Check the connection for configured data source"
+    );
     OPTIONS.addOption(
-        null, SchemaMigrationOption.MIGRATE.toString(), false, "Execute schema migration from last check point");
+      null,
+      SchemaMigrationOption.MIGRATE.toString(),
+      false,
+      "Execute schema migration from last check point"
+    );
     OPTIONS.addOption(
-        null,
-        SchemaMigrationOption.INFO.toString(),
-        false,
-        "Show the status of the schema migration compared to the target database");
+      null,
+      SchemaMigrationOption.INFO.toString(),
+      false,
+      "Show the status of the schema migration compared to the target database"
+    );
     OPTIONS.addOption(
-        null,
-        SchemaMigrationOption.VALIDATE.toString(),
-        false,
-        "Validate the target database changes with the migration scripts");
+      null,
+      SchemaMigrationOption.VALIDATE.toString(),
+      false,
+      "Validate the target database changes with the migration scripts"
+    );
     OPTIONS.addOption(
-        null,
-        SchemaMigrationOption.REPAIR.toString(),
-        false,
-        "Repairs the DATABASE_CHANGE_LOG by "
-            + "removing failed migrations and correcting checksum of existing migration script");
+      null,
+      SchemaMigrationOption.REPAIR.toString(),
+      false,
+      "Repairs the DATABASE_CHANGE_LOG by " +
+      "removing failed migrations and correcting checksum of existing migration script"
+    );
     OPTIONS.addOption(
-        null, DISABLE_VALIDATE_ON_MIGRATE, false, "Disable flyway validation checks while running migrate");
+      null,
+      DISABLE_VALIDATE_ON_MIGRATE,
+      false,
+      "Disable flyway validation checks while running migrate"
+    );
     OPTIONS.addOption(
-        null, SchemaMigrationOption.ES_CREATE.toString(), false, "Creates all the indexes in the elastic search");
+      null,
+      SchemaMigrationOption.ES_CREATE.toString(),
+      false,
+      "Creates all the indexes in the elastic search"
+    );
     OPTIONS.addOption(
-        null, SchemaMigrationOption.ES_DROP.toString(), false, "Drop all the indexes in the elastic search");
+      null,
+      SchemaMigrationOption.ES_DROP.toString(),
+      false,
+      "Drop all the indexes in the elastic search"
+    );
     OPTIONS.addOption(null, SchemaMigrationOption.ES_MIGRATE.toString(), false, "Update Elastic Search index mapping");
   }
 
@@ -124,8 +146,9 @@ public final class TablesInitializer {
       if (commandLine.hasOption(schemaMigrationOption.toString())) {
         if (isSchemaMigrationOptionSpecified) {
           printToConsoleMandatory(
-              "Only one operation can be execute at once, please select one of 'create', ',migrate', "
-                  + "'validate', 'info', 'drop', 'repair', 'check-connection'.");
+            "Only one operation can be execute at once, please select one of 'create', ',migrate', " +
+            "'validate', 'info', 'drop', 'repair', 'check-connection'."
+          );
           System.exit(1);
         }
         isSchemaMigrationOptionSpecified = true;
@@ -135,16 +158,18 @@ public final class TablesInitializer {
 
     if (!isSchemaMigrationOptionSpecified) {
       printToConsoleMandatory(
-          "One of the option 'create', 'migrate', 'validate', 'info', 'drop', 'repair', "
-              + "'check-connection' must be specified to execute.");
+        "One of the option 'create', 'migrate', 'validate', 'info', 'drop', 'repair', " +
+        "'check-connection' must be specified to execute."
+      );
       System.exit(1);
     }
 
     if (commandLine.hasOption(SchemaMigrationOption.DROP.toString())) {
       printToConsoleMandatory(
-          "You are about drop all the data in the database. ALL METADATA WILL BE DELETED. \nThis is"
-              + " not recommended for a Production setup or any deployment where you have collected \na lot of "
-              + "information from the users, such as descriptions, tags, etc.\n");
+        "You are about drop all the data in the database. ALL METADATA WILL BE DELETED. \nThis is" +
+        " not recommended for a Production setup or any deployment where you have collected \na lot of " +
+        "information from the users, such as descriptions, tags, etc.\n"
+      );
       String input = "";
       Scanner scanner = new Scanner(System.in);
       while (!input.equals("DELETE")) {
@@ -160,13 +185,16 @@ public final class TablesInitializer {
     String confFilePath = commandLine.getOptionValue(OPTION_CONFIG_FILE_PATH);
     ObjectMapper objectMapper = Jackson.newObjectMapper();
     Validator validator = Validators.newValidator();
-    YamlConfigurationFactory<OpenMetadataApplicationConfig> factory =
-        new YamlConfigurationFactory<>(OpenMetadataApplicationConfig.class, validator, objectMapper, "dw");
-    OpenMetadataApplicationConfig config =
-        factory.build(
-            new SubstitutingSourceProvider(
-                new FileConfigurationSourceProvider(), new EnvironmentVariableSubstitutor(false)),
-            confFilePath);
+    YamlConfigurationFactory<OpenMetadataApplicationConfig> factory = new YamlConfigurationFactory<>(
+      OpenMetadataApplicationConfig.class,
+      validator,
+      objectMapper,
+      "dw"
+    );
+    OpenMetadataApplicationConfig config = factory.build(
+      new SubstitutingSourceProvider(new FileConfigurationSourceProvider(), new EnvironmentVariableSubstitutor(false)),
+      confFilePath
+    );
     Fernet.getInstance().setFernetKey(config);
     DataSourceFactory dataSourceFactory = config.getDataSourceFactory();
     if (dataSourceFactory == null) {
@@ -174,14 +202,18 @@ public final class TablesInitializer {
     }
 
     // Check for db auth providers.
-    DatabaseAuthenticationProviderFactory.get(dataSourceFactory.getUrl())
-        .ifPresent(
-            databaseAuthenticationProvider -> {
-              String token =
-                  databaseAuthenticationProvider.authenticate(
-                      dataSourceFactory.getUrl(), dataSourceFactory.getUser(), dataSourceFactory.getPassword());
-              dataSourceFactory.setPassword(token);
-            });
+    DatabaseAuthenticationProviderFactory
+      .get(dataSourceFactory.getUrl())
+      .ifPresent(
+        databaseAuthenticationProvider -> {
+          String token = databaseAuthenticationProvider.authenticate(
+            dataSourceFactory.getUrl(),
+            dataSourceFactory.getUser(),
+            dataSourceFactory.getPassword()
+          );
+          dataSourceFactory.setPassword(token);
+        }
+      );
 
     String jdbcUrl = dataSourceFactory.getUrl();
     String user = dataSourceFactory.getUser();
@@ -194,14 +226,14 @@ public final class TablesInitializer {
     String nativeSQLScriptRootPath = config.getMigrationConfiguration().getNativePath();
     String flywayRootPath = config.getMigrationConfiguration().getFlywayPath();
     String extensionSQLScriptRootPath = config.getMigrationConfiguration().getExtensionPath();
-    Flyway flyway =
-        get(
-            jdbcUrl,
-            user,
-            password,
-            flywayRootPath,
-            config.getDataSourceFactory().getDriverClass(),
-            !disableValidateOnMigrate);
+    Flyway flyway = get(
+      jdbcUrl,
+      user,
+      password,
+      flywayRootPath,
+      config.getDataSourceFactory().getDriverClass(),
+      !disableValidateOnMigrate
+    );
     try {
       execute(config, flyway, schemaMigrationOptionSpecified, nativeSQLScriptRootPath, extensionSQLScriptRootPath);
       printToConsoleInDebug(schemaMigrationOptionSpecified + "option successful");
@@ -213,51 +245,63 @@ public final class TablesInitializer {
   }
 
   static Flyway get(
-      String url, String user, String password, String scriptRootPath, String dbSubType, boolean validateOnMigrate) {
+    String url,
+    String user,
+    String password,
+    String scriptRootPath,
+    String dbSubType,
+    boolean validateOnMigrate
+  ) {
     printToConsoleInDebug(
-        "Url:"
-            + url
-            + " User:"
-            + user
-            + " Password:"
-            + password
-            + " ScriptRoot: "
-            + scriptRootPath
-            + "ValidateOnMigrate:"
-            + validateOnMigrate);
+      "Url:" +
+      url +
+      " User:" +
+      user +
+      " Password:" +
+      password +
+      " ScriptRoot: " +
+      scriptRootPath +
+      "ValidateOnMigrate:" +
+      validateOnMigrate
+    );
     String location = "filesystem:" + scriptRootPath + File.separator + dbSubType;
-    return Flyway.configure()
-        .encoding(StandardCharsets.UTF_8)
-        .table("DATABASE_CHANGE_LOG")
-        .sqlMigrationPrefix("v")
-        .validateOnMigrate(validateOnMigrate)
-        .outOfOrder(false)
-        .baselineOnMigrate(true)
-        .baselineVersion(MigrationVersion.fromVersion("000"))
-        .cleanOnValidationError(false)
-        .locations(location)
-        .dataSource(url, user, password)
-        .cleanDisabled(false)
-        .load();
+    return Flyway
+      .configure()
+      .encoding(StandardCharsets.UTF_8)
+      .table("DATABASE_CHANGE_LOG")
+      .sqlMigrationPrefix("v")
+      .validateOnMigrate(validateOnMigrate)
+      .outOfOrder(false)
+      .baselineOnMigrate(true)
+      .baselineVersion(MigrationVersion.fromVersion("000"))
+      .cleanOnValidationError(false)
+      .locations(location)
+      .dataSource(url, user, password)
+      .cleanDisabled(false)
+      .load();
   }
 
   private static void execute(
-      OpenMetadataApplicationConfig config,
-      Flyway flyway,
-      SchemaMigrationOption schemaMigrationOption,
-      String nativeSQLRootPath,
-      String extensionSQLScriptRootPath)
-      throws SQLException {
-    final Jdbi jdbi =
-        Jdbi.create(
-            config.getDataSourceFactory().getUrl(),
-            config.getDataSourceFactory().getUser(),
-            config.getDataSourceFactory().getPassword());
+    OpenMetadataApplicationConfig config,
+    Flyway flyway,
+    SchemaMigrationOption schemaMigrationOption,
+    String nativeSQLRootPath,
+    String extensionSQLScriptRootPath
+  )
+    throws SQLException {
+    final Jdbi jdbi = Jdbi.create(
+      config.getDataSourceFactory().getUrl(),
+      config.getDataSourceFactory().getUser(),
+      config.getDataSourceFactory().getPassword()
+    );
     jdbi.installPlugin(new SqlObjectPlugin());
-    jdbi.getConfig(SqlObjects.class)
-        .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(config.getDataSourceFactory().getDriverClass()));
-    SearchRepository searchRepository =
-        new SearchRepository(config.getElasticSearchConfiguration(), new SearchIndexFactory());
+    jdbi
+      .getConfig(SqlObjects.class)
+      .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(config.getDataSourceFactory().getDriverClass()));
+    SearchRepository searchRepository = new SearchRepository(
+      config.getElasticSearchConfiguration(),
+      new SearchIndexFactory()
+    );
 
     // Initialize secrets manager
     SecretsManagerFactory.createSecretsManager(config.getSecretsManagerConfiguration(), config.getClusterName());
@@ -266,13 +310,14 @@ public final class TablesInitializer {
       case CREATE:
         try (Connection connection = flyway.getConfiguration().getDataSource().getConnection()) {
           DatabaseMetaData databaseMetaData = connection.getMetaData();
-          try (ResultSet resultSet =
-              databaseMetaData.getTables(connection.getCatalog(), connection.getSchema(), "", null)) {
+          try (
+            ResultSet resultSet = databaseMetaData.getTables(connection.getCatalog(), connection.getSchema(), "", null)
+          ) {
             // If the database has any entity like views, tables etc, resultSet.next() would return true here
             if (resultSet.next()) {
               throw new SQLException(
-                  "Please use an empty database or use \"migrate\" if you are already running a "
-                      + "previous version.");
+                "Please use an empty database or use \"migrate\" if you are already running a " + "previous version."
+              );
             }
           } catch (SQLException e) {
             throw new SQLException("Unable the obtain the state of the target database", e);
@@ -280,23 +325,25 @@ public final class TablesInitializer {
         }
         flyway.migrate();
         validateAndRunSystemDataMigrations(
-            jdbi,
-            config,
-            ConnectionType.from(config.getDataSourceFactory().getDriverClass()),
-            nativeSQLRootPath,
-            extensionSQLScriptRootPath,
-            forceMigrations);
+          jdbi,
+          config,
+          ConnectionType.from(config.getDataSourceFactory().getDriverClass()),
+          nativeSQLRootPath,
+          extensionSQLScriptRootPath,
+          forceMigrations
+        );
         break;
       case MIGRATE:
         flyway.migrate();
         // Validate and Run System Data Migrations
         validateAndRunSystemDataMigrations(
-            jdbi,
-            config,
-            ConnectionType.from(config.getDataSourceFactory().getDriverClass()),
-            nativeSQLRootPath,
-            extensionSQLScriptRootPath,
-            forceMigrations);
+          jdbi,
+          config,
+          ConnectionType.from(config.getDataSourceFactory().getDriverClass()),
+          nativeSQLRootPath,
+          extensionSQLScriptRootPath,
+          forceMigrations
+        );
         break;
       case INFO:
         printToConsoleMandatory(dumpToAsciiTable(flyway.info().all()));
@@ -344,15 +391,21 @@ public final class TablesInitializer {
   }
 
   public static void validateAndRunSystemDataMigrations(
-      Jdbi jdbi,
-      OpenMetadataApplicationConfig config,
-      ConnectionType connType,
-      String nativeMigrationSQLPath,
-      String extensionSQLScriptRootPath,
-      boolean forceMigrations) {
+    Jdbi jdbi,
+    OpenMetadataApplicationConfig config,
+    ConnectionType connType,
+    String nativeMigrationSQLPath,
+    String extensionSQLScriptRootPath,
+    boolean forceMigrations
+  ) {
     DatasourceConfig.initialize(connType.label);
-    MigrationWorkflow workflow =
-        new MigrationWorkflow(jdbi, nativeMigrationSQLPath, connType, extensionSQLScriptRootPath, forceMigrations);
+    MigrationWorkflow workflow = new MigrationWorkflow(
+      jdbi,
+      nativeMigrationSQLPath,
+      connType,
+      extensionSQLScriptRootPath,
+      forceMigrations
+    );
     Entity.setCollectionDAO(jdbi.onDemand(CollectionDAO.class));
     Entity.initializeRepositories(config, jdbi);
     workflow.loadMigrations();
@@ -379,6 +432,7 @@ public final class TablesInitializer {
     ES_DROP("es-drop"),
     ES_CREATE("es-create"),
     ES_MIGRATE("es-migrate");
+
     private final String value;
 
     SchemaMigrationOption(String schemaMigrationOption) {

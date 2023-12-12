@@ -11,14 +11,16 @@ import org.openmetadata.service.resources.dqtests.TestDefinitionResource;
 import org.openmetadata.service.util.EntityUtil;
 
 public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
+
   public TestDefinitionRepository() {
     super(
-        TestDefinitionResource.COLLECTION_PATH,
-        TEST_DEFINITION,
-        TestDefinition.class,
-        Entity.getCollectionDAO().testDefinitionDAO(),
-        "",
-        "");
+      TestDefinitionResource.COLLECTION_PATH,
+      TEST_DEFINITION,
+      TestDefinition.class,
+      Entity.getCollectionDAO().testDefinitionDAO(),
+      "",
+      ""
+    );
   }
 
   @Override
@@ -55,6 +57,7 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
   }
 
   public class TestDefinitionUpdater extends EntityUpdater {
+
     public TestDefinitionUpdater(TestDefinition original, TestDefinition updated, Operation operation) {
       super(original, updated, operation);
     }

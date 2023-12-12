@@ -19,23 +19,34 @@ import lombok.Getter;
 import lombok.Setter;
 
 public class OktaSSOConfig {
+
   /** Okta Client ID for the service application. (Required) */
-  @Getter @Setter private String clientId;
+  @Getter
+  @Setter
+  private String clientId;
+
   /** Okta Client Secret for the API service application. (Required) */
-  @Getter @Setter private String clientSecret;
+  @Getter
+  @Setter
+  private String clientSecret;
+
   /** Okta Authorization Server Url. (Required) */
-  @Getter private String authorizationServerURL;
+  @Getter
+  private String authorizationServerURL;
 
   /** Okta client scopes. */
-  @Getter @Setter private List<String> scopes = new ArrayList<>();
+  @Getter
+  @Setter
+  private List<String> scopes = new ArrayList<>();
 
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
-    sb.append(OktaSSOConfig.class.getName())
-        .append('@')
-        .append(Integer.toHexString(System.identityHashCode(this)))
-        .append('[');
+    sb
+      .append(OktaSSOConfig.class.getName())
+      .append('@')
+      .append(Integer.toHexString(System.identityHashCode(this)))
+      .append('[');
     sb.append("clientId");
     sb.append('=');
     sb.append(((this.clientId == null) ? "<null>" : this.clientId));

@@ -13,6 +13,7 @@ import org.openmetadata.service.config.OMWebConfiguration;
 
 @Slf4j
 public class OMErrorPageHandler extends ErrorPageErrorHandler {
+
   private final OMWebConfiguration webConfiguration;
 
   public OMErrorPageHandler(OMWebConfiguration webConfiguration) {
@@ -21,18 +22,19 @@ public class OMErrorPageHandler extends ErrorPageErrorHandler {
 
   @Override
   public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response)
-      throws IOException {
+    throws IOException {
     this.doError(target, baseRequest, request, response);
   }
 
   @Override
   public void doError(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response)
-      throws IOException {
+    throws IOException {
     setSecurityHeader(this.webConfiguration, response);
     String errorPage = ((ErrorPageMapper) this).getErrorPage(request);
     ContextHandler.Context context = baseRequest.getErrorContext();
-    Dispatcher errorDispatcher =
-        errorPage != null && context != null ? (Dispatcher) context.getRequestDispatcher(errorPage) : null;
+    Dispatcher errorDispatcher = errorPage != null && context != null
+      ? (Dispatcher) context.getRequestDispatcher(errorPage)
+      : null;
 
     try {
       if (errorDispatcher != null) {

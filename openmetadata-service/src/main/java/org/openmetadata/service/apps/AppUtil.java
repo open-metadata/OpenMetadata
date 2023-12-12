@@ -8,9 +8,11 @@ import lombok.Getter;
 import lombok.Setter;
 
 public class AppUtil {
+
   public enum RunType {
     ON_DEMAND_RUN("OnDemandRun"),
     SCHEDULED_RUN("ScheduledRun");
+
     private final String value;
     private static final Map<String, RunType> CONSTANTS = new HashMap<>();
 
@@ -50,6 +52,7 @@ public class AppUtil {
     RUNNING("running"),
     FAILED("failed"),
     ABORTED("aborted");
+
     private final String value;
     private static final Map<String, AppRunStatus> CONSTANTS = new HashMap<>();
 
@@ -87,6 +90,7 @@ public class AppUtil {
   @Getter
   @Setter
   public static class AppRunHistory {
+
     private String appId;
     private String appName;
     private String runId;

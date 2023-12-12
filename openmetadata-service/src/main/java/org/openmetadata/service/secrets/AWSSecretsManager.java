@@ -27,6 +27,7 @@ import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueReques
 import software.amazon.awssdk.services.secretsmanager.model.UpdateSecretRequest;
 
 public class AWSSecretsManager extends AWSBasedSecretsManager {
+
   private static AWSSecretsManager instance = null;
   private SecretsManagerClient secretsClient;
 
@@ -42,28 +43,28 @@ public class AWSSecretsManager extends AWSBasedSecretsManager {
   @Override
   void initClientWithCredentials(String region, AwsCredentialsProvider staticCredentialsProvider) {
     this.secretsClient =
-        SecretsManagerClient.builder().region(Region.of(region)).credentialsProvider(staticCredentialsProvider).build();
+      SecretsManagerClient.builder().region(Region.of(region)).credentialsProvider(staticCredentialsProvider).build();
   }
 
   @Override
   public void storeSecret(String secretName, String secretValue) {
-    CreateSecretRequest createSecretRequest =
-        CreateSecretRequest.builder()
-            .name(secretName)
-            .description("This secret was created by OpenMetadata")
-            .secretString(Objects.isNull(secretValue) ? NULL_SECRET_STRING : secretValue)
-            .build();
+    CreateSecretRequest createSecretRequest = CreateSecretRequest
+      .builder()
+      .name(secretName)
+      .description("This secret was created by OpenMetadata")
+      .secretString(Objects.isNull(secretValue) ? NULL_SECRET_STRING : secretValue)
+      .build();
     this.secretsClient.createSecret(createSecretRequest);
   }
 
   @Override
   public void updateSecret(String secretName, String secretValue) {
-    UpdateSecretRequest updateSecretRequest =
-        UpdateSecretRequest.builder()
-            .secretId(secretName)
-            .description("This secret was created by OpenMetadata")
-            .secretString(Objects.isNull(secretValue) ? NULL_SECRET_STRING : secretValue)
-            .build();
+    UpdateSecretRequest updateSecretRequest = UpdateSecretRequest
+      .builder()
+      .secretId(secretName)
+      .description("This secret was created by OpenMetadata")
+      .secretString(Objects.isNull(secretValue) ? NULL_SECRET_STRING : secretValue)
+      .build();
     this.secretsClient.updateSecret(updateSecretRequest);
   }
 

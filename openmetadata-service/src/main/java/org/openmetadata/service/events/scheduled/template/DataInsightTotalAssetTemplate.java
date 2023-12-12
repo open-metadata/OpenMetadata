@@ -14,6 +14,7 @@
 package org.openmetadata.service.events.scheduled.template;
 
 public class DataInsightTotalAssetTemplate {
+
   private Double totalDataAssets;
   private Double percentChangeTotalAssets;
   private String completeMessage;
@@ -21,7 +22,10 @@ public class DataInsightTotalAssetTemplate {
   private int numberOfDaysChange;
 
   public DataInsightTotalAssetTemplate(
-      Double totalDataAssets, Double percentChangeTotalAssets, int numberOfDaysChange) {
+    Double totalDataAssets,
+    Double percentChangeTotalAssets,
+    int numberOfDaysChange
+  ) {
     this.totalDataAssets = totalDataAssets;
     this.percentChangeTotalAssets = percentChangeTotalAssets;
     this.numberOfDaysChange = numberOfDaysChange;
@@ -30,9 +34,11 @@ public class DataInsightTotalAssetTemplate {
       color = "#008510";
     }
     completeMessage =
-        String.format(
-            "In the past week, the Total Data Assets changed by a total of <span style=\"color: %s; font-weight: bold;\">%.2f%%</span>",
-            color, percentChangeTotalAssets);
+      String.format(
+        "In the past week, the Total Data Assets changed by a total of <span style=\"color: %s; font-weight: bold;\">%.2f%%</span>",
+        color,
+        percentChangeTotalAssets
+      );
   }
 
   public Double getTotalDataAssets() {

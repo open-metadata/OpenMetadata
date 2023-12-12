@@ -16,15 +16,15 @@ public class Auth0AccessTokenRequestInterceptor implements RequestInterceptor {
   @Override
   public void apply(RequestTemplate requestTemplate) {
     String requestBody =
-        "grant_type="
-            + AccessTokenResponse.GrantType.CLIENT_CREDENTIALS
-            + "&client_id="
-            + securityConfig.getClientId()
-            + "&client_secret="
-            + securityConfig.getSecretKey()
-            + "&audience=https://"
-            + securityConfig.getDomain()
-            + "/api/v2/";
+      "grant_type=" +
+      AccessTokenResponse.GrantType.CLIENT_CREDENTIALS +
+      "&client_id=" +
+      securityConfig.getClientId() +
+      "&client_secret=" +
+      securityConfig.getSecretKey() +
+      "&audience=https://" +
+      securityConfig.getDomain() +
+      "/api/v2/";
     requestTemplate.body(requestBody);
   }
 }

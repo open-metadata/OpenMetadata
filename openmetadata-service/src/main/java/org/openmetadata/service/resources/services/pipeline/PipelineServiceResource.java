@@ -70,7 +70,8 @@ import org.openmetadata.service.util.ResultList;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "pipelineServices")
 public class PipelineServiceResource
-    extends ServiceEntityResource<PipelineService, PipelineServiceRepository, PipelineConnection> {
+  extends ServiceEntityResource<PipelineService, PipelineServiceRepository, PipelineConnection> {
+
   public static final String COLLECTION_PATH = "v1/services/pipelineServices/";
   static final String FIELDS = "pipelines,owner,domain";
 
@@ -97,79 +98,76 @@ public class PipelineServiceResource
 
   @GET
   @Operation(
-      operationId = "listPipelineService",
-      summary = "List pipeline services",
-      description =
-          "Get a list of pipeline services. Use cursor-based pagination to limit the number "
-              + "entries in the list using `limit` and `before` or `after` query params.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "List of pipeline services",
-            content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = PipelineServiceList.class)))
-      })
+    operationId = "listPipelineService",
+    summary = "List pipeline services",
+    description = "Get a list of pipeline services. Use cursor-based pagination to limit the number " +
+    "entries in the list using `limit` and `before` or `after` query params.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "List of pipeline services",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = PipelineServiceList.class))
+      )
+    }
+  )
   public ResultList<PipelineService> list(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(
-              description = "Fields requested in the returned resource",
-              schema = @Schema(type = "string", example = FIELDS))
-          @QueryParam("fields")
-          String fieldsParam,
-      @Parameter(description = "Filter services by domain", schema = @Schema(type = "string", example = "Marketing"))
-          @QueryParam("domain")
-          String domain,
-      @Parameter(description = "Limit number services returned. (1 to 1000000, default 10)")
-          @DefaultValue("10")
-          @Min(0)
-          @Max(1000000)
-          @QueryParam("limit")
-          int limitParam,
-      @Parameter(description = "Returns list of services before this cursor", schema = @Schema(type = "string"))
-          @QueryParam("before")
-          String before,
-      @Parameter(description = "Returns list of services after this cursor", schema = @Schema(type = "string"))
-          @QueryParam("after")
-          String after,
-      @Parameter(
-              description = "Include all, deleted, or non-deleted entities.",
-              schema = @Schema(implementation = Include.class))
-          @QueryParam("include")
-          @DefaultValue("non-deleted")
-          Include include) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(
+      description = "Fields requested in the returned resource",
+      schema = @Schema(type = "string", example = FIELDS)
+    ) @QueryParam("fields") String fieldsParam,
+    @Parameter(
+      description = "Filter services by domain",
+      schema = @Schema(type = "string", example = "Marketing")
+    ) @QueryParam("domain") String domain,
+    @Parameter(description = "Limit number services returned. (1 to 1000000, default 10)") @DefaultValue("10") @Min(
+      0
+    ) @Max(1000000) @QueryParam("limit") int limitParam,
+    @Parameter(
+      description = "Returns list of services before this cursor",
+      schema = @Schema(type = "string")
+    ) @QueryParam("before") String before,
+    @Parameter(
+      description = "Returns list of services after this cursor",
+      schema = @Schema(type = "string")
+    ) @QueryParam("after") String after,
+    @Parameter(
+      description = "Include all, deleted, or non-deleted entities.",
+      schema = @Schema(implementation = Include.class)
+    ) @QueryParam("include") @DefaultValue("non-deleted") Include include
+  ) {
     return listInternal(uriInfo, securityContext, fieldsParam, include, domain, limitParam, before, after);
   }
 
   @GET
   @Path("/{id}")
   @Operation(
-      operationId = "getPipelineServiceByID",
-      summary = "Get a pipeline service by Id",
-      description = "Get a pipeline service by `Id`.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Pipeline service instance",
-            content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = PipelineService.class))),
-        @ApiResponse(responseCode = "404", description = "Pipeline service for instance {id} is not found")
-      })
+    operationId = "getPipelineServiceByID",
+    summary = "Get a pipeline service by Id",
+    description = "Get a pipeline service by `Id`.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "Pipeline service instance",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = PipelineService.class))
+      ),
+      @ApiResponse(responseCode = "404", description = "Pipeline service for instance {id} is not found")
+    }
+  )
   public PipelineService get(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the pipeline service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Parameter(
-              description = "Fields requested in the returned resource",
-              schema = @Schema(type = "string", example = FIELDS))
-          @QueryParam("fields")
-          String fieldsParam,
-      @Parameter(
-              description = "Include all, deleted, or non-deleted entities.",
-              schema = @Schema(implementation = Include.class))
-          @QueryParam("include")
-          @DefaultValue("non-deleted")
-          Include include) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Id of the pipeline service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+    @Parameter(
+      description = "Fields requested in the returned resource",
+      schema = @Schema(type = "string", example = FIELDS)
+    ) @QueryParam("fields") String fieldsParam,
+    @Parameter(
+      description = "Include all, deleted, or non-deleted entities.",
+      schema = @Schema(implementation = Include.class)
+    ) @QueryParam("include") @DefaultValue("non-deleted") Include include
+  ) {
     PipelineService pipelineService = getInternal(uriInfo, securityContext, id, fieldsParam, include);
     return decryptOrNullify(securityContext, pipelineService);
   }
@@ -177,34 +175,34 @@ public class PipelineServiceResource
   @GET
   @Path("/name/{fqn}")
   @Operation(
-      operationId = "getPipelineServiceByFQN",
-      summary = "Get pipeline service by fully qualified name",
-      description = "Get a pipeline service by the service `fullyQualifiedName`.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Pipeline service instance",
-            content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = PipelineService.class))),
-        @ApiResponse(responseCode = "404", description = "Pipeline service for instance {fqn} is not found")
-      })
+    operationId = "getPipelineServiceByFQN",
+    summary = "Get pipeline service by fully qualified name",
+    description = "Get a pipeline service by the service `fullyQualifiedName`.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "Pipeline service instance",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = PipelineService.class))
+      ),
+      @ApiResponse(responseCode = "404", description = "Pipeline service for instance {fqn} is not found")
+    }
+  )
   public PipelineService getByName(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Fully qualified name of the pipeline service", schema = @Schema(type = "string"))
-          @PathParam("fqn")
-          String fqn,
-      @Parameter(
-              description = "Fields requested in the returned resource",
-              schema = @Schema(type = "string", example = FIELDS))
-          @QueryParam("fields")
-          String fieldsParam,
-      @Parameter(
-              description = "Include all, deleted, or non-deleted entities.",
-              schema = @Schema(implementation = Include.class))
-          @QueryParam("include")
-          @DefaultValue("non-deleted")
-          Include include) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(
+      description = "Fully qualified name of the pipeline service",
+      schema = @Schema(type = "string")
+    ) @PathParam("fqn") String fqn,
+    @Parameter(
+      description = "Fields requested in the returned resource",
+      schema = @Schema(type = "string", example = FIELDS)
+    ) @QueryParam("fields") String fieldsParam,
+    @Parameter(
+      description = "Include all, deleted, or non-deleted entities.",
+      schema = @Schema(implementation = Include.class)
+    ) @QueryParam("include") @DefaultValue("non-deleted") Include include
+  ) {
     PipelineService pipelineService = getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
     return decryptOrNullify(securityContext, pipelineService);
   }
@@ -212,21 +210,23 @@ public class PipelineServiceResource
   @PUT
   @Path("/{id}/testConnectionResult")
   @Operation(
-      operationId = "addTestConnectionResult",
-      summary = "Add test connection result",
-      description = "Add test connection result to the service.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Successfully updated the service",
-            content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseService.class)))
-      })
+    operationId = "addTestConnectionResult",
+    summary = "Add test connection result",
+    description = "Add test connection result to the service.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "Successfully updated the service",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseService.class))
+      )
+    }
+  )
   public PipelineService addTestConnectionResult(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Valid TestConnectionResult testConnectionResult) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Id of the service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+    @Valid TestConnectionResult testConnectionResult
+  ) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     PipelineService service = repository.addTestConnectionResult(id, testConnectionResult);
@@ -236,34 +236,38 @@ public class PipelineServiceResource
   @GET
   @Path("/{id}/versions")
   @Operation(
-      operationId = "listAllPipelineServiceVersion",
-      summary = "List pipeline service versions",
-      description = "Get a list of all the versions of a pipeline service identified by `Id`",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "List of pipeline service versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
-      })
+    operationId = "listAllPipelineServiceVersion",
+    summary = "List pipeline service versions",
+    description = "Get a list of all the versions of a pipeline service identified by `Id`",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "List of pipeline service versions",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class))
+      )
+    }
+  )
   public EntityHistory listVersions(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the pipeline service", schema = @Schema(type = "UUID")) @PathParam("id")
-          UUID id) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Id of the pipeline service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id
+  ) {
     EntityHistory entityHistory = super.listVersionsInternal(securityContext, id);
 
-    List<Object> versions =
-        entityHistory.getVersions().stream()
-            .map(
-                json -> {
-                  try {
-                    PipelineService pipelineService = JsonUtils.readValue((String) json, PipelineService.class);
-                    return JsonUtils.pojoToJson(decryptOrNullify(securityContext, pipelineService));
-                  } catch (Exception e) {
-                    return json;
-                  }
-                })
-            .collect(Collectors.toList());
+    List<Object> versions = entityHistory
+      .getVersions()
+      .stream()
+      .map(
+        json -> {
+          try {
+            PipelineService pipelineService = JsonUtils.readValue((String) json, PipelineService.class);
+            return JsonUtils.pojoToJson(decryptOrNullify(securityContext, pipelineService));
+          } catch (Exception e) {
+            return json;
+          }
+        }
+      )
+      .collect(Collectors.toList());
     entityHistory.setVersions(versions);
     return entityHistory;
   }
@@ -271,47 +275,53 @@ public class PipelineServiceResource
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
-      operationId = "getSpecificPipelineService",
-      summary = "Get a version of the pipeline service",
-      description = "Get a version of the pipeline service by given `Id`",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "pipeline service",
-            content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = PipelineService.class))),
-        @ApiResponse(
-            responseCode = "404",
-            description = "Pipeline service for instance {id} and version {version} is not found")
-      })
+    operationId = "getSpecificPipelineService",
+    summary = "Get a version of the pipeline service",
+    description = "Get a version of the pipeline service by given `Id`",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "pipeline service",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = PipelineService.class))
+      ),
+      @ApiResponse(
+        responseCode = "404",
+        description = "Pipeline service for instance {id} and version {version} is not found"
+      )
+    }
+  )
   public PipelineService getVersion(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the pipeline service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Parameter(
-              description = "pipeline service version number in the form `major`.`minor`",
-              schema = @Schema(type = "string", example = "0.1 or 1.1"))
-          @PathParam("version")
-          String version) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Id of the pipeline service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+    @Parameter(
+      description = "pipeline service version number in the form `major`.`minor`",
+      schema = @Schema(type = "string", example = "0.1 or 1.1")
+    ) @PathParam("version") String version
+  ) {
     PipelineService pipelineService = super.getVersionInternal(securityContext, id, version);
     return decryptOrNullify(securityContext, pipelineService);
   }
 
   @POST
   @Operation(
-      operationId = "createPipelineService",
-      summary = "Create a pipeline service",
-      description = "Create a new pipeline service.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Pipeline service instance",
-            content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = PipelineService.class))),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
+    operationId = "createPipelineService",
+    summary = "Create a pipeline service",
+    description = "Create a new pipeline service.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "Pipeline service instance",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = PipelineService.class))
+      ),
+      @ApiResponse(responseCode = "400", description = "Bad request")
+    }
+  )
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePipelineService create) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Valid CreatePipelineService create
+  ) {
     PipelineService service = getService(create, securityContext.getUserPrincipal().getName());
     Response response = create(uriInfo, securityContext, service);
     decryptOrNullify(securityContext, (PipelineService) response.getEntity());
@@ -320,19 +330,23 @@ public class PipelineServiceResource
 
   @PUT
   @Operation(
-      operationId = "createOrUpdatePipelineService",
-      summary = "Update pipeline service",
-      description = "Create a new pipeline service or update an existing pipeline service identified by `id`.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Pipeline service instance",
-            content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = PipelineService.class))),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
+    operationId = "createOrUpdatePipelineService",
+    summary = "Update pipeline service",
+    description = "Create a new pipeline service or update an existing pipeline service identified by `id`.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "Pipeline service instance",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = PipelineService.class))
+      ),
+      @ApiResponse(responseCode = "400", description = "Bad request")
+    }
+  )
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePipelineService update) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Valid CreatePipelineService update
+  ) {
     PipelineService service = getService(update, securityContext.getUserPrincipal().getName());
     Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
     decryptOrNullify(securityContext, (PipelineService) response.getEntity());
@@ -342,103 +356,108 @@ public class PipelineServiceResource
   @PATCH
   @Path("/{id}")
   @Operation(
-      operationId = "patchPipelineService",
-      summary = "Update a pipeline service",
-      description = "Update an existing pipeline service using JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+    operationId = "patchPipelineService",
+    summary = "Update a pipeline service",
+    description = "Update an existing pipeline service using JsonPatch.",
+    externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902")
+  )
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response patch(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the pipeline service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @RequestBody(
-              description = "JsonPatch with array of operations",
-              content =
-                  @Content(
-                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
-          JsonPatch patch) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Id of the pipeline service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+    @RequestBody(
+      description = "JsonPatch with array of operations",
+      content = @Content(
+        mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+        examples = { @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]") }
+      )
+    ) JsonPatch patch
+  ) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @DELETE
   @Path("/{id}")
   @Operation(
-      operationId = "deletePipelineService",
-      summary = "Delete a pipeline service by Id",
-      description = "Delete a pipeline services. If pipelines (and tasks) belong to the service, it can't be deleted.",
-      responses = {
-        @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "Pipeline service for instance {id} is not found")
-      })
+    operationId = "deletePipelineService",
+    summary = "Delete a pipeline service by Id",
+    description = "Delete a pipeline services. If pipelines (and tasks) belong to the service, it can't be deleted.",
+    responses = {
+      @ApiResponse(responseCode = "200", description = "OK"),
+      @ApiResponse(responseCode = "404", description = "Pipeline service for instance {id} is not found")
+    }
+  )
   public Response delete(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
-          @DefaultValue("false")
-          @QueryParam("recursive")
-          boolean recursive,
-      @Parameter(description = "Hard delete the entity. (Default = `false`)")
-          @QueryParam("hardDelete")
-          @DefaultValue("false")
-          boolean hardDelete,
-      @Parameter(description = "Id of the pipeline service", schema = @Schema(type = "UUID")) @PathParam("id")
-          UUID id) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)") @DefaultValue(
+      "false"
+    ) @QueryParam("recursive") boolean recursive,
+    @Parameter(description = "Hard delete the entity. (Default = `false`)") @QueryParam("hardDelete") @DefaultValue(
+      "false"
+    ) boolean hardDelete,
+    @Parameter(description = "Id of the pipeline service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id
+  ) {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
   @Path("/name/{fqn}")
   @Operation(
-      operationId = "deletePipelineServiceByName",
-      summary = "Delete a pipeline service by fully qualified name",
-      description =
-          "Delete a pipeline services by `fullyQualifiedName`. If pipelines (and tasks) belong to the service, it can't be "
-              + "deleted.",
-      responses = {
-        @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "Pipeline service for instance {fqn} is not found")
-      })
+    operationId = "deletePipelineServiceByName",
+    summary = "Delete a pipeline service by fully qualified name",
+    description = "Delete a pipeline services by `fullyQualifiedName`. If pipelines (and tasks) belong to the service, it can't be " +
+    "deleted.",
+    responses = {
+      @ApiResponse(responseCode = "200", description = "OK"),
+      @ApiResponse(responseCode = "404", description = "Pipeline service for instance {fqn} is not found")
+    }
+  )
   public Response delete(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
-          @DefaultValue("false")
-          @QueryParam("recursive")
-          boolean recursive,
-      @Parameter(description = "Hard delete the entity. (Default = `false`)")
-          @QueryParam("hardDelete")
-          @DefaultValue("false")
-          boolean hardDelete,
-      @Parameter(description = "Fully qualified name of the pipeline service", schema = @Schema(type = "string"))
-          @PathParam("fqn")
-          String fqn) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)") @DefaultValue(
+      "false"
+    ) @QueryParam("recursive") boolean recursive,
+    @Parameter(description = "Hard delete the entity. (Default = `false`)") @QueryParam("hardDelete") @DefaultValue(
+      "false"
+    ) boolean hardDelete,
+    @Parameter(
+      description = "Fully qualified name of the pipeline service",
+      schema = @Schema(type = "string")
+    ) @PathParam("fqn") String fqn
+  ) {
     return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
   }
 
   @PUT
   @Path("/restore")
   @Operation(
-      operationId = "restore",
-      summary = "Restore a soft deleted pipeline service.",
-      description = "Restore a soft deleted pipeline service.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Successfully restored the PipelineService ",
-            content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = PipelineService.class)))
-      })
+    operationId = "restore",
+    summary = "Restore a soft deleted pipeline service.",
+    description = "Restore a soft deleted pipeline service.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "Successfully restored the PipelineService ",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = PipelineService.class))
+      )
+    }
+  )
   public Response restorePipelineService(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Valid RestoreEntity restore
+  ) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   private PipelineService getService(CreatePipelineService create, String user) {
     return repository
-        .copy(new PipelineService(), create, user)
-        .withServiceType(create.getServiceType())
-        .withConnection(create.getConnection());
+      .copy(new PipelineService(), create, user)
+      .withServiceType(create.getServiceType())
+      .withConnection(create.getConnection());
   }
 
   @Override

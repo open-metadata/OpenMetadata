@@ -34,7 +34,10 @@ public class PrometheusEventMonitor extends EventMonitor {
   private static final String CLUSTER_TAG_NAME = "clusterName";
 
   public PrometheusEventMonitor(
-      EventMonitorProvider eventMonitorProvider, EventMonitorConfiguration config, String clusterPrefix) {
+    EventMonitorProvider eventMonitorProvider,
+    EventMonitorConfiguration config,
+    String clusterPrefix
+  ) {
     super(eventMonitorProvider, config, clusterPrefix);
     meterRegistry = MicrometerBundleSingleton.prometheusMeterRegistry;
   }
@@ -55,15 +58,16 @@ public class PrometheusEventMonitor extends EventMonitor {
         case ENTITY_UPDATED:
           // we can have multiple updates bundled together
           event
-              .getChangeDescription()
-              .getFieldsUpdated()
-              .forEach(
-                  change -> {
-                    if (change.getName().equals(PIPELINE_STATUS) && change.getNewValue() != null) {
-                      PipelineStatus pipelineStatus = (PipelineStatus) change.getNewValue();
-                      incrementIngestionPipelineCounter(fqn, pipelineType, pipelineStatus.getPipelineState().value());
-                    }
-                  });
+            .getChangeDescription()
+            .getFieldsUpdated()
+            .forEach(
+              change -> {
+                if (change.getName().equals(PIPELINE_STATUS) && change.getNewValue() != null) {
+                  PipelineStatus pipelineStatus = (PipelineStatus) change.getNewValue();
+                  incrementIngestionPipelineCounter(fqn, pipelineType, pipelineStatus.getPipelineState().value());
+                }
+              }
+            );
           break;
         default:
           throw new IllegalArgumentException("Invalid EventType " + event.getEventType());
@@ -84,17 +88,19 @@ public class PrometheusEventMonitor extends EventMonitor {
    * href="https://stackoverflow.com/questions/59592118/dynamic-tag-values-for-the-counter-metric-in-micrometer">...</a>
    */
   public void incrementIngestionPipelineCounter(String fqn, String pipelineType, String eventType) {
-    Counter.builder(COUNTER_NAME)
-        .tags(
-            FQN_TAG_NAME,
-            fqn,
-            PIPELINE_TYPE_TAG_NAME,
-            pipelineType,
-            EVENT_TYPE_TAG_NAME,
-            eventType,
-            CLUSTER_TAG_NAME,
-            getClusterPrefix())
-        .register(meterRegistry)
-        .increment();
+    Counter
+      .builder(COUNTER_NAME)
+      .tags(
+        FQN_TAG_NAME,
+        fqn,
+        PIPELINE_TYPE_TAG_NAME,
+        pipelineType,
+        EVENT_TYPE_TAG_NAME,
+        eventType,
+        CLUSTER_TAG_NAME,
+        getClusterPrefix()
+      )
+      .register(meterRegistry)
+      .increment();
   }
 }

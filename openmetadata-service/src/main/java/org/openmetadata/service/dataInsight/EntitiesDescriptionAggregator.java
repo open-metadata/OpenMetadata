@@ -6,6 +6,7 @@ import java.util.List;
 import org.openmetadata.schema.dataInsight.type.PercentageOfEntitiesWithDescriptionByType;
 
 public abstract class EntitiesDescriptionAggregator<A, B, M, S> implements DataInsightAggregatorInterface {
+
   private final A aggregations;
 
   protected EntitiesDescriptionAggregator(A aggregations) {
@@ -26,12 +27,13 @@ public abstract class EntitiesDescriptionAggregator<A, B, M, S> implements DataI
         S sumEntityCount = getAggregations(entityTypeBucket, ENTITY_COUNT);
 
         data.add(
-            new PercentageOfEntitiesWithDescriptionByType()
-                .withTimestamp(timestamp)
-                .withEntityType(entityType)
-                .withEntityCount(getValue(sumEntityCount))
-                .withCompletedDescription(getValue(sumCompletedDescriptions))
-                .withCompletedDescriptionFraction(getValue(sumCompletedDescriptions) / getValue(sumEntityCount)));
+          new PercentageOfEntitiesWithDescriptionByType()
+            .withTimestamp(timestamp)
+            .withEntityType(entityType)
+            .withEntityCount(getValue(sumEntityCount))
+            .withCompletedDescription(getValue(sumCompletedDescriptions))
+            .withCompletedDescriptionFraction(getValue(sumCompletedDescriptions) / getValue(sumEntityCount))
+        );
       }
     }
     return data;

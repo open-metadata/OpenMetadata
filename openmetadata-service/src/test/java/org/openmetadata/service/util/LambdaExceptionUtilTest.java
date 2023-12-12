@@ -29,29 +29,34 @@ class LambdaExceptionUtilTest {
   @Test
   void testThrowingConsumer() {
     assertThrows(
-        ClassNotFoundException.class,
-        () -> Stream.of("java.lang.String", "java.bad.Class").forEach(rethrowConsumer(Class::forName)));
+      ClassNotFoundException.class,
+      () -> Stream.of("java.lang.String", "java.bad.Class").forEach(rethrowConsumer(Class::forName))
+    );
   }
 
   @Test
   void testThrowingFunction() {
     assertThrows(
-        ClassNotFoundException.class,
-        () ->
-            Stream.of("java.lang.String", "java.bad.Class")
-                .map(rethrowFunction(Class::forName))
-                .collect(Collectors.toList()));
+      ClassNotFoundException.class,
+      () ->
+        Stream
+          .of("java.lang.String", "java.bad.Class")
+          .map(rethrowFunction(Class::forName))
+          .collect(Collectors.toList())
+    );
   }
 
   @Test
   void testThrowingComparator() {
     assertThrows(
-        ClassNotFoundException.class,
-        () ->
-            Stream.of("java.lang.String", "java.lang.Integer", "java.bad.Class")
-                .sorted(
-                    rethrowComparator(
-                        (c1, c2) -> Class.forName(c1).getFields().length - Class.forName(c2).getFields().length))
-                .collect(Collectors.toList()));
+      ClassNotFoundException.class,
+      () ->
+        Stream
+          .of("java.lang.String", "java.lang.Integer", "java.bad.Class")
+          .sorted(
+            rethrowComparator((c1, c2) -> Class.forName(c1).getFields().length - Class.forName(c2).getFields().length)
+          )
+          .collect(Collectors.toList())
+    );
   }
 }

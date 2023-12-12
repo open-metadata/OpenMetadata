@@ -29,6 +29,7 @@ import org.openmetadata.service.util.JsonUtils;
 /** Type registry used for storing Types in OpenMetadata and customProperties of entity types. */
 @Slf4j
 public class TypeRegistry {
+
   /** Type map used for storing both Property Types and Entity Types */
   protected static final Map<String, Type> TYPES = new ConcurrentHashMap<>();
 
@@ -82,7 +83,8 @@ public class TypeRegistry {
     for (CustomProperty property : listOrEmpty(type.getCustomProperties())) {
       if (TYPES.get(property.getPropertyType().getName()) == null) {
         throw EntityNotFoundException.byMessage(
-            CatalogExceptionMessage.entityNotFound(Entity.TYPE, property.getPropertyType().getName()));
+          CatalogExceptionMessage.entityNotFound(Entity.TYPE, property.getPropertyType().getName())
+        );
       }
     }
   }

@@ -26,6 +26,7 @@ import org.slf4j.MarkerFactory;
 
 @Slf4j
 public class AuditEventHandler implements EventHandler {
+
   private final Marker auditMarker = MarkerFactory.getMarker("AUDIT");
 
   public void init(OpenMetadataApplicationConfig config) {
@@ -57,20 +58,20 @@ public class AuditEventHandler implements EventHandler {
         } else {
           entityReference = ((EntityInterface) responseContext.getEntity()).getEntityReference();
         }
-        AuditLog auditLog =
-            new AuditLog()
-                .withPath(path)
-                .withTimestamp(System.currentTimeMillis())
-                .withEntityId(entityReference.getId())
-                .withEntityType(entityReference.getType())
-                .withMethod(AuditLog.Method.fromValue(method))
-                .withUserName(username)
-                .withResponseCode(responseCode);
+        AuditLog auditLog = new AuditLog()
+          .withPath(path)
+          .withTimestamp(System.currentTimeMillis())
+          .withEntityId(entityReference.getId())
+          .withEntityType(entityReference.getType())
+          .withMethod(AuditLog.Method.fromValue(method))
+          .withUserName(username)
+          .withResponseCode(responseCode);
         LOG.info(auditMarker, String.format("Added audit log entry: %s", auditLog));
       } catch (Exception e) {
         LOG.error(
-            auditMarker,
-            String.format("Failed to capture audit log for %s and method %s due to %s", path, method, e.getMessage()));
+          auditMarker,
+          String.format("Failed to capture audit log for %s and method %s due to %s", path, method, e.getMessage())
+        );
       }
     }
     return null;

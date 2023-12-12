@@ -51,13 +51,15 @@ import org.openmetadata.service.util.TestUtils;
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class ClassificationResourceTest extends EntityResourceTest<Classification, CreateClassification> {
+
   public ClassificationResourceTest() {
     super(
-        Entity.CLASSIFICATION,
-        Classification.class,
-        ClassificationList.class,
-        "classifications",
-        ClassificationResource.FIELDS);
+      Entity.CLASSIFICATION,
+      Classification.class,
+      ClassificationList.class,
+      "classifications",
+      ClassificationResource.FIELDS
+    );
   }
 
   @Test
@@ -66,23 +68,28 @@ public class ClassificationResourceTest extends EntityResourceTest<Classificatio
     String newCategoryName = test.getDisplayName().substring(0, 10);
     CreateClassification create = new CreateClassification().withName(newCategoryName).withDescription(null);
     assertResponseContains(
-        () -> updateEntity(create, Status.CREATED, ADMIN_AUTH_HEADERS), BAD_REQUEST, "description must not be null");
+      () -> updateEntity(create, Status.CREATED, ADMIN_AUTH_HEADERS),
+      BAD_REQUEST,
+      "description must not be null"
+    );
 
     // Long primary tag name
     create.withDescription("description").withName(TestUtils.LONG_ENTITY_NAME);
     assertResponseContains(
-        () -> updateEntity(create, Status.CREATED, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "name size must be between 2 and 64");
+      () -> updateEntity(create, Status.CREATED, ADMIN_AUTH_HEADERS),
+      BAD_REQUEST,
+      "name size must be between 2 and 64"
+    );
   }
 
   @Test
   void delete_systemClassification() throws HttpResponseException {
     Classification classification = getEntityByName("Tier", ADMIN_AUTH_HEADERS);
     assertResponse(
-        () -> deleteEntity(classification.getId(), ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        CatalogExceptionMessage.systemEntityDeleteNotAllowed(classification.getName(), Entity.CLASSIFICATION));
+      () -> deleteEntity(classification.getId(), ADMIN_AUTH_HEADERS),
+      BAD_REQUEST,
+      CatalogExceptionMessage.systemEntityDeleteNotAllowed(classification.getName(), Entity.CLASSIFICATION)
+    );
   }
 
   @Override
@@ -92,7 +99,10 @@ public class ClassificationResourceTest extends EntityResourceTest<Classificatio
 
   @Override
   public void validateCreatedEntity(
-      Classification createdEntity, CreateClassification request, Map<String, String> authHeaders) {
+    Classification createdEntity,
+    CreateClassification request,
+    Map<String, String> authHeaders
+  ) {
     //    assertEquals(
     //        request.getProvider() == null ? ProviderType.USER : request.getProvider(), createdEntity.getProvider());
     assertEquals(request.getMutuallyExclusive(), createdEntity.getMutuallyExclusive());
@@ -107,18 +117,18 @@ public class ClassificationResourceTest extends EntityResourceTest<Classificatio
 
   @Override
   public Classification validateGetWithDifferentFields(Classification classification, boolean byName)
-      throws HttpResponseException {
+    throws HttpResponseException {
     classification =
-        byName
-            ? getEntityByName(classification.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS)
-            : getEntity(classification.getId(), null, ADMIN_AUTH_HEADERS);
+      byName
+        ? getEntityByName(classification.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS)
+        : getEntity(classification.getId(), null, ADMIN_AUTH_HEADERS);
     assertListNull(classification.getUsageCount());
 
     String fields = "usageCount";
     classification =
-        byName
-            ? getEntityByName(classification.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getEntity(classification.getId(), fields, ADMIN_AUTH_HEADERS);
+      byName
+        ? getEntityByName(classification.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+        : getEntity(classification.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(classification.getUsageCount());
     return classification;
   }

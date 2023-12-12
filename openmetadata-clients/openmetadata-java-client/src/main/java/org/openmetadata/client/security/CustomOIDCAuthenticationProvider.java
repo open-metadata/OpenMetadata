@@ -29,6 +29,7 @@ import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnect
 
 @Slf4j
 public class CustomOIDCAuthenticationProvider implements AuthenticationProvider {
+
   private final CustomOIDCSSOClientConfig securityConfig;
   private String generatedAuthToken;
   private Long expirationTimeMillis;
@@ -49,17 +50,16 @@ public class CustomOIDCAuthenticationProvider implements AuthenticationProvider 
 
     ApiClient customOIDCSSO = new ApiClient();
     customOIDCSSO.setBasePath(securityConfig.getTokenEndpoint());
-    RequestInterceptor requestInterceptor =
-        requestTemplate -> {
-          String requestBody =
-              "grant_type="
-                  + AccessTokenResponse.GrantType.CLIENT_CREDENTIALS
-                  + "&client_id="
-                  + securityConfig.getClientId()
-                  + "&client_secret="
-                  + securityConfig.getSecretKey();
-          requestTemplate.body(requestBody);
-        };
+    RequestInterceptor requestInterceptor = requestTemplate -> {
+      String requestBody =
+        "grant_type=" +
+        AccessTokenResponse.GrantType.CLIENT_CREDENTIALS +
+        "&client_id=" +
+        securityConfig.getClientId() +
+        "&client_secret=" +
+        securityConfig.getSecretKey();
+      requestTemplate.body(requestBody);
+    };
     customOIDCSSO.addAuthorization("OAuthToken", requestInterceptor);
     customSSOClient = customOIDCSSO.buildClient(CustomOIDCAccessTokenApi.class);
   }

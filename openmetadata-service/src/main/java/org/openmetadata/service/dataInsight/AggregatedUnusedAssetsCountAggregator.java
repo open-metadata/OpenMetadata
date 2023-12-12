@@ -7,6 +7,7 @@ import org.openmetadata.schema.analytics.DataAssetValues;
 import org.openmetadata.schema.dataInsight.type.AggregatedUnusedAssetsCount;
 
 public abstract class AggregatedUnusedAssetsCountAggregator<A, H, B, S> implements DataInsightAggregatorInterface {
+
   private final A aggregations;
 
   protected AggregatedUnusedAssetsCountAggregator(A aggregations) {
@@ -32,22 +33,25 @@ public abstract class AggregatedUnusedAssetsCountAggregator<A, H, B, S> implemen
       S frequentlyUsedSixtyDays = getAggregations(bucket, "frequentlyUsedDataAssetsSixtyDays");
 
       data.add(
-          new AggregatedUnusedAssetsCount()
-              .withTimestamp(timestamp)
-              .withUnusedDataAssets(
-                  new DataAssetValues()
-                      .withThreeDays(getValue(unusedThreeDays))
-                      .withSevenDays(getValue(unusedSevenDays))
-                      .withFourteenDays(getValue(unusedFourteenDays))
-                      .withThirtyDays(getValue(unusedThirtyDays))
-                      .withSixtyDays(getValue(unusedSixtyDays)))
-              .withFrequentlyUsedDataAssets(
-                  new DataAssetValues()
-                      .withThreeDays(getValue(frequentlyUsedThreeDays))
-                      .withSevenDays(getValue(frequentlyUsedSevenDays))
-                      .withFourteenDays(getValue(frequentlyUsedFourteenDays))
-                      .withThirtyDays(getValue(frequentlyUsedThirtyDays))
-                      .withSixtyDays(getValue(frequentlyUsedSixtyDays))));
+        new AggregatedUnusedAssetsCount()
+          .withTimestamp(timestamp)
+          .withUnusedDataAssets(
+            new DataAssetValues()
+              .withThreeDays(getValue(unusedThreeDays))
+              .withSevenDays(getValue(unusedSevenDays))
+              .withFourteenDays(getValue(unusedFourteenDays))
+              .withThirtyDays(getValue(unusedThirtyDays))
+              .withSixtyDays(getValue(unusedSixtyDays))
+          )
+          .withFrequentlyUsedDataAssets(
+            new DataAssetValues()
+              .withThreeDays(getValue(frequentlyUsedThreeDays))
+              .withSevenDays(getValue(frequentlyUsedSevenDays))
+              .withFourteenDays(getValue(frequentlyUsedFourteenDays))
+              .withThirtyDays(getValue(frequentlyUsedThirtyDays))
+              .withSixtyDays(getValue(frequentlyUsedSixtyDays))
+          )
+      );
     }
     return data;
   }

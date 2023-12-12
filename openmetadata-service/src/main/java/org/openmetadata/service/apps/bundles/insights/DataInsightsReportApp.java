@@ -61,14 +61,17 @@ import org.quartz.Trigger;
 
 @Slf4j
 public class DataInsightsReportApp extends AbstractNativeApplication {
+
   private static final String MISSING_DATA =
-      "Data Insight Report Data Unavailable or too short of a span for Reporting.";
+    "Data Insight Report Data Unavailable or too short of a span for Reporting.";
   private static final String KPI_NOT_SET = "No Kpi Set";
 
   @Override
   public void execute(JobExecutionContext jobExecutionContext) {
-    SearchRepository searchRepository =
-        (SearchRepository) jobExecutionContext.getJobDetail().getJobDataMap().get(SEARCH_CLIENT_KEY);
+    SearchRepository searchRepository = (SearchRepository) jobExecutionContext
+      .getJobDetail()
+      .getJobDataMap()
+      .get(SEARCH_CLIENT_KEY);
     App app = (App) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_INFO_KEY);
     // Calculate time diff
     long currentTime = Instant.now().toEpochMilli();
@@ -76,8 +79,10 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     long scheduleTime = currentTime - getTimeFromSchedule(scheduleConfiguration, jobExecutionContext);
     int numberOfDaysChange = getNumberOfDays(scheduleConfiguration);
     try {
-      DataInsightsReportAppConfig insightAlertConfig =
-          JsonUtils.convertValue(app.getAppConfiguration(), DataInsightsReportAppConfig.class);
+      DataInsightsReportAppConfig insightAlertConfig = JsonUtils.convertValue(
+        app.getAppConfiguration(),
+        DataInsightsReportAppConfig.class
+      );
       // Send to Admins
       if (Boolean.TRUE.equals(insightAlertConfig.getSendToAdmins())) {
         sendToAdmins(searchRepository.getSearchClient(), scheduleTime, currentTime, numberOfDaysChange);
@@ -94,7 +99,12 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
   }
 
   private void sendReportsToTeams(
-      SearchClient searchClient, Long scheduleTime, Long currentTime, int numberOfDaysChange) throws IOException {
+    SearchClient searchClient,
+    Long scheduleTime,
+    Long currentTime,
+    int numberOfDaysChange
+  )
+    throws IOException {
     PaginatedEntitiesSource teamReader = new PaginatedEntitiesSource(TEAM, 10, List.of("name", "email", "users"));
     while (!teamReader.isDone()) {
       ResultList<Team> resultList = (ResultList<Team>) teamReader.readNext(null);
@@ -111,22 +121,43 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
         }
 
         try {
-          DataInsightTotalAssetTemplate totalAssetTemplate =
-              createTotalAssetTemplate(searchClient, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
-          DataInsightDescriptionAndOwnerTemplate descriptionTemplate =
-              createDescriptionTemplate(searchClient, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
-          DataInsightDescriptionAndOwnerTemplate ownershipTemplate =
-              createOwnershipTemplate(searchClient, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
-          DataInsightDescriptionAndOwnerTemplate tierTemplate =
-              createTierTemplate(searchClient, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
+          DataInsightTotalAssetTemplate totalAssetTemplate = createTotalAssetTemplate(
+            searchClient,
+            team.getName(),
+            scheduleTime,
+            currentTime,
+            numberOfDaysChange
+          );
+          DataInsightDescriptionAndOwnerTemplate descriptionTemplate = createDescriptionTemplate(
+            searchClient,
+            team.getName(),
+            scheduleTime,
+            currentTime,
+            numberOfDaysChange
+          );
+          DataInsightDescriptionAndOwnerTemplate ownershipTemplate = createOwnershipTemplate(
+            searchClient,
+            team.getName(),
+            scheduleTime,
+            currentTime,
+            numberOfDaysChange
+          );
+          DataInsightDescriptionAndOwnerTemplate tierTemplate = createTierTemplate(
+            searchClient,
+            team.getName(),
+            scheduleTime,
+            currentTime,
+            numberOfDaysChange
+          );
           EmailUtil.sendDataInsightEmailNotificationToUser(
-              emails,
-              totalAssetTemplate,
-              descriptionTemplate,
-              ownershipTemplate,
-              tierTemplate,
-              EmailUtil.getDataInsightReportSubject(),
-              EmailUtil.DATA_INSIGHT_REPORT_TEMPLATE);
+            emails,
+            totalAssetTemplate,
+            descriptionTemplate,
+            ownershipTemplate,
+            tierTemplate,
+            EmailUtil.getDataInsightReportSubject(),
+            EmailUtil.DATA_INSIGHT_REPORT_TEMPLATE
+          );
         } catch (Exception ex) {
           LOG.error("[DataInsightReport] Failed for Team: {}, Reason : {}", team.getName(), ex.getMessage());
         }
@@ -139,22 +170,43 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     Set<String> emailList = getAdminsData(CreateEventSubscription.SubscriptionType.DATA_INSIGHT);
     try {
       // Build Insights Report
-      DataInsightTotalAssetTemplate totalAssetTemplate =
-          createTotalAssetTemplate(searchClient, null, scheduleTime, currentTime, numberOfDaysChange);
-      DataInsightDescriptionAndOwnerTemplate descriptionTemplate =
-          createDescriptionTemplate(searchClient, null, scheduleTime, currentTime, numberOfDaysChange);
-      DataInsightDescriptionAndOwnerTemplate ownershipTemplate =
-          createOwnershipTemplate(searchClient, null, scheduleTime, currentTime, numberOfDaysChange);
-      DataInsightDescriptionAndOwnerTemplate tierTemplate =
-          createTierTemplate(searchClient, null, scheduleTime, currentTime, numberOfDaysChange);
+      DataInsightTotalAssetTemplate totalAssetTemplate = createTotalAssetTemplate(
+        searchClient,
+        null,
+        scheduleTime,
+        currentTime,
+        numberOfDaysChange
+      );
+      DataInsightDescriptionAndOwnerTemplate descriptionTemplate = createDescriptionTemplate(
+        searchClient,
+        null,
+        scheduleTime,
+        currentTime,
+        numberOfDaysChange
+      );
+      DataInsightDescriptionAndOwnerTemplate ownershipTemplate = createOwnershipTemplate(
+        searchClient,
+        null,
+        scheduleTime,
+        currentTime,
+        numberOfDaysChange
+      );
+      DataInsightDescriptionAndOwnerTemplate tierTemplate = createTierTemplate(
+        searchClient,
+        null,
+        scheduleTime,
+        currentTime,
+        numberOfDaysChange
+      );
       EmailUtil.sendDataInsightEmailNotificationToUser(
-          emailList,
-          totalAssetTemplate,
-          descriptionTemplate,
-          ownershipTemplate,
-          tierTemplate,
-          EmailUtil.getDataInsightReportSubject(),
-          EmailUtil.DATA_INSIGHT_REPORT_TEMPLATE);
+        emailList,
+        totalAssetTemplate,
+        descriptionTemplate,
+        ownershipTemplate,
+        tierTemplate,
+        EmailUtil.getDataInsightReportSubject(),
+        EmailUtil.DATA_INSIGHT_REPORT_TEMPLATE
+      );
     } catch (Exception ex) {
       LOG.error("[DataInsightReport] Failed for Admin, Reason : {}", ex.getMessage(), ex);
     }
@@ -171,18 +223,30 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
   }
 
   private DataInsightTotalAssetTemplate createTotalAssetTemplate(
-      SearchClient searchClient, String team, Long scheduleTime, Long currentTime, int numberOfDays)
-      throws ParseException, IOException {
+    SearchClient searchClient,
+    String team,
+    Long scheduleTime,
+    Long currentTime,
+    int numberOfDays
+  )
+    throws ParseException, IOException {
     // Get total Assets Data
-    TreeMap<Long, List<Object>> dateWithDataMap =
-        searchClient.getSortedDate(
-            team, scheduleTime, currentTime, TOTAL_ENTITIES_BY_TYPE, ENTITY_REPORT_DATA_INDEX.value());
+    TreeMap<Long, List<Object>> dateWithDataMap = searchClient.getSortedDate(
+      team,
+      scheduleTime,
+      currentTime,
+      TOTAL_ENTITIES_BY_TYPE,
+      ENTITY_REPORT_DATA_INDEX.value()
+    );
     if (dateWithDataMap.firstEntry() != null && dateWithDataMap.lastEntry() != null) {
-
-      List<TotalEntitiesByType> first =
-          JsonUtils.convertValue(dateWithDataMap.firstEntry().getValue(), new TypeReference<>() {});
-      List<TotalEntitiesByType> last =
-          JsonUtils.convertValue(dateWithDataMap.lastEntry().getValue(), new TypeReference<>() {});
+      List<TotalEntitiesByType> first = JsonUtils.convertValue(
+        dateWithDataMap.firstEntry().getValue(),
+        new TypeReference<>() {}
+      );
+      List<TotalEntitiesByType> last = JsonUtils.convertValue(
+        dateWithDataMap.lastEntry().getValue(),
+        new TypeReference<>() {}
+      );
       Double previousCount = getCountOfEntitiesFromList(first);
       Double currentCount = getCountOfEntitiesFromList(last);
 
@@ -191,7 +255,10 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
         return new DataInsightTotalAssetTemplate(currentCount, 0D, numberOfDays);
       } else {
         return new DataInsightTotalAssetTemplate(
-            currentCount, ((currentCount - previousCount) / previousCount) * 100, numberOfDays);
+          currentCount,
+          ((currentCount - previousCount) / previousCount) * 100,
+          numberOfDays
+        );
       }
     }
 
@@ -199,22 +266,31 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
   }
 
   private DataInsightDescriptionAndOwnerTemplate createDescriptionTemplate(
-      SearchClient searchClient, String team, Long scheduleTime, Long currentTime, int numberOfDaysChange)
-      throws ParseException, IOException {
+    SearchClient searchClient,
+    String team,
+    Long scheduleTime,
+    Long currentTime,
+    int numberOfDaysChange
+  )
+    throws ParseException, IOException {
     // Get total Assets Data
     // This assumes that on a particular date the correct count per entities are given
-    TreeMap<Long, List<Object>> dateWithDataMap =
-        searchClient.getSortedDate(
-            team,
-            scheduleTime,
-            currentTime,
-            PERCENTAGE_OF_ENTITIES_WITH_DESCRIPTION_BY_TYPE,
-            ENTITY_REPORT_DATA_INDEX.value());
+    TreeMap<Long, List<Object>> dateWithDataMap = searchClient.getSortedDate(
+      team,
+      scheduleTime,
+      currentTime,
+      PERCENTAGE_OF_ENTITIES_WITH_DESCRIPTION_BY_TYPE,
+      ENTITY_REPORT_DATA_INDEX.value()
+    );
     if (dateWithDataMap.firstEntry() != null && dateWithDataMap.lastEntry() != null) {
-      List<PercentageOfEntitiesWithDescriptionByType> first =
-          JsonUtils.convertValue(dateWithDataMap.firstEntry().getValue(), new TypeReference<>() {});
-      List<PercentageOfEntitiesWithDescriptionByType> last =
-          JsonUtils.convertValue(dateWithDataMap.lastEntry().getValue(), new TypeReference<>() {});
+      List<PercentageOfEntitiesWithDescriptionByType> first = JsonUtils.convertValue(
+        dateWithDataMap.firstEntry().getValue(),
+        new TypeReference<>() {}
+      );
+      List<PercentageOfEntitiesWithDescriptionByType> last = JsonUtils.convertValue(
+        dateWithDataMap.lastEntry().getValue(),
+        new TypeReference<>() {}
+      );
 
       double previousCompletedDescription = getCompletedDescriptionCount(first);
       double previousTotalCount = getTotalEntityFromDescriptionList(first);
@@ -237,33 +313,43 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
       }
 
       return getTemplate(
-          DataInsightDescriptionAndOwnerTemplate.MetricType.DESCRIPTION,
-          PERCENTAGE_OF_ENTITIES_WITH_DESCRIPTION_BY_TYPE,
-          percentCompleted,
-          percentChange,
-          numberOfDaysChange);
+        DataInsightDescriptionAndOwnerTemplate.MetricType.DESCRIPTION,
+        PERCENTAGE_OF_ENTITIES_WITH_DESCRIPTION_BY_TYPE,
+        percentCompleted,
+        percentChange,
+        numberOfDaysChange
+      );
     }
 
     throw new IOException(MISSING_DATA);
   }
 
   private DataInsightDescriptionAndOwnerTemplate createOwnershipTemplate(
-      SearchClient searchClient, String team, Long scheduleTime, Long currentTime, int numberOfDaysChange)
-      throws ParseException, IOException {
+    SearchClient searchClient,
+    String team,
+    Long scheduleTime,
+    Long currentTime,
+    int numberOfDaysChange
+  )
+    throws ParseException, IOException {
     // Get total Assets Data
     // This assumes that on a particular date the correct count per entities are given
-    TreeMap<Long, List<Object>> dateWithDataMap =
-        searchClient.getSortedDate(
-            team,
-            scheduleTime,
-            currentTime,
-            PERCENTAGE_OF_ENTITIES_WITH_OWNER_BY_TYPE,
-            ENTITY_REPORT_DATA_INDEX.value());
+    TreeMap<Long, List<Object>> dateWithDataMap = searchClient.getSortedDate(
+      team,
+      scheduleTime,
+      currentTime,
+      PERCENTAGE_OF_ENTITIES_WITH_OWNER_BY_TYPE,
+      ENTITY_REPORT_DATA_INDEX.value()
+    );
     if (dateWithDataMap.firstEntry() != null && dateWithDataMap.lastEntry() != null) {
-      List<PercentageOfEntitiesWithOwnerByType> first =
-          JsonUtils.convertValue(dateWithDataMap.firstEntry().getValue(), new TypeReference<>() {});
-      List<PercentageOfEntitiesWithOwnerByType> last =
-          JsonUtils.convertValue(dateWithDataMap.lastEntry().getValue(), new TypeReference<>() {});
+      List<PercentageOfEntitiesWithOwnerByType> first = JsonUtils.convertValue(
+        dateWithDataMap.firstEntry().getValue(),
+        new TypeReference<>() {}
+      );
+      List<PercentageOfEntitiesWithOwnerByType> last = JsonUtils.convertValue(
+        dateWithDataMap.lastEntry().getValue(),
+        new TypeReference<>() {}
+      );
 
       double previousHasOwner = getCompletedOwnershipCount(first);
       double previousTotalCount = getTotalEntityFromOwnerList(first);
@@ -287,38 +373,51 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
       }
 
       return getTemplate(
-          DataInsightDescriptionAndOwnerTemplate.MetricType.OWNER,
-          PERCENTAGE_OF_ENTITIES_WITH_OWNER_BY_TYPE,
-          percentCompleted,
-          percentChange,
-          numberOfDaysChange);
+        DataInsightDescriptionAndOwnerTemplate.MetricType.OWNER,
+        PERCENTAGE_OF_ENTITIES_WITH_OWNER_BY_TYPE,
+        percentCompleted,
+        percentChange,
+        numberOfDaysChange
+      );
     }
 
     throw new IOException(MISSING_DATA);
   }
 
   private DataInsightDescriptionAndOwnerTemplate createTierTemplate(
-      SearchClient searchClient, String team, Long scheduleTime, Long currentTime, int numberOfDaysChange)
-      throws ParseException, IOException {
+    SearchClient searchClient,
+    String team,
+    Long scheduleTime,
+    Long currentTime,
+    int numberOfDaysChange
+  )
+    throws ParseException, IOException {
     // Get total Assets Data
     // This assumes that on a particular date the correct count per entities are given
-    TreeMap<Long, List<Object>> dateWithDataMap =
-        searchClient.getSortedDate(
-            team, scheduleTime, currentTime, TOTAL_ENTITIES_BY_TIER, ENTITY_REPORT_DATA_INDEX.value());
+    TreeMap<Long, List<Object>> dateWithDataMap = searchClient.getSortedDate(
+      team,
+      scheduleTime,
+      currentTime,
+      TOTAL_ENTITIES_BY_TIER,
+      ENTITY_REPORT_DATA_INDEX.value()
+    );
     if (dateWithDataMap.lastEntry() != null) {
-      List<TotalEntitiesByTier> last =
-          JsonUtils.convertValue(dateWithDataMap.lastEntry().getValue(), new TypeReference<>() {});
+      List<TotalEntitiesByTier> last = JsonUtils.convertValue(
+        dateWithDataMap.lastEntry().getValue(),
+        new TypeReference<>() {}
+      );
       Map<String, Double> tierData = getTierData(last);
       return new DataInsightDescriptionAndOwnerTemplate(
-          DataInsightDescriptionAndOwnerTemplate.MetricType.TIER,
-          null,
-          0D,
-          KPI_NOT_SET,
-          0D,
-          false,
-          "",
-          numberOfDaysChange,
-          tierData);
+        DataInsightDescriptionAndOwnerTemplate.MetricType.TIER,
+        null,
+        0D,
+        KPI_NOT_SET,
+        0D,
+        false,
+        "",
+        numberOfDaysChange,
+        tierData
+      );
     }
 
     throw new IOException(MISSING_DATA);
@@ -379,12 +478,12 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
   }
 
   private DataInsightDescriptionAndOwnerTemplate getTemplate(
-      DataInsightDescriptionAndOwnerTemplate.MetricType metricType,
-      DataInsightChartResult.DataInsightChartType chartType,
-      Double percentCompleted,
-      Double percentChange,
-      int numberOfDaysChange) {
-
+    DataInsightDescriptionAndOwnerTemplate.MetricType metricType,
+    DataInsightChartResult.DataInsightChartType chartType,
+    Double percentCompleted,
+    Double percentChange,
+    int numberOfDaysChange
+  ) {
     List<Kpi> kpiList = getAvailableKpi();
     Kpi validKpi = null;
     boolean isKpiAvailable = false;
@@ -421,15 +520,16 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     }
 
     return new DataInsightDescriptionAndOwnerTemplate(
-        metricType,
-        criteria,
-        percentCompleted,
-        targetKpi,
-        percentChange,
-        isKpiAvailable,
-        totalDaysLeft,
-        numberOfDaysChange,
-        null);
+      metricType,
+      criteria,
+      percentCompleted,
+      targetKpi,
+      percentChange,
+      isKpiAvailable,
+      totalDaysLeft,
+      numberOfDaysChange,
+      null
+    );
   }
 
   private long getTimeFromSchedule(AppSchedule appSchedule, JobExecutionContext jobExecutionContext) {
@@ -446,8 +546,9 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
       case CUSTOM:
         if (jobExecutionContext.getTrigger() != null) {
           Trigger triggerQrz = jobExecutionContext.getTrigger();
-          Date previousFire =
-              triggerQrz.getPreviousFireTime() == null ? triggerQrz.getStartTime() : triggerQrz.getPreviousFireTime();
+          Date previousFire = triggerQrz.getPreviousFireTime() == null
+            ? triggerQrz.getStartTime()
+            : triggerQrz.getPreviousFireTime();
           return previousFire.toInstant().toEpochMilli();
         }
         return 86400000L;
@@ -470,13 +571,14 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
       case CUSTOM:
         if (!CommonUtil.nullOrEmpty(appSchedule.getCronExpression())) {
           Trigger triggerQrz = CronScheduleBuilder.cronSchedule(appSchedule.getCronExpression()).build();
-          Date previousFire =
-              triggerQrz.getPreviousFireTime() == null ? triggerQrz.getStartTime() : triggerQrz.getPreviousFireTime();
+          Date previousFire = triggerQrz.getPreviousFireTime() == null
+            ? triggerQrz.getStartTime()
+            : triggerQrz.getPreviousFireTime();
           Date nextFire = triggerQrz.getFireTimeAfter(previousFire);
-          Period period =
-              Period.between(
-                  previousFire.toInstant().atZone(ZoneId.systemDefault()).toLocalDate(),
-                  nextFire.toInstant().atZone(ZoneId.systemDefault()).toLocalDate());
+          Period period = Period.between(
+            previousFire.toInstant().atZone(ZoneId.systemDefault()).toLocalDate(),
+            nextFire.toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
+          );
           return period.getDays();
         } else {
           throw new IllegalArgumentException("Missing Cron Expression for Custom Schedule.");

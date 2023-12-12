@@ -25,14 +25,16 @@ import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
 public class TestCaseFormatter implements EntityFormatter {
+
   private static final String TEST_RESULT_FIELD = "testCaseResult";
 
   @Override
   public String format(
-      MessageDecorator<?> messageFormatter,
-      FieldChange fieldChange,
-      EntityInterface entity,
-      FormatterUtil.CHANGE_TYPE changeType) {
+    MessageDecorator<?> messageFormatter,
+    FieldChange fieldChange,
+    EntityInterface entity,
+    FormatterUtil.CHANGE_TYPE changeType
+  ) {
     if (TEST_RESULT_FIELD.equals(fieldChange.getName())) {
       return transformTestCaseResult(messageFormatter, fieldChange, entity);
     }
@@ -40,23 +42,32 @@ public class TestCaseFormatter implements EntityFormatter {
   }
 
   private String transformTestCaseResult(
-      MessageDecorator<?> messageFormatter, FieldChange fieldChange, EntityInterface entity) {
+    MessageDecorator<?> messageFormatter,
+    FieldChange fieldChange,
+    EntityInterface entity
+  ) {
     String testCaseName = entity.getName();
     TestCaseResult result = (TestCaseResult) fieldChange.getNewValue();
     TestCase testCaseEntity = (TestCase) entity;
     if (result != null) {
-      String format =
-          String.format(
-              "Test Case %s is %s in %s",
-              messageFormatter.getBold(),
-              messageFormatter.getBold(),
-              MessageParser.EntityLink.parse(testCaseEntity.getEntityLink()).getEntityFQN());
+      String format = String.format(
+        "Test Case %s is %s in %s",
+        messageFormatter.getBold(),
+        messageFormatter.getBold(),
+        MessageParser.EntityLink.parse(testCaseEntity.getEntityLink()).getEntityFQN()
+      );
       return String.format(format, testCaseName, getStatusMessage(result.getTestCaseStatus()));
     }
-    String format =
-        String.format("Test Case %s is updated in %s", messageFormatter.getBold(), messageFormatter.getBold());
+    String format = String.format(
+      "Test Case %s is updated in %s",
+      messageFormatter.getBold(),
+      messageFormatter.getBold()
+    );
     return String.format(
-        format, testCaseName, MessageParser.EntityLink.parse(testCaseEntity.getEntityLink()).getEntityFQN());
+      format,
+      testCaseName,
+      MessageParser.EntityLink.parse(testCaseEntity.getEntityLink()).getEntityFQN()
+    );
   }
 
   private String getStatusMessage(TestCaseStatus status) {

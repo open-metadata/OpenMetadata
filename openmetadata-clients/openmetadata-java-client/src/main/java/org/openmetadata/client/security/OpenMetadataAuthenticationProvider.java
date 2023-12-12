@@ -22,6 +22,7 @@ import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnect
 
 @Slf4j
 public class OpenMetadataAuthenticationProvider implements AuthenticationProvider {
+
   private final OpenMetadataJWTClientConfig securityConfig;
   private String generatedAuthToken;
   private Long expirationTimeMillis;

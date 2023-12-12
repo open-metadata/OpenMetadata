@@ -18,24 +18,28 @@ import javax.ws.rs.core.Response;
 import lombok.Getter;
 
 public class AuthenticationException extends RuntimeException {
-  @Getter private final transient Response response;
+
+  @Getter
+  private final transient Response response;
 
   public AuthenticationException(String msg) {
     super(msg);
     response =
-        Response.status(Response.Status.UNAUTHORIZED)
-            .entity(convertToErrorResponseMessage(msg))
-            .type(MediaType.APPLICATION_JSON_TYPE)
-            .build();
+      Response
+        .status(Response.Status.UNAUTHORIZED)
+        .entity(convertToErrorResponseMessage(msg))
+        .type(MediaType.APPLICATION_JSON_TYPE)
+        .build();
   }
 
   public AuthenticationException(String msg, Throwable cause) {
     super(msg, cause);
     response =
-        Response.status(Response.Status.UNAUTHORIZED)
-            .entity(convertToErrorResponseMessage(msg))
-            .type(MediaType.APPLICATION_JSON_TYPE)
-            .build();
+      Response
+        .status(Response.Status.UNAUTHORIZED)
+        .entity(convertToErrorResponseMessage(msg))
+        .type(MediaType.APPLICATION_JSON_TYPE)
+        .build();
   }
 
   public static AuthenticationException getTokenNotPresentException() {
@@ -53,8 +57,10 @@ public class AuthenticationException extends RuntimeException {
   }
 
   private static class ErrorResponse {
+
     /** Response message. */
-    @Getter private final String responseMessage;
+    @Getter
+    private final String responseMessage;
 
     ErrorResponse(String responseMessage) {
       this.responseMessage = responseMessage;

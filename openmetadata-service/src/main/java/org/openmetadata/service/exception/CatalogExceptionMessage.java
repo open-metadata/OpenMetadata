@@ -28,10 +28,11 @@ import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.util.JsonUtils;
 
 public final class CatalogExceptionMessage {
+
   public static final String EMAIL_SENDING_ISSUE =
-      "There is some issue in sending the Mail. Please contact your administrator.";
+    "There is some issue in sending the Mail. Please contact your administrator.";
   public static final String PASSWORD_INVALID_FORMAT =
-      "Password must be of minimum 8 characters, with one special, one Upper, one lower case character, and one Digit.";
+    "Password must be of minimum 8 characters, with one special, one Upper, one lower case character, and one Digit.";
   public static final String MAX_FAILED_LOGIN_ATTEMPT = "Failed Login Attempts Exceeded. Please try after some time.";
   public static final String INVALID_USERNAME_PASSWORD = "You have entered an invalid username or password.";
   public static final String ENTITY_ALREADY_EXISTS = "Entity already exists";
@@ -43,20 +44,20 @@ public final class CatalogExceptionMessage {
   public static final String EMPTY_RULES_IN_POLICY = "At least one rule is required in a policy";
   public static final String INVALID_GROUP_TEAM_UPDATE = "Team of type Group cannot be updated";
   public static final String INVALID_GROUP_TEAM_CHILDREN_UPDATE =
-      "A team with children cannot be updated to type Group";
+    "A team with children cannot be updated to type Group";
   public static final String ANNOUNCEMENT_OVERLAP =
-      "There is already an announcement scheduled that overlaps with the given start time and end time";
+    "There is already an announcement scheduled that overlaps with the given start time and end time";
   public static final String ANNOUNCEMENT_INVALID_START_TIME =
-      "Announcement start time must be earlier than the end time";
+    "Announcement start time must be earlier than the end time";
   public static final String UNEXPECTED_PARENT = "Team of type Organization can't have a parent team";
   public static final String DELETE_ORGANIZATION = "Organization team type can't be deleted";
   public static final String CREATE_ORGANIZATION =
-      "Only one Organization is allowed. New Organization type can't be created";
+    "Only one Organization is allowed. New Organization type can't be created";
   public static final String CREATE_GROUP =
-      "Team of type Group can't have children of type team. Only users are allowed as part of the team";
+    "Team of type Group can't have children of type team. Only users are allowed as part of the team";
   public static final String TEAM_HIERARCHY = "Unexpected error occurred while building the teams hierarchy";
   public static final String LDAP_MISSING_ATTR =
-      "Username or Email Attribute is incorrect. Please check Openmetadata Configuration.";
+    "Username or Email Attribute is incorrect. Please check Openmetadata Configuration.";
   public static final String MULTIPLE_EMAIL_ENTRIES = "Email corresponds to multiple entries in Directory.";
 
   public static final String INVALID_EMAIL_PASSWORD = "You have entered an invalid email or password.";
@@ -66,7 +67,7 @@ public final class CatalogExceptionMessage {
 
   public static final String FORBIDDEN_AUTHENTICATOR_OP = "Operation is not permitted with the Selected Authenticator.";
   public static final String TOKEN_EXPIRY_ERROR =
-      "Email Verification Token %s is expired. Please issue a new request for email verification.";
+    "Email Verification Token %s is expired. Please issue a new request for email verification.";
   public static final String INVALID_BOT_USER = "Revoke Token can only be applied to Bot Users.";
   public static final String LIVE_APP_SCHEDULE_ERR = "Live Application cannot scheduled.";
   public static final String INVALID_APP_TYPE = "Application Type is not valid.";
@@ -102,10 +103,18 @@ public final class CatalogExceptionMessage {
   }
 
   public static String entityRelationshipNotFound(
-      String entityType, UUID id, String relationshipName, String toEntityType) {
+    String entityType,
+    UUID id,
+    String relationshipName,
+    String toEntityType
+  ) {
     return String.format(
-        "Entity type %s %s does not have expected relationship %s to/from entity type %s",
-        entityType, id, relationshipName, toEntityType);
+      "Entity type %s %s does not have expected relationship %s to/from entity type %s",
+      entityType,
+      id,
+      relationshipName,
+      toEntityType
+    );
   }
 
   public static String resourceTypeNotFound(String resourceType) {
@@ -142,7 +151,10 @@ public final class CatalogExceptionMessage {
 
   public static String glossaryTermMismatch(String parentId, String glossaryId) {
     return String.format(
-        "Invalid queryParameters - glossary term `parent` %s is not in the `glossary` %s", parentId, glossaryId);
+      "Invalid queryParameters - glossary term `parent` %s is not in the `glossary` %s",
+      parentId,
+      glossaryId
+    );
   }
 
   public static String notAdmin(String name) {
@@ -154,15 +166,29 @@ public final class CatalogExceptionMessage {
   }
 
   public static String permissionDenied(
-      String user, MetadataOperation operation, String roleName, String policyName, String ruleName) {
+    String user,
+    MetadataOperation operation,
+    String roleName,
+    String policyName,
+    String ruleName
+  ) {
     if (roleName != null) {
       return String.format(
-          "Principal: CatalogPrincipal{name='%s'} operation %s denied by role %s, policy %s, rule %s",
-          user, operation, roleName, policyName, ruleName);
+        "Principal: CatalogPrincipal{name='%s'} operation %s denied by role %s, policy %s, rule %s",
+        user,
+        operation,
+        roleName,
+        policyName,
+        ruleName
+      );
     }
     return String.format(
-        "Principal: CatalogPrincipal{name='%s'} operation %s denied policy %s, rule %s",
-        user, operation, policyName, ruleName);
+      "Principal: CatalogPrincipal{name='%s'} operation %s denied policy %s, rule %s",
+      user,
+      operation,
+      policyName,
+      ruleName
+    );
   }
 
   public static String permissionNotAllowed(String user, List<MetadataOperation> operations) {
@@ -187,14 +213,22 @@ public final class CatalogExceptionMessage {
 
   public static String invalidParent(Team parent, String child, TeamType childType) {
     return String.format(
-        "Team %s of type %s can't be of parent of team %s of type %s",
-        parent.getName(), parent.getTeamType(), child, childType);
+      "Team %s of type %s can't be of parent of team %s of type %s",
+      parent.getName(),
+      parent.getTeamType(),
+      child,
+      childType
+    );
   }
 
   public static String invalidChild(String parent, TeamType parentType, Team child) {
     return String.format(
-        "Team %s of type %s can't have child team %s of type %s",
-        parent, parentType, child.getName(), child.getTeamType());
+      "Team %s of type %s can't have child team %s of type %s",
+      parent,
+      parentType,
+      child.getName(),
+      child.getTeamType()
+    );
   }
 
   public static String invalidParentCount(int validParentCount, TeamType teamType) {
@@ -207,7 +241,9 @@ public final class CatalogExceptionMessage {
 
   public static String invalidOwnerType(String entityType) {
     return String.format(
-        "Entity of type %s can't be the owner. Only Team of type Group or a User can own entities.", entityType);
+      "Entity of type %s can't be the owner. Only Team of type Group or a User can own entities.",
+      entityType
+    );
   }
 
   public static String failedToParse(String message) {
@@ -228,8 +264,10 @@ public final class CatalogExceptionMessage {
 
   public static String mutuallyExclusiveLabels(TagLabel tag1, TagLabel tag2) {
     return String.format(
-        "Tag labels %s and %s are mutually exclusive and can't be assigned together",
-        tag1.getTagFQN(), tag2.getTagFQN());
+      "Tag labels %s and %s are mutually exclusive and can't be assigned together",
+      tag1.getTagFQN(),
+      tag2.getTagFQN()
+    );
   }
 
   public static String csvNotSupported(String entityType) {
@@ -245,9 +283,16 @@ public final class CatalogExceptionMessage {
   }
 
   public static String eventPublisherFailedToPublish(
-      CreateEventSubscription.SubscriptionType type, ChangeEvent event, String message) {
+    CreateEventSubscription.SubscriptionType type,
+    ChangeEvent event,
+    String message
+  ) {
     return String.format(
-        "Failed to publish event %s to %s due to %s ", JsonUtils.pojoToJson(event), type.value(), message);
+      "Failed to publish event %s to %s due to %s ",
+      JsonUtils.pojoToJson(event),
+      type.value(),
+      message
+    );
   }
 
   public static String invalidTaskField(EntityLink entityLink, TaskType taskType) {
@@ -266,8 +311,10 @@ public final class CatalogExceptionMessage {
   }
 
   public static String invalidEnumValue(Class<? extends Enum<?>> enumClass, String key) {
-    String enumValues =
-        Arrays.stream(enumClass.getEnumConstants()).map(Object::toString).collect(Collectors.joining(", "));
+    String enumValues = Arrays
+      .stream(enumClass.getEnumConstants())
+      .map(Object::toString)
+      .collect(Collectors.joining(", "));
     return "query param " + key + " must be one of [" + enumValues + "]";
   }
 }

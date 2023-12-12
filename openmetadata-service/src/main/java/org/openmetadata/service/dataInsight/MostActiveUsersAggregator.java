@@ -5,6 +5,7 @@ import java.util.List;
 import org.openmetadata.schema.dataInsight.type.MostActiveUsers;
 
 public abstract class MostActiveUsersAggregator<A, B, M, S, X> implements DataInsightAggregatorInterface {
+
   private final A aggregations;
 
   protected MostActiveUsersAggregator(A aggregations) {
@@ -28,14 +29,15 @@ public abstract class MostActiveUsersAggregator<A, B, M, S, X> implements DataIn
         team = getKeyAsString(getBuckets(teamBucket).get(0));
       }
       data.add(
-          new MostActiveUsers()
-              .withUserName(userName)
-              .withLastSession(getMaxValue(lastSession))
-              .withPageViews(getSumValue(sumPageViews))
-              .withSessionDuration(getSumValue(sumSessionDuration))
-              .withSessions(getSumValue(sumSession))
-              .withTeam(team)
-              .withAvgSessionDuration(getSumValue(sumSessionDuration) / getSumValue(sumSession)));
+        new MostActiveUsers()
+          .withUserName(userName)
+          .withLastSession(getMaxValue(lastSession))
+          .withPageViews(getSumValue(sumPageViews))
+          .withSessionDuration(getSumValue(sumSessionDuration))
+          .withSessions(getSumValue(sumSession))
+          .withTeam(team)
+          .withAvgSessionDuration(getSumValue(sumSessionDuration) / getSumValue(sumSession))
+      );
     }
 
     return data;

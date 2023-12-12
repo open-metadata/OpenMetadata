@@ -51,6 +51,7 @@ import org.openmetadata.service.util.ClassUtil;
  */
 @Slf4j
 public final class CollectionRegistry {
+
   private static CollectionRegistry instance = null;
   private static volatile boolean initialized = false;
 
@@ -61,7 +62,8 @@ public final class CollectionRegistry {
   private final Map<Class<?>, List<org.openmetadata.schema.type.Function>> functionMap = new ConcurrentHashMap<>();
 
   /** Resources used only for testing */
-  @VisibleForTesting private final List<Object> testResources = new ArrayList<>();
+  @VisibleForTesting
+  private final List<Object> testResources = new ArrayList<>();
 
   private CollectionRegistry() {}
 
@@ -118,16 +120,17 @@ public final class CollectionRegistry {
         List<Method> methods = ClassUtil.getMethodsAnnotatedWith(classInfo.loadClass(), Function.class);
         for (Method method : methods) {
           Function annotation = method.getAnnotation(Function.class);
-          List<org.openmetadata.schema.type.Function> functionList =
-              functionMap.computeIfAbsent(method.getDeclaringClass(), k -> new ArrayList<>());
+          List<org.openmetadata.schema.type.Function> functionList = functionMap.computeIfAbsent(
+            method.getDeclaringClass(),
+            k -> new ArrayList<>()
+          );
 
-          org.openmetadata.schema.type.Function function =
-              new org.openmetadata.schema.type.Function()
-                  .withName(annotation.name())
-                  .withInput(annotation.input())
-                  .withDescription(annotation.description())
-                  .withExamples(List.of(annotation.examples()))
-                  .withParameterInputType(annotation.paramInputType());
+          org.openmetadata.schema.type.Function function = new org.openmetadata.schema.type.Function()
+            .withName(annotation.name())
+            .withInput(annotation.input())
+            .withDescription(annotation.description())
+            .withExamples(List.of(annotation.examples()))
+            .withParameterInputType(annotation.paramInputType());
           functionList.add(function);
           functionList.sort(Comparator.comparing(org.openmetadata.schema.type.Function::getName));
           LOG.info("Initialized for {} function {}\n", method.getDeclaringClass().getSimpleName(), function);
@@ -143,11 +146,12 @@ public final class CollectionRegistry {
 
   /** Register resources from CollectionRegistry */
   public void registerResources(
-      Jdbi jdbi,
-      Environment environment,
-      OpenMetadataApplicationConfig config,
-      Authorizer authorizer,
-      AuthenticatorHandler authenticatorHandler) {
+    Jdbi jdbi,
+    Environment environment,
+    OpenMetadataApplicationConfig config,
+    Authorizer authorizer,
+    AuthenticatorHandler authenticatorHandler
+  ) {
     // Build list of ResourceDescriptors
     for (Map.Entry<String, CollectionDetails> e : collectionMap.entrySet()) {
       CollectionDetails details = e.getValue();
@@ -164,10 +168,11 @@ public final class CollectionRegistry {
 
     // Now add test resources
     testResources.forEach(
-        object -> {
-          LOG.info("Registering test resource {}", object);
-          environment.jersey().register(object);
-        });
+      object -> {
+        LOG.info("Registering test resource {}", object);
+        environment.jersey().register(object);
+      }
+    );
   }
 
   /** Get collection details based on annotations in Resource classes */
@@ -209,14 +214,13 @@ public final class CollectionRegistry {
 
   /** Create a resource class based on dependencies declared in @Collection annotation */
   private static Object createResource(
-      Jdbi jdbi,
-      String resourceClass,
-      OpenMetadataApplicationConfig config,
-      Authorizer authorizer,
-      AuthenticatorHandler authHandler)
-      throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException,
-          InstantiationException {
-
+    Jdbi jdbi,
+    String resourceClass,
+    OpenMetadataApplicationConfig config,
+    Authorizer authorizer,
+    AuthenticatorHandler authHandler
+  )
+    throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
     Object resource = null;
     Class<?> clz = Class.forName(resourceClass);
 
@@ -226,8 +230,7 @@ public final class CollectionRegistry {
     } catch (NoSuchMethodException e) {
       try {
         resource =
-            clz.getDeclaredConstructor(Authorizer.class, AuthenticatorHandler.class)
-                .newInstance(authorizer, authHandler);
+          clz.getDeclaredConstructor(Authorizer.class, AuthenticatorHandler.class).newInstance(authorizer, authHandler);
       } catch (NoSuchMethodException ex) {
         try {
           resource = clz.getDeclaredConstructor(Jdbi.class, Authorizer.class).newInstance(jdbi, authorizer);
@@ -262,8 +265,14 @@ public final class CollectionRegistry {
   }
 
   public static class CollectionDetails {
-    @Getter private final String resourceClass;
-    @Getter @Setter private Object resource;
+
+    @Getter
+    private final String resourceClass;
+
+    @Getter
+    @Setter
+    private Object resource;
+
     private final CollectionDescriptor cd;
     private final int order;
 

@@ -17,28 +17,32 @@ import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
 public class FollowersFormatter extends DefaultFieldFormatter {
+
   public FollowersFormatter(
-      MessageDecorator<?> messageDecorator,
-      String fieldOldValue,
-      String fieldNewValue,
-      String fieldChangeName,
-      MessageParser.EntityLink entityLink) {
+    MessageDecorator<?> messageDecorator,
+    String fieldOldValue,
+    String fieldNewValue,
+    String fieldChangeName,
+    MessageParser.EntityLink entityLink
+  ) {
     super(messageDecorator, fieldOldValue, fieldNewValue, fieldChangeName, entityLink);
   }
 
   @Override
   public String formatAddedField() {
     return String.format(
-        ("Followed " + this.getMessageDecorator().getBold() + " `%s`"),
-        this.getEntityLink().getEntityType(),
-        this.getEntityLink().getEntityFQN());
+      ("Followed " + this.getMessageDecorator().getBold() + " `%s`"),
+      this.getEntityLink().getEntityType(),
+      this.getEntityLink().getEntityFQN()
+    );
   }
 
   @Override
   public String formatDeletedField() {
     return String.format(
-        ("Unfollowed " + this.getMessageDecorator().getBold() + " `%s`"),
-        this.getEntityLink().getEntityType(),
-        this.getEntityLink().getEntityFQN());
+      ("Unfollowed " + this.getMessageDecorator().getBold() + " `%s`"),
+      this.getEntityLink().getEntityType(),
+      this.getEntityLink().getEntityFQN()
+    );
   }
 }

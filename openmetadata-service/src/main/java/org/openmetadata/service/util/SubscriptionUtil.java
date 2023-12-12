@@ -50,6 +50,7 @@ import org.quartz.CronScheduleBuilder;
 
 @Slf4j
 public class SubscriptionUtil {
+
   /*
       This Method Return a list of Admin Emails or Slack/MsTeams/Generic/GChat Webhook Urls for Admin User
       DataInsightReport and EmailPublisher need a list of Emails, while others need a webhook Endpoint.
@@ -64,20 +65,22 @@ public class SubscriptionUtil {
     try {
       do {
         result =
-            userEntityRepository.listAfter(
-                null, userEntityRepository.getFields("email,profile"), listFilter, 50, after);
+          userEntityRepository.listAfter(null, userEntityRepository.getFields("email,profile"), listFilter, 50, after);
         result
-            .getData()
-            .forEach(
-                user -> {
-                  if (type == CreateEventSubscription.SubscriptionType.EMAIL
-                      || type == CreateEventSubscription.SubscriptionType.DATA_INSIGHT) {
-                    data.add(user.getEmail());
-                  } else {
-                    Profile userProfile = user.getProfile();
-                    data.addAll(getWebhookUrlsFromProfile(userProfile, user.getId(), USER, type));
-                  }
-                });
+          .getData()
+          .forEach(
+            user -> {
+              if (
+                type == CreateEventSubscription.SubscriptionType.EMAIL ||
+                type == CreateEventSubscription.SubscriptionType.DATA_INSIGHT
+              ) {
+                data.add(user.getEmail());
+              } else {
+                Profile userProfile = user.getProfile();
+                data.addAll(getWebhookUrlsFromProfile(userProfile, user.getId(), USER, type));
+              }
+            }
+          );
         after = result.getPaging().getAfter();
       } while (after != null);
     } catch (Exception ex) {
@@ -93,38 +96,43 @@ public class SubscriptionUtil {
   */
 
   public static Set<String> getOwnerOrFollowers(
-      CreateEventSubscription.SubscriptionType type,
-      CollectionDAO daoCollection,
-      UUID entityId,
-      String entityType,
-      Relationship relationship) {
+    CreateEventSubscription.SubscriptionType type,
+    CollectionDAO daoCollection,
+    UUID entityId,
+    String entityType,
+    Relationship relationship
+  ) {
     Set<String> data = new HashSet<>();
     try {
-      List<CollectionDAO.EntityRelationshipRecord> ownerOrFollowers =
-          daoCollection.relationshipDAO().findFrom(entityId, entityType, relationship.ordinal());
+      List<CollectionDAO.EntityRelationshipRecord> ownerOrFollowers = daoCollection
+        .relationshipDAO()
+        .findFrom(entityId, entityType, relationship.ordinal());
       ownerOrFollowers.forEach(
-          owner -> {
-            if (type == CreateEventSubscription.SubscriptionType.EMAIL
-                || type == CreateEventSubscription.SubscriptionType.DATA_INSIGHT) {
-              if (USER.equals(owner.getType())) {
-                User user = Entity.getEntity(USER, owner.getId(), "", Include.NON_DELETED);
-                data.add(user.getEmail());
-              } else {
-                Team team = Entity.getEntity(TEAM, owner.getId(), "", Include.NON_DELETED);
-                data.add(team.getEmail());
-              }
+        owner -> {
+          if (
+            type == CreateEventSubscription.SubscriptionType.EMAIL ||
+            type == CreateEventSubscription.SubscriptionType.DATA_INSIGHT
+          ) {
+            if (USER.equals(owner.getType())) {
+              User user = Entity.getEntity(USER, owner.getId(), "", Include.NON_DELETED);
+              data.add(user.getEmail());
             } else {
-              Profile profile = null;
-              if (USER.equals(owner.getType())) {
-                User user = Entity.getEntity(USER, owner.getId(), "", Include.NON_DELETED);
-                profile = user.getProfile();
-              } else if (TEAM.equals(owner.getType())) {
-                Team team = Entity.getEntity(Entity.TEAM, owner.getId(), "", Include.NON_DELETED);
-                profile = team.getProfile();
-              }
-              data.addAll(getWebhookUrlsFromProfile(profile, owner.getId(), owner.getType(), type));
+              Team team = Entity.getEntity(TEAM, owner.getId(), "", Include.NON_DELETED);
+              data.add(team.getEmail());
             }
-          });
+          } else {
+            Profile profile = null;
+            if (USER.equals(owner.getType())) {
+              User user = Entity.getEntity(USER, owner.getId(), "", Include.NON_DELETED);
+              profile = user.getProfile();
+            } else if (TEAM.equals(owner.getType())) {
+              Team team = Entity.getEntity(Entity.TEAM, owner.getId(), "", Include.NON_DELETED);
+              profile = team.getProfile();
+            }
+            data.addAll(getWebhookUrlsFromProfile(profile, owner.getId(), owner.getType(), type));
+          }
+        }
+      );
     } catch (Exception ex) {
       LOG.error("Failed in listing all Owners/Followers, Reason : ", ex);
     }
@@ -132,7 +140,11 @@ public class SubscriptionUtil {
   }
 
   private static Set<String> getWebhookUrlsFromProfile(
-      Profile profile, UUID id, String entityType, CreateEventSubscription.SubscriptionType type) {
+    Profile profile,
+    UUID id,
+    String entityType,
+    CreateEventSubscription.SubscriptionType type
+  ) {
     Set<String> webhookUrls = new HashSet<>();
     if (profile != null) {
       Webhook webhookConfig = null;
@@ -154,11 +166,12 @@ public class SubscriptionUtil {
         webhookUrls.add(webhookConfig.getEndpoint().toString());
       } else {
         LOG.debug(
-            "[GetWebhookUrlsFromProfile] Owner with id {} type {}, will not get any Notification as not webhook config is invalid for type {}, webhookConfig {} ",
-            id,
-            entityType,
-            type.value(),
-            webhookConfig);
+          "[GetWebhookUrlsFromProfile] Owner with id {} type {}, will not get any Notification as not webhook config is invalid for type {}, webhookConfig {} ",
+          id,
+          entityType,
+          type.value(),
+          webhookConfig
+        );
       }
     } else {
       LOG.debug("[GetWebhookUrlsFromProfile] Failed to Get Profile for Owner with ID : {} and type {} ", id, type);
@@ -167,11 +180,12 @@ public class SubscriptionUtil {
   }
 
   public static Set<String> buildReceiversListFromActions(
-      SubscriptionAction action,
-      CreateEventSubscription.SubscriptionType type,
-      CollectionDAO daoCollection,
-      UUID entityId,
-      String entityType) {
+    SubscriptionAction action,
+    CreateEventSubscription.SubscriptionType type,
+    CollectionDAO daoCollection,
+    UUID entityId,
+    String entityType
+  ) {
     Set<String> receiverList = new HashSet<>();
     // Send to Admins
     if (Boolean.TRUE.equals(action.getSendToAdmins())) {
@@ -192,15 +206,21 @@ public class SubscriptionUtil {
   }
 
   public static List<Invocation.Builder> getTargetsForWebhook(
-      SubscriptionAction action,
-      CreateEventSubscription.SubscriptionType type,
-      Client client,
-      CollectionDAO daoCollection,
-      ChangeEvent event) {
+    SubscriptionAction action,
+    CreateEventSubscription.SubscriptionType type,
+    Client client,
+    CollectionDAO daoCollection,
+    ChangeEvent event
+  ) {
     EntityInterface entityInterface = getEntity(event);
     List<Invocation.Builder> targets = new ArrayList<>();
-    Set<String> receiversUrls =
-        buildReceiversListFromActions(action, type, daoCollection, entityInterface.getId(), event.getEntityType());
+    Set<String> receiversUrls = buildReceiversListFromActions(
+      action,
+      type,
+      daoCollection,
+      entityInterface.getId(),
+      event.getEntityType()
+    );
     for (String url : receiversUrls) {
       targets.add(client.target(url).request());
     }
@@ -208,14 +228,15 @@ public class SubscriptionUtil {
   }
 
   public static void postWebhookMessage(SubscriptionPublisher publisher, Invocation.Builder target, Object message)
-      throws InterruptedException {
+    throws InterruptedException {
     long attemptTime = System.currentTimeMillis();
     Response response = target.post(javax.ws.rs.client.Entity.entity(message, MediaType.APPLICATION_JSON_TYPE));
     LOG.debug(
-        "Subscription Publisher Posted Message {}:{} received response {}",
-        publisher.getEventSubscription().getName(),
-        publisher.getEventSubscription().getBatchSize(),
-        response.getStatusInfo());
+      "Subscription Publisher Posted Message {}:{} received response {}",
+      publisher.getEventSubscription().getName(),
+      publisher.getEventSubscription().getBatchSize(),
+      response.getStatusInfo()
+    );
     if (response.getStatus() >= 300 && response.getStatus() < 400) {
       // 3xx response/redirection is not allowed for callback. Set the webhook state as in error
       publisher.setErrorStatus(attemptTime, response.getStatus(), response.getStatusInfo().getReasonPhrase());

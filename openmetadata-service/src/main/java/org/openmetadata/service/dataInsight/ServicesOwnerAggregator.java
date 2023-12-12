@@ -6,6 +6,7 @@ import java.util.List;
 import org.openmetadata.schema.dataInsight.type.PercentageOfServicesWithOwner;
 
 public abstract class ServicesOwnerAggregator<A, B, M, S> implements DataInsightAggregatorInterface {
+
   protected final A aggregations;
 
   protected ServicesOwnerAggregator(A aggregations) {
@@ -26,12 +27,13 @@ public abstract class ServicesOwnerAggregator<A, B, M, S> implements DataInsight
         S sumEntityCount = getSumAggregations(serviceBucket, ENTITY_COUNT);
 
         data.add(
-            new PercentageOfServicesWithOwner()
-                .withTimestamp(timestamp)
-                .withServiceName(serviceName)
-                .withEntityCount(getValue(sumEntityCount))
-                .withHasOwner(getValue(sumHasOwner))
-                .withHasOwnerFraction(getValue(sumHasOwner) / getValue(sumEntityCount)));
+          new PercentageOfServicesWithOwner()
+            .withTimestamp(timestamp)
+            .withServiceName(serviceName)
+            .withEntityCount(getValue(sumEntityCount))
+            .withHasOwner(getValue(sumHasOwner))
+            .withHasOwnerFraction(getValue(sumHasOwner) / getValue(sumEntityCount))
+        );
       }
     }
     return data;

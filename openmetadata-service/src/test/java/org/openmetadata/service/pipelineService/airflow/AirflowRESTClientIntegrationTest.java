@@ -41,21 +41,20 @@ class AirflowRESTClientIntegrationTest {
   private static final String DAG_NAME = "test_dag";
   private static final String URI_TO_HANDLE_REQUEST = "/";
 
-  public static final IngestionPipeline INGESTION_PIPELINE =
-      new IngestionPipeline()
-          .withName(DAG_NAME)
-          .withId(UUID.randomUUID())
-          .withPipelineType(PipelineType.METADATA)
-          .withSourceConfig(DATABASE_METADATA_CONFIG)
-          .withAirflowConfig(new AirflowConfig().withStartDate(new DateTime("2022-06-10T15:06:47+00:00").toDate()));
+  public static final IngestionPipeline INGESTION_PIPELINE = new IngestionPipeline()
+    .withName(DAG_NAME)
+    .withId(UUID.randomUUID())
+    .withPipelineType(PipelineType.METADATA)
+    .withSourceConfig(DATABASE_METADATA_CONFIG)
+    .withAirflowConfig(new AirflowConfig().withStartDate(new DateTime("2022-06-10T15:06:47+00:00").toDate()));
 
-  @RegisterExtension private static final HttpServerExtension httpServerExtension = new HttpServerExtension();
+  @RegisterExtension
+  private static final HttpServerExtension httpServerExtension = new HttpServerExtension();
 
   AirflowRESTClient airflowRESTClient;
 
   @BeforeEach
   void setUp() throws URISyntaxException, KeyStoreException {
-
     PipelineServiceClientConfiguration pipelineServiceClientConfiguration = new PipelineServiceClientConfiguration();
     pipelineServiceClientConfiguration.setHostIp("111.11.11.1");
     pipelineServiceClientConfiguration.setApiEndpoint(HttpServerExtension.getUriFor("").toString());
@@ -84,10 +83,10 @@ class AirflowRESTClientIntegrationTest {
   void testLastIngestionLogsExceptionWhenStatusCode404() {
     registerMockedEndpoints(404);
 
-    Exception exception =
-        assertThrows(
-            PipelineServiceClientException.class,
-            () -> airflowRESTClient.getLastIngestionLogs(INGESTION_PIPELINE, "after"));
+    Exception exception = assertThrows(
+      PipelineServiceClientException.class,
+      () -> airflowRESTClient.getLastIngestionLogs(INGESTION_PIPELINE, "after")
+    );
 
     String expectedMessage = "Failed to get last ingestion logs due to 404 - Not Found";
     String actualMessage = exception.getMessage();
@@ -103,8 +102,9 @@ class AirflowRESTClientIntegrationTest {
 
     Map<String, MockResponse> pathResponses = new HashMap<>();
     pathResponses.put(
-        "/api/v1/openmetadata/last_dag_logs?dag_id=" + DAG_NAME + "&task_id=ingestion_task&after=after",
-        new MockResponse(jsonResponse, "application/json", lastDagLogStatusCode));
+      "/api/v1/openmetadata/last_dag_logs?dag_id=" + DAG_NAME + "&task_id=ingestion_task&after=after",
+      new MockResponse(jsonResponse, "application/json", lastDagLogStatusCode)
+    );
 
     httpServerExtension.registerHandler(URI_TO_HANDLE_REQUEST, new JsonHandler(pathResponses));
   }

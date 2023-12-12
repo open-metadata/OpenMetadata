@@ -26,14 +26,14 @@ import org.openmetadata.service.util.JsonUtils;
 /** Converter class to get an `OpenMetadataConnection` object. */
 public class OpenMetadataConnectionClassConverter extends ClassConverter {
 
-  private static final List<Class<?>> SECURITY_CONFIG_CLASSES =
-      List.of(
-          OpenMetadataJWTClientConfig.class,
-          GoogleSSOClientConfig.class,
-          OktaSSOClientConfig.class,
-          Auth0SSOClientConfig.class,
-          AzureSSOClientConfig.class,
-          CustomOIDCSSOClientConfig.class);
+  private static final List<Class<?>> SECURITY_CONFIG_CLASSES = List.of(
+    OpenMetadataJWTClientConfig.class,
+    GoogleSSOClientConfig.class,
+    OktaSSOClientConfig.class,
+    Auth0SSOClientConfig.class,
+    AzureSSOClientConfig.class,
+    CustomOIDCSSOClientConfig.class
+  );
 
   public OpenMetadataConnectionClassConverter() {
     super(OpenMetadataConnection.class);
@@ -41,11 +41,13 @@ public class OpenMetadataConnectionClassConverter extends ClassConverter {
 
   @Override
   public Object convert(Object connectionConfig) {
-    OpenMetadataConnection openMetadataConnection =
-        (OpenMetadataConnection) JsonUtils.convertValue(connectionConfig, this.clazz);
+    OpenMetadataConnection openMetadataConnection = (OpenMetadataConnection) JsonUtils.convertValue(
+      connectionConfig,
+      this.clazz
+    );
 
     tryToConvertOrFail(openMetadataConnection.getSecurityConfig(), SECURITY_CONFIG_CLASSES)
-        .ifPresent(openMetadataConnection::setSecurityConfig);
+      .ifPresent(openMetadataConnection::setSecurityConfig);
 
     return openMetadataConnection;
   }

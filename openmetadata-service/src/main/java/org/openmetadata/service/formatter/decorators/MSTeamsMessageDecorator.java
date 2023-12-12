@@ -68,15 +68,18 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
     TeamsMessage.Section teamsSections = new TeamsMessage.Section();
     if (event.getEntity() != null) {
       String headerTxt = "%s posted on " + event.getEntityType() + " %s";
-      String headerText =
-          String.format(
-              headerTxt,
-              event.getUserName(),
-              this.getEntityUrl(event.getEntityType(), event.getEntityFullyQualifiedName()));
+      String headerText = String.format(
+        headerTxt,
+        event.getUserName(),
+        this.getEntityUrl(event.getEntityType(), event.getEntityFullyQualifiedName())
+      );
       teamsSections.setActivityTitle(headerText);
     }
-    Map<MessageParser.EntityLink, String> messages =
-        getFormattedMessages(this, event.getChangeDescription(), getEntity(event));
+    Map<MessageParser.EntityLink, String> messages = getFormattedMessages(
+      this,
+      event.getChangeDescription(),
+      getEntity(event)
+    );
     List<TeamsMessage.Section> attachmentList = new ArrayList<>();
     for (Map.Entry<MessageParser.EntityLink, String> entry : messages.entrySet()) {
       TeamsMessage.Section section = new TeamsMessage.Section();

@@ -14,11 +14,13 @@ import org.openmetadata.service.migration.utils.MigrationFile;
 
 @Slf4j
 public class MigrationProcessImpl implements MigrationProcess {
+
   private MigrationDAO migrationDAO;
   private Handle handle;
   private final MigrationFile migrationFile;
 
-  public @Getter MigrationContext context;
+  @Getter
+  public MigrationContext context;
 
   public MigrationProcessImpl(MigrationFile migrationFile) {
     this.migrationFile = migrationFile;

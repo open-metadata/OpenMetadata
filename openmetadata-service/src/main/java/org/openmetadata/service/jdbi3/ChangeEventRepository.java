@@ -24,6 +24,7 @@ import org.openmetadata.service.util.JsonUtils;
 
 @Repository
 public class ChangeEventRepository {
+
   private final CollectionDAO.ChangeEventDAO dao;
 
   public ChangeEventRepository() {
@@ -32,11 +33,12 @@ public class ChangeEventRepository {
   }
 
   public List<ChangeEvent> list(
-      long timestamp,
-      List<String> entityCreatedList,
-      List<String> entityUpdatedList,
-      List<String> entityRestoredList,
-      List<String> entityDeletedList) {
+    long timestamp,
+    List<String> entityCreatedList,
+    List<String> entityUpdatedList,
+    List<String> entityRestoredList,
+    List<String> entityDeletedList
+  ) {
     List<String> jsons = new ArrayList<>();
     jsons.addAll(dao.list(ENTITY_CREATED.value(), entityCreatedList, timestamp));
     jsons.addAll(dao.list(ENTITY_UPDATED.value(), entityUpdatedList, timestamp));

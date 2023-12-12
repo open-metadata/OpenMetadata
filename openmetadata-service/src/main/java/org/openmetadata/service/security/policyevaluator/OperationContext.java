@@ -16,9 +16,15 @@ import org.openmetadata.service.util.JsonPatchUtils;
 /** OperationContext for Access Control Policy */
 @Slf4j
 public class OperationContext {
-  @Getter @NonNull private final String resource;
+
+  @Getter
+  @NonNull
+  private final String resource;
+
   List<MetadataOperation> operations; // All requested operations
-  @Getter private JsonPatch patch;
+
+  @Getter
+  private JsonPatch patch;
 
   public OperationContext(@NonNull String resource, MetadataOperation... operations) {
     this.resource = resource;
@@ -66,13 +72,19 @@ public class OperationContext {
   }
 
   public static List<MetadataOperation> getOperations(
-      String entityType, String startsWith, MetadataOperation... exclude) {
+    String entityType,
+    String startsWith,
+    MetadataOperation... exclude
+  ) {
     List<MetadataOperation> list = ResourceRegistry.getResourceDescriptor(entityType).getOperations();
     return getOperations(list, startsWith, exclude);
   }
 
   private static List<MetadataOperation> getOperations(
-      List<MetadataOperation> list, String startsWith, MetadataOperation... exclude) {
+    List<MetadataOperation> list,
+    String startsWith,
+    MetadataOperation... exclude
+  ) {
     List<MetadataOperation> excludeList = CommonUtil.listOf(exclude);
     if (!excludeList.isEmpty()) {
       list.remove(MetadataOperation.ALL); // If any operation is excluded then 'All' operation is also excluded

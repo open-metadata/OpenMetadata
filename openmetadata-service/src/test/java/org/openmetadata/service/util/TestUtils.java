@@ -92,78 +92,68 @@ public final class TestUtils {
   public static String LONG_ENTITY_NAME = "a".repeat(256 + 1);
   public static final Map<String, String> ADMIN_AUTH_HEADERS = authHeaders(ADMIN_USER_NAME + "@open-metadata.org");
   public static final String INGESTION_BOT = "ingestion-bot";
-  public static final Map<String, String> INGESTION_BOT_AUTH_HEADERS =
-      authHeaders(INGESTION_BOT + "@open-metadata.org");
+  public static final Map<String, String> INGESTION_BOT_AUTH_HEADERS = authHeaders(
+    INGESTION_BOT + "@open-metadata.org"
+  );
   public static final String TEST_USER_NAME = "test";
   public static final Map<String, String> TEST_AUTH_HEADERS = authHeaders(TEST_USER_NAME + "@open-metadata.org");
 
   public static final UUID NON_EXISTENT_ENTITY = UUID.randomUUID();
 
-  public static final DatabaseConnection SNOWFLAKE_DATABASE_CONNECTION =
-      new DatabaseConnection()
-          .withConfig(new SnowflakeConnection().withUsername("snowflake").withPassword("snowflake"));
-  public static final DatabaseConnection BIGQUERY_DATABASE_CONNECTION =
-      new DatabaseConnection().withConfig(new BigQueryConnection().withHostPort("localhost:1000"));
-  public static final DatabaseConnection REDSHIFT_DATABASE_CONNECTION =
-      new DatabaseConnection()
-          .withConfig(
-              new RedshiftConnection().withHostPort("localhost:5002").withUsername("test").withPassword("test"));
+  public static final DatabaseConnection SNOWFLAKE_DATABASE_CONNECTION = new DatabaseConnection()
+  .withConfig(new SnowflakeConnection().withUsername("snowflake").withPassword("snowflake"));
+  public static final DatabaseConnection BIGQUERY_DATABASE_CONNECTION = new DatabaseConnection()
+  .withConfig(new BigQueryConnection().withHostPort("localhost:1000"));
+  public static final DatabaseConnection REDSHIFT_DATABASE_CONNECTION = new DatabaseConnection()
+  .withConfig(new RedshiftConnection().withHostPort("localhost:5002").withUsername("test").withPassword("test"));
 
   public static final URI PIPELINE_URL = getUri("http://localhost:8080");
-  public static final DatabaseConnection MYSQL_DATABASE_CONNECTION =
-      new DatabaseConnection()
-          .withConfig(
-              new MysqlConnection()
-                  .withHostPort("localhost:3306")
-                  .withUsername("test")
-                  .withAuthType(new basicAuth().withPassword("test")));
-  public static final PipelineConnection AIRFLOW_CONNECTION =
-      new PipelineConnection()
-          .withConfig(
-              new AirflowConnection().withHostPort(PIPELINE_URL).withConnection(MYSQL_DATABASE_CONNECTION.getConfig()));
+  public static final DatabaseConnection MYSQL_DATABASE_CONNECTION = new DatabaseConnection()
+  .withConfig(
+      new MysqlConnection()
+        .withHostPort("localhost:3306")
+        .withUsername("test")
+        .withAuthType(new basicAuth().withPassword("test"))
+    );
+  public static final PipelineConnection AIRFLOW_CONNECTION = new PipelineConnection()
+  .withConfig(new AirflowConnection().withHostPort(PIPELINE_URL).withConnection(MYSQL_DATABASE_CONNECTION.getConfig()));
 
-  public static final AWSCredentials AWS_CREDENTIALS =
-      new AWSCredentials().withAwsAccessKeyId("ABCD").withAwsSecretAccessKey("1234").withAwsRegion("eu-west-2");
-  public static final PipelineConnection GLUE_CONNECTION =
-      new PipelineConnection().withConfig(new GluePipelineConnection().withAwsConfig(AWS_CREDENTIALS));
+  public static final AWSCredentials AWS_CREDENTIALS = new AWSCredentials()
+    .withAwsAccessKeyId("ABCD")
+    .withAwsSecretAccessKey("1234")
+    .withAwsRegion("eu-west-2");
+  public static final PipelineConnection GLUE_CONNECTION = new PipelineConnection()
+  .withConfig(new GluePipelineConnection().withAwsConfig(AWS_CREDENTIALS));
 
-  public static final MessagingConnection KAFKA_CONNECTION =
-      new MessagingConnection()
-          .withConfig(
-              new KafkaConnection()
-                  .withBootstrapServers("localhost:9092")
-                  .withSchemaRegistryURL(getUri("http://localhost:8081")));
-  public static final MessagingConnection REDPANDA_CONNECTION =
-      new MessagingConnection().withConfig(new RedpandaConnection().withBootstrapServers("localhost:9092"));
+  public static final MessagingConnection KAFKA_CONNECTION = new MessagingConnection()
+  .withConfig(
+      new KafkaConnection()
+        .withBootstrapServers("localhost:9092")
+        .withSchemaRegistryURL(getUri("http://localhost:8081"))
+    );
+  public static final MessagingConnection REDPANDA_CONNECTION = new MessagingConnection()
+  .withConfig(new RedpandaConnection().withBootstrapServers("localhost:9092"));
 
-  public static final MlModelConnection MLFLOW_CONNECTION =
-      new MlModelConnection()
-          .withConfig(
-              new MlflowConnection().withRegistryUri("http://localhost:8080").withTrackingUri("http://localhost:5000"));
+  public static final MlModelConnection MLFLOW_CONNECTION = new MlModelConnection()
+  .withConfig(new MlflowConnection().withRegistryUri("http://localhost:8080").withTrackingUri("http://localhost:5000"));
 
-  public static final StorageConnection S3_STORAGE_CONNECTION =
-      new StorageConnection().withConfig(new S3Connection().withAwsConfig(AWS_CREDENTIALS));
+  public static final StorageConnection S3_STORAGE_CONNECTION = new StorageConnection()
+  .withConfig(new S3Connection().withAwsConfig(AWS_CREDENTIALS));
 
-  public static final SearchConnection ELASTIC_SEARCH_CONNECTION =
-      new SearchConnection().withConfig(new ElasticSearchConnection().withHostPort(getUri("http://localhost:9200")));
+  public static final SearchConnection ELASTIC_SEARCH_CONNECTION = new SearchConnection()
+  .withConfig(new ElasticSearchConnection().withHostPort(getUri("http://localhost:9200")));
 
-  public static final SearchConnection OPEN_SEARCH_CONNECTION =
-      new SearchConnection().withConfig(new OpenSearchConnection().withHostPort("http://localhost:9200"));
+  public static final SearchConnection OPEN_SEARCH_CONNECTION = new SearchConnection()
+  .withConfig(new OpenSearchConnection().withHostPort("http://localhost:9200"));
 
-  public static final MetadataConnection AMUNDSEN_CONNECTION =
-      new MetadataConnection()
-          .withConfig(
-              new AmundsenConnection()
-                  .withHostPort(getUri("http://localhost:8080"))
-                  .withUsername("admin")
-                  .withPassword("admin"));
-  public static final MetadataConnection ATLAS_CONNECTION =
-      new MetadataConnection()
-          .withConfig(
-              new AtlasConnection()
-                  .withHostPort(getUri("http://localhost:8080"))
-                  .withUsername("admin")
-                  .withPassword("admin"));
+  public static final MetadataConnection AMUNDSEN_CONNECTION = new MetadataConnection()
+  .withConfig(
+      new AmundsenConnection().withHostPort(getUri("http://localhost:8080")).withUsername("admin").withPassword("admin")
+    );
+  public static final MetadataConnection ATLAS_CONNECTION = new MetadataConnection()
+  .withConfig(
+      new AtlasConnection().withHostPort(getUri("http://localhost:8080")).withUsername("admin").withPassword("admin")
+    );
 
   public static void assertCustomProperties(List<CustomProperty> expected, List<CustomProperty> actual) {
     if (expected == actual) { // Take care of both being null
@@ -220,13 +210,16 @@ public final class TestUtils {
   }
 
   public static void assertResponseContains(
-      Executable executable, Response.Status expectedStatus, String expectedReason) {
+    Executable executable,
+    Response.Status expectedStatus,
+    String expectedReason
+  ) {
     HttpResponseException exception = assertThrows(HttpResponseException.class, executable);
     assertEquals(expectedStatus.getStatusCode(), exception.getStatusCode());
 
     // Strip "[" at the beginning and "]" at the end as actual reason may contain more than one error messages
     expectedReason =
-        expectedReason.startsWith("[") ? expectedReason.substring(1, expectedReason.length() - 1) : expectedReason;
+      expectedReason.startsWith("[") ? expectedReason.substring(1, expectedReason.length() - 1) : expectedReason;
     String actualReason = exception.getReasonPhrase();
     assertTrue(actualReason.contains(expectedReason), expectedReason + " not in actual " + actualReason);
   }
@@ -255,48 +248,68 @@ public final class TestUtils {
   }
 
   public static <T, K> T post(WebTarget target, K request, Class<T> clz, Map<String, String> headers)
-      throws HttpResponseException {
-    Response response =
-        SecurityUtil.addHeaders(target, headers).post(Entity.entity(request, MediaType.APPLICATION_JSON));
+    throws HttpResponseException {
+    Response response = SecurityUtil
+      .addHeaders(target, headers)
+      .post(Entity.entity(request, MediaType.APPLICATION_JSON));
     return readResponse(response, clz, Status.CREATED.getStatusCode());
   }
 
   public static <T, K> T post(
-      WebTarget target, K request, Class<T> clz, int expectedStatus, Map<String, String> headers)
-      throws HttpResponseException {
-    Response response =
-        SecurityUtil.addHeaders(target, headers).post(Entity.entity(request, MediaType.APPLICATION_JSON));
+    WebTarget target,
+    K request,
+    Class<T> clz,
+    int expectedStatus,
+    Map<String, String> headers
+  )
+    throws HttpResponseException {
+    Response response = SecurityUtil
+      .addHeaders(target, headers)
+      .post(Entity.entity(request, MediaType.APPLICATION_JSON));
     return readResponse(response, clz, expectedStatus);
   }
 
   public static <T> T patch(WebTarget target, JsonPatch patch, Class<T> clz, Map<String, String> headers)
-      throws HttpResponseException {
-    Response response =
-        SecurityUtil.addHeaders(target, headers)
-            .method("PATCH", Entity.entity(patch.toJsonArray().toString(), MediaType.APPLICATION_JSON_PATCH_JSON_TYPE));
+    throws HttpResponseException {
+    Response response = SecurityUtil
+      .addHeaders(target, headers)
+      .method("PATCH", Entity.entity(patch.toJsonArray().toString(), MediaType.APPLICATION_JSON_PATCH_JSON_TYPE));
     return readResponse(response, clz, Status.OK.getStatusCode());
   }
 
   public static <K> void put(WebTarget target, K request, Status expectedStatus, Map<String, String> headers)
-      throws HttpResponseException {
-    Response response =
-        SecurityUtil.addHeaders(target, headers).method("PUT", Entity.entity(request, MediaType.APPLICATION_JSON));
+    throws HttpResponseException {
+    Response response = SecurityUtil
+      .addHeaders(target, headers)
+      .method("PUT", Entity.entity(request, MediaType.APPLICATION_JSON));
     readResponse(response, expectedStatus.getStatusCode());
   }
 
   public static <T, K> T put(
-      WebTarget target, K request, Class<T> clz, Status expectedStatus, Map<String, String> headers)
-      throws HttpResponseException {
-    Response response =
-        SecurityUtil.addHeaders(target, headers).method("PUT", Entity.entity(request, MediaType.APPLICATION_JSON));
+    WebTarget target,
+    K request,
+    Class<T> clz,
+    Status expectedStatus,
+    Map<String, String> headers
+  )
+    throws HttpResponseException {
+    Response response = SecurityUtil
+      .addHeaders(target, headers)
+      .method("PUT", Entity.entity(request, MediaType.APPLICATION_JSON));
     return readResponse(response, clz, expectedStatus.getStatusCode());
   }
 
   public static <T> T putCsv(
-      WebTarget target, String request, Class<T> clz, Status expectedStatus, Map<String, String> headers)
-      throws HttpResponseException {
-    Response response =
-        SecurityUtil.addHeaders(target, headers).method("PUT", Entity.entity(request, MediaType.TEXT_PLAIN));
+    WebTarget target,
+    String request,
+    Class<T> clz,
+    Status expectedStatus,
+    Map<String, String> headers
+  )
+    throws HttpResponseException {
+    Response response = SecurityUtil
+      .addHeaders(target, headers)
+      .method("PUT", Entity.entity(request, MediaType.TEXT_PLAIN));
     return readResponse(response, clz, expectedStatus.getStatusCode());
   }
 
@@ -311,7 +324,7 @@ public final class TestUtils {
   }
 
   public static <T> T getWithResponse(WebTarget target, Class<T> clz, Map<String, String> headers, int statusConde)
-      throws HttpResponseException {
+    throws HttpResponseException {
     final Response response = SecurityUtil.addHeaders(target, headers).get();
     return readResponse(response, clz, statusConde);
   }
@@ -341,11 +354,16 @@ public final class TestUtils {
     assertNotNull(ref.getFullyQualifiedName(), invalidEntityReference(ref, "null fqn"));
     assertNotNull(ref.getType(), invalidEntityReference(ref, "null type"));
     // Ensure data entities use fully qualified name
-    if (List.of("table", "database", "metrics", "dashboard", "pipeline", "report", "topic", "chart", "location")
-        .contains(ref.getType())) {
+    if (
+      List
+        .of("table", "database", "metrics", "dashboard", "pipeline", "report", "topic", "chart", "location")
+        .contains(ref.getType())
+    ) {
       // FullyQualifiedName has "." as separator
       assertTrue(
-          ref.getFullyQualifiedName().contains(SEPARATOR), "entity name is not fully qualified - " + ref.getName());
+        ref.getFullyQualifiedName().contains(SEPARATOR),
+        "entity name is not fully qualified - " + ref.getName()
+      );
     }
   }
 
@@ -381,19 +399,20 @@ public final class TestUtils {
     TagResourceTest tagResourceTest = new TagResourceTest();
     for (TagLabel expected : expectedList) {
       if (expected.getSource() == TagSource.GLOSSARY) {
-        GlossaryTerm glossaryTerm =
-            new GlossaryTermResourceTest().getEntityByName(expected.getTagFQN(), null, "tags", ADMIN_AUTH_HEADERS);
+        GlossaryTerm glossaryTerm = new GlossaryTermResourceTest()
+        .getEntityByName(expected.getTagFQN(), null, "tags", ADMIN_AUTH_HEADERS);
         List<TagLabel> derived = new ArrayList<>();
         for (TagLabel tag : listOrEmpty(glossaryTerm.getTags())) {
           Tag associatedTag = tagResourceTest.getEntityByName(tag.getTagFQN(), ADMIN_AUTH_HEADERS);
           derived.add(
-              new TagLabel()
-                  .withTagFQN(tag.getTagFQN())
-                  .withName(tag.getName())
-                  .withDisplayName(tag.getDisplayName())
-                  .withState(expected.getState())
-                  .withDescription(associatedTag.getDescription())
-                  .withLabelType(TagLabel.LabelType.DERIVED));
+            new TagLabel()
+              .withTagFQN(tag.getTagFQN())
+              .withName(tag.getName())
+              .withDisplayName(tag.getDisplayName())
+              .withState(expected.getState())
+              .withDescription(associatedTag.getDescription())
+              .withLabelType(TagLabel.LabelType.DERIVED)
+          );
         }
         EntityUtil.mergeTags(updatedExpectedList, derived);
       }
@@ -410,8 +429,12 @@ public final class TestUtils {
   }
 
   public static void checkUserFollowing(
-      UUID userId, UUID entityId, boolean expectedFollowing, Map<String, String> authHeaders)
-      throws HttpResponseException {
+    UUID userId,
+    UUID entityId,
+    boolean expectedFollowing,
+    Map<String, String> authHeaders
+  )
+    throws HttpResponseException {
     // GET .../users/{userId} shows user as following table
     User user = new UserResourceTest().getEntity(userId, "follows", authHeaders);
     existsInEntityReferenceList(user.getFollows(), entityId, expectedFollowing);
@@ -457,7 +480,10 @@ public final class TestUtils {
   }
 
   public static void existsInEntityReferenceList(
-      List<EntityReference> ownsList, UUID id, boolean expectedExistsInList) {
+    List<EntityReference> ownsList,
+    UUID id,
+    boolean expectedExistsInList
+  ) {
     EntityReference ref = null;
     for (EntityReference r : ownsList) {
       validateEntityReference(r);

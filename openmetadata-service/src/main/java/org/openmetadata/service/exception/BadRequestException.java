@@ -17,6 +17,7 @@ import javax.ws.rs.core.Response;
 import org.openmetadata.sdk.exception.WebServiceException;
 
 public final class BadRequestException extends WebServiceException {
+
   private static final String DEFAULT_MESSAGE = "Bad request.";
 
   private BadRequestException() {

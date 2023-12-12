@@ -65,6 +65,7 @@ import org.openmetadata.service.util.TestUtils.UpdateType;
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
+
   private final ClassificationResourceTest classificationResourceTest = new ClassificationResourceTest();
 
   public TagResourceTest() {
@@ -81,12 +82,13 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
     USER_CLASSIFICATION = createClassification("User");
 
     ADDRESS_TAG =
-        createTag(
-            "Address",
-            USER_CLASSIFICATION.getName(),
-            null,
-            PERSONAL_DATA_TAG_LABEL.getTagFQN(),
-            PII_SENSITIVE_TAG_LABEL.getTagFQN());
+      createTag(
+        "Address",
+        USER_CLASSIFICATION.getName(),
+        null,
+        PERSONAL_DATA_TAG_LABEL.getTagFQN(),
+        PII_SENSITIVE_TAG_LABEL.getTagFQN()
+      );
     USER_ADDRESS_TAG_LABEL = getTagLabel(FullyQualifiedName.add(USER_CLASSIFICATION.getName(), "Address"));
   }
 
@@ -114,7 +116,10 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
   void post_newTagsOnNonExistentParents_404() {
     String nonExistent = "nonExistent";
     assertResponse(
-        () -> createTag("primary", nonExistent, null), NOT_FOUND, entityNotFound(Entity.CLASSIFICATION, nonExistent));
+      () -> createTag("primary", nonExistent, null),
+      NOT_FOUND,
+      entityNotFound(Entity.CLASSIFICATION, nonExistent)
+    );
 
     // POST .../tags/{user}/{nonExistent}/tag where primaryTag does not exist
     String parentFqn = FullyQualifiedName.build(USER_CLASSIFICATION.getName(), nonExistent);
@@ -154,15 +159,18 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
   void delete_systemTag() throws HttpResponseException {
     Tag tag = getEntityByName("Tier.Tier1", ADMIN_AUTH_HEADERS);
     assertResponse(
-        () -> deleteEntity(tag.getId(), ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        CatalogExceptionMessage.systemEntityDeleteNotAllowed(tag.getName(), Entity.TAG));
+      () -> deleteEntity(tag.getId(), ADMIN_AUTH_HEADERS),
+      BAD_REQUEST,
+      CatalogExceptionMessage.systemEntityDeleteNotAllowed(tag.getName(), Entity.TAG)
+    );
   }
 
   private Tag createOrUpdate(String classificationName, Tag parent, String name, Status status) throws IOException {
     String parentFqn = parent != null ? parent.getFullyQualifiedName() : null;
-    CreateTag createTag =
-        createRequest(name).withParent(parentFqn).withClassification(classificationName).withDescription("description");
+    CreateTag createTag = createRequest(name)
+      .withParent(parentFqn)
+      .withClassification(classificationName)
+      .withDescription("description");
     return updateAndCheckEntity(createTag, status, ADMIN_AUTH_HEADERS, NO_CHANGE, null);
   }
 
@@ -192,9 +200,9 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
   @Override
   public CreateTag createRequest(String name) {
     return new CreateTag()
-        .withName(name)
-        .withDescription("description")
-        .withClassification(USER_CLASSIFICATION.getName());
+      .withName(name)
+      .withDescription("description")
+      .withClassification(USER_CLASSIFICATION.getName());
   }
 
   @Override
@@ -206,7 +214,9 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
       assertEquals(request.getParent(), createdEntity.getParent().getFullyQualifiedName());
     }
     assertEquals(
-        request.getProvider() == null ? ProviderType.USER : request.getProvider(), createdEntity.getProvider());
+      request.getProvider() == null ? ProviderType.USER : request.getProvider(),
+      createdEntity.getProvider()
+    );
     assertEquals(request.getMutuallyExclusive(), createdEntity.getMutuallyExclusive());
   }
 
@@ -222,17 +232,17 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
   public Tag validateGetWithDifferentFields(Tag tag, boolean byName) throws HttpResponseException {
     String fields = "";
     tag =
-        byName
-            ? getEntityByName(tag.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getEntity(tag.getId(), fields, ADMIN_AUTH_HEADERS);
+      byName
+        ? getEntityByName(tag.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+        : getEntity(tag.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(tag.getClassification());
     assertListNull(tag.getUsageCount(), tag.getChildren());
 
     fields = "children,usageCount";
     tag =
-        byName
-            ? getEntityByName(tag.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getEntity(tag.getId(), fields, ADMIN_AUTH_HEADERS);
+      byName
+        ? getEntityByName(tag.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+        : getEntity(tag.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(tag.getClassification(), tag.getUsageCount(), tag.getChildren());
     return tag;
   }
@@ -252,12 +262,13 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
 
   @Override
   public Tag updateAndCheckEntity(
-      CreateTag request,
-      Status status,
-      Map<String, String> authHeaders,
-      UpdateType updateType,
-      ChangeDescription changeDescription)
-      throws IOException {
+    CreateTag request,
+    Status status,
+    Map<String, String> authHeaders,
+    UpdateType updateType,
+    ChangeDescription changeDescription
+  )
+    throws IOException {
     int termCount = getClassification(request.getClassification()).getTermCount();
     Tag tag = super.updateAndCheckEntity(request, status, authHeaders, updateType, changeDescription);
     if (status == Response.Status.CREATED) {
@@ -267,14 +278,13 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
   }
 
   public Tag createTag(String name, String classification, String parentFqn, String... associatedTags)
-      throws IOException {
+    throws IOException {
     List<String> associatedTagList = associatedTags.length == 0 ? null : listOf(associatedTags);
-    CreateTag createTag =
-        createRequest(name)
-            .withParent(parentFqn)
-            .withStyle(new Style().withColor("#6495ED").withIconURL("https://tagIcon"))
-            .withClassification(classification)
-            .withAssociatedTags(associatedTagList);
+    CreateTag createTag = createRequest(name)
+      .withParent(parentFqn)
+      .withStyle(new Style().withColor("#6495ED").withIconURL("https://tagIcon"))
+      .withClassification(classification)
+      .withAssociatedTags(associatedTagList);
     return createEntity(createTag, ADMIN_AUTH_HEADERS);
   }
 
@@ -285,6 +295,9 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
 
   public Classification getClassification(String name) throws IOException {
     return classificationResourceTest.getEntityByName(
-        name, classificationResourceTest.getAllowedFields(), ADMIN_AUTH_HEADERS);
+      name,
+      classificationResourceTest.getAllowedFields(),
+      ADMIN_AUTH_HEADERS
+    );
   }
 }

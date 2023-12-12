@@ -33,6 +33,7 @@ import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 
 public final class CsvUtil {
+
   public static final String SEPARATOR = ",";
   public static final String FIELD_SEPARATOR = ";";
   public static final String LINE_SEPARATOR = "\r\n";
@@ -71,8 +72,8 @@ public final class CsvUtil {
 
   public static String recordToString(List<String> fields) {
     return nullOrEmpty(fields)
-        ? ""
-        : fields.stream().map(CsvUtil::quoteCsvField).collect(Collectors.joining(SEPARATOR));
+      ? ""
+      : fields.stream().map(CsvUtil::quoteCsvField).collect(Collectors.joining(SEPARATOR));
   }
 
   public static String recordToString(String[] fields) {
@@ -91,8 +92,8 @@ public final class CsvUtil {
   /** Quote a CSV field made of multiple strings that has SEPARATOR or FIELD_SEPARATOR with " " */
   public static String quoteField(List<String> field) {
     return nullOrEmpty(field)
-        ? ""
-        : field.stream().map(CsvUtil::quoteCsvField).collect(Collectors.joining(FIELD_SEPARATOR));
+      ? ""
+      : field.stream().map(CsvUtil::quoteCsvField).collect(Collectors.joining(FIELD_SEPARATOR));
   }
 
   public static void addField(List<String> csvRecord, Boolean field) {
@@ -111,9 +112,10 @@ public final class CsvUtil {
 
   public static List<String> addEntityReferences(List<String> csvRecord, List<EntityReference> refs) {
     csvRecord.add(
-        nullOrEmpty(refs)
-            ? null
-            : refs.stream().map(EntityReference::getFullyQualifiedName).collect(Collectors.joining(FIELD_SEPARATOR)));
+      nullOrEmpty(refs)
+        ? null
+        : refs.stream().map(EntityReference::getFullyQualifiedName).collect(Collectors.joining(FIELD_SEPARATOR))
+    );
     return csvRecord;
   }
 
@@ -124,7 +126,8 @@ public final class CsvUtil {
 
   public static List<String> addTagLabels(List<String> csvRecord, List<TagLabel> tags) {
     csvRecord.add(
-        nullOrEmpty(tags) ? null : tags.stream().map(TagLabel::getTagFQN).collect(Collectors.joining(FIELD_SEPARATOR)));
+      nullOrEmpty(tags) ? null : tags.stream().map(TagLabel::getTagFQN).collect(Collectors.joining(FIELD_SEPARATOR))
+    );
     return csvRecord;
   }
 

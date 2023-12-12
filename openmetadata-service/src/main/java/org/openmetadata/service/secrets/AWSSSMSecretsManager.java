@@ -25,6 +25,7 @@ import software.amazon.awssdk.services.ssm.model.ParameterType;
 import software.amazon.awssdk.services.ssm.model.PutParameterRequest;
 
 public class AWSSSMSecretsManager extends AWSBasedSecretsManager {
+
   private static AWSSSMSecretsManager instance = null;
   private SsmClient ssmClient;
 
@@ -40,7 +41,7 @@ public class AWSSSMSecretsManager extends AWSBasedSecretsManager {
   @Override
   void initClientWithCredentials(String region, AwsCredentialsProvider staticCredentialsProvider) {
     this.ssmClient =
-        SsmClient.builder().region(Region.of(region)).credentialsProvider(staticCredentialsProvider).build();
+      SsmClient.builder().region(Region.of(region)).credentialsProvider(staticCredentialsProvider).build();
   }
 
   @Override
@@ -54,14 +55,14 @@ public class AWSSSMSecretsManager extends AWSBasedSecretsManager {
   }
 
   private void putSecretParameter(String parameterName, String parameterValue, boolean overwrite) {
-    PutParameterRequest putParameterRequest =
-        PutParameterRequest.builder()
-            .name(parameterName)
-            .description("This secret parameter was created by OpenMetadata")
-            .value(parameterValue)
-            .overwrite(overwrite)
-            .type(ParameterType.SECURE_STRING)
-            .build();
+    PutParameterRequest putParameterRequest = PutParameterRequest
+      .builder()
+      .name(parameterName)
+      .description("This secret parameter was created by OpenMetadata")
+      .value(parameterValue)
+      .overwrite(overwrite)
+      .type(ParameterType.SECURE_STRING)
+      .build();
     this.ssmClient.putParameter(putParameterRequest);
   }
 

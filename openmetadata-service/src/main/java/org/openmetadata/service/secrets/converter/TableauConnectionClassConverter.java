@@ -7,6 +7,7 @@ import org.openmetadata.schema.services.connections.dashboard.TableauConnection;
 import org.openmetadata.service.util.JsonUtils;
 
 public class TableauConnectionClassConverter extends ClassConverter {
+
   private static final List<Class<?>> CONNECTION_CLASSES = List.of(BasicAuth.class, AccessTokenAuth.class);
 
   public TableauConnectionClassConverter() {

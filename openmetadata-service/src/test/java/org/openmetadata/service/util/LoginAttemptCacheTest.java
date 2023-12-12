@@ -11,6 +11,7 @@ import org.openmetadata.service.security.auth.LoginAttemptCache;
 
 @Slf4j
 public class LoginAttemptCacheTest {
+
   @Test
   void testFailedLogin() {
     String testKey = "test";

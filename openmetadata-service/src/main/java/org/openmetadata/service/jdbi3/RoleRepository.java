@@ -34,9 +34,16 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
 public class RoleRepository extends EntityRepository<Role> {
+
   public RoleRepository() {
     super(
-        RoleResource.COLLECTION_PATH, Entity.ROLE, Role.class, Entity.getCollectionDAO().roleDAO(), POLICIES, POLICIES);
+      RoleResource.COLLECTION_PATH,
+      Entity.ROLE,
+      Role.class,
+      Entity.getCollectionDAO().roleDAO(),
+      POLICIES,
+      POLICIES
+    );
   }
 
   @Override
@@ -108,12 +115,14 @@ public class RoleRepository extends EntityRepository<Role> {
   protected void preDelete(Role entity, String deletedBy) {
     if (FALSE.equals(entity.getAllowDelete())) {
       throw new IllegalArgumentException(
-          CatalogExceptionMessage.systemEntityDeleteNotAllowed(entity.getName(), Entity.ROLE));
+        CatalogExceptionMessage.systemEntityDeleteNotAllowed(entity.getName(), Entity.ROLE)
+      );
     }
   }
 
   /** Handles entity updated from PUT and POST operation. */
   public class RoleUpdater extends EntityUpdater {
+
     public RoleUpdater(Role original, Role updated, Operation operation) {
       super(original, updated, operation);
     }
@@ -128,9 +137,14 @@ public class RoleRepository extends EntityRepository<Role> {
       // Record change description
       List<EntityReference> deletedPolicies = new ArrayList<>();
       List<EntityReference> addedPolicies = new ArrayList<>();
-      boolean changed =
-          recordListChange(
-              "policies", origPolicies, updatedPolicies, addedPolicies, deletedPolicies, entityReferenceMatch);
+      boolean changed = recordListChange(
+        "policies",
+        origPolicies,
+        updatedPolicies,
+        addedPolicies,
+        deletedPolicies,
+        entityReferenceMatch
+      );
 
       if (changed) {
         // Remove all the Role to policy relationships

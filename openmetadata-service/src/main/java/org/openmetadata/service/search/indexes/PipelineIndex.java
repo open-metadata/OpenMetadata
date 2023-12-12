@@ -13,6 +13,7 @@ import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
 public class PipelineIndex implements SearchIndex {
+
   final Pipeline pipeline;
   final List<String> excludeFields = List.of("changeDescription");
 
@@ -46,10 +47,12 @@ public class PipelineIndex implements SearchIndex {
     doc.put("entityType", Entity.PIPELINE);
     doc.put("serviceType", pipeline.getServiceType());
     doc.put(
-        "fqnParts",
-        getFQNParts(
-            pipeline.getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+      "fqnParts",
+      getFQNParts(
+        pipeline.getFullyQualifiedName(),
+        suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())
+      )
+    );
     doc.put("owner", getEntityWithDisplayName(pipeline.getOwner()));
     doc.put("service", getEntityWithDisplayName(pipeline.getService()));
     doc.put("domain", getEntityWithDisplayName(pipeline.getDomain()));

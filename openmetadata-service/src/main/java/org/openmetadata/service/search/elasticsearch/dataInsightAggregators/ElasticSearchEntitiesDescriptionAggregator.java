@@ -7,7 +7,7 @@ import java.util.List;
 import org.openmetadata.service.dataInsight.EntitiesDescriptionAggregator;
 
 public class ElasticSearchEntitiesDescriptionAggregator
-    extends EntitiesDescriptionAggregator<Aggregations, MultiBucketsAggregation.Bucket, MultiBucketsAggregation, Sum> {
+  extends EntitiesDescriptionAggregator<Aggregations, MultiBucketsAggregation.Bucket, MultiBucketsAggregation, Sum> {
 
   public ElasticSearchEntitiesDescriptionAggregator(Aggregations aggregations) {
     super(aggregations);

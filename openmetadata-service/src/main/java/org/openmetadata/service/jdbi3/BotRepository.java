@@ -26,11 +26,18 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
 public class BotRepository extends EntityRepository<Bot> {
+
   static final String BOT_UPDATE_FIELDS = "botUser";
 
   public BotRepository() {
     super(
-        BotResource.COLLECTION_PATH, Entity.BOT, Bot.class, Entity.getCollectionDAO().botDAO(), "", BOT_UPDATE_FIELDS);
+      BotResource.COLLECTION_PATH,
+      Entity.BOT,
+      Bot.class,
+      Entity.getCollectionDAO().botDAO(),
+      "",
+      BOT_UPDATE_FIELDS
+    );
     quoteFqn = true;
   }
 
@@ -76,11 +83,12 @@ public class BotRepository extends EntityRepository<Bot> {
 
   public EntityReference getBotUser(Bot bot) {
     return bot.getBotUser() != null
-        ? bot.getBotUser()
-        : getToEntityRef(bot.getId(), Relationship.CONTAINS, Entity.USER, false);
+      ? bot.getBotUser()
+      : getToEntityRef(bot.getId(), Relationship.CONTAINS, Entity.USER, false);
   }
 
   public class BotUpdater extends EntityUpdater {
+
     public BotUpdater(Bot original, Bot updated, Operation operation) {
       super(original, updated, operation);
     }
@@ -94,9 +102,11 @@ public class BotRepository extends EntityRepository<Bot> {
     private void updateUser(Bot original, Bot updated) {
       deleteTo(original.getBotUser().getId(), Entity.USER, Relationship.CONTAINS, Entity.BOT);
       addRelationship(updated.getId(), updated.getBotUser().getId(), Entity.BOT, Entity.USER, Relationship.CONTAINS);
-      if (original.getBotUser() == null
-          || updated.getBotUser() == null
-          || !updated.getBotUser().getId().equals(original.getBotUser().getId())) {
+      if (
+        original.getBotUser() == null ||
+        updated.getBotUser() == null ||
+        !updated.getBotUser().getId().equals(original.getBotUser().getId())
+      ) {
         recordChange(BOT_UPDATE_FIELDS, original.getBotUser(), updated.getBotUser());
       }
     }

@@ -26,14 +26,14 @@ import org.openmetadata.service.util.JsonUtils;
 /** Converter class to get an `DbtPipeline` object. */
 public class DbtPipelineClassConverter extends ClassConverter {
 
-  private static final List<Class<?>> DBT_CONFIG_CLASSES =
-      List.of(
-          DbtCloudConfig.class,
-          DbtGCSConfig.class,
-          DbtHttpConfig.class,
-          DbtLocalConfig.class,
-          DbtS3Config.class,
-          DbtAzureConfig.class);
+  private static final List<Class<?>> DBT_CONFIG_CLASSES = List.of(
+    DbtCloudConfig.class,
+    DbtGCSConfig.class,
+    DbtHttpConfig.class,
+    DbtLocalConfig.class,
+    DbtS3Config.class,
+    DbtAzureConfig.class
+  );
 
   public DbtPipelineClassConverter() {
     super(DbtPipeline.class);

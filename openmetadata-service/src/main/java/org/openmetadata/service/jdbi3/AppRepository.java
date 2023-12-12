@@ -28,18 +28,20 @@ import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 public class AppRepository extends EntityRepository<App> {
+
   public static final String APP_BOT_ROLE = "ApplicationBotRole";
 
   public static final String UPDATE_FIELDS = "appConfiguration,appSchedule";
 
   public AppRepository() {
     super(
-        AppResource.COLLECTION_PATH,
-        Entity.APPLICATION,
-        App.class,
-        Entity.getCollectionDAO().applicationDAO(),
-        UPDATE_FIELDS,
-        UPDATE_FIELDS);
+      AppResource.COLLECTION_PATH,
+      Entity.APPLICATION,
+      App.class,
+      Entity.getCollectionDAO().applicationDAO(),
+      UPDATE_FIELDS,
+      UPDATE_FIELDS
+    );
     supportsSearch = false;
     quoteFqn = true;
   }
@@ -79,18 +81,16 @@ public class AppRepository extends EntityRepository<App> {
       // Get Bot Role
       EntityReference roleRef = Entity.getEntityReferenceByName(Entity.ROLE, APP_BOT_ROLE, Include.NON_DELETED);
       // Create Bot User
-      AuthenticationMechanism authMechanism =
-          new AuthenticationMechanism()
-              .withAuthType(AuthenticationMechanism.AuthType.JWT)
-              .withConfig(new JWTAuthMechanism().withJWTTokenExpiry(JWTTokenExpiry.Unlimited));
-      CreateUser createUser =
-          new CreateUser()
-              .withName(botName)
-              .withEmail(String.format("%s@openmetadata.org", botName))
-              .withIsAdmin(false)
-              .withIsBot(true)
-              .withAuthenticationMechanism(authMechanism)
-              .withRoles(List.of(roleRef.getId()));
+      AuthenticationMechanism authMechanism = new AuthenticationMechanism()
+        .withAuthType(AuthenticationMechanism.AuthType.JWT)
+        .withConfig(new JWTAuthMechanism().withJWTTokenExpiry(JWTTokenExpiry.Unlimited));
+      CreateUser createUser = new CreateUser()
+        .withName(botName)
+        .withEmail(String.format("%s@openmetadata.org", botName))
+        .withIsAdmin(false)
+        .withIsBot(true)
+        .withAuthenticationMechanism(authMechanism)
+        .withRoles(List.of(roleRef.getId()));
       User user = getUser("admin", createUser);
 
       // Set User Ownership to the application creator
@@ -99,7 +99,8 @@ public class AppRepository extends EntityRepository<App> {
       // Set Auth Mechanism in Bot
       JWTAuthMechanism jwtAuthMechanism = (JWTAuthMechanism) authMechanism.getConfig();
       authMechanism.setConfig(
-          JWTTokenGenerator.getInstance().generateJWTToken(user, jwtAuthMechanism.getJWTTokenExpiry()));
+        JWTTokenGenerator.getInstance().generateJWTToken(user, jwtAuthMechanism.getJWTTokenExpiry())
+      );
       user.setAuthenticationMechanism(authMechanism);
 
       // Create User
@@ -109,15 +110,14 @@ public class AppRepository extends EntityRepository<App> {
     try {
       bot = botRepository.findByName(botName, Include.NON_DELETED);
     } catch (EntityNotFoundException ex) {
-      Bot appBot =
-          new Bot()
-              .withId(UUID.randomUUID())
-              .withName(botUser.getName())
-              .withUpdatedBy("admin")
-              .withUpdatedAt(System.currentTimeMillis())
-              .withBotUser(botUser.getEntityReference())
-              .withProvider(ProviderType.USER)
-              .withFullyQualifiedName(botUser.getName());
+      Bot appBot = new Bot()
+        .withId(UUID.randomUUID())
+        .withName(botUser.getName())
+        .withUpdatedBy("admin")
+        .withUpdatedAt(System.currentTimeMillis())
+        .withBotUser(botUser.getEntityReference())
+        .withProvider(ProviderType.USER)
+        .withFullyQualifiedName(botUser.getName());
 
       // Create Bot with above user
       bot = botRepository.createInternal(appBot);
@@ -145,8 +145,8 @@ public class AppRepository extends EntityRepository<App> {
 
   public EntityReference getBotUser(App application) {
     return application.getBot() != null
-        ? application.getBot()
-        : getToEntityRef(application.getId(), Relationship.CONTAINS, Entity.BOT, false);
+      ? application.getBot()
+      : getToEntityRef(application.getId(), Relationship.CONTAINS, Entity.BOT, false);
   }
 
   @Override
@@ -172,8 +172,9 @@ public class AppRepository extends EntityRepository<App> {
     List<AppRunRecord> entities = new ArrayList<>();
     if (limitParam > 0) {
       // forward scrolling, if after == null then first page is being asked
-      List<String> jsons =
-          daoCollection.appExtensionTimeSeriesDao().listAppRunRecord(appId.toString(), limitParam, offset);
+      List<String> jsons = daoCollection
+        .appExtensionTimeSeriesDao()
+        .listAppRunRecord(appId.toString(), limitParam, offset);
 
       for (String json : jsons) {
         AppRunRecord entity = JsonUtils.readValue(json, AppRunRecord.class);
@@ -206,6 +207,7 @@ public class AppRepository extends EntityRepository<App> {
   }
 
   public class AppUpdater extends EntityUpdater {
+
     public AppUpdater(App original, App updated, Operation operation) {
       super(original, updated, operation);
     }

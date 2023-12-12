@@ -40,12 +40,13 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   public DatabaseRepository() {
     super(
-        DatabaseResource.COLLECTION_PATH,
-        Entity.DATABASE,
-        Database.class,
-        Entity.getCollectionDAO().databaseDAO(),
-        "",
-        "");
+      DatabaseResource.COLLECTION_PATH,
+      Entity.DATABASE,
+      Database.class,
+      Entity.getCollectionDAO().databaseDAO(),
+      "",
+      ""
+    );
     supportsSearch = true;
   }
 
@@ -76,8 +77,8 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   private List<EntityReference> getSchemas(Database database) {
     return database == null
-        ? null
-        : findTo(database.getId(), Entity.DATABASE, Relationship.CONTAINS, Entity.DATABASE_SCHEMA);
+      ? null
+      : findTo(database.getId(), Entity.DATABASE, Relationship.CONTAINS, Entity.DATABASE_SCHEMA);
   }
 
   @Override
@@ -89,23 +90,25 @@ public class DatabaseRepository extends EntityRepository<Database> {
     database.setService(getContainer(database.getId()));
     database.setSourceHash(fields.contains("sourceHash") ? database.getSourceHash() : null);
     database.setDatabaseSchemas(
-        fields.contains("databaseSchemas") ? getSchemas(database) : database.getDatabaseSchemas());
+      fields.contains("databaseSchemas") ? getSchemas(database) : database.getDatabaseSchemas()
+    );
     database.setDatabaseProfilerConfig(
-        fields.contains(DATABASE_PROFILER_CONFIG)
-            ? getDatabaseProfilerConfig(database)
-            : database.getDatabaseProfilerConfig());
+      fields.contains(DATABASE_PROFILER_CONFIG)
+        ? getDatabaseProfilerConfig(database)
+        : database.getDatabaseProfilerConfig()
+    );
     if (database.getUsageSummary() == null) {
       database.setUsageSummary(
-          fields.contains("usageSummary")
-              ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), database.getId())
-              : null);
+        fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), database.getId()) : null
+      );
     }
   }
 
   public void clearFields(Database database, Fields fields) {
     database.setDatabaseSchemas(fields.contains("databaseSchemas") ? database.getDatabaseSchemas() : null);
     database.setDatabaseProfilerConfig(
-        fields.contains(DATABASE_PROFILER_CONFIG) ? database.getDatabaseProfilerConfig() : null);
+      fields.contains(DATABASE_PROFILER_CONFIG) ? database.getDatabaseProfilerConfig() : null
+    );
     database.withUsageSummary(fields.contains("usageSummary") ? database.getUsageSummary() : null);
   }
 
@@ -132,24 +135,28 @@ public class DatabaseRepository extends EntityRepository<Database> {
     Database database = find(databaseId, Include.NON_DELETED);
     if (databaseProfilerConfig.getProfileSampleType() != null && databaseProfilerConfig.getProfileSample() != null) {
       EntityUtil.validateProfileSample(
-          databaseProfilerConfig.getProfileSampleType().toString(), databaseProfilerConfig.getProfileSample());
+        databaseProfilerConfig.getProfileSampleType().toString(),
+        databaseProfilerConfig.getProfileSample()
+      );
     }
 
     daoCollection
-        .entityExtensionDAO()
-        .insert(
-            databaseId,
-            DATABASE_PROFILER_CONFIG_EXTENSION,
-            DATABASE_PROFILER_CONFIG,
-            JsonUtils.pojoToJson(databaseProfilerConfig));
+      .entityExtensionDAO()
+      .insert(
+        databaseId,
+        DATABASE_PROFILER_CONFIG_EXTENSION,
+        DATABASE_PROFILER_CONFIG,
+        JsonUtils.pojoToJson(databaseProfilerConfig)
+      );
     clearFields(database, Fields.EMPTY_FIELDS);
     return database.withDatabaseProfilerConfig(databaseProfilerConfig);
   }
 
   public DatabaseProfilerConfig getDatabaseProfilerConfig(Database database) {
     return JsonUtils.readValue(
-        daoCollection.entityExtensionDAO().getExtension(database.getId(), DATABASE_PROFILER_CONFIG_EXTENSION),
-        DatabaseProfilerConfig.class);
+      daoCollection.entityExtensionDAO().getExtension(database.getId(), DATABASE_PROFILER_CONFIG_EXTENSION),
+      DatabaseProfilerConfig.class
+    );
   }
 
   public Database deleteDatabaseProfilerConfig(UUID databaseId) {
@@ -161,6 +168,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
   }
 
   public class DatabaseUpdater extends EntityUpdater {
+
     public DatabaseUpdater(Database original, Database updated, Operation operation) {
       super(original, updated, operation);
     }

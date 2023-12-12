@@ -6,6 +6,7 @@ import java.util.List;
 import org.openmetadata.schema.dataInsight.type.PageViewsByEntities;
 
 public abstract class PageViewsByEntitiesAggregator<A, B, M, S> implements DataInsightAggregatorInterface {
+
   private final A aggregations;
 
   public PageViewsByEntitiesAggregator(A aggregations) {
@@ -25,10 +26,11 @@ public abstract class PageViewsByEntitiesAggregator<A, B, M, S> implements DataI
         S sumPageViews = getSumAggregations(entityTypeBucket, "pageViews");
 
         data.add(
-            new PageViewsByEntities()
-                .withEntityType(entityType)
-                .withTimestamp(timestamp)
-                .withPageViews(getValue(sumPageViews)));
+          new PageViewsByEntities()
+            .withEntityType(entityType)
+            .withTimestamp(timestamp)
+            .withPageViews(getValue(sumPageViews))
+        );
       }
     }
     return data;

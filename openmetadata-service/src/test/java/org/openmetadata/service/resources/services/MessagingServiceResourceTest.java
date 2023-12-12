@@ -52,35 +52,36 @@ import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 public class MessagingServiceResourceTest extends ServiceResourceTest<MessagingService, CreateMessagingService> {
+
   public static final String KAFKA_BROKERS = "192.168.1.1:0";
   public static final URI SCHEMA_REGISTRY_URL = CommonUtil.getUri("http://localhost:0");
 
   public MessagingServiceResourceTest() {
     super(
-        Entity.MESSAGING_SERVICE,
-        MessagingService.class,
-        MessagingServiceList.class,
-        "services/messagingServices",
-        MessagingServiceResource.FIELDS);
+      Entity.MESSAGING_SERVICE,
+      MessagingService.class,
+      MessagingServiceList.class,
+      "services/messagingServices",
+      MessagingServiceResource.FIELDS
+    );
     supportsPatch = false;
   }
 
   public void setupMessagingServices() throws HttpResponseException {
     // Create Kafka messaging service
     MessagingServiceResourceTest messagingServiceResourceTest = new MessagingServiceResourceTest();
-    CreateMessagingService createMessaging =
-        new CreateMessagingService()
-            .withName("kafka")
-            .withServiceType(MessagingServiceType.Kafka)
-            .withConnection(TestUtils.KAFKA_CONNECTION);
+    CreateMessagingService createMessaging = new CreateMessagingService()
+      .withName("kafka")
+      .withServiceType(MessagingServiceType.Kafka)
+      .withConnection(TestUtils.KAFKA_CONNECTION);
     MessagingService messagingService = messagingServiceResourceTest.createEntity(createMessaging, ADMIN_AUTH_HEADERS);
     KAFKA_REFERENCE = messagingService.getEntityReference();
 
     // Create Pulsar messaging service
     createMessaging
-        .withName("redpanda")
-        .withServiceType(MessagingServiceType.Redpanda)
-        .withConnection(TestUtils.REDPANDA_CONNECTION);
+      .withName("redpanda")
+      .withServiceType(MessagingServiceType.Redpanda)
+      .withConnection(TestUtils.REDPANDA_CONNECTION);
 
     messagingService = messagingServiceResourceTest.createEntity(createMessaging, ADMIN_AUTH_HEADERS);
     REDPANDA_REFERENCE = messagingService.getEntityReference();
@@ -90,9 +91,10 @@ public class MessagingServiceResourceTest extends ServiceResourceTest<MessagingS
   void post_withoutRequiredFields_400_badRequest(TestInfo test) {
     // Create messaging with mandatory serviceType field empty
     assertResponse(
-        () -> createEntity(createRequest(test).withServiceType(null), ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "[serviceType must not be null]");
+      () -> createEntity(createRequest(test).withServiceType(null), ADMIN_AUTH_HEADERS),
+      BAD_REQUEST,
+      "[serviceType must not be null]"
+    );
   }
 
   @Test
@@ -102,14 +104,17 @@ public class MessagingServiceResourceTest extends ServiceResourceTest<MessagingS
     createAndCheckEntity(createRequest(test, 1).withDescription(null), authHeaders);
     createAndCheckEntity(createRequest(test, 2).withDescription("description"), authHeaders);
     createAndCheckEntity(
-        createRequest(test, 3)
-            .withConnection(
-                new MessagingConnection()
-                    .withConfig(
-                        new KafkaConnection()
-                            .withBootstrapServers("localhost:9092")
-                            .withSchemaRegistryURL(new URI("localhost:8081")))),
-        authHeaders);
+      createRequest(test, 3)
+        .withConnection(
+          new MessagingConnection()
+          .withConfig(
+              new KafkaConnection()
+                .withBootstrapServers("localhost:9092")
+                .withSchemaRegistryURL(new URI("localhost:8081"))
+            )
+        ),
+      authHeaders
+    );
 
     // We can create the service without connection
     createAndCheckEntity(createRequest(test).withConnection(null), ADMIN_AUTH_HEADERS);
@@ -117,49 +122,44 @@ public class MessagingServiceResourceTest extends ServiceResourceTest<MessagingS
 
   @Test
   void put_updateService_as_admin_2xx(TestInfo test) throws IOException, URISyntaxException {
-    MessagingService service =
-        createAndCheckEntity(
-            createRequest(test)
-                .withDescription(null)
-                .withConnection(
-                    new MessagingConnection()
-                        .withConfig(
-                            new KafkaConnection()
-                                .withBootstrapServers("localhost:9092")
-                                .withSchemaRegistryURL(new URI("localhost:8081")))),
-            ADMIN_AUTH_HEADERS);
+    MessagingService service = createAndCheckEntity(
+      createRequest(test)
+        .withDescription(null)
+        .withConnection(
+          new MessagingConnection()
+          .withConfig(
+              new KafkaConnection()
+                .withBootstrapServers("localhost:9092")
+                .withSchemaRegistryURL(new URI("localhost:8081"))
+            )
+        ),
+      ADMIN_AUTH_HEADERS
+    );
 
-    MessagingConnection messagingConnection =
-        new MessagingConnection()
-            .withConfig(
-                new KafkaConnection()
-                    .withBootstrapServers("localhost:9092")
-                    .withSchemaRegistryURL(new URI("localhost:8081")));
+    MessagingConnection messagingConnection = new MessagingConnection()
+    .withConfig(
+        new KafkaConnection().withBootstrapServers("localhost:9092").withSchemaRegistryURL(new URI("localhost:8081"))
+      );
     // Update messaging description and ingestion service that are null
-    CreateMessagingService update =
-        createRequest(test)
-            .withName(service.getName())
-            .withDescription("description1")
-            .withConnection(messagingConnection);
+    CreateMessagingService update = createRequest(test)
+      .withName(service.getName())
+      .withDescription("description1")
+      .withConnection(messagingConnection);
     ChangeDescription change = getChangeDescription(service, MINOR_UPDATE);
     fieldAdded(change, "description", "description1");
     service = updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Update connection
-    MessagingConnection messagingConnection1 =
-        new MessagingConnection()
-            .withConfig(
-                new KafkaConnection().withBootstrapServers("host:9092").withSchemaRegistryURL(new URI("host:8081")));
+    MessagingConnection messagingConnection1 = new MessagingConnection()
+    .withConfig(new KafkaConnection().withBootstrapServers("host:9092").withSchemaRegistryURL(new URI("host:8081")));
     change = getChangeDescription(service, MINOR_UPDATE);
     fieldUpdated(change, "connection", messagingConnection, messagingConnection1);
     update.withConnection(messagingConnection1);
     service = updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Update description and connection
-    MessagingConnection messagingConnection2 =
-        new MessagingConnection()
-            .withConfig(
-                new KafkaConnection().withBootstrapServers("host1:9092").withSchemaRegistryURL(new URI("host1:8081")));
+    MessagingConnection messagingConnection2 = new MessagingConnection()
+    .withConfig(new KafkaConnection().withBootstrapServers("host1:9092").withSchemaRegistryURL(new URI("host1:8081")));
     update.withConnection(messagingConnection1);
     change = getChangeDescription(service, MINOR_UPDATE);
     fieldUpdated(change, "connection", messagingConnection1, messagingConnection2);
@@ -172,8 +172,11 @@ public class MessagingServiceResourceTest extends ServiceResourceTest<MessagingS
     MessagingService service = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     // By default, we have no result logged in
     assertNull(service.getTestConnectionResult());
-    MessagingService updatedService =
-        putTestConnectionResult(service.getId(), TEST_CONNECTION_RESULT, ADMIN_AUTH_HEADERS);
+    MessagingService updatedService = putTestConnectionResult(
+      service.getId(),
+      TEST_CONNECTION_RESULT,
+      ADMIN_AUTH_HEADERS
+    );
     // Validate that the data got properly stored
     assertNotNull(updatedService.getTestConnectionResult());
     assertEquals(TestConnectionResultStatus.SUCCESSFUL, updatedService.getTestConnectionResult().getStatus());
@@ -186,8 +189,11 @@ public class MessagingServiceResourceTest extends ServiceResourceTest<MessagingS
   }
 
   public MessagingService putTestConnectionResult(
-      UUID serviceId, TestConnectionResult testConnectionResult, Map<String, String> authHeaders)
-      throws HttpResponseException {
+    UUID serviceId,
+    TestConnectionResult testConnectionResult,
+    Map<String, String> authHeaders
+  )
+    throws HttpResponseException {
     WebTarget target = getResource(serviceId).path("/testConnectionResult");
     return TestUtils.put(target, testConnectionResult, MessagingService.class, OK, authHeaders);
   }
@@ -195,19 +201,22 @@ public class MessagingServiceResourceTest extends ServiceResourceTest<MessagingS
   @Override
   public CreateMessagingService createRequest(String name) {
     return new CreateMessagingService()
-        .withName(name)
-        .withServiceType(MessagingServiceType.Kafka)
-        .withConnection(
-            new MessagingConnection()
-                .withConfig(
-                    new KafkaConnection()
-                        .withBootstrapServers(KAFKA_BROKERS)
-                        .withSchemaRegistryURL(SCHEMA_REGISTRY_URL)));
+      .withName(name)
+      .withServiceType(MessagingServiceType.Kafka)
+      .withConnection(
+        new MessagingConnection()
+        .withConfig(
+            new KafkaConnection().withBootstrapServers(KAFKA_BROKERS).withSchemaRegistryURL(SCHEMA_REGISTRY_URL)
+          )
+      );
   }
 
   @Override
   public void validateCreatedEntity(
-      MessagingService service, CreateMessagingService createRequest, Map<String, String> authHeaders) {
+    MessagingService service,
+    CreateMessagingService createRequest,
+    Map<String, String> authHeaders
+  ) {
     MessagingConnection expectedMessagingConnection = createRequest.getConnection();
     MessagingConnection actualMessagingConnection = service.getConnection();
     validateConnection(expectedMessagingConnection, actualMessagingConnection, service.getServiceType());
@@ -220,19 +229,19 @@ public class MessagingServiceResourceTest extends ServiceResourceTest<MessagingS
 
   @Override
   public MessagingService validateGetWithDifferentFields(MessagingService service, boolean byName)
-      throws HttpResponseException {
+    throws HttpResponseException {
     String fields = "";
     service =
-        byName
-            ? getEntityByName(service.getFullyQualifiedName(), null, fields, ADMIN_AUTH_HEADERS)
-            : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
+      byName
+        ? getEntityByName(service.getFullyQualifiedName(), null, fields, ADMIN_AUTH_HEADERS)
+        : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
     TestUtils.assertListNull(service.getOwner());
 
     fields = "owner,tags";
     service =
-        byName
-            ? getEntityByName(service.getFullyQualifiedName(), null, fields, ADMIN_AUTH_HEADERS)
-            : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
+      byName
+        ? getEntityByName(service.getFullyQualifiedName(), null, fields, ADMIN_AUTH_HEADERS)
+        : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
     // Checks for other owner, tags, and followers is done in the base class
     return service;
   }
@@ -250,13 +259,16 @@ public class MessagingServiceResourceTest extends ServiceResourceTest<MessagingS
   }
 
   private void validateConnection(
-      MessagingConnection expectedConnection,
-      MessagingConnection actualConnection,
-      MessagingServiceType messagingServiceType) {
-    if (expectedConnection != null
-        && actualConnection != null
-        && expectedConnection.getConfig() != null
-        && actualConnection.getConfig() != null) {
+    MessagingConnection expectedConnection,
+    MessagingConnection actualConnection,
+    MessagingServiceType messagingServiceType
+  ) {
+    if (
+      expectedConnection != null &&
+      actualConnection != null &&
+      expectedConnection.getConfig() != null &&
+      actualConnection.getConfig() != null
+    ) {
       if (messagingServiceType == MessagingServiceType.Kafka) {
         KafkaConnection expectedKafkaConnection = (KafkaConnection) expectedConnection.getConfig();
         KafkaConnection actualKafkaConnection;

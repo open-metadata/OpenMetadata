@@ -29,6 +29,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class ChartRepository extends EntityRepository<Chart> {
+
   public ChartRepository() {
     super(ChartResource.COLLECTION_PATH, Entity.CHART, Chart.class, Entity.getCollectionDAO().chartDAO(), "", "");
     supportsSearch = true;
@@ -91,6 +92,7 @@ public class ChartRepository extends EntityRepository<Chart> {
   }
 
   public class ChartUpdater extends ColumnEntityUpdater {
+
     public ChartUpdater(Chart chart, Chart updated, Operation operation) {
       super(chart, updated, operation);
     }

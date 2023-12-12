@@ -6,8 +6,11 @@ import java.util.Collections;
 import java.util.Map;
 
 public class ReferrerPolicyHeaderFactory extends HeaderFactory {
+
   public static final String REFERRER_POLICY_HEADER = "Referrer-Policy";
-  @JsonProperty private ReferrerPolicyOption option;
+
+  @JsonProperty
+  private ReferrerPolicyOption option;
 
   public ReferrerPolicyHeaderFactory() {
     this.option = ReferrerPolicyOption.NO_REFERRER;

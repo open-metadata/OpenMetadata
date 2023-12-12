@@ -79,6 +79,7 @@ import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePipeline> {
+
   public static List<Task> TASKS;
 
   public PipelineResourceTest() {
@@ -92,12 +93,11 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     super.setup(test);
     TASKS = new ArrayList<>();
     for (int i = 0; i < 3; i++) {
-      Task task =
-          new Task()
-              .withName("task" + i)
-              .withDescription("description")
-              .withDisplayName("displayName")
-              .withSourceUrl("http://localhost:0");
+      Task task = new Task()
+        .withName("task" + i)
+        .withDescription("description")
+        .withDisplayName("displayName")
+        .withSourceUrl("http://localhost:0");
       TASKS.add(task);
     }
   }
@@ -119,7 +119,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
 
   @Override
   public void validateCreatedEntity(Pipeline pipeline, CreatePipeline createRequest, Map<String, String> authHeaders)
-      throws HttpResponseException {
+    throws HttpResponseException {
     assertNotNull(pipeline.getServiceType());
     assertReference(createRequest.getService(), pipeline.getService());
     validateTasks(createRequest.getTasks(), pipeline.getTasks());
@@ -136,8 +136,9 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     for (Task expectedTask : expected) {
       Task actualTask = actual.get(i);
       assertTrue(
-          expectedTask.getName().equals(actualTask.getName())
-              || expectedTask.getName().equals(actualTask.getDisplayName()));
+        expectedTask.getName().equals(actualTask.getName()) ||
+        expectedTask.getName().equals(actualTask.getDisplayName())
+      );
       if (expectedTask.getTags() != null && !expectedTask.getTags().isEmpty() && actualTask.getTags() != null) {
         TestUtils.validateTags(expectedTask.getTags(), actualTask.getTags());
       }
@@ -147,7 +148,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
 
   @Override
   public void compareEntities(Pipeline expected, Pipeline updated, Map<String, String> authHeaders)
-      throws HttpResponseException {
+    throws HttpResponseException {
     assertEquals(expected.getDisplayName(), updated.getDisplayName());
     assertReference(expected.getService(), updated.getService());
     validateTasks(expected.getTasks(), updated.getTasks());
@@ -161,8 +162,9 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     }
     if (fieldName.contains("tasks") && !fieldName.contains(".")) {
       @SuppressWarnings("unchecked")
-      List<Task> expectedTasks =
-          expected instanceof List ? (List<Task>) expected : JsonUtils.readObjects(expected.toString(), Task.class);
+      List<Task> expectedTasks = expected instanceof List
+        ? (List<Task>) expected
+        : JsonUtils.readObjects(expected.toString(), Task.class);
       List<Task> actualTasks = JsonUtils.readObjects(actual.toString(), Task.class);
       validateTasks(expectedTasks, actualTasks);
     } else {
@@ -183,7 +185,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
 
   @Test
   void post_PipelineWithDifferentService_200_ok(TestInfo test) throws IOException {
-    String[] differentServices = {AIRFLOW_REFERENCE.getFullyQualifiedName(), GLUE_REFERENCE.getFullyQualifiedName()};
+    String[] differentServices = { AIRFLOW_REFERENCE.getFullyQualifiedName(), GLUE_REFERENCE.getFullyQualifiedName() };
 
     // Create Pipeline for each service and test APIs
     for (String service : differentServices) {
@@ -212,23 +214,24 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
 
   @Test
   void put_PipelineUrlUpdate_200(TestInfo test) throws IOException {
-    CreatePipeline request =
-        createRequest(test).withService(AIRFLOW_REFERENCE.getFullyQualifiedName()).withDescription("description");
+    CreatePipeline request = createRequest(test)
+      .withService(AIRFLOW_REFERENCE.getFullyQualifiedName())
+      .withDescription("description");
     createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
     String pipelineURL = "https://airflow.open-metadata.org/tree?dag_id=airflow_redshift_usage";
     Integer pipelineConcurrency = 110;
     Date startDate = new DateTime("2021-11-13T20:20:39+00:00").toDate();
 
     // Updating description is ignored when backend already has description
-    Pipeline pipeline =
-        updateEntity(
-            request.withSourceUrl(pipelineURL).withConcurrency(pipelineConcurrency).withStartDate(startDate),
-            OK,
-            ADMIN_AUTH_HEADERS);
-    String expectedFQN =
-        FullyQualifiedName.add(
-            EntityInterfaceUtil.quoteName(AIRFLOW_REFERENCE.getName()),
-            EntityInterfaceUtil.quoteName(pipeline.getName()));
+    Pipeline pipeline = updateEntity(
+      request.withSourceUrl(pipelineURL).withConcurrency(pipelineConcurrency).withStartDate(startDate),
+      OK,
+      ADMIN_AUTH_HEADERS
+    );
+    String expectedFQN = FullyQualifiedName.add(
+      EntityInterfaceUtil.quoteName(AIRFLOW_REFERENCE.getName()),
+      EntityInterfaceUtil.quoteName(pipeline.getName())
+    );
     assertEquals(pipelineURL, pipeline.getSourceUrl());
     assertEquals(startDate, pipeline.getStartDate());
     assertEquals(pipelineConcurrency, pipeline.getConcurrency());
@@ -237,11 +240,10 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
 
   @Test
   void put_PipelineTasksUpdate_200(TestInfo test) throws IOException {
-    CreatePipeline request =
-        createRequest(test)
-            .withService(AIRFLOW_REFERENCE.getFullyQualifiedName())
-            .withDescription(null)
-            .withTasks(null);
+    CreatePipeline request = createRequest(test)
+      .withService(AIRFLOW_REFERENCE.getFullyQualifiedName())
+      .withDescription(null)
+      .withTasks(null);
     Pipeline pipeline = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     // Add description and tasks
@@ -250,8 +252,13 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     fieldAdded(change, "tasks", TASKS);
 
     pipeline =
-        updateAndCheckEntity(
-            request.withDescription("newDescription").withTasks(TASKS), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+      updateAndCheckEntity(
+        request.withDescription("newDescription").withTasks(TASKS),
+        OK,
+        ADMIN_AUTH_HEADERS,
+        MINOR_UPDATE,
+        change
+      );
 
     // Add a task without description
     change = getChangeDescription(pipeline, MINOR_UPDATE);
@@ -283,13 +290,13 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     CreatePipeline request = createRequest(test).withService(AIRFLOW_REFERENCE.getFullyQualifiedName());
     Pipeline pipeline = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
-    List<Task> newTask =
-        Collections.singletonList(
-            new Task()
-                .withName("newTask")
-                .withDescription("description")
-                .withDisplayName("displayName")
-                .withSourceUrl("http://localhost:0"));
+    List<Task> newTask = Collections.singletonList(
+      new Task()
+        .withName("newTask")
+        .withDescription("description")
+        .withDisplayName("displayName")
+        .withSourceUrl("http://localhost:0")
+    );
 
     ChangeDescription change = getChangeDescription(pipeline, MINOR_UPDATE);
     fieldAdded(change, "tasks", newTask);
@@ -307,22 +314,21 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     Status t2Status = new Status().withName("task2").withExecutionStatus(StatusType.Failed);
     List<Status> taskStatus = List.of(t1Status, t2Status);
 
-    PipelineStatus pipelineStatus =
-        new PipelineStatus()
-            .withExecutionStatus(StatusType.Failed)
-            .withTimestamp(TestUtils.dateToTimestamp("2022-01-15"))
-            .withTaskStatus(taskStatus);
+    PipelineStatus pipelineStatus = new PipelineStatus()
+      .withExecutionStatus(StatusType.Failed)
+      .withTimestamp(TestUtils.dateToTimestamp("2022-01-15"))
+      .withTaskStatus(taskStatus);
 
     Pipeline putResponse = putPipelineStatusData(pipeline.getFullyQualifiedName(), pipelineStatus, ADMIN_AUTH_HEADERS);
     // Validate put response
     verifyPipelineStatus(putResponse.getPipelineStatus(), pipelineStatus);
 
-    ResultList<PipelineStatus> pipelineStatues =
-        getPipelineStatues(
-            pipeline.getFullyQualifiedName(),
-            TestUtils.dateToTimestamp("2022-01-15"),
-            TestUtils.dateToTimestamp("2022-01-16"),
-            ADMIN_AUTH_HEADERS);
+    ResultList<PipelineStatus> pipelineStatues = getPipelineStatues(
+      pipeline.getFullyQualifiedName(),
+      TestUtils.dateToTimestamp("2022-01-15"),
+      TestUtils.dateToTimestamp("2022-01-16"),
+      ADMIN_AUTH_HEADERS
+    );
     verifyPipelineStatuses(pipelineStatues, List.of(pipelineStatus), 1);
 
     // Validate that a new GET will come with the proper status
@@ -330,50 +336,52 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     verifyPipelineStatus(pipeline.getPipelineStatus(), pipelineStatus);
 
     // PUT another status and validate
-    PipelineStatus newPipelineStatus =
-        new PipelineStatus()
-            .withExecutionStatus(StatusType.Failed)
-            .withTimestamp(TestUtils.dateToTimestamp("2022-01-16"))
-            .withTaskStatus(taskStatus);
+    PipelineStatus newPipelineStatus = new PipelineStatus()
+      .withExecutionStatus(StatusType.Failed)
+      .withTimestamp(TestUtils.dateToTimestamp("2022-01-16"))
+      .withTaskStatus(taskStatus);
 
     putResponse = putPipelineStatusData(pipeline.getFullyQualifiedName(), newPipelineStatus, ADMIN_AUTH_HEADERS);
     // Validate put response
     verifyPipelineStatus(putResponse.getPipelineStatus(), newPipelineStatus);
     pipelineStatues =
-        getPipelineStatues(
-            pipeline.getFullyQualifiedName(),
-            TestUtils.dateToTimestamp("2022-01-15"),
-            TestUtils.dateToTimestamp("2022-01-16"),
-            ADMIN_AUTH_HEADERS);
+      getPipelineStatues(
+        pipeline.getFullyQualifiedName(),
+        TestUtils.dateToTimestamp("2022-01-15"),
+        TestUtils.dateToTimestamp("2022-01-16"),
+        ADMIN_AUTH_HEADERS
+      );
     verifyPipelineStatuses(pipelineStatues, List.of(pipelineStatus, newPipelineStatus), 2);
 
     // Validate put response
     verifyPipelineStatus(putResponse.getPipelineStatus(), newPipelineStatus);
     pipelineStatues =
-        getPipelineStatues(
-            pipeline.getFullyQualifiedName(),
-            TestUtils.dateToTimestamp("2022-01-15"),
-            TestUtils.dateToTimestamp("2022-01-16"),
-            ADMIN_AUTH_HEADERS);
+      getPipelineStatues(
+        pipeline.getFullyQualifiedName(),
+        TestUtils.dateToTimestamp("2022-01-15"),
+        TestUtils.dateToTimestamp("2022-01-16"),
+        ADMIN_AUTH_HEADERS
+      );
     verifyPipelineStatuses(pipelineStatues, List.of(pipelineStatus, newPipelineStatus), 2);
 
     String dateStr = "2021-09-";
     List<PipelineStatus> pipelineStatusList = new ArrayList<>();
     for (int i = 11; i <= 20; i++) {
       pipelineStatus =
-          new PipelineStatus()
-              .withExecutionStatus(StatusType.Failed)
-              .withTimestamp(TestUtils.dateToTimestamp(dateStr + i))
-              .withTaskStatus(taskStatus);
+        new PipelineStatus()
+          .withExecutionStatus(StatusType.Failed)
+          .withTimestamp(TestUtils.dateToTimestamp(dateStr + i))
+          .withTaskStatus(taskStatus);
       putPipelineStatusData(pipeline.getFullyQualifiedName(), pipelineStatus, ADMIN_AUTH_HEADERS);
       pipelineStatusList.add(pipelineStatus);
     }
     pipelineStatues =
-        getPipelineStatues(
-            pipeline.getFullyQualifiedName(),
-            TestUtils.dateToTimestamp("2021-09-11"),
-            TestUtils.dateToTimestamp("2021-09-20"),
-            ADMIN_AUTH_HEADERS);
+      getPipelineStatues(
+        pipeline.getFullyQualifiedName(),
+        TestUtils.dateToTimestamp("2021-09-11"),
+        TestUtils.dateToTimestamp("2021-09-20"),
+        ADMIN_AUTH_HEADERS
+      );
     verifyPipelineStatuses(pipelineStatues, pipelineStatusList, 10);
 
     // create another table and add profiles
@@ -382,29 +390,34 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     dateStr = "2021-10-";
     for (int i = 11; i <= 15; i++) {
       pipelineStatus =
-          new PipelineStatus()
-              .withExecutionStatus(StatusType.Failed)
-              .withTimestamp(TestUtils.dateToTimestamp(dateStr + i))
-              .withTaskStatus(taskStatus);
+        new PipelineStatus()
+          .withExecutionStatus(StatusType.Failed)
+          .withTimestamp(TestUtils.dateToTimestamp(dateStr + i))
+          .withTaskStatus(taskStatus);
       putPipelineStatusData(pipeline1.getFullyQualifiedName(), pipelineStatus, ADMIN_AUTH_HEADERS);
       pipeline1StatusList.add(pipelineStatus);
     }
     pipelineStatues =
-        getPipelineStatues(
-            pipeline1.getFullyQualifiedName(),
-            TestUtils.dateToTimestamp("2021-10-11"),
-            TestUtils.dateToTimestamp("2021-10-15"),
-            ADMIN_AUTH_HEADERS);
+      getPipelineStatues(
+        pipeline1.getFullyQualifiedName(),
+        TestUtils.dateToTimestamp("2021-10-11"),
+        TestUtils.dateToTimestamp("2021-10-15"),
+        ADMIN_AUTH_HEADERS
+      );
     verifyPipelineStatuses(pipelineStatues, pipeline1StatusList, 5);
     deletePipelineStatus(
-        pipeline1.getFullyQualifiedName(), TestUtils.dateToTimestamp("2021-10-11"), ADMIN_AUTH_HEADERS);
+      pipeline1.getFullyQualifiedName(),
+      TestUtils.dateToTimestamp("2021-10-11"),
+      ADMIN_AUTH_HEADERS
+    );
     pipeline1StatusList.remove(0);
     pipelineStatues =
-        getPipelineStatues(
-            pipeline1.getFullyQualifiedName(),
-            TestUtils.dateToTimestamp("2021-10-11"),
-            TestUtils.dateToTimestamp("2021-10-15"),
-            ADMIN_AUTH_HEADERS);
+      getPipelineStatues(
+        pipeline1.getFullyQualifiedName(),
+        TestUtils.dateToTimestamp("2021-10-11"),
+        TestUtils.dateToTimestamp("2021-10-15"),
+        ADMIN_AUTH_HEADERS
+      );
     verifyPipelineStatuses(pipelineStatues, pipeline1StatusList, 4);
   }
 
@@ -420,16 +433,16 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     Status t2Status = new Status().withName("invalidTask").withExecutionStatus(StatusType.Failed);
     List<Status> taskStatus = List.of(t1Status, t2Status);
 
-    PipelineStatus pipelineStatus =
-        new PipelineStatus()
-            .withExecutionStatus(StatusType.Failed)
-            .withTimestamp(format.parse("2022-01-16").getTime())
-            .withTaskStatus(taskStatus);
+    PipelineStatus pipelineStatus = new PipelineStatus()
+      .withExecutionStatus(StatusType.Failed)
+      .withTimestamp(format.parse("2022-01-16").getTime())
+      .withTaskStatus(taskStatus);
 
     assertResponseContains(
-        () -> putPipelineStatusData(pipeline.getFullyQualifiedName(), pipelineStatus, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "Invalid task name invalidTask");
+      () -> putPipelineStatusData(pipeline.getFullyQualifiedName(), pipelineStatus, ADMIN_AUTH_HEADERS),
+      BAD_REQUEST,
+      "Invalid task name invalidTask"
+    );
   }
 
   @Test
@@ -457,10 +470,9 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     origJson = JsonUtils.pojoToJson(pipeline);
     change = getChangeDescription(pipeline, CHANGE_CONSOLIDATED);
     List<Task> newTasks = new ArrayList<>();
-    Task taskWithDesc =
-        taskEmptyDesc
-            .withDescription("taskDescription")
-            .withTags(List.of(USER_ADDRESS_TAG_LABEL, PII_SENSITIVE_TAG_LABEL));
+    Task taskWithDesc = taskEmptyDesc
+      .withDescription("taskDescription")
+      .withTags(List.of(USER_ADDRESS_TAG_LABEL, PII_SENSITIVE_TAG_LABEL));
     newTasks.add(taskWithDesc);
     fieldAdded(change, "tasks", newTasks);
     fieldUpdated(change, "description", "", "newDescription");
@@ -498,13 +510,12 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
 
   @Test
   void put_AddRemovePipelineTasksUpdate_200(TestInfo test) throws IOException {
-    CreatePipeline request =
-        createRequest(test)
-            .withService(AIRFLOW_REFERENCE.getFullyQualifiedName())
-            .withDescription(null)
-            .withTasks(null)
-            .withConcurrency(null)
-            .withSourceUrl("http://localhost:8080");
+    CreatePipeline request = createRequest(test)
+      .withService(AIRFLOW_REFERENCE.getFullyQualifiedName())
+      .withDescription(null)
+      .withTasks(null)
+      .withConcurrency(null)
+      .withSourceUrl("http://localhost:8080");
     Pipeline pipeline = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     // Add tasks and description
@@ -514,27 +525,27 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     fieldAdded(change, "concurrency", 5);
     fieldUpdated(change, "sourceUrl", "http://localhost:8080", "https://airflow.open-metadata.org");
     pipeline =
-        updateAndCheckEntity(
-            request
-                .withDescription("newDescription")
-                .withTasks(TASKS)
-                .withConcurrency(5)
-                .withSourceUrl("https://airflow.open-metadata.org"),
-            OK,
-            ADMIN_AUTH_HEADERS,
-            MINOR_UPDATE,
-            change);
+      updateAndCheckEntity(
+        request
+          .withDescription("newDescription")
+          .withTasks(TASKS)
+          .withConcurrency(5)
+          .withSourceUrl("https://airflow.open-metadata.org"),
+        OK,
+        ADMIN_AUTH_HEADERS,
+        MINOR_UPDATE,
+        change
+      );
 
     assertEquals(3, pipeline.getTasks().size());
 
     List<Task> new_tasks = new ArrayList<>();
     for (int i = 1; i < 3; i++) { // remove task0
-      Task task =
-          new Task()
-              .withName("task" + i)
-              .withDescription("description")
-              .withDisplayName("displayName")
-              .withSourceUrl("http://localhost:0");
+      Task task = new Task()
+        .withName("task" + i)
+        .withDescription("description")
+        .withDisplayName("displayName")
+        .withSourceUrl("http://localhost:0");
       new_tasks.add(task);
     }
     request.setTasks(new_tasks);
@@ -558,33 +569,39 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
   void testInheritedPermissionFromParent() throws IOException {
     // Create a pipeline service with owner data consumer
     PipelineServiceResourceTest serviceTest = new PipelineServiceResourceTest();
-    CreatePipelineService createPipelineService =
-        serviceTest.createRequest("testInheritedPermissions").withOwner(DATA_CONSUMER.getEntityReference());
+    CreatePipelineService createPipelineService = serviceTest
+      .createRequest("testInheritedPermissions")
+      .withOwner(DATA_CONSUMER.getEntityReference());
     PipelineService service = serviceTest.createEntity(createPipelineService, ADMIN_AUTH_HEADERS);
 
     // Data consumer as an owner of the service can create pipeline under it
     createEntity(
-        createRequest("pipeline").withService(service.getFullyQualifiedName()), authHeaders(DATA_CONSUMER.getName()));
+      createRequest("pipeline").withService(service.getFullyQualifiedName()),
+      authHeaders(DATA_CONSUMER.getName())
+    );
   }
 
   @Test
   void test_TaskWithInvalidTag(TestInfo test) throws HttpResponseException {
     // Add an entity with invalid tag
     TagLabel invalidTag = new TagLabel().withTagFQN("invalidTag");
-    List<Task> invalidTagTasks =
-        List.of(new Task().withName("task").withDescription("desc").withTags(listOf(invalidTag)));
+    List<Task> invalidTagTasks = List.of(
+      new Task().withName("task").withDescription("desc").withTags(listOf(invalidTag))
+    );
     CreatePipeline create = createRequest(getEntityName(test)).withTasks(invalidTagTasks);
 
     // Entity can't be created with PUT or POST
     assertResponse(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS),
-        NOT_FOUND,
-        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+      () -> createEntity(create, ADMIN_AUTH_HEADERS),
+      NOT_FOUND,
+      CatalogExceptionMessage.entityNotFound(TAG, "invalidTag")
+    );
 
     assertResponse(
-        () -> updateEntity(create, Response.Status.CREATED, ADMIN_AUTH_HEADERS),
-        NOT_FOUND,
-        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+      () -> updateEntity(create, Response.Status.CREATED, ADMIN_AUTH_HEADERS),
+      NOT_FOUND,
+      CatalogExceptionMessage.entityNotFound(TAG, "invalidTag")
+    );
 
     // Create an entity and update the columns with PUT and PATCH with an invalid tag
     List<Task> validTagTasks = List.of(new Task().withName("task").withDescription("desc"));
@@ -594,15 +611,17 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
 
     create.setTasks(invalidTagTasks);
     assertResponse(
-        () -> updateEntity(create, Response.Status.CREATED, ADMIN_AUTH_HEADERS),
-        NOT_FOUND,
-        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+      () -> updateEntity(create, Response.Status.CREATED, ADMIN_AUTH_HEADERS),
+      NOT_FOUND,
+      CatalogExceptionMessage.entityNotFound(TAG, "invalidTag")
+    );
 
     entity.setTags(listOf(invalidTag));
     assertResponse(
-        () -> patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS),
-        NOT_FOUND,
-        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+      () -> patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS),
+      NOT_FOUND,
+      CatalogExceptionMessage.entityNotFound(TAG, "invalidTag")
+    );
 
     // No lingering relationships should cause error in listing the entity
     listEntities(null, ADMIN_AUTH_HEADERS);
@@ -612,23 +631,24 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
   public Pipeline validateGetWithDifferentFields(Pipeline pipeline, boolean byName) throws HttpResponseException {
     String fields = "";
     pipeline =
-        byName
-            ? getPipelineByName(pipeline.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getPipeline(pipeline.getId(), fields, ADMIN_AUTH_HEADERS);
+      byName
+        ? getPipelineByName(pipeline.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+        : getPipeline(pipeline.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(pipeline.getService(), pipeline.getServiceType());
     assertListNull(
-        pipeline.getOwner(),
-        pipeline.getTasks(),
-        pipeline.getPipelineStatus(),
-        pipeline.getTags(),
-        pipeline.getFollowers(),
-        pipeline.getTags());
+      pipeline.getOwner(),
+      pipeline.getTasks(),
+      pipeline.getPipelineStatus(),
+      pipeline.getTags(),
+      pipeline.getFollowers(),
+      pipeline.getTags()
+    );
 
     fields = "owner,tasks,pipelineStatus,followers,tags,scheduleInterval";
     pipeline =
-        byName
-            ? getPipelineByName(pipeline.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getPipeline(pipeline.getId(), fields, ADMIN_AUTH_HEADERS);
+      byName
+        ? getPipelineByName(pipeline.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+        : getPipeline(pipeline.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(pipeline.getService(), pipeline.getServiceType());
     // Checks for other owner, tags, and followers is done in the base class
     return pipeline;
@@ -641,7 +661,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
   }
 
   public Pipeline getPipelineByName(String fqn, String fields, Map<String, String> authHeaders)
-      throws HttpResponseException {
+    throws HttpResponseException {
     WebTarget target = getResource("pipelines/name/").path(fqn);
     target = fields != null ? target.queryParam("fields", fields) : target;
     return TestUtils.get(target, Pipeline.class, authHeaders);
@@ -649,19 +669,24 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
 
   // Prepare Pipeline status endpoint for PUT
   public Pipeline putPipelineStatusData(String fqn, PipelineStatus data, Map<String, String> authHeaders)
-      throws HttpResponseException {
+    throws HttpResponseException {
     WebTarget target = getResource("pipelines/").path(fqn).path("/status");
     return TestUtils.put(target, data, Pipeline.class, OK, authHeaders);
   }
 
   public void deletePipelineStatus(String fqn, Long timestamp, Map<String, String> authHeaders)
-      throws HttpResponseException {
+    throws HttpResponseException {
     WebTarget target = getResource("pipelines/").path(fqn).path("/status/").path(String.valueOf(timestamp));
     TestUtils.delete(target, Pipeline.class, authHeaders);
   }
 
   public ResultList<PipelineStatus> getPipelineStatues(
-      String fqn, Long startTs, Long endTs, Map<String, String> authHeaders) throws HttpResponseException {
+    String fqn,
+    Long startTs,
+    Long endTs,
+    Map<String, String> authHeaders
+  )
+    throws HttpResponseException {
     WebTarget target = getResource("pipelines/").path(fqn).path("/status");
     target = target.queryParam("startTs", startTs).queryParam("endTs", endTs);
     return TestUtils.get(target, PipelineResource.PipelineStatusList.class, authHeaders);
@@ -669,7 +694,10 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
 
   // Check that the inserted status are properly stored
   private void verifyPipelineStatuses(
-      ResultList<PipelineStatus> actualStatuses, List<PipelineStatus> expectedStatuses, int expectedCount) {
+    ResultList<PipelineStatus> actualStatuses,
+    List<PipelineStatus> expectedStatuses,
+    int expectedCount
+  ) {
     assertEquals(expectedCount, actualStatuses.getPaging().getTotal());
     assertEquals(expectedStatuses.size(), actualStatuses.getData().size());
     Map<Long, PipelineStatus> pipelineStatusMap = new HashMap<>();

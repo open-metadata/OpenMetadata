@@ -29,10 +29,12 @@ public class SearchEntityIndex implements SearchIndex {
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.SEARCH_INDEX);
     doc.put(
-        "fqnParts",
-        getFQNParts(
-            searchIndex.getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+      "fqnParts",
+      getFQNParts(
+        searchIndex.getFullyQualifiedName(),
+        suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())
+      )
+    );
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.SEARCH_INDEX, searchIndex));
     doc.put("tags", parseTags.getTags());
     doc.put("tier", parseTags.getTierTag());

@@ -68,6 +68,7 @@ import org.openmetadata.service.util.TestUtils;
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class LineageResourceTest extends OpenMetadataApplicationTest {
+
   public static final List<Table> TABLES = new ArrayList<>();
   public static final int TABLE_COUNT = 10;
   private static final String DATA_STEWARD_ROLE_NAME = "DataSteward";
@@ -100,19 +101,25 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
   void put_delete_lineage_withAuthorizer() throws HttpResponseException {
     // Random user cannot update lineage.
     UserResourceTest userResourceTest = new UserResourceTest();
-    User randomUser =
-        userResourceTest.createEntity(userResourceTest.createRequest("lineage_user", "", "", null), ADMIN_AUTH_HEADERS);
+    User randomUser = userResourceTest.createEntity(
+      userResourceTest.createRequest("lineage_user", "", "", null),
+      ADMIN_AUTH_HEADERS
+    );
 
     // User with Data Steward role. Data Steward role has a default policy to allow update for lineage.
     RoleResourceTest roleResourceTest = new RoleResourceTest();
-    Role dataStewardRole =
-        roleResourceTest.getEntityByName(DATA_STEWARD_ROLE_NAME, null, RoleResource.FIELDS, ADMIN_AUTH_HEADERS);
-    User userWithDataStewardRole =
-        userResourceTest.createEntity(
-            userResourceTest
-                .createRequest("lineage_user_data_steward", "", "", null)
-                .withRoles(List.of(dataStewardRole.getId())),
-            ADMIN_AUTH_HEADERS);
+    Role dataStewardRole = roleResourceTest.getEntityByName(
+      DATA_STEWARD_ROLE_NAME,
+      null,
+      RoleResource.FIELDS,
+      ADMIN_AUTH_HEADERS
+    );
+    User userWithDataStewardRole = userResourceTest.createEntity(
+      userResourceTest
+        .createRequest("lineage_user_data_steward", "", "", null)
+        .withRoles(List.of(dataStewardRole.getId())),
+      ADMIN_AUTH_HEADERS
+    );
 
     // Admins are able to add or delete edges.
     checkAuthorization(ADMIN_USER_NAME, false);
@@ -127,13 +134,15 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
 
     if (shouldThrowException) {
       assertResponse(
-          () -> addEdge(TABLES.get(1), TABLES.get(2), null, authHeaders),
-          FORBIDDEN,
-          permissionNotAllowed(userName, List.of(MetadataOperation.EDIT_LINEAGE)));
+        () -> addEdge(TABLES.get(1), TABLES.get(2), null, authHeaders),
+        FORBIDDEN,
+        permissionNotAllowed(userName, List.of(MetadataOperation.EDIT_LINEAGE))
+      );
       assertResponse(
-          () -> deleteEdge(TABLES.get(1), TABLES.get(2), authHeaders),
-          FORBIDDEN,
-          permissionNotAllowed(userName, List.of(MetadataOperation.EDIT_LINEAGE)));
+        () -> deleteEdge(TABLES.get(1), TABLES.get(2), authHeaders),
+        FORBIDDEN,
+        permissionNotAllowed(userName, List.of(MetadataOperation.EDIT_LINEAGE))
+      );
       return;
     }
 
@@ -183,52 +192,57 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
 
     // GET lineage by id and fqn and ensure it is correct
     assertLineage(
-        Entity.TABLE,
-        TABLES.get(4).getId(),
-        TABLES.get(4).getFullyQualifiedName(),
-        3,
-        3,
-        expectedUpstreamEdges,
-        expectedDownstreamEdges);
+      Entity.TABLE,
+      TABLES.get(4).getId(),
+      TABLES.get(4).getFullyQualifiedName(),
+      3,
+      3,
+      expectedUpstreamEdges,
+      expectedDownstreamEdges
+    );
 
     // Test table4 partial lineage with various upstream and downstream depths
     // First upstream and downstream depth of 0
     assertLineage(
-        Entity.TABLE,
-        TABLES.get(4).getId(),
-        TABLES.get(4).getFullyQualifiedName(),
-        0,
-        0,
-        Arrays.copyOfRange(expectedUpstreamEdges, 0, 0),
-        Arrays.copyOfRange(expectedDownstreamEdges, 0, 0));
+      Entity.TABLE,
+      TABLES.get(4).getId(),
+      TABLES.get(4).getFullyQualifiedName(),
+      0,
+      0,
+      Arrays.copyOfRange(expectedUpstreamEdges, 0, 0),
+      Arrays.copyOfRange(expectedDownstreamEdges, 0, 0)
+    );
     // Upstream and downstream depth of 1
     assertLineage(
-        Entity.TABLE,
-        TABLES.get(4).getId(),
-        TABLES.get(4).getFullyQualifiedName(),
-        1,
-        1,
-        Arrays.copyOfRange(expectedUpstreamEdges, 0, 3),
-        Arrays.copyOfRange(expectedDownstreamEdges, 0, 3));
+      Entity.TABLE,
+      TABLES.get(4).getId(),
+      TABLES.get(4).getFullyQualifiedName(),
+      1,
+      1,
+      Arrays.copyOfRange(expectedUpstreamEdges, 0, 3),
+      Arrays.copyOfRange(expectedDownstreamEdges, 0, 3)
+    );
     // Upstream and downstream depth of 2
     assertLineage(
-        Entity.TABLE,
-        TABLES.get(4).getId(),
-        TABLES.get(4).getFullyQualifiedName(),
-        2,
-        2,
-        Arrays.copyOfRange(expectedUpstreamEdges, 0, 4),
-        Arrays.copyOfRange(expectedDownstreamEdges, 0, 4));
+      Entity.TABLE,
+      TABLES.get(4).getId(),
+      TABLES.get(4).getFullyQualifiedName(),
+      2,
+      2,
+      Arrays.copyOfRange(expectedUpstreamEdges, 0, 4),
+      Arrays.copyOfRange(expectedDownstreamEdges, 0, 4)
+    );
 
     // Upstream and downstream depth as null to test for default value of 1
     assertLineage(
-        Entity.TABLE,
-        TABLES.get(4).getId(),
-        TABLES.get(4).getFullyQualifiedName(),
-        null,
-        null,
-        Arrays.copyOfRange(expectedUpstreamEdges, 0, 3),
-        Arrays.copyOfRange(expectedDownstreamEdges, 0, 3));
+      Entity.TABLE,
+      TABLES.get(4).getId(),
+      TABLES.get(4).getFullyQualifiedName(),
+      null,
+      null,
+      Arrays.copyOfRange(expectedUpstreamEdges, 0, 3),
+      Arrays.copyOfRange(expectedDownstreamEdges, 0, 3)
+    );
 
     //
     // Delete all the lineage edges
@@ -247,7 +261,14 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
 
     // Ensure upstream and downstream lineage is empty
     assertLineage(
-        Entity.TABLE, TABLES.get(4).getId(), TABLES.get(4).getFullyQualifiedName(), 2, 2, new Edge[0], new Edge[0]);
+      Entity.TABLE,
+      TABLES.get(4).getId(),
+      TABLES.get(4).getFullyQualifiedName(),
+      2,
+      2,
+      new Edge[0],
+      new Edge[0]
+    );
   }
 
   @Order(3)
@@ -270,25 +291,27 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
 
     // Add invalid column lineage (from column or to column are invalid)
     details
-        .getColumnsLineage()
-        .add(new ColumnLineage().withFromColumns(List.of("invalidColumn")).withToColumn(t2c1FQN));
+      .getColumnsLineage()
+      .add(new ColumnLineage().withFromColumns(List.of("invalidColumn")).withToColumn(t2c1FQN));
     assertResponse(
-        () -> addEdge(TABLES.get(0), TABLES.get(1), details, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "Invalid fully qualified column name invalidColumn");
+      () -> addEdge(TABLES.get(0), TABLES.get(1), details, ADMIN_AUTH_HEADERS),
+      BAD_REQUEST,
+      "Invalid fully qualified column name invalidColumn"
+    );
     details
-        .getColumnsLineage()
-        .add(new ColumnLineage().withFromColumns(List.of(t1c1FQN)).withToColumn("invalidColumn"));
+      .getColumnsLineage()
+      .add(new ColumnLineage().withFromColumns(List.of(t1c1FQN)).withToColumn("invalidColumn"));
     assertResponse(
-        () -> addEdge(TABLES.get(0), TABLES.get(1), details, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "Invalid fully qualified column name invalidColumn");
+      () -> addEdge(TABLES.get(0), TABLES.get(1), details, ADMIN_AUTH_HEADERS),
+      BAD_REQUEST,
+      "Invalid fully qualified column name invalidColumn"
+    );
 
     // Add column level lineage with multiple fromColumns (t1c1 + t3c1) to t2c1
     details.getColumnsLineage().clear();
     details
-        .getColumnsLineage()
-        .add(new ColumnLineage().withFromColumns(List.of(t1c1FQN, t3c1FQN)).withToColumn(t2c1FQN));
+      .getColumnsLineage()
+      .add(new ColumnLineage().withFromColumns(List.of(t1c1FQN, t3c1FQN)).withToColumn(t2c1FQN));
     addEdge(TABLES.get(0), TABLES.get(1), details, ADMIN_AUTH_HEADERS);
 
     // Finally, add detailed column level lineage
@@ -304,7 +327,6 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
   @Order(4)
   @Test
   void putLineageFromDashboardDataModelToTable() throws HttpResponseException {
-
     // Add column lineage dashboard.d1 -> table.c1
     LineageDetails details = new LineageDetails();
     String d1c1FQN = DATA_MODEL.getColumns().get(0).getFullyQualifiedName();
@@ -322,9 +344,10 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     addEdge(TABLE_DATA_MODEL_LINEAGE, DATA_MODEL, details, ADMIN_AUTH_HEADERS);
 
     assertResponse(
-        () -> addEdge(DATA_MODEL, TABLE_DATA_MODEL_LINEAGE, details, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "Column level lineage is only allowed between two tables or from table to dashboard.");
+      () -> addEdge(DATA_MODEL, TABLE_DATA_MODEL_LINEAGE, details, ADMIN_AUTH_HEADERS),
+      BAD_REQUEST,
+      "Column level lineage is only allowed between two tables or from table to dashboard."
+    );
   }
 
   @Order(5)
@@ -350,16 +373,19 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
   }
 
   private void addEdge(
-      EntityInterface from, EntityInterface to, LineageDetails details, Map<String, String> authHeaders)
-      throws HttpResponseException {
+    EntityInterface from,
+    EntityInterface to,
+    LineageDetails details,
+    Map<String, String> authHeaders
+  )
+    throws HttpResponseException {
     if (details != null) {
       details.setSqlQuery("select *;");
     }
-    EntitiesEdge edge =
-        new EntitiesEdge()
-            .withFromEntity(from.getEntityReference())
-            .withToEntity(to.getEntityReference())
-            .withLineageDetails(details);
+    EntitiesEdge edge = new EntitiesEdge()
+      .withFromEntity(from.getEntityReference())
+      .withToEntity(to.getEntityReference())
+      .withLineageDetails(details);
     AddLineage addLineage = new AddLineage().withEdge(edge);
     addLineageAndCheck(addLineage, authHeaders);
   }
@@ -369,8 +395,9 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
   }
 
   private void deleteEdge(Table from, Table to, Map<String, String> authHeaders) throws HttpResponseException {
-    EntitiesEdge edge =
-        new EntitiesEdge().withFromEntity(from.getEntityReference()).withToEntity(to.getEntityReference());
+    EntitiesEdge edge = new EntitiesEdge()
+      .withFromEntity(from.getEntityReference())
+      .withToEntity(to.getEntityReference());
     deleteLineageAndCheck(edge, authHeaders);
   }
 
@@ -380,7 +407,7 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
   }
 
   public void deleteLineageAndCheck(EntitiesEdge deleteEdge, Map<String, String> authHeaders)
-      throws HttpResponseException {
+    throws HttpResponseException {
     deleteLineage(deleteEdge, authHeaders);
     validateLineageDeleted(deleteEdge, authHeaders);
   }
@@ -390,14 +417,15 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
   }
 
   public void deleteLineage(EntitiesEdge edge, Map<String, String> authHeaders) throws HttpResponseException {
-    WebTarget target =
-        getResource(
-            String.format(
-                "lineage/%s/%s/%s/%s",
-                edge.getFromEntity().getType(),
-                edge.getFromEntity().getId(),
-                edge.getToEntity().getType(),
-                edge.getToEntity().getId()));
+    WebTarget target = getResource(
+      String.format(
+        "lineage/%s/%s/%s/%s",
+        edge.getFromEntity().getType(),
+        edge.getFromEntity().getId(),
+        edge.getToEntity().getType(),
+        edge.getToEntity().getId()
+      )
+    );
     TestUtils.delete(target, authHeaders);
   }
 
@@ -416,7 +444,7 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
   }
 
   private void validateLineageDeleted(EntitiesEdge deletedEdge, Map<String, String> authHeaders)
-      throws HttpResponseException {
+    throws HttpResponseException {
     EntityReference from = deletedEdge.getFromEntity();
     EntityReference to = deletedEdge.getToEntity();
     Edge expectedEdge = getEdge(from.getId(), to.getId(), deletedEdge.getLineageDetails());
@@ -437,33 +465,36 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     // Total number of from and to points in an edge must be equal to the number of nodes
     List<UUID> ids = new ArrayList<>();
     lineage
-        .getUpstreamEdges()
-        .forEach(
-            edge -> {
-              ids.add(edge.getFromEntity());
-              ids.add(edge.getToEntity());
-            });
+      .getUpstreamEdges()
+      .forEach(
+        edge -> {
+          ids.add(edge.getFromEntity());
+          ids.add(edge.getToEntity());
+        }
+      );
     lineage
-        .getDownstreamEdges()
-        .forEach(
-            edge -> {
-              ids.add(edge.getFromEntity());
-              ids.add(edge.getToEntity());
-            });
+      .getDownstreamEdges()
+      .forEach(
+        edge -> {
+          ids.add(edge.getFromEntity());
+          ids.add(edge.getToEntity());
+        }
+      );
     if (lineage.getNodes().size() != 0) {
       assertEquals((int) ids.stream().distinct().count(), lineage.getNodes().size() + 1);
     }
   }
 
   public void assertLineage(
-      String entityType,
-      UUID id,
-      String fqn,
-      Integer upstreamDepth,
-      Integer downstreamDepth,
-      Edge[] expectedUpstreamEdges,
-      Edge[] expectedDownstreamEdges)
-      throws HttpResponseException {
+    String entityType,
+    UUID id,
+    String fqn,
+    Integer upstreamDepth,
+    Integer downstreamDepth,
+    Edge[] expectedUpstreamEdges,
+    Edge[] expectedDownstreamEdges
+  )
+    throws HttpResponseException {
     EntityLineage lineageById = getLineage(entityType, id, upstreamDepth, downstreamDepth, ADMIN_AUTH_HEADERS);
     assertEdges(lineageById, expectedUpstreamEdges, expectedDownstreamEdges);
 
@@ -475,8 +506,13 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
   }
 
   public EntityLineage getLineage(
-      String entity, UUID id, Integer upstreamDepth, Integer downStreamDepth, Map<String, String> authHeaders)
-      throws HttpResponseException {
+    String entity,
+    UUID id,
+    Integer upstreamDepth,
+    Integer downStreamDepth,
+    Map<String, String> authHeaders
+  )
+    throws HttpResponseException {
     WebTarget target = getResource("lineage/" + entity + "/" + id);
     target = upstreamDepth != null ? target.queryParam("upstreamDepth", upstreamDepth) : target;
     target = downStreamDepth != null ? target.queryParam("downstreamDepth", downStreamDepth) : target;
@@ -486,8 +522,13 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
   }
 
   public EntityLineage getLineageByName(
-      String entity, String fqn, Integer upstreamDepth, Integer downStreamDepth, Map<String, String> authHeaders)
-      throws HttpResponseException {
+    String entity,
+    String fqn,
+    Integer upstreamDepth,
+    Integer downStreamDepth,
+    Map<String, String> authHeaders
+  )
+    throws HttpResponseException {
     WebTarget target = getResource("lineage/" + entity + "/name/").path(fqn);
     target = upstreamDepth != null ? target.queryParam("upstreamDepth", upstreamDepth) : target;
     target = downStreamDepth != null ? target.queryParam("downstreamDepth", downStreamDepth) : target;

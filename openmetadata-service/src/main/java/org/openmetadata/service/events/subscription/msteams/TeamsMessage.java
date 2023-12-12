@@ -10,9 +10,11 @@ import lombok.Setter;
 @Getter
 @Setter
 public class TeamsMessage {
+
   @Getter
   @Setter
   public static class Section {
+
     @JsonProperty("activityTitle")
     public String activityTitle;
 

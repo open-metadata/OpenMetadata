@@ -73,16 +73,15 @@ public class PasswordUtil {
     CharacterRule digitRule = new CharacterRule(digitChars);
     digitRule.setNumberOfCharacters(2);
 
-    CharacterData specialChars =
-        new CharacterData() {
-          public String getErrorCode() {
-            return "Invalid Special Char";
-          }
+    CharacterData specialChars = new CharacterData() {
+      public String getErrorCode() {
+        return "Invalid Special Char";
+      }
 
-          public String getCharacters() {
-            return "!@#$%^&*()_+";
-          }
-        };
+      public String getCharacters() {
+        return "!@#$%^&*()_+";
+      }
+    };
     CharacterRule splCharRule = new CharacterRule(specialChars);
     splCharRule.setNumberOfCharacters(2);
 

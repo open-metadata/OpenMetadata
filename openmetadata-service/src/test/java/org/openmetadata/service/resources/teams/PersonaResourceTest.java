@@ -43,6 +43,7 @@ import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 public class PersonaResourceTest extends EntityResourceTest<Persona, CreatePersona> {
+
   public PersonaResourceTest() {
     super(PERSONA, Persona.class, PersonaResource.PersonaList.class, "personas", PersonaResource.FIELDS);
     supportsSearchIndex = false;
@@ -83,8 +84,10 @@ public class PersonaResourceTest extends EntityResourceTest<Persona, CreatePerso
     User user2 = userResourceTest.createEntity(userResourceTest.createRequest(test, 2), TEST_AUTH_HEADERS);
     List<UUID> users = Arrays.asList(user1.getId(), user2.getId());
 
-    CreatePersona create =
-        createRequest(test).withDisplayName("displayName").withDescription("description").withUsers(users);
+    CreatePersona create = createRequest(test)
+      .withDisplayName("displayName")
+      .withDescription("description")
+      .withUsers(users);
 
     Persona persona = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
@@ -121,9 +124,10 @@ public class PersonaResourceTest extends EntityResourceTest<Persona, CreatePerso
     String originalJson = JsonUtils.pojoToJson(persona);
     persona.setDisplayName("newDisplayName");
     assertResponse(
-        () -> patchEntity(persona.getId(), originalJson, persona, TEST_AUTH_HEADERS),
-        FORBIDDEN,
-        permissionNotAllowed(TEST_USER_NAME, List.of(MetadataOperation.EDIT_DISPLAY_NAME)));
+      () -> patchEntity(persona.getId(), originalJson, persona, TEST_AUTH_HEADERS),
+      FORBIDDEN,
+      permissionNotAllowed(TEST_USER_NAME, List.of(MetadataOperation.EDIT_DISPLAY_NAME))
+    );
   }
 
   @Test
@@ -142,14 +146,16 @@ public class PersonaResourceTest extends EntityResourceTest<Persona, CreatePerso
     // Ensure user without UpdatePersona permission cannot add users to a Persona.
     String randomUserName = userRefs.get(0).getName();
     assertResponse(
-        () ->
-            patchEntity(
-                persona.getId(),
-                originalJson,
-                persona,
-                SecurityUtil.authHeaders(randomUserName + "@open-metadata.org")),
-        FORBIDDEN,
-        permissionNotAllowed(randomUserName, List.of(MetadataOperation.EDIT_USERS)));
+      () ->
+        patchEntity(
+          persona.getId(),
+          originalJson,
+          persona,
+          SecurityUtil.authHeaders(randomUserName + "@open-metadata.org")
+        ),
+      FORBIDDEN,
+      permissionNotAllowed(randomUserName, List.of(MetadataOperation.EDIT_USERS))
+    );
 
     // Ensure user with UpdateTeam permission can add users to a team.
     ChangeDescription change = getChangeDescription(persona, MINOR_UPDATE);
@@ -182,11 +188,12 @@ public class PersonaResourceTest extends EntityResourceTest<Persona, CreatePerso
   }
 
   private static void validatePersona(
-      Persona persona,
-      String expectedDescription,
-      String expectedDisplayName,
-      List<EntityReference> expectedUsers,
-      String expectedUpdatedBy) {
+    Persona persona,
+    String expectedDescription,
+    String expectedDisplayName,
+    List<EntityReference> expectedUsers,
+    String expectedUpdatedBy
+  ) {
     assertListNotNull(persona.getId(), persona.getHref());
     assertEquals(expectedDescription, persona.getDescription());
     assertEquals(expectedUpdatedBy, persona.getUpdatedBy());
@@ -198,30 +205,29 @@ public class PersonaResourceTest extends EntityResourceTest<Persona, CreatePerso
   public Persona validateGetWithDifferentFields(Persona expectedPersona, boolean byName) throws HttpResponseException {
     if (nullOrEmpty(expectedPersona.getUsers())) {
       UserResourceTest userResourceTest = new UserResourceTest();
-      CreateUser create =
-          userResourceTest
-              .createRequest("user", "", "", null)
-              .withPersonas(List.of(expectedPersona.getEntityReference()));
+      CreateUser create = userResourceTest
+        .createRequest("user", "", "", null)
+        .withPersonas(List.of(expectedPersona.getEntityReference()));
       userResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
     }
 
     String updatedBy = getPrincipalName(ADMIN_AUTH_HEADERS);
     String fields = "";
-    Persona getPersona =
-        byName
-            ? getEntityByName(expectedPersona.getName(), fields, ADMIN_AUTH_HEADERS)
-            : getEntity(expectedPersona.getId(), null, fields, ADMIN_AUTH_HEADERS);
+    Persona getPersona = byName
+      ? getEntityByName(expectedPersona.getName(), fields, ADMIN_AUTH_HEADERS)
+      : getEntity(expectedPersona.getId(), null, fields, ADMIN_AUTH_HEADERS);
     validatePersona(
-        getPersona,
-        expectedPersona.getDescription(),
-        expectedPersona.getDisplayName(),
-        Collections.emptyList(),
-        updatedBy);
+      getPersona,
+      expectedPersona.getDescription(),
+      expectedPersona.getDisplayName(),
+      Collections.emptyList(),
+      updatedBy
+    );
     fields = "users";
     getPersona =
-        byName
-            ? getEntityByName(expectedPersona.getName(), fields, ADMIN_AUTH_HEADERS)
-            : getEntity(expectedPersona.getId(), fields, ADMIN_AUTH_HEADERS);
+      byName
+        ? getEntityByName(expectedPersona.getName(), fields, ADMIN_AUTH_HEADERS)
+        : getEntity(expectedPersona.getId(), fields, ADMIN_AUTH_HEADERS);
     validateEntityReferences(getPersona.getUsers(), true);
     return getPersona;
   }

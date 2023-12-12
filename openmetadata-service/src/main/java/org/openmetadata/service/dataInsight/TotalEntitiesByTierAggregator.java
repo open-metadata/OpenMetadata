@@ -6,6 +6,7 @@ import java.util.List;
 import org.openmetadata.schema.dataInsight.type.TotalEntitiesByTier;
 
 public abstract class TotalEntitiesByTierAggregator<A, B, M, S> implements DataInsightAggregatorInterface {
+
   private final A aggregations;
 
   protected TotalEntitiesByTierAggregator(A aggregations) {
@@ -27,10 +28,11 @@ public abstract class TotalEntitiesByTierAggregator<A, B, M, S> implements DataI
         String entityTier = getKeyAsString(entityTierBucket);
         S sumEntityCount = getSumAggregations(entityTierBucket, ENTITY_COUNT);
         timestampData.add(
-            new TotalEntitiesByTier()
-                .withTimestamp(timestamp)
-                .withEntityTier(entityTier)
-                .withEntityCount(getValue(sumEntityCount)));
+          new TotalEntitiesByTier()
+            .withTimestamp(timestamp)
+            .withEntityTier(entityTier)
+            .withEntityCount(getValue(sumEntityCount))
+        );
         totalEntityCount = totalEntityCount + getValue(sumEntityCount);
       }
       for (TotalEntitiesByTier el : timestampData) {

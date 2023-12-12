@@ -12,6 +12,7 @@ import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
 public class MlModelIndex implements SearchIndex {
+
   final MlModel mlModel;
   final List<String> excludeFields = List.of("changeDescription");
 
@@ -35,10 +36,12 @@ public class MlModelIndex implements SearchIndex {
     doc.put("entityType", Entity.MLMODEL);
     doc.put("serviceType", mlModel.getServiceType());
     doc.put(
-        "fqnParts",
-        getFQNParts(
-            mlModel.getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+      "fqnParts",
+      getFQNParts(
+        mlModel.getFullyQualifiedName(),
+        suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())
+      )
+    );
     doc.put("owner", getEntityWithDisplayName(mlModel.getOwner()));
     doc.put("service", getEntityWithDisplayName(mlModel.getService()));
     doc.put("domain", getEntityWithDisplayName(mlModel.getDomain()));

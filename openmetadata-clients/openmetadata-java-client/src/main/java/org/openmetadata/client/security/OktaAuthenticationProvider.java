@@ -29,6 +29,7 @@ import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnect
 
 @Slf4j
 public class OktaAuthenticationProvider implements AuthenticationProvider {
+
   private String generatedAuthToken;
   private Long expirationTimeMillis;
   private final OktaAccessTokenApi oktaSSOClient;

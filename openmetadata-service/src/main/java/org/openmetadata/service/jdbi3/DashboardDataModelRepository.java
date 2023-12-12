@@ -45,21 +45,24 @@ import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class DashboardDataModelRepository extends EntityRepository<DashboardDataModel> {
+
   public DashboardDataModelRepository() {
     super(
-        DashboardDataModelResource.COLLECTION_PATH,
-        Entity.DASHBOARD_DATA_MODEL,
-        DashboardDataModel.class,
-        Entity.getCollectionDAO().dashboardDataModelDAO(),
-        "",
-        "");
+      DashboardDataModelResource.COLLECTION_PATH,
+      Entity.DASHBOARD_DATA_MODEL,
+      DashboardDataModel.class,
+      Entity.getCollectionDAO().dashboardDataModelDAO(),
+      "",
+      ""
+    );
     supportsSearch = true;
   }
 
   @Override
   public void setFullyQualifiedName(DashboardDataModel dashboardDataModel) {
     dashboardDataModel.setFullyQualifiedName(
-        FullyQualifiedName.add(dashboardDataModel.getService().getName() + ".model", dashboardDataModel.getName()));
+      FullyQualifiedName.add(dashboardDataModel.getService().getName() + ".model", dashboardDataModel.getName())
+    );
     ColumnUtil.setColumnFQN(dashboardDataModel.getFullyQualifiedName(), dashboardDataModel.getColumns());
   }
 
@@ -81,12 +84,17 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   }
 
   static class ColumnDescriptionTaskWorkflow extends DescriptionTaskWorkflow {
+
     private final Column column;
 
     ColumnDescriptionTaskWorkflow(ThreadContext threadContext) {
       super(threadContext);
-      DashboardDataModel dataModel =
-          Entity.getEntity(DASHBOARD_DATA_MODEL, threadContext.getAboutEntity().getId(), "columns", ALL);
+      DashboardDataModel dataModel = Entity.getEntity(
+        DASHBOARD_DATA_MODEL,
+        threadContext.getAboutEntity().getId(),
+        "columns",
+        ALL
+      );
       threadContext.setAboutEntity(dataModel);
       column = EntityUtil.findColumn(dataModel.getColumns(), threadContext.getAbout().getArrayFieldName());
     }
@@ -99,12 +107,17 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   }
 
   static class ColumnTagTaskWorkflow extends TagTaskWorkflow {
+
     private final Column column;
 
     ColumnTagTaskWorkflow(ThreadContext threadContext) {
       super(threadContext);
-      DashboardDataModel dataModel =
-          Entity.getEntity(DASHBOARD_DATA_MODEL, threadContext.getAboutEntity().getId(), "columns,tags", ALL);
+      DashboardDataModel dataModel = Entity.getEntity(
+        DASHBOARD_DATA_MODEL,
+        threadContext.getAboutEntity().getId(),
+        "columns,tags",
+        ALL
+      );
       threadContext.setAboutEntity(dataModel);
       column = EntityUtil.findColumn(dataModel.getColumns(), threadContext.getAbout().getArrayFieldName());
     }
@@ -143,20 +156,22 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   public void storeRelationships(DashboardDataModel dashboardDataModel) {
     EntityReference service = dashboardDataModel.getService();
     addRelationship(
-        service.getId(),
-        dashboardDataModel.getId(),
-        service.getType(),
-        Entity.DASHBOARD_DATA_MODEL,
-        Relationship.CONTAINS);
+      service.getId(),
+      dashboardDataModel.getId(),
+      service.getType(),
+      Entity.DASHBOARD_DATA_MODEL,
+      Relationship.CONTAINS
+    );
   }
 
   @Override
   public void setFields(DashboardDataModel dashboardDataModel, Fields fields) {
     populateEntityFieldTags(
-        entityType,
-        dashboardDataModel.getColumns(),
-        dashboardDataModel.getFullyQualifiedName(),
-        fields.contains(FIELD_TAGS));
+      entityType,
+      dashboardDataModel.getColumns(),
+      dashboardDataModel.getFullyQualifiedName(),
+      fields.contains(FIELD_TAGS)
+    );
     dashboardDataModel.setSourceHash(fields.contains("sourceHash") ? dashboardDataModel.getSourceHash() : null);
     if (dashboardDataModel.getService() == null) {
       dashboardDataModel.withService(getContainer(dashboardDataModel.getId()));

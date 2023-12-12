@@ -32,6 +32,7 @@ import org.openmetadata.service.util.ParallelStreamUtil;
 @Slf4j
 @Provider
 public class EventFilter implements ContainerResponseFilter {
+
   private static final List<String> AUDITABLE_METHODS = Arrays.asList("POST", "PUT", "PATCH", "DELETE");
   private static final int FORK_JOIN_POOL_PARALLELISM = 20;
   private final ForkJoinPool forkJoinPool;
@@ -45,12 +46,13 @@ public class EventFilter implements ContainerResponseFilter {
 
   private void registerEventHandlers(OpenMetadataApplicationConfig config) {
     try {
-      Set<String> eventHandlerClassNames =
-          new HashSet<>(config.getEventHandlerConfiguration().getEventHandlerClassNames());
+      Set<String> eventHandlerClassNames = new HashSet<>(
+        config.getEventHandlerConfiguration().getEventHandlerClassNames()
+      );
       for (String eventHandlerClassName : eventHandlerClassNames) {
         @SuppressWarnings("unchecked")
         EventHandler eventHandler =
-            ((Class<EventHandler>) Class.forName(eventHandlerClassName)).getConstructor().newInstance();
+          ((Class<EventHandler>) Class.forName(eventHandlerClassName)).getConstructor().newInstance();
         eventHandler.init(config);
         eventHandlers.add(eventHandler);
         LOG.info("Added event handler {}", eventHandlerClassName);
@@ -69,13 +71,14 @@ public class EventFilter implements ContainerResponseFilter {
     }
 
     eventHandlers
-        .parallelStream()
-        .forEach(
-            eventHandler -> {
-              UriInfo uriInfo = requestContext.getUriInfo();
-              if (JwtFilter.EXCLUDED_ENDPOINTS.stream().noneMatch(endpoint -> uriInfo.getPath().contains(endpoint))) {
-                ParallelStreamUtil.runAsync(() -> eventHandler.process(requestContext, responseContext), forkJoinPool);
-              }
-            });
+      .parallelStream()
+      .forEach(
+        eventHandler -> {
+          UriInfo uriInfo = requestContext.getUriInfo();
+          if (JwtFilter.EXCLUDED_ENDPOINTS.stream().noneMatch(endpoint -> uriInfo.getPath().contains(endpoint))) {
+            ParallelStreamUtil.runAsync(() -> eventHandler.process(requestContext, responseContext), forkJoinPool);
+          }
+        }
+      );
   }
 }

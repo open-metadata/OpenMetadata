@@ -8,7 +8,8 @@ import os.org.opensearch.search.aggregations.bucket.histogram.Histogram.Bucket;
 import os.org.opensearch.search.aggregations.metrics.Sum;
 
 public class OpenSearchAggregatedUsedvsUnusedAssetsSizeAggregator
-    extends AggregatedUsedvsUnusedAssetsSizeAggregator<Aggregations, Histogram, Bucket, Sum> {
+  extends AggregatedUsedvsUnusedAssetsSizeAggregator<Aggregations, Histogram, Bucket, Sum> {
+
   public OpenSearchAggregatedUsedvsUnusedAssetsSizeAggregator(Aggregations aggregations) {
     super(aggregations);
   }

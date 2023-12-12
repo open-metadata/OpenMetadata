@@ -25,17 +25,19 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
 public class DocumentRepository extends EntityRepository<Document> {
+
   static final String DOCUMENT_UPDATE_FIELDS = "data";
   static final String DOCUMENT_PATCH_FIELDS = "data";
 
   public DocumentRepository() {
     super(
-        DocStoreResource.COLLECTION_PATH,
-        DOCUMENT,
-        Document.class,
-        Entity.getCollectionDAO().docStoreDAO(),
-        DOCUMENT_UPDATE_FIELDS,
-        DOCUMENT_PATCH_FIELDS);
+      DocStoreResource.COLLECTION_PATH,
+      DOCUMENT,
+      Document.class,
+      Entity.getCollectionDAO().docStoreDAO(),
+      DOCUMENT_UPDATE_FIELDS,
+      DOCUMENT_PATCH_FIELDS
+    );
     supportsSearch = false;
   }
 
@@ -76,6 +78,7 @@ public class DocumentRepository extends EntityRepository<Document> {
 
   /** Handles entity updated from PUT and POST operation. */
   public class DocumentUpdater extends EntityUpdater {
+
     public DocumentUpdater(Document original, Document updated, Operation operation) {
       super(original, updated, operation);
     }

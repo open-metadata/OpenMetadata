@@ -22,7 +22,6 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 
 public interface Authorizer {
-
   /** Initialize the authorizer */
   void init(OpenMetadataApplicationConfig openMetadataApplicationConfig);
 
@@ -34,10 +33,16 @@ public interface Authorizer {
 
   /** Returns a list of operations that the authenticated user (subject) can perform on a given resource */
   ResourcePermission getPermission(
-      SecurityContext securityContext, String user, ResourceContextInterface resourceContext);
+    SecurityContext securityContext,
+    String user,
+    ResourceContextInterface resourceContext
+  );
 
   void authorize(
-      SecurityContext securityContext, OperationContext operationContext, ResourceContextInterface resourceContext);
+    SecurityContext securityContext,
+    OperationContext operationContext,
+    ResourceContextInterface resourceContext
+  );
 
   void authorizeAdmin(SecurityContext securityContext);
 

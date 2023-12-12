@@ -60,19 +60,21 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
 
   public SearchIndexRepository() {
     super(
-        SearchIndexResource.COLLECTION_PATH,
-        Entity.SEARCH_INDEX,
-        SearchIndex.class,
-        Entity.getCollectionDAO().searchIndexDAO(),
-        "",
-        "");
+      SearchIndexResource.COLLECTION_PATH,
+      Entity.SEARCH_INDEX,
+      SearchIndex.class,
+      Entity.getCollectionDAO().searchIndexDAO(),
+      "",
+      ""
+    );
     supportsSearch = true;
   }
 
   @Override
   public void setFullyQualifiedName(SearchIndex searchIndex) {
     searchIndex.setFullyQualifiedName(
-        FullyQualifiedName.add(searchIndex.getService().getFullyQualifiedName(), searchIndex.getName()));
+      FullyQualifiedName.add(searchIndex.getService().getFullyQualifiedName(), searchIndex.getName())
+    );
     if (searchIndex.getFields() != null) {
       setFieldFQN(searchIndex.getFullyQualifiedName(), searchIndex.getFields());
     }
@@ -136,7 +138,12 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
   public void setService(SearchIndex searchIndex, EntityReference service) {
     if (service != null && searchIndex != null) {
       addRelationship(
-          service.getId(), searchIndex.getId(), service.getType(), Entity.SEARCH_INDEX, Relationship.CONTAINS);
+        service.getId(),
+        searchIndex.getId(),
+        service.getType(),
+        Entity.SEARCH_INDEX,
+        Relationship.CONTAINS
+      );
       searchIndex.setService(service);
     }
   }
@@ -144,10 +151,10 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
   public SearchIndex getSampleData(UUID searchIndexId, boolean authorizePII) {
     // Validate the request content
     SearchIndex searchIndex = find(searchIndexId, NON_DELETED);
-    SearchIndexSampleData sampleData =
-        JsonUtils.readValue(
-            daoCollection.entityExtensionDAO().getExtension(searchIndex.getId(), "searchIndex.sampleData"),
-            SearchIndexSampleData.class);
+    SearchIndexSampleData sampleData = JsonUtils.readValue(
+      daoCollection.entityExtensionDAO().getExtension(searchIndex.getId(), "searchIndex.sampleData"),
+      SearchIndexSampleData.class
+    );
     searchIndex.setSampleData(sampleData);
     setFieldsInternal(searchIndex, Fields.EMPTY_FIELDS);
 
@@ -166,21 +173,22 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
     SearchIndex searchIndex = daoCollection.searchIndexDAO().findEntityById(searchIndexId);
 
     daoCollection
-        .entityExtensionDAO()
-        .insert(searchIndexId, "searchIndex.sampleData", "searchIndexSampleData", JsonUtils.pojoToJson(sampleData));
+      .entityExtensionDAO()
+      .insert(searchIndexId, "searchIndex.sampleData", "searchIndexSampleData", JsonUtils.pojoToJson(sampleData));
     setFieldsInternal(searchIndex, Fields.EMPTY_FIELDS);
     return searchIndex.withSampleData(sampleData);
   }
 
   private void setFieldFQN(String parentFQN, List<SearchIndexField> fields) {
     fields.forEach(
-        c -> {
-          String fieldFqn = FullyQualifiedName.add(parentFQN, c.getName());
-          c.setFullyQualifiedName(fieldFqn);
-          if (c.getChildren() != null) {
-            setFieldFQN(fieldFqn, c.getChildren());
-          }
-        });
+      c -> {
+        String fieldFqn = FullyQualifiedName.add(parentFQN, c.getName());
+        c.setFullyQualifiedName(fieldFqn);
+        if (c.getChildren() != null) {
+          setFieldFQN(fieldFqn, c.getChildren());
+        }
+      }
+    );
   }
 
   private void getFieldTags(boolean setTags, List<SearchIndexField> fields) {
@@ -202,13 +210,13 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
   private SearchIndexField cloneWithoutTags(SearchIndexField field) {
     List<SearchIndexField> children = cloneWithoutTags(field.getChildren());
     return new SearchIndexField()
-        .withDescription(field.getDescription())
-        .withName(field.getName())
-        .withDisplayName(field.getDisplayName())
-        .withFullyQualifiedName(field.getFullyQualifiedName())
-        .withDataType(field.getDataType())
-        .withDataTypeDisplay(field.getDataTypeDisplay())
-        .withChildren(children);
+      .withDescription(field.getDescription())
+      .withName(field.getName())
+      .withDisplayName(field.getDisplayName())
+      .withFullyQualifiedName(field.getFullyQualifiedName())
+      .withDataType(field.getDataType())
+      .withDataTypeDisplay(field.getDataTypeDisplay())
+      .withChildren(children);
   }
 
   @Override
@@ -283,12 +291,13 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
   }
 
   static class FieldDescriptionWorkflow extends DescriptionTaskWorkflow {
+
     private final SearchIndexField schemaField;
 
     FieldDescriptionWorkflow(ThreadContext threadContext) {
       super(threadContext);
       schemaField =
-          getSchemaField((SearchIndex) threadContext.getAboutEntity(), threadContext.getAbout().getArrayFieldName());
+        getSchemaField((SearchIndex) threadContext.getAboutEntity(), threadContext.getAbout().getArrayFieldName());
     }
 
     @Override
@@ -299,12 +308,13 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
   }
 
   static class FieldTagWorkflow extends TagTaskWorkflow {
+
     private final SearchIndexField schemaField;
 
     FieldTagWorkflow(ThreadContext threadContext) {
       super(threadContext);
       schemaField =
-          getSchemaField((SearchIndex) threadContext.getAboutEntity(), threadContext.getAbout().getArrayFieldName());
+        getSchemaField((SearchIndex) threadContext.getAboutEntity(), threadContext.getAbout().getArrayFieldName());
     }
 
     @Override
@@ -362,6 +372,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
   }
 
   public class SearchIndexUpdater extends EntityUpdater {
+
     public static final String FIELD_DATA_TYPE_DISPLAY = "dataTypeDisplay";
 
     public SearchIndexUpdater(SearchIndex original, SearchIndex updated, Operation operation) {
@@ -373,26 +384,29 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
     public void entitySpecificUpdate() {
       if (updated.getFields() != null) {
         updateSearchIndexFields(
-            "fields",
-            original.getFields() == null ? null : original.getFields(),
-            updated.getFields(),
-            EntityUtil.searchIndexFieldMatch);
+          "fields",
+          original.getFields() == null ? null : original.getFields(),
+          updated.getFields(),
+          EntityUtil.searchIndexFieldMatch
+        );
       }
       recordChange("searchIndexSettings", original.getSearchIndexSettings(), updated.getSearchIndexSettings());
       recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
     }
 
     private void updateSearchIndexFields(
-        String fieldName,
-        List<SearchIndexField> origFields,
-        List<SearchIndexField> updatedFields,
-        BiPredicate<SearchIndexField, SearchIndexField> fieldMatch) {
+      String fieldName,
+      List<SearchIndexField> origFields,
+      List<SearchIndexField> updatedFields,
+      BiPredicate<SearchIndexField, SearchIndexField> fieldMatch
+    ) {
       List<SearchIndexField> deletedFields = new ArrayList<>();
       List<SearchIndexField> addedFields = new ArrayList<>();
       recordListChange(fieldName, origFields, updatedFields, addedFields, deletedFields, fieldMatch);
       // carry forward tags and description if deletedFields matches added field
-      Map<String, SearchIndexField> addedFieldMap =
-          addedFields.stream().collect(Collectors.toMap(SearchIndexField::getName, Function.identity()));
+      Map<String, SearchIndexField> addedFieldMap = addedFields
+        .stream()
+        .collect(Collectors.toMap(SearchIndexField::getName, Function.identity()));
 
       for (SearchIndexField deleted : deletedFields) {
         if (addedFieldMap.containsKey(deleted.getName())) {
@@ -425,10 +439,11 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
         updateFieldDataTypeDisplay(stored, updated);
         updateFieldDisplayName(stored, updated);
         updateTags(
-            stored.getFullyQualifiedName(),
-            EntityUtil.getFieldName(fieldName, updated.getName(), FIELD_TAGS),
-            stored.getTags(),
-            updated.getTags());
+          stored.getFullyQualifiedName(),
+          EntityUtil.getFieldName(fieldName, updated.getName(), FIELD_TAGS),
+          stored.getTags(),
+          updated.getTags()
+        );
 
         if (updated.getChildren() != null && stored.getChildren() != null) {
           String childrenFieldName = EntityUtil.getFieldName(fieldName, updated.getName());

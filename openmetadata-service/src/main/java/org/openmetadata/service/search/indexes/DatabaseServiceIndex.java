@@ -27,10 +27,12 @@ public class DatabaseServiceIndex implements SearchIndex {
     suggest.add(SearchSuggest.builder().input(databaseService.getName()).weight(5).build());
     suggest.add(SearchSuggest.builder().input(databaseService.getFullyQualifiedName()).weight(5).build());
     doc.put(
-        "fqnParts",
-        getFQNParts(
-            databaseService.getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+      "fqnParts",
+      getFQNParts(
+        databaseService.getFullyQualifiedName(),
+        suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())
+      )
+    );
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.DATABASE_SERVICE);
     doc.put("owner", getEntityWithDisplayName(databaseService.getOwner()));

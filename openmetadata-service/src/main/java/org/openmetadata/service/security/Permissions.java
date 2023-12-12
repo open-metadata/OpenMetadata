@@ -24,7 +24,10 @@ import org.openmetadata.schema.type.MetadataOperation;
 
 @ToString
 public class Permissions {
-  @Getter @Setter private Map<MetadataOperation, Boolean> metadataOperations;
+
+  @Getter
+  @Setter
+  private Map<MetadataOperation, Boolean> metadataOperations;
 
   public Permissions() {
     // By default, set all permissions as false.

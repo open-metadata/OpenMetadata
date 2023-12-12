@@ -10,6 +10,7 @@ import org.openmetadata.service.Entity;
 
 /** Posts that are part of conversation threads require special handling */
 public class PostResourceContext implements ResourceContextInterface {
+
   // The user who posted to thread is the owner of that post
   private final String postedBy;
 

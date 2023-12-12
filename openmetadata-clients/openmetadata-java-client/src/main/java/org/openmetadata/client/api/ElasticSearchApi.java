@@ -12,7 +12,6 @@ import org.openmetadata.client.ApiClient;
 import org.openmetadata.client.EncodingUtils;
 
 public interface ElasticSearchApi extends ApiClient.Api {
-
   /**
    * Get Aggregated Fields Get Aggregated Fields from Entities.
    *
@@ -23,14 +22,13 @@ public interface ElasticSearchApi extends ApiClient.Api {
    * @return Suggest
    */
   @RequestLine("GET /v1/search/aggregate?index={index}&field={field}&size={size}&deleted={deleted}")
-  @Headers({
-    "Accept: application/json",
-  })
+  @Headers({ "Accept: application/json" })
   Response getAggregateFields(
-      @Param("index") String index,
-      @Param("field") String field,
-      @Param("size") Integer size,
-      @Param("deleted") String deleted);
+    @Param("index") String index,
+    @Param("field") String field,
+    @Param("size") Integer size,
+    @Param("deleted") String deleted
+  );
 
   /**
    * Get Aggregated Fields Similar to <code>getAggregateFields</code> but it also returns the http response headers .
@@ -43,14 +41,13 @@ public interface ElasticSearchApi extends ApiClient.Api {
    * @return A ApiResponse that wraps the response boyd and the http headers.
    */
   @RequestLine("GET /v1/search/aggregate?index={index}&field={field}&size={size}&deleted={deleted}")
-  @Headers({
-    "Accept: application/json",
-  })
+  @Headers({ "Accept: application/json" })
   Response getAggregateFieldsWithHttpInfo(
-      @Param("index") String index,
-      @Param("field") String field,
-      @Param("size") Integer size,
-      @Param("deleted") String deleted);
+    @Param("index") String index,
+    @Param("field") String field,
+    @Param("size") Integer size,
+    @Param("deleted") String deleted
+  );
 
   /**
    * Get Aggregated Fields Get Aggregated Fields from Entities. Note, this is equivalent to the other <code>
@@ -70,9 +67,7 @@ public interface ElasticSearchApi extends ApiClient.Api {
    * @return Suggest
    */
   @RequestLine("GET /v1/search/aggregate?index={index}&field={field}&size={size}&deleted={deleted}")
-  @Headers({
-    "Accept: application/json",
-  })
+  @Headers({ "Accept: application/json" })
   Response getAggregateFields(@QueryMap(encoded = true) Map<String, Object> queryParams);
 
   /**
@@ -92,9 +87,7 @@ public interface ElasticSearchApi extends ApiClient.Api {
    * @return Suggest
    */
   @RequestLine("GET /v1/search/aggregate?index={index}&field={field}&size={size}&deleted={deleted}")
-  @Headers({
-    "Accept: application/json",
-  })
+  @Headers({ "Accept: application/json" })
   Response getAggregateFieldsWithHttpInfo(@QueryMap(encoded = true) Map<String, Object> queryParams);
 
   /**
@@ -102,6 +95,7 @@ public interface ElasticSearchApi extends ApiClient.Api {
    * style.
    */
   class GetAggregateFieldsQueryParams extends HashMap<String, Object> {
+
     public GetAggregateFieldsQueryParams index(final String value) {
       put("index", EncodingUtils.encode(value));
       return this;
@@ -142,18 +136,18 @@ public interface ElasticSearchApi extends ApiClient.Api {
    * @return Suggest
    */
   @RequestLine(
-      "GET /v1/search/suggest?q={q}&index={index}&field={field}&size={size}&fetch_source={fetchSource}&include_source_fields={includeSourceFields}&deleted={deleted}")
-  @Headers({
-    "Accept: application/json",
-  })
+    "GET /v1/search/suggest?q={q}&index={index}&field={field}&size={size}&fetch_source={fetchSource}&include_source_fields={includeSourceFields}&deleted={deleted}"
+  )
+  @Headers({ "Accept: application/json" })
   Response getSuggestedEntities(
-      @Param("q") String q,
-      @Param("index") String index,
-      @Param("field") String field,
-      @Param("size") Integer size,
-      @Param("fetchSource") Boolean fetchSource,
-      @Param("includeSourceFields") List<String> includeSourceFields,
-      @Param("deleted") String deleted);
+    @Param("q") String q,
+    @Param("index") String index,
+    @Param("field") String field,
+    @Param("size") Integer size,
+    @Param("fetchSource") Boolean fetchSource,
+    @Param("includeSourceFields") List<String> includeSourceFields,
+    @Param("deleted") String deleted
+  );
 
   /**
    * Suggest Entities Similar to <code>getSuggestedEntities</code> but it also returns the http response headers . Get
@@ -175,18 +169,18 @@ public interface ElasticSearchApi extends ApiClient.Api {
    * @return A ApiResponse that wraps the response boyd and the http headers.
    */
   @RequestLine(
-      "GET /v1/search/suggest?q={q}&index={index}&field={field}&size={size}&fetch_source={fetchSource}&include_source_fields={includeSourceFields}&deleted={deleted}")
-  @Headers({
-    "Accept: application/json",
-  })
+    "GET /v1/search/suggest?q={q}&index={index}&field={field}&size={size}&fetch_source={fetchSource}&include_source_fields={includeSourceFields}&deleted={deleted}"
+  )
+  @Headers({ "Accept: application/json" })
   Response getSuggestedEntitiesWithHttpInfo(
-      @Param("q") String q,
-      @Param("index") String index,
-      @Param("field") String field,
-      @Param("size") Integer size,
-      @Param("fetchSource") Boolean fetchSource,
-      @Param("includeSourceFields") List<String> includeSourceFields,
-      @Param("deleted") String deleted);
+    @Param("q") String q,
+    @Param("index") String index,
+    @Param("field") String field,
+    @Param("size") Integer size,
+    @Param("fetchSource") Boolean fetchSource,
+    @Param("includeSourceFields") List<String> includeSourceFields,
+    @Param("deleted") String deleted
+  );
 
   /**
    * Suggest Entities Get suggested entities used for auto-completion. Note, this is equivalent to the other <code>
@@ -215,10 +209,9 @@ public interface ElasticSearchApi extends ApiClient.Api {
    * @return Suggest
    */
   @RequestLine(
-      "GET /v1/search/suggest?q={q}&index={index}&field={field}&size={size}&fetch_source={fetchSource}&include_source_fields={includeSourceFields}&deleted={deleted}")
-  @Headers({
-    "Accept: application/json",
-  })
+    "GET /v1/search/suggest?q={q}&index={index}&field={field}&size={size}&fetch_source={fetchSource}&include_source_fields={includeSourceFields}&deleted={deleted}"
+  )
+  @Headers({ "Accept: application/json" })
   Response getSuggestedEntities(@QueryMap(encoded = true) Map<String, Object> queryParams);
 
   /**
@@ -247,10 +240,9 @@ public interface ElasticSearchApi extends ApiClient.Api {
    * @return Suggest
    */
   @RequestLine(
-      "GET /v1/search/suggest?q={q}&index={index}&field={field}&size={size}&fetch_source={fetchSource}&include_source_fields={includeSourceFields}&deleted={deleted}")
-  @Headers({
-    "Accept: application/json",
-  })
+    "GET /v1/search/suggest?q={q}&index={index}&field={field}&size={size}&fetch_source={fetchSource}&include_source_fields={includeSourceFields}&deleted={deleted}"
+  )
+  @Headers({ "Accept: application/json" })
   Response getSuggestedEntitiesWithHttpInfo(@QueryMap(encoded = true) Map<String, Object> queryParams);
 
   /**
@@ -258,6 +250,7 @@ public interface ElasticSearchApi extends ApiClient.Api {
    * style.
    */
   class GetSuggestedEntitiesQueryParams extends HashMap<String, Object> {
+
     public GetSuggestedEntitiesQueryParams q(final String value) {
       put("q", EncodingUtils.encode(value));
       return this;
@@ -323,23 +316,23 @@ public interface ElasticSearchApi extends ApiClient.Api {
    * @return SearchResponse
    */
   @RequestLine(
-      "GET /v1/search/query?q={q}&index={index}&deleted={deleted}&from={from}&size={size}&sort_field={sortField}&sort_order={sortOrder}&track_total_hits={trackTotalHits}&query_filter={queryFilter}&post_filter={postFilter}&fetch_source={fetchSource}&include_source_fields={includeSourceFields}")
-  @Headers({
-    "Accept: application/json",
-  })
+    "GET /v1/search/query?q={q}&index={index}&deleted={deleted}&from={from}&size={size}&sort_field={sortField}&sort_order={sortOrder}&track_total_hits={trackTotalHits}&query_filter={queryFilter}&post_filter={postFilter}&fetch_source={fetchSource}&include_source_fields={includeSourceFields}"
+  )
+  @Headers({ "Accept: application/json" })
   Response searchEntitiesWithQuery(
-      @Param("q") String q,
-      @Param("index") String index,
-      @Param("deleted") Boolean deleted,
-      @Param("from") Integer from,
-      @Param("size") Integer size,
-      @Param("sortField") String sortField,
-      @Param("sortOrder") String sortOrder,
-      @Param("trackTotalHits") Boolean trackTotalHits,
-      @Param("queryFilter") String queryFilter,
-      @Param("postFilter") String postFilter,
-      @Param("fetchSource") Boolean fetchSource,
-      @Param("includeSourceFields") List<String> includeSourceFields);
+    @Param("q") String q,
+    @Param("index") String index,
+    @Param("deleted") Boolean deleted,
+    @Param("from") Integer from,
+    @Param("size") Integer size,
+    @Param("sortField") String sortField,
+    @Param("sortOrder") String sortOrder,
+    @Param("trackTotalHits") Boolean trackTotalHits,
+    @Param("queryFilter") String queryFilter,
+    @Param("postFilter") String postFilter,
+    @Param("fetchSource") Boolean fetchSource,
+    @Param("includeSourceFields") List<String> includeSourceFields
+  );
 
   /**
    * Search entities Similar to <code>searchEntitiesWithQuery</code> but it also returns the http response headers .
@@ -371,23 +364,23 @@ public interface ElasticSearchApi extends ApiClient.Api {
    * @return A ApiResponse that wraps the response boyd and the http headers.
    */
   @RequestLine(
-      "GET /v1/search/query?q={q}&index={index}&deleted={deleted}&from={from}&size={size}&sort_field={sortField}&sort_order={sortOrder}&track_total_hits={trackTotalHits}&query_filter={queryFilter}&post_filter={postFilter}&fetch_source={fetchSource}&include_source_fields={includeSourceFields}")
-  @Headers({
-    "Accept: application/json",
-  })
+    "GET /v1/search/query?q={q}&index={index}&deleted={deleted}&from={from}&size={size}&sort_field={sortField}&sort_order={sortOrder}&track_total_hits={trackTotalHits}&query_filter={queryFilter}&post_filter={postFilter}&fetch_source={fetchSource}&include_source_fields={includeSourceFields}"
+  )
+  @Headers({ "Accept: application/json" })
   Response searchEntitiesWithQueryWithHttpInfo(
-      @Param("q") String q,
-      @Param("index") String index,
-      @Param("deleted") Boolean deleted,
-      @Param("from") Integer from,
-      @Param("size") Integer size,
-      @Param("sortField") String sortField,
-      @Param("sortOrder") String sortOrder,
-      @Param("trackTotalHits") Boolean trackTotalHits,
-      @Param("queryFilter") String queryFilter,
-      @Param("postFilter") String postFilter,
-      @Param("fetchSource") Boolean fetchSource,
-      @Param("includeSourceFields") List<String> includeSourceFields);
+    @Param("q") String q,
+    @Param("index") String index,
+    @Param("deleted") Boolean deleted,
+    @Param("from") Integer from,
+    @Param("size") Integer size,
+    @Param("sortField") String sortField,
+    @Param("sortOrder") String sortOrder,
+    @Param("trackTotalHits") Boolean trackTotalHits,
+    @Param("queryFilter") String queryFilter,
+    @Param("postFilter") String postFilter,
+    @Param("fetchSource") Boolean fetchSource,
+    @Param("includeSourceFields") List<String> includeSourceFields
+  );
 
   /**
    * Search entities Search entities using query test. Use query params `from` and `size` for pagination. Use
@@ -428,10 +421,9 @@ public interface ElasticSearchApi extends ApiClient.Api {
    * @return SearchResponse
    */
   @RequestLine(
-      "GET /v1/search/query?q={q}&index={index}&deleted={deleted}&from={from}&size={size}&sort_field={sortField}&sort_order={sortOrder}&track_total_hits={trackTotalHits}&query_filter={queryFilter}&post_filter={postFilter}&fetch_source={fetchSource}&include_source_fields={includeSourceFields}")
-  @Headers({
-    "Accept: application/json",
-  })
+    "GET /v1/search/query?q={q}&index={index}&deleted={deleted}&from={from}&size={size}&sort_field={sortField}&sort_order={sortOrder}&track_total_hits={trackTotalHits}&query_filter={queryFilter}&post_filter={postFilter}&fetch_source={fetchSource}&include_source_fields={includeSourceFields}"
+  )
+  @Headers({ "Accept: application/json" })
   Response searchEntitiesWithQuery(@QueryMap(encoded = true) Map<String, Object> queryParams);
 
   /**
@@ -472,10 +464,9 @@ public interface ElasticSearchApi extends ApiClient.Api {
    * @return SearchResponse
    */
   @RequestLine(
-      "GET /v1/search/query?q={q}&index={index}&deleted={deleted}&from={from}&size={size}&sort_field={sortField}&sort_order={sortOrder}&track_total_hits={trackTotalHits}&query_filter={queryFilter}&post_filter={postFilter}&fetch_source={fetchSource}&include_source_fields={includeSourceFields}")
-  @Headers({
-    "Accept: application/json",
-  })
+    "GET /v1/search/query?q={q}&index={index}&deleted={deleted}&from={from}&size={size}&sort_field={sortField}&sort_order={sortOrder}&track_total_hits={trackTotalHits}&query_filter={queryFilter}&post_filter={postFilter}&fetch_source={fetchSource}&include_source_fields={includeSourceFields}"
+  )
+  @Headers({ "Accept: application/json" })
   Response searchEntitiesWithQueryWithHttpInfo(@QueryMap(encoded = true) Map<String, Object> queryParams);
 
   /**
@@ -483,6 +474,7 @@ public interface ElasticSearchApi extends ApiClient.Api {
    * style.
    */
   class SearchEntitiesWithQueryQueryParams extends HashMap<String, Object> {
+
     public SearchEntitiesWithQueryQueryParams q(final String value) {
       put("q", EncodingUtils.encode(value));
       return this;

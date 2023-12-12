@@ -24,6 +24,7 @@ import org.openmetadata.client.security.interfaces.AuthenticationProvider;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 
 public class AuthenticationProviderFactory {
+
   public AuthenticationProvider getAuthProvider(OpenMetadataConnection serverConfig) {
     switch (serverConfig.getAuthProvider()) {
       case NO_AUTH:

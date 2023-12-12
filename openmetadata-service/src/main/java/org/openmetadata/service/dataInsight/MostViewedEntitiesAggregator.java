@@ -5,6 +5,7 @@ import java.util.List;
 import org.openmetadata.schema.dataInsight.type.MostViewedEntities;
 
 public abstract class MostViewedEntitiesAggregator<A, B, M, S> implements DataInsightAggregatorInterface {
+
   protected final A aggregations;
 
   protected MostViewedEntitiesAggregator(A aggregations) {
@@ -26,12 +27,13 @@ public abstract class MostViewedEntitiesAggregator<A, B, M, S> implements DataIn
       String entityHref = getFirstValueFromBucketOrNull(entityHrefBucket);
 
       data.add(
-          new MostViewedEntities()
-              .withEntityFqn(tableFqn)
-              .withOwner(owner)
-              .withEntityType(entityType)
-              .withEntityHref(entityHref)
-              .withPageViews(getValue(sumPageViews)));
+        new MostViewedEntities()
+          .withEntityFqn(tableFqn)
+          .withOwner(owner)
+          .withEntityType(entityType)
+          .withEntityHref(entityHref)
+          .withPageViews(getValue(sumPageViews))
+      );
     }
 
     return data;

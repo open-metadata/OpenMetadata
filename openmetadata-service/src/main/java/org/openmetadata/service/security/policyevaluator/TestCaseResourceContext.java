@@ -35,6 +35,7 @@ import org.openmetadata.service.util.EntityUtil;
  */
 @Builder
 public class TestCaseResourceContext implements ResourceContextInterface {
+
   private final EntityLink entityLink;
   private final UUID id;
   private final String name;
@@ -76,8 +77,9 @@ public class TestCaseResourceContext implements ResourceContextInterface {
   }
 
   private static EntityInterface resolveEntityByEntityLink(EntityLink entityLink) {
-    EntityRepository<? extends EntityInterface> entityRepository =
-        Entity.getEntityRepository(entityLink.getEntityType());
+    EntityRepository<? extends EntityInterface> entityRepository = Entity.getEntityRepository(
+      entityLink.getEntityType()
+    );
     String fields = "";
     if (entityRepository.isSupportsOwner()) {
       fields = EntityUtil.addField(fields, Entity.FIELD_OWNER);

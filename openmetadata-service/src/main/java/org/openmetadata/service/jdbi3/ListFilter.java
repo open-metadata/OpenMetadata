@@ -15,7 +15,10 @@ import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class ListFilter {
-  @Getter private final Include include;
+
+  @Getter
+  private final Include include;
+
   private final Map<String, String> queryParams = new HashMap<>();
 
   public ListFilter() {
@@ -104,18 +107,18 @@ public class ListFilter {
   public String getTestSuiteFQNCondition() {
     String testSuiteName = queryParams.get("testSuite");
     return testSuiteName == null
-        ? ""
-        : String.format("fqnHash LIKE '%s%s%%'", FullyQualifiedName.buildHash(testSuiteName), Entity.SEPARATOR);
+      ? ""
+      : String.format("fqnHash LIKE '%s%s%%'", FullyQualifiedName.buildHash(testSuiteName), Entity.SEPARATOR);
   }
 
   private String getDomainCondition() {
     String domainId = getQueryParam("domainId");
     return domainId == null
-        ? ""
-        : String.format(
-            "(id in (SELECT toId FROM entity_relationship WHERE fromEntity='domain' AND fromId='%s' AND "
-                + "relation=10))",
-            domainId);
+      ? ""
+      : String.format(
+        "(id in (SELECT toId FROM entity_relationship WHERE fromEntity='domain' AND fromId='%s' AND " + "relation=10))",
+        domainId
+      );
   }
 
   private String getEntityFQNHashCondition() {
@@ -178,20 +181,27 @@ public class ListFilter {
     boolean includeAllTests = Boolean.parseBoolean(getQueryParam("includeAllTests"));
     if (entityFQN != null) {
       condition1 =
-          includeAllTests
-              ? String.format(
-                  "entityFQN LIKE '%s%s%%' OR entityFQN = '%s'",
-                  escape(entityFQN), Entity.SEPARATOR, escapeApostrophe(entityFQN))
-              : String.format("entityFQN = '%s'", escapeApostrophe(entityFQN));
+        includeAllTests
+          ? String.format(
+            "entityFQN LIKE '%s%s%%' OR entityFQN = '%s'",
+            escape(entityFQN),
+            Entity.SEPARATOR,
+            escapeApostrophe(entityFQN)
+          )
+          : String.format("entityFQN = '%s'", escapeApostrophe(entityFQN));
     }
 
     String condition2 = "";
     String testSuiteId = getQueryParam("testSuiteId");
     if (testSuiteId != null) {
       condition2 =
-          String.format(
-              "id IN (SELECT toId FROM entity_relationship WHERE fromId='%s' AND toEntity='%s' AND relation=%d AND fromEntity='%s')",
-              testSuiteId, Entity.TEST_CASE, Relationship.CONTAINS.ordinal(), Entity.TEST_SUITE);
+        String.format(
+          "id IN (SELECT toId FROM entity_relationship WHERE fromId='%s' AND toEntity='%s' AND relation=%d AND fromEntity='%s')",
+          testSuiteId,
+          Entity.TEST_CASE,
+          Relationship.CONTAINS.ordinal(),
+          Entity.TEST_SUITE
+        );
     }
     return addCondition(condition1, condition2);
   }
@@ -221,16 +231,15 @@ public class ListFilter {
 
   private String getFqnPrefixCondition(String tableName, String fqnPrefix) {
     return tableName == null
-        ? String.format("fqnHash LIKE '%s%s%%'", FullyQualifiedName.buildHash(fqnPrefix), Entity.SEPARATOR)
-        : String.format(
-            "%s.fqnHash LIKE '%s%s%%'", tableName, FullyQualifiedName.buildHash(fqnPrefix), Entity.SEPARATOR);
+      ? String.format("fqnHash LIKE '%s%s%%'", FullyQualifiedName.buildHash(fqnPrefix), Entity.SEPARATOR)
+      : String.format("%s.fqnHash LIKE '%s%s%%'", tableName, FullyQualifiedName.buildHash(fqnPrefix), Entity.SEPARATOR);
   }
 
   private String getWebhookTypePrefixCondition(String tableName, String typePrefix) {
     typePrefix = escape(typePrefix);
     return tableName == null
-        ? String.format("webhookType LIKE '%s%%'", typePrefix)
-        : String.format("%s.webhookType LIKE '%s%%'", tableName, typePrefix);
+      ? String.format("webhookType LIKE '%s%%'", typePrefix)
+      : String.format("%s.webhookType LIKE '%s%%'", tableName, typePrefix);
   }
 
   private String getPipelineTypePrefixCondition(String tableName, String pipelineType) {
@@ -238,15 +247,19 @@ public class ListFilter {
     String inCondition = getInConditionFromString(pipelineType);
     if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
       return tableName == null
-          ? String.format(
-              "JSON_UNQUOTE(JSON_EXTRACT(ingestion_pipeline_entity.json, '$.pipelineType')) IN (%s)", inCondition)
-          : String.format(
-              "%s.JSON_UNQUOTE(JSON_EXTRACT(ingestion_pipeline_entity.json, '$.pipelineType')) IN (%s)",
-              tableName, inCondition);
+        ? String.format(
+          "JSON_UNQUOTE(JSON_EXTRACT(ingestion_pipeline_entity.json, '$.pipelineType')) IN (%s)",
+          inCondition
+        )
+        : String.format(
+          "%s.JSON_UNQUOTE(JSON_EXTRACT(ingestion_pipeline_entity.json, '$.pipelineType')) IN (%s)",
+          tableName,
+          inCondition
+        );
     }
     return tableName == null
-        ? String.format("ingestion_pipeline_entity.json->>'pipelineType' IN (%s)", inCondition)
-        : String.format("%s.json->>'pipelineType' IN (%s)", tableName, inCondition);
+      ? String.format("ingestion_pipeline_entity.json->>'pipelineType' IN (%s)", inCondition)
+      : String.format("%s.json->>'pipelineType' IN (%s)", tableName, inCondition);
   }
 
   private String getInConditionFromString(String condition) {
@@ -256,8 +269,8 @@ public class ListFilter {
   private String getCategoryPrefixCondition(String tableName, String category) {
     category = escape(category);
     return tableName == null
-        ? String.format("category LIKE '%s%s%%'", category, "")
-        : String.format("%s.category LIKE '%s%s%%'", tableName, category, "");
+      ? String.format("category LIKE '%s%s%%'", category, "")
+      : String.format("%s.category LIKE '%s%s%%'", tableName, category, "");
   }
 
   private String getStatusPrefixCondition(String tableName, String statusPrefix) {
@@ -271,8 +284,8 @@ public class ListFilter {
       return "status in (" + String.join(",", condition) + ")";
     }
     return tableName == null
-        ? String.format("status LIKE '%s%s%%'", statusPrefix, "")
-        : String.format("%s.status LIKE '%s%s%%'", tableName, statusPrefix, "");
+      ? String.format("status LIKE '%s%s%%'", statusPrefix, "")
+      : String.format("%s.status LIKE '%s%s%%'", tableName, statusPrefix, "");
   }
 
   private String addCondition(String condition1, String condition2) {

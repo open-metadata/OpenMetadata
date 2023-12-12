@@ -70,23 +70,25 @@ import org.openmetadata.service.util.UserUtil;
 
 @Slf4j
 public class UserRepository extends EntityRepository<User> {
+
   static final String ROLES_FIELD = "roles";
   static final String TEAMS_FIELD = "teams";
   public static final String AUTH_MECHANISM_FIELD = "authenticationMechanism";
   static final String USER_PATCH_FIELDS =
-      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona";
+    "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona";
   static final String USER_UPDATE_FIELDS =
-      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona";
+    "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona";
   private volatile EntityReference organization;
 
   public UserRepository() {
     super(
-        UserResource.COLLECTION_PATH,
-        USER,
-        User.class,
-        Entity.getCollectionDAO().userDAO(),
-        USER_PATCH_FIELDS,
-        USER_UPDATE_FIELDS);
+      UserResource.COLLECTION_PATH,
+      USER,
+      User.class,
+      Entity.getCollectionDAO().userDAO(),
+      USER_PATCH_FIELDS,
+      USER_UPDATE_FIELDS
+    );
     this.quoteFqn = true;
     supportsSearch = true;
   }
@@ -139,8 +141,8 @@ public class UserRepository extends EntityRepository<User> {
     // Patch can't make changes to following fields. Ignore the changes
     super.restorePatchAttributes(original, updated);
     updated
-        .withInheritedRoles(original.getInheritedRoles())
-        .withAuthenticationMechanism(original.getAuthenticationMechanism());
+      .withInheritedRoles(original.getInheritedRoles())
+      .withAuthenticationMechanism(original.getAuthenticationMechanism());
   }
 
   private List<EntityReference> getInheritedRoles(User user) {
@@ -228,7 +230,7 @@ public class UserRepository extends EntityRepository<User> {
 
   @Override
   public CsvImportResult importFromCsv(String importingTeam, String csv, boolean dryRun, String user)
-      throws IOException {
+    throws IOException {
     Team team = daoCollection.teamDAO().findEntityByName(importingTeam);
     UserCsv userCsv = new UserCsv(team, user);
     return userCsv.importCsv(csv, dryRun);
@@ -259,7 +261,8 @@ public class UserRepository extends EntityRepository<User> {
     Optional<EntityReference> team = teams.stream().filter(t -> t.getId().equals(teamId)).findFirst();
     if (team.isPresent()) {
       throw new IllegalArgumentException(
-          CatalogExceptionMessage.userAlreadyPartOfTeam(user.getName(), team.get().getDisplayName()));
+        CatalogExceptionMessage.userAlreadyPartOfTeam(user.getName(), team.get().getDisplayName())
+      );
     }
   }
 
@@ -281,14 +284,16 @@ public class UserRepository extends EntityRepository<User> {
 
   private List<EntityReference> getOwns(User user) {
     // Compile entities owned by the user
-    List<EntityRelationshipRecord> ownedEntities =
-        daoCollection.relationshipDAO().findTo(user.getId(), USER, Relationship.OWNS.ordinal());
+    List<EntityRelationshipRecord> ownedEntities = daoCollection
+      .relationshipDAO()
+      .findTo(user.getId(), USER, Relationship.OWNS.ordinal());
 
     // Compile entities owned by the team the user belongs to
     List<EntityReference> teams = user.getTeams() == null ? getTeams(user) : user.getTeams();
     for (EntityReference team : teams) {
       ownedEntities.addAll(
-          daoCollection.relationshipDAO().findTo(team.getId(), Entity.TEAM, Relationship.OWNS.ordinal()));
+        daoCollection.relationshipDAO().findTo(team.getId(), Entity.TEAM, Relationship.OWNS.ordinal())
+      );
     }
     // Populate details in entity reference
     return EntityUtil.getEntityReferences(ownedEntities);
@@ -387,6 +392,7 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   public static class UserCsv extends EntityCsv<User> {
+
     public static final CsvDocumentation DOCUMENTATION = getCsvDocumentation(USER);
     public static final List<CsvHeader> HEADERS = DOCUMENTATION.getHeaders();
     public final Team team;
@@ -399,14 +405,13 @@ public class UserRepository extends EntityRepository<User> {
     @Override
     protected User toEntity(CSVPrinter printer, CSVRecord csvRecord) throws IOException {
       // Field 1, 2, 3, 4, 5, 6 - name, displayName, description, email, timezone, isAdmin
-      User user =
-          new User()
-              .withName(csvRecord.get(0))
-              .withDisplayName(csvRecord.get(1))
-              .withDescription(csvRecord.get(2))
-              .withEmail(csvRecord.get(3))
-              .withTimezone(csvRecord.get(4))
-              .withIsAdmin(getBoolean(printer, csvRecord, 5));
+      User user = new User()
+        .withName(csvRecord.get(0))
+        .withDisplayName(csvRecord.get(1))
+        .withDescription(csvRecord.get(2))
+        .withEmail(csvRecord.get(3))
+        .withTimezone(csvRecord.get(4))
+        .withIsAdmin(getBoolean(printer, csvRecord, 5));
 
       // Field 7 - team
       user.setTeams(getTeams(printer, csvRecord, user.getName()));
@@ -440,11 +445,12 @@ public class UserRepository extends EntityRepository<User> {
     }
 
     private List<User> listUsers(
-        TeamRepository teamRepository,
-        UserRepository userRepository,
-        String parentTeam,
-        List<User> users,
-        Fields fields) {
+      TeamRepository teamRepository,
+      UserRepository userRepository,
+      String parentTeam,
+      List<User> users,
+      Fields fields
+    ) {
       // Export the users by listing users for the entire team hierarchy
       ListFilter filter = new ListFilter(Include.NON_DELETED).addQueryParam("team", parentTeam);
 
@@ -494,6 +500,7 @@ public class UserRepository extends EntityRepository<User> {
 
   /** Handles entity updated from PUT and POST operation. */
   public class UserUpdater extends EntityUpdater {
+
     public UserUpdater(User original, User updated, Operation operation) {
       super(original, updated, operation);
     }
@@ -567,9 +574,11 @@ public class UserRepository extends EntityRepository<User> {
       AuthenticationMechanism updatedAuthMechanism = updated.getAuthenticationMechanism();
       if (origAuthMechanism == null && updatedAuthMechanism != null) {
         recordChange(AUTH_MECHANISM_FIELD, original.getAuthenticationMechanism(), "new-encrypted-value");
-      } else if (origAuthMechanism != null
-          && updatedAuthMechanism != null
-          && !JsonUtils.areEquals(origAuthMechanism, updatedAuthMechanism)) {
+      } else if (
+        origAuthMechanism != null &&
+        updatedAuthMechanism != null &&
+        !JsonUtils.areEquals(origAuthMechanism, updatedAuthMechanism)
+      ) {
         recordChange(AUTH_MECHANISM_FIELD, "old-encrypted-value", "new-encrypted-value");
       }
     }

@@ -27,10 +27,12 @@ public class DomainIndex implements SearchIndex {
     suggest.add(SearchSuggest.builder().input(domain.getName()).weight(5).build());
     suggest.add(SearchSuggest.builder().input(domain.getFullyQualifiedName()).weight(5).build());
     doc.put(
-        "fqnParts",
-        getFQNParts(
-            domain.getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+      "fqnParts",
+      getFQNParts(
+        domain.getFullyQualifiedName(),
+        suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())
+      )
+    );
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.DOMAIN);
     return doc;

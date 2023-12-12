@@ -23,17 +23,20 @@ import org.springframework.expression.spel.support.StandardEvaluationContext;
 /** This class is used in a single threaded model and hence does not have concurrency support */
 @Slf4j
 public class CompiledRule extends Rule {
+
   private static final SpelExpressionParser EXPRESSION_PARSER = new SpelExpressionParser();
-  @JsonIgnore private Expression expression;
+
+  @JsonIgnore
+  private Expression expression;
 
   public CompiledRule(Rule rule) {
     super();
     this.withName(rule.getName())
-        .withDescription(rule.getDescription())
-        .withCondition(rule.getCondition())
-        .withEffect(rule.getEffect())
-        .withOperations(rule.getOperations())
-        .withResources(rule.getResources());
+      .withDescription(rule.getDescription())
+      .withCondition(rule.getCondition())
+      .withEffect(rule.getEffect())
+      .withOperations(rule.getOperations())
+      .withResources(rule.getResources());
   }
 
   public static Expression parseExpression(String condition) {
@@ -75,10 +78,11 @@ public class CompiledRule extends Rule {
   }
 
   public void evaluateDenyRule(
-      OperationContext operationContext,
-      SubjectContext subjectContext,
-      ResourceContextInterface resourceContext,
-      PolicyContext policyContext) {
+    OperationContext operationContext,
+    SubjectContext subjectContext,
+    ResourceContextInterface resourceContext,
+    PolicyContext policyContext
+  ) {
     if (getEffect() != Effect.DENY || !matchResource(operationContext.getResource())) {
       return;
     }
@@ -87,19 +91,22 @@ public class CompiledRule extends Rule {
     for (MetadataOperation operation : operations) {
       if (matchOperation(operation)) {
         LOG.debug(
-            "operation {} denied by {}{}{}",
-            operation,
-            policyContext.getRoleName(),
-            policyContext.getPolicyName(),
-            getName());
+          "operation {} denied by {}{}{}",
+          operation,
+          policyContext.getRoleName(),
+          policyContext.getPolicyName(),
+          getName()
+        );
         if (matchExpression(policyContext, subjectContext, resourceContext)) {
           throw new AuthorizationException(
-              permissionDenied(
-                  subjectContext.getUser().getName(),
-                  operation,
-                  policyContext.getRoleName(),
-                  policyContext.getPolicyName(),
-                  getName()));
+            permissionDenied(
+              subjectContext.getUser().getName(),
+              operation,
+              policyContext.getRoleName(),
+              policyContext.getPolicyName(),
+              getName()
+            )
+          );
         }
       }
     }
@@ -113,10 +120,11 @@ public class CompiledRule extends Rule {
   }
 
   public void evaluateAllowRule(
-      OperationContext operationContext,
-      SubjectContext subjectContext,
-      ResourceContextInterface resourceContext,
-      PolicyContext policyContext) {
+    OperationContext operationContext,
+    SubjectContext subjectContext,
+    ResourceContextInterface resourceContext,
+    PolicyContext policyContext
+  ) {
     if (getEffect() != Effect.ALLOW || !matchResource(operationContext.getResource())) {
       return;
     }
@@ -146,34 +154,36 @@ public class CompiledRule extends Rule {
     for (Permission permission : resourcePermission.getPermissions()) {
       if (matchOperation(permission.getOperation()) && overrideAccess(access, permission.getAccess())) {
         permission
-            .withAccess(access)
-            .withRole(policyContext.getRoleName())
-            .withPolicy(policyContext.getPolicyName())
-            .withRule(this);
+          .withAccess(access)
+          .withRole(policyContext.getRoleName())
+          .withPolicy(policyContext.getPolicyName())
+          .withRule(this);
         LOG.debug("Updated permission {}", permission);
       }
     }
   }
 
   public void evaluatePermission(
-      SubjectContext subjectContext,
-      ResourceContextInterface resourceContext,
-      ResourcePermission resourcePermission,
-      PolicyContext policyContext) {
+    SubjectContext subjectContext,
+    ResourceContextInterface resourceContext,
+    ResourcePermission resourcePermission,
+    PolicyContext policyContext
+  ) {
     if (!matchResource(resourceContext.getResource())) {
       return;
     }
     // Walk through all the operations in the rule and set permissions
     for (Permission permission : resourcePermission.getPermissions()) {
-      if (matchOperation(permission.getOperation())
-          && matchExpression(policyContext, subjectContext, resourceContext)) {
+      if (
+        matchOperation(permission.getOperation()) && matchExpression(policyContext, subjectContext, resourceContext)
+      ) {
         Access access = getEffect() == Effect.DENY ? Access.DENY : Access.ALLOW;
         if (overrideAccess(access, permission.getAccess())) {
           permission
-              .withAccess(access)
-              .withRole(policyContext.getRoleName())
-              .withPolicy(policyContext.getPolicyName())
-              .withRule(this);
+            .withAccess(access)
+            .withRole(policyContext.getRoleName())
+            .withPolicy(policyContext.getPolicyName())
+            .withRule(this);
           LOG.debug("Updated permission {}", permission);
         }
       }
@@ -201,7 +211,10 @@ public class CompiledRule extends Rule {
   }
 
   private boolean matchExpression(
-      PolicyContext policyContext, SubjectContext subjectContext, ResourceContextInterface resourceContext) {
+    PolicyContext policyContext,
+    SubjectContext subjectContext,
+    ResourceContextInterface resourceContext
+  ) {
     Expression expr = getExpression();
     if (expr == null) {
       return true;

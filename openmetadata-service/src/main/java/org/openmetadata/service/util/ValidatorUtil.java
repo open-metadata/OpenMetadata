@@ -9,6 +9,7 @@ import javax.validation.Validator;
 import javax.validation.ValidatorFactory;
 
 public class ValidatorUtil {
+
   public static final Validator VALIDATOR;
 
   static {
@@ -23,8 +24,9 @@ public class ValidatorUtil {
   public static <T> String validate(T entity) {
     Set<ConstraintViolation<T>> violations = VALIDATOR.validate(entity);
     return violations.isEmpty()
-        ? null
-        : Arrays.toString(
-            violations.stream().map(v -> String.format("%s %s", v.getPropertyPath(), v.getMessage())).toArray());
+      ? null
+      : Arrays.toString(
+        violations.stream().map(v -> String.format("%s %s", v.getPropertyPath(), v.getMessage())).toArray()
+      );
   }
 }

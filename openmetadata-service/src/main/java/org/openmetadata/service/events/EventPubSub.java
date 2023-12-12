@@ -33,6 +33,7 @@ import org.openmetadata.service.events.errors.EventPublisherException;
 /** Change event PubSub built based on LMAX Disruptor. */
 @Slf4j
 public class EventPubSub {
+
   private static Disruptor<ChangeEventHolder> disruptor;
   private static ExecutorService executor;
   private static RingBuffer<ChangeEventHolder> ringBuffer;
@@ -63,10 +64,14 @@ public class EventPubSub {
   }
 
   public static class ChangeEventHolder {
-    @Getter @Setter private ChangeEvent event;
+
+    @Getter
+    @Setter
+    private ChangeEvent event;
   }
 
   public static class ChangeEventFactory implements EventFactory<ChangeEventHolder> {
+
     public ChangeEventHolder newInstance() {
       return new ChangeEventHolder();
     }
@@ -82,8 +87,11 @@ public class EventPubSub {
   }
 
   public static BatchEventProcessor<ChangeEventHolder> addEventHandler(EventHandler<ChangeEventHolder> eventHandler) {
-    BatchEventProcessor<ChangeEventHolder> processor =
-        new BatchEventProcessor<>(ringBuffer, ringBuffer.newBarrier(), eventHandler);
+    BatchEventProcessor<ChangeEventHolder> processor = new BatchEventProcessor<>(
+      ringBuffer,
+      ringBuffer.newBarrier(),
+      eventHandler
+    );
     processor.setExceptionHandler(new DefaultExceptionHandler());
     ringBuffer.addGatingSequences(processor.getSequence());
     executor.execute(processor);
@@ -101,11 +109,11 @@ public class EventPubSub {
   }
 
   public static class DefaultExceptionHandler implements ExceptionHandler<ChangeEventHolder> {
+
     @Override
     public void handleEventException(Throwable throwable, long l, ChangeEventHolder changeEventHolder) {
       LOG.warn("Disruptor error in onEvent {}", throwable.getMessage());
-      throw new EventPublisherException(
-          throwable.getMessage()); // Throw runtime exception to stop the event handler thread
+      throw new EventPublisherException(throwable.getMessage()); // Throw runtime exception to stop the event handler thread
     }
 
     @Override

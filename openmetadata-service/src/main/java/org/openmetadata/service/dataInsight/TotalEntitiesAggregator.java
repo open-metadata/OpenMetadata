@@ -6,6 +6,7 @@ import java.util.List;
 import org.openmetadata.schema.dataInsight.type.TotalEntitiesByType;
 
 public abstract class TotalEntitiesAggregator<A, B, M, S> implements DataInsightAggregatorInterface {
+
   private final A aggregations;
 
   protected TotalEntitiesAggregator(A aggregations) {
@@ -27,10 +28,11 @@ public abstract class TotalEntitiesAggregator<A, B, M, S> implements DataInsight
         S sumEntityCount = getSumAggregations(entityTypeBucket, ENTITY_COUNT);
 
         data.add(
-            new TotalEntitiesByType()
-                .withTimestamp(timestamp)
-                .withEntityType(entityType)
-                .withEntityCount(getValue(sumEntityCount)));
+          new TotalEntitiesByType()
+            .withTimestamp(timestamp)
+            .withEntityType(entityType)
+            .withEntityCount(getValue(sumEntityCount))
+        );
         entityCount.add(getValue(sumEntityCount));
       }
     }

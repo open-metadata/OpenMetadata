@@ -145,13 +145,14 @@ import org.openmetadata.service.util.UserUtil;
 @Slf4j
 @Path("/v1/users")
 @Tag(
-    name = "Users",
-    description =
-        "A `User` represents a user of OpenMetadata. A user can be part of 0 or more teams. A special type of user called Bot is used for automation. A user can be an owner of zero or more data assets. A user can also follow zero or more data assets.")
+  name = "Users",
+  description = "A `User` represents a user of OpenMetadata. A user can be part of 0 or more teams. A special type of user called Bot is used for automation. A user can be an owner of zero or more data assets. A user can also follow zero or more data assets."
+)
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "users", order = 3) // Initialize user resource before bot resource (at default order 9)
 public class UserResource extends EntityResource<User, UserRepository> {
+
   public static final String COLLECTION_PATH = "v1/users/";
   public static final String USER_PROTECTED_FIELDS = "authenticationMechanism";
   private final JWTTokenGenerator jwtTokenGenerator;
@@ -208,53 +209,51 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @GET
   @Valid
   @Operation(
-      operationId = "listUsers",
-      summary = "List users",
-      description =
-          "Get a list of users. Use `fields` "
-              + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
-              + "entries in the list using `limit` and `before` or `after` query params.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The user ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = UserList.class)))
-      })
+    operationId = "listUsers",
+    summary = "List users",
+    description = "Get a list of users. Use `fields` " +
+    "parameter to get only necessary fields. Use cursor-based pagination to limit the number " +
+    "entries in the list using `limit` and `before` or `after` query params.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "The user ",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = UserList.class))
+      )
+    }
+  )
   public ResultList<User> list(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(
-              description = "Fields requested in the returned resource",
-              schema = @Schema(type = "string", example = FIELDS))
-          @QueryParam("fields")
-          String fieldsParam,
-      @Parameter(description = "Filter users by team", schema = @Schema(type = "string", example = "Legal"))
-          @QueryParam("team")
-          String teamParam,
-      @Parameter(description = "Limit the number users returned. (1 to 1000000, default = 10)")
-          @DefaultValue("10")
-          @Min(0)
-          @Max(1000000)
-          @QueryParam("limit")
-          int limitParam,
-      @Parameter(description = "Returns list of users before this cursor", schema = @Schema(type = "string"))
-          @QueryParam("before")
-          String before,
-      @Parameter(description = "Returns list of users after this cursor", schema = @Schema(type = "string"))
-          @QueryParam("after")
-          String after,
-      @Parameter(description = "Returns list of admin users if set to true", schema = @Schema(type = "boolean"))
-          @QueryParam("isAdmin")
-          Boolean isAdmin,
-      @Parameter(description = "Returns list of bot users if set to true", schema = @Schema(type = "boolean"))
-          @QueryParam("isBot")
-          Boolean isBot,
-      @Parameter(
-              description = "Include all, deleted, or non-deleted entities.",
-              schema = @Schema(implementation = Include.class))
-          @QueryParam("include")
-          @DefaultValue("non-deleted")
-          Include include) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(
+      description = "Fields requested in the returned resource",
+      schema = @Schema(type = "string", example = FIELDS)
+    ) @QueryParam("fields") String fieldsParam,
+    @Parameter(description = "Filter users by team", schema = @Schema(type = "string", example = "Legal")) @QueryParam(
+      "team"
+    ) String teamParam,
+    @Parameter(description = "Limit the number users returned. (1 to 1000000, default = 10)") @DefaultValue("10") @Min(
+      0
+    ) @Max(1000000) @QueryParam("limit") int limitParam,
+    @Parameter(description = "Returns list of users before this cursor", schema = @Schema(type = "string")) @QueryParam(
+      "before"
+    ) String before,
+    @Parameter(description = "Returns list of users after this cursor", schema = @Schema(type = "string")) @QueryParam(
+      "after"
+    ) String after,
+    @Parameter(
+      description = "Returns list of admin users if set to true",
+      schema = @Schema(type = "boolean")
+    ) @QueryParam("isAdmin") Boolean isAdmin,
+    @Parameter(
+      description = "Returns list of bot users if set to true",
+      schema = @Schema(type = "boolean")
+    ) @QueryParam("isBot") Boolean isBot,
+    @Parameter(
+      description = "Include all, deleted, or non-deleted entities.",
+      schema = @Schema(implementation = Include.class)
+    ) @QueryParam("include") @DefaultValue("non-deleted") Include include
+  ) {
     ListFilter filter = new ListFilter(include).addQueryParam("team", teamParam);
     if (isAdmin != null) {
       filter.addQueryParam("isAdmin", String.valueOf(isAdmin));
@@ -270,29 +269,33 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @GET
   @Path("/{id}/versions")
   @Operation(
-      operationId = "listAllUserVersion",
-      summary = "List user versions",
-      description = "Get a list of all the versions of a user identified by `id`",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "List of user versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
-      })
+    operationId = "listAllUserVersion",
+    summary = "List user versions",
+    description = "Get a list of all the versions of a user identified by `id`",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "List of user versions",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class))
+      )
+    }
+  )
   public EntityHistory listVersions(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id") UUID id
+  ) {
     return super.listVersionsInternal(securityContext, id);
   }
 
   @GET
   @Path("/generateRandomPwd")
   @Operation(
-      operationId = "generateRandomPwd",
-      summary = "Generate a random password",
-      description = "Generate a random password",
-      responses = {@ApiResponse(responseCode = "200", description = "Random pwd")})
+    operationId = "generateRandomPwd",
+    summary = "Generate a random password",
+    description = "Generate a random password",
+    responses = { @ApiResponse(responseCode = "200", description = "Random pwd") }
+  )
   public Response generateRandomPassword(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     authorizer.authorizeAdmin(securityContext);
     return Response.status(OK).entity(PasswordUtil.generateRandomPassword()).build();
@@ -302,31 +305,31 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Valid
   @Path("/{id}")
   @Operation(
-      operationId = "getUserByID",
-      summary = "Get a user",
-      description = "Get a user by `id`",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The user",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = User.class))),
-        @ApiResponse(responseCode = "404", description = "User for instance {id} is not found")
-      })
+    operationId = "getUserByID",
+    summary = "Get a user",
+    description = "Get a user by `id`",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "The user",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = User.class))
+      ),
+      @ApiResponse(responseCode = "404", description = "User for instance {id} is not found")
+    }
+  )
   public User get(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Parameter(
-              description = "Fields requested in the returned resource",
-              schema = @Schema(type = "string", example = FIELDS))
-          @QueryParam("fields")
-          String fieldsParam,
-      @Parameter(
-              description = "Include all, deleted, or non-deleted entities.",
-              schema = @Schema(implementation = Include.class))
-          @QueryParam("include")
-          @DefaultValue("non-deleted")
-          Include include) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+    @Parameter(
+      description = "Fields requested in the returned resource",
+      schema = @Schema(type = "string", example = FIELDS)
+    ) @QueryParam("fields") String fieldsParam,
+    @Parameter(
+      description = "Include all, deleted, or non-deleted entities.",
+      schema = @Schema(implementation = Include.class)
+    ) @QueryParam("include") @DefaultValue("non-deleted") Include include
+  ) {
     User user = getInternal(uriInfo, securityContext, id, fieldsParam, include);
     decryptOrNullify(securityContext, user);
     return user;
@@ -336,31 +339,31 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Valid
   @Path("/name/{name}")
   @Operation(
-      operationId = "getUserByFQN",
-      summary = "Get a user by name",
-      description = "Get a user by `name`.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The user",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = User.class))),
-        @ApiResponse(responseCode = "404", description = "User for instance {name} is not found")
-      })
+    operationId = "getUserByFQN",
+    summary = "Get a user by name",
+    description = "Get a user by `name`.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "The user",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = User.class))
+      ),
+      @ApiResponse(responseCode = "404", description = "User for instance {name} is not found")
+    }
+  )
   public User getByName(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the user", schema = @Schema(type = "string")) @PathParam("name") String name,
-      @Parameter(
-              description = "Fields requested in the returned resource",
-              schema = @Schema(type = "string", example = FIELDS))
-          @QueryParam("fields")
-          String fieldsParam,
-      @Parameter(
-              description = "Include all, deleted, or non-deleted entities.",
-              schema = @Schema(implementation = Include.class))
-          @QueryParam("include")
-          @DefaultValue("non-deleted")
-          Include include) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Name of the user", schema = @Schema(type = "string")) @PathParam("name") String name,
+    @Parameter(
+      description = "Fields requested in the returned resource",
+      schema = @Schema(type = "string", example = FIELDS)
+    ) @QueryParam("fields") String fieldsParam,
+    @Parameter(
+      description = "Include all, deleted, or non-deleted entities.",
+      schema = @Schema(implementation = Include.class)
+    ) @QueryParam("include") @DefaultValue("non-deleted") Include include
+  ) {
     User user = getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
     decryptOrNullify(securityContext, user);
     return user;
@@ -370,24 +373,26 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Valid
   @Path("/loggedInUser")
   @Operation(
-      operationId = "getCurrentLoggedInUser",
-      summary = "Get current logged in user",
-      description = "Get the user who is authenticated and is currently logged in.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The user",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = User.class))),
-        @ApiResponse(responseCode = "404", description = "User not found")
-      })
+    operationId = "getCurrentLoggedInUser",
+    summary = "Get current logged in user",
+    description = "Get the user who is authenticated and is currently logged in.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "The user",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = User.class))
+      ),
+      @ApiResponse(responseCode = "404", description = "User not found")
+    }
+  )
   public User getCurrentLoggedInUser(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(
-              description = "Fields requested in the returned resource",
-              schema = @Schema(type = "string", example = FIELDS))
-          @QueryParam("fields")
-          String fieldsParam) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(
+      description = "Fields requested in the returned resource",
+      schema = @Schema(type = "string", example = FIELDS)
+    ) @QueryParam("fields") String fieldsParam
+  ) {
     Fields fields = getFields(fieldsParam);
     String currentUserName = securityContext.getUserPrincipal().getName();
     User user = repository.getByName(uriInfo, currentUserName, fields);
@@ -398,21 +403,25 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Valid
   @Path("/loggedInUser/groupTeams")
   @Operation(
-      operationId = "getCurrentLoggedInUserGroupTeams",
-      summary = "Get group type of teams for current logged in user",
-      description = "Get the group type of teams of user who is authenticated and is currently logged in.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The teams of type 'Group' that a user belongs to",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    array = @ArraySchema(schema = @Schema(implementation = EntityReference.class)))),
-        @ApiResponse(responseCode = "404", description = "User not found")
-      })
+    operationId = "getCurrentLoggedInUserGroupTeams",
+    summary = "Get group type of teams for current logged in user",
+    description = "Get the group type of teams of user who is authenticated and is currently logged in.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "The teams of type 'Group' that a user belongs to",
+        content = @Content(
+          mediaType = "application/json",
+          array = @ArraySchema(schema = @Schema(implementation = EntityReference.class))
+        )
+      ),
+      @ApiResponse(responseCode = "404", description = "User not found")
+    }
+  )
   public List<EntityReference> getCurrentLoggedInUser(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext
+  ) {
     String currentUserName = securityContext.getUserPrincipal().getName();
     return repository.getGroupTeams(uriInfo, currentUserName);
   }
@@ -420,22 +429,28 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @POST
   @Path("/logout")
   @Operation(
-      operationId = "logoutUser",
-      summary = "Logout a User(Only called for saml and basic Auth)",
-      description = "Logout a User(Only called for saml and basic Auth)",
-      responses = {
-        @ApiResponse(responseCode = "200", description = "The user "),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
+    operationId = "logoutUser",
+    summary = "Logout a User(Only called for saml and basic Auth)",
+    description = "Logout a User(Only called for saml and basic Auth)",
+    responses = {
+      @ApiResponse(responseCode = "200", description = "The user "),
+      @ApiResponse(responseCode = "400", description = "Bad request")
+    }
+  )
   public Response logoutUser(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid LogoutRequest request) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Valid LogoutRequest request
+  ) {
     Date logoutTime = Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant());
-    JwtTokenCacheManager.getInstance()
-        .markLogoutEventForToken(
-            new LogoutRequest()
-                .withUsername(securityContext.getUserPrincipal().getName())
-                .withToken(request.getToken())
-                .withLogoutTime(logoutTime));
+    JwtTokenCacheManager
+      .getInstance()
+      .markLogoutEventForToken(
+        new LogoutRequest()
+          .withUsername(securityContext.getUserPrincipal().getName())
+          .withToken(request.getToken())
+          .withLogoutTime(logoutTime)
+      );
     if (isBasicAuth() && request.getRefreshToken() != null) {
       // need to clear the refresh token as well
       tokenRepository.deleteToken(request.getRefreshToken());
@@ -446,42 +461,49 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
-      operationId = "getSpecificUserVersion",
-      summary = "Get a version of the user",
-      description = "Get a version of the user by given `id`",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "user",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = User.class))),
-        @ApiResponse(responseCode = "404", description = "User for instance {id} and version {version} is not found")
-      })
+    operationId = "getSpecificUserVersion",
+    summary = "Get a version of the user",
+    description = "Get a version of the user by given `id`",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "user",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = User.class))
+      ),
+      @ApiResponse(responseCode = "404", description = "User for instance {id} and version {version} is not found")
+    }
+  )
   public User getVersion(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Parameter(
-              description = "User version number in the form `major`.`minor`",
-              schema = @Schema(type = "string", example = "0.1 or 1.1"))
-          @PathParam("version")
-          String version) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+    @Parameter(
+      description = "User version number in the form `major`.`minor`",
+      schema = @Schema(type = "string", example = "0.1 or 1.1")
+    ) @PathParam("version") String version
+  ) {
     return super.getVersionInternal(securityContext, id, version);
   }
 
   @POST
   @Operation(
-      operationId = "createUser",
-      summary = "Create a user",
-      description = "Create a new user.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The user ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = User.class))),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
+    operationId = "createUser",
+    summary = "Create a user",
+    description = "Create a new user.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "The user ",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = User.class))
+      ),
+      @ApiResponse(responseCode = "400", description = "Bad request")
+    }
+  )
   public Response createUser(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateUser create) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Valid CreateUser create
+  ) {
     User user = getUser(securityContext.getUserPrincipal().getName(), create);
     if (Boolean.TRUE.equals(create.getIsAdmin())) {
       authorizer.authorizeAdmin(securityContext);
@@ -495,10 +517,11 @@ public class UserResource extends EntityResource<User, UserRepository> {
         // basic auth doesn't allow duplicate emails, since username part of the email is used as login name
         validateEmailAlreadyExists(create.getEmail());
       } catch (RuntimeException ex) {
-        return Response.status(CONFLICT)
-            .type(MediaType.APPLICATION_JSON_TYPE)
-            .entity(new ErrorMessage(CONFLICT.getStatusCode(), CatalogExceptionMessage.ENTITY_ALREADY_EXISTS))
-            .build();
+        return Response
+          .status(CONFLICT)
+          .type(MediaType.APPLICATION_JSON_TYPE)
+          .entity(new ErrorMessage(CONFLICT.getStatusCode(), CatalogExceptionMessage.ENTITY_ALREADY_EXISTS))
+          .build();
       }
       user.setName(user.getEmail().split("@")[0]);
       if (Boolean.FALSE.equals(create.getIsBot()) && create.getCreatePasswordType() == ADMIN_CREATE) {
@@ -511,11 +534,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
     if (isBasicAuth() && isEmailServiceEnabled) {
       try {
         authHandler.sendInviteMailToUser(
-            uriInfo,
-            user,
-            String.format("Welcome to %s", EmailUtil.getEmailingEntity()),
-            create.getCreatePasswordType(),
-            create.getPassword());
+          uriInfo,
+          user,
+          String.format("Welcome to %s", EmailUtil.getEmailingEntity()),
+          create.getCreatePasswordType(),
+          create.getPassword()
+        );
       } catch (Exception ex) {
         LOG.error("Error in sending invite to User" + ex.getMessage());
       }
@@ -531,17 +555,22 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   @PUT
   @Operation(
-      summary = "Update user",
-      description = "Create or Update a user.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The user ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateUser.class))),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
+    summary = "Update user",
+    description = "Create or Update a user.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "The user ",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateUser.class))
+      ),
+      @ApiResponse(responseCode = "400", description = "Bad request")
+    }
+  )
   public Response createOrUpdateUser(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateUser create) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Valid CreateUser create
+  ) {
     User user = getUser(securityContext.getUserPrincipal().getName(), create);
     repository.prepareInternal(user, true);
 
@@ -551,8 +580,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
     } else if (!securityContext.getUserPrincipal().getName().equals(user.getName())) {
       // doing authorization check outside of authorizer here. We are checking if the logged-in user same as the user
       // we are trying to update. One option is to set users.owner as user, however that is not supported for User.
-      OperationContext createOperationContext =
-          new OperationContext(entityType, EntityUtil.createOrUpdateOperation(resourceContext));
+      OperationContext createOperationContext = new OperationContext(
+        entityType,
+        EntityUtil.createOrUpdateOperation(resourceContext)
+      );
       authorizer.authorize(securityContext, createOperationContext, resourceContext);
     }
     if (Boolean.TRUE.equals(create.getIsBot())) { // TODO expect bot to be created separately
@@ -566,61 +597,69 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @PUT
   @Path("/generateToken/{id}")
   @Operation(
-      operationId = "generateJWTTokenForBotUser",
-      summary = "Generate JWT Token for a Bot User",
-      description = "Generate JWT Token for a Bot User.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The user ",
-            content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = JWTTokenExpiry.class))),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
+    operationId = "generateJWTTokenForBotUser",
+    summary = "Generate JWT Token for a Bot User",
+    description = "Generate JWT Token for a Bot User.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "The user ",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = JWTTokenExpiry.class))
+      ),
+      @ApiResponse(responseCode = "400", description = "Bad request")
+    }
+  )
   public Response generateToken(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Valid GenerateTokenRequest generateTokenRequest) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+    @Valid GenerateTokenRequest generateTokenRequest
+  ) {
     authorizer.authorizeAdmin(securityContext);
     User user = repository.get(uriInfo, id, repository.getFieldsWithUserAuth("*"));
-    JWTAuthMechanism jwtAuthMechanism =
-        jwtTokenGenerator.generateJWTToken(user, generateTokenRequest.getJWTTokenExpiry());
-    AuthenticationMechanism authenticationMechanism =
-        new AuthenticationMechanism().withConfig(jwtAuthMechanism).withAuthType(AuthenticationMechanism.AuthType.JWT);
+    JWTAuthMechanism jwtAuthMechanism = jwtTokenGenerator.generateJWTToken(
+      user,
+      generateTokenRequest.getJWTTokenExpiry()
+    );
+    AuthenticationMechanism authenticationMechanism = new AuthenticationMechanism()
+      .withConfig(jwtAuthMechanism)
+      .withAuthType(AuthenticationMechanism.AuthType.JWT);
     user.setAuthenticationMechanism(authenticationMechanism);
     User updatedUser = repository.createOrUpdate(uriInfo, user).getEntity();
     jwtAuthMechanism =
-        JsonUtils.convertValue(updatedUser.getAuthenticationMechanism().getConfig(), JWTAuthMechanism.class);
+      JsonUtils.convertValue(updatedUser.getAuthenticationMechanism().getConfig(), JWTAuthMechanism.class);
     return Response.status(Response.Status.OK).entity(jwtAuthMechanism).build();
   }
 
   @PUT
   @Path("/revokeToken")
   @Operation(
-      operationId = "revokeJWTTokenForBotUser",
-      summary = "Revoke JWT Token for a Bot User",
-      description = "Revoke JWT Token for a Bot User.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The user ",
-            content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = JWTAuthMechanism.class))),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
+    operationId = "revokeJWTTokenForBotUser",
+    summary = "Revoke JWT Token for a Bot User",
+    description = "Revoke JWT Token for a Bot User.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "The user ",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = JWTAuthMechanism.class))
+      ),
+      @ApiResponse(responseCode = "400", description = "Bad request")
+    }
+  )
   public Response revokeToken(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Valid RevokeTokenRequest revokeTokenRequest) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Valid RevokeTokenRequest revokeTokenRequest
+  ) {
     authorizer.authorizeAdmin(securityContext);
     User user = repository.get(uriInfo, revokeTokenRequest.getId(), repository.getFieldsWithUserAuth("*"));
     if (Boolean.FALSE.equals(user.getIsBot())) {
       throw new IllegalStateException(CatalogExceptionMessage.INVALID_BOT_USER);
     }
     JWTAuthMechanism jwtAuthMechanism = new JWTAuthMechanism().withJWTToken(StringUtils.EMPTY);
-    AuthenticationMechanism authenticationMechanism =
-        new AuthenticationMechanism().withConfig(jwtAuthMechanism).withAuthType(JWT);
+    AuthenticationMechanism authenticationMechanism = new AuthenticationMechanism()
+      .withConfig(jwtAuthMechanism)
+      .withAuthType(JWT);
     user.setAuthenticationMechanism(authenticationMechanism);
     PutResponse<User> response = repository.createOrUpdate(uriInfo, user);
     addHref(uriInfo, response.getEntity());
@@ -632,22 +671,23 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @GET
   @Path("/token/{id}")
   @Operation(
-      operationId = "getJWTTokenForBotUser",
-      summary = "Get JWT Token for a Bot User",
-      description = "Get JWT Token for a Bot User.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The user ",
-            content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = JWTAuthMechanism.class))),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
+    operationId = "getJWTTokenForBotUser",
+    summary = "Get JWT Token for a Bot User",
+    description = "Get JWT Token for a Bot User.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "The user ",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = JWTAuthMechanism.class))
+      ),
+      @ApiResponse(responseCode = "400", description = "Bad request")
+    }
+  )
   public JWTAuthMechanism getToken(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
-
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id") UUID id
+  ) {
     User user = repository.get(uriInfo, id, new Fields(Set.of(AUTH_MECHANISM_FIELD)));
     if (!Boolean.TRUE.equals(user.getIsBot())) {
       throw new IllegalArgumentException("JWT token is only supported for bot users");
@@ -655,9 +695,11 @@ public class UserResource extends EntityResource<User, UserRepository> {
     decryptOrNullify(securityContext, user);
     authorizer.authorizeAdmin(securityContext);
     AuthenticationMechanism authenticationMechanism = user.getAuthenticationMechanism();
-    if (authenticationMechanism != null
-        && authenticationMechanism.getConfig() != null
-        && authenticationMechanism.getAuthType() == JWT) {
+    if (
+      authenticationMechanism != null &&
+      authenticationMechanism.getConfig() != null &&
+      authenticationMechanism.getAuthType() == JWT
+    ) {
       return JsonUtils.convertValue(authenticationMechanism.getConfig(), JWTAuthMechanism.class);
     }
     return new JWTAuthMechanism();
@@ -666,24 +708,26 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @GET
   @Path("/auth-mechanism/{id}")
   @Operation(
-      operationId = "getAuthenticationMechanismBotUser",
-      summary = "Get Authentication Mechanism for a Bot User",
-      description = "Get Authentication Mechanism for a Bot User.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The user ",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = AuthenticationMechanism.class))),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
+    operationId = "getAuthenticationMechanismBotUser",
+    summary = "Get Authentication Mechanism for a Bot User",
+    description = "Get Authentication Mechanism for a Bot User.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "The user ",
+        content = @Content(
+          mediaType = "application/json",
+          schema = @Schema(implementation = AuthenticationMechanism.class)
+        )
+      ),
+      @ApiResponse(responseCode = "400", description = "Bad request")
+    }
+  )
   public AuthenticationMechanism getAuthenticationMechanism(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
-
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id") UUID id
+  ) {
     User user = repository.get(uriInfo, id, new Fields(Set.of(AUTH_MECHANISM_FIELD)));
     if (!Boolean.TRUE.equals(user.getIsBot())) {
       throw new IllegalArgumentException("JWT token is only supported for bot users");
@@ -697,21 +741,23 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Path("/{id}")
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   @Operation(
-      operationId = "patchUser",
-      summary = "Update a user",
-      description = "Update an existing user using JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+    operationId = "patchUser",
+    summary = "Update a user",
+    description = "Update an existing user using JsonPatch.",
+    externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902")
+  )
   public Response patch(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @RequestBody(
-              description = "JsonPatch with array of operations",
-              content =
-                  @Content(
-                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
-          JsonPatch patch) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+    @RequestBody(
+      description = "JsonPatch with array of operations",
+      content = @Content(
+        mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+        examples = { @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]") }
+      )
+    ) JsonPatch patch
+  ) {
     for (JsonValue patchOp : patch.toJsonArray()) {
       JsonObject patchOpObject = patchOp.asJsonObject();
       if (patchOpObject.containsKey("path") && patchOpObject.containsKey("value")) {
@@ -721,9 +767,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
           continue;
         }
         // if path contains team, check if team is join able by any user
-        if (patchOpObject.containsKey("op")
-            && patchOpObject.getString("op").equals("add")
-            && path.startsWith("/teams/")) {
+        if (
+          patchOpObject.containsKey("op") && patchOpObject.getString("op").equals("add") && path.startsWith("/teams/")
+        ) {
           JsonObject value = null;
           try {
             value = patchOpObject.getJsonObject("value");
@@ -746,21 +792,22 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @DELETE
   @Path("/{id}")
   @Operation(
-      operationId = "deleteUser",
-      summary = "Delete a user",
-      description = "Users can't be deleted but are soft-deleted.",
-      responses = {
-        @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "User for instance {id} is not found")
-      })
+    operationId = "deleteUser",
+    summary = "Delete a user",
+    description = "Users can't be deleted but are soft-deleted.",
+    responses = {
+      @ApiResponse(responseCode = "200", description = "OK"),
+      @ApiResponse(responseCode = "404", description = "User for instance {id} is not found")
+    }
+  )
   public Response delete(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Hard delete the entity. (Default = `false`)")
-          @QueryParam("hardDelete")
-          @DefaultValue("false")
-          boolean hardDelete,
-      @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Hard delete the entity. (Default = `false`)") @QueryParam("hardDelete") @DefaultValue(
+      "false"
+    ) boolean hardDelete,
+    @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id") UUID id
+  ) {
     Response response = delete(uriInfo, securityContext, id, false, hardDelete);
     decryptOrNullify(securityContext, (User) response.getEntity());
     return response;
@@ -769,74 +816,84 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @DELETE
   @Path("/name/{name}")
   @Operation(
-      operationId = "deleteUserByName",
-      summary = "Delete a user",
-      description = "Users can't be deleted but are soft-deleted.",
-      responses = {
-        @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "User for instance {name} is not found")
-      })
+    operationId = "deleteUserByName",
+    summary = "Delete a user",
+    description = "Users can't be deleted but are soft-deleted.",
+    responses = {
+      @ApiResponse(responseCode = "200", description = "OK"),
+      @ApiResponse(responseCode = "404", description = "User for instance {name} is not found")
+    }
+  )
   public Response delete(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Hard delete the entity. (Default = `false`)")
-          @QueryParam("hardDelete")
-          @DefaultValue("false")
-          boolean hardDelete,
-      @Parameter(description = "Name of the user", schema = @Schema(type = "string")) @PathParam("name") String name) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Hard delete the entity. (Default = `false`)") @QueryParam("hardDelete") @DefaultValue(
+      "false"
+    ) boolean hardDelete,
+    @Parameter(description = "Name of the user", schema = @Schema(type = "string")) @PathParam("name") String name
+  ) {
     return deleteByName(uriInfo, securityContext, name, false, hardDelete);
   }
 
   @PUT
   @Path("/restore")
   @Operation(
-      operationId = "restore",
-      summary = "Restore a soft deleted User.",
-      description = "Restore a soft deleted User.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Successfully restored the User ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = User.class)))
-      })
+    operationId = "restore",
+    summary = "Restore a soft deleted User.",
+    description = "Restore a soft deleted User.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "Successfully restored the User ",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = User.class))
+      )
+    }
+  )
   public Response restoreTable(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Valid RestoreEntity restore
+  ) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   @POST
   @Path("/signup")
   @Operation(
-      operationId = "registerUser",
-      summary = "Register User",
-      description = "Register a new User",
-      responses = {
-        @ApiResponse(responseCode = "200", description = "The user "),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
+    operationId = "registerUser",
+    summary = "Register User",
+    description = "Register a new User",
+    responses = {
+      @ApiResponse(responseCode = "200", description = "The user "),
+      @ApiResponse(responseCode = "400", description = "Bad request")
+    }
+  )
   public Response registerNewUser(@Context UriInfo uriInfo, @Valid RegistrationRequest create) throws IOException {
     User registeredUser = authHandler.registerUser(create);
     authHandler.sendEmailVerification(uriInfo, registeredUser);
-    return Response.status(Response.Status.CREATED.getStatusCode(), "User Registration Successful.")
-        .entity(registeredUser)
-        .build();
+    return Response
+      .status(Response.Status.CREATED.getStatusCode(), "User Registration Successful.")
+      .entity(registeredUser)
+      .build();
   }
 
   @PUT
   @Path("/registrationConfirmation")
   @Operation(
-      operationId = "confirmUserEmail",
-      summary = "Confirm User Email",
-      description = "Confirm User Email",
-      responses = {
-        @ApiResponse(responseCode = "200", description = "The user "),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
+    operationId = "confirmUserEmail",
+    summary = "Confirm User Email",
+    description = "Confirm User Email",
+    responses = {
+      @ApiResponse(responseCode = "200", description = "The user "),
+      @ApiResponse(responseCode = "400", description = "Bad request")
+    }
+  )
   public Response confirmUserEmail(
-      @Context UriInfo uriInfo,
-      @Parameter(description = "Token sent for Email Confirmation", schema = @Schema(type = "string"))
-          @QueryParam("token")
-          String token) {
+    @Context UriInfo uriInfo,
+    @Parameter(description = "Token sent for Email Confirmation", schema = @Schema(type = "string")) @QueryParam(
+      "token"
+    ) String token
+  ) {
     authHandler.confirmEmailRegistration(uriInfo, token);
     return Response.status(Response.Status.OK).entity("Email Verified Successfully").build();
   }
@@ -844,54 +901,66 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @PUT
   @Path("/resendRegistrationToken")
   @Operation(
-      operationId = "resendRegistrationToken",
-      summary = "Resend Registration Token",
-      description = "Resend Registration Token",
-      responses = {
-        @ApiResponse(responseCode = "200", description = "The user "),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
+    operationId = "resendRegistrationToken",
+    summary = "Resend Registration Token",
+    description = "Resend Registration Token",
+    responses = {
+      @ApiResponse(responseCode = "200", description = "The user "),
+      @ApiResponse(responseCode = "400", description = "Bad request")
+    }
+  )
   public Response resendRegistrationToken(
-      @Context UriInfo uriInfo,
-      @Parameter(description = "Token sent for Email Confirmation Earlier", schema = @Schema(type = "string"))
-          @QueryParam("user")
-          String user)
-      throws IOException {
+    @Context UriInfo uriInfo,
+    @Parameter(
+      description = "Token sent for Email Confirmation Earlier",
+      schema = @Schema(type = "string")
+    ) @QueryParam("user") String user
+  )
+    throws IOException {
     User registeredUser = repository.getByName(uriInfo, user, getFields("isEmailVerified"));
     if (Boolean.TRUE.equals(registeredUser.getIsEmailVerified())) {
       return Response.status(Response.Status.OK).entity("Email Already Verified.").build();
     }
     authHandler.resendRegistrationToken(uriInfo, registeredUser);
-    return Response.status(Response.Status.OK)
-        .entity("Email Verification Mail Sent. Please check your Mailbox.")
-        .build();
+    return Response
+      .status(Response.Status.OK)
+      .entity("Email Verification Mail Sent. Please check your Mailbox.")
+      .build();
   }
 
   @POST
   @Path("/generatePasswordResetLink")
   @Operation(
-      operationId = "generatePasswordResetLink",
-      summary = "Generate Password Reset Link",
-      description = "Generate Password Reset Link",
-      responses = {
-        @ApiResponse(responseCode = "200", description = "The user "),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
+    operationId = "generatePasswordResetLink",
+    summary = "Generate Password Reset Link",
+    description = "Generate Password Reset Link",
+    responses = {
+      @ApiResponse(responseCode = "200", description = "The user "),
+      @ApiResponse(responseCode = "400", description = "Bad request")
+    }
+  )
   public Response generateResetPasswordLink(@Context UriInfo uriInfo, @Valid EmailRequest request) {
     String userName = request.getEmail().split("@")[0];
     User registeredUser;
     try {
       registeredUser =
-          repository.getByName(uriInfo, userName, new Fields(Set.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS));
+        repository.getByName(uriInfo, userName, new Fields(Set.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS));
     } catch (EntityNotFoundException ex) {
       LOG.error(
-          "[GeneratePasswordReset] Got Error while fetching user : {},  error message {}", userName, ex.getMessage());
+        "[GeneratePasswordReset] Got Error while fetching user : {},  error message {}",
+        userName,
+        ex.getMessage()
+      );
       return Response.status(Response.Status.OK).entity("Please check your mail to for Reset Password Link.").build();
     }
     try {
       // send a mail to the User with the Update
       authHandler.sendPasswordResetLink(
-          uriInfo, registeredUser, EmailUtil.getPasswordResetSubject(), EmailUtil.PASSWORD_RESET_TEMPLATE_FILE);
+        uriInfo,
+        registeredUser,
+        EmailUtil.getPasswordResetSubject(),
+        EmailUtil.PASSWORD_RESET_TEMPLATE_FILE
+      );
     } catch (Exception ex) {
       LOG.error("Error in sending mail for reset password" + ex.getMessage());
       return Response.status(424).entity(new ErrorMessage(424, EMAIL_SENDING_ISSUE)).build();
@@ -902,16 +971,18 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @POST
   @Path("/password/reset")
   @Operation(
-      operationId = "resetUserPassword",
-      summary = "Reset Password For User",
-      description = "Reset User Password",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The user ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = User.class))),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
+    operationId = "resetUserPassword",
+    summary = "Reset Password For User",
+    description = "Reset User Password",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "The user ",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = User.class))
+      ),
+      @ApiResponse(responseCode = "400", description = "Bad request")
+    }
+  )
   public Response resetUserPassword(@Context UriInfo uriInfo, @Valid PasswordResetRequest request) throws IOException {
     authHandler.resetUserPasswordWithToken(uriInfo, request);
     return Response.status(200).entity("Password Changed Successfully").build();
@@ -920,19 +991,24 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @PUT
   @Path("/changePassword")
   @Operation(
-      operationId = "changeUserPassword",
-      summary = "Change Password For User",
-      description = "Create a new user.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The user ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = User.class))),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
+    operationId = "changeUserPassword",
+    summary = "Change Password For User",
+    description = "Create a new user.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "The user ",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = User.class))
+      ),
+      @ApiResponse(responseCode = "400", description = "Bad request")
+    }
+  )
   public Response changeUserPassword(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid ChangePasswordRequest request)
-      throws IOException {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Valid ChangePasswordRequest request
+  )
+    throws IOException {
     if (request.getRequestType() == SELF) {
       authHandler.changeUserPwdWithOldPwd(uriInfo, securityContext.getUserPrincipal().getName(), request);
     } else {
@@ -945,16 +1021,18 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @POST
   @Path("/checkEmailInUse")
   @Operation(
-      operationId = "checkEmailInUse",
-      summary = "Check if a email is already in use",
-      description = "Check if a email is already in use",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Return true or false",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Boolean.class))),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
+    operationId = "checkEmailInUse",
+    summary = "Check if a email is already in use",
+    description = "Check if a email is already in use",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "Return true or false",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = Boolean.class))
+      ),
+      @ApiResponse(responseCode = "400", description = "Bad request")
+    }
+  )
   public Response checkEmailInUse(@Valid EmailRequest request) {
     boolean emailExists = repository.checkEmailAlreadyExists(request.getEmail());
     return Response.status(Response.Status.OK).entity(emailExists).build();
@@ -963,16 +1041,18 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @POST
   @Path("/checkEmailVerified")
   @Operation(
-      operationId = "checkEmailIsVerified",
-      summary = "Check if a mail is verified",
-      description = "Check if a mail is already in use",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Return true or false",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Boolean.class))),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
+    operationId = "checkEmailIsVerified",
+    summary = "Check if a mail is verified",
+    description = "Check if a mail is already in use",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "Return true or false",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = Boolean.class))
+      ),
+      @ApiResponse(responseCode = "400", description = "Bad request")
+    }
+  )
   public Response checkEmailVerified(@Context UriInfo uriInfo, @Valid EmailRequest request) {
     User user = repository.getByName(uriInfo, request.getEmail().split("@")[0], getFields("isEmailVerified"));
     return Response.status(Response.Status.OK).entity(user.getIsEmailVerified()).build();
@@ -981,19 +1061,24 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @POST
   @Path("/login")
   @Operation(
-      operationId = "loginUserWithPwd",
-      summary = "Login User with email (plain-text) and Password (encoded in base 64)",
-      description = "Login User with email(plain-text) and Password (encoded in base 64)",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Returns the Jwt Token Response ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = JwtResponse.class))),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
+    operationId = "loginUserWithPwd",
+    summary = "Login User with email (plain-text) and Password (encoded in base 64)",
+    description = "Login User with email(plain-text) and Password (encoded in base 64)",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "Returns the Jwt Token Response ",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = JwtResponse.class))
+      ),
+      @ApiResponse(responseCode = "400", description = "Bad request")
+    }
+  )
   public Response loginUserWithPassword(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid LoginRequest loginRequest)
-      throws IOException, TemplateException {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Valid LoginRequest loginRequest
+  )
+    throws IOException, TemplateException {
     byte[] decodedBytes;
     try {
       decodedBytes = Base64.getDecoder().decode(loginRequest.getPassword());
@@ -1007,79 +1092,93 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @POST
   @Path("/refresh")
   @Operation(
-      operationId = "refreshToken",
-      summary = "Provide access token to User with refresh token",
-      description = "Provide access token to User with refresh token",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The user ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = JwtResponse.class))),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
+    operationId = "refreshToken",
+    summary = "Provide access token to User with refresh token",
+    description = "Provide access token to User with refresh token",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "The user ",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = JwtResponse.class))
+      ),
+      @ApiResponse(responseCode = "400", description = "Bad request")
+    }
+  )
   public Response refreshToken(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid TokenRefreshRequest refreshRequest) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Valid TokenRefreshRequest refreshRequest
+  ) {
     return Response.status(Response.Status.OK).entity(authHandler.getNewAccessToken(refreshRequest)).build();
   }
 
   @GET
   @Path("/security/token")
   @Operation(
-      operationId = "getPersonalAccessToken",
-      summary = "Get personal access token to User",
-      description = "Get a personal access token",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "List Of Personal Access Tokens ",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = PersonalAccessTokenList.class))),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
+    operationId = "getPersonalAccessToken",
+    summary = "Get personal access token to User",
+    description = "Get a personal access token",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "List Of Personal Access Tokens ",
+        content = @Content(
+          mediaType = "application/json",
+          schema = @Schema(implementation = PersonalAccessTokenList.class)
+        )
+      ),
+      @ApiResponse(responseCode = "400", description = "Bad request")
+    }
+  )
   public Response getPersonalAccessToken(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "User Name of the User for which to get. (Default = `false`)") @QueryParam("username")
-          String userName) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "User Name of the User for which to get. (Default = `false`)") @QueryParam(
+      "username"
+    ) String userName
+  ) {
     if (userName != null) {
       authorizer.authorizeAdmin(securityContext);
     } else {
       userName = securityContext.getUserPrincipal().getName();
     }
     User user = repository.getByName(null, userName, getFields("id"), Include.NON_DELETED, true);
-    List<TokenInterface> tokens =
-        tokenRepository.findByUserIdAndType(user.getId(), TokenType.PERSONAL_ACCESS_TOKEN.value());
+    List<TokenInterface> tokens = tokenRepository.findByUserIdAndType(
+      user.getId(),
+      TokenType.PERSONAL_ACCESS_TOKEN.value()
+    );
     return Response.status(Response.Status.OK).entity(new ResultList<>(tokens)).build();
   }
 
   @PUT
   @Path("/security/token/revoke")
   @Operation(
-      operationId = "revokePersonalAccessToken",
-      summary = "Revoke personal access token to User",
-      description = "Revoke personal access token",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The Personal access token ",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = PersonalAccessTokenList.class))),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
+    operationId = "revokePersonalAccessToken",
+    summary = "Revoke personal access token to User",
+    description = "Revoke personal access token",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "The Personal access token ",
+        content = @Content(
+          mediaType = "application/json",
+          schema = @Schema(implementation = PersonalAccessTokenList.class)
+        )
+      ),
+      @ApiResponse(responseCode = "400", description = "Bad request")
+    }
+  )
   public Response revokePersonalAccessToken(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Username in case admin is revoking. (Default = `false`)") @QueryParam("username")
-          String userName,
-      @Parameter(description = "Remove All tokens of the user. (Default = `false`)")
-          @QueryParam("removeAll")
-          @DefaultValue("false")
-          boolean removeAll,
-      @Valid RevokePersonalTokenRequest request) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Username in case admin is revoking. (Default = `false`)") @QueryParam(
+      "username"
+    ) String userName,
+    @Parameter(description = "Remove All tokens of the user. (Default = `false`)") @QueryParam(
+      "removeAll"
+    ) @DefaultValue("false") boolean removeAll,
+    @Valid RevokePersonalTokenRequest request
+  ) {
     if (!CommonUtil.nullOrEmpty(userName)) {
       authorizer.authorizeAdmin(securityContext);
     } else {
@@ -1093,40 +1192,47 @@ public class UserResource extends EntityResource<User, UserRepository> {
       tokenRepository.deleteAllToken(ids);
     }
     UserTokenCache.invalidateToken(user.getName());
-    List<TokenInterface> tokens =
-        tokenRepository.findByUserIdAndType(user.getId(), TokenType.PERSONAL_ACCESS_TOKEN.value());
+    List<TokenInterface> tokens = tokenRepository.findByUserIdAndType(
+      user.getId(),
+      TokenType.PERSONAL_ACCESS_TOKEN.value()
+    );
     return Response.status(Response.Status.OK).entity(new ResultList<>(tokens)).build();
   }
 
   @PUT
   @Path("/security/token")
   @Operation(
-      operationId = "createPersonalAccessToken",
-      summary = "Provide access token to User",
-      description = "Provide access token to User",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The user ",
-            content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = PersonalAccessToken.class))),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
+    operationId = "createPersonalAccessToken",
+    summary = "Provide access token to User",
+    description = "Provide access token to User",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "The user ",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = PersonalAccessToken.class))
+      ),
+      @ApiResponse(responseCode = "400", description = "Bad request")
+    }
+  )
   public Response createAccessToken(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePersonalToken tokenRequest) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Valid CreatePersonalToken tokenRequest
+  ) {
     String userName = securityContext.getUserPrincipal().getName();
     User user = repository.getByName(null, userName, getFields("email,isBot"), Include.NON_DELETED, false);
     if (Boolean.FALSE.equals(user.getIsBot())) {
       // Create Personal Access Token
-      JWTAuthMechanism authMechanism =
-          JWTTokenGenerator.getInstance()
-              .getJwtAuthMechanism(
-                  userName,
-                  user.getEmail(),
-                  false,
-                  ServiceTokenType.PERSONAL_ACCESS,
-                  getExpiryDate(tokenRequest.getJWTTokenExpiry()),
-                  null);
+      JWTAuthMechanism authMechanism = JWTTokenGenerator
+        .getInstance()
+        .getJwtAuthMechanism(
+          userName,
+          user.getEmail(),
+          false,
+          ServiceTokenType.PERSONAL_ACCESS,
+          getExpiryDate(tokenRequest.getJWTTokenExpiry()),
+          null
+        );
       PersonalAccessToken personalAccessToken = TokenUtil.getPersonalAccessToken(tokenRequest, user, authMechanism);
       tokenRepository.insertToken(personalAccessToken);
       return Response.status(Response.Status.OK).entity(personalAccessToken).build();
@@ -1147,23 +1253,25 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Produces(MediaType.TEXT_PLAIN)
   @Valid
   @Operation(
-      operationId = "exportUsers",
-      summary = "Export users in a team in CSV format",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Exported csv with user information",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = String.class)))
-      })
+    operationId = "exportUsers",
+    summary = "Export users in a team in CSV format",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "Exported csv with user information",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = String.class))
+      )
+    }
+  )
   public String exportUsersCsv(
-      @Context SecurityContext securityContext,
-      @Parameter(
-              description = "Name of the team to under which the users are imported to",
-              required = true,
-              schema = @Schema(type = "string"))
-          @QueryParam("team")
-          String team)
-      throws IOException {
+    @Context SecurityContext securityContext,
+    @Parameter(
+      description = "Name of the team to under which the users are imported to",
+      required = true,
+      schema = @Schema(type = "string")
+    ) @QueryParam("team") String team
+  )
+    throws IOException {
     return exportCsvInternal(securityContext, team);
   }
 
@@ -1172,53 +1280,51 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Consumes(MediaType.TEXT_PLAIN)
   @Valid
   @Operation(
-      operationId = "importTeams",
-      summary = "Import from CSV to create, and update teams.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Import result",
-            content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = CsvImportResult.class)))
-      })
+    operationId = "importTeams",
+    summary = "Import from CSV to create, and update teams.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "Import result",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = CsvImportResult.class))
+      )
+    }
+  )
   public CsvImportResult importCsv(
-      @Context SecurityContext securityContext,
-      @Parameter(
-              description = "Name of the team to under which the users are imported to",
-              required = true,
-              schema = @Schema(type = "string"))
-          @QueryParam("team")
-          String team,
-      @Parameter(
-              description =
-                  "Dry-run when true is used for validating the CSV without really importing it. (default=true)",
-              schema = @Schema(type = "boolean"))
-          @DefaultValue("true")
-          @QueryParam("dryRun")
-          boolean dryRun,
-      String csv)
-      throws IOException {
+    @Context SecurityContext securityContext,
+    @Parameter(
+      description = "Name of the team to under which the users are imported to",
+      required = true,
+      schema = @Schema(type = "string")
+    ) @QueryParam("team") String team,
+    @Parameter(
+      description = "Dry-run when true is used for validating the CSV without really importing it. (default=true)",
+      schema = @Schema(type = "boolean")
+    ) @DefaultValue("true") @QueryParam("dryRun") boolean dryRun,
+    String csv
+  )
+    throws IOException {
     return importCsvInternal(securityContext, team, csv, dryRun);
   }
 
   public static User getUser(String updatedBy, CreateUser create) {
     return new User()
-        .withId(UUID.randomUUID())
-        .withName(create.getName())
-        .withFullyQualifiedName(create.getName())
-        .withEmail(create.getEmail())
-        .withDescription(create.getDescription())
-        .withDisplayName(create.getDisplayName())
-        .withIsBot(create.getIsBot())
-        .withIsAdmin(create.getIsAdmin())
-        .withProfile(create.getProfile())
-        .withPersonas(create.getPersonas())
-        .withDefaultPersona(create.getDefaultPersona())
-        .withTimezone(create.getTimezone())
-        .withUpdatedBy(updatedBy)
-        .withUpdatedAt(System.currentTimeMillis())
-        .withTeams(EntityUtil.toEntityReferences(create.getTeams(), Entity.TEAM))
-        .withRoles(EntityUtil.toEntityReferences(create.getRoles(), Entity.ROLE));
+      .withId(UUID.randomUUID())
+      .withName(create.getName())
+      .withFullyQualifiedName(create.getName())
+      .withEmail(create.getEmail())
+      .withDescription(create.getDescription())
+      .withDisplayName(create.getDisplayName())
+      .withIsBot(create.getIsBot())
+      .withIsAdmin(create.getIsAdmin())
+      .withProfile(create.getProfile())
+      .withPersonas(create.getPersonas())
+      .withDefaultPersona(create.getDefaultPersona())
+      .withTimezone(create.getTimezone())
+      .withUpdatedBy(updatedBy)
+      .withUpdatedAt(System.currentTimeMillis())
+      .withTeams(EntityUtil.toEntityReferences(create.getTeams(), Entity.TEAM))
+      .withRoles(EntityUtil.toEntityReferences(create.getRoles(), Entity.ROLE));
   }
 
   public void validateEmailAlreadyExists(String email) {
@@ -1234,21 +1340,26 @@ public class UserResource extends EntityResource<User, UserRepository> {
     // check if the bot user exists
     if (original != null && (original.getIsBot() == null || Boolean.FALSE.equals(original.getIsBot()))) {
       throw new IllegalArgumentException(String.format("User [%s] already exists.", original.getName()));
-    } else if (!botHasRelationshipWithUser(bot, original)
-        && original != null
-        && userHasRelationshipWithAnyBot(original, bot)) {
+    } else if (
+      !botHasRelationshipWithUser(bot, original) && original != null && userHasRelationshipWithAnyBot(original, bot)
+    ) {
       // throw an exception if user already has a relationship with a bot
       List<CollectionDAO.EntityRelationshipRecord> userBotRelationship = retrieveBotRelationshipsFor(original);
       bot =
-          Entity.getEntityRepository(Entity.BOT)
-              .get(null, userBotRelationship.stream().findFirst().orElseThrow().getId(), Fields.EMPTY_FIELDS);
+        Entity
+          .getEntityRepository(Entity.BOT)
+          .get(null, userBotRelationship.stream().findFirst().orElseThrow().getId(), Fields.EMPTY_FIELDS);
       throw new IllegalArgumentException(CatalogExceptionMessage.userAlreadyBot(user.getName(), bot.getName()));
     }
     // TODO: review this flow on https://github.com/open-metadata/OpenMetadata/issues/8321
     if (original != null) {
-      EntityMaskerFactory.getEntityMasker()
-          .unmaskAuthenticationMechanism(
-              user.getName(), create.getAuthenticationMechanism(), original.getAuthenticationMechanism());
+      EntityMaskerFactory
+        .getEntityMasker()
+        .unmaskAuthenticationMechanism(
+          user.getName(),
+          create.getAuthenticationMechanism(),
+          original.getAuthenticationMechanism()
+        );
       user.setRoles(original.getRoles());
     } else if (bot != null && ProviderType.SYSTEM.equals(bot.getProvider())) {
       user.setRoles(UserUtil.getRoleForBot(botName));
@@ -1270,9 +1381,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   private boolean userHasRelationshipWithAnyBot(User user, EntityInterface botUser) {
     List<CollectionDAO.EntityRelationshipRecord> userBotRelationship = retrieveBotRelationshipsFor(user);
-    return !userBotRelationship.isEmpty()
-        && (botUser == null
-            || (userBotRelationship.stream().anyMatch(relationship -> !relationship.getId().equals(botUser.getId()))));
+    return (
+      !userBotRelationship.isEmpty() &&
+      (
+        botUser == null ||
+        (userBotRelationship.stream().anyMatch(relationship -> !relationship.getId().equals(botUser.getId())))
+      )
+    );
   }
 
   private List<CollectionDAO.EntityRelationshipRecord> retrieveBotRelationshipsFor(User user) {
@@ -1303,8 +1418,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
         case JWT:
           User original = retrieveBotUser(user, uriInfo);
           if (original == null || !hasAJWTAuthMechanism(original.getAuthenticationMechanism())) {
-            JWTAuthMechanism jwtAuthMechanism =
-                JsonUtils.convertValue(authMechanism.getConfig(), JWTAuthMechanism.class);
+            JWTAuthMechanism jwtAuthMechanism = JsonUtils.convertValue(
+              authMechanism.getConfig(),
+              JWTAuthMechanism.class
+            );
             authMechanism.setConfig(jwtTokenGenerator.generateJWTToken(user, jwtAuthMechanism.getJWTTokenExpiry()));
           } else {
             authMechanism = original.getAuthenticationMechanism();
@@ -1316,12 +1433,14 @@ public class UserResource extends EntityResource<User, UserRepository> {
           break;
         default:
           throw new IllegalArgumentException(
-              String.format("Not supported authentication mechanism type: [%s]", authType.value()));
+            String.format("Not supported authentication mechanism type: [%s]", authType.value())
+          );
       }
       user.setAuthenticationMechanism(authMechanism);
     } else {
       throw new IllegalArgumentException(
-          String.format("Authentication mechanism is empty bot user: [%s]", user.getName()));
+        String.format("Authentication mechanism is empty bot user: [%s]", user.getName())
+      );
     }
   }
 
@@ -1350,9 +1469,11 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private boolean hasAJWTAuthMechanism(AuthenticationMechanism authMechanism) {
     if (authMechanism != null && JWT.equals(authMechanism.getAuthType())) {
       JWTAuthMechanism jwtAuthMechanism = JsonUtils.convertValue(authMechanism.getConfig(), JWTAuthMechanism.class);
-      return jwtAuthMechanism != null
-          && jwtAuthMechanism.getJWTToken() != null
-          && !StringUtils.EMPTY.equals(jwtAuthMechanism.getJWTToken());
+      return (
+        jwtAuthMechanism != null &&
+        jwtAuthMechanism.getJWTToken() != null &&
+        !StringUtils.EMPTY.equals(jwtAuthMechanism.getJWTToken())
+      );
     }
     return false;
   }
@@ -1361,12 +1482,15 @@ public class UserResource extends EntityResource<User, UserRepository> {
     if (create.getAuthenticationMechanism() == null) {
       return false;
     }
-    if (create.getAuthenticationMechanism().getConfig() != null
-        && create.getAuthenticationMechanism().getAuthType() != null) {
+    if (
+      create.getAuthenticationMechanism().getConfig() != null &&
+      create.getAuthenticationMechanism().getAuthType() != null
+    ) {
       return true;
     }
     throw new IllegalArgumentException(
-        String.format("Incomplete authentication mechanism parameters for bot user: [%s]", create.getName()));
+      String.format("Incomplete authentication mechanism parameters for bot user: [%s]", create.getName())
+    );
   }
 
   private void decryptOrNullify(SecurityContext securityContext, User user) {
@@ -1374,16 +1498,18 @@ public class UserResource extends EntityResource<User, UserRepository> {
     if (Boolean.TRUE.equals(user.getIsBot()) && user.getAuthenticationMechanism() != null) {
       try {
         authorizer.authorize(
-            securityContext,
-            new OperationContext(entityType, MetadataOperation.VIEW_ALL),
-            getResourceContextById(user.getId()));
+          securityContext,
+          new OperationContext(entityType, MetadataOperation.VIEW_ALL),
+          getResourceContextById(user.getId())
+        );
       } catch (AuthorizationException e) {
         user.getAuthenticationMechanism().setConfig(null);
       }
       secretsManager.decryptAuthenticationMechanism(user.getName(), user.getAuthenticationMechanism());
       if (authorizer.shouldMaskPasswords(securityContext)) {
-        EntityMaskerFactory.getEntityMasker()
-            .maskAuthenticationMechanism(user.getName(), user.getAuthenticationMechanism());
+        EntityMaskerFactory
+          .getEntityMasker()
+          .maskAuthenticationMechanism(user.getName(), user.getAuthenticationMechanism());
       }
     }
   }

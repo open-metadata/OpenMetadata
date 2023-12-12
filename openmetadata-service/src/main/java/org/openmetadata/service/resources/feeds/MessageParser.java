@@ -37,39 +37,49 @@ public final class MessageParser {
   // -- <#E::table::bigquery_gcp.shopify.product::columns::product_id>
   // <#E::{entityType}::{entityFQN}::{fieldName}::{arrayFieldName}::{arrayFieldValue}>
   // -- <#E::table::bigquery_gcp.shopify.product::columns::product_id::description>
-  private static final Pattern ENTITY_LINK_PATTERN =
-      Pattern.compile(
-          "<#E"
-              + ENTITY_LINK_SEPARATOR
-              + // Match initial string <#E::
-              "([^<>]+?)"
-              + // Non-greedy collection group 1 for {entityType}
-              ENTITY_LINK_SEPARATOR
-              + "([^<>]+?)"
-              + // Non-greedy collection group 2 for {entityFQN}
-              "("
-              + ENTITY_LINK_SEPARATOR
-              + "([^<>]+?))?"
-              + // Non-greedy collection group 3 for optional ::{fieldName} and 4 for fieldName
-              "("
-              + ENTITY_LINK_SEPARATOR
-              + "([^<>]+?))?"
-              + // Non-greedy collection group 5 for optional ::{arrayFieldName} // and 6 for arrayFieldName
-              "("
-              + ENTITY_LINK_SEPARATOR
-              + "([^<>]+?))?"
-              + // Non-greedy collection group 7 for optional ::{arrayFieldValue} // and 8 for arrayFieldValue
-              ">"); // Match for end of link name
+  private static final Pattern ENTITY_LINK_PATTERN = Pattern.compile(
+    "<#E" +
+    ENTITY_LINK_SEPARATOR + // Match initial string <#E::
+    "([^<>]+?)" + // Non-greedy collection group 1 for {entityType}
+    ENTITY_LINK_SEPARATOR +
+    "([^<>]+?)" + // Non-greedy collection group 2 for {entityFQN}
+    "(" +
+    ENTITY_LINK_SEPARATOR +
+    "([^<>]+?))?" + // Non-greedy collection group 3 for optional ::{fieldName} and 4 for fieldName
+    "(" +
+    ENTITY_LINK_SEPARATOR +
+    "([^<>]+?))?" + // Non-greedy collection group 5 for optional ::{arrayFieldName} // and 6 for arrayFieldName
+    "(" +
+    ENTITY_LINK_SEPARATOR +
+    "([^<>]+?))?" + // Non-greedy collection group 7 for optional ::{arrayFieldValue} // and 8 for arrayFieldValue
+    ">"
+  ); // Match for end of link name
 
   public static class EntityLink {
-    @Getter private final LinkType linkType;
-    @Getter private final String entityType;
-    @Getter private final String entityFQN;
-    @Getter private final String fieldName;
-    @Getter private final String arrayFieldName;
-    @Getter private final String arrayFieldValue;
-    @Getter private final String fullyQualifiedFieldType;
-    @Getter private final String fullyQualifiedFieldValue;
+
+    @Getter
+    private final LinkType linkType;
+
+    @Getter
+    private final String entityType;
+
+    @Getter
+    private final String entityFQN;
+
+    @Getter
+    private final String fieldName;
+
+    @Getter
+    private final String arrayFieldName;
+
+    @Getter
+    private final String arrayFieldValue;
+
+    @Getter
+    private final String fullyQualifiedFieldType;
+
+    @Getter
+    private final String fullyQualifiedFieldValue;
 
     public enum LinkType {
       ENTITY,
@@ -82,7 +92,12 @@ public final class MessageParser {
     }
 
     public EntityLink(
-        String entityType, String entityFqn, String fieldName, String arrayFieldName, String arrayFieldValue) {
+      String entityType,
+      String entityFqn,
+      String fieldName,
+      String arrayFieldName,
+      String arrayFieldValue
+    ) {
       if (entityType == null || entityFqn == null) {
         throw new IllegalArgumentException("Entity link must have both {entityType} and {entityFQN}");
       }
@@ -158,7 +173,7 @@ public final class MessageParser {
             throw new IllegalArgumentException("Invalid Entity Link. Entity FQN is missing in " + link);
           }
           entityLink =
-              new EntityLink(matcher.group(1), entityFQN, matcher.group(4), matcher.group(6), matcher.group(8));
+            new EntityLink(matcher.group(1), entityFQN, matcher.group(4), matcher.group(6), matcher.group(8));
         } else {
           throw new IllegalArgumentException("Unexpected multiple entity links in " + link);
         }
@@ -172,8 +187,14 @@ public final class MessageParser {
     @Override
     public String toString() {
       return String.format(
-          "EntityLink { type = %s, entityType = %s, entityFQN = %s, fieldName = %s, arrayFieldName = %s, arrayFieldValue = %s}",
-          linkType, entityType, entityFQN, fieldName, arrayFieldName, arrayFieldValue);
+        "EntityLink { type = %s, entityType = %s, entityFQN = %s, fieldName = %s, arrayFieldName = %s, arrayFieldValue = %s}",
+        linkType,
+        entityType,
+        entityFQN,
+        fieldName,
+        arrayFieldName,
+        arrayFieldValue
+      );
     }
 
     @Override
@@ -185,12 +206,14 @@ public final class MessageParser {
         return false;
       }
       EntityLink that = (EntityLink) o;
-      return linkType == that.linkType
-          && Objects.equals(entityType, that.entityType)
-          && Objects.equals(entityFQN, that.entityFQN)
-          && Objects.equals(fieldName, that.fieldName)
-          && Objects.equals(arrayFieldName, that.arrayFieldName)
-          && Objects.equals(arrayFieldValue, that.arrayFieldValue);
+      return (
+        linkType == that.linkType &&
+        Objects.equals(entityType, that.entityType) &&
+        Objects.equals(entityFQN, that.entityFQN) &&
+        Objects.equals(fieldName, that.fieldName) &&
+        Objects.equals(arrayFieldName, that.arrayFieldName) &&
+        Objects.equals(arrayFieldValue, that.arrayFieldValue)
+      );
     }
 
     @Override

@@ -50,8 +50,12 @@ class ConfigResourceTest extends OpenMetadataApplicationTest {
     // Get config object from test yaml file
     ObjectMapper objectMapper = Jackson.newObjectMapper();
     Validator validator = Validators.newValidator();
-    YamlConfigurationFactory<OpenMetadataApplicationConfig> factory =
-        new YamlConfigurationFactory<>(OpenMetadataApplicationConfig.class, validator, objectMapper, "dw");
+    YamlConfigurationFactory<OpenMetadataApplicationConfig> factory = new YamlConfigurationFactory<>(
+      OpenMetadataApplicationConfig.class,
+      validator,
+      objectMapper,
+      "dw"
+    );
     config = factory.build(new FileConfigurationSourceProvider(), CONFIG_PATH);
   }
 
@@ -76,15 +80,20 @@ class ConfigResourceTest extends OpenMetadataApplicationTest {
     assertEquals(config.getAuthorizerConfiguration().getAdminPrincipals(), auth.getAdminPrincipals());
     assertEquals(config.getAuthorizerConfiguration().getContainerRequestFilter(), auth.getContainerRequestFilter());
     assertEquals(
-        config.getAuthorizerConfiguration().getEnableSecureSocketConnection(), auth.getEnableSecureSocketConnection());
+      config.getAuthorizerConfiguration().getEnableSecureSocketConnection(),
+      auth.getEnableSecureSocketConnection()
+    );
     assertEquals(config.getAuthorizerConfiguration().getEnforcePrincipalDomain(), auth.getEnforcePrincipalDomain());
   }
 
   @Test
   void get_airflow_configs_200_OK() throws IOException {
     WebTarget target = getConfigResource("pipeline-service-client");
-    PipelineServiceAPIClientConfig auth =
-        TestUtils.get(target, PipelineServiceAPIClientConfig.class, TEST_AUTH_HEADERS);
+    PipelineServiceAPIClientConfig auth = TestUtils.get(
+      target,
+      PipelineServiceAPIClientConfig.class,
+      TEST_AUTH_HEADERS
+    );
     assertEquals(config.getPipelineServiceClientConfiguration().getApiEndpoint(), auth.getApiEndpoint());
   }
 

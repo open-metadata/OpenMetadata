@@ -39,34 +39,35 @@ import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 public class MetadataServiceResourceTest extends EntityResourceTest<MetadataService, CreateMetadataService> {
+
   public static final String DEFAULT_OPENMETADATA_SERVICE_NAME = "OpenMetadata";
 
   public MetadataServiceResourceTest() {
     super(
-        Entity.METADATA_SERVICE,
-        MetadataService.class,
-        MetadataServiceResource.MetadataServiceList.class,
-        "services/metadataServices",
-        MetadataServiceResource.FIELDS);
+      Entity.METADATA_SERVICE,
+      MetadataService.class,
+      MetadataServiceResource.MetadataServiceList.class,
+      "services/metadataServices",
+      MetadataServiceResource.FIELDS
+    );
     supportsPatch = false;
   }
 
   public void setupMetadataServices() throws HttpResponseException {
     // Create Amundsen service
     MetadataServiceResourceTest metadataServiceResourceTest = new MetadataServiceResourceTest();
-    CreateMetadataService createMetadata =
-        new CreateMetadataService()
-            .withName("amundsen")
-            .withServiceType(CreateMetadataService.MetadataServiceType.Amundsen)
-            .withConnection(TestUtils.AMUNDSEN_CONNECTION);
+    CreateMetadataService createMetadata = new CreateMetadataService()
+      .withName("amundsen")
+      .withServiceType(CreateMetadataService.MetadataServiceType.Amundsen)
+      .withConnection(TestUtils.AMUNDSEN_CONNECTION);
     MetadataService metadataService = metadataServiceResourceTest.createEntity(createMetadata, ADMIN_AUTH_HEADERS);
     AMUNDSEN_SERVICE_REFERENCE = metadataService.getEntityReference();
 
     // Create Atlas Service
     createMetadata
-        .withName("atlas")
-        .withServiceType(CreateMetadataService.MetadataServiceType.Atlas)
-        .withConnection(TestUtils.ATLAS_CONNECTION);
+      .withName("atlas")
+      .withServiceType(CreateMetadataService.MetadataServiceType.Atlas)
+      .withConnection(TestUtils.ATLAS_CONNECTION);
 
     metadataService = metadataServiceResourceTest.createEntity(createMetadata, ADMIN_AUTH_HEADERS);
     ATLAS_SERVICE_REFERENCE = metadataService.getEntityReference();
@@ -82,9 +83,10 @@ public class MetadataServiceResourceTest extends EntityResourceTest<MetadataServ
   void post_withoutRequiredFields_400_badRequest(TestInfo test) {
     // Create metadata with mandatory serviceType field empty
     assertResponse(
-        () -> createEntity(createRequest(test).withServiceType(null), ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "[serviceType must not be null]");
+      () -> createEntity(createRequest(test).withServiceType(null), ADMIN_AUTH_HEADERS),
+      BAD_REQUEST,
+      "[serviceType must not be null]"
+    );
   }
 
   @Test
@@ -93,15 +95,18 @@ public class MetadataServiceResourceTest extends EntityResourceTest<MetadataServ
     createAndCheckEntity(createRequest(test, 1).withDescription(null), ADMIN_AUTH_HEADERS);
     createAndCheckEntity(createRequest(test, 2).withDescription("description"), ADMIN_AUTH_HEADERS);
     createAndCheckEntity(
-        createRequest(test, 3)
-            .withConnection(
-                new MetadataConnection()
-                    .withConfig(
-                        new AmundsenConnection()
-                            .withHostPort(new URI("localhost:9092"))
-                            .withUsername("admin")
-                            .withPassword("admin"))),
-        ADMIN_AUTH_HEADERS);
+      createRequest(test, 3)
+        .withConnection(
+          new MetadataConnection()
+          .withConfig(
+              new AmundsenConnection()
+                .withHostPort(new URI("localhost:9092"))
+                .withUsername("admin")
+                .withPassword("admin")
+            )
+        ),
+      ADMIN_AUTH_HEADERS
+    );
 
     // We can create the service without connection
     createAndCheckEntity(createRequest(test).withConnection(null), ADMIN_AUTH_HEADERS);
@@ -110,54 +115,51 @@ public class MetadataServiceResourceTest extends EntityResourceTest<MetadataServ
   @Test
   void put_updateService_as_admin_2xx(TestInfo test) throws IOException, URISyntaxException {
     String secretPassword = "secret:/openmetadata/metadata/" + getEntityName(test) + "/password";
-    MetadataService service =
-        createAndCheckEntity(
-            createRequest(test)
-                .withDescription(null)
-                .withConnection(
-                    new MetadataConnection()
-                        .withConfig(
-                            new AmundsenConnection()
-                                .withHostPort(new URI("localhost:9092"))
-                                .withUsername("admin")
-                                .withPassword(secretPassword))),
-            ADMIN_AUTH_HEADERS);
+    MetadataService service = createAndCheckEntity(
+      createRequest(test)
+        .withDescription(null)
+        .withConnection(
+          new MetadataConnection()
+          .withConfig(
+              new AmundsenConnection()
+                .withHostPort(new URI("localhost:9092"))
+                .withUsername("admin")
+                .withPassword(secretPassword)
+            )
+        ),
+      ADMIN_AUTH_HEADERS
+    );
 
-    MetadataConnection metadataConnection =
-        new MetadataConnection()
-            .withConfig(
-                new AmundsenConnection()
-                    .withHostPort(new URI("localhost:9092"))
-                    .withUsername("admin")
-                    .withPassword(secretPassword));
+    MetadataConnection metadataConnection = new MetadataConnection()
+    .withConfig(
+        new AmundsenConnection()
+          .withHostPort(new URI("localhost:9092"))
+          .withUsername("admin")
+          .withPassword(secretPassword)
+      );
     // Update metadata description
-    CreateMetadataService update =
-        createRequest(test).withDescription("description1").withConnection(metadataConnection);
+    CreateMetadataService update = createRequest(test)
+      .withDescription("description1")
+      .withConnection(metadataConnection);
     ChangeDescription change = getChangeDescription(service, MINOR_UPDATE);
     fieldAdded(change, "description", "description1");
     service = updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Update connection
-    MetadataConnection metadataConnection1 =
-        new MetadataConnection()
-            .withConfig(
-                new AmundsenConnection()
-                    .withHostPort(new URI("localhost:9094"))
-                    .withUsername("admin1")
-                    .withPassword("admin1"));
+    MetadataConnection metadataConnection1 = new MetadataConnection()
+    .withConfig(
+        new AmundsenConnection().withHostPort(new URI("localhost:9094")).withUsername("admin1").withPassword("admin1")
+      );
     change = getChangeDescription(service, MINOR_UPDATE);
     fieldUpdated(change, "connection", metadataConnection, metadataConnection1);
     update.withConnection(metadataConnection1);
     service = updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Update description and connection
-    MetadataConnection metadataConnection2 =
-        new MetadataConnection()
-            .withConfig(
-                new AmundsenConnection()
-                    .withHostPort(new URI("localhost:9095"))
-                    .withUsername("admin2")
-                    .withPassword("admin2"));
+    MetadataConnection metadataConnection2 = new MetadataConnection()
+    .withConfig(
+        new AmundsenConnection().withHostPort(new URI("localhost:9095")).withUsername("admin2").withPassword("admin2")
+      );
     update.withConnection(metadataConnection2);
     change = getChangeDescription(service, MINOR_UPDATE);
     fieldUpdated(change, "connection", metadataConnection1, metadataConnection2);
@@ -170,8 +172,11 @@ public class MetadataServiceResourceTest extends EntityResourceTest<MetadataServ
     MetadataService service = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     // By default, we have no result logged in
     assertNull(service.getTestConnectionResult());
-    MetadataService updatedService =
-        putTestConnectionResult(service.getId(), TEST_CONNECTION_RESULT, ADMIN_AUTH_HEADERS);
+    MetadataService updatedService = putTestConnectionResult(
+      service.getId(),
+      TEST_CONNECTION_RESULT,
+      ADMIN_AUTH_HEADERS
+    );
     // Validate that the data got properly stored
     assertNotNull(updatedService.getTestConnectionResult());
     assertEquals(TestConnectionResultStatus.SUCCESSFUL, updatedService.getTestConnectionResult().getStatus());
@@ -184,8 +189,11 @@ public class MetadataServiceResourceTest extends EntityResourceTest<MetadataServ
   }
 
   public MetadataService putTestConnectionResult(
-      UUID serviceId, TestConnectionResult testConnectionResult, Map<String, String> authHeaders)
-      throws HttpResponseException {
+    UUID serviceId,
+    TestConnectionResult testConnectionResult,
+    Map<String, String> authHeaders
+  )
+    throws HttpResponseException {
     WebTarget target = getResource(serviceId).path("/testConnectionResult");
     return TestUtils.put(target, testConnectionResult, MetadataService.class, OK, authHeaders);
   }
@@ -193,14 +201,17 @@ public class MetadataServiceResourceTest extends EntityResourceTest<MetadataServ
   @Override
   public CreateMetadataService createRequest(String name) {
     return new CreateMetadataService()
-        .withName(name)
-        .withServiceType(CreateMetadataService.MetadataServiceType.Amundsen)
-        .withConnection(AMUNDSEN_CONNECTION);
+      .withName(name)
+      .withServiceType(CreateMetadataService.MetadataServiceType.Amundsen)
+      .withConnection(AMUNDSEN_CONNECTION);
   }
 
   @Override
   public void validateCreatedEntity(
-      MetadataService service, CreateMetadataService createRequest, Map<String, String> authHeaders) {
+    MetadataService service,
+    CreateMetadataService createRequest,
+    Map<String, String> authHeaders
+  ) {
     MetadataConnection expectedMetadataConnection = createRequest.getConnection();
     MetadataConnection actualMetadataConnection = service.getConnection();
     validateConnection(expectedMetadataConnection, actualMetadataConnection, service.getServiceType());
@@ -213,19 +224,19 @@ public class MetadataServiceResourceTest extends EntityResourceTest<MetadataServ
 
   @Override
   public MetadataService validateGetWithDifferentFields(MetadataService service, boolean byName)
-      throws HttpResponseException {
+    throws HttpResponseException {
     String fields = "";
     service =
-        byName
-            ? getEntityByName(service.getFullyQualifiedName(), null, fields, ADMIN_AUTH_HEADERS)
-            : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
+      byName
+        ? getEntityByName(service.getFullyQualifiedName(), null, fields, ADMIN_AUTH_HEADERS)
+        : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
     TestUtils.assertListNull(service.getOwner());
 
     fields = "owner,tags";
     service =
-        byName
-            ? getEntityByName(service.getFullyQualifiedName(), null, fields, ADMIN_AUTH_HEADERS)
-            : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
+      byName
+        ? getEntityByName(service.getFullyQualifiedName(), null, fields, ADMIN_AUTH_HEADERS)
+        : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
     // Checks for other owner, tags, and followers is done in the base class
     return service;
   }
@@ -243,13 +254,16 @@ public class MetadataServiceResourceTest extends EntityResourceTest<MetadataServ
   }
 
   private void validateConnection(
-      MetadataConnection expectedConnection,
-      MetadataConnection actualConnection,
-      CreateMetadataService.MetadataServiceType metadataServiceType) {
-    if (expectedConnection != null
-        && actualConnection != null
-        && expectedConnection.getConfig() != null
-        && actualConnection.getConfig() != null) {
+    MetadataConnection expectedConnection,
+    MetadataConnection actualConnection,
+    CreateMetadataService.MetadataServiceType metadataServiceType
+  ) {
+    if (
+      expectedConnection != null &&
+      actualConnection != null &&
+      expectedConnection.getConfig() != null &&
+      actualConnection.getConfig() != null
+    ) {
       if (metadataServiceType == CreateMetadataService.MetadataServiceType.Atlas) {
         AtlasConnection expectedAtlasConnection = (AtlasConnection) expectedConnection.getConfig();
         AtlasConnection actualAtlasConnection;

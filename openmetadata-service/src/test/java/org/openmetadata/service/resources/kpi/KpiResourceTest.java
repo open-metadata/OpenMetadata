@@ -48,6 +48,7 @@ import org.openmetadata.service.util.TestUtils;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Slf4j
 public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
+
   public KpiResourceTest() {
     super(Entity.KPI, Kpi.class, KpiResource.KpiList.class, "kpi", KpiResource.FIELDS);
     supportsPatch = false;
@@ -55,16 +56,15 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
 
   public void setupKpi() throws IOException {
     DataInsightChartResourceTest dataInsightResourceTest = new DataInsightChartResourceTest();
-    CreateDataInsightChart chartRequest =
-        dataInsightResourceTest
-            .createRequest(String.format("TestChart%s", UUID.randomUUID()))
-            .withOwner(USER1_REF)
-            .withDataIndexType(DataReportIndex.ENTITY_REPORT_DATA_INDEX)
-            .withMetrics(
-                List.of(
-                    new ChartParameterValues()
-                        .withName("Percentage")
-                        .withChartDataType(DataInsightChartDataType.PERCENTAGE)));
+    CreateDataInsightChart chartRequest = dataInsightResourceTest
+      .createRequest(String.format("TestChart%s", UUID.randomUUID()))
+      .withOwner(USER1_REF)
+      .withDataIndexType(DataReportIndex.ENTITY_REPORT_DATA_INDEX)
+      .withMetrics(
+        List.of(
+          new ChartParameterValues().withName("Percentage").withChartDataType(DataInsightChartDataType.PERCENTAGE)
+        )
+      );
     DI_CHART1 = dataInsightResourceTest.createAndCheckEntity(chartRequest, ADMIN_AUTH_HEADERS);
     KPI_TARGET = new KpiTarget().withName("Percentage").withValue("80");
   }
@@ -73,9 +73,10 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
   void post_testWithoutRequiredFields_4xx(TestInfo test) {
     // name is required field
     assertResponse(
-        () -> createEntity(createRequest(test).withName(null), ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "[name must not be null]");
+      () -> createEntity(createRequest(test).withName(null), ADMIN_AUTH_HEADERS),
+      BAD_REQUEST,
+      "[name must not be null]"
+    );
   }
 
   @Test
@@ -85,17 +86,19 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
     create1.withDataInsightChart(USER1_REF.getName());
 
     assertResponseContains(
-        () -> createAndCheckEntity(create1, ADMIN_AUTH_HEADERS),
-        NOT_FOUND,
-        "dataInsightChart instance for " + USER1_REF.getName() + " not found");
+      () -> createAndCheckEntity(create1, ADMIN_AUTH_HEADERS),
+      NOT_FOUND,
+      "dataInsightChart instance for " + USER1_REF.getName() + " not found"
+    );
     CreateKpiRequest create2 = createRequest(String.format("Test%s", UUID.randomUUID()));
     KpiTarget target = new KpiTarget().withName("Test").withValue("Test");
     create2.withTargetDefinition(List.of(target));
 
     assertResponseContains(
-        () -> createAndCheckEntity(create2, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "Kpi Target Definition " + target.getName() + " is not valid, metric not defined in corresponding chart");
+      () -> createAndCheckEntity(create2, ADMIN_AUTH_HEADERS),
+      BAD_REQUEST,
+      "Kpi Target Definition " + target.getName() + " is not valid, metric not defined in corresponding chart"
+    );
   }
 
   @Test
@@ -120,43 +123,43 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
     CreateKpiRequest create = createRequest(test);
     Kpi createdKpi = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
-    KpiResult kpiResult =
-        new KpiResult()
-            .withTimestamp(TestUtils.dateToTimestamp("2021-09-09"))
-            .withTargetResult(List.of(new KpiTarget().withName(KPI_TARGET.getName()).withValue("10")));
+    KpiResult kpiResult = new KpiResult()
+      .withTimestamp(TestUtils.dateToTimestamp("2021-09-09"))
+      .withTargetResult(List.of(new KpiTarget().withName(KPI_TARGET.getName()).withValue("10")));
     putKpiResult(createdKpi.getFullyQualifiedName(), kpiResult, ADMIN_AUTH_HEADERS);
 
-    ResultList<KpiResult> kpiResults =
-        getKpiResults(
-            createdKpi.getFullyQualifiedName(),
-            TestUtils.dateToTimestamp("2021-09-09"),
-            TestUtils.dateToTimestamp("2021-09-10"),
-            ADMIN_AUTH_HEADERS);
+    ResultList<KpiResult> kpiResults = getKpiResults(
+      createdKpi.getFullyQualifiedName(),
+      TestUtils.dateToTimestamp("2021-09-09"),
+      TestUtils.dateToTimestamp("2021-09-10"),
+      ADMIN_AUTH_HEADERS
+    );
     verifyKpiResults(kpiResults, List.of(kpiResult), 1);
 
     // Add new date for KpiResult
-    KpiResult newKpiResult =
-        new KpiResult()
-            .withTimestamp(TestUtils.dateToTimestamp("2021-09-10"))
-            .withTargetResult(List.of(new KpiTarget().withName(KPI_TARGET.getName()).withValue("20")));
+    KpiResult newKpiResult = new KpiResult()
+      .withTimestamp(TestUtils.dateToTimestamp("2021-09-10"))
+      .withTargetResult(List.of(new KpiTarget().withName(KPI_TARGET.getName()).withValue("20")));
     putKpiResult(createdKpi.getFullyQualifiedName(), newKpiResult, ADMIN_AUTH_HEADERS);
 
     kpiResults =
-        getKpiResults(
-            createdKpi.getFullyQualifiedName(),
-            TestUtils.dateToTimestamp("2021-09-09"),
-            TestUtils.dateToTimestamp("2021-09-10"),
-            ADMIN_AUTH_HEADERS);
+      getKpiResults(
+        createdKpi.getFullyQualifiedName(),
+        TestUtils.dateToTimestamp("2021-09-09"),
+        TestUtils.dateToTimestamp("2021-09-10"),
+        ADMIN_AUTH_HEADERS
+      );
     verifyKpiResults(kpiResults, List.of(kpiResult, newKpiResult), 2);
 
     createdKpi = getEntity(createdKpi.getId(), "targetDefinition", ADMIN_AUTH_HEADERS);
     // first result should be the latest date
     kpiResults =
-        getKpiResults(
-            createdKpi.getFullyQualifiedName(),
-            TestUtils.dateToTimestamp("2021-09-09"),
-            TestUtils.dateToTimestamp("2021-09-10"),
-            ADMIN_AUTH_HEADERS);
+      getKpiResults(
+        createdKpi.getFullyQualifiedName(),
+        TestUtils.dateToTimestamp("2021-09-09"),
+        TestUtils.dateToTimestamp("2021-09-10"),
+        ADMIN_AUTH_HEADERS
+      );
     verifyKpiResults(kpiResults, List.of(newKpiResult, kpiResult), 2);
 
     String dateStr = "2021-09-";
@@ -165,19 +168,19 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
     kpiResultList.add(newKpiResult);
     for (int i = 11; i <= 20; i++) {
       kpiResult =
-          new KpiResult()
-              .withTimestamp(TestUtils.dateToTimestamp(dateStr + i))
-              .withTargetResult(
-                  List.of(new KpiTarget().withName(KPI_TARGET.getName()).withValue(String.valueOf(50 + i))));
+        new KpiResult()
+          .withTimestamp(TestUtils.dateToTimestamp(dateStr + i))
+          .withTargetResult(List.of(new KpiTarget().withName(KPI_TARGET.getName()).withValue(String.valueOf(50 + i))));
       putKpiResult(createdKpi.getFullyQualifiedName(), kpiResult, ADMIN_AUTH_HEADERS);
       kpiResultList.add(kpiResult);
     }
     kpiResults =
-        getKpiResults(
-            createdKpi.getFullyQualifiedName(),
-            TestUtils.dateToTimestamp("2021-09-09"),
-            TestUtils.dateToTimestamp("2021-09-20"),
-            ADMIN_AUTH_HEADERS);
+      getKpiResults(
+        createdKpi.getFullyQualifiedName(),
+        TestUtils.dateToTimestamp("2021-09-09"),
+        TestUtils.dateToTimestamp("2021-09-20"),
+        ADMIN_AUTH_HEADERS
+      );
     verifyKpiResults(kpiResults, kpiResultList, 12);
   }
 
@@ -187,7 +190,7 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
   }
 
   public ResultList<KpiResult> getKpiResults(String fqn, Long start, Long end, Map<String, String> authHeaders)
-      throws HttpResponseException {
+    throws HttpResponseException {
     WebTarget target = getCollection().path("/" + fqn + "/kpiResult");
     target = target.queryParam("startTs", start);
     target = target.queryParam("endTs", end);
@@ -195,7 +198,10 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
   }
 
   private void verifyKpiResults(
-      ResultList<KpiResult> actualKpiResults, List<KpiResult> expectedKpiResults, int expectedCount) {
+    ResultList<KpiResult> actualKpiResults,
+    List<KpiResult> expectedKpiResults,
+    int expectedCount
+  ) {
     assertEquals(expectedCount, actualKpiResults.getPaging().getTotal());
     assertEquals(expectedKpiResults.size(), actualKpiResults.getData().size());
     Map<Long, KpiResult> kpiResultMap = new HashMap<>();
@@ -220,15 +226,15 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
       throw new RuntimeException(e);
     }
     return new CreateKpiRequest()
-        .withName(name)
-        .withDescription(name)
-        .withDisplayName(name)
-        .withStartDate(0L)
-        .withEndDate(30L)
-        .withDataInsightChart(DI_CHART1.getFullyQualifiedName())
-        .withOwner(USER1_REF)
-        .withMetricType(KpiTargetType.PERCENTAGE)
-        .withTargetDefinition(List.of(KPI_TARGET));
+      .withName(name)
+      .withDescription(name)
+      .withDisplayName(name)
+      .withStartDate(0L)
+      .withEndDate(30L)
+      .withDataInsightChart(DI_CHART1.getFullyQualifiedName())
+      .withOwner(USER1_REF)
+      .withMetricType(KpiTargetType.PERCENTAGE)
+      .withTargetDefinition(List.of(KPI_TARGET));
   }
 
   @Override
@@ -255,15 +261,15 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
   public Kpi validateGetWithDifferentFields(Kpi entity, boolean byName) throws HttpResponseException {
     String fields = "";
     entity =
-        byName
-            ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getEntity(entity.getId(), null, ADMIN_AUTH_HEADERS);
+      byName
+        ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+        : getEntity(entity.getId(), null, ADMIN_AUTH_HEADERS);
     assertListNull(entity.getOwner(), entity.getDataInsightChart());
     fields = "owner,dataInsightChart"; // Not testing for kpiResult field
     entity =
-        byName
-            ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
+      byName
+        ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+        : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(entity.getOwner(), entity.getDataInsightChart());
     return entity;
   }

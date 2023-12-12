@@ -31,6 +31,7 @@ import org.openmetadata.schema.type.TagLabel.TagSource;
  * new enum inadvertently being added in the middle.
  */
 class EnumBackwardCompatibilityTest {
+
   /** */
   @Test
   void testRelationshipEnumBackwardCompatible() {

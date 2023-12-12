@@ -52,6 +52,7 @@ import org.openmetadata.service.util.JsonUtils;
 @TestInstance(Lifecycle.PER_CLASS)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
+
   private Table TABLE;
 
   public static final MessageDecorator<?> feedMessageFormatter = new FeedMessageDecorator();
@@ -117,9 +118,10 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
     assertEquals(1, messages.size());
 
     assertEquals(
-        "Updated **description**: <span class=\"diff-removed\">old</span> "
-            + "<span class=\"diff-added\">new</span> description",
-        messages.values().iterator().next());
+      "Updated **description**: <span class=\"diff-removed\">old</span> " +
+      "<span class=\"diff-added\">new</span> description",
+      messages.values().iterator().next()
+    );
 
     // test if it updates correctly with one add and one delete change
     changeDescription = new ChangeDescription().withPreviousVersion(1.0);
@@ -163,32 +165,37 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
     ChangeDescription changeDescription = new ChangeDescription().withPreviousVersion(1.3);
     // Simulate a change of column name in table
     fieldAdded(
-        changeDescription,
-        "columns",
-        "[{\"name\":\"lo_orderpriority\",\"displayName\":\"lo_orderpriority\",\"dataType\":\"INT\",\"dataLength\":1,\"dataTypeDisplay\":\"int\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_orderpriority\",\"constraint\":\"NOT_NULL\"}]");
+      changeDescription,
+      "columns",
+      "[{\"name\":\"lo_orderpriority\",\"displayName\":\"lo_orderpriority\",\"dataType\":\"INT\",\"dataLength\":1,\"dataTypeDisplay\":\"int\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_orderpriority\",\"constraint\":\"NOT_NULL\"}]"
+    );
 
     fieldDeleted(
-        changeDescription,
-        "columns",
-        "[{\"name\":\"lo_order\",\"displayName\":\"lo_order\",\"dataType\":\"INT\",\"dataLength\":1,\"dataTypeDisplay\":\"int\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_order\",\"constraint\":\"NOT_NULL\"}]");
+      changeDescription,
+      "columns",
+      "[{\"name\":\"lo_order\",\"displayName\":\"lo_order\",\"dataType\":\"INT\",\"dataLength\":1,\"dataTypeDisplay\":\"int\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_order\",\"constraint\":\"NOT_NULL\"}]"
+    );
 
     Map<EntityLink, String> messages = getFormattedMessages(feedMessageFormatter, changeDescription, TABLE);
     assertEquals(1, messages.size());
 
     assertEquals(
-        "Updated **columns**: lo_order <span class=\"diff-added\">priority</span>",
-        messages.values().iterator().next());
+      "Updated **columns**: lo_order <span class=\"diff-added\">priority</span>",
+      messages.values().iterator().next()
+    );
 
     // Simulate a change of datatype change in column
     changeDescription = new ChangeDescription().withPreviousVersion(1.3);
     fieldAdded(
-        changeDescription,
-        "columns",
-        "[{\"name\":\"lo_orderpriority\",\"displayName\":\"lo_orderpriority\",\"dataType\":\"INT\",\"dataLength\":1,\"dataTypeDisplay\":\"int\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_orderpriority\",\"constraint\":\"NOT_NULL\"}]");
+      changeDescription,
+      "columns",
+      "[{\"name\":\"lo_orderpriority\",\"displayName\":\"lo_orderpriority\",\"dataType\":\"INT\",\"dataLength\":1,\"dataTypeDisplay\":\"int\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_orderpriority\",\"constraint\":\"NOT_NULL\"}]"
+    );
     fieldDeleted(
-        changeDescription,
-        "columns",
-        "[{\"name\":\"lo_orderpriority\",\"displayName\":\"lo_orderpriority\",\"dataType\":\"BLOB\",\"dataLength\":1,\"dataTypeDisplay\":\"blob\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_orderpriority\",\"tags\":[],\"constraint\":\"NOT_NULL\"}]");
+      changeDescription,
+      "columns",
+      "[{\"name\":\"lo_orderpriority\",\"displayName\":\"lo_orderpriority\",\"dataType\":\"BLOB\",\"dataLength\":1,\"dataTypeDisplay\":\"blob\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_orderpriority\",\"tags\":[],\"constraint\":\"NOT_NULL\"}]"
+    );
 
     messages = getFormattedMessages(feedMessageFormatter, changeDescription, TABLE);
     assertEquals(1, messages.size());
@@ -198,20 +205,23 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
     // Simulate multiple changes to columns
     changeDescription = new ChangeDescription().withPreviousVersion(1.4);
     fieldAdded(
-        changeDescription,
-        "columns",
-        "[{\"name\":\"lo_orderpriority\",\"displayName\":\"lo_orderpriority\",\"dataType\":\"INT\",\"dataLength\":1,\"dataTypeDisplay\":\"int\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_orderpriority\"},{\"name\":\"newColumn\",\"displayName\":\"newColumn\",\"dataType\":\"INT\",\"dataLength\":1,\"dataTypeDisplay\":\"int\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.newColumn\"}]");
+      changeDescription,
+      "columns",
+      "[{\"name\":\"lo_orderpriority\",\"displayName\":\"lo_orderpriority\",\"dataType\":\"INT\",\"dataLength\":1,\"dataTypeDisplay\":\"int\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_orderpriority\"},{\"name\":\"newColumn\",\"displayName\":\"newColumn\",\"dataType\":\"INT\",\"dataLength\":1,\"dataTypeDisplay\":\"int\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.newColumn\"}]"
+    );
     fieldDeleted(
-        changeDescription,
-        "columns",
-        "[{\"name\":\"lo_orderpriority\",\"displayName\":\"lo_orderpriority\",\"dataType\":\"BLOB\",\"dataLength\":1,\"dataTypeDisplay\":\"blob\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_orderpriority\"}]");
+      changeDescription,
+      "columns",
+      "[{\"name\":\"lo_orderpriority\",\"displayName\":\"lo_orderpriority\",\"dataType\":\"BLOB\",\"dataLength\":1,\"dataTypeDisplay\":\"blob\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_orderpriority\"}]"
+    );
 
     messages = getFormattedMessages(feedMessageFormatter, changeDescription, TABLE);
     assertEquals(1, messages.size());
 
     assertEquals(
-        "Updated **columns**: lo_orderpriority <span class=\"diff-added\">, newColumn</span>",
-        messages.values().iterator().next());
+      "Updated **columns**: lo_orderpriority <span class=\"diff-added\">, newColumn</span>",
+      messages.values().iterator().next()
+    );
   }
 
   @Test
@@ -219,14 +229,16 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
     ChangeDescription changeDescription = new ChangeDescription().withPreviousVersion(1.3);
     // Simulate a change of column name in table
     fieldAdded(
-        changeDescription,
-        "columns",
-        "[{\"name\":\"lo_orderpriority\",\"displayName\":\"lo_orderpriority\",\"dataType\":\"INT\",\"dataLength\":1,\"dataTypeDisplay\":\"int\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_orderpriority\",\"constraint\":\"NOT_NULL\"}]");
+      changeDescription,
+      "columns",
+      "[{\"name\":\"lo_orderpriority\",\"displayName\":\"lo_orderpriority\",\"dataType\":\"INT\",\"dataLength\":1,\"dataTypeDisplay\":\"int\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_orderpriority\",\"constraint\":\"NOT_NULL\"}]"
+    );
 
     fieldDeleted(
-        changeDescription,
-        "columns",
-        "[{\"name\":\"lo_order\",\"displayName\":\"lo_order\",\"dataType\":\"INT\",\"dataLength\":1,\"dataTypeDisplay\":\"int\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_order\",\"constraint\":\"NOT_NULL\"}]");
+      changeDescription,
+      "columns",
+      "[{\"name\":\"lo_order\",\"displayName\":\"lo_order\",\"dataType\":\"INT\",\"dataLength\":1,\"dataTypeDisplay\":\"int\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_order\",\"constraint\":\"NOT_NULL\"}]"
+    );
 
     Map<EntityLink, String> messages = getFormattedMessages(slackMessageFormatter, changeDescription, TABLE);
     assertEquals(1, messages.size());
@@ -236,13 +248,15 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
     // Simulate a change of datatype change in column
     changeDescription = new ChangeDescription().withPreviousVersion(1.3);
     fieldAdded(
-        changeDescription,
-        "columns",
-        "[{\"name\":\"lo_orderpriority\",\"displayName\":\"lo_orderpriority\",\"dataType\":\"INT\",\"dataLength\":1,\"dataTypeDisplay\":\"int\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_orderpriority\",\"constraint\":\"NOT_NULL\"}]");
+      changeDescription,
+      "columns",
+      "[{\"name\":\"lo_orderpriority\",\"displayName\":\"lo_orderpriority\",\"dataType\":\"INT\",\"dataLength\":1,\"dataTypeDisplay\":\"int\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_orderpriority\",\"constraint\":\"NOT_NULL\"}]"
+    );
     fieldDeleted(
-        changeDescription,
-        "columns",
-        "[{\"name\":\"lo_orderpriority\",\"displayName\":\"lo_orderpriority\",\"dataType\":\"BLOB\",\"dataLength\":1,\"dataTypeDisplay\":\"blob\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_orderpriority\",\"tags\":[],\"constraint\":\"NOT_NULL\"}]");
+      changeDescription,
+      "columns",
+      "[{\"name\":\"lo_orderpriority\",\"displayName\":\"lo_orderpriority\",\"dataType\":\"BLOB\",\"dataLength\":1,\"dataTypeDisplay\":\"blob\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_orderpriority\",\"tags\":[],\"constraint\":\"NOT_NULL\"}]"
+    );
 
     messages = getFormattedMessages(slackMessageFormatter, changeDescription, TABLE);
     assertEquals(1, messages.size());
@@ -252,13 +266,15 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
     // Simulate multiple changes to columns
     changeDescription = new ChangeDescription().withPreviousVersion(1.4);
     fieldAdded(
-        changeDescription,
-        "columns",
-        "[{\"name\":\"lo_orderpriority\",\"displayName\":\"lo_orderpriority\",\"dataType\":\"INT\",\"dataLength\":1,\"dataTypeDisplay\":\"int\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_orderpriority\"},{\"name\":\"newColumn\",\"displayName\":\"newColumn\",\"dataType\":\"INT\",\"dataLength\":1,\"dataTypeDisplay\":\"int\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.newColumn\"}]");
+      changeDescription,
+      "columns",
+      "[{\"name\":\"lo_orderpriority\",\"displayName\":\"lo_orderpriority\",\"dataType\":\"INT\",\"dataLength\":1,\"dataTypeDisplay\":\"int\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_orderpriority\"},{\"name\":\"newColumn\",\"displayName\":\"newColumn\",\"dataType\":\"INT\",\"dataLength\":1,\"dataTypeDisplay\":\"int\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.newColumn\"}]"
+    );
     fieldDeleted(
-        changeDescription,
-        "columns",
-        "[{\"name\":\"lo_orderpriority\",\"displayName\":\"lo_orderpriority\",\"dataType\":\"BLOB\",\"dataLength\":1,\"dataTypeDisplay\":\"blob\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_orderpriority\"}]");
+      changeDescription,
+      "columns",
+      "[{\"name\":\"lo_orderpriority\",\"displayName\":\"lo_orderpriority\",\"dataType\":\"BLOB\",\"dataLength\":1,\"dataTypeDisplay\":\"blob\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_orderpriority\"}]"
+    );
 
     messages = getFormattedMessages(slackMessageFormatter, changeDescription, TABLE);
     assertEquals(1, messages.size());

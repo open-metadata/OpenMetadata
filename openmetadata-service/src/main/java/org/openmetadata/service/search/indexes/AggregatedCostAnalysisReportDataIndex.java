@@ -5,6 +5,7 @@ import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.service.util.JsonUtils;
 
 public class AggregatedCostAnalysisReportDataIndex implements SearchIndex {
+
   private final ReportData reportData;
 
   public AggregatedCostAnalysisReportDataIndex(ReportData reportData) {

@@ -52,6 +52,7 @@ import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
 public class PipelineRepository extends EntityRepository<Pipeline> {
+
   private static final String TASKS_FIELD = "tasks";
   private static final String PIPELINE_UPDATE_FIELDS = "tasks";
   private static final String PIPELINE_PATCH_FIELDS = "tasks,sourceHash";
@@ -59,19 +60,21 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   public PipelineRepository() {
     super(
-        PipelineResource.COLLECTION_PATH,
-        Entity.PIPELINE,
-        Pipeline.class,
-        Entity.getCollectionDAO().pipelineDAO(),
-        PIPELINE_PATCH_FIELDS,
-        PIPELINE_UPDATE_FIELDS);
+      PipelineResource.COLLECTION_PATH,
+      Entity.PIPELINE,
+      Pipeline.class,
+      Entity.getCollectionDAO().pipelineDAO(),
+      PIPELINE_PATCH_FIELDS,
+      PIPELINE_UPDATE_FIELDS
+    );
     supportsSearch = true;
   }
 
   @Override
   public void setFullyQualifiedName(Pipeline pipeline) {
     pipeline.setFullyQualifiedName(
-        FullyQualifiedName.add(pipeline.getService().getFullyQualifiedName(), pipeline.getName()));
+      FullyQualifiedName.add(pipeline.getService().getFullyQualifiedName(), pipeline.getName())
+    );
     setTaskFQN(pipeline.getFullyQualifiedName(), pipeline.getTasks());
   }
 
@@ -93,6 +96,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   static class TaskDescriptionWorkflow extends DescriptionTaskWorkflow {
+
     private final Task task;
 
     TaskDescriptionWorkflow(ThreadContext threadContext) {
@@ -110,6 +114,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   static class TaskTagWorkflow extends TagTaskWorkflow {
+
     private final Task task;
 
     TaskTagWorkflow(ThreadContext threadContext) {
@@ -133,7 +138,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     pipeline.setSourceHash(fields.contains("sourceHash") ? pipeline.getSourceHash() : null);
     getTaskTags(fields.contains(FIELD_TAGS), pipeline.getTasks());
     pipeline.withPipelineStatus(
-        fields.contains("pipelineStatus") ? getPipelineStatus(pipeline) : pipeline.getPipelineStatus());
+      fields.contains("pipelineStatus") ? getPipelineStatus(pipeline) : pipeline.getPipelineStatus()
+    );
   }
 
   @Override
@@ -144,8 +150,9 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   private PipelineStatus getPipelineStatus(Pipeline pipeline) {
     return JsonUtils.readValue(
-        getLatestExtensionFromTimeseries(pipeline.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION),
-        PipelineStatus.class);
+      getLatestExtensionFromTimeseries(pipeline.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION),
+      PipelineStatus.class
+    );
   }
 
   public Pipeline addPipelineStatus(String fqn, PipelineStatus pipelineStatus) {
@@ -160,22 +167,27 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
     // Pipeline status is from the pipeline execution. There is no gurantee that it is unique as it is unrelated to
     // workflow execution. We should bring back the old behavior for this one.
-    String storedPipelineStatus =
-        getExtensionAtTimestamp(fqn, PIPELINE_STATUS_EXTENSION, pipelineStatus.getTimestamp());
+    String storedPipelineStatus = getExtensionAtTimestamp(
+      fqn,
+      PIPELINE_STATUS_EXTENSION,
+      pipelineStatus.getTimestamp()
+    );
     if (storedPipelineStatus != null) {
       daoCollection
-          .entityExtensionTimeSeriesDao()
-          .update(
-              pipeline.getFullyQualifiedName(),
-              PIPELINE_STATUS_EXTENSION,
-              JsonUtils.pojoToJson(pipelineStatus),
-              pipelineStatus.getTimestamp());
-    } else {
-      storeTimeSeries(
+        .entityExtensionTimeSeriesDao()
+        .update(
           pipeline.getFullyQualifiedName(),
           PIPELINE_STATUS_EXTENSION,
-          "pipelineStatus",
-          JsonUtils.pojoToJson(pipelineStatus));
+          JsonUtils.pojoToJson(pipelineStatus),
+          pipelineStatus.getTimestamp()
+        );
+    } else {
+      storeTimeSeries(
+        pipeline.getFullyQualifiedName(),
+        PIPELINE_STATUS_EXTENSION,
+        "pipelineStatus",
+        JsonUtils.pojoToJson(pipelineStatus)
+      );
     }
     return pipeline.withPipelineStatus(pipelineStatus);
   }
@@ -184,22 +196,27 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     // Validate the request content
     Pipeline pipeline = findByName(fqn, NON_DELETED);
     pipeline.setService(getContainer(pipeline.getId()));
-    PipelineStatus storedPipelineStatus =
-        JsonUtils.readValue(getExtensionAtTimestamp(fqn, PIPELINE_STATUS_EXTENSION, timestamp), PipelineStatus.class);
+    PipelineStatus storedPipelineStatus = JsonUtils.readValue(
+      getExtensionAtTimestamp(fqn, PIPELINE_STATUS_EXTENSION, timestamp),
+      PipelineStatus.class
+    );
     if (storedPipelineStatus != null) {
       deleteExtensionAtTimestamp(fqn, PIPELINE_STATUS_EXTENSION, timestamp);
       pipeline.setPipelineStatus(storedPipelineStatus);
       return pipeline;
     }
     throw new EntityNotFoundException(
-        String.format("Failed to find pipeline status for %s at %s", pipeline.getName(), timestamp));
+      String.format("Failed to find pipeline status for %s at %s", pipeline.getName(), timestamp)
+    );
   }
 
   public ResultList<PipelineStatus> getPipelineStatuses(String fqn, Long starTs, Long endTs) {
     List<PipelineStatus> pipelineStatuses;
     pipelineStatuses =
-        JsonUtils.readObjects(
-            getResultsFromAndToTimestamps(fqn, PIPELINE_STATUS_EXTENSION, starTs, endTs), PipelineStatus.class);
+      JsonUtils.readObjects(
+        getResultsFromAndToTimestamps(fqn, PIPELINE_STATUS_EXTENSION, starTs, endTs),
+        PipelineStatus.class
+      );
     return new ResultList<>(pipelineStatuses, starTs.toString(), endTs.toString(), pipelineStatuses.size());
   }
 
@@ -281,10 +298,11 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   private void setTaskFQN(String parentFQN, List<Task> tasks) {
     if (tasks != null) {
       tasks.forEach(
-          t -> {
-            String taskFqn = FullyQualifiedName.add(parentFQN, t.getName());
-            t.setFullyQualifiedName(taskFqn);
-          });
+        t -> {
+          String taskFqn = FullyQualifiedName.add(parentFQN, t.getName());
+          t.setFullyQualifiedName(taskFqn);
+        }
+      );
     }
   }
 
@@ -321,20 +339,21 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   private Task cloneWithoutTags(Task task) {
     return new Task()
-        .withDescription(task.getDescription())
-        .withName(task.getName())
-        .withDisplayName(task.getDisplayName())
-        .withFullyQualifiedName(task.getFullyQualifiedName())
-        .withSourceUrl(task.getSourceUrl())
-        .withTaskType(task.getTaskType())
-        .withDownstreamTasks(task.getDownstreamTasks())
-        .withTaskSQL(task.getTaskSQL())
-        .withStartDate(task.getStartDate())
-        .withEndDate(task.getEndDate());
+      .withDescription(task.getDescription())
+      .withName(task.getName())
+      .withDisplayName(task.getDisplayName())
+      .withFullyQualifiedName(task.getFullyQualifiedName())
+      .withSourceUrl(task.getSourceUrl())
+      .withTaskType(task.getTaskType())
+      .withDownstreamTasks(task.getDownstreamTasks())
+      .withTaskSQL(task.getTaskSQL())
+      .withStartDate(task.getStartDate())
+      .withEndDate(task.getEndDate());
   }
 
   /** Handles entity updated from PUT and POST operation. */
   public class PipelineUpdater extends EntityUpdater {
+
     public PipelineUpdater(Pipeline original, Pipeline updated, Operation operation) {
       super(original, updated, operation);
     }
@@ -374,10 +393,11 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         }
         updateTaskDescription(storedTask, updatedTask);
         updateTags(
-            storedTask.getFullyQualifiedName(),
-            EntityUtil.getFieldName(TASKS_FIELD, updatedTask.getName(), FIELD_TAGS),
-            storedTask.getTags(),
-            updatedTask.getTags());
+          storedTask.getFullyQualifiedName(),
+          EntityUtil.getFieldName(TASKS_FIELD, updatedTask.getName(), FIELD_TAGS),
+          storedTask.getTags(),
+          updatedTask.getTags()
+        );
       }
 
       boolean removedTasks = updatedTasks.size() < origTasks.size();
@@ -398,19 +418,27 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         return;
       }
       // Don't record a change if descriptions are the same
-      if (origTask != null
-          && ((origTask.getDescription() != null && !origTask.getDescription().equals(updatedTask.getDescription()))
-              || updatedTask.getDescription() != null)) {
+      if (
+        origTask != null &&
+        (
+          (origTask.getDescription() != null && !origTask.getDescription().equals(updatedTask.getDescription())) ||
+          updatedTask.getDescription() != null
+        )
+      ) {
         recordChange(
-            "tasks." + origTask.getName() + ".description", origTask.getDescription(), updatedTask.getDescription());
+          "tasks." + origTask.getName() + ".description",
+          origTask.getDescription(),
+          updatedTask.getDescription()
+        );
       }
     }
   }
 
   public static Task findTask(List<Task> tasks, String taskName) {
-    return tasks.stream()
-        .filter(c -> c.getName().equals(taskName))
-        .findFirst()
-        .orElseThrow(() -> new IllegalArgumentException(CatalogExceptionMessage.invalidFieldName("task", taskName)));
+    return tasks
+      .stream()
+      .filter(c -> c.getName().equals(taskName))
+      .findFirst()
+      .orElseThrow(() -> new IllegalArgumentException(CatalogExceptionMessage.invalidFieldName("task", taskName)));
   }
 }

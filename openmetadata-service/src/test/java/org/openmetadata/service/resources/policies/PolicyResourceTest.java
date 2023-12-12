@@ -89,17 +89,19 @@ import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy> {
+
   public static final TableResourceTest TABLE_TEST = new TableResourceTest();
   public static final TeamResourceTest TEAM_TEST = new TeamResourceTest();
 
   public PolicyResourceTest() {
     super(
-        Entity.POLICY,
-        Policy.class,
-        PolicyList.class,
-        "policies",
-        PolicyResource.FIELDS,
-        Entity.ORGANIZATION_POLICY_NAME);
+      Entity.POLICY,
+      Policy.class,
+      PolicyList.class,
+      "policies",
+      PolicyResource.FIELDS,
+      Entity.ORGANIZATION_POLICY_NAME
+    );
   }
 
   public void setupPolicies() throws IOException {
@@ -204,14 +206,14 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
 
     // Operations VIEW_BASIC, VIEW_QUERIES is redundant with VIEW_ALL
     // Operations EDIT_TESTS, EDIT_TAGS is redundant with EDIT_ALL
-    List<MetadataOperation> operations =
-        listOf(
-            VIEW_ALL,
-            MetadataOperation.VIEW_BASIC,
-            MetadataOperation.VIEW_QUERIES,
-            EDIT_ALL,
-            MetadataOperation.EDIT_TESTS,
-            MetadataOperation.EDIT_TAGS);
+    List<MetadataOperation> operations = listOf(
+      VIEW_ALL,
+      MetadataOperation.VIEW_BASIC,
+      MetadataOperation.VIEW_QUERIES,
+      EDIT_ALL,
+      MetadataOperation.EDIT_TESTS,
+      MetadataOperation.EDIT_TAGS
+    );
     rules.add(accessControlRule(resources, operations, ALLOW));
     CreatePolicy create = createAccessControlPolicyWithRules(policyName, rules);
     Policy policy = createEntity(create, ADMIN_AUTH_HEADERS);
@@ -262,13 +264,25 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
 
     // Invalid tag names to expressions that have tag names as parameters
     validateCondition(
-        policyName, "matchAllTags('invalidTag')", failedToEvaluate(entityNotFound(Entity.TAG, "invalidTag")));
+      policyName,
+      "matchAllTags('invalidTag')",
+      failedToEvaluate(entityNotFound(Entity.TAG, "invalidTag"))
+    );
     validateCondition(
-        policyName, "matchAnyTag('invalidTag')", failedToEvaluate(entityNotFound(Entity.TAG, "invalidTag")));
+      policyName,
+      "matchAnyTag('invalidTag')",
+      failedToEvaluate(entityNotFound(Entity.TAG, "invalidTag"))
+    );
     validateCondition(
-        policyName, "inAnyTeam('invalidTeam')", failedToEvaluate(entityNotFound(Entity.TEAM, "invalidTeam")));
+      policyName,
+      "inAnyTeam('invalidTeam')",
+      failedToEvaluate(entityNotFound(Entity.TEAM, "invalidTeam"))
+    );
     validateCondition(
-        policyName, "hasAnyRole('invalidRole')", failedToEvaluate(entityNotFound(Entity.ROLE, "invalidRole")));
+      policyName,
+      "hasAnyRole('invalidRole')",
+      failedToEvaluate(entityNotFound(Entity.ROLE, "invalidRole"))
+    );
   }
 
   @Test
@@ -279,9 +293,10 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
 
     for (EntityReference policy : policies) {
       assertResponse(
-          () -> deleteEntity(policy.getId(), ADMIN_AUTH_HEADERS),
-          BAD_REQUEST,
-          CatalogExceptionMessage.systemEntityDeleteNotAllowed(policy.getName(), Entity.POLICY));
+        () -> deleteEntity(policy.getId(), ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        CatalogExceptionMessage.systemEntityDeleteNotAllowed(policy.getName(), Entity.POLICY)
+      );
     }
   }
 
@@ -294,8 +309,8 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   }
 
   private void validateCondition(String policyName, String condition, String expectedReason) {
-    Rule rule =
-        accessControlRule(List.of(ALL_RESOURCES), List.of(MetadataOperation.ALL), ALLOW).withCondition(condition);
+    Rule rule = accessControlRule(List.of(ALL_RESOURCES), List.of(MetadataOperation.ALL), ALLOW)
+      .withCondition(condition);
     CreatePolicy create = createAccessControlPolicyWithRules(policyName, List.of(rule));
     assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, expectedReason);
     assertResponseContains(() -> validateCondition(condition), BAD_REQUEST, expectedReason);
@@ -310,11 +325,11 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     String origJson = JsonUtils.pojoToJson(policy);
     ChangeDescription change = getChangeDescription(policy, MINOR_UPDATE);
     rule1
-        .withDescription("description")
-        .withEffect(DENY)
-        .withResources(List.of("table"))
-        .withOperations(List.of(EDIT_ALL))
-        .withCondition("isOwner()");
+      .withDescription("description")
+      .withEffect(DENY)
+      .withResources(List.of("table"))
+      .withOperations(List.of(EDIT_ALL))
+      .withCondition("isOwner()");
     fieldAdded(change, getRuleField(rule1, FIELD_DESCRIPTION), "description");
     fieldUpdated(change, getRuleField(rule1, "effect"), ALLOW, DENY);
     fieldUpdated(change, getRuleField(rule1, "resources"), List.of(ALL_RESOURCES), List.of("table"));
@@ -338,8 +353,12 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
 
     // Add a new rule - Changes from this PATCH is consolidated with the previous changes
     origJson = JsonUtils.pojoToJson(policy);
-    Rule newRule =
-        accessControlRule("newRule", List.of(ALL_RESOURCES), List.of(MetadataOperation.EDIT_DESCRIPTION), ALLOW);
+    Rule newRule = accessControlRule(
+      "newRule",
+      List.of(ALL_RESOURCES),
+      List.of(MetadataOperation.EDIT_DESCRIPTION),
+      ALLOW
+    );
     policy.getRules().add(newRule);
     change = getChangeDescription(policy, CHANGE_CONSOLIDATED);
     fieldAdded(change, getRuleField(rule1, FIELD_DESCRIPTION), "newDescription");
@@ -371,11 +390,12 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     // Ensure all entities are captured in resource descriptor list
     List<String> entities = Entity.getEntityList();
     for (String entity : entities) {
-      ResourceDescriptor resourceDescriptor =
-          actualResourceDescriptors.getData().stream()
-              .filter(rd -> rd.getName().equals(entity))
-              .findFirst()
-              .orElse(null);
+      ResourceDescriptor resourceDescriptor = actualResourceDescriptors
+        .getData()
+        .stream()
+        .filter(rd -> rd.getName().equals(entity))
+        .findFirst()
+        .orElse(null);
       assertNotNull(resourceDescriptor, String.format("Resource descriptor not found for entity %s", entity));
     }
   }
@@ -431,10 +451,10 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     CreateTeam createTeam = TEAM_TEST.createRequest("rolesPoliciesTeam1").withTeamType(DEPARTMENT);
     Team team1 = TEAM_TEST.createEntity(createTeam, ADMIN_AUTH_HEADERS);
     createTeam =
-        TEAM_TEST
-            .createRequest("rolesPoliciesTeam2")
-            .withTeamType(DEPARTMENT)
-            .withDefaultRoles(listOf(DATA_STEWARD_ROLE.getId()));
+      TEAM_TEST
+        .createRequest("rolesPoliciesTeam2")
+        .withTeamType(DEPARTMENT)
+        .withDefaultRoles(listOf(DATA_STEWARD_ROLE.getId()));
     Team team2 = TEAM_TEST.createEntity(createTeam, ADMIN_AUTH_HEADERS);
     createTeam = TEAM_TEST.createRequest("rolesPoliciesTeam11").withParents(listOf(team1.getId()));
     Team team11 = TEAM_TEST.createEntity(createTeam, ADMIN_AUTH_HEADERS);
@@ -461,11 +481,10 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     User user22 = userTest.createEntity(createUser, ADMIN_AUTH_HEADERS);
 
     // Create resources - table11 has PII sensitive tags
-    CreateTable createTable =
-        TABLE_TEST
-            .createRequest("rolesAndPoliciesTable11")
-            .withOwner(team11.getEntityReference())
-            .withTags(listOf(PII_SENSITIVE_TAG_LABEL));
+    CreateTable createTable = TABLE_TEST
+      .createRequest("rolesAndPoliciesTable11")
+      .withOwner(team11.getEntityReference())
+      .withTags(listOf(PII_SENSITIVE_TAG_LABEL));
     Table table11 = TABLE_TEST.createEntity(createTable, ADMIN_AUTH_HEADERS);
 
     // table12 does not have PII
@@ -475,39 +494,45 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
 
     // Create policies
     Policy denyAllPIIAccess = createPolicy("disallowAllPIIAccess", "matchAnyTag('PII.Sensitive')");
-    Policy denyPIIAccessExceptTeam11 =
-        createPolicy("denyPIIAccessExceptTeam11", "matchAnyTag('PII.Sensitive') && !inAnyTeam('rolesPoliciesTeam11')");
-    Policy denyPIIAccessExceptTeam1 =
-        createPolicy("denyPIIAccessExceptTeam1", "matchAnyTag('PII.Sensitive') && !inAnyTeam('rolesPoliciesTeam1')");
-    Policy denyPIIAccessExceptRole =
-        createPolicy("denyPIIAccessExceptRole", "matchAnyTag('PII.Sensitive') && !hasAnyRole('DataSteward')");
+    Policy denyPIIAccessExceptTeam11 = createPolicy(
+      "denyPIIAccessExceptTeam11",
+      "matchAnyTag('PII.Sensitive') && !inAnyTeam('rolesPoliciesTeam11')"
+    );
+    Policy denyPIIAccessExceptTeam1 = createPolicy(
+      "denyPIIAccessExceptTeam1",
+      "matchAnyTag('PII.Sensitive') && !inAnyTeam('rolesPoliciesTeam1')"
+    );
+    Policy denyPIIAccessExceptRole = createPolicy(
+      "denyPIIAccessExceptRole",
+      "matchAnyTag('PII.Sensitive') && !hasAnyRole('DataSteward')"
+    );
 
     // Array made of team, policy to attach to the team, allowed users list, denied users list, entity being accessed
     Object[][] scenarios = {
       // 0 - TEAM_ONLY_POLICY attached to team11. Only user11 in team11 has access
-      {team11, TEAM_ONLY_POLICY, listOf(user11), listOf(user1, user2, user12, user21, user22), table11},
+      { team11, TEAM_ONLY_POLICY, listOf(user11), listOf(user1, user2, user12, user21, user22), table11 },
       // 1 - TEAM_ONLY_POLICY attached to team1. All the users under team1 have access
-      {team1, TEAM_ONLY_POLICY, listOf(user1, user11, user12), listOf(user2, user21, user22), table11},
+      { team1, TEAM_ONLY_POLICY, listOf(user1, user11, user12), listOf(user2, user21, user22), table11 },
       // 2 - denyPIIAccess attached to team1. No users can access table11 that has PII
-      {team1, denyAllPIIAccess, emptyList(), listOf(user1, user2, user11, user12, user21, user22), table11},
+      { team1, denyAllPIIAccess, emptyList(), listOf(user1, user2, user11, user12, user21, user22), table11 },
       // 3 - denyPIIAccess attached to team1. All users can access table12 that has no PII
-      {team1, denyAllPIIAccess, listOf(user1, user11, user12, user2, user21, user22), emptyList(), table12},
+      { team1, denyAllPIIAccess, listOf(user1, user11, user12, user2, user21, user22), emptyList(), table12 },
       // 4 - denyPIIAccessExceptTeam11 attached to team1. Only Team11 users can access table11 with PII
-      {team1, denyPIIAccessExceptTeam11, listOf(user11), listOf(user1, user2, user12, user21, user22), table11},
+      { team1, denyPIIAccessExceptTeam11, listOf(user11), listOf(user1, user2, user12, user21, user22), table11 },
       // 5 - denyPIIAccessExceptTeam11 attached to team1. All users can access table12 that has no PII
-      {team1, denyPIIAccessExceptTeam11, listOf(user1, user11, user12, user2, user21, user22), emptyList(), table12},
+      { team1, denyPIIAccessExceptTeam11, listOf(user1, user11, user12, user2, user21, user22), emptyList(), table12 },
       // 6 - denyPIIAccessExceptTeam11 attached to team11. Only Team11 users can access table11 with PII
-      {team11, denyPIIAccessExceptTeam11, listOf(user11), listOf(user1, user2, user12, user21, user22), table11},
+      { team11, denyPIIAccessExceptTeam11, listOf(user11), listOf(user1, user2, user12, user21, user22), table11 },
       // 7 - denyPIIAccessExceptTeam11 attached to team11. All users can access table12 that has no PII
-      {team11, denyPIIAccessExceptTeam11, listOf(user1, user11, user12, user2, user21, user22), emptyList(), table12},
+      { team11, denyPIIAccessExceptTeam11, listOf(user1, user11, user12, user2, user21, user22), emptyList(), table12 },
       // 8 - denyPIIAccessExceptTeam1 attached to team1. Only Team1 users can access table11 with PII
-      {team1, denyPIIAccessExceptTeam1, listOf(user1, user11, user12), listOf(user2, user21, user22), table11},
+      { team1, denyPIIAccessExceptTeam1, listOf(user1, user11, user12), listOf(user2, user21, user22), table11 },
       // 9 - denyPIIAccessExceptTeam1 attached to team1. All users can access table12 that has no PII
-      {team1, denyPIIAccessExceptTeam1, listOf(user1, user11, user12, user2, user21, user22), emptyList(), table12},
+      { team1, denyPIIAccessExceptTeam1, listOf(user1, user11, user12, user2, user21, user22), emptyList(), table12 },
       // 10 - denyPIIAccessExceptRole attached to team1. Only user2, user21 and user22 with DataStewardRole can access
-      {team1, denyPIIAccessExceptRole, listOf(user2, user21, user22), listOf(user1, user11, user12), table11},
+      { team1, denyPIIAccessExceptRole, listOf(user2, user21, user22), listOf(user1, user11, user12), table11 },
       // 11- denyPIIAccessExceptRole attached to team1. All users can access table12 that has no PII
-      {team1, denyPIIAccessExceptTeam1, listOf(user1, user11, user12, user2, user21, user22), emptyList(), table12},
+      { team1, denyPIIAccessExceptTeam1, listOf(user1, user11, user12, user2, user21, user22), emptyList(), table12 }
     };
     for (int i = 0; i < scenarios.length; i++) {
       Object[] scenario = scenarios[i];
@@ -517,13 +542,12 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
 
   private Policy createPolicy(String name, String condition) throws HttpResponseException {
     validateCondition(condition); // No exception should be thrown
-    Rule rule =
-        new Rule()
-            .withName(name)
-            .withResources(listOf(ALL_RESOURCES))
-            .withOperations(listOf(MetadataOperation.ALL))
-            .withEffect(DENY)
-            .withCondition(condition);
+    Rule rule = new Rule()
+      .withName(name)
+      .withResources(listOf(ALL_RESOURCES))
+      .withOperations(listOf(MetadataOperation.ALL))
+      .withEffect(DENY)
+      .withCondition(condition);
     CreatePolicy createPolicy = createRequest(name).withRules(listOf(rule));
     return createEntity(createPolicy, ADMIN_AUTH_HEADERS);
   }
@@ -537,11 +561,12 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     Table table = (Table) scenario[4];
     addTeamPolicy(team, policy);
     LOG.info(
-        "Testing scenario at {} with team:{} policy:{} table:{}",
-        index,
-        team.getName(),
-        policy.getName(),
-        table.getName());
+      "Testing scenario at {} with team:{} policy:{} table:{}",
+      index,
+      team.getName(),
+      policy.getName(),
+      table.getName()
+    );
     checkAccess(allowedUsers, disallowedUsers, table);
     removeTeamPolicy(team);
   }
@@ -550,19 +575,19 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   public Policy validateGetWithDifferentFields(Policy policy, boolean byName) throws HttpResponseException {
     String fields = "";
     policy =
-        byName
-            ? getEntityByName(policy.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getEntity(policy.getId(), fields, ADMIN_AUTH_HEADERS);
+      byName
+        ? getEntityByName(policy.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+        : getEntity(policy.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNull(policy.getOwner(), policy.getLocation());
 
     // .../policies?fields=owner,displayName,policyUrl
     fields = "owner,location";
     policy =
-        byName
-            ? getEntityByName(policy.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getEntity(policy.getId(), fields, ADMIN_AUTH_HEADERS);
+      byName
+        ? getEntityByName(policy.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+        : getEntity(policy.getId(), fields, ADMIN_AUTH_HEADERS);
     // Field location is set during creation - tested elsewhere
-    assertListNotNull(policy.getOwner() /*, policy.getLocation()*/);
+    assertListNotNull(policy.getOwner()/*, policy.getLocation()*/);
     // Checks for other owner, tags, and followers is done in the base class
     return policy;
   }
@@ -592,7 +617,11 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   }
 
   private static Rule accessControlRule(
-      String name, List<String> resources, List<MetadataOperation> operations, Effect effect) {
+    String name,
+    List<String> resources,
+    List<MetadataOperation> operations,
+    Effect effect
+  ) {
     return new Rule().withName(name).withResources(resources).withOperations(operations).withEffect(effect);
   }
 
@@ -616,7 +645,10 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     for (User deniedUser : deniedUsers) {
       LOG.info("Expecting access denied for user:{}", deniedUser.getName());
       assertResponseContains(
-          () -> TABLE_TEST.getEntity(table.getId(), "", authHeaders(deniedUser.getName())), FORBIDDEN, "denied");
+        () -> TABLE_TEST.getEntity(table.getId(), "", authHeaders(deniedUser.getName())),
+        FORBIDDEN,
+        "denied"
+      );
     }
   }
 }

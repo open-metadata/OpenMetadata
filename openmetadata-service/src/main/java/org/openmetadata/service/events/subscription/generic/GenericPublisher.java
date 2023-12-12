@@ -38,6 +38,7 @@ import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class GenericPublisher extends SubscriptionPublisher {
+
   private final Client client;
   private final Webhook webhook;
   private final CollectionDAO daoCollection;

@@ -23,6 +23,7 @@ import org.openmetadata.service.util.JsonUtils;
 public class ElasticSearchConnectionClassConverter extends ClassConverter {
 
   private static final List<Class<?>> CONFIG_SOURCE_CLASSES = List.of(ESBasicAuth.class, ESAPIAuth.class);
+
   //
   public ElasticSearchConnectionClassConverter() {
     super(ElasticSearchConnection.class);
@@ -30,11 +31,13 @@ public class ElasticSearchConnectionClassConverter extends ClassConverter {
 
   @Override
   public Object convert(Object object) {
-    ElasticSearchConnection elasticSearchConnection =
-        (ElasticSearchConnection) JsonUtils.convertValue(object, this.clazz);
+    ElasticSearchConnection elasticSearchConnection = (ElasticSearchConnection) JsonUtils.convertValue(
+      object,
+      this.clazz
+    );
 
     tryToConvert(elasticSearchConnection.getAuthType(), CONFIG_SOURCE_CLASSES)
-        .ifPresent(elasticSearchConnection::setAuthType);
+      .ifPresent(elasticSearchConnection::setAuthType);
 
     return elasticSearchConnection;
   }

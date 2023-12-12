@@ -52,12 +52,16 @@ public class CloudwatchEventMonitor extends EventMonitor {
   private final CloudWatchClient client;
 
   public CloudwatchEventMonitor(
-      EventMonitorProvider eventMonitorProvider, EventMonitorConfiguration config, String clusterPrefix) {
+    EventMonitorProvider eventMonitorProvider,
+    EventMonitorConfiguration config,
+    String clusterPrefix
+  ) {
     super(eventMonitorProvider, config, clusterPrefix);
-
-    if (config != null
-        && config.getParameters() != null
-        && !Strings.isBlank(config.getParameters().getOrDefault(REGION, ""))) {
+    if (
+      config != null &&
+      config.getParameters() != null &&
+      !Strings.isBlank(config.getParameters().getOrDefault(REGION, ""))
+    ) {
       String region = config.getParameters().getOrDefault(REGION, "");
       String accessKeyId = config.getParameters().getOrDefault(ACCESS_KEY_ID, "");
       String secretAccessKey = config.getParameters().getOrDefault(SECRET_ACCESS_KEY, "");
@@ -66,10 +70,10 @@ public class CloudwatchEventMonitor extends EventMonitor {
         credentialsProvider = DefaultCredentialsProvider.create();
       } else {
         credentialsProvider =
-            StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKeyId, secretAccessKey));
+          StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKeyId, secretAccessKey));
       }
       this.client =
-          CloudWatchClient.builder().region(Region.of(region)).credentialsProvider(credentialsProvider).build();
+        CloudWatchClient.builder().region(Region.of(region)).credentialsProvider(credentialsProvider).build();
     } else {
       this.client = CloudWatchClient.create();
     }
@@ -126,20 +130,31 @@ public class CloudwatchEventMonitor extends EventMonitor {
   }
 
   protected List<PutMetricDataRequest> logPipelineUpdated(
-      String fqn, String pipelineType, Long timestamp, ChangeDescription changeDescription) {
-    return changeDescription.getFieldsUpdated().stream()
-        .map(
-            change -> {
-              if (change.getName().equals(PIPELINE_STATUS) && change.getNewValue() != null) {
-                PipelineStatus pipelineStatus = (PipelineStatus) change.getNewValue();
-                return logPipelineStatus(
-                    fqn, pipelineType, timestamp, getMetricNameByStatus(pipelineStatus.getPipelineState()));
-              } else {
-                LOG.debug("Ignoring Ingestion Pipeline change type " + change.getName());
-              }
-              return null;
-            })
-        .collect(Collectors.toList());
+    String fqn,
+    String pipelineType,
+    Long timestamp,
+    ChangeDescription changeDescription
+  ) {
+    return changeDescription
+      .getFieldsUpdated()
+      .stream()
+      .map(
+        change -> {
+          if (change.getName().equals(PIPELINE_STATUS) && change.getNewValue() != null) {
+            PipelineStatus pipelineStatus = (PipelineStatus) change.getNewValue();
+            return logPipelineStatus(
+              fqn,
+              pipelineType,
+              timestamp,
+              getMetricNameByStatus(pipelineStatus.getPipelineState())
+            );
+          } else {
+            LOG.debug("Ignoring Ingestion Pipeline change type " + change.getName());
+          }
+          return null;
+        }
+      )
+      .collect(Collectors.toList());
   }
 
   private String getMetricNameByStatus(PipelineStatusType statusType) {
@@ -150,14 +165,14 @@ public class CloudwatchEventMonitor extends EventMonitor {
     Dimension dimension = Dimension.builder().name(pipelineType).value(fqn).build();
     Instant instant = Instant.ofEpochMilli(timestamp);
 
-    MetricDatum datum =
-        MetricDatum.builder()
-            .metricName(metricName)
-            .unit(StandardUnit.COUNT)
-            .value(1.0)
-            .timestamp(instant)
-            .dimensions(dimension)
-            .build();
+    MetricDatum datum = MetricDatum
+      .builder()
+      .metricName(metricName)
+      .unit(StandardUnit.COUNT)
+      .value(1.0)
+      .timestamp(instant)
+      .dimensions(dimension)
+      .build();
 
     return PutMetricDataRequest.builder().namespace(buildMetricNamespace(NAMESPACE)).metricData(datum).build();
   }

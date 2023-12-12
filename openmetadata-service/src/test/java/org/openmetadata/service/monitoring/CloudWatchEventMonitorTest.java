@@ -51,21 +51,20 @@ public class CloudWatchEventMonitorTest {
   public static final Long current_ts = System.currentTimeMillis();
   public static final Instant instant = Instant.ofEpochMilli(current_ts);
 
-  public static final IngestionPipeline INGESTION_PIPELINE =
-      new IngestionPipeline()
-          .withName("ingestion")
-          .withId(UUID.randomUUID())
-          .withPipelineType(PipelineType.METADATA)
-          .withSourceConfig(DATABASE_METADATA_CONFIG)
-          .withAirflowConfig(new AirflowConfig().withStartDate(new DateTime("2022-06-10T15:06:47+00:00").toDate()));
+  public static final IngestionPipeline INGESTION_PIPELINE = new IngestionPipeline()
+    .withName("ingestion")
+    .withId(UUID.randomUUID())
+    .withPipelineType(PipelineType.METADATA)
+    .withSourceConfig(DATABASE_METADATA_CONFIG)
+    .withAirflowConfig(new AirflowConfig().withStartDate(new DateTime("2022-06-10T15:06:47+00:00").toDate()));
 
   private ChangeEvent buildChangeEvent(EventType eventType) {
     return new ChangeEvent()
-        .withEntityType(Entity.INGESTION_PIPELINE)
-        .withEventType(eventType)
-        .withEntityFullyQualifiedName(FQN)
-        .withTimestamp(current_ts)
-        .withEntity(INGESTION_PIPELINE);
+      .withEntityType(Entity.INGESTION_PIPELINE)
+      .withEventType(eventType)
+      .withEntityFullyQualifiedName(FQN)
+      .withTimestamp(current_ts)
+      .withEntity(INGESTION_PIPELINE);
   }
 
   private Dimension buildDimension(String pipelineType, String fqn) {
@@ -78,13 +77,14 @@ public class CloudWatchEventMonitorTest {
     config.setEventMonitor(EventMonitorProvider.CLOUDWATCH);
     config.setBatchSize(10);
     config.setParameters(
-        new HashMap<>() {
-          {
-            put("region", "eu-west-2");
-            put("accessKeyId", "asdf1234");
-            put("secretAccessKey", "asdf1234");
-          }
-        });
+      new HashMap<>() {
+        {
+          put("region", "eu-west-2");
+          put("accessKeyId", "asdf1234");
+          put("secretAccessKey", "asdf1234");
+        }
+      }
+    );
     eventMonitor = new CloudwatchEventMonitor(EventMonitorProvider.CLOUDWATCH, config, CLUSTER_NAME);
   }
 
@@ -98,18 +98,20 @@ public class CloudWatchEventMonitorTest {
     ChangeEvent event = buildChangeEvent(EventType.ENTITY_CREATED);
     List<PutMetricDataRequest> metricRequests = eventMonitor.buildMetricRequest(event);
 
-    PutMetricDataRequest expectedMetric =
-        PutMetricDataRequest.builder()
-            .namespace(EXPECTED_NAMESPACE)
-            .metricData(
-                MetricDatum.builder()
-                    .metricName("INGESTION_PIPELINE_CREATED")
-                    .unit(StandardUnit.COUNT)
-                    .value(1.0)
-                    .timestamp(instant)
-                    .dimensions(buildDimension("metadata", FQN))
-                    .build())
-            .build();
+    PutMetricDataRequest expectedMetric = PutMetricDataRequest
+      .builder()
+      .namespace(EXPECTED_NAMESPACE)
+      .metricData(
+        MetricDatum
+          .builder()
+          .metricName("INGESTION_PIPELINE_CREATED")
+          .unit(StandardUnit.COUNT)
+          .value(1.0)
+          .timestamp(instant)
+          .dimensions(buildDimension("metadata", FQN))
+          .build()
+      )
+      .build();
 
     assertEquals(metricRequests.get(0), expectedMetric);
   }
@@ -119,18 +121,20 @@ public class CloudWatchEventMonitorTest {
     ChangeEvent event = buildChangeEvent(EventType.ENTITY_DELETED);
     List<PutMetricDataRequest> metricRequests = eventMonitor.buildMetricRequest(event);
 
-    PutMetricDataRequest expectedMetric =
-        PutMetricDataRequest.builder()
-            .namespace(EXPECTED_NAMESPACE)
-            .metricData(
-                MetricDatum.builder()
-                    .metricName("INGESTION_PIPELINE_DELETED")
-                    .unit(StandardUnit.COUNT)
-                    .value(1.0)
-                    .timestamp(instant)
-                    .dimensions(buildDimension("metadata", FQN))
-                    .build())
-            .build();
+    PutMetricDataRequest expectedMetric = PutMetricDataRequest
+      .builder()
+      .namespace(EXPECTED_NAMESPACE)
+      .metricData(
+        MetricDatum
+          .builder()
+          .metricName("INGESTION_PIPELINE_DELETED")
+          .unit(StandardUnit.COUNT)
+          .value(1.0)
+          .timestamp(instant)
+          .dimensions(buildDimension("metadata", FQN))
+          .build()
+      )
+      .build();
 
     assertEquals(metricRequests.get(0), expectedMetric);
   }
@@ -139,28 +143,33 @@ public class CloudWatchEventMonitorTest {
   void buildMetricRequestForUpdatedIngestionPipelineTest() {
     ChangeEvent event = buildChangeEvent(EventType.ENTITY_UPDATED);
     event.withChangeDescription(
-        new ChangeDescription()
-            .withFieldsUpdated(
-                List.of(
-                    new FieldChange()
-                        .withName("pipelineStatus")
-                        .withOldValue(null)
-                        .withNewValue(new PipelineStatus().withPipelineState(PipelineStatusType.RUNNING)))));
+      new ChangeDescription()
+      .withFieldsUpdated(
+          List.of(
+            new FieldChange()
+              .withName("pipelineStatus")
+              .withOldValue(null)
+              .withNewValue(new PipelineStatus().withPipelineState(PipelineStatusType.RUNNING))
+          )
+        )
+    );
 
     List<PutMetricDataRequest> metricRequests = eventMonitor.buildMetricRequest(event);
 
-    PutMetricDataRequest expectedMetric =
-        PutMetricDataRequest.builder()
-            .namespace(EXPECTED_NAMESPACE)
-            .metricData(
-                MetricDatum.builder()
-                    .metricName("INGESTION_PIPELINE_RUNNING")
-                    .unit(StandardUnit.COUNT)
-                    .value(1.0)
-                    .timestamp(instant)
-                    .dimensions(buildDimension("metadata", FQN))
-                    .build())
-            .build();
+    PutMetricDataRequest expectedMetric = PutMetricDataRequest
+      .builder()
+      .namespace(EXPECTED_NAMESPACE)
+      .metricData(
+        MetricDatum
+          .builder()
+          .metricName("INGESTION_PIPELINE_RUNNING")
+          .unit(StandardUnit.COUNT)
+          .value(1.0)
+          .timestamp(instant)
+          .dimensions(buildDimension("metadata", FQN))
+          .build()
+      )
+      .build();
 
     assertEquals(metricRequests.get(0), expectedMetric);
   }

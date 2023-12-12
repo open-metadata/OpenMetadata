@@ -65,16 +65,20 @@ public final class EntityUtil {
   //
   // Comparators used for sorting list based on the given type
   //
-  public static final Comparator<EntityReference> compareEntityReference =
-      Comparator.comparing(EntityReference::getName);
-  public static final Comparator<EntityReference> compareEntityReferenceById =
-      Comparator.comparing(EntityReference::getId).thenComparing(EntityReference::getType);
-  public static final Comparator<EntityVersionPair> compareVersion =
-      Comparator.comparing(EntityVersionPair::getVersion);
+  public static final Comparator<EntityReference> compareEntityReference = Comparator.comparing(
+    EntityReference::getName
+  );
+  public static final Comparator<EntityReference> compareEntityReferenceById = Comparator
+    .comparing(EntityReference::getId)
+    .thenComparing(EntityReference::getType);
+  public static final Comparator<EntityVersionPair> compareVersion = Comparator.comparing(
+    EntityVersionPair::getVersion
+  );
   public static final Comparator<TagLabel> compareTagLabel = Comparator.comparing(TagLabel::getTagFQN);
   public static final Comparator<FieldChange> compareFieldChange = Comparator.comparing(FieldChange::getName);
-  public static final Comparator<TableConstraint> compareTableConstraint =
-      Comparator.comparing(TableConstraint::getConstraintType);
+  public static final Comparator<TableConstraint> compareTableConstraint = Comparator.comparing(
+    TableConstraint::getConstraintType
+  );
   public static final Comparator<ChangeEvent> compareChangeEvent = Comparator.comparing(ChangeEvent::getTimestamp);
   public static final Comparator<GlossaryTerm> compareGlossaryTerm = Comparator.comparing(GlossaryTerm::getName);
   public static final Comparator<CustomProperty> compareCustomProperty = Comparator.comparing(CustomProperty::getName);
@@ -84,56 +88,52 @@ public final class EntityUtil {
   //
   public static final BiPredicate<Object, Object> objectMatch = Object::equals;
 
-  public static final BiPredicate<EntityReference, EntityReference> entityReferenceMatch =
-      (ref1, ref2) -> ref1.getId().equals(ref2.getId()) && ref1.getType().equals(ref2.getType());
+  public static final BiPredicate<EntityReference, EntityReference> entityReferenceMatch = (ref1, ref2) ->
+    ref1.getId().equals(ref2.getId()) && ref1.getType().equals(ref2.getType());
 
-  public static final BiPredicate<TagLabel, TagLabel> tagLabelMatch =
-      (tag1, tag2) -> tag1.getTagFQN().equals(tag2.getTagFQN()) && tag1.getSource().equals(tag2.getSource());
+  public static final BiPredicate<TagLabel, TagLabel> tagLabelMatch = (tag1, tag2) ->
+    tag1.getTagFQN().equals(tag2.getTagFQN()) && tag1.getSource().equals(tag2.getSource());
 
   public static final BiPredicate<Task, Task> taskMatch = (task1, task2) -> task1.getName().equals(task2.getName());
 
   public static final BiPredicate<String, String> stringMatch = String::equals;
 
-  public static final BiPredicate<Column, Column> columnMatch =
-      (column1, column2) ->
-          column1.getName().equalsIgnoreCase(column2.getName())
-              && column1.getDataType() == column2.getDataType()
-              && column1.getArrayDataType() == column2.getArrayDataType();
+  public static final BiPredicate<Column, Column> columnMatch = (column1, column2) ->
+    column1.getName().equalsIgnoreCase(column2.getName()) &&
+    column1.getDataType() == column2.getDataType() &&
+    column1.getArrayDataType() == column2.getArrayDataType();
 
-  public static final BiPredicate<Column, Column> columnNameMatch =
-      (column1, column2) -> column1.getName().equalsIgnoreCase(column2.getName());
+  public static final BiPredicate<Column, Column> columnNameMatch = (column1, column2) ->
+    column1.getName().equalsIgnoreCase(column2.getName());
 
-  public static final BiPredicate<TableConstraint, TableConstraint> tableConstraintMatch =
-      (constraint1, constraint2) ->
-          constraint1.getConstraintType() == constraint2.getConstraintType()
-              && constraint1.getColumns().equals(constraint2.getColumns())
-              && ((constraint1.getReferredColumns() == null && constraint2.getReferredColumns() == null)
-                  || (constraint1.getReferredColumns().equals(constraint2.getReferredColumns())));
+  public static final BiPredicate<TableConstraint, TableConstraint> tableConstraintMatch = (constraint1, constraint2) ->
+    constraint1.getConstraintType() == constraint2.getConstraintType() &&
+    constraint1.getColumns().equals(constraint2.getColumns()) &&
+    (
+      (constraint1.getReferredColumns() == null && constraint2.getReferredColumns() == null) ||
+      (constraint1.getReferredColumns().equals(constraint2.getReferredColumns()))
+    );
 
   public static final BiPredicate<MlFeature, MlFeature> mlFeatureMatch = MlFeature::equals;
   public static final BiPredicate<MlHyperParameter, MlHyperParameter> mlHyperParameterMatch = MlHyperParameter::equals;
 
-  public static final BiPredicate<GlossaryTerm, GlossaryTerm> glossaryTermMatch =
-      (filter1, filter2) -> filter1.getFullyQualifiedName().equals(filter2.getFullyQualifiedName());
+  public static final BiPredicate<GlossaryTerm, GlossaryTerm> glossaryTermMatch = (filter1, filter2) ->
+    filter1.getFullyQualifiedName().equals(filter2.getFullyQualifiedName());
 
   public static final BiPredicate<ContainerFileFormat, ContainerFileFormat> containerFileFormatMatch = Enum::equals;
-  public static final BiPredicate<TermReference, TermReference> termReferenceMatch =
-      (ref1, ref2) -> ref1.getName().equals(ref2.getName()) && ref1.getEndpoint().equals(ref2.getEndpoint());
+  public static final BiPredicate<TermReference, TermReference> termReferenceMatch = (ref1, ref2) ->
+    ref1.getName().equals(ref2.getName()) && ref1.getEndpoint().equals(ref2.getEndpoint());
 
-  public static final BiPredicate<CustomProperty, CustomProperty> customFieldMatch =
-      (ref1, ref2) ->
-          ref1.getName().equals(ref2.getName())
-              && entityReferenceMatch.test(ref1.getPropertyType(), ref2.getPropertyType());
+  public static final BiPredicate<CustomProperty, CustomProperty> customFieldMatch = (ref1, ref2) ->
+    ref1.getName().equals(ref2.getName()) && entityReferenceMatch.test(ref1.getPropertyType(), ref2.getPropertyType());
 
   public static final BiPredicate<Rule, Rule> ruleMatch = (ref1, ref2) -> ref1.getName().equals(ref2.getName());
 
-  public static final BiPredicate<Field, Field> schemaFieldMatch =
-      (field1, field2) ->
-          field1.getName().equalsIgnoreCase(field2.getName()) && field1.getDataType() == field2.getDataType();
+  public static final BiPredicate<Field, Field> schemaFieldMatch = (field1, field2) ->
+    field1.getName().equalsIgnoreCase(field2.getName()) && field1.getDataType() == field2.getDataType();
 
-  public static final BiPredicate<SearchIndexField, SearchIndexField> searchIndexFieldMatch =
-      (field1, field2) ->
-          field1.getName().equalsIgnoreCase(field2.getName()) && field1.getDataType() == field2.getDataType();
+  public static final BiPredicate<SearchIndexField, SearchIndexField> searchIndexFieldMatch = (field1, field2) ->
+    field1.getName().equalsIgnoreCase(field2.getName()) && field1.getDataType() == field2.getDataType();
 
   private EntityUtil() {}
 
@@ -145,7 +145,8 @@ public final class EntityUtil {
     }
     if (entity == null) {
       throw EntityNotFoundException.byMessage(
-          CatalogExceptionMessage.entityNotFound(clz.getSimpleName(), id.toString()));
+        CatalogExceptionMessage.entityNotFound(clz.getSimpleName(), id.toString())
+      );
     }
     return entity;
   }
@@ -193,11 +194,11 @@ public final class EntityUtil {
       LOG.debug("Usage details not found. Sending default usage");
       UsageStats stats = new UsageStats().withCount(0).withPercentileRank(0.0);
       details =
-          new UsageDetails()
-              .withDailyStats(stats)
-              .withWeeklyStats(stats)
-              .withMonthlyStats(stats)
-              .withDate(RestUtil.DATE_FORMAT.format(new Date()));
+        new UsageDetails()
+          .withDailyStats(stats)
+          .withWeeklyStats(stats)
+          .withMonthlyStats(stats)
+          .withDate(RestUtil.DATE_FORMAT.format(new Date()));
     }
     return details;
   }
@@ -259,8 +260,11 @@ public final class EntityUtil {
   }
 
   public static class Fields {
+
     public static final Fields EMPTY_FIELDS = new Fields(Collections.emptySet());
-    @Getter private final Set<String> fieldList;
+
+    @Getter
+    private final Set<String> fieldList;
 
     public Fields(Set<String> fieldList) {
       this.fieldList = fieldList;
@@ -340,8 +344,8 @@ public final class EntityUtil {
     // Remove table FQN from column FQN to get the local name
     String localColumnName = column.getName();
     return columnField == null
-        ? FullyQualifiedName.build("columns", localColumnName)
-        : FullyQualifiedName.build("columns", localColumnName, columnField);
+      ? FullyQualifiedName.build("columns", localColumnName)
+      : FullyQualifiedName.build("columns", localColumnName, columnField);
   }
 
   /** Return schema field name of format "schemaFields".fieldName.fieldName */
@@ -349,31 +353,34 @@ public final class EntityUtil {
     // Remove topic FQN from schemaField FQN to get the local name
     String localFieldName = EntityUtil.getLocalColumnName(topic.getFullyQualifiedName(), field.getFullyQualifiedName());
     return fieldName == null
-        ? FullyQualifiedName.build("schemaFields", localFieldName)
-        : FullyQualifiedName.build("schemaFields", localFieldName, fieldName);
+      ? FullyQualifiedName.build("schemaFields", localFieldName)
+      : FullyQualifiedName.build("schemaFields", localFieldName, fieldName);
   }
+
   /** Return searchIndex field name of format "fields".fieldName.fieldName */
   public static String getSearchIndexField(SearchIndex searchIndex, SearchIndexField field, String fieldName) {
     // Remove topic FQN from schemaField FQN to get the local name
-    String localFieldName =
-        EntityUtil.getLocalColumnName(searchIndex.getFullyQualifiedName(), field.getFullyQualifiedName());
+    String localFieldName = EntityUtil.getLocalColumnName(
+      searchIndex.getFullyQualifiedName(),
+      field.getFullyQualifiedName()
+    );
     return fieldName == null
-        ? FullyQualifiedName.build("fields", localFieldName)
-        : FullyQualifiedName.build("fields", localFieldName, fieldName);
+      ? FullyQualifiedName.build("fields", localFieldName)
+      : FullyQualifiedName.build("fields", localFieldName, fieldName);
   }
 
   /** Return rule field name of format "rules".ruleName.ruleFieldName */
   public static String getRuleField(Rule rule, String ruleField) {
     return ruleField == null
-        ? FullyQualifiedName.build("rules", rule.getName())
-        : FullyQualifiedName.build("rules", rule.getName(), ruleField);
+      ? FullyQualifiedName.build("rules", rule.getName())
+      : FullyQualifiedName.build("rules", rule.getName(), ruleField);
   }
 
   /** Return customer property field name of format "customProperties".propertyName */
   public static String getCustomField(CustomProperty property, String propertyFieldName) {
     return propertyFieldName == null
-        ? FullyQualifiedName.build("customProperties", property.getName())
-        : FullyQualifiedName.build("customProperties", property.getName(), propertyFieldName);
+      ? FullyQualifiedName.build("customProperties", property.getName())
+      : FullyQualifiedName.build("customProperties", property.getName(), propertyFieldName);
   }
 
   /** Return extension field name of format "extension".fieldName */
@@ -394,12 +401,13 @@ public final class EntityUtil {
   }
 
   public static void copy(EntityReference from, EntityReference to) {
-    to.withType(from.getType())
-        .withId(from.getId())
-        .withName(from.getName())
-        .withDisplayName(from.getDisplayName())
-        .withFullyQualifiedName(from.getFullyQualifiedName())
-        .withDeleted(from.getDeleted());
+    to
+      .withType(from.getType())
+      .withId(from.getId())
+      .withName(from.getName())
+      .withDisplayName(from.getDisplayName())
+      .withFullyQualifiedName(from.getFullyQualifiedName())
+      .withDeleted(from.getDeleted());
   }
 
   public static List<TagLabel> toTagLabels(GlossaryTerm... terms) {
@@ -420,24 +428,24 @@ public final class EntityUtil {
 
   public static TagLabel toTagLabel(GlossaryTerm term) {
     return new TagLabel()
-        .withName(term.getName())
-        .withDisplayName(term.getDisplayName())
-        .withDescription(term.getDescription())
-        .withStyle(term.getStyle())
-        .withTagFQN(term.getFullyQualifiedName())
-        .withDescription(term.getDescription())
-        .withSource(TagSource.GLOSSARY);
+      .withName(term.getName())
+      .withDisplayName(term.getDisplayName())
+      .withDescription(term.getDescription())
+      .withStyle(term.getStyle())
+      .withTagFQN(term.getFullyQualifiedName())
+      .withDescription(term.getDescription())
+      .withSource(TagSource.GLOSSARY);
   }
 
   public static TagLabel toTagLabel(Tag tag) {
     return new TagLabel()
-        .withName(tag.getName())
-        .withDisplayName(tag.getDisplayName())
-        .withDescription(tag.getDescription())
-        .withStyle(tag.getStyle())
-        .withTagFQN(tag.getFullyQualifiedName())
-        .withDescription(tag.getDescription())
-        .withSource(TagSource.CLASSIFICATION);
+      .withName(tag.getName())
+      .withDisplayName(tag.getDisplayName())
+      .withDescription(tag.getDescription())
+      .withStyle(tag.getStyle())
+      .withTagFQN(tag.getFullyQualifiedName())
+      .withDescription(tag.getDescription())
+      .withSource(TagSource.CLASSIFICATION);
   }
 
   public static String addField(String fields, String newField) {
@@ -568,11 +576,11 @@ public final class EntityUtil {
   }
 
   public static Column findColumn(List<Column> columns, String columnName) {
-    return columns.stream()
-        .filter(c -> c.getName().equals(columnName))
-        .findFirst()
-        .orElseThrow(
-            () -> new IllegalArgumentException(CatalogExceptionMessage.invalidFieldName("column", columnName)));
+    return columns
+      .stream()
+      .filter(c -> c.getName().equals(columnName))
+      .findFirst()
+      .orElseThrow(() -> new IllegalArgumentException(CatalogExceptionMessage.invalidFieldName("column", columnName)));
   }
 
   public static <T extends FieldInterface> List<T> getFlattenedEntityField(List<T> fields) {

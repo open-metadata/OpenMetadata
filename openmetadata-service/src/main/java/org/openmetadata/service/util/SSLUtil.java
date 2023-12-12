@@ -17,23 +17,19 @@ import org.apache.http.ssl.SSLContexts;
 public class SSLUtil {
 
   public static SSLContext createSSLContext(String truststorePath, String trustStorePassword, String client)
-      throws KeyStoreException {
-
-    if (truststorePath != null
-        && !truststorePath.isEmpty()
-        && trustStorePassword != null
-        && !trustStorePassword.isEmpty()) {
+    throws KeyStoreException {
+    if (
+      truststorePath != null && !truststorePath.isEmpty() && trustStorePassword != null && !trustStorePassword.isEmpty()
+    ) {
       Path trustStorePath = Paths.get(truststorePath);
       KeyStore truststore = KeyStore.getInstance("jks");
       try (InputStream is = Files.newInputStream(trustStorePath)) {
         truststore.load(is, trustStorePassword.toCharArray());
         SSLContextBuilder sslBuilder = SSLContexts.custom().loadTrustMaterial(truststore, null);
         return sslBuilder.build();
-      } catch (IOException
-          | NoSuchAlgorithmException
-          | CertificateException
-          | KeyStoreException
-          | KeyManagementException e) {
+      } catch (
+        IOException | NoSuchAlgorithmException | CertificateException | KeyStoreException | KeyManagementException e
+      ) {
         throw new RuntimeException(String.format("Failed to create SSLContext for [%s]", client), e);
       }
     }

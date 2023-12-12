@@ -75,6 +75,7 @@ import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class MigrationUtil {
+
   private MigrationUtil() {
     /* Cannot create object  util class*/
   }
@@ -82,85 +83,108 @@ public class MigrationUtil {
   private static final String MYSQL_ENTITY_UPDATE = "UPDATE %s SET %s = :nameHashColumnValue WHERE id = :id";
   private static final String POSTGRES_ENTITY_UPDATE = "UPDATE %s SET %s = :nameHashColumnValue WHERE id = :id";
   private static final String MYSQL_ENTITY_EXTENSION_TIME_SERIES_UPDATE =
-      "UPDATE entity_extension_time_series set entityFQNHash = :entityFQNHash where entityFQN=:entityFQN";
+    "UPDATE entity_extension_time_series set entityFQNHash = :entityFQNHash where entityFQN=:entityFQN";
   private static final String POSTGRES_ENTITY_EXTENSION_TIME_SERIES_UPDATE =
-      "UPDATE entity_extension_time_series set entityFQNHash = :entityFQNHash  where entityFQN=:entityFQN";
+    "UPDATE entity_extension_time_series set entityFQNHash = :entityFQNHash  where entityFQN=:entityFQN";
 
   private static final String MYSQL_FIELD_RELATIONSHIP_UPDATE =
-      "UPDATE field_relationship SET fromFQNHash = :fromFQNHash, toFQNHash = :toFQNHash where fromFQN= :fromFQN and toFQN = :toFQN";
+    "UPDATE field_relationship SET fromFQNHash = :fromFQNHash, toFQNHash = :toFQNHash where fromFQN= :fromFQN and toFQN = :toFQN";
   private static final String POSTGRES_FIELD_RELATIONSHIP_UPDATE =
-      "UPDATE field_relationship SET fromFQNHash = :fromFQNHash, toFQNHash = :toFQNHash where fromFQN= :fromFQN and toFQN = :toFQN";
+    "UPDATE field_relationship SET fromFQNHash = :fromFQNHash, toFQNHash = :toFQNHash where fromFQN= :fromFQN and toFQN = :toFQN";
 
   @SneakyThrows
   public static <T extends EntityInterface> void updateFQNHashForEntity(
-      Handle handle, Class<T> clazz, EntityDAO<T> dao, int limitParam) {
+    Handle handle,
+    Class<T> clazz,
+    EntityDAO<T> dao,
+    int limitParam
+  ) {
     String nameHashColumn = dao.getNameHashColumn();
     updateFQNHashForEntity(handle, clazz, dao, limitParam, nameHashColumn);
   }
 
   @SneakyThrows
   public static <T extends EntityInterface> void updateFQNHashForEntity(
-      Handle handle, Class<T> clazz, EntityDAO<T> dao, int limitParam, String nameHashColumn) {
+    Handle handle,
+    Class<T> clazz,
+    EntityDAO<T> dao,
+    int limitParam,
+    String nameHashColumn
+  ) {
     if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
       readAndProcessEntity(
-          handle,
-          String.format(MYSQL_ENTITY_UPDATE, dao.getTableName(), nameHashColumn),
-          clazz,
-          dao,
-          false,
-          limitParam,
-          nameHashColumn);
+        handle,
+        String.format(MYSQL_ENTITY_UPDATE, dao.getTableName(), nameHashColumn),
+        clazz,
+        dao,
+        false,
+        limitParam,
+        nameHashColumn
+      );
     } else {
       readAndProcessEntity(
-          handle,
-          String.format(POSTGRES_ENTITY_UPDATE, dao.getTableName(), nameHashColumn),
-          clazz,
-          dao,
-          false,
-          limitParam,
-          nameHashColumn);
+        handle,
+        String.format(POSTGRES_ENTITY_UPDATE, dao.getTableName(), nameHashColumn),
+        clazz,
+        dao,
+        false,
+        limitParam,
+        nameHashColumn
+      );
     }
   }
 
   @SneakyThrows
   public static <T extends EntityInterface> void updateFQNHashForEntityWithName(
-      Handle handle, Class<T> clazz, EntityDAO<T> dao, int limitParam) {
+    Handle handle,
+    Class<T> clazz,
+    EntityDAO<T> dao,
+    int limitParam
+  ) {
     String nameHashColumn = dao.getNameHashColumn();
     updateFQNHashForEntityWithName(handle, clazz, dao, limitParam, nameHashColumn);
   }
 
   @SneakyThrows
   public static <T extends EntityInterface> void updateFQNHashForEntityWithName(
-      Handle handle, Class<T> clazz, EntityDAO<T> dao, int limitParam, String nameHashColumn) {
+    Handle handle,
+    Class<T> clazz,
+    EntityDAO<T> dao,
+    int limitParam,
+    String nameHashColumn
+  ) {
     if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
       readAndProcessEntity(
-          handle,
-          String.format(MYSQL_ENTITY_UPDATE, dao.getTableName(), nameHashColumn),
-          clazz,
-          dao,
-          true,
-          limitParam,
-          nameHashColumn);
+        handle,
+        String.format(MYSQL_ENTITY_UPDATE, dao.getTableName(), nameHashColumn),
+        clazz,
+        dao,
+        true,
+        limitParam,
+        nameHashColumn
+      );
     } else {
       readAndProcessEntity(
-          handle,
-          String.format(POSTGRES_ENTITY_UPDATE, dao.getTableName(), nameHashColumn),
-          clazz,
-          dao,
-          true,
-          limitParam,
-          nameHashColumn);
+        handle,
+        String.format(POSTGRES_ENTITY_UPDATE, dao.getTableName(), nameHashColumn),
+        clazz,
+        dao,
+        true,
+        limitParam,
+        nameHashColumn
+      );
     }
   }
 
   public static <T extends EntityInterface> void readAndProcessEntity(
-      Handle handle,
-      String updateSql,
-      Class<T> clazz,
-      EntityDAO<T> dao,
-      boolean withName,
-      int limitParam,
-      String nameHashColumn) {
+    Handle handle,
+    String updateSql,
+    Class<T> clazz,
+    EntityDAO<T> dao,
+    boolean withName,
+    int limitParam,
+    String nameHashColumn
+  ) {
     LOG.debug("Starting Migration for table : {}", dao.getTableName());
     if (dao instanceof CollectionDAO.TestSuiteDAO) {
       // We have to do this since this column in changed in the dao in the latest version after this , and this will
@@ -183,26 +207,26 @@ public class MigrationUtil {
             String hash;
             if (entity.getFullyQualifiedName() != null) {
               hash =
-                  withName
-                      ? FullyQualifiedName.buildHash(EntityInterfaceUtil.quoteName(entity.getFullyQualifiedName()))
-                      : FullyQualifiedName.buildHash(entity.getFullyQualifiedName());
+                withName
+                  ? FullyQualifiedName.buildHash(EntityInterfaceUtil.quoteName(entity.getFullyQualifiedName()))
+                  : FullyQualifiedName.buildHash(entity.getFullyQualifiedName());
             } else {
               LOG.info(
-                  "Failed in creating FQN Hash for Entity Name : {}, since the FQN is null. Auto Correcting.",
-                  entity.getName());
+                "Failed in creating FQN Hash for Entity Name : {}, since the FQN is null. Auto Correcting.",
+                entity.getName()
+              );
               hash =
-                  withName
-                      ? FullyQualifiedName.buildHash(EntityInterfaceUtil.quoteName(entity.getName()))
-                      : FullyQualifiedName.buildHash(entity.getName());
+                withName
+                  ? FullyQualifiedName.buildHash(EntityInterfaceUtil.quoteName(entity.getName()))
+                  : FullyQualifiedName.buildHash(entity.getName());
               entity.setFullyQualifiedName(entity.getName());
               dao.update(entity.getId(), entity.getName(), JsonUtils.pojoToJson(entity));
             }
-            int result =
-                handle
-                    .createUpdate(updateSql)
-                    .bind("nameHashColumnValue", hash)
-                    .bind("id", entity.getId().toString())
-                    .execute();
+            int result = handle
+              .createUpdate(updateSql)
+              .bind("nameHashColumnValue", hash)
+              .bind("id", entity.getId().toString())
+              .execute();
             if (result <= 0) {
               LOG.error("No Rows Affected for Updating Hash with Entity Name : {}", entity.getFullyQualifiedName());
             }
@@ -272,7 +296,11 @@ public class MigrationUtil {
     // Update DQ
     updateFQNHashForEntity(handle, TestCase.class, collectionDAO.testCaseDAO(), limitParam);
     updateFQNHashForEntity(
-        handle, TestConnectionDefinition.class, collectionDAO.testConnectionDefinitionDAO(), limitParam);
+      handle,
+      TestConnectionDefinition.class,
+      collectionDAO.testConnectionDefinitionDAO(),
+      limitParam
+    );
     updateFQNHashForEntity(handle, TestDefinition.class, collectionDAO.testDefinitionDAO(), limitParam);
     updateFQNHashForEntity(handle, TestSuite.class, collectionDAO.testSuiteDAO(), limitParam, "nameHash");
 
@@ -294,10 +322,18 @@ public class MigrationUtil {
     // TimeSeries
     if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
       updateFQNHashEntityExtensionTimeSeries(
-          handle, MYSQL_ENTITY_EXTENSION_TIME_SERIES_UPDATE, collectionDAO, limitParam);
+        handle,
+        MYSQL_ENTITY_EXTENSION_TIME_SERIES_UPDATE,
+        collectionDAO,
+        limitParam
+      );
     } else {
       updateFQNHashEntityExtensionTimeSeries(
-          handle, POSTGRES_ENTITY_EXTENSION_TIME_SERIES_UPDATE, collectionDAO, limitParam);
+        handle,
+        POSTGRES_ENTITY_EXTENSION_TIME_SERIES_UPDATE,
+        collectionDAO,
+        limitParam
+      );
     }
 
     // Tag Usage
@@ -305,11 +341,16 @@ public class MigrationUtil {
   }
 
   private static void updateFQNHashForFieldRelationship(
-      Handle handle, String updateSql, CollectionDAO collectionDAO, int limitParam) {
+    Handle handle,
+    String updateSql,
+    CollectionDAO collectionDAO,
+    int limitParam
+  ) {
     LOG.debug("Starting Migration for Field Relationship");
     while (true) {
-      List<Pair<String, String>> entityFQNPairList =
-          collectionDAO.fieldRelationshipDAO().migrationListDistinctWithOffset(limitParam);
+      List<Pair<String, String>> entityFQNPairList = collectionDAO
+        .fieldRelationshipDAO()
+        .migrationListDistinctWithOffset(limitParam);
       LOG.debug("[FieldRelationship] Read a Batch of Size: {}", entityFQNPairList.size());
       if (entityFQNPairList.isEmpty()) {
         break;
@@ -318,23 +359,27 @@ public class MigrationUtil {
         try {
           String fromFQNHash = FullyQualifiedName.buildHash(entityFQNPair.getLeft());
           String toFQNHash = FullyQualifiedName.buildHash(entityFQNPair.getRight());
-          int result =
-              handle
-                  .createUpdate(updateSql)
-                  .bind("fromFQNHash", fromFQNHash)
-                  .bind("toFQNHash", toFQNHash)
-                  .bind("fromFQN", entityFQNPair.getLeft())
-                  .bind("toFQN", entityFQNPair.getRight())
-                  .execute();
+          int result = handle
+            .createUpdate(updateSql)
+            .bind("fromFQNHash", fromFQNHash)
+            .bind("toFQNHash", toFQNHash)
+            .bind("fromFQN", entityFQNPair.getLeft())
+            .bind("toFQN", entityFQNPair.getRight())
+            .execute();
           if (result <= 0) {
             LOG.error(
-                "No Rows Affected for Updating Field Relationship fromFQN : {}, toFQN : {}",
-                entityFQNPair.getLeft(),
-                entityFQNPair.getRight());
+              "No Rows Affected for Updating Field Relationship fromFQN : {}, toFQN : {}",
+              entityFQNPair.getLeft(),
+              entityFQNPair.getRight()
+            );
           }
         } catch (Exception ex) {
           LOG.error(
-              "Failed in creating fromFQN : {} , toFQN : {}", entityFQNPair.getLeft(), entityFQNPair.getRight(), ex);
+            "Failed in creating fromFQN : {} , toFQN : {}",
+            entityFQNPair.getLeft(),
+            entityFQNPair.getRight(),
+            ex
+          );
         }
       }
       LOG.debug("[FieldRelationship] Committing a Batch of Size: {}", entityFQNPairList.size());
@@ -343,7 +388,11 @@ public class MigrationUtil {
   }
 
   private static void updateFQNHashEntityExtensionTimeSeries(
-      Handle handle, String updateSql, CollectionDAO collectionDAO, int limitParam) {
+    Handle handle,
+    String updateSql,
+    CollectionDAO collectionDAO,
+    int limitParam
+  ) {
     LOG.debug("Starting Migration for Entity Extension Time Series");
     try {
       collectionDAO.entityExtensionTimeSeriesDao().listDistinctCount();
@@ -351,20 +400,20 @@ public class MigrationUtil {
       return;
     }
     while (true) {
-      List<String> entityFQNLists =
-          collectionDAO.entityExtensionTimeSeriesDao().migrationListDistinctWithOffset(limitParam);
+      List<String> entityFQNLists = collectionDAO
+        .entityExtensionTimeSeriesDao()
+        .migrationListDistinctWithOffset(limitParam);
       LOG.debug("[TimeSeries] Read a Batch of Size: {}", entityFQNLists.size());
       if (entityFQNLists.isEmpty()) {
         break;
       }
       for (String entityFQN : entityFQNLists) {
         try {
-          int result =
-              handle
-                  .createUpdate(updateSql)
-                  .bind("entityFQNHash", FullyQualifiedName.buildHash(entityFQN))
-                  .bind("entityFQN", entityFQN)
-                  .execute();
+          int result = handle
+            .createUpdate(updateSql)
+            .bind("entityFQNHash", FullyQualifiedName.buildHash(entityFQN))
+            .bind("entityFQN", entityFQN)
+            .execute();
           if (result <= 0) {
             LOG.error("No Rows Affected for Updating entity_extension_time_series entityFQN : {}", entityFQN);
           }
@@ -386,15 +435,16 @@ public class MigrationUtil {
           String tagFQNHash = FullyQualifiedName.buildHash(tagLabel.getTagFQN());
           String targetFQNHash = FullyQualifiedName.buildHash(tagLabel.getTargetFQN());
           collectionDAO
-              .tagUsageDAO()
-              .upsertFQNHash(
-                  tagLabel.getSource(),
-                  tagLabel.getTagFQN(),
-                  tagFQNHash,
-                  targetFQNHash,
-                  tagLabel.getLabelType(),
-                  tagLabel.getState(),
-                  tagLabel.getTargetFQN());
+            .tagUsageDAO()
+            .upsertFQNHash(
+              tagLabel.getSource(),
+              tagLabel.getTagFQN(),
+              tagFQNHash,
+              targetFQNHash,
+              tagLabel.getLabelType(),
+              tagLabel.getState(),
+              tagLabel.getTargetFQN()
+            );
         } catch (Exception ex) {
           LOG.error("Failed in creating tagFQN : {}, targetFQN: {}", tagLabel.getTagFQN(), tagLabel.getTargetFQN(), ex);
         }
@@ -404,7 +454,11 @@ public class MigrationUtil {
   }
 
   public static void performSqlExecutionAndUpdate(
-      Handle handle, MigrationDAO migrationDAO, List<String> queryList, String version) {
+    Handle handle,
+    MigrationDAO migrationDAO,
+    List<String> queryList,
+    String version
+  ) {
     // These are DDL Statements and will cause an Implicit commit even if part of transaction still committed inplace
     if (!nullOrEmpty(queryList)) {
       for (String sql : queryList) {
@@ -422,19 +476,17 @@ public class MigrationUtil {
   }
 
   public static TestSuite getTestSuite(CollectionDAO dao, CreateTestSuite create, String user) {
-    TestSuite testSuite =
-        copy(new TestSuite(), create, user)
-            .withDescription(create.getDescription())
-            .withDisplayName(create.getDisplayName())
-            .withName(create.getName());
+    TestSuite testSuite = copy(new TestSuite(), create, user)
+      .withDescription(create.getDescription())
+      .withDisplayName(create.getDisplayName())
+      .withName(create.getName());
     if (create.getExecutableEntityReference() != null) {
       Table table = Entity.getEntityByName(Entity.TABLE, create.getExecutableEntityReference(), "", Include.ALL);
-      EntityReference entityReference =
-          new EntityReference()
-              .withId(table.getId())
-              .withFullyQualifiedName(table.getFullyQualifiedName())
-              .withName(table.getName())
-              .withType(Entity.TABLE);
+      EntityReference entityReference = new EntityReference()
+        .withId(table.getId())
+        .withFullyQualifiedName(table.getFullyQualifiedName())
+        .withName(table.getName())
+        .withType(Entity.TABLE);
       testSuite.setExecutableEntityReference(entityReference);
     }
     return testSuite;
@@ -472,55 +524,62 @@ public class MigrationUtil {
       String nativeTestSuiteFqn = tableFQN + ".testSuite";
       List<TestCase> testCases = entry.getValue();
       if (testCases != null && !testCases.isEmpty()) {
-        MessageParser.EntityLink entityLink =
-            MessageParser.EntityLink.parse(testCases.stream().findFirst().get().getEntityLink());
-        TestSuite newExecutableTestSuite =
-            getTestSuite(
-                    collectionDAO,
-                    new CreateTestSuite()
-                        .withName(FullyQualifiedName.buildHash(nativeTestSuiteFqn))
-                        .withDisplayName(nativeTestSuiteFqn)
-                        .withExecutableEntityReference(entityLink.getEntityFQN()),
-                    "ingestion-bot")
-                .withExecutable(true)
-                .withFullyQualifiedName(nativeTestSuiteFqn);
+        MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(
+          testCases.stream().findFirst().get().getEntityLink()
+        );
+        TestSuite newExecutableTestSuite = getTestSuite(
+          collectionDAO,
+          new CreateTestSuite()
+            .withName(FullyQualifiedName.buildHash(nativeTestSuiteFqn))
+            .withDisplayName(nativeTestSuiteFqn)
+            .withExecutableEntityReference(entityLink.getEntityFQN()),
+          "ingestion-bot"
+        )
+          .withExecutable(true)
+          .withFullyQualifiedName(nativeTestSuiteFqn);
         testSuiteRepository.prepareInternal(newExecutableTestSuite, false);
         try {
           testSuiteRepository
-              .getDao()
-              .insert("nameHash", newExecutableTestSuite, newExecutableTestSuite.getFullyQualifiedName());
+            .getDao()
+            .insert("nameHash", newExecutableTestSuite, newExecutableTestSuite.getFullyQualifiedName());
         } catch (Exception ex) {
           LOG.warn(String.format("TestSuite %s exists", nativeTestSuiteFqn));
         }
         // add relationship between executable TestSuite with Table
         testSuiteRepository.addRelationship(
-            newExecutableTestSuite.getExecutableEntityReference().getId(),
-            newExecutableTestSuite.getId(),
-            Entity.TABLE,
-            TEST_SUITE,
-            Relationship.CONTAINS);
+          newExecutableTestSuite.getExecutableEntityReference().getId(),
+          newExecutableTestSuite.getId(),
+          Entity.TABLE,
+          TEST_SUITE,
+          Relationship.CONTAINS
+        );
 
         // add relationship between all the testCases that are created against a table with native test suite.
         for (TestCase testCase : testCases) {
           testSuiteRepository.addRelationship(
-              newExecutableTestSuite.getId(), testCase.getId(), TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
+            newExecutableTestSuite.getId(),
+            testCase.getId(),
+            TEST_SUITE,
+            TEST_CASE,
+            Relationship.CONTAINS
+          );
         }
       }
     }
   }
 
   private static void migrateExistingTestSuitesToLogical(CollectionDAO collectionDAO) {
-    IngestionPipelineRepository ingestionPipelineRepository =
-        (IngestionPipelineRepository) Entity.getEntityRepository(INGESTION_PIPELINE);
+    IngestionPipelineRepository ingestionPipelineRepository = (IngestionPipelineRepository) Entity.getEntityRepository(
+      INGESTION_PIPELINE
+    );
     TestSuiteRepository testSuiteRepository = (TestSuiteRepository) Entity.getEntityRepository(TEST_SUITE);
     ListFilter filter = new ListFilter(Include.ALL);
     List<TestSuite> testSuites = testSuiteRepository.listAll(new Fields(Set.of("id")), filter);
     for (TestSuite testSuite : testSuites) {
       testSuite.setExecutable(false);
-      List<CollectionDAO.EntityRelationshipRecord> ingestionPipelineRecords =
-          collectionDAO
-              .relationshipDAO()
-              .findTo(testSuite.getId(), TEST_SUITE, Relationship.CONTAINS.ordinal(), INGESTION_PIPELINE);
+      List<CollectionDAO.EntityRelationshipRecord> ingestionPipelineRecords = collectionDAO
+        .relationshipDAO()
+        .findTo(testSuite.getId(), TEST_SUITE, Relationship.CONTAINS.ordinal(), INGESTION_PIPELINE);
       for (CollectionDAO.EntityRelationshipRecord ingestionRecord : ingestionPipelineRecords) {
         // remove relationship
         collectionDAO.relationshipDAO().deleteAll(ingestionRecord.getId(), INGESTION_PIPELINE);

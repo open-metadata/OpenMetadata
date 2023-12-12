@@ -36,9 +36,13 @@ import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class SettingsCache {
+
   private static volatile boolean initialized = false;
-  protected static final LoadingCache<String, Settings> CACHE =
-      CacheBuilder.newBuilder().maximumSize(1000).expireAfterWrite(3, TimeUnit.MINUTES).build(new SettingsLoader());
+  protected static final LoadingCache<String, Settings> CACHE = CacheBuilder
+    .newBuilder()
+    .maximumSize(1000)
+    .expireAfterWrite(3, TimeUnit.MINUTES)
+    .build(new SettingsLoader());
   protected static SystemRepository systemRepository;
 
   private SettingsCache() {
@@ -68,14 +72,11 @@ public class SettingsCache {
     Settings storedCustomLogoConf = systemRepository.getConfigWithKey(CUSTOM_LOGO_CONFIGURATION.toString());
     if (storedCustomLogoConf == null) {
       // Only in case a config doesn't exist in DB we insert it
-      Settings setting =
-          new Settings()
-              .withConfigType(CUSTOM_LOGO_CONFIGURATION)
-              .withConfigValue(
-                  new LogoConfiguration()
-                      .withCustomLogoUrlPath("")
-                      .withCustomMonogramUrlPath("")
-                      .withCustomFaviconUrlPath(""));
+      Settings setting = new Settings()
+        .withConfigType(CUSTOM_LOGO_CONFIGURATION)
+        .withConfigValue(
+          new LogoConfiguration().withCustomLogoUrlPath("").withCustomMonogramUrlPath("").withCustomFaviconUrlPath("")
+        );
       systemRepository.createNewSetting(setting);
     }
 
@@ -84,14 +85,11 @@ public class SettingsCache {
     Settings storedLoginConf = systemRepository.getConfigWithKey(LOGIN_CONFIGURATION.toString());
     if (storedLoginConf == null) {
       // Only in case a config doesn't exist in DB we insert it
-      Settings setting =
-          new Settings()
-              .withConfigType(LOGIN_CONFIGURATION)
-              .withConfigValue(
-                  new LoginConfiguration()
-                      .withMaxLoginFailAttempts(3)
-                      .withAccessBlockTime(600)
-                      .withJwtTokenExpiryTime(3600));
+      Settings setting = new Settings()
+        .withConfigType(LOGIN_CONFIGURATION)
+        .withConfigValue(
+          new LoginConfiguration().withMaxLoginFailAttempts(3).withAccessBlockTime(600).withJwtTokenExpiryTime(3600)
+        );
       systemRepository.createNewSetting(setting);
     }
   }
@@ -120,6 +118,7 @@ public class SettingsCache {
   }
 
   static class SettingsLoader extends CacheLoader<String, Settings> {
+
     @Override
     public Settings load(@CheckForNull String settingsName) {
       Settings fetchedSettings;

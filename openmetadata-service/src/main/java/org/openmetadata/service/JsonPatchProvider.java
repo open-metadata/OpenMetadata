@@ -21,6 +21,7 @@ import javax.ws.rs.ext.Provider;
 
 @Provider
 public class JsonPatchProvider implements ContextResolver<ObjectMapper> {
+
   @Override
   public ObjectMapper getContext(Class<?> type) {
     final ObjectMapper mapper = new ObjectMapper();

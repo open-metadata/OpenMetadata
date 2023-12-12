@@ -18,34 +18,37 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class StoredProcedureRepository extends EntityRepository<StoredProcedure> {
+
   static final String PATCH_FIELDS = "storedProcedureCode,sourceUrl,sourceHash";
   static final String UPDATE_FIELDS = "storedProcedureCode,sourceUrl";
 
   public StoredProcedureRepository() {
     super(
-        StoredProcedureResource.COLLECTION_PATH,
-        STORED_PROCEDURE,
-        StoredProcedure.class,
-        Entity.getCollectionDAO().storedProcedureDAO(),
-        PATCH_FIELDS,
-        UPDATE_FIELDS);
+      StoredProcedureResource.COLLECTION_PATH,
+      STORED_PROCEDURE,
+      StoredProcedure.class,
+      Entity.getCollectionDAO().storedProcedureDAO(),
+      PATCH_FIELDS,
+      UPDATE_FIELDS
+    );
     supportsSearch = true;
   }
 
   @Override
   public void setFullyQualifiedName(StoredProcedure storedProcedure) {
     storedProcedure.setFullyQualifiedName(
-        FullyQualifiedName.add(storedProcedure.getDatabaseSchema().getFullyQualifiedName(), storedProcedure.getName()));
+      FullyQualifiedName.add(storedProcedure.getDatabaseSchema().getFullyQualifiedName(), storedProcedure.getName())
+    );
   }
 
   @Override
   public void prepare(StoredProcedure storedProcedure, boolean update) {
     DatabaseSchema schema = Entity.getEntity(storedProcedure.getDatabaseSchema(), "", ALL);
     storedProcedure
-        .withDatabaseSchema(schema.getEntityReference())
-        .withDatabase(schema.getDatabase())
-        .withService(schema.getService())
-        .withServiceType(schema.getServiceType());
+      .withDatabaseSchema(schema.getEntityReference())
+      .withDatabase(schema.getDatabase())
+      .withService(schema.getService())
+      .withServiceType(schema.getServiceType());
   }
 
   @Override
@@ -60,17 +63,22 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
   @Override
   public void storeRelationships(StoredProcedure storedProcedure) {
     addRelationship(
-        storedProcedure.getDatabaseSchema().getId(),
-        storedProcedure.getId(),
-        DATABASE_SCHEMA,
-        STORED_PROCEDURE,
-        Relationship.CONTAINS);
+      storedProcedure.getDatabaseSchema().getId(),
+      storedProcedure.getId(),
+      DATABASE_SCHEMA,
+      STORED_PROCEDURE,
+      Relationship.CONTAINS
+    );
   }
 
   @Override
   public StoredProcedure setInheritedFields(StoredProcedure storedProcedure, EntityUtil.Fields fields) {
-    DatabaseSchema schema =
-        Entity.getEntity(DATABASE_SCHEMA, storedProcedure.getDatabaseSchema().getId(), "owner,domain", ALL);
+    DatabaseSchema schema = Entity.getEntity(
+      DATABASE_SCHEMA,
+      storedProcedure.getDatabaseSchema().getId(),
+      "owner,domain",
+      ALL
+    );
     inheritOwner(storedProcedure, fields, schema);
     inheritDomain(storedProcedure, fields, schema);
     return storedProcedure;
@@ -107,12 +115,18 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
   public void setService(StoredProcedure storedProcedure, EntityReference service) {
     if (service != null && storedProcedure != null) {
       addRelationship(
-          service.getId(), storedProcedure.getId(), service.getType(), STORED_PROCEDURE, Relationship.CONTAINS);
+        service.getId(),
+        storedProcedure.getId(),
+        service.getType(),
+        STORED_PROCEDURE,
+        Relationship.CONTAINS
+      );
       storedProcedure.setService(service);
     }
   }
 
   public class StoredProcedureUpdater extends EntityUpdater {
+
     public StoredProcedureUpdater(StoredProcedure original, StoredProcedure updated, Operation operation) {
       super(original, updated, operation);
     }

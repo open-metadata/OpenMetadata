@@ -11,6 +11,7 @@ import org.openmetadata.service.util.MicrometerBundleSingleton;
 
 @Slf4j
 public class WebAnalyticEventHandler implements EventHandler {
+
   private PrometheusMeterRegistry prometheusMeterRegistry;
   private String clusterName;
   public static final String WEB_ANALYTIC_ENDPOINT = "v1/analytics/web/events/collect";
@@ -34,10 +35,11 @@ public class WebAnalyticEventHandler implements EventHandler {
   }
 
   private void incrementMetric(String username) {
-    Counter.builder(COUNTER_NAME)
-        .tags("clusterName", clusterName, "username", username)
-        .register(prometheusMeterRegistry)
-        .increment();
+    Counter
+      .builder(COUNTER_NAME)
+      .tags("clusterName", clusterName, "username", username)
+      .register(prometheusMeterRegistry)
+      .increment();
   }
 
   public void close() {

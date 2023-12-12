@@ -74,12 +74,14 @@ import org.openmetadata.service.util.ResultList;
 @Slf4j
 @Path("/v1/policies")
 @Tag(
-    name = "Policies",
-    description = "A `Policy` defines control that needs to be applied across different Data Entities.")
+  name = "Policies",
+  description = "A `Policy` defines control that needs to be applied across different Data Entities."
+)
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "policies", order = 0)
 public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
+
   public static final String COLLECTION_PATH = "v1/policies/";
   public static final String FIELDS = "owner,location,teams,roles";
 
@@ -114,8 +116,10 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
       Policy organizationPolicy = repository.findByName("OrganizationPolicy", Include.NON_DELETED);
       String originalJson = JsonUtils.pojoToJson(organizationPolicy);
       for (Rule rule : organizationPolicy.getRules()) {
-        if (rule.getName().equals("OrganizationPolicy-Owner-Rule")
-            && !rule.getOperations().contains(MetadataOperation.ALL)) {
+        if (
+          rule.getName().equals("OrganizationPolicy-Owner-Rule") &&
+          !rule.getOperations().contains(MetadataOperation.ALL)
+        ) {
           rule.getOperations().clear();
           rule.getOperations().add(MetadataOperation.ALL);
         }
@@ -139,44 +143,42 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   @GET
   @Valid
   @Operation(
-      operationId = "listPolicies",
-      summary = "List policies",
-      description =
-          "Get a list of policies. Use `fields` parameter to get only necessary fields. "
-              + "Use cursor-based pagination to limit the number "
-              + "entries in the list using `limit` and `before` or `after` query params.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "List of policies",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = PolicyList.class)))
-      })
+    operationId = "listPolicies",
+    summary = "List policies",
+    description = "Get a list of policies. Use `fields` parameter to get only necessary fields. " +
+    "Use cursor-based pagination to limit the number " +
+    "entries in the list using `limit` and `before` or `after` query params.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "List of policies",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = PolicyList.class))
+      )
+    }
+  )
   public ResultList<Policy> list(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(
-              description = "Fields requested in the returned resource",
-              schema = @Schema(type = "string", example = FIELDS))
-          @QueryParam("fields")
-          String fieldsParam,
-      @Parameter(description = "Limit the number policies returned. (1 to 1000000, default = 10)")
-          @DefaultValue("10")
-          @Min(0)
-          @Max(1000000)
-          @QueryParam("limit")
-          int limitParam,
-      @Parameter(description = "Returns list of policies before this cursor", schema = @Schema(type = "string"))
-          @QueryParam("before")
-          String before,
-      @Parameter(description = "Returns list of policies after this cursor", schema = @Schema(type = "string"))
-          @QueryParam("after")
-          String after,
-      @Parameter(
-              description = "Include all, deleted, or non-deleted entities.",
-              schema = @Schema(implementation = Include.class))
-          @QueryParam("include")
-          @DefaultValue("non-deleted")
-          Include include) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(
+      description = "Fields requested in the returned resource",
+      schema = @Schema(type = "string", example = FIELDS)
+    ) @QueryParam("fields") String fieldsParam,
+    @Parameter(description = "Limit the number policies returned. (1 to 1000000, default = 10)") @DefaultValue(
+      "10"
+    ) @Min(0) @Max(1000000) @QueryParam("limit") int limitParam,
+    @Parameter(
+      description = "Returns list of policies before this cursor",
+      schema = @Schema(type = "string")
+    ) @QueryParam("before") String before,
+    @Parameter(
+      description = "Returns list of policies after this cursor",
+      schema = @Schema(type = "string")
+    ) @QueryParam("after") String after,
+    @Parameter(
+      description = "Include all, deleted, or non-deleted entities.",
+      schema = @Schema(implementation = Include.class)
+    ) @QueryParam("include") @DefaultValue("non-deleted") Include include
+  ) {
     ListFilter filter = new ListFilter(include);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
@@ -184,146 +186,160 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   @GET
   @Path("/{id}")
   @Operation(
-      operationId = "getPolicyByID",
-      summary = "Get a policy by id",
-      description = "Get a policy by `Id`.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The policy",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Policy.class))),
-        @ApiResponse(responseCode = "404", description = "Policy for instance {id} is not found")
-      })
+    operationId = "getPolicyByID",
+    summary = "Get a policy by id",
+    description = "Get a policy by `Id`.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "The policy",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = Policy.class))
+      ),
+      @ApiResponse(responseCode = "404", description = "Policy for instance {id} is not found")
+    }
+  )
   public Policy get(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the policy", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Parameter(
-              description = "Fields requested in the returned resource",
-              schema = @Schema(type = "string", example = FIELDS))
-          @QueryParam("fields")
-          String fieldsParam,
-      @Parameter(
-              description = "Include all, deleted, or non-deleted entities.",
-              schema = @Schema(implementation = Include.class))
-          @QueryParam("include")
-          @DefaultValue("non-deleted")
-          Include include) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Id of the policy", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+    @Parameter(
+      description = "Fields requested in the returned resource",
+      schema = @Schema(type = "string", example = FIELDS)
+    ) @QueryParam("fields") String fieldsParam,
+    @Parameter(
+      description = "Include all, deleted, or non-deleted entities.",
+      schema = @Schema(implementation = Include.class)
+    ) @QueryParam("include") @DefaultValue("non-deleted") Include include
+  ) {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
   @Path("/name/{fqn}")
   @Operation(
-      operationId = "getPolicyByFQN",
-      summary = "Get a policy by fully qualified name",
-      description = "Get a policy by fully qualified name.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The policy",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Policy.class))),
-        @ApiResponse(responseCode = "404", description = "Policy for instance {fqn} is not found")
-      })
+    operationId = "getPolicyByFQN",
+    summary = "Get a policy by fully qualified name",
+    description = "Get a policy by fully qualified name.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "The policy",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = Policy.class))
+      ),
+      @ApiResponse(responseCode = "404", description = "Policy for instance {fqn} is not found")
+    }
+  )
   public Policy getByName(
-      @Context UriInfo uriInfo,
-      @Parameter(description = "Fully qualified name of the policy", schema = @Schema(type = "string"))
-          @PathParam("fqn")
-          String fqn,
-      @Context SecurityContext securityContext,
-      @Parameter(
-              description = "Fields requested in the returned resource",
-              schema = @Schema(type = "string", example = FIELDS))
-          @QueryParam("fields")
-          String fieldsParam,
-      @Parameter(
-              description = "Include all, deleted, or non-deleted entities.",
-              schema = @Schema(implementation = Include.class))
-          @QueryParam("include")
-          @DefaultValue("non-deleted")
-          Include include) {
+    @Context UriInfo uriInfo,
+    @Parameter(description = "Fully qualified name of the policy", schema = @Schema(type = "string")) @PathParam(
+      "fqn"
+    ) String fqn,
+    @Context SecurityContext securityContext,
+    @Parameter(
+      description = "Fields requested in the returned resource",
+      schema = @Schema(type = "string", example = FIELDS)
+    ) @QueryParam("fields") String fieldsParam,
+    @Parameter(
+      description = "Include all, deleted, or non-deleted entities.",
+      schema = @Schema(implementation = Include.class)
+    ) @QueryParam("include") @DefaultValue("non-deleted") Include include
+  ) {
     return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
   @GET
   @Path("/{id}/versions")
   @Operation(
-      operationId = "listAllPolicyVersion",
-      summary = "List policy versions",
-      description = "Get a list of all the versions of a policy identified by `id`",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "List of policy versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
-      })
+    operationId = "listAllPolicyVersion",
+    summary = "List policy versions",
+    description = "Get a list of all the versions of a policy identified by `id`",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "List of policy versions",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class))
+      )
+    }
+  )
   public EntityHistory listVersions(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the policy", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Id of the policy", schema = @Schema(type = "UUID")) @PathParam("id") UUID id
+  ) {
     return super.listVersionsInternal(securityContext, id);
   }
 
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
-      operationId = "getSpecificPolicyVersion",
-      summary = "Get a version of the policy by Id",
-      description = "Get a version of the policy by given `Id`",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "policy",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Policy.class))),
-        @ApiResponse(responseCode = "404", description = "Policy for instance {id} and version {version} is not found")
-      })
+    operationId = "getSpecificPolicyVersion",
+    summary = "Get a version of the policy by Id",
+    description = "Get a version of the policy by given `Id`",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "policy",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = Policy.class))
+      ),
+      @ApiResponse(responseCode = "404", description = "Policy for instance {id} and version {version} is not found")
+    }
+  )
   public Policy getVersion(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the policy", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Parameter(
-              description = "policy version number in the form `major`.`minor`",
-              schema = @Schema(type = "string", example = "0.1 or 1.1"))
-          @PathParam("version")
-          String version) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Id of the policy", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+    @Parameter(
+      description = "policy version number in the form `major`.`minor`",
+      schema = @Schema(type = "string", example = "0.1 or 1.1")
+    ) @PathParam("version") String version
+  ) {
     return super.getVersionInternal(securityContext, id, version);
   }
 
   @GET
   @Path("/resources")
   @Operation(
-      operationId = "listPolicyResources",
-      summary = "Get list of policy resources used in authoring a policy",
-      description = "Get list of policy resources used in authoring a policy.")
+    operationId = "listPolicyResources",
+    summary = "Get list of policy resources used in authoring a policy",
+    description = "Get list of policy resources used in authoring a policy."
+  )
   public ResultList<ResourceDescriptor> listPolicyResources(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext
+  ) {
     return new ResultList<>(ResourceRegistry.listResourceDescriptors());
   }
 
   @GET
   @Path("/functions")
   @Operation(
-      operationId = "listPolicyFunctions",
-      summary = "Get list of policy functions used in authoring conditions in policy rules.",
-      description = "Get list of policy functions used in authoring conditions in policy rules.")
+    operationId = "listPolicyFunctions",
+    summary = "Get list of policy functions used in authoring conditions in policy rules.",
+    description = "Get list of policy functions used in authoring conditions in policy rules."
+  )
   public ResultList<Function> listPolicyFunctions(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     return new FunctionList(CollectionRegistry.getInstance().getFunctions(RuleEvaluator.class));
   }
 
   @POST
   @Operation(
-      operationId = "createPolicy",
-      summary = "Create a policy",
-      description = "Create a new policy.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The policy",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Policy.class))),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
+    operationId = "createPolicy",
+    summary = "Create a policy",
+    description = "Create a new policy.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "The policy",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = Policy.class))
+      ),
+      @ApiResponse(responseCode = "400", description = "Bad request")
+    }
+  )
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePolicy create) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Valid CreatePolicy create
+  ) {
     Policy policy = getPolicy(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, policy);
   }
@@ -331,39 +347,46 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   @PATCH
   @Path("/{id}")
   @Operation(
-      operationId = "patchPolicy",
-      summary = "Update a policy",
-      description = "Update an existing policy using JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+    operationId = "patchPolicy",
+    summary = "Update a policy",
+    description = "Update an existing policy using JsonPatch.",
+    externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902")
+  )
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response patch(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the policy", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @RequestBody(
-              description = "JsonPatch with array of operations",
-              content =
-                  @Content(
-                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
-          JsonPatch patch) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Id of the policy", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+    @RequestBody(
+      description = "JsonPatch with array of operations",
+      content = @Content(
+        mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+        examples = { @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]") }
+      )
+    ) JsonPatch patch
+  ) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PUT
   @Operation(
-      operationId = "createOrUpdatePolicy",
-      summary = "Create or update a policy",
-      description = "Create a new policy, if it does not exist or update an existing policy.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The policy",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Policy.class))),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
+    operationId = "createOrUpdatePolicy",
+    summary = "Create or update a policy",
+    description = "Create a new policy, if it does not exist or update an existing policy.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "The policy",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = Policy.class))
+      ),
+      @ApiResponse(responseCode = "400", description = "Bad request")
+    }
+  )
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePolicy create) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Valid CreatePolicy create
+  ) {
     Policy policy = getPolicy(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, policy);
   }
@@ -371,86 +394,97 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   @DELETE
   @Path("/{id}")
   @Operation(
-      operationId = "deletePolicy",
-      summary = "Delete a policy by Id",
-      description = "Delete a policy by `Id`.",
-      responses = {
-        @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "policy for instance {id} is not found")
-      })
+    operationId = "deletePolicy",
+    summary = "Delete a policy by Id",
+    description = "Delete a policy by `Id`.",
+    responses = {
+      @ApiResponse(responseCode = "200", description = "OK"),
+      @ApiResponse(responseCode = "404", description = "policy for instance {id} is not found")
+    }
+  )
   public Response delete(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Hard delete the entity. (Default = `false`)")
-          @QueryParam("hardDelete")
-          @DefaultValue("false")
-          boolean hardDelete,
-      @Parameter(description = "Id of the policy", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Hard delete the entity. (Default = `false`)") @QueryParam("hardDelete") @DefaultValue(
+      "false"
+    ) boolean hardDelete,
+    @Parameter(description = "Id of the policy", schema = @Schema(type = "UUID")) @PathParam("id") UUID id
+  ) {
     return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
   @DELETE
   @Path("/name/{fqn}")
   @Operation(
-      operationId = "deletePolicyByFQN",
-      summary = "Delete a policy by fully qualified name",
-      description = "Delete a policy by `fullyQualifiedName`.",
-      responses = {
-        @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "policy for instance {fqn} is not found")
-      })
+    operationId = "deletePolicyByFQN",
+    summary = "Delete a policy by fully qualified name",
+    description = "Delete a policy by `fullyQualifiedName`.",
+    responses = {
+      @ApiResponse(responseCode = "200", description = "OK"),
+      @ApiResponse(responseCode = "404", description = "policy for instance {fqn} is not found")
+    }
+  )
   public Response delete(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Hard delete the entity. (Default = `false`)")
-          @QueryParam("hardDelete")
-          @DefaultValue("false")
-          boolean hardDelete,
-      @Parameter(description = "Fully qualified name of the policy", schema = @Schema(type = "string"))
-          @PathParam("fqn")
-          String fqn) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Hard delete the entity. (Default = `false`)") @QueryParam("hardDelete") @DefaultValue(
+      "false"
+    ) boolean hardDelete,
+    @Parameter(description = "Fully qualified name of the policy", schema = @Schema(type = "string")) @PathParam(
+      "fqn"
+    ) String fqn
+  ) {
     return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
   @PUT
   @Path("/restore")
   @Operation(
-      operationId = "restore",
-      summary = "Restore a soft deleted policy",
-      description = "Restore a soft deleted policy.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Successfully restored the Policy ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Policy.class)))
-      })
+    operationId = "restore",
+    summary = "Restore a soft deleted policy",
+    description = "Restore a soft deleted policy.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "Successfully restored the Policy ",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = Policy.class))
+      )
+    }
+  )
   public Response restorePolicy(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Valid RestoreEntity restore
+  ) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   @GET
   @Path("/validation/condition/{expression}")
   @Operation(
-      operationId = "validateCondition",
-      summary = "Validate a given condition",
-      description = "Validate a given condition expression used in authoring rules.",
-      responses = {
-        @ApiResponse(responseCode = "204", description = "No value is returned"),
-        @ApiResponse(responseCode = "400", description = "Invalid expression")
-      })
+    operationId = "validateCondition",
+    summary = "Validate a given condition",
+    description = "Validate a given condition expression used in authoring rules.",
+    responses = {
+      @ApiResponse(responseCode = "204", description = "No value is returned"),
+      @ApiResponse(responseCode = "400", description = "Invalid expression")
+    }
+  )
   public void validateCondition(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Expression of validating rule", schema = @Schema(type = "string"))
-          @PathParam("expression")
-          String expression) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Expression of validating rule", schema = @Schema(type = "string")) @PathParam(
+      "expression"
+    ) String expression
+  ) {
     CompiledRule.validateExpression(expression, Boolean.class);
   }
 
   private Policy getPolicy(CreatePolicy create, String user) {
-    Policy policy =
-        repository.copy(new Policy(), create, user).withRules(create.getRules()).withEnabled(create.getEnabled());
+    Policy policy = repository
+      .copy(new Policy(), create, user)
+      .withRules(create.getRules())
+      .withEnabled(create.getEnabled());
     if (create.getLocation() != null) {
       policy = policy.withLocation(new EntityReference().withId(create.getLocation()));
     }

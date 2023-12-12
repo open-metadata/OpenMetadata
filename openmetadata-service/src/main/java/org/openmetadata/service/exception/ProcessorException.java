@@ -16,6 +16,7 @@ package org.openmetadata.service.exception;
 import java.io.IOException;
 
 public class ProcessorException extends IOException {
+
   public ProcessorException(String msg, Throwable throwable) {
     super(msg, throwable);
   }

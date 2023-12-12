@@ -24,6 +24,7 @@ import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 @Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class JWTTokenGeneratorTest {
+
   protected static final String rsaPrivateKeyPath = ResourceHelpers.resourceFilePath("private_key.der");
   protected static final String rsaPublicKeyPath = ResourceHelpers.resourceFilePath("public_key.der");
   protected JWTTokenConfiguration jwtTokenConfiguration;
@@ -41,11 +42,10 @@ class JWTTokenGeneratorTest {
 
   @Test
   void testGenerateJWTToken() {
-    User user =
-        new User()
-            .withEmail("ingestion-bot@open-metadata.org")
-            .withName("ingestion-bot")
-            .withDisplayName("ingestion-bot");
+    User user = new User()
+      .withEmail("ingestion-bot@open-metadata.org")
+      .withName("ingestion-bot")
+      .withDisplayName("ingestion-bot");
     JWTAuthMechanism jwtAuthMechanism = jwtTokenGenerator.generateJWTToken(user, JWTTokenExpiry.Seven);
     DecodedJWT jwt = decodedJWT(jwtAuthMechanism.getJWTToken());
     assertEquals("ingestion-bot", jwt.getClaims().get("sub").asString());

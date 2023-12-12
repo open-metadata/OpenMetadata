@@ -58,9 +58,10 @@ public class PolicyEvaluator {
 
   /** Checks if the policy has rules that give permission to perform an operation on the given entity. */
   public static void hasPermission(
-      @NonNull SubjectContext subjectContext,
-      @NonNull ResourceContextInterface resourceContext,
-      @NonNull OperationContext operationContext) {
+    @NonNull SubjectContext subjectContext,
+    @NonNull ResourceContextInterface resourceContext,
+    @NonNull OperationContext operationContext
+  ) {
     // First run through all the DENY policies
     evaluateDenySubjectPolicies(subjectContext, resourceContext, operationContext);
 
@@ -69,40 +70,51 @@ public class PolicyEvaluator {
 
     if (!operationContext.getOperations().isEmpty()) { // Some operations have not been allowed
       throw new AuthorizationException(
-          CatalogExceptionMessage.permissionNotAllowed(
-              subjectContext.getUser().getName(), operationContext.getOperations()));
+        CatalogExceptionMessage.permissionNotAllowed(
+          subjectContext.getUser().getName(),
+          operationContext.getOperations()
+        )
+      );
     }
   }
 
   private static void evaluateDenySubjectPolicies(
-      SubjectContext subjectContext, ResourceContextInterface resourceContext, OperationContext operationContext) {
+    SubjectContext subjectContext,
+    ResourceContextInterface resourceContext,
+    OperationContext operationContext
+  ) {
     Iterator<PolicyContext> policyIterator = subjectContext.getPolicies(resourceContext.getOwner());
     evaluatePolicies(policyIterator, subjectContext, resourceContext, operationContext, true);
   }
 
   private static void evaluateAllowSubjectPolicies(
-      SubjectContext subjectContext, ResourceContextInterface resourceContext, OperationContext operationContext) {
+    SubjectContext subjectContext,
+    ResourceContextInterface resourceContext,
+    OperationContext operationContext
+  ) {
     Iterator<PolicyContext> policyIterator = subjectContext.getPolicies(resourceContext.getOwner());
     evaluatePolicies(policyIterator, subjectContext, resourceContext, operationContext, false);
   }
 
   private static void evaluatePolicies(
-      Iterator<PolicyContext> policies,
-      SubjectContext subjectContext,
-      ResourceContextInterface resourceContext,
-      OperationContext operationContext,
-      boolean evaluateDeny) {
+    Iterator<PolicyContext> policies,
+    SubjectContext subjectContext,
+    ResourceContextInterface resourceContext,
+    OperationContext operationContext,
+    boolean evaluateDeny
+  ) {
     // When an operation is allowed by a rule, it is removed from operation context
     // When list of operations is empty in the operation context, all operations have been allowed
     while (policies.hasNext() && !operationContext.getOperations().isEmpty()) {
       PolicyContext context = policies.next();
       for (CompiledRule rule : context.getRules()) {
         LOG.debug(
-            "evaluating policy for {} {}:{}:{}",
-            evaluateDeny ? "deny" : "allow",
-            context.getRoleName(),
-            context.getPolicyName(),
-            rule.getName());
+          "evaluating policy for {} {}:{}:{}",
+          evaluateDeny ? "deny" : "allow",
+          context.getRoleName(),
+          context.getPolicyName(),
+          rule.getName()
+        );
         if (evaluateDeny) {
           rule.evaluateDenyRule(operationContext, subjectContext, resourceContext, context);
         } else {
@@ -159,7 +171,9 @@ public class PolicyEvaluator {
   }
 
   public static ResourcePermission getPermission(
-      @NonNull SubjectContext subjectContext, ResourceContextInterface resourceContext) {
+    @NonNull SubjectContext subjectContext,
+    ResourceContextInterface resourceContext
+  ) {
     // Initialize all permissions to NOT_ALLOW
     ResourcePermission resourcePermission = getResourcePermission(resourceContext.getResource(), Access.NOT_ALLOW);
 
@@ -183,8 +197,9 @@ public class PolicyEvaluator {
       for (MetadataOperation operation : rd.getOperations()) {
         permissions.add(new Permission().withOperation(operation).withAccess(access));
       }
-      ResourcePermission resourcePermission =
-          new ResourcePermission().withResource(rd.getName()).withPermissions(permissions);
+      ResourcePermission resourcePermission = new ResourcePermission()
+        .withResource(rd.getName())
+        .withPermissions(permissions);
       resourcePermissions.add(resourcePermission);
     }
     return PolicyEvaluator.trimResourcePermissions(resourcePermissions);
@@ -198,7 +213,8 @@ public class PolicyEvaluator {
       permissions.add(new Permission().withOperation(operation).withAccess(access));
     }
     return PolicyEvaluator.trimResourcePermission(
-        new ResourcePermission().withResource(rd.getName()).withPermissions(permissions));
+      new ResourcePermission().withResource(rd.getName()).withPermissions(permissions)
+    );
   }
 
   /**
@@ -218,25 +234,35 @@ public class PolicyEvaluator {
     boolean viewAllPermission = false;
     boolean editAllPermission = false;
     for (Permission p : permissions) {
-      if ((p.getOperation().equals(MetadataOperation.VIEW_ALL)
-          && (p.getAccess().equals(Access.ALLOW) || p.getAccess().equals(Access.DENY)))) {
+      if (
+        (
+          p.getOperation().equals(MetadataOperation.VIEW_ALL) &&
+          (p.getAccess().equals(Access.ALLOW) || p.getAccess().equals(Access.DENY))
+        )
+      ) {
         viewAllPermission = true;
       }
-      if (p.getOperation().equals(MetadataOperation.EDIT_ALL)
-          && (p.getAccess().equals(Access.ALLOW) || p.getAccess().equals(Access.DENY))) {
+      if (
+        p.getOperation().equals(MetadataOperation.EDIT_ALL) &&
+        (p.getAccess().equals(Access.ALLOW) || p.getAccess().equals(Access.DENY))
+      ) {
         editAllPermission = true;
       }
     }
     Iterator<Permission> permissionIterator = permissions.listIterator();
     while (permissionIterator.hasNext()) {
       Permission permission = permissionIterator.next();
-      if (viewAllPermission
-          && permission.getOperation() != MetadataOperation.VIEW_ALL
-          && permission.getOperation().value().startsWith("View")) {
+      if (
+        viewAllPermission &&
+        permission.getOperation() != MetadataOperation.VIEW_ALL &&
+        permission.getOperation().value().startsWith("View")
+      ) {
         permissionIterator.remove();
-      } else if (editAllPermission
-          && permission.getOperation() != MetadataOperation.EDIT_ALL
-          && permission.getOperation().value().startsWith("Edit")) {
+      } else if (
+        editAllPermission &&
+        permission.getOperation() != MetadataOperation.EDIT_ALL &&
+        permission.getOperation().value().startsWith("Edit")
+      ) {
         permissionIterator.remove();
       }
     }

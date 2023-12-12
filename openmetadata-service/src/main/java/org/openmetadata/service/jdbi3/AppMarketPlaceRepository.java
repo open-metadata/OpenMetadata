@@ -9,12 +9,13 @@ public class AppMarketPlaceRepository extends EntityRepository<AppMarketPlaceDef
 
   public AppMarketPlaceRepository() {
     super(
-        AppMarketPlaceResource.COLLECTION_PATH,
-        Entity.APP_MARKET_PLACE_DEF,
-        AppMarketPlaceDefinition.class,
-        Entity.getCollectionDAO().applicationMarketPlaceDAO(),
-        "",
-        "");
+      AppMarketPlaceResource.COLLECTION_PATH,
+      Entity.APP_MARKET_PLACE_DEF,
+      AppMarketPlaceDefinition.class,
+      Entity.getCollectionDAO().applicationMarketPlaceDAO(),
+      "",
+      ""
+    );
     supportsSearch = false;
     quoteFqn = true;
   }

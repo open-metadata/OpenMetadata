@@ -18,6 +18,7 @@ import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
 public class DefaultFieldFormatter implements FieldFormatter {
+
   private final String fieldChangeName;
   private final String fieldOldValue;
   private final String fieldNewValue;
@@ -25,11 +26,12 @@ public class DefaultFieldFormatter implements FieldFormatter {
   private final MessageDecorator<?> messageDecorator;
 
   public DefaultFieldFormatter(
-      MessageDecorator<?> messageDecorator,
-      String fieldOldValue,
-      String fieldNewValue,
-      String fieldChangeName,
-      MessageParser.EntityLink entityLink) {
+    MessageDecorator<?> messageDecorator,
+    String fieldOldValue,
+    String fieldNewValue,
+    String fieldChangeName,
+    MessageParser.EntityLink entityLink
+  ) {
     this.messageDecorator = messageDecorator;
     this.fieldChangeName = fieldChangeName;
     this.fieldOldValue = fieldOldValue;
@@ -88,7 +90,7 @@ public class DefaultFieldFormatter implements FieldFormatter {
     String spanAddClose = this.messageDecorator.getAddMarkerClose();
     if (message != null) {
       message =
-          this.messageDecorator.replaceMarkers(message, this.messageDecorator.httpAddMarker(), spanAdd, spanAddClose);
+        this.messageDecorator.replaceMarkers(message, this.messageDecorator.httpAddMarker(), spanAdd, spanAddClose);
     }
     return message;
   }
@@ -101,14 +103,18 @@ public class DefaultFieldFormatter implements FieldFormatter {
 
   public String formatDeletedField() {
     String message =
-        this.messageDecorator.httpRemoveMarker() + this.fieldOldValue + this.messageDecorator.httpRemoveMarker();
+      this.messageDecorator.httpRemoveMarker() + this.fieldOldValue + this.messageDecorator.httpRemoveMarker();
     message = String.format(("Deleted " + this.messageDecorator.getBold() + ": %s"), this.fieldChangeName, message);
     String spanRemove = this.messageDecorator.getRemoveMarker();
     String spanRemoveClose = this.messageDecorator.getRemoveMarkerClose();
     if (message != null) {
       message =
-          this.messageDecorator.replaceMarkers(
-              message, this.messageDecorator.httpRemoveMarker(), spanRemove, spanRemoveClose);
+        this.messageDecorator.replaceMarkers(
+            message,
+            this.messageDecorator.httpRemoveMarker(),
+            spanRemove,
+            spanRemoveClose
+          );
     }
     return message;
   }

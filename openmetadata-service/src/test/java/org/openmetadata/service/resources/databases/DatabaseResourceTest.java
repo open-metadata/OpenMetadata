@@ -44,6 +44,7 @@ import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDatabase> {
+
   public DatabaseResourceTest() {
     super(Entity.DATABASE, Database.class, DatabaseList.class, "databases", DatabaseResource.FIELDS);
     supportedNameCharacters = "_'+#- .()$" + EntityResourceTest.RANDOM_STRING_GENERATOR.generate(1);
@@ -67,7 +68,10 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
   @Test
   void post_databaseWithDifferentService_200_ok(TestInfo test) throws IOException {
     EntityReference[] differentServices = {
-      MYSQL_REFERENCE, REDSHIFT_REFERENCE, BIGQUERY_REFERENCE, SNOWFLAKE_REFERENCE
+      MYSQL_REFERENCE,
+      REDSHIFT_REFERENCE,
+      BIGQUERY_REFERENCE,
+      SNOWFLAKE_REFERENCE
     };
 
     // Create database for each service and test APIs
@@ -90,25 +94,30 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
     // Add a schema if it already does not exist
     if (nullOrEmpty(database.getDatabaseSchemas())) {
       DatabaseSchemaResourceTest databaseSchemaResourceTest = new DatabaseSchemaResourceTest();
-      CreateDatabaseSchema create =
-          databaseSchemaResourceTest.createRequest("schema", "", "", null).withDatabase(getFqn(database));
+      CreateDatabaseSchema create = databaseSchemaResourceTest
+        .createRequest("schema", "", "", null)
+        .withDatabase(getFqn(database));
       databaseSchemaResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
     }
 
     String fields = "";
     database =
-        byName
-            ? getEntityByName(database.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getEntity(database.getId(), fields, ADMIN_AUTH_HEADERS);
+      byName
+        ? getEntityByName(database.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+        : getEntity(database.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(database.getService(), database.getServiceType());
     assertListNull(
-        database.getOwner(), database.getDatabaseSchemas(), database.getUsageSummary(), database.getLocation());
+      database.getOwner(),
+      database.getDatabaseSchemas(),
+      database.getUsageSummary(),
+      database.getLocation()
+    );
 
     fields = "owner,databaseSchemas,usageSummary,location,tags";
     database =
-        byName
-            ? getEntityByName(database.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getEntity(database.getId(), fields, ADMIN_AUTH_HEADERS);
+      byName
+        ? getEntityByName(database.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+        : getEntity(database.getId(), fields, ADMIN_AUTH_HEADERS);
 
     assertListNotNull(database.getService(), database.getServiceType());
     // Fields usageSummary and location are not set during creation - tested elsewhere
@@ -139,15 +148,18 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
     assertNotNull(database.getServiceType());
     assertReference(createRequest.getService(), database.getService());
     assertEquals(
-        FullyQualifiedName.build(database.getService().getName(), database.getName()),
-        database.getFullyQualifiedName());
+      FullyQualifiedName.build(database.getService().getName(), database.getName()),
+      database.getFullyQualifiedName()
+    );
   }
 
   @Override
   public void compareEntities(Database expected, Database updated, Map<String, String> authHeaders) {
     assertReference(expected.getService(), updated.getService());
     assertEquals(
-        FullyQualifiedName.build(updated.getService().getName(), updated.getName()), updated.getFullyQualifiedName());
+      FullyQualifiedName.build(updated.getService().getName(), updated.getName()),
+      updated.getFullyQualifiedName()
+    );
   }
 
   @Override

@@ -29,10 +29,13 @@ public class AnnotationCheckerTest {
   }
 
   static class TestHasAnnotation {
-    protected @ExposedField String exposed;
+
+    @ExposedField
+    protected String exposed;
   }
 
   static class TestNestedHasAnnotation {
+
     String notExposed;
     TestHasAnnotation exposed;
   }
@@ -40,6 +43,7 @@ public class AnnotationCheckerTest {
   static class TestInheritHasAnnotation extends TestHasAnnotation {}
 
   static class TestDoesNotHasAnnotation {
+
     String notExposed;
   }
 }

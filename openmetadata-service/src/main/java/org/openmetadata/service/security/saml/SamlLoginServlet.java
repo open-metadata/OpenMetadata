@@ -28,6 +28,7 @@ import lombok.extern.slf4j.Slf4j;
 @WebServlet("/api/v1/saml/login")
 @Slf4j
 public class SamlLoginServlet extends HttpServlet {
+
   @Override
   protected void doGet(final HttpServletRequest req, final HttpServletResponse resp) throws IOException {
     Auth auth;
@@ -37,8 +38,9 @@ public class SamlLoginServlet extends HttpServlet {
     } catch (Exception e) {
       resp.setContentType("text/html; charset=UTF-8");
       LOG.error("[SamlLoginServlet] Failed in Auth Login : {}", e.getMessage());
-      resp.getOutputStream()
-          .println(String.format("<p> [SamlLoginServlet] Failed in Auth Login : %s </p>", e.getMessage()));
+      resp
+        .getOutputStream()
+        .println(String.format("<p> [SamlLoginServlet] Failed in Auth Login : %s </p>", e.getMessage()));
     }
   }
 }

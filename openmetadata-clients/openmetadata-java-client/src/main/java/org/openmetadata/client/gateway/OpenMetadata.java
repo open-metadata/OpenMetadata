@@ -31,6 +31,7 @@ import org.openmetadata.schema.utils.VersionUtils;
 
 @Slf4j
 public class OpenMetadata {
+
   private static final OpenMetadataServerVersion OPENMETADATA_VERSION_CLIENT;
 
   static {
@@ -51,12 +52,12 @@ public class OpenMetadata {
   }
 
   public void initClient(OpenMetadataConnection config) {
-    Feign.Builder builder =
-        Feign.builder()
-            .encoder(new FormEncoder(new JacksonEncoder(apiClient.getObjectMapper())))
-            .decoder(new JacksonDecoder(apiClient.getObjectMapper()))
-            .logger(new Slf4jLogger())
-            .client(new OkHttpClient());
+    Feign.Builder builder = Feign
+      .builder()
+      .encoder(new FormEncoder(new JacksonEncoder(apiClient.getObjectMapper())))
+      .decoder(new JacksonDecoder(apiClient.getObjectMapper()))
+      .logger(new Slf4jLogger())
+      .client(new OkHttpClient());
     initClient(config, builder);
   }
 
@@ -81,8 +82,10 @@ public class OpenMetadata {
 
   public <K> void updateRequestType(Class<K> requestClass) {
     apiClient.getApiAuthorizations().remove(REQUEST_INTERCEPTOR_KEY);
-    CustomRequestInterceptor<K> newInterceptor =
-        new CustomRequestInterceptor<>(apiClient.getObjectMapper(), requestClass);
+    CustomRequestInterceptor<K> newInterceptor = new CustomRequestInterceptor<>(
+      apiClient.getObjectMapper(),
+      requestClass
+    );
     apiClient.addAuthorization(REQUEST_INTERCEPTOR_KEY, newInterceptor);
   }
 
@@ -90,13 +93,16 @@ public class OpenMetadata {
     String[] clientVersion = getClientVersion();
     String[] serverVersion = getServerVersion();
     // MAJOR MINOR REVISION
-    if (serverVersion[0].equals(clientVersion[0])
-        && serverVersion[1].equals(clientVersion[1])
-        && serverVersion[2].equals(clientVersion[2])) {
+    if (
+      serverVersion[0].equals(clientVersion[0]) &&
+      serverVersion[1].equals(clientVersion[1]) &&
+      serverVersion[2].equals(clientVersion[2])
+    ) {
       LOG.debug("OpenMetaData Client Initialized successfully.");
     } else {
       LOG.error(
-          "OpenMetaData Client Failed to be Initialized successfully. Version mismatch between CLient and Server issue");
+        "OpenMetaData Client Failed to be Initialized successfully. Version mismatch between CLient and Server issue"
+      );
     }
   }
 

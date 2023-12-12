@@ -21,8 +21,11 @@ import org.openmetadata.service.exception.SecretsManagerException;
 
 /** Secret Manager used for testing */
 public class InMemorySecretsManager extends ExternalSecretsManager {
+
   private static InMemorySecretsManager instance;
-  @Getter private final Map<String, String> secretsMap = new HashMap<>();
+
+  @Getter
+  private final Map<String, String> secretsMap = new HashMap<>();
 
   protected InMemorySecretsManager(String clusterPrefix) {
     super(SecretsManagerProvider.IN_MEMORY, clusterPrefix, 0);

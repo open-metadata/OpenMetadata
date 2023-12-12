@@ -26,15 +26,12 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.TableRepository;
 
 public class EntityCsvTest {
+
   private static final List<CsvHeader> CSV_HEADERS;
   private static final String HEADER_STRING = "h1*,h2,h3" + LINE_SEPARATOR;
 
   static {
-    Object[][] headers = {
-      {"h1", Boolean.TRUE},
-      {"h2", Boolean.FALSE},
-      {"h3", Boolean.FALSE}
-    };
+    Object[][] headers = { { "h1", Boolean.TRUE }, { "h2", Boolean.FALSE }, { "h3", Boolean.FALSE } };
     CSV_HEADERS = getHeaders(headers);
   }
 
@@ -62,11 +59,12 @@ public class EntityCsvTest {
   }
 
   public static void assertSummary(
-      CsvImportResult importResult,
-      ApiStatus expectedStatus,
-      int expectedRowsProcessed,
-      int expectedRowsPassed,
-      int expectedRowsFailed) {
+    CsvImportResult importResult,
+    ApiStatus expectedStatus,
+    int expectedRowsProcessed,
+    int expectedRowsPassed,
+    int expectedRowsFailed
+  ) {
     assertEquals(expectedStatus, importResult.getStatus(), importResult.toString());
     assertEquals(expectedRowsProcessed, importResult.getNumberOfRowsProcessed(), importResult.getImportResultsCsv());
     assertEquals(expectedRowsPassed, importResult.getNumberOfRowsPassed(), importResult.getImportResultsCsv());
@@ -115,7 +113,10 @@ public class EntityCsvTest {
   }
 
   public static String createCsvResult(
-      List<CsvHeader> csvHeaders, List<String> createRecords, List<String> updateRecords) {
+    List<CsvHeader> csvHeaders,
+    List<String> createRecords,
+    List<String> updateRecords
+  ) {
     // Create CSV
     List<String> csvRecords = new ArrayList<>();
     csvRecords.add(recordToString(EntityCsv.getResultHeaders(csvHeaders)));
@@ -133,6 +134,7 @@ public class EntityCsvTest {
   }
 
   private static class TestCsv extends EntityCsv<EntityInterface> {
+
     protected TestCsv() {
       super(Entity.TABLE, CSV_HEADERS, "admin");
     }

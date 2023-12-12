@@ -11,12 +11,17 @@ public class AnnotationChecker {
   private AnnotationChecker() {}
 
   private static boolean checkIfAnyClassFieldsHasAnnotation(
-      Class<?> objectClass, Class<? extends Annotation> annotationClass) {
+    Class<?> objectClass,
+    Class<? extends Annotation> annotationClass
+  ) {
     return checkIfAnyClassFieldsHasAnnotation(objectClass, annotationClass, new HashSet<>());
   }
 
   private static boolean checkIfAnyClassFieldsHasAnnotation(
-      Class<?> objectClass, Class<? extends Annotation> annotationClass, Set<Class<?>> visitedClasses) {
+    Class<?> objectClass,
+    Class<? extends Annotation> annotationClass,
+    Set<Class<?>> visitedClasses
+  ) {
     for (Field field : objectClass.getDeclaredFields()) {
       if (field.isAnnotationPresent(annotationClass)) {
         return true;

@@ -27,10 +27,12 @@ public class DashboardServiceIndex implements SearchIndex {
     suggest.add(SearchSuggest.builder().input(dashboardService.getName()).weight(5).build());
     suggest.add(SearchSuggest.builder().input(dashboardService.getDisplayName()).weight(10).build());
     doc.put(
-        "fqnParts",
-        getFQNParts(
-            dashboardService.getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+      "fqnParts",
+      getFQNParts(
+        dashboardService.getFullyQualifiedName(),
+        suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())
+      )
+    );
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.DASHBOARD_SERVICE);
     doc.put("owner", getEntityWithDisplayName(dashboardService.getOwner()));

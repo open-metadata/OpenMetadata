@@ -22,6 +22,7 @@ import org.openmetadata.service.workflows.interfaces.Processor;
 
 @Slf4j
 public class ElasticSearchEntitiesProcessor implements Processor<BulkRequest, ResultList<? extends EntityInterface>> {
+
   private final StepStats stats = new StepStats();
 
   public ElasticSearchEntitiesProcessor(int total) {
@@ -30,29 +31,34 @@ public class ElasticSearchEntitiesProcessor implements Processor<BulkRequest, Re
 
   @Override
   public BulkRequest process(ResultList<? extends EntityInterface> input, Map<String, Object> contextData)
-      throws ProcessorException {
+    throws ProcessorException {
     String entityType = (String) contextData.get(ENTITY_TYPE_KEY);
     if (CommonUtil.nullOrEmpty(entityType)) {
       throw new IllegalArgumentException("[EsEntitiesProcessor] entityType cannot be null or empty.");
     }
 
     LOG.debug(
-        "[EsEntitiesProcessor] Processing a Batch of Size: {}, EntityType: {} ", input.getData().size(), entityType);
+      "[EsEntitiesProcessor] Processing a Batch of Size: {}, EntityType: {} ",
+      input.getData().size(),
+      entityType
+    );
     BulkRequest requests;
     try {
       requests = buildBulkRequests(entityType, input.getData());
       LOG.debug(
-          "[EsEntitiesProcessor] Batch Stats :- Submitted : {} Success: {} Failed: {}",
-          input.getData().size(),
-          input.getData().size(),
-          0);
+        "[EsEntitiesProcessor] Batch Stats :- Submitted : {} Success: {} Failed: {}",
+        input.getData().size(),
+        input.getData().size(),
+        0
+      );
       updateStats(input.getData().size(), 0);
     } catch (Exception e) {
       LOG.debug(
-          "[EsEntitiesProcessor] Batch Stats :- Submitted : {} Success: {} Failed: {}",
-          input.getData().size(),
-          0,
-          input.getData().size());
+        "[EsEntitiesProcessor] Batch Stats :- Submitted : {} Success: {} Failed: {}",
+        input.getData().size(),
+        0,
+        input.getData().size()
+      );
       updateStats(0, input.getData().size());
       throw new ProcessorException("[EsEntitiesProcessor] Batch encountered Exception. Failing Completely.", e);
     }
@@ -72,8 +78,9 @@ public class ElasticSearchEntitiesProcessor implements Processor<BulkRequest, Re
     IndexMapping indexMapping = Entity.getSearchRepository().getIndexMapping(entityType);
     UpdateRequest updateRequest = new UpdateRequest(indexMapping.getIndexName(), entity.getId().toString());
     updateRequest.doc(
-        JsonUtils.pojoToJson(Objects.requireNonNull(Entity.buildSearchIndex(entityType, entity)).buildESDoc()),
-        XContentType.JSON);
+      JsonUtils.pojoToJson(Objects.requireNonNull(Entity.buildSearchIndex(entityType, entity)).buildESDoc()),
+      XContentType.JSON
+    );
     updateRequest.docAsUpsert(true);
     return updateRequest;
   }

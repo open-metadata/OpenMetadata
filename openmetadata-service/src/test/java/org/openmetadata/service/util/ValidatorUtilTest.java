@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.data.Glossary;
 
 class ValidatorUtilTest {
+
   @Test
   void testValidator() {
     // Required parameters name, description, and id missing

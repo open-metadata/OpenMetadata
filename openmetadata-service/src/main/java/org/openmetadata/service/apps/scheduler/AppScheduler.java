@@ -27,6 +27,7 @@ import org.quartz.impl.StdSchedulerFactory;
 
 @Slf4j
 public class AppScheduler {
+
   public static final String APPS_JOB_GROUP = "OMAppsJobGroup";
   public static final String APPS_TRIGGER_GROUP = "OMAppsJobGroup";
   public static final String APP_CRON_TRIGGER = "appCronTrigger";
@@ -104,10 +105,11 @@ public class AppScheduler {
   }
 
   private Trigger trigger(App app) {
-    return TriggerBuilder.newTrigger()
-        .withIdentity(app.getId().toString(), APPS_TRIGGER_GROUP)
-        .withSchedule(getCronSchedule(app.getAppSchedule()))
-        .build();
+    return TriggerBuilder
+      .newTrigger()
+      .withIdentity(app.getId().toString(), APPS_TRIGGER_GROUP)
+      .withSchedule(getCronSchedule(app.getAppSchedule()))
+      .build();
   }
 
   private JobDetail getJobKey(UUID id) {
@@ -144,11 +146,16 @@ public class AppScheduler {
     try {
       AppRuntime context = getAppRuntime(application);
       if (Boolean.TRUE.equals(context.getEnabled())) {
-        JobDetail jobDetail =
-            jobBuilder(application, String.format("%s.onDemand.%s", application.getId().toString(), UUID.randomUUID()));
+        JobDetail jobDetail = jobBuilder(
+          application,
+          String.format("%s.onDemand.%s", application.getId().toString(), UUID.randomUUID())
+        );
         jobDetail.getJobDataMap().put("triggerType", AppRunType.OnDemand.value());
-        Trigger trigger =
-            TriggerBuilder.newTrigger().withIdentity(application.toString(), APPS_TRIGGER_GROUP).startNow().build();
+        Trigger trigger = TriggerBuilder
+          .newTrigger()
+          .withIdentity(application.toString(), APPS_TRIGGER_GROUP)
+          .startNow()
+          .build();
         appScheduler.scheduleJob(jobDetail, trigger);
         appJobsKeyMap.put(application.getId(), jobDetail);
       } else {

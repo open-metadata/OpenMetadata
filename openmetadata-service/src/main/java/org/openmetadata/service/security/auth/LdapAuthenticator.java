@@ -51,6 +51,7 @@ import org.openmetadata.service.util.TokenUtil;
 
 @Slf4j
 public class LdapAuthenticator implements AuthenticatorHandler {
+
   static final String LDAP_ERR_MSG = "[LDAP] Issue in creating a LookUp Connection SSL";
   private UserRepository userRepository;
   private TokenRepository tokenRepository;
@@ -61,8 +62,10 @@ public class LdapAuthenticator implements AuthenticatorHandler {
 
   @Override
   public void init(OpenMetadataApplicationConfig config) {
-    if (config.getAuthenticationConfiguration().getProvider().equals(AuthProvider.LDAP)
-        && config.getAuthenticationConfiguration().getLdapConfiguration() != null) {
+    if (
+      config.getAuthenticationConfiguration().getProvider().equals(AuthProvider.LDAP) &&
+      config.getAuthenticationConfiguration().getLdapConfiguration() != null
+    ) {
       ldapLookupConnectionPool = getLdapConnectionPool(config.getAuthenticationConfiguration().getLdapConfiguration());
     } else {
       throw new IllegalStateException("Invalid or Missing Ldap Configuration.");
@@ -81,14 +84,16 @@ public class LdapAuthenticator implements AuthenticatorHandler {
         LdapUtil ldapUtil = new LdapUtil();
         SSLUtil sslUtil = new SSLUtil(ldapUtil.getLdapSSLConnection(ldapConfiguration, connectionOptions));
 
-        try (LDAPConnection connection =
-            new LDAPConnection(
-                sslUtil.createSSLSocketFactory(),
-                connectionOptions,
-                ldapConfiguration.getHost(),
-                ldapConfiguration.getPort(),
-                ldapConfiguration.getDnAdminPrincipal(),
-                ldapConfiguration.getDnAdminPassword())) {
+        try (
+          LDAPConnection connection = new LDAPConnection(
+            sslUtil.createSSLSocketFactory(),
+            connectionOptions,
+            ldapConfiguration.getHost(),
+            ldapConfiguration.getPort(),
+            ldapConfiguration.getDnAdminPrincipal(),
+            ldapConfiguration.getDnAdminPassword()
+          )
+        ) {
           // Use the connection here.
           return new LDAPConnectionPool(connection, ldapConfiguration.getMaxPoolSize());
         } catch (GeneralSecurityException e) {
@@ -96,12 +101,14 @@ public class LdapAuthenticator implements AuthenticatorHandler {
           throw new IllegalStateException(LDAP_ERR_MSG, e);
         }
       } else {
-        try (LDAPConnection conn =
-            new LDAPConnection(
-                ldapConfiguration.getHost(),
-                ldapConfiguration.getPort(),
-                ldapConfiguration.getDnAdminPrincipal(),
-                ldapConfiguration.getDnAdminPassword())) {
+        try (
+          LDAPConnection conn = new LDAPConnection(
+            ldapConfiguration.getHost(),
+            ldapConfiguration.getPort(),
+            ldapConfiguration.getDnAdminPrincipal(),
+            ldapConfiguration.getDnAdminPassword()
+          )
+        ) {
           return new LDAPConnectionPool(conn, ldapConfiguration.getMaxPoolSize());
         } catch (LDAPException e) {
           LOG.error("[LDAP] Issue in creating a LookUp Connection", e);
@@ -145,17 +152,19 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     int failedLoginAttempt = loginAttemptCache.getUserFailedLoginCount(providedIdentity);
     if (failedLoginAttempt == loginConfiguration.getMaxLoginFailAttempts()) {
       EmailUtil.sendAccountStatus(
-          storedUser,
-          "Multiple Failed Login Attempts.",
-          String.format(
-              "Someone is tried accessing your account. Login is Blocked for %s seconds.",
-              loginConfiguration.getAccessBlockTime()));
+        storedUser,
+        "Multiple Failed Login Attempts.",
+        String.format(
+          "Someone is tried accessing your account. Login is Blocked for %s seconds.",
+          loginConfiguration.getAccessBlockTime()
+        )
+      );
     }
   }
 
   @Override
   public void validatePassword(String providedIdentity, User storedUser, String reqPassword)
-      throws TemplateException, IOException {
+    throws TemplateException, IOException {
     // performed in LDAP , the storedUser's name set as DN of the User in Ldap
     BindResult bindingResult = null;
     try {
@@ -164,8 +173,10 @@ public class LdapAuthenticator implements AuthenticatorHandler {
         return;
       }
     } catch (Exception ex) {
-      if (bindingResult != null
-          && Objects.equals(bindingResult.getResultCode().getName(), ResultCode.INVALID_CREDENTIALS.getName())) {
+      if (
+        bindingResult != null &&
+        Objects.equals(bindingResult.getResultCode().getName(), ResultCode.INVALID_CREDENTIALS.getName())
+      ) {
         recordFailedLoginAttempt(providedIdentity, storedUser);
         throw new CustomExceptionMessage(UNAUTHORIZED, INVALID_EMAIL_PASSWORD);
       }
@@ -181,12 +192,12 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   public User lookUserInProvider(String email) {
     try {
       Filter emailFilter = Filter.create(String.format("%s=%s", ldapConfiguration.getMailAttributeName(), email));
-      SearchRequest searchRequest =
-          new SearchRequest(
-              ldapConfiguration.getUserBaseDN(),
-              SearchScope.SUB,
-              emailFilter,
-              ldapConfiguration.getMailAttributeName());
+      SearchRequest searchRequest = new SearchRequest(
+        ldapConfiguration.getUserBaseDN(),
+        SearchScope.SUB,
+        emailFilter,
+        ldapConfiguration.getMailAttributeName()
+      );
       SearchResult result = ldapLookupConnectionPool.search(searchRequest);
       // there has to be a unique entry for username and email in LDAP under the group
       if (result.getSearchEntries().size() == 1) {
@@ -213,15 +224,15 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   private User getUserForLdap(String email) {
     String userName = email.split("@")[0];
     return new User()
-        .withId(UUID.randomUUID())
-        .withName(userName)
-        .withFullyQualifiedName(userName)
-        .withEmail(email)
-        .withIsBot(false)
-        .withUpdatedBy(userName)
-        .withUpdatedAt(System.currentTimeMillis())
-        .withIsEmailVerified(false)
-        .withAuthenticationMechanism(null);
+      .withId(UUID.randomUUID())
+      .withName(userName)
+      .withFullyQualifiedName(userName)
+      .withEmail(email)
+      .withIsBot(false)
+      .withUpdatedBy(userName)
+      .withUpdatedAt(System.currentTimeMillis())
+      .withIsEmailVerified(false)
+      .withAuthenticationMechanism(null);
   }
 
   @Override

@@ -10,6 +10,7 @@ import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 
 public class Migration extends MigrationProcessImpl {
+
   private CollectionDAO collectionDAO;
 
   private Handle handle;

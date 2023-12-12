@@ -80,6 +80,7 @@ import org.openmetadata.service.util.ResultList;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "feeds")
 public class FeedResource {
+
   public static final String COLLECTION_PATH = "/v1/feed/";
   private final FeedRepository dao;
   private final Authorizer authorizer;
@@ -112,88 +113,74 @@ public class FeedResource {
 
   @GET
   @Operation(
-      operationId = "listThreads",
-      summary = "List threads",
-      description = "Get a list of threads, optionally filtered by `entityLink`.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "List of threads",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ThreadList.class)))
-      })
+    operationId = "listThreads",
+    summary = "List threads",
+    description = "Get a list of threads, optionally filtered by `entityLink`.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "List of threads",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = ThreadList.class))
+      )
+    }
+  )
   public ResultList<Thread> list(
-      @Context UriInfo uriInfo,
-      @Parameter(
-              description = "Limit the number of posts sorted by chronological order (1 to 1000000, default = 3)",
-              schema = @Schema(type = "integer"))
-          @Min(0)
-          @Max(1000000)
-          @DefaultValue("3")
-          @QueryParam("limitPosts")
-          int limitPosts,
-      @Parameter(description = "Limit the number of threads returned. (1 to 1000000, default = 10)")
-          @DefaultValue("10")
-          @Min(1)
-          @Max(1000000)
-          @QueryParam("limit")
-          int limitParam,
-      @Parameter(description = "Returns list of threads before this cursor", schema = @Schema(type = "string"))
-          @QueryParam("before")
-          String before,
-      @Parameter(description = "Returns list of threads after this cursor", schema = @Schema(type = "string"))
-          @QueryParam("after")
-          String after,
-      @Parameter(
-              description = "Filter threads by entity link of entity about which this thread is created",
-              schema = @Schema(type = "string", example = "<E#/{entityType}/{entityFQN}/{fieldName}>"))
-          @QueryParam("entityLink")
-          String entityLink,
-      @Parameter(
-              description =
-                  "Filter threads by user id. This filter requires a 'filterType' query param. The default filter type is 'OWNER'. This filter cannot be combined with the entityLink filter.",
-              schema = @Schema(type = "string"))
-          @QueryParam("userId")
-          UUID userId,
-      @Parameter(
-              description =
-                  "Filter type definition for the user filter. It can take one of 'OWNER', 'FOLLOWS', 'MENTIONS'. This must be used with the 'user' query param",
-              schema = @Schema(implementation = FilterType.class))
-          @QueryParam("filterType")
-          FilterType filterType,
-      @Parameter(description = "Filter threads by whether they are resolved or not. By default resolved is false")
-          @DefaultValue("false")
-          @QueryParam("resolved")
-          boolean resolved,
-      @Parameter(
-              description =
-                  "The type of thread to filter the results. It can take one of 'Conversation', 'Task', 'Announcement'",
-              schema = @Schema(implementation = ThreadType.class))
-          @QueryParam("type")
-          ThreadType threadType,
-      @Parameter(
-              description =
-                  "The status of tasks to filter the results. It can take one of 'Open', 'Closed'. This filter will take effect only when type is set to Task",
-              schema = @Schema(implementation = TaskStatus.class))
-          @QueryParam("taskStatus")
-          TaskStatus taskStatus,
-      @Parameter(
-              description =
-                  "Whether to filter results by announcements that are currently active. This filter will take effect only when type is set to Announcement",
-              schema = @Schema(type = "boolean"))
-          @QueryParam("activeAnnouncement")
-          Boolean activeAnnouncement) {
+    @Context UriInfo uriInfo,
+    @Parameter(
+      description = "Limit the number of posts sorted by chronological order (1 to 1000000, default = 3)",
+      schema = @Schema(type = "integer")
+    ) @Min(0) @Max(1000000) @DefaultValue("3") @QueryParam("limitPosts") int limitPosts,
+    @Parameter(description = "Limit the number of threads returned. (1 to 1000000, default = 10)") @DefaultValue(
+      "10"
+    ) @Min(1) @Max(1000000) @QueryParam("limit") int limitParam,
+    @Parameter(
+      description = "Returns list of threads before this cursor",
+      schema = @Schema(type = "string")
+    ) @QueryParam("before") String before,
+    @Parameter(
+      description = "Returns list of threads after this cursor",
+      schema = @Schema(type = "string")
+    ) @QueryParam("after") String after,
+    @Parameter(
+      description = "Filter threads by entity link of entity about which this thread is created",
+      schema = @Schema(type = "string", example = "<E#/{entityType}/{entityFQN}/{fieldName}>")
+    ) @QueryParam("entityLink") String entityLink,
+    @Parameter(
+      description = "Filter threads by user id. This filter requires a 'filterType' query param. The default filter type is 'OWNER'. This filter cannot be combined with the entityLink filter.",
+      schema = @Schema(type = "string")
+    ) @QueryParam("userId") UUID userId,
+    @Parameter(
+      description = "Filter type definition for the user filter. It can take one of 'OWNER', 'FOLLOWS', 'MENTIONS'. This must be used with the 'user' query param",
+      schema = @Schema(implementation = FilterType.class)
+    ) @QueryParam("filterType") FilterType filterType,
+    @Parameter(
+      description = "Filter threads by whether they are resolved or not. By default resolved is false"
+    ) @DefaultValue("false") @QueryParam("resolved") boolean resolved,
+    @Parameter(
+      description = "The type of thread to filter the results. It can take one of 'Conversation', 'Task', 'Announcement'",
+      schema = @Schema(implementation = ThreadType.class)
+    ) @QueryParam("type") ThreadType threadType,
+    @Parameter(
+      description = "The status of tasks to filter the results. It can take one of 'Open', 'Closed'. This filter will take effect only when type is set to Task",
+      schema = @Schema(implementation = TaskStatus.class)
+    ) @QueryParam("taskStatus") TaskStatus taskStatus,
+    @Parameter(
+      description = "Whether to filter results by announcements that are currently active. This filter will take effect only when type is set to Announcement",
+      schema = @Schema(type = "boolean")
+    ) @QueryParam("activeAnnouncement") Boolean activeAnnouncement
+  ) {
     RestUtil.validateCursors(before, after);
-    FeedFilter filter =
-        FeedFilter.builder()
-            .threadType(threadType)
-            .taskStatus(taskStatus)
-            .activeAnnouncement(activeAnnouncement)
-            .resolved(resolved)
-            .filterType(filterType)
-            .paginationType(before != null ? PaginationType.BEFORE : PaginationType.AFTER)
-            .before(before)
-            .after(after)
-            .build();
+    FeedFilter filter = FeedFilter
+      .builder()
+      .threadType(threadType)
+      .taskStatus(taskStatus)
+      .activeAnnouncement(activeAnnouncement)
+      .resolved(resolved)
+      .filterType(filterType)
+      .paginationType(before != null ? PaginationType.BEFORE : PaginationType.AFTER)
+      .before(before)
+      .after(after)
+      .build();
 
     ResultList<Thread> threads = dao.list(filter, entityLink, limitPosts, userId, limitParam);
     addHref(uriInfo, threads.getData());
@@ -203,61 +190,71 @@ public class FeedResource {
   @GET
   @Path("/{id}")
   @Operation(
-      operationId = "getThreadByID",
-      summary = "Get a thread by Id",
-      description = "Get a thread by `Id`.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The thread",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Thread.class))),
-        @ApiResponse(responseCode = "404", description = "Thread for instance {id} is not found")
-      })
+    operationId = "getThreadByID",
+    summary = "Get a thread by Id",
+    description = "Get a thread by `Id`.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "The thread",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = Thread.class))
+      ),
+      @ApiResponse(responseCode = "404", description = "Thread for instance {id} is not found")
+    }
+  )
   public Thread get(
-      @Context UriInfo uriInfo,
-      @Parameter(description = "Id of the Thread", schema = @Schema(type = "string")) @PathParam("id") UUID id,
-      @Parameter(description = "Type of the Entity", schema = @Schema(type = "string")) @PathParam("entityType")
-          String entityType) {
+    @Context UriInfo uriInfo,
+    @Parameter(description = "Id of the Thread", schema = @Schema(type = "string")) @PathParam("id") UUID id,
+    @Parameter(description = "Type of the Entity", schema = @Schema(type = "string")) @PathParam(
+      "entityType"
+    ) String entityType
+  ) {
     return addHref(uriInfo, dao.get(id));
   }
 
   @GET
   @Path("/tasks/{id}")
   @Operation(
-      operationId = "getTaskByID",
-      summary = "Get a task thread by task Id",
-      description = "Get a task thread by `task Id`.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The task thread",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Thread.class))),
-        @ApiResponse(responseCode = "404", description = "Task for instance {id} is not found")
-      })
+    operationId = "getTaskByID",
+    summary = "Get a task thread by task Id",
+    description = "Get a task thread by `task Id`.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "The task thread",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = Thread.class))
+      ),
+      @ApiResponse(responseCode = "404", description = "Task for instance {id} is not found")
+    }
+  )
   public Thread getTask(
-      @Context UriInfo uriInfo,
-      @Parameter(description = "Id of the task thread", schema = @Schema(type = "string")) @PathParam("id") String id) {
+    @Context UriInfo uriInfo,
+    @Parameter(description = "Id of the task thread", schema = @Schema(type = "string")) @PathParam("id") String id
+  ) {
     return addHref(uriInfo, dao.getTask(Integer.parseInt(id)));
   }
 
   @PUT
   @Path("/tasks/{id}/resolve")
   @Operation(
-      operationId = "resolveTask",
-      summary = "Resolve a task",
-      description = "Resolve a task.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The task thread",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Thread.class))),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
+    operationId = "resolveTask",
+    summary = "Resolve a task",
+    description = "Resolve a task.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "The task thread",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = Thread.class))
+      ),
+      @ApiResponse(responseCode = "400", description = "Bad request")
+    }
+  )
   public Response resolveTask(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the task thread", schema = @Schema(type = "string")) @PathParam("id") String id,
-      @Valid ResolveTask resolveTask) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Id of the task thread", schema = @Schema(type = "string")) @PathParam("id") String id,
+    @Valid ResolveTask resolveTask
+  ) {
     Thread task = dao.getTask(Integer.parseInt(id));
     dao.checkPermissionsForResolveTask(task, false, securityContext);
     return dao.resolveTask(uriInfo, task, securityContext.getUserPrincipal().getName(), resolveTask).toResponse();
@@ -266,21 +263,24 @@ public class FeedResource {
   @PUT
   @Path("/tasks/{id}/close")
   @Operation(
-      operationId = "closeTask",
-      summary = "Close a task",
-      description = "Close a task without making any changes to the entity.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The task thread.",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Thread.class))),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
+    operationId = "closeTask",
+    summary = "Close a task",
+    description = "Close a task without making any changes to the entity.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "The task thread.",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = Thread.class))
+      ),
+      @ApiResponse(responseCode = "400", description = "Bad request")
+    }
+  )
   public Response closeTask(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the task thread", schema = @Schema(type = "string")) @PathParam("id") String id,
-      @Valid CloseTask closeTask) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Id of the task thread", schema = @Schema(type = "string")) @PathParam("id") String id,
+    @Valid CloseTask closeTask
+  ) {
     Thread task = dao.getTask(Integer.parseInt(id));
     dao.checkPermissionsForResolveTask(task, true, securityContext);
     return dao.closeTask(uriInfo, task, securityContext.getUserPrincipal().getName(), closeTask).toResponse();
@@ -289,80 +289,89 @@ public class FeedResource {
   @PATCH
   @Path("/{id}")
   @Operation(
-      operationId = "patchThread",
-      summary = "Update a thread by `Id`.",
-      description = "Update an existing thread using JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+    operationId = "patchThread",
+    summary = "Update a thread by `Id`.",
+    description = "Update an existing thread using JsonPatch.",
+    externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902")
+  )
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response updateThread(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the thread", schema = @Schema(type = "string")) @PathParam("id") String id,
-      @RequestBody(
-              description = "JsonPatch with array of operations",
-              content =
-                  @Content(
-                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
-          JsonPatch patch) {
-    PatchResponse<Thread> response =
-        dao.patchThread(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Id of the thread", schema = @Schema(type = "string")) @PathParam("id") String id,
+    @RequestBody(
+      description = "JsonPatch with array of operations",
+      content = @Content(
+        mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+        examples = { @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]") }
+      )
+    ) JsonPatch patch
+  ) {
+    PatchResponse<Thread> response = dao.patchThread(
+      uriInfo,
+      UUID.fromString(id),
+      securityContext.getUserPrincipal().getName(),
+      patch
+    );
     return response.toResponse();
   }
 
   @GET
   @Path("/count")
   @Operation(
-      operationId = "countThreads",
-      summary = "Count of threads",
-      description = "Get a count of threads, optionally filtered by `entityLink` for each of the entities.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Count of threads",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ThreadCount.class)))
-      })
+    operationId = "countThreads",
+    summary = "Count of threads",
+    description = "Get a count of threads, optionally filtered by `entityLink` for each of the entities.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "Count of threads",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = ThreadCount.class))
+      )
+    }
+  )
   public ThreadCount getThreadCount(
-      @Context UriInfo uriInfo,
-      @Parameter(
-              description = "Filter threads by entity link",
-              schema = @Schema(type = "string", example = "<E#/{entityType}/{entityFQN}/{fieldName}>"))
-          @QueryParam("entityLink")
-          String entityLink,
-      @Parameter(
-              description =
-                  "The type of thread to filter the results. It can take one of 'Conversation', 'Task', 'Announcement'",
-              schema = @Schema(implementation = ThreadType.class))
-          @QueryParam("type")
-          ThreadType threadType,
-      @Parameter(
-              description =
-                  "The status of tasks to filter the results. It can take one of 'Open', 'Closed'. This filter will take effect only when type is set to Task",
-              schema = @Schema(implementation = TaskStatus.class))
-          @QueryParam("taskStatus")
-          TaskStatus taskStatus,
-      @Parameter(description = "Filter threads by whether it is active or resolved", schema = @Schema(type = "boolean"))
-          @DefaultValue("false")
-          @QueryParam("isResolved")
-          Boolean isResolved) {
+    @Context UriInfo uriInfo,
+    @Parameter(
+      description = "Filter threads by entity link",
+      schema = @Schema(type = "string", example = "<E#/{entityType}/{entityFQN}/{fieldName}>")
+    ) @QueryParam("entityLink") String entityLink,
+    @Parameter(
+      description = "The type of thread to filter the results. It can take one of 'Conversation', 'Task', 'Announcement'",
+      schema = @Schema(implementation = ThreadType.class)
+    ) @QueryParam("type") ThreadType threadType,
+    @Parameter(
+      description = "The status of tasks to filter the results. It can take one of 'Open', 'Closed'. This filter will take effect only when type is set to Task",
+      schema = @Schema(implementation = TaskStatus.class)
+    ) @QueryParam("taskStatus") TaskStatus taskStatus,
+    @Parameter(
+      description = "Filter threads by whether it is active or resolved",
+      schema = @Schema(type = "boolean")
+    ) @DefaultValue("false") @QueryParam("isResolved") Boolean isResolved
+  ) {
     FeedFilter filter = FeedFilter.builder().threadType(threadType).taskStatus(taskStatus).resolved(isResolved).build();
     return dao.getThreadsCount(filter, entityLink);
   }
 
   @POST
   @Operation(
-      operationId = "createThread",
-      summary = "Create a thread",
-      description = "Create a new thread. A thread is created about a data asset when a user posts the first post.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The thread",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Thread.class))),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
+    operationId = "createThread",
+    summary = "Create a thread",
+    description = "Create a new thread. A thread is created about a data asset when a user posts the first post.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "The thread",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = Thread.class))
+      ),
+      @ApiResponse(responseCode = "400", description = "Bad request")
+    }
+  )
   public Response createThread(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateThread create) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Valid CreateThread create
+  ) {
     Thread thread = getThread(securityContext, create);
     addHref(uriInfo, dao.create(thread));
     return Response.created(thread.getHref()).entity(thread).build();
@@ -371,21 +380,24 @@ public class FeedResource {
   @POST
   @Path("/{id}/posts")
   @Operation(
-      operationId = "addPostToThread",
-      summary = "Add post to a thread",
-      description = "Add a post to an existing thread.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The post",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Thread.class))),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
+    operationId = "addPostToThread",
+    summary = "Add post to a thread",
+    description = "Add a post to an existing thread.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "The post",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = Thread.class))
+      ),
+      @ApiResponse(responseCode = "400", description = "Bad request")
+    }
+  )
   public Response addPost(
-      @Context SecurityContext securityContext,
-      @Context UriInfo uriInfo,
-      @Parameter(description = "Id of the thread", schema = @Schema(type = "string")) @PathParam("id") UUID id,
-      @Valid CreatePost createPost) {
+    @Context SecurityContext securityContext,
+    @Context UriInfo uriInfo,
+    @Parameter(description = "Id of the thread", schema = @Schema(type = "string")) @PathParam("id") UUID id,
+    @Valid CreatePost createPost
+  ) {
     Post post = getPost(createPost);
     Thread thread = addHref(uriInfo, dao.addPostToThread(id, post, securityContext.getUserPrincipal().getName()));
     return Response.created(thread.getHref()).entity(thread).build();
@@ -394,28 +406,31 @@ public class FeedResource {
   @PATCH
   @Path("/{threadId}/posts/{postId}")
   @Operation(
-      operationId = "patchPostOfThread",
-      summary = "Update post of a thread by `Id`.",
-      description = "Update a post of an existing thread using JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"),
-      responses = {
-        @ApiResponse(responseCode = "400", description = "Bad request"),
-        @ApiResponse(responseCode = "404", description = "post with {postId} is not found")
-      })
+    operationId = "patchPostOfThread",
+    summary = "Update post of a thread by `Id`.",
+    description = "Update a post of an existing thread using JsonPatch.",
+    externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"),
+    responses = {
+      @ApiResponse(responseCode = "400", description = "Bad request"),
+      @ApiResponse(responseCode = "404", description = "post with {postId} is not found")
+    }
+  )
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response patchPost(
-      @Context SecurityContext securityContext,
-      @Context UriInfo uriInfo,
-      @Parameter(description = "Id of the thread", schema = @Schema(type = "string")) @PathParam("threadId")
-          UUID threadId,
-      @Parameter(description = "Id of the post", schema = @Schema(type = "string")) @PathParam("postId") UUID postId,
-      @RequestBody(
-              description = "JsonPatch with array of operations",
-              content =
-                  @Content(
-                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
-          JsonPatch patch) {
+    @Context SecurityContext securityContext,
+    @Context UriInfo uriInfo,
+    @Parameter(description = "Id of the thread", schema = @Schema(type = "string")) @PathParam(
+      "threadId"
+    ) UUID threadId,
+    @Parameter(description = "Id of the post", schema = @Schema(type = "string")) @PathParam("postId") UUID postId,
+    @RequestBody(
+      description = "JsonPatch with array of operations",
+      content = @Content(
+        mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+        examples = { @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]") }
+      )
+    ) JsonPatch patch
+  ) {
     // validate and get thread & post
     Thread thread = dao.get(threadId);
     Post post = dao.getPostById(thread, postId);
@@ -427,19 +442,21 @@ public class FeedResource {
   @DELETE
   @Path("/{threadId}")
   @Operation(
-      operationId = "deleteThread",
-      summary = "Delete a thread by Id",
-      description = "Delete an existing thread and all its relationships.",
-      responses = {
-        @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "thread with {threadId} is not found"),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
+    operationId = "deleteThread",
+    summary = "Delete a thread by Id",
+    description = "Delete an existing thread and all its relationships.",
+    responses = {
+      @ApiResponse(responseCode = "200", description = "OK"),
+      @ApiResponse(responseCode = "404", description = "thread with {threadId} is not found"),
+      @ApiResponse(responseCode = "400", description = "Bad request")
+    }
+  )
   public Response deleteThread(
-      @Context SecurityContext securityContext,
-      @Parameter(description = "ThreadId of the thread to be deleted", schema = @Schema(type = "string"))
-          @PathParam("threadId")
-          UUID threadId) {
+    @Context SecurityContext securityContext,
+    @Parameter(description = "ThreadId of the thread to be deleted", schema = @Schema(type = "string")) @PathParam(
+      "threadId"
+    ) UUID threadId
+  ) {
     // validate and get the thread
     Thread thread = dao.get(threadId);
     // delete thread only if the admin/bot/author tries to delete it
@@ -452,22 +469,24 @@ public class FeedResource {
   @DELETE
   @Path("/{threadId}/posts/{postId}")
   @Operation(
-      operationId = "deletePostFromThread",
-      summary = "Delete a post from its thread",
-      description = "Delete a post from an existing thread.",
-      responses = {
-        @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "post with {postId} is not found"),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
+    operationId = "deletePostFromThread",
+    summary = "Delete a post from its thread",
+    description = "Delete a post from an existing thread.",
+    responses = {
+      @ApiResponse(responseCode = "200", description = "OK"),
+      @ApiResponse(responseCode = "404", description = "post with {postId} is not found"),
+      @ApiResponse(responseCode = "400", description = "Bad request")
+    }
+  )
   public Response deletePost(
-      @Context SecurityContext securityContext,
-      @Parameter(description = "ThreadId of the post to be deleted", schema = @Schema(type = "string"))
-          @PathParam("threadId")
-          UUID threadId,
-      @Parameter(description = "PostId of the post to be deleted", schema = @Schema(type = "string"))
-          @PathParam("postId")
-          UUID postId) {
+    @Context SecurityContext securityContext,
+    @Parameter(description = "ThreadId of the post to be deleted", schema = @Schema(type = "string")) @PathParam(
+      "threadId"
+    ) UUID threadId,
+    @Parameter(description = "PostId of the post to be deleted", schema = @Schema(type = "string")) @PathParam(
+      "postId"
+    ) UUID postId
+  ) {
     // validate and get thread & post
     Thread thread = dao.get(threadId);
     Post post = dao.getPostById(thread, postId);
@@ -482,54 +501,57 @@ public class FeedResource {
   @GET
   @Path("/{id}/posts")
   @Operation(
-      operationId = "getAllPostOfThread",
-      summary = "Get all the posts of a thread",
-      description = "Get all the posts of an existing thread.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The posts of the given thread.",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = PostList.class))),
-      })
+    operationId = "getAllPostOfThread",
+    summary = "Get all the posts of a thread",
+    description = "Get all the posts of an existing thread.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "The posts of the given thread.",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = PostList.class))
+      )
+    }
+  )
   public ResultList<Post> getPosts(
-      @Context UriInfo uriInfo,
-      @Parameter(description = "Id of the thread", schema = @Schema(type = "string")) @PathParam("id") UUID id) {
+    @Context UriInfo uriInfo,
+    @Parameter(description = "Id of the thread", schema = @Schema(type = "string")) @PathParam("id") UUID id
+  ) {
     return new ResultList<>(dao.listPosts(id));
   }
 
   private Thread getThread(SecurityContext securityContext, CreateThread create) {
     return new Thread()
-        .withId(UUID.randomUUID())
-        .withThreadTs(System.currentTimeMillis())
-        .withMessage(create.getMessage())
-        .withCreatedBy(create.getFrom())
-        .withAbout(create.getAbout())
-        .withAddressedTo(create.getAddressedTo())
-        .withReactions(Collections.emptyList())
-        .withType(create.getType())
-        .withTask(getTaskDetails(create.getTaskDetails()))
-        .withAnnouncement(create.getAnnouncementDetails())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis());
+      .withId(UUID.randomUUID())
+      .withThreadTs(System.currentTimeMillis())
+      .withMessage(create.getMessage())
+      .withCreatedBy(create.getFrom())
+      .withAbout(create.getAbout())
+      .withAddressedTo(create.getAddressedTo())
+      .withReactions(Collections.emptyList())
+      .withType(create.getType())
+      .withTask(getTaskDetails(create.getTaskDetails()))
+      .withAnnouncement(create.getAnnouncementDetails())
+      .withUpdatedBy(securityContext.getUserPrincipal().getName())
+      .withUpdatedAt(System.currentTimeMillis());
   }
 
   private Post getPost(CreatePost create) {
     return new Post()
-        .withId(UUID.randomUUID())
-        .withMessage(create.getMessage())
-        .withFrom(create.getFrom())
-        .withReactions(Collections.emptyList())
-        .withPostTs(System.currentTimeMillis());
+      .withId(UUID.randomUUID())
+      .withMessage(create.getMessage())
+      .withFrom(create.getFrom())
+      .withReactions(Collections.emptyList())
+      .withPostTs(System.currentTimeMillis());
   }
 
   private TaskDetails getTaskDetails(CreateTaskDetails create) {
     if (create != null) {
       return new TaskDetails()
-          .withAssignees(formatAssignees(create.getAssignees()))
-          .withType(create.getType())
-          .withStatus(TaskStatus.Open)
-          .withOldValue(create.getOldValue())
-          .withSuggestion(create.getSuggestion());
+        .withAssignees(formatAssignees(create.getAssignees()))
+        .withType(create.getType())
+        .withStatus(TaskStatus.Open)
+        .withOldValue(create.getOldValue())
+        .withSuggestion(create.getSuggestion());
     }
     return null;
   }
@@ -537,7 +559,8 @@ public class FeedResource {
   public static List<EntityReference> formatAssignees(List<EntityReference> assignees) {
     List<EntityReference> result = new ArrayList<>();
     assignees.forEach(
-        assignee -> result.add(new EntityReference().withId(assignee.getId()).withType(assignee.getType())));
+      assignee -> result.add(new EntityReference().withId(assignee.getId()).withType(assignee.getType()))
+    );
     return result;
   }
 }

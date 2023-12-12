@@ -30,7 +30,7 @@ public class DbtGCSConfigClassConverter extends ClassConverter {
     DbtGCSConfig dbtGCSConfig = (DbtGCSConfig) JsonUtils.convertValue(object, this.clazz);
 
     tryToConvertOrFail(dbtGCSConfig.getDbtSecurityConfig(), List.of(GCPCredentials.class))
-        .ifPresent(obj -> dbtGCSConfig.setDbtSecurityConfig((GCPCredentials) obj));
+      .ifPresent(obj -> dbtGCSConfig.setDbtSecurityConfig((GCPCredentials) obj));
 
     return dbtGCSConfig;
   }

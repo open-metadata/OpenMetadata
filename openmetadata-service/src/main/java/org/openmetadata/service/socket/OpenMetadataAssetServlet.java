@@ -25,10 +25,15 @@ import org.jetbrains.annotations.Nullable;
 import org.openmetadata.service.config.OMWebConfiguration;
 
 public class OpenMetadataAssetServlet extends AssetServlet {
+
   private final OMWebConfiguration webConfiguration;
 
   public OpenMetadataAssetServlet(
-      String resourcePath, String uriPath, @Nullable String indexFile, OMWebConfiguration webConf) {
+    String resourcePath,
+    String uriPath,
+    @Nullable String indexFile,
+    OMWebConfiguration webConf
+  ) {
     super(resourcePath, uriPath, indexFile, "text/html", StandardCharsets.UTF_8);
     this.webConfiguration = webConf;
   }

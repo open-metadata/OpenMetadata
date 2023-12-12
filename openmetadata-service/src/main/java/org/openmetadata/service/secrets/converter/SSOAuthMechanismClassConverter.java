@@ -25,13 +25,13 @@ import org.openmetadata.service.util.JsonUtils;
 /** Converter class to get an `SSOAuthMechanism` object. */
 public class SSOAuthMechanismClassConverter extends ClassConverter {
 
-  private static final List<Class<?>> AUTH_CONFIG_CLASSES =
-      List.of(
-          GoogleSSOClientConfig.class,
-          OktaSSOClientConfig.class,
-          Auth0SSOClientConfig.class,
-          CustomOIDCSSOClientConfig.class,
-          AzureSSOClientConfig.class);
+  private static final List<Class<?>> AUTH_CONFIG_CLASSES = List.of(
+    GoogleSSOClientConfig.class,
+    OktaSSOClientConfig.class,
+    Auth0SSOClientConfig.class,
+    CustomOIDCSSOClientConfig.class,
+    AzureSSOClientConfig.class
+  );
 
   public SSOAuthMechanismClassConverter() {
     super(SSOAuthMechanism.class);
@@ -42,7 +42,7 @@ public class SSOAuthMechanismClassConverter extends ClassConverter {
     SSOAuthMechanism ssoAuthMechanism = (SSOAuthMechanism) JsonUtils.convertValue(object, this.clazz);
 
     tryToConvertOrFail(ssoAuthMechanism.getAuthConfig(), AUTH_CONFIG_CLASSES)
-        .ifPresent(ssoAuthMechanism::setAuthConfig);
+      .ifPresent(ssoAuthMechanism::setAuthConfig);
 
     return ssoAuthMechanism;
   }

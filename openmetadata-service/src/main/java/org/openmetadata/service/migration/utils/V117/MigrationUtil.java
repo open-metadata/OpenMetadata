@@ -18,19 +18,22 @@ import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.EntityUtil;
 
 public class MigrationUtil {
+
   private MigrationUtil() {
     /* Cannot create object  util class*/
   }
 
   private static final String MYSQL_LIST_TABLE_FQNS =
-      "SELECT JSON_UNQUOTE(JSON_EXTRACT(json, '$.fullyQualifiedName')) FROM table_entity";
+    "SELECT JSON_UNQUOTE(JSON_EXTRACT(json, '$.fullyQualifiedName')) FROM table_entity";
   private static final String POSTGRES_LIST_TABLE_FQNS = "SELECT json #>> '{fullyQualifiedName}' FROM table_entity";
 
   public static void fixTestCases(Handle handle, CollectionDAO collectionDAO) {
     TestCaseRepository testCaseRepository = (TestCaseRepository) Entity.getEntityRepository(Entity.TEST_CASE);
     TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(Entity.TABLE);
-    List<TestCase> testCases =
-        testCaseRepository.listAll(new EntityUtil.Fields(Set.of("id")), new ListFilter(Include.ALL));
+    List<TestCase> testCases = testCaseRepository.listAll(
+      new EntityUtil.Fields(Set.of("id")),
+      new ListFilter(Include.ALL)
+    );
 
     List<String> fqnList;
     if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {

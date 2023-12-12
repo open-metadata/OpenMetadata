@@ -71,7 +71,7 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
   @Test
   public void post_entityCreateWithInvalidName_400() {
     // Names can't start with capital letter, can't have space, hyphen, apostrophe
-    String[] tests = {"a bc", "a-bc", "a'b"};
+    String[] tests = { "a bc", "a-bc", "a'b" };
 
     String error = "[name must match \"^(?U)[\\w]+$\"]";
     CreateType create = createRequest("placeHolder", "", "", null);
@@ -88,8 +88,10 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
     assertTrue(listOrEmpty(tableEntity.getCustomProperties()).isEmpty());
 
     // Add a custom property with name intA with type integer with PUT
-    CustomProperty fieldA =
-        new CustomProperty().withName("intA").withDescription("intA").withPropertyType(INT_TYPE.getEntityReference());
+    CustomProperty fieldA = new CustomProperty()
+      .withName("intA")
+      .withDescription("intA")
+      .withPropertyType(INT_TYPE.getEntityReference());
     ChangeDescription change = getChangeDescription(tableEntity, MINOR_UPDATE);
     fieldAdded(change, "customProperties", new ArrayList<>(List.of(fieldA)));
     tableEntity = addCustomPropertyAndCheck(tableEntity.getId(), fieldA, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
@@ -113,10 +115,9 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
 
     // Add a second property with name intB with type integer
     // Note that since this is PUT operation, the previous changes are not consolidated
-    EntityReference typeRef =
-        new EntityReference()
-            .withType(INT_TYPE.getEntityReference().getType())
-            .withId(INT_TYPE.getEntityReference().getId());
+    EntityReference typeRef = new EntityReference()
+      .withType(INT_TYPE.getEntityReference().getType())
+      .withId(INT_TYPE.getEntityReference().getId());
     CustomProperty fieldB = new CustomProperty().withName("intB").withDescription("intB").withPropertyType(typeRef);
     change = getChangeDescription(tableEntity, MINOR_UPDATE);
     fieldAdded(change, "customProperties", new ArrayList<>(List.of(fieldB)));
@@ -129,27 +130,34 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
   @Test
   void put_customPropertyToPropertyType_4xx() {
     // Adding a custom property to a property type is not allowed (only entity type is allowed)
-    CustomProperty field =
-        new CustomProperty().withName("intA").withDescription("intA").withPropertyType(INT_TYPE.getEntityReference());
+    CustomProperty field = new CustomProperty()
+      .withName("intA")
+      .withDescription("intA")
+      .withPropertyType(INT_TYPE.getEntityReference());
     assertResponse(
-        () -> addCustomProperty(INT_TYPE.getId(), field, Status.CREATED, ADMIN_AUTH_HEADERS),
-        Status.BAD_REQUEST,
-        "Only entity types can be extended and field types can't be extended");
+      () -> addCustomProperty(INT_TYPE.getId(), field, Status.CREATED, ADMIN_AUTH_HEADERS),
+      Status.BAD_REQUEST,
+      "Only entity types can be extended and field types can't be extended"
+    );
   }
 
   @Override
   public Type validateGetWithDifferentFields(Type type, boolean byName) throws HttpResponseException {
     type =
-        byName
-            ? getEntityByName(type.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS)
-            : getEntity(type.getId(), null, ADMIN_AUTH_HEADERS);
+      byName
+        ? getEntityByName(type.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS)
+        : getEntity(type.getId(), null, ADMIN_AUTH_HEADERS);
 
     return type;
   }
 
   public Type addAndCheckCustomProperty(
-      UUID entityTypeId, CustomProperty customProperty, Status status, Map<String, String> authHeaders)
-      throws HttpResponseException {
+    UUID entityTypeId,
+    CustomProperty customProperty,
+    Status status,
+    Map<String, String> authHeaders
+  )
+    throws HttpResponseException {
     Type updated = addCustomProperty(entityTypeId, customProperty, status, authHeaders);
     assertTrue(updated.getCustomProperties().contains(customProperty));
 
@@ -159,12 +167,13 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
   }
 
   public Type addCustomPropertyAndCheck(
-      UUID entityTypeId,
-      CustomProperty customProperty,
-      Map<String, String> authHeaders,
-      UpdateType updateType,
-      ChangeDescription expectedChange)
-      throws IOException {
+    UUID entityTypeId,
+    CustomProperty customProperty,
+    Map<String, String> authHeaders,
+    UpdateType updateType,
+    ChangeDescription expectedChange
+  )
+    throws IOException {
     Type returned = addCustomProperty(entityTypeId, customProperty, Status.OK, authHeaders);
     validateChangeDescription(returned, updateType, expectedChange);
     validateEntityHistory(returned.getId(), updateType, expectedChange, authHeaders);
@@ -173,8 +182,12 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
   }
 
   public Type addCustomProperty(
-      UUID entityTypeId, CustomProperty customProperty, Status status, Map<String, String> authHeaders)
-      throws HttpResponseException {
+    UUID entityTypeId,
+    CustomProperty customProperty,
+    Status status,
+    Map<String, String> authHeaders
+  )
+    throws HttpResponseException {
     WebTarget target = getResource(entityTypeId);
     return TestUtils.put(target, customProperty, Type.class, status, authHeaders);
   }

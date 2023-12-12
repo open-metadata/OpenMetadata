@@ -17,6 +17,7 @@ import org.quartz.JobExecutionException;
 import org.quartz.JobListener;
 
 public abstract class AbstractOmAppJobListener implements JobListener {
+
   private final CollectionDAO collectionDAO;
   private static final String SCHEDULED_APP_RUN_EXTENSION = "AppScheduleRun";
   public static final String APP_RUN_STATS = "AppRunStats";
@@ -33,19 +34,19 @@ public abstract class AbstractOmAppJobListener implements JobListener {
 
   @Override
   public void jobToBeExecuted(JobExecutionContext jobExecutionContext) {
-    AppRunType runType =
-        AppRunType.fromValue((String) jobExecutionContext.getJobDetail().getJobDataMap().get("triggerType"));
+    AppRunType runType = AppRunType.fromValue(
+      (String) jobExecutionContext.getJobDetail().getJobDataMap().get("triggerType")
+    );
     App jobApp = (App) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_INFO_KEY);
     JobDataMap dataMap = jobExecutionContext.getJobDetail().getJobDataMap();
     long jobStartTime = System.currentTimeMillis();
-    AppRunRecord runRecord =
-        new AppRunRecord()
-            .withAppId(jobApp.getId())
-            .withStartTime(jobStartTime)
-            .withTimestamp(jobStartTime)
-            .withRunType(runType)
-            .withStatus(AppRunRecord.Status.RUNNING)
-            .withScheduleInfo(jobApp.getAppSchedule());
+    AppRunRecord runRecord = new AppRunRecord()
+      .withAppId(jobApp.getId())
+      .withStartTime(jobStartTime)
+      .withTimestamp(jobStartTime)
+      .withRunType(runType)
+      .withStatus(AppRunRecord.Status.RUNNING)
+      .withScheduleInfo(jobApp.getAppSchedule());
 
     // Put the Context in the Job Data Map
     dataMap.put(SCHEDULED_APP_RUN_EXTENSION, runRecord);
@@ -61,15 +62,20 @@ public abstract class AbstractOmAppJobListener implements JobListener {
 
   @Override
   public void jobWasExecuted(JobExecutionContext jobExecutionContext, JobExecutionException jobException) {
-    AppRunRecord runRecord =
-        (AppRunRecord) jobExecutionContext.getJobDetail().getJobDataMap().get(SCHEDULED_APP_RUN_EXTENSION);
+    AppRunRecord runRecord = (AppRunRecord) jobExecutionContext
+      .getJobDetail()
+      .getJobDataMap()
+      .get(SCHEDULED_APP_RUN_EXTENSION);
     Object jobStats = jobExecutionContext.getJobDetail().getJobDataMap().get(APP_RUN_STATS);
     long endTime = System.currentTimeMillis();
     runRecord.withEndTime(endTime);
 
-    if (jobException == null
-        && !(runRecord.getStatus() == AppRunRecord.Status.FAILED
-            || runRecord.getStatus() == AppRunRecord.Status.ACTIVE_ERROR)) {
+    if (
+      jobException == null &&
+      !(
+        runRecord.getStatus() == AppRunRecord.Status.FAILED || runRecord.getStatus() == AppRunRecord.Status.ACTIVE_ERROR
+      )
+    ) {
       runRecord.withStatus(AppRunRecord.Status.SUCCESS);
       SuccessContext context = new SuccessContext();
       if (runRecord.getSuccessContext() != null) {
@@ -112,8 +118,8 @@ public abstract class AbstractOmAppJobListener implements JobListener {
   private void updateStatus(UUID appId, AppRunRecord appRunRecord, boolean update) {
     if (update) {
       collectionDAO
-          .appExtensionTimeSeriesDao()
-          .update(appId.toString(), JsonUtils.pojoToJson(appRunRecord), appRunRecord.getTimestamp());
+        .appExtensionTimeSeriesDao()
+        .update(appId.toString(), JsonUtils.pojoToJson(appRunRecord), appRunRecord.getTimestamp());
     } else {
       collectionDAO.appExtensionTimeSeriesDao().insert(JsonUtils.pojoToJson(appRunRecord));
     }

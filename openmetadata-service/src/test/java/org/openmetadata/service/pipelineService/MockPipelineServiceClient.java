@@ -40,13 +40,17 @@ public class MockPipelineServiceClient extends PipelineServiceClient {
 
   @Override
   public PipelineServiceClientResponse deployPipeline(
-      IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
+    IngestionPipeline ingestionPipeline,
+    ServiceEntityInterface service
+  ) {
     return null;
   }
 
   @Override
   public PipelineServiceClientResponse runPipeline(
-      IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
+    IngestionPipeline ingestionPipeline,
+    ServiceEntityInterface service
+  ) {
     return null;
   }
 

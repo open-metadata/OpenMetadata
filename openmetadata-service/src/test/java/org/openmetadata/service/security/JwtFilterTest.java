@@ -89,11 +89,11 @@ class JwtFilterTest {
     jwtFilter = new JwtFilter(jwkProvider, principalClaims, domain, enforcePrincipalDomain);
 
     // success case
-    String jwt =
-        JWT.create()
-            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
-            .withClaim("email", "sam@openmetadata.org")
-            .sign(algorithm);
+    String jwt = JWT
+      .create()
+      .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+      .withClaim("email", "sam@openmetadata.org")
+      .sign(algorithm);
 
     ContainerRequestContext context = createRequestContextWithJwt(jwt);
 
@@ -106,10 +106,11 @@ class JwtFilterTest {
 
     // error case
     jwt =
-        JWT.create()
-            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
-            .withClaim("email", "sam@gmail.com")
-            .sign(algorithm);
+      JWT
+        .create()
+        .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+        .withClaim("email", "sam@gmail.com")
+        .sign(algorithm);
     ContainerRequestContext newContext = createRequestContextWithJwt(jwt);
 
     Exception exception = assertThrows(AuthenticationException.class, () -> jwtFilter.filter(newContext));
@@ -118,11 +119,11 @@ class JwtFilterTest {
 
   @Test
   void testSuccessfulFilter() {
-    String jwt =
-        JWT.create()
-            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
-            .withClaim("sub", "sam")
-            .sign(algorithm);
+    String jwt = JWT
+      .create()
+      .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+      .withClaim("sub", "sam")
+      .sign(algorithm);
 
     ContainerRequestContext context = createRequestContextWithJwt(jwt);
 
@@ -136,11 +137,11 @@ class JwtFilterTest {
 
   @Test
   void testFilterWithEmailClaim() {
-    String jwt =
-        JWT.create()
-            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
-            .withClaim("email", "sam@gmail.com")
-            .sign(algorithm);
+    String jwt = JWT
+      .create()
+      .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+      .withClaim("email", "sam@gmail.com")
+      .sign(algorithm);
 
     ContainerRequestContext context = createRequestContextWithJwt(jwt);
 
@@ -173,11 +174,11 @@ class JwtFilterTest {
 
   @Test
   void testExpiredToken() {
-    String jwt =
-        JWT.create()
-            .withExpiresAt(Date.from(Instant.now().minus(1, ChronoUnit.DAYS)))
-            .withClaim("sub", "sam")
-            .sign(algorithm);
+    String jwt = JWT
+      .create()
+      .withExpiresAt(Date.from(Instant.now().minus(1, ChronoUnit.DAYS)))
+      .withClaim("sub", "sam")
+      .sign(algorithm);
 
     ContainerRequestContext context = createRequestContextWithJwt(jwt);
 
@@ -187,11 +188,11 @@ class JwtFilterTest {
 
   @Test
   void testNoClaimsInToken() {
-    String jwt =
-        JWT.create()
-            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
-            .withClaim("emailAddress", "sam@gmail.com")
-            .sign(algorithm);
+    String jwt = JWT
+      .create()
+      .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+      .withClaim("emailAddress", "sam@gmail.com")
+      .sign(algorithm);
 
     ContainerRequestContext context = createRequestContextWithJwt(jwt);
 
@@ -204,14 +205,16 @@ class JwtFilterTest {
     KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA");
     keyPairGenerator.initialize(512);
     KeyPair keyPair = keyPairGenerator.generateKeyPair();
-    Algorithm secondaryAlgorithm =
-        Algorithm.RSA256((RSAPublicKey) keyPair.getPublic(), (RSAPrivateKey) keyPair.getPrivate());
+    Algorithm secondaryAlgorithm = Algorithm.RSA256(
+      (RSAPublicKey) keyPair.getPublic(),
+      (RSAPrivateKey) keyPair.getPrivate()
+    );
 
-    String jwt =
-        JWT.create()
-            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
-            .withClaim("sub", "sam")
-            .sign(secondaryAlgorithm);
+    String jwt = JWT
+      .create()
+      .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+      .withClaim("sub", "sam")
+      .sign(secondaryAlgorithm);
 
     ContainerRequestContext context = createRequestContextWithJwt(jwt);
 
@@ -224,8 +227,9 @@ class JwtFilterTest {
    * JwtFilter cares only about the Authorization header and request URI.
    */
   private static ContainerRequestContext createRequestContextWithJwt(String jwt) {
-    MultivaluedHashMap<String, String> headers =
-        new MultivaluedHashMap<>(Map.of(JwtFilter.AUTHORIZATION_HEADER, format("%s %s", JwtFilter.TOKEN_PREFIX, jwt)));
+    MultivaluedHashMap<String, String> headers = new MultivaluedHashMap<>(
+      Map.of(JwtFilter.AUTHORIZATION_HEADER, format("%s %s", JwtFilter.TOKEN_PREFIX, jwt))
+    );
 
     ContainerRequestContext context = mock(ContainerRequestContext.class);
     when(context.getUriInfo()).thenReturn(mockRequestURIInfo);

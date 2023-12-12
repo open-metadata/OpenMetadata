@@ -36,13 +36,11 @@ import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.ResultList;
 
-public abstract class ServiceEntityResource<
-        T extends ServiceEntityInterface,
-        R extends ServiceEntityRepository<T, S>,
-        S extends ServiceConnectionEntityInterface>
-    extends EntityResource<T, R> {
+public abstract class ServiceEntityResource<T extends ServiceEntityInterface, R extends ServiceEntityRepository<T, S>, S extends ServiceConnectionEntityInterface>
+  extends EntityResource<T, R> {
 
-  @Getter private final ServiceEntityRepository<T, S> serviceEntityRepository;
+  @Getter
+  private final ServiceEntityRepository<T, S> serviceEntityRepository;
 
   private final ServiceType serviceType;
 
@@ -55,21 +53,24 @@ public abstract class ServiceEntityResource<
   protected T decryptOrNullify(SecurityContext securityContext, T service) {
     if (service.getConnection() != null) {
       service
-          .getConnection()
-          .setConfig(retrieveServiceConnectionConfig(service, authorizer.shouldMaskPasswords(securityContext)));
+        .getConnection()
+        .setConfig(retrieveServiceConnectionConfig(service, authorizer.shouldMaskPasswords(securityContext)));
     }
     return service;
   }
 
   private Object retrieveServiceConnectionConfig(T service, boolean maskPassword) {
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
-    Object config =
-        secretsManager.decryptServiceConnectionConfig(
-            service.getConnection().getConfig(), extractServiceType(service), serviceType);
+    Object config = secretsManager.decryptServiceConnectionConfig(
+      service.getConnection().getConfig(),
+      extractServiceType(service),
+      serviceType
+    );
     if (maskPassword) {
       config =
-          EntityMaskerFactory.getEntityMasker()
-              .maskServiceConnectionConfig(config, extractServiceType(service), serviceType);
+        EntityMaskerFactory
+          .getEntityMasker()
+          .maskServiceConnectionConfig(config, extractServiceType(service), serviceType);
     }
     return config;
   }
@@ -86,13 +87,14 @@ public abstract class ServiceEntityResource<
     String connectionType = extractServiceType(service);
     try {
       if (originalService != null && originalService.getConnection() != null) {
-        Object serviceConnectionConfig =
-            EntityMaskerFactory.getEntityMasker()
-                .unmaskServiceConnectionConfig(
-                    service.getConnection().getConfig(),
-                    originalService.getConnection().getConfig(),
-                    connectionType,
-                    serviceType);
+        Object serviceConnectionConfig = EntityMaskerFactory
+          .getEntityMasker()
+          .unmaskServiceConnectionConfig(
+            service.getConnection().getConfig(),
+            originalService.getConnection().getConfig(),
+            connectionType,
+            serviceType
+          );
         service.getConnection().setConfig(serviceConnectionConfig);
       }
       return service;
@@ -102,7 +104,9 @@ public abstract class ServiceEntityResource<
         throw new InvalidServiceConnectionException(message);
       }
       throw InvalidServiceConnectionException.byMessage(
-          connectionType, String.format("Failed to unmask connection instance of %s", connectionType));
+        connectionType,
+        String.format("Failed to unmask connection instance of %s", connectionType)
+      );
     }
   }
 
@@ -111,14 +115,15 @@ public abstract class ServiceEntityResource<
   protected abstract String extractServiceType(T service);
 
   protected ResultList<T> listInternal(
-      UriInfo uriInfo,
-      SecurityContext securityContext,
-      String fieldsParam,
-      Include include,
-      String domain,
-      int limitParam,
-      String before,
-      String after) {
+    UriInfo uriInfo,
+    SecurityContext securityContext,
+    String fieldsParam,
+    Include include,
+    String domain,
+    int limitParam,
+    String before,
+    String after
+  ) {
     ListFilter filter = new ListFilter(include);
     if (!nullOrEmpty(domain)) {
       EntityReference domainReference = Entity.getEntityReferenceByName(Entity.DOMAIN, domain, Include.NON_DELETED);

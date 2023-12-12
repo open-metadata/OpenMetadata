@@ -37,6 +37,7 @@ import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class GChatPublisher extends SubscriptionPublisher {
+
   private final MessageDecorator<GChatMessage> gChatMessageMessageDecorator = new GChatMessageDecorator();
   private final Webhook webhook;
   private Invocation.Builder target;

@@ -61,8 +61,12 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
 
   public String getEntityUrl(String entityType, String fqn) {
     return String.format(
-        "<%s/%s/%s|%s>",
-        getSmtpSettings().getOpenMetadataUrl(), entityType, fqn.trim().replaceAll(" ", "%20"), fqn.trim());
+      "<%s/%s/%s|%s>",
+      getSmtpSettings().getOpenMetadataUrl(),
+      entityType,
+      fqn.trim().replaceAll(" ", "%20"),
+      fqn.trim()
+    );
   }
 
   @Override
@@ -84,15 +88,19 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
       } else {
         headerTxt = "%s posted on " + eventType + " %s";
         headerText =
-            String.format(
-                headerTxt,
-                event.getUserName(),
-                this.getEntityUrl(event.getEntityType(), event.getEntityFullyQualifiedName()));
+          String.format(
+            headerTxt,
+            event.getUserName(),
+            this.getEntityUrl(event.getEntityType(), event.getEntityFullyQualifiedName())
+          );
       }
       slackMessage.setText(headerText);
     }
-    Map<MessageParser.EntityLink, String> messages =
-        getFormattedMessages(this, event.getChangeDescription(), getEntity(event));
+    Map<MessageParser.EntityLink, String> messages = getFormattedMessages(
+      this,
+      event.getChangeDescription(),
+      getEntity(event)
+    );
     List<SlackAttachment> attachmentList = new ArrayList<>();
     for (Map.Entry<MessageParser.EntityLink, String> entry : messages.entrySet()) {
       SlackAttachment attachment = new SlackAttachment();

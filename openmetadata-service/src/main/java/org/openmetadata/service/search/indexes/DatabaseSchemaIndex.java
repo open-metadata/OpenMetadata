@@ -11,6 +11,7 @@ import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
 public class DatabaseSchemaIndex implements SearchIndex {
+
   final DatabaseSchema databaseSchema;
 
   private static final List<String> excludeFields = List.of("changeDescription");
@@ -26,10 +27,12 @@ public class DatabaseSchemaIndex implements SearchIndex {
     suggest.add(SearchSuggest.builder().input(databaseSchema.getName()).weight(5).build());
     suggest.add(SearchSuggest.builder().input(databaseSchema.getFullyQualifiedName()).weight(5).build());
     doc.put(
-        "fqnParts",
-        getFQNParts(
-            databaseSchema.getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+      "fqnParts",
+      getFQNParts(
+        databaseSchema.getFullyQualifiedName(),
+        suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())
+      )
+    );
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.DATABASE_SCHEMA);
     doc.put("owner", getEntityWithDisplayName(databaseSchema.getOwner()));

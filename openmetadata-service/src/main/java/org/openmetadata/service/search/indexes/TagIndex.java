@@ -11,6 +11,7 @@ import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
 public class TagIndex implements SearchIndex {
+
   final Tag tag;
   private static final List<String> excludeFields = List.of("changeDescription");
 
@@ -25,9 +26,12 @@ public class TagIndex implements SearchIndex {
     suggest.add(SearchSuggest.builder().input(tag.getFullyQualifiedName()).weight(5).build());
     suggest.add(SearchSuggest.builder().input(tag.getName()).weight(10).build());
     doc.put(
-        "fqnParts",
-        getFQNParts(
-            tag.getFullyQualifiedName(), suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+      "fqnParts",
+      getFQNParts(
+        tag.getFullyQualifiedName(),
+        suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())
+      )
+    );
     if (tag.getDisabled() != null && tag.getDisabled()) {
       doc.put("disabled", tag.getDisabled());
     } else {

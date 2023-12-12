@@ -19,35 +19,37 @@ import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
 public class OwnerFormatter extends DefaultFieldFormatter {
+
   public OwnerFormatter(
-      MessageDecorator<?> messageDecorator,
-      String fieldOldValue,
-      String fieldNewValue,
-      String fieldChangeName,
-      MessageParser.EntityLink entityLink) {
+    MessageDecorator<?> messageDecorator,
+    String fieldOldValue,
+    String fieldNewValue,
+    String fieldChangeName,
+    MessageParser.EntityLink entityLink
+  ) {
     super(messageDecorator, fieldOldValue, fieldNewValue, fieldChangeName, entityLink);
   }
 
   @Override
   public String formatUpdatedField() {
     String diff =
-        this.getMessageDecorator().httpRemoveMarker()
-            + this.getFieldOldValue()
-            + this.getMessageDecorator().httpRemoveMarker()
-            + " changed to "
-            + this.getMessageDecorator().httpAddMarker()
-            + this.getFieldNewValue()
-            + this.getMessageDecorator().httpAddMarker();
+      this.getMessageDecorator().httpRemoveMarker() +
+      this.getFieldOldValue() +
+      this.getMessageDecorator().httpRemoveMarker() +
+      " changed to " +
+      this.getMessageDecorator().httpAddMarker() +
+      this.getFieldNewValue() +
+      this.getMessageDecorator().httpAddMarker();
     String spanAdd = this.getMessageDecorator().getAddMarker();
     String spanAddClose = this.getMessageDecorator().getAddMarkerClose();
     String spanRemove = this.getMessageDecorator().getRemoveMarker();
     String spanRemoveClose = this.getMessageDecorator().getRemoveMarkerClose();
     diff =
-        this.getMessageDecorator()
-            .replaceMarkers(diff, this.getMessageDecorator().httpAddMarker(), spanAdd, spanAddClose);
+      this.getMessageDecorator()
+        .replaceMarkers(diff, this.getMessageDecorator().httpAddMarker(), spanAdd, spanAddClose);
     diff =
-        this.getMessageDecorator()
-            .replaceMarkers(diff, this.getMessageDecorator().httpRemoveMarker(), spanRemove, spanRemoveClose);
+      this.getMessageDecorator()
+        .replaceMarkers(diff, this.getMessageDecorator().httpRemoveMarker(), spanRemove, spanRemoveClose);
     if (CommonUtil.nullOrEmpty(diff)) {
       return StringUtils.EMPTY;
     } else {

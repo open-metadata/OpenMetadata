@@ -28,6 +28,7 @@ import org.jdbi.v3.sqlobject.internal.SqlAnnotations;
 import org.jdbi.v3.sqlobject.locator.SqlLocator;
 
 public class ConnectionAwareAnnotationSqlLocator implements SqlLocator {
+
   private final ConnectionType connectionType;
   private final ConcurrentMap<Method, String> located = new ConcurrentHashMap<>();
 
@@ -38,33 +39,37 @@ public class ConnectionAwareAnnotationSqlLocator implements SqlLocator {
   @Override
   public String locate(Class<?> sqlObjectType, Method method, ConfigRegistry config) {
     return located.computeIfAbsent(
-        method,
-        m ->
-            getAnnotationValue(m)
-                .orElseThrow(
-                    () ->
-                        new IllegalStateException(
-                            format(
-                                "Method %s is missing SQL annotation for connection type %s",
-                                method, connectionType))));
+      method,
+      m ->
+        getAnnotationValue(m)
+          .orElseThrow(
+            () ->
+              new IllegalStateException(
+                format("Method %s is missing SQL annotation for connection type %s", method, connectionType)
+              )
+          )
+    );
   }
 
   private Optional<String> getAnnotationValue(Method method) {
     return JdbiOptionals.findFirstPresent(
-        () ->
-            Optional.ofNullable(method.getAnnotation(ConnectionAwareSqlUpdateContainer.class))
-                .map(ConnectionAwareSqlUpdateContainer::value)
-                .map(Arrays::asList)
-                .map(l -> l.stream().filter(a -> a.connectionType().equals(connectionType)).findFirst())
-                .flatMap(identity()) // Unwrap Option<Optional<?>> to Optional<?>
-                .map(ConnectionAwareSqlUpdate::value),
-        () ->
-            Optional.ofNullable(method.getAnnotation(ConnectionAwareSqlQueryContainer.class))
-                .map(ConnectionAwareSqlQueryContainer::value)
-                .map(Arrays::asList)
-                .map(l -> l.stream().filter(a -> a.connectionType().equals(connectionType)).findFirst())
-                .flatMap(identity()) // Unwrap Option<Optional<?>> to Optional<?>
-                .map(ConnectionAwareSqlQuery::value),
-        () -> SqlAnnotations.getAnnotationValue(method));
+      () ->
+        Optional
+          .ofNullable(method.getAnnotation(ConnectionAwareSqlUpdateContainer.class))
+          .map(ConnectionAwareSqlUpdateContainer::value)
+          .map(Arrays::asList)
+          .map(l -> l.stream().filter(a -> a.connectionType().equals(connectionType)).findFirst())
+          .flatMap(identity()) // Unwrap Option<Optional<?>> to Optional<?>
+          .map(ConnectionAwareSqlUpdate::value),
+      () ->
+        Optional
+          .ofNullable(method.getAnnotation(ConnectionAwareSqlQueryContainer.class))
+          .map(ConnectionAwareSqlQueryContainer::value)
+          .map(Arrays::asList)
+          .map(l -> l.stream().filter(a -> a.connectionType().equals(connectionType)).findFirst())
+          .flatMap(identity()) // Unwrap Option<Optional<?>> to Optional<?>
+          .map(ConnectionAwareSqlQuery::value),
+      () -> SqlAnnotations.getAnnotationValue(method)
+    );
   }
 }

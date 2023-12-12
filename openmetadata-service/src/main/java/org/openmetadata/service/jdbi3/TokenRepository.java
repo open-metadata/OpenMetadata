@@ -11,6 +11,7 @@ import org.openmetadata.service.util.JsonUtils;
 @Slf4j
 @Repository
 public class TokenRepository {
+
   static final String TOKEN_NOT_PRESENT_MSG = "Token not present for the user";
   private final CollectionDAO dao;
 

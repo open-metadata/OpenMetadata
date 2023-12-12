@@ -7,7 +7,8 @@ import java.util.List;
 import org.openmetadata.service.dataInsight.MostViewedEntitiesAggregator;
 
 public class ElasticSearchMostViewedEntitiesAggregator
-    extends MostViewedEntitiesAggregator<Aggregations, MultiBucketsAggregation.Bucket, MultiBucketsAggregation, Sum> {
+  extends MostViewedEntitiesAggregator<Aggregations, MultiBucketsAggregation.Bucket, MultiBucketsAggregation, Sum> {
+
   public ElasticSearchMostViewedEntitiesAggregator(Aggregations aggregations) {
     super(aggregations);
   }

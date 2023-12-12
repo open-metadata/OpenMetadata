@@ -23,6 +23,7 @@ import os.org.opensearch.action.bulk.BulkItemResponse;
 import os.org.opensearch.action.bulk.BulkResponse;
 
 public class ReindexingUtil {
+
   private ReindexingUtil() {
     /*unused*/
   }
@@ -46,7 +47,7 @@ public class ReindexingUtil {
         total += repository.getDao().listTotalCount();
       } else {
         total +=
-            dao.reportDataTimeSeriesDao().listCount(new ListFilter(null).addQueryParam("entityFQNHash", entityType));
+          dao.reportDataTimeSeriesDao().listCount(new ListFilter(null).addQueryParam("entityFQNHash", entityType));
       }
     }
     return total;

@@ -1,6 +1,7 @@
 package org.openmetadata.service.search;
 
 public class EntityBuilderConstant {
+
   public static final String FIELD_OWNER = "owner";
   public static final String FIELD_DESCRIPTION = "description";
   public static final String FIELD_FOLLOWERS = "followers";

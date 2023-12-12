@@ -37,6 +37,7 @@ import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class MSTeamsPublisher extends SubscriptionPublisher {
+
   private final MessageDecorator<TeamsMessage> teamsMessageFormatter = new MSTeamsMessageDecorator();
   private final Webhook webhook;
   private Invocation.Builder target;
@@ -81,8 +82,13 @@ public class MSTeamsPublisher extends SubscriptionPublisher {
     for (ChangeEvent event : list.getData()) {
       try {
         TeamsMessage teamsMessage = teamsMessageFormatter.buildMessage(event);
-        List<Invocation.Builder> targets =
-            getTargetsForWebhook(webhook, MS_TEAMS_WEBHOOK, client, daoCollection, event);
+        List<Invocation.Builder> targets = getTargetsForWebhook(
+          webhook,
+          MS_TEAMS_WEBHOOK,
+          client,
+          daoCollection,
+          event
+        );
         if (target != null) {
           targets.add(target);
         }

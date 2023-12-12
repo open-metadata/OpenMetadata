@@ -68,6 +68,7 @@ import org.openmetadata.service.util.TestUtils;
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class SystemResourceTest extends OpenMetadataApplicationTest {
+
   static OpenMetadataApplicationConfig config;
 
   @BeforeAll
@@ -75,8 +76,12 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     // Get config object from test yaml file
     ObjectMapper objectMapper = Jackson.newObjectMapper();
     Validator validator = Validators.newValidator();
-    YamlConfigurationFactory<OpenMetadataApplicationConfig> factory =
-        new YamlConfigurationFactory<>(OpenMetadataApplicationConfig.class, validator, objectMapper, "dw");
+    YamlConfigurationFactory<OpenMetadataApplicationConfig> factory = new YamlConfigurationFactory<>(
+      OpenMetadataApplicationConfig.class,
+      validator,
+      objectMapper,
+      "dw"
+    );
     config = factory.build(new FileConfigurationSourceProvider(), CONFIG_PATH);
   }
 
@@ -176,8 +181,10 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
 
     // Test Custom Log Config
     Settings logoConfigWrapped = getSystemConfig(SettingsType.CUSTOM_LOGO_CONFIGURATION);
-    LogoConfiguration loginConfiguration =
-        JsonUtils.convertValue(logoConfigWrapped.getConfigValue(), LogoConfiguration.class);
+    LogoConfiguration loginConfiguration = JsonUtils.convertValue(
+      logoConfigWrapped.getConfigValue(),
+      LogoConfiguration.class
+    );
 
     // Defaults
     Assertions.assertEquals("", loginConfiguration.getCustomLogoUrlPath());
@@ -193,20 +200,25 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     smtpSettings.setEmailingEntity(test.getDisplayName());
 
     updateSystemConfig(new Settings().withConfigType(SettingsType.EMAIL_CONFIGURATION).withConfigValue(smtpSettings));
-    SmtpSettings updateEmailSettings =
-        JsonUtils.convertValue(getSystemConfig(SettingsType.EMAIL_CONFIGURATION).getConfigValue(), SmtpSettings.class);
+    SmtpSettings updateEmailSettings = JsonUtils.convertValue(
+      getSystemConfig(SettingsType.EMAIL_CONFIGURATION).getConfigValue(),
+      SmtpSettings.class
+    );
     Assertions.assertEquals(updateEmailSettings.getUsername(), test.getDisplayName());
     Assertions.assertEquals(updateEmailSettings.getEmailingEntity(), test.getDisplayName());
 
     // Test Custom Logo Update
-    LogoConfiguration updateConfigReq =
-        new LogoConfiguration().withCustomLogoUrlPath("http://test.com").withCustomMonogramUrlPath("http://test.com");
+    LogoConfiguration updateConfigReq = new LogoConfiguration()
+      .withCustomLogoUrlPath("http://test.com")
+      .withCustomMonogramUrlPath("http://test.com");
     // Update Custom Logo Settings
     updateSystemConfig(
-        new Settings().withConfigType(SettingsType.CUSTOM_LOGO_CONFIGURATION).withConfigValue(updateConfigReq));
-    LogoConfiguration updatedConfig =
-        JsonUtils.convertValue(
-            getSystemConfig(SettingsType.CUSTOM_LOGO_CONFIGURATION).getConfigValue(), LogoConfiguration.class);
+      new Settings().withConfigType(SettingsType.CUSTOM_LOGO_CONFIGURATION).withConfigValue(updateConfigReq)
+    );
+    LogoConfiguration updatedConfig = JsonUtils.convertValue(
+      getSystemConfig(SettingsType.CUSTOM_LOGO_CONFIGURATION).getConfigValue(),
+      LogoConfiguration.class
+    );
     Assertions.assertEquals(updateConfigReq, updatedConfig);
   }
 
@@ -260,17 +272,18 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
 
     // Create a bot user.
     UserResourceTest userResourceTest = new UserResourceTest();
-    CreateUser createUser =
-        userResourceTest
-            .createRequest(test)
-            .withIsBot(true)
-            .withAuthenticationMechanism(
-                new AuthenticationMechanism()
-                    .withAuthType(AuthenticationMechanism.AuthType.SSO)
-                    .withConfig(
-                        new SSOAuthMechanism()
-                            .withSsoServiceType(SSOAuthMechanism.SsoServiceType.GOOGLE)
-                            .withAuthConfig(new GoogleSSOClientConfig().withSecretKey("/fake/path/secret.json"))));
+    CreateUser createUser = userResourceTest
+      .createRequest(test)
+      .withIsBot(true)
+      .withAuthenticationMechanism(
+        new AuthenticationMechanism()
+          .withAuthType(AuthenticationMechanism.AuthType.SSO)
+          .withConfig(
+            new SSOAuthMechanism()
+              .withSsoServiceType(SSOAuthMechanism.SsoServiceType.GOOGLE)
+              .withAuthConfig(new GoogleSSOClientConfig().withSecretKey("/fake/path/secret.json"))
+          )
+      );
     userResourceTest.createEntity(createUser, ADMIN_AUTH_HEADERS);
 
     int afterUserCount = getEntitiesCount().getUserCount();

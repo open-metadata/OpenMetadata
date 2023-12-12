@@ -7,14 +7,16 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.storage.StorageServiceResource;
 
 public class SearchServiceRepository extends ServiceEntityRepository<SearchService, SearchConnection> {
+
   public SearchServiceRepository() {
     super(
-        StorageServiceResource.COLLECTION_PATH,
-        Entity.SEARCH_SERVICE,
-        Entity.getCollectionDAO().searchServiceDAO(),
-        SearchConnection.class,
-        "",
-        ServiceType.SEARCH);
+      StorageServiceResource.COLLECTION_PATH,
+      Entity.SEARCH_SERVICE,
+      Entity.getCollectionDAO().searchServiceDAO(),
+      SearchConnection.class,
+      "",
+      ServiceType.SEARCH
+    );
     supportsSearch = true;
   }
 }

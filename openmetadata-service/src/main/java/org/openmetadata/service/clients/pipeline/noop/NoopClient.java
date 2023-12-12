@@ -56,13 +56,17 @@ public class NoopClient extends PipelineServiceClient {
 
   @Override
   public PipelineServiceClientResponse deployPipeline(
-      IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
+    IngestionPipeline ingestionPipeline,
+    ServiceEntityInterface service
+  ) {
     throw new PipelineServiceClientException(String.format(EXCEPTION_MSG, "deploy"));
   }
 
   @Override
   public PipelineServiceClientResponse runPipeline(
-      IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
+    IngestionPipeline ingestionPipeline,
+    ServiceEntityInterface service
+  ) {
     throw new PipelineServiceClientException(String.format(EXCEPTION_MSG, "run"));
   }
 

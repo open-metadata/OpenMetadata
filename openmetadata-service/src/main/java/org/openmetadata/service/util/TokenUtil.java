@@ -27,6 +27,7 @@ import org.openmetadata.schema.auth.TokenType;
 import org.openmetadata.schema.entity.teams.User;
 
 public class TokenUtil {
+
   private TokenUtil() {}
 
   public static TokenInterface createNewTokenWithDefaults(UUID userId, UUID tokenId, TokenType type) {
@@ -75,7 +76,10 @@ public class TokenUtil {
   }
 
   public static PersonalAccessToken getPersonalAccessToken(
-      CreatePersonalToken request, User user, JWTAuthMechanism authMechanism) {
+    CreatePersonalToken request,
+    User user,
+    JWTAuthMechanism authMechanism
+  ) {
     PersonalAccessToken personalAccessToken = new PersonalAccessToken();
     personalAccessToken.setToken(UUID.randomUUID());
     personalAccessToken.setTokenName(request.getTokenName());

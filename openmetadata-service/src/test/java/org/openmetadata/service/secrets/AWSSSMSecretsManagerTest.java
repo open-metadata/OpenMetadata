@@ -21,7 +21,8 @@ import software.amazon.awssdk.services.ssm.SsmClient;
 
 public class AWSSSMSecretsManagerTest extends ExternalSecretsManagerTest {
 
-  @Mock private SsmClient ssmClient;
+  @Mock
+  private SsmClient ssmClient;
 
   @Override
   void setUpSpecific(SecretsManagerConfiguration config) {

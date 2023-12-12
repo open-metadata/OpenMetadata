@@ -51,17 +51,21 @@ public class DashboardDataModelIndex implements ColumnIndex {
     }
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.DASHBOARD_DATA_MODEL, dashboardDataModel));
     tagsWithChildren.add(parseTags.getTags());
-    List<TagLabel> flattenedTagList =
-        tagsWithChildren.stream().flatMap(List::stream).collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
+    List<TagLabel> flattenedTagList = tagsWithChildren
+      .stream()
+      .flatMap(List::stream)
+      .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
     doc.put("tags", flattenedTagList);
     doc.put("column_suggest", columnSuggest);
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.DASHBOARD_DATA_MODEL);
     doc.put(
-        "fqnParts",
-        getFQNParts(
-            dashboardDataModel.getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+      "fqnParts",
+      getFQNParts(
+        dashboardDataModel.getFullyQualifiedName(),
+        suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())
+      )
+    );
     doc.put("tier", parseTags.getTierTag());
     doc.put("owner", getEntityWithDisplayName(dashboardDataModel.getOwner()));
     doc.put("service", getEntityWithDisplayName(dashboardDataModel.getService()));

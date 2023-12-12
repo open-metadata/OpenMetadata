@@ -19,30 +19,26 @@ import javax.ws.rs.core.Response;
 import lombok.Getter;
 
 public abstract class WebServiceException extends RuntimeException {
-  @Getter private final transient Response response;
+
+  @Getter
+  private final transient Response response;
 
   protected WebServiceException(Response.Status status, String msg) {
     super(msg);
     response =
-        Response.status(status)
-            .entity(convertToErrorResponseMessage(msg))
-            .type(MediaType.APPLICATION_JSON_TYPE)
-            .build();
+      Response.status(status).entity(convertToErrorResponseMessage(msg)).type(MediaType.APPLICATION_JSON_TYPE).build();
   }
 
   protected WebServiceException(int status, String msg) {
     super(msg);
     response =
-        Response.status(status).entity(new ErrorMessage(status, msg)).type(MediaType.APPLICATION_JSON_TYPE).build();
+      Response.status(status).entity(new ErrorMessage(status, msg)).type(MediaType.APPLICATION_JSON_TYPE).build();
   }
 
   protected WebServiceException(Response.Status status, String msg, Throwable cause) {
     super(msg, cause);
     response =
-        Response.status(status)
-            .entity(convertToErrorResponseMessage(msg))
-            .type(MediaType.APPLICATION_JSON_TYPE)
-            .build();
+      Response.status(status).entity(convertToErrorResponseMessage(msg)).type(MediaType.APPLICATION_JSON_TYPE).build();
   }
 
   private static ErrorResponse convertToErrorResponseMessage(String msg) {
@@ -50,8 +46,10 @@ public abstract class WebServiceException extends RuntimeException {
   }
 
   private static class ErrorResponse {
+
     /** Response message. */
-    @Getter private final String responseMessage;
+    @Getter
+    private final String responseMessage;
 
     ErrorResponse(String responseMessage) {
       this.responseMessage = responseMessage;

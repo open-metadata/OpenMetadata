@@ -26,6 +26,7 @@ import org.openmetadata.service.events.subscription.email.EmailMessage;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
 public class EmailMessageDecorator implements MessageDecorator<EmailMessage> {
+
   @Override
   public String getBold() {
     return "<b>%s</b>";
@@ -59,7 +60,12 @@ public class EmailMessageDecorator implements MessageDecorator<EmailMessage> {
   @Override
   public String getEntityUrl(String entityType, String fqn) {
     return String.format(
-        "<a href = '%s/%s/%s'>%s</a>", getSmtpSettings().getOpenMetadataUrl(), entityType, fqn.trim(), fqn.trim());
+      "<a href = '%s/%s/%s'>%s</a>",
+      getSmtpSettings().getOpenMetadataUrl(),
+      entityType,
+      fqn.trim(),
+      fqn.trim()
+    );
   }
 
   @Override
@@ -74,8 +80,11 @@ public class EmailMessageDecorator implements MessageDecorator<EmailMessage> {
         emailMessage.setEntityUrl(this.getEntityUrl(event.getEntityType(), event.getEntityFullyQualifiedName()));
       }
     }
-    Map<MessageParser.EntityLink, String> messages =
-        getFormattedMessages(this, event.getChangeDescription(), getEntity(event));
+    Map<MessageParser.EntityLink, String> messages = getFormattedMessages(
+      this,
+      event.getChangeDescription(),
+      getEntity(event)
+    );
     List<String> changeMessage = new ArrayList<>();
     for (Map.Entry<MessageParser.EntityLink, String> entry : messages.entrySet()) {
       changeMessage.add(entry.getValue());

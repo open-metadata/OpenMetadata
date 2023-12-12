@@ -21,52 +21,59 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 
 public class TestDefinitionResourceTest extends EntityResourceTest<TestDefinition, CreateTestDefinition> {
+
   public TestDefinitionResourceTest() {
     super(
-        Entity.TEST_DEFINITION,
-        TestDefinition.class,
-        TestDefinitionResource.TestDefinitionList.class,
-        "dataQuality/testDefinitions",
-        TestDefinitionResource.FIELDS);
+      Entity.TEST_DEFINITION,
+      TestDefinition.class,
+      TestDefinitionResource.TestDefinitionList.class,
+      "dataQuality/testDefinitions",
+      TestDefinitionResource.FIELDS
+    );
   }
 
   public void setupTestDefinitions() throws IOException {
     TestDefinitionResourceTest testDefinitionResourceTest = new TestDefinitionResourceTest();
     TEST_DEFINITION1 =
-        testDefinitionResourceTest.getEntityByName("columnValueLengthsToBeBetween", "owner", ADMIN_AUTH_HEADERS);
+      testDefinitionResourceTest.getEntityByName("columnValueLengthsToBeBetween", "owner", ADMIN_AUTH_HEADERS);
     TEST_DEFINITION2 =
-        testDefinitionResourceTest.getEntityByName("columnValuesToBeNotNull", "owner", ADMIN_AUTH_HEADERS);
+      testDefinitionResourceTest.getEntityByName("columnValuesToBeNotNull", "owner", ADMIN_AUTH_HEADERS);
     TEST_DEFINITION3 =
-        testDefinitionResourceTest.getEntityByName("columnValuesMissingCount", "owner", ADMIN_AUTH_HEADERS);
+      testDefinitionResourceTest.getEntityByName("columnValuesMissingCount", "owner", ADMIN_AUTH_HEADERS);
   }
 
   @Test
   void post_testDefinitionWithoutRequiredFields_4xx(TestInfo test) {
     // Test Platform is required field
     assertResponse(
-        () -> createEntity(createRequest(test).withTestPlatforms(null), ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "testPlatforms must not be empty");
+      () -> createEntity(createRequest(test).withTestPlatforms(null), ADMIN_AUTH_HEADERS),
+      BAD_REQUEST,
+      "testPlatforms must not be empty"
+    );
 
     // name is required field
     assertResponse(
-        () -> createEntity(createRequest(test).withName(null), ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "[name must not be null]");
+      () -> createEntity(createRequest(test).withName(null), ADMIN_AUTH_HEADERS),
+      BAD_REQUEST,
+      "[name must not be null]"
+    );
   }
 
   @Override
   public CreateTestDefinition createRequest(String name) {
     return new CreateTestDefinition()
-        .withName(name)
-        .withDescription(name)
-        .withEntityType(TestDefinitionEntityType.COLUMN)
-        .withTestPlatforms(List.of(TestPlatform.OPEN_METADATA));
+      .withName(name)
+      .withDescription(name)
+      .withEntityType(TestDefinitionEntityType.COLUMN)
+      .withTestPlatforms(List.of(TestPlatform.OPEN_METADATA));
   }
 
   @Override
   public void validateCreatedEntity(
-      TestDefinition createdEntity, CreateTestDefinition request, Map<String, String> authHeaders) {
+    TestDefinition createdEntity,
+    CreateTestDefinition request,
+    Map<String, String> authHeaders
+  ) {
     assertEquals(request.getName(), createdEntity.getName());
     assertEquals(request.getDescription(), createdEntity.getDescription());
     assertEquals(request.getTestPlatforms(), createdEntity.getTestPlatforms());
@@ -81,18 +88,18 @@ public class TestDefinitionResourceTest extends EntityResourceTest<TestDefinitio
 
   @Override
   public TestDefinition validateGetWithDifferentFields(TestDefinition entity, boolean byName)
-      throws HttpResponseException {
+    throws HttpResponseException {
     String fields = "";
     entity =
-        byName
-            ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getEntity(entity.getId(), null, ADMIN_AUTH_HEADERS);
+      byName
+        ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+        : getEntity(entity.getId(), null, ADMIN_AUTH_HEADERS);
     assertListNull(entity.getOwner());
     fields = "owner";
     entity =
-        byName
-            ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
+      byName
+        ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+        : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(entity.getOwner());
     return entity;
   }

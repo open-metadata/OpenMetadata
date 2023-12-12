@@ -12,6 +12,7 @@ import org.openmetadata.service.migration.utils.MigrationFile;
 @Slf4j
 @SuppressWarnings("unused")
 public class Migration extends MigrationProcessImpl {
+
   private CollectionDAO collectionDAO;
   private Handle handle;
 

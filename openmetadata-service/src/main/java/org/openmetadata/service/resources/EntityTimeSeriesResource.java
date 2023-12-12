@@ -8,11 +8,14 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.security.Authorizer;
 
-public abstract class EntityTimeSeriesResource<
-    T extends EntityTimeSeriesInterface, K extends EntityTimeSeriesRepository<T>> {
+public abstract class EntityTimeSeriesResource<T extends EntityTimeSeriesInterface, K extends EntityTimeSeriesRepository<T>> {
+
   protected final Class<T> entityClass;
   protected final String entityType;
-  @Getter protected final K repository;
+
+  @Getter
+  protected final K repository;
+
   protected final Authorizer authorizer;
 
   protected EntityTimeSeriesResource(String entityType, Authorizer authorizer) {

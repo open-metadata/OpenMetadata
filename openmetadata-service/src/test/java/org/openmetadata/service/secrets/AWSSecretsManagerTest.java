@@ -21,7 +21,8 @@ import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
 
 public class AWSSecretsManagerTest extends ExternalSecretsManagerTest {
 
-  @Mock private SecretsManagerClient secretsManagerClient;
+  @Mock
+  private SecretsManagerClient secretsManagerClient;
 
   @Override
   void setUpSpecific(SecretsManagerConfiguration config) {

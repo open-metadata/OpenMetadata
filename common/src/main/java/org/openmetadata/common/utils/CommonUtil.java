@@ -58,15 +58,16 @@ public final class CommonUtil {
   public static List<String> getResources(Pattern pattern) throws IOException {
     ArrayList<String> resources = new ArrayList<>();
     String classPath = System.getProperty("java.class.path", ".");
-    List<String> classPathElements =
-        Arrays.stream(classPath.split(File.pathSeparator))
-            .filter(jarName -> jarNameFilter.stream().anyMatch(jarName.toLowerCase()::contains))
-            .toList();
+    List<String> classPathElements = Arrays
+      .stream(classPath.split(File.pathSeparator))
+      .filter(jarName -> jarNameFilter.stream().anyMatch(jarName.toLowerCase()::contains))
+      .toList();
 
     for (String element : classPathElements) {
       File file = new File(element);
       resources.addAll(
-          file.isDirectory() ? getResourcesFromDirectory(file, pattern) : getResourcesFromJarFile(file, pattern));
+        file.isDirectory() ? getResourcesFromDirectory(file, pattern) : getResourcesFromJarFile(file, pattern)
+      );
     }
     return resources;
   }
@@ -92,15 +93,16 @@ public final class CommonUtil {
     final Path root = Path.of(file.getPath());
     try (Stream<Path> paths = Files.walk(Paths.get(file.getPath()))) {
       return paths
-          .filter(Files::isRegularFile)
-          .filter(path -> pattern.matcher(path.toString()).matches())
-          .map(
-              path -> {
-                String relativePath = root.relativize(path).toString();
-                LOG.debug("Adding directory file {}", relativePath);
-                return relativePath;
-              })
-          .collect(Collectors.toSet());
+        .filter(Files::isRegularFile)
+        .filter(path -> pattern.matcher(path.toString()).matches())
+        .map(
+          path -> {
+            String relativePath = root.relativize(path).toString();
+            LOG.debug("Adding directory file {}", relativePath);
+            return relativePath;
+          }
+        )
+        .collect(Collectors.toSet());
     }
   }
 
@@ -148,8 +150,10 @@ public final class CommonUtil {
   public static String calculateHMAC(String secretKey, String message) {
     try {
       Mac mac = Mac.getInstance(HMAC_SHA256_ALGORITHM);
-      SecretKeySpec secretKeySpec =
-          new SecretKeySpec(secretKey.getBytes(StandardCharsets.UTF_8), HMAC_SHA256_ALGORITHM);
+      SecretKeySpec secretKeySpec = new SecretKeySpec(
+        secretKey.getBytes(StandardCharsets.UTF_8),
+        HMAC_SHA256_ALGORITHM
+      );
       mac.init(secretKeySpec);
       byte[] hmacSha256 = mac.doFinal(message.getBytes(StandardCharsets.UTF_8));
       return Base64.getEncoder().encodeToString(hmacSha256);

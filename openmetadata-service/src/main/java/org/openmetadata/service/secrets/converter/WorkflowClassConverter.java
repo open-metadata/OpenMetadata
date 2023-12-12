@@ -31,13 +31,14 @@ public class WorkflowClassConverter extends ClassConverter {
     Workflow workflow = (Workflow) JsonUtils.convertValue(object, this.clazz);
 
     tryToConvertOrFail(workflow.getRequest(), List.of(TestServiceConnectionRequest.class))
-        .ifPresent(workflow::setRequest);
+      .ifPresent(workflow::setRequest);
 
     if (workflow.getOpenMetadataServerConnection() != null) {
       workflow.setOpenMetadataServerConnection(
-          (OpenMetadataConnection)
-              ClassConverterFactory.getConverter(OpenMetadataConnection.class)
-                  .convert(workflow.getOpenMetadataServerConnection()));
+        (OpenMetadataConnection) ClassConverterFactory
+          .getConverter(OpenMetadataConnection.class)
+          .convert(workflow.getOpenMetadataServerConnection())
+      );
     }
 
     return workflow;

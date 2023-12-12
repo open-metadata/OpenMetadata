@@ -33,7 +33,9 @@ public class PipelineServiceVersionException extends WebServiceException {
 
   public static PipelineServiceVersionException byMessage(String name, String errorMessage) {
     return new PipelineServiceVersionException(
-        Response.Status.INTERNAL_SERVER_ERROR, buildMessageByName(name, errorMessage));
+      Response.Status.INTERNAL_SERVER_ERROR,
+      buildMessageByName(name, errorMessage)
+    );
   }
 
   public static String buildMessageByName(String name, String errorMessage) {

@@ -21,12 +21,14 @@ import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 
 public class DefaultEntityFormatter implements EntityFormatter {
+
   @Override
   public String format(
-      MessageDecorator<?> messageFormatter,
-      FieldChange fieldChange,
-      EntityInterface entity,
-      FormatterUtil.CHANGE_TYPE changeType) {
+    MessageDecorator<?> messageFormatter,
+    FieldChange fieldChange,
+    EntityInterface entity,
+    FormatterUtil.CHANGE_TYPE changeType
+  ) {
     return transformMessage(messageFormatter, fieldChange, entity, changeType);
   }
 }

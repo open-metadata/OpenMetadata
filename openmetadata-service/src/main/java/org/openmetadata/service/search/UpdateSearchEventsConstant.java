@@ -1,6 +1,7 @@
 package org.openmetadata.service.search;
 
 public class UpdateSearchEventsConstant {
+
   public static final String SERVICE_ID = "service.id";
   public static final String SERVICE_NAME = "service.name";
   public static final String DATABASE_NAME = "database.name";

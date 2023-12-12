@@ -12,9 +12,17 @@ Given a query - that should return a single column with a count, compute the val
 @Slf4j
 public class MigrationOps {
 
-  @NotEmpty @Getter private final String name;
-  @NotEmpty @Getter private final String query;
-  @Getter @Setter private Long result;
+  @NotEmpty
+  @Getter
+  private final String name;
+
+  @NotEmpty
+  @Getter
+  private final String query;
+
+  @Getter
+  @Setter
+  private Long result;
 
   public MigrationOps(String name, String query) {
     this.name = name;

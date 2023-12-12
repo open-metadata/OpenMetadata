@@ -15,6 +15,7 @@ import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
 public class DashboardIndex implements SearchIndex {
+
   final Dashboard dashboard;
   final List<String> excludeFields = List.of("changeDescription");
 

@@ -70,22 +70,46 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public final class Entity {
+
   private static volatile boolean initializedRepositories = false;
-  @Getter @Setter private static CollectionDAO collectionDAO;
+
+  @Getter
+  @Setter
+  private static CollectionDAO collectionDAO;
+
   public static final String SEPARATOR = "."; // Fully qualified name separator
 
   // Canonical entity name to corresponding EntityRepository map
   private static final Map<String, EntityRepository<? extends EntityInterface>> ENTITY_REPOSITORY_MAP = new HashMap<>();
-  private static final Map<String, EntityTimeSeriesRepository<? extends EntityTimeSeriesInterface>>
-      ENTITY_TS_REPOSITORY_MAP = new HashMap<>();
+  private static final Map<String, EntityTimeSeriesRepository<? extends EntityTimeSeriesInterface>> ENTITY_TS_REPOSITORY_MAP = new HashMap<>();
 
-  @Getter @Setter private static TokenRepository tokenRepository;
-  @Getter @Setter private static FeedRepository feedRepository;
-  @Getter @Setter private static LineageRepository lineageRepository;
-  @Getter @Setter private static UsageRepository usageRepository;
-  @Getter @Setter private static SystemRepository systemRepository;
-  @Getter @Setter private static ChangeEventRepository changeEventRepository;
-  @Getter @Setter private static SearchRepository searchRepository;
+  @Getter
+  @Setter
+  private static TokenRepository tokenRepository;
+
+  @Getter
+  @Setter
+  private static FeedRepository feedRepository;
+
+  @Getter
+  @Setter
+  private static LineageRepository lineageRepository;
+
+  @Getter
+  @Setter
+  private static UsageRepository usageRepository;
+
+  @Getter
+  @Setter
+  private static SystemRepository systemRepository;
+
+  @Getter
+  @Setter
+  private static ChangeEventRepository changeEventRepository;
+
+  @Getter
+  @Setter
+  private static SearchRepository searchRepository;
 
   // List of all the entities
   private static final List<String> ENTITY_LIST = new ArrayList<>();
@@ -234,20 +258,20 @@ public final class Entity {
   //
   // List of entities whose changes should not be published to the Activity Feed
   //
-  public static final List<String> ACTIVITY_FEED_EXCLUDED_ENTITIES =
-      List.of(
-          TEAM,
-          ROLE,
-          POLICY,
-          BOT,
-          INGESTION_PIPELINE,
-          DATABASE_SERVICE,
-          PIPELINE_SERVICE,
-          DASHBOARD_SERVICE,
-          MESSAGING_SERVICE,
-          WORKFLOW,
-          TEST_SUITE,
-          DOCUMENT);
+  public static final List<String> ACTIVITY_FEED_EXCLUDED_ENTITIES = List.of(
+    TEAM,
+    ROLE,
+    POLICY,
+    BOT,
+    INGESTION_PIPELINE,
+    DATABASE_SERVICE,
+    PIPELINE_SERVICE,
+    DASHBOARD_SERVICE,
+    MESSAGING_SERVICE,
+    WORKFLOW,
+    TEST_SUITE,
+    DOCUMENT
+  );
 
   private Entity() {}
 
@@ -285,7 +309,10 @@ public final class Entity {
   }
 
   public static <T extends EntityInterface> void registerEntity(
-      Class<T> clazz, String entity, EntityRepository<T> entityRepository) {
+    Class<T> clazz,
+    String entity,
+    EntityRepository<T> entityRepository
+  ) {
     ENTITY_REPOSITORY_MAP.put(entity, entityRepository);
     EntityInterface.CANONICAL_ENTITY_NAME_MAP.put(entity.toLowerCase(Locale.ROOT), entity);
     EntityInterface.ENTITY_TYPE_TO_CLASS_MAP.put(entity.toLowerCase(Locale.ROOT), clazz);
@@ -296,7 +323,10 @@ public final class Entity {
   }
 
   public static <T extends EntityTimeSeriesInterface> void registerEntity(
-      Class<T> clazz, String entity, EntityTimeSeriesRepository<T> entityRepository) {
+    Class<T> clazz,
+    String entity,
+    EntityTimeSeriesRepository<T> entityRepository
+  ) {
     ENTITY_TS_REPOSITORY_MAP.put(entity, entityRepository);
     EntityTimeSeriesInterface.CANONICAL_ENTITY_NAME_MAP.put(entity.toLowerCase(Locale.ROOT), entity);
     EntityTimeSeriesInterface.ENTITY_TYPE_TO_CLASS_MAP.put(entity.toLowerCase(Locale.ROOT), clazz);
@@ -327,8 +357,8 @@ public final class Entity {
       return null;
     }
     return ref.getId() != null
-        ? getEntityReferenceById(ref.getType(), ref.getId(), include)
-        : getEntityReferenceByName(ref.getType(), ref.getFullyQualifiedName(), include);
+      ? getEntityReferenceById(ref.getType(), ref.getId(), include)
+      : getEntityReferenceByName(ref.getType(), ref.getFullyQualifiedName(), include);
   }
 
   public static EntityReference getEntityReferenceById(@NonNull String entityType, @NonNull UUID id, Include include) {
@@ -376,8 +406,8 @@ public final class Entity {
 
   public static <T> T getEntity(EntityReference ref, String fields, Include include) {
     return ref.getId() != null
-        ? getEntity(ref.getType(), ref.getId(), fields, include)
-        : getEntityByName(ref.getType(), ref.getFullyQualifiedName(), fields, include);
+      ? getEntity(ref.getType(), ref.getId(), fields, include)
+      : getEntityByName(ref.getType(), ref.getFullyQualifiedName(), fields, include);
   }
 
   public static <T> T getEntity(EntityLink link, String fields, Include include) {
@@ -398,7 +428,12 @@ public final class Entity {
 
   /** Retrieve the entity using id from given entity reference and fields */
   public static <T> T getEntityByName(
-      String entityType, String fqn, String fields, Include include, boolean fromCache) {
+    String entityType,
+    String fqn,
+    String fields,
+    Include include,
+    boolean fromCache
+  ) {
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
     @SuppressWarnings("unchecked")
     T entity = (T) entityRepository.getByName(null, fqn, entityRepository.getFields(fields), include, fromCache);
@@ -419,9 +454,11 @@ public final class Entity {
   }
 
   public static EntityTimeSeriesRepository<? extends EntityTimeSeriesInterface> getEntityTimeSeriesRepository(
-      @NonNull String entityType) {
-    EntityTimeSeriesRepository<? extends EntityTimeSeriesInterface> entityTimeSeriesRepository =
-        ENTITY_TS_REPOSITORY_MAP.get(entityType);
+    @NonNull String entityType
+  ) {
+    EntityTimeSeriesRepository<? extends EntityTimeSeriesInterface> entityTimeSeriesRepository = ENTITY_TS_REPOSITORY_MAP.get(
+      entityType
+    );
     if (entityTimeSeriesRepository == null) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityType));
     }
@@ -430,9 +467,11 @@ public final class Entity {
 
   /** Retrieve the corresponding entity repository for a given entity name. */
   public static EntityRepository<? extends EntityInterface> getServiceEntityRepository(
-      @NonNull ServiceType serviceType) {
-    EntityRepository<? extends EntityInterface> entityRepository =
-        ENTITY_REPOSITORY_MAP.get(SERVICE_TYPE_ENTITY_MAP.get(serviceType));
+    @NonNull ServiceType serviceType
+  ) {
+    EntityRepository<? extends EntityInterface> entityRepository = ENTITY_REPOSITORY_MAP.get(
+      SERVICE_TYPE_ENTITY_MAP.get(serviceType)
+    );
     if (entityRepository == null) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(serviceType.value()));
     }
@@ -445,7 +484,12 @@ public final class Entity {
   }
 
   public static void deleteEntity(
-      String updatedBy, String entityType, UUID entityId, boolean recursive, boolean hardDelete) {
+    String updatedBy,
+    String entityType,
+    UUID entityId,
+    boolean recursive,
+    boolean hardDelete
+  ) {
     EntityRepository<?> dao = getEntityRepository(entityType);
     dao.delete(updatedBy, entityId, recursive, hardDelete);
   }
@@ -482,28 +526,30 @@ public final class Entity {
   /** Returns true if the entity supports activity feeds, announcement, and tasks */
   public static boolean supportsFeed(String entityType) {
     return listOf(
-            TABLE,
-            DATABASE,
-            DATABASE_SCHEMA,
-            METRICS,
-            DASHBOARD,
-            DASHBOARD_DATA_MODEL,
-            PIPELINE,
-            CHART,
-            REPORT,
-            TOPIC,
-            MLMODEL,
-            CONTAINER,
-            QUERY,
-            GLOSSARY,
-            GLOSSARY_TERM,
-            TAG,
-            CLASSIFICATION)
-        .contains(entityType);
+      TABLE,
+      DATABASE,
+      DATABASE_SCHEMA,
+      METRICS,
+      DASHBOARD,
+      DASHBOARD_DATA_MODEL,
+      PIPELINE,
+      CHART,
+      REPORT,
+      TOPIC,
+      MLMODEL,
+      CONTAINER,
+      QUERY,
+      GLOSSARY,
+      GLOSSARY_TERM,
+      TAG,
+      CLASSIFICATION
+    )
+      .contains(entityType);
   }
 
   /** Class for getting validated entity list from a queryParam with list of entities. */
   public static class EntityList {
+
     private EntityList() {}
 
     public static List<String> getEntityList(String name, String entitiesParam) {
@@ -537,7 +583,11 @@ public final class Entity {
   }
 
   public static <T extends FieldInterface> void populateEntityFieldTags(
-      String entityType, List<T> fields, String fqnPrefix, boolean setTags) {
+    String entityType,
+    List<T> fields,
+    String fqnPrefix,
+    boolean setTags
+  ) {
     EntityRepository<?> repository = Entity.getEntityRepository(entityType);
     // Get Flattened Fields
     List<T> flattenedFields = getFlattenedEntityField(fields);

@@ -53,6 +53,7 @@ import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
+
   public RoleResourceTest() {
     super(Entity.ROLE, Role.class, RoleList.class, "roles", RoleResource.FIELDS, DATA_CONSUMER_ROLE_NAME);
   }
@@ -100,9 +101,10 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
     String originalJson = JsonUtils.pojoToJson(role);
     role.setDisplayName("newDisplayName");
     assertResponse(
-        () -> patchEntity(role.getId(), originalJson, role, TEST_AUTH_HEADERS),
-        FORBIDDEN,
-        permissionNotAllowed(TEST_USER_NAME, List.of(MetadataOperation.EDIT_DISPLAY_NAME)));
+      () -> patchEntity(role.getId(), originalJson, role, TEST_AUTH_HEADERS),
+      FORBIDDEN,
+      permissionNotAllowed(TEST_USER_NAME, List.of(MetadataOperation.EDIT_DISPLAY_NAME))
+    );
   }
 
   @Test
@@ -131,23 +133,29 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
     final Role role1 = role;
     role1.setPolicies(null);
     assertResponse(
-        () -> patchEntity(id, originalJson1, role1, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        CatalogExceptionMessage.EMPTY_POLICIES_IN_ROLE);
+      () -> patchEntity(id, originalJson1, role1, ADMIN_AUTH_HEADERS),
+      BAD_REQUEST,
+      CatalogExceptionMessage.EMPTY_POLICIES_IN_ROLE
+    );
   }
 
   @Test
   void delete_Disallowed() {
     for (Role role : List.of(DATA_CONSUMER_ROLE, DATA_STEWARD_ROLE)) {
       assertResponse(
-          () -> deleteEntity(role.getId(), ADMIN_AUTH_HEADERS),
-          BAD_REQUEST,
-          CatalogExceptionMessage.systemEntityDeleteNotAllowed(role.getName(), Entity.ROLE));
+        () -> deleteEntity(role.getId(), ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        CatalogExceptionMessage.systemEntityDeleteNotAllowed(role.getName(), Entity.ROLE)
+      );
     }
   }
 
   private static void validateRole(
-      Role role, String expectedDescription, String expectedDisplayName, String expectedUpdatedBy) {
+    Role role,
+    String expectedDescription,
+    String expectedDisplayName,
+    String expectedUpdatedBy
+  ) {
     assertListNotNull(role.getId(), role.getHref());
     assertEquals(expectedDescription, role.getDescription());
     assertEquals(expectedUpdatedBy, role.getUpdatedBy());
@@ -160,37 +168,41 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
     if (nullOrEmpty(role.getUsers())) {
       UserResourceTest userResourceTest = new UserResourceTest();
       userResourceTest.createEntity(
-          userResourceTest.createRequest("roleUser1", "", "", null).withRoles(List.of(role.getId())),
-          ADMIN_AUTH_HEADERS);
+        userResourceTest.createRequest("roleUser1", "", "", null).withRoles(List.of(role.getId())),
+        ADMIN_AUTH_HEADERS
+      );
       userResourceTest.createEntity(
-          userResourceTest.createRequest("roleUser2", "", "", null).withRoles(List.of(role.getId())),
-          ADMIN_AUTH_HEADERS);
+        userResourceTest.createRequest("roleUser2", "", "", null).withRoles(List.of(role.getId())),
+        ADMIN_AUTH_HEADERS
+      );
     }
 
     // Assign two arbitrary teams this role for testing.
     if (role.getTeams() == null) {
       TeamResourceTest teamResourceTest = new TeamResourceTest();
       teamResourceTest.createEntity(
-          teamResourceTest.createRequest("roleTeam1", "", "", null).withDefaultRoles(List.of(role.getId())),
-          ADMIN_AUTH_HEADERS);
+        teamResourceTest.createRequest("roleTeam1", "", "", null).withDefaultRoles(List.of(role.getId())),
+        ADMIN_AUTH_HEADERS
+      );
       teamResourceTest.createEntity(
-          teamResourceTest.createRequest("roleTeam2", "", "", null).withDefaultRoles(List.of(role.getId())),
-          ADMIN_AUTH_HEADERS);
+        teamResourceTest.createRequest("roleTeam2", "", "", null).withDefaultRoles(List.of(role.getId())),
+        ADMIN_AUTH_HEADERS
+      );
     }
 
     String updatedBy = getPrincipalName(ADMIN_AUTH_HEADERS);
     role =
-        byName
-            ? getEntityByName(role.getFullyQualifiedName(), null, null, ADMIN_AUTH_HEADERS)
-            : getEntity(role.getId(), null, ADMIN_AUTH_HEADERS);
+      byName
+        ? getEntityByName(role.getFullyQualifiedName(), null, null, ADMIN_AUTH_HEADERS)
+        : getEntity(role.getId(), null, ADMIN_AUTH_HEADERS);
     validateRole(role, role.getDescription(), role.getDisplayName(), updatedBy);
     assertListNull(role.getPolicies(), role.getUsers());
 
     String fields = "policies,teams,users";
     role =
-        byName
-            ? getEntityByName(role.getFullyQualifiedName(), null, fields, ADMIN_AUTH_HEADERS)
-            : getEntity(role.getId(), fields, ADMIN_AUTH_HEADERS);
+      byName
+        ? getEntityByName(role.getFullyQualifiedName(), null, fields, ADMIN_AUTH_HEADERS)
+        : getEntity(role.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(role.getPolicies(), role.getUsers());
     validateRole(role, role.getDescription(), role.getDisplayName(), updatedBy);
     TestUtils.validateEntityReferences(role.getPolicies());

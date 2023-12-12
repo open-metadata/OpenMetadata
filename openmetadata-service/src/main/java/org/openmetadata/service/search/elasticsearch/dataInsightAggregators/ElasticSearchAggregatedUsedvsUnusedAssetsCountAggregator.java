@@ -8,7 +8,8 @@ import java.util.List;
 import org.openmetadata.service.dataInsight.AggregatedUsedvsUnusedAssetsCountAggregator;
 
 public class ElasticSearchAggregatedUsedvsUnusedAssetsCountAggregator
-    extends AggregatedUsedvsUnusedAssetsCountAggregator<Aggregations, Histogram, Bucket, Sum> {
+  extends AggregatedUsedvsUnusedAssetsCountAggregator<Aggregations, Histogram, Bucket, Sum> {
+
   public ElasticSearchAggregatedUsedvsUnusedAssetsCountAggregator(Aggregations aggregations) {
     super(aggregations);
   }

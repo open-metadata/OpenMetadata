@@ -29,12 +29,14 @@ import javax.ws.rs.ext.Provider;
 @Provider
 @Priority(1) // Override the default JsonMappingExceptionMapper by setting the priority higher
 public class JsonMappingExceptionMapper implements ExceptionMapper<JsonMappingException> {
+
   @Override
   public Response toResponse(JsonMappingException exception) {
     final Response response = BadRequestException.of().getResponse();
-    return Response.fromResponse(response)
-        .type(MediaType.APPLICATION_JSON_TYPE)
-        .entity(new ErrorMessage(response.getStatus(), exception.getLocalizedMessage()))
-        .build();
+    return Response
+      .fromResponse(response)
+      .type(MediaType.APPLICATION_JSON_TYPE)
+      .entity(new ErrorMessage(response.getStatus(), exception.getLocalizedMessage()))
+      .build();
   }
 }

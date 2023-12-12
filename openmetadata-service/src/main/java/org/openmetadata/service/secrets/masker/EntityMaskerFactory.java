@@ -17,7 +17,9 @@ import com.google.common.annotations.VisibleForTesting;
 import lombok.Getter;
 
 public class EntityMaskerFactory {
-  @Getter private static EntityMasker entityMasker;
+
+  @Getter
+  private static EntityMasker entityMasker;
 
   private EntityMaskerFactory() {}
 

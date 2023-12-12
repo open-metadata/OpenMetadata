@@ -54,6 +54,7 @@ import org.quartz.JobExecutionContext;
 
 @Slf4j
 public class SearchIndexApp extends AbstractNativeApplication {
+
   private static final String ENTITY_TYPE_ERROR_MSG = "EntityType: %s %n Cause: %s %n Stack: %s";
   private final List<PaginatedEntitiesSource> paginatedEntitiesSources = new ArrayList<>();
   private final List<PaginatedDataInsightSource> paginatedDataInsightSources = new ArrayList<>();
@@ -61,7 +62,9 @@ public class SearchIndexApp extends AbstractNativeApplication {
   private Processor dataInsightProcessor;
   private Sink searchIndexSink;
 
-  @Getter EventPublisherJob jobData;
+  @Getter
+  EventPublisherJob jobData;
+
   private volatile boolean stopped = false;
 
   @Override
@@ -69,32 +72,32 @@ public class SearchIndexApp extends AbstractNativeApplication {
     super.init(app, dao, searchRepository);
 
     // request for reindexing
-    EventPublisherJob request =
-        JsonUtils.convertValue(app.getAppConfiguration(), EventPublisherJob.class)
-            .withStats(new Stats())
-            .withFailure(new Failure());
+    EventPublisherJob request = JsonUtils
+      .convertValue(app.getAppConfiguration(), EventPublisherJob.class)
+      .withStats(new Stats())
+      .withFailure(new Failure());
     int totalRecords = getTotalRequestToProcess(request.getEntities(), collectionDAO);
     this.jobData = request;
     this.jobData.setStats(
         new Stats()
-            .withJobStats(new StepStats().withTotalRecords(totalRecords).withFailedRecords(0).withSuccessRecords(0)));
+        .withJobStats(new StepStats().withTotalRecords(totalRecords).withFailedRecords(0).withSuccessRecords(0))
+      );
     request
-        .getEntities()
-        .forEach(
-            entityType -> {
-              if (!isDataInsightIndex(entityType)) {
-                List<String> fields = List.of("*");
-                PaginatedEntitiesSource source =
-                    new PaginatedEntitiesSource(entityType, jobData.getBatchSize(), fields);
-                if (!CommonUtil.nullOrEmpty(request.getAfterCursor())) {
-                  source.setCursor(request.getAfterCursor());
-                }
-                paginatedEntitiesSources.add(source);
-              } else {
-                paginatedDataInsightSources.add(
-                    new PaginatedDataInsightSource(dao, entityType, jobData.getBatchSize()));
-              }
-            });
+      .getEntities()
+      .forEach(
+        entityType -> {
+          if (!isDataInsightIndex(entityType)) {
+            List<String> fields = List.of("*");
+            PaginatedEntitiesSource source = new PaginatedEntitiesSource(entityType, jobData.getBatchSize(), fields);
+            if (!CommonUtil.nullOrEmpty(request.getAfterCursor())) {
+              source.setCursor(request.getAfterCursor());
+            }
+            paginatedEntitiesSources.add(source);
+          } else {
+            paginatedDataInsightSources.add(new PaginatedDataInsightSource(dao, entityType, jobData.getBatchSize()));
+          }
+        }
+      );
     if (searchRepository.getSearchType().equals(ElasticSearchConfiguration.SearchType.OPENSEARCH)) {
       this.entityProcessor = new OpenSearchEntitiesProcessor(totalRecords);
       this.dataInsightProcessor = new OpenSearchDataInsightProcessor(totalRecords);
@@ -114,8 +117,9 @@ public class SearchIndexApp extends AbstractNativeApplication {
       jobData.setStatus(EventPublisherJob.Status.RUNNING);
 
       // Make recreate as false for onDemand
-      AppRunType runType =
-          AppRunType.fromValue((String) jobExecutionContext.getJobDetail().getJobDataMap().get("triggerType"));
+      AppRunType runType = AppRunType.fromValue(
+        (String) jobExecutionContext.getJobDetail().getJobDataMap().get("triggerType")
+      );
 
       // Schedule Run has recreate as false always
       if (runType.equals(AppRunType.Scheduled)) {
@@ -128,10 +132,11 @@ public class SearchIndexApp extends AbstractNativeApplication {
       // Mark Job as Completed
       updateJobStatus();
     } catch (Exception ex) {
-      String error =
-          String.format(
-              "Reindexing Job Has Encountered an Exception. %n Job Data: %s, %n  Stack : %s ",
-              jobData.toString(), ExceptionUtils.getStackTrace(ex));
+      String error = String.format(
+        "Reindexing Job Has Encountered an Exception. %n Job Data: %s, %n  Stack : %s ",
+        jobData.toString(),
+        ExceptionUtils.getStackTrace(ex)
+      );
       LOG.error(error);
       jobData.setStatus(EventPublisherJob.Status.FAILED);
       handleJobError(error, System.currentTimeMillis());
@@ -154,7 +159,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
     // Update Error
     if (jobData.getFailure() != null) {
       appRecord.setFailureContext(
-          new FailureContext().withAdditionalProperty("failure", JsonUtils.pojoToJson(jobData.getFailure())));
+        new FailureContext().withAdditionalProperty("failure", JsonUtils.pojoToJson(jobData.getFailure()))
+      );
     }
 
     // Update Stats
@@ -178,11 +184,15 @@ public class SearchIndexApp extends AbstractNativeApplication {
           if (!resultList.getData().isEmpty()) {
             if (searchRepository.getSearchType().equals(ElasticSearchConfiguration.SearchType.OPENSEARCH)) {
               // process data to build Reindex Request
-              os.org.opensearch.action.bulk.BulkRequest requests =
-                  (os.org.opensearch.action.bulk.BulkRequest) entityProcessor.process(resultList, contextData);
+              os.org.opensearch.action.bulk.BulkRequest requests = (os.org.opensearch.action.bulk.BulkRequest) entityProcessor.process(
+                resultList,
+                contextData
+              );
               // process data to build Reindex Request
-              os.org.opensearch.action.bulk.BulkResponse response =
-                  (os.org.opensearch.action.bulk.BulkResponse) searchIndexSink.write(requests, contextData);
+              os.org.opensearch.action.bulk.BulkResponse response = (os.org.opensearch.action.bulk.BulkResponse) searchIndexSink.write(
+                requests,
+                contextData
+              );
               // update Status
               handleErrorsOs(resultList, paginatedEntitiesSource.getLastFailedCursor(), response, currentTime);
             } else {
@@ -196,16 +206,19 @@ public class SearchIndexApp extends AbstractNativeApplication {
           }
         } catch (SourceException rx) {
           handleSourceError(
-              String.format(ENTITY_TYPE_ERROR_MSG, paginatedEntitiesSource.getEntityType(), rx.getCause(), ""),
-              currentTime);
+            String.format(ENTITY_TYPE_ERROR_MSG, paginatedEntitiesSource.getEntityType(), rx.getCause(), ""),
+            currentTime
+          );
         } catch (ProcessorException px) {
           handleProcessorError(
-              String.format(ENTITY_TYPE_ERROR_MSG, paginatedEntitiesSource.getEntityType(), px.getCause(), ""),
-              currentTime);
+            String.format(ENTITY_TYPE_ERROR_MSG, paginatedEntitiesSource.getEntityType(), px.getCause(), ""),
+            currentTime
+          );
         } catch (SinkException wx) {
           handleEsSinkError(
-              String.format(ENTITY_TYPE_ERROR_MSG, paginatedEntitiesSource.getEntityType(), wx.getCause(), ""),
-              currentTime);
+            String.format(ENTITY_TYPE_ERROR_MSG, paginatedEntitiesSource.getEntityType(), wx.getCause(), ""),
+            currentTime
+          );
         }
       }
       updateStats(paginatedEntitiesSource.getEntityType(), paginatedEntitiesSource.getStats());
@@ -226,11 +239,15 @@ public class SearchIndexApp extends AbstractNativeApplication {
           if (!resultList.getData().isEmpty()) {
             if (searchRepository.getSearchType().equals(ElasticSearchConfiguration.SearchType.OPENSEARCH)) {
               // process data to build Reindex Request
-              os.org.opensearch.action.bulk.BulkRequest requests =
-                  (os.org.opensearch.action.bulk.BulkRequest) dataInsightProcessor.process(resultList, contextData);
+              os.org.opensearch.action.bulk.BulkRequest requests = (os.org.opensearch.action.bulk.BulkRequest) dataInsightProcessor.process(
+                resultList,
+                contextData
+              );
               // process data to build Reindex Request
-              os.org.opensearch.action.bulk.BulkResponse response =
-                  (os.org.opensearch.action.bulk.BulkResponse) searchIndexSink.write(requests, contextData);
+              os.org.opensearch.action.bulk.BulkResponse response = (os.org.opensearch.action.bulk.BulkResponse) searchIndexSink.write(
+                requests,
+                contextData
+              );
               handleErrorsOs(resultList, "", response, currentTime);
             } else {
               // process data to build Reindex Request
@@ -242,16 +259,19 @@ public class SearchIndexApp extends AbstractNativeApplication {
           }
         } catch (SourceException rx) {
           handleSourceError(
-              String.format(ENTITY_TYPE_ERROR_MSG, paginatedDataInsightSource.getEntityType(), rx.getCause(), ""),
-              currentTime);
+            String.format(ENTITY_TYPE_ERROR_MSG, paginatedDataInsightSource.getEntityType(), rx.getCause(), ""),
+            currentTime
+          );
         } catch (ProcessorException px) {
           handleProcessorError(
-              String.format(ENTITY_TYPE_ERROR_MSG, paginatedDataInsightSource.getEntityType(), px.getCause(), ""),
-              currentTime);
+            String.format(ENTITY_TYPE_ERROR_MSG, paginatedDataInsightSource.getEntityType(), px.getCause(), ""),
+            currentTime
+          );
         } catch (SinkException wx) {
           handleEsSinkError(
-              String.format(ENTITY_TYPE_ERROR_MSG, paginatedDataInsightSource.getEntityType(), wx.getCause(), ""),
-              currentTime);
+            String.format(ENTITY_TYPE_ERROR_MSG, paginatedDataInsightSource.getEntityType(), wx.getCause(), ""),
+            currentTime
+          );
         }
       }
       updateStats(paginatedDataInsightSource.getEntityType(), paginatedDataInsightSource.getStats());
@@ -261,8 +281,9 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
   private void sendUpdates() {
     try {
-      WebSocketManager.getInstance()
-          .broadCastMessageToAll(WebSocketManager.JOB_STATUS_BROADCAST_CHANNEL, JsonUtils.pojoToJson(jobData));
+      WebSocketManager
+        .getInstance()
+        .broadCastMessageToAll(WebSocketManager.JOB_STATUS_BROADCAST_CHANNEL, JsonUtils.pojoToJson(jobData));
     } catch (Exception ex) {
       LOG.error("Failed to send updated stats with WebSocket", ex);
     }
@@ -306,7 +327,11 @@ public class SearchIndexApp extends AbstractNativeApplication {
   }
 
   private void handleErrorsOs(
-      ResultList<?> data, String lastCursor, os.org.opensearch.action.bulk.BulkResponse response, long time) {
+    ResultList<?> data,
+    String lastCursor,
+    os.org.opensearch.action.bulk.BulkResponse response,
+    long time
+  ) {
     handleSourceError(data, lastCursor, time);
     handleOsSinkErrors(response, time);
   }
@@ -349,10 +374,13 @@ public class SearchIndexApp extends AbstractNativeApplication {
         builder.append("%n");
       }
       handleSourceError(
-          String.format(
-              "SourceContext: After Cursor : %s, Encountered Error While Reading Data. Following Entities were not fetched Successfully : %s",
-              lastCursor, builder),
-          time);
+        String.format(
+          "SourceContext: After Cursor : %s, Encountered Error While Reading Data. Following Entities were not fetched Successfully : %s",
+          lastCursor,
+          builder
+        ),
+        time
+      );
     }
   }
 
@@ -364,24 +392,33 @@ public class SearchIndexApp extends AbstractNativeApplication {
         Map<String, Object> detailsMap = new HashMap<>();
         os.org.opensearch.action.bulk.BulkItemResponse.Failure failure = bulkItemResponse.getFailure();
         detailsMap.put(
-            "context",
-            String.format(
-                "EsWriterContext: Encountered Error While Writing Data %n Entity %n ID : [%s] ", failure.getId()));
+          "context",
+          String.format(
+            "EsWriterContext: Encountered Error While Writing Data %n Entity %n ID : [%s] ",
+            failure.getId()
+          )
+        );
         detailsMap.put(
-            "lastFailedReason",
-            String.format(
-                "Index Type: [%s], Reason: [%s] %n Trace : [%s]",
-                failure.getIndex(), failure.getMessage(), ExceptionUtils.getStackTrace(failure.getCause())));
+          "lastFailedReason",
+          String.format(
+            "Index Type: [%s], Reason: [%s] %n Trace : [%s]",
+            failure.getIndex(),
+            failure.getMessage(),
+            ExceptionUtils.getStackTrace(failure.getCause())
+          )
+        );
         detailsMap.put("lastFailedAt", System.currentTimeMillis());
         details.add(detailsMap);
       }
     }
     if (!details.isEmpty()) {
       handleEsSinkError(
-          String.format(
-              "[EsWriter][BulkItemResponse] Got Following Error Responses: %n %s ",
-              JsonUtils.pojoToJson(details, true)),
-          time);
+        String.format(
+          "[EsWriter][BulkItemResponse] Got Following Error Responses: %n %s ",
+          JsonUtils.pojoToJson(details, true)
+        ),
+        time
+      );
     }
   }
 
@@ -393,23 +430,33 @@ public class SearchIndexApp extends AbstractNativeApplication {
         Map<String, Object> detailsMap = new HashMap<>();
         BulkItemResponse.Failure failure = bulkItemResponse.getFailure();
         detailsMap.put(
-            "context",
-            String.format(
-                "EsWriterContext: Encountered Error While Writing Data %n Entity %n ID : [%s] ", failure.getId()));
+          "context",
+          String.format(
+            "EsWriterContext: Encountered Error While Writing Data %n Entity %n ID : [%s] ",
+            failure.getId()
+          )
+        );
         detailsMap.put(
-            "lastFailedReason",
-            String.format(
-                "Index Type: [%s], Reason: [%s] %n Trace : [%s]",
-                failure.getIndex(), failure.getMessage(), ExceptionUtils.getStackTrace(failure.getCause())));
+          "lastFailedReason",
+          String.format(
+            "Index Type: [%s], Reason: [%s] %n Trace : [%s]",
+            failure.getIndex(),
+            failure.getMessage(),
+            ExceptionUtils.getStackTrace(failure.getCause())
+          )
+        );
         detailsMap.put("lastFailedAt", System.currentTimeMillis());
         details.add(detailsMap);
       }
     }
     if (!details.isEmpty()) {
       handleEsSinkError(
-          String.format(
-              "[EsWriter][BulkItemResponse] Got Following Error Responses: %s ", JsonUtils.pojoToJson(details, true)),
-          time);
+        String.format(
+          "[EsWriter][BulkItemResponse] Got Following Error Responses: %s ",
+          JsonUtils.pojoToJson(details, true)
+        ),
+        time
+      );
     }
   }
 

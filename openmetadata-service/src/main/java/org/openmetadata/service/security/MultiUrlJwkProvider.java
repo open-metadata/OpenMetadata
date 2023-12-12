@@ -22,6 +22,7 @@ import java.net.URL;
 import java.util.List;
 
 final class MultiUrlJwkProvider implements JwkProvider {
+
   private final List<UrlJwkProvider> urlJwkProviders;
 
   public MultiUrlJwkProvider(List<URL> publicKeyUris) {
@@ -30,8 +31,10 @@ final class MultiUrlJwkProvider implements JwkProvider {
 
   @Override
   public Jwk get(String keyId) throws JwkException {
-    JwkException lastException =
-        new SigningKeyNotFoundException("JWT Token keyID doesn't match the configured keyID.", null);
+    JwkException lastException = new SigningKeyNotFoundException(
+      "JWT Token keyID doesn't match the configured keyID.",
+      null
+    );
     for (UrlJwkProvider jwkProvider : urlJwkProviders) {
       try {
         return jwkProvider.get(keyId);

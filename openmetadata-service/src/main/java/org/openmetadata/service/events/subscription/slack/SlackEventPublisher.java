@@ -36,6 +36,7 @@ import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class SlackEventPublisher extends SubscriptionPublisher {
+
   private final MessageDecorator<SlackMessage> slackMessageFormatter = new SlackMessageDecorator();
   private final Webhook webhook;
   private Invocation.Builder target;
@@ -90,7 +91,8 @@ public class SlackEventPublisher extends SubscriptionPublisher {
       } catch (Exception e) {
         LOG.error("Failed to publish event {} to slack due to {} ", event, e.getMessage());
         throw new EventPublisherException(
-            String.format("Failed to publish event %s to slack due to %s ", event, e.getMessage()));
+          String.format("Failed to publish event %s to slack due to %s ", event, e.getMessage())
+        );
       }
     }
   }

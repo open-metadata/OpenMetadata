@@ -11,6 +11,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.util.EntityUtil;
 
 public class DataInsightChartRepository extends EntityRepository<DataInsightChart> {
+
   public static final String COLLECTION_PATH = "/v1/analytics/dataInsights/charts";
   public static final String LAST_SESSION = "lastSession";
   public static final String DATA_ENTITY_TYPE = "data.entityType";
@@ -44,35 +45,37 @@ public class DataInsightChartRepository extends EntityRepository<DataInsightChar
   public static final String TEAM = "team";
   public static final String ENTITY_HREF = "entityHref";
   public static final String DATA_ENTITY_HREF = "data.entityHref";
-  public static final List<String> SUPPORTS_TEAM_FILTER =
-      Arrays.asList(
-          "TotalEntitiesByType",
-          "TotalEntitiesByTier",
-          "PercentageOfEntitiesWithDescriptionByType",
-          "PercentageOfEntitiesWithOwnerByType",
-          "DailyActiveUsers",
-          "MostActiveUsers");
+  public static final List<String> SUPPORTS_TEAM_FILTER = Arrays.asList(
+    "TotalEntitiesByType",
+    "TotalEntitiesByTier",
+    "PercentageOfEntitiesWithDescriptionByType",
+    "PercentageOfEntitiesWithOwnerByType",
+    "DailyActiveUsers",
+    "MostActiveUsers"
+  );
 
-  public static final List<String> SUPPORTS_TIER_FILTER =
-      Arrays.asList(
-          "TotalEntitiesByType",
-          "TotalEntitiesByTier",
-          "PercentageOfEntitiesWithDescriptionByType",
-          "PercentageOfEntitiesWithOwnerByType",
-          "PageViewsByEntities",
-          "MostViewedEntities");
+  public static final List<String> SUPPORTS_TIER_FILTER = Arrays.asList(
+    "TotalEntitiesByType",
+    "TotalEntitiesByTier",
+    "PercentageOfEntitiesWithDescriptionByType",
+    "PercentageOfEntitiesWithOwnerByType",
+    "PageViewsByEntities",
+    "MostViewedEntities"
+  );
 
-  public static final List<String> SUPPORTS_NULL_DATE_RANGE =
-      listOf(DataInsightChartResult.DataInsightChartType.UNUSED_ASSETS.toString());
+  public static final List<String> SUPPORTS_NULL_DATE_RANGE = listOf(
+    DataInsightChartResult.DataInsightChartType.UNUSED_ASSETS.toString()
+  );
 
   public DataInsightChartRepository() {
     super(
-        COLLECTION_PATH,
-        DATA_INSIGHT_CHART,
-        DataInsightChart.class,
-        Entity.getCollectionDAO().dataInsightChartDAO(),
-        "",
-        "");
+      COLLECTION_PATH,
+      DATA_INSIGHT_CHART,
+      DataInsightChart.class,
+      Entity.getCollectionDAO().dataInsightChartDAO(),
+      "",
+      ""
+    );
   }
 
   @Override

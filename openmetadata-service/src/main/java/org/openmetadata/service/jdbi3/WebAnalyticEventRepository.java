@@ -14,17 +14,19 @@ import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
 public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEvent> {
+
   public static final String COLLECTION_PATH = "/v1/analytics/web/events";
   private static final String WEB_ANALYTICS_EVENT_DATA_EXTENSION = "webAnalyticEvent.webAnalyticEventData";
 
   public WebAnalyticEventRepository() {
     super(
-        COLLECTION_PATH,
-        WEB_ANALYTIC_EVENT,
-        WebAnalyticEvent.class,
-        Entity.getCollectionDAO().webAnalyticEventDAO(),
-        "",
-        "");
+      COLLECTION_PATH,
+      WEB_ANALYTIC_EVENT,
+      WebAnalyticEvent.class,
+      Entity.getCollectionDAO().webAnalyticEventDAO(),
+      "",
+      ""
+    );
   }
 
   @Override
@@ -55,10 +57,11 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
   public Response addWebAnalyticEventData(WebAnalyticEventData webAnalyticEventData) {
     webAnalyticEventData.setEventId(UUID.randomUUID());
     storeTimeSeries(
-        webAnalyticEventData.getEventType().value(),
-        WEB_ANALYTICS_EVENT_DATA_EXTENSION,
-        "webAnalyticEventData",
-        JsonUtils.pojoToJson(webAnalyticEventData));
+      webAnalyticEventData.getEventType().value(),
+      WEB_ANALYTICS_EVENT_DATA_EXTENSION,
+      "webAnalyticEventData",
+      JsonUtils.pojoToJson(webAnalyticEventData)
+    );
     return Response.ok(webAnalyticEventData).build();
   }
 
@@ -69,11 +72,16 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
   public ResultList<WebAnalyticEventData> getWebAnalyticEventData(String eventType, Long startTs, Long endTs) {
     List<WebAnalyticEventData> webAnalyticEventData;
     webAnalyticEventData =
-        JsonUtils.readObjects(
-            getResultsFromAndToTimestamps(eventType, WEB_ANALYTICS_EVENT_DATA_EXTENSION, startTs, endTs),
-            WebAnalyticEventData.class);
+      JsonUtils.readObjects(
+        getResultsFromAndToTimestamps(eventType, WEB_ANALYTICS_EVENT_DATA_EXTENSION, startTs, endTs),
+        WebAnalyticEventData.class
+      );
 
     return new ResultList<>(
-        webAnalyticEventData, String.valueOf(startTs), String.valueOf(endTs), webAnalyticEventData.size());
+      webAnalyticEventData,
+      String.valueOf(startTs),
+      String.valueOf(endTs),
+      webAnalyticEventData.size()
+    );
   }
 }

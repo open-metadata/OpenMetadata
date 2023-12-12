@@ -31,6 +31,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.ResultList;
 
 public class PIIMasker {
+
   public static final String SENSITIVE_PII_TAG = "PII.Sensitive";
   public static final String MASKED_VALUE = "********";
   public static final String MASKED_NAME = "[MASKED]";
@@ -55,26 +56,32 @@ public class PIIMasker {
     } else {
       // Otherwise, mask only the PII columns
       columnsPositionToBeMasked =
-          table.getColumns().stream()
-              .collect(Collectors.toMap(Function.identity(), c -> sampleData.getColumns().indexOf(c.getName())))
-              .entrySet()
-              .stream()
-              .filter(entry -> hasPiiSensitiveTag(entry.getKey()))
-              .map(Map.Entry::getValue)
-              .collect(Collectors.toList());
+        table
+          .getColumns()
+          .stream()
+          .collect(Collectors.toMap(Function.identity(), c -> sampleData.getColumns().indexOf(c.getName())))
+          .entrySet()
+          .stream()
+          .filter(entry -> hasPiiSensitiveTag(entry.getKey()))
+          .map(Map.Entry::getValue)
+          .collect(Collectors.toList());
     }
 
     // Mask rows
     sampleData.setRows(
-        sampleData.getRows().stream()
-            .map(r -> maskSampleDataRow(r, columnsPositionToBeMasked))
-            .collect(Collectors.toList()));
+      sampleData
+        .getRows()
+        .stream()
+        .map(r -> maskSampleDataRow(r, columnsPositionToBeMasked))
+        .collect(Collectors.toList())
+    );
 
     List<String> sampleDataColumns = sampleData.getColumns();
 
     // Flag column names as masked
     columnsPositionToBeMasked.forEach(
-        position -> sampleDataColumns.set(position, flagMaskedName(sampleDataColumns.get(position))));
+      position -> sampleDataColumns.set(position, flagMaskedName(sampleDataColumns.get(position)))
+    );
 
     table.setSampleData(sampleData);
     return table;
@@ -139,34 +146,43 @@ public class PIIMasker {
   }
 
   public static ResultList<TestCase> getTestCases(
-      ResultList<TestCase> testCases, Authorizer authorizer, SecurityContext securityContext) {
-    List<TestCase> maskedTests =
-        testCases.getData().stream()
-            .map(
-                testCase -> {
-                  MessageParser.EntityLink testCaseLink = MessageParser.EntityLink.parse(testCase.getEntityLink());
-                  Table table =
-                      Entity.getEntityByName(
-                          Entity.TABLE, testCaseLink.getEntityFQN(), "owner,tags,columns", Include.NON_DELETED);
+    ResultList<TestCase> testCases,
+    Authorizer authorizer,
+    SecurityContext securityContext
+  ) {
+    List<TestCase> maskedTests = testCases
+      .getData()
+      .stream()
+      .map(
+        testCase -> {
+          MessageParser.EntityLink testCaseLink = MessageParser.EntityLink.parse(testCase.getEntityLink());
+          Table table = Entity.getEntityByName(
+            Entity.TABLE,
+            testCaseLink.getEntityFQN(),
+            "owner,tags,columns",
+            Include.NON_DELETED
+          );
 
-                  // Ignore table tests
-                  if (testCaseLink.getFieldName() == null) return testCase;
+          // Ignore table tests
+          if (testCaseLink.getFieldName() == null) return testCase;
 
-                  Optional<Column> referencedColumn =
-                      table.getColumns().stream()
-                          .filter(col -> testCaseLink.getFullyQualifiedFieldValue().equals(col.getFullyQualifiedName()))
-                          .findFirst();
+          Optional<Column> referencedColumn = table
+            .getColumns()
+            .stream()
+            .filter(col -> testCaseLink.getFullyQualifiedFieldValue().equals(col.getFullyQualifiedName()))
+            .findFirst();
 
-                  if (referencedColumn.isPresent()) {
-                    Column col = referencedColumn.get();
-                    // We need the table owner to know if we can authorize the access
-                    boolean authorizePII = authorizer.authorizePII(securityContext, table.getOwner());
-                    if (!authorizePII) return PIIMasker.getTestCase(col, testCase);
-                    return testCase;
-                  }
-                  return testCase;
-                })
-            .collect(Collectors.toList());
+          if (referencedColumn.isPresent()) {
+            Column col = referencedColumn.get();
+            // We need the table owner to know if we can authorize the access
+            boolean authorizePII = authorizer.authorizePII(securityContext, table.getOwner());
+            if (!authorizePII) return PIIMasker.getTestCase(col, testCase);
+            return testCase;
+          }
+          return testCase;
+        }
+      )
+      .collect(Collectors.toList());
 
     testCases.setData(maskedTests);
     return testCases;
@@ -182,16 +198,21 @@ public class PIIMasker {
   }
 
   public static ResultList<Query> getQueries(
-      ResultList<Query> queries, Authorizer authorizer, SecurityContext securityContext) {
-    List<Query> maskedQueries =
-        queries.getData().stream()
-            .map(
-                query -> {
-                  boolean authorizePII = authorizer.authorizePII(securityContext, query.getOwner());
-                  if (!authorizePII) return PIIMasker.getQuery(query);
-                  return query;
-                })
-            .collect(Collectors.toList());
+    ResultList<Query> queries,
+    Authorizer authorizer,
+    SecurityContext securityContext
+  ) {
+    List<Query> maskedQueries = queries
+      .getData()
+      .stream()
+      .map(
+        query -> {
+          boolean authorizePII = authorizer.authorizePII(securityContext, query.getOwner());
+          if (!authorizePII) return PIIMasker.getQuery(query);
+          return query;
+        }
+      )
+      .collect(Collectors.toList());
     queries.setData(maskedQueries);
     return queries;
   }

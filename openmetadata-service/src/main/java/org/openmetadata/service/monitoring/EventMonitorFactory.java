@@ -21,7 +21,6 @@ public final class EventMonitorFactory {
   }
 
   public static EventMonitor createEventMonitor(EventMonitorConfiguration config, String clusterName) {
-
     EventMonitorProvider eventMonitorProvider = config != null ? config.getEventMonitor() : null;
 
     if (eventMonitorProvider == EventMonitorProvider.CLOUDWATCH) {

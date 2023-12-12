@@ -46,6 +46,7 @@ import org.openmetadata.service.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Collection(name = "permissions")
 public class PermissionsResource {
+
   private final Authorizer authorizer;
 
   @SuppressWarnings("unused")
@@ -55,83 +56,88 @@ public class PermissionsResource {
 
   @GET
   @Operation(
-      operationId = "getResourcePermissions",
-      summary = "Get permissions for logged in user",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Permissions for logged in user",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = ResourcePermissionList.class)))
-      })
+    operationId = "getResourcePermissions",
+    summary = "Get permissions for logged in user",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "Permissions for logged in user",
+        content = @Content(
+          mediaType = "application/json",
+          schema = @Schema(implementation = ResourcePermissionList.class)
+        )
+      )
+    }
+  )
   public ResultList<ResourcePermission> getPermissions(
-      @Context SecurityContext securityContext,
-      @Parameter(
-              description =
-                  "Permission for user specified in this query param. If not specified, the user is "
-                      + "defaulted to the logged in user",
-              schema = @Schema(type = "string", example = "john"))
-          @QueryParam("user")
-          String user) {
+    @Context SecurityContext securityContext,
+    @Parameter(
+      description = "Permission for user specified in this query param. If not specified, the user is " +
+      "defaulted to the logged in user",
+      schema = @Schema(type = "string", example = "john")
+    ) @QueryParam("user") String user
+  ) {
     return new ResultList<>(authorizer.listPermissions(securityContext, user));
   }
 
   @GET
   @Path("/{resource}")
   @Operation(
-      operationId = "getResourceTypePermission",
-      summary = "Get permissions a given resource/entity type for logged in user",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Permissions for logged in user",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = ResourcePermissionList.class)))
-      })
+    operationId = "getResourceTypePermission",
+    summary = "Get permissions a given resource/entity type for logged in user",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "Permissions for logged in user",
+        content = @Content(
+          mediaType = "application/json",
+          schema = @Schema(implementation = ResourcePermissionList.class)
+        )
+      )
+    }
+  )
   public ResourcePermission getPermission(
-      @Context SecurityContext securityContext,
-      @Parameter(
-              description =
-                  "Permission for user specified in this query param. If not specified, the user is "
-                      + "defaulted to the logged in user",
-              schema = @Schema(type = "string", example = "john"))
-          @QueryParam("user")
-          String user,
-      @Parameter(description = "Type of the resource", schema = @Schema(type = "String")) @PathParam("resource")
-          String resource) {
+    @Context SecurityContext securityContext,
+    @Parameter(
+      description = "Permission for user specified in this query param. If not specified, the user is " +
+      "defaulted to the logged in user",
+      schema = @Schema(type = "string", example = "john")
+    ) @QueryParam("user") String user,
+    @Parameter(description = "Type of the resource", schema = @Schema(type = "String")) @PathParam(
+      "resource"
+    ) String resource
+  ) {
     return authorizer.getPermission(securityContext, user, resource);
   }
 
   @GET
   @Path("/{resource}/{id}")
   @Operation(
-      operationId = "getResourcePermission",
-      summary = "Get permissions for a given entity for a logged in user",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Permissions for logged in user",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = ResourcePermissionList.class)))
-      })
+    operationId = "getResourcePermission",
+    summary = "Get permissions for a given entity for a logged in user",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "Permissions for logged in user",
+        content = @Content(
+          mediaType = "application/json",
+          schema = @Schema(implementation = ResourcePermissionList.class)
+        )
+      )
+    }
+  )
   public ResourcePermission getPermission(
-      @Context SecurityContext securityContext,
-      @Parameter(
-              description =
-                  "Permission for user specified in this query param. If not specified, the user is "
-                      + "defaulted to the logged in user",
-              schema = @Schema(type = "string", example = "john"))
-          @QueryParam("user")
-          String user,
-      @Parameter(description = "Type of the resource", schema = @Schema(type = "String")) @PathParam("resource")
-          String resource,
-      @Parameter(description = "Id of the entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+    @Context SecurityContext securityContext,
+    @Parameter(
+      description = "Permission for user specified in this query param. If not specified, the user is " +
+      "defaulted to the logged in user",
+      schema = @Schema(type = "string", example = "john")
+    ) @QueryParam("user") String user,
+    @Parameter(description = "Type of the resource", schema = @Schema(type = "String")) @PathParam(
+      "resource"
+    ) String resource,
+    @Parameter(description = "Id of the entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id
+  ) {
     ResourceContext resourceContext = new ResourceContext(resource, id, null);
     return authorizer.getPermission(securityContext, user, resourceContext);
   }
@@ -139,30 +145,31 @@ public class PermissionsResource {
   @GET
   @Path("/{resource}/name/{name}")
   @Operation(
-      operationId = "getResourcePermissionByName",
-      summary = "Get permissions for a given entity name for a logged in user",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Permissions for logged in user",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = ResourcePermissionList.class)))
-      })
+    operationId = "getResourcePermissionByName",
+    summary = "Get permissions for a given entity name for a logged in user",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "Permissions for logged in user",
+        content = @Content(
+          mediaType = "application/json",
+          schema = @Schema(implementation = ResourcePermissionList.class)
+        )
+      )
+    }
+  )
   public ResourcePermission getPermission(
-      @Context SecurityContext securityContext,
-      @Parameter(
-              description =
-                  "Permission for user specified in this query param. If not specified, the user is "
-                      + "defaulted to the logged in user",
-              schema = @Schema(type = "string", example = "john"))
-          @QueryParam("user")
-          String user,
-      @Parameter(description = "Type of the resource", schema = @Schema(type = "String")) @PathParam("resource")
-          String resource,
-      @Parameter(description = "Name of the entity", schema = @Schema(type = "String")) @PathParam("name")
-          String name) {
+    @Context SecurityContext securityContext,
+    @Parameter(
+      description = "Permission for user specified in this query param. If not specified, the user is " +
+      "defaulted to the logged in user",
+      schema = @Schema(type = "string", example = "john")
+    ) @QueryParam("user") String user,
+    @Parameter(description = "Type of the resource", schema = @Schema(type = "String")) @PathParam(
+      "resource"
+    ) String resource,
+    @Parameter(description = "Name of the entity", schema = @Schema(type = "String")) @PathParam("name") String name
+  ) {
     ResourceContext resourceContext = new ResourceContext(resource, null, name);
     return authorizer.getPermission(securityContext, user, resourceContext);
   }
@@ -170,21 +177,23 @@ public class PermissionsResource {
   @GET
   @Path("/policies")
   @Operation(
-      operationId = "getPermissionsForPolicies",
-      summary = "Get permissions for a set of policies",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Permissions for a set of policies",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = ResourcePermissionList.class)))
-      })
+    operationId = "getPermissionsForPolicies",
+    summary = "Get permissions for a set of policies",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "Permissions for a set of policies",
+        content = @Content(
+          mediaType = "application/json",
+          schema = @Schema(implementation = ResourcePermissionList.class)
+        )
+      )
+    }
+  )
   public ResultList<ResourcePermission> getPermissionForPolicies(
-      @Context SecurityContext securityContext,
-      @Parameter(description = "List of policy of ids", schema = @Schema(type = "UUID")) @QueryParam("ids")
-          List<UUID> ids) {
+    @Context SecurityContext securityContext,
+    @Parameter(description = "List of policy of ids", schema = @Schema(type = "UUID")) @QueryParam("ids") List<UUID> ids
+  ) {
     // User must have read access to policies
     OperationContext operationContext = new OperationContext(Entity.POLICY, MetadataOperation.VIEW_ALL);
     for (UUID id : ids) {

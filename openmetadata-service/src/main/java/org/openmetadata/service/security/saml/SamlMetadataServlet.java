@@ -27,6 +27,7 @@ import lombok.extern.slf4j.Slf4j;
 @WebServlet("/api/v1/saml/metadata")
 @Slf4j
 public class SamlMetadataServlet extends HttpServlet {
+
   @Override
   @SneakyThrows
   protected void doGet(final HttpServletRequest req, final HttpServletResponse resp) {

@@ -5,6 +5,7 @@ import org.openmetadata.schema.type.Function;
 import org.openmetadata.service.util.ResultList;
 
 public class FunctionList extends ResultList<Function> {
+
   @SuppressWarnings("unused")
   public FunctionList() {}
 

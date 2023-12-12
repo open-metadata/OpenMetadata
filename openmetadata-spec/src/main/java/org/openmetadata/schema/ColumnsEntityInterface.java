@@ -21,7 +21,6 @@ import org.openmetadata.schema.type.Column;
  * between different entities.
  */
 public interface ColumnsEntityInterface {
-
   String getFullyQualifiedName();
 
   List<Column> getColumns();

@@ -17,8 +17,9 @@ import javax.ws.rs.core.Response;
 import org.openmetadata.sdk.exception.WebServiceException;
 
 public class SecretsManagerException extends WebServiceException {
+
   private static final String BY_NAME_MESSAGE =
-      "SecretsManagerException for secret manager [%s] when using the secret name [%s] due to [%s].";
+    "SecretsManagerException for secret manager [%s] when using the secret name [%s] due to [%s].";
 
   public SecretsManagerException(String message) {
     super(Response.Status.INTERNAL_SERVER_ERROR, message);

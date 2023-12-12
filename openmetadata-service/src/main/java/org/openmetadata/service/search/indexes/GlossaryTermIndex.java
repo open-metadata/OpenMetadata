@@ -11,6 +11,7 @@ import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
 public class GlossaryTermIndex implements SearchIndex {
+
   final GlossaryTerm glossaryTerm;
   final List<String> excludeFields = List.of("changeDescription");
 
@@ -27,10 +28,12 @@ public class GlossaryTermIndex implements SearchIndex {
       suggest.add(SearchSuggest.builder().input(glossaryTerm.getDisplayName()).weight(10).build());
     }
     doc.put(
-        "fqnParts",
-        getFQNParts(
-            glossaryTerm.getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+      "fqnParts",
+      getFQNParts(
+        glossaryTerm.getFullyQualifiedName(),
+        suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())
+      )
+    );
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.GLOSSARY_TERM);
     doc.put("owner", getEntityWithDisplayName(glossaryTerm.getOwner()));

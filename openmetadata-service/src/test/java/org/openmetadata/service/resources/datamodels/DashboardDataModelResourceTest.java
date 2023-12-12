@@ -61,11 +61,12 @@ public class DashboardDataModelResourceTest extends EntityResourceTest<Dashboard
 
   public DashboardDataModelResourceTest() {
     super(
-        Entity.DASHBOARD_DATA_MODEL,
-        DashboardDataModel.class,
-        DashboardDataModelResource.DashboardDataModelList.class,
-        "dashboard/datamodels",
-        DashboardDataModelResource.FIELDS);
+      Entity.DASHBOARD_DATA_MODEL,
+      DashboardDataModel.class,
+      DashboardDataModelResource.DashboardDataModelList.class,
+      "dashboard/datamodels",
+      DashboardDataModelResource.FIELDS
+    );
   }
 
   @Test
@@ -73,15 +74,16 @@ public class DashboardDataModelResourceTest extends EntityResourceTest<Dashboard
   void post_dataModelWithoutRequiredFields_4xx(TestInfo test) {
     // Service is required field
     assertResponse(
-        () -> createEntity(createRequest(test).withService(null), ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "[service must not be null]");
+      () -> createEntity(createRequest(test).withService(null), ADMIN_AUTH_HEADERS),
+      BAD_REQUEST,
+      "[service must not be null]"
+    );
   }
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   void post_dataModelWithDifferentService_200_ok(TestInfo test) throws IOException {
-    String[] differentServices = {METABASE_REFERENCE.getName(), LOOKER_REFERENCE.getName()};
+    String[] differentServices = { METABASE_REFERENCE.getName(), LOOKER_REFERENCE.getName() };
 
     // Create dataModel for each service and test APIs
     for (String service : differentServices) {
@@ -101,18 +103,20 @@ public class DashboardDataModelResourceTest extends EntityResourceTest<Dashboard
   void test_mutuallyExclusiveTags(TestInfo testInfo) {
     CreateDashboardDataModel create = createRequest(testInfo).withTags(List.of(TIER1_TAG_LABEL, TIER2_TAG_LABEL));
     assertResponse(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        CatalogExceptionMessage.mutuallyExclusiveLabels(TIER2_TAG_LABEL, TIER1_TAG_LABEL));
+      () -> createEntity(create, ADMIN_AUTH_HEADERS),
+      BAD_REQUEST,
+      CatalogExceptionMessage.mutuallyExclusiveLabels(TIER2_TAG_LABEL, TIER1_TAG_LABEL)
+    );
 
     // Apply mutually exclusive tags to a dataModel column
     CreateDashboardDataModel createDashboardDataModel = createRequest(testInfo, 1);
     Column column = getColumn("test", INT, null).withTags(listOf(TIER1_TAG_LABEL, TIER2_TAG_LABEL));
     createDashboardDataModel.setColumns(listOf(column));
     assertResponse(
-        () -> createEntity(createDashboardDataModel, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        CatalogExceptionMessage.mutuallyExclusiveLabels(TIER2_TAG_LABEL, TIER1_TAG_LABEL));
+      () -> createEntity(createDashboardDataModel, ADMIN_AUTH_HEADERS),
+      BAD_REQUEST,
+      CatalogExceptionMessage.mutuallyExclusiveLabels(TIER2_TAG_LABEL, TIER1_TAG_LABEL)
+    );
 
     // Apply mutually exclusive tags to a dataModel's nested column
     CreateDashboardDataModel createDashboardDataModel1 = createRequest(testInfo, 1);
@@ -120,9 +124,10 @@ public class DashboardDataModelResourceTest extends EntityResourceTest<Dashboard
     Column column1 = getColumn("test", STRUCT, null).withChildren(List.of(nestedColumns));
     createDashboardDataModel1.setColumns(listOf(column1));
     assertResponse(
-        () -> createEntity(createDashboardDataModel1, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        CatalogExceptionMessage.mutuallyExclusiveLabels(TIER2_TAG_LABEL, TIER1_TAG_LABEL));
+      () -> createEntity(createDashboardDataModel1, ADMIN_AUTH_HEADERS),
+      BAD_REQUEST,
+      CatalogExceptionMessage.mutuallyExclusiveLabels(TIER2_TAG_LABEL, TIER1_TAG_LABEL)
+    );
   }
 
   @Test
@@ -134,14 +139,16 @@ public class DashboardDataModelResourceTest extends EntityResourceTest<Dashboard
 
     // Entity can't be created with PUT or POST
     assertResponse(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS),
-        NOT_FOUND,
-        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+      () -> createEntity(create, ADMIN_AUTH_HEADERS),
+      NOT_FOUND,
+      CatalogExceptionMessage.entityNotFound(TAG, "invalidTag")
+    );
 
     assertResponse(
-        () -> updateEntity(create, Status.CREATED, ADMIN_AUTH_HEADERS),
-        NOT_FOUND,
-        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+      () -> updateEntity(create, Status.CREATED, ADMIN_AUTH_HEADERS),
+      NOT_FOUND,
+      CatalogExceptionMessage.entityNotFound(TAG, "invalidTag")
+    );
 
     // Create an entity and update the columns with PUT and PATCH with an invalid tag
     List<Column> validColumns = List.of(getColumn(C1, BIGINT, TIER1_TAG_LABEL));
@@ -151,15 +158,17 @@ public class DashboardDataModelResourceTest extends EntityResourceTest<Dashboard
 
     create.setColumns(invalidTagColumns);
     assertResponse(
-        () -> updateEntity(create, Status.CREATED, ADMIN_AUTH_HEADERS),
-        NOT_FOUND,
-        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+      () -> updateEntity(create, Status.CREATED, ADMIN_AUTH_HEADERS),
+      NOT_FOUND,
+      CatalogExceptionMessage.entityNotFound(TAG, "invalidTag")
+    );
 
     entity.setTags(listOf(invalidTag));
     assertResponse(
-        () -> patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS),
-        NOT_FOUND,
-        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+      () -> patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS),
+      NOT_FOUND,
+      CatalogExceptionMessage.entityNotFound(TAG, "invalidTag")
+    );
 
     // No lingering relationships should cause error in listing the entity
     listEntities(null, ADMIN_AUTH_HEADERS);
@@ -169,34 +178,36 @@ public class DashboardDataModelResourceTest extends EntityResourceTest<Dashboard
   void testInheritedPermissionFromParent(TestInfo test) throws IOException {
     // Create a dashboard service with owner data consumer
     DashboardServiceResourceTest serviceTest = new DashboardServiceResourceTest();
-    CreateDashboardService createDashboardService =
-        serviceTest.createRequest(getEntityName(test)).withOwner(DATA_CONSUMER.getEntityReference());
+    CreateDashboardService createDashboardService = serviceTest
+      .createRequest(getEntityName(test))
+      .withOwner(DATA_CONSUMER.getEntityReference());
     DashboardService service = serviceTest.createEntity(createDashboardService, ADMIN_AUTH_HEADERS);
 
     // Data consumer as an owner of the service can create dashboard data model under it
     createEntity(
-        createRequest("dashboardModel").withService(service.getFullyQualifiedName()),
-        authHeaders(DATA_CONSUMER.getName()));
+      createRequest("dashboardModel").withService(service.getFullyQualifiedName()),
+      authHeaders(DATA_CONSUMER.getName())
+    );
   }
 
   @Override
   @Execution(ExecutionMode.CONCURRENT)
   public DashboardDataModel validateGetWithDifferentFields(DashboardDataModel dashboardDataModel, boolean byName)
-      throws HttpResponseException {
+    throws HttpResponseException {
     String fields = "";
     dashboardDataModel =
-        byName
-            ? getEntityByName(dashboardDataModel.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getEntity(dashboardDataModel.getId(), fields, ADMIN_AUTH_HEADERS);
+      byName
+        ? getEntityByName(dashboardDataModel.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+        : getEntity(dashboardDataModel.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(dashboardDataModel.getService(), dashboardDataModel.getServiceType());
     assertListNull(dashboardDataModel.getOwner(), dashboardDataModel.getFollowers(), dashboardDataModel.getTags());
 
     // .../datamodels?fields=owner
     fields = "owner,followers,tags";
     dashboardDataModel =
-        byName
-            ? getEntityByName(dashboardDataModel.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getEntity(dashboardDataModel.getId(), fields, ADMIN_AUTH_HEADERS);
+      byName
+        ? getEntityByName(dashboardDataModel.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+        : getEntity(dashboardDataModel.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(dashboardDataModel.getService(), dashboardDataModel.getServiceType());
     // Checks for other owner, tags, and followers is done in the base class
     return dashboardDataModel;
@@ -205,12 +216,12 @@ public class DashboardDataModelResourceTest extends EntityResourceTest<Dashboard
   @Override
   public CreateDashboardDataModel createRequest(String name) {
     return new CreateDashboardDataModel()
-        .withName(name)
-        .withService(getContainer().getName())
-        .withServiceType(CreateDashboardDataModel.DashboardServiceType.Metabase)
-        .withSql("SELECT * FROM tab1;")
-        .withDataModelType(DataModelType.MetabaseDataModel)
-        .withColumns(COLUMNS);
+      .withName(name)
+      .withService(getContainer().getName())
+      .withServiceType(CreateDashboardDataModel.DashboardServiceType.Metabase)
+      .withSql("SELECT * FROM tab1;")
+      .withDataModelType(DataModelType.MetabaseDataModel)
+      .withColumns(COLUMNS);
   }
 
   @Override
@@ -225,7 +236,10 @@ public class DashboardDataModelResourceTest extends EntityResourceTest<Dashboard
 
   @Override
   public void validateCreatedEntity(
-      DashboardDataModel dashboardDataModel, CreateDashboardDataModel createRequest, Map<String, String> authHeaders) {
+    DashboardDataModel dashboardDataModel,
+    CreateDashboardDataModel createRequest,
+    Map<String, String> authHeaders
+  ) {
     assertNotNull(dashboardDataModel.getServiceType());
     assertReference(createRequest.getService(), dashboardDataModel.getService());
     assertEquals(createRequest.getSql(), dashboardDataModel.getSql());
@@ -235,7 +249,10 @@ public class DashboardDataModelResourceTest extends EntityResourceTest<Dashboard
 
   @Override
   public void compareEntities(
-      DashboardDataModel expected, DashboardDataModel patched, Map<String, String> authHeaders) {
+    DashboardDataModel expected,
+    DashboardDataModel patched,
+    Map<String, String> authHeaders
+  ) {
     assertReference(expected.getService(), patched.getService());
   }
 

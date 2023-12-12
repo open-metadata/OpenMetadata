@@ -25,8 +25,12 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
 public class UserTokenCache {
-  private static final LoadingCache<String, HashSet<String>> CACHE =
-      CacheBuilder.newBuilder().maximumSize(1000).expireAfterWrite(2, TimeUnit.MINUTES).build(new UserTokenLoader());
+
+  private static final LoadingCache<String, HashSet<String>> CACHE = CacheBuilder
+    .newBuilder()
+    .maximumSize(1000)
+    .expireAfterWrite(2, TimeUnit.MINUTES)
+    .build(new UserTokenLoader());
   private static volatile boolean initialized = false;
   private static TokenRepository tokenRepository;
 
@@ -62,15 +66,22 @@ public class UserTokenCache {
   }
 
   static class UserTokenLoader extends CacheLoader<String, HashSet<String>> {
+
     @Override
     public HashSet<String> load(@CheckForNull String userName) {
       HashSet<String> result = new HashSet<>();
       UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
-      User user =
-          userRepository.getByName(
-              null, userName, new Fields(Set.of(UserResource.USER_PROTECTED_FIELDS)), NON_DELETED, true);
-      List<TokenInterface> tokens =
-          tokenRepository.findByUserIdAndType(user.getId(), TokenType.PERSONAL_ACCESS_TOKEN.value());
+      User user = userRepository.getByName(
+        null,
+        userName,
+        new Fields(Set.of(UserResource.USER_PROTECTED_FIELDS)),
+        NON_DELETED,
+        true
+      );
+      List<TokenInterface> tokens = tokenRepository.findByUserIdAndType(
+        user.getId(),
+        TokenType.PERSONAL_ACCESS_TOKEN.value()
+      );
       tokens.forEach(t -> result.add(((PersonalAccessToken) t).getJwtToken()));
       return result;
     }

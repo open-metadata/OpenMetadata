@@ -29,10 +29,12 @@ public class PipelineServiceIndex implements SearchIndex {
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.PIPELINE_SERVICE);
     doc.put(
-        "fqnParts",
-        getFQNParts(
-            pipelineService.getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+      "fqnParts",
+      getFQNParts(
+        pipelineService.getFullyQualifiedName(),
+        suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())
+      )
+    );
     doc.put("owner", getEntityWithDisplayName(pipelineService.getOwner()));
     return doc;
   }

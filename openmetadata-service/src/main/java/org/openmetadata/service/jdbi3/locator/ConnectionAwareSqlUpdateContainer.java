@@ -21,7 +21,7 @@ import org.jdbi.v3.sqlobject.SqlOperation;
 import org.jdbi.v3.sqlobject.statement.internal.SqlUpdateHandler;
 
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.METHOD})
+@Target({ ElementType.METHOD })
 @SqlOperation(SqlUpdateHandler.class)
 public @interface ConnectionAwareSqlUpdateContainer {
   ConnectionAwareSqlUpdate[] value();

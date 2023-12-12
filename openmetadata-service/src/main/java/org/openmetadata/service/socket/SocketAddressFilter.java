@@ -32,11 +32,14 @@ import org.openmetadata.service.security.JwtFilter;
 
 @Slf4j
 public class SocketAddressFilter implements Filter {
+
   private JwtFilter jwtFilter;
   private final boolean enableSecureSocketConnection;
 
   public SocketAddressFilter(
-      AuthenticationConfiguration authenticationConfiguration, AuthorizerConfiguration authorizerConf) {
+    AuthenticationConfiguration authenticationConfiguration,
+    AuthorizerConfiguration authorizerConf
+  ) {
     enableSecureSocketConnection = authorizerConf.getEnableSecureSocketConnection();
     if (enableSecureSocketConnection) {
       jwtFilter = new JwtFilter(authenticationConfiguration, authorizerConf);

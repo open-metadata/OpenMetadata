@@ -15,6 +15,7 @@ import org.openmetadata.service.workflows.interfaces.Sink;
 
 @Slf4j
 public class ElasticSearchIndexSink implements Sink<BulkRequest, BulkResponse> {
+
   private final StepStats stats = new StepStats();
   private final SearchRepository searchRepository;
 
@@ -33,19 +34,21 @@ public class ElasticSearchIndexSink implements Sink<BulkRequest, BulkResponse> {
 
       // Update Stats
       LOG.debug(
-          "[EsSearchIndexSink] Batch Stats :- Submitted : {} Success: {} Failed: {}",
-          data.numberOfActions(),
-          currentSuccess,
-          currentFailed);
+        "[EsSearchIndexSink] Batch Stats :- Submitted : {} Success: {} Failed: {}",
+        data.numberOfActions(),
+        currentSuccess,
+        currentFailed
+      );
       updateStats(currentSuccess, currentFailed);
 
       return response;
     } catch (Exception e) {
       LOG.debug(
-          "[EsSearchIndexSink] Batch Stats :- Submitted : {} Success: {} Failed: {}",
-          data.numberOfActions(),
-          0,
-          data.numberOfActions());
+        "[EsSearchIndexSink] Batch Stats :- Submitted : {} Success: {} Failed: {}",
+        data.numberOfActions(),
+        0,
+        data.numberOfActions()
+      );
       updateStats(0, data.numberOfActions());
       throw new SinkException("[EsSearchIndexSink] Batch encountered Exception. Failing Completely", e);
     }

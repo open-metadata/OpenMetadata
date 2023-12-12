@@ -67,12 +67,14 @@ import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/searchIndexes")
 @Tag(
-    name = "SearchIndex",
-    description = "A `SearchIndex` is a index mapping for indexing documents in a `Search Service`.")
+  name = "SearchIndex",
+  description = "A `SearchIndex` is a index mapping for indexing documents in a `Search Service`."
+)
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "searchIndexes")
 public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndexRepository> {
+
   public static final String COLLECTION_PATH = "v1/searchIndexes/";
   static final String FIELDS = "owner,followers,tags,extension,domain,dataProducts,sourceHash";
 
@@ -99,50 +101,46 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
 
   @GET
   @Operation(
-      operationId = "listSearchIndexes",
-      summary = "List searchIndexes",
-      description =
-          "Get a list of SearchIndexes, optionally filtered by `service` it belongs to. Use `fields` "
-              + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
-              + "entries in the list using `limit` and `before` or `after` query params.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "List of SearchIndexes",
-            content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = SearchIndexList.class)))
-      })
+    operationId = "listSearchIndexes",
+    summary = "List searchIndexes",
+    description = "Get a list of SearchIndexes, optionally filtered by `service` it belongs to. Use `fields` " +
+    "parameter to get only necessary fields. Use cursor-based pagination to limit the number " +
+    "entries in the list using `limit` and `before` or `after` query params.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "List of SearchIndexes",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = SearchIndexList.class))
+      )
+    }
+  )
   public ResultList<SearchIndex> list(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(
-              description = "Fields requested in the returned resource",
-              schema = @Schema(type = "string", example = FIELDS))
-          @QueryParam("fields")
-          String fieldsParam,
-      @Parameter(
-              description = "Filter SearchIndexes by service name",
-              schema = @Schema(type = "string", example = "ElasticSearchWestCoast"))
-          @QueryParam("service")
-          String serviceParam,
-      @Parameter(description = "Limit the number SearchIndexes returned. (1 to 1000000, default = 10)")
-          @DefaultValue("10")
-          @QueryParam("limit")
-          @Min(0)
-          @Max(1000000)
-          int limitParam,
-      @Parameter(description = "Returns list of SearchIndexes before this cursor", schema = @Schema(type = "string"))
-          @QueryParam("before")
-          String before,
-      @Parameter(description = "Returns list of SearchIndexes after this cursor", schema = @Schema(type = "string"))
-          @QueryParam("after")
-          String after,
-      @Parameter(
-              description = "Include all, deleted, or non-deleted entities.",
-              schema = @Schema(implementation = Include.class))
-          @QueryParam("include")
-          @DefaultValue("non-deleted")
-          Include include) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(
+      description = "Fields requested in the returned resource",
+      schema = @Schema(type = "string", example = FIELDS)
+    ) @QueryParam("fields") String fieldsParam,
+    @Parameter(
+      description = "Filter SearchIndexes by service name",
+      schema = @Schema(type = "string", example = "ElasticSearchWestCoast")
+    ) @QueryParam("service") String serviceParam,
+    @Parameter(description = "Limit the number SearchIndexes returned. (1 to 1000000, default = 10)") @DefaultValue(
+      "10"
+    ) @QueryParam("limit") @Min(0) @Max(1000000) int limitParam,
+    @Parameter(
+      description = "Returns list of SearchIndexes before this cursor",
+      schema = @Schema(type = "string")
+    ) @QueryParam("before") String before,
+    @Parameter(
+      description = "Returns list of SearchIndexes after this cursor",
+      schema = @Schema(type = "string")
+    ) @QueryParam("after") String after,
+    @Parameter(
+      description = "Include all, deleted, or non-deleted entities.",
+      schema = @Schema(implementation = Include.class)
+    ) @QueryParam("include") @DefaultValue("non-deleted") Include include
+  ) {
     ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
@@ -150,126 +148,137 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
   @GET
   @Path("/{id}/versions")
   @Operation(
-      operationId = "listAllSearchIndexVersion",
-      summary = "List SearchIndex versions",
-      description = "Get a list of all the versions of a SearchIndex identified by `id`",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "List of SearchIndex versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
-      })
+    operationId = "listAllSearchIndexVersion",
+    summary = "List SearchIndex versions",
+    description = "Get a list of all the versions of a SearchIndex identified by `id`",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "List of SearchIndex versions",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class))
+      )
+    }
+  )
   public EntityHistory listVersions(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the SearchIndex", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Id of the SearchIndex", schema = @Schema(type = "UUID")) @PathParam("id") UUID id
+  ) {
     return super.listVersionsInternal(securityContext, id);
   }
 
   @GET
   @Path("/{id}")
   @Operation(
-      summary = "Get a SearchIndex by id",
-      description = "Get a SearchIndex by `id`.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The SearchIndex",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SearchIndex.class))),
-        @ApiResponse(responseCode = "404", description = "SearchIndex for instance {id} is not found")
-      })
+    summary = "Get a SearchIndex by id",
+    description = "Get a SearchIndex by `id`.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "The SearchIndex",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = SearchIndex.class))
+      ),
+      @ApiResponse(responseCode = "404", description = "SearchIndex for instance {id} is not found")
+    }
+  )
   public SearchIndex get(
-      @Context UriInfo uriInfo,
-      @Parameter(description = "Id of the SearchIndex", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Context SecurityContext securityContext,
-      @Parameter(
-              description = "Fields requested in the returned resource",
-              schema = @Schema(type = "string", example = FIELDS))
-          @QueryParam("fields")
-          String fieldsParam,
-      @Parameter(
-              description = "Include all, deleted, or non-deleted entities.",
-              schema = @Schema(implementation = Include.class))
-          @QueryParam("include")
-          @DefaultValue("non-deleted")
-          Include include) {
+    @Context UriInfo uriInfo,
+    @Parameter(description = "Id of the SearchIndex", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+    @Context SecurityContext securityContext,
+    @Parameter(
+      description = "Fields requested in the returned resource",
+      schema = @Schema(type = "string", example = FIELDS)
+    ) @QueryParam("fields") String fieldsParam,
+    @Parameter(
+      description = "Include all, deleted, or non-deleted entities.",
+      schema = @Schema(implementation = Include.class)
+    ) @QueryParam("include") @DefaultValue("non-deleted") Include include
+  ) {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
   @Path("/name/{fqn}")
   @Operation(
-      operationId = "getSearchIndexByFQN",
-      summary = "Get a SearchIndex by fully qualified name",
-      description = "Get a SearchIndex by fully qualified name.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The SearchIndex",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SearchIndex.class))),
-        @ApiResponse(responseCode = "404", description = "SearchIndex for instance {fqn} is not found")
-      })
+    operationId = "getSearchIndexByFQN",
+    summary = "Get a SearchIndex by fully qualified name",
+    description = "Get a SearchIndex by fully qualified name.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "The SearchIndex",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = SearchIndex.class))
+      ),
+      @ApiResponse(responseCode = "404", description = "SearchIndex for instance {fqn} is not found")
+    }
+  )
   public SearchIndex getByName(
-      @Context UriInfo uriInfo,
-      @Parameter(description = "Fully qualified name of the SearchIndex", schema = @Schema(type = "string"))
-          @PathParam("fqn")
-          String fqn,
-      @Context SecurityContext securityContext,
-      @Parameter(
-              description = "Fields requested in the returned resource",
-              schema = @Schema(type = "string", example = FIELDS))
-          @QueryParam("fields")
-          String fieldsParam,
-      @Parameter(
-              description = "Include all, deleted, or non-deleted entities.",
-              schema = @Schema(implementation = Include.class))
-          @QueryParam("include")
-          @DefaultValue("non-deleted")
-          Include include) {
+    @Context UriInfo uriInfo,
+    @Parameter(description = "Fully qualified name of the SearchIndex", schema = @Schema(type = "string")) @PathParam(
+      "fqn"
+    ) String fqn,
+    @Context SecurityContext securityContext,
+    @Parameter(
+      description = "Fields requested in the returned resource",
+      schema = @Schema(type = "string", example = FIELDS)
+    ) @QueryParam("fields") String fieldsParam,
+    @Parameter(
+      description = "Include all, deleted, or non-deleted entities.",
+      schema = @Schema(implementation = Include.class)
+    ) @QueryParam("include") @DefaultValue("non-deleted") Include include
+  ) {
     return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
-      operationId = "getSpecificSearchIndexVersion",
-      summary = "Get a version of the SearchIndex",
-      description = "Get a version of the SearchIndex by given `id`",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "SearchIndex",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SearchIndex.class))),
-        @ApiResponse(
-            responseCode = "404",
-            description = "SearchIndex for instance {id} and version {version} is not found")
-      })
+    operationId = "getSpecificSearchIndexVersion",
+    summary = "Get a version of the SearchIndex",
+    description = "Get a version of the SearchIndex by given `id`",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "SearchIndex",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = SearchIndex.class))
+      ),
+      @ApiResponse(
+        responseCode = "404",
+        description = "SearchIndex for instance {id} and version {version} is not found"
+      )
+    }
+  )
   public SearchIndex getVersion(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the SearchIndex", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Parameter(
-              description = "SearchIndex version number in the form `major`.`minor`",
-              schema = @Schema(type = "string", example = "0.1 or 1.1"))
-          @PathParam("version")
-          String version) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Id of the SearchIndex", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+    @Parameter(
+      description = "SearchIndex version number in the form `major`.`minor`",
+      schema = @Schema(type = "string", example = "0.1 or 1.1")
+    ) @PathParam("version") String version
+  ) {
     return super.getVersionInternal(securityContext, id, version);
   }
 
   @POST
   @Operation(
-      operationId = "createSearchIndex",
-      summary = "Create a SearchIndex",
-      description = "Create a SearchIndex under an existing `service`.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The SearchIndex",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SearchIndex.class))),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
+    operationId = "createSearchIndex",
+    summary = "Create a SearchIndex",
+    description = "Create a SearchIndex under an existing `service`.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "The SearchIndex",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = SearchIndex.class))
+      ),
+      @ApiResponse(responseCode = "400", description = "Bad request")
+    }
+  )
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateSearchIndex create) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Valid CreateSearchIndex create
+  ) {
     SearchIndex searchIndex = getSearchIndex(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, searchIndex);
   }
@@ -277,38 +286,45 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
   @PATCH
   @Path("/{id}")
   @Operation(
-      operationId = "patchSearchIndex",
-      summary = "Update a SearchIndex",
-      description = "Update an existing SearchIndex using JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+    operationId = "patchSearchIndex",
+    summary = "Update a SearchIndex",
+    description = "Update an existing SearchIndex using JsonPatch.",
+    externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902")
+  )
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response updateDescription(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the SearchIndex", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @RequestBody(
-              description = "JsonPatch with array of operations",
-              content =
-                  @Content(
-                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
-          JsonPatch patch) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Id of the SearchIndex", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+    @RequestBody(
+      description = "JsonPatch with array of operations",
+      content = @Content(
+        mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+        examples = { @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]") }
+      )
+    ) JsonPatch patch
+  ) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PUT
   @Operation(
-      operationId = "createOrUpdateSearchIndex",
-      summary = "Update SearchIndex",
-      description = "Create a SearchIndex, it it does not exist or update an existing SearchIndex.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The updated SearchIndex ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SearchIndex.class)))
-      })
+    operationId = "createOrUpdateSearchIndex",
+    summary = "Update SearchIndex",
+    description = "Create a SearchIndex, it it does not exist or update an existing SearchIndex.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "The updated SearchIndex ",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = SearchIndex.class))
+      )
+    }
+  )
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateSearchIndex create) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Valid CreateSearchIndex create
+  ) {
     SearchIndex searchIndex = getSearchIndex(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, searchIndex);
   }
@@ -316,20 +332,23 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
   @PUT
   @Path("/{id}/sampleData")
   @Operation(
-      operationId = "addSampleData",
-      summary = "Add sample data",
-      description = "Add sample data to the searchIndex.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The SearchIndex",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SearchIndex.class))),
-      })
+    operationId = "addSampleData",
+    summary = "Add sample data",
+    description = "Add sample data to the searchIndex.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "The SearchIndex",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = SearchIndex.class))
+      )
+    }
+  )
   public SearchIndex addSampleData(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the SearchIndex", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Valid SearchIndexSampleData sampleData) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Id of the SearchIndex", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+    @Valid SearchIndexSampleData sampleData
+  ) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_SAMPLE_DATA);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     SearchIndex searchIndex = repository.addSampleData(id, sampleData);
@@ -339,19 +358,22 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
   @GET
   @Path("/{id}/sampleData")
   @Operation(
-      operationId = "getSampleData",
-      summary = "Get sample data",
-      description = "Get sample data from the SearchIndex.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Successfully obtained the SampleData for SearchIndex",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SearchIndex.class)))
-      })
+    operationId = "getSampleData",
+    summary = "Get sample data",
+    description = "Get sample data from the SearchIndex.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "Successfully obtained the SampleData for SearchIndex",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = SearchIndex.class))
+      )
+    }
+  )
   public SearchIndex getSampleData(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the SearchIndex", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Id of the SearchIndex", schema = @Schema(type = "UUID")) @PathParam("id") UUID id
+  ) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_SAMPLE_DATA);
     ResourceContext resourceContext = getResourceContextById(id);
     authorizer.authorize(securityContext, operationContext, resourceContext);
@@ -364,143 +386,157 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
   @PUT
   @Path("/{id}/followers")
   @Operation(
-      operationId = "addFollower",
-      summary = "Add a follower",
-      description = "Add a user identified by `userId` as followed of this SearchIndex",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "OK",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
-        @ApiResponse(responseCode = "404", description = "SearchIndex for instance {id} is not found")
-      })
+    operationId = "addFollower",
+    summary = "Add a follower",
+    description = "Add a user identified by `userId` as followed of this SearchIndex",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "OK",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))
+      ),
+      @ApiResponse(responseCode = "404", description = "SearchIndex for instance {id} is not found")
+    }
+  )
   public Response addFollower(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the SearchIndex", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "UUID")) UUID userId) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Id of the SearchIndex", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+    @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "UUID")) UUID userId
+  ) {
     return repository.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
   @DELETE
   @Path("/{id}/followers/{userId}")
   @Operation(
-      summary = "Remove a follower",
-      description = "Remove the user identified `userId` as a follower of the SearchIndex.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "OK",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class)))
-      })
+    summary = "Remove a follower",
+    description = "Remove the user identified `userId` as a follower of the SearchIndex.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "OK",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))
+      )
+    }
+  )
   public Response deleteFollower(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the SearchIndex", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Parameter(description = "Id of the user being removed as follower", schema = @Schema(type = "string"))
-          @PathParam("userId")
-          String userId) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Id of the SearchIndex", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+    @Parameter(description = "Id of the user being removed as follower", schema = @Schema(type = "string")) @PathParam(
+      "userId"
+    ) String userId
+  ) {
     return repository
-        .deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId))
-        .toResponse();
+      .deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId))
+      .toResponse();
   }
 
   @PUT
   @Path("/{id}/vote")
   @Operation(
-      operationId = "updateVoteForEntity",
-      summary = "Update Vote for a Entity",
-      description = "Update vote for a Entity",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "OK",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
-        @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
-      })
+    operationId = "updateVoteForEntity",
+    summary = "Update Vote for a Entity",
+    description = "Update vote for a Entity",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "OK",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))
+      ),
+      @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
+    }
+  )
   public Response updateVote(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Valid VoteRequest request) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+    @Valid VoteRequest request
+  ) {
     return repository.updateVote(securityContext.getUserPrincipal().getName(), id, request).toResponse();
   }
 
   @DELETE
   @Path("/{id}")
   @Operation(
-      operationId = "deleteSearchIndex",
-      summary = "Delete a SearchIndex by id",
-      description = "Delete a SearchIndex by `id`.",
-      responses = {
-        @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "SearchIndex for instance {id} is not found")
-      })
+    operationId = "deleteSearchIndex",
+    summary = "Delete a SearchIndex by id",
+    description = "Delete a SearchIndex by `id`.",
+    responses = {
+      @ApiResponse(responseCode = "200", description = "OK"),
+      @ApiResponse(responseCode = "404", description = "SearchIndex for instance {id} is not found")
+    }
+  )
   public Response delete(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Hard delete the entity. (Default = `false`)")
-          @QueryParam("hardDelete")
-          @DefaultValue("false")
-          boolean hardDelete,
-      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
-          @QueryParam("recursive")
-          @DefaultValue("false")
-          boolean recursive,
-      @Parameter(description = "Id of the SearchIndex", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Hard delete the entity. (Default = `false`)") @QueryParam("hardDelete") @DefaultValue(
+      "false"
+    ) boolean hardDelete,
+    @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)") @QueryParam(
+      "recursive"
+    ) @DefaultValue("false") boolean recursive,
+    @Parameter(description = "Id of the SearchIndex", schema = @Schema(type = "UUID")) @PathParam("id") UUID id
+  ) {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
   @Path("/name/{fqn}")
   @Operation(
-      operationId = "deleteSearchIndexByFQN",
-      summary = "Delete a SearchIndex by fully qualified name",
-      description = "Delete a SearchIndex by `fullyQualifiedName`.",
-      responses = {
-        @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "SearchIndex for instance {fqn} is not found")
-      })
+    operationId = "deleteSearchIndexByFQN",
+    summary = "Delete a SearchIndex by fully qualified name",
+    description = "Delete a SearchIndex by `fullyQualifiedName`.",
+    responses = {
+      @ApiResponse(responseCode = "200", description = "OK"),
+      @ApiResponse(responseCode = "404", description = "SearchIndex for instance {fqn} is not found")
+    }
+  )
   public Response delete(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Hard delete the entity. (Default = `false`)")
-          @QueryParam("hardDelete")
-          @DefaultValue("false")
-          boolean hardDelete,
-      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
-          @QueryParam("recursive")
-          @DefaultValue("false")
-          boolean recursive,
-      @Parameter(description = "Fully qualified name of the SearchIndex", schema = @Schema(type = "string"))
-          @PathParam("fqn")
-          String fqn) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Hard delete the entity. (Default = `false`)") @QueryParam("hardDelete") @DefaultValue(
+      "false"
+    ) boolean hardDelete,
+    @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)") @QueryParam(
+      "recursive"
+    ) @DefaultValue("false") boolean recursive,
+    @Parameter(description = "Fully qualified name of the SearchIndex", schema = @Schema(type = "string")) @PathParam(
+      "fqn"
+    ) String fqn
+  ) {
     return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
   }
 
   @PUT
   @Path("/restore")
   @Operation(
-      operationId = "restore",
-      summary = "Restore a soft deleted SearchIndex",
-      description = "Restore a soft deleted SearchIndex.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Successfully restored the SearchIndex. ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SearchIndex.class)))
-      })
+    operationId = "restore",
+    summary = "Restore a soft deleted SearchIndex",
+    description = "Restore a soft deleted SearchIndex.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "Successfully restored the SearchIndex. ",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = SearchIndex.class))
+      )
+    }
+  )
   public Response restoreSearchIndex(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Valid RestoreEntity restore
+  ) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   private SearchIndex getSearchIndex(CreateSearchIndex create, String user) {
     return repository
-        .copy(new SearchIndex(), create, user)
-        .withService(getEntityReference(Entity.SEARCH_SERVICE, create.getService()))
-        .withFields(create.getFields())
-        .withSearchIndexSettings(create.getSearchIndexSettings())
-        .withSourceHash(create.getSourceHash());
+      .copy(new SearchIndex(), create, user)
+      .withService(getEntityReference(Entity.SEARCH_SERVICE, create.getService()))
+      .withFields(create.getFields())
+      .withSearchIndexSettings(create.getSearchIndexSettings())
+      .withSourceHash(create.getSourceHash());
   }
 }

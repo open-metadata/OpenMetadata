@@ -40,20 +40,21 @@ public class AwsRdsDatabaseAuthenticationProvider implements DatabaseAuthenticat
       // Validate
       Objects.requireNonNull(awsRegion, "Parameter `awsRegion` shall be provided in the jdbc url.");
       Objects.requireNonNull(
-          allowPublicKeyRetrieval, "Parameter `allowPublicKeyRetrieval` shall be provided in the jdbc url.");
+        allowPublicKeyRetrieval,
+        "Parameter `allowPublicKeyRetrieval` shall be provided in the jdbc url."
+      );
 
       // Prepare request
-      GenerateAuthenticationTokenRequest request =
-          GenerateAuthenticationTokenRequest.builder()
-              .credentialsProvider(DefaultCredentialsProvider.create())
-              .hostname(uri.getHost())
-              .port(uri.getPort())
-              .username(username)
-              .build();
+      GenerateAuthenticationTokenRequest request = GenerateAuthenticationTokenRequest
+        .builder()
+        .credentialsProvider(DefaultCredentialsProvider.create())
+        .hostname(uri.getHost())
+        .port(uri.getPort())
+        .username(username)
+        .build();
 
       // Return token
       return RdsUtilities.builder().region(Region.of(awsRegion)).build().generateAuthenticationToken(request);
-
     } catch (MalformedURLException e) {
       // Throw
       throw new DatabaseAuthenticationProviderException(e);
@@ -76,8 +77,9 @@ public class AwsRdsDatabaseAuthenticationProvider implements DatabaseAuthenticat
       int idx = pair.indexOf("=");
       // Add
       query_pairs.put(
-          URLDecoder.decode(pair.substring(0, idx), StandardCharsets.UTF_8),
-          URLDecoder.decode(pair.substring(idx + 1), StandardCharsets.UTF_8));
+        URLDecoder.decode(pair.substring(0, idx), StandardCharsets.UTF_8),
+        URLDecoder.decode(pair.substring(idx + 1), StandardCharsets.UTF_8)
+      );
     }
     // Return
     return query_pairs;

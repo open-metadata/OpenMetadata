@@ -31,6 +31,7 @@ import org.openmetadata.service.formatter.util.FeedMessage;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
 public final class FeedUtils {
+
   private FeedUtils() {}
 
   public static List<Thread> getThreads(ChangeEvent changeEvent, String loggedInUserName) {
@@ -40,27 +41,36 @@ public final class FeedUtils {
 
     String message;
     EntityInterface entityInterface = getEntity(changeEvent);
-    MessageParser.EntityLink about =
-        new MessageParser.EntityLink(
-            changeEvent.getEntityType(), entityInterface.getFullyQualifiedName(), null, null, null);
+    MessageParser.EntityLink about = new MessageParser.EntityLink(
+      changeEvent.getEntityType(),
+      entityInterface.getFullyQualifiedName(),
+      null,
+      null,
+      null
+    );
 
     switch (changeEvent.getEventType()) {
       case ENTITY_CREATED:
         message =
-            String.format("Created **%s**: `%s`", changeEvent.getEntityType(), entityInterface.getFullyQualifiedName());
+          String.format("Created **%s**: `%s`", changeEvent.getEntityType(), entityInterface.getFullyQualifiedName());
         return List.of(getThread(about.getLinkString(), message, loggedInUserName));
       case ENTITY_UPDATED:
         return getThreads(entityInterface, changeEvent.getChangeDescription(), loggedInUserName);
       case ENTITY_SOFT_DELETED:
         message =
-            String.format(
-                "Soft deleted **%s**: `%s`", changeEvent.getEntityType(), entityInterface.getFullyQualifiedName());
+          String.format(
+            "Soft deleted **%s**: `%s`",
+            changeEvent.getEntityType(),
+            entityInterface.getFullyQualifiedName()
+          );
         return List.of(getThread(about.getLinkString(), message, loggedInUserName));
       case ENTITY_DELETED:
         message =
-            String.format(
-                "Permanently Deleted **%s**: `%s`",
-                changeEvent.getEntityType(), entityInterface.getFullyQualifiedName());
+          String.format(
+            "Permanently Deleted **%s**: `%s`",
+            changeEvent.getEntityType(),
+            entityInterface.getFullyQualifiedName()
+          );
         return List.of(getThread(about.getLinkString(), message, loggedInUserName));
     }
 
@@ -73,7 +83,10 @@ public final class FeedUtils {
   }
 
   private static List<Thread> getThreads(
-      EntityInterface entity, ChangeDescription changeDescription, String loggedInUserName) {
+    EntityInterface entity,
+    ChangeDescription changeDescription,
+    String loggedInUserName
+  ) {
     List<Thread> threads = new ArrayList<>();
 
     MessageDecorator<FeedMessage> feedFormatter = new FeedMessageDecorator();
@@ -89,13 +102,13 @@ public final class FeedUtils {
 
   private static Thread getThread(String linkString, String message, String loggedInUserName) {
     return new Thread()
-        .withId(UUID.randomUUID())
-        .withThreadTs(System.currentTimeMillis())
-        .withCreatedBy(loggedInUserName)
-        .withAbout(linkString)
-        .withReactions(Collections.emptyList())
-        .withUpdatedBy(loggedInUserName)
-        .withUpdatedAt(System.currentTimeMillis())
-        .withMessage(message);
+      .withId(UUID.randomUUID())
+      .withThreadTs(System.currentTimeMillis())
+      .withCreatedBy(loggedInUserName)
+      .withAbout(linkString)
+      .withReactions(Collections.emptyList())
+      .withUpdatedBy(loggedInUserName)
+      .withUpdatedAt(System.currentTimeMillis())
+      .withMessage(message);
   }
 }

@@ -5,22 +5,32 @@ import lombok.Getter;
 import lombok.Setter;
 
 public class SlackMessage {
-  @Getter @Setter private String username;
+
+  @Getter
+  @Setter
+  private String username;
 
   @JsonProperty("icon_emoji")
   @Getter
   @Setter
   private String iconEmoji;
 
-  @Getter @Setter private String channel;
-  @Getter @Setter private String text;
+  @Getter
+  @Setter
+  private String channel;
+
+  @Getter
+  @Setter
+  private String text;
 
   @JsonProperty("response_type")
   @Getter
   @Setter
   private String responseType;
 
-  @Getter @Setter private SlackAttachment[] attachments;
+  @Getter
+  @Setter
+  private SlackAttachment[] attachments;
 
   public SlackMessage() {}
 

@@ -61,6 +61,7 @@ import org.openmetadata.service.exception.UnhandledServerException;
 
 @Slf4j
 public final class JsonUtils {
+
   public static final String FIELD_TYPE_ANNOTATION = "@om-field-type";
   public static final String ENTITY_TYPE_ANNOTATION = "@om-entity-type";
   public static final String JSON_FILE_EXTENSION = ".json";
@@ -100,8 +101,8 @@ public final class JsonUtils {
   public static String pojoToJson(Object o, boolean prettyPrint) {
     try {
       return prettyPrint
-          ? OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(o)
-          : OBJECT_MAPPER.writeValueAsString(o);
+        ? OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(o)
+        : OBJECT_MAPPER.writeValueAsString(o);
     } catch (JsonProcessingException e) {
       throw new UnhandledServerException(FAILED_TO_PROCESS_JSON, e);
     }
@@ -219,18 +220,19 @@ public final class JsonUtils {
     List<JsonObject> otherOperations = new ArrayList<>();
 
     array.forEach(
-        entry -> {
-          JsonObject jsonObject = entry.asJsonObject();
-          if (jsonObject.getString("path").endsWith("href")) {
-            // Ignore patch operations related to href path
-            return;
-          }
-          if (jsonObject.getString("op").equals("remove")) {
-            removeOperations.add(jsonObject);
-          } else {
-            otherOperations.add(jsonObject);
-          }
-        });
+      entry -> {
+        JsonObject jsonObject = entry.asJsonObject();
+        if (jsonObject.getString("path").endsWith("href")) {
+          // Ignore patch operations related to href path
+          return;
+        }
+        if (jsonObject.getString("op").equals("remove")) {
+          removeOperations.add(jsonObject);
+        } else {
+          otherOperations.add(jsonObject);
+        }
+      }
+    );
 
     // sort the operations by path
     if (!otherOperations.isEmpty()) {
@@ -243,12 +245,14 @@ public final class JsonUtils {
           otherOperations.sort(Comparator.comparing(jsonObject -> jsonObject.getString("path")));
         } else if (path.matches(".*\\d.*")) {
           otherOperations.sort(
-              Comparator.comparing(
-                  jsonObject -> {
-                    String pathValue = jsonObject.getString("path");
-                    String tagIndex = pathValue.replaceAll("\\D", "");
-                    return tagIndex.isEmpty() ? 0 : Integer.parseInt(tagIndex);
-                  }));
+            Comparator.comparing(
+              jsonObject -> {
+                String pathValue = jsonObject.getString("path");
+                String tagIndex = pathValue.replaceAll("\\D", "");
+                return tagIndex.isEmpty() ? 0 : Integer.parseInt(tagIndex);
+              }
+            )
+          );
         }
       }
     }
@@ -264,12 +268,14 @@ public final class JsonUtils {
           Collections.reverse(removeOperations);
         } else if (path.matches(".*\\d.*")) {
           removeOperations.sort(
-              Comparator.comparing(
-                  jsonObject -> {
-                    String pathValue = jsonObject.getString("path");
-                    String tagIndex = pathValue.replaceAll("\\D", "");
-                    return tagIndex.isEmpty() ? 0 : Integer.parseInt(tagIndex);
-                  }));
+            Comparator.comparing(
+              jsonObject -> {
+                String pathValue = jsonObject.getString("path");
+                String tagIndex = pathValue.replaceAll("\\D", "");
+                return tagIndex.isEmpty() ? 0 : Integer.parseInt(tagIndex);
+              }
+            )
+          );
           // reverse sort only the remove operations
           Collections.reverse(removeOperations);
         }
@@ -367,8 +373,9 @@ public final class JsonUtils {
     JsonNode node;
     try {
       node =
-          OBJECT_MAPPER.readTree(
-              Objects.requireNonNull(JsonUtils.class.getClassLoader().getResourceAsStream(jsonSchemaFile)));
+        OBJECT_MAPPER.readTree(
+          Objects.requireNonNull(JsonUtils.class.getClassLoader().getResourceAsStream(jsonSchemaFile))
+        );
     } catch (IOException e) {
       throw new UnhandledServerException("Failed to read jsonSchemaFile " + jsonSchemaFile, e);
     }
@@ -386,15 +393,14 @@ public final class JsonUtils {
       JsonNode value = entry.getValue();
       if (JsonUtils.hasAnnotation(value, JsonUtils.FIELD_TYPE_ANNOTATION)) {
         String description = String.valueOf(value.get("description"));
-        Type type =
-            new Type()
-                .withName(typeName)
-                .withCategory(Category.Field)
-                .withFullyQualifiedName(typeName)
-                .withNameSpace(jsonNamespace)
-                .withDescription(description)
-                .withDisplayName(entry.getKey())
-                .withSchema(value.toPrettyString());
+        Type type = new Type()
+          .withName(typeName)
+          .withCategory(Category.Field)
+          .withFullyQualifiedName(typeName)
+          .withNameSpace(jsonNamespace)
+          .withDescription(description)
+          .withDisplayName(entry.getKey())
+          .withSchema(value.toPrettyString());
         types.add(type);
       }
     }
@@ -409,8 +415,9 @@ public final class JsonUtils {
     JsonNode node;
     try {
       node =
-          OBJECT_MAPPER.readTree(
-              Objects.requireNonNull(JsonUtils.class.getClassLoader().getResourceAsStream(jsonSchemaFile)));
+        OBJECT_MAPPER.readTree(
+          Objects.requireNonNull(JsonUtils.class.getClassLoader().getResourceAsStream(jsonSchemaFile))
+        );
     } catch (IOException e) {
       throw new UnhandledServerException("Failed to read jsonSchemaFile " + jsonSchemaFile, e);
     }
@@ -423,13 +430,13 @@ public final class JsonUtils {
 
     String description = String.valueOf(node.get("description"));
     return new Type()
-        .withName(entityName)
-        .withCategory(Category.Entity)
-        .withFullyQualifiedName(entityName)
-        .withNameSpace(namespace)
-        .withDescription(description)
-        .withDisplayName(entityName)
-        .withSchema(node.toPrettyString());
+      .withName(entityName)
+      .withCategory(Category.Entity)
+      .withFullyQualifiedName(entityName)
+      .withNameSpace(namespace)
+      .withDescription(description)
+      .withDisplayName(entityName)
+      .withSchema(node.toPrettyString());
   }
 
   /** Given a json schema file name .../json/schema/entity/data/table.json - return table */
@@ -492,10 +499,14 @@ public final class JsonUtils {
   public static boolean areEquals(Object obj1, Object obj2) {
     try {
       ObjectMapper mapper = JsonMapper.builder().nodeFactory(new SortedNodeFactory()).build();
-      JsonNode obj1sorted =
-          mapper.reader().with(StreamReadFeature.STRICT_DUPLICATE_DETECTION).readTree(pojoToJson(obj1));
-      JsonNode obj2sorted =
-          mapper.reader().with(StreamReadFeature.STRICT_DUPLICATE_DETECTION).readTree(pojoToJson(obj2));
+      JsonNode obj1sorted = mapper
+        .reader()
+        .with(StreamReadFeature.STRICT_DUPLICATE_DETECTION)
+        .readTree(pojoToJson(obj1));
+      JsonNode obj2sorted = mapper
+        .reader()
+        .with(StreamReadFeature.STRICT_DUPLICATE_DETECTION)
+        .readTree(pojoToJson(obj2));
       return OBJECT_MAPPER.writeValueAsString(obj1sorted).equals(OBJECT_MAPPER.writeValueAsString(obj2sorted));
     } catch (JsonProcessingException e) {
       throw new UnhandledServerException(FAILED_TO_PROCESS_JSON, e);
@@ -512,6 +523,7 @@ public final class JsonUtils {
   }
 
   static class SortedNodeFactory extends JsonNodeFactory {
+
     @Override
     public ObjectNode objectNode() {
       return new ObjectNode(this, new TreeMap<>());

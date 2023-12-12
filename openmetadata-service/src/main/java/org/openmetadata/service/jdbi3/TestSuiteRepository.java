@@ -29,17 +29,19 @@ import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class TestSuiteRepository extends EntityRepository<TestSuite> {
+
   private static final String UPDATE_FIELDS = "tests";
   private static final String PATCH_FIELDS = "tests";
 
   public TestSuiteRepository() {
     super(
-        TestSuiteResource.COLLECTION_PATH,
-        TEST_SUITE,
-        TestSuite.class,
-        Entity.getCollectionDAO().testSuiteDAO(),
-        PATCH_FIELDS,
-        UPDATE_FIELDS);
+      TestSuiteResource.COLLECTION_PATH,
+      TEST_SUITE,
+      TestSuite.class,
+      Entity.getCollectionDAO().testSuiteDAO(),
+      PATCH_FIELDS,
+      UPDATE_FIELDS
+    );
     quoteFqn = false;
     supportsSearch = true;
   }
@@ -59,19 +61,19 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   }
 
   private TestSummary buildTestSummary(HashMap<String, Integer> testCaseSummary, int total) {
-
     return new TestSummary()
-        .withAborted(testCaseSummary.getOrDefault(TestCaseStatus.Aborted.toString(), 0))
-        .withFailed(testCaseSummary.getOrDefault(TestCaseStatus.Failed.toString(), 0))
-        .withSuccess(testCaseSummary.getOrDefault(TestCaseStatus.Success.toString(), 0))
-        .withTotal(total);
+      .withAborted(testCaseSummary.getOrDefault(TestCaseStatus.Aborted.toString(), 0))
+      .withFailed(testCaseSummary.getOrDefault(TestCaseStatus.Failed.toString(), 0))
+      .withSuccess(testCaseSummary.getOrDefault(TestCaseStatus.Success.toString(), 0))
+      .withTotal(total);
   }
 
   @Override
   public void setFullyQualifiedName(TestSuite testSuite) {
     if (testSuite.getExecutableEntityReference() != null) {
       testSuite.setFullyQualifiedName(
-          FullyQualifiedName.add(testSuite.getExecutableEntityReference().getFullyQualifiedName(), "testSuite"));
+        FullyQualifiedName.add(testSuite.getExecutableEntityReference().getFullyQualifiedName(), "testSuite")
+      );
     } else {
       testSuite.setFullyQualifiedName(quoteName(testSuite.getName()));
     }
@@ -135,7 +137,10 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
   @Override
   public EntityRepository<TestSuite>.EntityUpdater getUpdater(
-      TestSuite original, TestSuite updated, Operation operation) {
+    TestSuite original,
+    TestSuite updated,
+    Operation operation
+  ) {
     return new TestSuiteUpdater(original, updated, operation);
   }
 
@@ -152,14 +157,20 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   }
 
   public void storeExecutableRelationship(TestSuite testSuite) {
-    Table table =
-        Entity.getEntityByName(
-            Entity.TABLE, testSuite.getExecutableEntityReference().getFullyQualifiedName(), null, null);
+    Table table = Entity.getEntityByName(
+      Entity.TABLE,
+      testSuite.getExecutableEntityReference().getFullyQualifiedName(),
+      null,
+      null
+    );
     addRelationship(table.getId(), testSuite.getId(), Entity.TABLE, TEST_SUITE, Relationship.CONTAINS);
   }
 
   public RestUtil.DeleteResponse<TestSuite> deleteLogicalTestSuite(
-      SecurityContext securityContext, TestSuite original, boolean hardDelete) {
+    SecurityContext securityContext,
+    TestSuite original,
+    boolean hardDelete
+  ) {
     // deleting a logical will delete the test suite and only remove
     // the relationship to test cases if hardDelete is true. Test Cases
     // will not be deleted.
@@ -187,6 +198,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   }
 
   public class TestSuiteUpdater extends EntityUpdater {
+
     public TestSuiteUpdater(TestSuite original, TestSuite updated, Operation operation) {
       super(original, updated, operation);
     }

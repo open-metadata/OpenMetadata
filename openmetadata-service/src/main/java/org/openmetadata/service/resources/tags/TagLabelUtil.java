@@ -40,6 +40,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class TagLabelUtil {
+
   private TagLabelUtil() {
     // Private constructor for utility class
   }
@@ -85,12 +86,12 @@ public class TagLabelUtil {
     boolean rootParent = fqnParts.length == 2;
     if (label.getSource() == TagSource.CLASSIFICATION) {
       return rootParent
-          ? getClassification(parentFqn).getMutuallyExclusive()
-          : getTag(parentFqn).getMutuallyExclusive();
+        ? getClassification(parentFqn).getMutuallyExclusive()
+        : getTag(parentFqn).getMutuallyExclusive();
     } else if (label.getSource() == TagSource.GLOSSARY) {
       return rootParent
-          ? getGlossary(parentFqn).getMutuallyExclusive()
-          : getGlossaryTerm(parentFqn).getMutuallyExclusive();
+        ? getGlossary(parentFqn).getMutuallyExclusive()
+        : getGlossaryTerm(parentFqn).getMutuallyExclusive();
     } else {
       throw new IllegalArgumentException("Invalid source type " + label.getSource());
     }
@@ -138,18 +139,20 @@ public class TagLabelUtil {
   }
 
   public static void checkMutuallyExclusiveForParentAndSubField(
-      String assetFqn,
-      String assetFqnHash,
-      Map<String, List<TagLabel>> allAssetTags,
-      List<TagLabel> glossaryTags,
-      boolean validateSubFields) {
+    String assetFqn,
+    String assetFqnHash,
+    Map<String, List<TagLabel>> allAssetTags,
+    List<TagLabel> glossaryTags,
+    boolean validateSubFields
+  ) {
     boolean failed = false;
     StringBuilder errorMessage = new StringBuilder();
 
-    Map<String, List<TagLabel>> filteredTags =
-        allAssetTags.entrySet().stream()
-            .filter(entry -> entry.getKey().startsWith(assetFqnHash))
-            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+    Map<String, List<TagLabel>> filteredTags = allAssetTags
+      .entrySet()
+      .stream()
+      .filter(entry -> entry.getKey().startsWith(assetFqnHash))
+      .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
     // Check Parent Tags
     List<TagLabel> parentTags = filteredTags.remove(assetFqnHash);
@@ -162,9 +165,13 @@ public class TagLabelUtil {
       } catch (IllegalArgumentException ex) {
         failed = true;
         errorMessage.append(
-            String.format(
-                "Asset %s has a tag %s which is mutually exclusive with the one of the glossary tags %s. %n",
-                assetFqn, converTagLabelArrayToString(tempList), converTagLabelArrayToString(glossaryTags)));
+          String.format(
+            "Asset %s has a tag %s which is mutually exclusive with the one of the glossary tags %s. %n",
+            assetFqn,
+            converTagLabelArrayToString(tempList),
+            converTagLabelArrayToString(glossaryTags)
+          )
+        );
       }
     }
 
@@ -178,9 +185,13 @@ public class TagLabelUtil {
       } catch (IllegalArgumentException ex) {
         failed = true;
         errorMessage.append(
-            String.format(
-                "Asset %s has a Subfield Column/Schema/Field containing tags %s which is mutually exclusive with the one of the glossary tags %s",
-                assetFqn, converTagLabelArrayToString(tempList), converTagLabelArrayToString(glossaryTags)));
+          String.format(
+            "Asset %s has a Subfield Column/Schema/Field containing tags %s which is mutually exclusive with the one of the glossary tags %s",
+            assetFqn,
+            converTagLabelArrayToString(tempList),
+            converTagLabelArrayToString(glossaryTags)
+          )
+        );
       }
     }
 

@@ -37,20 +37,21 @@ import org.quartz.SchedulerException;
 
 @Slf4j
 public class EventSubscriptionRepository extends EntityRepository<EventSubscription> {
+
   private static final String INVALID_ALERT = "Invalid Alert Type";
-  private static final ConcurrentHashMap<UUID, SubscriptionPublisher> subscriptionPublisherMap =
-      new ConcurrentHashMap<>();
+  private static final ConcurrentHashMap<UUID, SubscriptionPublisher> subscriptionPublisherMap = new ConcurrentHashMap<>();
   static final String ALERT_PATCH_FIELDS = "trigger,enabled,batchSize,timeout";
   static final String ALERT_UPDATE_FIELDS = "trigger,enabled,batchSize,timeout,filteringRules";
 
   public EventSubscriptionRepository() {
     super(
-        EventSubscriptionResource.COLLECTION_PATH,
-        Entity.EVENT_SUBSCRIPTION,
-        EventSubscription.class,
-        Entity.getCollectionDAO().eventSubscriptionDAO(),
-        ALERT_PATCH_FIELDS,
-        ALERT_UPDATE_FIELDS);
+      EventSubscriptionResource.COLLECTION_PATH,
+      Entity.EVENT_SUBSCRIPTION,
+      EventSubscription.class,
+      Entity.getCollectionDAO().eventSubscriptionDAO(),
+      ALERT_PATCH_FIELDS,
+      ALERT_UPDATE_FIELDS
+    );
   }
 
   @Override
@@ -101,8 +102,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     switch (eventSubscription.getAlertType()) {
       case CHANGE_EVENT:
         SubscriptionPublisher publisher = AlertUtil.getNotificationsPublisher(eventSubscription, daoCollection);
-        if (Boolean.FALSE.equals(
-            eventSubscription.getEnabled())) { // Only add webhook that is enabled for publishing events
+        if (Boolean.FALSE.equals(eventSubscription.getEnabled())) { // Only add webhook that is enabled for publishing events
           eventSubscription.setStatusDetails(getSubscriptionStatusAtCurrentTime(SubscriptionStatus.Status.DISABLED));
         } else {
           eventSubscription.setStatusDetails(getSubscriptionStatusAtCurrentTime(SubscriptionStatus.Status.ACTIVE));
@@ -111,9 +111,10 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
         }
         subscriptionPublisherMap.put(eventSubscription.getId(), publisher);
         LOG.info(
-            "Webhook publisher subscription started as {} : status {}",
-            eventSubscription.getName(),
-            eventSubscription.getStatusDetails().getStatus());
+          "Webhook publisher subscription started as {} : status {}",
+          eventSubscription.getName(),
+          eventSubscription.getStatusDetails().getStatus()
+        );
         break;
       case DATA_INSIGHT_REPORT:
         if (Boolean.TRUE.equals(eventSubscription.getEnabled())) {
@@ -151,7 +152,9 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
         } else {
           // Remove the webhook publisher
           removeProcessorForEventSubscription(
-              eventSubscription.getId(), getSubscriptionStatusAtCurrentTime(SubscriptionStatus.Status.DISABLED));
+            eventSubscription.getId(),
+            getSubscriptionStatusAtCurrentTime(SubscriptionStatus.Status.DISABLED)
+          );
         }
         break;
       case DATA_INSIGHT_REPORT:
@@ -164,7 +167,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
 
   @Transaction
   public void removeProcessorForEventSubscription(UUID id, SubscriptionStatus reasonForRemoval)
-      throws InterruptedException {
+    throws InterruptedException {
     SubscriptionPublisher publisher = subscriptionPublisherMap.get(id);
     if (publisher != null) {
       publisher.getProcessor().halt();
@@ -177,7 +180,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
 
   @Transaction
   public void deleteEventSubscriptionPublisher(EventSubscription deletedEntity)
-      throws InterruptedException, SchedulerException {
+    throws InterruptedException, SchedulerException {
     switch (deletedEntity.getAlertType()) {
       case CHANGE_EVENT:
         SubscriptionPublisher publisher = subscriptionPublisherMap.remove(deletedEntity.getId());
@@ -206,11 +209,15 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
 
   @Override
   public EventSubscriptionUpdater getUpdater(
-      EventSubscription original, EventSubscription updated, Operation operation) {
+    EventSubscription original,
+    EventSubscription updated,
+    Operation operation
+  ) {
     return new EventSubscriptionUpdater(original, updated, operation);
   }
 
   public class EventSubscriptionUpdater extends EntityUpdater {
+
     public EventSubscriptionUpdater(EventSubscription original, EventSubscription updated, Operation operation) {
       super(original, updated, operation);
     }

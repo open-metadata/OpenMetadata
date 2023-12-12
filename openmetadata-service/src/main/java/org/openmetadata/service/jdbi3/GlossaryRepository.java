@@ -63,17 +63,19 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class GlossaryRepository extends EntityRepository<Glossary> {
+
   private static final String UPDATE_FIELDS = "";
   private static final String PATCH_FIELDS = "";
 
   public GlossaryRepository() {
     super(
-        GlossaryResource.COLLECTION_PATH,
-        Entity.GLOSSARY,
-        Glossary.class,
-        Entity.getCollectionDAO().glossaryDAO(),
-        PATCH_FIELDS,
-        UPDATE_FIELDS);
+      GlossaryResource.COLLECTION_PATH,
+      Entity.GLOSSARY,
+      Glossary.class,
+      Entity.getCollectionDAO().glossaryDAO(),
+      PATCH_FIELDS,
+      UPDATE_FIELDS
+    );
     quoteFqn = true;
   }
 
@@ -115,8 +117,8 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   }
 
   private Integer getTermCount(Glossary glossary) {
-    ListFilter filter =
-        new ListFilter(Include.NON_DELETED).addQueryParam("parent", FullyQualifiedName.build(glossary.getName()));
+    ListFilter filter = new ListFilter(Include.NON_DELETED)
+    .addQueryParam("parent", FullyQualifiedName.build(glossary.getName()));
     return daoCollection.glossaryTermDAO().listCount(filter);
   }
 
@@ -145,6 +147,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   }
 
   public static class GlossaryCsv extends EntityCsv<GlossaryTerm> {
+
     public static final CsvDocumentation DOCUMENTATION = getCsvDocumentation(Entity.GLOSSARY);
     public static final List<CsvHeader> HEADERS = DOCUMENTATION.getHeaders();
     private final Glossary glossary;
@@ -214,7 +217,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
         return null;
       }
       List<TermReference> list = new ArrayList<>();
-      for (int i = 0; i < termRefList.size(); ) {
+      for (int i = 0; i < termRefList.size();) {
         list.add(new TermReference().withName(termRefList.get(i++)).withEndpoint(URI.create(termRefList.get(i++))));
       }
       return list;
@@ -227,7 +230,10 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       } catch (Exception ex) {
         // List should have even numbered terms - termName and endPoint
         importFailure(
-            printer, invalidField(10, String.format("Glossary term status %s is invalid", termStatus)), csvRecord);
+          printer,
+          invalidField(10, String.format("Glossary term status %s is invalid", termStatus)),
+          csvRecord
+        );
         processRecord = false;
         return null;
       }
@@ -252,21 +258,23 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
     private String termReferencesToRecord(List<TermReference> list) {
       return nullOrEmpty(list)
-          ? null
-          : list.stream()
-              .map(termReference -> termReference.getName() + CsvUtil.FIELD_SEPARATOR + termReference.getEndpoint())
-              .collect(Collectors.joining(FIELD_SEPARATOR));
+        ? null
+        : list
+          .stream()
+          .map(termReference -> termReference.getName() + CsvUtil.FIELD_SEPARATOR + termReference.getEndpoint())
+          .collect(Collectors.joining(FIELD_SEPARATOR));
     }
 
     private String reviewerReferencesToRecord(List<EntityReference> reviewers) {
       return nullOrEmpty(reviewers)
-          ? null
-          : reviewers.stream().map(EntityReference::getName).collect(Collectors.joining(FIELD_SEPARATOR));
+        ? null
+        : reviewers.stream().map(EntityReference::getName).collect(Collectors.joining(FIELD_SEPARATOR));
     }
   }
 
   /** Handles entity updated from PUT and POST operation. */
   public class GlossaryUpdater extends EntityUpdater {
+
     public GlossaryUpdater(Glossary original, Glossary updated, Operation operation) {
       super(original, updated, operation);
       renameAllowed = true;
@@ -282,15 +290,16 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       if (!original.getName().equals(updated.getName())) {
         if (ProviderType.SYSTEM.equals(original.getProvider())) {
           throw new IllegalArgumentException(
-              CatalogExceptionMessage.systemEntityRenameNotAllowed(original.getName(), entityType));
+            CatalogExceptionMessage.systemEntityRenameNotAllowed(original.getName(), entityType)
+          );
         }
         // Glossary name changed - update tag names starting from glossary and all the children tags
         LOG.info("Glossary name changed from {} to {}", original.getName(), updated.getName());
         setFullyQualifiedName(updated);
         daoCollection.glossaryTermDAO().updateFqn(original.getName(), updated.getName());
         daoCollection
-            .tagUsageDAO()
-            .updateTagPrefix(TagSource.GLOSSARY.ordinal(), original.getName(), updated.getName());
+          .tagUsageDAO()
+          .updateTagPrefix(TagSource.GLOSSARY.ordinal(), original.getName(), updated.getName());
         recordChange("name", original.getName(), updated.getName());
         invalidateGlossary(original.getId());
       }
@@ -299,8 +308,12 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     public void invalidateGlossary(UUID classificationId) {
       // Glossary name changed. Invalidate the glossary and its children terms
       CACHE_WITH_ID.invalidate(new ImmutablePair<>(GLOSSARY, classificationId));
-      List<EntityRelationshipRecord> tags =
-          findToRecords(classificationId, GLOSSARY, Relationship.CONTAINS, GLOSSARY_TERM);
+      List<EntityRelationshipRecord> tags = findToRecords(
+        classificationId,
+        GLOSSARY,
+        Relationship.CONTAINS,
+        GLOSSARY_TERM
+      );
       for (EntityRelationshipRecord tagRecord : tags) {
         invalidateTerms(tagRecord.getId());
       }
@@ -308,8 +321,12 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
     private void invalidateTerms(UUID termId) {
       // The name of the glossary changed or parent changed. Invalidate that tag and all the children from the cache
-      List<EntityRelationshipRecord> tagRecords =
-          findToRecords(termId, GLOSSARY_TERM, Relationship.CONTAINS, GLOSSARY_TERM);
+      List<EntityRelationshipRecord> tagRecords = findToRecords(
+        termId,
+        GLOSSARY_TERM,
+        Relationship.CONTAINS,
+        GLOSSARY_TERM
+      );
       CACHE_WITH_ID.invalidate(new ImmutablePair<>(GLOSSARY_TERM, termId));
       for (EntityRelationshipRecord tagRecord : tagRecords) {
         invalidateTerms(tagRecord.getId());

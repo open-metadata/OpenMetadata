@@ -7,6 +7,7 @@ import org.openmetadata.schema.type.TagLabel;
 
 @Getter
 public class ParseTags {
+
   TagLabel tierTag;
   final List<TagLabel> tags;
 

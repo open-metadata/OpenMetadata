@@ -20,6 +20,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 public class JWKSResponse {
+
   @JsonProperty("keys")
   @NotEmpty
   @Getter

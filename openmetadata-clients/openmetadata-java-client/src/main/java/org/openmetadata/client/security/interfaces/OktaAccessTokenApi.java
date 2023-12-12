@@ -23,29 +23,23 @@ import org.openmetadata.client.model.AccessTokenResponse;
 
 public interface OktaAccessTokenApi extends ApiClient.Api {
   @RequestLine(
-      "POST /v1/token?grant_type={grant_type}&scope={scope}&client_assertion_type={client_assertion_type}&client_assertion={client_assertion}")
-  @Headers({
-    "Content-Type: application/x-www-form-urlencoded",
-    "Accept: application/json",
-  })
+    "POST /v1/token?grant_type={grant_type}&scope={scope}&client_assertion_type={client_assertion_type}&client_assertion={client_assertion}"
+  )
+  @Headers({ "Content-Type: application/x-www-form-urlencoded", "Accept: application/json" })
   AccessTokenResponse getAccessToken(
-      @Param("grant_type") String grantType,
-      @Param("scope") String scope,
-      @Param("client_assertion_type") String clientAssertionType,
-      @Param("client_assertion") String clientAssertion);
+    @Param("grant_type") String grantType,
+    @Param("scope") String scope,
+    @Param("client_assertion_type") String clientAssertionType,
+    @Param("client_assertion") String clientAssertion
+  );
 
   @RequestLine(
-      "POST /v1/token?grant_type={grant_type}&scope={scope}&client_assertion_type={client_assertion_type}&client_assertion={client_assertion}")
-  @Headers({
-    "Content-Type: application/x-www-form-urlencoded",
-    "Accept: application/json",
-  })
+    "POST /v1/token?grant_type={grant_type}&scope={scope}&client_assertion_type={client_assertion_type}&client_assertion={client_assertion}"
+  )
+  @Headers({ "Content-Type: application/x-www-form-urlencoded", "Accept: application/json" })
   AccessTokenResponse getAccessToken(@QueryMap(encoded = true) Map<String, Object> queryParams);
 
   @RequestLine("POST /v1/token?grant_type={grant_type}&scope={scope}")
-  @Headers({
-    "Content-Type: application/x-www-form-urlencoded",
-    "Accept: application/json",
-  })
+  @Headers({ "Content-Type: application/x-www-form-urlencoded", "Accept: application/json" })
   AccessTokenResponse getAccessToken(@Param("grant_type") String grantType, @Param("scope") String scope);
 }

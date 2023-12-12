@@ -26,14 +26,16 @@ import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.util.JsonUtils;
 
 public class QueryFormatter implements EntityFormatter {
+
   private static final String QUERY_USED_IN_FIELD = "queryUsedIn";
 
   @Override
   public String format(
-      MessageDecorator<?> messageFormatter,
-      FieldChange fieldChange,
-      EntityInterface entity,
-      FormatterUtil.CHANGE_TYPE changeType) {
+    MessageDecorator<?> messageFormatter,
+    FieldChange fieldChange,
+    EntityInterface entity,
+    FormatterUtil.CHANGE_TYPE changeType
+  ) {
     if (QUERY_USED_IN_FIELD.equals(fieldChange.getName())) {
       return transformQueryUsedIn(messageFormatter, fieldChange, entity, changeType);
     }
@@ -44,10 +46,9 @@ public class QueryFormatter implements EntityFormatter {
   private static String getFieldValue(Object fieldValue, EntityInterface entity, MessageDecorator<?> messageFormatter) {
     Query query = (Query) entity;
     StringBuilder field = new StringBuilder();
-    List<EntityReference> tableRefs =
-        fieldValue instanceof String
-            ? JsonUtils.readObjects(fieldValue.toString(), EntityReference.class)
-            : (List<EntityReference>) fieldValue;
+    List<EntityReference> tableRefs = fieldValue instanceof String
+      ? JsonUtils.readObjects(fieldValue.toString(), EntityReference.class)
+      : (List<EntityReference>) fieldValue;
     if (!nullOrEmpty(tableRefs)) {
       field.append("for '").append(query.getQuery()).append("', ").append(messageFormatter.getLineBreak());
       field.append("Query Used in :- ");
@@ -64,16 +65,18 @@ public class QueryFormatter implements EntityFormatter {
   }
 
   private String transformQueryUsedIn(
-      MessageDecorator<?> messageFormatter,
-      FieldChange fieldChange,
-      EntityInterface entity,
-      FormatterUtil.CHANGE_TYPE changeType) {
+    MessageDecorator<?> messageFormatter,
+    FieldChange fieldChange,
+    EntityInterface entity,
+    FormatterUtil.CHANGE_TYPE changeType
+  ) {
     String newVal = getFieldValue(fieldChange.getNewValue(), entity, messageFormatter);
     String oldVal = getFieldValue(fieldChange.getOldValue(), entity, messageFormatter);
     return transformMessage(
-        messageFormatter,
-        new FieldChange().withNewValue(newVal).withOldValue(oldVal).withName(QUERY_USED_IN_FIELD),
-        entity,
-        changeType);
+      messageFormatter,
+      new FieldChange().withNewValue(newVal).withOldValue(oldVal).withName(QUERY_USED_IN_FIELD),
+      entity,
+      changeType
+    );
   }
 }

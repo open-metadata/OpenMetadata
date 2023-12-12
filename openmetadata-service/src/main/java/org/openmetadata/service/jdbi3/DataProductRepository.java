@@ -38,16 +38,18 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
 public class DataProductRepository extends EntityRepository<DataProduct> {
+
   private static final String UPDATE_FIELDS = "experts,assets"; // Domain field can't be updated
 
   public DataProductRepository() {
     super(
-        DataProductResource.COLLECTION_PATH,
-        Entity.DATA_PRODUCT,
-        DataProduct.class,
-        Entity.getCollectionDAO().dataProductDAO(),
-        UPDATE_FIELDS,
-        UPDATE_FIELDS);
+      DataProductResource.COLLECTION_PATH,
+      Entity.DATA_PRODUCT,
+      DataProduct.class,
+      Entity.getCollectionDAO().dataProductDAO(),
+      UPDATE_FIELDS,
+      UPDATE_FIELDS
+    );
     supportsSearch = true;
   }
 
@@ -78,7 +80,12 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   @Override
   public void storeRelationships(DataProduct entity) {
     addRelationship(
-        entity.getDomain().getId(), entity.getId(), Entity.DOMAIN, Entity.DATA_PRODUCT, Relationship.CONTAINS);
+      entity.getDomain().getId(),
+      entity.getId(),
+      Entity.DOMAIN,
+      Entity.DATA_PRODUCT,
+      Relationship.CONTAINS
+    );
     for (EntityReference expert : listOrEmpty(entity.getExperts())) {
       addRelationship(entity.getId(), expert.getId(), Entity.DATA_PRODUCT, Entity.USER, Relationship.EXPERT);
     }
@@ -121,6 +128,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   }
 
   public class DataProductUpdater extends EntityUpdater {
+
     public DataProductUpdater(DataProduct original, DataProduct updated, Operation operation) {
       super(original, updated, operation);
     }

@@ -16,6 +16,7 @@ import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
 public class TestCaseIndex implements SearchIndex {
+
   final TestCase testCase;
 
   private static final List<String> excludeFields = List.of("changeDescription");
@@ -40,10 +41,12 @@ public class TestCaseIndex implements SearchIndex {
     suggest.add(SearchSuggest.builder().input(testCase.getFullyQualifiedName()).weight(5).build());
     suggest.add(SearchSuggest.builder().input(testCase.getName()).weight(10).build());
     doc.put(
-        "fqnParts",
-        getFQNParts(
-            testCase.getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+      "fqnParts",
+      getFQNParts(
+        testCase.getFullyQualifiedName(),
+        suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())
+      )
+    );
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.TEST_CASE);
     doc.put("owner", getEntityWithDisplayName(testCase.getOwner()));
@@ -64,15 +67,15 @@ public class TestCaseIndex implements SearchIndex {
   private TestSuite getTestSuite(UUID testSuiteId) {
     TestSuite testSuite = Entity.getEntity(Entity.TEST_SUITE, testSuiteId, "", Include.ALL);
     return new TestSuite()
-        .withId(testSuite.getId())
-        .withName(testSuite.getName())
-        .withDisplayName(testSuite.getDisplayName())
-        .withDescription(testSuite.getDescription())
-        .withFullyQualifiedName(testSuite.getFullyQualifiedName())
-        .withDeleted(testSuite.getDeleted())
-        .withHref(testSuite.getHref())
-        .withExecutable(testSuite.getExecutable())
-        .withChangeDescription(null);
+      .withId(testSuite.getId())
+      .withName(testSuite.getName())
+      .withDisplayName(testSuite.getDisplayName())
+      .withDescription(testSuite.getDescription())
+      .withFullyQualifiedName(testSuite.getFullyQualifiedName())
+      .withDeleted(testSuite.getDeleted())
+      .withHref(testSuite.getHref())
+      .withExecutable(testSuite.getExecutable())
+      .withChangeDescription(null);
   }
 
   public static Map<String, Float> getFields() {

@@ -25,13 +25,13 @@ import org.openmetadata.service.util.JsonUtils;
 /** Converter class to get an `AirflowConnection` object. */
 public class AirflowConnectionClassConverter extends ClassConverter {
 
-  private static final List<Class<?>> CONNECTION_CLASSES =
-      List.of(
-          BackendConnection.class,
-          MysqlConnection.class,
-          PostgresConnection.class,
-          MssqlConnection.class,
-          SQLiteConnection.class);
+  private static final List<Class<?>> CONNECTION_CLASSES = List.of(
+    BackendConnection.class,
+    MysqlConnection.class,
+    PostgresConnection.class,
+    MssqlConnection.class,
+    SQLiteConnection.class
+  );
 
   public AirflowConnectionClassConverter() {
     super(AirflowConnection.class);
@@ -42,7 +42,7 @@ public class AirflowConnectionClassConverter extends ClassConverter {
     AirflowConnection airflowConnection = (AirflowConnection) JsonUtils.convertValue(object, this.clazz);
 
     tryToConvertOrFail(airflowConnection.getConnection(), CONNECTION_CLASSES)
-        .ifPresent(airflowConnection::setConnection);
+      .ifPresent(airflowConnection::setConnection);
 
     return airflowConnection;
   }

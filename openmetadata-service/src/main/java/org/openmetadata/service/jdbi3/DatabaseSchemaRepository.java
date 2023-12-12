@@ -43,19 +43,21 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
 
   public DatabaseSchemaRepository() {
     super(
-        DatabaseSchemaResource.COLLECTION_PATH,
-        Entity.DATABASE_SCHEMA,
-        DatabaseSchema.class,
-        Entity.getCollectionDAO().databaseSchemaDAO(),
-        "",
-        "");
+      DatabaseSchemaResource.COLLECTION_PATH,
+      Entity.DATABASE_SCHEMA,
+      DatabaseSchema.class,
+      Entity.getCollectionDAO().databaseSchemaDAO(),
+      "",
+      ""
+    );
     supportsSearch = true;
   }
 
   @Override
   public void setFullyQualifiedName(DatabaseSchema schema) {
     schema.setFullyQualifiedName(
-        FullyQualifiedName.add(schema.getDatabase().getFullyQualifiedName(), schema.getName()));
+      FullyQualifiedName.add(schema.getDatabase().getFullyQualifiedName(), schema.getName())
+    );
   }
 
   @Override
@@ -78,13 +80,18 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   public void storeRelationships(DatabaseSchema schema) {
     EntityReference database = schema.getDatabase();
     addRelationship(
-        database.getId(), schema.getId(), database.getType(), Entity.DATABASE_SCHEMA, Relationship.CONTAINS);
+      database.getId(),
+      schema.getId(),
+      database.getType(),
+      Entity.DATABASE_SCHEMA,
+      Relationship.CONTAINS
+    );
   }
 
   private List<EntityReference> getTables(DatabaseSchema schema) {
     return schema == null
-        ? Collections.emptyList()
-        : findTo(schema.getId(), Entity.DATABASE_SCHEMA, Relationship.CONTAINS, Entity.TABLE);
+      ? Collections.emptyList()
+      : findTo(schema.getId(), Entity.DATABASE_SCHEMA, Relationship.CONTAINS, Entity.TABLE);
   }
 
   public void setFields(DatabaseSchema schema, Fields fields) {
@@ -92,17 +99,20 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     schema.setSourceHash(fields.contains("sourceHash") ? schema.getSourceHash() : null);
     schema.setTables(fields.contains("tables") ? getTables(schema) : null);
     schema.setDatabaseSchemaProfilerConfig(
-        fields.contains(DATABASE_SCHEMA_PROFILER_CONFIG)
-            ? getDatabaseSchemaProfilerConfig(schema)
-            : schema.getDatabaseSchemaProfilerConfig());
+      fields.contains(DATABASE_SCHEMA_PROFILER_CONFIG)
+        ? getDatabaseSchemaProfilerConfig(schema)
+        : schema.getDatabaseSchemaProfilerConfig()
+    );
     schema.withUsageSummary(
-        fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), schema.getId()) : null);
+      fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), schema.getId()) : null
+    );
   }
 
   public void clearFields(DatabaseSchema schema, Fields fields) {
     schema.setTables(fields.contains("tables") ? schema.getTables() : null);
     schema.setDatabaseSchemaProfilerConfig(
-        fields.contains(DATABASE_SCHEMA_PROFILER_CONFIG) ? schema.getDatabaseSchemaProfilerConfig() : null);
+      fields.contains(DATABASE_SCHEMA_PROFILER_CONFIG) ? schema.getDatabaseSchemaProfilerConfig() : null
+    );
     schema.withUsageSummary(fields.contains("usageSummary") ? schema.getUsageSummary() : null);
   }
 
@@ -118,7 +128,8 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     inheritOwner(schema, fields, database);
     inheritDomain(schema, fields, database);
     schema.withRetentionPeriod(
-        schema.getRetentionPeriod() == null ? database.getRetentionPeriod() : schema.getRetentionPeriod());
+      schema.getRetentionPeriod() == null ? database.getRetentionPeriod() : schema.getRetentionPeriod()
+    );
     return schema;
   }
 
@@ -136,19 +147,23 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
 
   @Override
   public EntityRepository<DatabaseSchema>.EntityUpdater getUpdater(
-      DatabaseSchema original, DatabaseSchema updated, Operation operation) {
+    DatabaseSchema original,
+    DatabaseSchema updated,
+    Operation operation
+  ) {
     return new DatabaseSchemaUpdater(original, updated, operation);
   }
 
   private void populateDatabase(DatabaseSchema schema) {
     Database database = Entity.getEntity(schema.getDatabase(), "", ALL);
     schema
-        .withDatabase(database.getEntityReference())
-        .withService(database.getService())
-        .withServiceType(database.getServiceType());
+      .withDatabase(database.getEntityReference())
+      .withService(database.getService())
+      .withServiceType(database.getServiceType());
   }
 
   public class DatabaseSchemaUpdater extends EntityUpdater {
+
     public DatabaseSchemaUpdater(DatabaseSchema original, DatabaseSchema updated, Operation operation) {
       super(original, updated, operation);
     }
@@ -163,34 +178,41 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   }
 
   public DatabaseSchema addDatabaseSchemaProfilerConfig(
-      UUID databaseSchemaId, DatabaseSchemaProfilerConfig databaseSchemaProfilerConfig) {
+    UUID databaseSchemaId,
+    DatabaseSchemaProfilerConfig databaseSchemaProfilerConfig
+  ) {
     // Validate the request content
     DatabaseSchema databaseSchema = find(databaseSchemaId, Include.NON_DELETED);
 
-    if (databaseSchemaProfilerConfig.getProfileSampleType() != null
-        && databaseSchemaProfilerConfig.getProfileSample() != null) {
+    if (
+      databaseSchemaProfilerConfig.getProfileSampleType() != null &&
+      databaseSchemaProfilerConfig.getProfileSample() != null
+    ) {
       EntityUtil.validateProfileSample(
-          databaseSchemaProfilerConfig.getProfileSampleType().toString(),
-          databaseSchemaProfilerConfig.getProfileSample());
+        databaseSchemaProfilerConfig.getProfileSampleType().toString(),
+        databaseSchemaProfilerConfig.getProfileSample()
+      );
     }
 
     daoCollection
-        .entityExtensionDAO()
-        .insert(
-            databaseSchemaId,
-            DATABASE_SCHEMA_PROFILER_CONFIG_EXTENSION,
-            DATABASE_SCHEMA_PROFILER_CONFIG,
-            JsonUtils.pojoToJson(databaseSchemaProfilerConfig));
+      .entityExtensionDAO()
+      .insert(
+        databaseSchemaId,
+        DATABASE_SCHEMA_PROFILER_CONFIG_EXTENSION,
+        DATABASE_SCHEMA_PROFILER_CONFIG,
+        JsonUtils.pojoToJson(databaseSchemaProfilerConfig)
+      );
     clearFields(databaseSchema, Fields.EMPTY_FIELDS);
     return databaseSchema.withDatabaseSchemaProfilerConfig(databaseSchemaProfilerConfig);
   }
 
   public DatabaseSchemaProfilerConfig getDatabaseSchemaProfilerConfig(DatabaseSchema databaseSchema) {
     return JsonUtils.readValue(
-        daoCollection
-            .entityExtensionDAO()
-            .getExtension(databaseSchema.getId(), DATABASE_SCHEMA_PROFILER_CONFIG_EXTENSION),
-        DatabaseSchemaProfilerConfig.class);
+      daoCollection
+        .entityExtensionDAO()
+        .getExtension(databaseSchema.getId(), DATABASE_SCHEMA_PROFILER_CONFIG_EXTENSION),
+      DatabaseSchemaProfilerConfig.class
+    );
   }
 
   public DatabaseSchema deleteDatabaseSchemaProfilerConfig(UUID databaseSchemaId) {

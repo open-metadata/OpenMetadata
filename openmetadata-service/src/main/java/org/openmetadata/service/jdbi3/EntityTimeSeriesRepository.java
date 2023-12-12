@@ -14,16 +14,30 @@ import org.openmetadata.service.util.ResultList;
 
 @Repository
 public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInterface> {
-  @Getter protected final String collectionPath;
-  @Getter protected final EntityTimeSeriesDAO timeSeriesDao;
-  @Getter protected final SearchRepository searchRepository;
-  @Getter protected final String entityType;
-  @Getter protected final Class<T> entityClass;
+
+  @Getter
+  protected final String collectionPath;
+
+  @Getter
+  protected final EntityTimeSeriesDAO timeSeriesDao;
+
+  @Getter
+  protected final SearchRepository searchRepository;
+
+  @Getter
+  protected final String entityType;
+
+  @Getter
+  protected final Class<T> entityClass;
 
   protected final boolean supportsSearchIndex = true;
 
   protected EntityTimeSeriesRepository(
-      String collectionPath, EntityTimeSeriesDAO timeSeriesDao, Class<T> entityClass, String entityType) {
+    String collectionPath,
+    EntityTimeSeriesDAO timeSeriesDao,
+    Class<T> entityClass,
+    String entityType
+  ) {
     this.collectionPath = collectionPath;
     this.timeSeriesDao = timeSeriesDao;
     this.entityClass = entityClass;
@@ -60,7 +74,13 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
    * @return ResultList
    */
   protected ResultList<T> listWithOffset(
-      String offset, ListFilter filter, int limitParam, Long startTs, Long endTs, boolean latest) {
+    String offset,
+    ListFilter filter,
+    int limitParam,
+    Long startTs,
+    Long endTs,
+    boolean latest
+  ) {
     int total = timeSeriesDao.listCount(filter, startTs, endTs, latest);
     List<T> entityList = new ArrayList<>();
 
@@ -92,7 +112,13 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
   }
 
   public ResultList<T> list(
-      String offset, Long startTs, Long endTs, int limitParam, ListFilter filter, boolean latest) {
+    String offset,
+    Long startTs,
+    Long endTs,
+    int limitParam,
+    ListFilter filter,
+    boolean latest
+  ) {
     return listWithOffset(offset, filter, limitParam, startTs, endTs, latest);
   }
 

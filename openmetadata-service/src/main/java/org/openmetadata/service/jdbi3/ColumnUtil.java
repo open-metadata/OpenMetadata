@@ -14,6 +14,7 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public final class ColumnUtil {
+
   private ColumnUtil() {}
 
   public static List<Column> cloneWithoutTags(List<Column> columns) {
@@ -28,30 +29,31 @@ public final class ColumnUtil {
   private static Column cloneWithoutTags(Column column) {
     List<Column> children = cloneWithoutTags(column.getChildren());
     return new Column()
-        .withDescription(column.getDescription())
-        .withName(column.getName())
-        .withDisplayName(column.getDisplayName())
-        .withFullyQualifiedName(column.getFullyQualifiedName())
-        .withArrayDataType(column.getArrayDataType())
-        .withConstraint(column.getConstraint())
-        .withDataTypeDisplay(column.getDataTypeDisplay())
-        .withDataType(column.getDataType())
-        .withDataLength(column.getDataLength())
-        .withPrecision(column.getPrecision())
-        .withScale(column.getScale())
-        .withOrdinalPosition(column.getOrdinalPosition())
-        .withChildren(children);
+      .withDescription(column.getDescription())
+      .withName(column.getName())
+      .withDisplayName(column.getDisplayName())
+      .withFullyQualifiedName(column.getFullyQualifiedName())
+      .withArrayDataType(column.getArrayDataType())
+      .withConstraint(column.getConstraint())
+      .withDataTypeDisplay(column.getDataTypeDisplay())
+      .withDataType(column.getDataType())
+      .withDataLength(column.getDataLength())
+      .withPrecision(column.getPrecision())
+      .withScale(column.getScale())
+      .withOrdinalPosition(column.getOrdinalPosition())
+      .withChildren(children);
   }
 
   public static void setColumnFQN(String parentFQN, List<Column> columns) {
     columns.forEach(
-        c -> {
-          String columnFqn = FullyQualifiedName.add(parentFQN, c.getName());
-          c.setFullyQualifiedName(columnFqn);
-          if (c.getChildren() != null) {
-            setColumnFQN(columnFqn, c.getChildren());
-          }
-        });
+      c -> {
+        String columnFqn = FullyQualifiedName.add(parentFQN, c.getName());
+        c.setFullyQualifiedName(columnFqn);
+        if (c.getChildren() != null) {
+          setColumnFQN(columnFqn, c.getChildren());
+        }
+      }
+    );
   }
 
   // Validate if a given column exists in the table

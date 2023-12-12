@@ -56,61 +56,67 @@ public interface EntityDAO<T extends EntityInterface> {
 
   /** Common queries for all entities implemented here. Do not override. */
   @ConnectionAwareSqlUpdate(
-      value = "INSERT INTO <table> (<nameHashColumn>, json) VALUES (:nameHashColumnValue, :json)",
-      connectionType = MYSQL)
+    value = "INSERT INTO <table> (<nameHashColumn>, json) VALUES (:nameHashColumnValue, :json)",
+    connectionType = MYSQL
+  )
   @ConnectionAwareSqlUpdate(
-      value = "INSERT INTO <table> (<nameHashColumn>, json) VALUES (:nameHashColumnValue, :json :: jsonb)",
-      connectionType = POSTGRES)
+    value = "INSERT INTO <table> (<nameHashColumn>, json) VALUES (:nameHashColumnValue, :json :: jsonb)",
+    connectionType = POSTGRES
+  )
   void insert(
-      @Define("table") String table,
-      @Define("nameHashColumn") String nameHashColumn,
-      @BindFQN("nameHashColumnValue") String nameHashColumnValue,
-      @Bind("json") String json);
+    @Define("table") String table,
+    @Define("nameHashColumn") String nameHashColumn,
+    @BindFQN("nameHashColumnValue") String nameHashColumnValue,
+    @Bind("json") String json
+  );
 
   @ConnectionAwareSqlUpdate(
-      value = "UPDATE <table> SET  json = :json, <nameHashColumn> = :nameHashColumnValue WHERE id = :id",
-      connectionType = MYSQL)
+    value = "UPDATE <table> SET  json = :json, <nameHashColumn> = :nameHashColumnValue WHERE id = :id",
+    connectionType = MYSQL
+  )
   @ConnectionAwareSqlUpdate(
-      value = "UPDATE <table> SET  json = (:json :: jsonb), <nameHashColumn> = :nameHashColumnValue WHERE id = :id",
-      connectionType = POSTGRES)
+    value = "UPDATE <table> SET  json = (:json :: jsonb), <nameHashColumn> = :nameHashColumnValue WHERE id = :id",
+    connectionType = POSTGRES
+  )
   void update(
-      @Define("table") String table,
-      @Define("nameHashColumn") String nameHashColumn,
-      @BindFQN("nameHashColumnValue") String nameHashColumnValue,
-      @Bind("id") String id,
-      @Bind("json") String json);
+    @Define("table") String table,
+    @Define("nameHashColumn") String nameHashColumn,
+    @BindFQN("nameHashColumnValue") String nameHashColumnValue,
+    @Bind("id") String id,
+    @Bind("json") String json
+  );
 
   default void updateFqn(String oldPrefix, String newPrefix) {
     LOG.info("Updating FQN for {} from {} to {}", getTableName(), oldPrefix, newPrefix);
     if (!getNameHashColumn().equals("fqnHash")) {
       return;
     }
-    String mySqlUpdate =
-        String.format(
-            "UPDATE %s SET json = "
-                + "JSON_REPLACE(json, '$.fullyQualifiedName', REGEXP_REPLACE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.fullyQualifiedName')), '^%s\\.', '%s.')) "
-                + ", fqnHash = REPLACE(fqnHash, '%s.', '%s.') "
-                + "WHERE fqnHash LIKE '%s.%%'",
-            getTableName(),
-            escape(oldPrefix),
-            escapeApostrophe(newPrefix),
-            FullyQualifiedName.buildHash(oldPrefix),
-            FullyQualifiedName.buildHash(newPrefix),
-            FullyQualifiedName.buildHash(oldPrefix));
+    String mySqlUpdate = String.format(
+      "UPDATE %s SET json = " +
+      "JSON_REPLACE(json, '$.fullyQualifiedName', REGEXP_REPLACE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.fullyQualifiedName')), '^%s\\.', '%s.')) " +
+      ", fqnHash = REPLACE(fqnHash, '%s.', '%s.') " +
+      "WHERE fqnHash LIKE '%s.%%'",
+      getTableName(),
+      escape(oldPrefix),
+      escapeApostrophe(newPrefix),
+      FullyQualifiedName.buildHash(oldPrefix),
+      FullyQualifiedName.buildHash(newPrefix),
+      FullyQualifiedName.buildHash(oldPrefix)
+    );
 
-    String postgresUpdate =
-        String.format(
-            "UPDATE %s SET json = "
-                + "REPLACE(json::text, '\"fullyQualifiedName\": \"%s.', "
-                + "'\"fullyQualifiedName\": \"%s.')::jsonb "
-                + ", fqnHash = REPLACE(fqnHash, '%s.', '%s.') "
-                + "WHERE fqnHash LIKE '%s.%%'",
-            getTableName(),
-            escapeApostrophe(oldPrefix),
-            escapeApostrophe(newPrefix),
-            FullyQualifiedName.buildHash(oldPrefix),
-            FullyQualifiedName.buildHash(newPrefix),
-            FullyQualifiedName.buildHash(oldPrefix));
+    String postgresUpdate = String.format(
+      "UPDATE %s SET json = " +
+      "REPLACE(json::text, '\"fullyQualifiedName\": \"%s.', " +
+      "'\"fullyQualifiedName\": \"%s.')::jsonb " +
+      ", fqnHash = REPLACE(fqnHash, '%s.', '%s.') " +
+      "WHERE fqnHash LIKE '%s.%%'",
+      getTableName(),
+      escapeApostrophe(oldPrefix),
+      escapeApostrophe(newPrefix),
+      FullyQualifiedName.buildHash(oldPrefix),
+      FullyQualifiedName.buildHash(newPrefix),
+      FullyQualifiedName.buildHash(oldPrefix)
+    );
     updateFqnInternal(mySqlUpdate, postgresUpdate);
   }
 
@@ -123,10 +129,11 @@ public interface EntityDAO<T extends EntityInterface> {
 
   @SqlQuery("SELECT json FROM <table> WHERE <nameColumnHash> = :name <cond>")
   String findByName(
-      @Define("table") String table,
-      @Define("nameColumnHash") String nameColumn,
-      @BindFQN("name") String name,
-      @Define("cond") String cond);
+    @Define("table") String table,
+    @Define("nameColumnHash") String nameColumn,
+    @BindFQN("name") String name,
+    @Define("cond") String cond
+  );
 
   @SqlQuery("SELECT count(*) FROM <table> <cond>")
   int listCount(@Define("table") String table, @Define("cond") String cond);
@@ -134,104 +141,112 @@ public interface EntityDAO<T extends EntityInterface> {
   @ConnectionAwareSqlQuery(value = "SELECT count(*) FROM <table> <mysqlCond>", connectionType = MYSQL)
   @ConnectionAwareSqlQuery(value = "SELECT count(*) FROM <table> <postgresCond>", connectionType = POSTGRES)
   int listCount(
-      @Define("table") String table,
-      @Define("mysqlCond") String mysqlCond,
-      @Define("postgresCond") String postgresCond);
+    @Define("table") String table,
+    @Define("mysqlCond") String mysqlCond,
+    @Define("postgresCond") String postgresCond
+  );
 
   @ConnectionAwareSqlQuery(
-      value =
-          "SELECT json FROM ("
-              + "SELECT <table>.name, <table>.json FROM <table> <mysqlCond> AND "
-              + "<table>.name < :before "
-              + // Pagination by entity fullyQualifiedName or name (when entity does not have fqn)
-              "ORDER BY <table>.name DESC "
-              + // Pagination ordering by entity fullyQualifiedName or name (when entity does not have fqn)
-              "LIMIT :limit"
-              + ") last_rows_subquery ORDER BY name",
-      connectionType = MYSQL)
+    value = "SELECT json FROM (" +
+    "SELECT <table>.name, <table>.json FROM <table> <mysqlCond> AND " +
+    "<table>.name < :before " + // Pagination by entity fullyQualifiedName or name (when entity does not have fqn)
+    "ORDER BY <table>.name DESC " + // Pagination ordering by entity fullyQualifiedName or name (when entity does not have fqn)
+    "LIMIT :limit" +
+    ") last_rows_subquery ORDER BY name",
+    connectionType = MYSQL
+  )
   @ConnectionAwareSqlQuery(
-      value =
-          "SELECT json FROM ("
-              + "SELECT <table>.name, <table>.json FROM <table> <postgresCond> AND "
-              + "<table>.name < :before "
-              + // Pagination by entity fullyQualifiedName or name (when entity does not have fqn)
-              "ORDER BY <table>.name DESC "
-              + // Pagination ordering by entity fullyQualifiedName or name (when entity does not have fqn)
-              "LIMIT :limit"
-              + ") last_rows_subquery ORDER BY name",
-      connectionType = POSTGRES)
+    value = "SELECT json FROM (" +
+    "SELECT <table>.name, <table>.json FROM <table> <postgresCond> AND " +
+    "<table>.name < :before " + // Pagination by entity fullyQualifiedName or name (when entity does not have fqn)
+    "ORDER BY <table>.name DESC " + // Pagination ordering by entity fullyQualifiedName or name (when entity does not have fqn)
+    "LIMIT :limit" +
+    ") last_rows_subquery ORDER BY name",
+    connectionType = POSTGRES
+  )
   List<String> listBefore(
-      @Define("table") String table,
-      @Define("mysqlCond") String mysqlCond,
-      @Define("postgresCond") String postgresCond,
-      @Bind("limit") int limit,
-      @Bind("before") String before);
+    @Define("table") String table,
+    @Define("mysqlCond") String mysqlCond,
+    @Define("postgresCond") String postgresCond,
+    @Bind("limit") int limit,
+    @Bind("before") String before
+  );
 
   @ConnectionAwareSqlQuery(
-      value =
-          "SELECT <table>.json FROM <table> <mysqlCond> AND "
-              + "<table>.name > :after "
-              + "ORDER BY <table>.name "
-              + "LIMIT :limit",
-      connectionType = MYSQL)
+    value = "SELECT <table>.json FROM <table> <mysqlCond> AND " +
+    "<table>.name > :after " +
+    "ORDER BY <table>.name " +
+    "LIMIT :limit",
+    connectionType = MYSQL
+  )
   @ConnectionAwareSqlQuery(
-      value =
-          "SELECT <table>.json FROM <table> <postgresCond> AND "
-              + "<table>.name > :after "
-              + "ORDER BY <table>.name "
-              + "LIMIT :limit",
-      connectionType = POSTGRES)
+    value = "SELECT <table>.json FROM <table> <postgresCond> AND " +
+    "<table>.name > :after " +
+    "ORDER BY <table>.name " +
+    "LIMIT :limit",
+    connectionType = POSTGRES
+  )
   List<String> listAfter(
-      @Define("table") String table,
-      @Define("mysqlCond") String mysqlCond,
-      @Define("postgresCond") String postgresCond,
-      @Bind("limit") int limit,
-      @Bind("after") String after);
+    @Define("table") String table,
+    @Define("mysqlCond") String mysqlCond,
+    @Define("postgresCond") String postgresCond,
+    @Bind("limit") int limit,
+    @Bind("after") String after
+  );
 
   @SqlQuery("SELECT count(*) FROM <table>")
   int listTotalCount(@Define("table") String table);
 
   @SqlQuery(
-      "SELECT json FROM ("
-          + "SELECT name, json FROM <table> <cond> AND "
-          + "name < :before "
-          + // Pagination by entity fullyQualifiedName or name (when entity does not have fqn)
-          "ORDER BY name DESC "
-          + // Pagination ordering by entity fullyQualifiedName or name (when entity does not have fqn)
-          "LIMIT :limit"
-          + ") last_rows_subquery ORDER BY name")
+    "SELECT json FROM (" +
+    "SELECT name, json FROM <table> <cond> AND " +
+    "name < :before " + // Pagination by entity fullyQualifiedName or name (when entity does not have fqn)
+    "ORDER BY name DESC " + // Pagination ordering by entity fullyQualifiedName or name (when entity does not have fqn)
+    "LIMIT :limit" +
+    ") last_rows_subquery ORDER BY name"
+  )
   List<String> listBefore(
-      @Define("table") String table,
-      @Define("cond") String cond,
-      @Bind("limit") int limit,
-      @Bind("before") String before);
+    @Define("table") String table,
+    @Define("cond") String cond,
+    @Bind("limit") int limit,
+    @Bind("before") String before
+  );
 
   @SqlQuery("SELECT json FROM <table> <cond> AND name > :after ORDER BY name LIMIT :limit")
   List<String> listAfter(
-      @Define("table") String table,
-      @Define("cond") String cond,
-      @Bind("limit") int limit,
-      @Bind("after") String after);
+    @Define("table") String table,
+    @Define("cond") String cond,
+    @Bind("limit") int limit,
+    @Bind("after") String after
+  );
 
   @SqlQuery("SELECT json FROM <table> LIMIT :limit OFFSET :offset")
   List<String> listAfterWithOffset(@Define("table") String table, @Bind("limit") int limit, @Bind("offset") int offset);
 
   @SqlQuery("SELECT json FROM <table> WHERE <nameHashColumn> = '' or <nameHashColumn> is null LIMIT :limit")
   List<String> migrationListAfterWithOffset(
-      @Define("table") String table, @Define("nameHashColumn") String nameHashColumnName, @Bind("limit") int limit);
+    @Define("table") String table,
+    @Define("nameHashColumn") String nameHashColumnName,
+    @Bind("limit") int limit
+  );
 
   @SqlQuery("SELECT json FROM <table> <cond> AND ORDER BY name LIMIT :limit OFFSET :offset")
   List<String> listAfter(
-      @Define("table") String table, @Define("cond") String cond, @Bind("limit") int limit, @Bind("offset") int offset);
+    @Define("table") String table,
+    @Define("cond") String cond,
+    @Bind("limit") int limit,
+    @Bind("offset") int offset
+  );
 
   @SqlQuery("SELECT EXISTS (SELECT * FROM <table> WHERE id = :id)")
   boolean exists(@Define("table") String table, @BindUUID("id") UUID id);
 
   @SqlQuery("SELECT EXISTS (SELECT * FROM <table> WHERE <nameColumnHash> = :fqnHash)")
   boolean existsByName(
-      @Define("table") String table,
-      @Define("nameColumnHash") String nameColumnHash,
-      @BindFQN("fqnHash") String fqnHash);
+    @Define("table") String table,
+    @Define("nameColumnHash") String nameColumnHash,
+    @BindFQN("fqnHash") String fqnHash
+  );
 
   @SqlUpdate("DELETE FROM <table> WHERE id = :id")
   int delete(@Define("table") String table, @BindUUID("id") UUID id);
@@ -251,20 +266,22 @@ public interface EntityDAO<T extends EntityInterface> {
 
   default void update(EntityInterface entity) {
     update(
-        getTableName(),
-        getNameHashColumn(),
-        entity.getFullyQualifiedName(),
-        entity.getId().toString(),
-        JsonUtils.pojoToJson(entity));
+      getTableName(),
+      getNameHashColumn(),
+      entity.getFullyQualifiedName(),
+      entity.getId().toString(),
+      JsonUtils.pojoToJson(entity)
+    );
   }
 
   default void update(String nameHashColumn, EntityInterface entity) {
     update(
-        getTableName(),
-        nameHashColumn,
-        entity.getFullyQualifiedName(),
-        entity.getId().toString(),
-        JsonUtils.pojoToJson(entity));
+      getTableName(),
+      nameHashColumn,
+      entity.getFullyQualifiedName(),
+      entity.getId().toString(),
+      JsonUtils.pojoToJson(entity)
+    );
   }
 
   default String getCondition(Include include) {

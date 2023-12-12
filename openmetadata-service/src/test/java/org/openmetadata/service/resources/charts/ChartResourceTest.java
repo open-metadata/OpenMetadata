@@ -52,6 +52,7 @@ import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
+
   private final DashboardServiceResourceTest serviceTest = new DashboardServiceResourceTest();
 
   public ChartResourceTest() {
@@ -63,15 +64,16 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
   void post_chartWithoutRequiredFields_4xx(TestInfo test) {
     // Service is required field
     assertResponse(
-        () -> createEntity(createRequest(test).withService(null), ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "[service must not be null]");
+      () -> createEntity(createRequest(test).withService(null), ADMIN_AUTH_HEADERS),
+      BAD_REQUEST,
+      "[service must not be null]"
+    );
   }
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   void post_chartWithDifferentService_200_ok(TestInfo test) throws IOException {
-    String[] differentServices = {METABASE_REFERENCE.getName(), LOOKER_REFERENCE.getName()};
+    String[] differentServices = { METABASE_REFERENCE.getName(), LOOKER_REFERENCE.getName() };
 
     // Create chart for each service and test APIs
     for (String service : differentServices) {
@@ -93,12 +95,11 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
     ChartType type2 = ChartType.Line;
 
     // Create with no url, description and chart type.
-    CreateChart request =
-        createRequest(test)
-            .withService(METABASE_REFERENCE.getName())
-            .withSourceUrl(null)
-            .withDescription(null)
-            .withChartType(null);
+    CreateChart request = createRequest(test)
+      .withService(METABASE_REFERENCE.getName())
+      .withSourceUrl(null)
+      .withDescription(null)
+      .withChartType(null);
     Chart chart = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     // Set url, description and chart type.
@@ -109,12 +110,13 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
     fieldAdded(change, "sourceUrl", "url1");
 
     chart =
-        updateAndCheckEntity(
-            request.withDescription("desc1").withChartType(type1).withSourceUrl("url1"),
-            OK,
-            ADMIN_AUTH_HEADERS,
-            MINOR_UPDATE,
-            change);
+      updateAndCheckEntity(
+        request.withDescription("desc1").withChartType(type1).withSourceUrl("url1"),
+        OK,
+        ADMIN_AUTH_HEADERS,
+        MINOR_UPDATE,
+        change
+      );
 
     // Update description, chartType and chart url and verify update
     change = getChangeDescription(chart, MINOR_UPDATE);
@@ -125,11 +127,12 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
     fieldUpdated(change, "sourceUrl", "url1", "url2");
 
     updateAndCheckEntity(
-        request.withDescription("desc2").withChartType(type2).withSourceUrl("url2"),
-        OK,
-        ADMIN_AUTH_HEADERS,
-        MINOR_UPDATE,
-        change);
+      request.withDescription("desc2").withChartType(type2).withSourceUrl("url2"),
+      OK,
+      ADMIN_AUTH_HEADERS,
+      MINOR_UPDATE,
+      change
+    );
   }
 
   @Test
@@ -138,12 +141,11 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
     ChartType type2 = ChartType.Line;
 
     // Create with no url, description and chart type.
-    CreateChart request =
-        createRequest(test)
-            .withService(METABASE_REFERENCE.getName())
-            .withSourceUrl(null)
-            .withDescription(null)
-            .withChartType(null);
+    CreateChart request = createRequest(test)
+      .withService(METABASE_REFERENCE.getName())
+      .withSourceUrl(null)
+      .withDescription(null)
+      .withChartType(null);
     Chart chart = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
     String originalJson = JsonUtils.pojoToJson(chart);
 
@@ -180,13 +182,16 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
   @Test
   void testInheritedPermissionFromParent(TestInfo test) throws IOException {
     // Create dashboard service with owner data consumer
-    CreateDashboardService createDashboardService =
-        serviceTest.createRequest(getEntityName(test)).withOwner(DATA_CONSUMER.getEntityReference());
+    CreateDashboardService createDashboardService = serviceTest
+      .createRequest(getEntityName(test))
+      .withOwner(DATA_CONSUMER.getEntityReference());
     DashboardService service = serviceTest.createEntity(createDashboardService, ADMIN_AUTH_HEADERS);
 
     // Data consumer as an owner of the service can create chart under it
     createEntity(
-        createRequest("chart").withService(service.getFullyQualifiedName()), authHeaders(DATA_CONSUMER.getName()));
+      createRequest("chart").withService(service.getFullyQualifiedName()),
+      authHeaders(DATA_CONSUMER.getName())
+    );
   }
 
   @Override
@@ -194,18 +199,18 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
   public Chart validateGetWithDifferentFields(Chart chart, boolean byName) throws HttpResponseException {
     String fields = "";
     chart =
-        byName
-            ? getEntityByName(chart.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getEntity(chart.getId(), fields, ADMIN_AUTH_HEADERS);
+      byName
+        ? getEntityByName(chart.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+        : getEntity(chart.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(chart.getService(), chart.getServiceType());
     assertListNull(chart.getOwner(), chart.getFollowers(), chart.getTags());
 
     // .../charts?fields=owner
     fields = "owner,followers,tags";
     chart =
-        byName
-            ? getEntityByName(chart.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getEntity(chart.getId(), fields, ADMIN_AUTH_HEADERS);
+      byName
+        ? getEntityByName(chart.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+        : getEntity(chart.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(chart.getService(), chart.getServiceType());
     // Checks for other owner, tags, and followers is done in the base class
     return chart;

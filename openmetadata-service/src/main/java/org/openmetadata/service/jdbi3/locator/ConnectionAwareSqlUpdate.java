@@ -20,7 +20,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.METHOD})
+@Target({ ElementType.METHOD })
 @Repeatable(ConnectionAwareSqlUpdateContainer.class)
 public @interface ConnectionAwareSqlUpdate {
   String value() default "";

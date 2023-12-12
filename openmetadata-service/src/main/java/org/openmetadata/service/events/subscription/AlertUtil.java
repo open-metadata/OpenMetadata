@@ -53,10 +53,13 @@ import org.springframework.expression.spel.support.StandardEvaluationContext;
 
 @Slf4j
 public final class AlertUtil {
+
   private AlertUtil() {}
 
   public static SubscriptionPublisher getNotificationsPublisher(
-      EventSubscription subscription, CollectionDAO daoCollection) {
+    EventSubscription subscription,
+    CollectionDAO daoCollection
+  ) {
     validateSubscriptionConfig(subscription);
     SubscriptionPublisher publisher;
     switch (subscription.getSubscriptionType()) {
@@ -135,8 +138,10 @@ public final class AlertUtil {
           func.setParamAdditionalContext(paramAdditionalContext.withData(new HashSet<>(eventTypes)));
           break;
         case matchIngestionPipelineState:
-          List<String> ingestionPipelineState =
-              Stream.of(PipelineStatusType.values()).map(PipelineStatusType::value).toList();
+          List<String> ingestionPipelineState = Stream
+            .of(PipelineStatusType.values())
+            .map(PipelineStatusType::value)
+            .toList();
           func.setParamAdditionalContext(paramAdditionalContext.withData(new HashSet<>(ingestionPipelineState)));
           break;
         case matchTestResult:
@@ -211,25 +216,28 @@ public final class AlertUtil {
   public static boolean shouldProcessActivityFeedRequest(ChangeEvent event) {
     // Check Trigger Conditions
     FilteringRules filteringRules = ActivityFeedAlertCache.getActivityFeedAlert().getFilteringRules();
-    return AlertUtil.shouldTriggerAlert(event.getEntityType(), filteringRules)
-        && AlertUtil.evaluateAlertConditions(event, filteringRules.getRules());
+    return (
+      AlertUtil.shouldTriggerAlert(event.getEntityType(), filteringRules) &&
+      AlertUtil.evaluateAlertConditions(event, filteringRules.getRules())
+    );
   }
 
   public static SubscriptionStatus buildSubscriptionStatus(
-      SubscriptionStatus.Status status,
-      Long lastSuccessful,
-      Long lastFailure,
-      Integer statusCode,
-      String reason,
-      Long nextAttempt,
-      Long timeStamp) {
+    SubscriptionStatus.Status status,
+    Long lastSuccessful,
+    Long lastFailure,
+    Integer statusCode,
+    String reason,
+    Long nextAttempt,
+    Long timeStamp
+  ) {
     return new SubscriptionStatus()
-        .withStatus(status)
-        .withLastSuccessfulAt(lastSuccessful)
-        .withLastFailedAt(lastFailure)
-        .withLastFailedStatusCode(statusCode)
-        .withLastFailedReason(reason)
-        .withNextAttempt(nextAttempt)
-        .withTimestamp(timeStamp);
+      .withStatus(status)
+      .withLastSuccessfulAt(lastSuccessful)
+      .withLastFailedAt(lastFailure)
+      .withLastFailedStatusCode(statusCode)
+      .withLastFailedReason(reason)
+      .withNextAttempt(nextAttempt)
+      .withTimestamp(timeStamp);
   }
 }

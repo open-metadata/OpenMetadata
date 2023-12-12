@@ -36,6 +36,7 @@ import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
+
   public static User botUser;
 
   public BotResourceTest() {
@@ -57,23 +58,23 @@ public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
     ResultList<App> appResultList = appsResourceTest.listEntities(null, ADMIN_AUTH_HEADERS);
     Set<UUID> applicationBotIds = new HashSet<>();
     appResultList
-        .getData()
-        .forEach(
-            app -> {
-              if (app.getBot() != null) {
-                applicationBotIds.add(app.getBot().getId());
-              } else {
-                LOG.error("Bot Entry Null for App : {}", app.getName());
-              }
-            });
+      .getData()
+      .forEach(
+        app -> {
+          if (app.getBot() != null) {
+            applicationBotIds.add(app.getBot().getId());
+          } else {
+            LOG.error("Bot Entry Null for App : {}", app.getName());
+          }
+        }
+      );
     for (Bot bot : bots.getData()) {
       try {
         if (!bot.getProvider().equals(ProviderType.SYSTEM) && !applicationBotIds.contains(bot.getId())) {
           deleteEntity(bot.getId(), true, true, ADMIN_AUTH_HEADERS);
           createUser();
         }
-      } catch (Exception ignored) {
-      }
+      } catch (Exception ignored) {}
     }
   }
 
@@ -108,9 +109,10 @@ public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
     // create another bot with the same bot user
     CreateBot failCreateRequest = createRequest(test).withName("wrong-bot").withBotUser(testUser.getName());
     assertResponse(
-        () -> createEntity(failCreateRequest, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        CatalogExceptionMessage.userAlreadyBot(testUser.getName(), create.getName()));
+      () -> createEntity(failCreateRequest, ADMIN_AUTH_HEADERS),
+      BAD_REQUEST,
+      CatalogExceptionMessage.userAlreadyBot(testUser.getName(), create.getName())
+    );
   }
 
   @Test
@@ -120,17 +122,18 @@ public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
     CreateBot failCreateRequest = createRequest(test).withBotUser(testUser.getName());
     // fail because it is not a bot
     assertResponse(
-        () -> createEntity(failCreateRequest, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "User [bot-test-user] is not a bot user");
+      () -> createEntity(failCreateRequest, ADMIN_AUTH_HEADERS),
+      BAD_REQUEST,
+      "User [bot-test-user] is not a bot user"
+    );
   }
 
   @Override
   public CreateBot createRequest(String name) {
     if (name != null && name.contains("entityListWithPagination_200")) {
       return new CreateBot()
-          .withName(name)
-          .withBotUser(Objects.requireNonNull(new UserResourceTest().createUser(name, true)).getName());
+        .withName(name)
+        .withBotUser(Objects.requireNonNull(new UserResourceTest().createUser(name, true)).getName());
     }
     return new CreateBot().withName(name).withBotUser(botUser.getName());
   }
@@ -141,7 +144,9 @@ public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
       assertNotNull(entity.getBotUser());
       TestUtils.validateEntityReference(entity.getBotUser());
       Assertions.assertEquals(
-          request.getBotUser().toLowerCase(), entity.getBotUser().getFullyQualifiedName().toLowerCase());
+        request.getBotUser().toLowerCase(),
+        entity.getBotUser().getFullyQualifiedName().toLowerCase()
+      );
     } else {
       Assertions.assertNull(entity.getBotUser());
     }

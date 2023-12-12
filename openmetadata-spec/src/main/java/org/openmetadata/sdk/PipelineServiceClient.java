@@ -59,12 +59,15 @@ import org.openmetadata.sdk.exception.PipelineServiceVersionException;
  */
 @Slf4j
 public abstract class PipelineServiceClient {
+
   protected final boolean pipelineServiceClientEnabled;
   protected final String hostIp;
 
   protected final boolean ingestionIpInfoEnabled;
 
-  @Getter @Setter private String platform;
+  @Getter
+  @Setter
+  private String platform;
 
   protected static final String AUTH_HEADER = "Authorization";
   protected static final String CONTENT_HEADER = "Content-Type";
@@ -77,24 +80,24 @@ public abstract class PipelineServiceClient {
   public static final String STATUS_KEY = "status";
   public static final String APP_TRIGGER = "run_application";
   public static final String APP_VALIDATE = "validate_registration";
-  public static final Map<String, String> TYPE_TO_TASK =
-      Map.of(
-          PipelineType.METADATA.toString(),
-          "ingestion_task",
-          PipelineType.PROFILER.toString(),
-          "profiler_task",
-          PipelineType.LINEAGE.toString(),
-          "lineage_task",
-          PipelineType.DBT.toString(),
-          "dbt_task",
-          PipelineType.USAGE.toString(),
-          "usage_task",
-          PipelineType.TEST_SUITE.toString(),
-          "test_suite_task",
-          PipelineType.DATA_INSIGHT.toString(),
-          "data_insight_task",
-          PipelineType.ELASTIC_SEARCH_REINDEX.toString(),
-          "elasticsearch_reindex_task");
+  public static final Map<String, String> TYPE_TO_TASK = Map.of(
+    PipelineType.METADATA.toString(),
+    "ingestion_task",
+    PipelineType.PROFILER.toString(),
+    "profiler_task",
+    PipelineType.LINEAGE.toString(),
+    "lineage_task",
+    PipelineType.DBT.toString(),
+    "dbt_task",
+    PipelineType.USAGE.toString(),
+    "usage_task",
+    PipelineType.TEST_SUITE.toString(),
+    "test_suite_task",
+    PipelineType.DATA_INSIGHT.toString(),
+    "data_insight_task",
+    PipelineType.ELASTIC_SEARCH_REINDEX.toString(),
+    "elasticsearch_reindex_task"
+  );
 
   public static final String SERVER_VERSION;
 
@@ -138,14 +141,15 @@ public abstract class PipelineServiceClient {
 
   public final String getVersionFromString(String version) {
     if (version != null) {
-      return Pattern.compile("(\\d+.\\d+.\\d+)")
-          .matcher(version)
-          .results()
-          .map(m -> m.group(1))
-          .findFirst()
-          .orElseThrow(
-              () ->
-                  new PipelineServiceVersionException(String.format("Cannot extract version x.y.z from %s", version)));
+      return Pattern
+        .compile("(\\d+.\\d+.\\d+)")
+        .matcher(version)
+        .results()
+        .map(m -> m.group(1))
+        .findFirst()
+        .orElseThrow(
+          () -> new PipelineServiceVersionException(String.format("Cannot extract version x.y.z from %s", version))
+        );
     } else {
       throw new PipelineServiceVersionException("Received version as null");
     }
@@ -158,20 +162,24 @@ public abstract class PipelineServiceClient {
   public String buildVersionMismatchErrorMessage(String ingestionVersion, String serverVersion) {
     if (getVersionFromString(ingestionVersion).compareTo(getVersionFromString(serverVersion)) < 0) {
       return String.format(
-          "Ingestion version [%s] is older than Server Version [%s]. Please upgrade your ingestion client.",
-          ingestionVersion, serverVersion);
+        "Ingestion version [%s] is older than Server Version [%s]. Please upgrade your ingestion client.",
+        ingestionVersion,
+        serverVersion
+      );
     }
     return String.format(
-        "Server version [%s] is older than Ingestion Version [%s]. Please upgrade your server or downgrade the ingestion client.",
-        serverVersion, ingestionVersion);
+      "Server version [%s] is older than Ingestion Version [%s]. Please upgrade your server or downgrade the ingestion client.",
+      serverVersion,
+      ingestionVersion
+    );
   }
 
   /** To build the response of getServiceStatus */
   public PipelineServiceClientResponse buildHealthyStatus(String ingestionVersion) {
     return new PipelineServiceClientResponse()
-        .withCode(200)
-        .withVersion(ingestionVersion)
-        .withPlatform(this.getPlatform());
+      .withCode(200)
+      .withVersion(ingestionVersion)
+      .withPlatform(this.getPlatform());
   }
 
   /** To build the response of getServiceStatus */
@@ -180,7 +188,6 @@ public abstract class PipelineServiceClient {
   }
 
   public final Response getHostIp() {
-
     if (this.ingestionIpInfoEnabled) {
       return getHostIpInternal();
     }
@@ -196,35 +203,35 @@ public abstract class PipelineServiceClient {
       LOG.error("Failed to get Pipeline Service host IP. {}", e.getMessage());
       // We don't want the request to fail for an informative ping
       body =
-          Map.of(
-              "ip",
-              "Failed to find the IP of Airflow Container. Please make sure https://api.ipify.org, "
-                  + "https://api.my-ip.io/ip reachable from your network or that the `hostIp` setting is configured.");
+        Map.of(
+          "ip",
+          "Failed to find the IP of Airflow Container. Please make sure https://api.ipify.org, " +
+          "https://api.my-ip.io/ip reachable from your network or that the `hostIp` setting is configured."
+        );
       return Response.ok(body, MediaType.APPLICATION_JSON_TYPE).build();
     }
   }
 
   /** Check the pipeline service status with an exception backoff to make sure we don't raise any false positives. */
   public String getServiceStatusBackoff() {
-    RetryConfig retryConfig =
-        RetryConfig.<String>custom()
-            .maxAttempts(MAX_ATTEMPTS)
-            .waitDuration(Duration.ofMillis(BACKOFF_TIME_SECONDS * 1_000L))
-            .retryOnResult(response -> !HEALTHY_STATUS.equals(response))
-            .failAfterMaxAttempts(false)
-            .build();
+    RetryConfig retryConfig = RetryConfig
+      .<String>custom()
+      .maxAttempts(MAX_ATTEMPTS)
+      .waitDuration(Duration.ofMillis(BACKOFF_TIME_SECONDS * 1_000L))
+      .retryOnResult(response -> !HEALTHY_STATUS.equals(response))
+      .failAfterMaxAttempts(false)
+      .build();
 
     Retry retry = Retry.of("getServiceStatus", retryConfig);
 
-    Supplier<String> responseSupplier =
-        () -> {
-          try {
-            PipelineServiceClientResponse status = getServiceStatus();
-            return status.getCode() != 200 ? UNHEALTHY_STATUS : HEALTHY_STATUS;
-          } catch (Exception e) {
-            throw new RuntimeException(e);
-          }
-        };
+    Supplier<String> responseSupplier = () -> {
+      try {
+        PipelineServiceClientResponse status = getServiceStatus();
+        return status.getCode() != 200 ? UNHEALTHY_STATUS : HEALTHY_STATUS;
+      } catch (Exception e) {
+        throw new RuntimeException(e);
+      }
+    };
 
     return retry.executeSupplier(responseSupplier);
   }
@@ -259,11 +266,15 @@ public abstract class PipelineServiceClient {
 
   /* Deploy a pipeline to the pipeline service */
   public abstract PipelineServiceClientResponse deployPipeline(
-      IngestionPipeline ingestionPipeline, ServiceEntityInterface service);
+    IngestionPipeline ingestionPipeline,
+    ServiceEntityInterface service
+  );
 
   /* Deploy run the pipeline at the pipeline service */
   public abstract PipelineServiceClientResponse runPipeline(
-      IngestionPipeline ingestionPipeline, ServiceEntityInterface service);
+    IngestionPipeline ingestionPipeline,
+    ServiceEntityInterface service
+  );
 
   /* Stop and delete a pipeline at the pipeline service */
   public abstract PipelineServiceClientResponse deletePipeline(IngestionPipeline ingestionPipeline);

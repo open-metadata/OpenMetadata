@@ -39,6 +39,7 @@ import org.openmetadata.service.util.RestUtil;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class WebhookCallbackResource {
+
   private final ConcurrentHashMap<String, EventDetails> eventMap = new ConcurrentHashMap<>();
   private final ConcurrentHashMap<String, List<ChangeEvent>> entityCallbackMap = new ConcurrentHashMap<>();
 
@@ -48,12 +49,14 @@ public class WebhookCallbackResource {
   @POST
   @Path("/{name}")
   public Response receiveEventCount(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @HeaderParam(RestUtil.SIGNATURE_HEADER) String signature,
-      @Parameter(description = "Name of the Webhook callback", schema = @Schema(type = "string")) @PathParam("name")
-          String name,
-      EventList events) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @HeaderParam(RestUtil.SIGNATURE_HEADER) String signature,
+    @Parameter(description = "Name of the Webhook callback", schema = @Schema(type = "string")) @PathParam(
+      "name"
+    ) String name,
+    EventList events
+  ) {
     String payload = JsonUtils.pojoToJson(events);
     String computedSignature = "sha256=" + CommonUtil.calculateHMAC("webhookTest", payload);
     assertEquals(computedSignature, signature);
@@ -65,7 +68,10 @@ public class WebhookCallbackResource {
   @POST
   @Path("/simulate/slowServer")
   public Response receiveEventWithDelay(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, EventList events) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    EventList events
+  ) {
     addEventDetails("simulate-slowServer", events);
     return Response.ok().build();
   }
@@ -74,7 +80,10 @@ public class WebhookCallbackResource {
   @POST
   @Path("/simulate/timeout")
   public Response receiveEventWithTimeout(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, EventList events) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    EventList events
+  ) {
     addEventDetails("simulate-timeout", events);
     Awaitility.await().pollDelay(Duration.ofSeconds(100L)).untilTrue(new AtomicBoolean(true));
     return Response.ok().build();
@@ -84,7 +93,10 @@ public class WebhookCallbackResource {
   @POST
   @Path("/simulate/300")
   public Response receiveEvent300(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, EventList events) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    EventList events
+  ) {
     addEventDetails("simulate-300", events);
     return Response.status(Response.Status.MOVED_PERMANENTLY).build();
   }
@@ -93,7 +105,10 @@ public class WebhookCallbackResource {
   @POST
   @Path("/simulate/400")
   public Response receiveEvent400(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, EventList events) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    EventList events
+  ) {
     addEventDetails("simulate-400", events);
     return Response.status(Response.Status.BAD_REQUEST).build();
   }
@@ -102,7 +117,10 @@ public class WebhookCallbackResource {
   @POST
   @Path("/simulate/500")
   public Response receiveEvent500(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, EventList events) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    EventList events
+  ) {
     addEventDetails("simulate-500", events);
     return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
   }
@@ -111,15 +129,19 @@ public class WebhookCallbackResource {
   @POST
   @Path("/filterBased/{eventType}/{entityType}")
   public Response receiveEntityEvents(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the Webhook callback", schema = @Schema(type = "string")) @PathParam("name")
-          String name,
-      @Parameter(description = "Type of event", schema = @Schema(type = "string")) @PathParam("eventType")
-          String eventType,
-      @Parameter(description = "Type of entity", schema = @Schema(type = "string")) @PathParam("entityType")
-          String entityType,
-      EventList events) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Name of the Webhook callback", schema = @Schema(type = "string")) @PathParam(
+      "name"
+    ) String name,
+    @Parameter(description = "Type of event", schema = @Schema(type = "string")) @PathParam(
+      "eventType"
+    ) String eventType,
+    @Parameter(description = "Type of entity", schema = @Schema(type = "string")) @PathParam(
+      "entityType"
+    ) String entityType,
+    EventList events
+  ) {
     String key = eventType + ":" + entityType;
     List<ChangeEvent> list = entityCallbackMap.get(key);
     if (list == null) {
@@ -159,8 +181,16 @@ public class WebhookCallbackResource {
 
   /** Class to keep track of all the events received by a webhook endpoint */
   static class EventDetails {
-    @Getter @Setter long firstEventTime;
-    @Getter @Setter long latestEventTime;
-    @Getter final ConcurrentLinkedQueue<ChangeEvent> events = new ConcurrentLinkedQueue<>();
+
+    @Getter
+    @Setter
+    long firstEventTime;
+
+    @Getter
+    @Setter
+    long latestEventTime;
+
+    @Getter
+    final ConcurrentLinkedQueue<ChangeEvent> events = new ConcurrentLinkedQueue<>();
   }
 }

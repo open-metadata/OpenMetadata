@@ -9,23 +9,26 @@ import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
 public class ReportDataRepository extends EntityTimeSeriesRepository<ReportData> {
+
   public static final String COLLECTION_PATH = "/v1/analytics/report";
   public static final String REPORT_DATA_EXTENSION = "reportData.reportDataResult";
 
   public ReportDataRepository() {
     super(
-        COLLECTION_PATH,
-        Entity.getCollectionDAO().reportDataTimeSeriesDao(),
-        ReportData.class,
-        Entity.ENTITY_REPORT_DATA);
+      COLLECTION_PATH,
+      Entity.getCollectionDAO().reportDataTimeSeriesDao(),
+      ReportData.class,
+      Entity.ENTITY_REPORT_DATA
+    );
   }
 
   public ResultList<ReportData> getReportData(ReportDataType reportDataType, Long startTs, Long endTs) {
     List<ReportData> reportData;
     reportData =
-        JsonUtils.readObjects(
-            timeSeriesDao.listBetweenTimestamps(reportDataType.value(), REPORT_DATA_EXTENSION, startTs, endTs),
-            ReportData.class);
+      JsonUtils.readObjects(
+        timeSeriesDao.listBetweenTimestamps(reportDataType.value(), REPORT_DATA_EXTENSION, startTs, endTs),
+        ReportData.class
+      );
 
     return new ResultList<>(reportData, String.valueOf(startTs), String.valueOf(endTs), reportData.size());
   }

@@ -31,23 +31,35 @@ import org.openmetadata.service.workflows.interfaces.Source;
 
 @Slf4j
 public class PaginatedDataInsightSource implements Source<ResultList<ReportData>> {
+
   private final CollectionDAO dao;
-  @Getter private final String entityType;
-  @Getter private final int batchSize;
-  @Getter private final List<String> readerErrors = new ArrayList<>();
-  @Getter private final StepStats stats = new StepStats();
+
+  @Getter
+  private final String entityType;
+
+  @Getter
+  private final int batchSize;
+
+  @Getter
+  private final List<String> readerErrors = new ArrayList<>();
+
+  @Getter
+  private final StepStats stats = new StepStats();
+
   private String cursor = null;
-  @Getter private boolean isDone = false;
+
+  @Getter
+  private boolean isDone = false;
 
   public PaginatedDataInsightSource(CollectionDAO dao, String entityType, int batchSize) {
     this.dao = dao;
     this.entityType = entityType;
     this.batchSize = batchSize;
-    this.stats
-        .withTotalRecords(
-            dao.reportDataTimeSeriesDao().listCount(new ListFilter(null).addQueryParam("entityFQNHash", entityType)))
-        .withSuccessRecords(0)
-        .withFailedRecords(0);
+    this.stats.withTotalRecords(
+        dao.reportDataTimeSeriesDao().listCount(new ListFilter(null).addQueryParam("entityFQNHash", entityType))
+      )
+      .withSuccessRecords(0)
+      .withFailedRecords(0);
   }
 
   @Override
@@ -76,16 +88,19 @@ public class PaginatedDataInsightSource implements Source<ResultList<ReportData>
     try {
       result = getReportDataPagination(entityType, batchSize, afterCursor);
       LOG.debug(
-          "[DataInsightReader] Batch Stats :- Submitted : {} Success: {} Failed: {}",
-          batchSize,
-          result.getData().size(),
-          0);
+        "[DataInsightReader] Batch Stats :- Submitted : {} Success: {} Failed: {}",
+        batchSize,
+        result.getData().size(),
+        0
+      );
       updateStats(result.getData().size(), result.getErrors().size());
     } catch (Exception ex) {
-      String errMsg =
-          String.format(
-              "[DataInsightReader] Failing Completely. Batch Stats :- Submitted : %s Success: %s Failed: %s",
-              batchSize, 0, batchSize);
+      String errMsg = String.format(
+        "[DataInsightReader] Failing Completely. Batch Stats :- Submitted : %s Success: %s Failed: %s",
+        batchSize,
+        0,
+        batchSize
+      );
       LOG.debug(errMsg);
       if (result != null) {
         if (result.getPaging().getAfter() == null) {
@@ -109,16 +124,21 @@ public class PaginatedDataInsightSource implements Source<ResultList<ReportData>
   }
 
   public ResultList<ReportData> getReportDataPagination(String entityFQN, int limit, String after) {
-    int reportDataCount =
-        dao.reportDataTimeSeriesDao().listCount(new ListFilter(null).addQueryParam("entityFQNHash", entityFQN));
-    List<CollectionDAO.ReportDataRow> reportDataList =
-        dao.reportDataTimeSeriesDao()
-            .getAfterExtension(entityFQN, limit + 1, after == null ? "0" : RestUtil.decodeCursor(after));
+    int reportDataCount = dao
+      .reportDataTimeSeriesDao()
+      .listCount(new ListFilter(null).addQueryParam("entityFQNHash", entityFQN));
+    List<CollectionDAO.ReportDataRow> reportDataList = dao
+      .reportDataTimeSeriesDao()
+      .getAfterExtension(entityFQN, limit + 1, after == null ? "0" : RestUtil.decodeCursor(after));
     return getAfterExtensionList(reportDataList, after, limit, reportDataCount);
   }
 
   private ResultList<ReportData> getAfterExtensionList(
-      List<CollectionDAO.ReportDataRow> reportDataRowList, String after, int limit, int total) {
+    List<CollectionDAO.ReportDataRow> reportDataRowList,
+    String after,
+    int limit,
+    int total
+  ) {
     String beforeCursor;
     String afterCursor = null;
     beforeCursor = after == null ? null : reportDataRowList.get(0).getRowNum();

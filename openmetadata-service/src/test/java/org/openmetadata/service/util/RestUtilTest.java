@@ -25,6 +25,7 @@ import org.mockito.Mockito;
 
 @Slf4j
 class RestUtilTest {
+
   @Test
   void hrefTests() throws URISyntaxException {
     URI baseUri = URI.create("http://base");

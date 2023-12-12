@@ -51,32 +51,37 @@ import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class MlModelRepository extends EntityRepository<MlModel> {
+
   private static final String MODEL_UPDATE_FIELDS = "dashboard";
   private static final String MODEL_PATCH_FIELDS = "dashboard,sourceHash";
 
   public MlModelRepository() {
     super(
-        MlModelResource.COLLECTION_PATH,
-        Entity.MLMODEL,
-        MlModel.class,
-        Entity.getCollectionDAO().mlModelDAO(),
-        MODEL_PATCH_FIELDS,
-        MODEL_UPDATE_FIELDS);
+      MlModelResource.COLLECTION_PATH,
+      Entity.MLMODEL,
+      MlModel.class,
+      Entity.getCollectionDAO().mlModelDAO(),
+      MODEL_PATCH_FIELDS,
+      MODEL_UPDATE_FIELDS
+    );
     supportsSearch = true;
   }
 
   public static MlFeature findMlFeature(List<MlFeature> features, String featureName) {
-    return features.stream()
-        .filter(c -> c.getName().equals(featureName))
-        .findFirst()
-        .orElseThrow(
-            () -> new IllegalArgumentException(CatalogExceptionMessage.invalidFieldName("mlFeature", featureName)));
+    return features
+      .stream()
+      .filter(c -> c.getName().equals(featureName))
+      .findFirst()
+      .orElseThrow(
+        () -> new IllegalArgumentException(CatalogExceptionMessage.invalidFieldName("mlFeature", featureName))
+      );
   }
 
   @Override
   public void setFullyQualifiedName(MlModel mlModel) {
     mlModel.setFullyQualifiedName(
-        FullyQualifiedName.add(mlModel.getService().getFullyQualifiedName(), mlModel.getName()));
+      FullyQualifiedName.add(mlModel.getService().getFullyQualifiedName(), mlModel.getName())
+    );
     if (!nullOrEmpty(mlModel.getMlFeatures())) {
       setMlFeatureFQN(mlModel.getFullyQualifiedName(), mlModel.getMlFeatures());
     }
@@ -89,9 +94,10 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     mlModel.setSourceHash(fields.contains("sourceHash") ? mlModel.getSourceHash() : null);
     if (mlModel.getUsageSummary() == null) {
       mlModel.withUsageSummary(
-          fields.contains("usageSummary")
-              ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), mlModel.getId())
-              : mlModel.getUsageSummary());
+        fields.contains("usageSummary")
+          ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), mlModel.getId())
+          : mlModel.getUsageSummary()
+      );
     }
   }
 
@@ -110,24 +116,26 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
   private void setMlFeatureSourcesFQN(List<MlFeatureSource> mlSources) {
     mlSources.forEach(
-        s -> {
-          if (s.getDataSource() != null) {
-            s.setFullyQualifiedName(FullyQualifiedName.add(s.getDataSource().getFullyQualifiedName(), s.getName()));
-          } else {
-            s.setFullyQualifiedName(s.getName());
-          }
-        });
+      s -> {
+        if (s.getDataSource() != null) {
+          s.setFullyQualifiedName(FullyQualifiedName.add(s.getDataSource().getFullyQualifiedName(), s.getName()));
+        } else {
+          s.setFullyQualifiedName(s.getName());
+        }
+      }
+    );
   }
 
   private void setMlFeatureFQN(String parentFQN, List<MlFeature> mlFeatures) {
     mlFeatures.forEach(
-        f -> {
-          String featureFqn = FullyQualifiedName.add(parentFQN, f.getName());
-          f.setFullyQualifiedName(featureFqn);
-          if (f.getFeatureSources() != null) {
-            setMlFeatureSourcesFQN(f.getFeatureSources());
-          }
-        });
+      f -> {
+        String featureFqn = FullyQualifiedName.add(parentFQN, f.getName());
+        f.setFullyQualifiedName(featureFqn);
+        if (f.getFeatureSources() != null) {
+          setMlFeatureSourcesFQN(f.getFeatureSources());
+        }
+      }
+    );
   }
 
   /** Make sure that all the MlFeatureSources are pointing to correct EntityReferences in tha Table DAO. */
@@ -144,7 +152,10 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   private void validateMlDataSource(MlFeatureSource source) {
     if (source.getDataSource() != null) {
       Entity.getEntityReferenceById(
-          source.getDataSource().getType(), source.getDataSource().getId(), Include.NON_DELETED);
+        source.getDataSource().getType(),
+        source.getDataSource().getId(),
+        Include.NON_DELETED
+      );
     }
   }
 
@@ -182,7 +193,12 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     if (mlModel.getDashboard() != null) {
       // Add relationship from MlModel --- uses ---> Dashboard
       addRelationship(
-          mlModel.getId(), mlModel.getDashboard().getId(), Entity.MLMODEL, Entity.DASHBOARD, Relationship.USES);
+        mlModel.getId(),
+        mlModel.getDashboard().getId(),
+        Entity.MLMODEL,
+        Entity.DASHBOARD,
+        Relationship.USES
+      );
     }
 
     setMlFeatureSourcesLineage(mlModel);
@@ -195,26 +211,29 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   private void setMlFeatureSourcesLineage(MlModel mlModel) {
     if (mlModel.getMlFeatures() != null) {
       mlModel
-          .getMlFeatures()
-          .forEach(
-              mlFeature -> {
-                if (mlFeature.getFeatureSources() != null) {
-                  mlFeature
-                      .getFeatureSources()
-                      .forEach(
-                          mlFeatureSource -> {
-                            EntityReference targetEntity = mlFeatureSource.getDataSource();
-                            if (targetEntity != null) {
-                              addRelationship(
-                                  targetEntity.getId(),
-                                  mlModel.getId(),
-                                  targetEntity.getType(),
-                                  MLMODEL,
-                                  Relationship.UPSTREAM);
-                            }
-                          });
-                }
-              });
+        .getMlFeatures()
+        .forEach(
+          mlFeature -> {
+            if (mlFeature.getFeatureSources() != null) {
+              mlFeature
+                .getFeatureSources()
+                .forEach(
+                  mlFeatureSource -> {
+                    EntityReference targetEntity = mlFeatureSource.getDataSource();
+                    if (targetEntity != null) {
+                      addRelationship(
+                        targetEntity.getId(),
+                        mlModel.getId(),
+                        targetEntity.getType(),
+                        MLMODEL,
+                        Relationship.UPSTREAM
+                      );
+                    }
+                  }
+                );
+            }
+          }
+        );
     }
   }
 
@@ -260,6 +279,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   static class MlFeatureDescriptionTaskWorkflow extends DescriptionTaskWorkflow {
+
     private final MlFeature mlFeature;
 
     MlFeatureDescriptionTaskWorkflow(ThreadContext threadContext) {
@@ -276,6 +296,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   static class MlFeatureTagTaskWorkflow extends TagTaskWorkflow {
+
     private final MlFeature mlFeature;
 
     MlFeatureTagTaskWorkflow(ThreadContext threadContext) {
@@ -305,12 +326,18 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   public void setDashboard(MlModel mlModel, EntityReference dashboard) {
     if (dashboard != null) {
       addRelationship(
-          mlModel.getId(), mlModel.getDashboard().getId(), Entity.MLMODEL, Entity.DASHBOARD, Relationship.USES);
+        mlModel.getId(),
+        mlModel.getDashboard().getId(),
+        Entity.MLMODEL,
+        Entity.DASHBOARD,
+        Relationship.USES
+      );
     }
   }
 
   /** Handles entity updated from PUT and POST operation. */
   public class MlModelUpdater extends EntityUpdater {
+
     public MlModelUpdater(MlModel original, MlModel updated, Operation operation) {
       super(original, updated, operation);
     }
@@ -344,24 +371,26 @@ public class MlModelRepository extends EntityRepository<MlModel> {
       List<MlFeature> addedList = new ArrayList<>();
       List<MlFeature> deletedList = new ArrayList<>();
       recordListChange(
-          "mlFeatures",
-          origModel.getMlFeatures(),
-          updatedModel.getMlFeatures(),
-          addedList,
-          deletedList,
-          mlFeatureMatch);
+        "mlFeatures",
+        origModel.getMlFeatures(),
+        updatedModel.getMlFeatures(),
+        addedList,
+        deletedList,
+        mlFeatureMatch
+      );
     }
 
     private void updateMlHyperParameters(MlModel origModel, MlModel updatedModel) {
       List<MlHyperParameter> addedList = new ArrayList<>();
       List<MlHyperParameter> deletedList = new ArrayList<>();
       recordListChange(
-          "mlHyperParameters",
-          origModel.getMlHyperParameters(),
-          updatedModel.getMlHyperParameters(),
-          addedList,
-          deletedList,
-          mlHyperParameterMatch);
+        "mlHyperParameters",
+        origModel.getMlHyperParameters(),
+        updatedModel.getMlHyperParameters(),
+        addedList,
+        deletedList,
+        mlHyperParameterMatch
+      );
     }
 
     private void updateMlStore(MlModel origModel, MlModel updatedModel) {
@@ -387,7 +416,6 @@ public class MlModelRepository extends EntityRepository<MlModel> {
       EntityReference origDashboard = origModel.getDashboard();
       EntityReference updatedDashboard = updatedModel.getDashboard();
       if (recordChange("dashboard", origDashboard, updatedDashboard, true, entityReferenceMatch)) {
-
         // Remove the dashboard associated with the model, if any
         if (origModel.getDashboard() != null) {
           deleteTo(updatedModel.getId(), Entity.MLMODEL, Relationship.USES, Entity.DASHBOARD);
@@ -396,7 +424,12 @@ public class MlModelRepository extends EntityRepository<MlModel> {
         // Add relationship from model -- uses --> dashboard
         if (updatedDashboard != null) {
           addRelationship(
-              updatedModel.getId(), updatedDashboard.getId(), Entity.MLMODEL, Entity.DASHBOARD, Relationship.USES);
+            updatedModel.getId(),
+            updatedDashboard.getId(),
+            Entity.MLMODEL,
+            Entity.DASHBOARD,
+            Relationship.USES
+          );
         }
       }
     }

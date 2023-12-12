@@ -19,13 +19,14 @@ import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
 public class TableIndex implements ColumnIndex {
-  private static final List<String> excludeFields =
-      List.of(
-          "sampleData",
-          "tableProfile",
-          "joins",
-          "changeDescription",
-          "viewDefinition, tableProfilerConfig, profile, location, tableQueries, tests, dataModel");
+
+  private static final List<String> excludeFields = List.of(
+    "sampleData",
+    "tableProfile",
+    "joins",
+    "changeDescription",
+    "viewDefinition, tableProfilerConfig, profile, location, tableQueries, tests, dataModel"
+  );
 
   final Table table;
 
@@ -62,16 +63,21 @@ public class TableIndex implements ColumnIndex {
     schemaSuggest.add(SearchSuggest.builder().input(table.getDatabaseSchema().getName()).weight(5).build());
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.TABLE, table));
     tagsWithChildren.add(parseTags.getTags());
-    List<TagLabel> flattenedTagList =
-        tagsWithChildren.stream().flatMap(List::stream).collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
+    List<TagLabel> flattenedTagList = tagsWithChildren
+      .stream()
+      .flatMap(List::stream)
+      .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
     doc.put("displayName", table.getDisplayName() != null ? table.getDisplayName() : table.getName());
     doc.put("tags", flattenedTagList);
     doc.put("tier", parseTags.getTierTag());
     doc.put("followers", SearchIndexUtils.parseFollowers(table.getFollowers()));
     doc.put(
-        "fqnParts",
-        getFQNParts(
-            table.getFullyQualifiedName(), suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+      "fqnParts",
+      getFQNParts(
+        table.getFullyQualifiedName(),
+        suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())
+      )
+    );
     doc.put("suggest", suggest);
     doc.put("service_suggest", serviceSuggest);
     doc.put("column_suggest", columnSuggest);

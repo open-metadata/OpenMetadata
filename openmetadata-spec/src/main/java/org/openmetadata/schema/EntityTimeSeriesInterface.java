@@ -42,7 +42,7 @@ public interface EntityTimeSeriesInterface {
   @JsonIgnore
   default EntityReference getEntityReference() {
     return new EntityReference()
-        .withId(getId())
-        .withType(CANONICAL_ENTITY_NAME_MAP.get(this.getClass().getSimpleName().toLowerCase(Locale.ROOT)));
+      .withId(getId())
+      .withType(CANONICAL_ENTITY_NAME_MAP.get(this.getClass().getSimpleName().toLowerCase(Locale.ROOT)));
   }
 }

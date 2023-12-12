@@ -22,6 +22,7 @@ import org.openmetadata.schema.type.Permission.Access;
 import org.openmetadata.schema.type.ResourcePermission;
 
 class PolicyEvaluatorTest {
+
   @Test
   public void test_AccessOrderOfPrecedence() {
     //
@@ -74,12 +75,18 @@ class PolicyEvaluatorTest {
 
   @Test
   void trimResourcePermissions() {
-    MetadataOperation[] op1 = {ALL, VIEW_ALL, VIEW_BASIC, VIEW_QUERIES, EDIT_ALL, EDIT_LINEAGE, EDIT_CUSTOM_FIELDS};
+    MetadataOperation[] op1 = { ALL, VIEW_ALL, VIEW_BASIC, VIEW_QUERIES, EDIT_ALL, EDIT_LINEAGE, EDIT_CUSTOM_FIELDS };
     ResourcePermission rp1 = getResourcePermission("r1", Access.DENY, op1);
     List<MetadataOperation> expectedOp1 = new ArrayList<>(List.of(ALL, VIEW_ALL, EDIT_ALL));
 
     MetadataOperation[] op2 = {
-      ALL, VIEW_BASIC, VIEW_USAGE, EDIT_ALL, EDIT_LINEAGE, EDIT_CUSTOM_FIELDS, EDIT_DISPLAY_NAME
+      ALL,
+      VIEW_BASIC,
+      VIEW_USAGE,
+      EDIT_ALL,
+      EDIT_LINEAGE,
+      EDIT_CUSTOM_FIELDS,
+      EDIT_DISPLAY_NAME
     };
     ResourcePermission rp2 = getResourcePermission("r2", Access.ALLOW, op2);
     List<MetadataOperation> expectedOp2 = new ArrayList<>(List.of(ALL, VIEW_BASIC, VIEW_USAGE, EDIT_ALL));
@@ -93,7 +100,13 @@ class PolicyEvaluatorTest {
   @Test
   void trimResourcePermission() {
     MetadataOperation[] operations = {
-      ALL, VIEW_ALL, VIEW_BASIC, VIEW_QUERIES, EDIT_ALL, EDIT_LINEAGE, EDIT_CUSTOM_FIELDS
+      ALL,
+      VIEW_ALL,
+      VIEW_BASIC,
+      VIEW_QUERIES,
+      EDIT_ALL,
+      EDIT_LINEAGE,
+      EDIT_CUSTOM_FIELDS
     };
     ResourcePermission rp = getResourcePermission("testResource", Access.ALLOW, operations);
     ResourcePermission trimmedRp = PolicyEvaluator.trimResourcePermission(rp);
@@ -120,10 +133,10 @@ class PolicyEvaluatorTest {
   @Test
   void trimPermissions_withNotAllowAccessToViewAll_viewOpsNotTrimmed() {
     List<Permission> permissions = getPermissions(OperationContext.getAllOperations(), Access.ALLOW);
-    List<MetadataOperation> expectedOperations =
-        Arrays.stream(MetadataOperation.values())
-            .filter(operation -> (!operation.value().startsWith("Edit")))
-            .collect(Collectors.toList());
+    List<MetadataOperation> expectedOperations = Arrays
+      .stream(MetadataOperation.values())
+      .filter(operation -> (!operation.value().startsWith("Edit")))
+      .collect(Collectors.toList());
     expectedOperations.add(EDIT_ALL);
     updateAccess(permissions, VIEW_ALL, Access.NOT_ALLOW);
 
@@ -134,10 +147,10 @@ class PolicyEvaluatorTest {
   @Test
   void trimPermissions_withConditionalAllowAccessToEditAll_editOpsNotTrimmed() {
     List<Permission> permissions = getPermissions(OperationContext.getAllOperations(), Access.ALLOW);
-    List<MetadataOperation> expectedOperations =
-        Arrays.stream(MetadataOperation.values())
-            .filter(operation -> (!operation.value().startsWith("View")))
-            .collect(Collectors.toList());
+    List<MetadataOperation> expectedOperations = Arrays
+      .stream(MetadataOperation.values())
+      .filter(operation -> (!operation.value().startsWith("View")))
+      .collect(Collectors.toList());
     expectedOperations.add(VIEW_ALL);
     updateAccess(permissions, EDIT_ALL, Access.CONDITIONAL_ALLOW);
 
@@ -175,13 +188,17 @@ class PolicyEvaluatorTest {
 
   public static void updateAccess(List<Permission> permissions, final MetadataOperation operation, Access access) {
     permissions.forEach(
-        permission -> {
-          if (permission.getOperation().equals(operation)) permission.setAccess(access);
-        });
+      permission -> {
+        if (permission.getOperation().equals(operation)) permission.setAccess(access);
+      }
+    );
   }
 
   public static ResourcePermission getResourcePermission(
-      String resourceName, Access access, MetadataOperation... operations) {
+    String resourceName,
+    Access access,
+    MetadataOperation... operations
+  ) {
     ResourcePermission rp = new ResourcePermission();
     List<Permission> permissions = new ArrayList<>();
     rp.setResource(resourceName);

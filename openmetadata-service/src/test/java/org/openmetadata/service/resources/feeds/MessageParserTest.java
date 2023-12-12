@@ -21,21 +21,18 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 
 class MessageParserTest {
+
   @Test
   void parseMessage() {
     String s =
-        "abcd <angle1> <angle2> <angle3> "
-            + // Text in angled brackets that are not entity links
-            "<#E> "
-            + // Invalid entity link
-            "<#E::table:: "
-            + // Invalid entity link
-            "<#E::table::tableFQN "
-            + // Invalid entity link
-            "<#E::table::tableFQN> "
-            + "<#E::table::tableFQN::description> "
-            + "<#E::table::tableFQN::columns::c1> "
-            + "<#E::table::tableFQN::columns::c1::description> ";
+      "abcd <angle1> <angle2> <angle3> " + // Text in angled brackets that are not entity links
+      "<#E> " + // Invalid entity link
+      "<#E::table:: " + // Invalid entity link
+      "<#E::table::tableFQN " + // Invalid entity link
+      "<#E::table::tableFQN> " +
+      "<#E::table::tableFQN::description> " +
+      "<#E::table::tableFQN::columns::c1> " +
+      "<#E::table::tableFQN::columns::c1::description> ";
     List<EntityLink> links = MessageParser.getEntityLinks(s);
     assertEquals(4, links.size());
     assertEquals(new EntityLink("table", "tableFQN", null, null, null), links.get(0));
@@ -47,7 +44,7 @@ class MessageParserTest {
   @Test
   void parseMessageWithFallbackText() {
     String message =
-        "Hello <#E::user::user1|[@User One](http://localhost:8585/user/user1)> <#E::user::user2|[@User Two](http://localhost:8585/user/user2)>";
+      "Hello <#E::user::user1|[@User One](http://localhost:8585/user/user1)> <#E::user::user2|[@User Two](http://localhost:8585/user/user2)>";
     List<EntityLink> links = MessageParser.getEntityLinks(message);
     assertEquals(2, links.size());
     EntityLink link = links.get(0);

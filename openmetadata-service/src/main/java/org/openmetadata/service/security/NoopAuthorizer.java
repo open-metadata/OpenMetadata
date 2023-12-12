@@ -33,6 +33,7 @@ import org.openmetadata.service.util.RestUtil.PutResponse;
 
 @Slf4j
 public class NoopAuthorizer implements Authorizer {
+
   @Override
   public void init(OpenMetadataApplicationConfig openMetadataApplicationConfig) {
     addAnonymousUser();
@@ -51,13 +52,19 @@ public class NoopAuthorizer implements Authorizer {
 
   @Override
   public ResourcePermission getPermission(
-      SecurityContext securityContext, String user, ResourceContextInterface resourceContext) {
+    SecurityContext securityContext,
+    String user,
+    ResourceContextInterface resourceContext
+  ) {
     return PolicyEvaluator.getResourcePermission(resourceContext.getResource(), Access.ALLOW);
   }
 
   @Override
   public void authorize(
-      SecurityContext securityContext, OperationContext operationContext, ResourceContextInterface resourceContext) {
+    SecurityContext securityContext,
+    OperationContext operationContext,
+    ResourceContextInterface resourceContext
+  ) {
     /* Always authorize */
   }
 
@@ -66,13 +73,12 @@ public class NoopAuthorizer implements Authorizer {
     try {
       Entity.getEntityByName(Entity.USER, username, "", Include.NON_DELETED);
     } catch (EntityNotFoundException ex) {
-      User user =
-          new User()
-              .withId(UUID.randomUUID())
-              .withName(username)
-              .withEmail(username + "@domain.com")
-              .withUpdatedBy(username)
-              .withUpdatedAt(System.currentTimeMillis());
+      User user = new User()
+        .withId(UUID.randomUUID())
+        .withName(username)
+        .withEmail(username + "@domain.com")
+        .withUpdatedBy(username)
+        .withUpdatedAt(System.currentTimeMillis());
       addOrUpdateUser(user);
     } catch (Exception e) {
       LOG.error("Failed to create anonymous user {}", username, e);

@@ -9,6 +9,7 @@ import org.openmetadata.service.Entity;
 
 /** Conversation threads require special handling */
 public class ThreadResourceContext implements ResourceContextInterface {
+
   // User who created the thread is the owner of thread entity
   private final String createdBy;
 

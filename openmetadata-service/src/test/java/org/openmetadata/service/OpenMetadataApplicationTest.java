@@ -50,6 +50,7 @@ import org.testcontainers.elasticsearch.ElasticsearchContainer;
 @Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public abstract class OpenMetadataApplicationTest {
+
   protected static final String CONFIG_PATH = ResourceHelpers.resourceFilePath("openmetadata-secure-test.yaml");
   public static DropwizardAppExtension<OpenMetadataApplicationConfig> APP;
   protected static final WebhookCallbackResource webhookCallbackResource = new WebhookCallbackResource();
@@ -93,16 +94,18 @@ public abstract class OpenMetadataApplicationTest {
     // The system properties are provided by maven-surefire for testing with mysql and postgres
     LOG.info("Using test container class {} and image {}", jdbcContainerClassName, jdbcContainerImage);
 
-    JdbcDatabaseContainer<?> sqlContainer =
-        (JdbcDatabaseContainer<?>)
-            Class.forName(jdbcContainerClassName).getConstructor(String.class).newInstance(jdbcContainerImage);
+    JdbcDatabaseContainer<?> sqlContainer = (JdbcDatabaseContainer<?>) Class
+      .forName(jdbcContainerClassName)
+      .getConstructor(String.class)
+      .newInstance(jdbcContainerImage);
     sqlContainer.withReuse(false);
     sqlContainer.withStartupTimeoutSeconds(240);
     sqlContainer.withConnectTimeoutSeconds(240);
     sqlContainer.start();
 
-    final String flyWayMigrationScriptsLocation =
-        ResourceHelpers.resourceFilePath("db/sql/migrations/flyway/" + sqlContainer.getDriverClassName());
+    final String flyWayMigrationScriptsLocation = ResourceHelpers.resourceFilePath(
+      "db/sql/migrations/flyway/" + sqlContainer.getDriverClassName()
+    );
     final String nativeMigrationScriptsLocation = ResourceHelpers.resourceFilePath("db/sql/migrations/native/");
 
     // Extension Config
@@ -110,18 +113,19 @@ public abstract class OpenMetadataApplicationTest {
     try {
       extensionMigrationScripsLocation = ResourceHelpers.resourceFilePath("extension/sql/migrations/");
       configOverrides.add(
-          ConfigOverride.config("migrationConfiguration.extensionPath", extensionMigrationScripsLocation));
+        ConfigOverride.config("migrationConfiguration.extensionPath", extensionMigrationScripsLocation)
+      );
     } catch (Exception ex) {
       LOG.info("Extension migrations not found");
     }
-    Flyway flyway =
-        Flyway.configure()
-            .dataSource(sqlContainer.getJdbcUrl(), sqlContainer.getUsername(), sqlContainer.getPassword())
-            .table("DATABASE_CHANGE_LOG")
-            .locations("filesystem:" + flyWayMigrationScriptsLocation)
-            .sqlMigrationPrefix("v")
-            .cleanDisabled(false)
-            .load();
+    Flyway flyway = Flyway
+      .configure()
+      .dataSource(sqlContainer.getJdbcUrl(), sqlContainer.getUsername(), sqlContainer.getPassword())
+      .table("DATABASE_CHANGE_LOG")
+      .locations("filesystem:" + flyWayMigrationScriptsLocation)
+      .sqlMigrationPrefix("v")
+      .cleanDisabled(false)
+      .load();
     flyway.clean();
     flyway.migrate();
 
@@ -145,15 +149,17 @@ public abstract class OpenMetadataApplicationTest {
     // Run System Migrations
     jdbi = Jdbi.create(sqlContainer.getJdbcUrl(), sqlContainer.getUsername(), sqlContainer.getPassword());
     jdbi.installPlugin(new SqlObjectPlugin());
-    jdbi.getConfig(SqlObjects.class)
-        .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(sqlContainer.getDriverClassName()));
+    jdbi
+      .getConfig(SqlObjects.class)
+      .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(sqlContainer.getDriverClassName()));
     validateAndRunSystemDataMigrations(
-        jdbi,
-        config,
-        ConnectionType.from(sqlContainer.getDriverClassName()),
-        nativeMigrationScriptsLocation,
-        extensionMigrationScripsLocation,
-        false);
+      jdbi,
+      config,
+      ConnectionType.from(sqlContainer.getDriverClassName()),
+      nativeMigrationScriptsLocation,
+      extensionMigrationScripsLocation,
+      false
+    );
     APP.before();
     createClient();
   }

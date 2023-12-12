@@ -15,7 +15,10 @@ public class ApplicationHandler {
   }
 
   public static void triggerApplicationOnDemand(
-      App app, CollectionDAO daoCollection, SearchRepository searchRepository) {
+    App app,
+    CollectionDAO daoCollection,
+    SearchRepository searchRepository
+  ) {
     runMethodFromApplication(app, daoCollection, searchRepository, "triggerOnDemand");
   }
 
@@ -29,7 +32,11 @@ public class ApplicationHandler {
 
   /** Load an App from its className and call its methods dynamically */
   public static void runMethodFromApplication(
-      App app, CollectionDAO daoCollection, SearchRepository searchRepository, String methodName) {
+    App app,
+    CollectionDAO daoCollection,
+    SearchRepository searchRepository,
+    String methodName
+  ) {
     // Native Application
     try {
       Class<?> clz = Class.forName(app.getClassName());
@@ -42,7 +49,6 @@ public class ApplicationHandler {
       // Call method on demand
       Method scheduleMethod = resource.getClass().getMethod(methodName);
       scheduleMethod.invoke(resource);
-
     } catch (NoSuchMethodException | InstantiationException | IllegalAccessException | InvocationTargetException e) {
       LOG.error("Exception encountered", e);
       throw new RuntimeException(e);

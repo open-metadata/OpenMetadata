@@ -28,7 +28,8 @@ import org.openmetadata.service.security.AuthenticationException;
 @Provider
 public class CatalogSecurityContextRequestFilter implements ContainerRequestFilter {
 
-  @Context private HttpServletRequest httpRequest;
+  @Context
+  private HttpServletRequest httpRequest;
 
   @SuppressWarnings("unused")
   private CatalogSecurityContextRequestFilter() {}
@@ -43,12 +44,13 @@ public class CatalogSecurityContextRequestFilter implements ContainerRequestFilt
     String scheme = requestContext.getUriInfo().getRequestUri().getScheme();
 
     LOG.debug(
-        "Method: {}, AuthType: {}, RemoteUser: {}, UserPrincipal: {}, Scheme: {}",
-        httpRequest.getMethod(),
-        httpRequest.getAuthType(),
-        httpRequest.getRemoteUser(),
-        principal,
-        scheme);
+      "Method: {}, AuthType: {}, RemoteUser: {}, UserPrincipal: {}, Scheme: {}",
+      httpRequest.getMethod(),
+      httpRequest.getAuthType(),
+      httpRequest.getRemoteUser(),
+      principal,
+      scheme
+    );
 
     if (principal == null) {
       throw new AuthenticationException("Not authorized. Principal is not available");

@@ -19,5 +19,8 @@ import lombok.Setter;
 
 public class PipelineServiceAPIClientConfig {
 
-  @NotEmpty @Getter @Setter private String apiEndpoint;
+  @NotEmpty
+  @Getter
+  @Setter
+  private String apiEndpoint;
 }

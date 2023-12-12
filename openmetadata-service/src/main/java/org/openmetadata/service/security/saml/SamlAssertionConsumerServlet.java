@@ -32,6 +32,7 @@ import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 @WebServlet("/api/v1/saml/acs")
 @Slf4j
 public class SamlAssertionConsumerServlet extends HttpServlet {
+
   @Override
   protected void doPost(HttpServletRequest req, HttpServletResponse resp) {
     try {
@@ -68,23 +69,24 @@ public class SamlAssertionConsumerServlet extends HttpServlet {
         email = String.format("%s@%s", username, SamlSettingsHolder.getInstance().getDomain());
       }
 
-      JWTAuthMechanism jwtAuthMechanism =
-          JWTTokenGenerator.getInstance()
-              .generateJWTToken(
-                  username,
-                  email,
-                  SamlSettingsHolder.getInstance().getTokenValidity(),
-                  false,
-                  ServiceTokenType.OM_USER);
+      JWTAuthMechanism jwtAuthMechanism = JWTTokenGenerator
+        .getInstance()
+        .generateJWTToken(
+          username,
+          email,
+          SamlSettingsHolder.getInstance().getTokenValidity(),
+          false,
+          ServiceTokenType.OM_USER
+        );
 
       String url =
-          SamlSettingsHolder.getInstance().getRelayState()
-              + "?id_token="
-              + jwtAuthMechanism.getJWTToken()
-              + "&email="
-              + nameId
-              + "&name="
-              + username;
+        SamlSettingsHolder.getInstance().getRelayState() +
+        "?id_token=" +
+        jwtAuthMechanism.getJWTToken() +
+        "&email=" +
+        nameId +
+        "&name=" +
+        username;
       resp.sendRedirect(url);
     }
   }

@@ -3,6 +3,7 @@ package org.openmetadata.service.search;
 import java.util.List;
 
 public class SearchRequest {
+
   private final String query;
   private final int from;
   private final int size;
@@ -90,6 +91,7 @@ public class SearchRequest {
   // Builder class for ElasticSearchRequest
 
   public static class ElasticSearchRequestBuilder {
+
     private final String index;
     private final String query;
     private final int size;

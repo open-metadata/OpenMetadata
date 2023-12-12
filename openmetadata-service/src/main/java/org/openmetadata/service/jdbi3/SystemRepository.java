@@ -25,6 +25,7 @@ import org.openmetadata.service.util.ResultList;
 @Slf4j
 @Repository
 public class SystemRepository {
+
   private static final String FAILED_TO_UPDATE_SETTINGS = "Failed to Update Settings";
   public static final String INTERNAL_SERVER_ERROR_WITH_REASON = "Internal Server Error. Reason :";
   private final SystemDAO dao;
@@ -68,7 +69,6 @@ public class SystemRepository {
         fetchedSettings.setConfigValue(emailConfig);
       }
       return fetchedSettings;
-
     } catch (Exception ex) {
       LOG.error("Error while trying fetch Settings ", ex);
     }
@@ -90,8 +90,9 @@ public class SystemRepository {
   public Settings getSlackApplicationConfigInternal() {
     try {
       Settings setting = dao.getConfigWithKey(SettingsType.SLACK_APP_CONFIGURATION.value());
-      SlackAppConfiguration slackAppConfiguration =
-          SystemRepository.decryptSlackAppSetting((String) setting.getConfigValue());
+      SlackAppConfiguration slackAppConfiguration = SystemRepository.decryptSlackAppSetting(
+        (String) setting.getConfigValue()
+      );
       setting.setConfigValue(slackAppConfiguration);
       return setting;
     } catch (Exception ex) {
@@ -153,8 +154,10 @@ public class SystemRepository {
         SmtpSettings emailConfig = JsonUtils.convertValue(setting.getConfigValue(), SmtpSettings.class);
         setting.setConfigValue(encryptEmailSetting(emailConfig));
       } else if (setting.getConfigType() == SettingsType.SLACK_APP_CONFIGURATION) {
-        SlackAppConfiguration appConfiguration =
-            JsonUtils.convertValue(setting.getConfigValue(), SlackAppConfiguration.class);
+        SlackAppConfiguration appConfiguration = JsonUtils.convertValue(
+          setting.getConfigValue(),
+          SlackAppConfiguration.class
+        );
         setting.setConfigValue(encryptSlackAppSetting(appConfiguration));
       }
       dao.insertSettings(setting.getConfigType().toString(), JsonUtils.pojoToJson(setting.getConfigValue()));

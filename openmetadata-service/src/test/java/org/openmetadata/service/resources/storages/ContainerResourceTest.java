@@ -73,14 +73,15 @@ import org.openmetadata.service.util.TestUtils;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class ContainerResourceTest extends EntityResourceTest<Container, CreateContainer> {
 
-  public static final List<Column> dataModelColumns =
-      List.of(
-          getColumn(C1, BIGINT, USER_ADDRESS_TAG_LABEL),
-          getColumn(C2, ColumnDataType.VARCHAR, USER_ADDRESS_TAG_LABEL).withDataLength(10),
-          getColumn(C3, BIGINT, GLOSSARY1_TERM1_LABEL));
+  public static final List<Column> dataModelColumns = List.of(
+    getColumn(C1, BIGINT, USER_ADDRESS_TAG_LABEL),
+    getColumn(C2, ColumnDataType.VARCHAR, USER_ADDRESS_TAG_LABEL).withDataLength(10),
+    getColumn(C3, BIGINT, GLOSSARY1_TERM1_LABEL)
+  );
 
-  public static final ContainerDataModel PARTITIONED_DATA_MODEL =
-      new ContainerDataModel().withIsPartitioned(true).withColumns(dataModelColumns);
+  public static final ContainerDataModel PARTITIONED_DATA_MODEL = new ContainerDataModel()
+    .withIsPartitioned(true)
+    .withColumns(dataModelColumns);
 
   public static final List<ContainerFileFormat> FILE_FORMATS = List.of(ContainerFileFormat.Parquet);
 
@@ -132,9 +133,10 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     String serviceFQN = UUID.randomUUID().toString();
     CreateContainer create = createRequest(test).withService(serviceFQN);
     assertResponse(
-        () -> createAndCheckEntity(create, ADMIN_AUTH_HEADERS),
-        NOT_FOUND,
-        String.format("storageService instance for %s not found", serviceFQN));
+      () -> createAndCheckEntity(create, ADMIN_AUTH_HEADERS),
+      NOT_FOUND,
+      String.format("storageService instance for %s not found", serviceFQN)
+    );
   }
 
   @Test
@@ -143,9 +145,10 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     EntityReference randomContainerReference = new EntityReference().withId(randomUUID).withType(Entity.CONTAINER);
     CreateContainer create = createRequest(test).withParent(randomContainerReference);
     assertResponse(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS),
-        NOT_FOUND,
-        entityNotFound(Entity.CONTAINER, randomUUID.toString()));
+      () -> createEntity(create, ADMIN_AUTH_HEADERS),
+      NOT_FOUND,
+      entityNotFound(Entity.CONTAINER, randomUUID.toString())
+    );
   }
 
   @Test
@@ -161,8 +164,11 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
 
   @Test
   void put_ContainerFields_200(TestInfo test) throws IOException {
-    CreateContainer request =
-        createRequest(test).withDataModel(null).withPrefix(null).withFileFormats(null).withNumberOfObjects(null);
+    CreateContainer request = createRequest(test)
+      .withDataModel(null)
+      .withPrefix(null)
+      .withFileFormats(null)
+      .withNumberOfObjects(null);
     Container container = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     ChangeDescription change = getChangeDescription(container, MINOR_UPDATE);
@@ -171,60 +177,66 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     fieldAdded(change, "fileFormats", FILE_FORMATS);
 
     container =
-        updateAndCheckEntity(
-            request
-                .withDataModel(PARTITIONED_DATA_MODEL)
-                .withPrefix("prefix2")
-                .withNumberOfObjects(10.0)
-                .withSize(1.0)
-                .withFileFormats(FILE_FORMATS),
-            OK,
-            ADMIN_AUTH_HEADERS,
-            MINOR_UPDATE,
-            change);
+      updateAndCheckEntity(
+        request
+          .withDataModel(PARTITIONED_DATA_MODEL)
+          .withPrefix("prefix2")
+          .withNumberOfObjects(10.0)
+          .withSize(1.0)
+          .withFileFormats(FILE_FORMATS),
+        OK,
+        ADMIN_AUTH_HEADERS,
+        MINOR_UPDATE,
+        change
+      );
     assertEquals(1.0, container.getSize());
     assertEquals(10.0, container.getNumberOfObjects());
 
     change = getChangeDescription(container, MINOR_UPDATE);
     fieldUpdated(change, "prefix", "prefix2", "prefix3");
     container =
-        updateAndCheckEntity(
-            request.withPrefix("prefix3").withSize(5.0).withNumberOfObjects(15.0),
-            OK,
-            ADMIN_AUTH_HEADERS,
-            MINOR_UPDATE,
-            change);
+      updateAndCheckEntity(
+        request.withPrefix("prefix3").withSize(5.0).withNumberOfObjects(15.0),
+        OK,
+        ADMIN_AUTH_HEADERS,
+        MINOR_UPDATE,
+        change
+      );
 
     assertEquals(5.0, container.getSize());
     assertEquals(15.0, container.getNumberOfObjects());
 
     change = getChangeDescription(container, NO_CHANGE);
     container =
-        updateAndCheckEntity(
-            request.withPrefix("prefix3").withNumberOfObjects(3.0).withSize(2.0),
-            OK,
-            ADMIN_AUTH_HEADERS,
-            NO_CHANGE,
-            change);
+      updateAndCheckEntity(
+        request.withPrefix("prefix3").withNumberOfObjects(3.0).withSize(2.0),
+        OK,
+        ADMIN_AUTH_HEADERS,
+        NO_CHANGE,
+        change
+      );
     assertEquals(2.0, container.getSize());
     assertEquals(3.0, container.getNumberOfObjects());
   }
 
   @Test
   void patch_ContainerFields_200(TestInfo test) throws IOException {
-    CreateContainer request =
-        createRequest(test).withDataModel(null).withPrefix(null).withFileFormats(null).withNumberOfObjects(null);
+    CreateContainer request = createRequest(test)
+      .withDataModel(null)
+      .withPrefix(null)
+      .withFileFormats(null)
+      .withNumberOfObjects(null);
     Container container = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     // Add dataModel, prefix, fileFormats
     String originalJson = JsonUtils.pojoToJson(container);
     ChangeDescription change = getChangeDescription(container, MINOR_UPDATE);
     container
-        .withDataModel(PARTITIONED_DATA_MODEL)
-        .withPrefix("prefix1")
-        .withFileFormats(FILE_FORMATS)
-        .withSize(1.0)
-        .withNumberOfObjects(2.0);
+      .withDataModel(PARTITIONED_DATA_MODEL)
+      .withPrefix("prefix1")
+      .withFileFormats(FILE_FORMATS)
+      .withSize(1.0)
+      .withNumberOfObjects(2.0);
     fieldAdded(change, "dataModel", PARTITIONED_DATA_MODEL);
     fieldAdded(change, "prefix", "prefix1");
     fieldAdded(change, "fileFormats", FILE_FORMATS);
@@ -236,8 +248,9 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     // Changes from this PATCH is consolidated with the previous changes
     originalJson = JsonUtils.pojoToJson(container);
     change = getChangeDescription(container, CHANGE_CONSOLIDATED);
-    ContainerDataModel newModel =
-        new ContainerDataModel().withIsPartitioned(false).withColumns(PARTITIONED_DATA_MODEL.getColumns());
+    ContainerDataModel newModel = new ContainerDataModel()
+      .withIsPartitioned(false)
+      .withColumns(PARTITIONED_DATA_MODEL.getColumns());
     List<ContainerFileFormat> newFileFormats = List.of(ContainerFileFormat.Gz, ContainerFileFormat.Csv);
     container.withPrefix("prefix2").withDataModel(newModel).withFileFormats(newFileFormats);
 
@@ -266,8 +279,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     ChangeDescription change = getChangeDescription(container, NO_CHANGE);
 
     container =
-        updateAndCheckEntity(
-            request.withSize(30.0).withNumberOfObjects(20.0), OK, ADMIN_AUTH_HEADERS, NO_CHANGE, change);
+      updateAndCheckEntity(request.withSize(30.0).withNumberOfObjects(20.0), OK, ADMIN_AUTH_HEADERS, NO_CHANGE, change);
     assertEquals(30.0, container.getSize());
     assertEquals(20.0, container.getNumberOfObjects());
   }
@@ -300,40 +312,36 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
      *           child_3
      *
      */
-    CreateContainer createRootContainer =
-        new CreateContainer()
-            .withName("0_root")
-            .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
-            .withNumberOfObjects(0.0)
-            .withOwner(DATA_CONSUMER.getEntityReference())
-            .withSize(0.0);
+    CreateContainer createRootContainer = new CreateContainer()
+      .withName("0_root")
+      .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
+      .withNumberOfObjects(0.0)
+      .withOwner(DATA_CONSUMER.getEntityReference())
+      .withSize(0.0);
     Container rootContainer = createAndCheckEntity(createRootContainer, ADMIN_AUTH_HEADERS);
 
-    CreateContainer createChildOneContainer =
-        new CreateContainer()
-            .withName("1_child_1")
-            .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
-            .withParent(rootContainer.getEntityReference())
-            .withNumberOfObjects(0.0)
-            .withSize(0.0);
+    CreateContainer createChildOneContainer = new CreateContainer()
+      .withName("1_child_1")
+      .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
+      .withParent(rootContainer.getEntityReference())
+      .withNumberOfObjects(0.0)
+      .withSize(0.0);
     Container childOneContainer = createAndCheckEntity(createChildOneContainer, ADMIN_AUTH_HEADERS);
 
-    CreateContainer createChildTwoContainer =
-        new CreateContainer()
-            .withName("2_child_2")
-            .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
-            .withParent(rootContainer.getEntityReference())
-            .withNumberOfObjects(0.0)
-            .withSize(0.0);
+    CreateContainer createChildTwoContainer = new CreateContainer()
+      .withName("2_child_2")
+      .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
+      .withParent(rootContainer.getEntityReference())
+      .withNumberOfObjects(0.0)
+      .withSize(0.0);
     Container childTwoContainer = createAndCheckEntity(createChildTwoContainer, ADMIN_AUTH_HEADERS);
 
-    CreateContainer createChildThreeContainer =
-        new CreateContainer()
-            .withName("3_child_3")
-            .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
-            .withParent(childOneContainer.getEntityReference())
-            .withNumberOfObjects(0.0)
-            .withSize(0.0);
+    CreateContainer createChildThreeContainer = new CreateContainer()
+      .withName("3_child_3")
+      .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
+      .withParent(childOneContainer.getEntityReference())
+      .withNumberOfObjects(0.0)
+      .withSize(0.0);
     Container childThreeContainer = createAndCheckEntity(createChildThreeContainer, ADMIN_AUTH_HEADERS);
 
     // GET .../containers?fields=parent,children
@@ -402,54 +410,54 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
   @Test
   void test_mutuallyExclusiveTags() {
     // Apply mutually exclusive tags to a Container
-    CreateContainer create =
-        new CreateContainer()
-            .withName("test")
-            .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
-            .withNumberOfObjects(0.0)
-            .withOwner(DATA_CONSUMER.getEntityReference())
-            .withSize(0.0)
-            .withTags(List.of(TIER1_TAG_LABEL, TIER2_TAG_LABEL));
+    CreateContainer create = new CreateContainer()
+      .withName("test")
+      .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
+      .withNumberOfObjects(0.0)
+      .withOwner(DATA_CONSUMER.getEntityReference())
+      .withSize(0.0)
+      .withTags(List.of(TIER1_TAG_LABEL, TIER2_TAG_LABEL));
     // Apply mutually exclusive tags to a table
     assertResponse(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        CatalogExceptionMessage.mutuallyExclusiveLabels(TIER2_TAG_LABEL, TIER1_TAG_LABEL));
+      () -> createEntity(create, ADMIN_AUTH_HEADERS),
+      BAD_REQUEST,
+      CatalogExceptionMessage.mutuallyExclusiveLabels(TIER2_TAG_LABEL, TIER1_TAG_LABEL)
+    );
 
     // Apply mutually exclusive tags to a topic field
 
     Column dataModelColumn = getColumn(C1, BIGINT, null).withTags(List.of(TIER1_TAG_LABEL, TIER2_TAG_LABEL));
     ContainerDataModel dataModel = new ContainerDataModel().withColumns(List.of(dataModelColumn));
-    CreateContainer create1 =
-        new CreateContainer()
-            .withName("test")
-            .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
-            .withNumberOfObjects(0.0)
-            .withOwner(DATA_CONSUMER.getEntityReference())
-            .withSize(0.0)
-            .withDataModel(dataModel);
+    CreateContainer create1 = new CreateContainer()
+      .withName("test")
+      .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
+      .withNumberOfObjects(0.0)
+      .withOwner(DATA_CONSUMER.getEntityReference())
+      .withSize(0.0)
+      .withDataModel(dataModel);
 
     assertResponse(
-        () -> createEntity(create1, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        CatalogExceptionMessage.mutuallyExclusiveLabels(TIER2_TAG_LABEL, TIER1_TAG_LABEL));
+      () -> createEntity(create1, ADMIN_AUTH_HEADERS),
+      BAD_REQUEST,
+      CatalogExceptionMessage.mutuallyExclusiveLabels(TIER2_TAG_LABEL, TIER1_TAG_LABEL)
+    );
 
     // Apply mutually exclusive tags to a topic's nested field
     Column nestedColumn = getColumn(C2, INT, null).withTags(List.of(TIER1_TAG_LABEL, TIER2_TAG_LABEL));
     Column dataModelColumn1 = getColumn(C1, STRUCT, null).withChildren(List.of(nestedColumn));
     ContainerDataModel dataModel1 = new ContainerDataModel().withColumns(List.of(dataModelColumn1));
-    CreateContainer create2 =
-        new CreateContainer()
-            .withName("test")
-            .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
-            .withNumberOfObjects(0.0)
-            .withOwner(DATA_CONSUMER.getEntityReference())
-            .withSize(0.0)
-            .withDataModel(dataModel1);
+    CreateContainer create2 = new CreateContainer()
+      .withName("test")
+      .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
+      .withNumberOfObjects(0.0)
+      .withOwner(DATA_CONSUMER.getEntityReference())
+      .withSize(0.0)
+      .withDataModel(dataModel1);
     assertResponse(
-        () -> createEntity(create2, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        CatalogExceptionMessage.mutuallyExclusiveLabels(TIER2_TAG_LABEL, TIER1_TAG_LABEL));
+      () -> createEntity(create2, ADMIN_AUTH_HEADERS),
+      BAD_REQUEST,
+      CatalogExceptionMessage.mutuallyExclusiveLabels(TIER2_TAG_LABEL, TIER1_TAG_LABEL)
+    );
   }
 
   @Test
@@ -458,16 +466,14 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     Column c2_a = getColumn("a", INT, USER_ADDRESS_TAG_LABEL);
     Column c2_b = getColumn("b", CHAR, USER_ADDRESS_TAG_LABEL);
     Column c2_c_d = getColumn("d", INT, USER_ADDRESS_TAG_LABEL);
-    Column c2_c =
-        getColumn("c", STRUCT, USER_ADDRESS_TAG_LABEL)
-            .withDataTypeDisplay("struct<int: d>>")
-            .withChildren(new ArrayList<>(singletonList(c2_c_d)));
+    Column c2_c = getColumn("c", STRUCT, USER_ADDRESS_TAG_LABEL)
+      .withDataTypeDisplay("struct<int: d>>")
+      .withChildren(new ArrayList<>(singletonList(c2_c_d)));
 
     // Column struct<a: int, b:char, c: struct<int: d>>>
-    Column c2 =
-        getColumn(C2, STRUCT, GLOSSARY1_TERM1_LABEL)
-            .withDataTypeDisplay("struct<a: int, b:string, c: struct<int: d>>")
-            .withChildren(new ArrayList<>(Arrays.asList(c2_a, c2_b, c2_c)));
+    Column c2 = getColumn(C2, STRUCT, GLOSSARY1_TERM1_LABEL)
+      .withDataTypeDisplay("struct<a: int, b:string, c: struct<int: d>>")
+      .withChildren(new ArrayList<>(Arrays.asList(c2_a, c2_b, c2_c)));
 
     // Test POST operation can create complex types
     // c1 array<int>
@@ -477,27 +483,30 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     //   c2.c struct<int: d>>
     //     c2.c.d int
     ContainerDataModel dataModel = new ContainerDataModel().withColumns(Arrays.asList(c1, c2));
-    CreateContainer create1 =
-        new CreateContainer()
-            .withName("test")
-            .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
-            .withNumberOfObjects(0.0)
-            .withOwner(DATA_CONSUMER.getEntityReference())
-            .withSize(0.0)
-            .withDataModel(dataModel);
+    CreateContainer create1 = new CreateContainer()
+      .withName("test")
+      .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
+      .withNumberOfObjects(0.0)
+      .withOwner(DATA_CONSUMER.getEntityReference())
+      .withSize(0.0)
+      .withDataModel(dataModel);
     Container container1 = createAndCheckEntity(create1, ADMIN_AUTH_HEADERS);
 
     // Test PUT operation - put operation to create
-    CreateContainer create2 =
-        new CreateContainer()
-            .withName("put_complexColumnType")
-            .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
-            .withNumberOfObjects(0.0)
-            .withOwner(DATA_CONSUMER.getEntityReference())
-            .withSize(0.0)
-            .withDataModel(dataModel);
-    Container container2 =
-        updateAndCheckEntity(create2, CREATED, ADMIN_AUTH_HEADERS, TestUtils.UpdateType.CREATED, null);
+    CreateContainer create2 = new CreateContainer()
+      .withName("put_complexColumnType")
+      .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
+      .withNumberOfObjects(0.0)
+      .withOwner(DATA_CONSUMER.getEntityReference())
+      .withSize(0.0)
+      .withDataModel(dataModel);
+    Container container2 = updateAndCheckEntity(
+      create2,
+      CREATED,
+      ADMIN_AUTH_HEADERS,
+      TestUtils.UpdateType.CREATED,
+      null
+    );
 
     // Test PUT operation again without any change
     ChangeDescription change = getChangeDescription(container2, NO_CHANGE);
@@ -509,8 +518,9 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     // c1 from array<int> to array<char> - Data type change means old c1 deleted, and new c1 added
     change = getChangeDescription(container2, MAJOR_UPDATE);
     fieldDeleted(change, "dataModel.columns", List.of(c1));
-    Column c1_new =
-        getColumn(C1, ARRAY, USER_ADDRESS_TAG_LABEL).withArrayDataType(CHAR).withDataTypeDisplay("array<int>");
+    Column c1_new = getColumn(C1, ARRAY, USER_ADDRESS_TAG_LABEL)
+      .withArrayDataType(CHAR)
+      .withDataTypeDisplay("array<int>");
     fieldAdded(change, "dataModel.columns", List.of(c1_new));
 
     // c2 from
@@ -559,18 +569,21 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
   @Override
   public CreateContainer createRequest(String name) {
     return new CreateContainer()
-        .withName(name)
-        .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getFullyQualifiedName())
-        .withDataModel(PARTITIONED_DATA_MODEL)
-        .withFileFormats(FILE_FORMATS)
-        .withNumberOfObjects(3.0)
-        .withSize(4096.0);
+      .withName(name)
+      .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getFullyQualifiedName())
+      .withDataModel(PARTITIONED_DATA_MODEL)
+      .withFileFormats(FILE_FORMATS)
+      .withNumberOfObjects(3.0)
+      .withSize(4096.0);
   }
 
   @Override
   public void validateCreatedEntity(
-      Container createdEntity, CreateContainer createRequest, Map<String, String> authHeaders)
-      throws HttpResponseException {
+    Container createdEntity,
+    CreateContainer createRequest,
+    Map<String, String> authHeaders
+  )
+    throws HttpResponseException {
     assertReference(createRequest.getService(), createdEntity.getService());
     assertReference(createRequest.getParent(), createdEntity.getParent());
     if (createRequest.getDataModel() != null) {
@@ -578,7 +591,10 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
       assertColumns(createRequest.getDataModel().getColumns(), createdEntity.getDataModel().getColumns());
     }
     assertListProperty(
-        createRequest.getFileFormats(), createdEntity.getFileFormats(), (c1, c2) -> assertEquals(c1.name(), c2.name()));
+      createRequest.getFileFormats(),
+      createdEntity.getFileFormats(),
+      (c1, c2) -> assertEquals(c1.name(), c2.name())
+    );
     assertEquals(createRequest.getNumberOfObjects(), createdEntity.getNumberOfObjects());
     assertEquals(createRequest.getSize(), createdEntity.getSize());
 
@@ -586,23 +602,27 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     TestUtils.validateEntityReferences(createdEntity.getFollowers());
 
     assertEquals(
-        createdEntity.getParent() != null
-            ? FullyQualifiedName.add(createdEntity.getParent().getFullyQualifiedName(), createdEntity.getName())
-            : FullyQualifiedName.add(createdEntity.getService().getFullyQualifiedName(), createdEntity.getName()),
-        createdEntity.getFullyQualifiedName());
+      createdEntity.getParent() != null
+        ? FullyQualifiedName.add(createdEntity.getParent().getFullyQualifiedName(), createdEntity.getName())
+        : FullyQualifiedName.add(createdEntity.getService().getFullyQualifiedName(), createdEntity.getName()),
+      createdEntity.getFullyQualifiedName()
+    );
   }
 
   @Test
   void testInheritedPermissionFromParent(TestInfo test) throws IOException {
     // Create a storage service with owner data consumer
     StorageServiceResourceTest serviceTest = new StorageServiceResourceTest();
-    CreateStorageService createStorageService =
-        serviceTest.createRequest(getEntityName(test)).withOwner(DATA_CONSUMER.getEntityReference());
+    CreateStorageService createStorageService = serviceTest
+      .createRequest(getEntityName(test))
+      .withOwner(DATA_CONSUMER.getEntityReference());
     StorageService service = serviceTest.createEntity(createStorageService, ADMIN_AUTH_HEADERS);
 
     // Data consumer as an owner of the service can create container under it
     createEntity(
-        createRequest("container").withService(service.getFullyQualifiedName()), authHeaders(DATA_CONSUMER.getName()));
+      createRequest("container").withService(service.getFullyQualifiedName()),
+      authHeaders(DATA_CONSUMER.getName())
+    );
   }
 
   @Test
@@ -610,20 +630,23 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     // Add an entity with invalid tag
     TagLabel invalidTag = new TagLabel().withTagFQN("invalidTag");
     List<Column> invalidTagColumns = List.of(getColumn(C1, BIGINT, invalidTag));
-    ContainerDataModel invalidTagModel =
-        new ContainerDataModel().withIsPartitioned(true).withColumns(invalidTagColumns);
+    ContainerDataModel invalidTagModel = new ContainerDataModel()
+      .withIsPartitioned(true)
+      .withColumns(invalidTagColumns);
     CreateContainer create = createRequest(getEntityName(test)).withDataModel(invalidTagModel);
 
     // Entity can't be created with PUT or POST
     assertResponse(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS),
-        NOT_FOUND,
-        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+      () -> createEntity(create, ADMIN_AUTH_HEADERS),
+      NOT_FOUND,
+      CatalogExceptionMessage.entityNotFound(TAG, "invalidTag")
+    );
 
     assertResponse(
-        () -> updateEntity(create, Status.CREATED, ADMIN_AUTH_HEADERS),
-        NOT_FOUND,
-        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+      () -> updateEntity(create, Status.CREATED, ADMIN_AUTH_HEADERS),
+      NOT_FOUND,
+      CatalogExceptionMessage.entityNotFound(TAG, "invalidTag")
+    );
 
     // Create an entity and update the columns with PUT and PATCH with an invalid tag
     List<Column> validColumns = List.of(getColumn(C1, BIGINT, TIER1_TAG_LABEL));
@@ -634,15 +657,17 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
 
     create.setDataModel(invalidTagModel);
     assertResponse(
-        () -> updateEntity(create, Status.CREATED, ADMIN_AUTH_HEADERS),
-        NOT_FOUND,
-        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+      () -> updateEntity(create, Status.CREATED, ADMIN_AUTH_HEADERS),
+      NOT_FOUND,
+      CatalogExceptionMessage.entityNotFound(TAG, "invalidTag")
+    );
 
     entity.setTags(listOf(invalidTag));
     assertResponse(
-        () -> patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS),
-        NOT_FOUND,
-        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+      () -> patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS),
+      NOT_FOUND,
+      CatalogExceptionMessage.entityNotFound(TAG, "invalidTag")
+    );
 
     // No lingering relationships should cause error in listing the entity
     listEntities(null, ADMIN_AUTH_HEADERS);
@@ -650,7 +675,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
 
   @Override
   public void compareEntities(Container expected, Container patched, Map<String, String> authHeaders)
-      throws HttpResponseException {
+    throws HttpResponseException {
     TestUtils.validateEntityReference(patched.getService());
     assertEquals(expected.getService().getId(), patched.getService().getId());
     if (expected.getDataModel() != null) {
@@ -658,38 +683,41 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
       assertColumns(expected.getDataModel().getColumns(), patched.getDataModel().getColumns());
     }
     assertListProperty(
-        expected.getFileFormats(), patched.getFileFormats(), (c1, c2) -> assertEquals(c1.name(), c2.name()));
+      expected.getFileFormats(),
+      patched.getFileFormats(),
+      (c1, c2) -> assertEquals(c1.name(), c2.name())
+    );
     assertEquals(expected.getNumberOfObjects(), patched.getNumberOfObjects());
     assertEquals(expected.getSize(), patched.getSize());
 
     TestUtils.validateTags(expected.getTags(), patched.getTags());
     TestUtils.validateEntityReferences(patched.getFollowers());
-
     /* parent of container can't be updated, so don't check it here */
   }
 
   @Override
   public Container validateGetWithDifferentFields(Container container, boolean byName) throws HttpResponseException {
     container =
-        byName
-            ? getEntityByName(container.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS)
-            : getEntity(container.getId(), null, ADMIN_AUTH_HEADERS);
+      byName
+        ? getEntityByName(container.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS)
+        : getEntity(container.getId(), null, ADMIN_AUTH_HEADERS);
     assertListNotNull(container.getService());
     assertListNull(
-        container.getParent(),
-        container.getChildren(),
-        container.getDataModel(),
-        container.getOwner(),
-        container.getTags(),
-        container.getFollowers(),
-        container.getExtension());
+      container.getParent(),
+      container.getChildren(),
+      container.getDataModel(),
+      container.getOwner(),
+      container.getTags(),
+      container.getFollowers(),
+      container.getExtension()
+    );
 
     // .../models?fields=dataModel - parent,children are not set in createEntity - these are tested separately
     String fields = "dataModel,owner,tags,followers,extension";
     container =
-        byName
-            ? getEntityByName(container.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getEntity(container.getId(), fields, ADMIN_AUTH_HEADERS);
+      byName
+        ? getEntityByName(container.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+        : getEntity(container.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(container.getService());
     assertListNotNull(container.getDataModel());
 

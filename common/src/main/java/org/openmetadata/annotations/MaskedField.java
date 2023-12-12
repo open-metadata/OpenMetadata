@@ -20,5 +20,6 @@ import java.lang.annotation.Target;
 
 /** Specifies that the field or method is masked, i.e., if the serialization must take it into account or not. */
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.FIELD, ElementType.METHOD, ElementType.ANNOTATION_TYPE})
-public @interface MaskedField {}
+@Target({ ElementType.FIELD, ElementType.METHOD, ElementType.ANNOTATION_TYPE })
+public @interface MaskedField {
+}

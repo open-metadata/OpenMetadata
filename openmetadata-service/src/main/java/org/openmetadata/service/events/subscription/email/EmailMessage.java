@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 public class EmailMessage {
+
   @Getter
   @Setter
   @JsonProperty("userName")

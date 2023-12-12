@@ -50,21 +50,21 @@ import org.openmetadata.service.util.EntityUtil.Fields;
  */
 @Slf4j
 public class SecretsManagerUpdateService {
+
   private final SecretsManager secretManager;
   private final SecretsManager oldSecretManager;
   private final UserRepository userRepository;
   private final IngestionPipelineRepository ingestionPipelineRepository;
   private final WorkflowRepository workflowRepository;
 
-  private final Map<Class<? extends ServiceConnectionEntityInterface>, ServiceEntityRepository<?, ?>>
-      connectionTypeRepositoriesMap;
+  private final Map<Class<? extends ServiceConnectionEntityInterface>, ServiceEntityRepository<?, ?>> connectionTypeRepositoriesMap;
 
   public SecretsManagerUpdateService(SecretsManager secretsManager, String clusterName) {
     this.secretManager = secretsManager;
     this.connectionTypeRepositoriesMap = retrieveConnectionTypeRepositoriesMap();
     this.userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     this.ingestionPipelineRepository =
-        (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+      (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
     this.workflowRepository = (WorkflowRepository) Entity.getEntityRepository(Entity.WORKFLOW);
     // by default, it is going to be non-managed secrets manager since decrypt is the same for all of them
     this.oldSecretManager = SecretsManagerFactory.createSecretsManager(null, clusterName);
@@ -79,55 +79,70 @@ public class SecretsManagerUpdateService {
 
   private void updateServices() {
     LOG.info(
-        String.format(
-            "Updating services in case of an update on the JSON schema: [%s]",
-            secretManager.getSecretsManagerProvider().value()));
+      String.format(
+        "Updating services in case of an update on the JSON schema: [%s]",
+        secretManager.getSecretsManagerProvider().value()
+      )
+    );
     retrieveServices().forEach(this::updateService);
   }
 
   private void updateBotUsers() {
     LOG.info(
-        String.format(
-            "Updating bot users in case of an update on the JSON schema: [%s]",
-            secretManager.getSecretsManagerProvider().value()));
+      String.format(
+        "Updating bot users in case of an update on the JSON schema: [%s]",
+        secretManager.getSecretsManagerProvider().value()
+      )
+    );
     retrieveBotUsers().forEach(this::updateBotUser);
   }
 
   private void updateIngestionPipelines() {
     LOG.info(
-        String.format(
-            "Updating ingestion pipelines in case of an update on the JSON schema: [%s]",
-            secretManager.getSecretsManagerProvider().value()));
+      String.format(
+        "Updating ingestion pipelines in case of an update on the JSON schema: [%s]",
+        secretManager.getSecretsManagerProvider().value()
+      )
+    );
     retrieveIngestionPipelines().forEach(this::updateIngestionPipeline);
   }
 
   private void updateWorkflows() {
     LOG.info(
-        String.format(
-            "Updating workflows in case of an update on the JSON schema: [%s]",
-            secretManager.getSecretsManagerProvider().value()));
+      String.format(
+        "Updating workflows in case of an update on the JSON schema: [%s]",
+        secretManager.getSecretsManagerProvider().value()
+      )
+    );
     retrieveWorkflows().forEach(this::updateWorkflow);
   }
 
   private void updateService(ServiceEntityInterface serviceEntityInterface) {
-    ServiceEntityRepository<?, ?> repository =
-        connectionTypeRepositoriesMap.get(serviceEntityInterface.getConnection().getClass());
+    ServiceEntityRepository<?, ?> repository = connectionTypeRepositoriesMap.get(
+      serviceEntityInterface.getConnection().getClass()
+    );
     try {
       ServiceEntityInterface service = repository.getDao().findEntityById(serviceEntityInterface.getId());
       // we have to decrypt using the old secrets manager and encrypt again with the new one
       service
-          .getConnection()
-          .setConfig(
-              oldSecretManager.decryptServiceConnectionConfig(
-                  service.getConnection().getConfig(), service.getServiceType().value(), repository.getServiceType()));
+        .getConnection()
+        .setConfig(
+          oldSecretManager.decryptServiceConnectionConfig(
+            service.getConnection().getConfig(),
+            service.getServiceType().value(),
+            repository.getServiceType()
+          )
+        );
       service
-          .getConnection()
-          .setConfig(
-              secretManager.encryptServiceConnectionConfig(
-                  service.getConnection().getConfig(),
-                  service.getServiceType().value(),
-                  service.getName(),
-                  repository.getServiceType()));
+        .getConnection()
+        .setConfig(
+          secretManager.encryptServiceConnectionConfig(
+            service.getConnection().getConfig(),
+            service.getServiceType().value(),
+            service.getName(),
+            repository.getServiceType()
+          )
+        );
       repository.getDao().update(service);
     } catch (Exception e) {
       throw new SecretsManagerUpdateException(e.getMessage(), e.getCause());
@@ -135,40 +150,46 @@ public class SecretsManagerUpdateService {
   }
 
   private List<ServiceEntityInterface> retrieveServices() {
-    return connectionTypeRepositoriesMap.values().stream()
-        .map(this::retrieveServices)
-        .flatMap(List<ServiceEntityInterface>::stream)
-        .collect(Collectors.toList());
+    return connectionTypeRepositoriesMap
+      .values()
+      .stream()
+      .map(this::retrieveServices)
+      .flatMap(List<ServiceEntityInterface>::stream)
+      .collect(Collectors.toList());
   }
 
   private List<ServiceEntityInterface> retrieveServices(ServiceEntityRepository<?, ?> serviceEntityRepository) {
     try {
       return serviceEntityRepository
-          .listAfter(
-              null,
-              EntityUtil.Fields.EMPTY_FIELDS,
-              new ListFilter(),
-              serviceEntityRepository.getDao().listCount(new ListFilter()),
-              null)
-          .getData().stream()
-          .map(ServiceEntityInterface.class::cast)
-          .filter(
-              service ->
-                  !Objects.isNull(service.getConnection()) && !Objects.isNull(service.getConnection().getConfig()))
-          .collect(Collectors.toList());
+        .listAfter(
+          null,
+          EntityUtil.Fields.EMPTY_FIELDS,
+          new ListFilter(),
+          serviceEntityRepository.getDao().listCount(new ListFilter()),
+          null
+        )
+        .getData()
+        .stream()
+        .map(ServiceEntityInterface.class::cast)
+        .filter(
+          service -> !Objects.isNull(service.getConnection()) && !Objects.isNull(service.getConnection().getConfig())
+        )
+        .collect(Collectors.toList());
     } catch (Exception e) {
       throw new SecretsManagerUpdateException(e.getMessage(), e.getCause());
     }
   }
 
-  private Map<Class<? extends ServiceConnectionEntityInterface>, ServiceEntityRepository<?, ?>>
-      retrieveConnectionTypeRepositoriesMap() {
-    Map<Class<? extends ServiceConnectionEntityInterface>, ServiceEntityRepository<?, ?>> connTypeRepositoriesMap =
-        CollectionRegistry.getInstance().getCollectionMap().values().stream()
-            .map(this::retrieveServiceRepository)
-            .filter(Optional::isPresent)
-            .map(Optional::get)
-            .collect(Collectors.toMap(ServiceEntityRepository::getServiceConnectionClass, Function.identity()));
+  private Map<Class<? extends ServiceConnectionEntityInterface>, ServiceEntityRepository<?, ?>> retrieveConnectionTypeRepositoriesMap() {
+    Map<Class<? extends ServiceConnectionEntityInterface>, ServiceEntityRepository<?, ?>> connTypeRepositoriesMap = CollectionRegistry
+      .getInstance()
+      .getCollectionMap()
+      .values()
+      .stream()
+      .map(this::retrieveServiceRepository)
+      .filter(Optional::isPresent)
+      .map(Optional::get)
+      .collect(Collectors.toMap(ServiceEntityRepository::getServiceConnectionClass, Function.identity()));
     if (connTypeRepositoriesMap.isEmpty()) {
       throw new SecretsManagerUpdateException("Unexpected error: ServiceRepository not found.");
     }
@@ -196,15 +217,17 @@ public class SecretsManagerUpdateService {
   private List<User> retrieveBotUsers() {
     try {
       return userRepository
-          .listAfter(
-              null,
-              new Fields(Set.of("authenticationMechanism")),
-              new ListFilter(),
-              userRepository.getDao().listCount(new ListFilter()),
-              null)
-          .getData().stream()
-          .filter(user -> Boolean.TRUE.equals(user.getIsBot()))
-          .collect(Collectors.toList());
+        .listAfter(
+          null,
+          new Fields(Set.of("authenticationMechanism")),
+          new ListFilter(),
+          userRepository.getDao().listCount(new ListFilter()),
+          null
+        )
+        .getData()
+        .stream()
+        .filter(user -> Boolean.TRUE.equals(user.getIsBot()))
+        .collect(Collectors.toList());
     } catch (Exception e) {
       throw new SecretsManagerUpdateException(e.getMessage(), e.getCause());
     }
@@ -224,13 +247,14 @@ public class SecretsManagerUpdateService {
   private List<IngestionPipeline> retrieveIngestionPipelines() {
     try {
       return ingestionPipelineRepository
-          .listAfter(
-              null,
-              EntityUtil.Fields.EMPTY_FIELDS,
-              new ListFilter(),
-              ingestionPipelineRepository.getDao().listCount(new ListFilter()),
-              null)
-          .getData();
+        .listAfter(
+          null,
+          EntityUtil.Fields.EMPTY_FIELDS,
+          new ListFilter(),
+          ingestionPipelineRepository.getDao().listCount(new ListFilter()),
+          null
+        )
+        .getData();
     } catch (Exception e) {
       throw new SecretsManagerUpdateException(e.getMessage(), e.getCause());
     }
@@ -239,13 +263,14 @@ public class SecretsManagerUpdateService {
   private List<Workflow> retrieveWorkflows() {
     try {
       return workflowRepository
-          .listAfter(
-              null,
-              EntityUtil.Fields.EMPTY_FIELDS,
-              new ListFilter(),
-              workflowRepository.getDao().listCount(new ListFilter()),
-              null)
-          .getData();
+        .listAfter(
+          null,
+          EntityUtil.Fields.EMPTY_FIELDS,
+          new ListFilter(),
+          workflowRepository.getDao().listCount(new ListFilter()),
+          null
+        )
+        .getData();
     } catch (Exception e) {
       throw new SecretsManagerUpdateException(e.getMessage(), e.getCause());
     }

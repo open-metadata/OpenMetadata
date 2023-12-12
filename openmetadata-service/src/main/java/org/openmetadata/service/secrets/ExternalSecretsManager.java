@@ -17,12 +17,16 @@ import java.util.Locale;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 
 public abstract class ExternalSecretsManager extends SecretsManager {
+
   public static final String NULL_SECRET_STRING = "null";
   public static final String SECRET_FIELD_PREFIX = "secret:";
   private final long waitTimeBetweenStoreCalls;
 
   protected ExternalSecretsManager(
-      SecretsManagerProvider secretsManagerProvider, String clusterPrefix, long waitTimeBetweenCalls) {
+    SecretsManagerProvider secretsManagerProvider,
+    String clusterPrefix,
+    long waitTimeBetweenCalls
+  ) {
     super(secretsManagerProvider, clusterPrefix);
     waitTimeBetweenStoreCalls = waitTimeBetweenCalls;
   }

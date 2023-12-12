@@ -25,6 +25,7 @@ import org.openmetadata.service.resources.events.EventResource.EventList;
 
 @Slf4j
 public abstract class AbstractAlertPublisher implements EventPublisher {
+
   // Backoff timeout in seconds. Delivering events is retried 5 times.
   protected static final int BACKOFF_NORMAL = 0;
   protected static final int BACKOFF_3_SECONDS = 3 * 1000;
@@ -45,7 +46,7 @@ public abstract class AbstractAlertPublisher implements EventPublisher {
 
   @Override
   public void onEvent(EventPubSub.ChangeEventHolder changeEventHolder, long sequence, boolean endOfBatch)
-      throws Exception {
+    throws Exception {
     // Ignore events that don't match the webhook event filters
     ChangeEvent changeEvent = changeEventHolder.getEvent();
 
@@ -55,8 +56,10 @@ public abstract class AbstractAlertPublisher implements EventPublisher {
     }
 
     // Evaluate ChangeEvent Alert Filtering
-    if (eventSubscription.getFilteringRules() != null
-        && !AlertUtil.evaluateAlertConditions(changeEvent, eventSubscription.getFilteringRules().getRules())) {
+    if (
+      eventSubscription.getFilteringRules() != null &&
+      !AlertUtil.evaluateAlertConditions(changeEvent, eventSubscription.getFilteringRules().getRules())
+    ) {
       return;
     }
 

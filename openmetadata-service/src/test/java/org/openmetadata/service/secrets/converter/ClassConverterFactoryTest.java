@@ -30,27 +30,28 @@ public class ClassConverterFactoryTest {
 
   @ParameterizedTest
   @ValueSource(
-      classes = {
-        AirflowConnection.class,
-        BigQueryConnection.class,
-        DatalakeConnection.class,
-        MysqlConnection.class,
-        PostgresConnection.class,
-        DbtGCSConfig.class,
-        DbtPipeline.class,
-        GCSConfig.class,
-        GcsConnection.class,
-        ElasticSearchConnection.class,
-        LookerConnection.class,
-        OpenMetadataConnection.class,
-        SSOAuthMechanism.class,
-        SupersetConnection.class,
-        GCPCredentials.class,
-        TableauConnection.class,
-        TestServiceConnectionRequest.class,
-        TrinoConnection.class,
-        Workflow.class
-      })
+    classes = {
+      AirflowConnection.class,
+      BigQueryConnection.class,
+      DatalakeConnection.class,
+      MysqlConnection.class,
+      PostgresConnection.class,
+      DbtGCSConfig.class,
+      DbtPipeline.class,
+      GCSConfig.class,
+      GcsConnection.class,
+      ElasticSearchConnection.class,
+      LookerConnection.class,
+      OpenMetadataConnection.class,
+      SSOAuthMechanism.class,
+      SupersetConnection.class,
+      GCPCredentials.class,
+      TableauConnection.class,
+      TestServiceConnectionRequest.class,
+      TrinoConnection.class,
+      Workflow.class
+    }
+  )
   void testClassConverterIsSet(Class<?> clazz) {
     assertFalse(ClassConverterFactory.getConverter(clazz) instanceof DefaultConnectionClassConverter);
   }

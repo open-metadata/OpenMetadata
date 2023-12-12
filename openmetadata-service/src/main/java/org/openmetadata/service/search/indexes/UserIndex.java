@@ -12,6 +12,7 @@ import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
 public class UserIndex implements SearchIndex {
+
   final User user;
   final List<String> excludeFields = List.of("owns", "changeDescription", "follows", "authenticationMechanism");
 
@@ -26,9 +27,12 @@ public class UserIndex implements SearchIndex {
     suggest.add(SearchSuggest.builder().input(user.getName()).weight(5).build());
     suggest.add(SearchSuggest.builder().input(user.getDisplayName()).weight(10).build());
     doc.put(
-        "fqnParts",
-        getFQNParts(
-            user.getFullyQualifiedName(), suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+      "fqnParts",
+      getFQNParts(
+        user.getFullyQualifiedName(),
+        suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())
+      )
+    );
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.USER);
     doc.put("displayName", CommonUtil.nullOrEmpty(user.getDisplayName()) ? user.getName() : user.getDisplayName());

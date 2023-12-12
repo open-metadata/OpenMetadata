@@ -25,12 +25,13 @@ public class DashboardServiceRepository extends ServiceEntityRepository<Dashboar
 
   public DashboardServiceRepository() {
     super(
-        DashboardServiceResource.COLLECTION_PATH,
-        Entity.DASHBOARD_SERVICE,
-        Entity.getCollectionDAO().dashboardServiceDAO(),
-        DashboardConnection.class,
-        "",
-        ServiceType.DASHBOARD);
+      DashboardServiceResource.COLLECTION_PATH,
+      Entity.DASHBOARD_SERVICE,
+      Entity.getCollectionDAO().dashboardServiceDAO(),
+      DashboardConnection.class,
+      "",
+      ServiceType.DASHBOARD
+    );
     supportsSearch = true;
   }
 }

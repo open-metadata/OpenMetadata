@@ -24,6 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public final class ParallelStreamUtil {
+
   private ParallelStreamUtil() {}
 
   public static <T> T execute(Supplier<T> supplier, Executor executor) {
@@ -67,26 +68,27 @@ public final class ParallelStreamUtil {
   public static void runAsync(Callable<Void> callable, Executor executor) {
     Stopwatch stopwatch = Stopwatch.createStarted();
     LOG.debug("runAsync start");
-    CompletableFuture<Void> res =
-        CompletableFuture.supplyAsync(
-            () -> {
-              try {
-                return callable.call();
-              } catch (Exception ex) {
-                throw new RuntimeException(ex);
-              }
-            },
-            executor);
+    CompletableFuture<Void> res = CompletableFuture.supplyAsync(
+      () -> {
+        try {
+          return callable.call();
+        } catch (Exception ex) {
+          throw new RuntimeException(ex);
+        }
+      },
+      executor
+    );
 
     res.whenComplete(
-        (r, th) -> {
-          // LOG any exceptions
-          if (th != null) {
-            LOG.error("Got exception while running async task", th.getCause());
-          }
-          LOG.debug("runAsync complete - elapsed: {} ms", stopwatch.elapsed(TimeUnit.MILLISECONDS));
-          stopwatch.stop();
-        });
+      (r, th) -> {
+        // LOG any exceptions
+        if (th != null) {
+          LOG.error("Got exception while running async task", th.getCause());
+        }
+        LOG.debug("runAsync complete - elapsed: {} ms", stopwatch.elapsed(TimeUnit.MILLISECONDS));
+        stopwatch.stop();
+      }
+    );
   }
 
   private static void handleExecutionException(ExecutionException e) {

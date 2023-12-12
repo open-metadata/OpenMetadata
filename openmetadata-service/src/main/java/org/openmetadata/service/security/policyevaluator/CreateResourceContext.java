@@ -19,7 +19,11 @@ import org.openmetadata.service.util.EntityUtil;
  * <p>As multiple threads don't access this, the class is not thread-safe by design.
  */
 public class CreateResourceContext<T extends EntityInterface> implements ResourceContextInterface {
-  @NonNull @Getter private final String resource;
+
+  @NonNull
+  @Getter
+  private final String resource;
+
   private final EntityRepository<T> entityRepository;
   private final T entity; // Entity being created
   private EntityInterface parentEntity; // Entity being created

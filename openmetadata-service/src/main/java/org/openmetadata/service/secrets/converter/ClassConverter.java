@@ -49,17 +49,20 @@ public abstract class ClassConverter {
   // method called when we expect only specific class
   protected Optional<Object> tryToConvertOrFail(Object object, List<Class<?>> candidateClasses) {
     if (object != null) {
-      Object converted =
-          candidateClasses.stream()
-              .map(candidateClazz -> convert(object, candidateClazz))
-              .filter(Objects::nonNull)
-              .findFirst()
-              .orElseThrow(
-                  () ->
-                      new IllegalArgumentException(
-                          String.format(
-                              "Cannot convert [%s] due to missing converter implementation.",
-                              object.getClass().getSimpleName())));
+      Object converted = candidateClasses
+        .stream()
+        .map(candidateClazz -> convert(object, candidateClazz))
+        .filter(Objects::nonNull)
+        .findFirst()
+        .orElseThrow(
+          () ->
+            new IllegalArgumentException(
+              String.format(
+                "Cannot convert [%s] due to missing converter implementation.",
+                object.getClass().getSimpleName()
+              )
+            )
+        );
       return Optional.of(ClassConverterFactory.getConverter(converted.getClass()).convert(converted));
     }
     return Optional.empty();
@@ -68,11 +71,11 @@ public abstract class ClassConverter {
   // method called when and Object field can expect a HashMap or a specific class
   protected Optional<Object> tryToConvert(Object object, List<Class<?>> candidateClasses) {
     if (object != null) {
-      Optional<Object> converted =
-          candidateClasses.stream()
-              .map(candidateClazz -> convert(object, candidateClazz))
-              .filter(Objects::nonNull)
-              .findFirst();
+      Optional<Object> converted = candidateClasses
+        .stream()
+        .map(candidateClazz -> convert(object, candidateClazz))
+        .filter(Objects::nonNull)
+        .findFirst();
       if (converted.isPresent()) {
         return Optional.of(ClassConverterFactory.getConverter(converted.get().getClass()).convert(converted.get()));
       }

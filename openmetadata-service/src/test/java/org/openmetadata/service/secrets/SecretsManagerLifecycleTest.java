@@ -51,18 +51,25 @@ public class SecretsManagerLifecycleTest {
     Map<String, Map<String, String>> mysqlConnection = Map.of("authType", Map.of("password", password));
 
     // Ensure encrypted service connection config encrypts the password
-    MysqlConnection actualConnection =
-        (MysqlConnection)
-            secretsManager.encryptServiceConnectionConfig(
-                mysqlConnection, Mysql.value(), connectionName, ServiceType.DATABASE);
+    MysqlConnection actualConnection = (MysqlConnection) secretsManager.encryptServiceConnectionConfig(
+      mysqlConnection,
+      Mysql.value(),
+      connectionName,
+      ServiceType.DATABASE
+    );
     assertNotEquals(password, JsonUtils.convertValue(actualConnection.getAuthType(), basicAuth.class).getPassword());
 
     // Decrypt the encrypted password and validate
     actualConnection =
-        (MysqlConnection)
-            secretsManager.decryptServiceConnectionConfig(actualConnection, Mysql.value(), ServiceType.DATABASE);
+      (MysqlConnection) secretsManager.decryptServiceConnectionConfig(
+        actualConnection,
+        Mysql.value(),
+        ServiceType.DATABASE
+      );
     assertEquals(
-        DECRYPTED_VALUE, JsonUtils.convertValue(actualConnection.getAuthType(), basicAuth.class).getPassword());
+      DECRYPTED_VALUE,
+      JsonUtils.convertValue(actualConnection.getAuthType(), basicAuth.class).getPassword()
+    );
 
     // SM will have the key stored
     String secretValue = secretsManager.getSecret(secretName);
@@ -70,11 +77,17 @@ public class SecretsManagerLifecycleTest {
 
     // Now we delete the service
     secretsManager.deleteSecretsFromServiceConnectionConfig(
-        mysqlConnection, "Mysql", connectionName, ServiceType.DATABASE);
+      mysqlConnection,
+      "Mysql",
+      connectionName,
+      ServiceType.DATABASE
+    );
 
     // We won't be able to get the key again
-    SecretsManagerException exception =
-        assertThrows(SecretsManagerException.class, () -> secretsManager.getSecret(secretName));
+    SecretsManagerException exception = assertThrows(
+      SecretsManagerException.class,
+      () -> secretsManager.getSecret(secretName)
+    );
 
     assertEquals(exception.getMessage(), String.format("Key [%s] not found in in-memory secrets manager", secretName));
   }
@@ -84,21 +97,23 @@ public class SecretsManagerLifecycleTest {
     String password = "openmetadata_password";
     String secretName = "/openmetadata/workflow/test-connection/request/connection/config/authtype/password";
 
-    Workflow workflow =
-        new Workflow()
-            .withName("test-connection")
-            .withWorkflowType(WorkflowType.TEST_CONNECTION)
-            .withRequest(
-                new TestServiceConnectionRequest()
-                    .withServiceType(ServiceType.DATABASE)
-                    .withConnectionType("Mysql")
-                    .withConnection(
-                        new DatabaseConnection()
-                            .withConfig(
-                                new MysqlConnection()
-                                    .withHostPort("mysql:3306")
-                                    .withUsername("openmetadata_user")
-                                    .withAuthType(new basicAuth().withPassword(password)))));
+    Workflow workflow = new Workflow()
+      .withName("test-connection")
+      .withWorkflowType(WorkflowType.TEST_CONNECTION)
+      .withRequest(
+        new TestServiceConnectionRequest()
+          .withServiceType(ServiceType.DATABASE)
+          .withConnectionType("Mysql")
+          .withConnection(
+            new DatabaseConnection()
+            .withConfig(
+                new MysqlConnection()
+                  .withHostPort("mysql:3306")
+                  .withUsername("openmetadata_user")
+                  .withAuthType(new basicAuth().withPassword(password))
+              )
+          )
+      );
 
     Workflow encrypted = secretsManager.encryptWorkflow(workflow);
     TestServiceConnectionRequest encryptedRequest = (TestServiceConnectionRequest) encrypted.getRequest();
@@ -120,8 +135,10 @@ public class SecretsManagerLifecycleTest {
     secretsManager.deleteSecretsFromWorkflow(workflow);
 
     // We won't be able to get the key again
-    SecretsManagerException exception =
-        assertThrows(SecretsManagerException.class, () -> secretsManager.getSecret(secretName));
+    SecretsManagerException exception = assertThrows(
+      SecretsManagerException.class,
+      () -> secretsManager.getSecret(secretName)
+    );
 
     assertEquals(exception.getMessage(), String.format("Key [%s] not found in in-memory secrets manager", secretName));
   }

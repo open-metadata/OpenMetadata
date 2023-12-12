@@ -8,7 +8,6 @@ package org.openmetadata.service.util.jdbi;
  * retrieve the token.
  */
 public interface DatabaseAuthenticationProvider {
-
   /**
    * Authenticate a user for the given jdbc url.
    *

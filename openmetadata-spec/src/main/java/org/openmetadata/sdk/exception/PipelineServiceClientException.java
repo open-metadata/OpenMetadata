@@ -16,6 +16,7 @@ package org.openmetadata.sdk.exception;
 import javax.ws.rs.core.Response;
 
 public class PipelineServiceClientException extends WebServiceException {
+
   private static final String BY_NAME_MESSAGE = "Airflow Exception [%s] due to [%s].";
 
   public PipelineServiceClientException(String message) {

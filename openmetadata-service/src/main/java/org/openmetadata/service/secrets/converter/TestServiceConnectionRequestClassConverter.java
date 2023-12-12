@@ -30,15 +30,15 @@ import org.openmetadata.service.util.ReflectionUtil;
 /** Converter class to get an `TestServiceConnectionRequest` object. */
 public class TestServiceConnectionRequestClassConverter extends ClassConverter {
 
-  private static final List<Class<?>> CONNECTION_CLASSES =
-      List.of(
-          DatabaseConnection.class,
-          DashboardConnection.class,
-          MessagingConnection.class,
-          PipelineConnection.class,
-          MlModelConnection.class,
-          MetadataConnection.class,
-          StorageConnection.class);
+  private static final List<Class<?>> CONNECTION_CLASSES = List.of(
+    DatabaseConnection.class,
+    DashboardConnection.class,
+    MessagingConnection.class,
+    PipelineConnection.class,
+    MlModelConnection.class,
+    MetadataConnection.class,
+    StorageConnection.class
+  );
 
   public TestServiceConnectionRequestClassConverter() {
     super(TestServiceConnectionRequest.class);
@@ -46,25 +46,29 @@ public class TestServiceConnectionRequestClassConverter extends ClassConverter {
 
   @Override
   public Object convert(Object object) {
-    TestServiceConnectionRequest testServiceConnectionRequest =
-        (TestServiceConnectionRequest) JsonUtils.convertValue(object, this.clazz);
+    TestServiceConnectionRequest testServiceConnectionRequest = (TestServiceConnectionRequest) JsonUtils.convertValue(
+      object,
+      this.clazz
+    );
 
     try {
-      Class<?> clazz =
-          ReflectionUtil.createConnectionConfigClass(
-              testServiceConnectionRequest.getConnectionType(), testServiceConnectionRequest.getServiceType());
+      Class<?> clazz = ReflectionUtil.createConnectionConfigClass(
+        testServiceConnectionRequest.getConnectionType(),
+        testServiceConnectionRequest.getServiceType()
+      );
 
       tryToConvertOrFail(testServiceConnectionRequest.getConnection(), CONNECTION_CLASSES)
-          .ifPresent(testServiceConnectionRequest::setConnection);
+        .ifPresent(testServiceConnectionRequest::setConnection);
 
-      Object newConnectionConfig =
-          ClassConverterFactory.getConverter(clazz)
-              .convert(((ServiceConnectionEntityInterface) testServiceConnectionRequest.getConnection()).getConfig());
+      Object newConnectionConfig = ClassConverterFactory
+        .getConverter(clazz)
+        .convert(((ServiceConnectionEntityInterface) testServiceConnectionRequest.getConnection()).getConfig());
       ((ServiceConnectionEntityInterface) testServiceConnectionRequest.getConnection()).setConfig(newConnectionConfig);
     } catch (Exception e) {
       throw InvalidServiceConnectionException.byMessage(
-          testServiceConnectionRequest.getConnectionType(),
-          String.format("Failed to convert class instance of %s", testServiceConnectionRequest.getConnectionType()));
+        testServiceConnectionRequest.getConnectionType(),
+        String.format("Failed to convert class instance of %s", testServiceConnectionRequest.getConnectionType())
+      );
     }
 
     return testServiceConnectionRequest;

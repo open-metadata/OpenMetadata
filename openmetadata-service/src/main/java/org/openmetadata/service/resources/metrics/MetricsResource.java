@@ -55,14 +55,15 @@ import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/metrics")
 @Tag(
-    name = "Metrics (beta)",
-    description =
-        "`Metrics` are measurements computed from data such as `Monthly Active Users`. Some of the metrics that "
-            + "measures used to determine performance against an objective are called KPIs or Key Performance Indicators, such as `User Retention`.")
+  name = "Metrics (beta)",
+  description = "`Metrics` are measurements computed from data such as `Monthly Active Users`. Some of the metrics that " +
+  "measures used to determine performance against an objective are called KPIs or Key Performance Indicators, such as `User Retention`."
+)
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "metrics")
 public class MetricsResource extends EntityResource<Metrics, MetricsRepository> {
+
   public static final String COLLECTION_PATH = "/v1/metrics/";
   static final String FIELDS = "owner,usageSummary,domain";
 
@@ -82,30 +83,34 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
 
   @GET
   @Operation(
-      operationId = "listMetrics",
-      summary = "List metrics",
-      description = "Get a list of metrics. Use `fields` parameter to get only necessary fields.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "List of metrics",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = MetricsList.class)))
-      })
+    operationId = "listMetrics",
+    summary = "List metrics",
+    description = "Get a list of metrics. Use `fields` parameter to get only necessary fields.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "List of metrics",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = MetricsList.class))
+      )
+    }
+  )
   public ResultList<Metrics> list(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(
-              description = "Fields requested in the returned resource",
-              schema = @Schema(type = "string", example = FIELDS))
-          @QueryParam("fields")
-          String fieldsParam,
-      @DefaultValue("10") @Min(0) @Max(1000000) @QueryParam("limit") int limitParam,
-      @Parameter(description = "Returns list of metrics before this cursor", schema = @Schema(type = "string"))
-          @QueryParam("before")
-          String before,
-      @Parameter(description = "Returns list of metrics after this cursor", schema = @Schema(type = "string"))
-          @QueryParam("after")
-          String after) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(
+      description = "Fields requested in the returned resource",
+      schema = @Schema(type = "string", example = FIELDS)
+    ) @QueryParam("fields") String fieldsParam,
+    @DefaultValue("10") @Min(0) @Max(1000000) @QueryParam("limit") int limitParam,
+    @Parameter(
+      description = "Returns list of metrics before this cursor",
+      schema = @Schema(type = "string")
+    ) @QueryParam("before") String before,
+    @Parameter(
+      description = "Returns list of metrics after this cursor",
+      schema = @Schema(type = "string")
+    ) @QueryParam("after") String after
+  ) {
     ListFilter filter = new ListFilter();
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
@@ -113,47 +118,49 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
   @GET
   @Path("/{id}")
   @Operation(
-      operationId = "getMetricByID",
-      summary = "Get a metric by Id",
-      description = "Get a metric by `Id`.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The metrics",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Metrics.class))),
-        @ApiResponse(responseCode = "404", description = "Metrics for instance {id} is not found")
-      })
+    operationId = "getMetricByID",
+    summary = "Get a metric by Id",
+    description = "Get a metric by `Id`.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "The metrics",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = Metrics.class))
+      ),
+      @ApiResponse(responseCode = "404", description = "Metrics for instance {id} is not found")
+    }
+  )
   public Metrics get(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the metric", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Parameter(
-              description = "Fields requested in the returned resource",
-              schema = @Schema(type = "string", example = FIELDS))
-          @QueryParam("fields")
-          String fieldsParam,
-      @Parameter(
-              description = "Include all, deleted, or non-deleted entities.",
-              schema = @Schema(implementation = Include.class))
-          @QueryParam("include")
-          @DefaultValue("non-deleted")
-          Include include) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Id of the metric", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+    @Parameter(
+      description = "Fields requested in the returned resource",
+      schema = @Schema(type = "string", example = FIELDS)
+    ) @QueryParam("fields") String fieldsParam,
+    @Parameter(
+      description = "Include all, deleted, or non-deleted entities.",
+      schema = @Schema(implementation = Include.class)
+    ) @QueryParam("include") @DefaultValue("non-deleted") Include include
+  ) {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @Override
   @POST
   @Operation(
-      operationId = "createMetric",
-      summary = "Create a metric",
-      description = "Create a new metric.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The metric",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Metrics.class))),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
+    operationId = "createMetric",
+    summary = "Create a metric",
+    description = "Create a new metric.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "The metric",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = Metrics.class))
+      ),
+      @ApiResponse(responseCode = "400", description = "Bad request")
+    }
+  )
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Metrics metrics) {
     addToMetrics(securityContext, metrics);
     return super.create(uriInfo, securityContext, metrics);
@@ -162,47 +169,55 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
   @PUT
   @Path("/{id}/vote")
   @Operation(
-      operationId = "updateVoteForEntity",
-      summary = "Update Vote for a Entity",
-      description = "Update vote for a Entity",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "OK",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
-        @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
-      })
+    operationId = "updateVoteForEntity",
+    summary = "Update Vote for a Entity",
+    description = "Update vote for a Entity",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "OK",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))
+      ),
+      @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
+    }
+  )
   public Response updateVote(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Valid VoteRequest request) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+    @Valid VoteRequest request
+  ) {
     return repository.updateVote(securityContext.getUserPrincipal().getName(), id, request).toResponse();
   }
 
   @Override
   @PUT
   @Operation(
-      operationId = "createOrUpdateMetric",
-      summary = "Create or update a metric",
-      description = "Create a new metric, if it does not exist or update an existing metric.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The metric",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Metrics.class))),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
+    operationId = "createOrUpdateMetric",
+    summary = "Create or update a metric",
+    description = "Create a new metric, if it does not exist or update an existing metric.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "The metric",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = Metrics.class))
+      ),
+      @ApiResponse(responseCode = "400", description = "Bad request")
+    }
+  )
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Metrics metrics) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Valid Metrics metrics
+  ) {
     addToMetrics(securityContext, metrics);
     return super.createOrUpdate(uriInfo, securityContext, metrics);
   }
 
   private void addToMetrics(SecurityContext securityContext, Metrics metrics) {
     metrics
-        .withId(UUID.randomUUID())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis());
+      .withId(UUID.randomUUID())
+      .withUpdatedBy(securityContext.getUserPrincipal().getName())
+      .withUpdatedAt(System.currentTimeMillis());
   }
 }

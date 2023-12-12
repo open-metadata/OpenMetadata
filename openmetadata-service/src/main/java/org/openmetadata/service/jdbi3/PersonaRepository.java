@@ -28,18 +28,20 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
 public class PersonaRepository extends EntityRepository<Persona> {
+
   static final String PERSONA_UPDATE_FIELDS = "users";
   static final String PERSONA_PATCH_FIELDS = "users";
   static final String FIELD_USERS = "users";
 
   public PersonaRepository() {
     super(
-        PersonaResource.COLLECTION_PATH,
-        PERSONA,
-        Persona.class,
-        Entity.getCollectionDAO().personaDAO(),
-        PERSONA_PATCH_FIELDS,
-        PERSONA_UPDATE_FIELDS);
+      PersonaResource.COLLECTION_PATH,
+      PERSONA,
+      Persona.class,
+      Entity.getCollectionDAO().personaDAO(),
+      PERSONA_PATCH_FIELDS,
+      PERSONA_UPDATE_FIELDS
+    );
     this.quoteFqn = true;
     supportsSearch = false;
   }
@@ -90,6 +92,7 @@ public class PersonaRepository extends EntityRepository<Persona> {
 
   /** Handles entity updated from PUT and POST operation. */
   public class PersonaUpdater extends EntityUpdater {
+
     public PersonaUpdater(Persona original, Persona updated, Operation operation) {
       super(original, updated, operation);
     }
@@ -104,7 +107,15 @@ public class PersonaRepository extends EntityRepository<Persona> {
       List<EntityReference> origUsers = listOrEmpty(origPersona.getUsers());
       List<EntityReference> updatedUsers = listOrEmpty(updatedPersona.getUsers());
       updateToRelationships(
-          "users", PERSONA, origPersona.getId(), Relationship.APPLIED_TO, Entity.USER, origUsers, updatedUsers, false);
+        "users",
+        PERSONA,
+        origPersona.getId(),
+        Relationship.APPLIED_TO,
+        Entity.USER,
+        origUsers,
+        updatedUsers,
+        false
+      );
     }
   }
 }

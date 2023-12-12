@@ -27,10 +27,12 @@ public class MessagingServiceIndex implements SearchIndex {
     suggest.add(SearchSuggest.builder().input(messagingService.getName()).weight(5).build());
     suggest.add(SearchSuggest.builder().input(messagingService.getFullyQualifiedName()).weight(5).build());
     doc.put(
-        "fqnParts",
-        getFQNParts(
-            messagingService.getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+      "fqnParts",
+      getFQNParts(
+        messagingService.getFullyQualifiedName(),
+        suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())
+      )
+    );
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.MESSAGING_SERVICE);
     doc.put("owner", getEntityWithDisplayName(messagingService.getOwner()));

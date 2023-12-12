@@ -29,6 +29,7 @@ import org.openmetadata.service.ResourceRegistry;
 
 @Slf4j
 public class JsonPatchUtils {
+
   private JsonPatchUtils() {}
 
   public static List<MetadataOperation> getMetadataOperations(JsonPatch jsonPatch) {

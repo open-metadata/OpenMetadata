@@ -6,6 +6,7 @@ import es.org.elasticsearch.search.SearchHits;
 import org.openmetadata.service.dataInsight.UnusedAssetsAggregator;
 
 public class ElasticSearchUnusedAssetsAggregator extends UnusedAssetsAggregator<SearchHits, SearchHit, TotalHits> {
+
   public ElasticSearchUnusedAssetsAggregator(SearchHits hits) {
     super(hits);
   }

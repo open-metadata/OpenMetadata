@@ -40,9 +40,9 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
     }
     // Create Request
     return new CreateApp()
-        .withName(appMarketPlaceDefinition.getName())
-        .withAppConfiguration(appMarketPlaceDefinition.getAppConfiguration())
-        .withAppSchedule(new AppSchedule().withScheduleType(AppSchedule.ScheduleTimeline.HOURLY));
+      .withName(appMarketPlaceDefinition.getName())
+      .withAppConfiguration(appMarketPlaceDefinition.getAppConfiguration())
+      .withAppSchedule(new AppSchedule().withScheduleType(AppSchedule.ScheduleTimeline.HOURLY));
   }
 
   @Test
@@ -54,26 +54,26 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
 
   @Override
   public void validateCreatedEntity(App createdEntity, CreateApp request, Map<String, String> authHeaders)
-      throws HttpResponseException {}
+    throws HttpResponseException {}
 
   @Override
   public void compareEntities(App expected, App updated, Map<String, String> authHeaders)
-      throws HttpResponseException {}
+    throws HttpResponseException {}
 
   @Override
   public App validateGetWithDifferentFields(App entity, boolean byName) throws HttpResponseException {
     String fields = "";
     entity =
-        byName
-            ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
+      byName
+        ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+        : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
     TestUtils.assertListNull(entity.getOwner());
 
     fields = "owner";
     entity =
-        byName
-            ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
+      byName
+        ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+        : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
     return entity;
   }
 

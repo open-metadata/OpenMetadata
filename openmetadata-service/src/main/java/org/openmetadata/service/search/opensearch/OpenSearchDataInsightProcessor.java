@@ -22,6 +22,7 @@ import os.org.opensearch.common.xcontent.XContentType;
 
 @Slf4j
 public class OpenSearchDataInsightProcessor implements Processor<BulkRequest, ResultList<ReportData>> {
+
   private final StepStats stats = new StepStats();
 
   public OpenSearchDataInsightProcessor(int total) {
@@ -36,22 +37,27 @@ public class OpenSearchDataInsightProcessor implements Processor<BulkRequest, Re
     }
 
     LOG.debug(
-        "[EsDataInsightProcessor] Processing a Batch of Size: {}, EntityType: {} ", input.getData().size(), entityType);
+      "[EsDataInsightProcessor] Processing a Batch of Size: {}, EntityType: {} ",
+      input.getData().size(),
+      entityType
+    );
     BulkRequest requests;
     try {
       requests = buildBulkRequests(entityType, input.getData());
       LOG.debug(
-          "[EsDataInsightProcessor] Batch Stats :- Submitted : {} Success: {} Failed: {}",
-          input.getData().size(),
-          input.getData().size(),
-          0);
+        "[EsDataInsightProcessor] Batch Stats :- Submitted : {} Success: {} Failed: {}",
+        input.getData().size(),
+        input.getData().size(),
+        0
+      );
       updateStats(input.getData().size(), 0);
     } catch (Exception e) {
       LOG.debug(
-          "[EsDataInsightProcessor] Batch Stats :- Submitted : {} Success: {} Failed: {}",
-          input.getData().size(),
-          0,
-          input.getData().size());
+        "[EsDataInsightProcessor] Batch Stats :- Submitted : {} Success: {} Failed: {}",
+        input.getData().size(),
+        0,
+        input.getData().size()
+      );
       updateStats(0, input.getData().size());
       throw new ProcessorException("[EsDataInsightProcessor] Batch encountered Exception. Failing Completely.", e);
     }

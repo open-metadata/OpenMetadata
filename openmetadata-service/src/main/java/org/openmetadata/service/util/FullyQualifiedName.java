@@ -31,6 +31,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 
 public class FullyQualifiedName {
+
   // Quoted name of format "sss" or unquoted string sss
   private static final Pattern namePattern = Pattern.compile("^(\")([^\"]+)(\")$|^(.*)$");
 
@@ -121,6 +122,7 @@ public class FullyQualifiedName {
   }
 
   private static class SplitListener extends FqnBaseListener {
+
     final List<String> list = new ArrayList<>();
 
     public String[] split() {

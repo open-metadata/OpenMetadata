@@ -32,13 +32,15 @@ import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 public abstract class ServiceResourceTest<T extends EntityInterface, K extends CreateEntity>
-    extends EntityResourceTest<T, K> {
+  extends EntityResourceTest<T, K> {
+
   public ServiceResourceTest(
-      String entityType,
-      Class<T> entityClass,
-      Class<? extends ResultList<T>> entityListClass,
-      String collectionName,
-      String fields) {
+    String entityType,
+    Class<T> entityClass,
+    Class<? extends ResultList<T>> entityListClass,
+    String collectionName,
+    String fields
+  ) {
     super(entityType, entityClass, entityListClass, collectionName, fields);
     this.supportsPatch = false;
   }
@@ -46,10 +48,12 @@ public abstract class ServiceResourceTest<T extends EntityInterface, K extends C
   @Test
   void test_listWithDomainFilter(TestInfo test) throws HttpResponseException {
     DomainResourceTest domainTest = new DomainResourceTest();
-    String domain1 =
-        domainTest.createEntity(domainTest.createRequest(test, 1), ADMIN_AUTH_HEADERS).getFullyQualifiedName();
-    String domain2 =
-        domainTest.createEntity(domainTest.createRequest(test, 2), ADMIN_AUTH_HEADERS).getFullyQualifiedName();
+    String domain1 = domainTest
+      .createEntity(domainTest.createRequest(test, 1), ADMIN_AUTH_HEADERS)
+      .getFullyQualifiedName();
+    String domain2 = domainTest
+      .createEntity(domainTest.createRequest(test, 2), ADMIN_AUTH_HEADERS)
+      .getFullyQualifiedName();
     T s1 = createEntity(createRequest(test, 1).withDomain(domain1), ADMIN_AUTH_HEADERS);
     T s2 = createEntity(createRequest(test, 2).withDomain(domain1), ADMIN_AUTH_HEADERS);
     T s3 = createEntity(createRequest(test, 3).withDomain(domain2), ADMIN_AUTH_HEADERS);

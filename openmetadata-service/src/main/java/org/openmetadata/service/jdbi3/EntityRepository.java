@@ -180,58 +180,89 @@ import org.openmetadata.service.util.ResultList;
  * information does not become stale.
  */
 @Slf4j
-@Repository()
+@Repository
 public abstract class EntityRepository<T extends EntityInterface> {
 
-  public static final LoadingCache<Pair<String, String>, EntityInterface> CACHE_WITH_NAME =
-      CacheBuilder.newBuilder()
-          .maximumSize(5000)
-          .expireAfterWrite(30, TimeUnit.SECONDS)
-          .recordStats()
-          .build(new EntityLoaderWithName());
-  public static final LoadingCache<Pair<String, UUID>, EntityInterface> CACHE_WITH_ID =
-      CacheBuilder.newBuilder()
-          .maximumSize(5000)
-          .expireAfterWrite(30, TimeUnit.SECONDS)
-          .recordStats()
-          .build(new EntityLoaderWithId());
+  public static final LoadingCache<Pair<String, String>, EntityInterface> CACHE_WITH_NAME = CacheBuilder
+    .newBuilder()
+    .maximumSize(5000)
+    .expireAfterWrite(30, TimeUnit.SECONDS)
+    .recordStats()
+    .build(new EntityLoaderWithName());
+  public static final LoadingCache<Pair<String, UUID>, EntityInterface> CACHE_WITH_ID = CacheBuilder
+    .newBuilder()
+    .maximumSize(5000)
+    .expireAfterWrite(30, TimeUnit.SECONDS)
+    .recordStats()
+    .build(new EntityLoaderWithId());
   private final String collectionPath;
   private final Class<T> entityClass;
-  @Getter protected final String entityType;
-  @Getter protected final EntityDAO<T> dao;
-  @Getter protected final CollectionDAO daoCollection;
-  @Getter protected final SearchRepository searchRepository;
-  @Getter protected final Set<String> allowedFields;
+
+  @Getter
+  protected final String entityType;
+
+  @Getter
+  protected final EntityDAO<T> dao;
+
+  @Getter
+  protected final CollectionDAO daoCollection;
+
+  @Getter
+  protected final SearchRepository searchRepository;
+
+  @Getter
+  protected final Set<String> allowedFields;
+
   public final boolean supportsSoftDelete;
-  @Getter protected final boolean supportsTags;
-  @Getter protected final boolean supportsOwner;
-  @Getter protected final boolean supportsStyle;
-  @Getter protected final boolean supportsLifeCycle;
+
+  @Getter
+  protected final boolean supportsTags;
+
+  @Getter
+  protected final boolean supportsOwner;
+
+  @Getter
+  protected final boolean supportsStyle;
+
+  @Getter
+  protected final boolean supportsLifeCycle;
+
   protected final boolean supportsFollower;
   protected final boolean supportsExtension;
   protected final boolean supportsVotes;
-  @Getter protected final boolean supportsDomain;
+
+  @Getter
+  protected final boolean supportsDomain;
+
   protected final boolean supportsDataProducts;
-  @Getter protected final boolean supportsReviewers;
-  @Getter protected final boolean supportsExperts;
+
+  @Getter
+  protected final boolean supportsReviewers;
+
+  @Getter
+  protected final boolean supportsExperts;
+
   protected boolean quoteFqn = false; // Entity FQNS not hierarchical such user, teams, services need to be quoted
   protected boolean renameAllowed = false; // Entity can be renamed
 
   /** Fields that can be updated during PATCH operation */
-  @Getter private final Fields patchFields;
+  @Getter
+  private final Fields patchFields;
 
   /** Fields that can be updated during PUT operation */
-  @Getter protected final Fields putFields;
+  @Getter
+  protected final Fields putFields;
 
   protected boolean supportsSearch = false;
 
   protected EntityRepository(
-      String collectionPath,
-      String entityType,
-      Class<T> entityClass,
-      EntityDAO<T> entityDAO,
-      String patchFields,
-      String putFields) {
+    String collectionPath,
+    String entityType,
+    Class<T> entityClass,
+    EntityDAO<T> entityDAO,
+    String patchFields,
+    String putFields
+  ) {
     this.collectionPath = collectionPath;
     this.entityClass = entityClass;
     allowedFields = getEntityFields(entityClass);
@@ -412,15 +443,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
     List<U> entities = new ArrayList<>();
     List<String> jsonDataFiles = EntityUtil.getJsonDataResources(path);
     jsonDataFiles.forEach(
-        jsonDataFile -> {
-          try {
-            String json = CommonUtil.getResourceAsStream(EntityRepository.class.getClassLoader(), jsonDataFile);
-            json = json.replace("<separator>", Entity.SEPARATOR);
-            entities.add(JsonUtils.readValue(json, clazz));
-          } catch (Exception e) {
-            LOG.warn("Failed to initialize the {} from file {}", entityType, jsonDataFile, e);
-          }
-        });
+      jsonDataFile -> {
+        try {
+          String json = CommonUtil.getResourceAsStream(EntityRepository.class.getClassLoader(), jsonDataFile);
+          json = json.replace("<separator>", Entity.SEPARATOR);
+          entities.add(JsonUtils.readValue(json, clazz));
+        } catch (Exception e) {
+          LOG.warn("Failed to initialize the {} from file {}", entityType, jsonDataFile, e);
+        }
+      }
+    );
     return entities;
   }
 
@@ -498,8 +530,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     try {
       @SuppressWarnings("unchecked")
       T entity = (T) CACHE_WITH_ID.get(new ImmutablePair<>(entityType, id));
-      if (include == NON_DELETED && Boolean.TRUE.equals(entity.getDeleted())
-          || include == DELETED && !Boolean.TRUE.equals(entity.getDeleted())) {
+      if (
+        include == NON_DELETED &&
+        Boolean.TRUE.equals(entity.getDeleted()) ||
+        include == DELETED &&
+        !Boolean.TRUE.equals(entity.getDeleted())
+      ) {
         throw new EntityNotFoundException(entityNotFound(entityType, id));
       }
       return entity;
@@ -552,8 +588,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     try {
       @SuppressWarnings("unchecked")
       T entity = (T) CACHE_WITH_NAME.get(new ImmutablePair<>(entityType, fqn));
-      if (include == NON_DELETED && Boolean.TRUE.equals(entity.getDeleted())
-          || include == DELETED && !Boolean.TRUE.equals(entity.getDeleted())) {
+      if (
+        include == NON_DELETED &&
+        Boolean.TRUE.equals(entity.getDeleted()) ||
+        include == DELETED &&
+        !Boolean.TRUE.equals(entity.getDeleted())
+      ) {
         throw new EntityNotFoundException(entityNotFound(entityType, fqn));
       }
       return entity;
@@ -604,7 +644,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public ResultList<T> listAfterWithSkipFailure(
-      UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String after) {
+    UriInfo uriInfo,
+    Fields fields,
+    ListFilter filter,
+    int limitParam,
+    String after
+  ) {
     List<String> errors = new ArrayList<>();
     List<T> entities = new ArrayList<>();
     int beforeOffset = Integer.parseInt(RestUtil.decodeCursor(after));
@@ -675,7 +720,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return entity;
     }
     throw EntityNotFoundException.byMessage(
-        CatalogExceptionMessage.entityVersionNotFound(entityType, id, requestedVersion));
+      CatalogExceptionMessage.entityVersionNotFound(entityType, id, requestedVersion)
+    );
   }
 
   public EntityHistory listVersions(UUID id) {
@@ -832,18 +878,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
     ChangeDescription change = new ChangeDescription().withPreviousVersion(entity.getVersion());
     fieldAdded(change, FIELD_FOLLOWERS, List.of(user.getEntityReference()));
 
-    ChangeEvent changeEvent =
-        new ChangeEvent()
-            .withEntity(entity)
-            .withChangeDescription(change)
-            .withEventType(EventType.ENTITY_UPDATED)
-            .withEntityType(entityType)
-            .withEntityId(entityId)
-            .withEntityFullyQualifiedName(entity.getFullyQualifiedName())
-            .withUserName(updatedBy)
-            .withTimestamp(System.currentTimeMillis())
-            .withCurrentVersion(entity.getVersion())
-            .withPreviousVersion(change.getPreviousVersion());
+    ChangeEvent changeEvent = new ChangeEvent()
+      .withEntity(entity)
+      .withChangeDescription(change)
+      .withEventType(EventType.ENTITY_UPDATED)
+      .withEntityType(entityType)
+      .withEntityId(entityId)
+      .withEntityFullyQualifiedName(entity.getFullyQualifiedName())
+      .withUserName(updatedBy)
+      .withTimestamp(System.currentTimeMillis())
+      .withCurrentVersion(entity.getVersion())
+      .withPreviousVersion(change.getPreviousVersion());
     entity.setChangeDescription(change);
     postUpdate(entity, entity);
     return new PutResponse<>(Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
@@ -868,28 +913,28 @@ public abstract class EntityRepository<T extends EntityInterface> {
       deleteRelationship(userId, Entity.USER, entityId, entityType, Relationship.VOTED);
     } else {
       addRelationship(
-          userId,
-          entityId,
-          Entity.USER,
-          entityType,
-          Relationship.VOTED,
-          JsonUtils.pojoToJson(request.getUpdatedVoteType()),
-          false);
+        userId,
+        entityId,
+        Entity.USER,
+        entityType,
+        Relationship.VOTED,
+        JsonUtils.pojoToJson(request.getUpdatedVoteType()),
+        false
+      );
     }
 
     setFieldsInternal(originalEntity, new Fields(allowedFields, "votes"));
-    ChangeEvent changeEvent =
-        new ChangeEvent()
-            .withEntity(originalEntity)
-            .withChangeDescription(change)
-            .withEventType(EventType.ENTITY_UPDATED)
-            .withEntityType(entityType)
-            .withEntityId(entityId)
-            .withEntityFullyQualifiedName(originalEntity.getFullyQualifiedName())
-            .withUserName(updatedBy)
-            .withTimestamp(System.currentTimeMillis())
-            .withCurrentVersion(originalEntity.getVersion())
-            .withPreviousVersion(change.getPreviousVersion());
+    ChangeEvent changeEvent = new ChangeEvent()
+      .withEntity(originalEntity)
+      .withChangeDescription(change)
+      .withEventType(EventType.ENTITY_UPDATED)
+      .withEntityType(entityType)
+      .withEntityId(entityId)
+      .withEntityFullyQualifiedName(originalEntity.getFullyQualifiedName())
+      .withUserName(updatedBy)
+      .withTimestamp(System.currentTimeMillis())
+      .withCurrentVersion(originalEntity.getVersion())
+      .withPreviousVersion(change.getPreviousVersion());
     postUpdate(originalEntity, originalEntity);
     return new PutResponse<>(Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
@@ -958,7 +1003,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @Transaction
   public final DeleteResponse<T> deleteInternalByName(
-      String updatedBy, String name, boolean recursive, boolean hardDelete) {
+    String updatedBy,
+    String name,
+    boolean recursive,
+    boolean hardDelete
+  ) {
     // Validate entity
     T entity = findByName(name, ALL);
     return delete(updatedBy, entity, recursive, hardDelete);
@@ -974,10 +1023,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Transaction
   private void deleteChildren(UUID id, boolean recursive, boolean hardDelete, String updatedBy) {
     // If an entity being deleted contains other **non-deleted** children entities, it can't be deleted
-    List<EntityRelationshipRecord> childrenRecords =
-        daoCollection
-            .relationshipDAO()
-            .findTo(id, entityType, List.of(Relationship.CONTAINS.ordinal(), Relationship.PARENT_OF.ordinal()));
+    List<EntityRelationshipRecord> childrenRecords = daoCollection
+      .relationshipDAO()
+      .findTo(id, entityType, List.of(Relationship.CONTAINS.ordinal(), Relationship.PARENT_OF.ordinal()));
 
     if (childrenRecords.isEmpty()) {
       LOG.info("No children to delete");
@@ -990,12 +1038,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Delete all the contained entities
     for (EntityRelationshipRecord entityRelationshipRecord : childrenRecords) {
       LOG.info(
-          "Recursively {} deleting {} {}",
-          hardDelete ? "hard" : "soft",
-          entityRelationshipRecord.getType(),
-          entityRelationshipRecord.getId());
+        "Recursively {} deleting {} {}",
+        hardDelete ? "hard" : "soft",
+        entityRelationshipRecord.getType(),
+        entityRelationshipRecord.getId()
+      );
       Entity.deleteEntity(
-          updatedBy, entityRelationshipRecord.getType(), entityRelationshipRecord.getId(), true, hardDelete);
+        updatedBy,
+        entityRelationshipRecord.getType(),
+        entityRelationshipRecord.getId(),
+        true,
+        hardDelete
+      );
     }
   }
 
@@ -1051,18 +1105,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
     ChangeDescription change = new ChangeDescription().withPreviousVersion(entity.getVersion());
     fieldDeleted(change, FIELD_FOLLOWERS, List.of(user));
 
-    ChangeEvent changeEvent =
-        new ChangeEvent()
-            .withEntity(entity)
-            .withChangeDescription(change)
-            .withEventType(EventType.ENTITY_UPDATED)
-            .withEntityFullyQualifiedName(entity.getFullyQualifiedName())
-            .withEntityType(entityType)
-            .withEntityId(entityId)
-            .withUserName(updatedBy)
-            .withTimestamp(System.currentTimeMillis())
-            .withCurrentVersion(entity.getVersion())
-            .withPreviousVersion(change.getPreviousVersion());
+    ChangeEvent changeEvent = new ChangeEvent()
+      .withEntity(entity)
+      .withChangeDescription(change)
+      .withEventType(EventType.ENTITY_UPDATED)
+      .withEntityFullyQualifiedName(entity.getFullyQualifiedName())
+      .withEntityType(entityType)
+      .withEntityId(entityId)
+      .withUserName(updatedBy)
+      .withTimestamp(System.currentTimeMillis())
+      .withCurrentVersion(entity.getVersion())
+      .withPreviousVersion(change.getPreviousVersion());
 
     return new PutResponse<>(Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
@@ -1072,7 +1125,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final ResultList<T> getResultList(
-      List<T> entities, List<String> errors, String beforeCursor, String afterCursor, int total) {
+    List<T> entities,
+    List<String> errors,
+    String beforeCursor,
+    String afterCursor,
+    int total
+  ) {
     return new ResultList<>(entities, errors, beforeCursor, afterCursor, total);
   }
 
@@ -1139,16 +1197,30 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public List<String> getResultsFromAndToTimestamps(
-      String fullyQualifiedName, String extension, Long startTs, Long endTs) {
+    String fullyQualifiedName,
+    String extension,
+    Long startTs,
+    Long endTs
+  ) {
     return getResultsFromAndToTimestamps(
-        fullyQualifiedName, extension, startTs, endTs, EntityTimeSeriesDAO.OrderBy.DESC);
+      fullyQualifiedName,
+      extension,
+      startTs,
+      endTs,
+      EntityTimeSeriesDAO.OrderBy.DESC
+    );
   }
 
   public List<String> getResultsFromAndToTimestamps(
-      String fqn, String extension, Long startTs, Long endTs, EntityTimeSeriesDAO.OrderBy orderBy) {
+    String fqn,
+    String extension,
+    Long startTs,
+    Long endTs,
+    EntityTimeSeriesDAO.OrderBy orderBy
+  ) {
     return daoCollection
-        .entityExtensionTimeSeriesDao()
-        .listBetweenTimestampsByOrder(fqn, extension, startTs, endTs, orderBy);
+      .entityExtensionTimeSeriesDao()
+      .listBetweenTimestampsByOrder(fqn, extension, startTs, endTs, orderBy);
   }
 
   @Transaction
@@ -1181,7 +1253,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       Set<ValidationMessage> validationMessages = jsonSchema.validate(fieldValue);
       if (!validationMessages.isEmpty()) {
         throw new IllegalArgumentException(
-            CatalogExceptionMessage.jsonValidationError(fieldName, validationMessages.toString()));
+          CatalogExceptionMessage.jsonValidationError(fieldName, validationMessages.toString())
+        );
       }
     }
   }
@@ -1209,8 +1282,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
   private void storeCustomProperty(EntityInterface entity, String fieldName, JsonNode value) {
     String fieldFQN = TypeRegistry.getCustomPropertyFQN(entityType, fieldName);
     daoCollection
-        .entityExtensionDAO()
-        .insert(entity.getId(), fieldFQN, "customFieldSchema", JsonUtils.pojoToJson(value));
+      .entityExtensionDAO()
+      .insert(entity.getId(), fieldFQN, "customFieldSchema", JsonUtils.pojoToJson(value));
   }
 
   private void removeCustomProperty(EntityInterface entity, String fieldName) {
@@ -1261,14 +1334,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // Derived Tags should not create Relationships, and needs to be built on the during Read
       if (!isTagDerived) {
         daoCollection
-            .tagUsageDAO()
-            .applyTag(
-                tagLabel.getSource().ordinal(),
-                tagLabel.getTagFQN(),
-                tagLabel.getTagFQN(),
-                targetFQN,
-                tagLabel.getLabelType().ordinal(),
-                tagLabel.getState().ordinal());
+          .tagUsageDAO()
+          .applyTag(
+            tagLabel.getSource().ordinal(),
+            tagLabel.getTagFQN(),
+            tagLabel.getTagFQN(),
+            targetFQN,
+            tagLabel.getLabelType().ordinal(),
+            tagLabel.getState().ordinal()
+          );
       }
     }
   }
@@ -1292,8 +1366,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   protected List<EntityReference> getFollowers(T entity) {
     return !supportsFollower || entity == null
-        ? Collections.emptyList()
-        : findFrom(entity.getId(), entityType, Relationship.FOLLOWS, Entity.USER);
+      ? Collections.emptyList()
+      : findFrom(entity.getId(), entityType, Relationship.FOLLOWS, Entity.USER);
   }
 
   protected Votes getVotes(T entity) {
@@ -1302,8 +1376,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     List<EntityRelationshipRecord> upVoterRecords = new ArrayList<>();
     List<EntityRelationshipRecord> downVoterRecords = new ArrayList<>();
-    List<EntityRelationshipRecord> records =
-        findFromRecords(entity.getId(), entityType, Relationship.VOTED, Entity.USER);
+    List<EntityRelationshipRecord> records = findFromRecords(
+      entity.getId(),
+      entityType,
+      Relationship.VOTED,
+      Entity.USER
+    );
     for (EntityRelationshipRecord entityRelationshipRecord : records) {
       VoteType type = JsonUtils.readValue(entityRelationshipRecord.getJson(), VoteType.class);
       if (type == VoteType.VOTED_UP) {
@@ -1315,10 +1393,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     List<EntityReference> upVoters = getEntityReferences(upVoterRecords);
     List<EntityReference> downVoters = getEntityReferences(downVoterRecords);
     return new Votes()
-        .withUpVotes(upVoters.size())
-        .withDownVotes(downVoters.size())
-        .withUpVoters(upVoters)
-        .withDownVoters(downVoters);
+      .withUpVotes(upVoters.size())
+      .withDownVotes(downVoters.size())
+      .withUpVoters(upVoters)
+      .withDownVoters(downVoters);
   }
 
   public T withHref(UriInfo uriInfo, T entity) {
@@ -1335,8 +1413,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Transaction
   public PutResponse<T> restoreEntity(String updatedBy, String entityType, UUID id) {
     // If an entity being restored contains other **deleted** children entities, restore them
-    List<EntityRelationshipRecord> records =
-        daoCollection.relationshipDAO().findTo(id, entityType, Relationship.CONTAINS.ordinal());
+    List<EntityRelationshipRecord> records = daoCollection
+      .relationshipDAO()
+      .findTo(id, entityType, Relationship.CONTAINS.ordinal());
 
     if (!records.isEmpty()) {
       // Restore all the contained entities
@@ -1369,19 +1448,26 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public void addRelationship(
-      UUID fromId, UUID toId, String fromEntity, String toEntity, Relationship relationship, boolean bidirectional) {
+    UUID fromId,
+    UUID toId,
+    String fromEntity,
+    String toEntity,
+    Relationship relationship,
+    boolean bidirectional
+  ) {
     addRelationship(fromId, toId, fromEntity, toEntity, relationship, null, bidirectional);
   }
 
   @Transaction
   public void addRelationship(
-      UUID fromId,
-      UUID toId,
-      String fromEntity,
-      String toEntity,
-      Relationship relationship,
-      String json,
-      boolean bidirectional) {
+    UUID fromId,
+    UUID toId,
+    String fromEntity,
+    String toEntity,
+    Relationship relationship,
+    String json,
+    boolean bidirectional
+  ) {
     UUID from = fromId;
     UUID to = toId;
     if (bidirectional && fromId.compareTo(toId) > 0) {
@@ -1395,10 +1481,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @Transaction
   public final void bulkAddToRelationship(
-      UUID fromId, List<UUID> toId, String fromEntity, String toEntity, Relationship relationship) {
+    UUID fromId,
+    List<UUID> toId,
+    String fromEntity,
+    String toEntity,
+    Relationship relationship
+  ) {
     daoCollection
-        .relationshipDAO()
-        .bulkInsertToRelationship(fromId, toId, fromEntity, toEntity, relationship.ordinal());
+      .relationshipDAO()
+      .bulkInsertToRelationship(fromId, toId, fromEntity, toEntity, relationship.ordinal());
   }
 
   public List<EntityReference> findBoth(UUID entity1, String entityType1, Relationship relationship, String entity2) {
@@ -1410,17 +1501,25 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public List<EntityReference> findFrom(
-      UUID toId, String toEntityType, Relationship relationship, String fromEntityType) {
+    UUID toId,
+    String toEntityType,
+    Relationship relationship,
+    String fromEntityType
+  ) {
     List<EntityRelationshipRecord> records = findFromRecords(toId, toEntityType, relationship, fromEntityType);
     return getEntityReferences(records);
   }
 
   public List<EntityRelationshipRecord> findFromRecords(
-      UUID toId, String toEntityType, Relationship relationship, String fromEntityType) {
+    UUID toId,
+    String toEntityType,
+    Relationship relationship,
+    String fromEntityType
+  ) {
     // When fromEntityType is null, all the relationships from any entity is returned
     return fromEntityType == null
-        ? daoCollection.relationshipDAO().findFrom(toId, toEntityType, relationship.ordinal())
-        : daoCollection.relationshipDAO().findFrom(toId, toEntityType, relationship.ordinal(), fromEntityType);
+      ? daoCollection.relationshipDAO().findFrom(toId, toEntityType, relationship.ordinal())
+      : daoCollection.relationshipDAO().findFrom(toId, toEntityType, relationship.ordinal(), fromEntityType);
   }
 
   public EntityReference getContainer(UUID toId) {
@@ -1432,34 +1531,44 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public EntityReference getFromEntityRef(
-      UUID toId, Relationship relationship, String fromEntityType, boolean mustHaveRelationship) {
+    UUID toId,
+    Relationship relationship,
+    String fromEntityType,
+    boolean mustHaveRelationship
+  ) {
     List<EntityRelationshipRecord> records = findFromRecords(toId, entityType, relationship, fromEntityType);
     ensureSingleRelationship(entityType, toId, records, relationship.value(), fromEntityType, mustHaveRelationship);
     return !records.isEmpty()
-        ? Entity.getEntityReferenceById(records.get(0).getType(), records.get(0).getId(), ALL)
-        : null;
+      ? Entity.getEntityReferenceById(records.get(0).getType(), records.get(0).getId(), ALL)
+      : null;
   }
 
   public EntityReference getToEntityRef(
-      UUID fromId, Relationship relationship, String toEntityType, boolean mustHaveRelationship) {
+    UUID fromId,
+    Relationship relationship,
+    String toEntityType,
+    boolean mustHaveRelationship
+  ) {
     List<EntityRelationshipRecord> records = findToRecords(fromId, entityType, relationship, toEntityType);
     ensureSingleRelationship(entityType, fromId, records, relationship.value(), toEntityType, mustHaveRelationship);
     return !records.isEmpty()
-        ? Entity.getEntityReferenceById(records.get(0).getType(), records.get(0).getId(), ALL)
-        : null;
+      ? Entity.getEntityReferenceById(records.get(0).getType(), records.get(0).getId(), ALL)
+      : null;
   }
 
   public void ensureSingleRelationship(
-      String entityType,
-      UUID id,
-      List<EntityRelationshipRecord> relations,
-      String relationshipName,
-      String toEntityType,
-      boolean mustHaveRelationship) {
+    String entityType,
+    UUID id,
+    List<EntityRelationshipRecord> relations,
+    String relationshipName,
+    String toEntityType,
+    boolean mustHaveRelationship
+  ) {
     // An entity can have only one relationship
     if (mustHaveRelationship && relations.isEmpty()) {
       throw new UnhandledServerException(
-          CatalogExceptionMessage.entityRelationshipNotFound(entityType, id, relationshipName, toEntityType));
+        CatalogExceptionMessage.entityRelationshipNotFound(entityType, id, relationshipName, toEntityType)
+      );
     }
     if (!mustHaveRelationship && relations.isEmpty()) {
       return;
@@ -1470,22 +1579,35 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final List<EntityReference> findTo(
-      UUID fromId, String fromEntityType, Relationship relationship, String toEntityType) {
+    UUID fromId,
+    String fromEntityType,
+    Relationship relationship,
+    String toEntityType
+  ) {
     // When toEntityType is null, all the relationships to any entity is returned
     List<EntityRelationshipRecord> records = findToRecords(fromId, fromEntityType, relationship, toEntityType);
     return getEntityReferences(records);
   }
 
   public final List<EntityRelationshipRecord> findToRecords(
-      UUID fromId, String fromEntityType, Relationship relationship, String toEntityType) {
+    UUID fromId,
+    String fromEntityType,
+    Relationship relationship,
+    String toEntityType
+  ) {
     // When toEntityType is null, all the relationships to any entity is returned
     return toEntityType == null
-        ? daoCollection.relationshipDAO().findTo(fromId, fromEntityType, relationship.ordinal())
-        : daoCollection.relationshipDAO().findTo(fromId, fromEntityType, relationship.ordinal(), toEntityType);
+      ? daoCollection.relationshipDAO().findTo(fromId, fromEntityType, relationship.ordinal())
+      : daoCollection.relationshipDAO().findTo(fromId, fromEntityType, relationship.ordinal(), toEntityType);
   }
 
   public void deleteRelationship(
-      UUID fromId, String fromEntityType, UUID toId, String toEntityType, Relationship relationship) {
+    UUID fromId,
+    String fromEntityType,
+    UUID toId,
+    String toEntityType,
+    Relationship relationship
+  ) {
     daoCollection.relationshipDAO().delete(fromId, fromEntityType, toId, toEntityType, relationship.ordinal());
   }
 
@@ -1501,10 +1623,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public void validateUsers(List<EntityReference> entityReferences) {
     if (entityReferences != null) {
       for (EntityReference entityReference : entityReferences) {
-        EntityReference ref =
-            entityReference.getId() != null
-                ? Entity.getEntityReferenceById(USER, entityReference.getId(), ALL)
-                : Entity.getEntityReferenceByName(USER, entityReference.getFullyQualifiedName(), ALL);
+        EntityReference ref = entityReference.getId() != null
+          ? Entity.getEntityReferenceById(USER, entityReference.getId(), ALL)
+          : Entity.getEntityReferenceByName(USER, entityReference.getFullyQualifiedName(), ALL);
         EntityUtil.copy(ref, entityReference);
       }
       entityReferences.sort(EntityUtil.compareEntityReference);
@@ -1607,11 +1728,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (supportsOwner && owner != null) {
       // Add relationship owner --- owns ---> ownedEntity
       LOG.info(
-          "Adding owner {}:{} for entity {}:{}",
-          owner.getType(),
-          owner.getFullyQualifiedName(),
-          entityType,
-          entity.getId());
+        "Adding owner {}:{} for entity {}:{}",
+        owner.getType(),
+        owner.getFullyQualifiedName(),
+        entityType,
+        entity.getId()
+      );
       addRelationship(owner.getId(), entity.getId(), owner.getType(), entityType, Relationship.OWNS);
     }
   }
@@ -1631,14 +1753,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
       for (EntityReference dataProduct : dataProducts) {
         // Add relationship dataProduct --- has ---> entity
         LOG.info(
-            "Adding dataProduct {} for entity {}:{}", dataProduct.getFullyQualifiedName(), entityType, entity.getId());
+          "Adding dataProduct {} for entity {}:{}",
+          dataProduct.getFullyQualifiedName(),
+          entityType,
+          entity.getId()
+        );
         addRelationship(dataProduct.getId(), entity.getId(), Entity.DATA_PRODUCT, entityType, Relationship.HAS);
       }
     }
   }
 
   protected BulkOperationResult bulkAssetsOperation(
-      UUID entityId, String fromEntity, Relationship relationship, BulkAssets request, boolean isAdd) {
+    UUID entityId,
+    String fromEntity,
+    Relationship relationship,
+    BulkAssets request,
+    boolean isAdd
+  ) {
     BulkOperationResult result = new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(false);
     List<BulkResponse> success = new ArrayList<>();
     // Validate Assets
@@ -1724,7 +1855,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected void checkSystemEntityDeletion(T entity) {
     if (ProviderType.SYSTEM.equals(entity.getProvider())) { // System provided entity can't be deleted
       throw new IllegalArgumentException(
-          CatalogExceptionMessage.systemEntityDeleteNotAllowed(entity.getName(), entityType));
+        CatalogExceptionMessage.systemEntityDeleteNotAllowed(entity.getName(), entityType)
+      );
     }
   }
 
@@ -1861,6 +1993,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * @see TableRepository.TableUpdater#entitySpecificUpdate() for example.
    */
   public class EntityUpdater {
+
     private static volatile long sessionTimeoutMillis = 10L * 60 * 1000; // 10 minutes
     protected T previous;
     protected T original;
@@ -1876,9 +2009,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       this.updated = updated;
       this.operation = operation;
       this.updatingUser =
-          updated.getUpdatedBy().equalsIgnoreCase(ADMIN_USER_NAME)
-              ? new User().withName(ADMIN_USER_NAME).withIsAdmin(true)
-              : getEntityByName(Entity.USER, updated.getUpdatedBy(), "", NON_DELETED);
+        updated.getUpdatedBy().equalsIgnoreCase(ADMIN_USER_NAME)
+          ? new User().withName(ADMIN_USER_NAME).withIsAdmin(true)
+          : getEntityByName(Entity.USER, updated.getUpdatedBy(), "", NON_DELETED);
     }
 
     /** Compare original and updated entities and perform updates. Update the entity version and track changes. */
@@ -1959,9 +2092,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private void updateDeleted() {
       if (operation.isPut() || operation.isPatch()) {
         // Update operation can't set delete attributed to true. This can only be done as part of delete operation
-        if (!Objects.equals(updated.getDeleted(), original.getDeleted())
-            && Boolean.TRUE.equals(updated.getDeleted())
-            && changeDescription != null) {
+        if (
+          !Objects.equals(updated.getDeleted(), original.getDeleted()) &&
+          Boolean.TRUE.equals(updated.getDeleted()) &&
+          changeDescription != null
+        ) {
           throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute(entityType, FIELD_DELETED));
         }
         // PUT or PATCH is restoring the soft-deleted entity
@@ -1986,8 +2121,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private void updateOwner() {
       EntityReference origOwner = getEntityReference(original.getOwner());
       EntityReference updatedOwner = getEntityReference(updated.getOwner());
-      if ((operation.isPatch() || updatedOwner != null)
-          && recordChange(FIELD_OWNER, origOwner, updatedOwner, true, entityReferenceMatch)) {
+      if (
+        (operation.isPatch() || updatedOwner != null) &&
+        recordChange(FIELD_OWNER, origOwner, updatedOwner, true, entityReferenceMatch)
+      ) {
         // Update owner for all PATCH operations. For PUT operations, ownership can't be removed
         EntityRepository.this.updateOwner(original, origOwner, updatedOwner);
         updated.setOwner(updatedOwner);
@@ -2039,7 +2176,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       JsonNode updatedFields = JsonUtils.valueToTree(updatedExtension);
 
       // Check for updated and deleted fields
-      for (Iterator<Entry<String, JsonNode>> it = origFields.fields(); it.hasNext(); ) {
+      for (Iterator<Entry<String, JsonNode>> it = origFields.fields(); it.hasNext();) {
         Entry<String, JsonNode> orig = it.next();
         JsonNode updatedField = updatedFields.get(orig.getKey());
         if (updatedField == null) {
@@ -2051,7 +2188,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
 
       // Check for added fields
-      for (Iterator<Entry<String, JsonNode>> it = updatedFields.fields(); it.hasNext(); ) {
+      for (Iterator<Entry<String, JsonNode>> it = updatedFields.fields(); it.hasNext();) {
         Entry<String, JsonNode> updatedField = it.next();
         JsonNode orig = origFields.get(updatedField.getKey());
         if (orig == null) {
@@ -2082,19 +2219,25 @@ public abstract class EntityRepository<T extends EntityInterface> {
         return;
       }
 
-      if ((operation.isPatch() || updatedDomain != null)
-          && recordChange(FIELD_DOMAIN, origDomain, updatedDomain, true, entityReferenceMatch)) {
+      if (
+        (operation.isPatch() || updatedDomain != null) &&
+        recordChange(FIELD_DOMAIN, origDomain, updatedDomain, true, entityReferenceMatch)
+      ) {
         if (origDomain != null) {
           LOG.info(
-              "Removing domain {} for entity {}", origDomain.getFullyQualifiedName(), original.getFullyQualifiedName());
+            "Removing domain {} for entity {}",
+            origDomain.getFullyQualifiedName(),
+            original.getFullyQualifiedName()
+          );
           deleteRelationship(origDomain.getId(), Entity.DOMAIN, original.getId(), entityType, Relationship.HAS);
         }
         if (updatedDomain != null) {
           // Add relationship owner --- owns ---> ownedEntity
           LOG.info(
-              "Adding domain {} for entity {}",
-              updatedDomain.getFullyQualifiedName(),
-              original.getFullyQualifiedName());
+            "Adding domain {} for entity {}",
+            updatedDomain.getFullyQualifiedName(),
+            original.getFullyQualifiedName()
+          );
           addRelationship(updatedDomain.getId(), original.getId(), Entity.DOMAIN, entityType, Relationship.HAS);
         }
         updated.setDomain(updatedDomain);
@@ -2110,13 +2253,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
       List<EntityReference> origDataProducts = listOrEmpty(original.getDataProducts());
       List<EntityReference> updatedDataProducts = listOrEmpty(updated.getDataProducts());
       updateFromRelationships(
-          FIELD_DATA_PRODUCTS,
-          DATA_PRODUCT,
-          origDataProducts,
-          updatedDataProducts,
-          Relationship.HAS,
-          entityType,
-          original.getId());
+        FIELD_DATA_PRODUCTS,
+        DATA_PRODUCT,
+        origDataProducts,
+        updatedDataProducts,
+        Relationship.HAS,
+        entityType,
+        original.getId()
+      );
     }
 
     private void updateExperts() {
@@ -2126,14 +2270,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
       List<EntityReference> origExperts = getEntityReferences(original.getExperts());
       List<EntityReference> updatedExperts = getEntityReferences(updated.getExperts());
       updateToRelationships(
-          FIELD_EXPERTS,
-          entityType,
-          original.getId(),
-          Relationship.EXPERT,
-          Entity.USER,
-          origExperts,
-          updatedExperts,
-          false);
+        FIELD_EXPERTS,
+        entityType,
+        original.getId(),
+        Relationship.EXPERT,
+        Entity.USER,
+        origExperts,
+        updatedExperts,
+        false
+      );
       updated.setExperts(updatedExperts);
     }
 
@@ -2144,13 +2289,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
       List<EntityReference> origReviewers = getEntityReferences(original.getReviewers());
       List<EntityReference> updatedReviewers = getEntityReferences(updated.getReviewers());
       updateFromRelationships(
-          "reviewers",
-          Entity.USER,
-          origReviewers,
-          updatedReviewers,
-          Relationship.REVIEWS,
-          entityType,
-          original.getId());
+        "reviewers",
+        Entity.USER,
+        origReviewers,
+        updatedReviewers,
+        Relationship.REVIEWS,
+        entityType,
+        original.getId()
+      );
       updated.setReviewers(updatedReviewers);
     }
 
@@ -2161,9 +2307,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     private static List<EntityReference> getEntityReferences(List<EntityReference> references) {
       // Don't use the inherited entity references in update
-      return listOrEmpty(references).stream()
-          .filter(r -> !Boolean.TRUE.equals(r.getInherited()))
-          .collect(Collectors.toList());
+      return listOrEmpty(references)
+        .stream()
+        .filter(r -> !Boolean.TRUE.equals(r.getInherited()))
+        .collect(Collectors.toList());
     }
 
     private void updateStyle() {
@@ -2187,21 +2334,33 @@ public abstract class EntityRepository<T extends EntityInterface> {
       if (origLifeCycle == updatedLifeCycle) return;
 
       if (origLifeCycle != null && updatedLifeCycle != null) {
-        if (origLifeCycle.getCreated() != null
-            && (updatedLifeCycle.getCreated() == null
-                || updatedLifeCycle.getCreated().getTimestamp() < origLifeCycle.getCreated().getTimestamp())) {
+        if (
+          origLifeCycle.getCreated() != null &&
+          (
+            updatedLifeCycle.getCreated() == null ||
+            updatedLifeCycle.getCreated().getTimestamp() < origLifeCycle.getCreated().getTimestamp()
+          )
+        ) {
           updatedLifeCycle.setCreated(origLifeCycle.getCreated());
         }
 
-        if (origLifeCycle.getAccessed() != null
-            && (updatedLifeCycle.getAccessed() == null
-                || updatedLifeCycle.getAccessed().getTimestamp() < origLifeCycle.getAccessed().getTimestamp())) {
+        if (
+          origLifeCycle.getAccessed() != null &&
+          (
+            updatedLifeCycle.getAccessed() == null ||
+            updatedLifeCycle.getAccessed().getTimestamp() < origLifeCycle.getAccessed().getTimestamp()
+          )
+        ) {
           updatedLifeCycle.setAccessed(origLifeCycle.getAccessed());
         }
 
-        if (origLifeCycle.getUpdated() != null
-            && (updatedLifeCycle.getUpdated() == null
-                || updatedLifeCycle.getUpdated().getTimestamp() < origLifeCycle.getUpdated().getTimestamp())) {
+        if (
+          origLifeCycle.getUpdated() != null &&
+          (
+            updatedLifeCycle.getUpdated() == null ||
+            updatedLifeCycle.getUpdated().getTimestamp() < origLifeCycle.getUpdated().getTimestamp()
+          )
+        ) {
           updatedLifeCycle.setUpdated(origLifeCycle.getUpdated());
         }
       }
@@ -2216,13 +2375,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
         newVersion = nextVersion(oldVersion);
       }
       LOG.info(
-          "{} {}->{} - Fields added {}, updated {}, deleted {}",
-          original.getId(),
-          oldVersion,
-          newVersion,
-          changeDescription.getFieldsAdded(),
-          changeDescription.getFieldsUpdated(),
-          changeDescription.getFieldsDeleted());
+        "{} {}->{} - Fields added {}, updated {}, deleted {}",
+        original.getId(),
+        oldVersion,
+        newVersion,
+        changeDescription.getFieldsAdded(),
+        changeDescription.getFieldsUpdated(),
+        changeDescription.getFieldsDeleted()
+      );
       changeDescription.withPreviousVersion(oldVersion);
       updated.setVersion(newVersion);
       updated.setChangeDescription(changeDescription);
@@ -2233,9 +2393,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
       if (changeDescription == null) {
         return false;
       }
-      return !changeDescription.getFieldsAdded().isEmpty()
-          || !changeDescription.getFieldsUpdated().isEmpty()
-          || !changeDescription.getFieldsDeleted().isEmpty();
+      return (
+        !changeDescription.getFieldsAdded().isEmpty() ||
+        !changeDescription.getFieldsUpdated().isEmpty() ||
+        !changeDescription.getFieldsDeleted().isEmpty()
+      );
     }
 
     public final <K> boolean recordChange(String field, K orig, K updated) {
@@ -2247,12 +2409,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     public final <K> boolean recordChange(
-        String field, K orig, K updated, boolean jsonValue, BiPredicate<K, K> typeMatch) {
+      String field,
+      K orig,
+      K updated,
+      boolean jsonValue,
+      BiPredicate<K, K> typeMatch
+    ) {
       return recordChange(field, orig, updated, jsonValue, typeMatch, true);
     }
 
     public final <K> boolean recordChange(
-        String field, K orig, K updated, boolean jsonValue, BiPredicate<K, K> typeMatch, boolean updateVersion) {
+      String field,
+      K orig,
+      K updated,
+      boolean jsonValue,
+      BiPredicate<K, K> typeMatch,
+      boolean updateVersion
+    ) {
       if (orig == updated) {
         return false;
       }
@@ -2284,12 +2457,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     public final <K> boolean recordListChange(
-        String field,
-        List<K> origList,
-        List<K> updatedList,
-        List<K> addedItems,
-        List<K> deletedItems,
-        BiPredicate<K, K> typeMatch) {
+      String field,
+      List<K> origList,
+      List<K> updatedList,
+      List<K> addedItems,
+      List<K> deletedItems,
+      BiPredicate<K, K> typeMatch
+    ) {
       origList = listOrEmpty(origList);
       updatedList = listOrEmpty(updatedList);
       List<K> updatedItems = new ArrayList<>();
@@ -2330,14 +2504,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
      * <p>When `bidirectional` is set to true, relationship from both side are replaced
      */
     public final void updateToRelationships(
-        String field,
-        String fromEntityType,
-        UUID fromId,
-        Relationship relationshipType,
-        String toEntityType,
-        List<EntityReference> origToRefs,
-        List<EntityReference> updatedToRefs,
-        boolean bidirectional) {
+      String field,
+      String fromEntityType,
+      UUID fromId,
+      Relationship relationshipType,
+      String toEntityType,
+      List<EntityReference> origToRefs,
+      List<EntityReference> updatedToRefs,
+      boolean bidirectional
+    ) {
       List<EntityReference> added = new ArrayList<>();
       List<EntityReference> deleted = new ArrayList<>();
       if (!recordListChange(field, origToRefs, updatedToRefs, added, deleted, entityReferenceMatch)) {
@@ -2357,14 +2532,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     public final void updateToRelationship(
-        String field,
-        String fromEntityType,
-        UUID fromId,
-        Relationship relationshipType,
-        String toEntityType,
-        EntityReference origToRef,
-        EntityReference updatedToRef,
-        boolean bidirectional) {
+      String field,
+      String fromEntityType,
+      UUID fromId,
+      Relationship relationshipType,
+      String toEntityType,
+      EntityReference origToRef,
+      EntityReference updatedToRef,
+      boolean bidirectional
+    ) {
       if (!recordChange(field, origToRef, updatedToRef, true, entityReferenceMatch)) {
         return; // No changes between original and updated.
       }
@@ -2383,13 +2559,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
      * field `field`.
      */
     public final void updateFromRelationships(
-        String field,
-        String fromEntityType,
-        List<EntityReference> originFromRefs,
-        List<EntityReference> updatedFromRefs,
-        Relationship relationshipType,
-        String toEntityType,
-        UUID toId) {
+      String field,
+      String fromEntityType,
+      List<EntityReference> originFromRefs,
+      List<EntityReference> updatedFromRefs,
+      Relationship relationshipType,
+      String toEntityType,
+      UUID toId
+    ) {
       List<EntityReference> added = new ArrayList<>();
       List<EntityReference> deleted = new ArrayList<>();
       if (!recordListChange(field, originFromRefs, updatedFromRefs, added, deleted, entityReferenceMatch)) {
@@ -2407,13 +2584,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     public final void updateFromRelationship(
-        String field,
-        String fromEntityType,
-        EntityReference originFromRef,
-        EntityReference updatedFromRef,
-        Relationship relationshipType,
-        String toEntityType,
-        UUID toId) {
+      String field,
+      String fromEntityType,
+      EntityReference originFromRef,
+      EntityReference updatedFromRef,
+      Relationship relationshipType,
+      String toEntityType,
+      UUID toId
+    ) {
       if (!recordChange(field, originFromRef, updatedFromRef, true, entityReferenceMatch)) {
         return; // No changes between original and updated.
       }
@@ -2448,8 +2626,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private void storeEntityHistory() {
       String extensionName = EntityUtil.getVersionExtension(entityType, original.getVersion());
       daoCollection
-          .entityExtensionDAO()
-          .insert(original.getId(), extensionName, entityType, JsonUtils.pojoToJson(original));
+        .entityExtensionDAO()
+        .insert(original.getId(), extensionName, entityType, JsonUtils.pojoToJson(original));
     }
 
     private void removeEntityHistory(Double version) {
@@ -2472,17 +2650,21 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     private boolean consolidateChanges(T original, T updated, Operation operation) {
       // If user is the same and the new update is with in the user session timeout
-      return original.getVersion() > 0.1 // First update on an entity that
-          && operation == Operation.PATCH
-          && !Boolean.TRUE.equals(original.getDeleted()) // Entity is not soft deleted
-          && !operation.isDelete() // Operation must be an update
-          && original.getUpdatedBy().equals(updated.getUpdatedBy()) // Must be updated by the same user
-          && updated.getUpdatedAt() - original.getUpdatedAt() <= sessionTimeoutMillis; // With in session timeout
+      return (
+        original.getVersion() > 0.1 && // First update on an entity that
+        operation == Operation.PATCH &&
+        !Boolean.TRUE.equals(original.getDeleted()) && // Entity is not soft deleted
+        !operation.isDelete() && // Operation must be an update
+        original.getUpdatedBy().equals(updated.getUpdatedBy()) && // Must be updated by the same user
+        updated.getUpdatedAt() - original.getUpdatedAt() <= sessionTimeoutMillis
+      ); // With in session timeout
     }
 
     private T getPreviousVersion(T original) {
-      String extensionName =
-          EntityUtil.getVersionExtension(entityType, original.getChangeDescription().getPreviousVersion());
+      String extensionName = EntityUtil.getVersionExtension(
+        entityType,
+        original.getChangeDescription().getPreviousVersion()
+      );
       String json = daoCollection.entityExtensionDAO().getExtension(original.getId(), extensionName);
       return JsonUtils.readValue(json, entityClass);
     }
@@ -2496,16 +2678,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     public void updateColumns(
-        String fieldName,
-        List<Column> origColumns,
-        List<Column> updatedColumns,
-        BiPredicate<Column, Column> columnMatch) {
+      String fieldName,
+      List<Column> origColumns,
+      List<Column> updatedColumns,
+      BiPredicate<Column, Column> columnMatch
+    ) {
       List<Column> deletedColumns = new ArrayList<>();
       List<Column> addedColumns = new ArrayList<>();
       recordListChange(fieldName, origColumns, updatedColumns, addedColumns, deletedColumns, columnMatch);
       // carry forward tags and description if deletedColumns matches added column
-      Map<String, Column> addedColumnMap =
-          addedColumns.stream().collect(Collectors.toMap(Column::getName, Function.identity()));
+      Map<String, Column> addedColumnMap = addedColumns
+        .stream()
+        .collect(Collectors.toMap(Column::getName, Function.identity()));
 
       for (Column deleted : deletedColumns) {
         if (addedColumnMap.containsKey(deleted.getName())) {
@@ -2521,7 +2705,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       // Delete tags related to deleted columns
       deletedColumns.forEach(
-          deleted -> daoCollection.tagUsageDAO().deleteTagsByTarget(deleted.getFullyQualifiedName()));
+        deleted -> daoCollection.tagUsageDAO().deleteTagsByTarget(deleted.getFullyQualifiedName())
+      );
 
       // Add tags related to newly added columns
       for (Column added : addedColumns) {
@@ -2542,10 +2727,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateColumnPrecision(stored, updated);
         updateColumnScale(stored, updated);
         updateTags(
-            stored.getFullyQualifiedName(),
-            EntityUtil.getFieldName(fieldName, updated.getName(), FIELD_TAGS),
-            stored.getTags(),
-            updated.getTags());
+          stored.getFullyQualifiedName(),
+          EntityUtil.getFieldName(fieldName, updated.getName(), FIELD_TAGS),
+          stored.getTags(),
+          updated.getTags()
+        );
         updateColumnConstraint(stored, updated);
 
         if (updated.getChildren() != null && stored.getChildren() != null) {
@@ -2585,8 +2771,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     protected void updateColumnDataLength(Column origColumn, Column updatedColumn) {
       String columnField = getColumnField(origColumn, "dataLength");
       boolean updated = recordChange(columnField, origColumn.getDataLength(), updatedColumn.getDataLength());
-      if (updated
-          && (origColumn.getDataLength() == null || updatedColumn.getDataLength() < origColumn.getDataLength())) {
+      if (
+        updated && (origColumn.getDataLength() == null || updatedColumn.getDataLength() < origColumn.getDataLength())
+      ) {
         // The data length of a column was reduced or added. Treat it as backward-incompatible change
         majorVersionChange = true;
       }
@@ -2595,9 +2782,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private void updateColumnPrecision(Column origColumn, Column updatedColumn) {
       String columnField = getColumnField(origColumn, "precision");
       boolean updated = recordChange(columnField, origColumn.getPrecision(), updatedColumn.getPrecision());
-      if (origColumn.getPrecision() != null
-          && updated
-          && (updatedColumn.getPrecision() == null || updatedColumn.getPrecision() < origColumn.getPrecision())) {
+      if (
+        origColumn.getPrecision() != null &&
+        updated &&
+        (updatedColumn.getPrecision() == null || updatedColumn.getPrecision() < origColumn.getPrecision())
+      ) {
         // Previously set precision was reduced or removed. Treat it as backward-incompatible change
         majorVersionChange = true;
       }
@@ -2606,9 +2795,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private void updateColumnScale(Column origColumn, Column updatedColumn) {
       String columnField = getColumnField(origColumn, "scale");
       boolean updated = recordChange(columnField, origColumn.getScale(), updatedColumn.getScale());
-      if (origColumn.getScale() != null
-          && updated
-          && (updatedColumn.getScale() == null || updatedColumn.getScale() < origColumn.getScale())) {
+      if (
+        origColumn.getScale() != null &&
+        updated &&
+        (updatedColumn.getScale() == null || updatedColumn.getScale() < origColumn.getScale())
+      ) {
         // Previously set scale was reduced or removed. Treat it as backward-incompatible change
         majorVersionChange = true;
       }
@@ -2616,6 +2807,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   static class EntityLoaderWithName extends CacheLoader<Pair<String, String>, EntityInterface> {
+
     @Override
     public @NonNull EntityInterface load(@NotNull Pair<String, String> fqnPair) {
       String entityType = fqnPair.getLeft();
@@ -2626,6 +2818,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   static class EntityLoaderWithId extends CacheLoader<Pair<String, UUID>, EntityInterface> {
+
     @Override
     public @NonNull EntityInterface load(@NotNull Pair<String, UUID> idPair) {
       String entityType = idPair.getLeft();
@@ -2636,6 +2829,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public static class DescriptionTaskWorkflow extends TaskWorkflow {
+
     DescriptionTaskWorkflow(ThreadContext threadContext) {
       super(threadContext);
     }
@@ -2649,6 +2843,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public static class TagTaskWorkflow extends TaskWorkflow {
+
     TagTaskWorkflow(ThreadContext threadContext) {
       super(threadContext);
     }

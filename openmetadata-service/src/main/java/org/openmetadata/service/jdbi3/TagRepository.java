@@ -38,6 +38,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class TagRepository extends EntityRepository<Tag> {
+
   public TagRepository() {
     super(TagResource.TAG_COLLECTION_PATH, Entity.TAG, Tag.class, Entity.getCollectionDAO().tagDAO(), "", "");
     supportsSearch = true;
@@ -82,7 +83,8 @@ public class TagRepository extends EntityRepository<Tag> {
   public void setFullyQualifiedName(Tag tag) {
     if (tag.getParent() == null) {
       tag.setFullyQualifiedName(
-          FullyQualifiedName.build(tag.getClassification().getFullyQualifiedName(), tag.getName()));
+        FullyQualifiedName.build(tag.getClassification().getFullyQualifiedName(), tag.getName())
+      );
     } else {
       tag.setFullyQualifiedName(FullyQualifiedName.add(tag.getParent().getFullyQualifiedName(), tag.getName()));
     }
@@ -114,8 +116,8 @@ public class TagRepository extends EntityRepository<Tag> {
 
   private Integer getUsageCount(Tag tag) {
     return tag.getUsageCount() != null
-        ? tag.getUsageCount()
-        : daoCollection.tagUsageDAO().getTagCount(TagSource.CLASSIFICATION.ordinal(), tag.getFullyQualifiedName());
+      ? tag.getUsageCount()
+      : daoCollection.tagUsageDAO().getTagCount(TagSource.CLASSIFICATION.ordinal(), tag.getFullyQualifiedName());
   }
 
   private EntityReference getClassification(Tag tag) {
@@ -133,6 +135,7 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   public class TagUpdater extends EntityUpdater {
+
     public TagUpdater(Tag original, Tag updated, Operation operation) {
       super(original, updated, operation);
     }
@@ -150,16 +153,20 @@ public class TagRepository extends EntityRepository<Tag> {
       if (!original.getName().equals(updated.getName())) {
         if (ProviderType.SYSTEM.equals(original.getProvider())) {
           throw new IllegalArgumentException(
-              CatalogExceptionMessage.systemEntityRenameNotAllowed(original.getName(), entityType));
+            CatalogExceptionMessage.systemEntityRenameNotAllowed(original.getName(), entityType)
+          );
         }
         // Category name changed - update tag names starting from classification and all the children tags
         LOG.info("Tag name changed from {} to {}", original.getName(), updated.getName());
         setFullyQualifiedName(updated);
         daoCollection.tagDAO().updateFqn(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
         daoCollection
-            .tagUsageDAO()
-            .rename(
-                TagSource.CLASSIFICATION.ordinal(), original.getFullyQualifiedName(), updated.getFullyQualifiedName());
+          .tagUsageDAO()
+          .rename(
+            TagSource.CLASSIFICATION.ordinal(),
+            original.getFullyQualifiedName(),
+            updated.getFullyQualifiedName()
+          );
         recordChange("name", original.getName(), updated.getName());
       }
 
@@ -184,13 +191,17 @@ public class TagRepository extends EntityRepository<Tag> {
       setFullyQualifiedName(updated);
       daoCollection.tagDAO().updateFqn(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
       daoCollection
-          .tagUsageDAO()
-          .rename(
-              TagSource.CLASSIFICATION.ordinal(), original.getFullyQualifiedName(), updated.getFullyQualifiedName());
+        .tagUsageDAO()
+        .rename(TagSource.CLASSIFICATION.ordinal(), original.getFullyQualifiedName(), updated.getFullyQualifiedName());
       if (classificationChanged) {
         updateClassificationRelationship(original, updated);
         recordChange(
-            "Classification", original.getClassification(), updated.getClassification(), true, entityReferenceMatch);
+          "Classification",
+          original.getClassification(),
+          updated.getClassification(),
+          true,
+          entityReferenceMatch
+        );
         invalidateTags(original.getId());
       }
       if (parentChanged) {
@@ -207,7 +218,12 @@ public class TagRepository extends EntityRepository<Tag> {
 
     private void deleteClassificationRelationship(Tag term) {
       deleteRelationship(
-          term.getClassification().getId(), Entity.CLASSIFICATION, term.getId(), TAG, Relationship.CONTAINS);
+        term.getClassification().getId(),
+        Entity.CLASSIFICATION,
+        term.getId(),
+        TAG,
+        Relationship.CONTAINS
+      );
     }
 
     private void updateParentRelationship(Tag orig, Tag updated) {

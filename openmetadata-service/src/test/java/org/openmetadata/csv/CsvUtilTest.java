@@ -24,6 +24,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 
 public class CsvUtilTest {
+
   @Test
   void testAddRecord() {
     List<String> expectedRecord = new ArrayList<>();
@@ -49,16 +50,19 @@ public class CsvUtilTest {
 
     expectedRecord.add("fqn");
     assertEquals(
-        expectedRecord, CsvUtil.addEntityReference(actualRecord, new EntityReference().withFullyQualifiedName("fqn")));
+      expectedRecord,
+      CsvUtil.addEntityReference(actualRecord, new EntityReference().withFullyQualifiedName("fqn"))
+    );
 
     // Add entity references
     expectedRecord.add(null);
     assertEquals(expectedRecord, CsvUtil.addEntityReferences(actualRecord, null)); // Null entity references
 
     expectedRecord.add("fqn1;fqn2");
-    List<EntityReference> refs =
-        listOf(
-            new EntityReference().withFullyQualifiedName("fqn1"), new EntityReference().withFullyQualifiedName("fqn2"));
+    List<EntityReference> refs = listOf(
+      new EntityReference().withFullyQualifiedName("fqn1"),
+      new EntityReference().withFullyQualifiedName("fqn2")
+    );
     assertEquals(expectedRecord, CsvUtil.addEntityReferences(actualRecord, refs));
 
     // Add tag labels
@@ -75,7 +79,10 @@ public class CsvUtilTest {
     List<String> expectedCsvRecords = listOf(expectedCsv.split(CsvUtil.LINE_SEPARATOR));
     List<String> actualCsvRecords = listOf(actualCsv.split(CsvUtil.LINE_SEPARATOR));
     assertEquals(
-        expectedCsvRecords.size(), actualCsvRecords.size(), "Expected " + expectedCsv + " actual " + actualCsv);
+      expectedCsvRecords.size(),
+      actualCsvRecords.size(),
+      "Expected " + expectedCsv + " actual " + actualCsv
+    );
     Collections.sort(expectedCsvRecords);
     Collections.sort(actualCsvRecords);
     for (int i = 0; i < expectedCsvRecords.size(); i++) {

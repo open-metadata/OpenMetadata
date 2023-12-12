@@ -120,14 +120,13 @@ import org.quartz.SchedulerException;
 /** Main catalog application */
 @Slf4j
 public class OpenMetadataApplication extends Application<OpenMetadataApplicationConfig> {
+
   private Authorizer authorizer;
   private AuthenticatorHandler authenticatorHandler;
 
   @Override
   public void run(OpenMetadataApplicationConfig catalogConfig, Environment environment)
-      throws ClassNotFoundException, IllegalAccessException, InstantiationException, NoSuchMethodException,
-          InvocationTargetException, IOException, ConfigurationException, CertificateException, KeyStoreException,
-          NoSuchAlgorithmException {
+    throws ClassNotFoundException, IllegalAccessException, InstantiationException, NoSuchMethodException, InvocationTargetException, IOException, ConfigurationException, CertificateException, KeyStoreException, NoSuchAlgorithmException {
     validateConfiguration(catalogConfig);
 
     // init for dataSourceFactory
@@ -150,9 +149,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     Fernet.getInstance().setFernetKey(catalogConfig);
 
     // init Secret Manager
-    final SecretsManager secretsManager =
-        SecretsManagerFactory.createSecretsManager(
-            catalogConfig.getSecretsManagerConfiguration(), catalogConfig.getClusterName());
+    final SecretsManager secretsManager = SecretsManagerFactory.createSecretsManager(
+      catalogConfig.getSecretsManagerConfiguration(),
+      catalogConfig.getClusterName()
+    );
 
     // init Entity Masker
     EntityMaskerFactory.createEntityMasker();
@@ -161,8 +161,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     JWTTokenGenerator.getInstance().init(catalogConfig.getJwtTokenConfiguration());
 
     // Set the Database type for choosing correct queries from annotations
-    jdbi.getConfig(SqlObjects.class)
-        .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(catalogConfig.getDataSourceFactory().getDriverClass()));
+    jdbi
+      .getConfig(SqlObjects.class)
+      .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(catalogConfig.getDataSourceFactory().getDriverClass()));
 
     // Validate flyway Migrations
     validateMigrations(jdbi, catalogConfig);
@@ -210,71 +211,89 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     authenticatorHandler.init(catalogConfig);
 
     webAnalyticEvents = MicrometerBundleSingleton.latencyTimer(catalogConfig.getEventMonitorConfiguration());
-    FilterRegistration.Dynamic micrometerFilter =
-        environment.servlets().addFilter("OMMicrometerHttpFilter", new OMMicrometerHttpFilter());
+    FilterRegistration.Dynamic micrometerFilter = environment
+      .servlets()
+      .addFilter("OMMicrometerHttpFilter", new OMMicrometerHttpFilter());
     micrometerFilter.addMappingForUrlPatterns(
-        EnumSet.allOf(DispatcherType.class), true, catalogConfig.getEventMonitorConfiguration().getPathPattern());
+      EnumSet.allOf(DispatcherType.class),
+      true,
+      catalogConfig.getEventMonitorConfiguration().getPathPattern()
+    );
     initializeWebsockets(catalogConfig, environment);
     registerSamlHandlers(catalogConfig, environment);
 
     // Handle Asset Using Servlet
-    OpenMetadataAssetServlet assetServlet =
-        new OpenMetadataAssetServlet("/assets", "/", "index.html", catalogConfig.getWebConfiguration());
+    OpenMetadataAssetServlet assetServlet = new OpenMetadataAssetServlet(
+      "/assets",
+      "/",
+      "index.html",
+      catalogConfig.getWebConfiguration()
+    );
     String pathPattern = "/" + '*';
     environment.servlets().addServlet("static", assetServlet).addMapping(pathPattern);
 
     // Handle Pipeline Service Client Status job
-    PipelineServiceStatusJobHandler pipelineServiceStatusJobHandler =
-        PipelineServiceStatusJobHandler.create(
-            catalogConfig.getPipelineServiceClientConfiguration(), catalogConfig.getClusterName());
+    PipelineServiceStatusJobHandler pipelineServiceStatusJobHandler = PipelineServiceStatusJobHandler.create(
+      catalogConfig.getPipelineServiceClientConfiguration(),
+      catalogConfig.getClusterName()
+    );
     pipelineServiceStatusJobHandler.addPipelineServiceStatusJob();
   }
 
   private void registerSamlHandlers(OpenMetadataApplicationConfig catalogConfig, Environment environment)
-      throws IOException, CertificateException, KeyStoreException, NoSuchAlgorithmException {
-    if (catalogConfig.getAuthenticationConfiguration() != null
-        && catalogConfig.getAuthenticationConfiguration().getProvider().equals(AuthProvider.SAML)) {
+    throws IOException, CertificateException, KeyStoreException, NoSuchAlgorithmException {
+    if (
+      catalogConfig.getAuthenticationConfiguration() != null &&
+      catalogConfig.getAuthenticationConfiguration().getProvider().equals(AuthProvider.SAML)
+    ) {
       SamlSettingsHolder.getInstance().initDefaultSettings(catalogConfig);
-      ServletRegistration.Dynamic samlRedirectServlet =
-          environment.servlets().addServlet("saml_login", new SamlLoginServlet());
+      ServletRegistration.Dynamic samlRedirectServlet = environment
+        .servlets()
+        .addServlet("saml_login", new SamlLoginServlet());
       samlRedirectServlet.addMapping("/api/v1/saml/login");
-      ServletRegistration.Dynamic samlReceiverServlet =
-          environment.servlets().addServlet("saml_acs", new SamlAssertionConsumerServlet());
+      ServletRegistration.Dynamic samlReceiverServlet = environment
+        .servlets()
+        .addServlet("saml_acs", new SamlAssertionConsumerServlet());
       samlReceiverServlet.addMapping("/api/v1/saml/acs");
-      ServletRegistration.Dynamic samlMetadataServlet =
-          environment.servlets().addServlet("saml_metadata", new SamlMetadataServlet());
+      ServletRegistration.Dynamic samlMetadataServlet = environment
+        .servlets()
+        .addServlet("saml_metadata", new SamlMetadataServlet());
       samlMetadataServlet.addMapping("/api/v1/saml/metadata");
     }
   }
 
   private Jdbi createAndSetupJDBI(Environment environment, DataSourceFactory dbFactory) {
     // Check for db auth providers.
-    DatabaseAuthenticationProviderFactory.get(dbFactory.getUrl())
-        .ifPresent(
-            databaseAuthenticationProvider -> {
-              String token =
-                  databaseAuthenticationProvider.authenticate(
-                      dbFactory.getUrl(), dbFactory.getUser(), dbFactory.getPassword());
-              dbFactory.setPassword(token);
-            });
+    DatabaseAuthenticationProviderFactory
+      .get(dbFactory.getUrl())
+      .ifPresent(
+        databaseAuthenticationProvider -> {
+          String token = databaseAuthenticationProvider.authenticate(
+            dbFactory.getUrl(),
+            dbFactory.getUser(),
+            dbFactory.getPassword()
+          );
+          dbFactory.setPassword(token);
+        }
+      );
 
     Jdbi jdbi = new JdbiFactory().build(environment, dbFactory, "database");
-    SqlLogger sqlLogger =
-        new SqlLogger() {
-          @Override
-          public void logBeforeExecution(StatementContext context) {
-            LOG.debug("sql {}, parameters {}", context.getRenderedSql(), context.getBinding());
-          }
+    SqlLogger sqlLogger = new SqlLogger() {
+      @Override
+      public void logBeforeExecution(StatementContext context) {
+        LOG.debug("sql {}, parameters {}", context.getRenderedSql(), context.getBinding());
+      }
 
-          @Override
-          public void logAfterExecution(StatementContext context) {
-            LOG.debug(
-                "sql {}, parameters {}, timeTaken {} ms",
-                context.getRenderedSql(),
-                context.getBinding(),
-                context.getElapsedTime(ChronoUnit.MILLIS));
-          }
-        };
+      @Override
+      public void logAfterExecution(StatementContext context) {
+        LOG.debug(
+          "sql {}, parameters {}, timeTaken {} ms",
+          context.getRenderedSql(),
+          context.getBinding(),
+          context.getElapsedTime(ChronoUnit.MILLIS)
+        );
+      }
+    };
     if (LOG.isDebugEnabled()) {
       jdbi.setSqlLogger(sqlLogger);
     }
@@ -288,31 +307,38 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   @Override
   public void initialize(Bootstrap<OpenMetadataApplicationConfig> bootstrap) {
     bootstrap.setConfigurationSourceProvider(
-        new SubstitutingSourceProvider(
-            bootstrap.getConfigurationSourceProvider(), new EnvironmentVariableSubstitutor(false)));
+      new SubstitutingSourceProvider(
+        bootstrap.getConfigurationSourceProvider(),
+        new EnvironmentVariableSubstitutor(false)
+      )
+    );
     bootstrap.addBundle(
-        new SwaggerBundle<>() {
-          @Override
-          protected SwaggerBundleConfiguration getSwaggerBundleConfiguration(
-              OpenMetadataApplicationConfig catalogConfig) {
-            return catalogConfig.getSwaggerBundleConfig();
-          }
-        });
+      new SwaggerBundle<>() {
+        @Override
+        protected SwaggerBundleConfiguration getSwaggerBundleConfiguration(
+          OpenMetadataApplicationConfig catalogConfig
+        ) {
+          return catalogConfig.getSwaggerBundleConfig();
+        }
+      }
+    );
     bootstrap.addBundle(
-        new HealthCheckBundle<>() {
-          @Override
-          protected HealthConfiguration getHealthConfiguration(final OpenMetadataApplicationConfig configuration) {
-            return configuration.getHealthConfiguration();
-          }
-        });
+      new HealthCheckBundle<>() {
+        @Override
+        protected HealthConfiguration getHealthConfiguration(final OpenMetadataApplicationConfig configuration) {
+          return configuration.getHealthConfiguration();
+        }
+      }
+    );
     bootstrap.addBundle(MicrometerBundleSingleton.getInstance());
     bootstrap.addBundle(
-        new OMWebBundle<>() {
-          @Override
-          public OMWebConfiguration getWebConfiguration(final OpenMetadataApplicationConfig configuration) {
-            return configuration.getWebConfiguration();
-          }
-        });
+      new OMWebBundle<>() {
+        @Override
+        public OMWebConfiguration getWebConfiguration(final OpenMetadataApplicationConfig configuration) {
+          return configuration.getWebConfiguration();
+        }
+      }
+    );
     super.initialize(bootstrap);
   }
 
@@ -322,25 +348,27 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     String maxMigration = Migration.lastMigrationFile(conf.getMigrationConfiguration());
     if (lastMigrated.isEmpty()) {
       throw new IllegalStateException(
-          "Could not validate Flyway migrations in the database. Make sure you have run `./bootstrap/bootstrap_storage.sh migrate-all` at least once.");
+        "Could not validate Flyway migrations in the database. Make sure you have run `./bootstrap/bootstrap_storage.sh migrate-all` at least once."
+      );
     }
     if (lastMigrated.get().compareTo(maxMigration) < 0) {
       throw new IllegalStateException(
-          "There are pending migrations to be run on the database."
-              + " Please backup your data and run `./bootstrap/bootstrap_storage.sh migrate-all`."
-              + " You can find more information on upgrading OpenMetadata at"
-              + " https://docs.open-metadata.org/deployment/upgrade ");
+        "There are pending migrations to be run on the database." +
+        " Please backup your data and run `./bootstrap/bootstrap_storage.sh migrate-all`." +
+        " You can find more information on upgrading OpenMetadata at" +
+        " https://docs.open-metadata.org/deployment/upgrade "
+      );
     }
 
     LOG.info("Validating native migrations");
     ConnectionType connectionType = ConnectionType.from(conf.getDataSourceFactory().getDriverClass());
-    MigrationWorkflow migrationWorkflow =
-        new MigrationWorkflow(
-            jdbi,
-            conf.getMigrationConfiguration().getNativePath(),
-            connectionType,
-            conf.getMigrationConfiguration().getExtensionPath(),
-            false);
+    MigrationWorkflow migrationWorkflow = new MigrationWorkflow(
+      jdbi,
+      conf.getMigrationConfiguration().getNativePath(),
+      connectionType,
+      conf.getMigrationConfiguration().getExtensionPath(),
+      false
+    );
     migrationWorkflow.loadMigrations();
     migrationWorkflow.validateMigrationsForServer();
   }
@@ -348,32 +376,34 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   private void validateConfiguration(OpenMetadataApplicationConfig catalogConfig) throws ConfigurationException {
     if (catalogConfig.getAuthorizerConfiguration().getBotPrincipals() != null) {
       throw new ConfigurationException(
-          "'botPrincipals' configuration is deprecated. Please remove it from "
-              + "'openmetadata.yaml and restart the server");
+        "'botPrincipals' configuration is deprecated. Please remove it from " +
+        "'openmetadata.yaml and restart the server"
+      );
     }
     if (catalogConfig.getPipelineServiceClientConfiguration().getAuthConfig() != null) {
       LOG.warn(
-          "'authProvider' and 'authConfig' from the 'pipelineServiceClientConfiguration' option are deprecated and will be removed in future releases.");
+        "'authProvider' and 'authConfig' from the 'pipelineServiceClientConfiguration' option are deprecated and will be removed in future releases."
+      );
     }
   }
 
   private void registerAuthorizer(OpenMetadataApplicationConfig catalogConfig, Environment environment)
-      throws NoSuchMethodException, ClassNotFoundException, IllegalAccessException, InvocationTargetException,
-          InstantiationException {
+    throws NoSuchMethodException, ClassNotFoundException, IllegalAccessException, InvocationTargetException, InstantiationException {
     AuthorizerConfiguration authorizerConf = catalogConfig.getAuthorizerConfiguration();
     AuthenticationConfiguration authenticationConfiguration = catalogConfig.getAuthenticationConfiguration();
     // to authenticate request while opening websocket connections
     if (authorizerConf != null) {
       authorizer =
-          Class.forName(authorizerConf.getClassName()).asSubclass(Authorizer.class).getConstructor().newInstance();
+        Class.forName(authorizerConf.getClassName()).asSubclass(Authorizer.class).getConstructor().newInstance();
       String filterClazzName = authorizerConf.getContainerRequestFilter();
       ContainerRequestFilter filter;
       if (!StringUtils.isEmpty(filterClazzName)) {
         filter =
-            Class.forName(filterClazzName)
-                .asSubclass(ContainerRequestFilter.class)
-                .getConstructor(AuthenticationConfiguration.class, AuthorizerConfiguration.class)
-                .newInstance(authenticationConfiguration, authorizerConf);
+          Class
+            .forName(filterClazzName)
+            .asSubclass(ContainerRequestFilter.class)
+            .getConstructor(AuthenticationConfiguration.class, AuthorizerConfiguration.class)
+            .newInstance(authenticationConfiguration, authorizerConf);
         LOG.info("Registering ContainerRequestFilter: {}", filter.getClass().getCanonicalName());
         environment.jersey().register(filter);
       }
@@ -408,14 +438,15 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   }
 
   private void registerEventPublisher(OpenMetadataApplicationConfig openMetadataApplicationConfig) {
-
     if (openMetadataApplicationConfig.getEventMonitorConfiguration() != null) {
-      final EventMonitor eventMonitor =
-          EventMonitorFactory.createEventMonitor(
-              openMetadataApplicationConfig.getEventMonitorConfiguration(),
-              openMetadataApplicationConfig.getClusterName());
-      EventMonitorPublisher eventMonitorPublisher =
-          new EventMonitorPublisher(openMetadataApplicationConfig.getEventMonitorConfiguration(), eventMonitor);
+      final EventMonitor eventMonitor = EventMonitorFactory.createEventMonitor(
+        openMetadataApplicationConfig.getEventMonitorConfiguration(),
+        openMetadataApplicationConfig.getClusterName()
+      );
+      EventMonitorPublisher eventMonitorPublisher = new EventMonitorPublisher(
+        openMetadataApplicationConfig.getEventMonitorConfiguration(),
+        eventMonitor
+      );
       EventPubSub.addEventHandler(eventMonitorPublisher);
     }
   }
@@ -434,8 +465,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     String pathSpec = "/api/v1/push/feed/*";
     if (catalogConfig.getAuthorizerConfiguration() != null) {
       socketAddressFilter =
-          new SocketAddressFilter(
-              catalogConfig.getAuthenticationConfiguration(), catalogConfig.getAuthorizerConfiguration());
+        new SocketAddressFilter(
+          catalogConfig.getAuthenticationConfiguration(),
+          catalogConfig.getAuthorizerConfiguration()
+        );
     } else {
       socketAddressFilter = new SocketAddressFilter();
     }
@@ -445,19 +478,21 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     WebSocketManager.WebSocketManagerBuilder.build(eioOptions);
     environment.getApplicationContext().setContextPath("/");
     environment
-        .getApplicationContext()
-        .addFilter(new FilterHolder(socketAddressFilter), pathSpec, EnumSet.of(DispatcherType.REQUEST));
+      .getApplicationContext()
+      .addFilter(new FilterHolder(socketAddressFilter), pathSpec, EnumSet.of(DispatcherType.REQUEST));
     environment.getApplicationContext().addServlet(new ServletHolder(new FeedServlet()), pathSpec);
     // Upgrade connection to websocket from Http
     try {
       WebSocketUpgradeFilter.configure(environment.getApplicationContext());
       NativeWebSocketServletContainerInitializer.configure(
-          environment.getApplicationContext(),
-          (context, container) ->
-              container.addMapping(
-                  new ServletPathSpec(pathSpec),
-                  (servletUpgradeRequest, servletUpgradeResponse) ->
-                      new JettyWebSocketHandler(WebSocketManager.getInstance().getEngineIoServer())));
+        environment.getApplicationContext(),
+        (context, container) ->
+          container.addMapping(
+            new ServletPathSpec(pathSpec),
+            (servletUpgradeRequest, servletUpgradeResponse) ->
+              new JettyWebSocketHandler(WebSocketManager.getInstance().getEngineIoServer())
+          )
+      );
     } catch (ServletException ex) {
       LOG.error("Websocket Upgrade Filter error : " + ex.getMessage());
     }

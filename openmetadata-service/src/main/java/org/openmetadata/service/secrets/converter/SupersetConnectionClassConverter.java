@@ -23,8 +23,11 @@ import org.openmetadata.service.util.JsonUtils;
 /** Converter class to get an `SupersetConnection` object. */
 public class SupersetConnectionClassConverter extends ClassConverter {
 
-  private static final List<Class<?>> CONNECTION_CLASSES =
-      List.of(SupersetApiConnection.class, MysqlConnection.class, PostgresConnection.class);
+  private static final List<Class<?>> CONNECTION_CLASSES = List.of(
+    SupersetApiConnection.class,
+    MysqlConnection.class,
+    PostgresConnection.class
+  );
 
   public SupersetConnectionClassConverter() {
     super(SupersetConnection.class);
@@ -35,7 +38,7 @@ public class SupersetConnectionClassConverter extends ClassConverter {
     SupersetConnection supersetConnection = (SupersetConnection) JsonUtils.convertValue(object, this.clazz);
 
     tryToConvertOrFail(supersetConnection.getConnection(), CONNECTION_CLASSES)
-        .ifPresent(supersetConnection::setConnection);
+      .ifPresent(supersetConnection::setConnection);
 
     return supersetConnection;
   }

@@ -9,6 +9,7 @@ import org.openmetadata.service.resources.events.EventResource.EventList;
 
 @Slf4j
 public abstract class AbstractEventPublisher implements EventPublisher {
+
   // Backoff timeout in seconds. Delivering events is retried 5 times.
   protected static final int BACKOFF_NORMAL = 0;
   protected static final int BACKOFF_3_SECONDS = 3 * 1000;
@@ -26,7 +27,7 @@ public abstract class AbstractEventPublisher implements EventPublisher {
 
   @Override
   public void onEvent(EventPubSub.ChangeEventHolder changeEventHolder, long sequence, boolean endOfBatch)
-      throws Exception {
+    throws Exception {
     // Ignore events that don't match the webhook event filters
     ChangeEvent changeEvent = changeEventHolder.getEvent();
 
@@ -46,7 +47,10 @@ public abstract class AbstractEventPublisher implements EventPublisher {
       Thread.sleep(currentBackoffTime);
     } catch (Exception e) {
       LOG.error(
-          "Failed to publish event type {} for entity {}", changeEvent.getEventType(), changeEvent.getEntityType());
+        "Failed to publish event type {} for entity {}",
+        changeEvent.getEventType(),
+        changeEvent.getEntityType()
+      );
       LOG.error(e.getMessage(), e);
     }
   }

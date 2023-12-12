@@ -7,7 +7,7 @@ import java.util.List;
 import org.openmetadata.service.dataInsight.PageViewsByEntitiesAggregator;
 
 public class ElasticSearchPageViewsByEntitiesAggregator
-    extends PageViewsByEntitiesAggregator<Aggregations, MultiBucketsAggregation.Bucket, MultiBucketsAggregation, Sum> {
+  extends PageViewsByEntitiesAggregator<Aggregations, MultiBucketsAggregation.Bucket, MultiBucketsAggregation, Sum> {
 
   public ElasticSearchPageViewsByEntitiesAggregator(Aggregations aggregations) {
     super(aggregations);

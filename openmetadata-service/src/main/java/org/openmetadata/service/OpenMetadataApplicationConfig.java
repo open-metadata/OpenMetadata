@@ -38,6 +38,7 @@ import org.openmetadata.service.monitoring.EventMonitorConfiguration;
 @Getter
 @Setter
 public class OpenMetadataApplicationConfig extends Configuration {
+
   @JsonProperty("database")
   @NotNull
   @Valid
@@ -95,13 +96,15 @@ public class OpenMetadataApplicationConfig extends Configuration {
 
   @Override
   public String toString() {
-    return "catalogConfig{"
-        + ", dataSourceFactory="
-        + dataSourceFactory
-        + ", swaggerBundleConfig="
-        + swaggerBundleConfig
-        + ", authorizerConfiguration="
-        + authorizerConfiguration
-        + '}';
+    return (
+      "catalogConfig{" +
+      ", dataSourceFactory=" +
+      dataSourceFactory +
+      ", swaggerBundleConfig=" +
+      swaggerBundleConfig +
+      ", authorizerConfiguration=" +
+      authorizerConfiguration +
+      '}'
+    );
   }
 }

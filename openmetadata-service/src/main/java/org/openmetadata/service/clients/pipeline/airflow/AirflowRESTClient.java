@@ -61,9 +61,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
   private static final String DAG_ID = "dag_id";
 
   public AirflowRESTClient(PipelineServiceClientConfiguration config) throws KeyStoreException {
-
     super(config);
-
     this.setPlatform(PLATFORM);
 
     this.username = (String) config.getParameters().getAdditionalProperties().get(USERNAME_KEY);
@@ -72,11 +70,10 @@ public class AirflowRESTClient extends PipelineServiceClient {
 
     SSLContext sslContext = createAirflowSSLContext(config);
 
-    HttpClient.Builder clientBuilder =
-        HttpClient.newBuilder()
-            .version(HttpClient.Version.HTTP_1_1)
-            .connectTimeout(
-                Duration.ofSeconds((Integer) config.getParameters().getAdditionalProperties().get(TIMEOUT_KEY)));
+    HttpClient.Builder clientBuilder = HttpClient
+      .newBuilder()
+      .version(HttpClient.Version.HTTP_1_1)
+      .connectTimeout(Duration.ofSeconds((Integer) config.getParameters().getAdditionalProperties().get(TIMEOUT_KEY)));
 
     if (sslContext == null) {
       this.client = clientBuilder.build();
@@ -86,8 +83,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
   }
 
   private static SSLContext createAirflowSSLContext(PipelineServiceClientConfiguration config)
-      throws KeyStoreException {
-
+    throws KeyStoreException {
     String truststorePath = (String) config.getParameters().getAdditionalProperties().get(TRUSTSTORE_PATH_KEY);
     String truststorePassword = (String) config.getParameters().getAdditionalProperties().get(TRUSTSTORE_PASSWORD_KEY);
 
@@ -95,11 +91,11 @@ public class AirflowRESTClient extends PipelineServiceClient {
   }
 
   public final HttpResponse<String> post(String endpoint, String payload, boolean authenticate)
-      throws IOException, InterruptedException {
-    HttpRequest.Builder requestBuilder =
-        HttpRequest.newBuilder(URI.create(endpoint))
-            .header(CONTENT_HEADER, CONTENT_TYPE)
-            .POST(HttpRequest.BodyPublishers.ofString(payload));
+    throws IOException, InterruptedException {
+    HttpRequest.Builder requestBuilder = HttpRequest
+      .newBuilder(URI.create(endpoint))
+      .header(CONTENT_HEADER, CONTENT_TYPE)
+      .POST(HttpRequest.BodyPublishers.ofString(payload));
     if (authenticate) {
       requestBuilder.header(AUTH_HEADER, getBasicAuthenticationHeader(username, password));
     }
@@ -112,7 +108,9 @@ public class AirflowRESTClient extends PipelineServiceClient {
 
   @Override
   public PipelineServiceClientResponse deployPipeline(
-      IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
+    IngestionPipeline ingestionPipeline,
+    ServiceEntityInterface service
+  ) {
     HttpResponse<String> response;
     try {
       String deployEndpoint = "%s/%s/deploy";
@@ -122,17 +120,21 @@ public class AirflowRESTClient extends PipelineServiceClient {
       if (response.statusCode() == 200) {
         ingestionPipeline.setDeployed(true);
         return new PipelineServiceClientResponse()
-            .withCode(200)
-            .withReason(response.body())
-            .withPlatform(this.getPlatform());
+          .withCode(200)
+          .withReason(response.body())
+          .withPlatform(this.getPlatform());
       }
     } catch (Exception e) {
       throw IngestionPipelineDeploymentException.byMessage(ingestionPipeline.getName(), e.getMessage());
     }
     throw new PipelineServiceClientException(
-        String.format(
-            "%s Failed to deploy Ingestion Pipeline due to airflow API returned %s and response %s",
-            ingestionPipeline.getName(), Response.Status.fromStatusCode(response.statusCode()), response.body()));
+      String.format(
+        "%s Failed to deploy Ingestion Pipeline due to airflow API returned %s and response %s",
+        ingestionPipeline.getName(),
+        Response.Status.fromStatusCode(response.statusCode()),
+        response.body()
+      )
+    );
   }
 
   @Override
@@ -149,14 +151,16 @@ public class AirflowRESTClient extends PipelineServiceClient {
       LOG.error(String.format("Failed to delete Airflow Pipeline %s from Airflow DAGS", pipelineName));
     }
     return new PipelineServiceClientResponse()
-        .withCode(500)
-        .withReason(String.format("Failed to delete Airflow Pipeline %s from Airflow DAGS", pipelineName))
-        .withPlatform(this.getPlatform());
+      .withCode(500)
+      .withReason(String.format("Failed to delete Airflow Pipeline %s from Airflow DAGS", pipelineName))
+      .withPlatform(this.getPlatform());
   }
 
   @Override
   public PipelineServiceClientResponse runPipeline(
-      IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
+    IngestionPipeline ingestionPipeline,
+    ServiceEntityInterface service
+  ) {
     String pipelineName = ingestionPipeline.getName();
     HttpResponse<String> response;
     try {
@@ -167,16 +171,19 @@ public class AirflowRESTClient extends PipelineServiceClient {
       response = post(triggerUrl, requestPayload.toString());
       if (response.statusCode() == 200) {
         return new PipelineServiceClientResponse()
-            .withCode(200)
-            .withReason(response.body())
-            .withPlatform(this.getPlatform());
+          .withCode(200)
+          .withReason(response.body())
+          .withPlatform(this.getPlatform());
       }
     } catch (Exception e) {
       throw IngestionPipelineDeploymentException.byMessage(pipelineName, e.getMessage());
     }
 
     throw IngestionPipelineDeploymentException.byMessage(
-        pipelineName, "Failed to trigger IngestionPipeline", Response.Status.fromStatusCode(response.statusCode()));
+      pipelineName,
+      "Failed to trigger IngestionPipeline",
+      Response.Status.fromStatusCode(response.statusCode())
+    );
   }
 
   @Override
@@ -195,15 +202,15 @@ public class AirflowRESTClient extends PipelineServiceClient {
         if (response.statusCode() == 200) {
           ingestionPipeline.setEnabled(false);
           return new PipelineServiceClientResponse()
-              .withCode(200)
-              .withReason(response.body())
-              .withPlatform(this.getPlatform());
+            .withCode(200)
+            .withReason(response.body())
+            .withPlatform(this.getPlatform());
         } else if (response.statusCode() == 404) {
           ingestionPipeline.setDeployed(false);
           return new PipelineServiceClientResponse()
-              .withCode(404)
-              .withReason(response.body())
-              .withPlatform(this.getPlatform());
+            .withCode(404)
+            .withReason(response.body())
+            .withPlatform(this.getPlatform());
         }
         // otherwise, enable it back
       } else {
@@ -213,24 +220,25 @@ public class AirflowRESTClient extends PipelineServiceClient {
         if (response.statusCode() == 200) {
           ingestionPipeline.setEnabled(true);
           return new PipelineServiceClientResponse()
-              .withCode(200)
-              .withReason(response.body())
-              .withPlatform(this.getPlatform());
+            .withCode(200)
+            .withReason(response.body())
+            .withPlatform(this.getPlatform());
         } else if (response.statusCode() == 404) {
           ingestionPipeline.setDeployed(false);
           return new PipelineServiceClientResponse()
-              .withCode(404)
-              .withReason(response.body())
-              .withPlatform(this.getPlatform());
+            .withCode(404)
+            .withReason(response.body())
+            .withPlatform(this.getPlatform());
         }
       }
     } catch (Exception e) {
       throw PipelineServiceClientException.byMessage(ingestionPipeline.getName(), e.getMessage());
     }
     throw PipelineServiceClientException.byMessage(
-        ingestionPipeline.getName(),
-        "Failed to toggle ingestion pipeline state",
-        Response.Status.fromStatusCode(response.statusCode()));
+      ingestionPipeline.getName(),
+      "Failed to toggle ingestion pipeline state",
+      Response.Status.fromStatusCode(response.statusCode())
+    );
   }
 
   @Override
@@ -239,7 +247,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
     try {
       String statusEndPoint = "%s/%s/status?dag_id=%s&only_queued=true";
       response =
-          getRequestAuthenticatedForJsonContent(statusEndPoint, serviceURL, API_ENDPOINT, ingestionPipeline.getName());
+        getRequestAuthenticatedForJsonContent(statusEndPoint, serviceURL, API_ENDPOINT, ingestionPipeline.getName());
       if (response.statusCode() == 200) {
         return JsonUtils.readObjects(response.body(), PipelineStatus.class);
       }
@@ -248,8 +256,8 @@ public class AirflowRESTClient extends PipelineServiceClient {
     }
     // Return an empty list. We'll just show the stored status from the Ingestion Pipeline
     LOG.error(
-        String.format(
-            "Got status code [%s] trying to get queued statuses: [%s]", response.statusCode(), response.body()));
+      String.format("Got status code [%s] trying to get queued statuses: [%s]", response.statusCode(), response.body())
+    );
     return new ArrayList<>();
   }
 
@@ -278,7 +286,8 @@ public class AirflowRESTClient extends PipelineServiceClient {
       // Auth error when accessing the APIs
       if (response.statusCode() == 401 || response.statusCode() == 403) {
         return buildUnhealthyStatus(
-            String.format("Authentication failed for user [%s] trying to access the Airflow APIs.", this.username));
+          String.format("Authentication failed for user [%s] trying to access the Airflow APIs.", this.username)
+        );
       }
 
       // APIs URL not found
@@ -287,8 +296,8 @@ public class AirflowRESTClient extends PipelineServiceClient {
       }
 
       return buildUnhealthyStatus(
-          String.format("Unexpected status response: code [%s] - [%s]", response.statusCode(), response.body()));
-
+        String.format("Unexpected status response: code [%s] - [%s]", response.statusCode(), response.body())
+      );
     } catch (Exception e) {
       return buildUnhealthyStatus(String.format("Failed to get REST status due to [%s].", e.getMessage()));
     }
@@ -304,17 +313,21 @@ public class AirflowRESTClient extends PipelineServiceClient {
       response = post(automationsUrl, workflowPayload);
       if (response.statusCode() == 200) {
         return new PipelineServiceClientResponse()
-            .withCode(200)
-            .withReason(response.body())
-            .withPlatform(this.getPlatform());
+          .withCode(200)
+          .withReason(response.body())
+          .withPlatform(this.getPlatform());
       }
     } catch (Exception e) {
       throw IngestionPipelineDeploymentException.byMessage(workflow.getName(), e.getMessage());
     }
     throw new PipelineServiceClientException(
-        String.format(
-            "%s Failed to trigger workflow due to airflow API returned %s and response %s",
-            workflow.getName(), Response.Status.fromStatusCode(response.statusCode()), response.body()));
+      String.format(
+        "%s Failed to trigger workflow due to airflow API returned %s and response %s",
+        workflow.getName(),
+        Response.Status.fromStatusCode(response.statusCode()),
+        response.body()
+      )
+    );
   }
 
   @Override
@@ -338,17 +351,21 @@ public class AirflowRESTClient extends PipelineServiceClient {
       response = post(automationsUrl, workflowPayload);
       if (response.statusCode() == 200) {
         return new PipelineServiceClientResponse()
-            .withCode(200)
-            .withReason(response.body())
-            .withPlatform(this.getPlatform());
+          .withCode(200)
+          .withReason(response.body())
+          .withPlatform(this.getPlatform());
       }
     } catch (Exception e) {
       throw IngestionPipelineDeploymentException.byMessage(workflowPayload, e.getMessage());
     }
     throw new PipelineServiceClientException(
-        String.format(
-            "%s Failed to trigger flow due to airflow API returned %s and response %s",
-            workflowPayload, Response.Status.fromStatusCode(response.statusCode()), response.body()));
+      String.format(
+        "%s Failed to trigger flow due to airflow API returned %s and response %s",
+        workflowPayload,
+        Response.Status.fromStatusCode(response.statusCode()),
+        response.body()
+      )
+    );
   }
 
   @Override
@@ -362,15 +379,16 @@ public class AirflowRESTClient extends PipelineServiceClient {
       response = post(killUrl, requestPayload.toString());
       if (response.statusCode() == 200) {
         return new PipelineServiceClientResponse()
-            .withCode(200)
-            .withReason(response.body())
-            .withPlatform(this.getPlatform());
+          .withCode(200)
+          .withReason(response.body())
+          .withPlatform(this.getPlatform());
       }
     } catch (Exception e) {
       throw PipelineServiceClientException.byMessage("Failed to kill running workflows", e.getMessage());
     }
     throw new PipelineServiceClientException(
-        String.format("Failed to kill running workflows due to %s", response.body()));
+      String.format("Failed to kill running workflows due to %s", response.body())
+    );
   }
 
   @Override
@@ -385,7 +403,8 @@ public class AirflowRESTClient extends PipelineServiceClient {
       throw PipelineServiceClientException.byMessage("Failed to get Pipeline Service host IP.", e.getMessage());
     }
     throw new PipelineServiceClientException(
-        String.format("Failed to get Pipeline Service host IP due to %s", response.body()));
+      String.format("Failed to get Pipeline Service host IP due to %s", response.body())
+    );
   }
 
   @Override
@@ -399,9 +418,14 @@ public class AirflowRESTClient extends PipelineServiceClient {
     }
     try {
       response =
-          getRequestAuthenticatedForJsonContent(
-              "%s/%s/last_dag_logs?dag_id=%s&task_id=%s%s",
-              serviceURL, API_ENDPOINT, ingestionPipeline.getName(), taskId, afterParam);
+        getRequestAuthenticatedForJsonContent(
+          "%s/%s/last_dag_logs?dag_id=%s&task_id=%s%s",
+          serviceURL,
+          API_ENDPOINT,
+          ingestionPipeline.getName(),
+          taskId,
+          afterParam
+        );
       if (response.statusCode() == 200) {
         return JsonUtils.readValue(response.body(), new TypeReference<>() {});
       }
@@ -409,25 +433,33 @@ public class AirflowRESTClient extends PipelineServiceClient {
       throw PipelineServiceClientException.byMessage("Failed to get last ingestion logs.", e.getMessage());
     }
     throw new PipelineServiceClientException(
-        String.format("Failed to get last ingestion logs due to %s", response.body()));
+      String.format("Failed to get last ingestion logs due to %s", response.body())
+    );
   }
 
   private HttpResponse<String> getRequestAuthenticatedForJsonContent(
-      String stringUrlFormat, Object... stringReplacement) throws IOException, InterruptedException {
+    String stringUrlFormat,
+    Object... stringReplacement
+  )
+    throws IOException, InterruptedException {
     HttpRequest request = authenticatedRequestBuilder(stringUrlFormat, stringReplacement).GET().build();
     return client.send(request, HttpResponse.BodyHandlers.ofString());
   }
 
   private HttpResponse<String> deleteRequestAuthenticatedForJsonContent(
-      String stringUrlFormat, Object... stringReplacement) throws IOException, InterruptedException {
+    String stringUrlFormat,
+    Object... stringReplacement
+  )
+    throws IOException, InterruptedException {
     HttpRequest request = authenticatedRequestBuilder(stringUrlFormat, stringReplacement).DELETE().build();
     return client.send(request, HttpResponse.BodyHandlers.ofString());
   }
 
   private HttpRequest.Builder authenticatedRequestBuilder(String stringUrlFormat, Object... stringReplacement) {
     String url = String.format(stringUrlFormat, stringReplacement);
-    return HttpRequest.newBuilder(URI.create(url))
-        .header(CONTENT_HEADER, CONTENT_TYPE)
-        .header(AUTH_HEADER, getBasicAuthenticationHeader(username, password));
+    return HttpRequest
+      .newBuilder(URI.create(url))
+      .header(CONTENT_HEADER, CONTENT_TYPE)
+      .header(AUTH_HEADER, getBasicAuthenticationHeader(username, password));
   }
 }

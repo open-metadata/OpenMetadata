@@ -14,6 +14,7 @@ import javax.servlet.FilterRegistration;
 import org.eclipse.jetty.servlets.HeaderFilter;
 
 public abstract class OMWebBundle<T extends Configuration> implements ConfiguredBundle<T> {
+
   protected OMWebBundle() {}
 
   @Override
@@ -62,14 +63,20 @@ public abstract class OMWebBundle<T extends Configuration> implements Configured
   }
 
   protected void configureHeaderFilter(
-      Environment environment, String uriPath, String urlPattern, Map<String, String> headers) {
-    String headerConfig =
-        headers.entrySet().stream()
-            .map(entry -> "set " + entry.getKey() + ": " + entry.getValue())
-            .collect(Collectors.joining(","));
+    Environment environment,
+    String uriPath,
+    String urlPattern,
+    Map<String, String> headers
+  ) {
+    String headerConfig = headers
+      .entrySet()
+      .stream()
+      .map(entry -> "set " + entry.getKey() + ": " + entry.getValue())
+      .collect(Collectors.joining(","));
     Map<String, String> filterConfig = Collections.singletonMap("headerConfig", headerConfig);
-    FilterRegistration.Dynamic filter =
-        environment.servlets().addFilter("header-filter-" + uriPath, HeaderFilter.class);
+    FilterRegistration.Dynamic filter = environment
+      .servlets()
+      .addFilter("header-filter-" + uriPath, HeaderFilter.class);
     filter.addMappingForUrlPatterns(EnumSet.of(DispatcherType.REQUEST), true, urlPattern);
     filter.setInitParameters(filterConfig);
   }

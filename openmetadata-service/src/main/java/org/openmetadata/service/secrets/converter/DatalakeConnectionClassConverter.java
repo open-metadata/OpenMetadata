@@ -23,8 +23,11 @@ import org.openmetadata.service.util.JsonUtils;
 /** Converter class to get an `DatalakeConnection` object. */
 public class DatalakeConnectionClassConverter extends ClassConverter {
 
-  private static final List<Class<?>> CONFIG_SOURCE_CLASSES =
-      List.of(GCSConfig.class, S3Config.class, AzureConfig.class);
+  private static final List<Class<?>> CONFIG_SOURCE_CLASSES = List.of(
+    GCSConfig.class,
+    S3Config.class,
+    AzureConfig.class
+  );
 
   public DatalakeConnectionClassConverter() {
     super(DatalakeConnection.class);
@@ -35,7 +38,7 @@ public class DatalakeConnectionClassConverter extends ClassConverter {
     DatalakeConnection datalakeConnection = (DatalakeConnection) JsonUtils.convertValue(object, this.clazz);
 
     tryToConvertOrFail(datalakeConnection.getConfigSource(), CONFIG_SOURCE_CLASSES)
-        .ifPresent(datalakeConnection::setConfigSource);
+      .ifPresent(datalakeConnection::setConfigSource);
 
     return datalakeConnection;
   }

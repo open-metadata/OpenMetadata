@@ -19,7 +19,9 @@ import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 
 public class SecretsManagerFactory {
-  @Getter private static SecretsManager secretsManager;
+
+  @Getter
+  private static SecretsManager secretsManager;
 
   private SecretsManagerFactory() {}
 
@@ -28,8 +30,9 @@ public class SecretsManagerFactory {
     if (secretsManager != null) {
       return secretsManager;
     }
-    SecretsManagerProvider secretsManagerProvider =
-        config != null && config.getSecretsManager() != null ? config.getSecretsManager() : SecretsManagerProvider.NOOP;
+    SecretsManagerProvider secretsManagerProvider = config != null && config.getSecretsManager() != null
+      ? config.getSecretsManager()
+      : SecretsManagerProvider.NOOP;
     switch (secretsManagerProvider) {
       case NOOP:
       case AWS_SSM:

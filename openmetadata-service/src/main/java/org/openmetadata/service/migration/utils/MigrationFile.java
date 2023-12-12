@@ -18,6 +18,7 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.util.EntityUtil;
 
 public class MigrationFile implements Comparable<MigrationFile> {
+
   public final int[] versionNumbers;
   public final String version;
   public final ConnectionType connectionType;
@@ -28,7 +29,7 @@ public class MigrationFile implements Comparable<MigrationFile> {
   private final List<String> schemaChanges;
   private final List<String> postDDLScripts;
   public static final String DEFAULT_MIGRATION_PROCESS_CLASS =
-      "org.openmetadata.service.migration.api.MigrationProcessImpl";
+    "org.openmetadata.service.migration.api.MigrationProcessImpl";
 
   public MigrationFile(File dir, MigrationDAO migrationDAO, ConnectionType connectionType) {
     this.dir = dir;
@@ -60,8 +61,11 @@ public class MigrationFile implements Comparable<MigrationFile> {
       parser = new MySQLParser(configuration, parsingContext);
     }
     if (new File(getSchemaChangesFile()).isFile()) {
-      try (SqlStatementIterator schemaChangesIterator =
-          parser.parse(new FileSystemResource(null, getSchemaChangesFile(), StandardCharsets.UTF_8, true))) {
+      try (
+        SqlStatementIterator schemaChangesIterator = parser.parse(
+          new FileSystemResource(null, getSchemaChangesFile(), StandardCharsets.UTF_8, true)
+        )
+      ) {
         while (schemaChangesIterator.hasNext()) {
           String sqlStatement = schemaChangesIterator.next().getSql();
           if (!checkIfQueryPreviouslyRan(sqlStatement)) {
@@ -71,8 +75,11 @@ public class MigrationFile implements Comparable<MigrationFile> {
       }
     }
     if (new File(getPostDDLScriptFile()).isFile()) {
-      try (SqlStatementIterator schemaChangesIterator =
-          parser.parse(new FileSystemResource(null, getPostDDLScriptFile(), StandardCharsets.UTF_8, true))) {
+      try (
+        SqlStatementIterator schemaChangesIterator = parser.parse(
+          new FileSystemResource(null, getPostDDLScriptFile(), StandardCharsets.UTF_8, true)
+        )
+      ) {
         while (schemaChangesIterator.hasNext()) {
           String sqlStatement = schemaChangesIterator.next().getSql();
           if (!checkIfQueryPreviouslyRan(sqlStatement)) {
@@ -84,8 +91,11 @@ public class MigrationFile implements Comparable<MigrationFile> {
   }
 
   public String getMigrationProcessClassName() {
-    String clazzName =
-        String.format("org.openmetadata.service.migration.%s.%s.Migration", dbPackageName, getVersionPackageName());
+    String clazzName = String.format(
+      "org.openmetadata.service.migration.%s.%s.Migration",
+      dbPackageName,
+      getVersionPackageName()
+    );
     try {
       Class.forName(clazzName);
     } catch (ClassNotFoundException e) {

@@ -19,6 +19,7 @@ import io.micrometer.prometheus.PrometheusMeterRegistry;
 import org.openmetadata.service.monitoring.EventMonitorConfiguration;
 
 public class MicrometerBundleSingleton {
+
   private static final MicrometerBundle instance = new MicrometerBundle();
   public static Timer webAnalyticEvents;
   // We'll use this registry to add monitoring around Ingestion Pipelines
@@ -31,10 +32,11 @@ public class MicrometerBundleSingleton {
   }
 
   public static Timer latencyTimer(EventMonitorConfiguration configuration) {
-    return Timer.builder("latency_requests")
-        .description("Request latency in seconds.")
-        .publishPercentiles(configuration.getLatency())
-        .publishPercentileHistogram()
-        .register(prometheusMeterRegistry);
+    return Timer
+      .builder("latency_requests")
+      .description("Request latency in seconds.")
+      .publishPercentiles(configuration.getLatency())
+      .publishPercentileHistogram()
+      .register(prometheusMeterRegistry);
   }
 }

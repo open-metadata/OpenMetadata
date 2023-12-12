@@ -32,11 +32,12 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 public class KpiRepository extends EntityRepository<Kpi> {
+
   private static final String KPI_RESULT_FIELD = "kpiResult";
   public static final String COLLECTION_PATH = "/v1/kpi";
   private static final String UPDATE_FIELDS = "targetDefinition,dataInsightChart,startDate,endDate,metricType";
   private static final String PATCH_FIELDS =
-      "targetDefinition,dataInsightChart,description,startDate,endDate,metricType";
+    "targetDefinition,dataInsightChart,description,startDate,endDate,metricType";
   public static final String KPI_RESULT_EXTENSION = "kpi.kpiResult";
 
   public KpiRepository() {
@@ -47,7 +48,8 @@ public class KpiRepository extends EntityRepository<Kpi> {
   public void setFields(Kpi kpi, EntityUtil.Fields fields) {
     kpi.setDataInsightChart(fields.contains("dataInsightChart") ? getDataInsightChart(kpi) : kpi.getDataInsightChart());
     kpi.withKpiResult(
-        fields.contains(KPI_RESULT_FIELD) ? getKpiResult(kpi.getFullyQualifiedName()) : kpi.getKpiResult());
+      fields.contains(KPI_RESULT_FIELD) ? getKpiResult(kpi.getFullyQualifiedName()) : kpi.getKpiResult()
+    );
   }
 
   @Override
@@ -67,7 +69,9 @@ public class KpiRepository extends EntityRepository<Kpi> {
   }
 
   private void validateKpiTargetDefinition(
-      List<KpiTarget> kpiTargetDef, List<ChartParameterValues> dataInsightChartMetric) {
+    List<KpiTarget> kpiTargetDef,
+    List<ChartParameterValues> dataInsightChartMetric
+  ) {
     if (kpiTargetDef.isEmpty() && !dataInsightChartMetric.isEmpty()) {
       throw new IllegalArgumentException("Parameter Values doesn't match Kpi Definition Parameters");
     }
@@ -78,9 +82,8 @@ public class KpiRepository extends EntityRepository<Kpi> {
     for (KpiTarget kpiTarget : kpiTargetDef) {
       if (!values.containsKey(kpiTarget.getName())) {
         throw new IllegalArgumentException(
-            "Kpi Target Definition "
-                + kpiTarget.getName()
-                + " is not valid, metric not defined in corresponding chart");
+          "Kpi Target Definition " + kpiTarget.getName() + " is not valid, metric not defined in corresponding chart"
+        );
       }
     }
   }
@@ -114,8 +117,10 @@ public class KpiRepository extends EntityRepository<Kpi> {
   public RestUtil.PutResponse<?> deleteKpiResult(String fqn, Long timestamp) {
     // Validate the request content
     Kpi kpi = findByName(fqn, Include.NON_DELETED);
-    KpiResult storedKpiResult =
-        JsonUtils.readValue(getExtensionAtTimestamp(fqn, KPI_RESULT_EXTENSION, timestamp), KpiResult.class);
+    KpiResult storedKpiResult = JsonUtils.readValue(
+      getExtensionAtTimestamp(fqn, KPI_RESULT_EXTENSION, timestamp),
+      KpiResult.class
+    );
     if (storedKpiResult != null) {
       deleteExtensionAtTimestamp(fqn, KPI_RESULT_EXTENSION, timestamp);
       kpi.setKpiResult(storedKpiResult);
@@ -124,7 +129,8 @@ public class KpiRepository extends EntityRepository<Kpi> {
       return new RestUtil.PutResponse<>(Response.Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
     }
     throw new EntityNotFoundException(
-        String.format("Failed to find kpi result for %s at %s", kpi.getName(), timestamp));
+      String.format("Failed to find kpi result for %s at %s", kpi.getName(), timestamp)
+    );
   }
 
   private ChangeDescription addKpiResultChangeDescription(Double version, Object newValue) {
@@ -152,24 +158,30 @@ public class KpiRepository extends EntityRepository<Kpi> {
   public ResultList<KpiResult> getKpiResults(String fqn, Long startTs, Long endTs, OrderBy orderBy) {
     List<KpiResult> kpiResults;
     kpiResults =
-        JsonUtils.readObjects(
-            getResultsFromAndToTimestamps(fqn, KPI_RESULT_EXTENSION, startTs, endTs, orderBy), KpiResult.class);
+      JsonUtils.readObjects(
+        getResultsFromAndToTimestamps(fqn, KPI_RESULT_EXTENSION, startTs, endTs, orderBy),
+        KpiResult.class
+      );
     return new ResultList<>(kpiResults, String.valueOf(startTs), String.valueOf(endTs), kpiResults.size());
   }
 
   private ChangeEvent getChangeEvent(
-      EntityInterface updated, ChangeDescription change, String entityType, Double prevVersion) {
+    EntityInterface updated,
+    ChangeDescription change,
+    String entityType,
+    Double prevVersion
+  ) {
     return new ChangeEvent()
-        .withEntity(updated)
-        .withChangeDescription(change)
-        .withEventType(EventType.ENTITY_UPDATED)
-        .withEntityType(entityType)
-        .withEntityId(updated.getId())
-        .withEntityFullyQualifiedName(updated.getFullyQualifiedName())
-        .withUserName(updated.getUpdatedBy())
-        .withTimestamp(System.currentTimeMillis())
-        .withCurrentVersion(updated.getVersion())
-        .withPreviousVersion(prevVersion);
+      .withEntity(updated)
+      .withChangeDescription(change)
+      .withEventType(EventType.ENTITY_UPDATED)
+      .withEntityType(entityType)
+      .withEntityId(updated.getId())
+      .withEntityFullyQualifiedName(updated.getFullyQualifiedName())
+      .withUserName(updated.getUpdatedBy())
+      .withTimestamp(System.currentTimeMillis())
+      .withCurrentVersion(updated.getVersion())
+      .withPreviousVersion(prevVersion);
   }
 
   @Override
@@ -178,6 +190,7 @@ public class KpiRepository extends EntityRepository<Kpi> {
   }
 
   public class KpiUpdater extends EntityUpdater {
+
     public KpiUpdater(Kpi original, Kpi updated, Operation operation) {
       super(original, updated, operation);
     }
@@ -186,14 +199,15 @@ public class KpiRepository extends EntityRepository<Kpi> {
     @Override
     public void entitySpecificUpdate() {
       updateToRelationship(
-          "dataInsightChart",
-          KPI,
-          original.getId(),
-          Relationship.USES,
-          DATA_INSIGHT_CHART,
-          original.getDataInsightChart(),
-          updated.getDataInsightChart(),
-          false);
+        "dataInsightChart",
+        KPI,
+        original.getId(),
+        Relationship.USES,
+        DATA_INSIGHT_CHART,
+        original.getDataInsightChart(),
+        updated.getDataInsightChart(),
+        false
+      );
       recordChange("targetDefinition", original.getTargetDefinition(), updated.getTargetDefinition(), true);
       recordChange("startDate", original.getStartDate(), updated.getStartDate());
       recordChange("endDate", original.getEndDate(), updated.getEndDate());

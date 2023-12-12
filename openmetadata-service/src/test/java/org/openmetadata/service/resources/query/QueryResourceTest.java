@@ -40,6 +40,7 @@ import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
+
   private EntityReference TABLE_REF;
   private String QUERY;
   private String QUERY_CHECKSUM;
@@ -55,12 +56,11 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     TableResourceTest tableResourceTest = new TableResourceTest();
     // Create Table Entity
     List<Column> columns = List.of(TableResourceTest.getColumn(C1, ColumnDataType.INT, null));
-    CreateTable create =
-        tableResourceTest
-            .createRequest(test)
-            .withName(getEntityName(test))
-            .withColumns(columns)
-            .withOwner(EntityResourceTest.USER1_REF);
+    CreateTable create = tableResourceTest
+      .createRequest(test)
+      .withName(getEntityName(test))
+      .withColumns(columns)
+      .withOwner(EntityResourceTest.USER1_REF);
     Table createdTable = tableResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     TABLE_REF = createdTable.getEntityReference();
     QUERY = "select * from sales";
@@ -70,14 +70,14 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
   @Override
   public CreateQuery createRequest(String type) {
     return new CreateQuery()
-        .withName(type)
-        .withOwner(USER1_REF)
-        .withUsers(List.of(USER2.getName()))
-        .withQueryUsedIn(List.of(TABLE_REF))
-        .withQuery(QUERY)
-        .withDuration(0.0)
-        .withQueryDate(1673857635064L)
-        .withService(SNOWFLAKE_REFERENCE.getFullyQualifiedName());
+      .withName(type)
+      .withOwner(USER1_REF)
+      .withUsers(List.of(USER2.getName()))
+      .withQueryUsedIn(List.of(TABLE_REF))
+      .withQuery(QUERY)
+      .withDuration(0.0)
+      .withQueryDate(1673857635064L)
+      .withService(SNOWFLAKE_REFERENCE.getFullyQualifiedName());
   }
 
   @Override
@@ -94,15 +94,15 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
   public Query validateGetWithDifferentFields(Query entity, boolean byName) throws HttpResponseException {
     String fields = "";
     entity =
-        byName
-            ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getEntity(entity.getId(), null, ADMIN_AUTH_HEADERS);
+      byName
+        ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+        : getEntity(entity.getId(), null, ADMIN_AUTH_HEADERS);
     assertListNull(entity.getOwner(), entity.getUsers(), entity.getQueryUsedIn());
     fields = "owner,tags,followers,users,queryUsedIn"; // Not testing for kpiResult field
     entity =
-        byName
-            ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
+      byName
+        ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+        : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(entity.getOwner(), entity.getUsers(), entity.getQueryUsedIn());
     return entity;
   }
@@ -128,13 +128,15 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
 
   @Test
   void post_without_query_400() {
-    CreateQuery create =
-        new CreateQuery()
-            .withDuration(0.0)
-            .withQueryDate(1673857635064L)
-            .withService(SNOWFLAKE_REFERENCE.getFullyQualifiedName());
+    CreateQuery create = new CreateQuery()
+      .withDuration(0.0)
+      .withQueryDate(1673857635064L)
+      .withService(SNOWFLAKE_REFERENCE.getFullyQualifiedName());
     assertResponse(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS), Response.Status.BAD_REQUEST, "[query must not be null]");
+      () -> createEntity(create, ADMIN_AUTH_HEADERS),
+      Response.Status.BAD_REQUEST,
+      "[query must not be null]"
+    );
   }
 
   @Test
@@ -204,7 +206,10 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     // Create an entity with mandatory name field too long
     final CreateQuery request2 = createRequest(LONG_ENTITY_NAME, "description", "displayName", null);
     assertResponse(
-        () -> createEntity(request2, ADMIN_AUTH_HEADERS), BAD_REQUEST, TestUtils.getEntityNameLengthError(entityClass));
+      () -> createEntity(request2, ADMIN_AUTH_HEADERS),
+      BAD_REQUEST,
+      TestUtils.getEntityNameLengthError(entityClass)
+    );
   }
 
   @Test
@@ -220,19 +225,25 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     // Another user won't see the PII query body
     ResultList<Query> maskedQueries = getQueries(100, "*", false, authHeaders(USER2_REF.getName()));
     maskedQueries
-        .getData()
-        .forEach(
-            query -> {
-              if (query.getTags().stream().map(TagLabel::getTagFQN).anyMatch("PII.Sensitive"::equals)) {
-                assertEquals("********", query.getQuery());
-              } else {
-                assertEquals(query.getQuery(), QUERY);
-              }
-            });
+      .getData()
+      .forEach(
+        query -> {
+          if (query.getTags().stream().map(TagLabel::getTagFQN).anyMatch("PII.Sensitive"::equals)) {
+            assertEquals("********", query.getQuery());
+          } else {
+            assertEquals(query.getQuery(), QUERY);
+          }
+        }
+      );
   }
 
-  public ResultList<Query> getQueries(Integer limit, String fields, Boolean includeAll, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public ResultList<Query> getQueries(
+    Integer limit,
+    String fields,
+    Boolean includeAll,
+    Map<String, String> authHeaders
+  )
+    throws HttpResponseException {
     WebTarget target = getCollection();
     target = limit != null ? target.queryParam("limit", limit) : target;
     target = target.queryParam("fields", fields);

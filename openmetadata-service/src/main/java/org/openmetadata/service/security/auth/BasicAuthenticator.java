@@ -83,6 +83,7 @@ import org.openmetadata.service.util.TokenUtil;
 
 @Slf4j
 public class BasicAuthenticator implements AuthenticatorHandler {
+
   // No of cycles to perform hashing, increasing too much slows the algorithm
   private static final int HASHING_COST = 12;
   private UserRepository userRepository;
@@ -132,8 +133,11 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   @Override
   public void confirmEmailRegistration(UriInfo uriInfo, String emailToken) {
     EmailVerificationToken emailVerificationToken = (EmailVerificationToken) tokenRepository.findByToken(emailToken);
-    User registeredUser =
-        userRepository.get(null, emailVerificationToken.getUserId(), userRepository.getFieldsWithUserAuth("*"));
+    User registeredUser = userRepository.get(
+      null,
+      emailVerificationToken.getUserId(),
+      userRepository.getFieldsWithUserAuth("*")
+    );
     if (Boolean.TRUE.equals(registeredUser.getIsEmailVerified())) {
       LOG.info("User [{}] already registered.", emailToken);
       return;
@@ -142,7 +146,9 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     // verify Token Expiry
     if (emailVerificationToken.getExpiryDate().compareTo(Instant.now().toEpochMilli()) < 0) {
       throw new CustomExceptionMessage(
-          INTERNAL_SERVER_ERROR, String.format(TOKEN_EXPIRY_ERROR, emailVerificationToken.getToken()));
+        INTERNAL_SERVER_ERROR,
+        String.format(TOKEN_EXPIRY_ERROR, emailVerificationToken.getToken())
+      );
     }
 
     // Update the user
@@ -163,13 +169,17 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   public void sendEmailVerification(UriInfo uriInfo, User user) throws IOException {
     if (isEmailServiceEnabled) {
       UUID mailVerificationToken = UUID.randomUUID();
-      EmailVerificationToken emailVerificationToken =
-          TokenUtil.getEmailVerificationToken(user.getId(), mailVerificationToken);
+      EmailVerificationToken emailVerificationToken = TokenUtil.getEmailVerificationToken(
+        user.getId(),
+        mailVerificationToken
+      );
       LOG.info("Generated Email verification token [" + mailVerificationToken + "]");
-      String emailVerificationLink =
-          String.format(
-              "%s/users/registrationConfirmation?user=%s&token=%s",
-              getSmtpSettings().getOpenMetadataUrl(), user.getFullyQualifiedName(), mailVerificationToken);
+      String emailVerificationLink = String.format(
+        "%s/users/registrationConfirmation?user=%s&token=%s",
+        getSmtpSettings().getOpenMetadataUrl(),
+        user.getFullyQualifiedName(),
+        mailVerificationToken
+      );
       try {
         EmailUtil.sendEmailVerification(emailVerificationLink, user);
       } catch (TemplateException e) {
@@ -183,16 +193,16 @@ public class BasicAuthenticator implements AuthenticatorHandler {
 
   @Override
   public void sendPasswordResetLink(UriInfo uriInfo, User user, String subject, String templateFilePath)
-      throws IOException {
+    throws IOException {
     UUID mailVerificationToken = UUID.randomUUID();
     PasswordResetToken resetToken = TokenUtil.getPasswordResetToken(user.getId(), mailVerificationToken);
     LOG.info("Generated Password Reset verification token [" + mailVerificationToken + "]");
-    String passwordResetLink =
-        String.format(
-            "%s/users/password/reset?user=%s&token=%s",
-            getSmtpSettings().getOpenMetadataUrl(),
-            URLEncoder.encode(user.getName(), StandardCharsets.UTF_8),
-            mailVerificationToken);
+    String passwordResetLink = String.format(
+      "%s/users/password/reset?user=%s&token=%s",
+      getSmtpSettings().getOpenMetadataUrl(),
+      URLEncoder.encode(user.getName(), StandardCharsets.UTF_8),
+      mailVerificationToken
+    );
     try {
       EmailUtil.sendPasswordResetLink(passwordResetLink, user, subject, templateFilePath);
     } catch (TemplateException e) {
@@ -210,9 +220,11 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     PasswordResetToken passwordResetToken = (PasswordResetToken) tokenRepository.findByToken(tokenID);
     Set<String> fields = userRepository.getAllowedFieldsCopy();
     fields.add(USER_PROTECTED_FIELDS);
-    User storedUser =
-        userRepository.getByName(
-            uriInfo, request.getUsername(), new EntityUtil.Fields(fields, String.join(",", fields)));
+    User storedUser = userRepository.getByName(
+      uriInfo,
+      request.getUsername(),
+      new EntityUtil.Fields(fields, String.join(",", fields))
+    );
     // token validity
     if (!passwordResetToken.getUserId().equals(storedUser.getId())) {
       throw new CustomExceptionMessage(BAD_REQUEST, "Token does not belong to the user.");
@@ -246,7 +258,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
 
   @Override
   public void changeUserPwdWithOldPwd(UriInfo uriInfo, String userName, ChangePasswordRequest request)
-      throws IOException {
+    throws IOException {
     // passwords validity
     if (!request.getNewPassword().equals(request.getConfirmPassword())) {
       throw new IllegalArgumentException("Password and Confirm Password should match");
@@ -260,17 +272,22 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     // for the user is null
     if (storedUser.getAuthenticationMechanism() == null) {
       storedUser.setAuthenticationMechanism(
-          new AuthenticationMechanism().withAuthType(BASIC).withConfig(new BasicAuthMechanism().withPassword("")));
+        new AuthenticationMechanism().withAuthType(BASIC).withConfig(new BasicAuthMechanism().withPassword(""))
+      );
     }
 
-    BasicAuthMechanism storedBasicAuthMechanism =
-        JsonUtils.convertValue(storedUser.getAuthenticationMechanism().getConfig(), BasicAuthMechanism.class);
+    BasicAuthMechanism storedBasicAuthMechanism = JsonUtils.convertValue(
+      storedUser.getAuthenticationMechanism().getConfig(),
+      BasicAuthMechanism.class
+    );
 
     String storedHashPassword = storedBasicAuthMechanism.getPassword();
     String newHashedPassword = BCrypt.withDefaults().hashToString(HASHING_COST, request.getNewPassword().toCharArray());
 
-    if (request.getRequestType() == SELF
-        && !BCrypt.verifyer().verify(request.getOldPassword().toCharArray(), storedHashPassword).verified) {
+    if (
+      request.getRequestType() == SELF &&
+      !BCrypt.verifyer().verify(request.getOldPassword().toCharArray(), storedHashPassword).verified
+    ) {
       throw new CustomExceptionMessage(UNAUTHORIZED, "Old Password is not correct");
     }
 
@@ -284,18 +301,24 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     if (request.getRequestType() == USER && isEmailServiceEnabled) {
       // Send mail
       sendInviteMailToUser(
-          uriInfo,
-          response.getEntity(),
-          String.format("%s: Password Update", EmailUtil.getEmailingEntity()),
-          ADMIN_CREATE,
-          request.getNewPassword());
+        uriInfo,
+        response.getEntity(),
+        String.format("%s: Password Update", EmailUtil.getEmailingEntity()),
+        ADMIN_CREATE,
+        request.getNewPassword()
+      );
     }
   }
 
   @Override
   public void sendInviteMailToUser(
-      UriInfo uriInfo, User user, String subject, CreateUser.CreatePasswordType requestType, String pwd)
-      throws IOException {
+    UriInfo uriInfo,
+    User user,
+    String subject,
+    CreateUser.CreatePasswordType requestType,
+    String pwd
+  )
+    throws IOException {
     switch (requestType) {
       case ADMIN_CREATE:
         Map<String, Object> templatePopulator = new HashMap<>();
@@ -306,11 +329,12 @@ public class BasicAuthenticator implements AuthenticatorHandler {
         templatePopulator.put(EmailUtil.APPLICATION_LOGIN_LINK, EmailUtil.getOMUrl());
         try {
           EmailUtil.sendMail(
-              subject,
-              templatePopulator,
-              user.getEmail(),
-              EmailUtil.EMAIL_TEMPLATE_BASEPATH,
-              EmailUtil.INVITE_RANDOM_PWD);
+            subject,
+            templatePopulator,
+            user.getEmail(),
+            EmailUtil.EMAIL_TEMPLATE_BASEPATH,
+            EmailUtil.INVITE_RANDOM_PWD
+          );
         } catch (TemplateException ex) {
           LOG.error("Failed in sending Mail to user [{}]. Reason : {}", user.getEmail(), ex.getMessage(), ex);
         }
@@ -344,14 +368,15 @@ public class BasicAuthenticator implements AuthenticatorHandler {
       throw new IllegalArgumentException("User are only allowed to login");
     }
     RefreshToken refreshToken = validateAndReturnNewRefresh(storedUser.getId(), request);
-    JWTAuthMechanism jwtAuthMechanism =
-        JWTTokenGenerator.getInstance()
-            .generateJWTToken(
-                storedUser.getName(),
-                storedUser.getEmail(),
-                loginConfiguration.getJwtTokenExpiryTime(),
-                false,
-                ServiceTokenType.OM_USER);
+    JWTAuthMechanism jwtAuthMechanism = JWTTokenGenerator
+      .getInstance()
+      .generateJWTToken(
+        storedUser.getName(),
+        storedUser.getEmail(),
+        loginConfiguration.getJwtTokenExpiryTime(),
+        false,
+        ServiceTokenType.OM_USER
+      );
     JwtResponse response = new JwtResponse();
     response.setTokenType("Bearer");
     response.setAccessToken(jwtAuthMechanism.getJWTToken());
@@ -364,12 +389,15 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   public void verifyPasswordResetTokenExpiry(PasswordResetToken token) {
     if (token.getExpiryDate().compareTo(Instant.now().toEpochMilli()) < 0) {
       throw new CustomExceptionMessage(
-          INTERNAL_SERVER_ERROR,
-          String.format("Password Reset Token %s Expired token. Please issue a new request", token.getToken()));
+        INTERNAL_SERVER_ERROR,
+        String.format("Password Reset Token %s Expired token. Please issue a new request", token.getToken())
+      );
     }
     if (Boolean.FALSE.equals(token.getIsActive())) {
       throw new CustomExceptionMessage(
-          INTERNAL_SERVER_ERROR, String.format("Password Reset Token %s Token was marked inactive", token.getToken()));
+        INTERNAL_SERVER_ERROR,
+        String.format("Password Reset Token %s Token was marked inactive", token.getToken())
+      );
     }
   }
 
@@ -378,7 +406,9 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     RefreshToken storedRefreshToken = (RefreshToken) tokenRepository.findByToken(requestRefreshToken);
     if (storedRefreshToken.getExpiryDate().compareTo(Instant.now().toEpochMilli()) < 0) {
       throw new CustomExceptionMessage(
-          BAD_REQUEST, "Expired token. Please login again : " + storedRefreshToken.getToken().toString());
+        BAD_REQUEST,
+        "Expired token. Please login again : " + storedRefreshToken.getToken().toString()
+      );
     }
     // TODO: currently allow single login from a place, later multiple login can be added
     // just delete the existing token
@@ -396,20 +426,19 @@ public class BasicAuthenticator implements AuthenticatorHandler {
 
     BasicAuthMechanism newAuthMechanism = new BasicAuthMechanism().withPassword(hashedPwd);
     return new User()
-        .withId(UUID.randomUUID())
-        .withName(username)
-        .withFullyQualifiedName(username)
-        .withEmail(create.getEmail())
-        .withDisplayName(create.getFirstName() + create.getLastName())
-        .withIsBot(false)
-        .withIsAdmin(false)
-        .withUpdatedBy(username)
-        .withUpdatedAt(System.currentTimeMillis())
-        .withIsEmailVerified(false)
-        .withAuthenticationMechanism(
-            new AuthenticationMechanism()
-                .withAuthType(AuthenticationMechanism.AuthType.BASIC)
-                .withConfig(newAuthMechanism));
+      .withId(UUID.randomUUID())
+      .withName(username)
+      .withFullyQualifiedName(username)
+      .withEmail(create.getEmail())
+      .withDisplayName(create.getFirstName() + create.getLastName())
+      .withIsBot(false)
+      .withIsAdmin(false)
+      .withUpdatedBy(username)
+      .withUpdatedAt(System.currentTimeMillis())
+      .withIsEmailVerified(false)
+      .withAuthenticationMechanism(
+        new AuthenticationMechanism().withAuthType(AuthenticationMechanism.AuthType.BASIC).withConfig(newAuthMechanism)
+      );
   }
 
   public void validateEmailAlreadyExists(String email) {
@@ -440,24 +469,27 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     int failedLoginAttempt = loginAttemptCache.getUserFailedLoginCount(providedIdentity);
     if (failedLoginAttempt == loginConfiguration.getMaxLoginFailAttempts()) {
       EmailUtil.sendAccountStatus(
-          storedUser,
-          "Multiple Failed Login Attempts.",
-          String.format(
-              "Someone is trying to access your account. Login is Blocked for %s minutes. Please change your password.",
-              loginConfiguration.getAccessBlockTime()));
+        storedUser,
+        "Multiple Failed Login Attempts.",
+        String.format(
+          "Someone is trying to access your account. Login is Blocked for %s minutes. Please change your password.",
+          loginConfiguration.getAccessBlockTime()
+        )
+      );
     }
   }
 
   public void validatePassword(String providedIdentity, User storedUser, String reqPassword)
-      throws TemplateException, IOException {
+    throws TemplateException, IOException {
     // when basic auth is enabled and the user is created through the API without password, the stored auth mechanism
     // for the user is null
     if (storedUser.getAuthenticationMechanism() == null) {
       throw new AuthenticationException(INVALID_USERNAME_PASSWORD);
     }
     @SuppressWarnings("unchecked")
-    LinkedHashMap<String, String> storedData =
-        (LinkedHashMap<String, String>) storedUser.getAuthenticationMechanism().getConfig();
+    LinkedHashMap<String, String> storedData = (LinkedHashMap<String, String>) storedUser
+      .getAuthenticationMechanism()
+      .getConfig();
     String storedHashPassword = storedData.get("password");
     if (!BCrypt.verifyer().verify(reqPassword.toCharArray(), storedHashPassword).verified) {
       // record Failed Login Attempts
@@ -473,12 +505,18 @@ public class BasicAuthenticator implements AuthenticatorHandler {
       if (userName.contains("@")) {
         // lookup by User Email
         storedUser =
-            userRepository.getByEmail(
-                null, userName, new EntityUtil.Fields(Set.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS));
+          userRepository.getByEmail(
+            null,
+            userName,
+            new EntityUtil.Fields(Set.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS)
+          );
       } else {
         storedUser =
-            userRepository.getByName(
-                null, userName, new EntityUtil.Fields(Set.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS));
+          userRepository.getByName(
+            null,
+            userName,
+            new EntityUtil.Fields(Set.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS)
+          );
       }
 
       if (storedUser != null && Boolean.TRUE.equals(storedUser.getIsBot())) {

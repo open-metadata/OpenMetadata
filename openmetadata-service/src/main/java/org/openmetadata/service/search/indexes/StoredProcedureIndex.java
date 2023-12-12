@@ -28,10 +28,12 @@ public class StoredProcedureIndex implements SearchIndex {
     suggest.add(SearchSuggest.builder().input(storedProcedure.getFullyQualifiedName()).weight(5).build());
     suggest.add(SearchSuggest.builder().input(storedProcedure.getName()).weight(10).build());
     doc.put(
-        "fqnParts",
-        getFQNParts(
-            storedProcedure.getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+      "fqnParts",
+      getFQNParts(
+        storedProcedure.getFullyQualifiedName(),
+        suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())
+      )
+    );
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.STORED_PROCEDURE);
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.STORED_PROCEDURE, storedProcedure));

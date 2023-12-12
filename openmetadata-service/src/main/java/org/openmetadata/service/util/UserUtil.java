@@ -45,6 +45,7 @@ import org.openmetadata.service.util.RestUtil.PutResponse;
 
 @Slf4j
 public final class UserUtil {
+
   private UserUtil() {
     // Private constructor for util class
   }
@@ -74,8 +75,10 @@ public final class UserUtil {
 
         // Update Auth Mechanism if not present, and send mail to the user
         if (authProvider.equals(AuthProvider.BASIC)) {
-          if (originalUser.getAuthenticationMechanism() == null
-              || originalUser.getAuthenticationMechanism().equals(new AuthenticationMechanism())) {
+          if (
+            originalUser.getAuthenticationMechanism() == null ||
+            originalUser.getAuthenticationMechanism().equals(new AuthenticationMechanism())
+          ) {
             String randomPwd = getPassword();
             updateUserWithHashedPwd(updatedUser, randomPwd);
             EmailUtil.sendInviteMailToAdmin(updatedUser, randomPwd);
@@ -92,9 +95,11 @@ public final class UserUtil {
       } else {
         if (Boolean.TRUE.equals(originalUser.getIsBot())) {
           LOG.error(
-              String.format(
-                  "You configured bot user %s in initialAdmins config. Bot user cannot be promoted to be an admin.",
-                  originalUser.getName()));
+            String.format(
+              "You configured bot user %s in initialAdmins config. Bot user cannot be promoted to be an admin.",
+              originalUser.getName()
+            )
+          );
         }
       }
     } catch (EntityNotFoundException e) {
@@ -126,9 +131,10 @@ public final class UserUtil {
   public static void updateUserWithHashedPwd(User user, String pwd) {
     String hashedPwd = BCrypt.withDefaults().hashToString(12, pwd.toCharArray());
     user.setAuthenticationMechanism(
-        new AuthenticationMechanism()
-            .withAuthType(AuthenticationMechanism.AuthType.BASIC)
-            .withConfig(new BasicAuthMechanism().withPassword(hashedPwd)));
+      new AuthenticationMechanism()
+        .withAuthType(AuthenticationMechanism.AuthType.BASIC)
+        .withConfig(new BasicAuthMechanism().withPassword(hashedPwd))
+    );
   }
 
   public static User addOrUpdateUser(User user) {
@@ -148,13 +154,13 @@ public final class UserUtil {
 
   public static User user(String name, String domain, String updatedBy) {
     return new User()
-        .withId(UUID.randomUUID())
-        .withName(name)
-        .withFullyQualifiedName(EntityInterfaceUtil.quoteName(name))
-        .withEmail(name + "@" + domain)
-        .withUpdatedBy(updatedBy)
-        .withUpdatedAt(System.currentTimeMillis())
-        .withIsBot(false);
+      .withId(UUID.randomUUID())
+      .withName(name)
+      .withFullyQualifiedName(EntityInterfaceUtil.quoteName(name))
+      .withEmail(name + "@" + domain)
+      .withUpdatedBy(updatedBy)
+      .withUpdatedAt(System.currentTimeMillis())
+      .withIsBot(false);
   }
 
   /**
@@ -190,10 +196,8 @@ public final class UserUtil {
 
   private static JWTAuthMechanism buildJWTAuthMechanism(OpenMetadataJWTClientConfig jwtClientConfig, User user) {
     return Objects.isNull(jwtClientConfig) || nullOrEmpty(jwtClientConfig.getJwtToken())
-        ? JWTTokenGenerator.getInstance().generateJWTToken(user, JWTTokenExpiry.Unlimited)
-        : new JWTAuthMechanism()
-            .withJWTToken(jwtClientConfig.getJwtToken())
-            .withJWTTokenExpiry(JWTTokenExpiry.Unlimited);
+      ? JWTTokenGenerator.getInstance().generateJWTToken(user, JWTTokenExpiry.Unlimited)
+      : new JWTAuthMechanism().withJWTToken(jwtClientConfig.getJwtToken()).withJWTTokenExpiry(JWTTokenExpiry.Unlimited);
   }
 
   private static AuthenticationMechanism buildAuthMechanism(AuthenticationMechanism.AuthType authType, Object config) {

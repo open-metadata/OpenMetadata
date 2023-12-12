@@ -23,6 +23,7 @@ import org.postgresql.util.PGobject;
 
 @Slf4j
 public class MigrationUtilV111 {
+
   private MigrationUtilV111() {
     /* Cannot create object  util class*/
   }
@@ -38,49 +39,55 @@ public class MigrationUtilV111 {
       }
     }
     resultMap.forEach(
-        (k, v) -> {
-          UUID id = UUID.fromString(k);
+      (k, v) -> {
+        UUID id = UUID.fromString(k);
 
-          // Get all the relationship of id1
-          List<CollectionDAO.EntityRelationshipRecord> records =
-              collectionDAO.relationshipDAO().findTo(id, TEST_SUITE, Relationship.CONTAINS.ordinal(), TEST_CASE);
+        // Get all the relationship of id1
+        List<CollectionDAO.EntityRelationshipRecord> records = collectionDAO
+          .relationshipDAO()
+          .findTo(id, TEST_SUITE, Relationship.CONTAINS.ordinal(), TEST_CASE);
 
-          List<CollectionDAO.EntityRelationshipRecord> ingestionRecords =
-              collectionDAO
-                  .relationshipDAO()
-                  .findTo(id, TEST_SUITE, Relationship.CONTAINS.ordinal(), INGESTION_PIPELINE);
+        List<CollectionDAO.EntityRelationshipRecord> ingestionRecords = collectionDAO
+          .relationshipDAO()
+          .findTo(id, TEST_SUITE, Relationship.CONTAINS.ordinal(), INGESTION_PIPELINE);
 
-          for (CollectionDAO.EntityRelationshipRecord record : records) {
-            UUID toId = record.getId();
-            // Store the relationship to be with id2 so that the test Cases are not lost
-            collectionDAO
-                .relationshipDAO()
-                .insert(UUID.fromString(v), toId, TEST_SUITE, TEST_CASE, Relationship.CONTAINS.ordinal());
-          }
+        for (CollectionDAO.EntityRelationshipRecord record : records) {
+          UUID toId = record.getId();
+          // Store the relationship to be with id2 so that the test Cases are not lost
+          collectionDAO
+            .relationshipDAO()
+            .insert(UUID.fromString(v), toId, TEST_SUITE, TEST_CASE, Relationship.CONTAINS.ordinal());
+        }
 
-          // Delete Test Suite
+        // Delete Test Suite
+        try {
+          collectionDAO.testSuiteDAO().delete(id);
+          // Delete Relationship
+          collectionDAO.relationshipDAO().deleteAllWithId(id);
+        } catch (Exception ex) {
+          // maybe already deleted
+        }
+
+        for (CollectionDAO.EntityRelationshipRecord record : ingestionRecords) {
           try {
-            collectionDAO.testSuiteDAO().delete(id);
-            // Delete Relationship
-            collectionDAO.relationshipDAO().deleteAllWithId(id);
+            UUID toId = record.getId();
+            collectionDAO.ingestionPipelineDAO().delete(toId);
+            collectionDAO.relationshipDAO().deleteAllWithId(toId);
           } catch (Exception ex) {
             // maybe already deleted
           }
-
-          for (CollectionDAO.EntityRelationshipRecord record : ingestionRecords) {
-            try {
-              UUID toId = record.getId();
-              collectionDAO.ingestionPipelineDAO().delete(toId);
-              collectionDAO.relationshipDAO().deleteAllWithId(toId);
-            } catch (Exception ex) {
-              // maybe already deleted
-            }
-          }
-        });
+        }
+      }
+    );
   }
 
   public static void runTestSuiteMigration(
-      CollectionDAO collectionDAO, Handle handle, String getSql, String updateSql, String resultListSql) {
+    CollectionDAO collectionDAO,
+    Handle handle,
+    String getSql,
+    String updateSql,
+    String resultListSql
+  ) {
     List<Map<String, Object>> resultList = handle.createQuery(resultListSql).mapToMap().list();
     for (Map<String, Object> row : resultList) {
       if (row.containsKey("json")) {
@@ -125,13 +132,12 @@ public class MigrationUtilV111 {
         // Run new Migrations
         suite.setName(String.format("%s.testSuite", executableEntityRef.getName()));
         suite.setFullyQualifiedName(String.format("%s.testSuite", executableEntityRef.getFullyQualifiedName()));
-        int result =
-            handle
-                .createUpdate(updateSql)
-                .bind("json", JsonUtils.pojoToJson(suite))
-                .bind("fqnHash", FullyQualifiedName.buildHash(suite.getFullyQualifiedName()))
-                .bind("id", suite.getId().toString())
-                .execute();
+        int result = handle
+          .createUpdate(updateSql)
+          .bind("json", JsonUtils.pojoToJson(suite))
+          .bind("fqnHash", FullyQualifiedName.buildHash(suite.getFullyQualifiedName()))
+          .bind("id", suite.getId().toString())
+          .execute();
         if (result <= 0) {
           LOG.error("No Rows Affected for 1.1.1 test suite Migration");
         }

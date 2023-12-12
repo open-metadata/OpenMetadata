@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 
 class CompiledRuleTest {
+
   private static final List<String> RESOURCE_LIST = listOf("all", "table", "topic", "database", "databaseService");
 
   @Test
@@ -41,7 +42,10 @@ class CompiledRuleTest {
     CompiledRule rule = new CompiledRule(new Rule().withName("test").withResources(new ArrayList<>(ruleResources)));
     for (String resource : RESOURCE_LIST) {
       assertEquals(
-          rule.matchResource(resource), ruleResources.contains(resource), "Resource name " + resource + " not matched");
+        rule.matchResource(resource),
+        ruleResources.contains(resource),
+        "Resource name " + resource + " not matched"
+      );
     }
   }
 }

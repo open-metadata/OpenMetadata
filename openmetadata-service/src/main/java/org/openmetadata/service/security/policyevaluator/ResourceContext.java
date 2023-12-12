@@ -23,7 +23,11 @@ import org.openmetadata.service.util.EntityUtil.Fields;
  * <p>As multiple threads don't access this, the class is not thread-safe by design.
  */
 public class ResourceContext<T extends EntityInterface> implements ResourceContextInterface {
-  @NonNull @Getter private final String resource;
+
+  @NonNull
+  @Getter
+  private final String resource;
+
   private final EntityRepository<T> entityRepository;
   private final UUID id;
   private final String name;

@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.security.SecurityConfiguration;
 
 public class EntityMaskerFactoryTest {
+
   private static final SecurityConfiguration CONFIG = new SecurityConfiguration();
 
   @BeforeEach

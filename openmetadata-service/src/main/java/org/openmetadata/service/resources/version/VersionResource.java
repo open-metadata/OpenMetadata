@@ -32,6 +32,7 @@ import org.openmetadata.service.resources.Collection;
 @Produces(MediaType.APPLICATION_JSON)
 @Collection(name = "version")
 public class VersionResource {
+
   private static final OpenMetadataServerVersion OPEN_METADATA_SERVER_VERSION;
 
   static {
@@ -53,9 +54,10 @@ public class VersionResource {
 
   @GET
   @Operation(
-      operationId = "getCatalogVersion",
-      summary = "Get version of metadata service",
-      description = "Get the build version of OpenMetadata service and build timestamp.")
+    operationId = "getCatalogVersion",
+    summary = "Get version of metadata service",
+    description = "Get the build version of OpenMetadata service and build timestamp."
+  )
   public OpenMetadataServerVersion getCatalogVersion() {
     return OPEN_METADATA_SERVER_VERSION;
   }

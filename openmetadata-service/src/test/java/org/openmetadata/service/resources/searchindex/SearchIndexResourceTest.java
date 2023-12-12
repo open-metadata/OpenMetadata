@@ -65,19 +65,21 @@ import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, CreateSearchIndex> {
-  public static final List<SearchIndexField> SEARCH_INDEX_FIELDS =
-      Arrays.asList(
-          getField("id", SearchIndexDataType.KEYWORD, null),
-          getField("name", SearchIndexDataType.KEYWORD, null),
-          getField("address", SearchIndexDataType.TEXT, null));
+
+  public static final List<SearchIndexField> SEARCH_INDEX_FIELDS = Arrays.asList(
+    getField("id", SearchIndexDataType.KEYWORD, null),
+    getField("name", SearchIndexDataType.KEYWORD, null),
+    getField("address", SearchIndexDataType.TEXT, null)
+  );
 
   public SearchIndexResourceTest() {
     super(
-        Entity.SEARCH_INDEX,
-        SearchIndex.class,
-        SearchIndexResource.SearchIndexList.class,
-        "searchIndexes",
-        SearchIndexResource.FIELDS);
+      Entity.SEARCH_INDEX,
+      SearchIndex.class,
+      SearchIndexResource.SearchIndexList.class,
+      "searchIndexes",
+      SearchIndexResource.FIELDS
+    );
     supportsSearchIndex = true;
   }
 
@@ -85,21 +87,24 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
   void post_searchIndexWithoutRequiredFields_4xx(TestInfo test) {
     // Service is required field
     assertResponse(
-        () -> createEntity(createRequest(test).withService(null), ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "[service must not be null]");
+      () -> createEntity(createRequest(test).withService(null), ADMIN_AUTH_HEADERS),
+      BAD_REQUEST,
+      "[service must not be null]"
+    );
 
     // Partitions is required field
     assertResponse(
-        () -> createEntity(createRequest(test).withFields(null), ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "[fields must not be null]");
+      () -> createEntity(createRequest(test).withFields(null), ADMIN_AUTH_HEADERS),
+      BAD_REQUEST,
+      "[fields must not be null]"
+    );
   }
 
   @Test
   void post_searchIndexWithDifferentService_200_ok(TestInfo test) throws IOException {
     String[] differentServices = {
-      ELASTICSEARCH_SEARCH_SERVICE_REFERENCE.getName(), OPENSEARCH_SEARCH_SERVICE_REFERENCE.getName()
+      ELASTICSEARCH_SEARCH_SERVICE_REFERENCE.getName(),
+      OPENSEARCH_SEARCH_SERVICE_REFERENCE.getName()
     };
 
     // Create searchIndex for each service and test APIs
@@ -119,17 +124,15 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
 
   @Test
   void put_searchIndexAttributes_200_ok(TestInfo test) throws IOException {
-    ArrayList<SearchIndexField> fields =
-        new ArrayList<>(
-            Arrays.asList(
-                new SearchIndexField().withName("name").withDataType(SearchIndexDataType.TEXT),
-                new SearchIndexField().withName("displayName").withDataType(SearchIndexDataType.KEYWORD)));
-    List<SearchIndexField> searchIndexFields =
-        List.of(
-            new SearchIndexField()
-                .withName("tableSearchIndex")
-                .withDataType(SearchIndexDataType.NESTED)
-                .withChildren(fields));
+    ArrayList<SearchIndexField> fields = new ArrayList<>(
+      Arrays.asList(
+        new SearchIndexField().withName("name").withDataType(SearchIndexDataType.TEXT),
+        new SearchIndexField().withName("displayName").withDataType(SearchIndexDataType.KEYWORD)
+      )
+    );
+    List<SearchIndexField> searchIndexFields = List.of(
+      new SearchIndexField().withName("tableSearchIndex").withDataType(SearchIndexDataType.NESTED).withChildren(fields)
+    );
     CreateSearchIndex createSearchIndex = createRequest(test).withOwner(USER1_REF).withFields(searchIndexFields);
 
     SearchIndex searchIndex = createEntity(createSearchIndex, ADMIN_AUTH_HEADERS);
@@ -137,16 +140,14 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
 
     // Patch and update the searchIndex
     fields.add(new SearchIndexField().withName("updatedBy").withDataType(SearchIndexDataType.KEYWORD));
-    List<SearchIndexField> updatedSearchIndexFields =
-        List.of(
-            new SearchIndexField()
-                .withName("tableSearchIndex")
-                .withChildren(fields)
-                .withDataType(SearchIndexDataType.NESTED));
+    List<SearchIndexField> updatedSearchIndexFields = List.of(
+      new SearchIndexField().withName("tableSearchIndex").withChildren(fields).withDataType(SearchIndexDataType.NESTED)
+    );
     createSearchIndex.withOwner(TEAM11_REF).withDescription("searchIndex").withFields(updatedSearchIndexFields);
     SearchIndexField addedField = fields.get(2);
     addedField.setFullyQualifiedName(
-        searchIndex.getFields().get(0).getFullyQualifiedName() + "." + addedField.getName());
+      searchIndex.getFields().get(0).getFullyQualifiedName() + "." + addedField.getName()
+    );
     fieldUpdated(change, FIELD_OWNER, USER1_REF, TEAM11_REF);
     fieldUpdated(change, "description", "", "searchIndex");
     fieldAdded(change, "fields.tableSearchIndex", JsonUtils.pojoToJson(List.of(addedField)));
@@ -155,16 +156,16 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
 
   @Test
   void put_searchIndexFields_200_ok(TestInfo test) throws IOException {
-    List<SearchIndexField> fields =
-        Arrays.asList(
-            getField("id", SearchIndexDataType.KEYWORD, null),
-            getField("first_name", SearchIndexDataType.KEYWORD, null),
-            getField("last_name", SearchIndexDataType.TEXT, null),
-            getField("email", SearchIndexDataType.KEYWORD, null),
-            getField("address_line_1", SearchIndexDataType.ARRAY, null),
-            getField("address_line_2", SearchIndexDataType.TEXT, null),
-            getField("post_code", SearchIndexDataType.TEXT, null),
-            getField("county", SearchIndexDataType.TEXT, PERSONAL_DATA_TAG_LABEL));
+    List<SearchIndexField> fields = Arrays.asList(
+      getField("id", SearchIndexDataType.KEYWORD, null),
+      getField("first_name", SearchIndexDataType.KEYWORD, null),
+      getField("last_name", SearchIndexDataType.TEXT, null),
+      getField("email", SearchIndexDataType.KEYWORD, null),
+      getField("address_line_1", SearchIndexDataType.ARRAY, null),
+      getField("address_line_2", SearchIndexDataType.TEXT, null),
+      getField("post_code", SearchIndexDataType.TEXT, null),
+      getField("county", SearchIndexDataType.TEXT, PERSONAL_DATA_TAG_LABEL)
+    );
 
     CreateSearchIndex createSearchIndex = createRequest(test).withOwner(USER1_REF).withFields(fields);
 
@@ -176,32 +177,32 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
 
   @Test
   void patch_searchIndexAttributes_200_ok(TestInfo test) throws IOException {
-    List<SearchIndexField> fields =
-        Arrays.asList(
-            getField("id", SearchIndexDataType.KEYWORD, null),
-            getField("first_name", SearchIndexDataType.KEYWORD, null),
-            getField("last_name", SearchIndexDataType.TEXT, null),
-            getField("email", SearchIndexDataType.KEYWORD, null),
-            getField("address_line_1", SearchIndexDataType.ARRAY, null),
-            getField("address_line_2", SearchIndexDataType.TEXT, null),
-            getField("post_code", SearchIndexDataType.TEXT, null),
-            getField("county", SearchIndexDataType.TEXT, PERSONAL_DATA_TAG_LABEL));
+    List<SearchIndexField> fields = Arrays.asList(
+      getField("id", SearchIndexDataType.KEYWORD, null),
+      getField("first_name", SearchIndexDataType.KEYWORD, null),
+      getField("last_name", SearchIndexDataType.TEXT, null),
+      getField("email", SearchIndexDataType.KEYWORD, null),
+      getField("address_line_1", SearchIndexDataType.ARRAY, null),
+      getField("address_line_2", SearchIndexDataType.TEXT, null),
+      getField("post_code", SearchIndexDataType.TEXT, null),
+      getField("county", SearchIndexDataType.TEXT, PERSONAL_DATA_TAG_LABEL)
+    );
     CreateSearchIndex createSearchIndex = createRequest(test).withOwner(USER1_REF).withFields(fields);
 
     SearchIndex searchIndex = createEntity(createSearchIndex, ADMIN_AUTH_HEADERS);
     String origJson = JsonUtils.pojoToJson(searchIndex);
 
-    List<SearchIndexField> updatedFields =
-        Arrays.asList(
-            getField("id", SearchIndexDataType.KEYWORD, null),
-            getField("first_name", SearchIndexDataType.KEYWORD, null),
-            getField("last_name", SearchIndexDataType.TEXT, null),
-            getField("email", SearchIndexDataType.KEYWORD, null),
-            getField("address_line_1", SearchIndexDataType.ARRAY, null),
-            getField("address_line_2", SearchIndexDataType.TEXT, null),
-            getField("post_code", SearchIndexDataType.TEXT, null),
-            getField("county", SearchIndexDataType.TEXT, PERSONAL_DATA_TAG_LABEL),
-            getField("phone", SearchIndexDataType.TEXT, PERSONAL_DATA_TAG_LABEL));
+    List<SearchIndexField> updatedFields = Arrays.asList(
+      getField("id", SearchIndexDataType.KEYWORD, null),
+      getField("first_name", SearchIndexDataType.KEYWORD, null),
+      getField("last_name", SearchIndexDataType.TEXT, null),
+      getField("email", SearchIndexDataType.KEYWORD, null),
+      getField("address_line_1", SearchIndexDataType.ARRAY, null),
+      getField("address_line_2", SearchIndexDataType.TEXT, null),
+      getField("post_code", SearchIndexDataType.TEXT, null),
+      getField("county", SearchIndexDataType.TEXT, PERSONAL_DATA_TAG_LABEL),
+      getField("phone", SearchIndexDataType.TEXT, PERSONAL_DATA_TAG_LABEL)
+    );
 
     searchIndex.withOwner(TEAM11_REF).withFields(updatedFields);
 
@@ -217,60 +218,62 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
   @Test
   void test_mutuallyExclusiveTags(TestInfo testInfo) {
     // Apply mutually exclusive tags to a table
-    List<SearchIndexField> fields =
-        Arrays.asList(
-            getField("id", SearchIndexDataType.KEYWORD, null),
-            getField("first_name", SearchIndexDataType.KEYWORD, null),
-            getField("last_name", SearchIndexDataType.TEXT, null),
-            getField("email", SearchIndexDataType.KEYWORD, null));
+    List<SearchIndexField> fields = Arrays.asList(
+      getField("id", SearchIndexDataType.KEYWORD, null),
+      getField("first_name", SearchIndexDataType.KEYWORD, null),
+      getField("last_name", SearchIndexDataType.TEXT, null),
+      getField("email", SearchIndexDataType.KEYWORD, null)
+    );
 
-    CreateSearchIndex create =
-        createRequest(testInfo)
-            .withTags(List.of(TIER1_TAG_LABEL, TIER2_TAG_LABEL))
-            .withOwner(USER1_REF)
-            .withFields(fields);
+    CreateSearchIndex create = createRequest(testInfo)
+      .withTags(List.of(TIER1_TAG_LABEL, TIER2_TAG_LABEL))
+      .withOwner(USER1_REF)
+      .withFields(fields);
 
     // Apply mutually exclusive tags to a searchIndex
     assertResponse(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        CatalogExceptionMessage.mutuallyExclusiveLabels(TIER2_TAG_LABEL, TIER1_TAG_LABEL));
+      () -> createEntity(create, ADMIN_AUTH_HEADERS),
+      BAD_REQUEST,
+      CatalogExceptionMessage.mutuallyExclusiveLabels(TIER2_TAG_LABEL, TIER1_TAG_LABEL)
+    );
 
     // Apply mutually exclusive tags to a searchIndex field
     CreateSearchIndex create1 = createRequest(testInfo, 1).withOwner(USER1_REF);
-    SearchIndexField field =
-        getField("first_name", SearchIndexDataType.TEXT, null).withTags(listOf(TIER1_TAG_LABEL, TIER2_TAG_LABEL));
+    SearchIndexField field = getField("first_name", SearchIndexDataType.TEXT, null)
+      .withTags(listOf(TIER1_TAG_LABEL, TIER2_TAG_LABEL));
     create1.withFields(List.of(field));
     assertResponse(
-        () -> createEntity(create1, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        CatalogExceptionMessage.mutuallyExclusiveLabels(TIER2_TAG_LABEL, TIER1_TAG_LABEL));
+      () -> createEntity(create1, ADMIN_AUTH_HEADERS),
+      BAD_REQUEST,
+      CatalogExceptionMessage.mutuallyExclusiveLabels(TIER2_TAG_LABEL, TIER1_TAG_LABEL)
+    );
 
     // Apply mutually exclusive tags to a searchIndexes's nested field
     CreateSearchIndex create2 = createRequest(testInfo, 1).withOwner(USER1_REF);
-    SearchIndexField nestedField =
-        getField("testNested", SearchIndexDataType.TEXT, null).withTags(listOf(TIER1_TAG_LABEL, TIER2_TAG_LABEL));
+    SearchIndexField nestedField = getField("testNested", SearchIndexDataType.TEXT, null)
+      .withTags(listOf(TIER1_TAG_LABEL, TIER2_TAG_LABEL));
     SearchIndexField field1 = getField("test", SearchIndexDataType.NESTED, null).withChildren(List.of(nestedField));
     create2.withFields(List.of(field1));
     assertResponse(
-        () -> createEntity(create2, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        CatalogExceptionMessage.mutuallyExclusiveLabels(TIER2_TAG_LABEL, TIER1_TAG_LABEL));
+      () -> createEntity(create2, ADMIN_AUTH_HEADERS),
+      BAD_REQUEST,
+      CatalogExceptionMessage.mutuallyExclusiveLabels(TIER2_TAG_LABEL, TIER1_TAG_LABEL)
+    );
   }
 
   @Test
   void put_searchIndexSampleData_200(TestInfo test) throws IOException {
-    List<SearchIndexField> fields =
-        Arrays.asList(
-            getField("email", SearchIndexDataType.KEYWORD, null),
-            getField("firstName", SearchIndexDataType.KEYWORD, null),
-            getField("lastName", SearchIndexDataType.TEXT, null));
+    List<SearchIndexField> fields = Arrays.asList(
+      getField("email", SearchIndexDataType.KEYWORD, null),
+      getField("firstName", SearchIndexDataType.KEYWORD, null),
+      getField("lastName", SearchIndexDataType.TEXT, null)
+    );
     SearchIndex searchIndex = createAndCheckEntity(createRequest(test).withFields(fields), ADMIN_AUTH_HEADERS);
-    List<String> messages =
-        Arrays.asList(
-            "{\"email\": \"email1@email.com\", \"firstName\": \"Bob\", \"lastName\": \"Jones\"}",
-            "{\"email\": \"email2@email.com\", \"firstName\": \"Test\", \"lastName\": \"Jones\"}",
-            "{\"email\": \"email3@email.com\", \"firstName\": \"Bob\", \"lastName\": \"Jones\"}");
+    List<String> messages = Arrays.asList(
+      "{\"email\": \"email1@email.com\", \"firstName\": \"Bob\", \"lastName\": \"Jones\"}",
+      "{\"email\": \"email2@email.com\", \"firstName\": \"Test\", \"lastName\": \"Jones\"}",
+      "{\"email\": \"email3@email.com\", \"firstName\": \"Bob\", \"lastName\": \"Jones\"}"
+    );
     SearchIndexSampleData searchIndexSampleData = new SearchIndexSampleData().withMessages(messages);
     SearchIndex searchIndex1 = putSampleData(searchIndex.getId(), searchIndexSampleData, ADMIN_AUTH_HEADERS);
     assertEquals(searchIndexSampleData, searchIndex1.getSampleData());
@@ -278,9 +281,10 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
     SearchIndex searchIndex2 = getSampleData(searchIndex.getId(), ADMIN_AUTH_HEADERS);
     assertEquals(searchIndex2.getSampleData(), searchIndex1.getSampleData());
     messages =
-        Arrays.asList(
-            "{\"email\": \"email1@email.com\", \"firstName\": \"Bob\", \"lastName\": \"Jones\"}",
-            "{\"email\": \"email2@email.com\", \"firstName\": \"Test\", \"lastName\": \"Jones\"}");
+      Arrays.asList(
+        "{\"email\": \"email1@email.com\", \"firstName\": \"Bob\", \"lastName\": \"Jones\"}",
+        "{\"email\": \"email2@email.com\", \"firstName\": \"Test\", \"lastName\": \"Jones\"}"
+      );
     searchIndexSampleData.withMessages(messages);
     SearchIndex putResponse = putSampleData(searchIndex2.getId(), searchIndexSampleData, ADMIN_AUTH_HEADERS);
     assertEquals(searchIndexSampleData, putResponse.getSampleData());
@@ -304,43 +308,45 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
   void test_fieldWithInvalidTag(TestInfo test) throws HttpResponseException {
     // Add an entity with invalid tag
     TagLabel invalidTag = new TagLabel().withTagFQN("invalidTag");
-    List<SearchIndexField> invalidFields =
-        List.of(
-            new SearchIndexField()
-                .withName("field")
-                .withDataType(SearchIndexDataType.TEXT)
-                .withTags(listOf(invalidTag)));
+    List<SearchIndexField> invalidFields = List.of(
+      new SearchIndexField().withName("field").withDataType(SearchIndexDataType.TEXT).withTags(listOf(invalidTag))
+    );
     CreateSearchIndex create = createRequest(getEntityName(test)).withFields(invalidFields);
 
     // Entity can't be created with PUT or POST
     assertResponse(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS),
-        NOT_FOUND,
-        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+      () -> createEntity(create, ADMIN_AUTH_HEADERS),
+      NOT_FOUND,
+      CatalogExceptionMessage.entityNotFound(TAG, "invalidTag")
+    );
 
     assertResponse(
-        () -> updateEntity(create, Status.CREATED, ADMIN_AUTH_HEADERS),
-        NOT_FOUND,
-        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+      () -> updateEntity(create, Status.CREATED, ADMIN_AUTH_HEADERS),
+      NOT_FOUND,
+      CatalogExceptionMessage.entityNotFound(TAG, "invalidTag")
+    );
 
     // Create an entity and update the columns with PUT and PATCH with an invalid tag
-    List<SearchIndexField> validFields =
-        List.of(new SearchIndexField().withName("field").withDataType(SearchIndexDataType.TEXT));
+    List<SearchIndexField> validFields = List.of(
+      new SearchIndexField().withName("field").withDataType(SearchIndexDataType.TEXT)
+    );
     create.setFields(validFields);
     SearchIndex entity = createEntity(create, ADMIN_AUTH_HEADERS);
     String json = JsonUtils.pojoToJson(entity);
 
     create.setFields(invalidFields);
     assertResponse(
-        () -> updateEntity(create, Status.CREATED, ADMIN_AUTH_HEADERS),
-        NOT_FOUND,
-        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+      () -> updateEntity(create, Status.CREATED, ADMIN_AUTH_HEADERS),
+      NOT_FOUND,
+      CatalogExceptionMessage.entityNotFound(TAG, "invalidTag")
+    );
 
     entity.setTags(listOf(invalidTag));
     assertResponse(
-        () -> patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS),
-        NOT_FOUND,
-        CatalogExceptionMessage.entityNotFound(TAG, "invalidTag"));
+      () -> patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS),
+      NOT_FOUND,
+      CatalogExceptionMessage.entityNotFound(TAG, "invalidTag")
+    );
 
     // No lingering relationships should cause error in listing the entity
     listEntities(null, ADMIN_AUTH_HEADERS);
@@ -348,34 +354,34 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
 
   @Override
   public SearchIndex validateGetWithDifferentFields(SearchIndex searchIndex, boolean byName)
-      throws HttpResponseException {
+    throws HttpResponseException {
     // .../searchIndex?fields=owner
     String fields = "";
     searchIndex =
-        byName
-            ? getSearchIndexByName(searchIndex.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getSearchIndex(searchIndex.getId(), fields, ADMIN_AUTH_HEADERS);
+      byName
+        ? getSearchIndexByName(searchIndex.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+        : getSearchIndex(searchIndex.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNull(searchIndex.getOwner(), searchIndex.getFollowers(), searchIndex.getFollowers());
 
     fields = "owner, followers, tags";
     searchIndex =
-        byName
-            ? getSearchIndexByName(searchIndex.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getSearchIndex(searchIndex.getId(), fields, ADMIN_AUTH_HEADERS);
+      byName
+        ? getSearchIndexByName(searchIndex.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+        : getSearchIndex(searchIndex.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(searchIndex.getService(), searchIndex.getServiceType());
     // Checks for other owner, tags, and followers is done in the base class
     return searchIndex;
   }
 
   public SearchIndex getSearchIndex(UUID id, String fields, Map<String, String> authHeaders)
-      throws HttpResponseException {
+    throws HttpResponseException {
     WebTarget target = getResource(id);
     target = fields != null ? target.queryParam("fields", fields) : target;
     return TestUtils.get(target, SearchIndex.class, authHeaders);
   }
 
   public SearchIndex getSearchIndexByName(String fqn, String fields, Map<String, String> authHeaders)
-      throws HttpResponseException {
+    throws HttpResponseException {
     WebTarget target = getResourceByName(fqn);
     target = fields != null ? target.queryParam("fields", fields) : target;
     return TestUtils.get(target, SearchIndex.class, authHeaders);
@@ -384,9 +390,9 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
   @Override
   public CreateSearchIndex createRequest(String name) {
     return new CreateSearchIndex()
-        .withName(name)
-        .withService(getContainer().getFullyQualifiedName())
-        .withFields(SEARCH_INDEX_FIELDS);
+      .withName(name)
+      .withService(getContainer().getFullyQualifiedName())
+      .withFields(SEARCH_INDEX_FIELDS);
   }
 
   @Override
@@ -401,8 +407,11 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
 
   @Override
   public void validateCreatedEntity(
-      SearchIndex searchIndex, CreateSearchIndex createRequest, Map<String, String> authHeaders)
-      throws HttpResponseException {
+    SearchIndex searchIndex,
+    CreateSearchIndex createRequest,
+    Map<String, String> authHeaders
+  )
+    throws HttpResponseException {
     assertReference(createRequest.getService(), searchIndex.getService());
     // TODO add other fields
     TestUtils.validateTags(createRequest.getTags(), searchIndex.getTags());
@@ -410,7 +419,7 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
 
   @Override
   public void compareEntities(SearchIndex expected, SearchIndex updated, Map<String, String> authHeaders)
-      throws HttpResponseException {
+    throws HttpResponseException {
     assertReference(expected.getService(), expected.getService());
     // TODO add other fields
     TestUtils.validateTags(expected.getTags(), updated.getTags());
@@ -422,7 +431,7 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
   }
 
   public SearchIndex putSampleData(UUID searchIndexId, SearchIndexSampleData data, Map<String, String> authHeaders)
-      throws HttpResponseException {
+    throws HttpResponseException {
     WebTarget target = getResource(searchIndexId).path("/sampleData");
     return TestUtils.put(target, data, SearchIndex.class, OK, authHeaders);
   }
@@ -438,7 +447,7 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
   }
 
   private static void assertFields(List<SearchIndexField> expectedFields, List<SearchIndexField> actualFields)
-      throws HttpResponseException {
+    throws HttpResponseException {
     if (expectedFields == actualFields) {
       return;
     }
@@ -456,11 +465,12 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
   }
 
   private static void assertField(SearchIndexField expectedField, SearchIndexField actualField)
-      throws HttpResponseException {
+    throws HttpResponseException {
     assertNotNull(actualField.getFullyQualifiedName());
     assertTrue(
-        expectedField.getName().equals(actualField.getName())
-            || expectedField.getName().equals(actualField.getDisplayName()));
+      expectedField.getName().equals(actualField.getName()) ||
+      expectedField.getName().equals(actualField.getDisplayName())
+    );
     assertEquals(expectedField.getDescription(), actualField.getDescription());
     assertEquals(expectedField.getDataType(), actualField.getDataType());
     TestUtils.validateTags(expectedField.getTags(), actualField.getTags());

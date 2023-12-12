@@ -20,6 +20,7 @@ import org.openmetadata.client.security.interfaces.AuthenticationProvider;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 
 public class OktaAccessTokenRequestInterceptor implements AuthenticationProvider {
+
   private final OktaSSOConfig securityConfig;
   private String base64Credentials;
 
@@ -46,8 +47,9 @@ public class OktaAccessTokenRequestInterceptor implements AuthenticationProvider
   @Override
   public String authToken() {
     base64Credentials =
-        Base64.getEncoder()
-            .encodeToString((securityConfig.getClientId() + ":" + securityConfig.getClientSecret()).getBytes());
+      Base64
+        .getEncoder()
+        .encodeToString((securityConfig.getClientId() + ":" + securityConfig.getClientSecret()).getBytes());
     return base64Credentials;
   }
 

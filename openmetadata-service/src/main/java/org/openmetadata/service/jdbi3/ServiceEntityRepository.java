@@ -27,19 +27,23 @@ import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 
-public abstract class ServiceEntityRepository<
-        T extends ServiceEntityInterface, S extends ServiceConnectionEntityInterface>
-    extends EntityRepository<T> {
-  @Getter private final Class<S> serviceConnectionClass;
-  @Getter private final ServiceType serviceType;
+public abstract class ServiceEntityRepository<T extends ServiceEntityInterface, S extends ServiceConnectionEntityInterface>
+  extends EntityRepository<T> {
+
+  @Getter
+  private final Class<S> serviceConnectionClass;
+
+  @Getter
+  private final ServiceType serviceType;
 
   protected ServiceEntityRepository(
-      String collectionPath,
-      String service,
-      EntityDAO<T> entityDAO,
-      Class<S> serviceConnectionClass,
-      String updateFields,
-      ServiceType serviceType) {
+    String collectionPath,
+    String service,
+    EntityDAO<T> entityDAO,
+    Class<S> serviceConnectionClass,
+    String updateFields,
+    ServiceType serviceType
+  ) {
     super(collectionPath, service, entityDAO.getEntityClass(), entityDAO, "", updateFields);
     this.serviceConnectionClass = serviceConnectionClass;
     this.serviceType = serviceType;
@@ -62,14 +66,17 @@ public abstract class ServiceEntityRepository<
   public void prepare(T service, boolean update) {
     if (service.getConnection() != null) {
       service
-          .getConnection()
-          .setConfig(
-              SecretsManagerFactory.getSecretsManager()
-                  .encryptServiceConnectionConfig(
-                      service.getConnection().getConfig(),
-                      service.getServiceType().value(),
-                      service.getName(),
-                      serviceType));
+        .getConnection()
+        .setConfig(
+          SecretsManagerFactory
+            .getSecretsManager()
+            .encryptServiceConnectionConfig(
+              service.getConnection().getConfig(),
+              service.getServiceType().value(),
+              service.getName(),
+              serviceType
+            )
+        );
     }
   }
 
@@ -94,9 +101,14 @@ public abstract class ServiceEntityRepository<
   @Override
   protected void postDelete(T service) {
     if (service.getConnection() != null) {
-      SecretsManagerFactory.getSecretsManager()
-          .deleteSecretsFromServiceConnectionConfig(
-              service.getConnection().getConfig(), service.getServiceType().value(), service.getName(), serviceType);
+      SecretsManagerFactory
+        .getSecretsManager()
+        .deleteSecretsFromServiceConnectionConfig(
+          service.getConnection().getConfig(),
+          service.getServiceType().value(),
+          service.getName(),
+          serviceType
+        );
     }
   }
 
@@ -126,11 +138,19 @@ public abstract class ServiceEntityRepository<
       S decryptedUpdatedConn = JsonUtils.readValue(updatedJson, serviceConnectionClass);
       SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
       decryptedOrigConn.setConfig(
-          secretsManager.decryptServiceConnectionConfig(
-              decryptedOrigConn.getConfig(), original.getServiceType().value(), serviceType));
+        secretsManager.decryptServiceConnectionConfig(
+          decryptedOrigConn.getConfig(),
+          original.getServiceType().value(),
+          serviceType
+        )
+      );
       decryptedUpdatedConn.setConfig(
-          secretsManager.decryptServiceConnectionConfig(
-              decryptedUpdatedConn.getConfig(), updated.getServiceType().value(), serviceType));
+        secretsManager.decryptServiceConnectionConfig(
+          decryptedUpdatedConn.getConfig(),
+          updated.getServiceType().value(),
+          serviceType
+        )
+      );
       if (!objectMatch.test(decryptedOrigConn, decryptedUpdatedConn)) {
         // we don't want save connection config details in our database
         recordChange("connection", "old-encrypted-value", "new-encrypted-value", true);

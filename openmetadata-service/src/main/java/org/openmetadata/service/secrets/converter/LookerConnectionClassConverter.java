@@ -8,8 +8,10 @@ import org.openmetadata.service.util.JsonUtils;
 
 public class LookerConnectionClassConverter extends ClassConverter {
 
-  private static final List<Class<?>> CREDENTIALS_CLASSES =
-      List.of(GitHubCredentials.class, BitBucketCredentials.class);
+  private static final List<Class<?>> CREDENTIALS_CLASSES = List.of(
+    GitHubCredentials.class,
+    BitBucketCredentials.class
+  );
 
   public LookerConnectionClassConverter() {
     super(LookerConnection.class);
@@ -20,7 +22,7 @@ public class LookerConnectionClassConverter extends ClassConverter {
     LookerConnection lookerConnection = (LookerConnection) JsonUtils.convertValue(object, this.clazz);
 
     tryToConvertOrFail(lookerConnection.getGitCredentials(), CREDENTIALS_CLASSES)
-        .ifPresent(lookerConnection::setGitCredentials);
+      .ifPresent(lookerConnection::setGitCredentials);
 
     return lookerConnection;
   }

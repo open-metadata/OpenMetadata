@@ -58,9 +58,15 @@ public class MaskedAnnotator extends AbstractAnnotator {
       Field outerClassField = JMethod.class.getDeclaredField("outer");
       outerClassField.setAccessible(true);
       JDefinedClass outerClass = (JDefinedClass) outerClassField.get(jMethod);
-      if (outerClass.fields().containsKey(propertyName)
-          && outerClass.fields().get(propertyName).annotations().stream()
-              .anyMatch(annotation -> MaskedField.class.getName().equals(getAnnotationClassName(annotation)))) {
+      if (
+        outerClass.fields().containsKey(propertyName) &&
+        outerClass
+          .fields()
+          .get(propertyName)
+          .annotations()
+          .stream()
+          .anyMatch(annotation -> MaskedField.class.getName().equals(getAnnotationClassName(annotation)))
+      ) {
         jMethod.annotate(MaskedField.class);
       }
     } catch (NoSuchFieldException | IllegalAccessException e) {

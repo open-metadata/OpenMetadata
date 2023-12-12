@@ -33,16 +33,18 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class DomainRepository extends EntityRepository<Domain> {
+
   private static final String UPDATE_FIELDS = "parent,children,experts";
 
   public DomainRepository() {
     super(
-        DomainResource.COLLECTION_PATH,
-        DOMAIN,
-        Domain.class,
-        Entity.getCollectionDAO().domainDAO(),
-        UPDATE_FIELDS,
-        UPDATE_FIELDS);
+      DomainResource.COLLECTION_PATH,
+      DOMAIN,
+      Domain.class,
+      Entity.getCollectionDAO().domainDAO(),
+      UPDATE_FIELDS,
+      UPDATE_FIELDS
+    );
     supportsSearch = true;
   }
 
@@ -130,6 +132,7 @@ public class DomainRepository extends EntityRepository<Domain> {
   }
 
   public class DomainUpdater extends EntityUpdater {
+
     public DomainUpdater(Domain original, Domain updated, Operation operation) {
       super(original, updated, operation);
     }

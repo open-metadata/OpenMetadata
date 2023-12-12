@@ -46,6 +46,7 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
 public class PolicyRepository extends EntityRepository<Policy> {
+
   public static final String ENABLED = "enabled";
 
   public PolicyRepository() {
@@ -98,7 +99,8 @@ public class PolicyRepository extends EntityRepository<Policy> {
   protected void preDelete(Policy entity, String updateBy) {
     if (FALSE.equals(entity.getAllowDelete())) {
       throw new IllegalArgumentException(
-          CatalogExceptionMessage.systemEntityDeleteNotAllowed(entity.getName(), Entity.POLICY));
+        CatalogExceptionMessage.systemEntityDeleteNotAllowed(entity.getName(), Entity.POLICY)
+      );
     }
   }
 
@@ -134,20 +136,21 @@ public class PolicyRepository extends EntityRepository<Policy> {
     boolean containsViewAll = operations.stream().anyMatch(o -> o.equals(VIEW_ALL));
     if (containsViewAll) {
       operations =
-          operations.stream().filter(o -> o.equals(VIEW_ALL) || !isViewOperation(o)).collect(Collectors.toList());
+        operations.stream().filter(o -> o.equals(VIEW_ALL) || !isViewOperation(o)).collect(Collectors.toList());
     }
 
     // If EDIT_ALL is in the operation list, remove all the other specific edit operations that are redundant
     boolean containsEditAll = operations.stream().anyMatch(o -> o.equals(EDIT_ALL));
     if (containsEditAll) {
       operations =
-          operations.stream().filter(o -> o.equals(EDIT_ALL) || !isEditOperation(o)).collect(Collectors.toList());
+        operations.stream().filter(o -> o.equals(EDIT_ALL) || !isEditOperation(o)).collect(Collectors.toList());
     }
     return operations;
   }
 
   /** Handles entity updated from PUT and POST operation. */
   public class PolicyUpdater extends EntityUpdater {
+
     public PolicyUpdater(Policy original, Policy updated, Operation operation) {
       super(original, updated, operation);
     }

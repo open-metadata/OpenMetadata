@@ -16,6 +16,7 @@ package org.openmetadata.service.exception;
 import java.io.IOException;
 
 public class SourceException extends IOException {
+
   public SourceException(String msg, Throwable throwable) {
     super(msg, throwable);
   }

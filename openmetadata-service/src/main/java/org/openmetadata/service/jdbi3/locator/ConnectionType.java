@@ -45,7 +45,9 @@ public enum ConnectionType {
       return labelMap.get(value);
     } catch (Exception e) {
       throw new IllegalArgumentException(
-          String.format("Cannot create %s from value [%s]", ConnectionType.class.getName(), value), e);
+        String.format("Cannot create %s from value [%s]", ConnectionType.class.getName(), value),
+        e
+      );
     }
   }
 

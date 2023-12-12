@@ -54,14 +54,15 @@ import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/reports")
 @Tag(
-    name = "Reports (beta)",
-    description =
-        "`Reports` are static information computed from data periodically that includes "
-            + "data in text, table, and visual form.")
+  name = "Reports (beta)",
+  description = "`Reports` are static information computed from data periodically that includes " +
+  "data in text, table, and visual form."
+)
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "reports")
 public class ReportResource extends EntityResource<Report, ReportRepository> {
+
   public static final String COLLECTION_PATH = "/v1/reports/";
   static final String FIELDS = "owner,usageSummary";
 
@@ -81,22 +82,24 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
 
   @GET
   @Operation(
-      operationId = "listReports",
-      summary = "List reports",
-      description = "Get a list of reports. Use `fields` parameter to get only necessary fields.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "List of reports",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ReportList.class)))
-      })
+    operationId = "listReports",
+    summary = "List reports",
+    description = "Get a list of reports. Use `fields` parameter to get only necessary fields.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "List of reports",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = ReportList.class))
+      )
+    }
+  )
   public ResultList<Report> list(
-      @Context UriInfo uriInfo,
-      @Parameter(
-              description = "Fields requested in the returned resource",
-              schema = @Schema(type = "string", example = FIELDS))
-          @QueryParam("fields")
-          String fieldsParam) {
+    @Context UriInfo uriInfo,
+    @Parameter(
+      description = "Fields requested in the returned resource",
+      schema = @Schema(type = "string", example = FIELDS)
+    ) @QueryParam("fields") String fieldsParam
+  ) {
     Fields fields = getFields(fieldsParam);
     ListFilter filter = new ListFilter();
     return repository.listAfter(uriInfo, fields, filter, 10000, null);
@@ -105,47 +108,49 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
   @GET
   @Path("/{id}")
   @Operation(
-      operationId = "getReportByID",
-      summary = "Get a report by Id",
-      description = "Get a report by `Id`.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The report",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Report.class))),
-        @ApiResponse(responseCode = "404", description = "Report for instance {id} is not found")
-      })
+    operationId = "getReportByID",
+    summary = "Get a report by Id",
+    description = "Get a report by `Id`.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "The report",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = Report.class))
+      ),
+      @ApiResponse(responseCode = "404", description = "Report for instance {id} is not found")
+    }
+  )
   public Report get(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the report", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Parameter(
-              description = "Fields requested in the returned resource",
-              schema = @Schema(type = "string", example = FIELDS))
-          @QueryParam("fields")
-          String fieldsParam,
-      @Parameter(
-              description = "Include all, deleted, or non-deleted entities.",
-              schema = @Schema(implementation = Include.class))
-          @QueryParam("include")
-          @DefaultValue("non-deleted")
-          Include include) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Id of the report", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+    @Parameter(
+      description = "Fields requested in the returned resource",
+      schema = @Schema(type = "string", example = FIELDS)
+    ) @QueryParam("fields") String fieldsParam,
+    @Parameter(
+      description = "Include all, deleted, or non-deleted entities.",
+      schema = @Schema(implementation = Include.class)
+    ) @QueryParam("include") @DefaultValue("non-deleted") Include include
+  ) {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @Override
   @POST
   @Operation(
-      operationId = "getReportByFQN",
-      summary = "Create a report",
-      description = "Create a new report.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The report",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Report.class))),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
+    operationId = "getReportByFQN",
+    summary = "Create a report",
+    description = "Create a new report.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "The report",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = Report.class))
+      ),
+      @ApiResponse(responseCode = "400", description = "Bad request")
+    }
+  )
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Report report) {
     addToReport(securityContext, report);
     return super.create(uriInfo, securityContext, report);
@@ -154,18 +159,23 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
   @Override
   @PUT
   @Operation(
-      operationId = "createOrUpdateReport",
-      summary = "Create or update a report",
-      description = "Create a new report, it it does not exist or update an existing report.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The report",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Report.class))),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
+    operationId = "createOrUpdateReport",
+    summary = "Create or update a report",
+    description = "Create a new report, it it does not exist or update an existing report.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "The report",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = Report.class))
+      ),
+      @ApiResponse(responseCode = "400", description = "Bad request")
+    }
+  )
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Report report) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Valid Report report
+  ) {
     addToReport(securityContext, report);
     return super.createOrUpdate(uriInfo, securityContext, report);
   }
@@ -173,28 +183,31 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
   @PUT
   @Path("/{id}/vote")
   @Operation(
-      operationId = "updateVoteForEntity",
-      summary = "Update Vote for a Entity",
-      description = "Update vote for a Entity",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "OK",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
-        @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
-      })
+    operationId = "updateVoteForEntity",
+    summary = "Update Vote for a Entity",
+    description = "Update vote for a Entity",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "OK",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))
+      ),
+      @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
+    }
+  )
   public Response updateVote(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Valid VoteRequest request) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+    @Valid VoteRequest request
+  ) {
     return repository.updateVote(securityContext.getUserPrincipal().getName(), id, request).toResponse();
   }
 
   private void addToReport(SecurityContext securityContext, Report report) {
     report
-        .withId(UUID.randomUUID())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis());
+      .withId(UUID.randomUUID())
+      .withUpdatedBy(securityContext.getUserPrincipal().getName())
+      .withUpdatedAt(System.currentTimeMillis());
   }
 }

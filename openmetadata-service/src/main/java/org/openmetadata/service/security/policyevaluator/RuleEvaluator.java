@@ -16,6 +16,7 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyCo
  */
 @Slf4j
 public class RuleEvaluator {
+
   private final PolicyContext policyContext;
   private final SubjectContext subjectContext;
   private final ResourceContextInterface resourceContext;
@@ -31,7 +32,10 @@ public class RuleEvaluator {
   }
 
   public RuleEvaluator(
-      PolicyContext policyContext, SubjectContext subjectContext, ResourceContextInterface resourceContext) {
+    PolicyContext policyContext,
+    SubjectContext subjectContext,
+    ResourceContextInterface resourceContext
+  ) {
     this.policyContext = policyContext;
     this.subjectContext = subjectContext;
     this.resourceContext = resourceContext;
@@ -39,10 +43,11 @@ public class RuleEvaluator {
   }
 
   @Function(
-      name = "noOwner",
-      input = "none",
-      description = "Returns true if the entity being accessed has no owner",
-      examples = {"noOwner()", "!noOwner", "noOwner() || isOwner()"})
+    name = "noOwner",
+    input = "none",
+    description = "Returns true if the entity being accessed has no owner",
+    examples = { "noOwner()", "!noOwner", "noOwner() || isOwner()" }
+  )
   @SuppressWarnings("unused") // Used in SpelExpressions
   public boolean noOwner() {
     if (expressionValidation) {
@@ -52,10 +57,11 @@ public class RuleEvaluator {
   }
 
   @Function(
-      name = "isOwner",
-      input = "none",
-      description = "Returns true if the logged in user is the owner of the entity being accessed",
-      examples = {"isOwner()", "!isOwner", "noOwner() || isOwner()"})
+    name = "isOwner",
+    input = "none",
+    description = "Returns true if the logged in user is the owner of the entity being accessed",
+    examples = { "isOwner()", "!isOwner", "noOwner() || isOwner()" }
+  )
   public boolean isOwner() {
     if (expressionValidation) {
       return false;
@@ -67,10 +73,11 @@ public class RuleEvaluator {
   }
 
   @Function(
-      name = "matchAllTags",
-      input = "List of comma separated tag or glossary fully qualified names",
-      description = "Returns true if the entity being accessed has all the tags given as input",
-      examples = {"matchAllTags('PersonalData.Personal', 'Tier.Tier1', 'Business Glossary.Clothing')"})
+    name = "matchAllTags",
+    input = "List of comma separated tag or glossary fully qualified names",
+    description = "Returns true if the entity being accessed has all the tags given as input",
+    examples = { "matchAllTags('PersonalData.Personal', 'Tier.Tier1', 'Business Glossary.Clothing')" }
+  )
   @SuppressWarnings("ununsed")
   public boolean matchAllTags(String... tagFQNs) {
     if (expressionValidation) {
@@ -94,10 +101,11 @@ public class RuleEvaluator {
   }
 
   @Function(
-      name = "matchAnyTag",
-      input = "List of comma separated tag or glossary fully qualified names",
-      description = "Returns true if the entity being accessed has at least one of the tags given as input",
-      examples = {"matchAnyTag('PersonalData.Personal', 'Tier.Tier1', 'Business Glossary.Clothing')"})
+    name = "matchAnyTag",
+    input = "List of comma separated tag or glossary fully qualified names",
+    description = "Returns true if the entity being accessed has at least one of the tags given as input",
+    examples = { "matchAnyTag('PersonalData.Personal', 'Tier.Tier1', 'Business Glossary.Clothing')" }
+  )
   @SuppressWarnings("unused") // Used in SpelExpressions
   public boolean matchAnyTag(String... tagFQNs) {
     if (expressionValidation) {
@@ -121,12 +129,12 @@ public class RuleEvaluator {
   }
 
   @Function(
-      name = "matchTeam",
-      input = "None",
-      description =
-          "Returns true if the user and the resource belongs to the team hierarchy where this policy is"
-              + "attached. This allows restricting permissions to a resource to the members of the team hierarchy.",
-      examples = {"matchTeam()"})
+    name = "matchTeam",
+    input = "None",
+    description = "Returns true if the user and the resource belongs to the team hierarchy where this policy is" +
+    "attached. This allows restricting permissions to a resource to the members of the team hierarchy.",
+    examples = { "matchTeam()" }
+  )
   @SuppressWarnings("unused") // Used in SpelExpressions
   public boolean matchTeam() {
     if (expressionValidation) {
@@ -138,15 +146,18 @@ public class RuleEvaluator {
     if (policyContext == null || !policyContext.getEntityType().equals(Entity.TEAM)) {
       return false; // Policy must be attached to a team for this function to work
     }
-    return subjectContext.isTeamAsset(policyContext.getEntityName(), resourceContext.getOwner())
-        && subjectContext.isUserUnderTeam(policyContext.getEntityName());
+    return (
+      subjectContext.isTeamAsset(policyContext.getEntityName(), resourceContext.getOwner()) &&
+      subjectContext.isUserUnderTeam(policyContext.getEntityName())
+    );
   }
 
   @Function(
-      name = "inAnyTeam",
-      input = "List of comma separated team names",
-      description = "Returns true if the user belongs under the hierarchy of any of the teams in the given team list.",
-      examples = {"inAnyTeam('marketing')"})
+    name = "inAnyTeam",
+    input = "List of comma separated team names",
+    description = "Returns true if the user belongs under the hierarchy of any of the teams in the given team list.",
+    examples = { "inAnyTeam('marketing')" }
+  )
   @SuppressWarnings("unused") // Used in SpelExpressions
   public boolean inAnyTeam(String... teams) {
     if (expressionValidation) {
@@ -169,12 +180,12 @@ public class RuleEvaluator {
   }
 
   @Function(
-      name = "hasAnyRole",
-      input = "List of comma separated roles",
-      description =
-          "Returns true if the user (either direct or inherited from the parent teams) has one or more roles "
-              + "from the list.",
-      examples = {"hasAnyRole('DataSteward', 'DataEngineer')"})
+    name = "hasAnyRole",
+    input = "List of comma separated roles",
+    description = "Returns true if the user (either direct or inherited from the parent teams) has one or more roles " +
+    "from the list.",
+    examples = { "hasAnyRole('DataSteward', 'DataEngineer')" }
+  )
   @SuppressWarnings("unused") // Used in SpelExpressions
   public boolean hasAnyRole(String... roles) {
     if (expressionValidation) {

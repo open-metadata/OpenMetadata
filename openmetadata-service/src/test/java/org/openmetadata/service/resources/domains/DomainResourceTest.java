@@ -32,6 +32,7 @@ import org.openmetadata.service.resources.domains.DomainResource.DomainList;
 import org.openmetadata.service.util.JsonUtils;
 
 public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain> {
+
   public DomainResourceTest() {
     super(Entity.DOMAIN, Domain.class, DomainList.class, "domains", DomainResource.FIELDS);
   }
@@ -39,7 +40,7 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
   public void setupDomains(TestInfo test) throws IOException {
     DOMAIN = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     SUB_DOMAIN =
-        createEntity(createRequest("sub-domain").withParent(DOMAIN.getFullyQualifiedName()), ADMIN_AUTH_HEADERS);
+      createEntity(createRequest("sub-domain").withParent(DOMAIN.getFullyQualifiedName()), ADMIN_AUTH_HEADERS);
     DOMAIN1 = createEntity(createRequest(test, 1), ADMIN_AUTH_HEADERS);
   }
 
@@ -110,11 +111,11 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
   @Override
   public CreateDomain createRequest(String name) {
     return new CreateDomain()
-        .withName(name)
-        .withDomainType(DomainType.AGGREGATE)
-        .withDescription("name")
-        .withStyle(new Style().withColor("#FFA07A").withIconURL("https://domainIcon"))
-        .withExperts(listOf(USER1.getFullyQualifiedName()));
+      .withName(name)
+      .withDomainType(DomainType.AGGREGATE)
+      .withDescription("name")
+      .withStyle(new Style().withColor("#FFA07A").withIconURL("https://domainIcon"))
+      .withExperts(listOf(USER1.getFullyQualifiedName()));
   }
 
   @Override
@@ -135,17 +136,16 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
 
   @Override
   public Domain validateGetWithDifferentFields(Domain domain, boolean byName) throws HttpResponseException {
-    Domain getDomain =
-        byName
-            ? getEntityByName(domain.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS)
-            : getEntity(domain.getId(), null, ADMIN_AUTH_HEADERS);
+    Domain getDomain = byName
+      ? getEntityByName(domain.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS)
+      : getEntity(domain.getId(), null, ADMIN_AUTH_HEADERS);
     assertListNotNull(getDomain.getDomainType());
     assertListNull(getDomain.getParent(), getDomain.getChildren(), getDomain.getOwner(), getDomain.getExperts());
     String fields = "children,owner,parent,experts";
     getDomain =
-        byName
-            ? getEntityByName(getDomain.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getEntity(getDomain.getId(), fields, ADMIN_AUTH_HEADERS);
+      byName
+        ? getEntityByName(getDomain.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+        : getEntity(getDomain.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(getDomain.getDomainType());
     // Fields requested are received
     assertEquals(domain.getParent(), getDomain.getParent());

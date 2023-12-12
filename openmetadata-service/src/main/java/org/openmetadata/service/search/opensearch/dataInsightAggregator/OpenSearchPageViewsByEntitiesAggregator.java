@@ -7,7 +7,7 @@ import os.org.opensearch.search.aggregations.bucket.MultiBucketsAggregation;
 import os.org.opensearch.search.aggregations.metrics.Sum;
 
 public class OpenSearchPageViewsByEntitiesAggregator
-    extends PageViewsByEntitiesAggregator<Aggregations, MultiBucketsAggregation.Bucket, MultiBucketsAggregation, Sum> {
+  extends PageViewsByEntitiesAggregator<Aggregations, MultiBucketsAggregation.Bucket, MultiBucketsAggregation, Sum> {
 
   public OpenSearchPageViewsByEntitiesAggregator(Aggregations aggregations) {
     super(aggregations);

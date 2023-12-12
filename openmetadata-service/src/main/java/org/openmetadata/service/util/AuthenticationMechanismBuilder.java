@@ -22,6 +22,7 @@ import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.service.secrets.converter.ClassConverterFactory;
 
 public final class AuthenticationMechanismBuilder {
+
   private AuthenticationMechanismBuilder() {
     // Final Class
   }
@@ -31,10 +32,12 @@ public final class AuthenticationMechanismBuilder {
     if (authMechanism != null) {
       if (JWT.equals(authMechanism.getAuthType())) {
         authMechanism.setConfig(
-            ClassConverterFactory.getConverter(JWTAuthMechanism.class).convert(authMechanism.getConfig()));
+          ClassConverterFactory.getConverter(JWTAuthMechanism.class).convert(authMechanism.getConfig())
+        );
       } else if (SSO.equals(authMechanism.getAuthType())) {
         authMechanism.setConfig(
-            ClassConverterFactory.getConverter(SSOAuthMechanism.class).convert(authMechanism.getConfig()));
+          ClassConverterFactory.getConverter(SSOAuthMechanism.class).convert(authMechanism.getConfig())
+        );
       }
     }
   }

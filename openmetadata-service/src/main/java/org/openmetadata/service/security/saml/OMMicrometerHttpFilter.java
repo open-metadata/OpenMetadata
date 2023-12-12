@@ -35,6 +35,7 @@ import org.openmetadata.common.utils.CommonUtil;
  */
 @Slf4j
 public class OMMicrometerHttpFilter implements Filter {
+
   protected FilterConfig filterConfig;
 
   public OMMicrometerHttpFilter() {
@@ -48,7 +49,7 @@ public class OMMicrometerHttpFilter implements Filter {
 
   @Override
   public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
-      throws IOException, ServletException {
+    throws IOException, ServletException {
     Timer.Sample timer = Timer.start(prometheusMeterRegistry);
     long startTime = System.nanoTime();
     chain.doFilter(request, response);

@@ -32,7 +32,7 @@ public interface AuthenticatorHandler {
   void recordFailedLoginAttempt(String providedIdentity, User user) throws TemplateException, IOException;
 
   void validatePassword(String providedIdentity, User storedUser, String reqPassword)
-      throws TemplateException, IOException;
+    throws TemplateException, IOException;
 
   User lookUserInProvider(String userName);
 
@@ -53,7 +53,7 @@ public interface AuthenticatorHandler {
   }
 
   default void sendPasswordResetLink(UriInfo uriInfo, User user, String subject, String templateFilePath)
-      throws IOException {
+    throws IOException {
     throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
 
@@ -74,17 +74,21 @@ public interface AuthenticatorHandler {
   }
 
   default void sendInviteMailToUser(
-      UriInfo uriInfo, User user, String subject, CreateUser.CreatePasswordType requestType, String pwd)
-      throws IOException {
+    UriInfo uriInfo,
+    User user,
+    String subject,
+    CreateUser.CreatePasswordType requestType,
+    String pwd
+  )
+    throws IOException {
     throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
 
   default JwtResponse getJwtResponse(User storedUser, long expireInSeconds) {
     RefreshToken refreshToken = createRefreshTokenForLogin(storedUser.getId());
-    JWTAuthMechanism jwtAuthMechanism =
-        JWTTokenGenerator.getInstance()
-            .generateJWTToken(
-                storedUser.getName(), storedUser.getEmail(), expireInSeconds, false, ServiceTokenType.OM_USER);
+    JWTAuthMechanism jwtAuthMechanism = JWTTokenGenerator
+      .getInstance()
+      .generateJWTToken(storedUser.getName(), storedUser.getEmail(), expireInSeconds, false, ServiceTokenType.OM_USER);
 
     JwtResponse response = new JwtResponse();
     response.setTokenType("Bearer");

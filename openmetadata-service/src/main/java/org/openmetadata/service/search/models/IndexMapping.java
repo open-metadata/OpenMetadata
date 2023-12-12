@@ -11,6 +11,7 @@ import lombok.extern.jackson.Jacksonized;
 @Getter
 @Builder
 public class IndexMapping {
+
   String indexName;
   String indexMappingFile;
   String alias;

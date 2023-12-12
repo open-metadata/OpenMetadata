@@ -78,6 +78,7 @@ import org.openmetadata.service.util.ResultList;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "Workflow")
 public class WorkflowResource extends EntityResource<Workflow, WorkflowRepository> {
+
   public static final String COLLECTION_PATH = "/v1/automations/workflows";
   static final String FIELDS = "owner";
 
@@ -93,7 +94,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
     this.openMetadataApplicationConfig = config;
 
     this.pipelineServiceClient =
-        PipelineServiceClientFactory.createPipelineServiceClient(config.getPipelineServiceClientConfiguration());
+      PipelineServiceClientFactory.createPipelineServiceClient(config.getPipelineServiceClientConfiguration());
   }
 
   public static class WorkflowList extends ResultList<Workflow> {
@@ -102,54 +103,49 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
 
   @GET
   @Operation(
-      operationId = "listWorkflows",
-      summary = "List automations workflows",
-      description =
-          "Get a list of automations workflows. Use `fields` "
-              + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
-              + "entries in the list using `limit` and `before` or `after` query params.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "List of automations workflows",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkflowList.class)))
-      })
+    operationId = "listWorkflows",
+    summary = "List automations workflows",
+    description = "Get a list of automations workflows. Use `fields` " +
+    "parameter to get only necessary fields. Use cursor-based pagination to limit the number " +
+    "entries in the list using `limit` and `before` or `after` query params.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "List of automations workflows",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkflowList.class))
+      )
+    }
+  )
   public ResultList<Workflow> list(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(
-              description = "Fields requested in the returned resource",
-              schema = @Schema(type = "string", example = FIELDS))
-          @QueryParam("fields")
-          String fieldsParam,
-      @Parameter(description = "Limit the number automations workflows returned. (1 to 1000000, default = 10)")
-          @DefaultValue("10")
-          @QueryParam("limit")
-          @Min(0)
-          @Max(1000000)
-          int limitParam,
-      @Parameter(
-              description = "Returns list of automations workflows before this cursor",
-              schema = @Schema(type = "string"))
-          @QueryParam("before")
-          String before,
-      @Parameter(
-              description = "Returns list of automations workflows after this cursor",
-              schema = @Schema(type = "string"))
-          @QueryParam("after")
-          String after,
-      @Parameter(
-              description = "Include all, deleted, or non-deleted entities.",
-              schema = @Schema(implementation = Include.class))
-          @QueryParam("include")
-          @DefaultValue("non-deleted")
-          Include include,
-      @Parameter(description = "Filter by workflowType.", schema = @Schema(implementation = WorkflowType.class))
-          @QueryParam("workflowType")
-          String workflowType,
-      @Parameter(description = "Filter by status", schema = @Schema(implementation = WorkflowStatus.class))
-          @QueryParam("status")
-          String status) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(
+      description = "Fields requested in the returned resource",
+      schema = @Schema(type = "string", example = FIELDS)
+    ) @QueryParam("fields") String fieldsParam,
+    @Parameter(
+      description = "Limit the number automations workflows returned. (1 to 1000000, default = 10)"
+    ) @DefaultValue("10") @QueryParam("limit") @Min(0) @Max(1000000) int limitParam,
+    @Parameter(
+      description = "Returns list of automations workflows before this cursor",
+      schema = @Schema(type = "string")
+    ) @QueryParam("before") String before,
+    @Parameter(
+      description = "Returns list of automations workflows after this cursor",
+      schema = @Schema(type = "string")
+    ) @QueryParam("after") String after,
+    @Parameter(
+      description = "Include all, deleted, or non-deleted entities.",
+      schema = @Schema(implementation = Include.class)
+    ) @QueryParam("include") @DefaultValue("non-deleted") Include include,
+    @Parameter(
+      description = "Filter by workflowType.",
+      schema = @Schema(implementation = WorkflowType.class)
+    ) @QueryParam("workflowType") String workflowType,
+    @Parameter(description = "Filter by status", schema = @Schema(implementation = WorkflowStatus.class)) @QueryParam(
+      "status"
+    ) String status
+  ) {
     ListFilter filter = new ListFilter(include);
     if (workflowType != null) {
       filter.addQueryParam("workflowType", workflowType);
@@ -157,161 +153,181 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
     if (status != null) {
       filter.addQueryParam("status", status);
     }
-    ResultList<Workflow> workflows =
-        super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    ResultList<Workflow> workflows = super.listInternal(
+      uriInfo,
+      securityContext,
+      fieldsParam,
+      filter,
+      limitParam,
+      before,
+      after
+    );
     workflows.setData(
-        listOrEmpty(workflows.getData()).stream()
-            .map(service -> decryptOrNullify(securityContext, service))
-            .collect(Collectors.toList()));
+      listOrEmpty(workflows.getData())
+        .stream()
+        .map(service -> decryptOrNullify(securityContext, service))
+        .collect(Collectors.toList())
+    );
     return workflows;
   }
 
   @GET
   @Path("/{id}/versions")
   @Operation(
-      operationId = "listAllWorkflowVersion",
-      summary = "List Workflow versions",
-      description = "Get a list of all the versions of a Workflow identified by `Id`",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "List of Workflow versions",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
-      })
+    operationId = "listAllWorkflowVersion",
+    summary = "List Workflow versions",
+    description = "Get a list of all the versions of a Workflow identified by `Id`",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "List of Workflow versions",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class))
+      )
+    }
+  )
   public EntityHistory listVersions(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the Workflow", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Id of the Workflow", schema = @Schema(type = "UUID")) @PathParam("id") UUID id
+  ) {
     return super.listVersionsInternal(securityContext, id);
   }
 
   @GET
   @Path("/{id}")
   @Operation(
-      summary = "Get a Workflow by Id",
-      description = "Get a Workflow by `Id`.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The Workflow",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Workflow.class))),
-        @ApiResponse(responseCode = "404", description = "Workflow for instance {id} is not found")
-      })
+    summary = "Get a Workflow by Id",
+    description = "Get a Workflow by `Id`.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "The Workflow",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = Workflow.class))
+      ),
+      @ApiResponse(responseCode = "404", description = "Workflow for instance {id} is not found")
+    }
+  )
   public Workflow get(
-      @Context UriInfo uriInfo,
-      @Parameter(description = "Id of the Workflow", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Context SecurityContext securityContext,
-      @Parameter(
-              description = "Fields requested in the returned resource",
-              schema = @Schema(type = "string", example = FIELDS))
-          @QueryParam("fields")
-          String fieldsParam,
-      @Parameter(
-              description = "Include all, deleted, or non-deleted entities.",
-              schema = @Schema(implementation = Include.class))
-          @QueryParam("include")
-          @DefaultValue("non-deleted")
-          Include include) {
+    @Context UriInfo uriInfo,
+    @Parameter(description = "Id of the Workflow", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+    @Context SecurityContext securityContext,
+    @Parameter(
+      description = "Fields requested in the returned resource",
+      schema = @Schema(type = "string", example = FIELDS)
+    ) @QueryParam("fields") String fieldsParam,
+    @Parameter(
+      description = "Include all, deleted, or non-deleted entities.",
+      schema = @Schema(implementation = Include.class)
+    ) @QueryParam("include") @DefaultValue("non-deleted") Include include
+  ) {
     return decryptOrNullify(securityContext, getInternal(uriInfo, securityContext, id, fieldsParam, include));
   }
 
   @GET
   @Path("/name/{name}")
   @Operation(
-      operationId = "getWorkflowByName",
-      summary = "Get a Workflow by name",
-      description = "Get a Workflow by `name`.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The Workflow",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Workflow.class))),
-        @ApiResponse(responseCode = "404", description = "Workflow for instance {name} is not found")
-      })
+    operationId = "getWorkflowByName",
+    summary = "Get a Workflow by name",
+    description = "Get a Workflow by `name`.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "The Workflow",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = Workflow.class))
+      ),
+      @ApiResponse(responseCode = "404", description = "Workflow for instance {name} is not found")
+    }
+  )
   public Workflow getByName(
-      @Context UriInfo uriInfo,
-      @Parameter(description = "Name of the Workflow", schema = @Schema(type = "string")) @PathParam("name")
-          String name,
-      @Context SecurityContext securityContext,
-      @Parameter(
-              description = "Fields requested in the returned resource",
-              schema = @Schema(type = "string", example = FIELDS))
-          @QueryParam("fields")
-          String fieldsParam,
-      @Parameter(
-              description = "Include all, deleted, or non-deleted entities.",
-              schema = @Schema(implementation = Include.class))
-          @QueryParam("include")
-          @DefaultValue("non-deleted")
-          Include include) {
+    @Context UriInfo uriInfo,
+    @Parameter(description = "Name of the Workflow", schema = @Schema(type = "string")) @PathParam("name") String name,
+    @Context SecurityContext securityContext,
+    @Parameter(
+      description = "Fields requested in the returned resource",
+      schema = @Schema(type = "string", example = FIELDS)
+    ) @QueryParam("fields") String fieldsParam,
+    @Parameter(
+      description = "Include all, deleted, or non-deleted entities.",
+      schema = @Schema(implementation = Include.class)
+    ) @QueryParam("include") @DefaultValue("non-deleted") Include include
+  ) {
     return decryptOrNullify(securityContext, getByNameInternal(uriInfo, securityContext, name, fieldsParam, include));
   }
 
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
-      operationId = "getSpecificWorkflowVersion",
-      summary = "Get a version of the Workflow",
-      description = "Get a version of the Workflow by given `Id`",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Workflow",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Workflow.class))),
-        @ApiResponse(
-            responseCode = "404",
-            description = "Workflow for instance {id} and version {version} is not found")
-      })
+    operationId = "getSpecificWorkflowVersion",
+    summary = "Get a version of the Workflow",
+    description = "Get a version of the Workflow by given `Id`",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "Workflow",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = Workflow.class))
+      ),
+      @ApiResponse(responseCode = "404", description = "Workflow for instance {id} and version {version} is not found")
+    }
+  )
   public Workflow getVersion(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the Workflow", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Parameter(
-              description = "Workflow version number in the form `major`.`minor`",
-              schema = @Schema(type = "string", example = "0.1 or 1.1"))
-          @PathParam("version")
-          String version) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Id of the Workflow", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+    @Parameter(
+      description = "Workflow version number in the form `major`.`minor`",
+      schema = @Schema(type = "string", example = "0.1 or 1.1")
+    ) @PathParam("version") String version
+  ) {
     return decryptOrNullify(securityContext, super.getVersionInternal(securityContext, id, version));
   }
 
   @POST
   @Operation(
-      operationId = "createWorkflow",
-      summary = "Create a Workflow",
-      description = "Create a Workflow.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The Workflow",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Workflow.class))),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
+    operationId = "createWorkflow",
+    summary = "Create a Workflow",
+    description = "Create a Workflow.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "The Workflow",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = Workflow.class))
+      ),
+      @ApiResponse(responseCode = "400", description = "Bad request")
+    }
+  )
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateWorkflow create) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Valid CreateWorkflow create
+  ) {
     Workflow workflow = getWorkflow(create, securityContext.getUserPrincipal().getName());
     Response response = create(uriInfo, securityContext, unmask(workflow));
-    return Response.fromResponse(response)
-        .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
-        .build();
+    return Response
+      .fromResponse(response)
+      .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
+      .build();
   }
 
   @POST
   @Path("/trigger/{id}")
   @Operation(
-      operationId = "triggerWorkflow",
-      summary = "Trigger an workflow run",
-      description = "Trigger a workflow run by id.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Workflow trigger status code",
-            content = @Content(mediaType = "application/json")),
-        @ApiResponse(responseCode = "404", description = "Workflow for instance {id} is not found")
-      })
+    operationId = "triggerWorkflow",
+    summary = "Trigger an workflow run",
+    description = "Trigger a workflow run by id.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "Workflow trigger status code",
+        content = @Content(mediaType = "application/json")
+      ),
+      @ApiResponse(responseCode = "404", description = "Workflow for instance {id} is not found")
+    }
+  )
   public PipelineServiceClientResponse runAutomationsWorkflow(
-      @Context UriInfo uriInfo,
-      @Parameter(description = "Id of the Workflow", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Context SecurityContext securityContext) {
+    @Context UriInfo uriInfo,
+    @Parameter(description = "Id of the Workflow", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+    @Context SecurityContext securityContext
+  ) {
     EntityUtil.Fields fields = getFields(FIELD_OWNER);
     Workflow workflow = repository.get(uriInfo, id, fields);
     workflow.setOpenMetadataServerConnection(new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build());
@@ -327,131 +343,151 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
   @PATCH
   @Path("/{id}")
   @Operation(
-      operationId = "patchWorkflow",
-      summary = "Update a Workflow",
-      description = "Update an existing Workflow using JsonPatch.",
-      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+    operationId = "patchWorkflow",
+    summary = "Update a Workflow",
+    description = "Update an existing Workflow using JsonPatch.",
+    externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902")
+  )
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response updateDescription(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the Workflow", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @RequestBody(
-              description = "JsonPatch with array of operations",
-              content =
-                  @Content(
-                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {@ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")}))
-          JsonPatch patch) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Id of the Workflow", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+    @RequestBody(
+      description = "JsonPatch with array of operations",
+      content = @Content(
+        mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+        examples = { @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]") }
+      )
+    ) JsonPatch patch
+  ) {
     Response response = patchInternal(uriInfo, securityContext, id, patch);
-    return Response.fromResponse(response)
-        .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
-        .build();
+    return Response
+      .fromResponse(response)
+      .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
+      .build();
   }
 
   @PUT
   @Operation(
-      operationId = "createOrUpdateWorkflow",
-      summary = "Update Workflow",
-      description = "Create a Workflow, if it does not exist, or update an existing Workflow.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The updated Workflow ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Workflow.class)))
-      })
+    operationId = "createOrUpdateWorkflow",
+    summary = "Update Workflow",
+    description = "Create a Workflow, if it does not exist, or update an existing Workflow.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "The updated Workflow ",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = Workflow.class))
+      )
+    }
+  )
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateWorkflow create) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Valid CreateWorkflow create
+  ) {
     Workflow workflow = getWorkflow(create, securityContext.getUserPrincipal().getName());
     workflow = unmask(workflow);
     Response response = createOrUpdate(uriInfo, securityContext, workflow);
-    return Response.fromResponse(response)
-        .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
-        .build();
+    return Response
+      .fromResponse(response)
+      .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
+      .build();
   }
 
   @DELETE
   @Path("/{id}")
   @Operation(
-      operationId = "deleteWorkflow",
-      summary = "Delete a Workflow",
-      description = "Delete a Workflow by `id`.",
-      responses = {
-        @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "Workflow for instance {id} is not found")
-      })
+    operationId = "deleteWorkflow",
+    summary = "Delete a Workflow",
+    description = "Delete a Workflow by `id`.",
+    responses = {
+      @ApiResponse(responseCode = "200", description = "OK"),
+      @ApiResponse(responseCode = "404", description = "Workflow for instance {id} is not found")
+    }
+  )
   public Response delete(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Hard delete the entity. (Default = `false`)")
-          @QueryParam("hardDelete")
-          @DefaultValue("false")
-          boolean hardDelete,
-      @Parameter(description = "Id of the Workflow", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Hard delete the entity. (Default = `false`)") @QueryParam("hardDelete") @DefaultValue(
+      "false"
+    ) boolean hardDelete,
+    @Parameter(description = "Id of the Workflow", schema = @Schema(type = "UUID")) @PathParam("id") UUID id
+  ) {
     Response response = delete(uriInfo, securityContext, id, false, hardDelete);
-    return Response.fromResponse(response)
-        .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
-        .build();
+    return Response
+      .fromResponse(response)
+      .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
+      .build();
   }
 
   @DELETE
   @Path("/name/{name}")
   @Operation(
-      operationId = "deleteWorkflowByName",
-      summary = "Delete a Workflow",
-      description = "Delete a Workflow by `name`.",
-      responses = {
-        @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "Workflow for instance {name} is not found")
-      })
+    operationId = "deleteWorkflowByName",
+    summary = "Delete a Workflow",
+    description = "Delete a Workflow by `name`.",
+    responses = {
+      @ApiResponse(responseCode = "200", description = "OK"),
+      @ApiResponse(responseCode = "404", description = "Workflow for instance {name} is not found")
+    }
+  )
   public Response delete(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Hard delete the entity. (Default = `false`)")
-          @QueryParam("hardDelete")
-          @DefaultValue("false")
-          boolean hardDelete,
-      @Parameter(description = "Name of the Workflow", schema = @Schema(type = "string")) @PathParam("name")
-          String name) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Parameter(description = "Hard delete the entity. (Default = `false`)") @QueryParam("hardDelete") @DefaultValue(
+      "false"
+    ) boolean hardDelete,
+    @Parameter(description = "Name of the Workflow", schema = @Schema(type = "string")) @PathParam("name") String name
+  ) {
     Response response = deleteByName(uriInfo, securityContext, name, false, hardDelete);
-    return Response.fromResponse(response)
-        .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
-        .build();
+    return Response
+      .fromResponse(response)
+      .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
+      .build();
   }
 
   @PUT
   @Path("/restore")
   @Operation(
-      operationId = "restore",
-      summary = "Restore a soft deleted Workflow",
-      description = "Restore a soft deleted Workflow.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Successfully restored the Workflow. ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Workflow.class)))
-      })
+    operationId = "restore",
+    summary = "Restore a soft deleted Workflow",
+    description = "Restore a soft deleted Workflow.",
+    responses = {
+      @ApiResponse(
+        responseCode = "200",
+        description = "Successfully restored the Workflow. ",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = Workflow.class))
+      )
+    }
+  )
   public Response restoreWorkflow(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
+    @Context UriInfo uriInfo,
+    @Context SecurityContext securityContext,
+    @Valid RestoreEntity restore
+  ) {
     Response response = restoreEntity(uriInfo, securityContext, restore.getId());
-    return Response.fromResponse(response)
-        .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
-        .build();
+    return Response
+      .fromResponse(response)
+      .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
+      .build();
   }
 
   private Workflow getWorkflow(CreateWorkflow create, String user) {
-    OpenMetadataConnection openMetadataServerConnection =
-        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build();
+    OpenMetadataConnection openMetadataServerConnection = new OpenMetadataConnectionBuilder(
+      openMetadataApplicationConfig
+    )
+      .build();
     return repository
-        .copy(new Workflow(), create, user)
-        .withDescription(create.getDescription())
-        .withRequest(create.getRequest())
-        .withWorkflowType(create.getWorkflowType())
-        .withDisplayName(create.getDisplayName())
-        .withResponse(create.getResponse())
-        .withStatus(create.getStatus())
-        .withOpenMetadataServerConnection(openMetadataServerConnection)
-        .withName(create.getName());
+      .copy(new Workflow(), create, user)
+      .withDescription(create.getDescription())
+      .withRequest(create.getRequest())
+      .withWorkflowType(create.getWorkflowType())
+      .withDisplayName(create.getDisplayName())
+      .withResponse(create.getResponse())
+      .withStatus(create.getStatus())
+      .withOpenMetadataServerConnection(openMetadataServerConnection)
+      .withName(create.getName());
   }
 
   private Workflow unmask(Workflow workflow) {
@@ -470,23 +506,29 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     try {
       authorizer.authorize(
-          securityContext,
-          new OperationContext(entityType, MetadataOperation.VIEW_ALL),
-          getResourceContextById(workflow.getId()));
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL),
+        getResourceContextById(workflow.getId())
+      );
     } catch (AuthorizationException e) {
       Workflow workflowConverted = (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
       if (workflowConverted.getRequest() instanceof TestServiceConnectionRequest) {
-        ((ServiceConnectionEntityInterface)
-                ((TestServiceConnectionRequest) workflowConverted.getRequest()).getConnection())
-            .setConfig(null);
+        (
+          (ServiceConnectionEntityInterface) (
+            (TestServiceConnectionRequest) workflowConverted.getRequest()
+          ).getConnection()
+        ).setConfig(null);
       }
       return workflowConverted;
     }
     Workflow workflowDecrypted = secretsManager.decryptWorkflow(workflow);
-    OpenMetadataConnection openMetadataServerConnection =
-        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build();
+    OpenMetadataConnection openMetadataServerConnection = new OpenMetadataConnectionBuilder(
+      openMetadataApplicationConfig
+    )
+      .build();
     workflowDecrypted.setOpenMetadataServerConnection(
-        secretsManager.encryptOpenMetadataConnection(openMetadataServerConnection, false));
+      secretsManager.encryptOpenMetadataConnection(openMetadataServerConnection, false)
+    );
     if (authorizer.shouldMaskPasswords(securityContext)) {
       workflowDecrypted = EntityMaskerFactory.getEntityMasker().maskWorkflow(workflowDecrypted);
     }
@@ -500,11 +542,13 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
     }
     if (originalWorkflow.getRequest() instanceof TestServiceConnectionRequest) {
       TestServiceConnectionRequest testServiceConnection = (TestServiceConnectionRequest) originalWorkflow.getRequest();
-      EntityRepository<? extends EntityInterface> serviceRepository =
-          Entity.getServiceEntityRepository(testServiceConnection.getServiceType());
-      ServiceEntityInterface originalService =
-          (ServiceEntityInterface)
-              serviceRepository.findByNameOrNull(testServiceConnection.getServiceName(), Include.NON_DELETED);
+      EntityRepository<? extends EntityInterface> serviceRepository = Entity.getServiceEntityRepository(
+        testServiceConnection.getServiceType()
+      );
+      ServiceEntityInterface originalService = (ServiceEntityInterface) serviceRepository.findByNameOrNull(
+        testServiceConnection.getServiceName(),
+        Include.NON_DELETED
+      );
       if (originalService != null && originalService.getConnection() != null) {
         testServiceConnection.setConnection(originalService.getConnection());
         originalWorkflow.setRequest(testServiceConnection);

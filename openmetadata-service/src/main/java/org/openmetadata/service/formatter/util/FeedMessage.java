@@ -17,6 +17,12 @@ import lombok.Getter;
 import lombok.Setter;
 
 public class FeedMessage {
-  @Getter @Setter private String header;
-  @Getter @Setter private String message;
+
+  @Getter
+  @Setter
+  private String header;
+
+  @Getter
+  @Setter
+  private String message;
 }

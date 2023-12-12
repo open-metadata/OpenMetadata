@@ -23,11 +23,16 @@ import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 
 public abstract class EntityMasker {
 
-  protected static final Set<Class<?>> DO_NOT_MASK_CLASSES =
-      Set.of(OpenMetadataJWTClientConfig.class, BasicAuthMechanism.class);
+  protected static final Set<Class<?>> DO_NOT_MASK_CLASSES = Set.of(
+    OpenMetadataJWTClientConfig.class,
+    BasicAuthMechanism.class
+  );
 
   public abstract Object maskServiceConnectionConfig(
-      Object connectionConfig, String connectionType, ServiceType serviceType);
+    Object connectionConfig,
+    String connectionType,
+    ServiceType serviceType
+  );
 
   public abstract void maskAuthenticationMechanism(String name, AuthenticationMechanism authenticationMechanism);
 
@@ -36,15 +41,22 @@ public abstract class EntityMasker {
   public abstract Workflow maskWorkflow(Workflow workflow);
 
   public abstract Object unmaskServiceConnectionConfig(
-      Object connectionConfig, Object originalConnectionConfig, String connectionType, ServiceType serviceType);
+    Object connectionConfig,
+    Object originalConnectionConfig,
+    String connectionType,
+    ServiceType serviceType
+  );
 
   public abstract void unmaskIngestionPipeline(
-      IngestionPipeline ingestionPipeline, IngestionPipeline originalIngestionPipeline);
+    IngestionPipeline ingestionPipeline,
+    IngestionPipeline originalIngestionPipeline
+  );
 
   public abstract void unmaskAuthenticationMechanism(
-      String name,
-      AuthenticationMechanism authenticationMechanism,
-      AuthenticationMechanism originalAuthenticationMechanism);
+    String name,
+    AuthenticationMechanism authenticationMechanism,
+    AuthenticationMechanism originalAuthenticationMechanism
+  );
 
   public abstract Workflow unmaskWorkflow(Workflow workflow, Workflow originalWorkflow);
 }

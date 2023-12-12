@@ -22,16 +22,18 @@ import org.openmetadata.service.resources.services.mlmodel.MlModelServiceResourc
 
 @Slf4j
 public class MlModelServiceRepository extends ServiceEntityRepository<MlModelService, MlModelConnection> {
+
   private static final String UPDATE_FIELDS = "owner,connection";
 
   public MlModelServiceRepository() {
     super(
-        MlModelServiceResource.COLLECTION_PATH,
-        Entity.MLMODEL_SERVICE,
-        Entity.getCollectionDAO().mlModelServiceDAO(),
-        MlModelConnection.class,
-        UPDATE_FIELDS,
-        ServiceType.ML_MODEL);
+      MlModelServiceResource.COLLECTION_PATH,
+      Entity.MLMODEL_SERVICE,
+      Entity.getCollectionDAO().mlModelServiceDAO(),
+      MlModelConnection.class,
+      UPDATE_FIELDS,
+      ServiceType.ML_MODEL
+    );
     supportsSearch = true;
   }
 }

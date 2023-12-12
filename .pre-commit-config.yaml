@@ -24,9 +24,9 @@ repos:
         files: ^openmetadata-service/src/main/resources/json/schema/
   - repo: local
     hooks:
-      - id: google-style-java
-        name: Google Java Code Style for Java
-        description: Formats code in Google's Java codestyle with 120 line length.
+      - id: prettier-java
+        name: Prettier Java Code Style for Java
+        description: Formats code in Prettier's Java codestyle with 120 line length.
         entry: scripts/format-code.sh
         language: script
         files: \.java$

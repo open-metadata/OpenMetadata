@@ -18,6 +18,7 @@ import org.openmetadata.service.jdbi3.MigrationDAO;
 
 @Slf4j
 public final class Migration {
+
   private Migration() {}
 
   /**
@@ -29,9 +30,10 @@ public final class Migration {
       return jdbi.withExtension(MigrationDAO.class, MigrationDAO::getMaxVersion);
     } catch (StatementException e) {
       throw new IllegalArgumentException(
-          "Exception encountered when trying to obtain last migrated Flyway version."
-              + " Make sure you have run `./bootstrap/bootstrap_storage.sh migrate-all` at least once.",
-          e);
+        "Exception encountered when trying to obtain last migrated Flyway version." +
+        " Make sure you have run `./bootstrap/bootstrap_storage.sh migrate-all` at least once.",
+        e
+      );
     }
   }
 
@@ -40,9 +42,10 @@ public final class Migration {
       return jdbi.withExtension(MigrationDAO.class, MigrationDAO::getMaxServerMigrationVersion);
     } catch (StatementException e) {
       throw new IllegalArgumentException(
-          "Exception encountered when trying to obtain last migrated Server version."
-              + " Make sure you have run `./bootstrap/bootstrap_storage.sh migrate-all` at least once.",
-          e);
+        "Exception encountered when trying to obtain last migrated Server version." +
+        " Make sure you have run `./bootstrap/bootstrap_storage.sh migrate-all` at least once.",
+        e
+      );
     }
   }
 
@@ -53,13 +56,14 @@ public final class Migration {
 
   /** Read the migrations path from the Catalog YAML config and return a list of all the files' versions. */
   private static List<String> getMigrationVersions(MigrationConfiguration conf) throws IOException {
-    try (Stream<String> names =
-        Files.walk(Paths.get(conf.getFlywayPath()))
-            .filter(Files::isRegularFile)
-            .map(Path::toFile)
-            .map(File::getName)
-            .map(Migration::cleanName)) {
-
+    try (
+      Stream<String> names = Files
+        .walk(Paths.get(conf.getFlywayPath()))
+        .filter(Files::isRegularFile)
+        .map(Path::toFile)
+        .map(File::getName)
+        .map(Migration::cleanName)
+    ) {
       return names.collect(Collectors.toList());
     }
   }

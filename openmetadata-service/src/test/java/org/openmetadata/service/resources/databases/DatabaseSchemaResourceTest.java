@@ -43,13 +43,15 @@ import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchema, CreateDatabaseSchema> {
+
   public DatabaseSchemaResourceTest() {
     super(
-        Entity.DATABASE_SCHEMA,
-        DatabaseSchema.class,
-        DatabaseSchemaList.class,
-        "databaseSchemas",
-        DatabaseSchemaResource.FIELDS);
+      Entity.DATABASE_SCHEMA,
+      DatabaseSchema.class,
+      DatabaseSchemaList.class,
+      "databaseSchemas",
+      DatabaseSchemaResource.FIELDS
+    );
     supportedNameCharacters = "_'+#- .()$" + EntityResourceTest.RANDOM_STRING_GENERATOR.generate(1);
   }
 
@@ -64,11 +66,12 @@ class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchema, Crea
     CreateDatabaseSchema create = createRequest(test).withDatabase(DATABASE.getFullyQualifiedName());
     DatabaseSchema createdSchema = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     TableResourceTest tableResourceTest = new TableResourceTest();
-    CreateTable createTable =
-        tableResourceTest.createRequest("t1", "", "", null).withDatabaseSchema(createdSchema.getFullyQualifiedName());
+    CreateTable createTable = tableResourceTest
+      .createRequest("t1", "", "", null)
+      .withDatabaseSchema(createdSchema.getFullyQualifiedName());
     Table table1 = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
     createTable =
-        tableResourceTest.createRequest("t2", "", "", null).withDatabaseSchema(createdSchema.getFullyQualifiedName());
+      tableResourceTest.createRequest("t2", "", "", null).withDatabaseSchema(createdSchema.getFullyQualifiedName());
     Table table2 = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
 
     // recursively soft delete schema
@@ -85,12 +88,13 @@ class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchema, Crea
 
   @Override
   public DatabaseSchema validateGetWithDifferentFields(DatabaseSchema schema, boolean byName)
-      throws HttpResponseException {
+    throws HttpResponseException {
     // Add tables to the database schema
     if (nullOrEmpty(schema.getTables())) {
       TableResourceTest tableResourceTest = new TableResourceTest();
-      CreateTable create =
-          tableResourceTest.createRequest("t1", "", "", null).withDatabaseSchema(schema.getFullyQualifiedName());
+      CreateTable create = tableResourceTest
+        .createRequest("t1", "", "", null)
+        .withDatabaseSchema(schema.getFullyQualifiedName());
       tableResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
 
       create.withName("t2");
@@ -100,17 +104,17 @@ class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchema, Crea
     // Now query request different fields
     String fields = "";
     schema =
-        byName
-            ? getEntityByName(schema.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getEntity(schema.getId(), fields, ADMIN_AUTH_HEADERS);
+      byName
+        ? getEntityByName(schema.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+        : getEntity(schema.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(schema.getService(), schema.getServiceType(), schema.getDatabase());
     assertListNull(schema.getOwner(), schema.getTables());
 
     fields = "owner,tags,tables";
     schema =
-        byName
-            ? getEntityByName(schema.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getEntity(schema.getId(), fields, ADMIN_AUTH_HEADERS);
+      byName
+        ? getEntityByName(schema.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+        : getEntity(schema.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(schema.getService(), schema.getServiceType());
     // Fields usageSummary and location are not set during creation - tested elsewhere
     assertListNotNull(schema.getTables());
@@ -136,13 +140,17 @@ class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchema, Crea
 
   @Override
   public void validateCreatedEntity(
-      DatabaseSchema schema, CreateDatabaseSchema createRequest, Map<String, String> authHeaders) {
+    DatabaseSchema schema,
+    CreateDatabaseSchema createRequest,
+    Map<String, String> authHeaders
+  ) {
     // Validate service
     assertNotNull(schema.getServiceType());
     assertReference(createRequest.getDatabase(), schema.getDatabase());
     assertEquals(
-        FullyQualifiedName.add(schema.getDatabase().getFullyQualifiedName(), schema.getName()),
-        schema.getFullyQualifiedName());
+      FullyQualifiedName.add(schema.getDatabase().getFullyQualifiedName(), schema.getName()),
+      schema.getFullyQualifiedName()
+    );
   }
 
   @Override
@@ -150,8 +158,9 @@ class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchema, Crea
     // Validate service
     assertReference(expected.getDatabase(), updated.getDatabase());
     assertEquals(
-        FullyQualifiedName.add(updated.getDatabase().getFullyQualifiedName(), updated.getName()),
-        updated.getFullyQualifiedName());
+      FullyQualifiedName.add(updated.getDatabase().getFullyQualifiedName(), updated.getName()),
+      updated.getFullyQualifiedName()
+    );
   }
 
   @Override

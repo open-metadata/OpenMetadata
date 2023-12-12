@@ -30,7 +30,7 @@ public class GCPConfigClassConverter extends ClassConverter {
     GCSConfig gcsConfig = (GCSConfig) JsonUtils.convertValue(object, this.clazz);
 
     tryToConvertOrFail(gcsConfig.getSecurityConfig(), List.of(GCPCredentials.class))
-        .ifPresent(obj -> gcsConfig.setSecurityConfig((GCPCredentials) obj));
+      .ifPresent(obj -> gcsConfig.setSecurityConfig((GCPCredentials) obj));
 
     return gcsConfig;
   }

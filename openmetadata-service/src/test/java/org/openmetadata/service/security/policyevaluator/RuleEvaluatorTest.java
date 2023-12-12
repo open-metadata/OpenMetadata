@@ -37,6 +37,7 @@ import org.springframework.expression.EvaluationContext;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 
 class RuleEvaluatorTest {
+
   private static final Table table = new Table().withName("table");
   private static User user;
   private static EvaluationContext evaluationContext;
@@ -47,28 +48,32 @@ class RuleEvaluatorTest {
   public static void setup() {
     TeamRepository teamRepository = mock(TeamRepository.class);
     Entity.registerEntity(Team.class, Entity.TEAM, teamRepository);
-    Mockito.when(teamRepository.find(any(UUID.class), any(Include.class)))
-        .thenAnswer(i -> EntityRepository.CACHE_WITH_ID.get(new ImmutablePair<>(Entity.TEAM, i.getArgument(0))));
-    Mockito.when(teamRepository.getReference(any(UUID.class), any(Include.class)))
-        .thenAnswer(
-            i ->
-                EntityRepository.CACHE_WITH_ID
-                    .get(new ImmutablePair<>(Entity.TEAM, i.getArgument(0)))
-                    .getEntityReference());
+    Mockito
+      .when(teamRepository.find(any(UUID.class), any(Include.class)))
+      .thenAnswer(i -> EntityRepository.CACHE_WITH_ID.get(new ImmutablePair<>(Entity.TEAM, i.getArgument(0))));
+    Mockito
+      .when(teamRepository.getReference(any(UUID.class), any(Include.class)))
+      .thenAnswer(
+        i -> EntityRepository.CACHE_WITH_ID.get(new ImmutablePair<>(Entity.TEAM, i.getArgument(0))).getEntityReference()
+      );
 
-    Mockito.when(teamRepository.findByName(anyString(), any(Include.class)))
-        .thenAnswer(i -> EntityRepository.CACHE_WITH_NAME.get(new ImmutablePair<>(Entity.TEAM, i.getArgument(0))));
+    Mockito
+      .when(teamRepository.findByName(anyString(), any(Include.class)))
+      .thenAnswer(i -> EntityRepository.CACHE_WITH_NAME.get(new ImmutablePair<>(Entity.TEAM, i.getArgument(0))));
 
-    Mockito.when(teamRepository.get(isNull(), any(UUID.class), isNull(), any(Include.class), anyBoolean()))
-        .thenAnswer(i -> EntityRepository.CACHE_WITH_ID.get(new ImmutablePair<>(Entity.TEAM, i.getArgument(1))));
+    Mockito
+      .when(teamRepository.get(isNull(), any(UUID.class), isNull(), any(Include.class), anyBoolean()))
+      .thenAnswer(i -> EntityRepository.CACHE_WITH_ID.get(new ImmutablePair<>(Entity.TEAM, i.getArgument(1))));
 
-    Mockito.when(teamRepository.getByName(isNull(), anyString(), isNull(), any(Include.class), anyBoolean()))
-        .thenAnswer(i -> EntityRepository.CACHE_WITH_ID.get(new ImmutablePair<>(Entity.TEAM, i.getArgument(1))));
+    Mockito
+      .when(teamRepository.getByName(isNull(), anyString(), isNull(), any(Include.class), anyBoolean()))
+      .thenAnswer(i -> EntityRepository.CACHE_WITH_ID.get(new ImmutablePair<>(Entity.TEAM, i.getArgument(1))));
 
     TableRepository tableRepository = mock(TableRepository.class);
     Entity.registerEntity(Table.class, Entity.TABLE, tableRepository);
-    Mockito.when(tableRepository.getAllTags(any()))
-        .thenAnswer((Answer<List<TagLabel>>) invocationOnMock -> table.getTags());
+    Mockito
+      .when(tableRepository.getAllTags(any()))
+      .thenAnswer((Answer<List<TagLabel>>) invocationOnMock -> table.getTags());
 
     user = new User().withId(UUID.randomUUID()).withName("user");
     resourceContext = new ResourceContext("table", table, mock(TableRepository.class));

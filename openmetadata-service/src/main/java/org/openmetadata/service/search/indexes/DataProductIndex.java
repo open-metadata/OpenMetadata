@@ -27,10 +27,12 @@ public class DataProductIndex implements SearchIndex {
     suggest.add(SearchSuggest.builder().input(dataProduct.getName()).weight(5).build());
     suggest.add(SearchSuggest.builder().input(dataProduct.getFullyQualifiedName()).weight(5).build());
     doc.put(
-        "fqnParts",
-        getFQNParts(
-            dataProduct.getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+      "fqnParts",
+      getFQNParts(
+        dataProduct.getFullyQualifiedName(),
+        suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())
+      )
+    );
     doc.put("entityType", Entity.DATA_PRODUCT);
     doc.put("owner", getEntityWithDisplayName(dataProduct.getOwner()));
     doc.put("domain", getEntityWithDisplayName(dataProduct.getDomain()));

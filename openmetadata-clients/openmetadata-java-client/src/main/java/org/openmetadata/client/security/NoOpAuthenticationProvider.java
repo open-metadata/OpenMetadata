@@ -20,6 +20,7 @@ import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnect
 
 @Slf4j
 public class NoOpAuthenticationProvider implements AuthenticationProvider {
+
   public NoOpAuthenticationProvider() {
     /* Nothing to do */
   }

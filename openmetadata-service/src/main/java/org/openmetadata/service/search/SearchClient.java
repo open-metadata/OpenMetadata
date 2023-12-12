@@ -21,7 +21,6 @@ import os.org.opensearch.action.bulk.BulkResponse;
 import os.org.opensearch.client.RequestOptions;
 
 public interface SearchClient {
-
   String UPDATE = "update";
 
   String ADD = "add";
@@ -35,18 +34,18 @@ public interface SearchClient {
   String PROPAGATE_FIELD_SCRIPT = "ctx._source.put('%s', '%s')";
 
   String REMOVE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT =
-      "if((ctx._source.%s != null) && (ctx._source.%s.id == '%s')){ ctx._source.remove('%s')}";
+    "if((ctx._source.%s != null) && (ctx._source.%s.id == '%s')){ ctx._source.remove('%s')}";
   String REMOVE_PROPAGATED_FIELD_SCRIPT = "ctx._source.remove('%s')";
   String UPDATE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT =
-      "if((ctx._source.%s == null) || (ctx._source.%s.id == '%s')) { ctx._source.put('%s', params)}";
+    "if((ctx._source.%s == null) || (ctx._source.%s.id == '%s')) { ctx._source.put('%s', params)}";
   String SOFT_DELETE_RESTORE_SCRIPT = "ctx._source.put('deleted', '%s')";
   String REMOVE_TAGS_CHILDREN_SCRIPT =
-      "for (int i = 0; i < ctx._source.tags.length; i++) { if (ctx._source.tags[i].tagFQN == '%s') { ctx._source.tags.remove(i) }}";
+    "for (int i = 0; i < ctx._source.tags.length; i++) { if (ctx._source.tags[i].tagFQN == '%s') { ctx._source.tags.remove(i) }}";
 
   String UPDATE_ADDED_DELETE_GLOSSARY_TAGS =
-      "if (ctx._source.tags != null) { for (int i = ctx._source.tags.size() - 1; i >= 0; i--) { if (params.tagDeleted != null) { for (int j = 0; j < params.tagDeleted.size(); j++) { if (ctx._source.tags[i].tagFQN.equalsIgnoreCase(params.tagDeleted[j].tagFQN)) { ctx._source.tags.remove(i); } } } } } if (ctx._source.tags == null) { ctx._source.tags = []; } if (params.tagAdded != null) { ctx._source.tags.addAll(params.tagAdded); } ctx._source.tags = ctx._source.tags .stream() .distinct() .sorted((o1, o2) -> o1.tagFQN.compareTo(o2.tagFQN)) .collect(Collectors.toList());";
+    "if (ctx._source.tags != null) { for (int i = ctx._source.tags.size() - 1; i >= 0; i--) { if (params.tagDeleted != null) { for (int j = 0; j < params.tagDeleted.size(); j++) { if (ctx._source.tags[i].tagFQN.equalsIgnoreCase(params.tagDeleted[j].tagFQN)) { ctx._source.tags.remove(i); } } } } } if (ctx._source.tags == null) { ctx._source.tags = []; } if (params.tagAdded != null) { ctx._source.tags.addAll(params.tagAdded); } ctx._source.tags = ctx._source.tags .stream() .distinct() .sorted((o1, o2) -> o1.tagFQN.compareTo(o2.tagFQN)) .collect(Collectors.toList());";
   String REMOVE_TEST_SUITE_CHILDREN_SCRIPT =
-      "for (int i = 0; i < ctx._source.testSuites.length; i++) { if (ctx._source.testSuites[i].id == '%s') { ctx._source.testSuites.remove(i) }}";
+    "for (int i = 0; i < ctx._source.testSuites.length; i++) { if (ctx._source.testSuites[i].id == '%s') { ctx._source.testSuites.remove(i) }}";
 
   boolean isClientAvailable();
 
@@ -91,32 +90,36 @@ public interface SearchClient {
   void updateChildren(String indexName, Pair<String, String> fieldAndValue, Pair<String, Map<String, Object>> updates);
 
   TreeMap<Long, List<Object>> getSortedDate(
-      String team,
-      Long scheduleTime,
-      Long currentTime,
-      DataInsightChartResult.DataInsightChartType chartType,
-      String indexName)
-      throws IOException, ParseException;
+    String team,
+    Long scheduleTime,
+    Long currentTime,
+    DataInsightChartResult.DataInsightChartType chartType,
+    String indexName
+  )
+    throws IOException, ParseException;
 
   Response listDataInsightChartResult(
-      Long startTs,
-      Long endTs,
-      String tier,
-      String team,
-      DataInsightChartResult.DataInsightChartType dataInsightChartName,
-      Integer size,
-      Integer from,
-      String queryFilter,
-      String dataReportIndex)
-      throws IOException, ParseException;
+    Long startTs,
+    Long endTs,
+    String tier,
+    String team,
+    DataInsightChartResult.DataInsightChartType dataInsightChartName,
+    Integer size,
+    Integer from,
+    String queryFilter,
+    String dataReportIndex
+  )
+    throws IOException, ParseException;
 
   default BulkResponse bulk(BulkRequest data, RequestOptions options) throws IOException {
     throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
 
   default es.org.elasticsearch.action.bulk.BulkResponse bulk(
-      es.org.elasticsearch.action.bulk.BulkRequest data, es.org.elasticsearch.client.RequestOptions options)
-      throws IOException {
+    es.org.elasticsearch.action.bulk.BulkRequest data,
+    es.org.elasticsearch.client.RequestOptions options
+  )
+    throws IOException {
     throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
 
@@ -131,12 +134,13 @@ public interface SearchClient {
   void close();
 
   default SSLContext createElasticSearchSSLContext(ElasticSearchConfiguration elasticSearchConfiguration)
-      throws KeyStoreException {
+    throws KeyStoreException {
     return elasticSearchConfiguration.getScheme().equals("https")
-        ? SSLUtil.createSSLContext(
-            elasticSearchConfiguration.getTruststorePath(),
-            elasticSearchConfiguration.getTruststorePassword(),
-            "ElasticSearch")
-        : null;
+      ? SSLUtil.createSSLContext(
+        elasticSearchConfiguration.getTruststorePath(),
+        elasticSearchConfiguration.getTruststorePassword(),
+        "ElasticSearch"
+      )
+      : null;
   }
 }

@@ -31,6 +31,7 @@ import org.openmetadata.service.util.IngestionPipelineBuilder;
 import org.openmetadata.service.util.ReflectionUtil;
 
 public class PasswordEntityMasker extends EntityMasker {
+
   public static final String PASSWORD_MASK = "*********";
   private static final String NEW_KEY = "";
 
@@ -72,7 +73,8 @@ public class PasswordEntityMasker extends EntityMasker {
         maskPasswordFields(ingestionPipeline);
       } catch (Exception e) {
         throw new EntityMaskException(
-            String.format("Failed to mask ingestion pipeline instance [%s]", ingestionPipeline.getName()));
+          String.format("Failed to mask ingestion pipeline instance [%s]", ingestionPipeline.getName())
+        );
       }
     }
   }
@@ -92,7 +94,11 @@ public class PasswordEntityMasker extends EntityMasker {
   }
 
   public Object unmaskServiceConnectionConfig(
-      Object connectionConfig, Object originalConnectionConfig, String connectionType, ServiceType serviceType) {
+    Object connectionConfig,
+    Object originalConnectionConfig,
+    String connectionType,
+    ServiceType serviceType
+  ) {
     if (originalConnectionConfig != null && connectionConfig != null) {
       try {
         Class<?> clazz = ReflectionUtil.createConnectionConfigClass(connectionType, serviceType);
@@ -114,7 +120,9 @@ public class PasswordEntityMasker extends EntityMasker {
   }
 
   public void unmaskIngestionPipeline(
-      IngestionPipeline ingestionPipeline, IngestionPipeline originalIngestionPipeline) {
+    IngestionPipeline ingestionPipeline,
+    IngestionPipeline originalIngestionPipeline
+  ) {
     if (ingestionPipeline != null && originalIngestionPipeline != null) {
       IngestionPipelineBuilder.addDefinedConfig(ingestionPipeline);
       IngestionPipelineBuilder.addDefinedConfig(originalIngestionPipeline);
@@ -124,15 +132,17 @@ public class PasswordEntityMasker extends EntityMasker {
         unmaskPasswordFields(ingestionPipeline, NEW_KEY, passwordsMap);
       } catch (Exception e) {
         throw new EntityMaskException(
-            String.format("Failed to unmask ingestion pipeline instance [%s]", ingestionPipeline.getName()));
+          String.format("Failed to unmask ingestion pipeline instance [%s]", ingestionPipeline.getName())
+        );
       }
     }
   }
 
   public void unmaskAuthenticationMechanism(
-      String name,
-      AuthenticationMechanism authenticationMechanism,
-      AuthenticationMechanism originalAuthenticationMechanism) {
+    String name,
+    AuthenticationMechanism authenticationMechanism,
+    AuthenticationMechanism originalAuthenticationMechanism
+  ) {
     if (authenticationMechanism != null && originalAuthenticationMechanism != null) {
       AuthenticationMechanismBuilder.addDefinedConfig(authenticationMechanism);
       AuthenticationMechanismBuilder.addDefinedConfig(originalAuthenticationMechanism);
@@ -150,8 +160,9 @@ public class PasswordEntityMasker extends EntityMasker {
   public Workflow unmaskWorkflow(Workflow workflow, Workflow originalWorkflow) {
     if (workflow != null && originalWorkflow != null) {
       Workflow workflowConverted = (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
-      Workflow origWorkflowConverted =
-          (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(originalWorkflow);
+      Workflow origWorkflowConverted = (Workflow) ClassConverterFactory
+        .getConverter(Workflow.class)
+        .convert(originalWorkflow);
       try {
         Map<String, String> passwordsMap = new HashMap<>();
         buildPasswordsMap(origWorkflowConverted, NEW_KEY, passwordsMap);
@@ -167,76 +178,81 @@ public class PasswordEntityMasker extends EntityMasker {
   private void maskPasswordFields(Object toMaskObject) {
     if (!DO_NOT_MASK_CLASSES.contains(toMaskObject.getClass())) {
       // for each get method
-      Arrays.stream(toMaskObject.getClass().getMethods())
-          .filter(ReflectionUtil::isGetMethodOfObject)
-          .forEach(
-              method -> {
-                Object obj = ReflectionUtil.getObjectFromMethod(method, toMaskObject);
-                String fieldName = method.getName().replaceFirst("get", "");
-                // if the object matches the package of openmetadata
-                if (obj != null && obj.getClass().getPackageName().startsWith("org.openmetadata")) {
-                  // maskPasswordFields
-                  maskPasswordFields(obj);
-                  // check if it has PasswordField annotation
-                } else if (obj != null && method.getAnnotation(PasswordField.class) != null) {
-                  // get setMethod
-                  Method toSet = ReflectionUtil.getToSetMethod(toMaskObject, obj, fieldName);
-                  // set new value
-                  ReflectionUtil.setValueInMethod(toMaskObject, PASSWORD_MASK, toSet);
-                }
-              });
+      Arrays
+        .stream(toMaskObject.getClass().getMethods())
+        .filter(ReflectionUtil::isGetMethodOfObject)
+        .forEach(
+          method -> {
+            Object obj = ReflectionUtil.getObjectFromMethod(method, toMaskObject);
+            String fieldName = method.getName().replaceFirst("get", "");
+            // if the object matches the package of openmetadata
+            if (obj != null && obj.getClass().getPackageName().startsWith("org.openmetadata")) {
+              // maskPasswordFields
+              maskPasswordFields(obj);
+              // check if it has PasswordField annotation
+            } else if (obj != null && method.getAnnotation(PasswordField.class) != null) {
+              // get setMethod
+              Method toSet = ReflectionUtil.getToSetMethod(toMaskObject, obj, fieldName);
+              // set new value
+              ReflectionUtil.setValueInMethod(toMaskObject, PASSWORD_MASK, toSet);
+            }
+          }
+        );
     }
   }
 
   private void unmaskPasswordFields(Object toUnmaskObject, String key, Map<String, String> passwordsMap) {
     if (!DO_NOT_MASK_CLASSES.contains(toUnmaskObject.getClass())) {
       // for each get method
-      Arrays.stream(toUnmaskObject.getClass().getMethods())
-          .filter(ReflectionUtil::isGetMethodOfObject)
-          .forEach(
-              method -> {
-                Object obj = ReflectionUtil.getObjectFromMethod(method, toUnmaskObject);
-                String fieldName = method.getName().replaceFirst("get", "");
-                // if the object matches the package of openmetadata
-                if (obj != null && obj.getClass().getPackageName().startsWith("org.openmetadata")) {
-                  // maskPasswordFields
-                  unmaskPasswordFields(obj, createKey(key, fieldName), passwordsMap);
-                  // check if it has PasswordField annotation
-                } else if (obj != null && method.getAnnotation(PasswordField.class) != null) {
-                  String valueToSet =
-                      PASSWORD_MASK.equals(obj)
-                          ? passwordsMap.getOrDefault(createKey(key, fieldName), PASSWORD_MASK)
-                          : Fernet.getInstance().decryptIfApplies((String) obj);
-                  // get setMethod
-                  Method toSet = ReflectionUtil.getToSetMethod(toUnmaskObject, obj, fieldName);
-                  // set new value
-                  ReflectionUtil.setValueInMethod(toUnmaskObject, valueToSet, toSet);
-                }
-              });
+      Arrays
+        .stream(toUnmaskObject.getClass().getMethods())
+        .filter(ReflectionUtil::isGetMethodOfObject)
+        .forEach(
+          method -> {
+            Object obj = ReflectionUtil.getObjectFromMethod(method, toUnmaskObject);
+            String fieldName = method.getName().replaceFirst("get", "");
+            // if the object matches the package of openmetadata
+            if (obj != null && obj.getClass().getPackageName().startsWith("org.openmetadata")) {
+              // maskPasswordFields
+              unmaskPasswordFields(obj, createKey(key, fieldName), passwordsMap);
+              // check if it has PasswordField annotation
+            } else if (obj != null && method.getAnnotation(PasswordField.class) != null) {
+              String valueToSet = PASSWORD_MASK.equals(obj)
+                ? passwordsMap.getOrDefault(createKey(key, fieldName), PASSWORD_MASK)
+                : Fernet.getInstance().decryptIfApplies((String) obj);
+              // get setMethod
+              Method toSet = ReflectionUtil.getToSetMethod(toUnmaskObject, obj, fieldName);
+              // set new value
+              ReflectionUtil.setValueInMethod(toUnmaskObject, valueToSet, toSet);
+            }
+          }
+        );
     }
   }
 
   private void buildPasswordsMap(Object toMapObject, String key, Map<String, String> passwordsMap) {
     if (!DO_NOT_MASK_CLASSES.contains(toMapObject.getClass())) {
       // for each get method
-      Arrays.stream(toMapObject.getClass().getMethods())
-          .filter(ReflectionUtil::isGetMethodOfObject)
-          .forEach(
-              method -> {
-                Object obj = ReflectionUtil.getObjectFromMethod(method, toMapObject);
-                String fieldName = method.getName().replaceFirst("get", "");
-                // if the object matches the package of openmetadata
-                if (obj != null && obj.getClass().getPackageName().startsWith("org.openmetadata")) {
-                  // maskPasswordFields
-                  buildPasswordsMap(obj, createKey(key, fieldName), passwordsMap);
-                  // check if it has PasswordField annotation
-                } else if (obj != null && method.getAnnotation(PasswordField.class) != null) {
-                  // get value
-                  String value = Fernet.getInstance().decryptIfApplies((String) obj);
-                  // store in passwordsMap
-                  passwordsMap.put(createKey(key, fieldName), value);
-                }
-              });
+      Arrays
+        .stream(toMapObject.getClass().getMethods())
+        .filter(ReflectionUtil::isGetMethodOfObject)
+        .forEach(
+          method -> {
+            Object obj = ReflectionUtil.getObjectFromMethod(method, toMapObject);
+            String fieldName = method.getName().replaceFirst("get", "");
+            // if the object matches the package of openmetadata
+            if (obj != null && obj.getClass().getPackageName().startsWith("org.openmetadata")) {
+              // maskPasswordFields
+              buildPasswordsMap(obj, createKey(key, fieldName), passwordsMap);
+              // check if it has PasswordField annotation
+            } else if (obj != null && method.getAnnotation(PasswordField.class) != null) {
+              // get value
+              String value = Fernet.getInstance().decryptIfApplies((String) obj);
+              // store in passwordsMap
+              passwordsMap.put(createKey(key, fieldName), value);
+            }
+          }
+        );
     }
   }
 

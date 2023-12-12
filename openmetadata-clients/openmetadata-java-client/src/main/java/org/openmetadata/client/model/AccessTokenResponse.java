@@ -19,6 +19,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class AccessTokenResponse {
+
   @JsonProperty("token_type")
   private String tokenType = null;
 
@@ -55,7 +56,7 @@ public class AccessTokenResponse {
    *
    * @return ExpiresIn
    */
-  @Schema()
+  @Schema
   public Long getExpiresIn() {
     return expiresIn;
   }
@@ -74,7 +75,7 @@ public class AccessTokenResponse {
    *
    * @return AccessToken
    */
-  @Schema()
+  @Schema
   public String getAccessToken() {
     return accessToken;
   }
@@ -93,7 +94,7 @@ public class AccessTokenResponse {
    *
    * @return Scope
    */
-  @Schema()
+  @Schema
   public String getScope() {
     return scope;
   }
@@ -111,6 +112,7 @@ public class AccessTokenResponse {
     AUTHORIZATION_CODE("authorization_code"),
     CLIENT_CREDENTIALS("client_credentials"),
     IMPLICIT("implicit");
+
     private final String value;
     private static final Map<String, AccessTokenResponse.GrantType> CONSTANTS = new HashMap<>();
 

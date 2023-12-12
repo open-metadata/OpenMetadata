@@ -19,35 +19,39 @@ public class MigrationWorkflowTest extends OpenMetadataApplicationTest {
 
   @Test
   void test_getMigrationFiles() {
+    MigrationWorkflow migrationWorkflow = spy(
+      new MigrationWorkflow(jdbi, "nativePath", ConnectionType.MYSQL, "extensionPath", false)
+    );
 
-    MigrationWorkflow migrationWorkflow =
-        spy(new MigrationWorkflow(jdbi, "nativePath", ConnectionType.MYSQL, "extensionPath", false));
+    List<MigrationFile> omMigrationList = List.of(
+      new MigrationFile(new File("/bootstrap/sql/migrations/native/1.1.0"), null, ConnectionType.MYSQL),
+      new MigrationFile(new File("/bootstrap/sql/migrations/native/1.2.0"), null, ConnectionType.MYSQL),
+      new MigrationFile(new File("/bootstrap/sql/migrations/native/1.2.1"), null, ConnectionType.MYSQL)
+    );
 
-    List<MigrationFile> omMigrationList =
-        List.of(
-            new MigrationFile(new File("/bootstrap/sql/migrations/native/1.1.0"), null, ConnectionType.MYSQL),
-            new MigrationFile(new File("/bootstrap/sql/migrations/native/1.2.0"), null, ConnectionType.MYSQL),
-            new MigrationFile(new File("/bootstrap/sql/migrations/native/1.2.1"), null, ConnectionType.MYSQL));
+    List<MigrationFile> collateMigrationList = List.of(
+      new MigrationFile(new File("/bootstrap-collate/sql/migrations/native/1.1.0-collate"), null, ConnectionType.MYSQL),
+      new MigrationFile(new File("/bootstrap-collate/sql/migrations/native/1.2.2-collate"), null, ConnectionType.MYSQL)
+    );
 
-    List<MigrationFile> collateMigrationList =
-        List.of(
-            new MigrationFile(
-                new File("/bootstrap-collate/sql/migrations/native/1.1.0-collate"), null, ConnectionType.MYSQL),
-            new MigrationFile(
-                new File("/bootstrap-collate/sql/migrations/native/1.2.2-collate"), null, ConnectionType.MYSQL));
+    Mockito
+      .doReturn(omMigrationList)
+      .when(migrationWorkflow)
+      .getMigrationFilesFromPath(eq("nativePath"), any(ConnectionType.class));
+    Mockito
+      .doReturn(collateMigrationList)
+      .when(migrationWorkflow)
+      .getMigrationFilesFromPath(eq("extensionPath"), any(ConnectionType.class));
 
-    Mockito.doReturn(omMigrationList)
-        .when(migrationWorkflow)
-        .getMigrationFilesFromPath(eq("nativePath"), any(ConnectionType.class));
-    Mockito.doReturn(collateMigrationList)
-        .when(migrationWorkflow)
-        .getMigrationFilesFromPath(eq("extensionPath"), any(ConnectionType.class));
-
-    List<MigrationFile> foundList =
-        migrationWorkflow.getMigrationFiles("nativePath", ConnectionType.MYSQL, "extensionPath");
+    List<MigrationFile> foundList = migrationWorkflow.getMigrationFiles(
+      "nativePath",
+      ConnectionType.MYSQL,
+      "extensionPath"
+    );
 
     assertEquals(
-        foundList.stream().map(f -> f.dir.getName()).collect(Collectors.toList()),
-        List.of("1.1.0", "1.1.0-collate", "1.2.0", "1.2.1", "1.2.2-collate"));
+      foundList.stream().map(f -> f.dir.getName()).collect(Collectors.toList()),
+      List.of("1.1.0", "1.1.0-collate", "1.2.0", "1.2.1", "1.2.2-collate")
+    );
   }
 }
