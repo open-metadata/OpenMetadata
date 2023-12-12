@@ -35,7 +35,7 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 public class TestCaseResolutionStatusRepository extends EntityTimeSeriesRepository<TestCaseResolutionStatus> {
-  public static final String COLLECTION_PATH = "/v1/dataQuality/testCases/testCaseResolutionStatus";
+  public static final String COLLECTION_PATH = "/v1/dataQuality/testCases/testCaseIncidentStatus";
 
   public TestCaseResolutionStatusRepository() {
     super(

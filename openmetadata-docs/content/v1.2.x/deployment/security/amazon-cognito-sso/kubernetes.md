@@ -22,7 +22,7 @@ openmetadata:
     authentication:
       provider: "aws-cognito"
       publicKeys:
-        - "http://openmetadata:8585/api/v1/config/jwks"
+        - "http://{your domain}:8585/api/v1/system/config/jwks"
         - "{Cognito Domain}/{User Pool ID}/.well-known/jwks.json" # Update with your Cognito Domain and User Pool ID
       authority: "{Cognito Domain}/{User Pool ID}" # Update with your Cognito Domain and User Pool ID as follows - https://cognito-idp.us-west-1.amazonaws.com/us-west-1_DL8xfTzj8
       clientId: "{Client ID}" # Update with your Client ID
