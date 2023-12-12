@@ -53,7 +53,7 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
-@Path("/v1/dataQuality/testCases/testCaseResolutionStatus")
+@Path("/v1/dataQuality/testCases/testCaseIncidentStatus")
 @Tag(name = "Test Case Failure Status", description = "APIs to test case failure status from resolution center.")
 @Hidden
 @Produces(MediaType.APPLICATION_JSON)
@@ -61,7 +61,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "TestCases")
 public class TestCaseResolutionStatusResource
     extends EntityTimeSeriesResource<TestCaseResolutionStatus, TestCaseResolutionStatusRepository> {
-  public static final String COLLECTION_PATH = "/v1/dataQuality/testCases/testCaseResolutionStatus";
+  public static final String COLLECTION_PATH = "/v1/dataQuality/testCases/testCaseIncidentStatus";
 
   public TestCaseResolutionStatusResource(Authorizer authorizer) {
     super(Entity.TEST_CASE_RESOLUTION_STATUS, authorizer);
@@ -257,21 +257,8 @@ public class TestCaseResolutionStatusResource
   private TestCaseResolutionStatus getTestCaseResolutionStatus(
       TestCase testCaseEntity, CreateTestCaseResolutionStatus createTestCaseResolutionStatus, String userName) {
     User userEntity = Entity.getEntityByName(Entity.USER, userName, null, Include.ALL);
-    TestCaseResolutionStatus latestTestCaseFailure = repository.getLatestRecord(testCaseEntity.getFullyQualifiedName());
-    UUID stateId;
-
-    if ((latestTestCaseFailure != null)
-        && (latestTestCaseFailure.getTestCaseResolutionStatusType() != TestCaseResolutionStatusTypes.Resolved)) {
-      // if the latest status is not resolved then use the same sequence id
-      stateId = latestTestCaseFailure.getStateId();
-    } else {
-      // if the latest status is resolved then create a new sequence id
-      // effectively creating a new test case failure status sequence
-      stateId = UUID.randomUUID();
-    }
 
     return new TestCaseResolutionStatus()
-        .withStateId(stateId)
         .withTimestamp(System.currentTimeMillis())
         .withTestCaseResolutionStatusType(createTestCaseResolutionStatus.getTestCaseResolutionStatusType())
         .withTestCaseResolutionStatusDetails(createTestCaseResolutionStatus.getTestCaseResolutionStatusDetails())

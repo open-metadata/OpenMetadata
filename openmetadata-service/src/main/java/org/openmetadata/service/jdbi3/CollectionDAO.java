@@ -1064,6 +1064,19 @@ public interface CollectionDAO {
         @BindList("teamIds") List<String> teamIds,
         @Define("condition") String condition);
 
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM thread_entity "
+                + "WHERE (json -> '$.task.testCaseResolutionStatusId') = :testCaseResolutionStatusId; ",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM thread_entity "
+                + "WHERE (json#>'{task}'->>'testCaseResolutionStatusId') = :testCaseResolutionStatusId; ",
+        connectionType = POSTGRES)
+    String fetchThreadByTestCaseResolutionStatusId(
+        @BindUUID("testCaseResolutionStatusId") UUID testCaseResolutionStatusId);
+
     default List<String> listThreadsByEntityLink(
         FeedFilter filter, EntityLink entityLink, int limit, int relation, String userName, List<String> teamNames) {
       int filterRelation = -1;

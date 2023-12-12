@@ -18,6 +18,7 @@ import AddDomain from '../../components/Domain/AddDomain/AddDomain.component';
 import DomainPage from '../../components/Domain/DomainPage.component';
 import { ROUTES } from '../../constants/constants';
 import { Operation } from '../../generated/entity/policies/policy';
+import AddCustomMetricPage from '../../pages/AddCustomMetricPage/AddCustomMetricPage';
 import { CustomizablePage } from '../../pages/CustomizablePage/CustomizablePage';
 import DataQualityPage from '../../pages/DataQuality/DataQualityPage';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
@@ -698,7 +699,16 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={AddDataQualityTestPage}
         path={ROUTES.ADD_DATA_QUALITY_TEST_CASE}
       />
-
+      <AdminProtectedRoute
+        exact
+        component={AddCustomMetricPage}
+        hasPermission={checkPermission(
+          Operation.Create,
+          ResourceEntity.TABLE,
+          permissions
+        )}
+        path={ROUTES.ADD_CUSTOM_METRIC}
+      />
       <AdminProtectedRoute
         exact
         component={DataProductsPage}

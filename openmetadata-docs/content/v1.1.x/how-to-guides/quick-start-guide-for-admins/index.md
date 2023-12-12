@@ -38,6 +38,6 @@ Ready to start with advanced access management using **Roles and Policies**?
   color="violet-70"
   bold="Admin Guide for Roles and Policies"
   icon="MdAdminPanelSettings"
-  href="/how-to-guides/admin-guide-roles-policies"%}
+  href="/how-to-guides/quick-start-guide-for-admins/admin-guide-roles-policies"%}
   Know it all about Roles and Policies to get started.
 {%/inlineCallout%}
