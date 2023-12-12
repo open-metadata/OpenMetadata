@@ -68,7 +68,7 @@ describe('Advance search', () => {
           checkmustPaths(
             condition.name,
             field.testid,
-            field.searchCriteriaFirstGroup,
+            Cypress._.toLower(field.searchCriteriaFirstGroup),
             0,
             field.responseValueFirstGroup
           );
@@ -78,7 +78,7 @@ describe('Advance search', () => {
           checkmust_notPaths(
             condition.name,
             field.testid,
-            field.searchCriteriaFirstGroup,
+            Cypress._.toLower(field.searchCriteriaFirstGroup),
             0,
             field.responseValueFirstGroup
           );
@@ -108,8 +108,8 @@ describe('Advance search', () => {
             CONDITIONS_MUST.equalTo.name,
             CONDITIONS_MUST_NOT.notEqualTo.name,
             field.testid,
-            field.searchCriteriaFirstGroup,
-            field.searchCriteriaSecondGroup,
+            Cypress._.toLower(field.searchCriteriaFirstGroup),
+            Cypress._.toLower(field.searchCriteriaSecondGroup),
             0,
             1,
             operator.index,
@@ -131,8 +131,8 @@ describe('Advance search', () => {
             CONDITIONS_MUST.anyIn.name,
             CONDITIONS_MUST_NOT.notIn.name,
             field.testid,
-            field.searchCriteriaFirstGroup,
-            field.searchCriteriaSecondGroup,
+            Cypress._.toLower(field.searchCriteriaFirstGroup),
+            Cypress._.toLower(field.searchCriteriaSecondGroup),
             0,
             1,
             operator.index,
@@ -152,8 +152,8 @@ describe('Advance search', () => {
             CONDITIONS_MUST.contains.name,
             CONDITIONS_MUST_NOT.notContains.name,
             field.testid,
-            field.searchCriteriaFirstGroup,
-            field.searchCriteriaSecondGroup,
+            Cypress._.toLower(field.searchCriteriaFirstGroup),
+            Cypress._.toLower(field.searchCriteriaSecondGroup),
             0,
             1,
             operator.index,
@@ -188,15 +188,15 @@ describe('Advance search', () => {
             CONDITIONS_MUST.equalTo.name,
             CONDITIONS_MUST_NOT.notEqualTo.name,
             field.testid,
-            field.searchCriteriaFirstGroup,
-            field.searchCriteriaSecondGroup,
+            Cypress._.toLower(field.searchCriteriaFirstGroup),
+            Cypress._.toLower(field.searchCriteriaSecondGroup),
             0,
             1,
             operator.index,
             CONDITIONS_MUST.equalTo.filter,
             CONDITIONS_MUST_NOT.notEqualTo.filter,
             field.responseValueFirstGroup,
-            val
+            Cypress._.toLower(val)
           );
         });
       });
@@ -211,15 +211,15 @@ describe('Advance search', () => {
             CONDITIONS_MUST.anyIn.name,
             CONDITIONS_MUST_NOT.notIn.name,
             field.testid,
-            field.searchCriteriaFirstGroup,
-            field.searchCriteriaSecondGroup,
+            Cypress._.toLower(field.searchCriteriaFirstGroup),
+            Cypress._.toLower(field.searchCriteriaSecondGroup),
             0,
             1,
             operator.index,
             CONDITIONS_MUST.anyIn.filter,
             CONDITIONS_MUST_NOT.notIn.filter,
             field.responseValueFirstGroup,
-            val
+            Cypress._.toLower(val)
           );
         });
       });
@@ -231,15 +231,15 @@ describe('Advance search', () => {
             CONDITIONS_MUST.contains.name,
             CONDITIONS_MUST_NOT.notContains.name,
             field.testid,
-            field.searchCriteriaFirstGroup,
-            field.searchCriteriaSecondGroup,
+            Cypress._.toLower(field.searchCriteriaFirstGroup),
+            Cypress._.toLower(field.searchCriteriaSecondGroup),
             0,
             1,
             operator.index,
             CONDITIONS_MUST.contains.filter,
             CONDITIONS_MUST_NOT.notContains.filter,
             field.responseValueFirstGroup,
-            val
+            Cypress._.toLower(val)
           );
         });
       });

@@ -1449,7 +1449,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   private ResultList<TestCaseResolutionStatus> getTestCaseFailureStatus(
       Long startTs, Long endTs, String assignee, TestCaseResolutionStatusTypes testCaseResolutionStatusType)
       throws HttpResponseException {
-    WebTarget target = getCollection().path("/testCaseResolutionStatus");
+    WebTarget target = getCollection().path("/testCaseIncidentStatus");
     target = target.queryParam("startTs", startTs);
     target = target.queryParam("endTs", endTs);
     target = assignee != null ? target.queryParam("assignee", assignee) : target;
@@ -1462,13 +1462,13 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   private TestCaseResolutionStatus getTestCaseFailureStatusById(UUID id) throws HttpResponseException {
-    String pathUrl = "/testCaseResolutionStatus/" + id;
+    String pathUrl = "/testCaseIncidentStatus/" + id;
     WebTarget target = getCollection().path(pathUrl);
     return TestUtils.get(target, TestCaseResolutionStatus.class, ADMIN_AUTH_HEADERS);
   }
 
   private ResultList<TestCaseResolutionStatus> getTestCaseFailureStatusByStateId(UUID id) throws HttpResponseException {
-    String pathUrl = "/testCaseResolutionStatus/stateId/" + id;
+    String pathUrl = "/testCaseIncidentStatus/stateId/" + id;
     WebTarget target = getCollection().path(pathUrl);
     return TestUtils.get(
         target, TestCaseResolutionStatusResource.TestCaseResolutionStatusResultList.class, ADMIN_AUTH_HEADERS);
@@ -1476,7 +1476,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
   private ResultList<TestCaseResolutionStatus> getTestCaseFailureStatus(
       int limit, String offset, Boolean latest, Long startTs, Long endTs) throws HttpResponseException {
-    WebTarget target = getCollection().path("/testCaseResolutionStatus");
+    WebTarget target = getCollection().path("/testCaseIncidentStatus");
     target = target.queryParam("limit", limit);
     target = offset != null ? target.queryParam("offset", offset) : target;
     target = latest != null ? target.queryParam("latest", latest) : target.queryParam("latest", false);
@@ -1496,13 +1496,13 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
   private TestCaseResolutionStatus createTestCaseFailureStatus(
       CreateTestCaseResolutionStatus createTestCaseFailureStatus) throws HttpResponseException {
-    WebTarget target = getCollection().path("/testCaseResolutionStatus");
+    WebTarget target = getCollection().path("/testCaseIncidentStatus");
     return TestUtils.post(target, createTestCaseFailureStatus, TestCaseResolutionStatus.class, 200, ADMIN_AUTH_HEADERS);
   }
 
   private void createTestCaseResolutionStatus(List<CreateTestCaseResolutionStatus> createTestCaseFailureStatus)
       throws HttpResponseException {
-    WebTarget target = getCollection().path("/testCaseResolutionStatus");
+    WebTarget target = getCollection().path("/testCaseIncidentStatus");
 
     for (CreateTestCaseResolutionStatus testCaseFailureStatus : createTestCaseFailureStatus) {
       TestUtils.post(target, testCaseFailureStatus, TestCaseResolutionStatus.class, 200, ADMIN_AUTH_HEADERS);
@@ -1511,12 +1511,12 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
   private TestCaseResolutionStatus patchTestCaseResultFailureStatus(
       UUID testCaseFailureStatusId, JsonPatch patch, Map<String, String> authHeaders) throws HttpResponseException {
-    WebTarget target = getCollection().path("/testCaseResolutionStatus/" + testCaseFailureStatusId);
+    WebTarget target = getCollection().path("/testCaseIncidentStatus/" + testCaseFailureStatusId);
     return TestUtils.patch(target, patch, TestCaseResolutionStatus.class, authHeaders);
   }
 
   private TestCaseResolutionStatus getTestCaseFailureStatus(UUID testCaseFailureStatusId) throws HttpResponseException {
-    WebTarget target = getCollection().path("/testCaseResolutionStatus/" + testCaseFailureStatusId);
+    WebTarget target = getCollection().path("/testCaseIncidentStatus/" + testCaseFailureStatusId);
     return TestUtils.get(target, TestCaseResolutionStatus.class, ADMIN_AUTH_HEADERS);
   }
 

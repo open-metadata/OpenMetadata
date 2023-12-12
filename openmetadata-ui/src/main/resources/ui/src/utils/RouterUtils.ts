@@ -39,6 +39,7 @@ import {
 } from '../constants/GlobalSettings.constants';
 import { arrServiceTypes } from '../constants/Services.constant';
 import { EntityAction } from '../enums/entity.enum';
+import { ProfilerDashboardType } from '../enums/table.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
 import { IncidentManagerTabs } from '../pages/IncidentManager/IncidentManager.interface';
@@ -349,6 +350,18 @@ export const getAddDataQualityTableTestPath = (
   path = path
     .replace(PLACEHOLDER_DASHBOARD_TYPE, dashboardType)
     .replace(PLACEHOLDER_ENTITY_TYPE_FQN, getEncodedFqn(fqn));
+
+  return path;
+};
+export const getAddCustomMetricPath = (
+  dashboardType: ProfilerDashboardType,
+  fqn: string
+) => {
+  let path = ROUTES.ADD_CUSTOM_METRIC;
+
+  path = path
+    .replace(PLACEHOLDER_DASHBOARD_TYPE, dashboardType)
+    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
 
   return path;
 };

@@ -46,8 +46,7 @@ import {
 } from '../../../constants/Color.constants';
 import {
   COLORS,
-  DEFAULT_RANGE_DATA,
-  DEFAULT_SELECTED_RANGE,
+  PROFILER_FILTER_RANGE,
 } from '../../../constants/profiler.constant';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
@@ -58,7 +57,11 @@ import {
 } from '../../../generated/tests/testCase';
 import { getListTestCaseResults } from '../../../rest/testAPI';
 import { axisTickFormatter } from '../../../utils/ChartUtils';
-import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
+import {
+  formatDateTime,
+  getCurrentMillis,
+  getEpochMillisForPastDays,
+} from '../../../utils/date-time/DateTimeUtils';
 import { getTestCaseDetailsPath } from '../../../utils/RouterUtils';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -85,17 +88,31 @@ const TestSummary: React.FC<TestSummaryProps> = ({
   showDescription = true,
   showExpandIcon = true,
 }) => {
+  const defaultRange = useMemo(
+    () => ({
+      initialRange: {
+        startTs: getEpochMillisForPastDays(
+          PROFILER_FILTER_RANGE.last30days.days
+        ),
+        endTs: getCurrentMillis(),
+      },
+      key: 'last30days',
+      title: PROFILER_FILTER_RANGE.last30days.title,
+    }),
+    []
+  );
   const history = useHistory();
   const [chartData, setChartData] = useState<ChartDataType>(
     {} as ChartDataType
   );
   const [results, setResults] = useState<TestCaseResult[]>([]);
-  const [dateRangeObject, setDateRangeObject] =
-    useState<DateRangeObject>(DEFAULT_RANGE_DATA);
+  const [dateRangeObject, setDateRangeObject] = useState<DateRangeObject>(
+    defaultRange.initialRange
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [isGraphLoading, setIsGraphLoading] = useState(true);
   const [selectedTimeRange, setSelectedTimeRange] = useState<string>(
-    DEFAULT_SELECTED_RANGE.title
+    defaultRange.title
   );
 
   const handleDateRangeChange = (value: DateRangeObject) => {
@@ -351,6 +368,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
                 <Col>
                   <DatePickerMenu
                     showSelectedCustomRange
+                    defaultValue={defaultRange.key}
                     handleDateRangeChange={handleDateRangeChange}
                     handleSelectedTimeRange={handleSelectedTimeRange}
                   />
