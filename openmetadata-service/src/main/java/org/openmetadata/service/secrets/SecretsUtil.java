@@ -34,7 +34,7 @@ public final class SecretsUtil {
       }
       return String.format(defaultMessage, type);
     }
-    return null;
+    return exceptionMessage;
   }
 
   public static String buildExceptionMessageConnection(

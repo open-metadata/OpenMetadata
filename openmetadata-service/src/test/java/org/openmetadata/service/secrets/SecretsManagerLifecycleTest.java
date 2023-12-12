@@ -125,4 +125,17 @@ public class SecretsManagerLifecycleTest {
 
     assertEquals(exception.getMessage(), String.format("Key [%s] not found in in-memory secrets manager", secretName));
   }
+
+  @Test
+  void test_buildSecretId() {
+    // cluster prefix adds the initial /
+    assertEquals("/openmetadata/database/test_name", secretsManager.buildSecretId(true, "Database", "test_name"));
+    // non cluster prefix appends whatever it receives
+    assertEquals("database/test_name", secretsManager.buildSecretId(false, "Database", "test_name"));
+    assertEquals("/something/new/test_name", secretsManager.buildSecretId(false, "/something/new", "test_name"));
+
+    // keep only alphanumeric characters and /, since we use / to create the FQN in the secrets manager
+    assertEquals("/openmetadata/database/test_name", secretsManager.buildSecretId(true, "Database", "test name"));
+    assertEquals("/something/new/test_name", secretsManager.buildSecretId(false, "/something/new", "test name"));
+  }
 }

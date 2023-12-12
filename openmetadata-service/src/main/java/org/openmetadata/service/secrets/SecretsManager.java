@@ -20,6 +20,7 @@ import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.Set;
+import java.util.regex.Pattern;
 import javax.ws.rs.core.Response;
 import lombok.Getter;
 import org.openmetadata.annotations.PasswordField;
@@ -44,6 +45,7 @@ public abstract class SecretsManager {
   @Getter private final String clusterPrefix;
   @Getter private final SecretsManagerProvider secretsManagerProvider;
   private Fernet fernet;
+  private static final Pattern SECRET_ID_PATTERN = Pattern.compile("[^A-Za-z0-9/_\\-]");
 
   private static final Set<Class<?>> DO_NOT_ENCRYPT_CLASSES =
       Set.of(OpenMetadataJWTClientConfig.class, BasicAuthMechanism.class);
@@ -210,60 +212,72 @@ public abstract class SecretsManager {
   }
 
   private Object encryptPasswordFields(Object toEncryptObject, String secretId, boolean store) {
-    if (!DO_NOT_ENCRYPT_CLASSES.contains(toEncryptObject.getClass())) {
+    try {
+      if (!DO_NOT_ENCRYPT_CLASSES.contains(toEncryptObject.getClass())) {
+        // for each get method
+        Arrays.stream(toEncryptObject.getClass().getMethods())
+            .filter(ReflectionUtil::isGetMethodOfObject)
+            .forEach(
+                method -> {
+                  Object obj = ReflectionUtil.getObjectFromMethod(method, toEncryptObject);
+                  String fieldName = method.getName().replaceFirst("get", "");
+                  // if the object matches the package of openmetadata
+                  if (obj != null && obj.getClass().getPackageName().startsWith("org.openmetadata")) {
+                    // encryptPasswordFields
+                    encryptPasswordFields(
+                        obj, buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT)), store);
+                    // check if it has annotation
+                  } else if (obj != null && method.getAnnotation(PasswordField.class) != null) {
+                    // store value if proceed
+                    String newFieldValue =
+                        storeValue(fieldName, fernet.decryptIfApplies((String) obj), secretId, store);
+                    // get setMethod
+                    Method toSet = ReflectionUtil.getToSetMethod(toEncryptObject, obj, fieldName);
+                    // set new value
+                    ReflectionUtil.setValueInMethod(
+                        toEncryptObject,
+                        Fernet.isTokenized(newFieldValue)
+                            ? newFieldValue
+                            : store ? fernet.encrypt(newFieldValue) : newFieldValue,
+                        toSet);
+                  }
+                });
+      }
+      return toEncryptObject;
+    } catch (Exception e) {
+      throw new SecretsManagerException(
+          String.format("Error trying to encrypt object with secret ID [%s] due to [%s]", secretId, e.getMessage()));
+    }
+  }
+
+  private Object decryptPasswordFields(Object toDecryptObject) {
+    try {
       // for each get method
-      Arrays.stream(toEncryptObject.getClass().getMethods())
+      Arrays.stream(toDecryptObject.getClass().getMethods())
           .filter(ReflectionUtil::isGetMethodOfObject)
           .forEach(
               method -> {
-                Object obj = ReflectionUtil.getObjectFromMethod(method, toEncryptObject);
+                Object obj = ReflectionUtil.getObjectFromMethod(method, toDecryptObject);
                 String fieldName = method.getName().replaceFirst("get", "");
                 // if the object matches the package of openmetadata
                 if (obj != null && obj.getClass().getPackageName().startsWith("org.openmetadata")) {
                   // encryptPasswordFields
-                  encryptPasswordFields(obj, buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT)), store);
+                  decryptPasswordFields(obj);
                   // check if it has annotation
                 } else if (obj != null && method.getAnnotation(PasswordField.class) != null) {
-                  // store value if proceed
-                  String newFieldValue = storeValue(fieldName, fernet.decryptIfApplies((String) obj), secretId, store);
+                  String fieldValue = (String) obj;
                   // get setMethod
-                  Method toSet = ReflectionUtil.getToSetMethod(toEncryptObject, obj, fieldName);
+                  Method toSet = ReflectionUtil.getToSetMethod(toDecryptObject, obj, fieldName);
                   // set new value
                   ReflectionUtil.setValueInMethod(
-                      toEncryptObject,
-                      Fernet.isTokenized(newFieldValue)
-                          ? newFieldValue
-                          : store ? fernet.encrypt(newFieldValue) : newFieldValue,
-                      toSet);
+                      toDecryptObject, Fernet.isTokenized(fieldValue) ? fernet.decrypt(fieldValue) : fieldValue, toSet);
                 }
               });
+      return toDecryptObject;
+    } catch (Exception e) {
+      throw new SecretsManagerException(
+          String.format("Error trying to decrypt object [%s] due to [%s]", toDecryptObject.toString(), e.getMessage()));
     }
-    return toEncryptObject;
-  }
-
-  private Object decryptPasswordFields(Object toDecryptObject) {
-    // for each get method
-    Arrays.stream(toDecryptObject.getClass().getMethods())
-        .filter(ReflectionUtil::isGetMethodOfObject)
-        .forEach(
-            method -> {
-              Object obj = ReflectionUtil.getObjectFromMethod(method, toDecryptObject);
-              String fieldName = method.getName().replaceFirst("get", "");
-              // if the object matches the package of openmetadata
-              if (obj != null && obj.getClass().getPackageName().startsWith("org.openmetadata")) {
-                // encryptPasswordFields
-                decryptPasswordFields(obj);
-                // check if it has annotation
-              } else if (obj != null && method.getAnnotation(PasswordField.class) != null) {
-                String fieldValue = (String) obj;
-                // get setMethod
-                Method toSet = ReflectionUtil.getToSetMethod(toDecryptObject, obj, fieldName);
-                // set new value
-                ReflectionUtil.setValueInMethod(
-                    toDecryptObject, Fernet.isTokenized(fieldValue) ? fernet.decrypt(fieldValue) : fieldValue, toSet);
-              }
-            });
-    return toDecryptObject;
   }
 
   protected abstract String storeValue(String fieldName, String value, String secretId, boolean store);
@@ -276,8 +290,12 @@ public abstract class SecretsManager {
     } else {
       format.append("%s");
     }
+
+    // keep only alphanumeric characters and /, since we use / to create the FQN in the secrets manager
+    Object[] cleanIdValues =
+        Arrays.stream(secretIdValues).map(str -> SECRET_ID_PATTERN.matcher(str).replaceAll("_")).toArray();
     // skip first one in case of addClusterPrefix is false to avoid adding extra separator at the beginning
-    Arrays.stream(secretIdValues)
+    Arrays.stream(cleanIdValues)
         .skip(addClusterPrefix ? 0 : 1)
         .forEach(
             secretIdValue -> {
@@ -287,7 +305,7 @@ public abstract class SecretsManager {
               format.append("/");
               format.append("%s");
             });
-    return String.format(format.toString(), (Object[]) secretIdValues).toLowerCase();
+    return String.format(format.toString(), cleanIdValues).toLowerCase();
   }
 
   @VisibleForTesting
