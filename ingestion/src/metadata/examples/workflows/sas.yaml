@@ -1,16 +1,16 @@
 source:
   type: sas
-  serviceName: plover
+  serviceName: local_sas
   serviceConnection:
     config:
       type: SAS
-      serverHost:
-      username:
-      password:
-      datatables:
-      dataTablesCustomFilter:
-      reports:
-      reportsCustomFilter:
+      username: username
+      password: password
+      serverHost: serverHost
+      datatables: True
+      dataTablesCustomFilter: None
+      reports: False
+      reportsCustomFilter: None
   sourceConfig:
     config:
       type: DatabaseMetadata
@@ -20,5 +20,5 @@ sink:
 workflowConfig:
   loggerLevel: DEBUG
   openMetadataServerConfig:
-    hostPort:  'http://localhost:8585/api'
+    hostPort:  http://localhost:8585/api
     authProvider: no-auth

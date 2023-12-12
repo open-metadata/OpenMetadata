@@ -208,11 +208,7 @@ class REST:
         """
         retry_codes = self._retry_codes
         try:
-            logger.warning(f"{method}, {url}")
-            for key, value in opts.items():
-                print(key, value, end="\n")
             resp = self._session.request(method, url, **opts)
-            logger.warning(f"{resp.status_code}, {resp.reason}, {resp.json()}")
             resp.raise_for_status()
 
             if resp.text != "":
