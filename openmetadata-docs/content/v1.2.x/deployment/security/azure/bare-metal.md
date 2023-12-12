@@ -16,6 +16,7 @@ authenticationConfiguration:
   provider: "azure"
   publicKeyUrls:
     - "https://login.microsoftonline.com/common/discovery/keys"
+    - "http://{your openmetadata domain}/api/v1/config/jwks" # Update with your Domain and Make sure this "/api/v1/config/jwks" is always configured to enable JWT tokens
   authority: "https://login.microsoftonline.com/{Tenant ID}"
   clientId: "{Client ID}" # Azure Application
   callbackUrl: "http://localhost:8585/callback"

@@ -20,7 +20,7 @@ AUTHORIZER_ADMIN_PRINCIPALS=[admin]  # Your `name` from name@domain.com
 AUTHORIZER_PRINCIPAL_DOMAIN=open-metadata.org # Update with your domain
 
 AUTHENTICATION_PROVIDER=aws-cognito
-AUTHENTICATION_PUBLIC_KEYS=[{Cognito Domain}/{User Pool ID}/.well-known/jwks.json] # Update with your Cognito Domain and User Pool ID
+AUTHENTICATION_PUBLIC_KEYS=[{Cognito Domain}/{User Pool ID}/.well-known/jwks.json,  http://{your domain}:8585/api/v1/system/config/jwks] # Update with your Cognito Domain and User Pool ID
 AUTHENTICATION_AUTHORITY={Cognito Domain}/{User Pool ID} # Update with your Cognito Domain and User Pool ID as follows - https://cognito-idp.us-west-1.amazonaws.com/us-west-1_DL8xfTzj8
 AUTHENTICATION_CLIENT_ID={Client ID} # Update with your Client ID
 AUTHENTICATION_CALLBACK_URL=http://localhost:8585/callback

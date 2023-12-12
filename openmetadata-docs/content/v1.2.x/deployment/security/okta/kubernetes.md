@@ -25,7 +25,7 @@ openmetadata:
     authentication:
       provider: "okta"
       publicKeys:
-      - "http://openmetadata:8585/api/v1/config/jwks"
+      - "http://{your openmetadata domain}/api/v1/config/jwks" # Update with your Domain and Make sure this "/api/v1/config/jwks" is always configured to enable JWT tokens
       - "{ISSUER_URL}/v1/keys"
       authority: "{ISSUER_URL}"
       clientId: "{CLIENT_ID - SPA APP}"

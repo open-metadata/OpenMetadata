@@ -16,6 +16,7 @@ authenticationConfiguration:
   provider: "aws-cognito"
   publicKeyUrls:
     - "https://cognito-idp.us-west-1.amazonaws.com/{User Pool ID}/.well-known/jwks.json"
+    - "http://{your domain}:8585/api/v1/system/config/jwks"
   authority: "https://cognito-idp.us-west-1.amazonaws.com/{User Pool ID}"
   clientId: "{Client ID}"
   callbackUrl: "http://localhost:8585/callback"
