@@ -411,7 +411,7 @@ public class ElasticSearchClient implements SearchClient {
   public Response searchLineage(String fqn, int depth, String queryFilter) throws IOException {
     Map<String, Object> responseMap = new HashMap<>();
     List<Map<String, Object>> edges = new ArrayList<>();
-    List<Map<String, Object>> nodes = new ArrayList<>();
+    Set<Map<String, Object>> nodes = new HashSet<>();
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
         new es.org.elasticsearch.action.search.SearchRequest(GLOBAL_SEARCH_ALIAS);
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
@@ -421,8 +421,8 @@ public class ElasticSearchClient implements SearchClient {
     for (var hit : searchResponse.getHits().getHits()) {
       responseMap.put("entity", hit.getSourceAsMap());
     }
-    getLineage(fqn, depth, edges, nodes, queryFilter, "lineage.fromEntity.fqn");
-    getLineage(fqn, depth, edges, nodes, queryFilter, "lineage.toEntity.fqn");
+    getLineage(fqn, depth, edges, nodes, queryFilter, "lineage.fromEntity.fqn.keyword");
+    getLineage(fqn, depth, edges, nodes, queryFilter, "lineage.toEntity.fqn.keyword");
     responseMap.put("edges", edges);
     responseMap.put("nodes", nodes);
     return Response.status(OK).entity(responseMap).build();
@@ -432,7 +432,7 @@ public class ElasticSearchClient implements SearchClient {
       String fqn,
       int depth,
       List<Map<String, Object>> edges,
-      List<Map<String, Object>> nodes,
+      Set<Map<String, Object>> nodes,
       String queryFilter,
       String direction)
       throws IOException {
@@ -464,7 +464,7 @@ public class ElasticSearchClient implements SearchClient {
       for (Map<String, Object> lin : lineage) {
         HashMap<String, String> fromEntity = (HashMap<String, String>) lin.get("fromEntity");
         HashMap<String, String> toEntity = (HashMap<String, String>) lin.get("toEntity");
-        if (direction.equalsIgnoreCase("lineage.fromEntity.fqn")) {
+        if (direction.equalsIgnoreCase("lineage.fromEntity.fqn.keyword")) {
           if (!edges.contains(lin) && fromEntity.get("fqn").equals(fqn)) {
             edges.add(lin);
           }
@@ -1101,6 +1101,17 @@ public class ElasticSearchClient implements SearchClient {
       UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexName);
       updateByQueryRequest.setQuery(
           new MatchQueryBuilder(fieldAndValue.getKey(), fieldAndValue.getValue()).operator(Operator.AND));
+      es.org.elasticsearch.action.search.SearchRequest searchRequest =
+          new es.org.elasticsearch.action.search.SearchRequest(GLOBAL_SEARCH_ALIAS);
+      SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+      searchSourceBuilder.query(
+          new MatchQueryBuilder(fieldAndValue.getKey(), fieldAndValue.getValue()).operator(Operator.AND));
+      searchRequest.source(searchSourceBuilder);
+      try {
+        String response = client.search(searchRequest, RequestOptions.DEFAULT).toString();
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
       Script script =
           new Script(
               ScriptType.INLINE,

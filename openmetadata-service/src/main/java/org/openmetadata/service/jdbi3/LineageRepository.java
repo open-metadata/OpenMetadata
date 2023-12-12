@@ -13,12 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.stream.Collectors;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -39,6 +33,16 @@ import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
+import static org.openmetadata.service.search.SearchClient.REMOVE_LINEAGE_SCRIPT;
 
 @Repository
 public class LineageRepository {
@@ -96,7 +100,6 @@ public class LineageRepository {
     String sourceIndexName = sourceIndexMapping.getIndexName();
     IndexMapping destinationIndexMapping = Entity.getSearchRepository().getIndexMapping(toEntity.getType());
     String destinationIndexName = destinationIndexMapping.getIndexName();
-    //    HashMap<String, Object> data = new HashMap<>();
     HashMap<String, Object> relationshipDetails = new HashMap<>();
     Pair<String, String> from = new ImmutablePair<>("_id", fromEntity.getId().toString());
     Pair<String, String> to = new ImmutablePair<>("_id", toEntity.getId().toString());
@@ -112,13 +115,13 @@ public class LineageRepository {
       HashMap<String, Object> relationshipDetails) {
     HashMap<String, Object> fromDetails = new HashMap<>();
     HashMap<String, Object> toDetails = new HashMap<>();
-    //    HashMap<String, Object> relationshipDetails = new HashMap<>();
     fromDetails.put("id", fromEntity.getId().toString());
     fromDetails.put("type", fromEntity.getType());
     fromDetails.put("fqn", fromEntity.getFullyQualifiedName());
     toDetails.put("id", toEntity.getId().toString());
     toDetails.put("type", toEntity.getType());
     toDetails.put("fqn", toEntity.getFullyQualifiedName());
+    relationshipDetails.put("doc_id", fromEntity.getId().toString() + "-" + toEntity.getId().toString());
     relationshipDetails.put("fromEntity", fromDetails);
     relationshipDetails.put("toEntity", toDetails);
     if (lineageDetails != null) {
@@ -188,9 +191,22 @@ public class LineageRepository {
     EntityReference to = Entity.getEntityReferenceById(toEntity, UUID.fromString(toId), Include.NON_DELETED);
 
     // Finally, delete lineage relationship
-    return dao.relationshipDAO()
-            .delete(from.getId(), from.getType(), to.getId(), to.getType(), Relationship.UPSTREAM.ordinal())
-        > 0;
+    boolean result =
+        dao.relationshipDAO()
+                .delete(from.getId(), from.getType(), to.getId(), to.getType(), Relationship.UPSTREAM.ordinal())
+            > 0;
+    deleteLineageFromSearch(from, to);
+    return result;
+  }
+
+  private void deleteLineageFromSearch(EntityReference fromEntity, EntityReference toEntity) {
+    searchClient.updateChildren(
+        GLOBAL_SEARCH_ALIAS,
+        new ImmutablePair<>(
+            "lineage.doc_id.keyword", fromEntity.getId().toString() + "-" + toEntity.getId().toString()),
+        new ImmutablePair<>(
+            String.format(REMOVE_LINEAGE_SCRIPT, fromEntity.getId().toString() + "-" + toEntity.getId().toString()),
+            null));
   }
 
   private EntityLineage getLineage(EntityReference primary, int upstreamDepth, int downstreamDepth) {

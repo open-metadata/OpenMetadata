@@ -90,6 +90,7 @@ public interface SearchIndex {
     toDetails.put("id", toEntity.getId().toString());
     toDetails.put("type", toEntity.getType());
     toDetails.put("fqn", toEntity.getFullyQualifiedName());
+    relationshipDetails.put("doc_id", fromEntity.getId().toString() + "-" + toEntity.getId().toString());
     relationshipDetails.put("fromEntity", fromDetails);
     relationshipDetails.put("toEntity", toDetails);
     if (lineageDetails != null) {
