@@ -1644,7 +1644,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   private ResultList<TestCaseResolutionStatus> getTestCaseFailureStatus(
-      int limit, String offset, Boolean latest, Long startTs, Long endTs) throws HttpResponseException {
+      int limit, String offset, Boolean latest, Long startTs, Long endTs, String testCaseFqn)
+      throws HttpResponseException {
     WebTarget target = getCollection().path("/testCaseIncidentStatus");
     target = target.queryParam("limit", limit);
     target = offset != null ? target.queryParam("offset", offset) : target;
