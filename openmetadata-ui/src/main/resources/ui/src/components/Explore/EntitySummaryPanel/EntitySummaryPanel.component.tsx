@@ -165,7 +165,10 @@ export default function EntitySummaryPanel({
 
       case EntityType.DASHBOARD_DATA_MODEL:
         return (
-          <DataModelSummary entityDetails={entity as DashboardDataModel} />
+          <DataModelSummary
+            entityDetails={entity as DashboardDataModel}
+            highlights={highlights}
+          />
         );
 
       case EntityType.GLOSSARY_TERM:
