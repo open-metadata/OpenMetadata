@@ -22,7 +22,6 @@ import React, {
   useState,
 } from 'react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
-import AppState from '../../AppState';
 import { withAdvanceSearch } from '../../components/AppRouter/withAdvanceSearch';
 import { useAdvanceSearch } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import {
@@ -380,10 +379,6 @@ const ExplorePageV1: FunctionComponent = () => {
     },
     [setAdvancedSearchQuickFilters, history, parsedSearch]
   );
-
-  useEffect(() => {
-    AppState.updateExplorePageTab(tab);
-  }, [tab]);
 
   return (
     <ExploreV1

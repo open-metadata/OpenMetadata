@@ -1224,6 +1224,7 @@
     "assigned-you-a-new-task-lowercase": "вам поставлена новая задача",
     "assigning-team-entity-description": "Добавьте {{entity}} в {{name}}. Этот {{entity}} будет унаследован всеми пользователями в команде {{name}}, а также всеми командами под {{name}}.",
     "at-least-one-policy": "Введите хотя бы одну политику",
+    "auth-configuration-missing": "Auth configuration is missing",
     "authProvider-is-not-basic": "AuthProvider не является базовым",
     "bot-email-confirmation": "{{email}} для бота {{botName}}",
     "can-not-add-widget": "Can not add the widget to this section due to size restrictions.",

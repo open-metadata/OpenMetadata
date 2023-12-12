@@ -18,7 +18,6 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
-import AppState from '../../../AppState';
 import { refreshTokenKey } from '../../../constants/constants';
 import AuthProvider, { useAuthContext } from './AuthProvider';
 
@@ -52,7 +51,6 @@ jest.mock('../../../rest/userAPI', () => ({
 
 describe('Test auth provider', () => {
   it('Logout handler should call the "updateUserDetails" method', async () => {
-    const mockUpdateUserDetails = jest.spyOn(AppState, 'updateUserDetails');
     const ConsumerComponent = () => {
       const { onLogoutHandler } = useAuthContext();
 
@@ -78,9 +76,6 @@ describe('Test auth provider', () => {
     await act(async () => {
       userEvent.click(logoutButton);
     });
-
-    expect(mockUpdateUserDetails).toHaveBeenCalled();
-    expect(mockUpdateUserDetails).toHaveBeenCalledWith({});
   });
 
   it('Logout handler should remove the refresh token', async () => {

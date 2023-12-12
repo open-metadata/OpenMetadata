@@ -24,7 +24,6 @@
       "description": "OpenMetadata Server Authentication Provider. Make sure configure same auth providers as the one configured on OpenMetadata server.",
       "type": "string",
       "enum": [
-        "no-auth",
         "basic",
         "azure",
         "google",

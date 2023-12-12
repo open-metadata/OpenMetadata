@@ -1224,6 +1224,7 @@
     "assigned-you-a-new-task-lowercase": "Ihnen wurde eine neue Aufgabe zugewiesen",
     "assigning-team-entity-description": "Fügen Sie {{entity}} zu {{name}} hinzu. Dieses {{entity}} wird von allen Benutzern im Team {{name}} sowie von allen Teams unter {{name}} übernommen.",
     "at-least-one-policy": "Geben Sie mindestens eine Richtlinie ein",
+    "auth-configuration-missing": "Auth configuration is missing",
     "authProvider-is-not-basic": "AuthProvider ist nicht Basic",
     "bot-email-confirmation": "{{email}} für den {{botName}}-Bot",
     "can-not-add-widget": "Can not add the widget to this section due to size restrictions.",

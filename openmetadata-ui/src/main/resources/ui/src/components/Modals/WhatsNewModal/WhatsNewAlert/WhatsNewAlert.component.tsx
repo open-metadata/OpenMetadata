@@ -30,7 +30,7 @@ const cookieStorage = new CookieStorage();
 const WhatsNewAlert = () => {
   const { t } = useTranslation();
   const location = useLocation();
-  const { isFirstTimeUser } = useAuth(location.pathname);
+  const { isFirstTimeUser } = useAuth();
   const [showWhatsNew, setShowWhatsNew] = useState({
     alert: false,
     modal: false,

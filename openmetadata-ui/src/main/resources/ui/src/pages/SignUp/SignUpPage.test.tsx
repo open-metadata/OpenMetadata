@@ -13,7 +13,6 @@
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
-import AppState from '../../AppState';
 import { createUser } from '../../rest/userAPI';
 import { getImages } from '../../utils/CommonUtils';
 import {
@@ -39,6 +38,11 @@ jest.mock('react-router-dom', () => ({
 jest.mock('../../components/Auth/AuthProviders/AuthProvider', () => ({
   useAuthContext: jest.fn(() => ({
     setIsSigningIn: jest.fn(),
+    newUser: {
+      name: '',
+      email: '',
+      picture: '',
+    },
   })),
 }));
 
@@ -203,11 +207,7 @@ describe('SignUp page', () => {
   it('Handlers in form should work if data is empty', async () => {
     (getImages as jest.Mock).mockImplementationOnce(() => Promise.reject(''));
     letExpectedUserName = { name: '', email: '' };
-    AppState.newUser = {
-      name: '',
-      email: '',
-      picture: '',
-    };
+
     render(<SignUp />);
     const form = screen.getByTestId('create-user-form');
     const fullNameInput = screen.getByTestId('full-name-input');

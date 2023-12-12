@@ -13,14 +13,12 @@
 
 import { Space } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, isString } from 'lodash';
-import { observer } from 'mobx-react';
+import { isString } from 'lodash';
 import Qs from 'qs';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import appState from '../../AppState';
 import { ReactComponent as IconAPI } from '../../assets/svg/api.svg';
 import { ReactComponent as IconDoc } from '../../assets/svg/doc.svg';
 import { ReactComponent as IconExternalLink } from '../../assets/svg/external-links.svg';
@@ -60,7 +58,7 @@ const Appbar: React.FC = (): JSX.Element => {
   const { isTourOpen, updateTourPage, updateTourSearch, tourSearchValue } =
     useTourProvider();
 
-  const { isAuthDisabled, isAuthenticated, onLogoutHandler } = useAuthContext();
+  const { isAuthenticated, onLogoutHandler } = useAuthContext();
 
   const { searchCriteria } = useGlobalSearchProvider();
 
@@ -294,14 +292,8 @@ const Appbar: React.FC = (): JSX.Element => {
   }, [tourSearchValue, isTourOpen]);
 
   useEffect(() => {
-    if (isAuthDisabled) {
-      fetchOMVersion();
-    } else {
-      if (!isEmpty(appState.userDetails)) {
-        fetchOMVersion();
-      }
-    }
-  }, [appState.userDetails, isAuthDisabled]);
+    fetchOMVersion();
+  }, []);
 
   useEffect(() => {
     const handleDocumentVisibilityChange = () => {
@@ -327,8 +319,7 @@ const Appbar: React.FC = (): JSX.Element => {
 
   return (
     <>
-      {isProtectedRoute(location.pathname) &&
-      (isAuthDisabled || isAuthenticated) ? (
+      {isProtectedRoute(location.pathname) && isAuthenticated ? (
         <NavBar
           handleClear={handleClear}
           handleFeatureModal={handleFeatureModal}
@@ -347,4 +338,4 @@ const Appbar: React.FC = (): JSX.Element => {
   );
 };
 
-export default observer(Appbar);
+export default Appbar;
