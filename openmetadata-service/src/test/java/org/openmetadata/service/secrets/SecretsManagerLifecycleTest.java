@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.lenient;
 import static org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType.Mysql;
 
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -35,7 +36,9 @@ public class SecretsManagerLifecycleTest {
 
   @BeforeAll
   static void setUp() {
-    secretsManager = InMemorySecretsManager.getInstance("openmetadata");
+    secretsManager =
+        InMemorySecretsManager.getInstance(
+            new SecretsManager.SecretsConfig("openmetadata", "prefix", List.of("key1:value1", "key2:value2")));
     Fernet fernet = Mockito.mock(Fernet.class);
     lenient().when(fernet.decrypt(anyString())).thenReturn(DECRYPTED_VALUE);
     lenient().when(fernet.decryptIfApplies(anyString())).thenReturn(DECRYPTED_VALUE);
@@ -46,7 +49,7 @@ public class SecretsManagerLifecycleTest {
   @Test
   void testDatabaseServiceConnectionConfigLifecycle() {
     String password = "openmetadata-test";
-    String secretName = "/openmetadata/database/test/authtype/password";
+    String secretName = "/prefix/openmetadata/database/test/authtype/password";
     String connectionName = "test";
     Map<String, Map<String, String>> mysqlConnection = Map.of("authType", Map.of("password", password));
 
@@ -82,7 +85,7 @@ public class SecretsManagerLifecycleTest {
   @Test
   void testWorkflowLifecycle() {
     String password = "openmetadata_password";
-    String secretName = "/openmetadata/workflow/test-connection/request/connection/config/authtype/password";
+    String secretName = "/prefix/openmetadata/workflow/test-connection/request/connection/config/authtype/password";
 
     Workflow workflow =
         new Workflow()
@@ -129,13 +132,25 @@ public class SecretsManagerLifecycleTest {
   @Test
   void test_buildSecretId() {
     // cluster prefix adds the initial /
-    assertEquals("/openmetadata/database/test_name", secretsManager.buildSecretId(true, "Database", "test_name"));
+    assertEquals(
+        "/prefix/openmetadata/database/test_name", secretsManager.buildSecretId(true, "Database", "test_name"));
     // non cluster prefix appends whatever it receives
     assertEquals("database/test_name", secretsManager.buildSecretId(false, "Database", "test_name"));
     assertEquals("/something/new/test_name", secretsManager.buildSecretId(false, "/something/new", "test_name"));
 
     // keep only alphanumeric characters and /, since we use / to create the FQN in the secrets manager
-    assertEquals("/openmetadata/database/test_name", secretsManager.buildSecretId(true, "Database", "test name"));
+    assertEquals(
+        "/prefix/openmetadata/database/test_name", secretsManager.buildSecretId(true, "Database", "test name"));
     assertEquals("/something/new/test_name", secretsManager.buildSecretId(false, "/something/new", "test name"));
+  }
+
+  @Test
+  void test_getTags() {
+    assertEquals(Map.of("key1", "value1", "key2", "value2"), secretsManager.getSecretsConfig().getTags());
+
+    // if the tags are not well formatted, we don't return anything
+    SecretsManager.SecretsConfig secretsConfig =
+        new SecretsManager.SecretsConfig(null, null, List.of("key:value", "random"));
+    assertEquals(Map.of(), secretsConfig.getTags());
   }
 }

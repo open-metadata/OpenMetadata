@@ -28,8 +28,8 @@ public abstract class AWSBasedSecretsManager extends ExternalSecretsManager {
   public static final String REGION = "region";
 
   protected AWSBasedSecretsManager(
-      SecretsManagerProvider awsProvider, SecretsManagerConfiguration config, String clusterPrefix) {
-    super(awsProvider, clusterPrefix, 100);
+      SecretsManagerProvider awsProvider, SecretsManagerConfiguration config, SecretsConfig secretsConfig) {
+    super(awsProvider, secretsConfig, 100);
     // initialize the secret client depending on the SecretsManagerConfiguration passed
     if (config != null
         && config.getParameters() != null

@@ -18,11 +18,15 @@ import static java.util.Objects.isNull;
 import com.google.common.annotations.VisibleForTesting;
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import javax.ws.rs.core.Response;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.annotations.PasswordField;
 import org.openmetadata.schema.auth.BasicAuthMechanism;
 import org.openmetadata.schema.entity.automations.Workflow;
@@ -41,8 +45,20 @@ import org.openmetadata.service.util.AuthenticationMechanismBuilder;
 import org.openmetadata.service.util.IngestionPipelineBuilder;
 import org.openmetadata.service.util.ReflectionUtil;
 
+@Slf4j
 public abstract class SecretsManager {
-  @Getter private final String clusterPrefix;
+  public record SecretsConfig(String clusterName, String prefix, List<String> tags) {
+    public Map<String, String> getTags() {
+      try {
+        return tags.stream().collect(Collectors.toMap(s -> s.split(":")[0], s -> s.split(":")[1]));
+      } catch (Exception e) {
+        LOG.error(String.format("The SecretsConfig could not extract tags from [%s]", tags));
+        return Map.of();
+      }
+    }
+  }
+
+  @Getter private final SecretsConfig secretsConfig;
   @Getter private final SecretsManagerProvider secretsManagerProvider;
   private Fernet fernet;
   private static final Pattern SECRET_ID_PATTERN = Pattern.compile("[^A-Za-z0-9/_\\-]");
@@ -50,9 +66,9 @@ public abstract class SecretsManager {
   private static final Set<Class<?>> DO_NOT_ENCRYPT_CLASSES =
       Set.of(OpenMetadataJWTClientConfig.class, BasicAuthMechanism.class);
 
-  protected SecretsManager(SecretsManagerProvider secretsManagerProvider, String clusterPrefix) {
+  protected SecretsManager(SecretsManagerProvider secretsManagerProvider, SecretsConfig secretsConfig) {
     this.secretsManagerProvider = secretsManagerProvider;
-    this.clusterPrefix = clusterPrefix;
+    this.secretsConfig = secretsConfig;
     this.fernet = Fernet.getInstance();
   }
 
@@ -286,7 +302,9 @@ public abstract class SecretsManager {
     StringBuilder format = new StringBuilder();
     if (addClusterPrefix) {
       format.append("/");
-      format.append(clusterPrefix);
+      format.append(secretsConfig.prefix);
+      format.append("/");
+      format.append(secretsConfig.clusterName);
     } else {
       format.append("%s");
     }

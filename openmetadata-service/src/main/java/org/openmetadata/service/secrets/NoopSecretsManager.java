@@ -18,13 +18,13 @@ import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 public class NoopSecretsManager extends SecretsManager {
   private static NoopSecretsManager instance;
 
-  private NoopSecretsManager(String clusterPrefix, SecretsManagerProvider secretsManagerProvider) {
-    super(secretsManagerProvider, clusterPrefix);
+  private NoopSecretsManager(SecretsManagerProvider secretsManagerProvider, SecretsConfig secretsConfig) {
+    super(secretsManagerProvider, secretsConfig);
   }
 
-  public static NoopSecretsManager getInstance(String clusterPrefix, SecretsManagerProvider secretsManagerProvider) {
+  public static NoopSecretsManager getInstance(SecretsManagerProvider secretsManagerProvider, SecretsConfig secretsConfig) {
     if (instance == null) {
-      instance = new NoopSecretsManager(clusterPrefix, secretsManagerProvider);
+      instance = new NoopSecretsManager(secretsManagerProvider, secretsConfig);
     }
     return instance;
   }

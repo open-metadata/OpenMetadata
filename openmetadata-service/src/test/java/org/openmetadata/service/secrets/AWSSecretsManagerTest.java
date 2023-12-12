@@ -19,13 +19,15 @@ import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
 
+import java.util.List;
+
 public class AWSSecretsManagerTest extends ExternalSecretsManagerTest {
 
   @Mock private SecretsManagerClient secretsManagerClient;
 
   @Override
   void setUpSpecific(SecretsManagerConfiguration config) {
-    secretsManager = AWSSecretsManager.getInstance(config, "openmetadata");
+    secretsManager = AWSSecretsManager.getInstance(config, new SecretsManager.SecretsConfig("openmetadata", "prefix", List.of("key:value", "key2:value2")));
     ((AWSSecretsManager) secretsManager).setSecretsClient(secretsManagerClient);
     reset(secretsManagerClient);
   }

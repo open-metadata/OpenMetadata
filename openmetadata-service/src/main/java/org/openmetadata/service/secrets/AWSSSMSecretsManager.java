@@ -23,13 +23,14 @@ import software.amazon.awssdk.services.ssm.model.DeleteParameterRequest;
 import software.amazon.awssdk.services.ssm.model.GetParameterRequest;
 import software.amazon.awssdk.services.ssm.model.ParameterType;
 import software.amazon.awssdk.services.ssm.model.PutParameterRequest;
+import software.amazon.awssdk.services.ssm.model.Tag;
 
 public class AWSSSMSecretsManager extends AWSBasedSecretsManager {
   private static AWSSSMSecretsManager instance = null;
   private SsmClient ssmClient;
 
-  private AWSSSMSecretsManager(SecretsManagerConfiguration config, String clusterPrefix) {
-    super(MANAGED_AWS_SSM, config, clusterPrefix);
+  private AWSSSMSecretsManager(SecretsManagerConfiguration config, SecretsConfig secretsConfig) {
+    super(MANAGED_AWS_SSM, config, secretsConfig);
   }
 
   @Override
@@ -61,6 +62,10 @@ public class AWSSSMSecretsManager extends AWSBasedSecretsManager {
             .value(parameterValue)
             .overwrite(overwrite)
             .type(ParameterType.SECURE_STRING)
+            .tags(
+                this.getSecretsConfig().getTags().entrySet().stream()
+                    .map(entry -> Tag.builder().key(entry.getKey()).value(entry.getValue()).build())
+                    .toList())
             .build();
     this.ssmClient.putParameter(putParameterRequest);
   }
@@ -77,8 +82,8 @@ public class AWSSSMSecretsManager extends AWSBasedSecretsManager {
     this.ssmClient.deleteParameter(deleteParameterRequest);
   }
 
-  public static AWSSSMSecretsManager getInstance(SecretsManagerConfiguration config, String clusterPrefix) {
-    if (instance == null) instance = new AWSSSMSecretsManager(config, clusterPrefix);
+  public static AWSSSMSecretsManager getInstance(SecretsManagerConfiguration config, SecretsConfig secretsConfig) {
+    if (instance == null) instance = new AWSSSMSecretsManager(config, secretsConfig);
     return instance;
   }
 

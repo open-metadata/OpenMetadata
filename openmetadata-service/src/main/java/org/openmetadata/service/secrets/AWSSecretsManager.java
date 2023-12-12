@@ -17,6 +17,7 @@ import static org.openmetadata.schema.security.secrets.SecretsManagerProvider.MA
 
 import com.google.common.annotations.VisibleForTesting;
 import java.util.Objects;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
@@ -24,14 +25,16 @@ import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
 import software.amazon.awssdk.services.secretsmanager.model.CreateSecretRequest;
 import software.amazon.awssdk.services.secretsmanager.model.DeleteSecretRequest;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueRequest;
+import software.amazon.awssdk.services.secretsmanager.model.Tag;
 import software.amazon.awssdk.services.secretsmanager.model.UpdateSecretRequest;
 
+@Slf4j
 public class AWSSecretsManager extends AWSBasedSecretsManager {
   private static AWSSecretsManager instance = null;
   private SecretsManagerClient secretsClient;
 
-  private AWSSecretsManager(SecretsManagerConfiguration config, String clusterPrefix) {
-    super(MANAGED_AWS, config, clusterPrefix);
+  private AWSSecretsManager(SecretsManagerConfiguration config, SecretsConfig secretsConfig) {
+    super(MANAGED_AWS, config, secretsConfig);
   }
 
   @Override
@@ -52,6 +55,10 @@ public class AWSSecretsManager extends AWSBasedSecretsManager {
             .name(secretName)
             .description("This secret was created by OpenMetadata")
             .secretString(Objects.isNull(secretValue) ? NULL_SECRET_STRING : secretValue)
+            .tags(
+                this.getSecretsConfig().getTags().entrySet().stream()
+                    .map(entry -> Tag.builder().key(entry.getKey()).value(entry.getValue()).build())
+                    .toList())
             .build();
     this.secretsClient.createSecret(createSecretRequest);
   }
@@ -79,9 +86,9 @@ public class AWSSecretsManager extends AWSBasedSecretsManager {
     this.secretsClient.deleteSecret(deleteSecretRequest);
   }
 
-  public static AWSSecretsManager getInstance(SecretsManagerConfiguration config, String clusterPrefix) {
+  public static AWSSecretsManager getInstance(SecretsManagerConfiguration config, SecretsConfig secretsConfig) {
     if (instance == null) {
-      instance = new AWSSecretsManager(config, clusterPrefix);
+      instance = new AWSSecretsManager(config, secretsConfig);
     }
     return instance;
   }
