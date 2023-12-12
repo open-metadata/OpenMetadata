@@ -352,7 +352,7 @@ class DbtSource(DbtServiceSource):
                     # If the run_results file is passed then only DBT tests will be processed
                     if (
                         dbt_objects.dbt_run_results
-                        and manifest_node.resource_type.value
+                        and manifest_node.resource_type
                         == SkipResourceTypeEnum.TEST.value
                     ):
                         # Test nodes will be processed further in the topology
@@ -370,7 +370,7 @@ class DbtSource(DbtServiceSource):
                         continue
 
                     # Skip the analysis and test nodes
-                    if manifest_node.resource_type.value in [
+                    if manifest_node.resource_type in [
                         item.value for item in SkipResourceTypeEnum
                     ]:
                         logger.debug(f"Skipping DBT node: {key}.")
@@ -431,7 +431,7 @@ class DbtSource(DbtServiceSource):
                             table_entity=table_entity,
                             datamodel=DataModel(
                                 modelType=ModelType.DBT,
-                                resourceType=manifest_node.resource_type.value,
+                                resourceType=manifest_node.resource_type,
                                 description=manifest_node.description
                                 if manifest_node.description
                                 else None,

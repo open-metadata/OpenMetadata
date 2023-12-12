@@ -146,7 +146,7 @@ plugins: Dict[str, Set[str]] = {
         "google-cloud",
         VERSIONS["boto3"],
         VERSIONS["google-cloud-storage"],
-        "dbt-artifacts-parser",
+        "dbt-artifacts-parser^=0.5.0",
         VERSIONS["azure-storage-blob"],
         VERSIONS["azure-identity"],
     },
