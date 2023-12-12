@@ -34,7 +34,7 @@ import {
 import { formTwoDigitNmber as formTwoDigitNumber } from '../../../../utils/CommonUtils';
 import {
   getFormattedEntityData,
-  getSortedTags,
+  getSortedTagsWithHighlight,
 } from '../../../../utils/EntitySummaryPanelUtils';
 import {
   DRAWER_NAVIGATION_OPTIONS,
@@ -247,7 +247,7 @@ function TableSummary({
           entityDetail={tableDetails}
           tags={
             tags ??
-            getSortedTags({
+            getSortedTagsWithHighlight({
               tags: tableDetails.tags,
               sortTagsBasedOnGivenArr: get(highlights, 'tag.name'),
             }) ??

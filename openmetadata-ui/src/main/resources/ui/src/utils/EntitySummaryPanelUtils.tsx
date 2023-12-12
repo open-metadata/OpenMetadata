@@ -40,7 +40,7 @@ export interface EntityNameProps {
 const getTitleName = (data: EntityNameProps) =>
   getEntityName(data) || NO_DATA_PLACEHOLDER;
 
-export const getSortedTags = ({
+export const getSortedTagsWithHighlight = ({
   sortTagsBasedOnGivenArr,
   tags,
 }): TagLabel[] => {
@@ -118,7 +118,7 @@ export const getFormattedEntityData = (
             isTagPresentInColumnData ||
             !isUndefined(columnHighlightsMap[column.name])
           ) {
-            columnData.tags = getSortedTags({
+            columnData.tags = getSortedTagsWithHighlight({
               sortTagsBasedOnGivenArr: tagHighlights,
               tags: columnData.tags,
             });

@@ -152,7 +152,10 @@ export default function EntitySummaryPanel({
 
       case EntityType.STORED_PROCEDURE:
         return (
-          <StoredProcedureSummary entityDetails={entity as StoredProcedure} />
+          <StoredProcedureSummary
+            entityDetails={entity as StoredProcedure}
+            highlights={highlights}
+          />
         );
 
       case EntityType.DASHBOARD_DATA_MODEL:
