@@ -1129,6 +1129,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
                   null);
       PersonalAccessToken personalAccessToken = TokenUtil.getPersonalAccessToken(tokenRequest, user, authMechanism);
       tokenRepository.insertToken(personalAccessToken);
+      UserTokenCache.invalidateToken(user.getName());
       return Response.status(Response.Status.OK).entity(personalAccessToken).build();
     }
     throw new CustomExceptionMessage(BAD_REQUEST, "Bots cannot have a Personal Access Token.");
