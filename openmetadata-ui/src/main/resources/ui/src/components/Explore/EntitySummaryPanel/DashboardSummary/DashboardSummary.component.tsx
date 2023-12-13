@@ -81,7 +81,13 @@ function DashboardSummary({
   }, [entityDetails]);
 
   const formattedChartsData: BasicEntityInfo[] = useMemo(
-    () => getFormattedEntityData(SummaryEntityType.CHART, charts),
+    () =>
+      getFormattedEntityData(
+        SummaryEntityType.CHART,
+        charts,
+        undefined,
+        highlights
+      ),
     [charts]
   );
 

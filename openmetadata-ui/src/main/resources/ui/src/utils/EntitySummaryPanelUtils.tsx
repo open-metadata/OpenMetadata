@@ -200,22 +200,16 @@ export const getFormattedEntityData = (
       }));
     }
     case SummaryEntityType.CHART: {
-      return (entityInfo as Chart[]).map((chart) => ({
-        name: chart.name,
-        title: (
-          <Link target="_blank" to={{ pathname: chart.sourceUrl }}>
-            <div className="d-flex">
-              <Text className="entity-title text-link-color font-medium m-r-xss">
-                {getTitleName(chart)}
-              </Text>
-              <IconExternalLink width={12} />
-            </div>
-          </Link>
-        ),
-        type: chart.chartType,
-        tags: chart.tags,
-        description: chart.description,
-      }));
+      // Todo: need to confirm the key have to pass
+      const listHighlights = [...get(highlights, 'charts.name', [])];
+
+      return sortAndHighlightSummaryList_basedOnTagAndGlobalSearch(
+        listHighlights,
+        entityType,
+        entityInfo,
+        undefined,
+        highlights
+      );
     }
     case SummaryEntityType.TASK: {
       const listHighlights = [...get(highlights, 'tasks.name', [])];
