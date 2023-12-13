@@ -88,7 +88,7 @@ const sortAndHighlightSummaryList_basedOnTagAndGlobalSearch = (
   tableConstraints?: TableConstraint[],
   highlights?: SearchedDataProps['data'][number]['highlights']
 ) => {
-  const tagHighlights = get(highlights, 'tag.name');
+  const tagHighlights = get(highlights, 'tag.name', []);
   const listHighlightsMap =
     listHighlights?.reduce((acc, colHighlight, index) => {
       acc[colHighlight.replace(/<\/?span(.*?)>/g, '')] = index;
@@ -170,85 +170,29 @@ export const getFormattedEntityData = (
     return [];
   }
 
-  switch (entityType) {
-    case SummaryEntityType.COLUMN: {
-      const listHighlights = [
-        ...get(highlights, 'columns.name', []),
-        ...get(highlights, 'columns.childrens.name', []),
-      ];
+  const listHighlights = [];
 
-      return sortAndHighlightSummaryList_basedOnTagAndGlobalSearch(
-        listHighlights,
-        entityType,
-        entityInfo,
-        tableConstraints,
-        highlights
-      );
-    }
-    case SummaryEntityType.FIELD: {
-      // Todo: have to confirm highlight key
-      const listHighlights = [...get(highlights, 'fields.name', [])];
+  const listHighlightsMap = {
+    [SummaryEntityType.COLUMN]: ['columns.name', 'columns.childrens.name'],
+    [SummaryEntityType.FIELD]: ['fields.name', 'fields.childrens.name'], // Todo have to update highlight key
+    [SummaryEntityType.CHART]: ['charts.name', 'charts.childrens.name'], // Todo have to update the highlight key
+    [SummaryEntityType.TASK]: ['tasks.name', 'tasks.childrens.name'],
+    [SummaryEntityType.MLFEATURE]: ['features.name', 'features.childrens.name'], // Todo have to update the highlight key
+    [SummaryEntityType.SCHEMAFIELD]: [
+      'schemafields.name',
+      'schemafields.childrens.name',
+    ],
+  };
 
-      return sortAndHighlightSummaryList_basedOnTagAndGlobalSearch(
-        listHighlights,
-        entityType,
-        entityInfo,
-        undefined,
-        highlights
-      );
-    }
-    case SummaryEntityType.CHART: {
-      // Todo: need to confirm the key have to pass
-      const listHighlights = [...get(highlights, 'charts.name', [])];
+  listHighlightsMap[entityType].forEach((highlightKey) => {
+    listHighlights.push(...get(highlights, highlightKey, []));
+  });
 
-      return sortAndHighlightSummaryList_basedOnTagAndGlobalSearch(
-        listHighlights,
-        entityType,
-        entityInfo,
-        undefined,
-        highlights
-      );
-    }
-    case SummaryEntityType.TASK: {
-      const listHighlights = [...get(highlights, 'tasks.name', [])];
-
-      return sortAndHighlightSummaryList_basedOnTagAndGlobalSearch(
-        listHighlights,
-        entityType,
-        entityInfo,
-        undefined,
-        highlights
-      );
-    }
-    case SummaryEntityType.MLFEATURE: {
-      // Todo : replace the key get for highlight features list
-      const listHighlights = [...get(highlights, 'features.name', [])];
-
-      return sortAndHighlightSummaryList_basedOnTagAndGlobalSearch(
-        listHighlights,
-        entityType,
-        entityInfo,
-        undefined,
-        highlights
-      );
-    }
-    case SummaryEntityType.SCHEMAFIELD: {
-      // Todo : replace the key get for highlight schema fields
-      const listHighlights = [
-        ...get(highlights, 'schemafields.name', []),
-        ...get(highlights, 'schemafields.childrens.name', []),
-      ];
-
-      return sortAndHighlightSummaryList_basedOnTagAndGlobalSearch(
-        listHighlights,
-        entityType,
-        entityInfo,
-        undefined,
-        highlights
-      );
-    }
-    default: {
-      return [];
-    }
-  }
+  return sortAndHighlightSummaryList_basedOnTagAndGlobalSearch(
+    listHighlights,
+    entityType,
+    entityInfo,
+    tableConstraints,
+    highlights
+  );
 };
