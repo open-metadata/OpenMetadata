@@ -16,7 +16,6 @@ package org.openmetadata.service.security.auth;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static javax.ws.rs.core.Response.Status.NOT_IMPLEMENTED;
-import static javax.ws.rs.core.Response.Status.UNAUTHORIZED;
 import static org.openmetadata.schema.api.teams.CreateUser.CreatePasswordType.ADMIN_CREATE;
 import static org.openmetadata.schema.auth.ChangePasswordRequest.RequestType.SELF;
 import static org.openmetadata.schema.auth.ChangePasswordRequest.RequestType.USER;
@@ -271,7 +270,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
 
     if (request.getRequestType() == SELF
         && !BCrypt.verifyer().verify(request.getOldPassword().toCharArray(), storedHashPassword).verified) {
-      throw new CustomExceptionMessage(UNAUTHORIZED, "Old Password is not correct");
+      throw new CustomExceptionMessage(BAD_REQUEST, "Old Password is not correct");
     }
 
     storedBasicAuthMechanism.setPassword(newHashedPassword);
