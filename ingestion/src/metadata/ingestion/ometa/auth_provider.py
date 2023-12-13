@@ -12,19 +12,65 @@
 Interface definition for an Auth provider
 """
 import os.path
+from abc import ABCMeta, abstractmethod
+from dataclasses import dataclass
 from datetime import datetime
 
 from dateutil.relativedelta import relativedelta
 
+from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
+from metadata.utils.logger import ometa_logger
+
+logger = ometa_logger()
 
 
-class OpenMetadataAuthenticationProvider:
+class AuthenticationException(Exception):
+    """
+    Error trying to get the token from the provider
+    """
+
+
+@dataclass(init=False)  # type: ignore[misc]
+class AuthenticationProvider(metaclass=ABCMeta):
+    """
+    Interface definition for an Authentication provider
+    """
+
+    @classmethod
+    @abstractmethod
+    def create(cls, config: ConfigModel) -> "AuthenticationProvider":
+        """
+        Create authentication
+        Arguments:
+            config (ConfigModel): configuration
+        Returns:
+            AuthenticationProvider
+        """
+
+    @abstractmethod
+    def auth_token(self) -> str:
+        """
+        Authentication token
+        Returns:
+            str
+        """
+
+    @abstractmethod
+    def get_access_token(self):
+        """
+        Authentication token
+        Returns:
+            str
+        """
+
+
+class OpenMetadataAuthenticationProvider(AuthenticationProvider):
     """
     OpenMetadata authentication implementation
 
