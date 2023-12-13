@@ -40,29 +40,23 @@ const expirationTime = {
 const getCreatedBot = () => {
   interceptURL('GET', `/api/v1/bots/name/${botName}*`, 'getCreatedBot');
   // Click on created Bot name
-  cy.get(`[data-testid="bot-link-${botName}"]`)
-    .should('exist')
-    .should('be.visible')
-    .click();
+  cy.get(`[data-testid="bot-link-${botName}"]`).should('exist').click();
   verifyResponseStatusCode('@getCreatedBot', 200);
 };
 
 const revokeToken = () => {
   // Click on revoke button
-  cy.get('[data-testid="revoke-button"]')
-    .should('contain', 'Revoke token')
-    .should('be.visible')
-    .click();
+  cy.get('[data-testid="revoke-button"]').click();
   // Verify the revoke text
   cy.get('[data-testid="body-text"]').should(
     'contain',
     'Are you sure you want to revoke access for JWT token?'
   );
+  interceptURL('PUT', `/api/v1/users/revokeToken`, 'revokeToken');
   // Click on confirm button
-  cy.get('[data-testid="save-button"]')
-    .should('exist')
-    .should('be.visible')
-    .click();
+  cy.get('[data-testid="save-button"]').click();
+  verifyResponseStatusCode('@revokeToken', 200);
+
   // Verify the revoke is successful
   cy.get('[data-testid="revoke-button"]').should('not.exist');
   cy.get('[data-testid="auth-mechanism"]')
@@ -143,15 +137,11 @@ describe('Bots Page should work properly', () => {
   Object.values(expirationTime).forEach((expiry) => {
     it(`Update token expiration for ${expiry} days`, () => {
       getCreatedBot();
-
       revokeToken();
-      // Click on token expiry dropdown
-      cy.get('[data-testid="token-expiry"]').should('be.visible').click();
+      // Click on dropdown
+      cy.get('[data-testid="token-expiry"]').click();
       // Select the expiration period
-      cy.contains(`${expiry} days`)
-        .should('exist')
-        .should('be.visible')
-        .click();
+      cy.contains(`${expiry} days`).should('exist').click();
       // Save the updated date
       const expiryDate = customFormatDateTime(
         getEpochMillisForFutureDays(expiry),
@@ -173,17 +163,11 @@ describe('Bots Page should work properly', () => {
     getCreatedBot();
     revokeToken();
     // Click on expiry token dropdown
-    cy.get('[data-testid="token-expiry"]')
-      .should('exist')
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="token-expiry"]').click();
     // Select unlimited days
-    cy.contains('Unlimited days').should('exist').should('be.visible').click();
+    cy.contains('Unlimited days').click();
     // Save the selected changes
-    cy.get('[data-testid="save-edit"]')
-      .should('exist')
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="save-edit"]').click();
     // Verify the updated expiry time
     cy.get('[data-testid="center-panel"]')
       .find('[data-testid="revoke-button"]')

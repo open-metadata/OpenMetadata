@@ -12,6 +12,7 @@
  */
 
 import { SearchIndex } from '../../../enums/search.enum';
+import { TokenType } from '../../../generated/auth/personalAccessToken';
 import { DashboardServiceType } from '../../../generated/entity/data/dashboard';
 import {
   DashboardSearchSource,
@@ -1029,4 +1030,12 @@ export const mockEntityData: {
   ],
   total: 6,
   currPage: 1,
+};
+export const mockAccessData = {
+  expiryDate: 1701714886101,
+  jwtToken: 'eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5Mmot',
+  token: '4946956adf3a8d646',
+  tokenName: 'test',
+  tokenType: TokenType.PersonalAccessToken,
+  userId: '445291f4d62c1bae',
 };

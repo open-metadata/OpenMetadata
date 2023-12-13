@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,23 +11,12 @@
  *  limitations under the License.
  */
 
-import { PersonalAccessToken } from '../../generated/auth/personalAccessToken';
+import { Bot } from '../../generated/entity/bot';
 import { User } from '../../generated/entity/teams/user';
 
-export interface Props {
-  userData: User;
-  queryFilters: {
-    myData: string;
-    following: string;
-  };
-  handlePaginate: (page: string | number) => void;
-  updateUserDetails: (data: Partial<User>) => Promise<void>;
-  authenticationMechanism?: PersonalAccessToken;
-}
-
-export enum UserPageTabs {
-  ACTIVITY = 'activity_feed',
-  MY_DATA = 'mydata',
-  FOLLOWING = 'following',
-  ACCESS_TOKEN = 'access-token',
-}
+export type MockProps = {
+  isBot: boolean;
+  botData?: Bot;
+  botUserData?: User;
+  revokeTokenHandlerBot?: () => void;
+};
