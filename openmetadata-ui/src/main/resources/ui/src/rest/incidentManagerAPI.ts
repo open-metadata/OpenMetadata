@@ -18,11 +18,12 @@ import { TestCaseResolutionStatus } from '../generated/tests/testCase';
 import { ListParams } from '../interface/API.interface';
 import APIClient from './index';
 
-const testCaseIncidentUrl = '/dataQuality/testCases/testCaseResolutionStatus';
+const testCaseIncidentUrl = '/dataQuality/testCases/testCaseIncidentStatus';
 
 interface TestCaseIncidentStatusParams extends ListParams {
   startTs: number;
   endTs: number;
+  latest?: boolean;
 }
 
 export const getListTestCaseIncidentStatus = async ({

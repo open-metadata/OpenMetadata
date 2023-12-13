@@ -14,10 +14,8 @@ import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { isEqual } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
-import { SummaryCard } from '../../components/common/SummaryCard/SummaryCard.component';
 import DatePickerMenu from '../../components/DatePickerMenu/DatePickerMenu.component';
 import TestCaseIncidentManagerTable from '../../components/IncidentManager/TestCaseIncidentManagerTable/TestCaseIncidentManagerTable.component';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
@@ -34,20 +32,7 @@ import { ListTestCaseParams } from '../../rest/testAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { TestCaseIncidentStatusData } from './IncidentManager.interface';
 
-const summary = {
-  total: 100,
-  new: 20,
-  acknowledged: 13,
-  inReview: 18,
-  assigned: 20,
-  resolved: 1043,
-};
-
-const isLoading = false;
-
 const IncidentManagerPage = () => {
-  const { t } = useTranslation();
-
   const [testCaseListData, setTestCaseListData] =
     useState<TestCaseIncidentStatusData>({
       data: [],
@@ -79,6 +64,7 @@ const IncidentManagerPage = () => {
           limit: pageSize,
           startTs: dateRangeObject.startTs,
           endTs: dateRangeObject.endTs,
+          latest: true,
         });
         setTestCaseListData((prev) => ({ ...prev, data: data }));
         handlePagingChange(paging);
@@ -141,9 +127,9 @@ const IncidentManagerPage = () => {
 
   useEffect(() => {
     if (testCasePermission?.ViewAll || testCasePermission?.ViewBasic) {
-      if (dateRangeObject) {
-        fetchTestCases(dateRangeObject);
-      }
+      fetchTestCases(dateRangeObject);
+    } else {
+      setTestCaseListData((prev) => ({ ...prev, isLoading: false }));
     }
   }, [testCasePermission, pageSize, dateRangeObject]);
 
@@ -156,57 +142,6 @@ const IncidentManagerPage = () => {
       <Row className="p-x-lg" gutter={[0, 16]}>
         <Col span={24}>
           <PageHeader data={PAGE_HEADERS.INCIDENT_MANAGER} />
-        </Col>
-
-        <Col span={24}>
-          <Row wrap gutter={[16, 16]}>
-            <Col span={4}>
-              <SummaryCard
-                className="h-full"
-                isLoading={isLoading}
-                title={t('label.new')}
-                total={summary?.total ?? 0}
-                type="new"
-                value={summary?.new ?? 0}
-              />
-            </Col>
-            <Col span={5}>
-              <SummaryCard
-                isLoading={isLoading}
-                title={t('label.acknowledged')}
-                total={summary?.total ?? 0}
-                type="acknowledged"
-                value={summary?.acknowledged ?? 0}
-              />
-            </Col>
-            <Col span={5}>
-              <SummaryCard
-                isLoading={isLoading}
-                title={t('label.in-review')}
-                total={summary?.total ?? 0}
-                type="aborted"
-                value={summary?.inReview ?? 0}
-              />
-            </Col>
-            <Col span={5}>
-              <SummaryCard
-                isLoading={isLoading}
-                title={t('label.assigned')}
-                total={summary?.total ?? 0}
-                type="assigned"
-                value={summary?.assigned ?? 0}
-              />
-            </Col>
-            <Col span={5}>
-              <SummaryCard
-                isLoading={isLoading}
-                title={t('label.resolved')}
-                total={summary?.total ?? 0}
-                type="success"
-                value={summary?.resolved ?? 0}
-              />
-            </Col>
-          </Row>
         </Col>
 
         <Col className="d-flex justify-end" span={24}>

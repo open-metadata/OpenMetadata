@@ -14,7 +14,7 @@
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Space } from 'antd';
 import classNames from 'classnames';
-import { toLower } from 'lodash';
+import { startCase, toLower } from 'lodash';
 import React, { useCallback, useState } from 'react';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import {
@@ -36,7 +36,7 @@ const Severity = ({ severity, onSubmit }: SeverityProps) => {
       await onSubmit(data);
       onCancel();
     },
-    [onCancel, onSubmit]
+    [onSubmit]
   );
 
   return (
@@ -45,7 +45,7 @@ const Severity = ({ severity, onSubmit }: SeverityProps) => {
         {severity ? (
           <AppBadge
             className={classNames('severity', toLower(severity))}
-            label={severity}
+            label={startCase(severity)}
           />
         ) : (
           NO_DATA_PLACEHOLDER

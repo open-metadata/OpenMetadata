@@ -13,9 +13,10 @@
 
 import { Form, Modal, Select } from 'antd';
 import { FormProps, useForm } from 'antd/lib/form/Form';
+import { keys, startCase } from 'lodash';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { severityOptions } from '../../../utils/SeverityUtils';
+import { Severities } from '../../../generated/tests/testCase';
 import { SeverityModalProps } from './Severity.interface';
 
 const SeverityModal = ({
@@ -58,7 +59,16 @@ const SeverityModal = ({
         name="severity"
         onFinish={handleFormSubmit}>
         <Form.Item label={t('label.severity')} name="severity">
-          <Select options={severityOptions()} />
+          <Select
+            placeholder={t('label.please-select-entity', {
+              entity: t('label.severity'),
+            })}>
+            {keys(Severities).map((severity) => (
+              <Select.Option key={severity}>
+                {startCase(severity)}
+              </Select.Option>
+            ))}
+          </Select>
         </Form.Item>
       </Form>
     </Modal>

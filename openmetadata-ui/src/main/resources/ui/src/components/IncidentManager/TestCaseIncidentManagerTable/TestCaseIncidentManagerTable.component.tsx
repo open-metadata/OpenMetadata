@@ -10,36 +10,41 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Space, Tooltip, Typography } from 'antd';
+import { Col, Row } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
+import QueryString from 'qs';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
+import { getTableTabPath } from '../../../constants/constants';
+import { EntityTabs, FqnPart } from '../../../enums/entity.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/entity/type';
 import {
   Severities,
-  TestCase,
   TestCaseResolutionStatus,
-  TestCaseResult,
 } from '../../../generated/tests/testCase';
 import { Assigned } from '../../../generated/tests/testCaseResolutionStatus';
 import { updateTestCaseIncidentById } from '../../../rest/incidentManagerAPI';
+import {
+  getNameFromFQN,
+  getPartialNameFromTableFQN,
+} from '../../../utils/CommonUtils';
 import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getIncidentManagerDetailPagePath } from '../../../utils/RouterUtils';
+import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
-import { StatusBox } from '../../common/LastRunGraph/LastRunGraph.component';
 import NextPrevious from '../../common/NextPrevious/NextPrevious';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import Table from '../../common/Table/Table';
 import { usePermissionProvider } from '../../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../PermissionProvider/PermissionProvider.interface';
+import { TableProfilerTab } from '../../ProfilerDashboard/profilerDashboard.interface';
 import '../incident-manager.style.less';
 import Severity from '../Severity/Severity.component';
 import TestCaseIncidentManagerStatus from '../TestCaseStatus/TestCaseIncidentManagerStatus.component';
@@ -62,32 +67,6 @@ const TestCaseIncidentManagerTable = ({
     );
   }, [permissions]);
 
-  const handlePatchTestCaseResult = async (
-    record: TestCase,
-    updatedResult: TestCaseResult
-  ): Promise<void> => {
-    // if (record.testCaseResult) {
-    //   const timestamp = record.testCaseResult?.timestamp ?? 0;
-    //   const patch = compare(record.testCaseResult, updatedResult);
-    //   try {
-    //     await patchTestCaseResult({
-    //       testCaseFqn: record.fullyQualifiedName ?? '',
-    //       patch,
-    //       timestamp,
-    //     });
-
-    //     handleTestCaseUpdate({
-    //       ...record,
-    //       testCaseResult: updatedResult,
-    //     });
-    //   } catch (error) {
-    //     showErrorToast(error as AxiosError);
-    //   }
-    // }
-
-    return;
-  };
-
   const handleSeveritySubmit = async (
     severity: Severities,
     record: TestCaseResolutionStatus
@@ -108,40 +87,30 @@ const TestCaseIncidentManagerTable = ({
     record: TestCaseResolutionStatus
   ) => {
     // handlePatchTestCaseResult(record, {
-    //     ...record.testCaseResult,
-    //     testCaseResolutionStatusReference: updatedData,
-    //   });
+    //   ...record.testCaseResult,
+    //   testCaseResolutionStatusReference: updatedData,
+    // });
   };
 
   const columns: ColumnsType<TestCaseResolutionStatus> = useMemo(
     () => [
       {
-        title: t('label.name'),
+        title: t('label.test-case-name'),
         dataIndex: 'name',
         key: 'name',
         width: 300,
         fixed: 'left',
         render: (_, record) => {
-          const status = record.testCaseResolutionStatusType;
-
           return (
-            <Space data-testid={record.testCaseReference?.name}>
-              <Tooltip title={status}>
-                <div>
-                  <StatusBox status={status?.toLocaleLowerCase()} />
-                </div>
-              </Tooltip>
-
-              <Link
-                className="m-0 break-all text-primary"
-                data-testid={`test-case-${record.testCaseReference?.name}`}
-                style={{ maxWidth: 280 }}
-                to={getIncidentManagerDetailPagePath(
-                  record.testCaseReference?.fullyQualifiedName ?? ''
-                )}>
-                {getEntityName(record.testCaseReference)}
-              </Link>
-            </Space>
+            <Link
+              className="m-0 break-all text-primary"
+              data-testid={`test-case-${record.testCaseReference?.name}`}
+              style={{ maxWidth: 280 }}
+              to={getIncidentManagerDetailPagePath(
+                record.testCaseReference?.fullyQualifiedName ?? ''
+              )}>
+              {getEntityName(record.testCaseReference)}
+            </Link>
           );
         },
       },
@@ -151,34 +120,29 @@ const TestCaseIncidentManagerTable = ({
         key: 'testCaseReference',
         width: 150,
         render: (value: EntityReference) => {
-          //   const tableFqn = getEntityFqnFromEntityLink(value);
-          //   const name = getNameFromFQN(tableFqn);
+          const tableFqn = getPartialNameFromTableFQN(
+            value.fullyQualifiedName ?? '',
+            [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
+            '.'
+          );
 
-          //   return (
-          //     <Link
-          //       data-testid="table-link"
-          //       to={{
-          //         pathname: getTableTabPath(getEncodedFqn(tableFqn), 'profiler'),
-          //         search: QueryString.stringify({
-          //           activeTab: TableProfilerTab.DATA_QUALITY,
-          //         }),
-          //       }}
-          //       onClick={(e) => e.stopPropagation()}>
-          //       {name}
-          //     </Link>
-
-          //          );
-
-          return <Typography.Text>{value.fullyQualifiedName}</Typography.Text>;
+          return (
+            <Link
+              data-testid="table-link"
+              to={{
+                pathname: getTableTabPath(
+                  getEncodedFqn(tableFqn),
+                  EntityTabs.PROFILER
+                ),
+                search: QueryString.stringify({
+                  activeTab: TableProfilerTab.DATA_QUALITY,
+                }),
+              }}
+              onClick={(e) => e.stopPropagation()}>
+              {getNameFromFQN(tableFqn) ?? value.fullyQualifiedName}
+            </Link>
+          );
         },
-      },
-      {
-        title: t('label.test-suite'),
-        dataIndex: 'testSuite',
-        key: 'testSuite',
-        width: 300,
-        render: (testSuite: EntityReference) =>
-          getEntityName(testSuite) ?? NO_DATA_PLACEHOLDER,
       },
       {
         title: t('label.execution-time'),
@@ -218,13 +182,12 @@ const TestCaseIncidentManagerTable = ({
         dataIndex: 'testCaseResolutionStatusDetails',
         key: 'testCaseResolutionStatusDetails',
         width: 150,
-        render: (value?: Assigned) => <OwnerLabel owner={value?.assignee} />,
-      },
-      {
-        title: t('label.reviewer'),
-        dataIndex: 'testCaseResolutionStatusDetails',
-        key: 'testCaseResolutionStatusDetails',
-        render: (value?: Assigned) => <OwnerLabel owner={value?.reviewer} />,
+        render: (value?: Assigned) => (
+          <OwnerLabel
+            owner={value?.assignee}
+            placeHolder={t('label.no-entity', { entity: t('label.assignee') })}
+          />
+        ),
       },
     ],
     [testCaseEditPermission]
@@ -245,7 +208,6 @@ const TestCaseIncidentManagerTable = ({
           }}
           pagination={false}
           rowKey="id"
-          scroll={{ x: 1600 }}
           size="small"
         />
       </Col>
