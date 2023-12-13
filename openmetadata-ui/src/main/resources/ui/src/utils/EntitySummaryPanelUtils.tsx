@@ -19,6 +19,7 @@ import { SearchedDataProps } from '../../src/components/SearchedData/SearchedDat
 import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
 import { BasicEntityInfo } from '../components/Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
+import { SummaryListHighlightKeysMap } from '../constants/EntitySummaryPanel.constant';
 import { SummaryEntityType } from '../enums/EntitySummary.enum';
 import { Chart } from '../generated/entity/data/chart';
 import { TagLabel } from '../generated/entity/data/container';
@@ -173,19 +174,7 @@ export const getFormattedEntityData = (
 
   const listHighlights = [];
 
-  const listHighlightsMap = {
-    [SummaryEntityType.COLUMN]: ['columns.name', 'columns.childrens.name'],
-    [SummaryEntityType.FIELD]: ['fields.name', 'fields.childrens.name'], // Todo have to update highlight key
-    [SummaryEntityType.CHART]: ['charts.name', 'charts.childrens.name'], // Todo have to update the highlight key
-    [SummaryEntityType.TASK]: ['tasks.name', 'tasks.childrens.name'],
-    [SummaryEntityType.MLFEATURE]: ['features.name', 'features.childrens.name'], // Todo have to update the highlight key
-    [SummaryEntityType.SCHEMAFIELD]: [
-      'schemafields.name',
-      'schemafields.childrens.name',
-    ],
-  };
-
-  listHighlightsMap[entityType].forEach((highlightKey) => {
+  SummaryListHighlightKeysMap[entityType].forEach((highlightKey) => {
     listHighlights.push(...get(highlights, highlightKey, []));
   });
 
