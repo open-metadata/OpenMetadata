@@ -28,14 +28,15 @@ logger = ingestion_logger()
 
 
 def _get_json_text(key: str, text: bytes, decode: bool) -> Union[str, bytes]:
+    processed_text: Union[str, bytes] = text
     if key.endswith(".gz"):
-        return gzip.decompress(text)
+        processed_text = gzip.decompress(text)
     if key.endswith(".zip"):
         with zipfile.ZipFile(io.BytesIO(text)) as zip_file:
-            return zip_file.read(zip_file.infolist()[0]).decode(UTF_8)
+            processed_text = zip_file.read(zip_file.infolist()[0]).decode(UTF_8)
     if decode:
-        return text.decode(UTF_8) if isinstance(text, bytes) else text
-    return text
+        return processed_text.decode(UTF_8) if isinstance(text, bytes) else text # type: ignore
+    return processed_text
 
 
 class JSONDataFrameReader(DataFrameReader):
