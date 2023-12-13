@@ -81,7 +81,8 @@ export const getSortedTagsWithHighlight = ({
   return [...tagForSort, ...remainingTags];
 };
 
-const sortAndHighlightSummaryList_basedOnTagAndGlobalSearch = (
+// sort and highlight summary list based on tags and global search
+const sortAndHighlightSummaryList = (
   listHighlights: string[],
   entityType: SummaryEntityType,
   entityInfo: Array<Column | Field | Chart | Task | MlFeature>,
@@ -188,7 +189,7 @@ export const getFormattedEntityData = (
     listHighlights.push(...get(highlights, highlightKey, []));
   });
 
-  return sortAndHighlightSummaryList_basedOnTagAndGlobalSearch(
+  return sortAndHighlightSummaryList(
     listHighlights,
     entityType,
     entityInfo,
