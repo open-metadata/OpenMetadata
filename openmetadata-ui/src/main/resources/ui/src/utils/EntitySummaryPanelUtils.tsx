@@ -215,24 +215,15 @@ export const getFormattedEntityData = (
       }));
     }
     case SummaryEntityType.TASK: {
-      return (entityInfo as Task[]).map((task) => ({
-        name: task.name,
-        title: (
-          <Link target="_blank" to={{ pathname: task.sourceUrl }}>
-            <div className="d-flex">
-              <Text
-                className="entity-title text-link-color font-medium m-r-xss"
-                ellipsis={{ tooltip: true }}>
-                {getTitleName(task)}
-              </Text>
-              <IconExternalLink width={12} />
-            </div>
-          </Link>
-        ),
-        type: task.taskType,
-        tags: task.tags,
-        description: task.description,
-      }));
+      const listHighlights = [...get(highlights, 'tasks.name', [])];
+
+      return sortAndHighlightSummaryList_basedOnTagAndGlobalSearch(
+        listHighlights,
+        entityType,
+        entityInfo,
+        undefined,
+        highlights
+      );
     }
     case SummaryEntityType.MLFEATURE: {
       return (entityInfo as MlFeature[]).map((feature) => ({

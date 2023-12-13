@@ -147,7 +147,12 @@ export default function EntitySummaryPanel({
         );
 
       case EntityType.PIPELINE:
-        return <PipelineSummary entityDetails={entity as Pipeline} />;
+        return (
+          <PipelineSummary
+            entityDetails={entity as Pipeline}
+            highlights={highlights}
+          />
+        );
 
       case EntityType.MLMODEL:
         return <MlModelSummary entityDetails={entity as Mlmodel} />;
