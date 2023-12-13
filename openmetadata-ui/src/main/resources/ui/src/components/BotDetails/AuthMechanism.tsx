@@ -13,7 +13,8 @@
 
 import { Button, Divider, Input, Space, Typography } from 'antd';
 import { t } from 'i18next';
-import React, { FC } from 'react';
+import React, { FC, useMemo } from 'react';
+import { PersonalAccessToken } from '../../generated/auth/personalAccessToken';
 import { AuthenticationMechanism } from '../../generated/entity/teams/user';
 import { getTokenExpiry } from '../../utils/BotsUtils';
 import SVGIcons from '../../utils/SvgUtils';
@@ -21,10 +22,11 @@ import CopyToClipboardButton from '../CopyToClipboardButton/CopyToClipboardButto
 import './auth-mechanism.less';
 
 interface Props {
-  authenticationMechanism: AuthenticationMechanism;
+  authenticationMechanism: AuthenticationMechanism | PersonalAccessToken;
   hasPermission: boolean;
-  onEdit: () => void;
-  onTokenRevoke: () => void;
+  onEdit?: () => void;
+  onTokenRevoke?: () => void;
+  isBot: boolean;
 }
 
 const AuthMechanism: FC<Props> = ({
@@ -32,19 +34,32 @@ const AuthMechanism: FC<Props> = ({
   hasPermission,
   onEdit,
   onTokenRevoke,
+  isBot,
 }: Props) => {
-  const JWTToken = authenticationMechanism.config?.JWTToken;
-  const JWTTokenExpiresAt =
-    authenticationMechanism.config?.JWTTokenExpiresAt ?? 0;
+  const { JWTToken, JWTTokenExpiresAt } = useMemo(() => {
+    if (isBot) {
+      const botData = authenticationMechanism as AuthenticationMechanism;
 
-  // get the token expiry date
+      return {
+        JWTToken: botData?.config?.JWTToken,
+        JWTTokenExpiresAt: botData?.config?.JWTTokenExpiresAt ?? 0,
+      };
+    }
+    const personalAccessData = authenticationMechanism as PersonalAccessToken;
+
+    return {
+      JWTToken: personalAccessData?.jwtToken,
+      JWTTokenExpiresAt: personalAccessData?.expiryDate ?? 0,
+    };
+  }, [isBot, authenticationMechanism]);
+
   const { tokenExpiryDate, isTokenExpired } = getTokenExpiry(JWTTokenExpiresAt);
 
   return (
     <>
       <Space className="w-full justify-between">
         <Typography.Text className="text-base">
-          {t('label.om-jwt-token')}
+          {isBot ? t('label.om-jwt-token') : t('message.personal-access-token')}
         </Typography.Text>
         <Space>
           {JWTToken ? (
@@ -59,6 +74,7 @@ const AuthMechanism: FC<Props> = ({
             </Button>
           ) : (
             <Button
+              data-testid="auth-mechanism"
               disabled={!hasPermission}
               size="small"
               type="primary"
