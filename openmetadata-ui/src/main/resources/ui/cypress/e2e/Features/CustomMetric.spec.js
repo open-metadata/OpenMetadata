@@ -93,7 +93,7 @@ const createCustomMetric = ({
       .click();
   }
   cy.get('[data-testid="profiler-add-table-test-btn"]').click();
-  cy.get('[data-testid="metric"]').click();
+  cy.get('[data-testid="custom-metric"]').click();
 
   // validate redirection and cancel button
   cy.get('[data-testid="heading"]').should('be.visible');
@@ -113,7 +113,7 @@ const createCustomMetric = ({
 
   // Click on create custom metric button
   cy.get('[data-testid="profiler-add-table-test-btn"]').click();
-  cy.get('[data-testid="metric"]').click();
+  cy.get('[data-testid="custom-metric"]').click();
   cy.get('[data-testid="submit-button"]').click();
 
   validateForm(isColumnMetric);
