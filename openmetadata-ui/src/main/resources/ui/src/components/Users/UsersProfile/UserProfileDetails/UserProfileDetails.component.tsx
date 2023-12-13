@@ -193,11 +193,7 @@ const UserProfileDetails = ({
 
       setIsChangePassword(false);
     } catch (error) {
-      if (error instanceof AxiosError) {
-        showErrorToast(error.response?.data?.message || 'An error occurred');
-      } else {
-        showErrorToast('An error occurred');
-      }
+      showErrorToast(error as AxiosError);
     } finally {
       setIsLoading(false);
     }
