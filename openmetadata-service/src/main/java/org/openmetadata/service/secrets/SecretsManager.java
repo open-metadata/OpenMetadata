@@ -66,8 +66,7 @@ public abstract class SecretsManager {
   public Object encryptServiceConnectionConfig(
       Object connectionConfig, String connectionType, String connectionName, ServiceType serviceType) {
     try {
-      Class<?> clazz = ReflectionUtil.createConnectionConfigClass(connectionType, serviceType);
-      Object newConnectionConfig = ClassConverterFactory.getConverter(clazz).convert(connectionConfig);
+      Object newConnectionConfig = SecretsUtil.convert(connectionConfig, connectionType, connectionName, serviceType);
       return encryptPasswordFields(newConnectionConfig, buildSecretId(true, serviceType.value(), connectionName), true);
     } catch (Exception e) {
       String message = SecretsUtil.buildExceptionMessageConnection(e.getMessage(), connectionType, true);
@@ -83,8 +82,7 @@ public abstract class SecretsManager {
   public Object decryptServiceConnectionConfig(
       Object connectionConfig, String connectionType, ServiceType serviceType) {
     try {
-      Class<?> clazz = ReflectionUtil.createConnectionConfigClass(connectionType, serviceType);
-      Object newConnectionConfig = ClassConverterFactory.getConverter(clazz).convert(connectionConfig);
+      Object newConnectionConfig = SecretsUtil.convert(connectionConfig, connectionType, null, serviceType);
       return decryptPasswordFields(newConnectionConfig);
     } catch (Exception e) {
       String message = SecretsUtil.buildExceptionMessageConnection(e.getMessage(), connectionType, false);
@@ -116,7 +114,7 @@ public abstract class SecretsManager {
         decryptPasswordFields(authenticationMechanism);
       } catch (Exception e) {
         throw new CustomExceptionMessage(
-            Response.Status.BAD_REQUEST, String.format("Failed to encrypt user bot instance [%s]", name));
+            Response.Status.BAD_REQUEST, String.format("Failed to decrypt user bot instance [%s]", name));
       }
     }
   }
@@ -148,7 +146,7 @@ public abstract class SecretsManager {
     } catch (Exception e) {
       throw new CustomExceptionMessage(
           Response.Status.BAD_REQUEST,
-          String.format("Failed to encrypt ingestion pipeline instance [%s]", ingestionPipeline.getName()));
+          String.format("Failed to decrypt ingestion pipeline instance [%s]", ingestionPipeline.getName()));
     }
     ingestionPipeline.setOpenMetadataServerConnection(openMetadataConnection);
   }
@@ -179,7 +177,7 @@ public abstract class SecretsManager {
       decryptPasswordFields(workflowConverted);
     } catch (Exception e) {
       throw new CustomExceptionMessage(
-          Response.Status.BAD_REQUEST, String.format("Failed to encrypt workflow instance [%s]", workflow.getName()));
+          Response.Status.BAD_REQUEST, String.format("Failed to decrypt workflow instance [%s]", workflow.getName()));
     }
     workflowConverted.setOpenMetadataServerConnection(openMetadataConnection);
     return workflowConverted;
@@ -211,7 +209,7 @@ public abstract class SecretsManager {
         decryptPasswordFields(openMetadataConnectionConverted);
       } catch (Exception e) {
         throw new CustomExceptionMessage(
-            Response.Status.BAD_REQUEST, "Failed to encrypt OpenMetadataConnection instance.");
+            Response.Status.BAD_REQUEST, "Failed to decrypt OpenMetadataConnection instance.");
       }
       return openMetadataConnectionConverted;
     }
@@ -330,10 +328,8 @@ public abstract class SecretsManager {
       Object connectionConfig, String connectionType, String connectionName, ServiceType serviceType) {
 
     try {
-      Class<?> clazz = ReflectionUtil.createConnectionConfigClass(connectionType, serviceType);
-      Object newConnectionConfig = ClassConverterFactory.getConverter(clazz).convert(connectionConfig);
+      Object newConnectionConfig = SecretsUtil.convert(connectionConfig, connectionType, connectionName, serviceType);
       deleteSecrets(newConnectionConfig, buildSecretId(true, serviceType.value(), connectionName));
-
     } catch (Exception e) {
       String message = SecretsUtil.buildExceptionMessageConnection(e.getMessage(), connectionType, true);
       if (message != null) {

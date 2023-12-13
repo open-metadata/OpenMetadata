@@ -15,6 +15,10 @@ package org.openmetadata.service.secrets;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.service.exception.InvalidServiceConnectionException;
+import org.openmetadata.service.secrets.converter.ClassConverterFactory;
+import org.openmetadata.service.util.ReflectionUtil;
 
 public final class SecretsUtil {
 
@@ -56,5 +60,23 @@ public final class SecretsUtil {
 
   public static String buildExceptionMessageConnectionMask(String exceptionMessage, String type, boolean mask) {
     return buildExceptionMessageConnection(exceptionMessage, type, "mask", "unmask", mask);
+  }
+
+  public static Object convert(
+      Object connectionConfig, String connectionType, String connectionName, ServiceType serviceType) {
+    try {
+      Class<?> clazz = ReflectionUtil.createConnectionConfigClass(connectionType, serviceType);
+      return ClassConverterFactory.getConverter(clazz).convert(connectionConfig);
+    } catch (Exception e) {
+      // If we have the name we are trying to encrypt a connection
+      if (connectionName != null) {
+        throw new InvalidServiceConnectionException(
+            String.format(
+                "Failed to convert [%s] to type [%s]. Review the connection.", connectionName, connectionType));
+      }
+      // If we don't have the name, we are decrypting from the db
+      throw new InvalidServiceConnectionException(
+          String.format("Failed to load the connection of type [%s]. Did migrations run properly?", connectionType));
+    }
   }
 }
