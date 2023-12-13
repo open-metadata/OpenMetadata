@@ -168,7 +168,12 @@ export default function EntitySummaryPanel({
         );
 
       case EntityType.CONTAINER:
-        return <ContainerSummary entityDetails={entity as Container} />;
+        return (
+          <ContainerSummary
+            entityDetails={entity as Container}
+            highlights={highlights}
+          />
+        );
 
       case EntityType.STORED_PROCEDURE:
         return (
