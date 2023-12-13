@@ -24,7 +24,6 @@ import { Chart } from '../generated/entity/data/chart';
 import { TagLabel } from '../generated/entity/data/container';
 import { MlFeature } from '../generated/entity/data/mlmodel';
 import { Task } from '../generated/entity/data/pipeline';
-import { SearchIndexField } from '../generated/entity/data/searchIndex';
 import { Column, TableConstraint } from '../generated/entity/data/table';
 import { Field } from '../generated/entity/data/topic';
 import { getEntityName } from './EntityUtils';
@@ -187,17 +186,16 @@ export const getFormattedEntityData = (
       );
     }
     case SummaryEntityType.FIELD: {
-      return (entityInfo as SearchIndexField[]).map((field) => ({
-        name: field.name,
-        title: <Text className="entity-title">{getTitleName(field)}</Text>,
-        type: field.dataType,
-        tags: field.tags,
-        description: field.description,
-        children: getFormattedEntityData(
-          SummaryEntityType.FIELD,
-          field.children
-        ),
-      }));
+      // Todo: have to confirm highlight key
+      const listHighlights = [...get(highlights, 'fields.name', [])];
+
+      return sortAndHighlightSummaryList_basedOnTagAndGlobalSearch(
+        listHighlights,
+        entityType,
+        entityInfo,
+        undefined,
+        highlights
+      );
     }
     case SummaryEntityType.CHART: {
       // Todo: need to confirm the key have to pass

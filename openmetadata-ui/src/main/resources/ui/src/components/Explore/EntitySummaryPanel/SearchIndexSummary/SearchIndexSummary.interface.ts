@@ -16,10 +16,12 @@ import {
   TagLabel,
 } from '../../../../generated/entity/data/searchIndex';
 import { DRAWER_NAVIGATION_OPTIONS } from '../../../../utils/EntityUtils';
+import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
 
 export interface SearchIndexSummaryProps {
   entityDetails: SearchIndex;
   componentType?: DRAWER_NAVIGATION_OPTIONS;
   tags?: TagLabel[];
   isLoading?: boolean;
+  highlights?: SearchedDataProps['data'][number]['highlights'];
 }

@@ -201,7 +201,12 @@ export default function EntitySummaryPanel({
         return <DataProductSummary entityDetails={entity as DataProduct} />;
 
       case EntityType.SEARCH_INDEX:
-        return <SearchIndexSummary entityDetails={entity as SearchIndex} />;
+        return (
+          <SearchIndexSummary
+            entityDetails={entity as SearchIndex}
+            highlights={highlights}
+          />
+        );
 
       case EntityType.DATABASE:
         return <DatabaseSummary entityDetails={entity as Database} />;
