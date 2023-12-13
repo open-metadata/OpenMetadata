@@ -15,7 +15,7 @@ caption="Data Lineage in OpenMetadata"
 
 Watch the video on data lineage to understand the different options to automatically extract the lineage from your data warehouses such as Snowflake, dashboard service like metabase. Also learn about creating lineage programmatically with python SDK.
 
-{%  youtube videoId="jEbN1tt89H0" start="0:00" end="41:43" /%}
+{%  youtube videoId="jEbN1tt89H0" start="0:00" end="41:43" width="560px" height="315px" /%}
 
 {%inlineCalloutContainer%}
  {%inlineCallout

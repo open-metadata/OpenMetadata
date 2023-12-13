@@ -9,7 +9,7 @@ slug: /how-to-guides/data-governance/glossary-classification
 
 Watch the [Webinar on Glossaries and Classifications in OpenMetadata](https://www.youtube.com/watch?v=LII_5CDo_0s)
 
-[![Watch the video](/images/v1.1/how-to-guides/governance/glossary-webinar.png)](https://www.youtube.com/watch?v=LII_5CDo_0s)
+{%  youtube videoId="LII_5CDo_0s" start="0:00" end="52:35" width="560px" height="315px" /%}
 
 {%inlineCalloutContainer%}
  {%inlineCallout

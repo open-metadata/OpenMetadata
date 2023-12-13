@@ -1,11 +1,11 @@
 ---
-title: How to Guides
+title: How-to Guides
 slug: /how-to-guides
 ---
 
-# How to Guides
+# How-to Guides
 
-The How to Guides will give you a walk through on accomplishing the basic to the most advanced things in OpenMetadata. These step-by-step guides will help get an overview of the features and also help explore the various functionalities. 
+The How-to Guides will give you a walk through on accomplishing the basic to the most advanced things in OpenMetadata. These step-by-step guides will help get an overview of the features and also help explore the various functionalities. 
 
 # Overview of OpenMetadata
 
