@@ -121,14 +121,20 @@ class SupersetSourceMixin(DashboardServiceSource):
         """
         Method to fetch chart ids linked to dashboard
         """
-        raw_position_data = dashboard_details.position_json
-        if raw_position_data:
-            position_data = json.loads(raw_position_data)
-            return [
-                value.get("meta", {}).get("chartId")
-                for key, value in position_data.items()
-                if key.startswith("CHART-") and value.get("meta", {}).get("chartId")
-            ]
+        try:
+            raw_position_data = dashboard_details.position_json
+            if raw_position_data:
+                position_data = json.loads(raw_position_data)
+                return [
+                    value.get("meta", {}).get("chartId")
+                    for key, value in position_data.items()
+                    if key.startswith("CHART-") and value.get("meta", {}).get("chartId")
+                ]
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Failed to charts of dashboard {dashboard_details.id} due to {err}"
+            )
         return []
 
     def yield_dashboard_lineage_details(
