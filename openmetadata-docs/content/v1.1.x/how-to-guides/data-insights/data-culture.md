@@ -83,4 +83,4 @@ OpenMetadata helps customers understand their data with a 360° view. Admins can
 Go ahead, leverage Data Insights to transform the data culture of your organization!
 Watch the video to learn more about proactively honing the data culture of your company by setting targets, monitoring, and boosting teams to accomplish data goals with OpenMetadata.
 
-{% youtube videoId="lOQepnTdA58" start="0:00" end="58:23" /%}
+{% youtube videoId="lOQepnTdA58" start="0:00" end="58:23" width="560px" height="315px" /%}
