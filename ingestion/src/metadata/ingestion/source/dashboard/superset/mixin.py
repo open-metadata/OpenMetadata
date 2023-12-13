@@ -152,16 +152,16 @@ class SupersetSourceMixin(DashboardServiceSource):
             for chart_id in self._get_charts_of_dashboard(dashboard_details):
                 chart_json = self.all_charts.get(chart_id)
                 if chart_json:
-                    datasource_fqn = self._get_datasource_fqn_for_lineage(
-                        chart_json, db_service_entity
-                    )
-                    if not datasource_fqn:
-                        continue
-                    from_entity = self.metadata.get_by_name(
-                        entity=Table,
-                        fqn=datasource_fqn,
-                    )
                     try:
+                        datasource_fqn = self._get_datasource_fqn_for_lineage(
+                            chart_json, db_service_entity
+                        )
+                        if not datasource_fqn:
+                            continue
+                        from_entity = self.metadata.get_by_name(
+                            entity=Table,
+                            fqn=datasource_fqn,
+                        )
                         datamodel_fqn = fqn.build(
                             self.metadata,
                             entity_type=DashboardDataModel,
