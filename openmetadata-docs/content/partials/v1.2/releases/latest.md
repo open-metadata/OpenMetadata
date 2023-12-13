@@ -41,7 +41,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 
 ## Build Automation Applications
 
-{%  youtube videoId="pUS9-RevqsU" /%}
+{%  youtube videoId="pUS9-RevqsU" start="0:00" end="0:57" width="560px" height="315px" /%}
 
 - Added Applications into OpenMetadata, giving users a unique view of processes that can be scheduled and run in the platform.
 - Search Indexing and Data Insights Report have been converted into Applications.
@@ -60,7 +60,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 
 ## Customizable Landing Page
 
-{%  youtube videoId="Y-5cPQgzNdo" /%}
+{%  youtube videoId="Y-5cPQgzNdo" start="0:00" end="2:08" width="560px" height="315px" /%}
 
 - Admins can create Personas to group individuals in their company, such as Data Engineers, Data Stewards, or Data Scientists.
 - Admins can customize the landing page for each Persona with a set of supported widgets: Activity Feed, Announcements, Knowledge Center, etc.
@@ -68,7 +68,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 
 ## Knowledge Center (Collate)
 
-{%  youtube videoId="DfOgeZ9f7no" /%}
+{%  youtube videoId="DfOgeZ9f7no" start="0:00" end="3:04" width="560px" height="315px" /%}
 
 - Backend APIs support creating, editing, and listing knowledge articles (with external links).
 - Knowledge articles and links can be associated with a Domain, Team, or an Entity.
@@ -76,7 +76,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 
 ## Cost Analysis Report (Collate)
 
-{%  youtube videoId="KI58oBHxTOU" /%}
+{%  youtube videoId="KI58oBHxTOU" start="0:00" end="0:33" width="560px" height="315px" /%}
 
 - The Usage Workflow will now also track how tables are Accessed and Updated.
 - This information will be used in the Data Insights workflow to show the evolution of your used and unused assets and compare them by size.

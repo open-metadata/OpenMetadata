@@ -16,6 +16,7 @@ import React from 'react';
 import { getStatisticsDisplayValue } from '../../../utils/CommonUtils';
 import { ProfilerLatestValueProps } from '../profilerDashboard.interface';
 
+import { isUndefined } from 'lodash';
 import '../profiler-dashboard.less';
 
 const ProfilerLatestValue = ({
@@ -23,6 +24,18 @@ const ProfilerLatestValue = ({
   tickFormatter,
   stringValue = false,
 }: ProfilerLatestValueProps) => {
+  const getLatestValue = (value?: number | string) => {
+    if (isUndefined(value)) {
+      return '--';
+    }
+
+    if (tickFormatter || stringValue) {
+      return `${value}${tickFormatter ?? ''}`;
+    } else {
+      return getStatisticsDisplayValue(value);
+    }
+  };
+
   return (
     <Space data-testid="data-summary-container" direction="vertical" size={16}>
       {information.map((info) => (
@@ -36,11 +49,7 @@ const ProfilerLatestValue = ({
               {info.title}
             </Typography.Text>
           }
-          value={
-            tickFormatter || stringValue
-              ? `${info.latestValue}${tickFormatter ?? ''}`
-              : getStatisticsDisplayValue(info.latestValue)
-          }
+          value={getLatestValue(info.latestValue)}
           valueStyle={{ color: info.color, fontSize: '18px', fontWeight: 700 }}
         />
       ))}
