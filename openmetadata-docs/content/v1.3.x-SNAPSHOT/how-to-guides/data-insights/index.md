@@ -11,11 +11,11 @@ The **Data Insights Dashboard** provides an analytical view of all the key metri
 
 Watch the video to learn more about proactively honing the data culture of your company by setting targets, monitoring, and boosting teams to accomplish data goals.
 
-{% youtube videoId="lOQepnTdA58" start="0:00" end="58:23" /%}
+{% youtube videoId="lOQepnTdA58" start="0:00" end="58:23" width="560px" height="315px" /%}
 
 Watch a demo of Data Insights in OpenMetadata
 
-{% youtube videoId="Epd9G6igLUM" start="0:00" end="21:58" /%}
+{% youtube videoId="Epd9G6igLUM" start="0:00" end="21:58" width="560px" height="315px" /%}
 
 {%inlineCalloutContainer%}
  {%inlineCallout

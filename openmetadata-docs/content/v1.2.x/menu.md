@@ -189,165 +189,165 @@ site_menu:
   - category: Deployment / Backup & Restore Metadata
     url: /deployment/backup-restore-metadata
 
-  - category: How to Guides
+  - category: How-to Guides
     url: /how-to-guides
     color: violet-70
     icon: openmetadata
 
-  - category: How to Guides / Admin Guide
+  - category: How-to Guides / Admin Guide
     url: /how-to-guides/admin-guide
-  - category: How to Guides / Admin Guide / How to Ingest Metadata
+  - category: How-to Guides / Admin Guide / How to Ingest Metadata
     url: /how-to-guides/admin-guide/how-to-ingest-metadata
-  - category: How to Guides / Admin Guide / How to Delete a Service Connection
+  - category: How-to Guides / Admin Guide / How to Delete a Service Connection
     url: /how-to-guides/admin-guide/delete-service-connection
-  - category: How to Guides / Admin Guide / Manage Teams and Users
+  - category: How-to Guides / Admin Guide / Manage Teams and Users
     url: /how-to-guides/admin-guide/teams-and-users
-  - category: How to Guides / Admin Guide / Manage Teams and Users / Team Structure in OpenMetadata
+  - category: How-to Guides / Admin Guide / Manage Teams and Users / Team Structure in OpenMetadata
     url: /how-to-guides/admin-guide/teams-and-users/team-structure-openmetadata
-  - category: How to Guides / Admin Guide / Manage Teams and Users / How to Add a Team
+  - category: How-to Guides / Admin Guide / Manage Teams and Users / How to Add a Team
     url: /how-to-guides/admin-guide/teams-and-users/add-team
-  - category: How to Guides / Admin Guide / Manage Teams and Users / How to Invite Users to OpenMetadata
+  - category: How-to Guides / Admin Guide / Manage Teams and Users / How to Invite Users to OpenMetadata
     url: /how-to-guides/admin-guide/teams-and-users/invite-users
-  - category: How to Guides / Admin Guide / Manage Teams and Users / How to Add Users to Teams
+  - category: How-to Guides / Admin Guide / Manage Teams and Users / How to Add Users to Teams
     url: /how-to-guides/admin-guide/teams-and-users/add-users
-  - category: How to Guides / Admin Guide / Manage Teams and Users / How to Change the Team Type
+  - category: How-to Guides / Admin Guide / Manage Teams and Users / How to Change the Team Type
     url: /how-to-guides/admin-guide/teams-and-users/change-team-type
-  - category: How to Guides / Admin Guide / Advanced Guide for Roles and Policies
+  - category: How-to Guides / Admin Guide / Advanced Guide for Roles and Policies
     url: /how-to-guides/admin-guide/roles-policies
-  - category: How to Guides / Admin Guide / Advanced Guide for Roles and Policies / Building Blocks of Authorization - Rules, Policies, and Roles
+  - category: How-to Guides / Admin Guide / Advanced Guide for Roles and Policies / Building Blocks of Authorization - Rules, Policies, and Roles
     url: /how-to-guides/admin-guide/roles-policies/authorization
-  - category: How to Guides / Admin Guide / Advanced Guide for Roles and Policies / Use Cases - Creating Roles & Policies in OpenMetadata
+  - category: How-to Guides / Admin Guide / Advanced Guide for Roles and Policies / Use Cases - Creating Roles & Policies in OpenMetadata
     url: /how-to-guides/admin-guide/roles-policies/use-cases
-  - category: How to Guides / Admin Guide / CLI Ingestion with Basic Auth
+  - category: How-to Guides / Admin Guide / CLI Ingestion with Basic Auth
     url: /how-to-guides/admin-guide/cli-ingestion-with-basic-auth
-  - category: How to Guides / Admin Guide / How to Add Custom Logo
+  - category: How-to Guides / Admin Guide / How to Add Custom Logo
     url: /how-to-guides/admin-guide/how-to-add-custom-logo
 
-  - category: How to Guides / Guide for Data Users
+  - category: How-to Guides / Guide for Data Users
     url: /how-to-guides/guide-for-data-users
-  - category: How to Guides / Guide for Data Users / Understanding the Basics of OpenMetadata
+  - category: How-to Guides / Guide for Data Users / Understanding the Basics of OpenMetadata
     url: /how-to-guides/guide-for-data-users/basics-openmetadata
-  - category: How to Guides / Guide for Data Users / Overview of Data Assets
+  - category: How-to Guides / Guide for Data Users / Overview of Data Assets
     url: /how-to-guides/guide-for-data-users/data-asset-tabs
-  - category: How to Guides / Guide for Data Users / How to Add Description using Markdown
+  - category: How-to Guides / Guide for Data Users / How to Add Description using Markdown
     url: /how-to-guides/guide-for-data-users/description
-  - category: How to Guides / Guide for Data Users / How to Request for Description
+  - category: How-to Guides / Guide for Data Users / How to Request for Description
     url: /how-to-guides/guide-for-data-users/request-description
-  - category: How to Guides / Guide for Data Users / How to Assign or Change Data Ownership
+  - category: How-to Guides / Guide for Data Users / How to Assign or Change Data Ownership
     url: /how-to-guides/guide-for-data-users/data-ownership
-  - category: How to Guides / Guide for Data Users / How to Follow a Data Asset
+  - category: How-to Guides / Guide for Data Users / How to Follow a Data Asset
     url: /how-to-guides/guide-for-data-users/follow-data-asset
-  - category: How to Guides / Guide for Data Users / How to Add Tags
+  - category: How-to Guides / Guide for Data Users / How to Add Tags
     url: /how-to-guides/guide-for-data-users/tags
-  - category: How to Guides / Guide for Data Users / How to Request for Tags
+  - category: How-to Guides / Guide for Data Users / How to Request for Tags
     url: /how-to-guides/guide-for-data-users/request-tags
-  - category: How to Guides / Guide for Data Users / How to Add Glossary Terms
+  - category: How-to Guides / Guide for Data Users / How to Add Glossary Terms
     url: /how-to-guides/guide-for-data-users/glossary
-  - category: How to Guides / Guide for Data Users / How to Create a Custom Property for a Data Asset
+  - category: How-to Guides / Guide for Data Users / How to Create a Custom Property for a Data Asset
     url: /how-to-guides/guide-for-data-users/custom
-  - category: How to Guides / Guide for Data Users / Overview of Announcements
+  - category: How-to Guides / Guide for Data Users / Overview of Announcements
     url: /how-to-guides/guide-for-data-users/announcements
-  - category: How to Guides / Guide for Data Users / How to Create an Announcement
+  - category: How-to Guides / Guide for Data Users / How to Create an Announcement
     url: /how-to-guides/guide-for-data-users/add-announcement
-  - category: How to Guides / Guide for Data Users / Data Asset Versioning
+  - category: How-to Guides / Guide for Data Users / Data Asset Versioning
     url: /how-to-guides/guide-for-data-users/versions
-  - category: How to Guides / Guide for Data Users / How to Delete a Data Asset
+  - category: How-to Guides / Guide for Data Users / How to Delete a Data Asset
     url: /how-to-guides/guide-for-data-users/delete
 
-  - category: How to Guides / Data Discovery
+  - category: How-to Guides / Data Discovery
     url: /how-to-guides/data-discovery
-  - category: How to Guides / Data Discovery / How to Discover Assets of Interest
+  - category: How-to Guides / Data Discovery / How to Discover Assets of Interest
     url: /how-to-guides/data-discovery/discover
-  - category: How to Guides / Data Discovery / Get a Quick Glance of the Data Assets
+  - category: How-to Guides / Data Discovery / Get a Quick Glance of the Data Assets
     url: /how-to-guides/data-discovery/preview
-  - category: How to Guides / Data Discovery / Detailed View of the Data Assets
+  - category: How-to Guides / Data Discovery / Detailed View of the Data Assets
     url: /how-to-guides/data-discovery/details
-  - category: How to Guides / Data Discovery / Add Complex Queries using Advanced Search
+  - category: How-to Guides / Data Discovery / Add Complex Queries using Advanced Search
     url: /how-to-guides/data-discovery/advanced
 
-  - category: How to Guides / Data Collaboration
+  - category: How-to Guides / Data Collaboration
     url: /how-to-guides/data-collaboration
-  - category: How to Guides / Data Collaboration / Understanding Activity Feeds
+  - category: How-to Guides / Data Collaboration / Understanding Activity Feeds
     url: /how-to-guides/data-collaboration/activity-feeds
-  - category: How to Guides / Data Collaboration / How to Request for Description
+  - category: How-to Guides / Data Collaboration / How to Request for Description
     url: /how-to-guides/data-collaboration/request-description
-  - category: How to Guides / Data Collaboration / How to Request for Tags
+  - category: How-to Guides / Data Collaboration / How to Request for Tags
     url: /how-to-guides/data-collaboration/request-tags
-  - category: How to Guides / Data Collaboration / Overview of Announcements
+  - category: How-to Guides / Data Collaboration / Overview of Announcements
     url: /how-to-guides/data-collaboration/announcements
-  - category: How to Guides / Data Collaboration / How to Create an Announcement
+  - category: How-to Guides / Data Collaboration / How to Create an Announcement
     url: /how-to-guides/data-collaboration/add-announcement
 
-  - category: How to Guides / Data Quality and Profiler
+  - category: How-to Guides / Data Quality and Profiler
     url: /how-to-guides/data-quality-profiler
-  - category: How to Guides / Data Quality and Profiler / Profiler and Data Quality Tab
+  - category: How-to Guides / Data Quality and Profiler / Profiler and Data Quality Tab
     url: /how-to-guides/data-quality-profiler/tab
-  - category: How to Guides / Data Quality and Profiler / How to Write and Deploy No-Code Test Cases
+  - category: How-to Guides / Data Quality and Profiler / How to Write and Deploy No-Code Test Cases
     url: /how-to-guides/data-quality-profiler/test
-  - category: How to Guides / Data Quality and Profiler / How to Set Alerts for Test Case Fails
+  - category: How-to Guides / Data Quality and Profiler / How to Set Alerts for Test Case Fails
     url: /how-to-guides/data-quality-profiler/alerts
 
-  - category: How to Guides / Data Lineage
+  - category: How-to Guides / Data Lineage
     url: /how-to-guides/data-lineage
-  - category: How to Guides / Data Lineage / How to Deploy a Lineage Workflow
+  - category: How-to Guides / Data Lineage / How to Deploy a Lineage Workflow
     url: /how-to-guides/data-lineage/workflow
-  - category: How to Guides / Data Lineage / Explore the Lineage View
+  - category: How-to Guides / Data Lineage / Explore the Lineage View
     url: /how-to-guides/data-lineage/explore
-  - category: How to Guides / Data Lineage / How Column-Level Lineage Works
+  - category: How-to Guides / Data Lineage / How Column-Level Lineage Works
     url: /how-to-guides/data-lineage/column
-  - category: How to Guides / Data Lineage / How to Manually Add or Edit Lineage
+  - category: How-to Guides / Data Lineage / How to Manually Add or Edit Lineage
     url: /how-to-guides/data-lineage/manual
 
-  - category: How to Guides / Data Insights
+  - category: How-to Guides / Data Insights
     url: /how-to-guides/data-insights
-  - category: How to Guides / Data Insights / What is Tiering
+  - category: How-to Guides / Data Insights / What is Tiering
     url: /how-to-guides/data-insights/tiering
-  - category: How to Guides / Data Insights / Set Up Data Insights Ingestion
+  - category: How-to Guides / Data Insights / Set Up Data Insights Ingestion
     url: /how-to-guides/data-insights/ingestion
-  - category: How to Guides / Data Insights / Key Performance Indicators (KPI)
+  - category: How-to Guides / Data Insights / Key Performance Indicators (KPI)
     url: /how-to-guides/data-insights/kpi
-  - category: How to Guides / Data Insights / Data Insights Report
+  - category: How-to Guides / Data Insights / Data Insights Report
     url: /how-to-guides/data-insights/report
-  - category: How to Guides / Data Insights / Cost Analysis
+  - category: How-to Guides / Data Insights / Cost Analysis
     url: /how-to-guides/data-insights/cost-analysis
-  - category: How to Guides / Data Insights / Configure the Data Insights Report
+  - category: How-to Guides / Data Insights / Configure the Data Insights Report
     url: /how-to-guides/data-insights/email-report 
-  - category: How to Guides / Data Insights / How to Transform the Data Culture of Your Company
+  - category: How-to Guides / Data Insights / How to Transform the Data Culture of Your Company
     url: /how-to-guides/data-insights/data-culture
 
-  - category: How to Guides / Data Governance
+  - category: How-to Guides / Data Governance
     url: /how-to-guides/data-governance
-  - category: How to Guides / Data Governance / Glossary
+  - category: How-to Guides / Data Governance / Glossary
     url: /how-to-guides/data-governance/glossary
-  - category: How to Guides / Data Governance / Glossary / What is a Glossary Term
+  - category: How-to Guides / Data Governance / Glossary / What is a Glossary Term
     url: /how-to-guides/data-governance/glossary/glossary-term
-  - category: How to Guides / Data Governance / Glossary / How to Setup a Glossary
+  - category: How-to Guides / Data Governance / Glossary / How to Setup a Glossary
     url: /how-to-guides/data-governance/glossary/setup
-  - category: How to Guides / Data Governance / Glossary / How to Create Glossary Terms
+  - category: How-to Guides / Data Governance / Glossary / How to Create Glossary Terms
     url: /how-to-guides/data-governance/glossary/create-terms
-  - category: How to Guides / Data Governance / Glossary / How to Bulk Import a Glossary
+  - category: How-to Guides / Data Governance / Glossary / How to Bulk Import a Glossary
     url: /how-to-guides/data-governance/glossary/import
-  - category: How to Guides / Data Governance / Glossary / Glossary Approval Workflow
+  - category: How-to Guides / Data Governance / Glossary / Glossary Approval Workflow
     url: /how-to-guides/data-governance/glossary/approval  
-  - category: How to Guides / Data Governance / Glossary / Glossary Styling
+  - category: How-to Guides / Data Governance / Glossary / Glossary Styling
     url: /how-to-guides/data-governance/glossary/styling 
-  - category: How to Guides / Data Governance / Glossary / How to Add Assets to Glossary Terms
+  - category: How-to Guides / Data Governance / Glossary / How to Add Assets to Glossary Terms
     url: /how-to-guides/data-governance/glossary/assets
-  - category: How to Guides / Data Governance / Glossary / Best Practices for Glossary
+  - category: How-to Guides / Data Governance / Glossary / Best Practices for Glossary
     url: /how-to-guides/data-governance/glossary/best-practices
-  - category: How to Guides / Data Governance / Classification
+  - category: How-to Guides / Data Governance / Classification
     url: /how-to-guides/data-governance/classification
-  - category: How to Guides / Data Governance / Classification / Overview of Classification
+  - category: How-to Guides / Data Governance / Classification / Overview of Classification
     url: /how-to-guides/data-governance/classification/overview
-  - category: How to Guides / Data Governance / Classification / How to Classify Data Assets
+  - category: How-to Guides / Data Governance / Classification / How to Classify Data Assets
     url: /how-to-guides/data-governance/classification/assets
-  - category: How to Guides / Data Governance / Classification / How to Request for Classification Tags
+  - category: How-to Guides / Data Governance / Classification / How to Request for Classification Tags
     url: /how-to-guides/data-governance/classification/request-tags
-  - category: How to Guides / Data Governance / Classification / Auto-Classification in OpenMetadata
+  - category: How-to Guides / Data Governance / Classification / Auto-Classification in OpenMetadata
     url: /how-to-guides/data-governance/classification/auto
-  - category: How to Guides / Data Governance / Classification / What are Tiers
+  - category: How-to Guides / Data Governance / Classification / What are Tiers
     url: /how-to-guides/data-governance/classification/tiers
-  - category: How to Guides / Data Governance / Classification / Best Practices for Classification
+  - category: How-to Guides / Data Governance / Classification / Best Practices for Classification
     url: /how-to-guides/data-governance/classification/best-practices
 
   - category: Releases
