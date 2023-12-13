@@ -45,6 +45,7 @@ jobs:
                )
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         parallel-machine: [1, 2, 3, 4]
     environment: test
