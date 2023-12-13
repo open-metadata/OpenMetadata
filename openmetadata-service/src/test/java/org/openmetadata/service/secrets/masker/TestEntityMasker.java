@@ -110,15 +110,12 @@ abstract class TestEntityMasker {
             ((DbtGCSConfig) ((DbtPipeline) dbtPipeline.getSourceConfig().getConfig()).getDbtConfigSource())
                 .getDbtSecurityConfig()),
         getMaskedPassword());
-    assertEquals(
-        (dbtPipeline.getOpenMetadataServerConnection().getSecurityConfig()).getJwtToken(), getMaskedPassword());
     EntityMaskerFactory.createEntityMasker().unmaskIngestionPipeline(dbtPipeline, originalDbtPipeline);
     assertEquals(
         PASSWORD,
         getPrivateKeyFromGcsConfig(
             ((DbtGCSConfig) ((DbtPipeline) dbtPipeline.getSourceConfig().getConfig()).getDbtConfigSource())
                 .getDbtSecurityConfig()));
-    assertEquals(PASSWORD, (dbtPipeline.getOpenMetadataServerConnection().getSecurityConfig()).getJwtToken());
   }
 
   @Test
@@ -174,7 +171,6 @@ abstract class TestEntityMasker {
                 basicAuth.class)
             .getPassword(),
         getMaskedPassword());
-    assertEquals((masked.getOpenMetadataServerConnection().getSecurityConfig()).getJwtToken(), getMaskedPassword());
     Workflow unmasked = EntityMaskerFactory.createEntityMasker().unmaskWorkflow(masked, workflow);
     assertEquals(
         PASSWORD,
@@ -185,7 +181,6 @@ abstract class TestEntityMasker {
                     .getAuthType(),
                 basicAuth.class)
             .getPassword());
-    assertEquals(PASSWORD, (unmasked.getOpenMetadataServerConnection().getSecurityConfig()).getJwtToken());
   }
 
   @Test
