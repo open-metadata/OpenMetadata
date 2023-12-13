@@ -160,7 +160,12 @@ export default function EntitySummaryPanel({
         );
 
       case EntityType.MLMODEL:
-        return <MlModelSummary entityDetails={entity as Mlmodel} />;
+        return (
+          <MlModelSummary
+            entityDetails={entity as Mlmodel}
+            highlights={highlights}
+          />
+        );
 
       case EntityType.CONTAINER:
         return <ContainerSummary entityDetails={entity as Container} />;

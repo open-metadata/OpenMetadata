@@ -100,7 +100,7 @@ const sortAndHighlightSummaryList_basedOnTagAndGlobalSearch = (
   const { entityWithSortOption, entityWithoutSortOption } = entityInfo.reduce(
     (acc, listItem) => {
       const listData = {
-        name: listItem.name,
+        name: listItem.name || NO_DATA_PLACEHOLDER,
         title: getTitle({
           content: getTitleName(listItem),
           sourceUrl: listItem.sourceUrl,
@@ -111,6 +111,9 @@ const sortAndHighlightSummaryList_basedOnTagAndGlobalSearch = (
         ...(entityType === SummaryEntityType.COLUMN && {
           columnConstraint: listItem.constraint,
           tableConstraints: tableConstraints,
+        }),
+        ...(entityType === SummaryEntityType.MLFEATURE && {
+          algorithm: listItem.featureAlgorithm,
         }),
         children: getFormattedEntityData(
           entityType,
@@ -226,14 +229,16 @@ export const getFormattedEntityData = (
       );
     }
     case SummaryEntityType.MLFEATURE: {
-      return (entityInfo as MlFeature[]).map((feature) => ({
-        algorithm: feature.featureAlgorithm,
-        name: feature.name || '--',
-        title: <Text className="entity-title">{getTitleName(feature)}</Text>,
-        type: feature.dataType,
-        tags: feature.tags,
-        description: feature.description,
-      }));
+      // Todo : replace the key get for highlight features list
+      const listHighlights = [...get(highlights, 'features.name', [])];
+
+      return sortAndHighlightSummaryList_basedOnTagAndGlobalSearch(
+        listHighlights,
+        entityType,
+        entityInfo,
+        undefined,
+        highlights
+      );
     }
     case SummaryEntityType.SCHEMAFIELD: {
       // Todo : replace the key get for highlight schema fields
