@@ -34,8 +34,8 @@ import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.metadataIngestion.DbtPipeline;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtS3Config;
-import org.openmetadata.schema.security.client.GoogleSSOClientConfig;
 import org.openmetadata.schema.security.client.OktaSSOClientConfig;
+import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.security.credentials.AWSCredentials;
 import org.openmetadata.schema.security.secrets.Parameters;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
@@ -139,9 +139,9 @@ public abstract class ExternalSecretsManagerTest {
   @Test
   void testEncryptDecryptWorkflow() {
     String password = "secret:/openmetadata/workflow/my-workflow/request/connection/config/password";
-    String secretKey = "secret:/openmetadata/serverconnection/securityconfig/secretkey";
+    String secretKey = "secret:/openmetadata/serverconnection/securityconfig/jwttoken";
     OpenMetadataConnection connection =
-        new OpenMetadataConnection().withSecurityConfig(new GoogleSSOClientConfig().withSecretKey(secretKey));
+        new OpenMetadataConnection().withSecurityConfig(new OpenMetadataJWTClientConfig().withJwtToken(secretKey));
     DatabaseConnection dbConnection =
         new DatabaseConnection().withConfig(new MysqlConnection().withAuthType(new basicAuth().withPassword(password)));
     TestServiceConnectionRequest testRequest =
@@ -156,12 +156,12 @@ public abstract class ExternalSecretsManagerTest {
     // Encrypt the workflow and ensure password and secrete key are encrypted
     actualWorkflow = secretsManager.encryptWorkflow(actualWorkflow);
     assertNotEquals(password, getPassword(actualWorkflow));
-    assertNotEquals(secretKey, getSecretKey(actualWorkflow));
+    assertNotEquals(secretKey, actualWorkflow.getOpenMetadataServerConnection().getSecurityConfig().getJwtToken());
 
     // Decrypt the workflow and ensure password and secrete key are decrypted
     actualWorkflow = secretsManager.decryptWorkflow(actualWorkflow);
     assertEquals(password, getPassword(actualWorkflow));
-    assertEquals(secretKey, getSecretKey(actualWorkflow));
+    assertEquals(secretKey, actualWorkflow.getOpenMetadataServerConnection().getSecurityConfig().getJwtToken());
     assertEquals(expectedWorkflow, actualWorkflow);
   }
 
@@ -215,10 +215,5 @@ public abstract class ExternalSecretsManagerTest {
                 .getAuthType(),
             basicAuth.class)
         .getPassword();
-  }
-
-  private String getSecretKey(Workflow expectedWorkflow) {
-    return ((GoogleSSOClientConfig) (expectedWorkflow.getOpenMetadataServerConnection()).getSecurityConfig())
-        .getSecretKey();
   }
 }

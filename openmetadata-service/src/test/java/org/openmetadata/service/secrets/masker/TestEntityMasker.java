@@ -8,7 +8,6 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
-import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ServiceType;
@@ -19,7 +18,7 @@ import org.openmetadata.schema.metadataIngestion.DbtPipeline;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtGCSConfig;
 import org.openmetadata.schema.security.SecurityConfiguration;
-import org.openmetadata.schema.security.client.GoogleSSOClientConfig;
+import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.security.credentials.GCPCredentials;
 import org.openmetadata.schema.security.credentials.GCPValues;
 import org.openmetadata.schema.services.connections.dashboard.SupersetConnection;
@@ -112,45 +111,20 @@ abstract class TestEntityMasker {
                 .getDbtSecurityConfig()),
         getMaskedPassword());
     assertEquals(
-        ((GoogleSSOClientConfig) dbtPipeline.getOpenMetadataServerConnection().getSecurityConfig()).getSecretKey(),
-        getMaskedPassword());
+        (dbtPipeline.getOpenMetadataServerConnection().getSecurityConfig()).getJwtToken(), getMaskedPassword());
     EntityMaskerFactory.createEntityMasker().unmaskIngestionPipeline(dbtPipeline, originalDbtPipeline);
     assertEquals(
         PASSWORD,
         getPrivateKeyFromGcsConfig(
             ((DbtGCSConfig) ((DbtPipeline) dbtPipeline.getSourceConfig().getConfig()).getDbtConfigSource())
                 .getDbtSecurityConfig()));
-    assertEquals(
-        PASSWORD,
-        ((GoogleSSOClientConfig) dbtPipeline.getOpenMetadataServerConnection().getSecurityConfig()).getSecretKey());
+    assertEquals(PASSWORD, (dbtPipeline.getOpenMetadataServerConnection().getSecurityConfig()).getJwtToken());
   }
 
   @Test
-  void testSSOAuthenticationMechanismMasker() {
-    AuthenticationMechanism authenticationMechanism =
-        buildAuthenticationMechanism(AuthenticationMechanism.AuthType.SSO);
-    AuthenticationMechanism originalSsoAuthenticationMechanism =
-        buildAuthenticationMechanism(AuthenticationMechanism.AuthType.SSO);
-    EntityMaskerFactory.createEntityMasker().maskAuthenticationMechanism("test", authenticationMechanism);
-    assertNotNull(authenticationMechanism.getConfig());
-    assertEquals(
-        ((GoogleSSOClientConfig) ((SSOAuthMechanism) authenticationMechanism.getConfig()).getAuthConfig())
-            .getSecretKey(),
-        getMaskedPassword());
-    EntityMaskerFactory.createEntityMasker()
-        .unmaskAuthenticationMechanism("test", authenticationMechanism, originalSsoAuthenticationMechanism);
-    assertEquals(
-        PASSWORD,
-        ((GoogleSSOClientConfig) ((SSOAuthMechanism) authenticationMechanism.getConfig()).getAuthConfig())
-            .getSecretKey());
-  }
-
-  @Test
-  void testJUTAAuthenticationMechanismMasker() {
-    AuthenticationMechanism authenticationMechanism =
-        buildAuthenticationMechanism(AuthenticationMechanism.AuthType.JWT);
-    AuthenticationMechanism originalSsoAuthenticationMechanism =
-        buildAuthenticationMechanism(AuthenticationMechanism.AuthType.JWT);
+  void testJWTAAuthenticationMechanismMasker() {
+    AuthenticationMechanism authenticationMechanism = buildAuthenticationMechanism();
+    AuthenticationMechanism originalSsoAuthenticationMechanism = buildAuthenticationMechanism();
     EntityMaskerFactory.createEntityMasker().maskAuthenticationMechanism("test", authenticationMechanism);
     assertTrue(authenticationMechanism.getConfig() instanceof JWTAuthMechanism);
     EntityMaskerFactory.createEntityMasker()
@@ -200,9 +174,7 @@ abstract class TestEntityMasker {
                 basicAuth.class)
             .getPassword(),
         getMaskedPassword());
-    assertEquals(
-        ((GoogleSSOClientConfig) masked.getOpenMetadataServerConnection().getSecurityConfig()).getSecretKey(),
-        getMaskedPassword());
+    assertEquals((masked.getOpenMetadataServerConnection().getSecurityConfig()).getJwtToken(), getMaskedPassword());
     Workflow unmasked = EntityMaskerFactory.createEntityMasker().unmaskWorkflow(masked, workflow);
     assertEquals(
         PASSWORD,
@@ -213,9 +185,7 @@ abstract class TestEntityMasker {
                     .getAuthType(),
                 basicAuth.class)
             .getPassword());
-    assertEquals(
-        PASSWORD,
-        ((GoogleSSOClientConfig) unmasked.getOpenMetadataServerConnection().getSecurityConfig()).getSecretKey());
+    assertEquals(PASSWORD, (unmasked.getOpenMetadataServerConnection().getSecurityConfig()).getJwtToken());
   }
 
   @Test
@@ -266,19 +236,12 @@ abstract class TestEntityMasker {
   }
 
   private OpenMetadataConnection buildOpenMetadataConnection() {
-    return new OpenMetadataConnection().withSecurityConfig(buildGoogleSSOClientConfig());
+    return new OpenMetadataConnection().withSecurityConfig(new OpenMetadataJWTClientConfig().withJwtToken(PASSWORD));
   }
 
-  private GoogleSSOClientConfig buildGoogleSSOClientConfig() {
-    return new GoogleSSOClientConfig().withSecretKey(PASSWORD);
-  }
-
-  private AuthenticationMechanism buildAuthenticationMechanism(AuthenticationMechanism.AuthType type) {
+  private AuthenticationMechanism buildAuthenticationMechanism() {
     return new AuthenticationMechanism()
-        .withAuthType(type)
-        .withConfig(
-            type == AuthenticationMechanism.AuthType.SSO
-                ? new SSOAuthMechanism().withAuthConfig(buildGoogleSSOClientConfig())
-                : new JWTAuthMechanism().withJWTToken(PASSWORD));
+        .withAuthType(AuthenticationMechanism.AuthType.JWT)
+        .withConfig(new JWTAuthMechanism().withJWTToken(PASSWORD));
   }
 }
