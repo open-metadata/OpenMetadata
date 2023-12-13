@@ -34,7 +34,7 @@ caption="Manually Edit Column Level Lineage"
 /%}
 
 Watch the video on editing column-level lineage.
-{%  youtube videoId="HTkbTvi2H9c" start="0:00" end="00:51" /%}
+{%  youtube videoId="HTkbTvi2H9c" start="0:00" end="00:51" width="560px" height="315px" /%}
 
 {%inlineCallout
   color="violet-70"
