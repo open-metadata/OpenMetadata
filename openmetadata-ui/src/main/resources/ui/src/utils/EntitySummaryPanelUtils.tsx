@@ -111,13 +111,13 @@ const sortAndHighlightSummaryList_basedOnTagAndGlobalSearch = (
         ...(entityType === SummaryEntityType.COLUMN && {
           columnConstraint: listItem.constraint,
           tableConstraints: tableConstraints,
-          children: getFormattedEntityData(
-            entityType,
-            listItem.children,
-            undefined,
-            highlights
-          ),
         }),
+        children: getFormattedEntityData(
+          entityType,
+          listItem.children,
+          undefined,
+          highlights
+        ),
       };
 
       const isTagHighlightsPresentInListItemTags = listItem.tags?.find((tag) =>
@@ -236,17 +236,19 @@ export const getFormattedEntityData = (
       }));
     }
     case SummaryEntityType.SCHEMAFIELD: {
-      return (entityInfo as Field[]).map((field) => ({
-        name: field.name,
-        title: <Text className="entity-title"> {getTitleName(field)}</Text>,
-        type: field.dataType,
-        description: field.description,
-        tags: field.tags,
-        children: getFormattedEntityData(
-          SummaryEntityType.SCHEMAFIELD,
-          field.children
-        ),
-      }));
+      // Todo : replace the key get for highlight schema fields
+      const listHighlights = [
+        ...get(highlights, 'schemafields.name', []),
+        ...get(highlights, 'schemafields.childrens.name', []),
+      ];
+
+      return sortAndHighlightSummaryList_basedOnTagAndGlobalSearch(
+        listHighlights,
+        entityType,
+        entityInfo,
+        undefined,
+        highlights
+      );
     }
     default: {
       return [];

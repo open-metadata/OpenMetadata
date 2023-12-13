@@ -136,7 +136,12 @@ export default function EntitySummaryPanel({
         );
 
       case EntityType.TOPIC:
-        return <TopicSummary entityDetails={entity as Topic} />;
+        return (
+          <TopicSummary
+            entityDetails={entity as Topic}
+            highlights={highlights}
+          />
+        );
 
       case EntityType.DASHBOARD:
         return (
