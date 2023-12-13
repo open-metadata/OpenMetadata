@@ -242,7 +242,7 @@ The logic for Notification Support has been improved. Users can define Alerts ba
 - On the Explore page UI, the Side Preview is now available for all data assets. Previously it was only displayed for tables.
 
 # [0.13.0 Release](https://github.com/open-metadata/OpenMetadata/releases/tag/0.13.0-release) - Dec 8th 2022 🎉
-{%  youtube videoId="oNbMnTW5AkE" start="0:00" end="7:51" /%}
+{%  youtube videoId="oNbMnTW5AkE" start="0:00" end="7:51" width="560px" height="315px" /%}
 
 ## Data Insights and KPI
 Data Insight allows admins to take an active approach in their metadata management. Data Insight provides a single-pane view of all the key metrics to best reflect the state of your data. Admins can define the Key Performance Indicators (KPIs) and set goals within OpenMetadata to work towards better documentation, ownership, and tiering. Alerts can be set against the KPIs to be received on a specified schedule.
@@ -316,7 +316,7 @@ Major enhancements have been made to how data is extracted from Kafka and Redpan
 You can read the Release Blog [here](https://blog.open-metadata.org/openmetadata-0-12-0-release-1ac059700de4)
 or watch an awesome video showing the new features!
 
-{%  youtube videoId="tv3pyCLcJfQ" start="0:00" end="17:04" /%}
+{%  youtube videoId="tv3pyCLcJfQ" start="0:00" end="17:04" width="560px" height="315px" /%}
 
 
 

@@ -39,4 +39,4 @@ caption="Column-Level Lineage"
 /%}
 
 Watch the video about lineage (13:30 to 15:50)
-{%  youtube videoId="jEbN1tt89H0" start="13:30" end="15:48" /%}
+{%  youtube videoId="jEbN1tt89H0" start="13:30" end="15:48" width="560px" height="315px" /%}
