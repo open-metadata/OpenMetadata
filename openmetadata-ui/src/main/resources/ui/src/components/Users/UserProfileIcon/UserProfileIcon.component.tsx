@@ -34,6 +34,10 @@ import {
 import { EntityReference } from '../../../generated/entity/type';
 import { getEntityName } from '../../../utils/EntityUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
+import {
+  getImageWithResolutionAndFallback,
+  ImageQuality,
+} from '../../../utils/ProfilerUtils';
 import { useApplicationConfigContext } from '../../ApplicationConfigProvider/ApplicationConfigProvider';
 import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import Avatar from '../../common/AvatarComponent/Avatar';
@@ -85,9 +89,9 @@ export const UserProfileIcon = () => {
     useApplicationConfigContext();
   const [isImgUrlValid, setIsImgUrlValid] = useState<boolean>(true);
   const { t } = useTranslation();
-  const profilePicture = useMemo(
-    () => currentUser?.profile?.images?.image512,
-    [currentUser]
+  const profilePicture = getImageWithResolutionAndFallback(
+    ImageQuality['6x'],
+    currentUser?.profile?.images
   );
   const [showAllPersona, setShowAllPersona] = useState<boolean>(false);
 

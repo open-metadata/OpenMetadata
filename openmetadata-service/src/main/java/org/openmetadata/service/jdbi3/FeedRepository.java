@@ -26,6 +26,7 @@ import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.ANNOUNCEMENT_INVALID_START_TIME;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.ANNOUNCEMENT_OVERLAP;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
+import static org.openmetadata.service.jdbi3.UserRepository.TEAMS_FIELD;
 import static org.openmetadata.service.util.EntityUtil.compareEntityReference;
 import static org.openmetadata.service.util.RestUtil.DELETED_TEAM_DISPLAY;
 import static org.openmetadata.service.util.RestUtil.DELETED_TEAM_NAME;
@@ -319,7 +320,7 @@ public class FeedRepository {
     return new PatchResponse<>(Status.OK, updatedHref, RestUtil.ENTITY_UPDATED);
   }
 
-  private void resolveTask(ThreadContext threadContext, String user, ResolveTask resolveTask) {
+  protected void resolveTask(ThreadContext threadContext, String user, ResolveTask resolveTask) {
     TaskWorkflow taskWorkflow = threadContext.getTaskWorkflow();
     EntityInterface aboutEntity = threadContext.getAboutEntity();
     String origJson = JsonUtils.pojoToJson(aboutEntity);
@@ -568,7 +569,7 @@ public class FeedRepository {
           total = filteredThreads.getTotalCount();
         } else {
           // Only data assets are added as about
-          User user = userId != null ? Entity.getEntity(USER, userId, "teams", NON_DELETED) : null;
+          User user = userId != null ? Entity.getEntity(USER, userId, TEAMS_FIELD, NON_DELETED) : null;
           List<String> teamNameHash = getTeamNames(user);
           String userName = user == null ? null : user.getFullyQualifiedName();
           List<String> jsons =
@@ -710,7 +711,7 @@ public class FeedRepository {
 
   public void checkPermissionsForResolveTask(Thread thread, boolean closeTask, SecurityContext securityContext) {
     String userName = securityContext.getUserPrincipal().getName();
-    User user = Entity.getEntityByName(USER, userName, "teams", NON_DELETED);
+    User user = Entity.getEntityByName(USER, userName, TEAMS_FIELD, NON_DELETED);
     EntityLink about = EntityLink.parse(thread.getAbout());
     EntityReference aboutRef = EntityUtil.validateEntityLink(about);
     if (Boolean.TRUE.equals(user.getIsAdmin())) {
@@ -976,7 +977,7 @@ public class FeedRepository {
 
   /** Returns the threads where the user or the team they belong to were mentioned by other users with @mention. */
   private FilteredThreads getThreadsByMentions(FeedFilter filter, UUID userId, int limit) {
-    User user = Entity.getEntity(Entity.USER, userId, "teams", NON_DELETED);
+    User user = Entity.getEntity(Entity.USER, userId, TEAMS_FIELD, NON_DELETED);
     String userNameHash = getUserNameHash(user);
     // Return the threads where the user or team was mentioned
     List<String> teamNamesHash = getTeamNames(user);
@@ -998,7 +999,7 @@ public class FeedRepository {
   private List<String> getTeamIds(UUID userId) {
     List<String> teamIds = null;
     if (userId != null) {
-      User user = Entity.getEntity(Entity.USER, userId, "teams", NON_DELETED);
+      User user = Entity.getEntity(Entity.USER, userId, TEAMS_FIELD, NON_DELETED);
       teamIds = listOrEmpty(user.getTeams()).stream().map(ref -> ref.getId().toString()).collect(Collectors.toList());
     }
     return nullOrEmpty(teamIds) ? List.of(StringUtils.EMPTY) : teamIds;

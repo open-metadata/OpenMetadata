@@ -1426,7 +1426,10 @@ class SampleDataSource(
                             )
                             create_test_case_resolution.testCaseResolutionStatusDetails = Assigned(
                                 assignee=EntityReference(
-                                    id=user.id.__root__, type="user"
+                                    id=user.id.__root__,
+                                    type="user",
+                                    name=user.name.__root__,
+                                    fullyQualifiedName=user.fullyQualifiedName.__root__,
                                 )
                             )
                         if resolution["testCaseResolutionStatusType"] == "Resolved":
@@ -1435,7 +1438,10 @@ class SampleDataSource(
                             )
                             create_test_case_resolution.testCaseResolutionStatusDetails = Resolved(
                                 resolvedBy=EntityReference(
-                                    id=user.id.__root__, type="user"
+                                    id=user.id.__root__,
+                                    type="user",
+                                    name=user.name.__root__,
+                                    fullyQualifiedName=user.fullyQualifiedName.__root__,
                                 ),
                                 testCaseFailureReason=random.choice(
                                     list(TestCaseFailureReasonType)

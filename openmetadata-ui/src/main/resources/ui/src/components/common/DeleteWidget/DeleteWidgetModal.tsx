@@ -63,6 +63,8 @@ const DeleteWidgetModal = ({
   afterDeleteAction,
   successMessage,
   deleteOptions,
+  onDelete,
+  isDeleting = false,
 }: DeleteWidgetModalProps) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
@@ -247,6 +249,10 @@ const DeleteWidgetModal = ({
     });
   }, [visible]);
 
+  useEffect(() => {
+    setIsLoading(isDeleting);
+  }, [isDeleting]);
+
   return (
     <Modal
       destroyOnClose
@@ -259,7 +265,7 @@ const DeleteWidgetModal = ({
       open={visible}
       title={`${t('label.delete')} ${entityName}`}
       onCancel={handleOnEntityDeleteCancel}>
-      <Form form={form} onFinish={handleOnEntityDeleteConfirm}>
+      <Form form={form} onFinish={onDelete ?? handleOnEntityDeleteConfirm}>
         <Form.Item<DeleteWidgetFormFields> className="m-0" name="deleteType">
           <Radio.Group onChange={onChange}>
             {(deleteOptions ?? DELETE_OPTION).map(

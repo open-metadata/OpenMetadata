@@ -19,11 +19,15 @@ import {
   verifyResponseStatusCode,
   visitEntityDetailsPage,
 } from '../../common/common';
+import {
+  createEntityTable,
+  generateRandomTable,
+  hardDeleteService,
+} from '../../common/EntityUtils';
 import { createDescriptionTask } from '../../common/TaskUtils';
-import { SEARCH_ENTITY_TABLE } from '../../constants/constants';
-
-// eslint-disable-next-line spaced-comment
-/// <reference types="cypress" />
+import { DATA_ASSETS } from '../../constants/constants';
+import { DATABASE_SERVICE } from '../../constants/EntityConstant';
+import { SERVICE_CATEGORIES } from '../../constants/service.constants';
 
 const reactOnFeed = (feedSelector, reaction) => {
   cy.get(feedSelector).within(() => {
@@ -41,7 +45,36 @@ const reactOnFeed = (feedSelector, reaction) => {
     });
 };
 
+const table1 = generateRandomTable();
+const table2 = DATABASE_SERVICE.entity;
+
 describe('Activity feed', () => {
+  before(() => {
+    cy.login();
+    cy.getAllLocalStorage().then((data) => {
+      const token = Object.values(data)[0].oidcIdToken;
+
+      createEntityTable({
+        token,
+        ...DATABASE_SERVICE,
+        tables: [table1, table2],
+      });
+    });
+  });
+
+  after(() => {
+    cy.login();
+    cy.getAllLocalStorage().then((data) => {
+      const token = Object.values(data)[0].oidcIdToken;
+
+      hardDeleteService({
+        token,
+        serviceFqn: DATABASE_SERVICE.service.name,
+        serviceType: SERVICE_CATEGORIES.DATABASE_SERVICES,
+      });
+    });
+  });
+
   beforeEach(() => {
     cy.login();
     cy.get("[data-testid='welcome-screen-close-btn']").click();
@@ -56,7 +89,13 @@ describe('Activity feed', () => {
       'getTeams'
     );
     interceptURL('GET', '/api/v1/users?*', 'getUsers');
-    const value = SEARCH_ENTITY_TABLE.table_4;
+    const value = {
+      term: table1.name,
+      displayName: table1.name,
+      entity: DATA_ASSETS.tables,
+      serviceName: DATABASE_SERVICE.service.name,
+      entityType: 'Table',
+    };
     const OWNER = 'admin';
     interceptURL('PATCH', `/api/v1/${value.entity}/*`, 'patchOwner');
 
@@ -172,7 +211,7 @@ describe('Activity feed', () => {
     interceptURL('POST', '/api/v1/feed/*/posts', 'postReply');
     interceptURL(
       'GET',
-      '/api/v1/search/suggest?q=aa&index=user_search_index%2Cteam_search_index',
+      '/api/v1/search/suggest?q=*&index=user_search_index%2Cteam_search_index',
       'suggestUser'
     );
     interceptURL(
@@ -287,7 +326,13 @@ describe('Activity feed', () => {
   it('Assigned task should appear to task tab', () => {
     cy.get('[data-testid="activity-feed-widget"]').contains('Tasks').click();
 
-    const value = SEARCH_ENTITY_TABLE.table_1;
+    const value = {
+      term: table2.name,
+      displayName: table2.name,
+      entity: DATA_ASSETS.tables,
+      serviceName: DATABASE_SERVICE.service.name,
+      entityType: 'Table',
+    };
     interceptURL('GET', `/api/v1/${value.entity}/name/*`, 'getEntityDetails');
 
     visitEntityDetailsPage({
@@ -321,6 +366,6 @@ describe('Activity feed', () => {
         expect(matches).to.not.be.null;
       });
 
-    cy.get(`[data-testid="assignee-admin"]`).should('be.visible');
+    cy.get(`[data-testid="admin"]`).should('be.visible');
   });
 });
