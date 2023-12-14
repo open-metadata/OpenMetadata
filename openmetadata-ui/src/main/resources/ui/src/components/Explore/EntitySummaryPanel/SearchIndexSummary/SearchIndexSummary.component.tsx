@@ -91,14 +91,7 @@ function SearchIndexSummary({
 
             <SummaryTagsDescription
               entityDetail={entityDetails}
-              tags={
-                tags ??
-                getSortedTagsWithHighlight({
-                  tags: entityDetails.tags,
-                  sortTagsBasedOnGivenArr: get(highlights, 'tag.name'),
-                }) ??
-                []
-              }
+              tags={tags ?? []}
             />
             <Divider className="m-y-xs" />
           </>
