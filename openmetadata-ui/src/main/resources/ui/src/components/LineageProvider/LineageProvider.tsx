@@ -359,7 +359,10 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   };
 
   const onInitReactFlow = (reactFlowInstance: ReactFlowInstance) => {
-    onLoad(reactFlowInstance);
+    setTimeout(() => {
+      onLoad(reactFlowInstance);
+    }, 500);
+
     setReactFlowInstance(reactFlowInstance);
   };
 

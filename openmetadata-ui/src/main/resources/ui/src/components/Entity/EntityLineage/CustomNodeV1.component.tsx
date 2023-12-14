@@ -59,7 +59,7 @@ const CustomNodeV1 = (props: NodeProps) => {
   } = useLineageProvider();
 
   /* eslint-disable-next-line */
-  const { label, isNewNode, saved, node = {} } = data;
+  const { label, isNewNode, node = {} } = data;
   const nodeType = isEditMode ? EntityLineageNodeType.DEFAULT : type;
 
   const isSelected = selectedNode === node;
