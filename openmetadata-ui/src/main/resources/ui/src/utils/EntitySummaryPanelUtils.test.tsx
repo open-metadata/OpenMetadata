@@ -24,11 +24,14 @@ import {
 
 describe('EntitySummaryPanelUtils tests', () => {
   it('getFormattedEntityData should return formatted data properly for table columns data without nesting, and also sort the data based on given arr', () => {
+    const highlights = {
+      'tag.name': ['PersonalData.SpecialCategory'],
+    };
     const resultFormattedData = getFormattedEntityData(
       SummaryEntityType.COLUMN,
       mockEntityDataWithoutNesting,
       undefined,
-      ['PersonalData.SpecialCategory']
+      highlights
     );
 
     expect(resultFormattedData).toEqual(mockEntityDataWithoutNestingResponse);

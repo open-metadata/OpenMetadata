@@ -70,7 +70,6 @@ export const mockEntityDataWithoutNesting: Column[] = [
 export const mockEntityDataWithoutNestingResponse = [
   {
     children: [],
-    constraint: undefined,
     description:
       'ID of the API client that called the Shopify API. For example, the ID for the online store is 580111.',
     name: 'api_client_id',
@@ -82,6 +81,7 @@ export const mockEntityDataWithoutNestingResponse = [
         source: 'Classification',
         labelType: 'Manual',
         state: 'Confirmed',
+        isHighlighted: true,
       },
       {
         tagFQN: 'PersonalData.Category1',
@@ -92,18 +92,29 @@ export const mockEntityDataWithoutNestingResponse = [
         state: 'Confirmed',
       },
     ],
-    title: <Text className="entity-title">api_client_id</Text>,
+    title: (
+      <Text className="entity-title" data-testid="entity-title">
+        api_client_id
+      </Text>
+    ),
     type: 'NUMERIC',
+    tableConstraints: undefined,
+    columnConstraint: undefined,
   },
   {
     children: [],
-    constraint: undefined,
     description:
       'Full name of the app or channel. For example, Point of Sale, Online Store.',
     name: 'title',
     tags: [],
-    title: <Text className="entity-title">title</Text>,
+    title: (
+      <Text className="entity-title" data-testid="entity-title">
+        title
+      </Text>
+    ),
     type: 'VARCHAR',
+    tableConstraints: undefined,
+    columnConstraint: undefined,
   },
 ];
 
@@ -176,7 +187,11 @@ export const mockEntityDataWithNestingResponse = [
         description: undefined,
         name: 'id',
         tags: [],
-        title: <Text className="entity-title">id</Text>,
+        title: (
+          <Text className="entity-title" data-testid="entity-title">
+            id
+          </Text>
+        ),
         type: 'STRING',
       },
       {
@@ -184,7 +199,11 @@ export const mockEntityDataWithNestingResponse = [
         description: undefined,
         name: 'first_name',
         tags: [],
-        title: <Text className="entity-title">first_name</Text>,
+        title: (
+          <Text className="entity-title" data-testid="entity-title">
+            first_name
+          </Text>
+        ),
         type: 'STRING',
       },
       {
@@ -192,7 +211,11 @@ export const mockEntityDataWithNestingResponse = [
         description: undefined,
         name: 'last_name',
         tags: [],
-        title: <Text className="entity-title">last_name</Text>,
+        title: (
+          <Text className="entity-title" data-testid="entity-title">
+            last_name
+          </Text>
+        ),
         type: 'STRING',
       },
       {
@@ -200,7 +223,11 @@ export const mockEntityDataWithNestingResponse = [
         description: undefined,
         name: 'email',
         tags: [],
-        title: <Text className="entity-title">email</Text>,
+        title: (
+          <Text className="entity-title" data-testid="entity-title">
+            email
+          </Text>
+        ),
         type: 'STRING',
       },
       {
@@ -208,7 +235,11 @@ export const mockEntityDataWithNestingResponse = [
         description: undefined,
         name: 'address_line_1',
         tags: [],
-        title: <Text className="entity-title">address_line_1</Text>,
+        title: (
+          <Text className="entity-title" data-testid="entity-title">
+            address_line_1
+          </Text>
+        ),
         type: 'STRING',
       },
       {
@@ -216,7 +247,11 @@ export const mockEntityDataWithNestingResponse = [
         description: undefined,
         name: 'address_line_2',
         tags: [],
-        title: <Text className="entity-title">address_line_2</Text>,
+        title: (
+          <Text className="entity-title" data-testid="entity-title">
+            address_line_2
+          </Text>
+        ),
         type: 'STRING',
       },
       {
@@ -224,7 +259,11 @@ export const mockEntityDataWithNestingResponse = [
         description: undefined,
         name: 'post_code',
         tags: [],
-        title: <Text className="entity-title">post_code</Text>,
+        title: (
+          <Text className="entity-title" data-testid="entity-title">
+            post_code
+          </Text>
+        ),
         type: 'STRING',
       },
       {
@@ -232,14 +271,22 @@ export const mockEntityDataWithNestingResponse = [
         description: undefined,
         name: 'country',
         tags: [],
-        title: <Text className="entity-title">country</Text>,
+        title: (
+          <Text className="entity-title" data-testid="entity-title">
+            country
+          </Text>
+        ),
         type: 'STRING',
       },
     ],
     description: undefined,
     name: 'Customer',
     tags: [],
-    title: <Text className="entity-title">Customer</Text>,
+    title: (
+      <Text className="entity-title" data-testid="entity-title">
+        Customer
+      </Text>
+    ),
     type: 'RECORD',
   },
 ];
@@ -247,11 +294,16 @@ export const mockEntityDataWithNestingResponse = [
 export const mockInvalidDataResponse = [
   {
     children: [],
-    constraints: undefined,
+    columnConstraints: undefined,
+    tableConstraints: undefined,
     description: undefined,
     name: undefined,
     tags: undefined,
-    title: <Text className="entity-title">--</Text>,
+    title: (
+      <Text className="entity-title" data-testid="entity-title">
+        --
+      </Text>
+    ),
     type: undefined,
   },
 ];
