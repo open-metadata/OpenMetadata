@@ -36,18 +36,17 @@ import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.util.JsonUtils;
 
 @ExtendWith(MockitoExtension.class)
-public class NoopSecretsManagerTest {
+public class DBSecretsManagerTest {
 
   private static final String ENCRYPTED_VALUE = "fernet:abcdef";
   private static final String DECRYPTED_VALUE = "123456";
-  private static NoopSecretsManager secretsManager;
+  private static DBSecretsManager secretsManager;
 
   @BeforeAll
   static void setUp() {
     secretsManager =
-        NoopSecretsManager.getInstance(
-            SecretsManagerProvider.NOOP,
-            new SecretsManager.SecretsConfig("openmetadata", "prefix", List.of("key:value", "key2:value2")));
+        DBSecretsManager.getInstance(
+            new SecretsManager.SecretsConfig("openmetadata", "prefix", List.of("key:value", "key2:value2"), null));
     Fernet fernet = Mockito.mock(Fernet.class);
     lenient().when(fernet.decrypt(anyString())).thenReturn(DECRYPTED_VALUE);
     lenient().when(fernet.decryptIfApplies(anyString())).thenReturn(DECRYPTED_VALUE);
@@ -87,7 +86,7 @@ public class NoopSecretsManagerTest {
 
   @Test
   void testReturnsExpectedSecretManagerProvider() {
-    assertEquals(SecretsManagerProvider.NOOP, secretsManager.getSecretsManagerProvider());
+    assertEquals(SecretsManagerProvider.DB, secretsManager.getSecretsManagerProvider());
   }
 
   private void testEncryptServiceConnection() {

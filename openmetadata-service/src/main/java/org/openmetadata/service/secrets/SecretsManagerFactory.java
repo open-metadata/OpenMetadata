@@ -31,10 +31,10 @@ public class SecretsManagerFactory {
     SecretsManager.SecretsConfig secretsConfig =
         new SecretsManager.SecretsConfig(clusterName, config.getPrefix(), config.getTags(), config.getParameters());
     SecretsManagerProvider secretsManagerProvider =
-        config != null && config.getSecretsManager() != null ? config.getSecretsManager() : SecretsManagerProvider.NOOP;
+        config != null && config.getSecretsManager() != null ? config.getSecretsManager() : SecretsManagerProvider.DB;
 
     switch (secretsManagerProvider) {
-      case NOOP:
+      case DB:
       case AWS_SSM:
       case AWS:
         /*
@@ -48,7 +48,7 @@ public class SecretsManagerFactory {
         to connect to AWS SSM as specified in the docs:
         https://docs.open-metadata.org/deployment/secrets-manager/supported-implementations/aws-ssm-parameter-store
         */
-        secretsManager = NoopSecretsManager.getInstance(secretsConfig);
+        secretsManager = DBSecretsManager.getInstance(secretsConfig);
         break;
       case MANAGED_AWS:
         secretsManager = AWSSecretsManager.getInstance(secretsConfig);

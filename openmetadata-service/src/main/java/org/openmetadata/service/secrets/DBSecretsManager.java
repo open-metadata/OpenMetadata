@@ -15,16 +15,16 @@ package org.openmetadata.service.secrets;
 
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 
-public class NoopSecretsManager extends SecretsManager {
-  private static NoopSecretsManager instance;
+public class DBSecretsManager extends SecretsManager {
+  private static DBSecretsManager instance;
 
-  private NoopSecretsManager(SecretsManagerProvider secretsManagerProvider, SecretsConfig secretsConfig) {
+  private DBSecretsManager(SecretsManagerProvider secretsManagerProvider, SecretsConfig secretsConfig) {
     super(secretsManagerProvider, secretsConfig);
   }
 
-  public static NoopSecretsManager getInstance(SecretsConfig secretsConfig) {
+  public static DBSecretsManager getInstance(SecretsConfig secretsConfig) {
     if (instance == null) {
-      instance = new NoopSecretsManager(SecretsManagerProvider.NOOP, secretsConfig);
+      instance = new DBSecretsManager(SecretsManagerProvider.DB, secretsConfig);
     }
     return instance;
   }
