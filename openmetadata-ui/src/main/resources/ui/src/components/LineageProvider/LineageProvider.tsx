@@ -12,7 +12,7 @@
  */
 import { Button } from 'antd';
 import { AxiosError } from 'axios';
-import { isEqual, isNil, isUndefined, uniqueId, uniqWith } from 'lodash';
+import { isEqual, isUndefined, uniqueId, uniqWith } from 'lodash';
 import { LoadingState } from 'Models';
 import React, {
   createContext,
@@ -40,7 +40,11 @@ import {
   EntityLineageDirection,
   EntityLineageNodeType,
 } from '../../enums/entity.enum';
-import { EntityReference } from '../../generated/type/entityLineage';
+import { EntitiesEdge } from '../../generated/api/lineage/addLineage';
+import {
+  ColumnLineage,
+  EntityReference,
+} from '../../generated/type/entityLineage';
 import { getLineageDataByFQN } from '../../rest/lineageAPI';
 import {
   addLineageHandler,
@@ -60,11 +64,13 @@ import EntityInfoDrawer from '../Entity/EntityInfoDrawer/EntityInfoDrawer.compon
 import {
   EdgeData,
   LineageConfig,
-  SelectedEdge,
 } from '../Entity/EntityLineage/EntityLineage.interface';
 import EntityLineageSidebar from '../Entity/EntityLineage/EntityLineageSidebar.component';
 import NodeSuggestions from '../Entity/EntityLineage/NodeSuggestions.component';
-import { EntityLineageReponse } from '../Lineage/Lineage.interface';
+import {
+  EdgeDetails,
+  EntityLineageReponse,
+} from '../Lineage/Lineage.interface';
 import { SourceType } from '../SearchedData/SearchedData.interface';
 import { useTourProvider } from '../TourProvider/TourProvider';
 
@@ -227,22 +233,19 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     [nodes, edges]
   );
 
-  const removeEdgeHandler = (
-    { source, target }: SelectedEdge,
-    confirmDelete: boolean
-  ) => {
+  const removeEdgeHandler = (edge: Edge, confirmDelete: boolean) => {
     if (confirmDelete && entityLineage) {
+      const { data, id } = edge;
       const edgeData: EdgeData = {
-        fromEntity: source.type,
-        fromId: source.id,
-        toEntity: target.type,
-        toId: target.id,
+        fromEntity: data.edge.fromEntity.type,
+        fromId: data.edge.fromEntity.id,
+        toEntity: data.edge.toEntity.type,
+        toId: data.edge.toEntity.id,
       };
       removeLineageHandler(edgeData);
       setEdges((prevEdges) => {
         return prevEdges.filter((edge) => {
-          const isRemovedEdge =
-            edge.source === source.id && edge.target === target.id;
+          const isRemovedEdge = edge.id === id;
 
           return !isRemovedEdge;
         });
@@ -257,18 +260,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       }
       // Get edges connected to selected node
       const edgesToRemove = getConnectedEdges([node], edges);
-
-      // edgesToRemove.forEach((edge) => {
-      //   removeEdgeHandler(
-      //     getRemovedNodeData(
-      //       entityLineage.nodes || [],
-      //       edge,
-      //       entityLineage.entity,
-      //       selectedEntity
-      //     ),
-      //     true
-      //   );
-      // });
+      edgesToRemove.forEach((edge) => {
+        removeEdgeHandler(edge, true);
+      });
 
       setNodes(
         (previousNodes) =>
@@ -432,25 +426,14 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         return;
       }
 
-      const columnConnection = !isNil(sourceHandle) && !isNil(targetHandle);
+      const columnConnection =
+        source !== sourceHandle && target !== targetHandle;
 
       setStatus('waiting');
       setLoading(true);
 
-      // const nodes = [
-      //   ...(entityLineage.nodes as EntityReference[]),
-      //   entityLineage.entity,
-      // ];
-
       const targetNode = nodes?.find((n) => target === n.id);
       const sourceNode = nodes?.find((n) => source === n.id);
-
-      // if (isUndefined(targetNode) && sourceNode?.id !== selectedNode?.id) {
-      //   targetNode = getSourceOrTargetNode(target || '');
-      // }
-      // if (isUndefined(sourceNode) && targetNode?.id !== selectedNode?.id) {
-      //   sourceNode = getSourceOrTargetNode(source || '');
-      // }
 
       if (!isUndefined(sourceNode) && !isUndefined(targetNode)) {
         const {
@@ -464,20 +447,41 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           fullyQualifiedName: targetFqn,
         } = targetNode.data.node;
 
-        const newEdgeWithFqn = {
+        const currentEdge = (entityLineage.edges ?? []).find(
+          (edge) => edge.fromEntity.id === source && edge.toEntity.id === target
+        );
+
+        const newEdgeWithFqn: { edge: EdgeDetails } = {
           edge: {
             fromEntity: { id: sourceId, type: sourceType, fqn: sourceFqn },
             toEntity: { id: targetId, type: targetType, fqn: targetFqn },
+            sqlQuery: '',
           },
         };
 
-        // Create another variable without the fqn field
-        const newEdgeWithoutFqn = {
+        const newEdgeWithoutFqn: { edge: EntitiesEdge } = {
           edge: {
             fromEntity: { id: sourceId, type: sourceType },
             toEntity: { id: targetId, type: targetType },
+            lineageDetails: {
+              sqlQuery: '',
+              columnsLineage: [],
+            },
           },
         };
+
+        if (columnConnection) {
+          if (!isUndefined(currentEdge)) {
+            const colsData = [
+              ...(currentEdge.columns ?? []),
+              { fromColumns: [sourceHandle], toColumn: targetHandle },
+            ] as ColumnLineage[];
+            if (newEdgeWithoutFqn.edge.lineageDetails) {
+              newEdgeWithoutFqn.edge.lineageDetails.columnsLineage = colsData;
+            }
+            newEdgeWithFqn.edge.columns = colsData;
+          }
+        }
 
         addLineageHandler(newEdgeWithoutFqn)
           .then(() => {
@@ -562,7 +566,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
               ...el,
               connectable: true,
               selectable: true,
-              id: nodeId,
+              id: selectedEntity.id,
               data: {
                 saved: false,
                 node: selectedEntity,

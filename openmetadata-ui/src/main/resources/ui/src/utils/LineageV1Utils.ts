@@ -141,6 +141,7 @@ export const createEdges = (nodes: EntityReference[], edges: EdgeDetails[]) => {
               target: edge.toEntity.id,
               targetHandle: toColumn,
               sourceHandle: fromColumn,
+              style: { strokeWidth: '2px' },
               type: 'buttonedge',
               markerEnd: {
                 type: MarkerType.ArrowClosed,

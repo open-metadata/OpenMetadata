@@ -146,8 +146,6 @@ export const CustomEdge = ({
     return false;
   }, [isColumnLineage, data]);
 
-  // const hasLabel = isColumnLineage ?? getEntityName(data.edge?.pipeline);
-
   const isSelectedEditMode = selected && data.isEditMode;
   const isSelected = selected;
 
