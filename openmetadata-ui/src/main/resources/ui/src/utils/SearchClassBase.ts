@@ -10,6 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import i18next from 'i18next';
+import { ReactComponent as IconTable } from '../assets/svg/table-grey.svg';
+import {
+  Option,
+  SearchSuggestions,
+} from '../components/GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import {
   COMMON_DROPDOWN_ITEMS,
@@ -214,6 +220,24 @@ class SearchClassBase {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public getEntitySummaryComponent(_entity: SourceType): JSX.Element | null {
     return null;
+  }
+
+  public getEntitiesSuggestions(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _options: Array<Option>
+  ): Array<{ suggestions: SearchSuggestions; searchIndex: SearchIndex }> {
+    return [];
+  }
+
+  public getIndexGroupLabel(index: string) {
+    switch (index) {
+      case SearchIndex.TABLE:
+      default:
+        return {
+          label: i18next.t('label.table-plural'),
+          GroupIcon: IconTable,
+        };
+    }
   }
 }
 

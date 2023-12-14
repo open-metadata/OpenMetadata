@@ -12,7 +12,6 @@
  */
 
 import { SortingField } from '../components/Explore/SortingDropDown';
-import { SearchIndex } from '../enums/search.enum';
 import i18n from '../utils/i18next/LocalUtil';
 
 export const INITIAL_SORT_FIELD = 'updatedAt';
@@ -57,7 +56,3 @@ export const COMMON_FILTERS_FOR_DIFFERENT_TABS = [
   'owner.displayName',
   'tags.tagFQN',
 ];
-
-export const ALL_EXPLORE_SEARCH_INDEX =
-  // eslint-disable-next-line max-len
-  `${SearchIndex.TABLE},${SearchIndex.TOPIC},${SearchIndex.DASHBOARD},${SearchIndex.PIPELINE},${SearchIndex.MLMODEL},${SearchIndex.STORED_PROCEDURE},${SearchIndex.DASHBOARD_DATA_MODEL},${SearchIndex.CONTAINER},${SearchIndex.GLOSSARY},${SearchIndex.TAG},${SearchIndex.SEARCH_INDEX},${SearchIndex.DATA_PRODUCT}` as SearchIndex;

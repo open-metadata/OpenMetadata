@@ -36,11 +36,11 @@ import {
 } from '../constants/char.constants';
 import { EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { SearchSourceAlias } from '../interface/search.interface';
 import { getPartialNameFromTableFQN } from './CommonUtils';
-import { getEntityName } from './EntityUtils';
+import searchClassBase from './SearchClassBase';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import { escapeESReservedCharacters } from './StringsUtils';
-import { getEntityLink } from './TableUtils';
 
 export const getSearchAPIQueryParams = (
   queryString: string,
@@ -157,12 +157,15 @@ export const getGroupLabel = (index: string) => {
 
       break;
 
-    case SearchIndex.TABLE:
-    default:
-      label = i18next.t('label.table-plural');
-      GroupIcon = IconTable;
+    default: {
+      const { label: indexLabel, GroupIcon: IndexIcon } =
+        searchClassBase.getIndexGroupLabel(index);
+
+      label = indexLabel;
+      GroupIcon = IndexIcon;
 
       break;
+    }
   }
 
   const groupLabel = (
@@ -180,6 +183,7 @@ export const getSuggestionElement = (
   index: string,
   onClickHandler?: () => void
 ) => {
+  const entitySource = suggestion as SearchSourceAlias;
   const { fullyQualifiedName: fqdn = '', name, serviceType = '' } = suggestion;
   let database;
   let schema;
@@ -188,7 +192,7 @@ export const getSuggestionElement = (
     schema = getPartialNameFromTableFQN(fqdn, [FqnPart.Schema]);
   }
 
-  const entityLink = getEntityLink(index, fqdn);
+  const entityLink = searchClassBase.getEntityLink(entitySource);
   const dataTestId = `${getPartialNameFromTableFQN(fqdn, [
     FqnPart.Service,
   ])}-${name}`.replaceAll(`"`, '');
@@ -196,7 +200,7 @@ export const getSuggestionElement = (
   const displayText =
     database && schema
       ? `${database}${FQN_SEPARATOR_CHAR}${schema}${FQN_SEPARATOR_CHAR}${name}`
-      : getEntityName(suggestion);
+      : searchClassBase.getEntityName(entitySource);
 
   const retn = (
     <Button
@@ -208,7 +212,7 @@ export const getSuggestionElement = (
           alt={serviceType}
           className="m-r-sm"
           height="16px"
-          src={serviceUtilClassBase.getServiceTypeLogo(serviceType)}
+          src={serviceUtilClassBase.getServiceTypeLogo(serviceType, suggestion)}
           width="16px"
         />
       }
@@ -218,6 +222,7 @@ export const getSuggestionElement = (
         className="text-sm"
         data-testid="data-name"
         id={fqdn.replace(/\./g, '')}
+        target={searchClassBase.getSearchEntityLinkTarget(entitySource)}
         to={entityLink}
         onClick={onClickHandler}>
         {displayText}
