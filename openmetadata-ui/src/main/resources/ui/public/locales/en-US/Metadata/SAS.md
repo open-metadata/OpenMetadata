@@ -26,8 +26,9 @@ Server host and port of SAS Viya.
 $$
 
 $$section
-### filter $(id="filter")
+### Filter $(id="filter")
 
+A filter expression specifying items for import. For more information [see](https://developer.sas.com/apis/rest/DataManagement/#catalog-search)
 
 $$
 
