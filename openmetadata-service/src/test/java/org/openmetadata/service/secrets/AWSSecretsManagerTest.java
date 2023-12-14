@@ -28,7 +28,6 @@ public class AWSSecretsManagerTest extends ExternalSecretsManagerTest {
   void setUpSpecific(SecretsManagerConfiguration config) {
     secretsManager =
         AWSSecretsManager.getInstance(
-            config,
             new SecretsManager.SecretsConfig("openmetadata", "prefix", List.of("key:value", "key2:value2"), null));
     ((AWSSecretsManager) secretsManager).setSecretsClient(secretsManagerClient);
     reset(secretsManagerClient);
